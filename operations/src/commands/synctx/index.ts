@@ -1,60 +1,67 @@
-import { Command } from "@oclif/core";
-import { BigNumber, UnsignedTransaction, ethers } from "ethers";
-import { Flags } from "@oclif/core";
+import { Command, Flags } from "@oclif/core";
+import { ethers } from "ethers";
 import { readFileSync } from "fs";
 
+interface Transaction {
+  hash: string;
+  nonce: number;
+  gas: string;
+  maxFeePerGas?: string;
+  maxPriorityFeePerGas?: string;
+  gasPrice?: string;
+  input?: string;
+  value: string;
+  chainId?: string;
+  accessList?: ethers.AccessListish | null;
+  type: string | number;
+  to?: string;
+}
+
 type Txpool = {
-  pending: object;
+  pending: {
+    [address: string]: {
+      [nonce: string]: Transaction;
+    };
+  };
   queued: object;
 };
 
-//TODO: add pagination for besu?
-const clientApi: { [key: string]: { api: string; params: Array<any> } } = {
+const clientApi: { [key: string]: { api: string; params: Array<unknown> } } = {
   geth: { api: "txpool_content", params: [] },
   besu: { api: "txpool_besuPendingTransactions", params: [2000] },
 };
 
-const isValidNodeTarget = (sourceNode: string, targetNode: string) => {
+const isValidNodeTarget = (sourceNode: string, targetNode: string): boolean => {
   try {
-    /* eslint-disable no-new */
     if (sourceNode) {
       new URL(sourceNode);
     }
     new URL(targetNode);
     return true;
-  } catch {}
-
-  return false;
+  } catch (e) {
+    return false;
+  }
 };
 
-const isLocalPort = (value: string) => {
-  try {
-    const port = Number(value);
-    return port >= 1 && port <= 65535;
-  } catch {}
-
-  return false;
+const isLocalPort = (value: string): boolean => {
+  const port = Number(value);
+  return !isNaN(port) && port >= 1 && port <= 65535;
 };
 
-const parsePendingTransactions = (pool: Txpool) => {
-  return (Object.values(pool.pending).map((el: any) => Object.values(el)) as unknown as any[]).flat();
+const parsePendingTransactions = (pool: Txpool): Transaction[] => {
+  const pendingAddresses = Object.values(pool.pending);
+  const transactionsByNonce = pendingAddresses.map((txsByNonce) => Object.values(txsByNonce));
+  const transactions = transactionsByNonce.flat();
+  return transactions;
 };
 
-const getPendingTransactions = (sourcePool: any, targetPool: any) => {
-  // calculate diff between source and target
-  const targetPendingTransactions = new Set();
-
-  targetPool.forEach((tx: any) => {
-    targetPendingTransactions.add(tx.hash);
-  });
-
-  return sourcePool.filter((tx: any) => !targetPendingTransactions.has(tx.hash));
+const getPendingTransactions = (sourcePool: Transaction[], targetPool: Transaction[]): Transaction[] => {
+  const targetPendingTransactions = new Set(targetPool.map((tx) => tx.hash));
+  return sourcePool.filter((tx) => !targetPendingTransactions.has(tx.hash));
 };
 
-const getClientType = async (nodeProvider: ethers.providers.JsonRpcProvider) => {
-  // Fetch client type of Besu or Geth
+const getClientType = async (nodeProvider: ethers.JsonRpcProvider): Promise<string> => {
   const res: string = await nodeProvider.send("web3_clientVersion", []);
-
   const clientType = res.slice(0, 4).toLowerCase();
   if (!["geth", "besu"].includes(clientType)) {
     throw new Error(`Invalid node client type, must be either geth or besu`);
@@ -74,7 +81,7 @@ export default class Sync extends Command {
       description: "source node to sync from, mutually exclusive with file flag",
       helpGroup: "Node",
       multiple: false,
-      required: true,
+      required: false,
       default: "",
       env: "SYNCTX_SOURCE",
     }),
@@ -114,23 +121,24 @@ export default class Sync extends Command {
       description: "local txs file to read from, mutually exclusive with source flag",
       helpGroup: "Config",
       multiple: false,
-      requiredOrDefaulted: true,
+      required: false,
       default: "",
       env: "SYNCTX_FILE",
     }),
   };
+
   public async run(): Promise<void> {
     const { flags } = await this.parse(Sync);
 
-    let sourceNode: string = flags.source;
+    let sourceNode: string = flags.source ?? "";
     let targetNode: string = flags.target;
-    const filePath: string = flags.file;
-    let pendingTransactionsToSync: any[] = [];
+    const filePath: string = flags.file ?? "";
+    let pendingTransactionsToSync: Transaction[] = [];
     const concurrentCount = flags.concurrency as number;
 
     if ((filePath === "" && sourceNode === "") || (filePath !== "" && sourceNode !== "")) {
       this.error(
-        "Invalid flag values are supplied, source and file are mutually exclusive and at least one needs to be specified",
+        "Invalid flag values are supplied; source and file are mutually exclusive, and at least one needs to be specified",
       );
     }
 
@@ -140,11 +148,11 @@ export default class Sync extends Command {
     }
 
     if (!isValidNodeTarget(sourceNode, targetNode)) {
-      this.error("Invalid nodes supplied to source and/or target, must be valid URL");
+      this.error("Invalid nodes supplied to source and/or target; must be valid URLs");
     }
 
-    const sourceProvider = sourceNode ? new ethers.providers.JsonRpcProvider(sourceNode) : undefined;
-    const targetProvider = new ethers.providers.JsonRpcProvider(targetNode);
+    const sourceProvider = sourceNode ? new ethers.JsonRpcProvider(sourceNode) : undefined;
+    const targetProvider = new ethers.JsonRpcProvider(targetNode);
 
     const sourceClientType = sourceProvider ? await getClientType(sourceProvider) : undefined;
     const targetClientType = await getClientType(targetProvider);
@@ -173,7 +181,7 @@ export default class Sync extends Command {
         this.log(`Skip fetching txs from source node as txs file is supplied`);
       }
     } catch (err) {
-      this.error(`Invalid rpc provider(s) - ${err}`);
+      this.error(`Invalid RPC provider(s) - ${err}`);
     }
 
     if (
@@ -184,10 +192,14 @@ export default class Sync extends Command {
       return;
     }
 
-    const sourcePendingTransactions: any =
-      sourceClientType === "geth" ? parsePendingTransactions(sourceTransactionPool) : sourceTransactionPool;
-    const targetPendingTransactions: any =
-      targetClientType === "geth" ? parsePendingTransactions(targetTransactionPool) : targetTransactionPool;
+    const sourcePendingTransactions: Transaction[] =
+      sourceClientType === "geth"
+        ? parsePendingTransactions(sourceTransactionPool)
+        : (sourceTransactionPool as unknown as Transaction[]);
+    const targetPendingTransactions: Transaction[] =
+      targetClientType === "geth"
+        ? parsePendingTransactions(targetTransactionPool)
+        : (targetTransactionPool as unknown as Transaction[]);
 
     if (sourceNode) {
       this.log(`Source pending transactions: ${sourcePendingTransactions.length}`);
@@ -202,51 +214,52 @@ export default class Sync extends Command {
       if (sourceNode) {
         this.log(`Delta between source and target pending transactions is 0.`);
       } else {
-        this.log(`No txs found from file ${filePath}`);
+        this.log(`No txs found in file ${filePath}`);
       }
       return;
     }
 
     this.log(`Pending transactions to process: ${pendingTransactionsToSync.length}`);
 
-    // track errors serializing transactions
+    // Track errors during serialization
     let errorSerialization = 0;
     const transactions: Array<string> = [];
 
+    // Asynchronous loop to handle address resolution
     for (const tx of pendingTransactionsToSync) {
-      const transaction: UnsignedTransaction = {
-        to: tx.to,
-        nonce: Number.parseInt(tx.nonce.toString()),
-        gasLimit: BigNumber.from(tx.gas),
+      // Resolve the 'to' address if necessary
+      const toAddress = tx.to ? await ethers.resolveAddress(tx.to) : undefined;
+
+      const transaction: ethers.TransactionLike<string> = {
+        to: toAddress,
+        nonce: Number(tx.nonce),
+        gasLimit: BigInt(tx.gas),
         ...(Number(tx.type) === 2
           ? {
-              gasPrice: BigNumber.from(tx.maxFeePerGas),
-              maxFeePerGas: BigNumber.from(tx.maxFeePerGas),
-              maxPriorityFeePerGas: BigNumber.from(tx.maxPriorityFeePerGas),
+              maxFeePerGas: BigInt(tx.maxFeePerGas!),
+              maxPriorityFeePerGas: BigInt(tx.maxPriorityFeePerGas!),
             }
-          : { gasPrice: BigNumber.from(tx.gasPrice) }),
+          : { gasPrice: BigInt(tx.gasPrice!) }),
         data: tx.input || "0x",
-        value: BigNumber.from(tx.value),
-        ...(tx.chainId && Number(tx.type) !== 0 ? { chainId: Number.parseInt(tx.chainId.toString()) } : {}),
-        ...(Number(tx.type) === 1 || Number(tx.type) === 2 ? { accessList: tx.accessList, type: Number(tx.type) } : {}),
+        value: BigInt(tx.value),
+        ...(tx.chainId && Number(tx.type) !== 0 ? { chainId: Number(tx.chainId) } : {}),
+        ...(Number(tx.type) === 1 || Number(tx.type) === 2
+          ? { accessList: tx.accessList as ethers.AccessListish, type: Number(tx.type) }
+          : {}),
       };
 
-      const rawTx = ethers.utils.serializeTransaction(
-        transaction,
-        ethers.utils.splitSignature({
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          v: Number.parseInt(tx.v!.toString()),
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          r: tx.r!,
-          s: tx.s,
-        }),
-      );
+      try {
+        const rawTx = ethers.Transaction.from(transaction).serialized;
 
-      if (ethers.utils.keccak256(rawTx) !== tx.hash) {
+        if (ethers.keccak256(rawTx) !== tx.hash) {
+          errorSerialization++;
+          this.warn(`Failed to serialize transaction: ${tx.hash}`);
+        }
+        transactions.push(rawTx);
+      } catch (error) {
         errorSerialization++;
-        this.warn(`Failed to serialize transaction: ${tx.hash}`);
+        this.warn(`Error serializing transaction ${tx.hash}: ${(error as Error).message}`);
       }
-      transactions.push(rawTx);
     }
 
     const totalBatchesToProcess = Math.ceil(transactions.length / concurrentCount);
@@ -273,20 +286,18 @@ export default class Sync extends Command {
 
       this.log(`Processing batch: ${i + 1} of ${totalBatchesToProcess}, size ${transactionBatch.length}`);
 
-      const transactionPromises = transactionBatch.map((transactionReq) => {
-        return targetProvider.sendTransaction(transactionReq);
+      const transactionPromises = transactionBatch.map((rawTransaction) => {
+        return targetProvider.broadcastTransaction(rawTransaction);
       });
 
       const results = await Promise.allSettled(transactionPromises);
-      success += results.filter((result: PromiseSettledResult<unknown>) => result.status === "fulfilled").length;
+      success = results.filter((result) => result.status === "fulfilled").length;
 
-      const resultErrors = results.filter(
-        (result: PromiseSettledResult<unknown>): result is PromiseRejectedResult => result.status === "rejected",
-      );
-      errors += resultErrors.length;
+      const resultErrors = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+      errors = resultErrors.length;
 
       resultErrors.forEach((result) => {
-        this.log(`${result.reason.message.toString()}`);
+        this.log(`Error broadcasting transaction: ${(result.reason as Error).message}`);
       });
 
       totalSuccess += success;

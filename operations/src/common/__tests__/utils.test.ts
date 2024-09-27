@@ -1,7 +1,7 @@
 import { describe, afterEach, jest, it, expect, beforeEach } from "@jest/globals";
 import { JsonRpcProvider } from "ethers";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
-import { get1559Fees } from "../utils";
+import { get1559Fees } from "../utils.js";
 
 describe("Utils", () => {
   let providerMock: MockProxy<JsonRpcProvider>;

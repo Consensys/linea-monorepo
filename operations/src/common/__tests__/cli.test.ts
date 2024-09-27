@@ -1,6 +1,6 @@
 import { describe, it, expect } from "@jest/globals";
 import { ethers } from "ethers";
-import { isValidUrl, sanitizeAddress, sanitizeETHThreshold, sanitizeHexString, sanitizeUrl } from "../cli";
+import { isValidUrl, sanitizeAddress, sanitizeETHThreshold, sanitizeHexString, sanitizeUrl } from "../cli.js";
 
 describe("CLI", () => {
   describe("sanitizeAddress", () => {
