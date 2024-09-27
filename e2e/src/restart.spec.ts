@@ -144,7 +144,7 @@ const coordinatorRestartTestSuite = (title: string) => {
 
       console.log("Moving the L2 chain forward to trigger anchoring...");
       // Using 5 messages to give the coordinator time to restart
-      const intervalId = sendTransactionsToGenerateTrafficWithInterval(l2MessageSender);
+      const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender);
 
       // Wait for messages to be anchored on L2
       const lastNewL1MessageNumberAfterRestart = l1MessagesAfterRestart.slice(-1)[0].messageNumber;
