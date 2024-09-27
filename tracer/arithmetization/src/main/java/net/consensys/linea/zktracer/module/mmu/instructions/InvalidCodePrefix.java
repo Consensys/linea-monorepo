@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.module.mmu.Trace.NB_MICRO_ROWS_TOT_INVALID_CODE_PREFIX;
 import static net.consensys.linea.zktracer.module.mmu.Trace.NB_PP_ROWS_INVALID_CODE_PREFIX;
 
 import java.util.ArrayList;
@@ -27,7 +28,6 @@ import java.util.List;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.Trace;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
@@ -57,13 +57,11 @@ public class InvalidCodePrefix implements MmuInstruction {
 
   @Override
   public MmuData preProcess(MmuData mmuData) {
-    // Set mmuData.sourceRamBytes
-    final Bytes sourceMemory = mmuData.mmuCall().sourceRamBytes().get();
-    mmuData.sourceRamBytes(sourceMemory);
+    mmuData.sourceRamBytes(mmuData.mmuCall().sourceRamBytes().get());
 
     // row n°1
     final long dividend1 = mmuData.hubToMmuValues().sourceOffsetLo().longValueExact();
-    final EucOperation eucOp = euc.callEUC(Bytes.ofUnsignedLong(dividend1), Bytes.of(16));
+    final EucOperation eucOp = euc.callEUC(Bytes.ofUnsignedLong(dividend1), Bytes.of(LLARGE));
     final short rem = (short) eucOp.remainder().toInt();
     final long quot = eucOp.quotient().toLong();
     initialSourceLimbOffset = quot;
@@ -77,14 +75,13 @@ public class InvalidCodePrefix implements MmuInstruction {
             .remainder(rem)
             .build());
 
+    final long offset = mmuData.hubToMmuValues().sourceOffsetLo().longValueExact();
+    final boolean offsetIsOutOfBonds = offset >= mmuData.sourceRamBytes().size();
     microLimb =
-        Bytes.of(
-            mmuData
-                .sourceRamBytes()
-                .get((int) (LLARGE * initialSourceLimbOffset + initialSourceByteOffset)));
-    Bytes arg1 = microLimb;
-    Bytes arg2 = Bytes.of(EIP_3541_MARKER);
-    boolean result = wcp.callEQ(arg1, arg2);
+        offsetIsOutOfBonds ? Bytes.of(0) : Bytes.of(mmuData.sourceRamBytes().get((int) offset));
+    final Bytes arg1 = microLimb;
+    final Bytes arg2 = Bytes.of(EIP_3541_MARKER);
+    final boolean result = wcp.callEQ(arg1, arg2);
 
     wcpCallRecords.add(
         MmuWcpCallRecord.instEqBuilder().arg1Lo(arg1).arg2Lo(arg2).result(result).build());
@@ -96,7 +93,7 @@ public class InvalidCodePrefix implements MmuInstruction {
     mmuData.outAndBinValues(MmuOutAndBinValues.builder().build()); // all 0
 
     mmuData.totalLeftZeroesInitials(0);
-    mmuData.totalNonTrivialInitials(Trace.NB_MICRO_ROWS_TOT_INVALID_CODE_PREFIX);
+    mmuData.totalNonTrivialInitials(NB_MICRO_ROWS_TOT_INVALID_CODE_PREFIX);
     mmuData.totalRightZeroesInitials(0);
 
     return mmuData;
@@ -104,7 +101,7 @@ public class InvalidCodePrefix implements MmuInstruction {
 
   @Override
   public MmuData setMicroInstructions(MmuData mmuData) {
-    HubToMmuValues hubToMmuValues = mmuData.hubToMmuValues();
+    final HubToMmuValues hubToMmuValues = mmuData.hubToMmuValues();
 
     mmuData.mmuToMmioConstantValues(
         MmuToMmioConstantValues.builder().sourceContextNumber(hubToMmuValues.sourceId()).build());
