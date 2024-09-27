@@ -54,7 +54,7 @@ describe("LineaRollup Init contract", () => {
       ],
       pauseTypeRoles: pauseTypeRoles,
       unpauseTypeRoles: unpauseTypeRoles,
-      gatewayOperator: multiCallAddress,
+      fallbackOperator: multiCallAddress,
     };
 
     const LineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [genesisData], {

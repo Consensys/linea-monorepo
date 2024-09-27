@@ -21,7 +21,7 @@ interface ILineaRollup {
    * @param roleAddresses The list of role addresses.
    * @param pauseTypeRoles The list of pause type roles.
    * @param unpauseTypeRoles The list of unpause type roles.
-   * @param gatewayOperator The account to be given OPERATOR_ROLE when.
+   * @param fallbackOperator The account to be given OPERATOR_ROLE on when the time since last finalization lapses.
    */
   struct InitializationData {
     bytes32 initialStateRootHash;
@@ -33,7 +33,7 @@ interface ILineaRollup {
     IPermissionsManager.RoleAddress[] roleAddresses;
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
-    address gatewayOperator;
+    address fallbackOperator;
   }
 
   /**
@@ -140,11 +140,18 @@ interface ILineaRollup {
   event LineaRollupVersionChanged(bytes8 indexed previousVersion, bytes8 indexed newVersion);
 
   /**
-   * @notice Emitted when the gateway operator role is granted.
+   * @notice Emitted when the fallback operator role is granted.
    * @param caller The address that granted the role.
-   * @param gatewayOperatorAddress The gateway operator address that received the operator role.
+   * @param fallbackOperator The fallback operator address that received the operator role.
    */
-  event GatewayOperatorRoleGranted(address indexed caller, address indexed gatewayOperatorAddress);
+  event FallbackOperatorRoleGranted(address indexed caller, address indexed fallbackOperator);
+
+  /**
+   * @notice Emitted when the fallback operator role is set on the contract.
+   * @param caller The address that set the fallback operator address.
+   * @param fallbackOperator The fallback operator address.
+   */
+  event FallbackOperatorAddressSet(address indexed caller, address indexed fallbackOperator);
 
   /**
    * @notice Emitted when a verifier is set for a particular proof type.
@@ -186,7 +193,7 @@ interface ILineaRollup {
   );
 
   /**
-   * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the gateway operator address.
+   * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the fallback operator address.
    */
   error LastFinalizationTimeNotLapsed();
 
@@ -330,13 +337,13 @@ interface ILineaRollup {
   function setVerifierAddress(address _newVerifierAddress, uint256 _proofType) external;
 
   /**
-   * @notice Sets the gateway operator role to the specified address if six months have passed since the last finalization.
+   * @notice Sets the fallback operator role to the specified address if six months have passed since the last finalization.
    * @dev Reverts if six months have not passed since the last finalization.
    * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
    * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
    * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
    */
-  function setGatewayOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external;
+  function setFallbackOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external;
 
   /**
    * @notice Unset the verifier contract address for a proof type.
