@@ -15,7 +15,7 @@ on:
 
 concurrency:
   group: store-image-name-and-tags-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref_name != 'main' }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
 
 jobs:
   store_image_name_and_tags:
