@@ -187,3 +187,15 @@ jobs:
       untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
       image_names: '["consensys/linea-coordinator", "consensys/linea-postman", "consensys/linea-prover", "consensys/linea-traces-api-facade"]'
     secrets: inherit
+
+  cleanup-deployments:
+    needs: [ run-e2e-tests, run-e2e-tests-geth-tracing ]
+    if: ${{ always() }}
+    runs-on: besu-arm64
+    steps:
+      - uses: strumwolf/delete-deployment-environment@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: docker-build-and-e2e
+          ref: ${{ github.ref_name }}
+          onlyRemoveDeployments: true
