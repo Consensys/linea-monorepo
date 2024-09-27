@@ -154,7 +154,7 @@ jobs:
     if: ${{ always() && needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-geth-tracing-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: ${{ github.head_ref != 'main' || github.ref_name != 'main' }}
+      cancel-in-progress: ${{ github.ref_name != 'main' }}
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
