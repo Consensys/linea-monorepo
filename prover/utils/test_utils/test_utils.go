@@ -70,7 +70,7 @@ func AssertBytesEqual(t assert.TestingT, expected, actual []byte) {
 
 	printCentered := func(b []byte) {
 
-		for i := failure - radius; i <= failure+radius; i++ {
+		for i := max(failure-radius, 0); i <= failure+radius; i++ {
 			if i%blockSize == 0 && i != failure-radius {
 				sb.WriteString("  ")
 			}
@@ -91,7 +91,7 @@ func AssertBytesEqual(t assert.TestingT, expected, actual []byte) {
 	sb.WriteString("\n")
 
 	sb.WriteString("          ")
-	for i := failure - radius; i <= failure+radius; {
+	for i := max(failure-radius, 0); i <= failure+radius; {
 		if i%blockSize == 0 && i != failure-radius {
 			s := strconv.Itoa(i)
 			sb.WriteString("  ")

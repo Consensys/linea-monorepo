@@ -288,6 +288,7 @@ func (bm *BlobMaker) Equals(other *BlobMaker) bool {
 }
 
 // DecompressBlob decompresses a blob and returns the header and the blocks as they were compressed.
+// rawBlocks is the raw payload of the blob, delivered in packed format @TODO bad idea. fix
 func DecompressBlob(b []byte, dictStore dictionary.Store) (blobHeader *Header, rawBlocks []byte, blocks [][]byte, err error) {
 	// UnpackAlign the blob
 	b, err = UnpackAlign(b)

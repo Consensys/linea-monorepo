@@ -125,7 +125,7 @@ func DecodeBlockFromUncompressed(r *bytes.Reader) (encode.DecodedBlockData, erro
 
 	var decTimestamp uint64
 
-	if err := binary.Read(r, binary.BigEndian, &decTimestamp); err != nil {
+	if err := binary.Read(r, binary.LittleEndian, &decTimestamp); err != nil {
 		return encode.DecodedBlockData{}, fmt.Errorf("could not decode timestamp: %w", err)
 	}
 

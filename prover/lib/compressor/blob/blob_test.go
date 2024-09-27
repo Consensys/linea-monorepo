@@ -30,7 +30,7 @@ func TestBlobRoundTripV0(t *testing.T) {
 	dictStore := dictionary.NewStore()
 	require.NoError(t, dictStore.Load(dictPath))
 	blobData := readHexFile(t, "testdata/sample-blob-01b9918c3f0ceb6a.hex")
-	header, _, blocksSerialized, err := v0.DecompressBlob(blobData, dictStore)
+	header, payload, blocksSerialized, err := v0.DecompressBlob(blobData, dictStore)
 	require.NoError(t, err)
 	bm, err := v0.NewBlobMaker(v0.MaxUncompressedBytes, "../compressor_dict.bin")
 	require.NoError(t, err)
@@ -49,7 +49,13 @@ func TestBlobRoundTripV0(t *testing.T) {
 		bm.StartNewBatch()
 	}
 	assert.Empty(t, blocksSerialized)
-	test_utils.AssertBytesEqual(t, bm.Bytes(), blobData)
+	//test_utils.AssertBytesEqual(t, bm.Bytes(), blobData)
+	// can't expect the compressor to be deterministic. But we can decompress the produced blob and check if the header and raw data are equal
+	headerBack, payloadBack, _, err := v0.DecompressBlob(bm.Bytes(), dictStore)
+	assert.NoError(t, err)
+
+	assert.True(t, header.Equals(headerBack))
+	test_utils.AssertBytesEqual(t, payload, payloadBack)
 }
 
 func readHexFile(t *testing.T, filename string) []byte {
