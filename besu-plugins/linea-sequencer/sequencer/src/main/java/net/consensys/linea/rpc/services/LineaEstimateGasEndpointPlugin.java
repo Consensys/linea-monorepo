@@ -78,7 +78,8 @@ public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin 
                         "Failed to obtain BlockchainService from the BesuContext."));
 
     lineaEstimateGasMethod =
-        new LineaEstimateGas(besuConfiguration, transactionSimulationService, blockchainService);
+        new LineaEstimateGas(
+            besuConfiguration, transactionSimulationService, blockchainService, rpcEndpointService);
 
     rpcEndpointService.registerRPCEndpoint(
         lineaEstimateGasMethod.getNamespace(),

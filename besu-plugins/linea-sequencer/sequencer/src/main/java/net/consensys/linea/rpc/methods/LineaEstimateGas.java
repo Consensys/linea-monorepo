@@ -38,6 +38,7 @@ import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.bouncycastle.asn1.sec.SECNamedCurves;
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.params.ECDomainParameters;
@@ -53,10 +54,12 @@ import org.hyperledger.besu.evm.tracing.EstimateGasOperationTracer;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.hyperledger.besu.plugin.services.RpcEndpointService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
+import org.hyperledger.besu.plugin.services.rpc.RpcResponseType;
 
 @Slf4j
 public class LineaEstimateGas {
@@ -83,21 +86,24 @@ public class LineaEstimateGas {
   private final BesuConfiguration besuConfiguration;
   private final TransactionSimulationService transactionSimulationService;
   private final BlockchainService blockchainService;
+  private final RpcEndpointService rpcEndpointService;
   private LineaRpcConfiguration rpcConfiguration;
   private LineaTransactionPoolValidatorConfiguration txValidatorConf;
   private LineaProfitabilityConfiguration profitabilityConf;
   private TransactionProfitabilityCalculator txProfitabilityCalculator;
   private LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
-
   private ModuleLineCountValidator moduleLineCountValidator;
+  private UInt256 maxTxGasLimit;
 
   public LineaEstimateGas(
       final BesuConfiguration besuConfiguration,
       final TransactionSimulationService transactionSimulationService,
-      final BlockchainService blockchainService) {
+      final BlockchainService blockchainService,
+      final RpcEndpointService rpcEndpointService) {
     this.besuConfiguration = besuConfiguration;
     this.transactionSimulationService = transactionSimulationService;
     this.blockchainService = blockchainService;
+    this.rpcEndpointService = rpcEndpointService;
   }
 
   public void init(
@@ -112,6 +118,7 @@ public class LineaEstimateGas {
     this.txProfitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.moduleLineCountValidator = new ModuleLineCountValidator(limitsMap);
+    this.maxTxGasLimit = UInt256.valueOf(txValidatorConf.maxTxGasLimit());
 
     if (l1L2BridgeConfiguration.isEmpty()) {
       log.error("L1L2 bridge settings have not been defined.");
@@ -129,25 +136,28 @@ public class LineaEstimateGas {
 
   public LineaEstimateGas.Response execute(final PluginRpcRequest request) {
     try {
+      final long logId;
       if (log.isDebugEnabled()) {
         // no matter if it overflows, since it is only used to correlate logs for this request,
         // so we only print callParameters once at the beginning, and we can reference them using
-        // the
-        // sequence.
-        LOG_SEQUENCE.incrementAndGet();
+        // the logId.
+        logId = LOG_SEQUENCE.incrementAndGet();
+      } else {
+        logId = 0;
       }
+
       final var callParameters = parseRequest(request.getParams());
       final var minGasPrice = besuConfiguration.getMinGasPrice();
-
-      final var transaction =
-          createTransactionForSimulation(callParameters, txValidatorConf.maxTxGasLimit());
+      final var gasLimitUpperBound = calculateGasLimitUpperBound(callParameters, logId);
+      final var transaction = createTransactionForSimulation(callParameters, gasLimitUpperBound);
       log.atDebug()
-          .setMessage("[{}] Parsed call parameters: {}; Transaction: {}")
-          .addArgument(LOG_SEQUENCE::get)
+          .setMessage("[{}] Parsed call parameters: {}; Transaction: {}; Gas limit upper bound {}")
+          .addArgument(logId)
           .addArgument(callParameters)
           .addArgument(transaction::toTraceLog)
+          .addArgument(gasLimitUpperBound)
           .log();
-      final var estimatedGasUsed = estimateGasUsed(callParameters, transaction);
+      final var estimatedGasUsed = estimateGasUsed(callParameters, transaction, logId);
 
       final Wei baseFee =
           blockchainService
@@ -164,7 +174,7 @@ public class LineaEstimateGas {
           new Response(create(estimatedGasUsed), create(baseFee), create(estimatedPriorityFee));
       log.atDebug()
           .setMessage("[{}] Response for call params {} is {}")
-          .addArgument(LOG_SEQUENCE::get)
+          .addArgument(logId)
           .addArgument(callParameters)
           .addArgument(response)
           .log();
@@ -175,6 +185,61 @@ public class LineaEstimateGas {
     } catch (Exception e) {
       throw new PluginRpcEndpointException(new InternalError(e.getMessage()), null, e);
     }
+  }
+
+  private long calculateGasLimitUpperBound(
+      final JsonCallParameter callParameters, final long logId) {
+    if (callParameters.getFrom() != null) {
+      final var maxGasPrice = calculateTxMaxGasPrice(callParameters);
+      log.atTrace()
+          .setMessage("[{}] Calculated max gas price {}")
+          .addArgument(logId)
+          .addArgument(maxGasPrice)
+          .log();
+      if (maxGasPrice != null) {
+        final var sender = callParameters.getFrom();
+        final var resp =
+            rpcEndpointService.call(
+                "eth_getBalance", new Object[] {sender.toHexString(), "latest"});
+        if (!resp.getType().equals(RpcResponseType.SUCCESS)) {
+          throw new PluginRpcEndpointException(new InternalError("Unable to query sender balance"));
+        }
+        final var balance = Wei.fromHexString((String) resp.getResult());
+        log.atTrace()
+            .setMessage("[{}] eth_getBalance response for {} is {}, balance {}")
+            .addArgument(logId)
+            .addArgument(sender)
+            .addArgument(resp::getResult)
+            .addArgument(balance::toHumanReadableString)
+            .log();
+        if (balance.greaterThan(Wei.ZERO)) {
+          final var value = callParameters.getValue();
+          final var balanceForGas = value == null ? balance : balance.subtract(value);
+          final var gasLimitForBalance = balanceForGas.divide(maxGasPrice).toUInt256();
+          if (gasLimitForBalance.lessThan(maxTxGasLimit)) {
+            final var gasLimitUpperBound = gasLimitForBalance.toLong();
+            log.atTrace()
+                .setMessage(
+                    "[{}] Calculated gasLimitUpperBound {}; gasLimitForBalance {}, balance {}, value {}, balanceForGas {}, maxGasPrice {}")
+                .addArgument(logId)
+                .addArgument(gasLimitUpperBound)
+                .addArgument(gasLimitForBalance::toDecimalString)
+                .addArgument(balance::toHumanReadableString)
+                .addArgument(value::toHumanReadableString)
+                .addArgument(balanceForGas::toHumanReadableString)
+                .addArgument(maxGasPrice::toHumanReadableString)
+                .log();
+            return gasLimitUpperBound;
+          }
+        }
+      }
+    }
+
+    return txValidatorConf.maxTxGasLimit();
+  }
+
+  private Wei calculateTxMaxGasPrice(final JsonCallParameter callParameters) {
+    return callParameters.getMaxFeePerGas().orElseGet(() -> callParameters.getGasPrice());
   }
 
   private Wei getEstimatedPriorityFee(
@@ -201,7 +266,7 @@ public class LineaEstimateGas {
   }
 
   private Long estimateGasUsed(
-      final JsonCallParameter callParameters, final Transaction transaction) {
+      final JsonCallParameter callParameters, final Transaction transaction, final long logId) {
 
     final var estimateGasTracer = new EstimateGasOperationTracer();
     final var chainHeadHeader = blockchainService.getChainHeadHeader();
@@ -226,7 +291,7 @@ public class LineaEstimateGas {
               if (r.isInvalid()) {
                 log.atDebug()
                     .setMessage("[{}] Invalid transaction {}, reason {}")
-                    .addArgument(LOG_SEQUENCE::get)
+                    .addArgument(logId)
                     .addArgument(transaction::toTraceLog)
                     .addArgument(r.result())
                     .log();
@@ -236,7 +301,7 @@ public class LineaEstimateGas {
               if (!r.isSuccessful()) {
                 log.atDebug()
                     .setMessage("[{}] Failed transaction {}, reason {}")
-                    .addArgument(LOG_SEQUENCE::get)
+                    .addArgument(logId)
                     .addArgument(transaction::toTraceLog)
                     .addArgument(r.result())
                     .log();
@@ -268,14 +333,14 @@ public class LineaEstimateGas {
                         if (lr.isSuccessful()) {
                           log.atTrace()
                               .setMessage("[{}] Low gas estimation {} successful")
-                              .addArgument(LOG_SEQUENCE::get)
+                              .addArgument(logId)
                               .addArgument(lowGasEstimation)
                               .log();
                           return lowGasEstimation;
                         } else {
                           log.atTrace()
                               .setMessage("[{}] Low gas estimation {} unsuccessful, result{}")
-                              .addArgument(LOG_SEQUENCE::get)
+                              .addArgument(logId)
                               .addArgument(lowGasEstimation)
                               .addArgument(lr::result)
                               .log();
@@ -301,7 +366,7 @@ public class LineaEstimateGas {
                               log.atTrace()
                                   .setMessage(
                                       "[{}]-[{}] Binary gas estimation search low={},mid={},high={}, unsuccessful result {}")
-                                  .addArgument(LOG_SEQUENCE::get)
+                                  .addArgument(logId)
                                   .addArgument(iterations)
                                   .addArgument(low)
                                   .addArgument(mid)
@@ -317,7 +382,7 @@ public class LineaEstimateGas {
                               log.atTrace()
                                   .setMessage(
                                       "[{}]-[{}} Binary gas estimation search low={},mid={},high={}, successful")
-                                  .addArgument(LOG_SEQUENCE::get)
+                                  .addArgument(logId)
                                   .addArgument(iterations)
                                   .addArgument(low)
                                   .addArgument(mid)
@@ -329,7 +394,7 @@ public class LineaEstimateGas {
                           log.atDebug()
                               .setMessage(
                                   "[{}] Binary gas estimation search={} after {} iterations")
-                              .addArgument(LOG_SEQUENCE::get)
+                              .addArgument(logId)
                               .addArgument(high)
                               .addArgument(iterations)
                               .log();
