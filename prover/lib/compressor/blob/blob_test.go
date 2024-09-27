@@ -119,22 +119,16 @@ func TestBlockRoundTripV0(t *testing.T) {
 			r := bytes.NewReader(block[transactionsStartAt:])
 			rBack := bytes.NewReader(bb.Bytes()[transactionsStartAt:])
 
-			var rlpDecoded, rlpDecodedBack []interface{}
 			for txI := 0; r.Len() != 0; txI++ {
 				rNbUnreadBytesStart := r.Len()
-				tp, err := r.ReadByte()
-				require.NoError(t, err)
-				if tp == types.DynamicFeeTxType || tp == types.AccessListTxType {
-					tpBack, err := rBack.ReadByte()
-					require.NoError(t, err)
-					assert.Equal(t, tp, tpBack, "type mismatch on block #%d's tx #%d", blockI, txI)
-				} else {
-					tp = 0
-					require.NoError(t, r.UnreadByte())
-				}
 
-				require.NoError(t, rlp.Decode(r, &rlpDecoded))
-				require.NoError(t, rlp.Decode(rBack, &rlpDecodedBack))
+				rlpDecoded, tp, err := v0.ReadTxAsRlp(r)
+				require.NoError(t, err)
+				rlpDecodedBack, tpBack, err := v0.ReadTxAsRlp(rBack)
+				require.NoError(t, err)
+
+				assert.Equal(t, tp, tpBack, "type mismatch on block #%d's tx #%d", blockI, txI)
+
 				err = test_utils.SlicesEqual(rlpDecoded, rlpDecodedBack)
 				assert.NoError(t, err, "at block #%d's tx #%d of type %s", blockI, txI, txTypes[tp])
 				if err != nil { // print the whole transaction
