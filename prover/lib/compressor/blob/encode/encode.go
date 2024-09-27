@@ -233,6 +233,28 @@ type DecodedBlockData struct {
 	Txs []types.TxData
 }
 
+func InjectFromAddressIntoR(txData types.TxData, from *common.Address) *types.Transaction {
+	switch txData := txData.(type) {
+	case *types.DynamicFeeTx:
+		tx := *txData
+		tx.R = new(big.Int)
+		tx.R.SetBytes(from[:])
+		return types.NewTx(&tx)
+	case *types.AccessListTx:
+		tx := *txData
+		tx.R = new(big.Int)
+		tx.R.SetBytes(from[:])
+		return types.NewTx(&tx)
+	case *types.LegacyTx:
+		tx := *txData
+		tx.R = new(big.Int)
+		tx.R.SetBytes(from[:])
+		return types.NewTx(&tx)
+	default:
+		panic("unexpected transaction type")
+	}
+}
+
 // ToStd converts the decoded block data into a standard
 // block object capable of being encoded in a way consumable
 // by existing decoders. The process involves some abuse,
@@ -251,25 +273,7 @@ func (d *DecodedBlockData) ToStd() *types.Block {
 	}
 
 	for i := range d.Txs {
-		switch txData := d.Txs[i].(type) {
-		case *types.DynamicFeeTx:
-			tx := *txData
-			tx.R = new(big.Int)
-			tx.R.SetBytes(d.Froms[i][:])
-			body.Transactions[i] = types.NewTx(&tx)
-		case *types.AccessListTx:
-			tx := *txData
-			tx.R = new(big.Int)
-			tx.R.SetBytes(d.Froms[i][:])
-			body.Transactions[i] = types.NewTx(&tx)
-		case *types.LegacyTx:
-			tx := *txData
-			tx.R = new(big.Int)
-			tx.R.SetBytes(d.Froms[i][:])
-			body.Transactions[i] = types.NewTx(&tx)
-		default:
-			panic("unexpected transaction type")
-		}
+		body.Transactions[i] = InjectFromAddressIntoR(d.Txs[i], &d.Froms[i])
 	}
 
 	return types.NewBlock(&header, &body, nil, emptyTrieHasher{})

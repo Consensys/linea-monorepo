@@ -5,9 +5,9 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"math"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -42,10 +42,19 @@ func RandIntSliceN(length, n int) []int {
 	return res
 }
 
-// AssertBytesEqual between byte slices a,b
+type BytesEqualError struct {
+	Index int
+	error string
+}
+
+func (e *BytesEqualError) Error() string {
+	return e.error
+}
+
+// BytesEqual between byte slices a,b
 // a readable error message would show in case of inequality
 // TODO error options: block size, check forwards or backwards etc
-func AssertBytesEqual(t assert.TestingT, expected, actual []byte) {
+func BytesEqual(expected, actual []byte) error {
 	l := min(len(expected), len(actual))
 
 	failure := 0
@@ -57,7 +66,7 @@ func AssertBytesEqual(t assert.TestingT, expected, actual []byte) {
 	}
 
 	if len(expected) == len(actual) {
-		return
+		return nil
 	}
 
 	// there is a mismatch
@@ -81,6 +90,8 @@ func AssertBytesEqual(t assert.TestingT, expected, actual []byte) {
 			}
 		}
 	}
+
+	sb.WriteString(fmt.Sprintf("mismatch starting at byte %d\n", failure))
 
 	sb.WriteString("expected: ")
 	printCentered(expected)
@@ -111,5 +122,23 @@ func AssertBytesEqual(t assert.TestingT, expected, actual []byte) {
 		}
 	}
 
-	t.Errorf("mismatch starting at byte %d\n%s\n", failure, sb.String())
+	sb.WriteString("\n")
+
+	return &BytesEqualError{
+		Index: failure,
+		error: sb.String(),
+	}
+}
+
+func SlicesEqual[T any](expected, actual []T) error {
+	if l1, l2 := len(expected), len(actual); l1 != l2 {
+		return fmt.Errorf("length mismatch %d≠%d", l1, l2)
+	}
+
+	for i := range expected {
+		if !reflect.DeepEqual(expected[i], actual[i]) {
+			return fmt.Errorf("mismatch at #%d:\nexpected %v\nencountered %v", i, expected[i], actual[i])
+		}
+	}
+	return nil
 }

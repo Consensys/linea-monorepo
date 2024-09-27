@@ -137,8 +137,8 @@ func (bm *BlobMaker) Bytes() []byte {
 			panic(sbb.String())
 		}
 		// compare the header
-		if !header.Equals(&bm.header) {
-			panic("invalid blob: header mismatch")
+		if err = header.CheckEquality(&bm.header); err != nil {
+			panic(fmt.Errorf("invalid blob: header mismatch %v", err))
 		}
 		rawBlocksUnpacked, err := UnpackAlign(rawBlocks)
 		if err != nil {
