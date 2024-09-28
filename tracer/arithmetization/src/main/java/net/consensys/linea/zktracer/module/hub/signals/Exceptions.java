@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub.signals;
 
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_3541_MARKER;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MAX_CODE_SIZE;
+import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.getOpCode;
 
 import java.util.function.Consumer;
 
@@ -213,13 +214,13 @@ public class Exceptions {
   }
 
   private static boolean isCodeSizeOverflow(MessageFrame frame) {
-    if (frame.getType() != MessageFrame.Type.CONTRACT_CREATION) {
+    if (frame.getType() != MessageFrame.Type.CONTRACT_CREATION
+        || getOpCode(frame) != OpCode.RETURN) {
       return false;
     }
 
-    // TODO: don't get it from getOutputData, but only when OPCODE == RETURN && read in memory
-    final Bytes deployedCode = frame.getOutputData();
-    return deployedCode.size() > MAX_CODE_SIZE;
+    final long codeSize = Words.clampedToLong(frame.getStackItem(1));
+    return codeSize > MAX_CODE_SIZE;
   }
 
   /**

@@ -350,4 +350,12 @@ public class CallFrame {
     // TODO: optimize me please. Need a review of the MMU operation handling.
     return memorySpan.isEmpty() ? Bytes.EMPTY : frame.shadowReadMemory(0, frame.memoryByteSize());
   }
+
+  public OpCode getOpCode() {
+    return getOpCode(frame);
+  }
+
+  public static OpCode getOpCode(MessageFrame frame) {
+    return OpCode.of(0xFF & frame.getCurrentOperation().getOpcode());
+  }
 }

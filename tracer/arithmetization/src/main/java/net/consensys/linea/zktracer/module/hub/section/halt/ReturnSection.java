@@ -36,7 +36,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.ReturnFromDeploymentMmuCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.DeploymentOobCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.XCallOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.ReturnScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
@@ -130,7 +129,7 @@ public class ReturnSection extends TraceSection
     // maxCodeSizeException case
     final boolean triggerOobForMaxCodeSizeException = Exceptions.maxCodeSizeException(exceptions);
     if (triggerOobForMaxCodeSizeException) {
-      final OobCall oobCall = new XCallOobCall();
+      final OobCall oobCall = new DeploymentOobCall();
       firstImcFragment.callOob(oobCall);
       commonValues.setTracedException(TracedException.MAX_CODE_SIZE_EXCEPTION);
       return;
