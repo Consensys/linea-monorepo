@@ -30,6 +30,7 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LT;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_MOD;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_CALL_STIPEND;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MAX_CODE_SIZE;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.*;
 import static net.consensys.linea.zktracer.module.oob.Trace.CT_MAX_BLAKE2F_CDS;
 import static net.consensys.linea.zktracer.module.oob.Trace.CT_MAX_BLAKE2F_PARAMS;
@@ -734,7 +735,7 @@ public class OobOperation extends ModuleOperation {
         callToLT(
             0,
             BigInteger.ZERO,
-            BigInteger.valueOf(24576),
+            BigInteger.valueOf(MAX_CODE_SIZE),
             deploymentOobCall.sizeHi(),
             deploymentOobCall.sizeLo());
 

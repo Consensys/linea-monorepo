@@ -766,7 +766,7 @@ public class Hub implements Module {
     defers.resolvePostExecution(this, frame, operationResult);
 
     if (!this.currentFrame().opCode().isCall() && !this.currentFrame().opCode().isCreate()) {
-      this.unlatchStack(frame);
+      this.unlatchStack(frame, currentSection);
     }
   }
 
@@ -912,10 +912,6 @@ public class Hub implements Module {
 
   public void addTraceSection(TraceSection section) {
     state.currentTxTrace().add(section);
-  }
-
-  private void unlatchStack(MessageFrame frame) {
-    this.unlatchStack(frame, this.currentTraceSection());
   }
 
   public void unlatchStack(MessageFrame frame, TraceSection section) {

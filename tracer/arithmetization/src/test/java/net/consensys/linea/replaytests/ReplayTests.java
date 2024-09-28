@@ -183,7 +183,6 @@ public class ReplayTests {
     replay(LINEA_MAINNET, "1339346.json.gz");
   }
 
-  @Disabled("#1173")
   @Test
   void legacyTxWithoutChainID() {
     replay(LINEA_SEPOLIA, "254251.sepolia.json.gz");
