@@ -36,7 +36,7 @@ const dictPath = "../compressor_dict.bin"
 func TestBlobRoundTripV0(t *testing.T) {
 	dictStore := dictionary.NewStore()
 	require.NoError(t, dictStore.Load(dictPath))
-	blobData := readHexFile(t, "testdata/sample-blob-01b9918c3f0ceb6a.hex")
+	blobData := readHexFile(t, "testdata/v0/sample-blob-01b9918c3f0ceb6a.hex")
 	header, payload, blocksSerialized, err := v0.DecompressBlob(blobData, dictStore)
 	require.NoError(t, err)
 	bm, err := v0.NewBlobMaker(v0.MaxUncompressedBytes, "../compressor_dict.bin")
@@ -91,7 +91,7 @@ func TestBlobRoundTripV0(t *testing.T) {
 func TestBlockRoundTripV0(t *testing.T) {
 	dictStore := dictionary.NewStore()
 	require.NoError(t, dictStore.Load(dictPath))
-	blobData := readHexFile(t, "testdata/sample-blob-01b9918c3f0ceb6a.hex")
+	blobData := readHexFile(t, "testdata/v0/sample-blob-01b9918c3f0ceb6a.hex")
 	_, _, blocksSerialized, err := v0.DecompressBlob(blobData, dictStore)
 	require.NoError(t, err)
 
@@ -158,6 +158,13 @@ func TestTransactionRoundTripV0(t *testing.T) {
 				&bb, encode.WithTxAddressGetter(encode.GetAddressFromR)),
 		)
 
+		fields, tp, err := v0.ReadTxAsRlp(bytes.NewReader(tx))
+		require.NoError(t, err)
+		fieldsBack, tpBack, err := v0.ReadTxAsRlp(bytes.NewReader(bb.Bytes()))
+		require.NoError(t, err)
+
+		assert.Equal(t, tp, tpBack, "transaction type mismatch")
+		assert.NoError(t, test_utils.SlicesEqual(fields, fieldsBack))
 	}
 
 	test("+QFLggJzhASHqwCDAopwlCGYwub6TkmgtT2QuiFqPThE/atAgIC5ASVggGBAUmAAgFRh//8ZFpBVNIAVYQAbV2AAgP1bUGD7gGEAKmAAOWAA8/5ggGBAUjSAFWAPV2AAgP1bUGAENhBgMldgADVg4ByAYwxVaZwUYDdXgGO0kATpFGBbV1tgAID9W2AAVGBEkGH//xaBVltgQFFh//+QkRaBUmAgAWBAUYCRA5DzW2BhYGNWWwBbYACAVGABkZCBkGB6kISQYf//FmCWVluSUGEBAAqBVIFh//8CGRaQg2H//xYCF5BVUFZbYf//gYEWg4IWAZCAghEVYL5XY05Ie3Fg4BtgAFJgEWAEUmAkYAD9W1CSkVBQVv6iZGlwZnNYIhIgZmyH7FASaIFylaTKH8bjhZ+vJB843WiPFFE1lwkgAJJkc29sY0MACBIAMw==")
