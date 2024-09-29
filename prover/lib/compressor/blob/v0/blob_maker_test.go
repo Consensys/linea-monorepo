@@ -17,6 +17,7 @@ import (
 	"os"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
 
@@ -787,7 +788,7 @@ func TestNoEmptyToField(t *testing.T) {
 		for j, txD := range block.Txs {
 			tx := encode.InjectFromAddressIntoR(txD, &block.Froms[j])
 			assert.NotNil(t, tx.To(), "nil To field on tx %d of block %d", j, i)
-			assert.NotEqual(t, emptyFrom, *tx.To(), "zero To field on tx %d of block %d", j, i)
+			assert.NotEqual(t, emptyFrom, *tx.To(), "zero To field on tx %#d of block %#d with timestamp %d i.e. %v", j, i, block.Timestamp, time.Unix(int64(block.Timestamp), 0).UTC())
 		}
 	}
 }
