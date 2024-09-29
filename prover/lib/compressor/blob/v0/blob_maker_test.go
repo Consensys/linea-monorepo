@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	encodeTesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode/test_utils"
 	"io"
 	"math/big"
@@ -765,4 +766,28 @@ func TestEncode(t *testing.T) {
 	txBack := types.NewTx(txBackData)
 
 	encodeTesting.CheckSameTx(t, tx, txBack, from)
+}
+
+// TODO @Tabaie add similar test for v1
+func TestNoEmptyToField(t *testing.T) {
+	in, err := os.ReadFile("../testdata/v0/sample-blob-0151eda71505187b5.json")
+	require.NoError(t, err)
+	var obj map[string]any
+	require.NoError(t, json.Unmarshal(in, &obj))
+	blob, err := utils.HexDecodeString(obj["blob"].(string))
+	require.NoError(t, err)
+	dictStore := dictionary.NewStore()
+	require.NoError(t, dictStore.Load("../../compressor_dict.bin"))
+	_, _, blocksDecomp, err := DecompressBlob(blob, dictStore)
+	require.NoError(t, err)
+	var emptyFrom common.Address
+	for i, blockDecomp := range blocksDecomp {
+		block, err := DecodeBlockFromUncompressed(bytes.NewReader(blockDecomp))
+		require.NoError(t, err)
+		for j, txD := range block.Txs {
+			tx := encode.InjectFromAddressIntoR(txD, &block.Froms[j])
+			assert.NotNil(t, tx.To(), "nil To field on tx %d of block %d", j, i)
+			assert.NotEqual(t, emptyFrom, *tx.To(), "zero To field on tx %d of block %d", j, i)
+		}
+	}
 }
