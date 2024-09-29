@@ -1,75 +1,23 @@
 import { Command, Flags } from "@oclif/core";
 import { ethers } from "ethers";
 import { readFileSync } from "fs";
+import {
+  getPendingTransactions,
+  isLocalPort,
+  isValidNodeTarget,
+  parsePendingTransactions,
+  Transaction,
+  Txpool,
+  ClientApi,
+  getClientType,
+} from "../utils/synctx/index.js";
 
-interface Transaction {
-  hash: string;
-  nonce: number;
-  gas: string;
-  maxFeePerGas?: string;
-  maxPriorityFeePerGas?: string;
-  gasPrice?: string;
-  input?: string;
-  value: string;
-  chainId?: string;
-  accessList?: ethers.AccessListish | null;
-  type: string | number;
-  to?: string;
-}
-
-type Txpool = {
-  pending: {
-    [address: string]: {
-      [nonce: string]: Transaction;
-    };
-  };
-  queued: object;
-};
-
-const clientApi: { [key: string]: { api: string; params: Array<unknown> } } = {
+const clientApi: ClientApi = {
   geth: { api: "txpool_content", params: [] },
   besu: { api: "txpool_besuPendingTransactions", params: [2000] },
 };
 
-const isValidNodeTarget = (sourceNode: string, targetNode: string): boolean => {
-  try {
-    if (sourceNode) {
-      new URL(sourceNode);
-    }
-    new URL(targetNode);
-    return true;
-  } catch (e) {
-    return false;
-  }
-};
-
-const isLocalPort = (value: string): boolean => {
-  const port = Number(value);
-  return !isNaN(port) && port >= 1 && port <= 65535;
-};
-
-const parsePendingTransactions = (pool: Txpool): Transaction[] => {
-  const pendingAddresses = Object.values(pool.pending);
-  const transactionsByNonce = pendingAddresses.map((txsByNonce) => Object.values(txsByNonce));
-  const transactions = transactionsByNonce.flat();
-  return transactions;
-};
-
-const getPendingTransactions = (sourcePool: Transaction[], targetPool: Transaction[]): Transaction[] => {
-  const targetPendingTransactions = new Set(targetPool.map((tx) => tx.hash));
-  return sourcePool.filter((tx) => !targetPendingTransactions.has(tx.hash));
-};
-
-const getClientType = async (nodeProvider: ethers.JsonRpcProvider): Promise<string> => {
-  const res: string = await nodeProvider.send("web3_clientVersion", []);
-  const clientType = res.slice(0, 4).toLowerCase();
-  if (!["geth", "besu"].includes(clientType)) {
-    throw new Error(`Invalid node client type, must be either geth or besu`);
-  }
-  return clientType;
-};
-
-export default class Sync extends Command {
+export default class Synctx extends Command {
   static examples = [
     "<%= config.bin %> <%= command.id %> --source=8500 --target=8501 --local",
     "<%= config.bin %> <%= command.id %> --source=http://geth-archive-1:8545 --target=http://geth-validator-1:8545 --concurrency=10",
@@ -128,7 +76,7 @@ export default class Sync extends Command {
   };
 
   public async run(): Promise<void> {
-    const { flags } = await this.parse(Sync);
+    const { flags } = await this.parse(Synctx);
 
     let sourceNode: string = flags.source ?? "";
     let targetNode: string = flags.target;

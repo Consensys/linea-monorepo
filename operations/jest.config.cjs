@@ -1,12 +1,18 @@
 module.exports = {
-  preset: "ts-jest",
+  preset: "ts-jest/presets/default-esm",
   testEnvironment: "node",
-  rootDir: ".",
   testRegex: "test.ts$",
+  transform: {
+    "^.+\\.ts$": ["ts-jest", { useESM: true }],
+  },
   verbose: true,
   collectCoverage: true,
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+  },
+  extensionsToTreatAsEsm: [".ts"],
   collectCoverageFrom: ["src/**/*.ts"],
   coverageReporters: ["html", "lcov", "text"],
-  testPathIgnorePatterns: ["src/common/index.ts", "src/ethTransfer/index.ts", "src/synctx/src/index.ts"],
-  coveragePathIgnorePatterns: ["src/common/index.ts", "src/ethTransfer/index.ts", "src/synctx/src/index.ts"],
+  testPathIgnorePatterns: [],
+  coveragePathIgnorePatterns: [],
 };
