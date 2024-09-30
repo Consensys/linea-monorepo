@@ -4,22 +4,59 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
-	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/splitter/stitcher"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestLocalEval(t *testing.T) {
+const (
+	P1, P2           ifaces.ColID   = "P1", "P2"
+	GLOBAL1, GLOBAL2 ifaces.QueryID = "GLOBAL1", "GLOBAL2"
+	LOCAL1           ifaces.QueryID = "LOCAL1"
+)
+
+func TestLocalOpening(t *testing.T) {
+	testStitcher(t, 8, 16, localOpening(4))
+}
+
+func TestStitcherFibo(t *testing.T) {
+	testStitcher(t, 16, 32, singlePolyFibo(4))
+	testStitcher(t, 4, 8, singlePolyFibo(8))
+	testStitcher(t, 8, 16, singlePolyFibo(8))
+}
+
+func TestStitcherGlobalWithPeriodicSample(t *testing.T) {
+	testStitcher(t, 16, 64, globalWithPeriodicSample(16, 8, 0))
+	testStitcher(t, 64, 256, globalWithPeriodicSample(256, 8, 1))
+	testStitcher(t, 64, 128, globalWithPeriodicSample(256, 8, 7))
+}
+
+func TestStitcherLocalWithPeriodicSample(t *testing.T) {
+	testStitcher(t, 32, 64, localWithPeriodicSample(256, 8, 0))
+	testStitcher(t, 16, 128, localWithPeriodicSample(256, 8, 1))
+	testStitcher(t, 64, 256, localWithPeriodicSample(256, 8, 7))
+}
+
+func TestSplitterGlobalWithVerifColAndPerriodic(t *testing.T) {
+	testStitcher(t, 8, 64, globalWithVerifColAndPeriodic(8, 4, 0))
+	testStitcher(t, 64, 128, globalWithVerifColAndPeriodic(256, 8, 1))
+	testStitcher(t, 8, 16, globalWithVerifColAndPeriodic(256, 8, 7))
+}
+
+func TestLocalEvalWithStatus(t *testing.T) {
 
 	var a, b, c, d ifaces.Column
 	var q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12 query.LocalOpening
@@ -101,200 +138,184 @@ func TestLocalEval(t *testing.T) {
 
 }
 
-func TestGlobalConstraintFibonacci(t *testing.T) {
+func testStitcher(t *testing.T, minSize, maxSize int, gen func() (wizard.DefineFunc, wizard.ProverStep)) {
 
-	var a, b, c ifaces.Column
-	var q1, q2, q3 query.GlobalConstraint
+	// Activates the logs for easy debugging
+	logrus.SetLevel(logrus.TraceLevel)
 
-	define := func(builder *wizard.Builder) {
-		// declare columns of different sizes
-		a = builder.RegisterCommit("B", 4)
-		// a = verifiercol.NewConstantCol(field.One(), 4)
-		b = builder.RegisterCommit("C", 8)
-		c = builder.RegisterCommit("D", 16)
+	builder, prover := gen()
+	comp := wizard.Compile(builder, stitcher.Stitcher(minSize, maxSize), dummy.Compile)
+	proof := wizard.Prove(comp, prover)
+	err := wizard.Verify(comp, proof)
 
-		fibo := func(col ifaces.Column) *symbolic.Expression {
-			col_ := ifaces.ColumnAsVariable(col)
-			colNext := ifaces.ColumnAsVariable(column.Shift(col, 1))
-			colNextNext := ifaces.ColumnAsVariable(column.Shift(col, 2))
-			return colNextNext.Sub(colNext).Sub(col_)
+	require.NoError(t, err)
+
+	for _, qName := range comp.QueriesNoParams.AllKeysAt(0) {
+
+		switch q := comp.QueriesNoParams.Data(qName).(type) {
+
+		case query.GlobalConstraint:
+			board := q.Expression.Board()
+			metadatas := board.ListVariableMetadata()
+			metadataNames := []string{}
+			for i := range metadatas {
+				metadataNames = append(metadataNames, metadatas[i].String())
+			}
+			t.Logf("query %v - with metadata %v", q.ID, metadataNames)
+		case query.LocalConstraint:
+			board := q.Expression.Board()
+			metadatas := board.ListVariableMetadata()
+			metadataNames := []string{}
+			for i := range metadatas {
+				metadataNames = append(metadataNames, metadatas[i].String())
+			}
+			t.Logf("query %v - with metadata %v", q.ID, metadataNames)
+		}
+	}
+}
+
+func localOpening(n int) func() (wizard.DefineFunc, wizard.ProverStep) {
+	return func() (wizard.DefineFunc, wizard.ProverStep) {
+		definer := func(build *wizard.Builder) {
+			P1 := build.RegisterCommit(P1, n)
+			_ = build.LocalOpening("O1", P1)
+			_ = build.LocalOpening("O2", column.Shift(P1, 3))
+			_ = build.LocalOpening("O3", column.Shift(P1, 4))
+			_ = build.LocalOpening("O4", column.Shift(P1, -1))
 		}
 
-		q1 = builder.GlobalConstraint("Q0", fibo(a))
-		q2 = builder.GlobalConstraint("Q1", fibo(b))
-		q3 = builder.GlobalConstraint("Q2", fibo(c))
-	}
-
-	comp := wizard.Compile(define, stitcher.Stitcher(8, 16))
-
-	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should not be ignored")
-	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q3.ID), "q3 should not be ignored")
-
-	// manually compiles the comp
-	dummy.Compile(comp)
-
-	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime) {
-		// Assigns all the columns
-		assi.AssignColumn(a.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		assi.AssignColumn(b.GetColID(), smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21))
-		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987))
-	})
-
-	err := wizard.Verify(comp, proof)
-	require.NoError(t, err)
-
-}
-
-func TestLocalConstraintFibonacci(t *testing.T) {
-
-	var a, b, c ifaces.Column
-	var q1, q2, q3 query.LocalConstraint
-
-	define := func(builder *wizard.Builder) {
-		// declare columns of different sizes
-		a = builder.RegisterCommit("B", 4)
-		b = builder.RegisterCommit("C", 8)
-		c = builder.RegisterCommit("D", 16)
-
-		fibo := func(col ifaces.Column) *symbolic.Expression {
-			col_ := ifaces.ColumnAsVariable(col)
-			colNext := ifaces.ColumnAsVariable(column.Shift(col, 1))
-			colNextNext := ifaces.ColumnAsVariable(column.Shift(col, 2))
-			return colNextNext.Sub(colNext).Sub(col_)
+		prover := func(run *wizard.ProverRuntime) {
+			p1_ := make([]field.Element, n)
+			for i := range p1_ {
+				p1_[i].SetUint64(uint64(i))
+			}
+			p1 := smartvectors.NewRegular(p1_)
+			run.AssignColumn(P1, p1)
+			run.AssignLocalPoint("O1", p1.Get(0%n))
+			run.AssignLocalPoint("O2", p1.Get(3%n))
+			run.AssignLocalPoint("O3", p1.Get(4%n))
+			run.AssignLocalPoint("O4", p1.Get(n-1))
 		}
 
-		q1 = builder.LocalConstraint("Q0", fibo(a))
-		q2 = builder.LocalConstraint("Q1", fibo(b))
-		q3 = builder.LocalConstraint("Q2", fibo(c))
+		return definer, prover
 	}
-
-	comp := wizard.Compile(define, stitcher.Stitcher(8, 16))
-
-	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should not be ignored")
-	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q3.ID), "q3 should not be ignored")
-
-	// manually compiles the comp
-	dummy.Compile(comp)
-
-	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime) {
-		// Assigns all the columns
-		// Todo: Arbitrary changes of col values do not make the test failing
-		assi.AssignColumn(a.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		assi.AssignColumn(b.GetColID(), smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21))
-		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987))
-	})
-
-	err := wizard.Verify(comp, proof)
-	require.NoError(t, err)
-
 }
 
-func TestGlobalMixedRounds(t *testing.T) {
+func singlePolyFibo(size int) func() (wizard.DefineFunc, wizard.ProverStep) {
+	return func() (wizard.DefineFunc, wizard.ProverStep) {
+		builder := func(build *wizard.Builder) {
+			// Number of rows
+			P1 := build.RegisterCommit(P1, size) // overshadows P
+			P2 := build.RegisterCommit(P2, size)
 
-	var a0, a1, a2, b0, b1, b2 ifaces.Column
-	var q0, q1, q2 query.LocalConstraint
+			// P(X) = P(X/w) + P(X/w^2)
+			expr1 := sym.Sub(
+				sym.Add(column.Shift(P1, 1), P1),
+				column.Shift(P1, 2))
 
-	define := func(builder *wizard.Builder) {
-		// declare columns of different sizes
-		a0 = builder.RegisterCommit("A0", 4)
-		a1 = builder.RegisterCommit("A1", 4)
-		a2 = builder.RegisterCommit("A2", 4)
-		_ = builder.RegisterRandomCoin("COIN", coin.Field)
-		b0 = builder.RegisterCommit("B0", 4)
-		b1 = builder.RegisterCommit("B1", 4)
-		b2 = builder.RegisterCommit("B2", 4)
+			expr2 := sym.Sub(
+				sym.Add(column.Shift(P2, 1), P2),
+				column.Shift(P2, 2))
 
-		q0 = builder.LocalConstraint("Q0", ifaces.ColumnAsVariable(a0).Sub(ifaces.ColumnAsVariable(b0)))
-		q1 = builder.LocalConstraint("Q1", ifaces.ColumnAsVariable(a1).Sub(ifaces.ColumnAsVariable(b1)))
-		q2 = builder.LocalConstraint("Q2", ifaces.ColumnAsVariable(a2).Sub(ifaces.ColumnAsVariable(b2)))
+			_ = build.GlobalConstraint(GLOBAL1, expr1)
+			_ = build.GlobalConstraint(GLOBAL2, expr2)
+			// 	_ = build.LocalConstraint(LOCAL1, sym.Sub(P1, 1))
+		}
+
+		prover := func(run *wizard.ProverRuntime) {
+			x := make([]field.Element, size)
+			x[0].SetOne()
+			x[1].SetOne()
+			for i := 2; i < size; i++ {
+				x[i].Add(&x[i-1], &x[i-2])
+			}
+			run.AssignColumn(P1, smartvectors.NewRegular(x))
+			run.AssignColumn(P2, smartvectors.NewRegular(x))
+		}
+
+		return builder, prover
 	}
-
-	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
-
-	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q0.ID), "q0 should be ignored")
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should be ignored")
-
-	// manually compiles the comp
-	dummy.Compile(comp)
-
-	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime) {
-		// Assigns all the columns
-		assi.AssignColumn(a0.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		assi.AssignColumn(a1.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		assi.AssignColumn(a2.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		_ = assi.GetRandomCoinField("COIN") // triggers going to the next round
-		assi.AssignColumn(b0.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		assi.AssignColumn(b1.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		assi.AssignColumn(b2.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-	})
-
-	err := wizard.Verify(comp, proof)
-	require.NoError(t, err)
 }
 
-func TestWithVerifCol(t *testing.T) {
-	var a, b, c, verifcol1 ifaces.Column
-	var q1, q2 query.GlobalConstraint
-	var q3 query.LocalConstraint
+func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc, wizard.ProverStep) {
+	return func() (wizard.DefineFunc, wizard.ProverStep) {
 
-	define := func(builder *wizard.Builder) {
-		// declare columns of different sizes
-		a = builder.RegisterCommit("A", 4)
-		b = builder.RegisterCommit("B", 4)
-		// a new round
-		_ = builder.RegisterRandomCoin("COIN", coin.Field)
-		c = builder.RegisterCommit("C", 4)
-		// verifiercols
-		verifcol1 = verifiercol.NewConstantCol(field.NewElement(3), 4)
-		accessors := genAccessors([]int{1, 7, 5, 3})
-		verifcol := verifiercol.NewFromAccessors(accessors, field.Zero(), 4)
-		verifcol2 := column.Shift(verifcol, 1)
+		builder := func(build *wizard.Builder) {
+			P1 := build.RegisterCommit(P1, size) // overshadows P
+			_ = build.GlobalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.ColumnAsVariable(P1)))
+		}
 
-		expr := symbolic.Sub(
-			symbolic.Mul(column.Shift(a, 1), verifcol1),
-			column.Shift(b, 1))
+		prover := func(run *wizard.ProverRuntime) {
+			v := vector.Repeat(field.One(), size)
+			for i := 0; i < size; i++ {
+				if i%period == offset {
+					v[i].SetZero()
+				}
+			}
+			run.AssignColumn(P1, smartvectors.NewRegular(v))
+		}
 
-		q1 = builder.GlobalConstraint("Q0", expr)
-
-		expr = symbolic.Sub(symbolic.Add(a, verifcol), c)
-		q2 = builder.GlobalConstraint("Q1", expr)
-
-		expr = symbolic.Sub(symbolic.Add(column.Shift(a, 1), verifcol2), column.Shift(c, 1))
-		q3 = builder.LocalConstraint("Q2", expr)
+		return builder, prover
 	}
-
-	comp := wizard.Compile(define, stitcher.Stitcher(4, 16))
-
-	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should  be ignored")
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q3.ID), "q2 should  be ignored")
-
-	// manually compiles the comp
-	dummy.Compile(comp)
-
-	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime) {
-		// Assigns all the columns
-		assi.AssignColumn(a.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		assi.AssignColumn(b.GetColID(), smartvectors.ForTest(3, 3, 6, 9))
-		_ = assi.GetRandomCoinField("COIN") // triggers going to the next round
-		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(2, 8, 7, 6))
-	})
-
-	err := wizard.Verify(comp, proof)
-	require.NoError(t, err)
-
 }
 
-func genAccessors(a []int) (res []ifaces.Accessor) {
-	for i := range a {
-		t := accessors.NewConstant(field.NewElement(uint64(a[i])))
+func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc, wizard.ProverStep) {
+	return func() (wizard.DefineFunc, wizard.ProverStep) {
+
+		builder := func(build *wizard.Builder) {
+			P1 := build.RegisterCommit(P1, size) // overshadows P
+			_ = build.LocalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.ColumnAsVariable(P1)))
+		}
+
+		prover := func(run *wizard.ProverRuntime) {
+			v := vector.Repeat(field.One(), size)
+			for i := 0; i < size; i++ {
+				if i%period == offset {
+					v[i].SetZero()
+				}
+			}
+			run.AssignColumn(P1, smartvectors.NewRegular(v))
+		}
+
+		return builder, prover
+	}
+}
+
+func globalWithVerifColAndPeriodic(size, period, offset int) func() (wizard.DefineFunc, wizard.ProverStep) {
+	return func() (wizard.DefineFunc, wizard.ProverStep) {
+
+		builder := func(build *wizard.Builder) {
+			P1 := build.RegisterCommit(P1, size)
+			verifcol1 := verifiercol.NewFromAccessors(genAccessors(0, size), field.Zero(), size)
+			verifcol2 := verifiercol.NewFromAccessors(genAccessors(2, size), field.Zero(), size)
+			_ = build.GlobalConstraint(LOCAL1,
+				symbolic.Sub(
+
+					symbolic.Mul(symbolic.Sub(1, P1),
+						verifcol2),
+
+					symbolic.Mul(variables.NewPeriodicSample(period, offset),
+						symbolic.Add(2, verifcol1))),
+			)
+		}
+
+		prover := func(run *wizard.ProverRuntime) {
+			v := vector.Repeat(field.One(), size)
+			for i := 0; i < size; i++ {
+				if i%period == offset {
+					v[i].SetZero()
+				}
+			}
+			run.AssignColumn(P1, smartvectors.NewRegular(v))
+		}
+
+		return builder, prover
+	}
+}
+
+func genAccessors(start, size int) (res []ifaces.Accessor) {
+	for i := start; i < size+start; i++ {
+		t := accessors.NewConstant(field.NewElement(uint64(i)))
 		res = append(res, t)
 	}
 	return res

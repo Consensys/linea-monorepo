@@ -37,7 +37,7 @@ func (ctx splitterContext) LocalOpening() {
 		// mark the query as ignored
 		ctx.comp.QueriesParams.MarkAsIgnored(qName)
 		// Get the sub column
-		subCol := getSubColForLocal(ctx, q.Pol)
+		subCol := getSubColForLocal(ctx, q.Pol, 0)
 		// apply the local constrain over the subCol
 		newQ := ctx.comp.InsertLocalOpening(round, queryName(q.ID), subCol)
 
@@ -89,9 +89,9 @@ func (ctx splitterContext) LocalGlobalConstraints() {
 			for slot := 0; slot < numSlots; slot++ {
 
 				ctx.comp.InsertGlobal(round,
-					ifaces.QueryIDf("SPLITTER_GLOBALQ_SLOT_%v", slot),
+					ifaces.QueryIDf("%v_SPLITTER_GLOBALQ_SLOT_%v", q.ID, slot),
 					ctx.adjustExpressionForGlobal(q.Expression, slot),
-					q.NoBoundCancel)
+				)
 
 				ctx.localQueriesForGapsInGlobal(q, slot, numSlots)
 			}
@@ -111,19 +111,45 @@ func isColEligible(splittings alliance.MultiSummary, col ifaces.Column) bool {
 
 // It finds the subCol containing the first row of col,
 // it then shifts the subCol so that its first row equals with the first row of col.
-func getSubColForLocal(ctx splitterContext, col ifaces.Column) ifaces.Column {
-	// TBD verifierCol
-
-	// find the subCol that contain the first row of col
-	position := utils.PositiveMod(column.StackOffsets(col), col.Size())
-	subColID, posInSubCol := position/ctx.size, position%ctx.size
-
-	// The subCol is linked to the "root" of q.Pol (i.e., natural column associated with col)
-	natural := column.RootParents(col)[0]
+func getSubColForLocal(ctx splitterContext, col ifaces.Column, posInCol int) ifaces.Column {
 	round := col.Round()
+	// Sanity-check : only for the edge-case h.Size() < ctx.size
+	if col.Size() < ctx.size && posInCol != 0 {
+		utils.Panic("We have h.Size (%v) < ctx.size (%v) but num (%v) != 0 for %v", col.Size(), ctx.size, posInCol, col.GetColID())
+	}
 
-	subColNat := ctx.Splittings[round].ByBigCol[natural.GetColID()][subColID]
-	return column.Shift(subColNat, posInSubCol)
+	if !col.IsComposite() {
+		switch col := col.(type) {
+		case verifiercol.VerifierCol:
+			// Create the split in live
+			return col.Split(ctx.comp, posInCol*ctx.size, (posInCol+1)*ctx.size)
+		default:
+			// No changes : it means this is a normal column and
+			// we shall take the corresponding slice.
+			return ctx.Splittings[round].ByBigCol[col.GetColID()][posInCol]
+		}
+	}
+
+	switch inner := col.(type) {
+	case column.Shifted:
+		// Shift the subparent, if the offset is larger than the subparent
+		// we repercute it on the num
+		if inner.Offset < -ctx.size {
+			utils.Panic("unsupported, the offset is too negative")
+		}
+
+		// find the subCol that contain the first row of col
+		position := utils.PositiveMod(column.StackOffsets(col), col.Size())
+		subColID, posInSubCol := position/ctx.size, position%ctx.size
+
+		// The subCol is linked to the "root" of q.Pol (i.e., natural column associated with col)
+		parent := getSubColForLocal(ctx, inner.Parent, posInCol+subColID)
+		return column.Shift(parent, posInSubCol)
+
+	default:
+		utils.Panic("unexpected type %v", reflect.TypeOf(inner))
+	}
+	panic("unreachable")
 }
 
 // For the column 'col' and the given 'posInCol',
@@ -150,7 +176,7 @@ func getSubColForGlobal(ctx splitterContext, col ifaces.Column, posInCol int) if
 			// Create the split in live
 			return m.Split(ctx.comp, posInCol*ctx.size, (posInCol+1)*ctx.size)
 		default:
-			// No changes
+			// No changes; natural column
 			return ctx.Splittings[round].ByBigCol[col.GetColID()][posInCol]
 		}
 	}
@@ -159,10 +185,12 @@ func getSubColForGlobal(ctx splitterContext, col ifaces.Column, posInCol int) if
 	// Shift the subparent, if the offset is larger than the subparent
 	// we repercute it on the num
 	case column.Shifted:
+
 		// This works fine assuming h.Size() > ctx.size
 		var (
 			offset                  = inner.Offset
-			posInNatural            = posInCol + (offset / ctx.size)
+			maxNumSubCol            = col.Size() / ctx.size
+			posInNatural            = (posInCol + (offset / ctx.size)) % maxNumSubCol
 			offsetOfSubColInNatural = utils.PositiveMod(offset, ctx.size)
 		)
 		// This indicates that the offset is so large
@@ -175,7 +203,7 @@ func getSubColForGlobal(ctx splitterContext, col ifaces.Column, posInCol int) if
 		if offsetOfSubColInNatural*offset < 0 {
 			offsetOfSubColInNatural -= ctx.size
 		}
-		parent := ctx.Splittings[round].ByBigCol[inner.Parent.GetColID()][posInNatural]
+		parent := getSubColForGlobal(ctx, inner.Parent, posInNatural)
 		return column.Shift(parent, offsetOfSubColInNatural)
 
 	default:
@@ -202,7 +230,7 @@ func (ctx splitterContext) adjustExpressionForLocal(
 
 		switch m := metadata.(type) {
 		case ifaces.Column:
-			subCol := getSubColForLocal(ctx, column.Shift(m, shift))
+			subCol := getSubColForLocal(ctx, column.Shift(m, shift), 0)
 			translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(subCol))
 		// @Azam why we need these cases?
 		case coin.Info, ifaces.Accessor:
@@ -293,6 +321,7 @@ func (ctx splitterContext) localQueriesForGapsInGlobal(q query.GlobalConstraint,
 	// the beginning.
 	offsetRange := q.MinMaxOffset()
 	round := ctx.comp.QueriesNoParams.Round(q.ID)
+	nextStart := 0
 
 	if offsetRange.Min < 0 {
 		for i := 0; i < offsetRange.Min; i-- {
@@ -304,16 +333,19 @@ func (ctx splitterContext) localQueriesForGapsInGlobal(q query.GlobalConstraint,
 					ctx.adjustExpressionForLocal(q.Expression, slot*ctx.size-i))
 			}
 		}
+		if offsetRange.Max > 0 {
+			nextStart = 1
+		}
 	}
 
 	if offsetRange.Max > 0 {
-		for i := 0; i < offsetRange.Max; i++ {
+		for i := nextStart; i < offsetRange.Max; i++ {
 			point := ctx.size - i - 1 // point at which we want to cancel the constraint
 			// And fill the gap with a local constraint
 			if slot < numSlots-1 || q.NoBoundCancel {
 				shift := slot*ctx.size + point
 				ctx.comp.InsertLocal(round,
-					ifaces.QueryIDf("%v_LOCAL_GAPS_POS_OFFSET_%v", q.ID, i),
+					ifaces.QueryIDf("%v_LOCAL_GAPS_POS_OFFSET_%v_%v", q.ID, slot, i),
 					ctx.adjustExpressionForLocal(q.Expression, shift))
 			}
 		}
