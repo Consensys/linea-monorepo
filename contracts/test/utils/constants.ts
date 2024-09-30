@@ -40,7 +40,6 @@ export const VERIFIER_SETTER_ROLE = generateKeccak256(["string"], ["VERIFIER_SET
 export const VERIFIER_UNSETTER_ROLE = generateKeccak256(["string"], ["VERIFIER_UNSETTER_ROLE"], true);
 export const L1_MERKLE_ROOTS_SETTER_ROLE = generateKeccak256(["string"], ["L1_MERKLE_ROOTS_SETTER_ROLE"], true);
 export const L2_MERKLE_ROOTS_SETTER_ROLE = generateKeccak256(["string"], ["L2_MERKLE_ROOTS_SETTER_ROLE"], true);
-export const FINALIZE_WITHOUT_PROOF_ROLE = generateKeccak256(["string"], ["FINALIZE_WITHOUT_PROOF_ROLE"], true);
 export const BAD_STARTING_HASH = generateKeccak256(["string"], ["BAD_STARTING_HASH"], true);
 export const PAUSE_INITIATE_TOKEN_BRIDGING_ROLE = generateKeccak256(
   ["string"],

@@ -9,7 +9,6 @@ import {
   CALLDATA_SUBMISSION_PAUSE_TYPE,
   DEFAULT_ADMIN_ROLE,
   FINALIZATION_PAUSE_TYPE,
-  FINALIZE_WITHOUT_PROOF_ROLE,
   GENERAL_PAUSE_TYPE,
   L1_L2_PAUSE_TYPE,
   L2_L1_PAUSE_TYPE,
@@ -108,7 +107,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
-    { addressWithRole: LineaRollup_securityCouncil, role: FINALIZE_WITHOUT_PROOF_ROLE },
   ];
 
   for (let i = 0; i < LineaRollup_operators.length; i++) {

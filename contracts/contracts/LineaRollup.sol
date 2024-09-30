@@ -29,7 +29,6 @@ contract LineaRollup is
 
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
-  bytes32 public constant FINALIZE_WITHOUT_PROOF_ROLE = keccak256("FINALIZE_WITHOUT_PROOF_ROLE");
   bytes32 public constant GENESIS_SHNARF =
     keccak256(
       abi.encode(
