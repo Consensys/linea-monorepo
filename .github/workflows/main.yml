@@ -196,6 +196,6 @@ jobs:
       - uses: strumwolf/delete-deployment-environment@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          environment: docker-build-and-e2e
+          environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
           ref: ${{ github.ref_name }}
           onlyRemoveDeployments: true
