@@ -14,7 +14,7 @@ on:
 
 concurrency:
   group: coordinator-testing-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   cache-docker-images:
