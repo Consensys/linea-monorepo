@@ -141,7 +141,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         roleAddresses: roleAddresses,
         pauseTypeRoles: pauseTypeRoles,
         unpauseTypeRoles: unpauseTypeRoles,
-        gatewayOperator: MultiCallAddress,
+        fallbackOperator: MultiCallAddress,
       },
     ],
     {
