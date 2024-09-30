@@ -34,8 +34,20 @@ body {
     border-radius: 0;
   }
 
-  .tooltip:after {
+  .tooltip-top::after {
     border-color: #505050 transparent transparent transparent;
+  }
+  
+  .tooltip-right::after {
+    border-color: transparent #505050 transparent transparent;
+  }
+  
+  .tooltip-bottom::after {
+    border-color: transparent transparent #505050 transparent;
+  }
+  
+  .tooltip-left::after {
+    border-color: transparent transparent transparent #505050;
   }
 
   .tooltip:before {

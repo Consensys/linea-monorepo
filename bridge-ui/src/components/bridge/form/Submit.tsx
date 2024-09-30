@@ -96,8 +96,8 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
       {destinationBalanceTooLow && (
         <Tooltip
           text="You have selected Manual Claim and do not have ETH on the recipient chain to pay for gas. Click this to Bridge Anyway"
-          className="z-[99] normal-case"
-          position="bottom"
+          className="z-[100] normal-case"
+          position="top"
         >
           <MdInfo />
         </Tooltip>
