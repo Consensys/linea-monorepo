@@ -35,7 +35,7 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-22.04
     name: Coordinator build
-    environment: docker-build-and-e2e
+    environment: ''
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}
