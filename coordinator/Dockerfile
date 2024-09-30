@@ -1,4 +1,4 @@
-FROM ubuntu as jar
+FROM eclipse-temurin:21-jre-alpine AS builder
 
 RUN apt-get update \
 	&& apt-get install curl -y \
@@ -6,14 +6,13 @@ RUN apt-get update \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p src \
-  && mkdir -p libs
+RUN mkdir -p src libs
 
 COPY --from=zip ./coordinator.zip /src
 
 RUN unzip /src/coordinator.zip -d libs/
 
-FROM openjdk:22-ea-17-slim-bookworm
+FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /opt/consensys/linea/coordinator
 
@@ -22,11 +21,11 @@ RUN apt-get update \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/* \
   && mkdir -p /opt/consensys/linea/coordinator/libs/ \
-  && mkdir -p /opt/consensys/linea/coordinator/logs \
-  && mkdir -p /opt/consensys/linea/coordinator/tmp/prover/request \
-  && mkdir -p /opt/consensys/linea/coordinator/tmp/prover/response
+    /opt/consensys/linea/coordinator/logs \
+    /opt/consensys/linea/coordinator/tmp/prover/request \
+    /opt/consensys/linea/coordinator/tmp/prover/response
 
-COPY --from=jar libs/coordinator/lib** libs/coordinator/
+COPY --from=builder libs/coordinator/lib/** libs/
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
