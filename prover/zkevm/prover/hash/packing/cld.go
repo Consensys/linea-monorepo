@@ -101,6 +101,7 @@ func newDecomposition(comp *wizard.CompiledIOP, inp decompositionInputs) decompo
 		Table:    decomposed.decomposedLimbs,
 		TableLen: decomposed.decomposedLen,
 		MaxLen:   inp.param.LaneSizeBytes(),
+		Name:     inp.Name,
 	}
 	decomposed.pa = dedicated.LengthConsistency(comp, lcInputs)
 
@@ -113,8 +114,8 @@ func (decomposed *decomposition) insertCommit(comp *wizard.CompiledIOP) {
 	createCol := common.CreateColFn(comp, DECOMPOSITION+"_"+decomposed.Inputs.Name, decomposed.size)
 	for x := 0; x < decomposed.nbSlices; x++ {
 		decomposed.decomposedLimbs = append(decomposed.decomposedLimbs, createCol("Decomposed_Limbs", x))
-		decomposed.decomposedLen = append(decomposed.decomposedLen, createCol("Decomposed_Len", x))
-		decomposed.decomposedLenPowers = append(decomposed.decomposedLenPowers, createCol("Decomposed_Len_Powers", x))
+		decomposed.decomposedLen = append(decomposed.decomposedLen, createCol("Decomposed_Len_%v", x))
+		decomposed.decomposedLenPowers = append(decomposed.decomposedLenPowers, createCol("Decomposed_Len_Powers_%v", x))
 	}
 
 	decomposed.paIsZero = make([]wizard.ProverAction, decomposed.nbSlices)

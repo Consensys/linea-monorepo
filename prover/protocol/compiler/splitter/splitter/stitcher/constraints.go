@@ -106,7 +106,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the stitching columns
-			ctx.comp.InsertLocal(round, queryName(qName), ctx.adjustExpression(q.Expression, false))
+			ctx.comp.InsertLocal(round, queryName(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false))
 
 		case query.GlobalConstraint:
 			board = q.Board()
@@ -136,7 +136,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 
 			// adjust the query over the stitching columns
 			ctx.comp.InsertGlobal(round, queryName(qName),
-				ctx.adjustExpression(q.Expression, true),
+				ctx.adjustExpression(q.Expression, q.DomainSize, true),
 				q.NoBoundCancel)
 
 		default:
@@ -205,7 +205,7 @@ func queryName(oldQ ifaces.QueryID) ifaces.QueryID {
 // This is due to the fact that the verifiercols are not tracked by the compiler and can not be stitched
 // via [scanAndClassifyEligibleColumns].
 func (ctx *stitchingContext) adjustExpression(
-	expr *symbolic.Expression,
+	expr *symbolic.Expression, domainSize int,
 	isGlobalConstraint bool,
 ) (
 	newExpr *symbolic.Expression,
@@ -214,13 +214,11 @@ func (ctx *stitchingContext) adjustExpression(
 	board := expr.Board()
 	metadata := board.ListVariableMetadata()
 	replaceMap := collection.NewMapping[string, *symbolic.Expression]()
-	domainSize := 0
 
 	for i := range metadata {
 		switch m := metadata[i].(type) {
 		case ifaces.Column:
 			// it's always a compiled column
-			domainSize = m.Size()
 			stitchingCol := getStitchingCol(*ctx, m)
 			replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
 		case coin.Info, ifaces.Accessor:

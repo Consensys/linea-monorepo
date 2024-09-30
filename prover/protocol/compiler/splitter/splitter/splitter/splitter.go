@@ -63,11 +63,14 @@ func (ctx *splitterContext) ScanSplitCommit() {
 			if status == column.Ignored || status == column.Proof || status == column.VerifyingKey {
 				continue
 			}
+			if col.Size() < ctx.size {
+				utils.Panic("stitcher is not working correctly, the small columns should have been handled by the stitcher")
+			}
 
 			if col.Size()%ctx.size != 0 {
 				utils.Panic("the column size %v does not divide the splitting size %v", col.Size(), ctx.size)
 			}
-			if col.Size() <= ctx.size {
+			if col.Size() == ctx.size {
 				continue
 			}
 
