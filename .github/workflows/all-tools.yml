@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - 'operations/'
+      - '.github/workflows/all-tools.yml'
   pull_request:
     branches:
       - main
     paths:
       - 'operations/'
+      - '.github/workflows/all-tools.yml'
 
 jobs:
   changes:
