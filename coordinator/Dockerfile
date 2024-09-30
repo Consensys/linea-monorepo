@@ -1,4 +1,4 @@
-FROM openjdk:22-ea-17-slim-bookworm
+FROM ubuntu as jar
 
 RUN apt-get update \
 	&& apt-get install curl -y \
@@ -6,15 +6,27 @@ RUN apt-get update \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p src \
+  && mkdir -p libs
+
+COPY --from=zip ./coordinator.zip /src
+
+RUN unzip /src/coordinator.zip -d libs/
+
+FROM openjdk:22-ea-17-slim-bookworm
+
 WORKDIR /opt/consensys/linea/coordinator
 
-# copy application
-COPY --from=zip ./coordinator.zip /opt/consensys/linea/coordinator/libs/
-RUN unzip libs/coordinator.zip -d libs/ && mv libs/coordinator/lib/** libs/ && rm -R libs/coordinator/
+RUN apt-get update \
+	&& apt-get install curl -y \
+	&& apt-get clean \
+	&& rm -rf /var/lib/apt/lists/* \
+  && mkdir -p /opt/consensys/linea/coordinator/libs/ \
+  && mkdir -p /opt/consensys/linea/coordinator/logs \
+  && mkdir -p /opt/consensys/linea/coordinator/tmp/prover/request \
+  && mkdir -p /opt/consensys/linea/coordinator/tmp/prover/response
 
-RUN mkdir -p /opt/consensys/linea/coordinator/logs
-RUN mkdir -p /opt/consensys/linea/coordinator/tmp/prover/request
-RUN mkdir -p /opt/consensys/linea/coordinator/tmp/prover/response
+COPY --from=jar libs/coordinator/lib** libs/coordinator/
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
@@ -29,5 +41,3 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
 	org.label-schema.vendor="ConsenSys" \
 	org.label-schema.version=$VERSION \
 	org.label-schema.schema-version="1.0"
-
-WORKDIR /opt/consensys/linea/coordinator/
