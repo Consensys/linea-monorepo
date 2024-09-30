@@ -32,7 +32,6 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.transients.Block;
 import net.consensys.linea.zktracer.module.hub.transients.StorageInitialValues;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
@@ -43,7 +42,7 @@ import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Getter
-public class TransactionProcessingMetadata implements PostTransactionDefer {
+public class TransactionProcessingMetadata {
 
   final int absoluteTransactionNumber;
   final int relativeTransactionNumber;
@@ -115,17 +114,16 @@ public class TransactionProcessingMetadata implements PostTransactionDefer {
   @Setter Set<AccountSnapshot> destructedAccountsSnapshot = new HashSet<>();
 
   @Getter
-  Map<EphemeralAccount, List<AttemptedSelfDestruct>> unexceptionalSelfDestructMap = new HashMap<>();
+  final Map<EphemeralAccount, List<AttemptedSelfDestruct>> unexceptionalSelfDestructMap =
+      new HashMap<>();
 
-  @Getter Map<EphemeralAccount, Integer> effectiveSelfDestructMap = new HashMap<>();
+  @Getter final Map<EphemeralAccount, Integer> effectiveSelfDestructMap = new HashMap<>();
 
   // Ephermeral accounts are both accounts that have been deployed on-chain
   // and accounts that live for a limited time
   public record EphemeralAccount(Address address, int deploymentNumber) {}
-  ;
 
   public record AttemptedSelfDestruct(int hubStamp, CallFrame callFrame) {}
-  ;
 
   public TransactionProcessingMetadata(
       final WorldView world,
@@ -181,7 +179,7 @@ public class TransactionProcessingMetadata implements PostTransactionDefer {
   public void completeLineaTransaction(
       Hub hub, final boolean statusCode, final List<Log> logs, final Set<Address> selfDestructs) {
     this.statusCode = statusCode;
-    this.hubStampTransactionEnd = hub.stamp();
+    hubStampTransactionEnd = hub.stamp();
     this.logs = logs;
     for (Address address : selfDestructs) {
       hub.transients()
@@ -189,10 +187,12 @@ public class TransactionProcessingMetadata implements PostTransactionDefer {
           .deploymentInfo()
           .freshDeploymentNumberFinishingSelfdestruct(
               address); // depNum += 1 and depStatus <- false
-      this.destructedAccountsSnapshot.add(
+      destructedAccountsSnapshot.add(
           AccountSnapshot.fromAddress(
               address, true, hub.deploymentNumberOf(address), hub.deploymentStatusOf(address)));
     }
+
+    determineSelfDestructTimeStamp();
   }
 
   private boolean computeCopyCallData() {
@@ -305,22 +305,20 @@ public class TransactionProcessingMetadata implements PostTransactionDefer {
         : 0;
   }
 
-  @Override
-  public void resolvePostTransaction(
-      Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
+  private void determineSelfDestructTimeStamp() {
     for (Map.Entry<EphemeralAccount, List<AttemptedSelfDestruct>> entry :
         unexceptionalSelfDestructMap.entrySet()) {
 
-      EphemeralAccount ephemeralAccount = entry.getKey();
-      List<AttemptedSelfDestruct> attemptedSelfDestructs = entry.getValue();
+      final EphemeralAccount ephemeralAccount = entry.getKey();
+      final List<AttemptedSelfDestruct> attemptedSelfDestructs = entry.getValue();
 
       // For each address, deployment number, we find selfDestructTime as
       // the time in which the first unexceptional and un-reverted SELFDESTRUCT occurs
       // Then we add this value in a new map
       for (AttemptedSelfDestruct attemptedSelfDestruct : attemptedSelfDestructs) {
         if (attemptedSelfDestruct.callFrame().revertStamp() == 0) {
-          int selfDestructTime = attemptedSelfDestruct.hubStamp();
-          this.effectiveSelfDestructMap.put(ephemeralAccount, selfDestructTime);
+          final int selfDestructTime = attemptedSelfDestruct.hubStamp();
+          effectiveSelfDestructMap.put(ephemeralAccount, selfDestructTime);
           break;
         }
       }
