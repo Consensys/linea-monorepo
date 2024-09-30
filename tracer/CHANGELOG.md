@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0-rc1
+* chore: don't postTxDefers TrasactionMetaData ([#1325](https://github.com/Consensys/linea-tracer/pull/1325))
+* chore: upgrade Linea Besu to 24.9-delivery33 ([#1328](https://github.com/Consensys/linea-tracer/pull/1328))
+* fix(ReturnSection): max code size ([#1313](https://github.com/Consensys/linea-tracer/pull/1313))
+* fix(mmu): invalidCodePrefix with empty memory ([#1310](https://github.com/Consensys/linea-tracer/pull/1310))
+* fix: implemented update to TXN_DATA ([#1318](https://github.com/Consensys/linea-tracer/pull/1318))
+* feat: implement support for maxBlocksBehind threshold check in TracerReadinessPlugin ([#1305](https://github.com/Consensys/linea-tracer/pull/1305))
+* fix: fix for broken replay files ([#1308](https://github.com/Consensys/linea-tracer/pull/1308))
+
 ## 0.6.0-rc8
 * Homogenize creation add operation ([#1314](https://github.com/Consensys/linea-tracer/pull/1314))
 * Blockchain reference tests report - success and failure counters ([#1311](https://github.com/Consensys/linea-tracer/pull/1311))
