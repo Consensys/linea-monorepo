@@ -3,7 +3,6 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  id 'net.consensys.zkevm.linea-contracts-helper'
 }
 
 dependencies {
@@ -24,6 +23,7 @@ dependencies {
   }
   implementation project(":jvm-libs:teku-execution-client")
 
+  testImplementation(project(":jvm-libs:testing:l1-blob-and-proof-submission"))
   testImplementation(project(":coordinator:persistence:aggregation"))
   testImplementation(testFixtures(project(":coordinator:persistence:db")))
   testImplementation(testFixtures(project(":coordinator:ethereum:gas-pricing")))
@@ -62,7 +62,7 @@ task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     dependsOn(":localStackComposeUp")
-    dependsOn(compileContracts)
+    dependsOn(rootProject.tasks.compileContracts)
 
     testLogging {
       events TestLogEvent.FAILED,

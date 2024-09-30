@@ -24,16 +24,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 )
 
-const (
-	// @TODO: the keccak limits are hardcoded currently, in the future we should
-	// instead take the limits from the trace limit file. Note, neither of these
-	// limits are actually enforced by the prover as the keccak module is not
-	// connected to the rest of the arithmetization. Thus, it is easy to just
-	// ignore the overflowing keccaks and the state merkle-proofs.
-	keccakLimit      = 1 << 13
-	merkleProofLimit = 1 << 13
-)
-
 var (
 	fullZkEvm              *ZkEvm
 	fullZkEvmCheckOnly     *ZkEvm
@@ -141,7 +131,7 @@ func fullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite) *ZkEvm 
 		},
 		Statemanager: statemanager.Settings{
 			AccSettings: accumulator.Settings{
-				MaxNumProofs:    merkleProofLimit,
+				MaxNumProofs:    tl.ShomeiMerkleProofs,
 				Name:            "SM_ACCUMULATOR",
 				MerkleTreeDepth: 40,
 			},
@@ -152,7 +142,7 @@ func fullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite) *ZkEvm 
 			Version: "beta-v1",
 		},
 		Keccak: keccak.Settings{
-			MaxNumKeccakf: keccakLimit,
+			MaxNumKeccakf: tl.BlockKeccak,
 		},
 		Ecdsa: ecdsa.Settings{
 			MaxNbEcRecover:     tl.PrecompileEcrecoverEffectiveCalls,

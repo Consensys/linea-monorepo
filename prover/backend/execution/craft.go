@@ -143,12 +143,13 @@ func inspectStateManagerTraces(
 	resp.ParentStateRootHash = firstParent.Hex()
 }
 
-func (req *Request) collectSignatures() map[[32]byte]ethereum.Signature {
+func (req *Request) collectSignatures() ([]ethereum.Signature, [][32]byte) {
 
 	var (
-		res    = map[[32]byte]ethereum.Signature{}
-		blocks = req.Blocks()
-		currTx = 0
+		signatures = []ethereum.Signature{}
+		txHashes   = [][32]byte{}
+		blocks     = req.Blocks()
+		currTx     = 0
 	)
 
 	for i := range blocks {
@@ -159,12 +160,14 @@ func (req *Request) collectSignatures() map[[32]byte]ethereum.Signature {
 				txSignature = ethereum.GetJsonSignature(tx)
 			)
 
-			res[txHash] = txSignature
+			signatures = append(signatures, txSignature)
+			txHashes = append(txHashes, txHash)
+
 			currTx++
 		}
 	}
 
-	return res
+	return signatures, txHashes
 }
 
 // FuncInput are all the relevant fields parsed by the prover that
@@ -207,11 +210,13 @@ func (rsp *Response) FuncInput() *execution.FunctionalPublicInput {
 }
 
 func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
+	txSignatures, txHashes := req.collectSignatures()
 	return &Witness{
 		ZkEVM: &zkevm.Witness{
 			ExecTracesFPath: path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
 			SMTraces:        req.StateManagerTraces(),
-			TxSignatures:    req.collectSignatures(),
+			TxSignatures:    txSignatures,
+			TxHashes:        txHashes,
 			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
 			ChainID:         cfg.Layer2.ChainID,
 		},

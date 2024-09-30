@@ -149,14 +149,16 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		sym.Sub(res.IsNewHash, sym.Mul(res.IsInserted, column.Shift(res.IsPadded, -1))),
 	)
 
-	// before IsActive transits to 0, there should be a padding zone.
-	// IsActive[i] * (1-IsActive[i+1]) * (1-IsPadded[i]) =0
-	comp.InsertGlobal(0, ifaces.QueryIDf("%v_LAST_HASH_HAS_PADDING", inp.Name),
-		sym.Mul(res.IsActive,
-			sym.Sub(1, column.Shift(res.IsActive, 1)),
-			sym.Sub(1, res.IsPadded),
-		),
-	)
+	if inp.PaddingStrategy != generic.MiMCUsecase {
+		// before IsActive transits to 0, there should be a padding zone.
+		// IsActive[i] * (1-IsActive[i+1]) * (1-IsPadded[i]) =0
+		comp.InsertGlobal(0, ifaces.QueryIDf("%v_LAST_HASH_HAS_PADDING", inp.Name),
+			sym.Mul(res.IsActive,
+				sym.Sub(1, column.Shift(res.IsActive, 1)),
+				sym.Sub(1, res.IsPadded),
+			),
+		)
+	}
 
 	// to handle the above constraint for the case where isActive[i] = 1  for all i .
 	// IsPadded[last-row]= isActive[last-row]

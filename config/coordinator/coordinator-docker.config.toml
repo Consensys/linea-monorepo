@@ -48,13 +48,11 @@ expected-traces-api-version="0.2.0"
 [traces.counters]
 endpoints=["http://traces-api:8080/"]
 request-limit-per-endpoint=20
-request-retry.max-retries=4
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
 [traces.conflation]
 endpoints=["http://traces-api:8080/"]
 request-limit-per-endpoint=2
-request-retry.max-retries=4
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
 
@@ -71,13 +69,11 @@ traces-file-creation-wait-timeout="PT2M"
 version="2.2.0"
 endpoints=["http://shomei:8888/"]
 request-limit-per-endpoint=3
-request-retry.max-retries=5
 request-retry.backoff-delay="PT2S"
 request-retry.failures-warning-threshold=2
 
 [type2-state-proof-provider]
 endpoints=["http://shomei-frontend:8888/"]
-request-retry.max-retries=3
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
 
@@ -206,39 +202,47 @@ disabled=false
 polling-interval="PT10S"
 max-messages-to-anchor=100
 
-[dynamic-gas-price-service]
-disabled=false
-price-update-interval="PT12S"
-fee-history-block-count=50
-fee-history-reward-percentile=15
-base-fee-coefficient=0.1
-priority-fee-coefficient=1.0
-base-fee-blob-coefficient=0.1
-expected-blob-gas = 131072.0 # 2^17
+[l2-network-gas-pricing]
+disabled = false
+price-update-interval = "PT12S"
+
+fee-history-block-count = 50
+fee-history-reward-percentile = 15
+
 blob-submission-expected-execution-gas = 213000.0 # Lower to 120k as we improve efficiency
-gas-price-upper-bound=10000000000 # 10 GWEI
-gas-price-lower-bound=90000000 # 0.09 GWEI
-gas-price-fixed-cost=3000000
-geth-gas-price-update-recipients=[
+# Defaults to expected-blob-gas
+#bytes-per-data-submission=131072.0 # 2^17
+l1-blob-gas = 131072 # 2^17
+
+[l2-network-gas-pricing.request-retry]
+max-retries = 3
+timeout = "PT6S"
+backoff-delay = "PT1S"
+failures-warning-threshold = 2
+
+[l2-network-gas-pricing.variable-cost-pricing]
+gas-price-fixed-cost = 3000000
+legacy-fees-multiplier = 1.2
+margin = 4.0
+variable-cost-upper-bound = 10000000001 # ~10 GWEI
+variable-cost-lower-bound = 90000001  # ~0.09 GWEI
+
+[l2-network-gas-pricing.extra-data-pricing-propagation]
+extra-data-update-recipient = "http://sequencer:8545/"
+
+[l2-network-gas-pricing.legacy]
+type="SampleTransaction"
+gas-price-upper-bound = 10000000000 # 10 GWEI
+gas-price-lower-bound = 90000000 # 0.09 GWEI
+
+[l2-network-gas-pricing.json-rpc-pricing-propagation]
+geth-gas-price-update-recipients = [
   "http://traces-node:8545/",
   "http://l2-node:8545/"
 ]
-besu-gas-price-update-recipients=[
+besu-gas-price-update-recipients = [
   "http://sequencer:8545/"
 ]
-request-retry.max-retries=3
-request-retry.timeout="PT6S"
-request-retry.backoff-delay="PT1S"
-request-retry.failures-warning-threshold=2
-extra-data-enabled=true
-min-mineable-fees-enabled=true
-legacy-fees-multiplier=1.2
-margin=4.0
-extra-data-update-recipient="http://sequencer:8545/"
-variable-cost-upper-bound=10000000001 # ~10 GWEI
-variable-cost-lower-bound=90000001  # ~0.09 GWEI
-# Defaults to expected-blob-gas
-#bytes-per-data-submission=131072.0 # 2^17
 
 [l1-dynamic-gas-price-cap-service]
 disabled=false
@@ -289,4 +293,3 @@ transactional_pool_size=10
 [persistence-retry]
 #max-retries = 10 commented as can be null
 backoff-delay = "PT1S"
-timeout = "PT60S"

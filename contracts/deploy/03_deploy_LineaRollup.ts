@@ -4,6 +4,30 @@ import { deployUpgradableFromFactory, requireEnv } from "../scripts/hardhat/util
 import { validateDeployBranchAndTags } from "../utils/auditedDeployVerifier";
 import { getDeployedContractAddress, tryStoreAddress } from "../utils/storeAddress";
 import { tryVerifyContract } from "../utils/verifyContract";
+import {
+  BLOB_SUBMISSION_PAUSE_TYPE,
+  CALLDATA_SUBMISSION_PAUSE_TYPE,
+  DEFAULT_ADMIN_ROLE,
+  FINALIZATION_PAUSE_TYPE,
+  FINALIZE_WITHOUT_PROOF_ROLE,
+  GENERAL_PAUSE_TYPE,
+  L1_L2_PAUSE_TYPE,
+  L2_L1_PAUSE_TYPE,
+  PAUSE_ALL_ROLE,
+  PAUSE_FINALIZE_WITHPROOF_ROLE,
+  PAUSE_L1_L2_ROLE,
+  PAUSE_L2_BLOB_SUBMISSION_ROLE,
+  PAUSE_L2_L1_ROLE,
+  UNPAUSE_ALL_ROLE,
+  UNPAUSE_FINALIZE_WITHPROOF_ROLE,
+  UNPAUSE_L1_L2_ROLE,
+  UNPAUSE_L2_BLOB_SUBMISSION_ROLE,
+  UNPAUSE_L2_L1_ROLE,
+  VERIFIER_SETTER_ROLE,
+  VERIFIER_UNSETTER_ROLE,
+  OPERATOR_ROLE,
+  LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+} from "contracts/test/utils/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -28,12 +52,76 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const LineaRollup_initialStateRootHash = requireEnv("LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH");
   const LineaRollup_initialL2BlockNumber = requireEnv("LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER");
   const LineaRollup_securityCouncil = requireEnv("LINEA_ROLLUP_SECURITY_COUNCIL");
-  const LineaRollup_operators = requireEnv("LINEA_ROLLUP_OPERATORS");
+  const LineaRollup_operators = requireEnv("LINEA_ROLLUP_OPERATORS").split(",");
   const LineaRollup_rateLimitPeriodInSeconds = requireEnv("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
   const LineaRollup_rateLimitAmountInWei = requireEnv("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
   const LineaRollup_genesisTimestamp = requireEnv("LINEA_ROLLUP_GENESIS_TIMESTAMP");
+  const MultiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+  const LineaRollup_roleAddresses = process.env["LINEA_ROLLUP_ROLE_ADDRESSES"];
+  const LineaRollup_pauseTypeRoles = process.env["LINEA_ROLLUP_PAUSE_TYPE_ROLES"];
+  const LineaRollup_unpauseTypeRoles = process.env["LINEA_ROLLUP_UNPAUSE_TYPE_ROLES"];
 
-  console.log(`Setting operators ${LineaRollup_operators}`);
+  let pauseTypeRoles = [];
+  const pauseTypeRolesDefault = [
+    { pauseType: GENERAL_PAUSE_TYPE, role: PAUSE_ALL_ROLE },
+    { pauseType: L1_L2_PAUSE_TYPE, role: PAUSE_L1_L2_ROLE },
+    { pauseType: L2_L1_PAUSE_TYPE, role: PAUSE_L2_L1_ROLE },
+    { pauseType: BLOB_SUBMISSION_PAUSE_TYPE, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
+    { pauseType: CALLDATA_SUBMISSION_PAUSE_TYPE, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
+    { pauseType: FINALIZATION_PAUSE_TYPE, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
+  ];
+
+  if (LineaRollup_pauseTypeRoles !== undefined) {
+    console.log("Using provided LINEA_ROLLUP_PAUSE_TYPE_ROLES environment variable");
+    pauseTypeRoles = JSON.parse(LineaRollup_pauseTypeRoles);
+  } else {
+    console.log("Using default pauseTypeRoles");
+    pauseTypeRoles = pauseTypeRolesDefault;
+  }
+
+  let unpauseTypeRoles = [];
+  const unpauseTypeRolesDefault = [
+    { pauseType: GENERAL_PAUSE_TYPE, role: UNPAUSE_ALL_ROLE },
+    { pauseType: L1_L2_PAUSE_TYPE, role: UNPAUSE_L1_L2_ROLE },
+    { pauseType: L2_L1_PAUSE_TYPE, role: UNPAUSE_L2_L1_ROLE },
+    { pauseType: BLOB_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
+    { pauseType: CALLDATA_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
+    { pauseType: FINALIZATION_PAUSE_TYPE, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
+  ];
+
+  if (LineaRollup_unpauseTypeRoles !== undefined) {
+    console.log("Using provided LINEA_ROLLUP_UNPAUSE_TYPE_ROLES environment variable");
+    unpauseTypeRoles = JSON.parse(LineaRollup_unpauseTypeRoles);
+  } else {
+    console.log("Using default unpauseTypeRoles");
+    unpauseTypeRoles = unpauseTypeRolesDefault;
+  }
+
+  let roleAddresses = [];
+  const roleAddressesDefault = [
+    { addressWithRole: LineaRollup_securityCouncil, role: DEFAULT_ADMIN_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: VERIFIER_SETTER_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: VERIFIER_UNSETTER_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_ALL_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_ALL_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: FINALIZE_WITHOUT_PROOF_ROLE },
+  ];
+
+  for (let i = 0; i < LineaRollup_operators.length; i++) {
+    roleAddressesDefault.push({ addressWithRole: LineaRollup_operators[i], role: OPERATOR_ROLE });
+  }
+
+  if (LineaRollup_roleAddresses !== undefined) {
+    console.log("Using provided LINEA_ROLLUP_ROLE_ADDRESSES environment variable");
+    roleAddresses = JSON.parse(LineaRollup_roleAddresses);
+  } else {
+    console.log("Using default roleAddresses");
+    roleAddresses = roleAddressesDefault;
+  }
 
   if (existingContractAddress === undefined) {
     console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
@@ -43,17 +131,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contract = await deployUpgradableFromFactory(
     "LineaRollup",
     [
-      LineaRollup_initialStateRootHash,
-      LineaRollup_initialL2BlockNumber,
-      verifierAddress,
-      LineaRollup_securityCouncil,
-      LineaRollup_operators?.split(","),
-      LineaRollup_rateLimitPeriodInSeconds,
-      LineaRollup_rateLimitAmountInWei,
-      LineaRollup_genesisTimestamp,
+      {
+        initialStateRootHash: LineaRollup_initialStateRootHash,
+        initialL2BlockNumber: LineaRollup_initialL2BlockNumber,
+        genesisTimestamp: LineaRollup_genesisTimestamp,
+        defaultVerifier: verifierAddress,
+        rateLimitPeriodInSeconds: LineaRollup_rateLimitPeriodInSeconds,
+        rateLimitAmountInWei: LineaRollup_rateLimitAmountInWei,
+        roleAddresses: roleAddresses,
+        pauseTypeRoles: pauseTypeRoles,
+        unpauseTypeRoles: unpauseTypeRoles,
+        fallbackOperator: MultiCallAddress,
+      },
     ],
     {
-      initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
+      initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
       unsafeAllow: ["constructor"],
     },
   );

@@ -7,15 +7,35 @@ on:
       - 'testdata/**'
       - 'prover/**'
 
+env:
+  GOPROXY: "https://proxy.golang.org"
+
 jobs:
   run-contract-tests:
     runs-on: besu-arm64
     name: Run smart contracts tests
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.23.x
+          cache: false
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            %LocalAppData%\go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('prover/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
@@ -29,11 +49,22 @@ jobs:
       - name: Run smart contracts tests and generate coverage report
         run: pnpm -F contracts run coverage
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          fail_ci_if_error: true
+          files: ./contracts/coverage/coverage-final.json
+          flags: hardhat
+          os: linux-arm64
+          name: codecov-contracts
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   solidity-format-check:
     runs-on: besu-arm64
     name: Solidity format check
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
