@@ -3,6 +3,7 @@ package blob_test
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
@@ -167,7 +168,38 @@ func TestTransactionRoundTripV0(t *testing.T) {
 		assert.NoError(t, test_utils.SlicesEqual(fields, fieldsBack))
 	}
 
+	// a contract creation transaction, so the To address is zero. extra care must be taken to get the same encoding.
 	test("+QFLggJzhASHqwCDAopwlCGYwub6TkmgtT2QuiFqPThE/atAgIC5ASVggGBAUmAAgFRh//8ZFpBVNIAVYQAbV2AAgP1bUGD7gGEAKmAAOWAA8/5ggGBAUjSAFWAPV2AAgP1bUGAENhBgMldgADVg4ByAYwxVaZwUYDdXgGO0kATpFGBbV1tgAID9W2AAVGBEkGH//xaBVltgQFFh//+QkRaBUmAgAWBAUYCRA5DzW2BhYGNWWwBbYACAVGABkZCBkGB6kISQYf//FmCWVluSUGEBAAqBVIFh//8CGRaQg2H//xYCF5BVUFZbYf//gYEWg4IWAZCAghEVYL5XY05Ie3Fg4BtgAFJgEWAEUmAkYAD9W1CSkVBQVv6iZGlwZnNYIhIgZmyH7FASaIFylaTKH8bjhZ+vJB843WiPFFE1lwkgAJJkc29sY0MACBIAMw==")
+}
+
+// an M-trip is of the form A⇾B⇾A⇾B. We take a transaction in its original RLP form, serialize it into the compressor format,
+// parse it back into a standard ethereum tx object, and serialize it into the compressor format again. The compressor encodings must be equal.
+func TestTransactionMTrip(t *testing.T) {
+	test := func(tx *types.Transaction) {
+	}
+
+	in, err := os.Open("testdata/blocks/9979248.json")
+	require.NoError(t, err)
+
+	var obj map[string]any
+	require.NoError(t, json.NewDecoder(in).Decode(&obj))
+
+	blockRlp, err := base64.StdEncoding.DecodeString(obj["block"].(string))
+	require.NoError(t, err)
+
+	blockRlp, err = os.ReadFile("testdata/blocks/0000000000984570")
+	require.NoError(t, err)
+
+	bm, err := v0.NewBlobMaker(12000000, "../compressor_dict.bin")
+	require.NoError(t, err)
+	ok, err := bm.Write(blockRlp, false)
+	assert.NoError(t, err)
+	require.True(t, ok)
+
+	var block types.Block
+	require.NoError(t, rlp.DecodeBytes(blockRlp, &block))
+
+	test(nil)
 }
 
 func readHexFile(t *testing.T, filename string) []byte {
