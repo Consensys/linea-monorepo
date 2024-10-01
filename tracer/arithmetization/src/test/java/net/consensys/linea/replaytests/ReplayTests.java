@@ -14,13 +14,22 @@
  */
 package net.consensys.linea.replaytests;
 
+import static net.consensys.linea.replaytests.ReplayTestTools.BLOCK_NUMBERS;
+import static net.consensys.linea.replaytests.ReplayTestTools.add;
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_SEPOLIA;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @Tag("replay")
 public class ReplayTests {
@@ -191,5 +200,33 @@ public class ReplayTests {
   @Test
   void incorrectCreationCapture() {
     replay(LINEA_MAINNET, "4323985.json.gz");
+  }
+
+  @Disabled
+  @ParameterizedTest
+  @MethodSource("replayBlockTestSource")
+  void replayBlockTest(int blockNumber) {
+    File file =
+        new File("../arithmetization/src/test/resources/replays/" + blockNumber + ".json.gz");
+    if (!file.exists()) {
+      String[] cmd = {"./scripts/capture.pl", "--start", String.valueOf(blockNumber)};
+      try {
+        ProcessBuilder processBuilder = new ProcessBuilder(cmd);
+        processBuilder.directory(new File("../"));
+        Process process = processBuilder.start();
+        process.waitFor();
+      } catch (InterruptedException | IOException e) {
+        e.printStackTrace();
+      }
+    }
+    replay(LINEA_MAINNET, blockNumber + ".json.gz");
+  }
+
+  static Stream<Arguments> replayBlockTestSource() {
+    // Example of how to add a range
+    add(2435888, 2435889);
+    // Example of how to add a single block
+    add(2435890);
+    return BLOCK_NUMBERS.stream();
   }
 }
