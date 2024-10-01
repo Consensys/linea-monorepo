@@ -4,13 +4,16 @@ package v0
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	encodeTesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode/test_utils"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"io"
 	"math/big"
 	"math/rand"
@@ -764,4 +767,34 @@ func TestEncode(t *testing.T) {
 	txBack := types.NewTx(txBackData)
 
 	encodeTesting.CheckSameTx(t, tx, txBack, from)
+}
+
+// an N-trip is of the form A⇾B⇾A⇾B. We take a transaction in its original RLP form, serialize it into the compressor format,
+// parse it back into a standard ethereum tx object, and serialize it into the compressor format again. The compressor encodings must be equal.
+func TestTransactionNTrip(t *testing.T) {
+	test := func(b64 string) {
+		var tx types.Transaction
+		bytesOrig, err := base64.StdEncoding.DecodeString(b64)
+		require.NoError(t, err)
+		require.NoError(t, rlp.DecodeBytes(bytesOrig, &tx))
+
+		var bb bytes.Buffer
+		require.NoError(t, EncodeTxForCompression(&tx, &bb))
+
+		bytesEncodedFirst := bb.Bytes()
+
+		var from common.Address
+		txD, err := DecodeTxFromUncompressed(bytes.NewReader(bytesEncodedFirst), &from)
+		require.NoError(t, err)
+
+		txBack := encode.InjectFromAddressIntoR(txD, &from)
+		bb.Reset()
+		require.NoError(t, EncodeTxForCompression(txBack, &bb))
+
+		bytesEncodedSecond := bb.Bytes()
+
+		assert.NoError(t, test_utils.BytesEqual(bytesEncodedFirst, bytesEncodedSecond))
+	}
+
+	test("uQQhAvkEHYLnCDOECQXph4QJBemHgwLPWICAuQPCYMBgQFJgB2CAkIFSf09SWkUzWU0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYKBSYACQYQA8kIJhASBWW1A0gBVhAElXYACA/VtQYQHkVlt/Tkh7cQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAFJgQWAEUmAkYAD9W2ACgQRgAYIWgGEAkldgf4IWkVBbYCCCEIEDYQDLV39OSHtxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAUmAiYARSYCRgAP1bUJGQUFZbYB+CERVhARtXgGAAUmAgYAAgYCBgH4UBBIEBYCCFEBVhAPhXUIBbYCBgH4UBBIIBkVBbgYEQFWEBGFdgAIFVYAEBYQEEVltQUFtQUFBWW4FRYAFgQGACCgOBERVhATlXYQE5YQBPVlthAU2BYQFHhFRhAH5WW4RhANFWW2AgYB+CEWABgRRhAYVXYACDFWEBaVdQhIIBUVtgCIQCYAKQgQpgABkEGYIWkIUCF4VVUGEBGFZbYACEgVJgIIEgYB8ZhRaRW4KBEBVhAbVXh4UBUYJVYCCUhQGUYAGQkgGRAWEBlVZbUISCEBVhAdVXg4cBUWAfhhZgCAJgAgpgABkEGRaBVVtQUFBQYAICYAEBkFVQVlthAc+AYQHzYAA5YADz/mCAYEBSNIAVYQAQV2AAgP1bUGAENhBhAEdXfAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAA1BGPp9n90gRRhAExXW2AAgP1bYQBUYQBqVltgQFFhAGGRkGEA+FZbYEBRgJEDkPNbYACAVGEAd5BhAUZWW4BgHwFgIICRBAJgIAFgQFGQgQFgQFKAkpGQgYFSYCABgoBUYQCjkGEBRlZbgBVhAPBXgGAfEGEAxVdhAQCAg1QEAoNSkWAgAZFhAPBWW4IBkZBgAFJgIGAAIJBbgVSBUpBgAQGQYCABgIMRYQDTV4KQA2AfFoIBkVtQUFBQUIFWW2AggVJgAIJRgGAghAFSYABbgYEQFWEBJldgIIGGAYEBUWBAhoQBAVIBYQEJVltQYABgQIKFAQFSYEBgHxlgH4MBFoQBAZFQUJKRUFBWW2ACgQRgAYIWgGEBWldgf4IWkVBbYCCCEIEDYQGTV39OSHtxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAUmAiYARSYCRgAP1bUJGQUFb+omRpcGZzWCISIPeeTRgX1dYbOqvD6tnil8OkkFGcXNsRhk5mAMizqXfOZHNvbGNDAAgaADPAAaDC/Qrsswqv3AGrBqrrwxx9AJJSDxgosvSHe2txvGcwE6Bp4O7TvCccamOFMd/8h5eu7Y44xvpxPr11rHV4Fl0bxw==")
 }
