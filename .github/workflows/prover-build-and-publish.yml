@@ -29,7 +29,7 @@ on:
 
 concurrency:
   group: prover-build-and-publish-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
 
 env:
   GOPROXY: "https://proxy.golang.org"
@@ -38,6 +38,7 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     name: Prover build
+    environment: docker-build-and-e2e
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}

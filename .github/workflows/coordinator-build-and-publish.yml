@@ -29,12 +29,13 @@ on:
 
 concurrency:
   group: coordinator-build-and-publish-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-22.04
     name: Coordinator build
+    environment: docker-build-and-e2e
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}
