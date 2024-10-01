@@ -1,5 +1,7 @@
 FROM eclipse-temurin:21-jre-alpine AS builder
 
+RUN apk add unzip
+
 RUN mkdir -p src libs
 
 COPY --from=zip ./coordinator.zip /src
@@ -10,7 +12,10 @@ FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /opt/consensys/linea/coordinator
 
-RUN mkdir -p /opt/consensys/linea/coordinator/libs/ \
+RUN apk update \
+    && apk add curl \
+    && rm -rf /var/cache/apk/* \
+    && mkdir -p /opt/consensys/linea/coordinator/libs/ \
     && mkdir -p /opt/consensys/linea/coordinator/logs \
     && mkdir -p /opt/consensys/linea/coordinator/tmp/prover/request \
     && mkdir -p /opt/consensys/linea/coordinator/tmp/prover/response
