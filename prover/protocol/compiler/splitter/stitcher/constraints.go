@@ -5,7 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/splitter"
+	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"

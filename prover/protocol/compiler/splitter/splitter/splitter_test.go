@@ -6,14 +6,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/stitcher"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,17 +28,17 @@ const (
 )
 
 func TestSplitterWithFixedPointOpening(t *testing.T) {
-	testSplitter(t, 4, fixedPointOpening)
+	testSplitter(t, 16, fixedPointOpening)
 }
 
 func TestSplitterFibo(t *testing.T) {
-	testSplitter(t, 4, singlePolyFibo(4))
+	testSplitter(t, 16, singlePolyFibo(4))
 	testSplitter(t, 4, singlePolyFibo(8))
 	testSplitter(t, 4, singlePolyFibo(16))
 }
 
 func TestSplitterGlobalWithPeriodicSample(t *testing.T) {
-	testSplitter(t, 64, globalWithPeriodicSample(256, 8, 0))
+	testSplitter(t, 64, globalWithPeriodicSample(16, 8, 0))
 	testSplitter(t, 64, globalWithPeriodicSample(256, 8, 1))
 	testSplitter(t, 64, globalWithPeriodicSample(256, 8, 7))
 }
@@ -150,7 +154,7 @@ func testSplitter(t *testing.T, splitSize int, gen func() (wizard.DefineFunc, wi
 	logrus.SetLevel(logrus.TraceLevel)
 
 	builder, prover := gen()
-	comp := wizard.Compile(builder, SplitColumns(splitSize), dummy.Compile)
+	comp := wizard.Compile(builder, stitcher.Stitcher(splitSize/2, splitSize), Splitter(splitSize), dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 	err := wizard.Verify(comp, proof)
 
@@ -178,4 +182,108 @@ func testSplitter(t *testing.T, splitSize int, gen func() (wizard.DefineFunc, wi
 			t.Logf("query %v - with metadata %v", q.ID, metadataNames)
 		}
 	}
+}
+
+func globalWithVerifColAndPeriodic(size, period, offset int) func() (wizard.DefineFunc, wizard.ProverStep) {
+	return func() (wizard.DefineFunc, wizard.ProverStep) {
+
+		builder := func(build *wizard.Builder) {
+			P1 := build.RegisterCommit(P1, size)
+			verifcol1 := verifiercol.NewFromAccessors(genAccessors(0, size), field.Zero(), size)
+			verifcol2 := verifiercol.NewFromAccessors(genAccessors(2, size), field.Zero(), size)
+			_ = build.GlobalConstraint(LOCAL1,
+				symbolic.Sub(
+
+					symbolic.Mul(symbolic.Sub(1, P1),
+						verifcol2),
+
+					symbolic.Mul(variables.NewPeriodicSample(period, offset),
+						symbolic.Add(2, verifcol1))),
+			)
+		}
+
+		prover := func(run *wizard.ProverRuntime) {
+			v := vector.Repeat(field.One(), size)
+			for i := 0; i < size; i++ {
+				if i%period == offset {
+					v[i].SetZero()
+				}
+			}
+			run.AssignColumn(P1, smartvectors.NewRegular(v))
+		}
+
+		return builder, prover
+	}
+}
+
+func TestLocalEvalWithStatus(t *testing.T) {
+
+	var b, c ifaces.Column
+	var q2, q3, q6, q7, q10, q11 query.LocalOpening
+
+	define := func(builder *wizard.Builder) {
+		// declare columns of different sizes
+		b = builder.RegisterCommit("B", 4)
+		c = builder.RegisterCommit("C", 8)
+
+		// Local opening at zero
+		q2 = builder.LocalOpening("Q01", b)
+		q3 = builder.LocalOpening("Q02", c)
+
+		// Local opening at but shifted by one
+		q6 = builder.LocalOpening("Q11", column.Shift(b, 1))
+		q7 = builder.LocalOpening("Q12", column.Shift(c, 1))
+
+		// Local opening  but shifted by -1
+		q10 = builder.LocalOpening("Q21", column.Shift(b, -1))
+		q11 = builder.LocalOpening("Q22", column.Shift(c, -1))
+
+	}
+
+	comp := wizard.Compile(define, Splitter(4))
+
+	//after splitting-compilation we expect that the eligible columns and their relevant queries be ignored
+	assert.Equal(t, column.Committed.String(), comp.Columns.Status("B").String())
+	assert.Equal(t, column.Ignored.String(), comp.Columns.Status("C").String())
+
+	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q2.ID))
+	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q3.ID))
+
+	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q6.ID))
+	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q7.ID))
+
+	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q10.ID))
+	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q11.ID))
+
+	// manually compiles the comp
+	dummy.Compile(comp)
+
+	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime) {
+		// Assigns all the columns
+		assi.AssignColumn(b.GetColID(), smartvectors.ForTest(2, 3, 4, 5))
+		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(6, 7, 8, 9, 10, 11, 12, 13))
+
+		// And the alleged results
+		assi.AssignLocalPoint("Q01", field.NewElement(2))
+		assi.AssignLocalPoint("Q02", field.NewElement(6))
+
+		assi.AssignLocalPoint("Q11", field.NewElement(3))
+		assi.AssignLocalPoint("Q12", field.NewElement(7))
+
+		assi.AssignLocalPoint("Q21", field.NewElement(5))
+		assi.AssignLocalPoint("Q22", field.NewElement(13))
+
+	})
+
+	err := wizard.Verify(comp, proof)
+	require.NoError(t, err)
+
+}
+
+func genAccessors(start, size int) (res []ifaces.Accessor) {
+	for i := start; i < size+start; i++ {
+		t := accessors.NewConstant(field.NewElement(uint64(i)))
+		res = append(res, t)
+	}
+	return res
 }

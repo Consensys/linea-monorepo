@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/splitter"
+	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
