@@ -9,7 +9,7 @@ pragma solidity >=0.8.19 <=0.8.26;
 interface IPauseManager {
   /**
    * @notice Structure defining a pause type and its associated role.
-   * @dev This struct is used for both the pauseTypeRoles and unPauseTypeRoles mappings.
+   * @dev This struct is used for both the _pauseTypeRoles and _unPauseTypeRoles mappings.
    * @param pauseType The type of pause.
    * @param role The role associated with the pause type.
    */
@@ -31,6 +31,20 @@ interface IPauseManager {
    * @param pauseType The indexed pause type that was unpaused.
    */
   event UnPaused(address messageSender, uint256 indexed pauseType);
+
+  /**
+   * @notice Emitted when a pause type and its associated role are set in the `_pauseTypeRoles` mapping.
+   * @param pauseType The type of pause.
+   * @param role The role associated with the pause type.
+   */
+  event PauseTypeRoleSet(uint8 pauseType, bytes32 role);
+
+  /**
+   * @notice Emitted when an unpause type and its associated role are set in the `_unPauseTypeRoles` mapping.
+   * @param unPauseType The type of unpause.
+   * @param role The role associated with the unpause type.
+   */
+  event UnPauseTypeRoleSet(uint8 unPauseType, bytes32 role);
 
   /**
    * @dev Thrown when a specific pause type is paused.

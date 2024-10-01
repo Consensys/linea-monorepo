@@ -28,12 +28,6 @@ import {
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
-  INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
-  COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
-  PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
-  PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
-  UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
-  UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
 } from "../test/utils/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -76,8 +70,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     { pauseType: BLOB_SUBMISSION_PAUSE_TYPE, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
     { pauseType: CALLDATA_SUBMISSION_PAUSE_TYPE, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
     { pauseType: FINALIZATION_PAUSE_TYPE, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
-    { pauseType: INITIATE_TOKEN_BRIDGING_PAUSE_TYPE, role: PAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
-    { pauseType: COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE, role: PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE },
   ];
 
   if (LineaRollup_pauseTypeRoles !== undefined) {
@@ -96,8 +88,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     { pauseType: BLOB_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
     { pauseType: CALLDATA_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
     { pauseType: FINALIZATION_PAUSE_TYPE, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
-    { pauseType: INITIATE_TOKEN_BRIDGING_PAUSE_TYPE, role: UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
-    { pauseType: COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE, role: UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE },
   ];
 
   if (LineaRollup_unpauseTypeRoles !== undefined) {

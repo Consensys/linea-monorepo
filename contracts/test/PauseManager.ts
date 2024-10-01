@@ -46,20 +46,18 @@ describe("PauseManager", () => {
     [defaultAdmin, pauseManagerAccount, nonManager] = await ethers.getSigners();
     pauseManager = await loadFixture(deployTestPauseManagerFixture);
 
-    await pauseManager.grantRole(PAUSE_ALL_ROLE, pauseManagerAccount.address);
-    await pauseManager.grantRole(UNPAUSE_ALL_ROLE, pauseManagerAccount.address);
-
-    await pauseManager.grantRole(PAUSE_L1_L2_ROLE, pauseManagerAccount.address);
-    await pauseManager.grantRole(UNPAUSE_L1_L2_ROLE, pauseManagerAccount.address);
-
-    await pauseManager.grantRole(PAUSE_L2_L1_ROLE, pauseManagerAccount.address);
-    await pauseManager.grantRole(UNPAUSE_L2_L1_ROLE, pauseManagerAccount.address);
-
-    await pauseManager.grantRole(PAUSE_L2_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address);
-    await pauseManager.grantRole(UNPAUSE_L2_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address);
-
-    await pauseManager.grantRole(PAUSE_FINALIZE_WITHPROOF_ROLE, pauseManagerAccount.address);
-    await pauseManager.grantRole(UNPAUSE_FINALIZE_WITHPROOF_ROLE, pauseManagerAccount.address);
+    await Promise.all([
+      pauseManager.grantRole(PAUSE_ALL_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_ALL_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(PAUSE_L1_L2_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_L1_L2_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(PAUSE_L2_L1_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_L2_L1_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(PAUSE_L2_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_L2_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(PAUSE_FINALIZE_WITHPROOF_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_FINALIZE_WITHPROOF_ROLE, pauseManagerAccount.address),
+    ]);
   });
 
   async function pauseByType(pauseType: number, account: SignerWithAddress = pauseManagerAccount) {

@@ -36,7 +36,7 @@ const COMPRESSED_SUBMISSION_DATA = [
 const BLOB_SUBMISSION_DATA = [firstBlobDataContent, secondBlobDataContent, thirdBlobDataContent, fourthBlobDataContent];
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { AbiCoder, ethers } from "ethers";
+import { AbiCoder, BaseContract, ContractFactory, ethers } from "ethers";
 import firstCompressedDataContent_multiple from "../testData/compressedData/multipleProofs/blocks-1-46.json";
 import secondCompressedDataContent_multiple from "../testData/compressedData/multipleProofs/blocks-47-81.json";
 import thirdCompressedDataContent_multiple from "../testData/compressedData/multipleProofs/blocks-82-119.json";
@@ -481,31 +481,42 @@ export function generateFinalizationDataFromJSON(parsedJSONData: any): Finalizat
   };
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export async function expectRevertWithCustomError(
-  contract: any,
-  asyncCall: Promise<any>,
+export async function expectRevertWithCustomError<T extends BaseContract | ContractFactory>(
+  contract: T,
+  asyncCall: Promise<unknown>,
   errorName: string,
-  errorArgs: any[] = [],
+  errorArgs: unknown[] = [],
 ) {
   await expect(asyncCall)
     .to.be.revertedWithCustomError(contract, errorName)
     .withArgs(...errorArgs);
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export async function expectRevertWithReason(asyncCall: Promise<any>, reason: string) {
+export async function expectRevertWithReason(asyncCall: Promise<unknown>, reason: string) {
   await expect(asyncCall).to.be.revertedWith(reason);
 }
+
 export function buildAccessErrorMessage(account: SignerWithAddress, role: string): string {
   return `AccessControl: account ${account.address.toLowerCase()} is missing role ${role}`;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export async function expectEvent(contract: any, asyncCall: Promise<any>, eventName: string, eventArgs: any[] = []) {
+export async function expectEvent<T extends BaseContract>(
+  contract: T,
+  asyncCall: Promise<unknown>,
+  eventName: string,
+  eventArgs: unknown[] = [],
+) {
   await expect(asyncCall)
     .to.emit(contract, eventName)
     .withArgs(...eventArgs);
+}
+
+export async function expectEvents<T extends BaseContract>(
+  contract: T,
+  asyncCall: Promise<unknown>,
+  events: { name: string; args: unknown[] }[],
+) {
+  await Promise.all(events.map((event) => expectEvent(contract, asyncCall, event.name, event.args)));
 }
 
 export function convertStringToPaddedHexBytes(strVal: string, paddedSize: number): string {

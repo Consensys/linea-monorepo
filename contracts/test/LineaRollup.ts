@@ -2417,14 +2417,37 @@ describe("Linea Rollup contract", () => {
       for (const { role, addressWithRole } of newRoleAddresses) {
         expect(await upgradedContract.hasRole(role, addressWithRole)).to.be.true;
       }
+    });
+
+    it("Should set all pause types and unpause types in mappings", async () => {
+      // Deploy new implementation
+      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
+      const upgradedContract = await newLineaRollup.waitForDeployment();
+
+      await upgradedContract.reinitializeLineaRollupV6(
+        newRoleAddresses,
+        pauseTypeRoles,
+        unpauseTypeRoles,
+        multiCallAddress,
+      );
+
+      const pauseTypeRolesMappingSlot = 219;
+      const unpauseTypeRolesMappingSlot = 220;
 
       for (const { pauseType, role } of pauseTypeRoles) {
-        expect(await upgradedContract.pauseTypeRoles(pauseType)).to.equal(role);
+        const slot = generateKeccak256(["uint8", "uint256"], [pauseType, pauseTypeRolesMappingSlot]);
+        const roleInMapping = await ethers.provider.getStorage(upgradedContract.getAddress(), slot);
+        expect(roleInMapping).to.equal(role);
       }
 
       for (const { pauseType, role } of unpauseTypeRoles) {
-        expect(await upgradedContract.unPauseTypeRoles(pauseType)).to.equal(role);
+        const slot = generateKeccak256(["uint8", "uint256"], [pauseType, unpauseTypeRolesMappingSlot]);
+        const roleInMapping = await ethers.provider.getStorage(upgradedContract.getAddress(), slot);
+        expect(roleInMapping).to.equal(role);
       }
+
+      // TODO
     });
   });
 });
