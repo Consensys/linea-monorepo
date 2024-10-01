@@ -76,7 +76,7 @@ jobs:
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
     runs-on: ubuntu-22.04
-    environment: docker-build-and-e2e
+    environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     steps:
       - name: Setup upterm session
         if: ${{ inputs.e2e-tests-with-ssh }}
