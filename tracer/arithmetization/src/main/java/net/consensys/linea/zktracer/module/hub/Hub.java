@@ -502,19 +502,26 @@ public class Hub implements Module {
     state.enter();
     txStack.enterTransaction(world, tx, transients.block());
 
+    final TransactionProcessingMetadata transactionProcessingMetadata = txStack.current();
+
     this.enterTransaction();
 
-    if (!txStack.current().requiresEvmExecution()) {
+    if (!transactionProcessingMetadata.requiresEvmExecution()) {
       state.setProcessingPhase(TX_SKIP);
-      new TxSkippedSection(this, world, txStack.current(), transients);
+      new TxSkippedSection(this, world, transactionProcessingMetadata, transients);
     } else {
-      if (txStack.current().requiresPrewarming()) {
+      if (transactionProcessingMetadata.requiresPrewarming()) {
         state.setProcessingPhase(TX_WARM);
         new TxPreWarmingMacroSection(world, this);
       }
       state.setProcessingPhase(TX_INIT);
       new TxInitializationSection(this, world);
     }
+
+    // Note: for deployment transactions the deployment number / status were updated during the
+    // initialization phase. We are thus capturing the respective XXX_NEW's
+    transactionProcessingMetadata
+        .captureUpdatedInitialRecipientAddressDeploymentInfoAtTransactionStart(this);
 
     /*
      * TODO: the ID = 0 (universal parent context) context should
@@ -525,7 +532,7 @@ public class Hub implements Module {
     callStack.getById(0).universalParentReturnDataContextNumber(this.stamp() + 1);
 
     for (Module m : modules) {
-      m.traceStartTx(world, txStack.current());
+      m.traceStartTx(world, transactionProcessingMetadata);
     }
   }
 
