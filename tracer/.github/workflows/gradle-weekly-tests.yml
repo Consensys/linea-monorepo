@@ -1,0 +1,90 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+env:
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.CONSTRAINTS_SSH_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install Corset
+        run: RUSTFLAGS=-Awarnings cargo install --git ssh://git@github.com/ConsenSys/corset --tag v9.7.13 --locked --force
+
+      - name: Run Weekly tests
+        run: ./gradlew weeklyTests
+        env:
+          JAVA_OPTS: -Dorg.gradle.daemon=false
+          CORSET_FLAGS: fields,expand,expand,expand
+          WEEKLY_TESTS_PARALLELISM: 4
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: nightly-tests-report
+          path: build/reports/tests/**/*
+
+  go-corset-tests:
+    runs-on: ubuntu-latest
+    continue-on-error: true    
+    steps:
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.CONSTRAINTS_SSH_KEY }}
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install Corset
+        run: RUSTFLAGS=-Awarnings cargo install --git ssh://git@github.com/ConsenSys/corset --tag v9.7.13 --locked --force
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+
+      - name: Install Go Corset
+        run:
+          go install github.com/consensys/go-corset/cmd/go-corset@latest
+
+      - name: Run Weekly tests
+        run: GOMEMLIMIT=196GiB ./gradlew weeklyTests
+        env:
+          JAVA_OPTS: -Dorg.gradle.daemon=false
+          CORSET_FLAGS: disable
+          GOCORSET_FLAGS: -wd --ansi-escapes=false --report --air
+          WEEKLY_TESTS_PARALLELISM: 4
+
