@@ -36,7 +36,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.condition.eth.EthConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.login.LoginConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.perm.PermissioningConditions;
-import org.hyperledger.besu.tests.acceptance.dsl.condition.priv.PrivConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.process.ExitedWithCode;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.txpool.TxPoolConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.web3.Web3Conditions;
@@ -54,7 +53,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.miner.MinerTransactions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.perm.PermissioningTransactions;
-import org.hyperledger.besu.tests.acceptance.dsl.transaction.privacy.PrivacyTransactions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.txpool.TxPoolTransactions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.web3.Web3Transactions;
 import org.junit.jupiter.api.AfterEach;
@@ -88,8 +86,6 @@ public class AcceptanceTestBase {
   protected final PermissioningTransactions permissioningTransactions;
   protected final MinerTransactions minerTransactions;
   protected final Web3Conditions web3;
-  protected final PrivConditions priv;
-  protected final PrivacyTransactions privacyTransactions;
   protected final TxPoolConditions txPoolConditions;
   protected final TxPoolTransactions txPoolTransactions;
   protected final ExitedWithCode exitedSuccessfully;
@@ -104,7 +100,6 @@ public class AcceptanceTestBase {
     bftTransactions = new BftTransactions();
     accountTransactions = new AccountTransactions(accounts);
     permissioningTransactions = new PermissioningTransactions();
-    privacyTransactions = new PrivacyTransactions();
     contractTransactions = new ContractTransactions();
     minerTransactions = new MinerTransactions();
 
@@ -116,7 +111,6 @@ public class AcceptanceTestBase {
     net = new NetConditions(new NetTransactions());
     cluster = new Cluster(net);
     perm = new PermissioningConditions(permissioningTransactions);
-    priv = new PrivConditions(privacyTransactions);
     admin = new AdminConditions(adminTransactions);
     web3 = new Web3Conditions(new Web3Transactions());
     besu = new BesuNodeFactory();

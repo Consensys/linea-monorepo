@@ -40,8 +40,13 @@ public class TestCommandLineOptionsBuilder {
     cliOptions.setProperty(
         "--plugin-linea-l1l2-bridge-contract=", "0x00000000000000000000000000000000DEADBEEF");
     cliOptions.setProperty("--plugin-linea-l1l2-bridge-topic=", "0x123456");
+    // temporarily specify tracer mandatory options, until we improve the ATs to accept a list of
+    // enabled plugins
     cliOptions.setProperty("--plugin-linea-conflated-trace-generation-traces-output-path=", ".");
     cliOptions.setProperty("--plugin-linea-rpc-concurrent-requests-limit=", "1");
+    cliOptions.setProperty("--plugin-linea-tracer-readiness-server-port=", "1234");
+    cliOptions.setProperty("--plugin-linea-tracer-readiness-server-host=", "localhost");
+    cliOptions.setProperty("--plugin-linea-tracer-readiness-max-blocks-behind=", "1");
   }
 
   public TestCommandLineOptionsBuilder set(String option, String value) {
