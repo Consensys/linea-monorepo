@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.signals;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_3541_MARKER;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MAX_CODE_SIZE;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.getOpCode;
+import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.util.function.Consumer;
 
@@ -26,7 +27,6 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjector;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -46,7 +46,7 @@ public class Exceptions {
       128; // trying to execute non-static instruction in a static context
   public static final short OUT_OF_SSTORE = 256; // not enough gas to execute an SSTORE
   public static final short INVALID_CODE_PREFIX = 512;
-  public static final short MAX_CODE_SIZE_EXCEPTION = 2048;
+  public static final short MAX_CODE_SIZE_EXCEPTION = 1024;
 
   public static boolean stackException(final short bitmask) {
     return stackOverflow(bitmask) || stackUnderflow(bitmask);
@@ -145,8 +145,8 @@ public class Exceptions {
   private static boolean isReturnDataCopyFault(final MessageFrame frame, final OpCode opCode) {
     if (opCode == OpCode.RETURNDATACOPY) {
       long returnDataSize = frame.getReturnData().size();
-      long askedOffset = Words.clampedToLong(frame.getStackItem(1));
-      long askedSize = Words.clampedToLong(frame.getStackItem(2));
+      long askedOffset = clampedToLong(frame.getStackItem(1));
+      long askedSize = clampedToLong(frame.getStackItem(2));
 
       return Words.clampedAdd(askedOffset, askedSize) > returnDataSize;
     }
@@ -156,7 +156,7 @@ public class Exceptions {
 
   private static boolean isJumpFault(final MessageFrame frame, OpCode opCode) {
     if (opCode == OpCode.JUMP || opCode == OpCode.JUMPI) {
-      final long target = Words.clampedToLong(frame.getStackItem(0));
+      final long target = clampedToLong(frame.getStackItem(0));
       final boolean invalidDestination = frame.getCode().isJumpDestInvalid((int) target);
 
       switch (opCode) {
@@ -164,7 +164,7 @@ public class Exceptions {
           return invalidDestination;
         }
         case JUMPI -> {
-          long condition = Words.clampedToLong(frame.getStackItem(1));
+          long condition = clampedToLong(frame.getStackItem(1));
           return (condition != 0) && invalidDestination;
         }
         default -> {
@@ -192,7 +192,7 @@ public class Exceptions {
     // CALL's trigger a staticException if and only if
     // they attempt to transfer value
     if (frame.stackSize() >= 7) {
-      final long value = Words.clampedToLong(frame.getStackItem(2));
+      final long value = clampedToLong(frame.getStackItem(2));
       return value > 0;
     }
 
@@ -205,12 +205,20 @@ public class Exceptions {
   }
 
   private static boolean isInvalidCodePrefix(MessageFrame frame) {
-    if (frame.getType() != MessageFrame.Type.CONTRACT_CREATION) {
+    if (frame.getType() != MessageFrame.Type.CONTRACT_CREATION
+        || getOpCode(frame) != OpCode.RETURN) {
       return false;
     }
-
-    final Bytes deployedCode = frame.getOutputData();
-    return !deployedCode.isEmpty() && (deployedCode.get(0) == (byte) EIP_3541_MARKER);
+    final long size = clampedToLong(frame.getStackItem(1));
+    if (size == 0) {
+      return false;
+    }
+    final long offset = clampedToLong(frame.getStackItem(0));
+    if (offset >= frame.memoryByteSize()) {
+      return false;
+    }
+    final byte firstByte = frame.shadowReadMemory(offset, 1).get(0);
+    return firstByte == (byte) EIP_3541_MARKER;
   }
 
   private static boolean isCodeSizeOverflow(MessageFrame frame) {
@@ -219,7 +227,7 @@ public class Exceptions {
       return false;
     }
 
-    final long codeSize = Words.clampedToLong(frame.getStackItem(1));
+    final long codeSize = clampedToLong(frame.getStackItem(1));
     return codeSize > MAX_CODE_SIZE;
   }
 

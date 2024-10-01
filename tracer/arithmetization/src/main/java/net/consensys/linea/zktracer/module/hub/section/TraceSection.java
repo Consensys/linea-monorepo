@@ -28,7 +28,6 @@ import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.DeploymentExceptions;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -155,19 +154,6 @@ public class TraceSection {
     return nextSection.commonValues.hubProcessingPhase == TX_EXEC
         ? nextSection.commonValues.callFrame().contextNumber()
         : 0;
-  }
-
-  /**
-   * Update the stack fragments of the section with the provided {@link DeploymentExceptions}.
-   *
-   * @param contEx the computed exceptions
-   */
-  public void setContextExceptions(DeploymentExceptions contEx) {
-    for (TraceFragment fragment : fragments) {
-      if (fragment instanceof StackFragment) {
-        ((StackFragment) fragment).contextExceptions(contEx);
-      }
-    }
   }
 
   private List<TraceFragment> makeStackFragments(final Hub hub, CallFrame f) {

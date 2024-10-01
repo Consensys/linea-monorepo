@@ -63,8 +63,8 @@ public class ReturnSection extends TraceSection
   ContextFragment squashParentContextReturnData;
   Address deploymentAddress;
 
-  boolean successfulMessageCallExpected; // for sanity check
-  boolean successfulDeploymentExpected; // for sanity check
+  boolean successfulMessageCallExpected = false; // for sanity check
+  boolean successfulDeploymentExpected = false; // for sanity check
 
   public ReturnSection(Hub hub) {
     super(hub, maxNumberOfRows(hub));
@@ -82,12 +82,7 @@ public class ReturnSection extends TraceSection
             == hub.transients()
                 .conflation()
                 .deploymentInfo()
-                .getDeploymentStatus(messageFrame.getContractAddress()),
-        String.format(
-            "ReturnSection check argument\n\t\tHUB_STAMP = %s\n\t\tMessageFrame.contractAddress = %s\n\t\tCallFrame.byteCodeAddress = %s",
-            hub.stamp(),
-            hub.messageFrame().getContractAddress(),
-            hub.currentFrame().byteCodeAddress()));
+                .getDeploymentStatus(messageFrame.getContractAddress()));
 
     returnScenarioFragment = new ReturnScenarioFragment();
     final ContextFragment currentContextFragment = ContextFragment.readCurrentContextData(hub);
@@ -95,10 +90,8 @@ public class ReturnSection extends TraceSection
     final MxpCall mxpCall = new MxpCall(hub);
     firstImcFragment.callMxp(mxpCall);
 
-    this.addStack(hub);
-    this.addFragment(returnScenarioFragment);
-    this.addFragment(currentContextFragment);
-    this.addFragment(firstImcFragment);
+    this.addStackAndFragments(
+        hub, returnScenarioFragment, currentContextFragment, firstImcFragment);
 
     final short exceptions = hub.pch().exceptions();
 
@@ -247,7 +240,7 @@ public class ReturnSection extends TraceSection
 
     // TODO: optional sanity check that may be removed
     if (returnFromMessageCall) {
-      Bytes topOfTheStack = hub.messageFrame().getStackItem(0);
+      final Bytes topOfTheStack = hub.messageFrame().getStackItem(0);
       boolean messageCallWasSuccessful = bytesToBoolean(topOfTheStack);
       checkArgument(messageCallWasSuccessful == successfulMessageCallExpected);
     }
