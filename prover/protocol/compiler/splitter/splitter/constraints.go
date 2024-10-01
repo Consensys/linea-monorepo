@@ -140,11 +140,11 @@ func getSubColForLocal(ctx splitterContext, col ifaces.Column, posInCol int) ifa
 
 		// find the subCol that contain the first row of col
 		position := utils.PositiveMod(column.StackOffsets(col), col.Size())
-		subColID, posInSubCol := position/ctx.size, position%ctx.size
+		subColID, offsetOfSubCol := position/ctx.size, position%ctx.size
 
 		// The subCol is linked to the "root" of q.Pol (i.e., natural column associated with col)
 		parent := getSubColForLocal(ctx, inner.Parent, posInCol+subColID)
-		return column.Shift(parent, posInSubCol)
+		return column.Shift(parent, offsetOfSubCol)
 
 	default:
 		utils.Panic("unexpected type %v", reflect.TypeOf(inner))
@@ -188,23 +188,23 @@ func getSubColForGlobal(ctx splitterContext, col ifaces.Column, posInCol int) if
 
 		// This works fine assuming h.Size() > ctx.size
 		var (
-			offset                  = inner.Offset
-			maxNumSubCol            = col.Size() / ctx.size
-			posInNatural            = (posInCol + (offset / ctx.size)) % maxNumSubCol
-			offsetOfSubColInNatural = utils.PositiveMod(offset, ctx.size)
+			offset         = inner.Offset
+			maxNumSubCol   = col.Size() / ctx.size
+			subColID       = (posInCol + (offset / ctx.size)) % maxNumSubCol
+			offsetOfSubCol = utils.PositiveMod(offset, ctx.size)
 		)
 		// This indicates that the offset is so large
-		if posInNatural < 0 {
-			posInNatural = (col.Size() / ctx.size) + posInNatural
+		if subColID < 0 {
+			subColID = (col.Size() / ctx.size) + subColID
 		}
 		// The resulting offset should keep the same sign as the old one. This is
 		// because the sign indicates which range of position is touched by
 		// bound cancellation.
-		if offsetOfSubColInNatural*offset < 0 {
-			offsetOfSubColInNatural -= ctx.size
+		if offsetOfSubCol*offset < 0 {
+			offsetOfSubCol -= ctx.size
 		}
-		parent := getSubColForGlobal(ctx, inner.Parent, posInNatural)
-		return column.Shift(parent, offsetOfSubColInNatural)
+		parent := getSubColForGlobal(ctx, inner.Parent, subColID)
+		return column.Shift(parent, offsetOfSubCol)
 
 	default:
 		utils.Panic("unexpected type %v", reflect.TypeOf(inner))

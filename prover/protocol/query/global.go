@@ -161,8 +161,9 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 		start -= offsetRange.Min
 		stop -= offsetRange.Max
 	}
-	start = int(math.Max(float64(start), float64(0)))
-	stop = int(math.Min(float64(stop), float64(cs.DomainSize)))
+
+	start = max(start, 0)
+	stop = min(stop, cs.DomainSize)
 
 	for i := start; i < stop; i++ {
 
