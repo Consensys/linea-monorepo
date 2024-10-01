@@ -35,8 +35,8 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
   mapping(bytes32 pauseType => bool pauseStatus) public pauseTypeStatuses;
 
   uint256 private _pauseTypeStatusesBitMap;
-  mapping(uint8 pauseType => bytes32 role) private pauseTypeRoles;
-  mapping(uint8 unPauseType => bytes32 role) private unPauseTypeRoles;
+  mapping(uint8 pauseType => bytes32 role) public pauseTypeRoles;
+  mapping(uint8 unPauseType => bytes32 role) public unPauseTypeRoles;
 
   /// @dev Total contract storage is 11 slots with the gap below.
   /// @dev Keep 7 free storage slots for future implementation updates to avoid storage collision.

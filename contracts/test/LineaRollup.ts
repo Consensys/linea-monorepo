@@ -48,6 +48,8 @@ import {
   PAUSE_L2_L1_ROLE,
   UNPAUSE_L1_L2_ROLE,
   UNPAUSE_L2_L1_ROLE,
+  RATE_LIMIT_SETTER_ROLE,
+  USED_RATE_LIMIT_RESETTER_ROLE,
 } from "./utils/constants";
 import { deployUpgradableFromFactory } from "./utils/deployment";
 import {
@@ -147,6 +149,8 @@ describe("Linea Rollup contract", () => {
       { addressWithRole: securityCouncilAddress, role: DEFAULT_ADMIN_ROLE },
       { addressWithRole: securityCouncilAddress, role: VERIFIER_SETTER_ROLE },
       { addressWithRole: operator.address, role: OPERATOR_ROLE },
+      { addressWithRole: securityCouncilAddress, role: RATE_LIMIT_SETTER_ROLE },
+      { addressWithRole: securityCouncilAddress, role: USED_RATE_LIMIT_RESETTER_ROLE },
       { addressWithRole: securityCouncilAddress, role: VERIFIER_UNSETTER_ROLE },
       { addressWithRole: securityCouncilAddress, role: PAUSE_ALL_ROLE },
       { addressWithRole: securityCouncilAddress, role: PAUSE_L1_L2_ROLE },
@@ -189,8 +193,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        pauseTypeRoles,
+        unpauseTypeRoles,
         fallbackOperator: multiCallAddress,
       };
 
@@ -211,8 +215,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        pauseTypeRoles,
+        unpauseTypeRoles,
         fallbackOperator: multiCallAddress,
       };
 
@@ -253,8 +257,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        pauseTypeRoles,
+        unpauseTypeRoles,
         fallbackOperator: multiCallAddress,
       };
 
@@ -279,8 +283,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        pauseTypeRoles,
+        unpauseTypeRoles,
         fallbackOperator: multiCallAddress,
       };
 
@@ -307,8 +311,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        pauseTypeRoles,
+        unpauseTypeRoles,
         fallbackOperator: multiCallAddress,
       });
 
@@ -2299,6 +2303,7 @@ describe("Linea Rollup contract", () => {
       const securityCouncilAddress = securityCouncil.address;
 
       newRoleAddresses = [
+        { addressWithRole: securityCouncilAddress, role: USED_RATE_LIMIT_RESETTER_ROLE },
         { addressWithRole: securityCouncilAddress, role: VERIFIER_UNSETTER_ROLE },
         { addressWithRole: securityCouncilAddress, role: PAUSE_ALL_ROLE },
         { addressWithRole: securityCouncilAddress, role: PAUSE_L1_L2_ROLE },
@@ -2413,19 +2418,12 @@ describe("Linea Rollup contract", () => {
         expect(await upgradedContract.hasRole(role, addressWithRole)).to.be.true;
       }
 
-      const pauseTypeRolesMappingSlot = 219;
-      const unpauseTypeRolesMappingSlot = 220;
-
       for (const { pauseType, role } of pauseTypeRoles) {
-        const slot = generateKeccak256(["uint256", "uint256"], [pauseType, pauseTypeRolesMappingSlot]);
-        const roleInMapping = await ethers.provider.getStorage(upgradedContract.getAddress(), slot);
-        expect(roleInMapping).to.equal(role);
+        expect(await upgradedContract.pauseTypeRoles(pauseType)).to.equal(role);
       }
 
       for (const { pauseType, role } of unpauseTypeRoles) {
-        const slot = generateKeccak256(["uint256", "uint256"], [pauseType, unpauseTypeRolesMappingSlot]);
-        const roleInMapping = await ethers.provider.getStorage(upgradedContract.getAddress(), slot);
-        expect(roleInMapping).to.equal(role);
+        expect(await upgradedContract.unPauseTypeRoles(pauseType)).to.equal(role);
       }
     });
   });

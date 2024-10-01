@@ -26,7 +26,15 @@ import {
   VERIFIER_UNSETTER_ROLE,
   OPERATOR_ROLE,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-} from "contracts/test/utils/constants";
+  RATE_LIMIT_SETTER_ROLE,
+  USED_RATE_LIMIT_RESETTER_ROLE,
+  INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
+  COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
+  PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
+  PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
+  UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
+  UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
+} from "../test/utils/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -68,6 +76,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     { pauseType: BLOB_SUBMISSION_PAUSE_TYPE, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
     { pauseType: CALLDATA_SUBMISSION_PAUSE_TYPE, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
     { pauseType: FINALIZATION_PAUSE_TYPE, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
+    { pauseType: INITIATE_TOKEN_BRIDGING_PAUSE_TYPE, role: PAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
+    { pauseType: COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE, role: PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE },
   ];
 
   if (LineaRollup_pauseTypeRoles !== undefined) {
@@ -86,6 +96,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     { pauseType: BLOB_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
     { pauseType: CALLDATA_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
     { pauseType: FINALIZATION_PAUSE_TYPE, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
+    { pauseType: INITIATE_TOKEN_BRIDGING_PAUSE_TYPE, role: UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
+    { pauseType: COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE, role: UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE },
   ];
 
   if (LineaRollup_unpauseTypeRoles !== undefined) {
@@ -101,8 +113,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     { addressWithRole: LineaRollup_securityCouncil, role: DEFAULT_ADMIN_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: VERIFIER_SETTER_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: VERIFIER_UNSETTER_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: RATE_LIMIT_SETTER_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: USED_RATE_LIMIT_RESETTER_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_ALL_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_L1_L2_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_L2_L1_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_ALL_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_L1_L2_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_L2_L1_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
@@ -136,9 +154,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         defaultVerifier: verifierAddress,
         rateLimitPeriodInSeconds: LineaRollup_rateLimitPeriodInSeconds,
         rateLimitAmountInWei: LineaRollup_rateLimitAmountInWei,
-        roleAddresses: roleAddresses,
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        roleAddresses,
+        pauseTypeRoles,
+        unpauseTypeRoles,
         fallbackOperator: MultiCallAddress,
       },
     ],
