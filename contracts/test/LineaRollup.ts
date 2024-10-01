@@ -440,7 +440,13 @@ describe("Linea Rollup contract", () => {
       const submitDataCall = lineaRollup
         .connect(operator)
         .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
-      const eventArgs = [submissionData.firstBlockInData, submissionData.finalBlockInData, prevShnarf, expectedShnarf];
+      const eventArgs = [
+        submissionData.firstBlockInData,
+        submissionData.finalBlockInData,
+        prevShnarf,
+        expectedShnarf,
+        submissionData.finalStateRootHash,
+      ];
 
       await expectEvent(lineaRollup, submitDataCall, "DataSubmittedV3", eventArgs);
     });
@@ -657,6 +663,7 @@ describe("Linea Rollup contract", () => {
         blobDataSubmission[0].submissionData.finalBlockInData,
         parentShnarf,
         finalShnarf,
+        blobDataSubmission[blobDataSubmission.length - 1].submissionData.finalStateRootHash,
       ];
 
       expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
@@ -2238,6 +2245,7 @@ describe("Linea Rollup contract", () => {
       blobSubmission[blobSubmission.length - 1].submissionData.finalBlockInData,
       parentShnarf,
       finalShnarf,
+      blobSubmission[blobSubmission.length - 1].submissionData.finalStateRootHash,
     ];
 
     expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);

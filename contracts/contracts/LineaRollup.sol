@@ -280,7 +280,8 @@ contract LineaRollup is
       _blobSubmissionData[0].submissionData.firstBlockInData,
       blobFinalBlockNumber,
       _parentShnarf,
-      computedShnarf
+      computedShnarf,
+      blobSubmissionData.submissionData.finalStateRootHash
     );
   }
 
@@ -334,7 +335,8 @@ contract LineaRollup is
       _submissionData.firstBlockInData,
       _submissionData.finalBlockInData,
       _parentShnarf,
-      computedShnarf
+      computedShnarf,
+      _submissionData.finalStateRootHash
     );
   }
 

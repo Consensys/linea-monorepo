@@ -176,12 +176,14 @@ interface ILineaRollup {
    * @param endBlock The indexed L2 block number indicating which block the data ends on.
    * @param parentShnarf The parent shnarf for the data being submitted.
    * @param shnarf The indexed shnarf for the data being submitted.
+   * @param finalStateRootHash The L2 state root hash that the current blob submission ends on. NB: The last blob in the collection.
    */
   event DataSubmittedV3(
     uint256 indexed startBlock,
     uint256 indexed endBlock,
     bytes32 parentShnarf,
-    bytes32 indexed shnarf
+    bytes32 indexed shnarf,
+    bytes32 finalStateRootHash
   );
 
   /**
@@ -190,14 +192,14 @@ interface ILineaRollup {
    * @param endBlockNumber The indexed L2 block number indicating which block the finalization the data ends on.
    * @param shnarf The shnarf being set as currentFinalizedShnarf in the current finalization.
    * @param parentStateRootHash The indexed parent L2 state root hash that the current finalization starts from.
-   * @param finalRootHash The indexed L2 state root hash that the current finalization ends on.
+   * @param finalStateRootHash The indexed L2 state root hash that the current finalization ends on.
    */
   event DataFinalizedV3(
     uint256 indexed startBlockNumber,
     uint256 indexed endBlockNumber,
     bytes32 indexed shnarf,
     bytes32 parentStateRootHash,
-    bytes32 finalRootHash
+    bytes32 finalStateRootHash
   );
 
   /**
