@@ -57,10 +57,8 @@ const messagingTestSuite = (title: string) => {
 
           const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
           const messageHash = messageSentEvent.topics[3];
-
           console.log(`L1 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-          //Extra transactions to trigger anchoring
           console.log("Waiting for MessageClaimed event on L2.");
           const [messageClaimedEvent] = await waitForEvents(
             l2MessageService,

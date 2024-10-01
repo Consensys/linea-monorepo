@@ -9,7 +9,6 @@ import {
 } from "./utils/utils";
 import {getAndIncreaseFeeData} from "./utils/helpers";
 import {Wallet, ethers} from "ethers";
-// import { MessageEvent } from "./utils/types";
 
 const coordinatorRestartTestSuite = (title: string) => {
   describe(title, () => {
