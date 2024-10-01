@@ -21,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedCliOptions;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.plugins.rpc.RpcCliOptions;
-import net.consensys.linea.plugins.rpc.RpcConfiguration;
 
 /** In this class we put CLI options that are shared with other plugins not defined here */
 @Slf4j
@@ -41,10 +40,6 @@ public abstract class AbstractLineaSharedOptionsPlugin extends AbstractLineaOpti
   public LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration() {
     return (LineaL1L2BridgeSharedConfiguration)
         getConfigurationByKey(LineaL1L2BridgeSharedCliOptions.CONFIG_KEY).optionsConfig();
-  }
-
-  public RpcConfiguration rpcConfiguration() {
-    return (RpcConfiguration) getConfigurationByKey(RpcCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   @Override

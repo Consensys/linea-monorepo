@@ -20,6 +20,8 @@ import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.BesuServiceProvider;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.RequestLimiterDispatcher;
+import net.consensys.linea.plugins.rpc.RpcCliOptions;
+import net.consensys.linea.plugins.rpc.RpcConfiguration;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
@@ -52,9 +54,12 @@ public class LineCountsEndpointServicePlugin extends AbstractLineaSharedOptionsP
   public void beforeExternalServices() {
     super.beforeExternalServices();
 
+    final RpcConfiguration rpcConfiguration =
+        (RpcConfiguration) getConfigurationByKey(RpcCliOptions.CONFIG_KEY).optionsConfig();
+
     RequestLimiterDispatcher.setLimiterIfMissing(
         RequestLimiterDispatcher.SINGLE_INSTANCE_REQUEST_LIMITER_KEY,
-        rpcConfiguration().concurrentRequestsLimit());
+        rpcConfiguration.concurrentRequestsLimit());
     final RequestLimiter reqLimiter =
         RequestLimiterDispatcher.getLimiter(
             RequestLimiterDispatcher.SINGLE_INSTANCE_REQUEST_LIMITER_KEY);
