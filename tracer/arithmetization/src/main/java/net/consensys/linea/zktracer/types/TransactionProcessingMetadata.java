@@ -53,6 +53,8 @@ public class TransactionProcessingMetadata {
   final long baseFee;
 
   final boolean isDeployment;
+  int updatedRecipientAddressDeploymentNumberAtTransactionStart;
+  boolean updatedRecipientAddressDeploymentStatusAtTransactionStart;
 
   @Accessors(fluent = true)
   final boolean requiresEvmExecution;
@@ -132,32 +134,32 @@ public class TransactionProcessingMetadata {
       final int relativeTransactionNumber,
       final int absoluteTransactionNumber) {
     this.absoluteTransactionNumber = absoluteTransactionNumber;
-    this.relativeBlockNumber = block.blockNumber();
-    this.coinbase = block.coinbaseAddress();
-    this.baseFee = block.baseFee().toLong();
+    relativeBlockNumber = block.blockNumber();
+    coinbase = block.coinbaseAddress();
+    baseFee = block.baseFee().toLong();
 
-    this.besuTransaction = transaction;
+    besuTransaction = transaction;
     this.relativeTransactionNumber = relativeTransactionNumber;
 
-    this.isDeployment = transaction.getTo().isEmpty();
-    this.requiresEvmExecution = computeRequiresEvmExecution(world);
-    this.copyTransactionCallData = computeCopyCallData();
+    isDeployment = transaction.getTo().isEmpty();
+    requiresEvmExecution = computeRequiresEvmExecution(world);
+    copyTransactionCallData = computeCopyCallData();
 
-    this.initialBalance = getInitialBalance(world);
+    initialBalance = getInitialBalance(world);
 
     // Note: Besu's dataCost computation contains
     // - the 21_000 transaction cost (we deduce it)
     // - the contract creation cost in case of deployment (we set deployment to false to not add it)
-    this.dataCost =
+    dataCost =
         ZkTracer.gasCalculator.transactionIntrinsicGasCost(besuTransaction.getPayload(), false)
             - GAS_CONST_G_TRANSACTION;
-    this.accessListCost =
+    accessListCost =
         besuTransaction.getAccessList().map(ZkTracer.gasCalculator::accessListGasCost).orElse(0L);
-    this.initiallyAvailableGas = getInitiallyAvailableGas();
+    initiallyAvailableGas = getInitiallyAvailableGas();
 
-    this.effectiveRecipient = effectiveToAddress(besuTransaction);
+    effectiveRecipient = effectiveToAddress(besuTransaction);
 
-    this.effectiveGasPrice = computeEffectiveGasPrice();
+    effectiveGasPrice = computeEffectiveGasPrice();
   }
 
   public void setPreFinalisationValues(
@@ -323,5 +325,12 @@ public class TransactionProcessingMetadata {
         }
       }
     }
+  }
+
+  public void captureUpdatedInitialRecipientAddressDeploymentInfoAtTransactionStart(Hub hub) {
+    updatedRecipientAddressDeploymentNumberAtTransactionStart =
+        hub.deploymentNumberOf(effectiveRecipient);
+    updatedRecipientAddressDeploymentStatusAtTransactionStart =
+        hub.deploymentStatusOf(effectiveRecipient);
   }
 }

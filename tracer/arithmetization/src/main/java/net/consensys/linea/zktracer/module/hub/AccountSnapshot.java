@@ -15,11 +15,12 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import java.util.Optional;
 
-import com.google.common.base.Preconditions;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -141,9 +142,17 @@ public class AccountSnapshot {
         address, nonce, balance, isWarm, code, deploymentNumber, deploymentStatus);
   }
 
-  public AccountSnapshot wipe() {
+  public AccountSnapshot wipe(DeploymentInfo deploymentInfo) {
+    final boolean deploymentStatus = deploymentInfo.getDeploymentStatus(address);
+    checkArgument(!deploymentStatus);
     return new AccountSnapshot(
-        address, 0, Wei.of(0), isWarm, Bytecode.EMPTY, deploymentNumber + 1, false);
+        address,
+        0,
+        Wei.of(0),
+        isWarm,
+        Bytecode.EMPTY,
+        deploymentInfo.deploymentNumber(address),
+        deploymentStatus);
   }
 
   /**
@@ -154,7 +163,7 @@ public class AccountSnapshot {
    * @return {@code this} with decremented balance
    */
   public AccountSnapshot decrementBalanceBy(Wei quantity) {
-    Preconditions.checkState(
+    checkState(
         balance.greaterOrEqualThan(quantity),
         "Insufficient balance"
             + String.format("\n\t\tAddress: %s", address)
@@ -223,14 +232,13 @@ public class AccountSnapshot {
   }
 
   public AccountSnapshot setDeploymentInfo(DeploymentInfo deploymentInfo) {
-    this.deploymentNumber(deploymentInfo.deploymentNumber(address));
-    this.deploymentStatus(deploymentInfo.getDeploymentStatus(address));
+    deploymentNumber(deploymentInfo.deploymentNumber(address));
+    deploymentStatus(deploymentInfo.getDeploymentStatus(address));
     return this;
   }
 
   public AccountSnapshot deployByteCode(Bytecode code) {
-    Preconditions.checkState(
-        deploymentStatus, "Deployment status should be true before deploying byte code.");
+    checkState(deploymentStatus, "Deployment status should be true before deploying byte code.");
 
     return new AccountSnapshot(address, nonce, balance, true, code, deploymentNumber, false);
   }
