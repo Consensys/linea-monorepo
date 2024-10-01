@@ -11,9 +11,9 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import net.consensys.decodeHex
 import net.consensys.encodeHex
+import net.consensys.linea.BlockIntervals
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
-import net.consensys.zkevm.domain.BlockIntervals
 
 internal class ByteArrayDeserializer : JsonDeserializer<ByteArray>() {
   override fun deserialize(p: JsonParser, ctxt: DeserializationContext): ByteArray {

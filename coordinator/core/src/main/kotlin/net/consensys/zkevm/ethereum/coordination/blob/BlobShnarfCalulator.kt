@@ -2,10 +2,10 @@ package net.consensys.zkevm.ethereum.coordination.blob
 
 import net.consensys.decodeHex
 import net.consensys.encodeHex
+import net.consensys.linea.BlockIntervals
 import net.consensys.linea.blob.GoNativeBlobShnarfCalculator
 import net.consensys.linea.blob.GoNativeShnarfCalculatorFactory
 import net.consensys.linea.blob.ShnarfCalculatorVersion
-import net.consensys.zkevm.domain.BlockIntervals
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.util.Base64

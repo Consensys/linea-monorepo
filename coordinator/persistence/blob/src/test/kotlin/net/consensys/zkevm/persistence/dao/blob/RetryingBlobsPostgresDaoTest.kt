@@ -3,11 +3,11 @@ package net.consensys.zkevm.persistence.dao.blob
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import net.consensys.FakeFixedClock
+import net.consensys.linea.BlockIntervals
 import net.consensys.setFirstByteToZero
 import net.consensys.trimToSecondPrecision
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.domain.BlobStatus
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.createBlobRecord
 import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.junit.jupiter.api.BeforeEach

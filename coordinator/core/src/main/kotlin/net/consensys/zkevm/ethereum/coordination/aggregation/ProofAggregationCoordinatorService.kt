@@ -2,7 +2,9 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
+import net.consensys.linea.BlockIntervals
 import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.toBlockIntervalsString
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.coordinator.clients.L2MessageServiceClient
@@ -10,10 +12,8 @@ import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.domain.ProofsToAggregate
-import net.consensys.zkevm.domain.toBlockIntervalsString
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
 import net.consensys.zkevm.persistence.AggregationsRepository
 import org.apache.logging.log4j.LogManager

@@ -1,8 +1,10 @@
 package net.consensys.zkevm.domain
 
 import kotlinx.datetime.Instant
+import net.consensys.linea.BlockInterval
+import net.consensys.linea.BlockIntervals
 
-typealias BlobsToAggregate = BlockIntervalData
+typealias BlobsToAggregate = BlockInterval
 
 /**
  * Represents an Aggregation request to the Prover
@@ -17,12 +19,6 @@ data class ProofsToAggregate(
 ) : BlockInterval {
   override val startBlockNumber = compressionProofIndexes.first().startBlockNumber
   override val endBlockNumber = compressionProofIndexes.last().endBlockNumber
-
-  fun getStartEndBlockInterval(): BlockInterval {
-    val startBlockNumber = compressionProofIndexes.first().startBlockNumber
-    val endBlockNumber = compressionProofIndexes.last().endBlockNumber
-    return BlockInterval.between(startBlockNumber, endBlockNumber)
-  }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

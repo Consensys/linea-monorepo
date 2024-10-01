@@ -6,6 +6,7 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import kotlinx.datetime.Clock
 import net.consensys.FakeFixedClock
+import net.consensys.linea.BlockIntervals
 import net.consensys.linea.async.get
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.setFirstByteToZero
@@ -14,7 +15,6 @@ import net.consensys.trimToSecondPrecision
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobStatus
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.createBlobRecord
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException

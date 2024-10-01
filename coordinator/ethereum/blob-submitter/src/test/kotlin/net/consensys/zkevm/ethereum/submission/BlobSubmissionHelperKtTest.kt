@@ -1,7 +1,7 @@
 package net.consensys.zkevm.ethereum.submission
 
-import net.consensys.zkevm.domain.BlockIntervalData
-import net.consensys.zkevm.domain.BlockIntervals
+import net.consensys.linea.BlockIntervalData
+import net.consensys.linea.BlockIntervals
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
