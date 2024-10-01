@@ -24,7 +24,7 @@ export const MENU_ITEMS = [
   },
   {
     title: "Docs",
-    href: "https://docs.linea.build/",
+    href: "https://docs.linea.build/developers/guides/bridge/how-to-bridge-eth",
     external: true,
     Icon: DocsIcon,
   },
