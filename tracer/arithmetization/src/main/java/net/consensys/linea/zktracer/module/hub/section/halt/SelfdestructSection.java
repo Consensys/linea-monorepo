@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub.section.halt;
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.signals.Exceptions.OUT_OF_GAS_EXCEPTION;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -33,8 +34,6 @@ import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import net.consensys.linea.zktracer.types.TransactionProcessingMetadata.AttemptedSelfDestruct;
-import net.consensys.linea.zktracer.types.TransactionProcessingMetadata.EphemeralAccount;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
@@ -137,23 +136,22 @@ public class SelfdestructSection extends TraceSection
     }
 
     // Unexceptional case
-    Map<EphemeralAccount, List<AttemptedSelfDestruct>> unexceptionalSelfDestructMap =
+    final Map<EphemeralAccount, List<AttemptedSelfDestruct>> unexceptionalSelfDestructMap =
         hub.txStack().current().getUnexceptionalSelfDestructMap();
 
-    EphemeralAccount ephemeralAccount =
+    final EphemeralAccount ephemeralAccount =
         new EphemeralAccount(
             addressWhichMaySelfDestruct, selfdestructorAccountBefore.deploymentNumber());
 
     if (unexceptionalSelfDestructMap.containsKey(ephemeralAccount)) {
-      List<AttemptedSelfDestruct> attemptedSelfDestructs =
-          unexceptionalSelfDestructMap.get(ephemeralAccount);
-      attemptedSelfDestructs.add(new AttemptedSelfDestruct(hubStamp, hub.currentFrame()));
-      // We do not need to put again the list in the map, as it is a reference
+      unexceptionalSelfDestructMap
+          .get(ephemeralAccount)
+          .add(new AttemptedSelfDestruct(hubStamp, hub.currentFrame()));
     } else {
       unexceptionalSelfDestructMap.put(
           new EphemeralAccount(
               addressWhichMaySelfDestruct, selfdestructorAccountBefore.deploymentNumber()),
-          List.of(new AttemptedSelfDestruct(hubStamp, hub.currentFrame())));
+          new ArrayList<>(List.of(new AttemptedSelfDestruct(hubStamp, hub.currentFrame()))));
     }
 
     hub.defers().scheduleForPostRollback(this, hub.currentFrame());
