@@ -789,7 +789,7 @@ func TestTransactionNTrip(t *testing.T) {
 
 		txBack := encode.InjectFromAddressIntoR(txD, &from)
 		bb.Reset()
-		require.NoError(t, EncodeTxForCompression(txBack, &bb))
+		require.NoError(t, EncodeTxForCompression(txBack, &bb, encode.WithTxAddressGetter(encode.GetAddressFromR)))
 
 		bytesEncodedSecond := bb.Bytes()
 
