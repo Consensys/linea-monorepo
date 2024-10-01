@@ -20,10 +20,7 @@ RUN apt-get update \
 	&& apt-get install curl -y \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/* \
-  && mkdir -p /opt/consensys/linea/coordinator/libs/ \
-    /opt/consensys/linea/coordinator/logs \
-    /opt/consensys/linea/coordinator/tmp/prover/request \
-    /opt/consensys/linea/coordinator/tmp/prover/response
+  && mkdir -p /opt/consensys/linea/coordinator/libs/ /opt/consensys/linea/coordinator/logs /opt/consensys/linea/coordinator/tmp/prover/request /opt/consensys/linea/coordinator/tmp/prover/response
 
 COPY --from=builder libs/coordinator/lib/** libs/
 
