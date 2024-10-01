@@ -121,6 +121,7 @@ tasks.test.configure {
   useJUnitPlatform {
     excludeTags("nightly")
     excludeTags("replay")
+    excludeTags("weekly")
   }
 }
 
@@ -136,6 +137,7 @@ tasks.register("fastReplayTests", Test) {
   useJUnitPlatform {
     includeTags("replay")
     excludeTags("nightly")
+    excludeTags("weekly")
   }
 }
 
@@ -173,3 +175,19 @@ tasks.register("nightlyTests", Test) {
     includeTags("nightly")
   }
 }
+
+tasks.register("weeklyTests", Test) {
+  systemProperty("junit.jupiter.execution.parallel.enabled", true)
+  systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+  systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+  systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+  systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
+          System.getenv().getOrDefault("WEEKLY_TESTS_PARALLELISM", "1").toInteger())
+
+  useJUnitPlatform {
+    excludeTags("nightly")
+    excludeTags("replay")
+    includeTags("weekly")
+  }
+}
+
