@@ -19,7 +19,7 @@ func Splitter(size int) func(*wizard.CompiledIOP) {
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
 		comp.SubProvers.AppendToInner(comp.NumRounds()-1, func(run *wizard.ProverRuntime) {
-			for round := range comp.NumRounds() {
+			for round := range ctx.Splittings {
 				for bigCol := range ctx.Splittings[round].ByBigCol {
 					run.Columns.TryDel(bigCol)
 				}

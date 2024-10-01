@@ -36,7 +36,7 @@ func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
 		comp.SubProvers.AppendToInner(comp.NumRounds()-1, func(run *wizard.ProverRuntime) {
-			for round := range comp.NumRounds() {
+			for round := range ctx.Stitchings {
 				for subCol := range ctx.Stitchings[round].BySubCol {
 					run.Columns.TryDel(subCol)
 				}

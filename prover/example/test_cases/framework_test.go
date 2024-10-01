@@ -16,7 +16,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/splitter"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/stitcher"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -69,7 +70,8 @@ var (
 		innerproduct.Compile,
 	}
 	ARITHMETICS = compilationSuite{
-		splitter.SplitColumns(8),
+		stitcher.Stitcher(4, 8),
+		splitter.Splitter(8),
 		localcs.Compile,
 		globalcs.Compile,
 	}
