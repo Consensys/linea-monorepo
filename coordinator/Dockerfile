@@ -1,20 +1,24 @@
-FROM eclipse-temurin:21-jre-alpine AS builder
+FROM openjdk:21-jdk-slim AS builder
 
-RUN apk add unzip
+RUN apt-get update \
+  && apt-get install unzip -y \
+	&& apt-get clean \
+	&& rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p src libs
 
-COPY --from=zip ./coordinator.zip /src
+COPY --from=zip ./coordinator.zip /opt/consensys/linea/coordinator/libs/
 
 RUN unzip /src/coordinator.zip -d libs/
 
-FROM eclipse-temurin:21-jre-alpine
+FROM openjdk:21-jdk-slim
 
 WORKDIR /opt/consensys/linea/coordinator
 
-RUN apk update \
-    && apk add curl \
-    && rm -rf /var/cache/apk/* \
+RUN apt-get update \
+    && apt-get install curl -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /opt/consensys/linea/coordinator/libs/ \
     && mkdir -p /opt/consensys/linea/coordinator/logs \
     && mkdir -p /opt/consensys/linea/coordinator/tmp/prover/request \
