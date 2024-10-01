@@ -1,7 +1,7 @@
 import { BlockTag } from "@ethersproject/providers";
 import * as fs from "fs";
 import assert from "assert";
-import { Contract, ContractReceipt, PayableOverrides, Wallet, ethers } from "ethers";
+import {Contract, ContractReceipt, PayableOverrides, Wallet, ethers} from "ethers";
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageService, LineaRollup } from "../typechain";
@@ -92,7 +92,7 @@ export async function getEvents<TContract extends LineaRollup | L2MessageService
 export async function waitForEvents<TContract extends LineaRollup | L2MessageService, TEvent extends TypedEvent>(
   contract: TContract,
   eventFilter: TypedEventFilter<TEvent>,
-  pollingInterval: number,
+  pollingInterval: number = 500,
   fromBlock?: BlockTag,
   toBlock?: BlockTag,
   criteria?: (events: TEvent[]) => Promise<TEvent[]>,
@@ -168,6 +168,24 @@ export async function sendXTransactions(
     const tx = await signer.sendTransaction(transactionRequest);
     await tx.wait();
   }
+}
+
+export async function sendTransactionsToGenerateTrafficWithInterval(
+  signer: Wallet,
+  pollingInterval: number = 1000,
+) {
+  const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await signer.provider.getFeeData());
+  const transactionRequest = {
+    to: signer.address,
+    value: ethers.utils.parseEther("0.000001"),
+    maxPriorityFeePerGas: maxPriorityFeePerGas,
+    maxFeePerGas: maxFeePerGas,
+  }
+
+  return setInterval(async function () {
+    const tx = await signer.sendTransaction(transactionRequest);
+    await tx.wait();
+  }, pollingInterval);
 }
 
 export function getMessageSentEventFromLogs<T extends Contract>(

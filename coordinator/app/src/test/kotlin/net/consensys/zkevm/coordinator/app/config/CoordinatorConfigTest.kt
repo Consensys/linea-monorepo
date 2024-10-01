@@ -400,7 +400,7 @@ class CoordinatorConfigTest {
     )
 
     private val messageAnchoringServiceConfig = MessageAnchoringServiceConfig(
-      pollingInterval = Duration.parse("PT10S"),
+      pollingInterval = Duration.parse("PT1S"),
       maxMessagesToAnchor = 100U
     )
 
@@ -470,7 +470,7 @@ class CoordinatorConfigTest {
       gasPriceCapCalculation = L1DynamicGasPriceCapServiceConfig.GasPriceCapCalculation(
         adjustmentConstant = 25U,
         blobAdjustmentConstant = 25U,
-        finalizationTargetMaxDelay = Duration.parse("PT2M"),
+        finalizationTargetMaxDelay = Duration.parse("PT30S"),
         gasFeePercentileWindow = Duration.parse("PT1M"),
         gasFeePercentileWindowLeeway = Duration.parse("PT10S"),
         gasFeePercentile = 10.0,
