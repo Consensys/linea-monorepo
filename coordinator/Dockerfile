@@ -2,7 +2,7 @@ FROM eclipse-temurin:21-jre-alpine AS builder
 
 RUN mkdir -p src libs
 
-COPY ./app/build/distributions/coordinator.zip /src
+COPY --from=zip ./coordinator.zip /src
 
 RUN unzip /src/coordinator.zip -d libs/
 
