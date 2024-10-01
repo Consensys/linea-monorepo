@@ -13,10 +13,10 @@ import {Wallet, ethers} from "ethers";
 const coordinatorRestartTestSuite = (title: string) => {
   describe(title, () => {
     it("When the coordinator restarts it should resume blob submission and finalization", async () => {
-      const l2Account0 = new Wallet(L2_ACCOUNT_0_PRIVATE_KEY, l2Provider);
+      const l2AccountForLiveness = new Wallet(L2_ACCOUNT_1_PRIVATE_KEY, l2Provider);
 
       console.log("Moving the L2 chain forward to trigger conflation...");
-      const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2Account0)
+      const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness);
 
       // await for a finalization to happen on L1
       await Promise.all([
