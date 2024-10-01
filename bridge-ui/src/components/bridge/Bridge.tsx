@@ -196,7 +196,7 @@ const Bridge = () => {
           {!isConnected && <ConnectButton fullWidth />}
         </div>
       </form>
-      {token && networkLayer !== NetworkLayer.UNKNOWN && token[networkLayer] && (
+      {isConnected && token && networkLayer !== NetworkLayer.UNKNOWN && token[networkLayer] && (
         <div className="mt-4 px-2">
           <ERC20Stepper />
         </div>

@@ -29,7 +29,7 @@ export const wagmiConfig = defaultWagmiConfig({
       projectId: config.walletConnectId,
       showQrModal: false,
     }),
-    injected({ shimDisconnect: true, target: "metaMask" }),
+    injected({ shimDisconnect: true }),
     coinbaseWallet({
       appName: "Linea Bridge",
     }),

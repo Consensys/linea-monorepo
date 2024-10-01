@@ -170,6 +170,11 @@ const useBridge = (): UseBridge => {
         return false;
       }
 
+      const amountInteger = parseFloat(amount);
+      if (isNaN(amountInteger) || amountInteger === 0) {
+        return false;
+      }
+
       // Check form errors
       if (!isEmptyObject(errors)) {
         return false;

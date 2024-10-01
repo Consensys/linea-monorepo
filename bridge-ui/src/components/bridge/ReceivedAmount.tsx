@@ -26,18 +26,25 @@ export function ReceivedAmount({ receivedAmount }: ReceivedAmountProps) {
       {isConnected && (
         <>
           <span className="text-2xl font-semibold text-white">
-            {formatBalance(receivedAmount) || 0} {token?.symbol}
+            {(parseFloat(receivedAmount || "0") > 0 && formatBalance(receivedAmount)) || 0} {token?.symbol}
           </span>
           {networkType === NetworkType.MAINNET && (
             <span className="label-text flex items-center">
-              <PiApproximateEqualsBold />
-              {tokenPrices?.[tokenAddress]?.usd
-                ? (Number(receivedAmount) * tokenPrices?.[tokenAddress]?.usd).toLocaleString("en-US", {
+              {receivedAmount &&
+              parseFloat(receivedAmount) > 0 &&
+              tokenPrices?.[tokenAddress.toLowerCase()]?.usd &&
+              tokenPrices?.[tokenAddress.toLowerCase()]?.usd > 0 ? (
+                <>
+                  <PiApproximateEqualsBold />
+                  {(Number(receivedAmount) * tokenPrices?.[tokenAddress.toLowerCase()]?.usd).toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",
                     maximumFractionDigits: 4,
-                  })
-                : "$0.00"}
+                  })}
+                </>
+              ) : (
+                ""
+              )}
             </span>
           )}
         </>

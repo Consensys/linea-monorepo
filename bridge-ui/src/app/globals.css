@@ -13,6 +13,13 @@ body {
 }
 
 @layer components {
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active{
+    -webkit-box-shadow: 0 0 0 30px #2D2D2D inset !important;
+  }
+
   .container {
     @apply mx-auto px-4;
     max-width: 1280px;
@@ -34,8 +41,20 @@ body {
     border-radius: 0;
   }
 
-  .tooltip:after {
+  .tooltip-top::after {
     border-color: #505050 transparent transparent transparent;
+  }
+  
+  .tooltip-right::after {
+    border-color: transparent #505050 transparent transparent;
+  }
+  
+  .tooltip-bottom::after {
+    border-color: transparent transparent #505050 transparent;
+  }
+  
+  .tooltip-left::after {
+    border-color: transparent transparent transparent #505050;
   }
 
   .tooltip:before {

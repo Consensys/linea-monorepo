@@ -1,12 +1,13 @@
+import { useFormContext } from "react-hook-form";
+import { parseUnits } from "viem";
+import { useAccount, useBalance } from "wagmi";
+import { MdInfo } from "react-icons/md";
 import { NetworkLayer } from "@/config";
 import { useBridge } from "@/hooks";
 import { useChainStore } from "@/stores/chainStore";
-import { useFormContext } from "react-hook-form";
 import ApproveERC20 from "./ApproveERC20";
-import { Button } from "../../ui";
-import { useAccount, useBalance } from "wagmi";
+import { Button, Tooltip } from "../../ui";
 import { cn } from "@/utils/cn";
-import { parseUnits } from "viem";
 
 type SubmitProps = {
   isLoading: boolean;
@@ -18,7 +19,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
   const { watch, formState } = useFormContext();
   const { errors } = formState;
 
-  const [watchAmount, watchAllowance, watchClaim] = watch(["amount", "allowance", "claim"]);
+  const [watchAmount, watchAllowance, watchClaim, watchBalance] = watch(["amount", "allowance", "claim", "balance"]);
 
   // Context
   const { token, networkLayer, toChainId } = useChainStore((state) => ({
@@ -38,18 +39,22 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
     },
   });
 
+  const destinationBalanceTooLow =
+    watchClaim === "manual" && destinationChainBalance && destinationChainBalance.value === 0n;
+
+  const originChainBalanceTooLow =
+    token !== null &&
+    (errors?.amount?.message !== undefined ||
+      parseUnits(watchBalance, token.decimals) < parseUnits(watchAmount, token.decimals));
+
   const isERC20Token = token && networkLayer !== NetworkLayer.UNKNOWN && token[networkLayer];
-  const isButtonDisabled = !bridgeEnabled(watchAmount, watchAllowance || BigInt(0), errors);
+  const isButtonDisabled = !bridgeEnabled(watchAmount, watchAllowance || BigInt(0), errors) || originChainBalanceTooLow;
   const isETHTransfer = token && token.symbol === "ETH";
   const showApproveERC20 =
     !isETHTransfer &&
     (!watchAllowance || (token?.decimals && watchAllowance < parseUnits(watchAmount, token.decimals)));
 
-  // TODO: refactor this
-  const destinationBalanceTooLow =
-    watchClaim === "manual" && destinationChainBalance && destinationChainBalance.value === 0n;
-
-  const buttonText = errors?.amount?.message
+  const buttonText = originChainBalanceTooLow
     ? "Insufficient balance"
     : destinationBalanceTooLow
       ? "Bridge anyway"
@@ -65,18 +70,38 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
       loading={isLoading || isWaitingLoading}
     >
       {buttonText}
+      {destinationBalanceTooLow && (
+        <Tooltip
+          text="You have selected Manual Claim and do not have ETH on the recipient chain to pay for gas. Click this to Bridge Anyway"
+          className="z-[99] normal-case"
+          position="bottom"
+        >
+          <MdInfo />
+        </Tooltip>
+      )}
     </Button>
   ) : showApproveERC20 && isERC20Token ? (
     <ApproveERC20 />
   ) : (
     <Button
       id="submit-erc-btn"
-      className="w-full text-lg font-normal"
+      className={cn("w-full text-lg font-normal", {
+        "btn-secondary": destinationBalanceTooLow,
+      })}
       disabled={isButtonDisabled}
       loading={isLoading || isWaitingLoading}
       type="submit"
     >
       {buttonText}
+      {destinationBalanceTooLow && (
+        <Tooltip
+          text="You have selected Manual Claim and do not have ETH on the recipient chain to pay for gas. Click this to Bridge Anyway"
+          className="z-[100] normal-case"
+          position="top"
+        >
+          <MdInfo />
+        </Tooltip>
+      )}
     </Button>
   );
 }

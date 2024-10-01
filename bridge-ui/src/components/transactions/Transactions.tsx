@@ -7,7 +7,7 @@ import { TransactionHistory } from "@/models/history";
 import { formatDate, fromUnixTime } from "date-fns";
 import { NoTransactions } from "./NoTransaction";
 import { useFetchHistory } from "@/hooks";
-import { Button } from "../ui";
+import ReloadHistoryButton from "./ReloadHistoryButton";
 
 const groupByDay = (transactions: TransactionHistory[]): Record<string, TransactionHistory[]> => {
   return transactions.reduce(
@@ -52,24 +52,6 @@ function SkeletonLoader() {
           ))}
         </div>
       ))}
-    </div>
-  );
-}
-
-function ReloadHistoryButton({ clearHistory }: { clearHistory: () => void }) {
-  return (
-    <div className="flex justify-end">
-      <Button
-        id="reload-history-btn"
-        variant="link"
-        size="sm"
-        className="font-light normal-case text-gray-200 no-underline opacity-60 hover:text-primary hover:opacity-100"
-        onClick={() => {
-          clearHistory();
-        }}
-      >
-        Reload history
-      </Button>
     </div>
   );
 }

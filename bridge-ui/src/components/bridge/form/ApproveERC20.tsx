@@ -9,7 +9,6 @@ import { useSwitchNetwork, useAllowance, useApprove } from "@/hooks";
 import { Transaction } from "@/models";
 import { useChainStore } from "@/stores/chainStore";
 import { cn } from "@/utils/cn";
-import { useTokenBalance } from "@/hooks/useTokenBalance";
 
 export type BridgeForm = {
   amount: string;
@@ -22,19 +21,14 @@ export default function Approve() {
 
   // Form
   const { getValues, setValue, watch } = useFormContext();
-  const watchAmount = watch("amount", false);
-  const watchBalance = watch("balance", false);
+  const [watchAmount, watchBalance] = watch(["amount", "balance"]);
 
   // Context
-  const { token, fromChain, tokenBridgeAddress, tokenAddress } = useChainStore((state) => ({
-    tokenAddress: state.token?.[state.networkLayer],
+  const { token, fromChain, tokenBridgeAddress } = useChainStore((state) => ({
     token: state.token,
     fromChain: state.fromChain,
     tokenBridgeAddress: state.tokenBridgeAddress,
   }));
-
-  // Hooks
-  const { balance } = useTokenBalance(tokenAddress, token?.decimals);
 
   const { switchChain } = useSwitchNetwork(fromChain?.id);
   const { allowance, refetchAllowance } = useAllowance();
@@ -43,7 +37,8 @@ export default function Approve() {
   // Wagmi
   const { address } = useAccount();
 
-  const hasInsufficientBalance = watchAmount && balance < watchAmount;
+  const hasInsufficientBalance =
+    watchAmount && token && parseUnits(watchAmount, token.decimals) > parseUnits(watchBalance, token.decimals);
 
   const {
     isLoading: isWaitingLoading,
@@ -101,12 +96,22 @@ export default function Approve() {
     }
   }, [watchAmount, allowance, token, setValue]);
 
-  // Click on approve
   const approveHandler = async () => {
     await switchChain();
+
     if (token) {
       const amount = getValues("amount");
-      const amountToApprove = parseUnits(amount, token.decimals);
+      const amountBigInt = parseUnits(amount, token.decimals);
+      let amountToApprove = amountBigInt;
+
+      if (allowance && allowance > 0n) {
+        if (allowance >= amountBigInt) {
+          amountToApprove = allowance - amountBigInt;
+        } else {
+          amountToApprove = amountBigInt - allowance;
+        }
+      }
+
       writeApprove(amountToApprove, tokenBridgeAddress);
     }
   };
