@@ -35,6 +35,7 @@ import net.consensys.linea.zktracer.module.hub.defer.PostConflationDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
+import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -171,11 +172,10 @@ public final class AccountFragment
   @Override
   public void resolvePostTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
-    final Map<TransactionProcessingMetadata.EphemeralAccount, Integer> effectiveSelfDestructMap =
+    final Map<EphemeralAccount, Integer> effectiveSelfDestructMap =
         transactionProcessingMetadata.getEffectiveSelfDestructMap();
-    final TransactionProcessingMetadata.EphemeralAccount ephemeralAccount =
-        new TransactionProcessingMetadata.EphemeralAccount(
-            oldState.address(), oldState.deploymentNumber());
+    final EphemeralAccount ephemeralAccount =
+        new EphemeralAccount(oldState.address(), oldState.deploymentNumber());
     if (effectiveSelfDestructMap.containsKey(ephemeralAccount)) {
       final int selfDestructTime = effectiveSelfDestructMap.get(ephemeralAccount);
       markedForSelfDestruct = hubStamp > selfDestructTime;
