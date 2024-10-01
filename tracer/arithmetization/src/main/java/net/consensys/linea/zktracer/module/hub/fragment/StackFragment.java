@@ -27,7 +27,6 @@ import java.util.function.Function;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.DeploymentExceptions;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.State;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -53,7 +52,6 @@ public final class StackFragment implements TraceFragment {
   private final Stack stack;
   @Getter private final List<StackOperation> stackOps;
   private final short exceptions;
-  @Setter private DeploymentExceptions contextExceptions;
   private final long staticGas;
   @Setter public boolean hashInfoFlag;
   private EWord hashInfoKeccak = EWord.ZERO;
@@ -71,7 +69,6 @@ public final class StackFragment implements TraceFragment {
       List<StackOperation> stackOps,
       short exceptions,
       AbortingConditions aborts,
-      DeploymentExceptions contextExceptions,
       GasProjection gp,
       boolean isDeploying,
       boolean willRevert,
@@ -79,7 +76,6 @@ public final class StackFragment implements TraceFragment {
     this.stack = stack;
     this.stackOps = stackOps;
     this.exceptions = exceptions;
-    this.contextExceptions = contextExceptions;
     this.opCode = stack.getCurrentOpcodeData().mnemonic();
     this.hashInfoFlag =
         switch (this.opCode) {
@@ -152,7 +148,6 @@ public final class StackFragment implements TraceFragment {
         stackOperations,
         exceptions,
         aborts,
-        DeploymentExceptions.empty(),
         gp,
         isDeploying,
         willRevert,

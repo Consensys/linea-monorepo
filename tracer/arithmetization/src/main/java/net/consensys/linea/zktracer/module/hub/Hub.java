@@ -51,7 +51,6 @@ import net.consensys.linea.zktracer.module.gas.Gas;
 import net.consensys.linea.zktracer.module.hub.defer.DeferRegistry;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.StackFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.section.AccountSection;
 import net.consensys.linea.zktracer.module.hub.section.CallDataLoadSection;
 import net.consensys.linea.zktracer.module.hub.section.ContextSection;
@@ -663,14 +662,6 @@ public class Hub implements Module {
 
     exitDeploymentFromDeploymentInfoPov(frame);
 
-    // TODO: why only do this at positive depth ?
-    if (frame.getDepth() > 0) {
-
-      final DeploymentExceptions contextExceptions =
-          DeploymentExceptions.fromFrame(this.currentFrame(), frame);
-      this.currentTraceSection().setContextExceptions(contextExceptions);
-    }
-
     // We take a snapshot before exiting the transaction
     if (frame.getDepth() == 0) {
       final long leftOverGas = frame.getRemainingGas();
@@ -924,16 +915,13 @@ public class Hub implements Module {
       if (line.needsResult()) {
         Bytes result = Bytes.EMPTY;
         // Only pop from the stack if no exceptions have been encountered
+        // TODO: when we call this from contextReenter, pch.exceptions is not the one from the
+        // caller/creater ?
         if (Exceptions.none(pch.exceptions())) {
           result = frame.getStackItem(0).copy();
         }
 
         // This works because we are certain that the stack chunks are the first.
-        // TODO: the below check is useful in any case (to avoid unchecked cast)
-        //  but is this check hiding some underlying issue somewhere else?
-        //  TestRecursiveCallsWithByteCode was failing before this check
-        TraceFragment fragment = section.fragments().get(i);
-        checkArgument(fragment instanceof StackFragment);
         ((StackFragment) section.fragments().get(i))
             .stackOps()
             .get(line.resultColumn() - 1)
