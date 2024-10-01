@@ -7,7 +7,7 @@ RUN apt-get update \
 
 RUN mkdir -p src libs
 
-COPY --from=zip ./coordinator.zip /opt/consensys/linea/coordinator/libs/
+COPY --from=zip ./coordinator.zip /src
 
 RUN unzip /src/coordinator.zip -d libs/
 
