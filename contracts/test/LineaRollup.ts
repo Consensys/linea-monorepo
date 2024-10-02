@@ -2360,7 +2360,7 @@ describe("Linea Rollup contract", () => {
       const NewLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, NewLineaRollupFactory);
       const upgradedContract = await newLineaRollup.waitForDeployment();
-      upgradedContract.reinitializeLineaRollupV6(
+      await upgradedContract.reinitializeLineaRollupV6(
         [
           { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
           { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },

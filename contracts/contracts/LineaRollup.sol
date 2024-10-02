@@ -206,7 +206,7 @@ contract LineaRollup is
     BlobSubmissionData[] calldata _blobSubmissionData,
     bytes32 _parentShnarf,
     bytes32 _finalBlobShnarf
-  ) external whenTypeAndGeneralNotPaused(BLOB_SUBMISSION_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.BLOB_SUBMISSION) onlyRole(OPERATOR_ROLE) {
     uint256 blobSubmissionLength = _blobSubmissionData.length;
 
     if (blobSubmissionLength == 0) {
@@ -290,7 +290,7 @@ contract LineaRollup is
     SubmissionDataV2 calldata _submissionData,
     bytes32 _parentShnarf,
     bytes32 _expectedShnarf
-  ) external whenTypeAndGeneralNotPaused(CALLDATA_SUBMISSION_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.CALLDATA_SUBMISSION) onlyRole(OPERATOR_ROLE) {
     if (_submissionData.compressedData.length == 0) {
       revert EmptySubmissionData();
     }
@@ -465,7 +465,7 @@ contract LineaRollup is
     bytes calldata _aggregatedProof,
     uint256 _proofType,
     FinalizationDataV2 calldata _finalizationData
-  ) external whenTypeAndGeneralNotPaused(FINALIZATION_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.FINALIZATION) onlyRole(OPERATOR_ROLE) {
     if (_aggregatedProof.length == 0) {
       revert ProofIsEmpty();
     }

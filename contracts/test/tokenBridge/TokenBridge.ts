@@ -1008,10 +1008,10 @@ describe("TokenBridge", function () {
       expect(await upgradedTokenBridge.isPaused(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE)).to.be.false;
 
       await upgradedTokenBridge.connect(owner).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
-      expect(await upgradedTokenBridge.isPaused(7)).to.be.true;
+      expect(await upgradedTokenBridge.isPaused(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE)).to.be.true;
 
       await upgradedTokenBridge.connect(owner).unPauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
-      expect(await upgradedTokenBridge.isPaused(7)).to.be.false;
+      expect(await upgradedTokenBridge.isPaused(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE)).to.be.false;
     });
   });
 });
