@@ -18,12 +18,11 @@ internal class Adapter(
   init {
     delegate.Init()
 
-    val paths = 
-      dictionaries.map{path -> path.toString()}.  // TODO more concise idiom?
-      joinToString(":")
+    val paths = dictionaries.map { path -> path.toString() } // TODO more concise idiom?
+      .joinToString(":")
 
     if (delegate.LoadDictionaries(paths) != dictionaries.size) {
-      throw DecompressionException("Failed to load dictionaries '${paths}', error='${delegate.Error()}'")
+      throw DecompressionException("Failed to load dictionaries '$paths', error='${delegate.Error()}'")
     }
   }
 
