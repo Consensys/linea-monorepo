@@ -24,14 +24,12 @@ import java.util.Optional;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.plugins.AbstractLineaOptionsPlugin;
+import net.consensys.linea.plugins.AbstractLineaPrivateOptionsPlugin;
 import net.consensys.linea.plugins.BesuServiceProvider;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import net.consensys.linea.plugins.exception.TraceOutputException;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.RequestLimiterDispatcher;
-import net.consensys.linea.plugins.rpc.RpcCliOptions;
-import net.consensys.linea.plugins.rpc.RpcConfiguration;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
@@ -44,7 +42,7 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
  */
 @Slf4j
 @AutoService(BesuPlugin.class)
-public class TracesEndpointServicePlugin extends AbstractLineaOptionsPlugin {
+public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlugin {
   private BesuContext besuContext;
   private RpcEndpointService rpcEndpointService;
 
@@ -83,12 +81,9 @@ public class TracesEndpointServicePlugin extends AbstractLineaOptionsPlugin {
               .formatted(TracesEndpointCliOptions.CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH));
     }
 
-    final RpcConfiguration rpcConfiguration =
-        (RpcConfiguration) getConfigurationByKey(RpcCliOptions.CONFIG_KEY).optionsConfig();
-
     RequestLimiterDispatcher.setLimiterIfMissing(
         RequestLimiterDispatcher.SINGLE_INSTANCE_REQUEST_LIMITER_KEY,
-        rpcConfiguration.concurrentRequestsLimit());
+        rpcConfiguration().concurrentRequestsLimit());
     final RequestLimiter reqLimiter =
         RequestLimiterDispatcher.getLimiter(
             RequestLimiterDispatcher.SINGLE_INSTANCE_REQUEST_LIMITER_KEY);
