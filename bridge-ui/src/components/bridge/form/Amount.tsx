@@ -122,14 +122,20 @@ export function Amount() {
       />
       {networkType === NetworkType.MAINNET && (
         <span className="label-text flex items-center justify-end">
-          <PiApproximateEqualsBold />
-          {amount && tokenPrices?.[tokenAddress]?.usd
-            ? `${(Number(amount) * tokenPrices?.[tokenAddress]?.usd).toLocaleString("en-US", {
+          {amount &&
+          tokenPrices?.[tokenAddress.toLowerCase()]?.usd &&
+          tokenPrices?.[tokenAddress.toLowerCase()]?.usd > 0 ? (
+            <>
+              <PiApproximateEqualsBold />
+              {(Number(amount) * tokenPrices?.[tokenAddress.toLowerCase()]?.usd).toLocaleString("en-US", {
                 style: "currency",
                 currency: "USD",
                 maximumFractionDigits: 4,
-              })}`
-            : "$0.00"}
+              })}
+            </>
+          ) : (
+            ""
+          )}
         </span>
       )}
     </>
