@@ -112,6 +112,8 @@ export const INITIAL_MIGRATION_BLOCK = 0;
 export const ONE_DAY_IN_SECONDS = 86_400;
 export const INITIAL_WITHDRAW_LIMIT = ethers.parseEther("5");
 export const GENESIS_L2_TIMESTAMP = 0;
+export const DEFAULT_LAST_FINALIZED_TIMESTAMP = 1683325137n;
+export const SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 export const TEST_PUBLIC_VERIFIER_INDEX = 0;
 
 export const MESSAGE_VALUE_1ETH = ethers.parseEther("1");
