@@ -4,7 +4,6 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import net.consensys.encodeHex
 import net.consensys.linea.contract.Web3JLogsClient
 import net.consensys.linea.staterecover.clients.smartcontract.DataFinalizedV3
 import net.consensys.linea.staterecover.clients.smartcontract.DataSubmittedV3
@@ -50,7 +49,7 @@ class LineaSubmissionEventsClientIntTest {
     // load files from FS while smc deploy
     loadBlobsAndAggregations(
       blobsResponsesDir = "$testDataDir/compression/responses",
-      aggregationsResponsesDir = "$testDataDir/aggregation/responses",
+      aggregationsResponsesDir = "$testDataDir/aggregation/responses"
     )
       .let { (blobs, aggregations) ->
         this.blobs = blobs.sortedBy { it.startBlockNumber }

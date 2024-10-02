@@ -20,10 +20,18 @@ class LineaSubmissionEventsClientWeb3jIpml(
   private val smartContractAddress: String
 ) : LineaRollupSubmissionEventsClient {
 
+  override fun findDataFinalizedEventContainingBlock(blockNumber: ULong): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
+    TODO("Not yet implemented")
+  }
+
+  override fun findDataFinalizedEventByStartBlockNumber(blockNumber: ULong): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
+    TODO("Not yet implemented")
+  }
+
   override fun findDataSubmittedV3EventsUtilNextFinalization(
-    fromStartL2BlockNumberInclusive: ULong
+    l2StartBlockNumberInclusive: ULong
   ): SafeFuture<FinalizationAndDataEventsV3?> {
-    return findDataFinalizedV3Event(startBlockNumber = fromStartL2BlockNumberInclusive)
+    return findDataFinalizedV3Event(startBlockNumber = l2StartBlockNumberInclusive)
       .thenCompose { finalizationEvent ->
         finalizationEvent
           ?.let {

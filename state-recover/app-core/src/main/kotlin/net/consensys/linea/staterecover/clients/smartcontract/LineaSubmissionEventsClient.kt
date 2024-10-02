@@ -2,28 +2,31 @@ package net.consensys.linea.staterecover.clients.smartcontract
 
 import net.consensys.eth.EthLog
 import net.consensys.eth.EthLogEvent
-import net.consensys.toULong
+import net.consensys.linea.BlockInterval
 import net.consensys.tuweni.bytes.sliceAsBytes32
+import net.consensys.tuweni.bytes.toULong
 import org.apache.tuweni.bytes.Bytes32
-import org.apache.tuweni.units.bigints.UInt256
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 data class DataSubmittedV3(
-  val startBlockNumber: ULong,
-  val endBlockNumber: ULong,
+  override val startBlockNumber: ULong,
+  override val endBlockNumber: ULong,
   val parentShnarf: Bytes32,
-  val shnarf: Bytes32
-) {
+  val shnarf: Bytes32,
+  val finalStateRootHash: Bytes32
+) : BlockInterval {
   constructor(
     startBlockNumber: ULong,
     endBlockNumber: ULong,
     parentShnarf: ByteArray,
-    shnarf: ByteArray
+    shnarf: ByteArray,
+    finalStateRootHash: Bytes32
   ) : this(
     startBlockNumber,
     endBlockNumber,
     Bytes32.wrap(parentShnarf),
-    Bytes32.wrap(shnarf)
+    Bytes32.wrap(shnarf),
+    Bytes32.wrap(finalStateRootHash)
   )
 
   companion object {
@@ -33,12 +36,14 @@ data class DataSubmittedV3(
       //  uint256 indexed endBlock,
       //  bytes32 parentShnarf,
       //  bytes32 indexed shnarf)
+      val dataBytes = ethLog.data.toArray()
       return EthLogEvent(
         event = DataSubmittedV3(
-          startBlockNumber = UInt256.fromBytes(ethLog.topics[1]).toBigInteger().toULong(),
-          endBlockNumber = UInt256.fromBytes(ethLog.topics[2]).toBigInteger().toULong(),
-          parentShnarf = ethLog.data.toArray().sliceAsBytes32(sliceIndex = 0),
-          shnarf = ethLog.topics[3]
+          startBlockNumber = ethLog.topics[1].toULong(),
+          endBlockNumber = ethLog.topics[2].toULong(),
+          parentShnarf = dataBytes.sliceAsBytes32(sliceIndex = 0),
+          shnarf = ethLog.topics[3],
+          finalStateRootHash = dataBytes.sliceAsBytes32(sliceIndex = 1)
         ),
         log = ethLog
       )
@@ -47,12 +52,12 @@ data class DataSubmittedV3(
 }
 
 data class DataFinalizedV3(
-  val startBlockNumber: ULong,
-  val endBlockNumber: ULong,
+  override val startBlockNumber: ULong,
+  override val endBlockNumber: ULong,
   val snarf: Bytes32,
   val parentStateRootHash: Bytes32,
   val finalStateRootHash: Bytes32
-) {
+) : BlockInterval {
   companion object {
     fun fromEthLog(ethLog: EthLog): EthLogEvent<DataFinalizedV3> {
       /** event DataFinalizedV3(
@@ -65,8 +70,8 @@ data class DataFinalizedV3(
       val dataBytes = ethLog.data.toArray()
       return EthLogEvent(
         event = DataFinalizedV3(
-          startBlockNumber = UInt256.fromBytes(ethLog.topics[1]).toBigInteger().toULong(),
-          endBlockNumber = UInt256.fromBytes(ethLog.topics[2]).toBigInteger().toULong(),
+          startBlockNumber = ethLog.topics[1].toULong(),
+          endBlockNumber = ethLog.topics[2].toULong(),
           snarf = ethLog.topics[3],
           parentStateRootHash = dataBytes.sliceAsBytes32(sliceIndex = 0),
           finalStateRootHash = dataBytes.sliceAsBytes32(sliceIndex = 1)
@@ -83,7 +88,19 @@ data class FinalizationAndDataEventsV3(
 )
 
 interface LineaRollupSubmissionEventsClient {
+  fun findDataFinalizedEventByStartBlockNumber(
+    blockNumber: ULong
+  ): SafeFuture<EthLogEvent<DataFinalizedV3>?>
+
+//  fun findDataFinalizedEventByEndBlockNumber(
+//    blockNumber: ULong
+//  ): SafeFuture<EthLogEvent<DataFinalizedV3>?>
+
+  fun findDataFinalizedEventContainingBlock(
+    blockNumber: ULong
+  ): SafeFuture<EthLogEvent<DataFinalizedV3>?>
+
   fun findDataSubmittedV3EventsUtilNextFinalization(
-    fromStartL2BlockNumberInclusive: ULong
+    l2StartBlockNumberInclusive: ULong
   ): SafeFuture<FinalizationAndDataEventsV3?>
 }
