@@ -16,10 +16,15 @@ internal class Adapter(
   dictionaries: List<Path>
 ) : BlobDecompressor {
   init {
-    dictionaries.forEach { dict ->
-      delegate.LoadDictionary(dict.toString())
-    }
     delegate.Init()
+
+    val paths = 
+      dictionaries.map{path -> path.toString()}.  // TODO more concise idiom?
+      joinToString(":")
+
+    if (delegate.LoadDictionaries(paths) != dictionaries.size) {
+      throw DecompressionException("Failed to load dictionaries '${paths}', error='${delegate.Error()}'")
+    }
   }
 
   override fun decompress(blob: ByteArray, out: ByteArray): Int {
@@ -34,19 +39,20 @@ internal class Adapter(
 internal interface GoNativeBlobDecompressorJnaBinding {
 
   /**
-   * Init initializes the Decompressor.
+   * Init initializes the Decompressor. Must be run before anything else.
    */
   fun Init()
 
   /**
-   * LoadDictionary attempts to cache the dictionary from the given path. Returns
-   * true if the dictionary is successfully loaded, false if not, in which case Error() will
+   * LoadDictionaries attempts to cache dictionaries from given paths, separated by colons,
+   * e.g. "../compressor_dict.bin:./other_dict"
+   * Returns the number of dictionaries successfully loaded, and -1 in case of failure, in which case Error() will
    * return a description of the error.
    *
-   * @param dictPath a colon-separated list of paths to dictionaries, to be loaded into the decompressor
+   * @param dictPaths a colon-separated list of paths to dictionaries, to be loaded into the decompressor
    * @return the number of dictionaries loaded if successful, -1 if not.
    */
-  fun LoadDictionary(dictPath: String): Int
+  fun LoadDictionaries(dictPaths: String): Int
 
   /**
    * Decompress a blob b and writes the resulting blocks in out, serialized in the format of
