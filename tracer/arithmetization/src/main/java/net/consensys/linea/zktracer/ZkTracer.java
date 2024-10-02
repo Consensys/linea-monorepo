@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
@@ -59,6 +60,8 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   private static final Map<String, Integer> spillings;
 
+  public final BigInteger chainId;
+
   static {
     try {
       // Load spillings configured in src/main/resources/spillings.toml.
@@ -79,11 +82,17 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   @Getter private final List<Exception> tracingExceptions = new FiniteList<>(50);
 
   public ZkTracer() {
-    this(LineaL1L2BridgeSharedConfiguration.EMPTY);
+    this(LineaL1L2BridgeSharedConfiguration.EMPTY, Bytes.fromHexString("c0ffee").toBigInteger());
   }
 
-  public ZkTracer(final LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
+  public ZkTracer(BigInteger chainId) {
+    this(LineaL1L2BridgeSharedConfiguration.EMPTY, chainId);
+  }
+
+  public ZkTracer(
+      final LineaL1L2BridgeSharedConfiguration bridgeConfiguration, BigInteger chainId) {
     this.hub = new Hub(bridgeConfiguration.contract(), bridgeConfiguration.topic());
+    this.chainId = chainId;
     for (Module m : this.hub.getModulesToCount()) {
       if (!spillings.containsKey(m.moduleKey())) {
         throw new IllegalStateException(

@@ -121,8 +121,6 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
                               calculateExcessBlobGasForParent(protocolSpec, parentHeader)))
               .orElse(Wei.ZERO);
 
-      zkTracer.traceStartConflation(1);
-      zkTracer.traceStartBlock(blockHeader, blockBody);
       final TransactionProcessingResult result =
           transactionProcessor.processTransaction(
               worldStateUpdater,
