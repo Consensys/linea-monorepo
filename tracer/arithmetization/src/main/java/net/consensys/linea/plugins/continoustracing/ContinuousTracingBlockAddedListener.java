@@ -58,7 +58,8 @@ public class ContinuousTracingBlockAddedListener implements BesuEvents.BlockAdde
 
           try {
             final CorsetValidator.Result traceResult =
-                continuousTracer.verifyTraceOfBlock(blockHash, new ZkTracer());
+                continuousTracer.verifyTraceOfBlock(
+                    blockHeader.getNumber(), blockHash, new ZkTracer());
             Files.delete(traceResult.traceFile().toPath());
 
             if (!traceResult.isValid()) {
