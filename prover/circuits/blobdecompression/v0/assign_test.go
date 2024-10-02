@@ -8,7 +8,7 @@ import (
 
 	v0 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"ß
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
