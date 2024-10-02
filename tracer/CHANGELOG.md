@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.0-rc1
+* feat: update Linea Besu to 24.10-delivery34 ([#1354](https://github.com/Consensys/linea-tracer/pull/1354))
+* fix: remove RpcCliOptions from AbstractLineaSharedOptionsPlugin in order not to make it visible for external plugins ([#1348](https://github.com/Consensys/linea-tracer/pull/1348))
+* refactor: extract all trace writing logic in one place to be re-used and more consistent ([#1344](https://github.com/Consensys/linea-tracer/pull/1344))
+* fix: convert --plugin-linea-rpc-concurrent-requests-limit option to be a private option ([#1342](https://github.com/Consensys/linea-tracer/pull/1342))
+* fix(selfdestruct): immutable map ([#1337](https://github.com/Consensys/linea-tracer/pull/1337))
+* feat(replayTest): parametric ([#1273](https://github.com/Consensys/linea-tracer/pull/1273))
+* test(shf): add extensive test ([#1320](https://github.com/Consensys/linea-tracer/pull/1320))
+* chore: disable running spotlessCheck after compilation phase ([#1339](https://github.com/Consensys/linea-tracer/pull/1339))
+* fix(SELFDESTRUCT): fixed deloyment number double increments + assumptions about initial values ([#1336](https://github.com/Consensys/linea-tracer/pull/1336))
+* Add CI job for weekly tests ([#1329](https://github.com/Consensys/linea-tracer/pull/1329))
+* fix(invalidCodePrefix): make it work ([#1330](https://github.com/Consensys/linea-tracer/pull/1330))
+
 ## 0.7.0-rc1
 * chore: don't postTxDefers TrasactionMetaData ([#1325](https://github.com/Consensys/linea-tracer/pull/1325))
 * chore: upgrade Linea Besu to 24.9-delivery33 ([#1328](https://github.com/Consensys/linea-tracer/pull/1328))
