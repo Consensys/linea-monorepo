@@ -15,28 +15,32 @@
 
 package net.consensys.linea.plugins;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedCliOptions;
-import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.plugins.rpc.RpcCliOptions;
+import net.consensys.linea.plugins.rpc.RpcConfiguration;
 
-/** In this class we put CLI options that are shared with other plugins not defined here */
+/**
+ * In this class we put CLI options that are shared with other plugins that are only part of the
+ * tracer
+ */
 @Slf4j
-public abstract class AbstractLineaSharedOptionsPlugin extends AbstractLineaOptionsPlugin {
+public abstract class AbstractLineaPrivateOptionsPlugin extends AbstractLineaSharedOptionsPlugin {
 
   @Override
   public Map<String, LineaOptionsPluginConfiguration> getLineaPluginConfigMap() {
-    final LineaL1L2BridgeSharedCliOptions l1L2BridgeCliOptions =
-        LineaL1L2BridgeSharedCliOptions.create();
+    final var configMap = new HashMap<>(super.getLineaPluginConfigMap());
 
-    return Map.of(
-        LineaL1L2BridgeSharedCliOptions.CONFIG_KEY, l1L2BridgeCliOptions.asPluginConfig());
+    final RpcCliOptions rpcCliOptions = RpcCliOptions.create();
+    configMap.put(RpcCliOptions.CONFIG_KEY, rpcCliOptions.asPluginConfig());
+
+    return configMap;
   }
 
-  public LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration() {
-    return (LineaL1L2BridgeSharedConfiguration)
-        getConfigurationByKey(LineaL1L2BridgeSharedCliOptions.CONFIG_KEY).optionsConfig();
+  protected RpcConfiguration rpcConfiguration() {
+    return (RpcConfiguration) getConfigurationByKey(RpcCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   @Override
