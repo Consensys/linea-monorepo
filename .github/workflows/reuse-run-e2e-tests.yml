@@ -76,6 +76,7 @@ jobs:
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
     runs-on: ubuntu-22.04
+    environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     steps:
       - name: Setup upterm session
         if: ${{ inputs.e2e-tests-with-ssh }}
@@ -145,6 +146,7 @@ jobs:
           docker container ls -a
       - name: Run e2e tests
         id: run_e2e_tests
+        timeout-minutes: 25
         run: |
           pnpm run -F e2e test:e2e:local
       - name: Show e2e tests result
@@ -156,9 +158,9 @@ jobs:
         run: |
           mkdir -p docker_logs
           docker ps -a >> docker_logs/docker_ps.txt
+          docker logs coordinator --since 1h &>> docker_logs/coordinator.txt
           docker logs prover --since 1h &>> docker_logs/prover.txt
           docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt;
-          docker logs coordinator --since 1h &>> docker_logs/coordinator.txt
           docker logs shomei --since 1h &>> docker_logs/shomei.txt
           docker logs zkbesu-shomei --since 1h &>> docker_logs/zkbesu-shomei.txt
           docker logs shomei-frontend --since 1h &>> docker_logs/shomei-frontend.txt

@@ -6,7 +6,7 @@ export const ADDRESS_ZERO = ethers.ZeroAddress;
 export const HASH_WITHOUT_ZERO_FIRST_BYTE = "0xf887bbc07b0e849fb625aafadf4cb6b65b98e492fbb689705312bf1db98ead7f";
 
 export const LINEA_ROLLUP_INITIALIZE_SIGNATURE =
-  "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[]))";
+  "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[],address))";
 
 // Linea XP Token roles
 export const MINTER_ROLE = generateKeccak256(["string"], ["MINTER_ROLE"], true);
@@ -112,6 +112,8 @@ export const INITIAL_MIGRATION_BLOCK = 0;
 export const ONE_DAY_IN_SECONDS = 86_400;
 export const INITIAL_WITHDRAW_LIMIT = ethers.parseEther("5");
 export const GENESIS_L2_TIMESTAMP = 0;
+export const DEFAULT_LAST_FINALIZED_TIMESTAMP = 1683325137n;
+export const SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 export const TEST_PUBLIC_VERIFIER_INDEX = 0;
 
 export const MESSAGE_VALUE_1ETH = ethers.parseEther("1");

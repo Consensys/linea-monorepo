@@ -21,6 +21,7 @@ interface ILineaRollup {
    * @param roleAddresses The list of role addresses.
    * @param pauseTypeRoles The list of pause type roles.
    * @param unpauseTypeRoles The list of unpause type roles.
+   * @param fallbackOperator The account to be given OPERATOR_ROLE on when the time since last finalization lapses.
    */
   struct InitializationData {
     bytes32 initialStateRootHash;
@@ -32,6 +33,7 @@ interface ILineaRollup {
     IPermissionsManager.RoleAddress[] roleAddresses;
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
+    address fallbackOperator;
   }
 
   /**
@@ -128,6 +130,28 @@ interface ILineaRollup {
   }
 
   /**
+   * @notice Emitted when the LineaRollup contract version has changed.
+   * @dev All bytes8 values are string based SemVer in the format M.m - e.g. "6.0";
+   * @param previousVersion The previous version.
+   * @param newVersion The new version.
+   */
+  event LineaRollupVersionChanged(bytes8 indexed previousVersion, bytes8 indexed newVersion);
+
+  /**
+   * @notice Emitted when the fallback operator role is granted.
+   * @param caller The address that granted the role.
+   * @param fallbackOperator The fallback operator address that received the operator role.
+   */
+  event FallbackOperatorRoleGranted(address indexed caller, address indexed fallbackOperator);
+
+  /**
+   * @notice Emitted when the fallback operator role is set on the contract.
+   * @param caller The address that set the fallback operator address.
+   * @param fallbackOperator The fallback operator address.
+   */
+  event FallbackOperatorAddressSet(address indexed caller, address indexed fallbackOperator);
+
+  /**
    * @notice Emitted when a verifier is set for a particular proof type.
    * @param verifierAddress The indexed new verifier address being set.
    * @param proofType The indexed proof type/index that the verifier is mapped to.
@@ -167,6 +191,11 @@ interface ILineaRollup {
   );
 
   /**
+   * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the fallback operator address.
+   */
+  error LastFinalizationTimeNotLapsed();
+
+  /**
    * @dev Thrown when the point evaluation precompile call return data field(s) are wrong.
    */
   error PointEvaluationResponseInvalid(uint256 fieldElements, uint256 blsCurveModulus);
@@ -192,9 +221,14 @@ interface ILineaRollup {
   error EmptyBlobDataAtIndex(uint256 index);
 
   /**
-   * @dev Thrown when the data for multiple blobs' submission has length zero.
+   * @dev Thrown when the data for multiple blobs submission has length zero.
    */
   error BlobSubmissionDataIsMissing();
+
+  /**
+   * @dev Thrown when a blob has been submitted but there is no data for it.
+   */
+  error BlobSubmissionDataEmpty(uint256 emptyBlobIndex);
 
   /**
    * @dev Thrown when the starting block in the data item is out of sequence with the last block number.
@@ -278,11 +312,6 @@ interface ILineaRollup {
   error SnarkHashIsZeroHash();
 
   /**
-   * @dev Thrown when parent stateRootHash does not match.
-   */
-  error ParentStateRootHashInvalid(bytes32 expected, bytes32 actual);
-
-  /**
    * @dev Thrown when the block being finalized until does not match that of the shnarf data.
    */
   error FinalBlockDoesNotMatchShnarfFinalBlock(uint256 expected, uint256 actual);
@@ -304,6 +333,15 @@ interface ILineaRollup {
    * @param _proofType The proof type being set/updated.
    */
   function setVerifierAddress(address _newVerifierAddress, uint256 _proofType) external;
+
+  /**
+   * @notice Sets the fallback operator role to the specified address if six months have passed since the last finalization.
+   * @dev Reverts if six months have not passed since the last finalization.
+   * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
+   * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
+   * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
+   */
+  function setFallbackOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external;
 
   /**
    * @notice Unset the verifier contract address for a proof type.
@@ -338,13 +376,6 @@ interface ILineaRollup {
     bytes32 _parentShnarf,
     bytes32 _expectedShnarf
   ) external;
-
-  /**
-   * @notice Finalize compressed blocks without proof.
-   * @dev DEFAULT_ADMIN_ROLE is required to execute.
-   * @param _finalizationData The full finalization data.
-   */
-  function finalizeBlocksWithoutProof(FinalizationDataV3 calldata _finalizationData) external;
 
   /**
    * @notice Finalize compressed blocks with proof.

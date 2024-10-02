@@ -116,6 +116,17 @@ export async function encodeSendMessage(
   );
 }
 
+export function calculateLastFinalizedState(
+  l1RollingHashMessageNumber: bigint,
+  l1RollingHash: string,
+  finalTimestamp: bigint,
+): string {
+  return generateKeccak256(
+    ["uint256", "bytes32", "uint256"],
+    [l1RollingHashMessageNumber, l1RollingHash, finalTimestamp],
+  );
+}
+
 export function calculateRollingHash(existingRollingHash: string, messageHash: string) {
   return generateKeccak256(["bytes32", "bytes32"], [existingRollingHash, messageHash]);
 }
@@ -494,4 +505,16 @@ export async function expectEvent(contract: any, asyncCall: Promise<any>, eventN
   await expect(asyncCall)
     .to.emit(contract, eventName)
     .withArgs(...eventArgs);
+}
+
+export function convertStringToPaddedHexBytes(strVal: string, paddedSize: number): string {
+  if (strVal.length > paddedSize) {
+    throw "Length is longer than padded size!";
+  }
+
+  const strBytes = ethers.toUtf8Bytes(strVal);
+  const bytes = ethers.zeroPadBytes(strBytes, paddedSize);
+  const bytes8Hex = ethers.hexlify(bytes);
+
+  return bytes8Hex;
 }

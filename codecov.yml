@@ -1,0 +1,38 @@
+codecov:
+  max_report_age: off
+  notify:
+    wait_for_ci: false
+  require_ci_to_pass: false
+
+comment:
+  behavior: default
+  hide_project_coverage: false
+  layout: "diff, flags, files"
+  require_base: false
+  require_changes: false
+  require_head: true
+  show_carryforward_flags: true
+
+coverage:
+  precision: 2
+  range: 60..80
+  round: down
+  status:
+    changes: false
+    default_rules:
+      flag_coverage_not_uploaded_behavior: include
+    patch: true
+    project: true
+
+flags:
+  hardhat:
+    paths:
+      - contracts/
+  kotlin:
+    paths:
+      - coordinator/
+      - jvm-libs/
+
+github_checks:
+  annotations: false
+slack_app: false

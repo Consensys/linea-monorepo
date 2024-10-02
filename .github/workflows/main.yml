@@ -65,7 +65,13 @@ jobs:
               - 'constraints'
             traces-api-facade:
               - 'traces-api-facade/**'
-              - 'jvm-libs/**'
+              - 'jvm-libs/core/domain-models/**'
+              - 'jvm-libs/json-rpc/**'
+              - 'jvm-libs/kotlin-extensions/**'
+              - 'jvm-libs/future-extensions/**'
+              - 'jvm-libs/vertx-helper/**'
+              - 'jvm-libs/traces/**'
+              - 'jvm-libs/metrics/**'
               - 'config/common/traces-limits-v1.toml'
               - '.github/workflows/traces-api-facade-*.yml'
               - '.github/workflows/build-and-publish.yml'
@@ -77,6 +83,10 @@ jobs:
               - 'gradle.properties'
               - 'settings.gradle'
             finalized-tag-updater:
+              - 'jvm-libs/core/long-running-service/**'
+              - 'jvm-libs/kotlin-extensions/**'
+              - 'jvm-libs/future-extensions/**'
+              - 'jvm-libs/web3j-extensions/**'
               - 'finalized-tag-updater/**'
               - '.github/workflows/main.yml'
               - '.github/workflows/finalized-tag-updater-github-release.yml'
@@ -142,6 +152,9 @@ jobs:
   run-e2e-tests-geth-tracing:
     needs: [ store-image-name-and-tags, docker-build ]
     if: ${{ always() && needs.docker-build.result == 'success' }}
+    concurrency:
+      group: run-e2e-tests-geth-tracing-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.ref_name != 'main' }}
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -153,6 +166,9 @@ jobs:
   run-e2e-tests:
     needs: [ store-image-name-and-tags, docker-build ]
     if: ${{ always() && needs.docker-build.result == 'success' }}
+    concurrency:
+      group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.ref_name != 'main' }}
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -171,3 +187,15 @@ jobs:
       untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
       image_names: '["consensys/linea-coordinator", "consensys/linea-postman", "consensys/linea-prover", "consensys/linea-traces-api-facade"]'
     secrets: inherit
+
+  cleanup-deployments:
+    needs: [ run-e2e-tests, run-e2e-tests-geth-tracing ]
+    if: ${{ always() }}
+    runs-on: besu-arm64
+    steps:
+      - uses: strumwolf/delete-deployment-environment@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: docker-build-and-e2e
+          ref: ${{ github.ref_name }}
+          onlyRemoveDeployments: true

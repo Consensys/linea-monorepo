@@ -56,6 +56,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const LineaRollup_rateLimitPeriodInSeconds = requireEnv("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
   const LineaRollup_rateLimitAmountInWei = requireEnv("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
   const LineaRollup_genesisTimestamp = requireEnv("LINEA_ROLLUP_GENESIS_TIMESTAMP");
+  const MultiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
   const LineaRollup_roleAddresses = process.env["LINEA_ROLLUP_ROLE_ADDRESSES"];
   const LineaRollup_pauseTypeRoles = process.env["LINEA_ROLLUP_PAUSE_TYPE_ROLES"];
   const LineaRollup_unpauseTypeRoles = process.env["LINEA_ROLLUP_UNPAUSE_TYPE_ROLES"];
@@ -140,6 +141,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         roleAddresses: roleAddresses,
         pauseTypeRoles: pauseTypeRoles,
         unpauseTypeRoles: unpauseTypeRoles,
+        fallbackOperator: MultiCallAddress,
       },
     ],
     {

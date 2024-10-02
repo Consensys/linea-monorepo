@@ -48,6 +48,8 @@ contract LineaRollup is
   uint256 internal constant POINT_EVALUATION_RETURN_DATA_LENGTH = 64;
   uint256 internal constant POINT_EVALUATION_FIELD_ELEMENTS_LENGTH = 4096;
 
+  uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
+
   /// @dev DEPRECATED in favor of the single shnarfFinalBlockNumbers mapping.
   mapping(bytes32 dataHash => bytes32 finalStateRootHash) public dataFinalStateRootHashes;
   /// @dev DEPRECATED in favor of the single shnarfFinalBlockNumbers mapping.
@@ -74,7 +76,11 @@ contract LineaRollup is
   /// @dev Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
   bytes32 public currentFinalizedState;
 
-  /// @dev Total contract storage is 10 slots.
+  /// @dev The address of the fallback operator.
+  /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
+  address public fallbackOperator;
+
+  /// @dev Total contract storage is 11 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -101,6 +107,9 @@ contract LineaRollup is
 
     verifiers[0] = _initializationData.defaultVerifier;
 
+    fallbackOperator = _initializationData.fallbackOperator;
+    emit FallbackOperatorAddressSet(msg.sender, _initializationData.fallbackOperator);
+
     currentL2BlockNumber = _initializationData.initialL2BlockNumber;
     stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
@@ -111,19 +120,27 @@ contract LineaRollup is
   }
 
   /**
-   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
+   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings and fallback operator.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
    * @param _roleAddresses The list of addresses and their roles.
    * @param _pauseTypeRoles The list of pause type roles.
    * @param _unpauseTypeRoles The list of unpause type roles.
+   * @param _fallbackOperator The address of the fallback operator.
    */
-  function reinitializePauseTypesAndPermissions(
+  function reinitializeLineaRollupV6(
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoles,
-    PauseTypeRole[] calldata _unpauseTypeRoles
+    PauseTypeRole[] calldata _unpauseTypeRoles,
+    address _fallbackOperator
   ) external reinitializer(6) {
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
+
+    fallbackOperator = _fallbackOperator;
+    emit FallbackOperatorAddressSet(msg.sender, _fallbackOperator);
+
+    /// @dev using the constants requires string memory and more complex code.
+    emit LineaRollupVersionChanged(bytes8("5.0"), bytes8("6.0"));
   }
 
   /**
@@ -140,6 +157,30 @@ contract LineaRollup is
     emit VerifierAddressChanged(_newVerifierAddress, _proofType, msg.sender, verifiers[_proofType]);
 
     verifiers[_proofType] = _newVerifierAddress;
+  }
+
+  /**
+   * @notice Sets the fallback operator role to the specified address if six months have passed since the last finalization.
+   * @dev Reverts if six months have not passed since the last finalization.
+   * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
+   * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
+   * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
+   */
+  function setFallbackOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external {
+    if (block.timestamp < _lastFinalizedTimestamp + SIX_MONTHS_IN_SECONDS) {
+      revert LastFinalizationTimeNotLapsed();
+    }
+    if (currentFinalizedState != _computeLastFinalizedState(_messageNumber, _rollingHash, _lastFinalizedTimestamp)) {
+      revert FinalizationStateIncorrect(
+        currentFinalizedState,
+        _computeLastFinalizedState(_messageNumber, _rollingHash, _lastFinalizedTimestamp)
+      );
+    }
+
+    address fallbackOperatorAddress = fallbackOperator;
+
+    _grantRole(OPERATOR_ROLE, fallbackOperatorAddress);
+    emit FallbackOperatorRoleGranted(msg.sender, fallbackOperatorAddress);
   }
 
   /**
@@ -170,6 +211,10 @@ contract LineaRollup is
 
     if (blobSubmissionLength == 0) {
       revert BlobSubmissionDataIsMissing();
+    }
+
+    if (blobhash(blobSubmissionLength) != EMPTY_HASH) {
+      revert BlobSubmissionDataEmpty(blobSubmissionLength);
     }
 
     bytes32 currentDataEvaluationPoint;
@@ -449,24 +494,6 @@ contract LineaRollup is
       _finalizationData.finalBlockInData,
       _finalizationData.shnarfData.finalStateRootHash
     );
-  }
-
-  /**
-   * @notice Finalize compressed blocks without proof.
-   * @dev FINALIZE_WITHOUT_PROOF_ROLE is required to execute.
-   * @param _finalizationData The full finalization data.
-   */
-  function finalizeBlocksWithoutProof(
-    FinalizationDataV3 calldata _finalizationData
-  ) external whenTypeNotPaused(GENERAL_PAUSE_TYPE) onlyRole(FINALIZE_WITHOUT_PROOF_ROLE) {
-    bytes32 finalShnarf = _finalizeBlocks(_finalizationData, currentL2BlockNumber, false);
-
-    if (shnarfFinalBlockNumbers[finalShnarf] != _finalizationData.finalBlockInData) {
-      revert FinalBlockDoesNotMatchShnarfFinalBlock(
-        _finalizationData.finalBlockInData,
-        shnarfFinalBlockNumbers[finalShnarf]
-      );
-    }
   }
 
   /**

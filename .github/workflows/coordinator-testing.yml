@@ -12,6 +12,10 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
+concurrency:
+  group: coordinator-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
 jobs:
   cache-docker-images:
     uses: ./.github/workflows/cache-docker-images.yml
@@ -94,5 +98,13 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message-path: |
             ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/coverageDeltaReports/DeltaSummary.md
-
-
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          fail_ci_if_error: true
+          files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
+          flags: kotlin
+          os: linux
+          name: codecov-coordinator
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}

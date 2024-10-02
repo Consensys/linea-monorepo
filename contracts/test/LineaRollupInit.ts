@@ -27,6 +27,8 @@ describe("LineaRollup Init contract", () => {
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
 
+  const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
   const parentStateRootHash = generateRandomBytes(32);
 
   const firstBlockNumber = 199;
@@ -52,6 +54,7 @@ describe("LineaRollup Init contract", () => {
       ],
       pauseTypeRoles: pauseTypeRoles,
       unpauseTypeRoles: unpauseTypeRoles,
+      fallbackOperator: multiCallAddress,
     };
 
     const LineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [genesisData], {
