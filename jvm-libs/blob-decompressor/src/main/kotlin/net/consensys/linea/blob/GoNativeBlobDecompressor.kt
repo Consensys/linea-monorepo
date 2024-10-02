@@ -16,8 +16,9 @@ internal class Adapter(
   dictionaries: List<Path>
 ) : BlobDecompressor {
   init {
-    dictionaries.forEach { dict ->
-      delegate.LoadDictionaries(dict.toString())
+    val paths = dictionaries.map{Path::toString()}.joinToString(":")
+    if (delegate.LoadDictionaries(paths) != dictionaries.size) {
+      throw DecompressionException("Failed to load dictionaries, error='${delegate.Error()}'")
     }
     delegate.Init()
   }
