@@ -45,7 +45,7 @@ func LoadDictionary(dictPaths *C.char) C.int {
 		lastError = err
 		return -1
 	}
-	return len(paths)
+	return C.int(len(paths))
 }
 
 // Decompress processes a blob b and writes the resulting blocks in out, serialized in the format of
