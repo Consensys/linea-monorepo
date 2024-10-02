@@ -23,7 +23,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu:${SEQUENCER_TAG:-24.9-delivery33}
+    image: consensys/linea-besu:${SEQUENCER_TAG:-24.10-delivery34}
     profiles: [ "l2", "l2-bc", "debug" ]
     depends_on:
       linea-besu-sequencer-plugin-downloader:
