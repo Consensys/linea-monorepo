@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { Test, console } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { RewardsStreamer } from "../src/RewardsStreamer.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 
