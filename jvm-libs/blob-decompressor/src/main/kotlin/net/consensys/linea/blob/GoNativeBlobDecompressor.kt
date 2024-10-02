@@ -17,7 +17,7 @@ internal class Adapter(
 ) : BlobDecompressor {
   init {
     dictionaries.forEachIndexed { index, dict ->
-      delegate.LoadDictionary(dict.toString(), index)
+      delegate.LoadDictionary(dict.toString())
     }
     delegate.Init()
   }
@@ -43,11 +43,10 @@ internal interface GoNativeBlobDecompressorJnaBinding {
    * true if the dictionary is successfully loaded, false if not, in which case Error() will
    * return a description of the error.
    *
-   * @param data  dictPath path to the dictionary file
-   * @param nbDicts FIXME: explain this
+   * @param dictPath a colon-separated list of paths to dictionaries, to be loaded into the decompressor
    * @return true if loading was successful else false
    */
-  fun LoadDictionary(dictPath: String, nbDicts: Int): Boolean
+  fun LoadDictionary(dictPath: String): Boolean
 
   /**
    * Decompress a blob b and writes the resulting blocks in out, serialized in the format of

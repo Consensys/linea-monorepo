@@ -4,6 +4,7 @@ import "C"
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -27,25 +28,24 @@ func Init() {
 	dictStore = dictionary.NewStore()
 }
 
-// LoadDictionary loads nbDicts dictionaries into the decompressor
-// Returns true if the operation is successful, false otherwise.
-// If false is returned, the Error() method will return a string describing the error.
+// LoadDictionary loads a number of dictionaries into the decompressor
+// according to colon-separated paths.
+// Returns the number of dictionaries loaded, or -1 if unsuccessful.
+// If -1 is returned, the Error() method will return a string describing the error.
 //
 //export LoadDictionary
-func LoadDictionary(dictPaths **C.char, nbDicts C.int) bool {
+func LoadDictionary(dictPaths *C.char) C.int {
 	lock.Lock()
 	defer lock.Unlock()
-	fpaths := make([]string, nbDicts)
-	for i := 0; i < int(nbDicts); i++ {
-		cStr := *(**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(dictPaths)) + uintptr(i)*unsafe.Sizeof(*dictPaths)))
-		fpaths[i] = C.GoString(cStr)
-	}
 
-	if err := dictStore.Load(fpaths...); err != nil {
+	pathsConcat := C.GoString(dictPaths)
+	paths := strings.Split(pathsConcat, ":")
+
+	if err := dictStore.Load(paths...); err != nil {
 		lastError = err
-		return false
+		return -1
 	}
-	return true
+	return len(paths)
 }
 
 // Decompress processes a blob b and writes the resulting blocks in out, serialized in the format of
