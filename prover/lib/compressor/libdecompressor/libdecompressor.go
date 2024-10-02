@@ -28,13 +28,13 @@ func Init() {
 	dictStore = dictionary.NewStore()
 }
 
-// LoadDictionary loads a number of dictionaries into the decompressor
+// LoadDictionaries loads a number of dictionaries into the decompressor
 // according to colon-separated paths.
 // Returns the number of dictionaries loaded, or -1 if unsuccessful.
 // If -1 is returned, the Error() method will return a string describing the error.
 //
-//export LoadDictionary
-func LoadDictionary(dictPaths *C.char) C.int {
+//export LoadDictionaries
+func LoadDictionaries(dictPaths *C.char) C.int {
 	lock.Lock()
 	defer lock.Unlock()
 
