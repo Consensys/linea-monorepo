@@ -29,38 +29,44 @@ func TestAddToBlob(t *testing.T) {
 	header, _, blocksSerialized, err := v0.DecompressBlob(blobData, dictStore)
 	require.NoError(t, err)
 
-	//blobData = withNoError(t, os.ReadFile, "testdata/v0/sample-blob-0151eda71505187b5.bin")
-	//_, _, blocksSerializedNext, err := v0.DecompressBlob(blobData, dictStore)
+	blobData = withNoError(t, os.ReadFile, "testdata/v0/sample-blob-0151eda71505187b5.bin")
+	_, _, blocksSerializedNext, err := v0.DecompressBlob(blobData, dictStore)
+	require.NoError(t, err)
 
-	blocksSerialized = append(blocksSerialized, blocksSerialized...)
-
-	bm, err := v0.NewBlobMaker(v0.MaxUncompressedBytes, "../compressor_dict.bin")
+	bm, err := v0.NewBlobMaker(v0.MaxUsableBytes, "../compressor_dict.bin")
 	require.NoError(t, err)
 	var ok bool
+	writeBlock := func(blocks *[][]byte) {
+		dbd, err := v0.DecodeBlockFromUncompressed(bytes.NewReader((*blocks)[0]))
+		assert.NoError(t, err)
+
+		stdBlockRlp, err := rlp.EncodeToBytes(dbd.ToStd())
+
+		ok, err = bm.Write(stdBlockRlp, false, encode.WithTxAddressGetter(encode.GetAddressFromR))
+		assert.NoError(t, err)
+
+		*blocks = (*blocks)[1:]
+	}
+
 	for i := 0; i < header.NbBatches(); i++ {
 		for j := 0; j < header.NbBlocksInBatch(i); j++ {
-			dbd, err := v0.DecodeBlockFromUncompressed(bytes.NewReader(blocksSerialized[0]))
-			assert.NoError(t, err)
-
-			stdBlockRlp, err := rlp.EncodeToBytes(dbd.ToStd())
-
-			ok, err = bm.Write(stdBlockRlp, false, encode.WithTxAddressGetter(encode.GetAddressFromR))
-			assert.NoError(t, err)
+			writeBlock(&blocksSerialized)
 			assert.True(t, ok)
-			blocksSerialized = blocksSerialized[1:]
 		}
 		bm.StartNewBatch()
 	}
+	assert.Empty(t, blocksSerialized)
+
 	util0 := 100 * bm.Len() / v0.MaxUsableBytes
 
+	require.NoError(t, err)
 	for ok { // all in one batch
-		ok, err = bm.Write(blocksSerialized[0], false)
-		assert.NoError(t, err)
+		writeBlock(&blocksSerializedNext)
 	}
 
 	util1 := 100 * bm.Len() / v0.MaxUsableBytes
 
-	fmt.Println(util0, util1)
+	fmt.Printf("%d%%\n%d%%\n", util0, util1)
 }
 
 func withNoError[X, Y any](t *testing.T, f func(X) (Y, error), x X) Y {
