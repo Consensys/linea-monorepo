@@ -1,5 +1,18 @@
 # Linea zkEVM
 
+<a href="https://twitter.com/LineaBuild">
+  <img src="https://img.shields.io/twitter/follow/LineaBuild?style=for-the-badge" alt="Twitter Follow" height="20">
+</a>
+<a href="https://discord.com/invite/consensys">
+  <img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" height="20">
+</a>
+<a href="https://github.com/Consensys/linea-monorepo/blob/main/LICENSE">
+  <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" height="20">
+</a>
+<a href="https://codecov.io/gh/Consensys/linea-monorepo">
+  <img src="https://codecov.io/gh/Consensys/linea-monorepo/graph/badge.svg?token=2TM55P0CGJ" alt="Codecov" height="20">
+</a>
+
 This is the principal Linea repository. It mainly includes the smart contracts covering Linea's core functions, the prover in charge of generating ZK proofs, the coordinator responsible for multiple orchestrations, and the Postman to execute bridge messages. 
 
 It serves developers by making the Linea tech stack open source under the [Apache 2.0 license](LICENSE).
