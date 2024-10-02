@@ -3,7 +3,7 @@
   "name": "generic call",
   "context": {
     "chainId": 59141,
-    "url": "http://3.135.218.148:8545",
+    "url": "https://rpc.sepolia.linea.build",
     "nbOfExecutions": 1
   },
   "calls": [
