@@ -1,0 +1,19 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  api project(':jvm-libs:core:domain-models')
+  api project(':jvm-libs:core:metrics')
+  api project(':jvm-libs:core:client-interface')
+  api project(':jvm-libs:json-rpc')
+  api project(':jvm-libs:errors')
+  api project(':jvm-libs:future-extensions')
+
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
+
+  testImplementation "io.vertx:vertx-junit5"
+  testImplementation "com.github.tomakehurst:wiremock-jre8:${libs.versions.wiremock.get()}"
+}

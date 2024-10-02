@@ -1,0 +1,9 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  implementation(project(':jvm-libs:kotlin-extensions'))
+  implementation(project(':jvm-libs:core:domain-models'))
+  implementation(project(':jvm-libs:errors'))
+}

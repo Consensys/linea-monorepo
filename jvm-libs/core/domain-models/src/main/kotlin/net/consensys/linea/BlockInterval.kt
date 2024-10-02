@@ -12,6 +12,7 @@ interface BlockInterval {
   val endBlockNumber: ULong
   val blocksRange: ULongRange
     get() = startBlockNumber..endBlockNumber
+
   fun intervalString(): String = CommonDomainFunctions.blockIntervalString(startBlockNumber, endBlockNumber)
 
   companion object {
@@ -20,6 +21,17 @@ interface BlockInterval {
       endBlockNumber: ULong
     ): BlockInterval {
       return BlockIntervalData(startBlockNumber, endBlockNumber)
+    }
+
+    operator fun invoke(
+      startBlockNumber: Number,
+      endBlockNumber: Number
+    ): BlockInterval {
+      assert(startBlockNumber.toLong() >= 0 && endBlockNumber.toLong() >= 0) {
+        "startBlockNumber=${startBlockNumber.toLong()} and " +
+          "endBlockNumber=${endBlockNumber.toLong()} must be non-negative!"
+      }
+      return BlockIntervalData(startBlockNumber.toLong().toULong(), endBlockNumber.toLong().toULong())
     }
   }
 }
@@ -32,7 +44,13 @@ interface BlockInterval {
 data class BlockIntervalData(
   override val startBlockNumber: ULong,
   override val endBlockNumber: ULong
-) : BlockInterval
+) : BlockInterval {
+  init {
+    require(startBlockNumber <= endBlockNumber) {
+      "startBlockNumber=$startBlockNumber must be less than or equal to endBlockNumber$endBlockNumber"
+    }
+  }
+}
 
 fun List<BlockInterval>.toBlockIntervalsString(): String {
   return this.joinToString(
