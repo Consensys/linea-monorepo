@@ -32,7 +32,7 @@
     "framer-motion": "11.3.17",
     "joi": "17.13.3",
     "loglevel": "1.9.1",
-    "next": "14.2.5",
+    "next": "14.2.10",
     "next-seo": "6.5.0",
     "pino-pretty": "11.2.1",
     "react": "18.3.1",
