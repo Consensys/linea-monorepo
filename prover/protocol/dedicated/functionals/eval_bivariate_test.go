@@ -112,7 +112,7 @@ func TestEvalBivariateSimpleWithSplitting(t *testing.T) {
 	wp := smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8)
 
 	x := accessors.NewConstant(field.NewElement(2))
-	y := accessors.NewConstant(field.NewElement(2))
+	y := accessors.NewConstant(field.NewElement(3))
 
 	definer := func(b *wizard.Builder) {
 		p := b.RegisterCommit("P", wp.Len())
