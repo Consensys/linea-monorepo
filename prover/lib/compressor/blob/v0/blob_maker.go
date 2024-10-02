@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"io"
 	"os"
 	"strings"
@@ -136,8 +137,8 @@ func (bm *BlobMaker) Bytes() []byte {
 			panic(sbb.String())
 		}
 		// compare the header
-		if !header.Equals(&bm.header) {
-			panic("invalid blob: header mismatch")
+		if err = header.CheckEquality(&bm.header); err != nil {
+			panic(fmt.Errorf("invalid blob: header mismatch %v", err))
 		}
 		rawBlocksUnpacked, err := UnpackAlign(rawBlocks)
 		if err != nil {
@@ -152,7 +153,7 @@ func (bm *BlobMaker) Bytes() []byte {
 
 // Write attempts to append the RLP block to the current batch.
 // if forceReset is set; this will NOT append the bytes but still returns true if the chunk could have been appended
-func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error) {
+func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool, encodingOptions ...encode.Option) (ok bool, err error) {
 
 	// decode the RLP block.
 	var block types.Block
@@ -162,7 +163,7 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 
 	// re-encode it for compression
 	bm.buf.Reset()
-	if err := EncodeBlockForCompression(&block, &bm.buf); err != nil {
+	if err := EncodeBlockForCompression(&block, &bm.buf, encodingOptions...); err != nil {
 		return false, fmt.Errorf("when re-encoding block for compression: %w", err)
 	}
 	blockLen := bm.buf.Len()
@@ -287,6 +288,7 @@ func (bm *BlobMaker) Equals(other *BlobMaker) bool {
 }
 
 // DecompressBlob decompresses a blob and returns the header and the blocks as they were compressed.
+// rawBlocks is the raw payload of the blob, delivered in packed format @TODO bad idea. fix
 func DecompressBlob(b []byte, dictStore dictionary.Store) (blobHeader *Header, rawBlocks []byte, blocks [][]byte, err error) {
 	// UnpackAlign the blob
 	b, err = UnpackAlign(b)
@@ -443,7 +445,8 @@ func UnpackAlign(r []byte) ([]byte, error) {
 		cpt++
 	}
 	// last byte should be equal to cpt
-	if cpt != int(out.Bytes()[out.Len()-1])-1 {
+	lastNonZero := out.Bytes()[out.Len()-1]
+	if (cpt % 31) != int(lastNonZero)-1 {
 		return nil, errors.New("invalid padding length")
 	}
 	out.Truncate(out.Len() - 1)

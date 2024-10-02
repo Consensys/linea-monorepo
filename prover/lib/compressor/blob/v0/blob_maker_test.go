@@ -9,13 +9,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	encodeTesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode/test_utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"io"
 	"math/big"
 	"math/rand"
 	"os"
+	"slices"
 	"testing"
-
-	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
 
@@ -748,4 +749,19 @@ func TestPack(t *testing.T) {
 		assert.Equal(s1, original[:n1], "slices should match")
 		assert.Equal(s2, original[n1:], "slices should match")
 	}
+}
+
+func TestEncode(t *testing.T) {
+	var block types.Block
+	assert.NoError(t, rlp.DecodeBytes(testBlocks[0], &block))
+	tx := block.Transactions()[0]
+	var bb bytes.Buffer
+	assert.NoError(t, EncodeTxForCompression(tx, &bb))
+
+	var from common.Address
+	txBackData, err := DecodeTxFromUncompressed(bytes.NewReader(slices.Clone(bb.Bytes())), &from)
+	assert.NoError(t, err)
+	txBack := types.NewTx(txBackData)
+
+	encodeTesting.CheckSameTx(t, tx, txBack, from)
 }

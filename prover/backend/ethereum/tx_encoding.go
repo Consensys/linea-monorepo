@@ -284,7 +284,7 @@ func TryCast[T any](into *T, from any, explainer string) error {
 	switch intoAny.(type) {
 	case *common.Address:
 		// Parse the bytes as an UTF8 string (= direct casting in go).
-		// Then, the string as an hexstring encoded address.
+		// Then, the string as a hex string encoded address.
 		address := common.BytesToAddress(fromBytes)
 		*into = any(&address).(T)
 	case common.Address:

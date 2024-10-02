@@ -6,13 +6,13 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+	encodeTesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode/test_utils"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -52,7 +52,7 @@ func TestEncodeDecode(t *testing.T) {
 			assert.Equal(t, len(block.Transactions()), len(decoded.Txs))
 
 			for i := range block.Transactions() {
-				checkSameTx(t, block.Transactions()[i], ethtypes.NewTx(decoded.Txs[i]), decoded.Froms[i])
+				encodeTesting.CheckSameTx(t, block.Transactions()[i], ethtypes.NewTx(decoded.Txs[i]), decoded.Froms[i])
 				if t.Failed() {
 					return
 				}
@@ -72,10 +72,7 @@ func TestEncodeDecode(t *testing.T) {
 
 			for i := range block.Transactions() {
 				tx := blockBack.Transactions()[i]
-				_, fromInt, _ := tx.RawSignatureValues()
-				var from common.Address
-				fromInt.FillBytes(from[:])
-				checkSameTx(t, block.Transactions()[i], ethtypes.NewTx(decoded.Txs[i]), from)
+				encodeTesting.CheckSameTx(t, block.Transactions()[i], ethtypes.NewTx(decoded.Txs[i]), common.Address(encode.GetAddressFromR(tx)))
 				if t.Failed() {
 					return
 				}
@@ -84,15 +81,6 @@ func TestEncodeDecode(t *testing.T) {
 		})
 	}
 
-}
-
-func checkSameTx(t *testing.T, orig, decoded *ethtypes.Transaction, from common.Address) {
-	assert.Equal(t, orig.To(), decoded.To())
-	assert.Equal(t, orig.Nonce(), decoded.Nonce())
-	assert.Equal(t, orig.Data(), decoded.Data())
-	assert.Equal(t, orig.Value(), decoded.Value())
-	assert.Equal(t, orig.Cost(), decoded.Cost())
-	assert.Equal(t, ethereum.GetFrom(orig), types.EthAddress(from))
 }
 
 func TestPassRlpList(t *testing.T) {
