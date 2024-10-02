@@ -5,13 +5,15 @@ plugins {
   id 'java-test-fixtures'
 }
 
-description = 'Java JNA wrapper for Linea Blob Compressor Library implemented in GO Lang'
+description = 'Java JNA wrapper for Linea Blob Decompressor Library implemented in GO Lang'
 apply from: rootProject.file("gradle/publishing.gradle")
 
 dependencies {
   implementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"
   implementation project(":jvm-libs:kotlin-extensions")
-  testImplementation project(":jvm-libs:blob-shnarf-calculator")
+  testImplementation project(":jvm-libs:blob-compressor")
+//  testImplementation project(":jvm-libs:web3j-extensions")
+  testImplementation(testFixtures(project(":jvm-libs:blob-compressor")))
 }
 
 jar {
@@ -29,11 +31,22 @@ def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get()
 
 task downloadNativeLibs {
   doLast {
-    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v0.1.0/linea-blob-libs-v0.1.0.zip", "blob_compressor", libsZipDownloadOutputDir)
-    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.0.1/linea-blob-libs-v1.0.1.zip", "blob_compressor", libsZipDownloadOutputDir)
+    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.1.0-test2/linea-blob-libs-v1.1.0-test2.zip", "blob_decompressor", libsZipDownloadOutputDir)
   }
 }
 
 compileKotlin {
   dependsOn tasks.downloadNativeLibs
 }
+
+task cleanResources(type: Delete) {
+  fileTree(project.layout.projectDirectory.dir('src/main/resources'))
+    .filter {
+      it.name.endsWith(".so") || it.name.endsWith(".dll") || it.name.endsWith(".dylib")
+    }.each {
+      println("Deleting: ${it}")
+      delete it
+    }
+}
+
+clean.dependsOn cleanResources

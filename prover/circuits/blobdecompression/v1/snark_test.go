@@ -6,6 +6,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1/test_utils"
@@ -20,7 +22,7 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/test"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
-	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	blobtestutils "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +32,7 @@ func TestParseHeader(t *testing.T) {
 	maxBlobSize := 1024
 
 	blobs := [][]byte{
-		blobtesting.GenTestBlob(t, 100000),
+		blobtestutils.GenTestBlob(t, 100000),
 	}
 
 	for _, blobData := range blobs {
@@ -48,14 +50,17 @@ func TestParseHeader(t *testing.T) {
 		test.NoTestEngine(),
 	}
 
+	dictStore, err := dictionary.SingletonStore(blobtestutils.GetDict(t), 1)
+	assert.NoError(t, err)
+
 	for _, blobData := range blobs {
 
-		header, _, blocks, err := blob.DecompressBlob(blobData, blobtesting.GetDict(t))
+		header, _, blocks, err := blob.DecompressBlob(blobData, dictStore)
 		assert.NoError(t, err)
 
 		assert.LessOrEqual(t, len(blocks), MaxNbBatches, "too many batches")
 
-		unpacked, err := blob.UnpackAlign(blobData, fr381.Bits-1, false)
+		unpacked, err := encode.UnpackAlign(blobData, fr381.Bits-1, false)
 		require.NoError(t, err)
 
 		assignment := &testParseHeaderCircuit{
@@ -88,9 +93,9 @@ func TestChecksumBatches(t *testing.T) {
 
 	var batchEndss [nbAssignments][]int
 	for i := range batchEndss {
-		batchEndss[i] = make([]int, blobtesting.RandIntn(MaxNbBatches)+1)
+		batchEndss[i] = make([]int, blobtestutils.RandIntn(MaxNbBatches)+1)
 		for j := range batchEndss[i] {
-			batchEndss[i][j] = 31 + blobtesting.RandIntn(62)
+			batchEndss[i][j] = 31 + blobtestutils.RandIntn(62)
 			if j > 0 {
 				batchEndss[i][j] += batchEndss[i][j-1]
 			}
@@ -161,7 +166,7 @@ func testChecksumBatches(t *testing.T, blob []byte, batchEndss ...[]int) {
 			Sums:      sums,
 			NbBatches: len(batchEnds),
 		}
-		assignment.Sums[blobtesting.RandIntn(len(batchEnds))] = 3
+		assignment.Sums[blobtestutils.RandIntn(len(batchEnds))] = 3
 
 		assert.Error(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
 
@@ -224,7 +229,7 @@ func TestUnpackCircuit(t *testing.T) {
 
 	runTest := func(b []byte) {
 		var packedBuf bytes.Buffer
-		_, err := blob.PackAlign(&packedBuf, b, fr381.Bits-1) // todo use two different slices
+		_, err := encode.PackAlign(&packedBuf, b, fr381.Bits-1) // todo use two different slices
 		assert.NoError(t, err)
 
 		circuit := unpackCircuit{
@@ -308,7 +313,7 @@ func TestBlobChecksum(t *testing.T) { // aka "snark hash"
 		assignment := testDataChecksumCircuit{
 			DataBytes: dataVarsPadded[:nPadded],
 		}
-		assignment.Checksum, err = blob.MiMCChecksumPackedData(dataPadded[:nPadded], fr381.Bits-1, blob.NoTerminalSymbol())
+		assignment.Checksum, err = encode.MiMCChecksumPackedData(dataPadded[:nPadded], fr381.Bits-1, encode.NoTerminalSymbol())
 		assert.NoError(t, err)
 
 		assert.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
@@ -338,9 +343,11 @@ func (c *testDataChecksumCircuit) Define(api frontend.API) error {
 }
 
 func TestDictHash(t *testing.T) {
-	blobBytes := blobtesting.GenTestBlob(t, 1)
-	dict := blobtesting.GetDict(t)
-	header, _, _, err := blob.DecompressBlob(blobBytes, dict) // a bit roundabout, but the header field is not public
+	blobBytes := blobtestutils.GenTestBlob(t, 1)
+	dict := blobtestutils.GetDict(t)
+	dictStore, err := dictionary.SingletonStore(blobtestutils.GetDict(t), 1)
+	assert.NoError(t, err)
+	header, _, _, err := blob.DecompressBlob(blobBytes, dictStore) // a bit roundabout, but the header field is not public
 	assert.NoError(t, err)
 
 	circuit := testDataDictHashCircuit{
