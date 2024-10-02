@@ -17,7 +17,7 @@ internal class Adapter(
 ) : BlobDecompressor {
   init {
     dictionaries.forEach { dict ->
-      delegate.LoadDictionary(dict.toString())
+      delegate.LoadDictionaries(dict.toString())
     }
     delegate.Init()
   }
