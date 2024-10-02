@@ -16,11 +16,15 @@ internal class Adapter(
   dictionaries: List<Path>
 ) : BlobDecompressor {
   init {
-    val paths = dictionaries.map{Path::toString()}.joinToString(":")
-    if (delegate.LoadDictionaries(paths) != dictionaries.size) {
-      throw DecompressionException("Failed to load dictionaries, error='${delegate.Error()}'")
-    }
     delegate.Init()
+
+    val paths = 
+      dictionaries.map{path -> path.toString()}.  // TODO more concise idiom?
+      joinToString(":")
+
+    if (delegate.LoadDictionaries(paths) != dictionaries.size) {
+      throw DecompressionException("Failed to load dictionaries '${paths}', error='${delegate.Error()}'")
+    }
   }
 
   override fun decompress(blob: ByteArray, out: ByteArray): Int {
@@ -35,7 +39,7 @@ internal class Adapter(
 internal interface GoNativeBlobDecompressorJnaBinding {
 
   /**
-   * Init initializes the Decompressor.
+   * Init initializes the Decompressor. Must be run before anything else.
    */
   fun Init()
 
