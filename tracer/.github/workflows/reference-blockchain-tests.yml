@@ -19,8 +19,8 @@ on:
         type: string
 
 jobs:
-  ethereum-tests:
-    runs-on: ubuntu-latest-128
+  blockchain-reference-tests:
+    runs-on: [ubuntu-latest-128]
     steps:
       - uses: webfactory/ssh-agent@v0.7.0
         with:
@@ -41,23 +41,25 @@ jobs:
           distribution: temurin
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
-      # The asset URL for the latest release can be found with:
-      # curl -L -H "Accept: application/vnd.github+json"  \
-      #     -H "Authorization: Bearer YOUR_GH_API_TOKEN" \
-      #     -H "X-GitHub-Api-Version: 2022-11-28" \
-      #     https://api.github.com/repos/ConsenSys/corset/releases/latest
-      # | jq '.assets[] | select(.name|endswith("x86_64-unknown-linux-musl.tar.gz")) | .url'
 
       - name: Install Corset
         run: RUSTFLAGS=-Awarnings cargo install --git ssh://git@github.com/ConsenSys/corset --tag v9.7.13 --locked --force
+
+      - name: Generate zkevm_for_reference_tests.bin
+        run: cd ./linea-constraints; make zkevm_for_reference_tests.bin -B; cd ..
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+
+      - name: Install Go Corset
+        run: go install github.com/consensys/go-corset/cmd/go-corset@latest
 
       - name: Generate block chain reference tests
         run:  ./gradlew :reference-tests:generateBlockchainReferenceTests -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: fields,expand,expand,expand
-      - name: generate zkevm.bin
-        run: cd ./linea-constraints; make zkevm_for_reference_tests.bin -B; cd ..
+
       - name: Download artifact
         uses: dawidd6/action-download-artifact@v6
         if: ${{ inputs.failed_module != '' }}
@@ -67,6 +69,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           commit: ${{ inputs.commit || '' }}
           if_no_artifact_found: ignore
+
       - name: Run reference blockchain tests
         run: ./gradlew referenceBlockchainTests -x spotlessCheck
         timeout-minutes: 180
@@ -74,10 +77,12 @@ jobs:
         env:
           REFERENCE_TESTS_PARALLELISM: 20
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: fields,expand,expand,expand
+          CORSET_FLAGS: disable
+          GOCORSET_FLAGS: -wd --ansi-escapes=false --report --air
           FAILED_TEST_JSON_DIRECTORY: ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/
           FAILED_MODULE: ${{ inputs.failed_module || '' }}
           FAILED_CONSTRAINT: ${{ inputs.failed_constraint || '' }}
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
