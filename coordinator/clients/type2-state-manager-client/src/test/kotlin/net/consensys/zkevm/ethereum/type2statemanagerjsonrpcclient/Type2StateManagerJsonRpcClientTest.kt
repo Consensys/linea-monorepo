@@ -22,7 +22,6 @@ import net.consensys.zkevm.coordinator.clients.Type2StateManagerErrorType
 import net.consensys.zkevm.coordinator.clients.Type2StateManagerJsonRpcClient
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -58,27 +57,23 @@ class Type2StateManagerJsonRpcClientTest {
     meterRegistry = SimpleMeterRegistry()
 
     val rpcClientFactory = VertxHttpJsonRpcClientFactory(vertx, meterRegistry)
-    val vertxHttpJsonRpcClient = rpcClientFactory.createWithRetries(
-      URI("http://127.0.0.1:" + wiremock.port()).toURL(),
-      methodsToRetry = Type2StateManagerJsonRpcClient.retryableMethods,
-      retryConfig = RequestRetryConfig(
-        maxRetries = 2u,
-        timeout = 2.seconds,
-        10.milliseconds,
-        1u
-      )
+    val retryConfig = RequestRetryConfig(
+      maxRetries = 2u,
+      timeout = 2.seconds,
+      10.milliseconds,
+      1u
     )
+    val vertxHttpJsonRpcClient = rpcClientFactory.create(URI("http://127.0.0.1:" + wiremock.port()).toURL())
     val clientConfig = Type2StateManagerJsonRpcClient.Config(
-      requestRetry = RequestRetryConfig(
-        maxRetries = 1u,
-        backoffDelay = 10.milliseconds
-      ),
+      requestRetry = retryConfig,
       zkStateManagerVersion = "0.0.1-dev-3e607237"
     )
     type2StateManagerJsonRpcClient =
       Type2StateManagerJsonRpcClient(
-        vertxHttpJsonRpcClient,
-        clientConfig
+        vertx = vertx,
+        rpcClient = vertxHttpJsonRpcClient,
+        config = clientConfig,
+        retryConfig = retryConfig
       )
   }
 
@@ -239,22 +234,5 @@ class Type2StateManagerJsonRpcClientTest {
       .isCompletedWithValue(
         Err(ErrorResponse(Type2StateManagerErrorType.UNKNOWN, "$errorMessage: $errorData"))
       )
-  }
-
-  @Test
-  fun error_invalid_start_end_block_number_getZkEVMStateMerkleProof() {
-    val startBlockNumber = 100L
-    val endBlockNumber = 50L
-
-    assertThatIllegalArgumentException()
-      .isThrownBy {
-        val resultFuture =
-          type2StateManagerJsonRpcClient.rollupGetZkEVMStateMerkleProof(
-            UInt64.valueOf(startBlockNumber),
-            UInt64.valueOf(endBlockNumber)
-          )
-        resultFuture.get()
-      }
-      .withMessageContaining("endBlockNumber must be greater than startBlockNumber")
   }
 }

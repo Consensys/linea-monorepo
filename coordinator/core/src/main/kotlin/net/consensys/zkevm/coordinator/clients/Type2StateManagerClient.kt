@@ -20,6 +20,7 @@ data class GetZkEVMStateMerkleProofResponse(
   val zkStateManagerVersion: String
 )
 
+// @Deprecated("Use AsyncClient<BlockInterval, GetZkEVMStateMerkleProofResponse> instead")
 interface Type2StateManagerClient {
   fun rollupGetZkEVMStateMerkleProof(
     startBlockNumber: UInt64,
