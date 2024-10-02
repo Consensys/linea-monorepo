@@ -238,8 +238,8 @@ func (ctx splitterContext) adjustExpressionForLocal(
 		case variables.X:
 			panic("unsupported, the value of `x` in the unsplit query and the split would be different")
 		case variables.PeriodicSample:
-			// @Azam why Positive? what about shift
-			newSample := variables.NewPeriodicSample(m.T, utils.PositiveMod(m.Offset, m.T))
+			// for PeriodicSampling offset is always positive in forward direction, thus we need (-shift)
+			newSample := variables.NewPeriodicSample(m.T, utils.PositiveMod(m.Offset-shift, m.T))
 			translationMap.InsertNew(m.String(), newSample)
 		default:
 			// Repass the same variable
