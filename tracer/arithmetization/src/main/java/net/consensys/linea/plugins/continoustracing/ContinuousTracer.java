@@ -25,6 +25,7 @@ import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.plugins.exception.InvalidBlockTraceException;
 import net.consensys.linea.plugins.exception.TraceOutputException;
 import net.consensys.linea.plugins.exception.TraceVerificationException;
+import net.consensys.linea.tracewriter.TraceWriter;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.commons.io.FileUtils;
 import org.hyperledger.besu.datatypes.Hash;
@@ -34,10 +35,12 @@ import org.hyperledger.besu.plugin.services.TraceService;
 
 @Slf4j
 public class ContinuousTracer {
+  private static final String DUMMY_TRACES_ENGINE_VERSION = "shadow_node";
+
   private final TraceService traceService;
   private final CorsetValidator corsetValidator;
   private final ContinuousTracingConfiguration continuousTracingConfiguration;
-  private final Optional<Path> tracesOutputPath;
+  private final Path tracesOutputPath;
 
   public ContinuousTracer(
       TraceService traceService,
@@ -49,7 +52,8 @@ public class ContinuousTracer {
     this.tracesOutputPath = initTracesOutputPath();
   }
 
-  public CorsetValidator.Result verifyTraceOfBlock(final Hash blockHash, final ZkTracer zkTracer)
+  public CorsetValidator.Result verifyTraceOfBlock(
+      final long blockNumber, final Hash blockHash, final ZkTracer zkTracer)
       throws TraceVerificationException, InvalidBlockTraceException {
     zkTracer.traceStartConflation(1);
 
@@ -73,10 +77,11 @@ public class ContinuousTracer {
 
     final CorsetValidator.Result result;
     try {
-      result =
-          corsetValidator.validate(
-              tracesOutputPath.map(zkTracer::writeToTmpFile).orElseGet(zkTracer::writeToTmpFile),
-              continuousTracingConfiguration.zkEvmBin());
+      final TraceWriter traceWriter = new TraceWriter(zkTracer);
+      final Path traceFilePath =
+          traceWriter.writeTraceToFile(
+              tracesOutputPath, blockNumber, blockNumber, DUMMY_TRACES_ENGINE_VERSION);
+      result = corsetValidator.validate(traceFilePath, continuousTracingConfiguration.zkEvmBin());
 
       if (!result.isValid()) {
         log.error("Trace of block {} is not valid", blockHash.toHexString());
@@ -98,16 +103,14 @@ public class ContinuousTracer {
     return result;
   }
 
-  private Optional<Path> initTracesOutputPath() {
+  private Path initTracesOutputPath() {
     final Optional<Path> tracesOutputPath =
         Optional.of(Paths.get(continuousTracingConfiguration.tracesDir()));
 
     try {
-      Files.createDirectories(tracesOutputPath.get());
+      return Files.createDirectories(tracesOutputPath.get());
     } catch (IOException e) {
       throw new TraceOutputException(e.getMessage());
     }
-
-    return tracesOutputPath;
   }
 }

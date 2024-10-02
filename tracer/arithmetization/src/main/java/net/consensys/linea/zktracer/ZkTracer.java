@@ -16,19 +16,11 @@
 package net.consensys.linea.zktracer;
 
 import java.io.IOException;
-import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.io.RandomAccessFile;
-import java.io.StringWriter;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,13 +28,14 @@ import java.util.Optional;
 import java.util.Set;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.exceptions.TracingExceptions;
 import net.consensys.linea.zktracer.module.DebugMode;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import net.consensys.linea.zktracer.types.FiniteList;
 import net.consensys.linea.zktracer.types.Utils;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -106,50 +99,6 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     // <<<< CHANGE ME <<<<
     this.debugMode =
         debugLevel.none() ? Optional.empty() : Optional.of(new DebugMode(debugLevel, this.hub));
-  }
-
-  public Path writeToTmpFile() {
-    try {
-      final Path traceFile = Files.createTempFile(null, ".lt");
-      this.writeToFile(traceFile);
-      return traceFile;
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public Path writeToTmpFile(final Path rootDir) {
-    try {
-      final Path traceFile = Files.createTempFile(rootDir, null, ".lt");
-      this.writeToFile(traceFile);
-      return traceFile;
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public Path writeToTmpFile(final Path rootDir, final String prefix, final String suffix) {
-    Path traceFile;
-    try {
-      FileAttribute<Set<PosixFilePermission>> perms =
-          PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-r--r--"));
-      traceFile = Files.createTempFile(rootDir, prefix, suffix, perms);
-    } catch (IOException e) {
-      log.error(
-          "Error while creating tmp file {} {} {}. Trying without setting the permissions",
-          rootDir,
-          prefix,
-          suffix);
-      try {
-        traceFile = Files.createTempFile(rootDir, prefix, suffix);
-      } catch (IOException f) {
-        log.error("Still Failing while creating tmp file {} {} {}", rootDir, prefix, suffix);
-        throw new RuntimeException(e);
-      }
-    }
-
-    this.writeToFile(traceFile);
-    return traceFile;
   }
 
   public void writeToFile(final Path filename) {
@@ -375,70 +324,5 @@ public class ZkTracer implements ConflationAwareOperationTracer {
                                             + " not found in spillings.toml"))));
     modulesLineCount.put("BLOCK_TRANSACTIONS", hub.cumulatedTxCount());
     return modulesLineCount;
-  }
-
-  /** Gather all and any exception that happened during tracing under a common umbrella. */
-  @Getter
-  @RequiredArgsConstructor
-  private static class TracingExceptions extends RuntimeException {
-    private final List<Exception> tracingExceptions;
-
-    @Override
-    public String getMessage() {
-      final StringBuilder msg = new StringBuilder("Exceptions triggered while tracing:\n");
-      for (final Exception e : tracingExceptions) {
-        msg.append("  - ").append(e.getMessage()).append("\n");
-      }
-      log.error("First exception that was caught while tracing:", tracingExceptions.getFirst());
-      return msg.toString();
-    }
-
-    @Override
-    public void printStackTrace(PrintStream s) {
-      for (final Exception e : this.tracingExceptions) {
-        e.printStackTrace(s);
-      }
-    }
-
-    @Override
-    public String toString() {
-      StringWriter stringWriter = new StringWriter();
-      PrintWriter s = new PrintWriter(stringWriter);
-      for (final Exception e : this.tracingExceptions) {
-        s.append("\n");
-        e.printStackTrace(s);
-      }
-      return stringWriter.toString();
-    }
-  }
-
-  /** An {@link ArrayList} with an upper bound on the number of element it can store. */
-  @RequiredArgsConstructor
-  private static class FiniteList<T> extends ArrayList<T> {
-    /** The maximal number of elements in this list. */
-    private final int maxLength;
-
-    @Override
-    public void add(int index, T element) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean addAll(Collection<? extends T> c) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean addAll(int index, Collection<? extends T> c) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean add(T t) {
-      if (this.size() < this.maxLength) {
-        return super.add(t);
-      }
-      return false;
-    }
   }
 }

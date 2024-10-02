@@ -45,6 +45,8 @@ public class ContinuousTracerTest {
   private static final Hash BLOCK_HASH =
       Hash.fromHexString("0x0000000000000000000000000000000000000000000000000000000000000042");
 
+  private static final long BLOCK_NUMBER = 99999;
+
   private ContinuousTracer continuousTracer;
   private ContinuousTracingConfiguration continuousTracingConfiguration;
 
@@ -77,7 +79,7 @@ public class ContinuousTracerTest {
                 true, Path.of("testTraceFile").toFile(), "testCorsetOutput"));
 
     final CorsetValidator.Result validationResult =
-        continuousTracer.verifyTraceOfBlock(BLOCK_HASH, zkTracerMock);
+        continuousTracer.verifyTraceOfBlock(BLOCK_NUMBER, BLOCK_HASH, zkTracerMock);
     assertThat(validationResult.isValid()).isTrue();
   }
 
@@ -96,7 +98,7 @@ public class ContinuousTracerTest {
                 false, Path.of("testTraceFile").toFile(), "testCorsetOutput"));
 
     final CorsetValidator.Result validationResult =
-        continuousTracer.verifyTraceOfBlock(BLOCK_HASH, zkTracerMock);
+        continuousTracer.verifyTraceOfBlock(BLOCK_NUMBER, BLOCK_HASH, zkTracerMock);
     assertThat(validationResult.isValid()).isFalse();
   }
 
@@ -110,6 +112,6 @@ public class ContinuousTracerTest {
 
     assertThrows(
         InvalidBlockTraceException.class,
-        () -> continuousTracer.verifyTraceOfBlock(BLOCK_HASH, new ZkTracer()));
+        () -> continuousTracer.verifyTraceOfBlock(BLOCK_NUMBER, BLOCK_HASH, new ZkTracer()));
   }
 }
