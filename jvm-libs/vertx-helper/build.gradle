@@ -4,8 +4,10 @@ plugins {
 
 dependencies {
   implementation project(':jvm-libs:future-extensions')
+  implementation project(':jvm-libs:kotlin-extensions')
   implementation "io.vertx:vertx-core"
   implementation "io.vertx:vertx-web"
+  implementation "io.vertx:vertx-web-client"
   implementation "io.vertx:vertx-lang-kotlin"
   implementation "io.vertx:vertx-config"
   implementation "io.vertx:vertx-micrometer-metrics"
