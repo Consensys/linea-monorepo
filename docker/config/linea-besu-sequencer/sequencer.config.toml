@@ -57,3 +57,7 @@ tx-pool-priority-senders=["0xfe3b557e8fb62b89f4916b721be55ceb828dbd73",
   "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0",
   "0xc8c92fe825d8930b9357c006e0af160dfa727a62"]
 
+Xin-process-rpc-enabled=true
+Xin-process-rpc-apis=["ETH", "MINER"]
+
+
