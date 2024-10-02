@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   stale:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, Linux, X64, small]
     steps:
       - uses: actions/stale@v8
         with:

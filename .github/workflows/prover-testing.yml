@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   staticcheck:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, small]
     name: Prover static check
     steps:
     - name: install Go
@@ -100,7 +100,7 @@ jobs:
     needs:
       - staticcheck
       - test
-    runs-on: besu-arm64
+    runs-on: [self-hosted, Linux, X64, small]
     steps:
       - name: Notify slack -- workflow failed
         id: slack
@@ -123,7 +123,7 @@ jobs:
     needs:
       - staticcheck
       - test
-    runs-on: besu-arm64
+    runs-on: [self-hosted, Linux, X64, small]
     steps:
       - name: Notify slack -- workflow succeeded
         id: slack

@@ -12,7 +12,7 @@ env:
 
 jobs:
   run-contract-tests:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, Linux, X64, small]
     name: Run smart contracts tests
     steps:
       - uses: actions/checkout@v4
@@ -61,7 +61,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   solidity-format-check:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, Linux, X64, small]
     name: Solidity format check
     steps:
       - uses: actions/checkout@v4

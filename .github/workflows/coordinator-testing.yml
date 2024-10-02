@@ -24,7 +24,7 @@ jobs:
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, Linux, X64, small]
     name: Coordinator tests
     steps:
       - name: Checkout

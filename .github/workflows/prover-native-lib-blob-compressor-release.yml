@@ -21,7 +21,7 @@ on:
 jobs:
 
   build-linux:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64, small]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,7 +86,7 @@ jobs:
   release_artefacts:
     name: Release artefacts
     needs: [ build-linux, build-mac-os]
-    runs-on: besu-arm64
+    runs-on: [self-hosted, Linux, ARM64, small]
     steps:
       - name: Load cached binaries
         uses: actions/download-artifact@v4
