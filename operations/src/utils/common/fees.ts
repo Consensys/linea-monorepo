@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { FeeHistory, Fees } from "./types";
+import { FeeHistory, Fees } from "./types.js";
 
 export async function get1559Fees(
   provider: ethers.JsonRpcProvider,

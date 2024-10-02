@@ -4,5 +4,4 @@ packages:
   - 'sdk/**'
   - 'operations/**'
   - 'bridge-ui/**'
-  - '!operations/src/synctx/**'
   - 'ts-libs/**'

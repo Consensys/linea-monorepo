@@ -24,7 +24,7 @@
 .run/**.run.xml
 .envrc
 bin/
-!operations/src/synctx/bin/
+!operations/bin/
 target/
 tmp/
 build/

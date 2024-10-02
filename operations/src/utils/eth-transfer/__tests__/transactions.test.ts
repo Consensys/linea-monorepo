@@ -2,7 +2,7 @@ import { describe, jest, it, expect, afterAll } from "@jest/globals";
 import axios from "axios";
 import { JsonRpcProvider, Signature, TransactionLike, TransactionResponse, ethers } from "ethers";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
-import { estimateTransactionGas, executeTransaction, getWeb3SignerSignature } from "../transactions";
+import { estimateTransactionGas, executeTransaction, getWeb3SignerSignature } from "../transactions.js";
 
 jest.mock("axios");
 
