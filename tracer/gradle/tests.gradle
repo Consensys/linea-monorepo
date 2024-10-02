@@ -98,7 +98,7 @@ tasks.withType(Test).configureEach {
     showSkipped false
 
     // set to false to hide failed tests
-    showFailed false
+    showFailed true
 
     // enable to see standard out and error streams inline with the test results
     showStandardStreams true
@@ -110,7 +110,7 @@ tasks.withType(Test).configureEach {
     showSkippedStandardStreams false
 
     // set to false to hide failed standard out and error streams
-    showFailedStandardStreams false
+    showFailedStandardStreams true
   }
 
   useJUnitPlatform()
