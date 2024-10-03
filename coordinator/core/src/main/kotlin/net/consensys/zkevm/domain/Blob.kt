@@ -1,6 +1,8 @@
 package net.consensys.zkevm.domain
 
 import kotlinx.datetime.Instant
+import net.consensys.linea.BlockInterval
+import net.consensys.linea.BlockIntervals
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 

@@ -8,6 +8,7 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import net.consensys.linea.BlockIntervals
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
@@ -15,7 +16,6 @@ import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.coordinator.clients.GetZkEVMStateMerkleProofResponse
 import net.consensys.zkevm.coordinator.clients.Type2StateManagerClient
 import net.consensys.zkevm.domain.Blob
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.domain.createBlobRecord

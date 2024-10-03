@@ -2,6 +2,7 @@ package net.consensys.zkevm.domain
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import net.consensys.linea.BlockIntervals
 import net.consensys.linea.blob.ShnarfCalculatorVersion
 import net.consensys.setFirstByteToZero
 import net.consensys.trimToSecondPrecision

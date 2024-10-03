@@ -6,6 +6,7 @@ import io.vertx.sqlclient.RowSet
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import net.consensys.FakeFixedClock
+import net.consensys.linea.BlockIntervals
 import net.consensys.linea.async.get
 import net.consensys.trimToSecondPrecision
 import net.consensys.zkevm.coordinator.clients.prover.serialization.ProofToFinalizeJsonResponse
@@ -15,7 +16,6 @@ import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobStatus
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createBatch
