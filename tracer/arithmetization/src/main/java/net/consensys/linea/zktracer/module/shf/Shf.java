@@ -57,13 +57,8 @@ public class Shf implements OperationSetModule<ShfOperation> {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (ShfOperation op : operations.getAll()) {
+    for (ShfOperation op : operations.sortOperations(new ShfOperationComparator())) {
       op.trace(trace, ++stamp);
     }
-  }
-
-  @Override
-  public ModuleOperationStackedSet<ShfOperation> operations() {
-    return operations;
   }
 }

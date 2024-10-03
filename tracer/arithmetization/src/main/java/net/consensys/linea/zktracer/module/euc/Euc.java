@@ -52,7 +52,7 @@ public class Euc implements OperationSetModule<EucOperation> {
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
-    for (EucOperation eucOperation : operations.getAll()) {
+    for (EucOperation eucOperation : operations.sortOperations(new EucOperationComparator())) {
       eucOperation.trace(trace);
     }
   }

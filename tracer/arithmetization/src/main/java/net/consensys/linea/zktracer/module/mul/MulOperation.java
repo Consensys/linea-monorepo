@@ -27,6 +27,7 @@ import java.util.Arrays;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.container.ModuleOperation;
@@ -38,6 +39,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
+@Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class MulOperation extends ModuleOperation {
 
@@ -410,7 +412,7 @@ public class MulOperation extends ModuleOperation {
       }
 
       case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
-        this.setHsAndBits(UInt256.fromBytes(this.getArg1()), UInt256.fromBytes(this.getArg2()));
+        this.setHsAndBits(UInt256.fromBytes(arg1), UInt256.fromBytes(arg2));
         this.traceSubOp(trace, stamp);
       }
 
@@ -423,55 +425,55 @@ public class MulOperation extends ModuleOperation {
       trace
           .mulStamp(stamp)
           .counter(UnsignedByte.of(i))
-          .oli(this.isOneLineInstruction())
-          .tinyBase(this.isTinyBase())
-          .tinyExponent(this.isTinyExponent())
-          .resultVanishes(this.res.isZero())
-          .instruction(UnsignedByte.of(this.getOpCode().byteValue()))
-          .arg1Hi(this.getArg1Hi())
-          .arg1Lo(this.getArg1Lo())
-          .arg2Hi(this.getArg2Hi())
-          .arg2Lo(this.getArg2Lo())
-          .resHi(this.res.getHigh())
-          .resLo(this.res.getLow())
-          .bits(this.bits[i])
-          .byteA3(UnsignedByte.of(this.aBytes.get(3, i)))
-          .byteA2(UnsignedByte.of(this.aBytes.get(2, i)))
-          .byteA1(UnsignedByte.of(this.aBytes.get(1, i)))
-          .byteA0(UnsignedByte.of(this.aBytes.get(0, i)))
-          .accA3(this.aBytes.getRange(3, 0, i + 1))
-          .accA2(this.aBytes.getRange(2, 0, i + 1))
-          .accA1(this.aBytes.getRange(1, 0, i + 1))
-          .accA0(this.aBytes.getRange(0, 0, i + 1))
-          .byteB3(UnsignedByte.of(this.bBytes.get(3, i)))
-          .byteB2(UnsignedByte.of(this.bBytes.get(2, i)))
-          .byteB1(UnsignedByte.of(this.bBytes.get(1, i)))
-          .byteB0(UnsignedByte.of(this.bBytes.get(0, i)))
-          .accB3(this.bBytes.getRange(3, 0, i + 1))
-          .accB2(this.bBytes.getRange(2, 0, i + 1))
-          .accB1(this.bBytes.getRange(1, 0, i + 1))
-          .accB0(this.bBytes.getRange(0, 0, i + 1))
-          .byteC3(UnsignedByte.of(this.cBytes.get(3, i)))
-          .byteC2(UnsignedByte.of(this.cBytes.get(2, i)))
-          .byteC1(UnsignedByte.of(this.cBytes.get(1, i)))
-          .byteC0(UnsignedByte.of(this.cBytes.get(0, i)))
-          .accC3(this.cBytes.getRange(3, 0, i + 1))
-          .accC2(this.cBytes.getRange(2, 0, i + 1))
-          .accC1(this.cBytes.getRange(1, 0, i + 1))
-          .accC0(this.cBytes.getRange(0, 0, i + 1))
-          .byteH3(UnsignedByte.of(this.hBytes.get(3, i)))
-          .byteH2(UnsignedByte.of(this.hBytes.get(2, i)))
-          .byteH1(UnsignedByte.of(this.hBytes.get(1, i)))
-          .byteH0(UnsignedByte.of(this.hBytes.get(0, i)))
-          .accH3(this.hBytes.getRange(3, 0, i + 1))
-          .accH2(this.hBytes.getRange(2, 0, i + 1))
-          .accH1(this.hBytes.getRange(1, 0, i + 1))
-          .accH0(this.hBytes.getRange(0, 0, i + 1))
-          .exponentBit(this.isExponentBitSet())
-          .exponentBitAccumulator(this.expAcc)
-          .exponentBitSource(this.isExponentInSource())
-          .squareAndMultiply(this.squareAndMultiply)
-          .bitNum(UnsignedByte.of(this.getBitNum()))
+          .oli(isOneLineInstruction())
+          .tinyBase(tinyBase)
+          .tinyExponent(tinyExponent)
+          .resultVanishes(res.isZero())
+          .instruction(UnsignedByte.of(opCode.byteValue()))
+          .arg1Hi(arg1Hi)
+          .arg1Lo(arg1Lo)
+          .arg2Hi(arg2Hi)
+          .arg2Lo(arg2Lo)
+          .resHi(res.getHigh())
+          .resLo(res.getLow())
+          .bits(bits[i])
+          .byteA3(UnsignedByte.of(aBytes.get(3, i)))
+          .byteA2(UnsignedByte.of(aBytes.get(2, i)))
+          .byteA1(UnsignedByte.of(aBytes.get(1, i)))
+          .byteA0(UnsignedByte.of(aBytes.get(0, i)))
+          .accA3(aBytes.getRange(3, 0, i + 1))
+          .accA2(aBytes.getRange(2, 0, i + 1))
+          .accA1(aBytes.getRange(1, 0, i + 1))
+          .accA0(aBytes.getRange(0, 0, i + 1))
+          .byteB3(UnsignedByte.of(bBytes.get(3, i)))
+          .byteB2(UnsignedByte.of(bBytes.get(2, i)))
+          .byteB1(UnsignedByte.of(bBytes.get(1, i)))
+          .byteB0(UnsignedByte.of(bBytes.get(0, i)))
+          .accB3(bBytes.getRange(3, 0, i + 1))
+          .accB2(bBytes.getRange(2, 0, i + 1))
+          .accB1(bBytes.getRange(1, 0, i + 1))
+          .accB0(bBytes.getRange(0, 0, i + 1))
+          .byteC3(UnsignedByte.of(cBytes.get(3, i)))
+          .byteC2(UnsignedByte.of(cBytes.get(2, i)))
+          .byteC1(UnsignedByte.of(cBytes.get(1, i)))
+          .byteC0(UnsignedByte.of(cBytes.get(0, i)))
+          .accC3(cBytes.getRange(3, 0, i + 1))
+          .accC2(cBytes.getRange(2, 0, i + 1))
+          .accC1(cBytes.getRange(1, 0, i + 1))
+          .accC0(cBytes.getRange(0, 0, i + 1))
+          .byteH3(UnsignedByte.of(hBytes.get(3, i)))
+          .byteH2(UnsignedByte.of(hBytes.get(2, i)))
+          .byteH1(UnsignedByte.of(hBytes.get(1, i)))
+          .byteH0(UnsignedByte.of(hBytes.get(0, i)))
+          .accH3(hBytes.getRange(3, 0, i + 1))
+          .accH2(hBytes.getRange(2, 0, i + 1))
+          .accH1(hBytes.getRange(1, 0, i + 1))
+          .accH0(hBytes.getRange(0, 0, i + 1))
+          .exponentBit(isExponentBitSet())
+          .exponentBitAccumulator(expAcc)
+          .exponentBitSource(isExponentInSource())
+          .squareAndMultiply(squareAndMultiply)
+          .bitNum(UnsignedByte.of(getBitNum()))
           .validateRow();
     }
   }
@@ -493,7 +495,7 @@ public class MulOperation extends ModuleOperation {
       }
 
       case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
-        op.setHsAndBits(UInt256.fromBytes(op.getArg1()), UInt256.fromBytes(op.getArg2()));
+        op.setHsAndBits(UInt256.fromBytes(op.arg1), UInt256.fromBytes(op.arg2));
         yield op.numberOfRows();
       }
 

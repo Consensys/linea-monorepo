@@ -67,7 +67,7 @@ public class Mul implements OperationSetModule<MulOperation> {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (MulOperation op : operations.getAll()) {
+    for (MulOperation op : operations.sortOperations(new MulOperationComparator())) {
       op.trace(trace, ++stamp);
     }
     (new MulOperation(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO)).trace(trace, stamp + 1);

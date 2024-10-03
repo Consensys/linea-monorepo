@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.container.module;
 
+import java.util.Comparator;
+import java.util.List;
+
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -45,5 +48,9 @@ public interface OperationSetModule<E extends ModuleOperation> extends Module {
   @Override
   default void traceEndConflation(final WorldView state) {
     operations().finishConflation();
+  }
+
+  default List<E> sortOperations(Comparator<E> comparator) {
+    return operations().sortOperations(comparator);
   }
 }

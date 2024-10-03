@@ -84,7 +84,7 @@ public class Ext implements OperationSetModule<ExtOperation> {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (ExtOperation operation : operations.getAll()) {
+    for (ExtOperation operation : operations.sortOperations(new ExtOperationComparator())) {
       operation.trace(trace, ++stamp);
     }
   }

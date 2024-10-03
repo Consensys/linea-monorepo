@@ -411,7 +411,7 @@ public class Hub implements Module {
                     add,
                     bin,
                     blakeModexpData,
-                    blockhash,
+                    blockhash, /* WARN: must be called BEFORE WCP (for traceEndConflation) */
                     ecData,
                     euc,
                     ext,

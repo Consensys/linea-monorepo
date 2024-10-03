@@ -320,7 +320,7 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
     int stamp = 0;
-    for (RlpAddrOperation op : operations.getAll()) {
+    for (RlpAddrOperation op : operations.sortOperations(new RlpAddrOperationComparator())) {
       traceOperation(op, ++stamp, trace);
     }
   }

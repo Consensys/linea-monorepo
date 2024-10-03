@@ -20,7 +20,6 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.BLOC
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import java.nio.MappedByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,19 +86,19 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
 
     opcodeArgument = Bytes32.leftPad(frame.getStackItem(0));
     lowerBound =
-        this.wcp.callGEQ(
-            opcodeArgument, Bytes.ofUnsignedLong(this.absoluteBlockNumber - BLOCKHASH_MAX_HISTORY));
-    upperBound = this.wcp.callLT(opcodeArgument, Bytes.ofUnsignedLong(this.absoluteBlockNumber));
+        wcp.callGEQ(
+            opcodeArgument, Bytes.ofUnsignedLong(absoluteBlockNumber - BLOCKHASH_MAX_HISTORY));
+    upperBound = wcp.callLT(opcodeArgument, Bytes.ofUnsignedLong(absoluteBlockNumber));
 
     hub.defers().scheduleForPostExecution(this);
 
     /* To prove the lex order of BLOCK_NUMBER_HI/LO, we call WCP at endConflation, so we need to add rows in WCP now.
     If a BLOCK_NUMBER is already called at least two times, no need for additional rows in WCP*/
-    final int numberOfCall = this.numberOfCall.getOrDefault(this.opcodeArgument, 0);
+    final int numberOfCall = this.numberOfCall.getOrDefault(opcodeArgument, 0);
     if (numberOfCall < 2) {
       wcp.additionalRows.add(
-          Math.max(Math.min(LLARGE, this.opcodeArgument.trimLeadingZeros().size()), 1));
-      this.numberOfCall.replace(this.opcodeArgument, numberOfCall, numberOfCall + 1);
+          Math.max(Math.min(LLARGE, opcodeArgument.trimLeadingZeros().size()), 1));
+      this.numberOfCall.replace(opcodeArgument, numberOfCall, numberOfCall + 1);
     }
   }
 
@@ -111,14 +110,9 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
       final Bytes32 result = Bytes32.leftPad(frame.getStackItem(0));
       operations.add(
           new BlockhashOperation(
-              this.relativeBlock,
-              this.opcodeArgument,
-              this.absoluteBlockNumber,
-              lowerBound,
-              upperBound,
-              result));
+              relativeBlock, opcodeArgument, absoluteBlockNumber, lowerBound, upperBound, result));
       if (result != Bytes32.ZERO) {
-        blockHashMap.put(this.opcodeArgument, result);
+        blockHashMap.put(opcodeArgument, result);
       }
     }
   }
@@ -126,10 +120,8 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
   @Override
   public void traceEndConflation(WorldView state) {
     OperationSetModule.super.traceEndConflation(state);
-    sortedOperations = new ArrayList<>(operations.getAll());
+    sortedOperations = sortOperations(new BlockhashComparator());
     if (!sortedOperations.isEmpty()) {
-      final BlockhashComparator BLOCKHASH_COMPARATOR = new BlockhashComparator();
-      sortedOperations.sort(BLOCKHASH_COMPARATOR);
       wcp.callGEQ(sortedOperations.getFirst().opcodeArgument(), Bytes32.ZERO);
       for (int i = 1; i < sortedOperations.size(); i++) {
         wcp.callGEQ(

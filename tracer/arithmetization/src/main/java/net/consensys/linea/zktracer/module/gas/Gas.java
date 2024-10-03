@@ -19,36 +19,23 @@ import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.module.Module;
-import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public class Gas implements Module {
+@Accessors(fluent = true)
+public class Gas implements OperationSetModule<GasOperation> {
   /** A list of the operations to trace */
-  private final ModuleOperationStackedList<GasOperation> operations =
-      new ModuleOperationStackedList<>();
-
-  // TODO: why a stackedList of GasOperation? It should be a StateLess module no ?
+  @Getter
+  private final ModuleOperationStackedSet<GasOperation> operations =
+      new ModuleOperationStackedSet<>();
 
   @Override
   public String moduleKey() {
     return "GAS";
-  }
-
-  @Override
-  public void enterTransaction() {
-    this.operations.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.operations.pop();
-  }
-
-  @Override
-  public int lineCount() {
-    return this.operations.lineCount();
   }
 
   @Override
@@ -71,7 +58,7 @@ public class Gas implements Module {
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
     int stamp = 0;
-    for (GasOperation gasOperation : this.operations.getAll()) {
+    for (GasOperation gasOperation : operations.sortOperations(new GasOperationComparator())) {
       // TODO: I thought we don't have stamp for gas anymore ?
       stamp++;
       gasOperation.trace(stamp, trace);

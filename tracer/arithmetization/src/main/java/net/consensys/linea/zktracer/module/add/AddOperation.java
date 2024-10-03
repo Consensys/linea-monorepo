@@ -18,6 +18,8 @@ package net.consensys.linea.zktracer.module.add;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -27,13 +29,14 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
+@Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public final class AddOperation extends ModuleOperation {
   private static final UInt256 TWO_TO_THE_128 = UInt256.ONE.shiftLeft(128);
 
-  @EqualsAndHashCode.Include private final OpCode opCode;
-  @EqualsAndHashCode.Include private final Bytes32 arg1;
-  @EqualsAndHashCode.Include private final Bytes32 arg2;
+  @EqualsAndHashCode.Include @Getter private final OpCode opCode;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 arg1;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 arg2;
   private BaseBytes res;
   private int ctMax;
 

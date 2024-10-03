@@ -25,17 +25,20 @@ import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import java.util.List;
 
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 
+@Accessors(fluent = true)
 @RequiredArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class TrmOperation extends ModuleOperation {
-  @EqualsAndHashCode.Include private final EWord rawAddress;
+  @EqualsAndHashCode.Include @Getter private final EWord rawAddress;
 
   void trace(Trace trace, final int stamp) {
     final Bytes trmHiBytes =

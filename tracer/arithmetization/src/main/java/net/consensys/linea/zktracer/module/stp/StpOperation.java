@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.*;
 
 import java.math.BigInteger;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
@@ -29,6 +30,7 @@ import org.apache.tuweni.bytes.Bytes;
 
 @Accessors(fluent = true)
 @Getter
+@EqualsAndHashCode(callSuper = false)
 public final class StpOperation extends ModuleOperation {
   private final StpCall stpCall;
 

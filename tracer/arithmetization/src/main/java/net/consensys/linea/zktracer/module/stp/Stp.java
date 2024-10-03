@@ -87,7 +87,7 @@ public class Stp implements OperationSetModule<StpOperation> {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (StpOperation operation : operations.getAll()) {
+    for (StpOperation operation : operations.sortOperations(new StpOperationComparator())) {
       operation.trace(trace, ++stamp);
     }
   }

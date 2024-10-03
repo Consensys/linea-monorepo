@@ -18,10 +18,10 @@ package net.consensys.linea.zktracer.module.romlex;
 import java.util.Comparator;
 
 class RomOperationComparator implements Comparator<RomOperation> {
-  // Initialize the ChunkList
   public int compare(RomOperation chunk1, RomOperation chunk2) {
     // First sort by Address
-    int addressComparison = chunk1.metadata().address().compareTo(chunk2.metadata().address());
+    final int addressComparison =
+        chunk1.metadata().address().compareTo(chunk2.metadata().address());
     if (addressComparison != 0) {
       return addressComparison;
     } else {

@@ -22,12 +22,15 @@ import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import java.math.BigInteger;
 
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
+@Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class GasOperation extends ModuleOperation {
-  @EqualsAndHashCode.Include GasParameters gasParameters;
+  @EqualsAndHashCode.Include @Getter GasParameters gasParameters;
   BigInteger[] wcpArg1Lo;
   BigInteger[] wcpArg2Lo;
   UnsignedByte[] wcpInst;

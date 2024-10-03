@@ -24,6 +24,8 @@ import java.util.Collections;
 import java.util.List;
 
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.Bytes16;
@@ -31,12 +33,13 @@ import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
+@Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 final class ShfOperation extends ModuleOperation {
 
-  @EqualsAndHashCode.Include private final OpCode opCode;
-  @EqualsAndHashCode.Include private final Bytes32 arg1;
-  @EqualsAndHashCode.Include private final Bytes32 arg2;
+  @EqualsAndHashCode.Include @Getter private final OpCode opCode;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 arg1;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 arg2;
   private final boolean isOneLineInstruction;
   private boolean isNegative;
   private boolean isShiftRight;

@@ -36,6 +36,8 @@ import java.util.Collections;
 import java.util.List;
 
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.Bytes16;
@@ -43,6 +45,7 @@ import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
+@Accessors(fluent = true)
 @Slf4j
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class WcpOperation extends ModuleOperation {
@@ -56,8 +59,8 @@ public class WcpOperation extends ModuleOperation {
   static final byte ISZERObv = (byte) EVM_INST_ISZERO;
 
   private final byte wcpInst;
-  @EqualsAndHashCode.Include private final Bytes32 arg1;
-  @EqualsAndHashCode.Include private final Bytes32 arg2;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 arg1;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 arg2;
   private int ctMax; // Note : is computed in computeLineCount, if the WCP operation is added to the
   // StackedSet
 
