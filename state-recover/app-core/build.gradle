@@ -3,7 +3,9 @@ plugins {
 }
 
 dependencies {
+  implementation("io.vertx:vertx-core:${libs.versions.vertx.get()}")
   api(project(':jvm-libs:core:domain-models'))
   api(project(':jvm-libs:kotlin-extensions'))
   api(project(':jvm-libs:extensions:tuweni'))
+  api(project(':jvm-libs:core:long-running-service'))
 }

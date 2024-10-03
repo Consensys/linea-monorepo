@@ -1,5 +1,6 @@
 package net.consensys.linea.staterecover.core
 
+import io.vertx.core.Vertx
 import net.consensys.encodeHex
 import net.consensys.eth.EthLogEvent
 import net.consensys.linea.BlockNumberAndHash
@@ -12,6 +13,7 @@ import net.consensys.linea.staterecover.clients.smartcontract.DataSubmittedV3
 import net.consensys.linea.staterecover.clients.smartcontract.LineaRollupSubmissionEventsClient
 import net.consensys.linea.staterecover.domain.BlockL1RecoveredData
 import net.consensys.tuweni.bytes.toBytes32
+import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -30,6 +32,7 @@ interface BlobDecompressorToDomain {
 }
 
 class StateSynchronizerService(
+  private val vertx: Vertx,
   private val elClient: ExecutionLayerClient,
   private val submissionEventsClient: LineaRollupSubmissionEventsClient,
   private val blobsFetcher: BlobFetcher,
@@ -37,6 +40,10 @@ class StateSynchronizerService(
   private val blobDecompressor: BlobDecompressorToDomain,
   private val blockImporterAndStateVerifier: BlockImporterAndStateVerifier,
   private val log: Logger = LogManager.getLogger(StateSynchronizerService::class.java)
+) : PeriodicPollingService(
+  vertx = vertx,
+  log = log,
+  pollingIntervalMs = 1000L
 ) {
   private data class DataSubmittedEventAndBlobs(
     val ethLogEvent: EthLogEvent<DataSubmittedV3>,
@@ -66,7 +73,7 @@ class StateSynchronizerService(
     }
   }
 
-  private fun loop(): SafeFuture<Any?> {
+  override fun action(): SafeFuture<Any?> {
     return findNextFinalization()
       .thenCompose { nextFinalization ->
         if (nextFinalization == null) {
