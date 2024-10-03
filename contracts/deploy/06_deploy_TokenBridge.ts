@@ -1,10 +1,21 @@
 import { ethers, network, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { validateDeployBranchAndTags } from "../utils/auditedDeployVerifier";
-import { getDeployedContractAddress, tryStoreAddress, tryStoreProxyAdminAddress } from "../utils/storeAddress";
-import { tryVerifyContract } from "../utils/verifyContract";
-import { requireEnv } from "../scripts/hardhat/utils";
+import {
+  TOKEN_BRIDGE_PAUSE_TYPES_ROLES,
+  TOKEN_BRIDGE_ROLES,
+  TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES,
+} from "../common/constants";
+import {
+  generateRoleAssignments,
+  getEnvOrDefault,
+  tryVerifyContract,
+  getDeployedContractAddress,
+  tryStoreAddress,
+  tryStoreProxyAdminAddress,
+  validateDeployBranchAndTags,
+  getRequiredEnvVar,
+} from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -13,26 +24,32 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "TokenBridge";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
-  const L2MessageServiceName = "L2MessageService";
-  const LineaRollupName = "LineaRollup";
+  const l2MessageServiceName = "L2MessageService";
+  const lineaRollupName = "LineaRollup";
   let l2MessageServiceAddress = process.env.L2_MESSAGE_SERVICE_ADDRESS;
-  let LineaRollupAddress = process.env.LINEA_ROLLUP_ADDRESS;
-  const remoteChainId = requireEnv("REMOTE_CHAIN_ID");
+  let lineaRollupAddress = process.env.LINEA_ROLLUP_ADDRESS;
+  const remoteChainId = getRequiredEnvVar("REMOTE_CHAIN_ID");
+  const tokenBridgeSecurityCouncil = getRequiredEnvVar("TOKEN_BRIDGE_SECURITY_COUNCIL");
+
+  const pauseTypeRoles = getEnvOrDefault("TOKEN_BRIDGE_PAUSE_TYPES_ROLES", TOKEN_BRIDGE_PAUSE_TYPES_ROLES);
+  const unpauseTypeRoles = getEnvOrDefault("TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES", TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES);
+  const defaultRoleAddresses = generateRoleAssignments(TOKEN_BRIDGE_ROLES, tokenBridgeSecurityCouncil, []);
+  const roleAddresses = getEnvOrDefault("TOKEN_BRIDGE_ROLE_ADDRESSES", defaultRoleAddresses);
 
   const [owner] = await ethers.getSigners();
   const chainId = (await ethers.provider.getNetwork()).chainId;
 
   console.log(`Current network's chainId is ${chainId}. Remote (target) network's chainId is ${remoteChainId}`);
 
-  if (l2MessageServiceAddress === undefined) {
-    l2MessageServiceAddress = await getDeployedContractAddress(L2MessageServiceName, deployments);
+  if (!l2MessageServiceAddress) {
+    l2MessageServiceAddress = await getDeployedContractAddress(l2MessageServiceName, deployments);
   }
 
-  if (LineaRollupAddress === undefined) {
-    LineaRollupAddress = await getDeployedContractAddress(LineaRollupName, deployments);
+  if (!lineaRollupAddress) {
+    lineaRollupAddress = await getDeployedContractAddress(lineaRollupName, deployments);
   }
 
-  if (existingContractAddress === undefined) {
+  if (!existingContractAddress) {
     console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
   } else {
     console.log(`Deploying new version, NB: ${existingContractAddress} will be overwritten if env SAVE_ADDRESS=true.`);
@@ -47,7 +64,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(
       `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES environment variable`,
     );
-    deployingChainMessageService = LineaRollupAddress;
+    deployingChainMessageService = lineaRollupAddress;
     reservedAddresses = process.env.L1_RESERVED_TOKEN_ADDRESSES
       ? process.env.L1_RESERVED_TOKEN_ADDRESSES.split(",")
       : [];
@@ -76,7 +93,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     chainId,
     remoteChainId,
     reservedAddresses,
+    roleAddresses,
+    pauseTypeRoles,
+    unpauseTypeRoles,
   ]);
+
   await tokenBridge.waitForDeployment();
   const tokenBridgeAddress = await tokenBridge.getAddress();
 

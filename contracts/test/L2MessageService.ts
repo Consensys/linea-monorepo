@@ -26,12 +26,6 @@ import {
   UNPAUSE_ALL_ROLE,
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
-  unpauseTypeRoles,
-  pauseTypeRoles,
-  PAUSE_L1_L2_ROLE,
-  UNPAUSE_L1_L2_ROLE,
-  UNPAUSE_L2_L1_ROLE,
-  PAUSE_L2_L1_ROLE,
 } from "./common/constants";
 import { deployUpgradableFromFactory } from "./common/deployment";
 import {
@@ -45,6 +39,12 @@ import {
   generateKeccak256Hash,
 } from "./common/helpers";
 import { ZeroAddress } from "ethers";
+import { generateRoleAssignments } from "contracts/common/helpers";
+import {
+  L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+  L2_MESSAGE_SERVICE_ROLES,
+  L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
+} from "contracts/common/constants";
 
 describe("L2MessageService", () => {
   let l2MessageService: TestL2MessageService;
@@ -56,26 +56,16 @@ describe("L2MessageService", () => {
   let postmanAddress: SignerWithAddress;
 
   async function deployL2MessageServiceFixture() {
-    const roleAddresses = [
-      { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-      { addressWithRole: l1l2MessageSetter.address, role: L1_L2_MESSAGE_SETTER_ROLE },
-      { addressWithRole: securityCouncil.address, role: MINIMUM_FEE_SETTER_ROLE },
-      { addressWithRole: securityCouncil.address, role: RATE_LIMIT_SETTER_ROLE },
-      { addressWithRole: securityCouncil.address, role: USED_RATE_LIMIT_RESETTER_ROLE },
-      { addressWithRole: securityCouncil.address, role: PAUSE_ALL_ROLE },
-      { addressWithRole: securityCouncil.address, role: UNPAUSE_ALL_ROLE },
-      { addressWithRole: securityCouncil.address, role: PAUSE_L1_L2_ROLE },
-      { addressWithRole: securityCouncil.address, role: UNPAUSE_L1_L2_ROLE },
-      { addressWithRole: securityCouncil.address, role: PAUSE_L2_L1_ROLE },
-      { addressWithRole: securityCouncil.address, role: UNPAUSE_L2_L1_ROLE },
-    ];
+    const roleAddresses = generateRoleAssignments(L2_MESSAGE_SERVICE_ROLES, securityCouncil.address, [
+      { role: L1_L2_MESSAGE_SETTER_ROLE, addresses: [l1l2MessageSetter.address] },
+    ]);
 
     return deployUpgradableFromFactory("TestL2MessageService", [
       ONE_DAY_IN_SECONDS,
       INITIAL_WITHDRAW_LIMIT,
       roleAddresses,
-      pauseTypeRoles,
-      unpauseTypeRoles,
+      L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+      L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
     ]) as unknown as Promise<TestL2MessageService>;
   }
 
@@ -131,8 +121,8 @@ describe("L2MessageService", () => {
         ONE_DAY_IN_SECONDS,
         0,
         [{ addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE }],
-        pauseTypeRoles,
-        unpauseTypeRoles,
+        L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+        L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
       ]);
 
       await expectRevertWithCustomError(l2MessageService, deployCall, "LimitIsZero");
@@ -143,8 +133,8 @@ describe("L2MessageService", () => {
         0,
         MESSAGE_VALUE_1ETH + MESSAGE_VALUE_1ETH,
         [{ addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE }],
-        pauseTypeRoles,
-        unpauseTypeRoles,
+        L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+        L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
       ]);
 
       await expectRevertWithCustomError(l2MessageService, deployCall, "PeriodIsZero");
@@ -156,8 +146,8 @@ describe("L2MessageService", () => {
         ONE_DAY_IN_SECONDS,
         INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles,
-        unpauseTypeRoles,
+        L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+        L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
       );
 
       await expectRevertWithReason(deployCall, INITIALIZED_ALREADY_MESSAGE);
@@ -1438,8 +1428,8 @@ describe("L2MessageService", () => {
           { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
           { addressWithRole: securityCouncil.address, role: MINIMUM_FEE_SETTER_ROLE },
         ],
-        pauseTypeRoles,
-        unpauseTypeRoles,
+        L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+        L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
       );
 
       expect(await newL2MessageService.nextMessageNumber()).to.equal(1);
@@ -1459,7 +1449,11 @@ describe("L2MessageService", () => {
 
       await expectRevertWithCustomError(
         newL2MessageService,
-        newL2MessageService.reinitializePauseTypesAndPermissions(roleAddresses, pauseTypeRoles, unpauseTypeRoles),
+        newL2MessageService.reinitializePauseTypesAndPermissions(
+          roleAddresses,
+          L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+          L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
+        ),
         "ZeroAddressNotAllowed",
       );
     });

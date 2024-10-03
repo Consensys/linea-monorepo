@@ -1,7 +1,7 @@
 import { ethers, upgrades } from "hardhat";
 
 import { TokenBridge } from "../../../typechain-types";
-import { SupportedChainIds } from "../../../utils/supportedNetworks";
+import { SupportedChainIds } from "../../../common/supportedNetworks";
 import { deployBridgedTokenBeacon } from "./deployBridgedTokenBeacon";
 import {
   SET_REMOTE_TOKENBRIDGE_ROLE,
@@ -15,7 +15,7 @@ import {
   UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "contracts/test/common/constants";
+} from "../../../test/common/constants";
 
 export async function deployTokenBridge(messageServiceAddress: string, verbose = false) {
   const [owner] = await ethers.getSigners();
