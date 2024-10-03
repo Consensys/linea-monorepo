@@ -73,8 +73,10 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
           SRC_SHNARF: "./lib/shnarf_calculator/shnarf_calculator.go"
           TARGET_SHNARF: "shnarf_calculator"
-          SRC_COMPRESSOR: "./lib/compressor/libcompressor.go"
+          SRC_COMPRESSOR: "./lib/compressor/libcompressor/libcompressor.go"
           TARGET_COMPRESSOR: "blob_compressor"
+          SRC_DECOMPRESSOR: "./lib/compressor/libdecompressor/libdecompressor.go"
+          TARGET_DECOMPRESSOR: "blob_decompressor"
         run: |
           cd prover
           mkdir target
