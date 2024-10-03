@@ -80,6 +80,7 @@ jobs:
           mkdir target
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_SHNARF}_${VERSION}_linux_arm64.so ${SRC_SHNARF}
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_linux_arm64.so ${SRC_COMPRESSOR}
+          GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_DECOMPRESSOR}_${VERSION}_linux_arm64.so ${SRC_DECOMPRESSOR}
       - name: Cache built binaries
         uses: actions/upload-artifact@master
         with:
