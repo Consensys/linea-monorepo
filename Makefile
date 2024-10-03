@@ -13,7 +13,7 @@ pnpm-install:
 		pnpm install
 
 docker-pull-develop:
-		docker compose -f docker/compose.yml --profile l2 pull
+		L1_GENESIS_TIME=$(get_future_time) docker compose -f docker/compose.yml pull
 
 clean-smc-folders:
 		rm -f contracts/.openzeppelin/unknown-31648428.json
