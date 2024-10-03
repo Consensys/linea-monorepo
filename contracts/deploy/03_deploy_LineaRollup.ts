@@ -9,7 +9,6 @@ import {
   CALLDATA_SUBMISSION_PAUSE_TYPE,
   DEFAULT_ADMIN_ROLE,
   FINALIZATION_PAUSE_TYPE,
-  FINALIZE_WITHOUT_PROOF_ROLE,
   GENERAL_PAUSE_TYPE,
   L1_L2_PAUSE_TYPE,
   L2_L1_PAUSE_TYPE,
@@ -27,7 +26,9 @@ import {
   VERIFIER_UNSETTER_ROLE,
   OPERATOR_ROLE,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-} from "contracts/test/utils/constants";
+  RATE_LIMIT_SETTER_ROLE,
+  USED_RATE_LIMIT_RESETTER_ROLE,
+} from "../test/utils/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -102,13 +103,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     { addressWithRole: LineaRollup_securityCouncil, role: DEFAULT_ADMIN_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: VERIFIER_SETTER_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: VERIFIER_UNSETTER_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: RATE_LIMIT_SETTER_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: USED_RATE_LIMIT_RESETTER_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_ALL_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_L1_L2_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_L2_L1_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_ALL_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_L1_L2_ROLE },
+    { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_L2_L1_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
     { addressWithRole: LineaRollup_securityCouncil, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
-    { addressWithRole: LineaRollup_securityCouncil, role: FINALIZE_WITHOUT_PROOF_ROLE },
   ];
 
   for (let i = 0; i < LineaRollup_operators.length; i++) {
@@ -138,9 +144,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         defaultVerifier: verifierAddress,
         rateLimitPeriodInSeconds: LineaRollup_rateLimitPeriodInSeconds,
         rateLimitAmountInWei: LineaRollup_rateLimitAmountInWei,
-        roleAddresses: roleAddresses,
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        roleAddresses,
+        pauseTypeRoles,
+        unpauseTypeRoles,
         fallbackOperator: MultiCallAddress,
       },
     ],
