@@ -58,8 +58,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.23.x]
-        os: [self-hosted, Linux, X64, small]
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, Linux, X64, small]
     name: Prover testing
     needs:
       - staticcheck
@@ -90,7 +89,7 @@ jobs:
         go test -p=1 -tags=nocorset,fuzzlight -timeout=30m ./...
     - name: Test (32 bits & race)
       working-directory: prover
-      if: (matrix.os == 'ubuntu-latest') && (matrix.go-version == '1.20.x')
+      if: matrix.go-version == '1.20.x'
       run: |
           go test -p=1 -tags=nocorset,fuzzlight -timeout=30m -short -race  ./...
 
