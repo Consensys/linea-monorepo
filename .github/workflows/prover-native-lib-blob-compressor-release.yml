@@ -55,6 +55,37 @@ jobs:
           name: linux-artefacts
           path: ./prover/target
 
+  build-linux-arm64:
+    runs-on: besu-arm64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.22.x
+          architecture: arm64
+
+      - name: Build the linux artefacts
+        env:
+          CGO_ENABLED: 1
+          GOOS: "linux"
+          VERSION: ${{ github.event.inputs.version }}
+          SRC_SHNARF: "./lib/shnarf_calculator/shnarf_calculator.go"
+          TARGET_SHNARF: "shnarf_calculator"
+          SRC_COMPRESSOR: "./lib/compressor/libcompressor.go"
+          TARGET_COMPRESSOR: "blob_compressor"
+        run: |
+          cd prover
+          mkdir target
+          GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_SHNARF}_${VERSION}_linux_arm64.so ${SRC_SHNARF}
+          GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_linux_arm64.so ${SRC_COMPRESSOR}
+      - name: Cache built binaries
+        uses: actions/upload-artifact@master
+        with:
+          name: linux-arm64-artefacts
+          path: ./prover/target
+
   build-mac-os:
     runs-on: macos-latest
     steps:
@@ -93,7 +124,7 @@ jobs:
 
   release_artefacts:
     name: Release artefacts
-    needs: [ build-linux, build-mac-os]
+    needs: [ build-linux, build-linux-arm64, build-mac-os]
     runs-on: besu-arm64
     steps:
       - name: Load cached binaries
