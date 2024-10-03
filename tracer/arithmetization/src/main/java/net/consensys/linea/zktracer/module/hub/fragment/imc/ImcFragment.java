@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -27,7 +26,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import org.apache.tuweni.bytes.Bytes;
 
 /**
  * IMCFragments embed data required for Inter-Module Communication, i.e. data that are required to
@@ -68,9 +66,6 @@ public class ImcFragment implements TraceFragment {
     // isdeployment == false
     // non empty calldata
     final TransactionProcessingMetadata currentTx = hub.txStack().current();
-    final boolean isMessageCallTransaction = currentTx.getBesuTransaction().getTo().isPresent();
-
-    final Optional<Bytes> txData = currentTx.getBesuTransaction().getData();
     final boolean shouldCopyTxCallData = currentTx.copyTransactionCallData();
 
     final ImcFragment miscFragment = ImcFragment.empty(hub);
@@ -84,8 +79,8 @@ public class ImcFragment implements TraceFragment {
     } else {
       oobIsSet = true;
     }
-    this.hub.oob().call(f);
-    this.moduleCalls.add(f);
+    hub.oob().call(f);
+    moduleCalls.add(f);
     return this;
   }
 
@@ -96,7 +91,7 @@ public class ImcFragment implements TraceFragment {
       mmuIsSet = true;
     }
     // Note: the triggering of the MMU is made by the creation of the MmuCall
-    this.moduleCalls.add(f);
+    moduleCalls.add(f);
     return this;
   }
 
@@ -106,8 +101,8 @@ public class ImcFragment implements TraceFragment {
     } else {
       expIsSet = true;
     }
-    this.hub.exp().call(f);
-    this.moduleCalls.add(f);
+    hub.exp().call(f);
+    moduleCalls.add(f);
     return this;
   }
 
@@ -117,8 +112,8 @@ public class ImcFragment implements TraceFragment {
     } else {
       mxpIsSet = true;
     }
-    this.hub.mxp().call(f);
-    this.moduleCalls.add(f);
+    hub.mxp().call(f);
+    moduleCalls.add(f);
     return this;
   }
 
@@ -128,8 +123,8 @@ public class ImcFragment implements TraceFragment {
     } else {
       stpIsSet = true;
     }
-    this.hub.stp().call(f);
-    this.moduleCalls.add(f);
+    hub.stp().call(f);
+    moduleCalls.add(f);
     return this;
   }
 
@@ -137,8 +132,8 @@ public class ImcFragment implements TraceFragment {
   public Trace trace(Trace trace) {
     trace.peekAtMiscellaneous(true);
 
-    for (TraceSubFragment subFragment : this.moduleCalls) {
-      subFragment.trace(trace, this.hub.state.stamps());
+    for (TraceSubFragment subFragment : moduleCalls) {
+      subFragment.trace(trace, hub.state.stamps());
     }
 
     return trace;

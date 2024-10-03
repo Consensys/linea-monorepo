@@ -56,6 +56,7 @@ import static net.consensys.linea.zktracer.module.oob.Trace.CT_MAX_SHA2;
 import static net.consensys.linea.zktracer.module.oob.Trace.CT_MAX_SSTORE;
 import static net.consensys.linea.zktracer.module.oob.Trace.CT_MAX_XCALL;
 import static net.consensys.linea.zktracer.module.oob.Trace.G_QUADDIVISOR;
+import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.getOpCode;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBoolean;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBigInteger;
@@ -297,7 +298,7 @@ public class OobOperation extends ModuleOperation {
   }
 
   public void populateColumnsForPrecompile(MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opCode = getOpCode(frame);
     final long argsOffset =
         Words.clampedToLong(
             opCode.callCanTransferValue()
@@ -314,7 +315,7 @@ public class OobOperation extends ModuleOperation {
       calleeGas = ((ModexpPricingOobCall) oobCall).getCallGas();
     }
     if (oobCall instanceof Blake2fParamsOobCall) {
-      calleeGas = ((Blake2fParamsOobCall) oobCall).getCallGas();
+      calleeGas = ((Blake2fParamsOobCall) oobCall).getCalleeGas();
     }
 
     final BigInteger cds = EWord.of(frame.getStackItem(cdsIndex)).toUnsignedBigInteger();
@@ -458,13 +459,12 @@ public class OobOperation extends ModuleOperation {
           setBlake2FCds(prcBlake2FCdsCall);
         }
         case OOB_INST_BLAKE_PARAMS -> {
-          Bytes callData = frame.shadowReadMemory(argsOffset, 213);
+          final Bytes callData = frame.shadowReadMemory(argsOffset, 213);
           final BigInteger blakeR = callData.slice(0, 4).toUnsignedBigInteger();
-
           final BigInteger blakeF = BigInteger.valueOf(toUnsignedInt(callData.get(212)));
 
           final Blake2fParamsOobCall prcBlake2FParamsOobCall = (Blake2fParamsOobCall) oobCall;
-          prcBlake2FParamsOobCall.setCallGas(calleeGas);
+          prcBlake2FParamsOobCall.setCalleeGas(calleeGas);
           prcBlake2FParamsOobCall.setBlakeR(blakeR);
           prcBlake2FParamsOobCall.setBlakeF(blakeF);
 
@@ -556,7 +556,7 @@ public class OobOperation extends ModuleOperation {
     outgoingData2[k] = arg1Lo;
     outgoingData3[k] = arg2Hi;
     outgoingData4[k] = arg2Lo;
-    boolean r = wcp.callLT(arg1, arg2);
+    final boolean r = wcp.callLT(arg1, arg2);
     outgoingResLo[k] = booleanToBigInteger(r);
     return r;
   }
@@ -577,7 +577,7 @@ public class OobOperation extends ModuleOperation {
     outgoingData2[k] = arg1Lo;
     outgoingData3[k] = arg2Hi;
     outgoingData4[k] = arg2Lo;
-    boolean r = wcp.callGT(arg1, arg2);
+    final boolean r = wcp.callGT(arg1, arg2);
     outgoingResLo[k] = booleanToBigInteger(r);
     return r;
   }
@@ -594,7 +594,7 @@ public class OobOperation extends ModuleOperation {
     outgoingData2[k] = arg1Lo;
     outgoingData3[k] = BigInteger.ZERO;
     outgoingData4[k] = BigInteger.ZERO;
-    boolean r = wcp.callISZERO(arg1);
+    final boolean r = wcp.callISZERO(arg1);
     outgoingResLo[k] = booleanToBigInteger(r);
     return r;
   }
@@ -615,7 +615,7 @@ public class OobOperation extends ModuleOperation {
     outgoingData2[k] = arg1Lo;
     outgoingData3[k] = arg2Hi;
     outgoingData4[k] = arg2Lo;
-    boolean r = wcp.callEQ(arg1, arg2);
+    final boolean r = wcp.callEQ(arg1, arg2);
     outgoingResLo[k] = booleanToBigInteger(r);
     return r;
   }
@@ -1183,7 +1183,7 @@ public class OobOperation extends ModuleOperation {
         !callToLT(
             0,
             BigInteger.ZERO,
-            prcBlake2FParamsOobCall.getCallGas(),
+            prcBlake2FParamsOobCall.getCalleeGas(),
             BigInteger.ZERO,
             prcBlake2FParamsOobCall.getBlakeR()); // = ramSuccess
 
@@ -1203,7 +1203,7 @@ public class OobOperation extends ModuleOperation {
     // Set returnGas
     final BigInteger returnGas =
         ramSuccess
-            ? (prcBlake2FParamsOobCall.getCallGas().subtract(prcBlake2FParamsOobCall.getBlakeR()))
+            ? (prcBlake2FParamsOobCall.getCalleeGas().subtract(prcBlake2FParamsOobCall.getBlakeR()))
             : BigInteger.ZERO;
 
     prcBlake2FParamsOobCall.setReturnGas(returnGas);
