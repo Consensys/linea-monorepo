@@ -41,8 +41,7 @@ public class BlockGasLimitTest extends LineaPluginTestBase {
   @Override
   @BeforeEach
   public void setup() throws Exception {
-    minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", getTestCliOptions());
-    cluster.start(minerNode);
+    super.setup();
     minerNode.execute(minerTransactions.minerStop());
   }
 

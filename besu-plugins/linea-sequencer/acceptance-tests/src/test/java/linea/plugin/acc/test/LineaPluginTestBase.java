@@ -121,7 +121,14 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
             .jsonRpcTxPool()
             .genesisConfigProvider(
                 validators -> Optional.of(provideGenesisConfig(validators, cliqueOptions)))
-            .extraCLIOptions(extraCliOptions);
+            .extraCLIOptions(extraCliOptions)
+            .requestedPlugins(
+                List.of(
+                    "LineaExtraDataPlugin",
+                    "LineaEstimateGasEndpointPlugin",
+                    "LineaSetExtraDataEndpointPlugin",
+                    "LineaTransactionPoolValidatorPlugin",
+                    "LineaTransactionSelectorPlugin"));
 
     return besu.create(nodeConfBuilder.build());
   }
