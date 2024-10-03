@@ -8,11 +8,12 @@ import java.nio.file.Path
 class DecompressionException(message: String) : RuntimeException(message)
 
 interface BlobDecompressor {
-  fun decompress(blob: ByteArray, out: ByteArray): Int
+  fun decompress(blob: ByteArray): ByteArray
 }
 
 internal class Adapter(
   private val delegate: GoNativeBlobDecompressorJnaBinding,
+  private val maxExpectedCompressionRatio: Int = 10,
   dictionaries: List<Path>
 ) : BlobDecompressor {
   init {
@@ -26,12 +27,13 @@ internal class Adapter(
     }
   }
 
-  override fun decompress(blob: ByteArray, out: ByteArray): Int {
-    val decompressedSize = delegate.Decompress(blob, blob.size, out, out.size)
+  override fun decompress(blob: ByteArray): ByteArray {
+    val decompressionBuffer = ByteArray(blob.size * maxExpectedCompressionRatio)
+    val decompressedSize = delegate.Decompress(blob, blob.size, decompressionBuffer, decompressionBuffer.size)
     if (decompressedSize < 0) {
       throw DecompressionException("Decompression failed, error='${delegate.Error()}'")
     }
-    return decompressedSize
+    return decompressionBuffer.copyOf(decompressedSize)
   }
 }
 
@@ -93,7 +95,7 @@ class GoNativeBlobDecompressorFactory {
         Native.extractFromResourcePath(getLibFileName(version.version)).toString(),
         GoNativeBlobDecompressorJnaLib::class.java
       ).let {
-        Adapter(it, listOf(dictionaryPath))
+        Adapter(delegate = it, dictionaries = listOf(dictionaryPath))
       }
     }
   }

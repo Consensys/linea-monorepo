@@ -34,9 +34,8 @@ class GoNativeBlobDecompressorTest {
     val compressedData = ByteArray(compressor.Len())
     compressor.Bytes(compressedData)
 
-    val decompressedDataBuffer = ByteArray(blobCompressedLimit * 20)
-    val decompressedBlobSize = decompressor.decompress(compressedData, decompressedDataBuffer)
-    assertThat(decompressedBlobSize).isGreaterThan(0)
+    val decompressedBlob = decompressor.decompress(compressedData)
+    assertThat(decompressedBlob.size).isGreaterThan(compressedData.size)
     // TODO: assert decompressedDataBuffer content
   }
 }
