@@ -50,12 +50,10 @@ public class BlakeSubsection extends PrecompileSubsection {
     final Bytes blakeR = callData.slice(0, 4);
     final Bytes blakeF = callData.slice(212, 1);
 
-    {
-      final boolean wellFormedF = blakeF.get(0) == 0 || blakeF.get(0) == 1;
-      final long rounds = blakeR.toLong();
-      final boolean sufficientGas = calleeGas >= rounds;
-      blakeSuccess = wellFormedF && sufficientGas;
-    }
+    final boolean wellFormedF = blakeF.get(0) == 0 || blakeF.get(0) == 1;
+    final long rounds = blakeR.toLong();
+    final boolean sufficientGas = calleeGas >= rounds;
+    blakeSuccess = wellFormedF && sufficientGas;
 
     if (!blakeSuccess) {
       this.setScenario(PRC_FAILURE_KNOWN_TO_RAM);
