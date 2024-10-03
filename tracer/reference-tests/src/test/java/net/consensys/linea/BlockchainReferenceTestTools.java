@@ -20,6 +20,7 @@ import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.getModule;
 import static net.consensys.linea.ReferenceTestWatcher.JSON_INPUT_FILENAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigInteger;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -178,7 +179,9 @@ public class BlockchainReferenceTestTools {
     final MutableBlockchain blockchain = spec.getBlockchain();
     final ProtocolContext context = spec.getProtocolContext();
 
-    final ZkTracer zkTracer = new ZkTracer(schedule.getChainId().get());
+    final BigInteger nonnegativeChainId = schedule.getChainId().get().abs();
+
+    final ZkTracer zkTracer = new ZkTracer(nonnegativeChainId);
     zkTracer.traceStartConflation(spec.getCandidateBlocks().length);
 
     for (var candidateBlock : spec.getCandidateBlocks()) {

@@ -58,7 +58,7 @@ public class ToyExecutionEnvironmentV2 {
 
   @Builder.Default private final Consumer<ZkTracer> zkTracerValidator = x -> {};
 
-  private final ZkTracer tracer = new ZkTracer();
+  private final ZkTracer tracer = new ZkTracer(CHAIN_ID);
 
   public void run() {
     ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(CHAIN_ID);

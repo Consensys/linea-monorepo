@@ -60,8 +60,6 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   private static final Map<String, Integer> spillings;
 
-  public final BigInteger chainId;
-
   static {
     try {
       // Load spillings configured in src/main/resources/spillings.toml.
@@ -82,17 +80,20 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   @Getter private final List<Exception> tracingExceptions = new FiniteList<>(50);
 
   public ZkTracer() {
-    this(LineaL1L2BridgeSharedConfiguration.EMPTY, Bytes.fromHexString("c0ffee").toBigInteger());
+    this(
+        LineaL1L2BridgeSharedConfiguration.EMPTY,
+        Bytes.fromHexString("c0ffee").toBigInteger().abs());
   }
 
-  public ZkTracer(BigInteger chainId) {
-    this(LineaL1L2BridgeSharedConfiguration.EMPTY, chainId);
+  public ZkTracer(BigInteger nonnegativeChainId) {
+    this(LineaL1L2BridgeSharedConfiguration.EMPTY, nonnegativeChainId);
   }
 
   public ZkTracer(
       final LineaL1L2BridgeSharedConfiguration bridgeConfiguration, BigInteger chainId) {
-    this.hub = new Hub(bridgeConfiguration.contract(), bridgeConfiguration.topic());
-    this.chainId = chainId;
+    BigInteger nonnegativeChainId = chainId.abs();
+    this.hub =
+        new Hub(bridgeConfiguration.contract(), bridgeConfiguration.topic(), nonnegativeChainId);
     for (Module m : this.hub.getModulesToCount()) {
       if (!spillings.containsKey(m.moduleKey())) {
         throw new IllegalStateException(

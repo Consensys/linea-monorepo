@@ -55,7 +55,7 @@ public class BlockdataOperation extends ModuleOperation {
   }
 
   public void trace(
-      Trace trace, final int relBlock, final long firstBlockNumber, final long chainId) {
+      Trace trace, final int relBlock, final long firstBlockNumber, final BigInteger chainId) {
     for (short ct = 0; ct <= MAX_CT; ct++) {
       traceBlockConstant(trace, relBlock, firstBlockNumber);
       traceRowDependant(trace, ct, relBlock, chainId);
@@ -64,7 +64,7 @@ public class BlockdataOperation extends ModuleOperation {
   }
 
   private void traceRowDependant(
-      Trace trace, final short ct, final int relBlock, final long chainId) {
+      Trace trace, final short ct, final int relBlock, final BigInteger chainId) {
     trace.ct(ct);
 
     Bytes32 data;
@@ -90,7 +90,7 @@ public class BlockdataOperation extends ModuleOperation {
         trace.inst(UnsignedByte.of(EVM_INST_GASLIMIT)).wcpFlag(false);
       }
       case 5 -> {
-        data = Bytes32.leftPad(Bytes.ofUnsignedLong(chainId));
+        data = Bytes32.leftPad(bigIntegerToBytes(chainId));
         trace.inst(UnsignedByte.of(EVM_INST_CHAINID)).wcpFlag(false);
       }
       case 6 -> {
