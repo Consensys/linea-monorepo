@@ -16,8 +16,8 @@
 package net.consensys.linea.zktracer.module.blockdata;
 
 import static net.consensys.linea.zktracer.module.blockdata.Trace.MAX_CT;
-import static net.consensys.linea.zktracer.types.TransactionUtils.getChainIdFromTransaction;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -27,7 +27,6 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
-import net.consensys.linea.zktracer.module.rlptxn.RlpTxnOperation;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -39,6 +38,7 @@ public class Blockdata implements Module {
   private final Wcp wcp;
   private final TxnData txnData;
   private final RlpTxn rlpTxn;
+  private final BigInteger chainId;
   private final Deque<BlockdataOperation> operations = new ArrayDeque<>();
   private boolean conflationFinished = false;
   private static final int TIMESTAMP_BYTESIZE = 4;
@@ -96,27 +96,9 @@ public class Blockdata implements Module {
     final Trace trace = new Trace(buffers);
 
     final long firstBlockNumber = operations.getFirst().absoluteBlockNumber();
-    final long chainId = getChainIdFromConflation();
     int relblock = 0;
     for (BlockdataOperation blockData : operations) {
       blockData.trace(trace, ++relblock, firstBlockNumber, chainId);
     }
-  }
-
-  private long getChainIdFromConflation() {
-    // TODO: this doesn't work if all transaction of the batch are WO ChainId
-    long chainId = -1;
-    for (RlpTxnOperation tx : rlpTxn.operations().getAll()) {
-      try {
-        chainId = getChainIdFromTransaction(tx.tx());
-        break;
-      } catch (Exception e) {
-        continue;
-      }
-    }
-    if (chainId == -1) {
-      throw new RuntimeException("No chainId found in the batch");
-    }
-    return chainId;
   }
 }
