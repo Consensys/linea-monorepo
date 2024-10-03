@@ -18,19 +18,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-data class ImportResult(
-  val blockNumber: ULong,
-  val zkStateRootHash: ByteArray
-)
-
-interface BlockImporterAndStateVerifier {
-  fun importBlocks(blocks: List<BlockL1RecoveredData>): SafeFuture<ImportResult>
-}
-
-interface BlobDecompressorToDomain {
-  fun decompress(blobs: List<ByteArray>): List<BlockL1RecoveredData>
-}
-
 class StateSynchronizerService(
   private val vertx: Vertx,
   private val elClient: ExecutionLayerClient,

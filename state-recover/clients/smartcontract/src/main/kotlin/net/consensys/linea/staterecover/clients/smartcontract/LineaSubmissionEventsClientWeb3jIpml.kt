@@ -25,7 +25,11 @@ class LineaSubmissionEventsClientWeb3jIpml(
   }
 
   override fun findDataFinalizedEventByStartBlockNumber(blockNumber: ULong): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
-    TODO("Not yet implemented")
+    return findDataFinalizedV3Event(
+      fromL1BlockNumber = BlockParameter.Tag.EARLIEST,
+      toL1BlockNumber = BlockParameter.Tag.FINALIZED,
+      startBlockNumber = blockNumber
+    )
   }
 
   override fun findDataSubmittedV3EventsUtilNextFinalization(
@@ -43,8 +47,8 @@ class LineaSubmissionEventsClientWeb3jIpml(
   }
 
   private fun findDataFinalizedV3Event(
-    fromBlockNumber: BlockParameter = BlockParameter.Tag.EARLIEST,
-    toBlockNumber: BlockParameter = BlockParameter.Tag.LATEST,
+    fromL1BlockNumber: BlockParameter = BlockParameter.Tag.EARLIEST,
+    toL1BlockNumber: BlockParameter = BlockParameter.Tag.LATEST,
     startBlockNumber: ULong? = null,
     endBlockNumber: ULong? = null
   ): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
@@ -54,8 +58,8 @@ class LineaSubmissionEventsClientWeb3jIpml(
 
     val ethFilter =
       EthFilter(
-        fromBlockNumber.toWeb3j(),
-        toBlockNumber.toWeb3j(),
+        fromL1BlockNumber.toWeb3j(),
+        toL1BlockNumber.toWeb3j(),
         smartContractAddress
       ).apply {
         /**
