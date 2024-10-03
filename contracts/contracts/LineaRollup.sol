@@ -487,6 +487,8 @@ contract LineaRollup is
     if (stateRootHashes[lastFinalizedBlockNumber] != _finalizationData.parentStateRootHash) {
       revert StartingRootHashDoesNotMatch();
     }
+
+    /// @dev currentFinalizedShnarf is updated in _finalizeBlocks and lastFinalizedShnarf MUST be set beforehand for the transition.
     bytes32 lastFinalizedShnarf = currentFinalizedShnarf;
     bytes32 finalShnarf = _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber);
 
