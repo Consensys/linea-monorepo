@@ -79,7 +79,6 @@ export type SubmissionAndCompressedData = {
 export type FinalizationData = {
   aggregatedProof: string;
   finalBlockInData: bigint;
-  lastFinalizedShnarf: string;
   shnarfData: ShnarfData;
   parentStateRootHash: string;
   lastFinalizedTimestamp: bigint;

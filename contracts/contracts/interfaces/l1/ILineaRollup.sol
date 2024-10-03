@@ -100,7 +100,6 @@ interface ILineaRollup {
    * @notice Supporting data for finalization with or without proof.
    * @dev NB: the dynamic sized fields are placed last on purpose for efficient keccaking on public input.
    * @dev parentStateRootHash is the expected last state root hash finalized.
-   * @dev lastFinalizedShnarf is the last finalized shnarf for proof continuity checks.
    * @dev finalBlockInData is the final block finalizing until.
    * @dev shnarfData contains data about the last data submission's shnarf used in finalization.
    * @dev lastFinalizedTimestamp is the expected last finalized block's timestamp.
@@ -115,9 +114,8 @@ interface ILineaRollup {
    * @dev l2MerkleRoots is an array of L2 message merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockInData.
    * @dev l2MessagingBlocksOffsets indicates by offset from currentL2BlockNumber which L2 blocks contain MessageSent events.
    */
-  struct FinalizationDataV2 {
+  struct FinalizationDataV3 {
     bytes32 parentStateRootHash;
-    bytes32 lastFinalizedShnarf;
     uint256 finalBlockInData;
     ShnarfData shnarfData;
     uint256 lastFinalizedTimestamp;
@@ -324,11 +322,6 @@ interface ILineaRollup {
   error SnarkHashIsZeroHash();
 
   /**
-   * @dev Thrown when the block being finalized until does not match that of the shnarf data.
-   */
-  error FinalBlockDoesNotMatchShnarfFinalBlock(uint256 expected, uint256 actual);
-
-  /**
    * @dev Thrown when the lengths of the shnarfs array and final block numbers array don't match.
    */
   error ShnarfAndFinalBlockNumberLengthsMismatched(uint256 shnarfsLength, uint256 finalBlockNumbers);
@@ -399,6 +392,6 @@ interface ILineaRollup {
   function finalizeBlocksWithProof(
     bytes calldata _aggregatedProof,
     uint256 _proofType,
-    FinalizationDataV2 calldata _finalizationData
+    FinalizationDataV3 calldata _finalizationData
   ) external;
 }
