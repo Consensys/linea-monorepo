@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   run-load-test:
-    runs-on: [self-hosted, Linux, X64, small]
+    runs-on: [self-hosted,ubuntu-22.04X64, small]
     name: Run Load Test
     steps:
       - name: Checkout

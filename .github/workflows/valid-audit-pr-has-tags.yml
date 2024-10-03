@@ -9,7 +9,7 @@ on:
 
 jobs:
   check:
-    runs-on: [self-hosted, Linux, X64, small]
+    runs-on: [self-hosted,ubuntu-22.04X64, small]
 
     steps:
     - name: Checkout code
