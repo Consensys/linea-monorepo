@@ -58,6 +58,7 @@ describe("L2MessageService", () => {
   async function deployL2MessageServiceFixture() {
     const roleAddresses = [
       { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
+      { addressWithRole: l1l2MessageSetter.address, role: L1_L2_MESSAGE_SETTER_ROLE },
       { addressWithRole: securityCouncil.address, role: MINIMUM_FEE_SETTER_ROLE },
       { addressWithRole: securityCouncil.address, role: RATE_LIMIT_SETTER_ROLE },
       { addressWithRole: securityCouncil.address, role: USED_RATE_LIMIT_RESETTER_ROLE },
@@ -67,7 +68,6 @@ describe("L2MessageService", () => {
       { addressWithRole: securityCouncil.address, role: UNPAUSE_L1_L2_ROLE },
       { addressWithRole: securityCouncil.address, role: PAUSE_L2_L1_ROLE },
       { addressWithRole: securityCouncil.address, role: UNPAUSE_L2_L1_ROLE },
-      { addressWithRole: l1l2MessageSetter.address, role: L1_L2_MESSAGE_SETTER_ROLE },
     ];
 
     return deployUpgradableFromFactory("TestL2MessageService", [
