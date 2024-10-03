@@ -19,8 +19,7 @@ internal class Adapter(
   init {
     delegate.Init()
 
-    val paths = dictionaries.map { path -> path.toString() } // TODO more concise idiom?
-      .joinToString(":")
+    val paths = dictionaries.joinToString(separator = ":") { path -> path.toString() }
 
     if (delegate.LoadDictionaries(paths) != dictionaries.size) {
       throw DecompressionException("Failed to load dictionaries '$paths', error='${delegate.Error()}'")
@@ -84,7 +83,7 @@ enum class BlobDecompressorVersion(val version: String) {
 class GoNativeBlobDecompressorFactory {
   companion object {
     private const val DICTIONARY_NAME = "compressor_dict.bin"
-    val dictionaryPath = copyResourceToTmpDir(DICTIONARY_NAME)
+    private val dictionaryPath = copyResourceToTmpDir(DICTIONARY_NAME)
 
     private fun getLibFileName(version: String) = "blob_decompressor_jna_$version"
 
