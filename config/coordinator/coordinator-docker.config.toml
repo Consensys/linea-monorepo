@@ -237,12 +237,9 @@ gas-price-lower-bound = 90000000 # 0.09 GWEI
 
 [l2-network-gas-pricing.json-rpc-pricing-propagation]
 geth-gas-price-update-recipients = [
-  "http://traces-node:8545/",
   "http://l2-node:8545/"
 ]
-besu-gas-price-update-recipients = [
-  "http://sequencer:8545/"
-]
+besu-gas-price-update-recipients = []
 
 [l1-dynamic-gas-price-cap-service]
 disabled=false
