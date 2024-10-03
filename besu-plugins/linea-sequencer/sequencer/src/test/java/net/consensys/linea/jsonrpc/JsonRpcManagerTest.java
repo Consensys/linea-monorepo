@@ -29,21 +29,23 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
-import net.consensys.linea.sequencer.txselection.selectors.TestTransactionEvaluationContext;
+import net.consensys.linea.config.LineaNodeType;
+import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,21 +58,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @WireMockTest
 @ExtendWith(MockitoExtension.class)
 class JsonRpcManagerTest {
+  static final String PLUGIN_IDENTIFIER = "linea-json-test-plugin";
   @TempDir private Path tempDataDir;
   private JsonRpcManager jsonRpcManager;
   private final Bytes randomEncodedBytes = Bytes.random(32);
-  @Mock private PendingTransaction pendingTransaction;
-  @Mock private ProcessableBlockHeader pendingBlockHeader;
   @Mock private Transaction transaction;
 
   @BeforeEach
-  void init(final WireMockRuntimeInfo wmInfo) {
+  void init(final WireMockRuntimeInfo wmInfo) throws MalformedURLException {
     // mock stubbing
-    when(pendingBlockHeader.getNumber()).thenReturn(1L);
-    when(pendingTransaction.getTransaction()).thenReturn(transaction);
     when(transaction.encoded()).thenReturn(randomEncodedBytes);
-
-    jsonRpcManager = new JsonRpcManager(tempDataDir, URI.create(wmInfo.getHttpBaseUrl()));
+    final LineaRejectedTxReportingConfiguration config =
+        LineaRejectedTxReportingConfiguration.builder()
+            .rejectedTxEndpoint(URI.create(wmInfo.getHttpBaseUrl()).toURL())
+            .lineaNodeType(LineaNodeType.SEQUENCER)
+            .build();
+    jsonRpcManager = new JsonRpcManager(PLUGIN_IDENTIFIER, tempDataDir, config);
     jsonRpcManager.start();
   }
 
@@ -80,7 +83,7 @@ class JsonRpcManagerTest {
   }
 
   @Test
-  void rejectedTxIsReported() throws InterruptedException {
+  void rejectedTxIsReported() {
     // json-rpc stubbing
     stubFor(
         post(urlEqualTo("/"))
@@ -91,15 +94,20 @@ class JsonRpcManagerTest {
                     .withBody(
                         "{\"jsonrpc\":\"2.0\",\"result\":{ \"status\": \"SAVED\"},\"id\":1}")));
 
-    final TestTransactionEvaluationContext context =
-        new TestTransactionEvaluationContext(pendingBlockHeader, pendingTransaction);
     final TransactionSelectionResult result = TransactionSelectionResult.invalid("test");
     final Instant timestamp = Instant.now();
 
     // method under test
     final String jsonRpcCall =
-        JsonRpcRequestBuilder.buildRejectedTxRequest(context, result, timestamp);
-    jsonRpcManager.submitNewJsonRpcCall(jsonRpcCall);
+        JsonRpcRequestBuilder.generateSaveRejectedTxJsonRpc(
+            LineaNodeType.SEQUENCER,
+            transaction,
+            timestamp,
+            Optional.of(1L),
+            result.maybeInvalidReason().orElse(""),
+            List.of());
+
+    jsonRpcManager.submitNewJsonRpcCallAsync(jsonRpcCall);
 
     // Use Awaitility to wait for the condition to be met
     await()
@@ -137,17 +145,21 @@ class JsonRpcManagerTest {
                         "{\"jsonrpc\":\"2.0\",\"result\":{ \"status\": \"SAVED\"},\"id\":1}")));
 
     // Prepare test data
-    final TestTransactionEvaluationContext context =
-        new TestTransactionEvaluationContext(pendingBlockHeader, pendingTransaction);
     final TransactionSelectionResult result = TransactionSelectionResult.invalid("test");
     final Instant timestamp = Instant.now();
 
     // Generate JSON-RPC call
     final String jsonRpcCall =
-        JsonRpcRequestBuilder.buildRejectedTxRequest(context, result, timestamp);
+        JsonRpcRequestBuilder.generateSaveRejectedTxJsonRpc(
+            LineaNodeType.SEQUENCER,
+            transaction,
+            timestamp,
+            Optional.of(1L),
+            result.maybeInvalidReason().orElse(""),
+            List.of());
 
     // Submit the call, the scheduler will retry the failed call
-    jsonRpcManager.submitNewJsonRpcCall(jsonRpcCall);
+    jsonRpcManager.submitNewJsonRpcCallAsync(jsonRpcCall);
 
     // Use Awaitility to wait for the condition to be met
     await()
@@ -160,7 +172,8 @@ class JsonRpcManagerTest {
 
     // Verify that the JSON file no longer exists in the directory (as the second call was
     // successful)
-    Path rejTxRpcDir = tempDataDir.resolve("rej_tx_rpc");
+    final Path rejTxRpcDir =
+        tempDataDir.resolve(JsonRpcManager.JSON_RPC_DIR).resolve(PLUGIN_IDENTIFIER);
     try (Stream<Path> files = Files.list(rejTxRpcDir)) {
       long fileCount = files.filter(path -> path.toString().endsWith(".json")).count();
       assertThat(fileCount).isEqualTo(0);
@@ -168,7 +181,7 @@ class JsonRpcManagerTest {
   }
 
   @Test
-  void serverRespondingWithErrorScenario() throws InterruptedException, IOException {
+  void serverRespondingWithErrorScenario() throws IOException {
     // Stub for error response
     stubFor(
         post(urlEqualTo("/"))
@@ -180,17 +193,21 @@ class JsonRpcManagerTest {
                         "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32000,\"message\":\"Internal error\"},\"id\":1}")));
 
     // Prepare test data
-    final TestTransactionEvaluationContext context =
-        new TestTransactionEvaluationContext(pendingBlockHeader, pendingTransaction);
     final TransactionSelectionResult result = TransactionSelectionResult.invalid("test");
     final Instant timestamp = Instant.now();
 
     // Generate JSON-RPC call
     final String jsonRpcCall =
-        JsonRpcRequestBuilder.buildRejectedTxRequest(context, result, timestamp);
+        JsonRpcRequestBuilder.generateSaveRejectedTxJsonRpc(
+            LineaNodeType.SEQUENCER,
+            transaction,
+            timestamp,
+            Optional.of(1L),
+            result.maybeInvalidReason().orElse(""),
+            List.of());
 
     // Submit the call
-    jsonRpcManager.submitNewJsonRpcCall(jsonRpcCall);
+    jsonRpcManager.submitNewJsonRpcCallAsync(jsonRpcCall);
 
     // Use Awaitility to wait for the condition to be met
     await()
@@ -202,7 +219,8 @@ class JsonRpcManagerTest {
                     postRequestedFor(urlEqualTo("/")).withRequestBody(equalToJson(jsonRpcCall))));
 
     // Verify that the JSON file still exists in the directory (as the call was unsuccessful)
-    final Path rejTxRpcDir = tempDataDir.resolve("rej_tx_rpc");
+    final Path rejTxRpcDir =
+        tempDataDir.resolve(JsonRpcManager.JSON_RPC_DIR).resolve(PLUGIN_IDENTIFIER);
     try (Stream<Path> files = Files.list(rejTxRpcDir)) {
       long fileCount = files.filter(path -> path.toString().endsWith(".json")).count();
       assertThat(fileCount).as("JSON file should exist as server responded with error").isOne();
@@ -242,17 +260,21 @@ class JsonRpcManagerTest {
                         "{\"jsonrpc\":\"2.0\",\"result\":{ \"status\": \"SAVED\"},\"id\":1}")));
 
     // Prepare test data
-    final TestTransactionEvaluationContext context =
-        new TestTransactionEvaluationContext(pendingBlockHeader, pendingTransaction);
     final TransactionSelectionResult result = TransactionSelectionResult.invalid("test");
     final Instant timestamp = Instant.now();
 
     // Generate JSON-RPC call
     final String jsonRpcCall =
-        JsonRpcRequestBuilder.buildRejectedTxRequest(context, result, timestamp);
+        JsonRpcRequestBuilder.generateSaveRejectedTxJsonRpc(
+            LineaNodeType.SEQUENCER,
+            transaction,
+            timestamp,
+            Optional.of(1L),
+            result.maybeInvalidReason().orElse(""),
+            List.of());
 
     // Submit the call, the scheduler will retry the failed calls
-    jsonRpcManager.submitNewJsonRpcCall(jsonRpcCall);
+    jsonRpcManager.submitNewJsonRpcCallAsync(jsonRpcCall);
 
     // Use Awaitility to wait for the condition to be met
     await()
@@ -265,7 +287,8 @@ class JsonRpcManagerTest {
 
     // Verify that the JSON file no longer exists in the directory (as the second call was
     // successful)
-    Path rejTxRpcDir = tempDataDir.resolve("rej_tx_rpc");
+    final Path rejTxRpcDir =
+        tempDataDir.resolve(JsonRpcManager.JSON_RPC_DIR).resolve(PLUGIN_IDENTIFIER);
     try (Stream<Path> files = Files.list(rejTxRpcDir)) {
       long fileCount = files.filter(path -> path.toString().endsWith(".json")).count();
       assertThat(fileCount).isEqualTo(0);

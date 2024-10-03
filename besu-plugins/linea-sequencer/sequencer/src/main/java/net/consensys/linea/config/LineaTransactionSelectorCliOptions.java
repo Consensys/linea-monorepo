@@ -15,8 +15,6 @@
 
 package net.consensys.linea.config;
 
-import java.net.URI;
-
 import com.google.common.base.MoreObjects;
 import jakarta.validation.constraints.Positive;
 import net.consensys.linea.plugins.LineaCliOptions;
@@ -40,8 +38,6 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
 
   public static final String UNPROFITABLE_RETRY_LIMIT = "--plugin-linea-unprofitable-retry-limit";
   public static final int DEFAULT_UNPROFITABLE_RETRY_LIMIT = 10;
-
-  public static final String REJECTED_TX_ENDPOINT = "--plugin-linea-rejected-tx-endpoint";
 
   @Positive
   @CommandLine.Option(
@@ -86,13 +82,6 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
           "Max number of unprofitable transactions we retry on each block creation (default: ${DEFAULT-VALUE})")
   private int unprofitableRetryLimit = DEFAULT_UNPROFITABLE_RETRY_LIMIT;
 
-  @CommandLine.Option(
-      names = {REJECTED_TX_ENDPOINT},
-      hidden = true,
-      paramLabel = "<URI>",
-      description = "Endpoint URI for reporting rejected transactions  (default: ${DEFAULT-VALUE})")
-  private URI rejectedTxEndpoint = null;
-
   private LineaTransactionSelectorCliOptions() {}
 
   /**
@@ -118,7 +107,6 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
     options.maxGasPerBlock = config.maxGasPerBlock();
     options.unprofitableCacheSize = config.unprofitableCacheSize();
     options.unprofitableRetryLimit = config.unprofitableRetryLimit();
-    options.rejectedTxEndpoint = config.rejectedTxEndpoint();
     return options;
   }
 
@@ -135,7 +123,6 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         .maxGasPerBlock(maxGasPerBlock)
         .unprofitableCacheSize(unprofitableCacheSize)
         .unprofitableRetryLimit(unprofitableRetryLimit)
-        .rejectedTxEndpoint(rejectedTxEndpoint)
         .build();
   }
 
@@ -147,7 +134,6 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         .add(MAX_GAS_PER_BLOCK, maxGasPerBlock)
         .add(UNPROFITABLE_CACHE_SIZE, unprofitableCacheSize)
         .add(UNPROFITABLE_RETRY_LIMIT, unprofitableRetryLimit)
-        .add(REJECTED_TX_ENDPOINT, rejectedTxEndpoint)
         .toString();
   }
 }

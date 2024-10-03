@@ -17,11 +17,15 @@ package net.consensys.linea.sequencer.txpoolvalidation.validators;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
+import net.consensys.linea.jsonrpc.JsonRpcManager;
+import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
@@ -44,18 +48,21 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
   private final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf;
   private final Map<String, Integer> moduleLineLimitsMap;
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
+  private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
 
   public SimulationValidator(
       final BlockchainService blockchainService,
       final TransactionSimulationService transactionSimulationService,
       final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf,
       final Map<String, Integer> moduleLineLimitsMap,
-      final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration) {
+      final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
+      final Optional<JsonRpcManager> rejectedTxJsonRpcManager) {
     this.blockchainService = blockchainService;
     this.transactionSimulationService = transactionSimulationService;
     this.txPoolValidatorConf = txPoolValidatorConf;
     this.moduleLineLimitsMap = moduleLineLimitsMap;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
+    this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
   }
 
   @Override
@@ -91,7 +98,9 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
           transaction, isLocal, hasPriority, maybeSimulationResults, moduleLimitResult);
 
       if (moduleLimitResult.getResult() != ModuleLineCountValidator.ModuleLineCountResult.VALID) {
-        return Optional.of(handleModuleOverLimit(transaction, moduleLimitResult));
+        final String reason = handleModuleOverLimit(transaction, moduleLimitResult);
+        reportRejectedTransaction(transaction, reason);
+        return Optional.of(reason);
       }
 
       if (maybeSimulationResults.isPresent()) {
@@ -101,6 +110,7 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
               "Invalid transaction"
                   + simulationResult.getInvalidReason().map(ir -> ": " + ir).orElse("");
           log.debug(errMsg);
+          reportRejectedTransaction(transaction, errMsg);
           return Optional.of(errMsg);
         }
         if (!simulationResult.isSuccessful()) {
@@ -111,6 +121,7 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
                       .map(rr -> ": " + rr.toHexString())
                       .orElse("");
           log.debug(errMsg);
+          reportRejectedTransaction(transaction, errMsg);
           return Optional.of(errMsg);
         }
       }
@@ -125,6 +136,21 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
     }
 
     return Optional.empty();
+  }
+
+  private void reportRejectedTransaction(final Transaction transaction, final String reason) {
+    rejectedTxJsonRpcManager.ifPresent(
+        jsonRpcManager -> {
+          final String jsonRpcCall =
+              JsonRpcRequestBuilder.generateSaveRejectedTxJsonRpc(
+                  jsonRpcManager.getNodeType(),
+                  transaction,
+                  Instant.now(),
+                  Optional.empty(), // block number is not available
+                  reason,
+                  List.of());
+          jsonRpcManager.submitNewJsonRpcCallAsync(jsonRpcCall);
+        });
   }
 
   private void logSimulationResult(

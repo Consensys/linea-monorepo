@@ -14,11 +14,15 @@
  */
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
+import net.consensys.linea.jsonrpc.JsonRpcManager;
+import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
@@ -30,6 +34,7 @@ import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolVal
 @RequiredArgsConstructor
 public class GasLimitValidator implements PluginTransactionPoolValidator {
   final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf;
+  final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
 
   @Override
   public Optional<String> validateTransaction(
@@ -39,8 +44,24 @@ public class GasLimitValidator implements PluginTransactionPoolValidator {
           "Gas limit of transaction is greater than the allowed max of "
               + txPoolValidatorConf.maxTxGasLimit();
       log.debug(errMsg);
+      reportRejectedTransaction(transaction, errMsg);
       return Optional.of(errMsg);
     }
     return Optional.empty();
+  }
+
+  private void reportRejectedTransaction(final Transaction transaction, final String reason) {
+    rejectedTxJsonRpcManager.ifPresent(
+        jsonRpcManager -> {
+          final String jsonRpcCall =
+              JsonRpcRequestBuilder.generateSaveRejectedTxJsonRpc(
+                  jsonRpcManager.getNodeType(),
+                  transaction,
+                  Instant.now(),
+                  Optional.empty(), // block number is not available
+                  reason,
+                  List.of());
+          jsonRpcManager.submitNewJsonRpcCallAsync(jsonRpcCall);
+        });
   }
 }

@@ -30,14 +30,15 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
-import net.consensys.linea.sequencer.txselection.selectors.TestTransactionEvaluationContext;
+import net.consensys.linea.config.LineaNodeType;
+import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,35 +54,42 @@ public class JsonRpcManagerStartTest {
   @TempDir private Path tempDataDir;
   private JsonRpcManager jsonRpcManager;
   private final Bytes randomEncodedBytes = Bytes.random(32);
-  @Mock private PendingTransaction pendingTransaction;
-  @Mock private ProcessableBlockHeader pendingBlockHeader;
   @Mock private Transaction transaction;
+  static final String PLUGIN_IDENTIFIER = "linea-start-test-plugin";
 
   @BeforeEach
   void init(final WireMockRuntimeInfo wmInfo) throws IOException {
     // create temp directories
-    final Path rejectedTxDir = tempDataDir.resolve("rej_tx_rpc");
-    Files.createDirectories(rejectedTxDir);
+    final Path jsonRpcDir =
+        tempDataDir.resolve(JsonRpcManager.JSON_RPC_DIR).resolve(PLUGIN_IDENTIFIER);
+    Files.createDirectories(jsonRpcDir);
 
     // mock stubbing
-    when(pendingBlockHeader.getNumber()).thenReturn(1L);
-    when(pendingTransaction.getTransaction()).thenReturn(transaction);
     when(transaction.encoded()).thenReturn(randomEncodedBytes);
 
     // save rejected transaction in tempDataDir so that they are processed by the
     // JsonRpcManager.start
     for (int i = 0; i < 3; i++) {
-      final TestTransactionEvaluationContext context =
-          new TestTransactionEvaluationContext(pendingBlockHeader, pendingTransaction);
       final TransactionSelectionResult result = TransactionSelectionResult.invalid("test" + i);
       final Instant timestamp = Instant.now();
       final String jsonRpcCall =
-          JsonRpcRequestBuilder.buildRejectedTxRequest(context, result, timestamp);
+          JsonRpcRequestBuilder.generateSaveRejectedTxJsonRpc(
+              LineaNodeType.SEQUENCER,
+              transaction,
+              timestamp,
+              Optional.of(1L),
+              result.toString(),
+              List.of());
 
-      JsonRpcManager.saveJsonToDir(jsonRpcCall, rejectedTxDir);
+      JsonRpcManager.saveJsonToDir(jsonRpcCall, jsonRpcDir);
     }
 
-    jsonRpcManager = new JsonRpcManager(tempDataDir, URI.create(wmInfo.getHttpBaseUrl()));
+    final LineaRejectedTxReportingConfiguration config =
+        LineaRejectedTxReportingConfiguration.builder()
+            .rejectedTxEndpoint(URI.create(wmInfo.getHttpBaseUrl()).toURL())
+            .lineaNodeType(LineaNodeType.SEQUENCER)
+            .build();
+    jsonRpcManager = new JsonRpcManager(PLUGIN_IDENTIFIER, tempDataDir, config);
   }
 
   @AfterEach
@@ -90,7 +98,7 @@ public class JsonRpcManagerStartTest {
   }
 
   @Test
-  void existingJsonRpcFilesAreProcessedOnStart() throws InterruptedException {
+  void existingJsonRpcFilesAreProcessedOnStart() {
     stubFor(
         post(urlEqualTo("/"))
             .willReturn(

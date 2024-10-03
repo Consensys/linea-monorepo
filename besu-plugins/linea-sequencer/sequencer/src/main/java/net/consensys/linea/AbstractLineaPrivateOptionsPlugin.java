@@ -22,6 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.compress.LibCompress;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
+import net.consensys.linea.config.LineaRejectedTxReportingCliOptions;
+import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import net.consensys.linea.config.LineaRpcCliOptions;
 import net.consensys.linea.config.LineaRpcConfiguration;
 import net.consensys.linea.config.LineaTracerCliOptions;
@@ -68,6 +70,9 @@ public abstract class AbstractLineaPrivateOptionsPlugin extends AbstractLineaSha
     configMap.put(
         LineaTracerCliOptions.CONFIG_KEY, LineaTracerCliOptions.create().asPluginConfig());
 
+    configMap.put(
+        LineaRejectedTxReportingCliOptions.CONFIG_KEY,
+        LineaRejectedTxReportingCliOptions.create().asPluginConfig());
     return configMap;
   }
 
@@ -94,6 +99,11 @@ public abstract class AbstractLineaPrivateOptionsPlugin extends AbstractLineaSha
   public LineaTracerConfiguration tracerConfiguration() {
     return (LineaTracerConfiguration)
         getConfigurationByKey(LineaTracerCliOptions.CONFIG_KEY).optionsConfig();
+  }
+
+  public LineaRejectedTxReportingConfiguration rejectedTxReportingConfiguration() {
+    return (LineaRejectedTxReportingConfiguration)
+        getConfigurationByKey(LineaRejectedTxReportingCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   @Override

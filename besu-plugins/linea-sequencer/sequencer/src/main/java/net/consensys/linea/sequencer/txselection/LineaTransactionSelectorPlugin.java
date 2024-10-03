@@ -22,6 +22,7 @@ import java.util.Optional;
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
+import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import org.hyperledger.besu.plugin.BesuContext;
@@ -81,9 +82,17 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
     super.start();
     final LineaTransactionSelectorConfiguration txSelectorConfiguration =
         transactionSelectorConfiguration();
+    final LineaRejectedTxReportingConfiguration lineaRejectedTxReportingConfiguration =
+        rejectedTxReportingConfiguration();
     rejectedTxJsonRpcManager =
-        Optional.ofNullable(txSelectorConfiguration.rejectedTxEndpoint())
-            .map(endpoint -> new JsonRpcManager(besuConfiguration.getDataPath(), endpoint).start());
+        Optional.ofNullable(lineaRejectedTxReportingConfiguration.rejectedTxEndpoint())
+            .map(
+                endpoint ->
+                    new JsonRpcManager(
+                            "linea-tx-selector-plugin",
+                            besuConfiguration.getDataPath(),
+                            lineaRejectedTxReportingConfiguration)
+                        .start());
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
             blockchainService,

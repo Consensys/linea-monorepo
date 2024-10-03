@@ -17,7 +17,6 @@ package net.consensys.linea.jsonrpc;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.URI;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -30,6 +29,8 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,7 +40,10 @@ import java.util.concurrent.TimeUnit;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.config.LineaNodeType;
+import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -52,26 +56,37 @@ public class JsonRpcManager {
   private static final Duration INITIAL_RETRY_DELAY_DURATION = Duration.ofSeconds(1);
   private static final Duration MAX_RETRY_DURATION = Duration.ofHours(2);
   private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
+  static final String JSON_RPC_DIR = "rej-tx-rpc";
+  static final String DISCARDED_DIR = "discarded";
 
   private final OkHttpClient client = new OkHttpClient();
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final Map<Path, Instant> fileStartTimes = new ConcurrentHashMap<>();
 
-  private final Path rejTxRpcDirectory;
-  private final URI rejectedTxEndpoint;
+  private final Path jsonRpcDir;
+  private final LineaRejectedTxReportingConfiguration reportingConfiguration;
   private final ExecutorService executorService;
   private final ScheduledExecutorService retrySchedulerService;
 
   /**
    * Creates a new JSON-RPC manager.
    *
+   * @param pluginIdentifier The plugin identifier will be created as a sub-directory under
+   *     rej-tx-rpc. The rejected transactions will be stored under it for each plugin that uses it.
    * @param besuDataDir Path to Besu data directory. The json-rpc files will be stored here under
    *     rej-tx-rpc subdirectory.
-   * @param rejectedTxEndpoint The endpoint to send rejected transactions to
+   * @param reportingConfiguration Instance of LineaRejectedTxReportingConfiguration containing the
+   *     endpoint URI and node type.
    */
-  public JsonRpcManager(final Path besuDataDir, final URI rejectedTxEndpoint) {
-    this.rejTxRpcDirectory = besuDataDir.resolve("rej_tx_rpc");
-    this.rejectedTxEndpoint = rejectedTxEndpoint;
+  public JsonRpcManager(
+      @NonNull final String pluginIdentifier,
+      @NonNull final Path besuDataDir,
+      @NonNull final LineaRejectedTxReportingConfiguration reportingConfiguration) {
+    if (reportingConfiguration.rejectedTxEndpoint() == null) {
+      throw new IllegalStateException("Rejected transaction endpoint URI is required");
+    }
+    this.jsonRpcDir = besuDataDir.resolve(JSON_RPC_DIR).resolve(pluginIdentifier);
+    this.reportingConfiguration = reportingConfiguration;
     this.executorService = Executors.newVirtualThreadPerTaskExecutor();
     this.retrySchedulerService = Executors.newSingleThreadScheduledExecutor();
   }
@@ -79,14 +94,14 @@ public class JsonRpcManager {
   /** Load existing JSON-RPC and submit them. */
   public JsonRpcManager start() {
     try {
-      // Create the rej_tx_rpc/discarded directories if it doesn't exist
-      Files.createDirectories(rejTxRpcDirectory.resolve("discarded"));
+      // Create the rej-tx-rpc/pluginIdentifier/discarded directories if it doesn't exist
+      Files.createDirectories(jsonRpcDir.resolve(DISCARDED_DIR));
 
       // Load existing JSON files
       processExistingJsonFiles();
       return this;
     } catch (final IOException e) {
-      log.error("Failed to create or access directory: {}", rejTxRpcDirectory, e);
+      log.error("Failed to create or access directories under: {}", jsonRpcDir, e);
       throw new UncheckedIOException(e);
     }
   }
@@ -102,25 +117,37 @@ public class JsonRpcManager {
    *
    * @param jsonContent The JSON content to submit
    */
-  public void submitNewJsonRpcCall(final String jsonContent) {
-    final Path jsonFile;
-    try {
-      jsonFile = saveJsonToDir(jsonContent, rejTxRpcDirectory);
-    } catch (final IOException e) {
-      log.error("Failed to save JSON-RPC content", e);
-      return;
-    }
+  public void submitNewJsonRpcCallAsync(final String jsonContent) {
+    CompletableFuture.supplyAsync(
+            () -> {
+              try {
+                Path jsonFile = saveJsonToDir(jsonContent, jsonRpcDir);
+                fileStartTimes.put(jsonFile, Instant.now());
+                return jsonFile;
+              } catch (final IOException e) {
+                log.error("Failed to save JSON-RPC content", e);
+                throw new CompletionException(e);
+              }
+            },
+            executorService)
+        .thenAcceptAsync(
+            jsonFile -> submitJsonRpcCall(jsonFile, INITIAL_RETRY_DELAY_DURATION), executorService)
+        .exceptionally(
+            e -> {
+              log.error("Error in submitNewJsonRpcCall", e);
+              return null;
+            });
+  }
 
-    fileStartTimes.put(jsonFile, Instant.now());
-    submitJsonRpcCall(jsonFile, INITIAL_RETRY_DELAY_DURATION);
+  public LineaNodeType getNodeType() {
+    return reportingConfiguration.lineaNodeType();
   }
 
   private void processExistingJsonFiles() {
     try {
       final TreeSet<Path> sortedFiles = new TreeSet<>(Comparator.comparing(Path::getFileName));
 
-      try (DirectoryStream<Path> stream =
-          Files.newDirectoryStream(rejTxRpcDirectory, "rpc_*.json")) {
+      try (DirectoryStream<Path> stream = Files.newDirectoryStream(jsonRpcDir, "rpc_*.json")) {
         for (Path path : stream) {
           sortedFiles.add(path);
         }
@@ -155,7 +182,7 @@ public class JsonRpcManager {
               log.error(
                   "Failed to send JSON-RPC file {} to {}, Scheduling retry ...",
                   jsonFile,
-                  rejectedTxEndpoint);
+                  reportingConfiguration.rejectedTxEndpoint());
               scheduleRetry(jsonFile, nextDelay);
             }
           } catch (final Exception e) {
@@ -189,8 +216,7 @@ public class JsonRpcManager {
           TimeUnit.MILLISECONDS);
     } else {
       log.error("Exceeded maximum retry duration for JSON-RPC file: {}.", jsonFile);
-      final Path destination =
-          rejTxRpcDirectory.resolve("discarded").resolve(jsonFile.getFileName());
+      final Path destination = jsonRpcDir.resolve(DISCARDED_DIR).resolve(jsonFile.getFileName());
 
       try {
         Files.move(jsonFile, destination, StandardCopyOption.REPLACE_EXISTING);
@@ -209,7 +235,8 @@ public class JsonRpcManager {
   private boolean sendJsonRpcCall(final String jsonContent) {
     final RequestBody body = RequestBody.create(jsonContent, JSON);
     final Request request =
-        new Request.Builder().url(rejectedTxEndpoint.toString()).post(body).build();
+        new Request.Builder().url(reportingConfiguration.rejectedTxEndpoint()).post(body).build();
+
     try (final Response response = client.newCall(request).execute()) {
       if (!response.isSuccessful()) {
         log.error("Unexpected response code from rejected-tx endpoint: {}", response.code());
@@ -242,7 +269,10 @@ public class JsonRpcManager {
       log.warn("Unexpected rejected-tx JSON-RPC response format: {}", responseBody);
       return false;
     } catch (final IOException e) {
-      log.error("Failed to send JSON-RPC call to rejected-tx endpoint {}", rejectedTxEndpoint, e);
+      log.error(
+          "Failed to send JSON-RPC call to rejected-tx endpoint {}",
+          reportingConfiguration.rejectedTxEndpoint(),
+          e);
       return false;
     }
   }

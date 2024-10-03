@@ -15,22 +15,40 @@
 
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.config.LineaNodeType;
+import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
+import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
@@ -44,6 +62,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +73,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @Slf4j
 @RequiredArgsConstructor
+@WireMockTest
 @ExtendWith(MockitoExtension.class)
 public class SimulationValidatorTest {
   private static final String MODULE_LINE_LIMITS_RESOURCE_NAME = "/sequencer/line-limits.toml";
@@ -87,7 +107,8 @@ public class SimulationValidatorTest {
 
   @Mock BlockchainService blockchainService;
   @Mock TransactionSimulationService transactionSimulationService;
-
+  private JsonRpcManager jsonRpcManager;
+  @TempDir private Path tempDataDir;
   @TempDir static Path tempDir;
   static Path lineLimitsConfPath;
 
@@ -101,7 +122,7 @@ public class SimulationValidatorTest {
   }
 
   @BeforeEach
-  public void initialize() {
+  public void initialize(final WireMockRuntimeInfo wmInfo) throws MalformedURLException {
     final var tracerConf =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
@@ -110,6 +131,29 @@ public class SimulationValidatorTest {
     final var blockHeader = mock(BlockHeader.class);
     when(blockHeader.getBaseFee()).thenReturn(Optional.of(BASE_FEE));
     when(blockchainService.getChainHeadHeader()).thenReturn(blockHeader);
+
+    final var rejectedTxReportingConf =
+        LineaRejectedTxReportingConfiguration.builder()
+            .rejectedTxEndpoint(URI.create(wmInfo.getHttpBaseUrl()).toURL())
+            .lineaNodeType(LineaNodeType.P2P)
+            .build();
+    jsonRpcManager =
+        new JsonRpcManager("simulation-test", tempDataDir, rejectedTxReportingConf).start();
+
+    // rejected tx json-rpc stubbing
+    stubFor(
+        post(urlEqualTo("/"))
+            .willReturn(
+                aResponse()
+                    .withStatus(200)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody(
+                        "{\"jsonrpc\":\"2.0\",\"result\":{ \"status\": \"SAVED\"},\"id\":1}")));
+  }
+
+  @AfterEach
+  void cleanup() {
+    jsonRpcManager.shutdown();
   }
 
   private SimulationValidator createSimulationValidator(
@@ -127,7 +171,8 @@ public class SimulationValidatorTest {
         LineaL1L2BridgeSharedConfiguration.builder()
             .contract(BRIDGE_CONTRACT)
             .topic(BRIDGE_LOG_TOPIC)
-            .build());
+            .build(),
+        Optional.of(jsonRpcManager));
   }
 
   @Test
@@ -147,7 +192,7 @@ public class SimulationValidatorTest {
   }
 
   @Test
-  public void moduleLineCountOverflowTransactionIsInvalid() {
+  public void moduleLineCountOverflowTransactionIsInvalidAndReported() {
     lineCountLimits.put("EXT", 5);
     final var simulationValidator = createSimulationValidator(lineCountLimits, true, false);
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
@@ -160,8 +205,25 @@ public class SimulationValidatorTest {
             .value(Wei.ONE)
             .signature(FAKE_SIGNATURE)
             .build();
+    final var expectedReasonMessage =
+        "Transaction 0xbf668c5dc926c008d5b34f347e1842b94911b46f4a36b668812f821e20303322 line count for module EXT=7 is above the limit 5";
     assertThat(simulationValidator.validateTransaction(transaction, true, false))
-        .contains(
-            "Transaction 0xbf668c5dc926c008d5b34f347e1842b94911b46f4a36b668812f821e20303322 line count for module EXT=7 is above the limit 5");
+        .contains(expectedReasonMessage);
+
+    // assert that wiremock received 1 post request for rejected tx.
+    // Use Awaitility to wait for the condition to be met
+    await()
+        .atMost(6, SECONDS)
+        .untilAsserted(
+            () ->
+                verify(
+                    exactly(1),
+                    postRequestedFor(urlEqualTo("/"))
+                        .withRequestBody(
+                            matchingJsonPath(
+                                "$.params.txRejectionStage", equalTo(LineaNodeType.P2P.name())))
+                        .withRequestBody(
+                            matchingJsonPath(
+                                "$.params.reasonMessage", equalTo(expectedReasonMessage)))));
   }
 }

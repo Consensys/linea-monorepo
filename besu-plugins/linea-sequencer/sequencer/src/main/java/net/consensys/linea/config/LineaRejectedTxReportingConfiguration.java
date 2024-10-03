@@ -15,15 +15,12 @@
 
 package net.consensys.linea.config;
 
+import java.net.URL;
+
 import lombok.Builder;
 import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
-/** The Linea transaction selectors configuration. */
+/** Linea Rejected Transactions Reporting Configuration */
 @Builder(toBuilder = true)
-public record LineaTransactionSelectorConfiguration(
-    int maxBlockCallDataSize,
-    int overLinesLimitCacheSize,
-    long maxGasPerBlock,
-    int unprofitableCacheSize,
-    int unprofitableRetryLimit)
-    implements LineaOptionsConfiguration {}
+public record LineaRejectedTxReportingConfiguration(
+    URL rejectedTxEndpoint, LineaNodeType lineaNodeType) implements LineaOptionsConfiguration {}

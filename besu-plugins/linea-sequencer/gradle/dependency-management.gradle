@@ -78,6 +78,7 @@ dependencyManagement {
       entry "dsl"
       entry "eth"
       entry "rlp"
+      entry "besu"
     }
 
     dependencySet(group: 'ch.qos.logback', version: '1.5.6') {
