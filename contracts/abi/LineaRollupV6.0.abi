@@ -109,22 +109,6 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "expected",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "actual",
-        "type": "uint256"
-      }
-    ],
-    "name": "FinalBlockDoesNotMatchShnarfFinalBlock",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
         "name": "finalBlockNumber",
         "type": "uint256"
       },
@@ -532,31 +516,6 @@
       {
         "indexed": true,
         "internalType": "uint256",
-        "name": "lastBlockFinalized",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "startingRootHash",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "finalRootHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "BlocksVerificationDone",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
         "name": "startBlockNumber",
         "type": "uint256"
       },
@@ -581,7 +540,7 @@
       {
         "indexed": false,
         "internalType": "bytes32",
-        "name": "finalRootHash",
+        "name": "finalStateRootHash",
         "type": "bytes32"
       }
     ],
@@ -614,6 +573,12 @@
         "internalType": "bytes32",
         "name": "shnarf",
         "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "finalStateRootHash",
+        "type": "bytes32"
       }
     ],
     "name": "DataSubmittedV3",
@@ -631,11 +596,30 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "gatewayOperatorAddress",
+        "name": "fallbackOperator",
         "type": "address"
       }
     ],
-    "name": "GatewayOperatorRoleGranted",
+    "name": "FallbackOperatorAddressSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "fallbackOperator",
+        "type": "address"
+      }
+    ],
+    "name": "FallbackOperatorRoleGranted",
     "type": "event"
   },
   {
@@ -1713,6 +1697,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "fallbackOperator",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes",
@@ -1729,11 +1726,6 @@
           {
             "internalType": "bytes32",
             "name": "parentStateRootHash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "lastFinalizedShnarf",
             "type": "bytes32"
           },
           {
@@ -1819,7 +1811,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct ILineaRollup.FinalizationDataV2",
+        "internalType": "struct ILineaRollup.FinalizationDataV3",
         "name": "_finalizationData",
         "type": "tuple"
       }
@@ -1827,19 +1819,6 @@
     "name": "finalizeBlocksWithProof",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "gatewayOperator",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -2009,7 +1988,7 @@
           },
           {
             "internalType": "address",
-            "name": "gatewayOperator",
+            "name": "fallbackOperator",
             "type": "address"
           }
         ],
@@ -2225,7 +2204,7 @@
       },
       {
         "internalType": "address",
-        "name": "_gatewayOperator",
+        "name": "_fallbackOperator",
         "type": "address"
       }
     ],
@@ -2363,7 +2342,7 @@
         "type": "uint256"
       }
     ],
-    "name": "setGatewayOperator",
+    "name": "setFallbackOperator",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
