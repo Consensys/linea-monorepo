@@ -50,8 +50,8 @@ import {
   PAUSE_L2_L1_ROLE,
   UNPAUSE_L1_L2_ROLE,
   UNPAUSE_L2_L1_ROLE,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
 import {
   calculateRollingHash,
   encodeData,
@@ -73,8 +73,8 @@ import {
   convertStringToPaddedHexBytes,
   calculateLastFinalizedState,
   expectEvents,
-} from "./utils/helpers";
-import { CalldataSubmissionData, ShnarfDataGenerator } from "./utils/types";
+} from "./common/helpers";
+import { CalldataSubmissionData, ShnarfDataGenerator } from "./common/types";
 import aggregatedProof1To81 from "./testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
 import aggregatedProof82To153 from "./testData/compressedData/multipleProofs/aggregatedProof-82-153.json";
 import * as kzg from "c-kzg";

@@ -24,13 +24,13 @@ import {
   PAUSE_ALL_ROLE,
   UNPAUSE_ALL_ROLE,
   HASH_ZERO,
-} from "../utils/constants";
+} from "../common/constants";
 import {
   buildAccessErrorMessage,
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
-} from "../utils/helpers";
+} from "../common/helpers";
 
 const initialUserBalance = BigInt(10 ** 9);
 const mockName = "L1 DAI";

@@ -14,9 +14,9 @@ import {
   VERIFIER_SETTER_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
-import { expectRevertWithReason, generateRandomBytes } from "./utils/helpers";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
+import { expectRevertWithReason, generateRandomBytes } from "./common/helpers";
 
 describe("LineaRollup Init contract", () => {
   let LineaRollup: TestLineaRollup;

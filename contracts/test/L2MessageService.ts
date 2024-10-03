@@ -32,8 +32,8 @@ import {
   UNPAUSE_L1_L2_ROLE,
   UNPAUSE_L2_L1_ROLE,
   PAUSE_L2_L1_ROLE,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
 import {
   buildAccessErrorMessage,
   calculateRollingHash,
@@ -43,7 +43,7 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256Hash,
-} from "./utils/helpers";
+} from "./common/helpers";
 import { ZeroAddress } from "ethers";
 
 describe("L2MessageService", () => {

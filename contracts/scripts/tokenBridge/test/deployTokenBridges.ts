@@ -15,7 +15,7 @@ import {
   UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "contracts/test/utils/constants";
+} from "contracts/test/common/constants";
 
 export async function deployTokenBridge(messageServiceAddress: string, verbose = false) {
   const [owner] = await ethers.getSigners();

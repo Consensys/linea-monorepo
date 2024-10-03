@@ -24,9 +24,9 @@ import {
   FINALIZATION_PAUSE_TYPE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
-import { buildAccessErrorMessage, expectEvent } from "./utils/helpers";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
+import { buildAccessErrorMessage, expectEvent } from "./common/helpers";
 
 async function deployTestPauseManagerFixture(): Promise<TestPauseManager> {
   return deployUpgradableFromFactory("TestPauseManager", [

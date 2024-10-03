@@ -28,7 +28,7 @@ import {
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
-} from "../test/utils/constants";
+} from "../test/common/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;

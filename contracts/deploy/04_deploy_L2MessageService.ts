@@ -26,7 +26,7 @@ import {
   UNPAUSE_L2_BLOB_SUBMISSION_ROLE,
   UNPAUSE_L2_L1_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
-} from "contracts/test/utils/constants";
+} from "contracts/test/common/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;

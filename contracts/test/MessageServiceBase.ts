@@ -11,9 +11,9 @@ import {
   ONE_DAY_IN_SECONDS,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
-import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "./utils/helpers";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
+import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "./common/helpers";
 
 describe("MessageServiceBase", () => {
   let messageServiceBase: TestMessageServiceBase;
