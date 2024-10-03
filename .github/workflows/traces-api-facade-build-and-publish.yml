@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   build-and-publish:
-    runs-on: [self-hosted,ubuntu-22.04X64, small]
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     name: Traces api facade build
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     env:
