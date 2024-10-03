@@ -2,10 +2,13 @@ package build.linea.clients
 
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.mapEither
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
+import net.consensys.fromHexString
 import net.consensys.linea.BlockInterval
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.errors.ErrorResponse
@@ -55,7 +58,31 @@ class StateManagerV1JsonRpcClient(
     config = config
   )
 
-  override fun rollupGetZkEVMStateMerkleProof(
+  override fun rollupGetHeadBlockNumber(): SafeFuture<ULong> {
+    val jsonRequest =
+      JsonRpcRequestListParams(
+        jsonrpc = "2.0",
+        id = id.incrementAndGet(),
+        method = "rollup_getZkEVMBlockNumber",
+        params = listOf()
+      )
+
+    return rpcClient
+      .makeRequest(jsonRequest).toSafeFuture()
+      .thenApply { responseResult ->
+        when (responseResult) {
+          is Ok -> {
+            ULong.fromHexString(responseResult.value.result as String)
+          }
+
+          is Err -> {
+            throw responseResult.error.error.asException()
+          }
+        }
+      }
+  }
+
+  override fun rollupGetStateMerkleProofWithTypedError(
     blockInterval: BlockInterval
   ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
     val jsonRequest =

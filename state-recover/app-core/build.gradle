@@ -8,4 +8,5 @@ dependencies {
   api(project(':jvm-libs:kotlin-extensions'))
   api(project(':jvm-libs:extensions:tuweni'))
   api(project(':jvm-libs:core:long-running-service'))
+  api(project(':jvm-libs:clients:linea-state-manager'))
 }

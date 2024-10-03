@@ -1,10 +1,12 @@
 package net.consensys.zkevm.coordinator.clients
 
 import build.linea.clients.StateManagerV1JsonRpcClient
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
-import com.github.michaelbull.result.mapError
 import io.vertx.core.Vertx
 import net.consensys.linea.BlockInterval
+import net.consensys.linea.clients.ClientException
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.linea.jsonrpc.client.JsonRpcClient
 import net.consensys.linea.jsonrpc.client.JsonRpcRequestRetryer
@@ -52,16 +54,30 @@ class Type2StateManagerJsonRpcClient(
     startBlockNumber: UInt64,
     endBlockNumber: UInt64
   ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<Type2StateManagerErrorType>>> {
-    return delegate.rollupGetZkEVMStateMerkleProof(BlockInterval(startBlockNumber.toULong(), endBlockNumber.toULong()))
-      .thenApply {
-        it.mapError { error -> ErrorResponse(error.type.toLegacyType(), error.message) }
+    return delegate
+      .rollupGetStateMerkleProof(BlockInterval(startBlockNumber.toULong(), endBlockNumber.toULong()))
+      .thenApply<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<Type2StateManagerErrorType>>> { Ok(it) }
+      .exceptionallyCompose { error ->
+        if (
+          error.cause is ClientException &&
+          (error.cause as ClientException).errorType != null &&
+          (error.cause as ClientException).errorType is StateManagerErrorType
+        ) {
+          SafeFuture.completedFuture(Err(mapErrorType(error.cause!! as ClientException)))
+        } else {
+          SafeFuture.failedFuture(error)
+        }
       }
   }
 
   companion object {
     internal val retryableMethods = setOf("rollup_getZkEVMStateMerkleProofV0")
 
-    fun StateManagerErrorType.toLegacyType(): Type2StateManagerErrorType {
+    fun mapErrorType(error: ClientException): ErrorResponse<Type2StateManagerErrorType> {
+      return ErrorResponse((error.errorType as StateManagerErrorType).toInternalDomain(), error.message)
+    }
+
+    private fun StateManagerErrorType.toInternalDomain(): Type2StateManagerErrorType {
       return when (this) {
         StateManagerErrorType.UNKNOWN -> Type2StateManagerErrorType.UNKNOWN
         StateManagerErrorType.UNSUPPORTED_VERSION -> Type2StateManagerErrorType.UNSUPPORTED_VERSION

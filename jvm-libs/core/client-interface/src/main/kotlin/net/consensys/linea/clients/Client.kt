@@ -12,7 +12,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  */
 interface ClientError
 
-class ClientException(message: String, errorType: ClientError?) :
+class ClientException(
+  override val message: String,
+  val errorType: ClientError?
+) :
   RuntimeException(errorType?.let { "errorType=$it $message" } ?: message)
 
 interface Client<Request, Response> {

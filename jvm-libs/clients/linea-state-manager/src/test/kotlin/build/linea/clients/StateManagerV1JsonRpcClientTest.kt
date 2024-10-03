@@ -13,6 +13,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
+import net.consensys.fromHexString
 import net.consensys.linea.BlockInterval
 import net.consensys.linea.async.get
 import net.consensys.linea.errors.ErrorResponse
@@ -22,6 +23,7 @@ import net.consensys.zkevm.coordinator.clients.GetZkEVMStateMerkleProofResponse
 import net.consensys.zkevm.coordinator.clients.StateManagerErrorType
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -34,17 +36,18 @@ import kotlin.time.Duration.Companion.seconds
 @ExtendWith(VertxExtension::class)
 class StateManagerV1JsonRpcClientTest {
   private lateinit var wiremock: WireMockServer
-  private lateinit var type2StateManagerJsonRpcClient: StateManagerV1JsonRpcClient
+  private lateinit var stateManagerClient: StateManagerV1JsonRpcClient
   private lateinit var meterRegistry: SimpleMeterRegistry
 
-  private fun wiremockStubForPost(response: JsonObject) {
+  private fun wiremockStubForPost(response: JsonObject) = wiremockStubForPost(response.toString())
+  private fun wiremockStubForPost(response: String) {
     wiremock.stubFor(
       post("/")
         .withHeader("Content-Type", containing("application/json"))
         .willReturn(
           ok()
             .withHeader("Content-type", "application/json")
-            .withBody(response.toString().toByteArray())
+            .withBody(response.toByteArray())
         )
     )
   }
@@ -73,7 +76,7 @@ class StateManagerV1JsonRpcClientTest {
       ),
       zkStateManagerVersion = "0.0.1-dev-3e607237"
     )
-    type2StateManagerJsonRpcClient =
+    stateManagerClient =
       StateManagerV1JsonRpcClient(
         vertxHttpJsonRpcClient,
         clientConfig
@@ -88,7 +91,7 @@ class StateManagerV1JsonRpcClientTest {
   }
 
   @Test
-  fun getZkEVMStateMerkleProof() {
+  fun getZkEVMStateMerkleProof_success() {
     val testFilePath = "../../../testdata/type2state-manager/state-proof.json"
     val json = jacksonObjectMapper().readTree(Path.of(testFilePath).toFile())
     val zkStateManagerVersion = json.get("zkStateManagerVersion").asText()
@@ -115,8 +118,8 @@ class StateManagerV1JsonRpcClientTest {
 
     wiremockStubForPost(response)
 
-    val resultFuture = type2StateManagerJsonRpcClient
-      .rollupGetZkEVMStateMerkleProof(BlockInterval(startBlockNumber, endBlockNumber))
+    val resultFuture = stateManagerClient
+      .rollupGetStateMerkleProofWithTypedError(BlockInterval(startBlockNumber, endBlockNumber))
     resultFuture.get()
 
     assertThat(resultFuture)
@@ -133,7 +136,7 @@ class StateManagerV1JsonRpcClientTest {
   }
 
   @Test
-  fun error_block_missing_getZkEVMStateMerkleProof() {
+  fun getZkEVMStateMerkleProof_error_block_missing() {
     val errorMessage = "BLOCK_MISSING_IN_CHAIN - block 1 is missing"
     val startBlockNumber = 50UL
     val endBlockNumber = 100UL
@@ -151,7 +154,12 @@ class StateManagerV1JsonRpcClientTest {
     wiremockStubForPost(response)
 
     val resultFuture =
-      type2StateManagerJsonRpcClient.rollupGetZkEVMStateMerkleProof(BlockInterval(startBlockNumber, endBlockNumber))
+      stateManagerClient.rollupGetStateMerkleProofWithTypedError(
+        BlockInterval(
+          startBlockNumber,
+          endBlockNumber
+        )
+      )
     resultFuture.get()
 
     assertThat(resultFuture)
@@ -161,7 +169,7 @@ class StateManagerV1JsonRpcClientTest {
   }
 
   @Test
-  fun error_unsupported_version_getZkEVMStateMerkleProof() {
+  fun getZkEVMStateMerkleProof_error_unsupported_version() {
     val startBlockNumber = 50UL
     val endBlockNumber = 100UL
     val errorMessage = "UNSUPPORTED_VERSION"
@@ -184,7 +192,7 @@ class StateManagerV1JsonRpcClientTest {
     wiremockStubForPost(response)
 
     val resultFuture =
-      type2StateManagerJsonRpcClient.rollupGetZkEVMStateMerkleProof(
+      stateManagerClient.rollupGetStateMerkleProofWithTypedError(
         BlockInterval(startBlockNumber, endBlockNumber)
       )
     resultFuture.get()
@@ -201,7 +209,7 @@ class StateManagerV1JsonRpcClientTest {
   }
 
   @Test
-  fun error_unknown_getZkEVMStateMerkleProof() {
+  fun getZkEVMStateMerkleProof_error_unknown() {
     val startBlockNumber = 50L
     val endBlockNumber = 100L
     val errorMessage = "BRA_BRA_BRA_SOME_UNKNOWN_ERROR"
@@ -220,7 +228,7 @@ class StateManagerV1JsonRpcClientTest {
     wiremockStubForPost(response)
 
     val resultFuture =
-      type2StateManagerJsonRpcClient.rollupGetZkEVMStateMerkleProof(
+      stateManagerClient.rollupGetStateMerkleProofWithTypedError(
         BlockInterval(startBlockNumber, endBlockNumber)
       )
     resultFuture.get()
@@ -229,5 +237,25 @@ class StateManagerV1JsonRpcClientTest {
       .isCompletedWithValue(
         Err(ErrorResponse(StateManagerErrorType.UNKNOWN, "$errorMessage: $errorData"))
       )
+  }
+
+  @Test
+  fun rollupGetHeadBlockNumber_success_response() {
+    val response = """{"jsonrpc":"2.0","id":1,"result":"0xf1"}"""
+
+    wiremockStubForPost(response)
+
+    assertThat(stateManagerClient.rollupGetHeadBlockNumber().get())
+      .isEqualTo(ULong.fromHexString("0xf1"))
+  }
+
+  @Test
+  fun rollupGetHeadBlockNumber_error_response() {
+    val response = """{"jsonrpc":"2.0","id":1,"error":{"code": -32603, "message": "Internal error"}}"""
+
+    wiremockStubForPost(response)
+
+    assertThatThrownBy { stateManagerClient.rollupGetHeadBlockNumber().get() }
+      .hasMessageContaining("Internal error")
   }
 }

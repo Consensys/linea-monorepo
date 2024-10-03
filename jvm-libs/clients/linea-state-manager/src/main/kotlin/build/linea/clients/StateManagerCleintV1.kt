@@ -16,26 +16,41 @@ enum class StateManagerErrorType : ClientError {
   BLOCK_MISSING_IN_CHAIN
 }
 
-typealias GetZkEVMStateMerkleProofRequest = BlockInterval
+sealed interface StateManagerRequest
+sealed class GetChainHeadRequest() : StateManagerRequest
+data class GetStateMerkleProofRequest(
+  val blockInterval: BlockInterval
+) : StateManagerRequest, BlockInterval by blockInterval
 
+sealed interface StateManagerResponse
 data class GetZkEVMStateMerkleProofResponse(
   val zkStateMerkleProof: ArrayNode,
   val zkParentStateRootHash: Bytes32,
   val zkEndStateRootHash: Bytes32,
   val zkStateManagerVersion: String
-)
+) : StateManagerResponse
 
-interface StateManagerClientV1 :
-  AsyncClient<
-    GetZkEVMStateMerkleProofRequest,
-    GetZkEVMStateMerkleProofResponse
-    > {
-  fun rollupGetZkEVMStateMerkleProof(
+// Type alias dedicated for each method
+typealias StateManagerClientToGetStateMerkleProofV0 =
+  AsyncClient<GetStateMerkleProofRequest, GetZkEVMStateMerkleProofResponse>
+
+typealias StateManagerClientToGetChainHeadV1 =
+  AsyncClient<GetChainHeadRequest, ULong>
+
+interface StateManagerClientV1 {
+  /**
+   * Get the head block number of the chain.
+   * @return GetZkEVMStateMerkleProofResponse
+   * @throws ClientException with errorType StateManagerErrorType when know error occurs
+   */
+  fun rollupGetStateMerkleProof(
+    blockInterval: BlockInterval
+  ): SafeFuture<GetZkEVMStateMerkleProofResponse> = rollupGetStateMerkleProofWithTypedError(blockInterval)
+    .unwrapResultMonad()
+
+  fun rollupGetStateMerkleProofWithTypedError(
     blockInterval: BlockInterval
   ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>>
 
-  override fun makeRequest(request: GetZkEVMStateMerkleProofRequest):
-    SafeFuture<GetZkEVMStateMerkleProofResponse> {
-    return rollupGetZkEVMStateMerkleProof(request).unwrapResultMonad()
-  }
+  fun rollupGetHeadBlockNumber(): SafeFuture<ULong>
 }
