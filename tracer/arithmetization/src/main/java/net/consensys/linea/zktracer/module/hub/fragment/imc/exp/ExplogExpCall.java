@@ -19,10 +19,12 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXP_
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
+@Accessors(fluent = true)
 @Getter
 @Setter
 public class ExplogExpCall implements ExpCall {
@@ -35,12 +37,23 @@ public class ExplogExpCall implements ExpCall {
   }
 
   @Override
+  public int compareTo(ExpCall op2) {
+    final ExplogExpCall o2 = (ExplogExpCall) op2;
+
+    final int dynCostComp = Long.compare(dynCost, o2.dynCost());
+    if (dynCostComp != 0) {
+      return dynCostComp;
+    }
+    return exponent.compareTo(o2.exponent());
+  }
+
+  @Override
   public Trace trace(Trace trace) {
     return trace
         .pMiscExpFlag(true)
         .pMiscExpInst(EXP_INST_EXPLOG)
         .pMiscExpData1(exponent.hi())
         .pMiscExpData2(exponent.lo())
-        .pMiscExpData5(Bytes.ofUnsignedLong(this.dynCost));
+        .pMiscExpData5(Bytes.ofUnsignedLong(dynCost));
   }
 }

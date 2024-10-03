@@ -15,7 +15,10 @@
 
 package net.consensys.linea.zktracer.container.stacked;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
@@ -134,5 +137,11 @@ public class ModuleOperationStackedSet<E extends ModuleOperation> extends Stacke
     operationsCommitedToTheConflation().addAll(operationsInTransaction());
     operationsInTransaction().clear();
     lineCounter.enter(); // this is not mandatory but it is more consistent
+  }
+
+  public List<E> sortOperations(Comparator<E> comparator) {
+    final List<E> sortedOperations = new ArrayList<>(getAll());
+    sortedOperations.sort(comparator);
+    return sortedOperations;
   }
 }

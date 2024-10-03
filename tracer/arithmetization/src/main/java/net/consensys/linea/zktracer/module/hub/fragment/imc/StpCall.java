@@ -27,6 +27,7 @@ import static net.consensys.linea.zktracer.types.EWord.ZERO;
 
 import java.math.BigInteger;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -44,19 +45,20 @@ import org.hyperledger.besu.evm.internal.Words;
 @Getter
 @Setter
 @Accessors(fluent = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class StpCall implements TraceSubFragment {
   final Hub hub;
-  final long memoryExpansionGas;
-  OpCode opCode;
-  long gasActual;
-  EWord gas; // for CALL's only
-  EWord value;
-  boolean exists;
-  boolean warm;
-  long upfrontGasCost;
-  boolean outOfGasException;
-  long gasPaidOutOfPocket;
-  long stipend;
+  @EqualsAndHashCode.Include final long memoryExpansionGas;
+  @EqualsAndHashCode.Include OpCode opCode;
+  @EqualsAndHashCode.Include long gasActual;
+  @EqualsAndHashCode.Include EWord gas; // for CALL's only
+  @EqualsAndHashCode.Include EWord value;
+  @EqualsAndHashCode.Include boolean exists;
+  @EqualsAndHashCode.Include boolean warm;
+  @EqualsAndHashCode.Include long upfrontGasCost;
+  @EqualsAndHashCode.Include boolean outOfGasException;
+  @EqualsAndHashCode.Include long gasPaidOutOfPocket;
+  @EqualsAndHashCode.Include long stipend;
 
   public StpCall(Hub hub, long memoryExpansionGas) {
     this.hub = hub;
@@ -175,5 +177,59 @@ public class StpCall implements TraceSubFragment {
         .pMiscStpGasUpfrontGasCost(Bytes.ofUnsignedLong(upfrontGasCost))
         .pMiscStpGasPaidOutOfPocket(Bytes.ofUnsignedLong(gasPaidOutOfPocket))
         .pMiscStpGasStipend(stipend);
+  }
+
+  public int compareTo(StpCall stpCall) {
+    final int opCodeComp = opCode.compareTo(stpCall.opCode);
+    if (opCodeComp != 0) {
+      return opCodeComp;
+    }
+
+    final int gasActualComp = Long.compare(gasActual, stpCall.gasActual);
+    if (gasActualComp != 0) {
+      return gasActualComp;
+    }
+
+    final int memoryExpansionGasComp = Long.compare(memoryExpansionGas, stpCall.memoryExpansionGas);
+    if (memoryExpansionGasComp != 0) {
+      return memoryExpansionGasComp;
+    }
+
+    final int gasPaidOutOfPocketComp = Long.compare(gasPaidOutOfPocket, stpCall.gasPaidOutOfPocket);
+    if (gasPaidOutOfPocketComp != 0) {
+      return gasPaidOutOfPocketComp;
+    }
+
+    final int stipendComp = Long.compare(stipend, stpCall.stipend);
+    if (stipendComp != 0) {
+      return stipendComp;
+    }
+
+    final int upfrontGasCostComp = Long.compare(upfrontGasCost, stpCall.upfrontGasCost);
+    if (upfrontGasCostComp != 0) {
+      return upfrontGasCostComp;
+    }
+
+    final boolean existsComp = exists == stpCall.exists;
+    if (!existsComp) {
+      return exists ? 1 : -1;
+    }
+
+    final boolean warmComp = warm == stpCall.warm;
+    if (!warmComp) {
+      return warm ? 1 : -1;
+    }
+
+    final boolean outOfGasExceptionComp = outOfGasException == stpCall.outOfGasException;
+    if (!outOfGasExceptionComp) {
+      return outOfGasException ? 1 : -1;
+    }
+
+    final int valueComp = value.compareTo(stpCall.value);
+    if (valueComp != 0) {
+      return valueComp;
+    }
+
+    return gas.compareTo(stpCall.gas);
   }
 }

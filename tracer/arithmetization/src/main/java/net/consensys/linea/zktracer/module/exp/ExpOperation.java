@@ -36,6 +36,7 @@ import java.math.RoundingMode;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -48,7 +49,9 @@ import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Getter
+@Accessors(fluent = true)
 public class ExpOperation extends ModuleOperation {
   @EqualsAndHashCode.Include ExpCall expCall;
 
@@ -90,8 +93,8 @@ public class ExpOperation extends ModuleOperation {
       long dynCost = (long) GlobalConstants.GAS_CONST_G_EXP_BYTE * exponent.byteLength();
 
       // Fill expCall
-      explogExpCall.setExponent(exponent);
-      explogExpCall.setDynCost(dynCost);
+      explogExpCall.exponent(exponent);
+      explogExpCall.dynCost(dynCost);
 
       // Execute preprocessing
       preComputeForExplog(explogExpCall);
@@ -100,7 +103,7 @@ public class ExpOperation extends ModuleOperation {
       ModexpLogExpCall modexplogExpCall = (ModexpLogExpCall) expCall;
 
       // Extract inputs
-      ModexpMetadata modexpMetadata = modexplogExpCall.getModexpMetadata();
+      final ModexpMetadata modexpMetadata = modexplogExpCall.getModexpMetadata();
       final int bbsInt = modexpMetadata.bbs().toUnsignedBigInteger().intValueExact();
       final int ebsInt = modexpMetadata.ebs().toUnsignedBigInteger().intValueExact();
       checkArgument(modexpMetadata.callData().size() - 96 - bbsInt >= 0);
@@ -123,28 +126,28 @@ public class ExpOperation extends ModuleOperation {
 
   public void preComputeForExplog(ExplogExpCall explogExpCall) {
     pMacroExpInst = EXP_INST_EXPLOG;
-    pMacroData1 = explogExpCall.getExponent().hi();
-    pMacroData2 = explogExpCall.getExponent().lo();
-    pMacroData5 = Bytes.ofUnsignedLong(explogExpCall.getDynCost());
+    pMacroData1 = explogExpCall.exponent().hi();
+    pMacroData2 = explogExpCall.exponent().lo();
+    pMacroData5 = Bytes.ofUnsignedLong(explogExpCall.dynCost());
     initArrays(CT_MAX_PRPRC_EXP_LOG + 1);
 
     // Preprocessing
     // First row
     pPreprocessingWcpFlag[0] = true;
     pPreprocessingWcpArg1Hi[0] = Bytes.EMPTY;
-    pPreprocessingWcpArg1Lo[0] = explogExpCall.getExponent().hi();
+    pPreprocessingWcpArg1Lo[0] = explogExpCall.exponent().hi();
     pPreprocessingWcpArg2Hi[0] = Bytes.EMPTY;
     pPreprocessingWcpArg2Lo[0] = Bytes.EMPTY;
     pPreprocessingWcpInst[0] = UnsignedByte.of(EVM_INST_ISZERO);
-    final boolean expnHiIsZero = wcp.callISZERO(explogExpCall.getExponent().hi());
+    final boolean expnHiIsZero = wcp.callISZERO(explogExpCall.exponent().hi());
     ;
     pPreprocessingWcpRes[0] = expnHiIsZero;
 
     // Linking constraints and fill rawAcc
     pComputationPltJmp = 16;
-    pComputationRawAcc = explogExpCall.getExponent().hi();
+    pComputationRawAcc = explogExpCall.exponent().hi();
     if (expnHiIsZero) {
-      pComputationRawAcc = explogExpCall.getExponent().lo();
+      pComputationRawAcc = explogExpCall.exponent().lo();
     }
 
     // Fill trimAcc

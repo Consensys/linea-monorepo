@@ -62,7 +62,7 @@ public class Add implements OperationSetModule<AddOperation> {
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
     int stamp = 0;
-    for (AddOperation op : operations.getAll()) {
+    for (AddOperation op : sortOperations(new AddOperationComparator())) {
       op.trace(++stamp, trace);
     }
   }

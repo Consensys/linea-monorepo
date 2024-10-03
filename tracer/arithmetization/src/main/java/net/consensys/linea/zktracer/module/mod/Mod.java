@@ -54,7 +54,7 @@ public class Mod implements OperationSetModule<ModOperation> {
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
     int stamp = 0;
-    for (ModOperation op : operations.getAll()) {
+    for (ModOperation op : operations.sortOperations(new ModOperationComparator())) {
       op.trace(trace, ++stamp);
     }
   }

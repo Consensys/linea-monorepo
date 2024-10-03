@@ -33,9 +33,9 @@ import org.hyperledger.besu.datatypes.Address;
 @RequiredArgsConstructor
 @Getter
 @Accessors(fluent = true)
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public final class RlpAddrOperation extends ModuleOperation {
-  private final Bytes32 rawHash;
+  @EqualsAndHashCode.Include private final Bytes32 rawHash;
   private final OpCode opCode;
   private final Optional<BigInteger> nonce;
   private final Address address;

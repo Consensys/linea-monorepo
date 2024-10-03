@@ -23,6 +23,8 @@ import java.math.BigInteger;
 import java.util.Arrays;
 
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.container.ModuleOperation;
@@ -33,12 +35,13 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.apache.tuweni.units.bigints.UInt64;
 
+@Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModOperation extends ModuleOperation {
 
-  @EqualsAndHashCode.Include private final OpCode opCode;
-  @EqualsAndHashCode.Include private final Bytes32 rawArg1;
-  @EqualsAndHashCode.Include private final Bytes32 rawArg2;
+  @EqualsAndHashCode.Include @Getter private final OpCode opCode;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 rawArg1;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 rawArg2;
   private final boolean oli;
   private BaseBytes arg1;
   private BaseBytes arg2;

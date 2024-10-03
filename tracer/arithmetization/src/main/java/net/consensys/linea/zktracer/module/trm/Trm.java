@@ -63,7 +63,7 @@ public class Trm implements OperationSetModule<TrmOperation> {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (TrmOperation operation : operations.getAll()) {
+    for (TrmOperation operation : operations.sortOperations(new TrmOperationComparator())) {
       operation.trace(trace, ++stamp);
     }
   }

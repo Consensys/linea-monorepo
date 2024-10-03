@@ -59,7 +59,7 @@ public class Exp implements OperationSetModule<ExpOperation> {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (ExpOperation expOp : operations.getAll()) {
+    for (ExpOperation expOp : operations.sortOperations(new ExpOperationComparator())) {
       expOp.traceComputation(++stamp, trace);
       expOp.traceMacro(stamp, trace);
       expOp.tracePreprocessing(stamp, trace);

@@ -60,7 +60,7 @@ public class Bin implements OperationSetModule<BinOperation> {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (BinOperation op : operations.getAll()) {
+    for (BinOperation op : operations.sortOperations(new BinOperationComparator())) {
       op.traceBinOperation(++stamp, trace);
     }
   }

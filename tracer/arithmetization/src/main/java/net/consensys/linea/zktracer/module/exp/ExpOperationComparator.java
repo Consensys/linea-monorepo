@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys AG.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,13 +13,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.exp;
+package net.consensys.linea.zktracer.module.exp;
 
-import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
+import java.util.Comparator;
 
-/** This interface defines the API required to execute a call to the EXP module. */
-public interface ExpCall extends TraceSubFragment {
-  int expInstruction();
+public class ExpOperationComparator implements Comparator<ExpOperation> {
+  @Override
+  public int compare(ExpOperation op1, ExpOperation op2) {
+    final int instructionComp =
+        Integer.compare(op1.expCall().expInstruction(), op2.expCall().expInstruction());
+    if (instructionComp != 0) {
+      return instructionComp;
+    }
 
-  int compareTo(ExpCall o);
+    return op1.expCall.compareTo(op2.expCall);
+  }
 }

@@ -125,8 +125,9 @@ public class Wcp implements Module {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
+    final WcpOperationComparator comparator = new WcpOperationComparator();
     for (ModuleOperationStackedSet<WcpOperation> operationsSet : operations) {
-      for (WcpOperation operation : operationsSet.getAll()) {
+      for (WcpOperation operation : operationsSet.sortOperations(comparator)) {
         operation.trace(trace, ++stamp);
       }
     }

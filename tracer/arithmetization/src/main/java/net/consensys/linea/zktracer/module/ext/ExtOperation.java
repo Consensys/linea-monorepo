@@ -19,6 +19,8 @@ import static net.consensys.linea.zktracer.module.Util.boolToInt;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMEDIUM;
 
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
@@ -30,13 +32,14 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
+@Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ExtOperation extends ModuleOperation {
 
-  @EqualsAndHashCode.Include private final OpCode opCode;
-  @EqualsAndHashCode.Include private final BaseBytes arg1;
-  @EqualsAndHashCode.Include private final BaseBytes arg2;
-  @EqualsAndHashCode.Include private final BaseBytes arg3;
+  @EqualsAndHashCode.Include @Getter private final OpCode opCode;
+  @EqualsAndHashCode.Include @Getter private final BaseBytes arg1;
+  @EqualsAndHashCode.Include @Getter private final BaseBytes arg2;
+  @EqualsAndHashCode.Include @Getter private final BaseBytes arg3;
   private final boolean isOneLineInstruction;
 
   private BaseTheta result;

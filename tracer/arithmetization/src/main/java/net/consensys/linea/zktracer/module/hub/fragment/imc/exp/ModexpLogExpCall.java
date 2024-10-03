@@ -44,6 +44,26 @@ public class ModexpLogExpCall implements ExpCall {
   }
 
   @Override
+  public int compareTo(ExpCall op2) {
+    final ModexpLogExpCall o2 = (ModexpLogExpCall) op2;
+
+    final int cdsCutoffComp = Integer.compare(cdsCutoff, o2.getCdsCutoff());
+    if (cdsCutoffComp != 0) {
+      return cdsCutoffComp;
+    }
+    final int ebsCutoffComp = Integer.compare(ebsCutoff, o2.getEbsCutoff());
+    if (ebsCutoffComp != 0) {
+      return ebsCutoffComp;
+    }
+    final int leadLogComp = leadLog.compareTo(o2.getLeadLog());
+    if (leadLogComp != 0) {
+      return leadLogComp;
+    }
+
+    return rawLeadingWord.compareTo(o2.getRawLeadingWord());
+  }
+
+  @Override
   public Trace trace(Trace trace) {
     return trace
         .pMiscExpFlag(true)
@@ -51,6 +71,6 @@ public class ModexpLogExpCall implements ExpCall {
         .pMiscExpData2(rawLeadingWord.lo())
         .pMiscExpData3(Bytes.ofUnsignedShort(cdsCutoff))
         .pMiscExpData4(Bytes.ofUnsignedShort(ebsCutoff))
-        .pMiscExpData5(bigIntegerToBytes(this.leadLog));
+        .pMiscExpData5(bigIntegerToBytes(leadLog));
   }
 }
