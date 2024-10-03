@@ -285,6 +285,7 @@ export class L2MessageServiceClient
       const error = this.contract.interface.parseError(errorEncodedData);
       return error?.name === "RateLimitExceeded";
     } catch (e) {
+      console.log(e)
       return false;
     }
   }
