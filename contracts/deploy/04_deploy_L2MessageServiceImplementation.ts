@@ -1,9 +1,7 @@
+import { ethers, upgrades } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { getDeployedContractAddress } from "../utils/storeAddress";
-import { tryVerifyContract } from "../utils/verifyContract";
-import { validateDeployBranchAndTags } from "../utils/auditedDeployVerifier";
-import { ethers, upgrades } from "hardhat";
+import { validateDeployBranchAndTags, tryVerifyContract, getDeployedContractAddress } from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;

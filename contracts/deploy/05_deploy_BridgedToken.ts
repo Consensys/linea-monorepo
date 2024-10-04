@@ -2,9 +2,12 @@ import { ethers, network, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { BridgedToken } from "../typechain-types";
-import { validateDeployBranchAndTags } from "../utils/auditedDeployVerifier";
-import { getDeployedContractAddress, tryStoreAddress } from "../utils/storeAddress";
-import { tryVerifyContract } from "../utils/verifyContract";
+import {
+  tryVerifyContract,
+  getDeployedContractAddress,
+  tryStoreAddress,
+  validateDeployBranchAndTags,
+} from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;

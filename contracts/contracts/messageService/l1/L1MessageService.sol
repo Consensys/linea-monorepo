@@ -60,7 +60,7 @@ abstract contract L1MessageService is
     address _to,
     uint256 _fee,
     bytes calldata _calldata
-  ) external payable whenTypeAndGeneralNotPaused(L1_L2_PAUSE_TYPE) {
+  ) external payable whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
     if (_to == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -88,7 +88,7 @@ abstract contract L1MessageService is
   function claimMessageWithProof(
     ClaimMessageWithProofParams calldata _params
   ) external nonReentrant distributeFees(_params.fee, _params.to, _params.data, _params.feeRecipient) {
-    _requireTypeAndGeneralNotPaused(L2_L1_PAUSE_TYPE);
+    _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
 
     uint256 merkleDepth = l2MerkleRootsDepths[_params.merkleRoot];
 

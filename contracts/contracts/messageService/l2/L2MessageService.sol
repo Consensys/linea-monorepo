@@ -28,6 +28,7 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
    * @notice Initializes underlying message service dependencies.
    * @param _rateLimitPeriod The period to rate limit against.
    * @param _rateLimitAmount The limit allowed for withdrawing the period.
+   * @param _defaultAdmin The account to be given DEFAULT_ADMIN_ROLE on initialization.
    * @param _roleAddresses The list of addresses to grant roles to.
    * @param _pauseTypeRoles The list of pause type roles.
    * @param _unpauseTypeRoles The list of unpause type roles.
@@ -35,6 +36,7 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
   function initialize(
     uint256 _rateLimitPeriod,
     uint256 _rateLimitAmount,
+    address _defaultAdmin,
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles
@@ -46,6 +48,12 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
 
     __ReentrancyGuard_init();
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
+
+    /**
+     * @dev DEFAULT_ADMIN_ROLE is set for the security council explicitly,
+     * as the permissions init purposefully does not allow DEFAULT_ADMIN_ROLE to be set.
+     */
+    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
 
     __Permissions_init(_roleAddresses);
 
