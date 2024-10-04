@@ -8,6 +8,8 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/sirupsen/logrus"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -21,7 +23,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
-	"github.com/sirupsen/logrus"
 )
 
 /*
@@ -244,7 +245,7 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 
 	mainWg.Add(runtime.NumCPU())
 
-	parallel.ExecuteFromChan(len(ctx.polys), func(wg *sync.WaitGroup, indexChan chan int) {
+	parallel.ExecuteFromChan(len(ctx.polys), func(wg *sync.WaitGroup, index *parallel.AtomicCounter) {
 
 		var (
 			pool = mempool.WrapsWithMemCache(pool)
@@ -256,7 +257,11 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 
 		defer pool.TearDown()
 
-		for i := range indexChan {
+		for {
+			i, ok := index.Next()
+			if !ok {
+				break
+			}
 
 			var (
 				polHandle  = ctx.polys[i]
@@ -603,9 +608,9 @@ func (ctx mptsCtx) gnarkVerify(api frontend.API, c *wizard.WizardVerifierCircuit
 
 // collect all the alleged opening values in a map, so that we can utilize them later.
 func (ctx mptsCtx) getYsHs(
-	// func that can be used to return the parameters of a given query
+// func that can be used to return the parameters of a given query
 	getParam func(ifaces.QueryID) query.UnivariateEvalParams,
-	// func that can be used to return the query's metadata given its name
+// func that can be used to return the query's metadata given its name
 	getQuery func(ifaces.QueryID) query.UnivariateEval,
 
 ) (
