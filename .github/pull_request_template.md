@@ -3,7 +3,7 @@
 
 ## Related Issue
 
-This PR implements issue(s) #
+This PR addresses/relates to issue(s) #
 <!-- If this PR addresses an existing issue, please link to it here -->
 <!-- e.g., Fixes #123 -->
 
