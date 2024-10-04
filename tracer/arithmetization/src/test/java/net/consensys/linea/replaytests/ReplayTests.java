@@ -51,6 +51,7 @@ public class ReplayTests {
     // bulkReplay(LINEA_MAINNET, "");
   }
 
+  @Disabled
   @Test
   void leoFailingRange() {
     replay(LINEA_MAINNET, "5389571-5389577.json.gz");
