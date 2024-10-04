@@ -31,6 +31,8 @@ import org.junit.jupiter.api.Test;
 public class ReferenceTestOutcomeRecorderToolTest {
 
   public static final String TEST_OUTPUT_JSON = "MapFailedReferenceTestsToolTest.json";
+  private final String prefix1 = "constraints failed: ";
+  private final String prefix2 = "failing constraint ";
 
   @BeforeEach
   void setup() {
@@ -50,12 +52,12 @@ public class ReferenceTestOutcomeRecorderToolTest {
     String module2 = "txndata";
     String constraint2 = module2 + "-into-blockdata";
 
-    List<String> constraints = List.of(constraint1, constraint2);
     List<String> modules = List.of(module1, module2);
 
-    String dummyEvent = createDummyLogEventMessage(constraints);
+    String dummyEvent = createDummyLogEventMessage(List.of(constraint1), prefix1);
+    String dummyEvent2 = createDummyLogEventMessage(List.of(constraint2), prefix2);
 
-    mapAndStoreFailedReferenceTest(testName, List.of(dummyEvent), TEST_OUTPUT_JSON);
+    mapAndStoreFailedReferenceTest(testName, List.of(dummyEvent, dummyEvent2), TEST_OUTPUT_JSON);
 
     readBlockchainReferenceTestsOutput(TEST_OUTPUT_JSON)
         .thenApply(
@@ -79,12 +81,11 @@ public class ReferenceTestOutcomeRecorderToolTest {
 
     String module1 = "blockdata";
     String constraint1 = module1 + ".value-constraints";
-
     String constraint2 = module1 + ".horizontal-byte-dec";
 
     List<String> constraints = List.of(constraint1, constraint2);
 
-    String dummyEvent = createDummyLogEventMessage(constraints);
+    String dummyEvent = createDummyLogEventMessage(constraints, prefix1);
 
     mapAndStoreFailedReferenceTest(testName, List.of(dummyEvent), TEST_OUTPUT_JSON);
 
@@ -121,7 +122,7 @@ public class ReferenceTestOutcomeRecorderToolTest {
     List<String> modules = List.of(module1);
     List<String> tests = List.of(testName1, testName2, testName3);
 
-    String dummyEvent = createDummyLogEventMessage(constraints);
+    String dummyEvent = createDummyLogEventMessage(constraints, prefix1);
 
     mapAndStoreFailedReferenceTest(testName1, List.of(dummyEvent), TEST_OUTPUT_JSON);
     mapAndStoreFailedReferenceTest(testName2, List.of(dummyEvent), TEST_OUTPUT_JSON);
@@ -146,8 +147,7 @@ public class ReferenceTestOutcomeRecorderToolTest {
             });
   }
 
-  private String createDummyLogEventMessage(List<String> failedConstraints) {
-    String prefix = "constraints failed: ";
+  private String createDummyLogEventMessage(List<String> failedConstraints, String prefix) {
     String concatenatedConstraints =
         failedConstraints.stream()
             .map(

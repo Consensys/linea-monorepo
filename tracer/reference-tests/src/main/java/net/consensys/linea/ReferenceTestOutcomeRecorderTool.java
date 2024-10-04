@@ -177,14 +177,17 @@ public class ReferenceTestOutcomeRecorderTool {
   }
 
   private static List<String> extractionExceptionCauses(String message) {
-    Pattern pattern = Pattern.compile("constraints failed: (.+)");
+    Pattern pattern = Pattern.compile("constraints failed: (.+)|failing constraint (.+)");
     Matcher matcher = pattern.matcher(message);
 
     List<String> exceptionCauses = new ArrayList<>();
 
     while (matcher.find()) {
-      String cause = matcher.group(1);
-      exceptionCauses.add(cause);
+      if (matcher.group(1) != null) {
+        exceptionCauses.add(matcher.group(1));
+      } else if (matcher.group(2) != null) {
+        exceptionCauses.add(matcher.group(2));
+      }
     }
 
     return exceptionCauses;
