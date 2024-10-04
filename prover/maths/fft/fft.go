@@ -189,20 +189,6 @@ func ditFFT(a []field.Element, twiddles [][]field.Element, stage int, maxSplits 
 	}
 }
 
-// BitReverse applies the bit-reversal permutation to a.
-// len(a) must be a power of 2 (as in every single function in this file)
-func BitReverse(a []field.Element) {
-	n := uint64(len(a))
-	nn := uint64(64 - bits.TrailingZeros64(n))
-
-	for i := uint64(0); i < n; i++ {
-		irev := bits.Reverse64(i) >> nn
-		if irev > i {
-			a[i], a[irev] = a[irev], a[i]
-		}
-	}
-}
-
 func innerDIFWithTwiddles(a []field.Element, twiddles []field.Element, start, end, m int) {
 	if start == 0 {
 		field.Butterfly(&a[0], &a[m])
