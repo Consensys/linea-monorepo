@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0-rc3
+
+* fix: temporarily disable max block behind check on tracer readiness endpoint due to infrequent sync status updates
+  ([#1378](https://github.com/Consensys/linea-tracer/pull/1378))
+* feat: EXTCODEHASH / EXTCODESIZE tests in relation to account existence ([#1372](https://github.com/Consensys/linea-tracer/pull/1372))
+* chore: update Corset to `v9.7.14` ([#1369](https://github.com/Consensys/linea-tracer/pull/1369))
+* feat: store Testing Framework Solidity and Yul ([#1052](https://github.com/Consensys/linea-tracer/pull/1052))
+* feat: use coinbase address from block header for multi block tests ([#1365](https://github.com/Consensys/linea-tracer/pull/1365))
+
 ## 0.8.0-rc2
 * fix: adding the `chainId` to the HUB and BLOCK_DATA modules ([#1359](https://github.com/Consensys/linea-tracer/pull/1359))
 * fix: confusion between call and callee gas for BLAKE ([#1366](https://github.com/Consensys/linea-tracer/pull/1366))
