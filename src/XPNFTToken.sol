@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { Base64 } from "@openzeppelin/contracts/utils/Base64.sol";
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IMetadataGenerator } from "./XPNFTMetadataGenerator.sol";
 
 interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
@@ -13,12 +12,11 @@ contract XPNFTToken is Ownable {
     error XPNFT__TransferNotAllowed();
     error XPNFT__InvalidTokenId();
 
-    string private _name = "XPNFT";
-    string private _symbol = "XPNFT";
-    string private _imagePrefix = "";
-    string private _imageSuffix = "";
+    IERC20 public xpToken;
+    IMetadataGenerator public metadataGenerator;
 
-    IERC20 private _xpToken;
+    string private name = "XPNFT";
+    string private symbol = "XPNFT";
 
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
 
@@ -29,23 +27,13 @@ contract XPNFTToken is Ownable {
         _;
     }
 
-    constructor(address xpTokenAddress, string memory imagePrefix, string memory imageSuffix) Ownable(msg.sender) {
-        _xpToken = IERC20(xpTokenAddress);
-        _imagePrefix = imagePrefix;
-        _imageSuffix = imageSuffix;
+    constructor(address xpTokenAddress, address _metadataGenerator) Ownable(msg.sender) {
+        xpToken = IERC20(xpTokenAddress);
+        metadataGenerator = IMetadataGenerator(_metadataGenerator);
     }
 
-    function setImageStrings(string memory imagePrefix, string memory imageSuffix) external onlyOwner {
-        _imagePrefix = imagePrefix;
-        _imageSuffix = imageSuffix;
-    }
-
-    function name() external view returns (string memory) {
-        return _name;
-    }
-
-    function symbol() external view returns (string memory) {
-        return _symbol;
+    function setMetadataGenerator(address _metadataGenerator) external onlyOwner {
+        metadataGenerator = IMetadataGenerator(_metadataGenerator);
     }
 
     function mint() external {
@@ -90,39 +78,8 @@ contract XPNFTToken is Ownable {
     }
 
     function tokenURI(uint256 tokenId) external view onlyValidTokenId(tokenId) returns (string memory) {
-        address owner = address(uint160(tokenId));
-        return _createTokenURI(owner);
-    }
-
-    function _createTokenURI(address owner) internal view returns (string memory) {
-        string memory baseName = "XPNFT Token ";
-        string memory baseDescription = "This is a XPNFT token for address ";
-        uint256 balance = _xpToken.balanceOf(owner) / 1e18;
-
-        string memory propName = string(abi.encodePacked(baseName, Strings.toHexString(owner)));
-        string memory propDescription = string(
-            abi.encodePacked(baseDescription, Strings.toHexString(owner), " with balance ", Strings.toString(balance))
-        );
-        string memory image = _generateImage(balance);
-
-        bytes memory json = abi.encodePacked(
-            "{\"name\":\"",
-            propName,
-            "\",\"description\":\"",
-            propDescription,
-            "\",\"image\":\"data:image/svg+xml;base64,",
-            image,
-            "\"}"
-        );
-
-        string memory jsonBase64 = Base64.encode(json);
-        return string(abi.encodePacked("data:application/json;base64,", jsonBase64));
-    }
-
-    function _generateImage(uint256 balance) internal view returns (string memory) {
-        string memory text = Strings.toString(balance);
-        bytes memory svg = abi.encodePacked(_imagePrefix, text, _imageSuffix);
-
-        return Base64.encode(svg);
+        address account = address(uint160(tokenId));
+        uint256 balance = xpToken.balanceOf(account);
+        return metadataGenerator.generate(account, balance);
     }
 }
