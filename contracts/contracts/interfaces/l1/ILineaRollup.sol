@@ -389,7 +389,7 @@ interface ILineaRollup {
    * @param _proofType The proof type.
    * @param _finalizationData The full finalization data.
    */
-  function finalizeBlocksWithProof(
+  function finalizeBlocks(
     bytes calldata _aggregatedProof,
     uint256 _proofType,
     FinalizationDataV3 calldata _finalizationData

@@ -1816,7 +1816,7 @@
         "type": "tuple"
       }
     ],
-    "name": "finalizeBlocksWithProof",
+    "name": "finalizeBlocks",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

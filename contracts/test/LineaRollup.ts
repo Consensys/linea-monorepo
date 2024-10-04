@@ -1214,12 +1214,9 @@ describe("Linea Rollup contract", () => {
 
       const finalizeCompressedCall = lineaRollup
         .connect(operator)
-        .finalizeBlocksWithProof(
-          blobAggregatedProof1To155.aggregatedProof,
-          TEST_PUBLIC_VERIFIER_INDEX,
-          finalizationData,
-          { gasLimit: 50000 },
-        );
+        .finalizeBlocks(blobAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData, {
+          gasLimit: 50000,
+        });
 
       // there is no reason
       await expect(finalizeCompressedCall).to.be.reverted;
@@ -1257,12 +1254,9 @@ describe("Linea Rollup contract", () => {
 
       const finalizeCompressedCall = lineaRollup
         .connect(operator)
-        .finalizeBlocksWithProof(
-          blobAggregatedProof1To155.aggregatedProof,
-          TEST_PUBLIC_VERIFIER_INDEX,
-          finalizationData,
-          { gasLimit: 400000 },
-        );
+        .finalizeBlocks(blobAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData, {
+          gasLimit: 400000,
+        });
 
       await expectRevertWithCustomError(
         lineaRollup,
@@ -1313,12 +1307,9 @@ describe("Linea Rollup contract", () => {
 
         const finalizeCompressedCall = lineaRollup
           .connect(operator)
-          .finalizeBlocksWithProof(
-            blobAggregatedProof1To155.aggregatedProof,
-            TEST_PUBLIC_VERIFIER_INDEX,
-            finalizationData,
-            { gasLimit: 400000 },
-          );
+          .finalizeBlocks(blobAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData, {
+            gasLimit: 400000,
+          });
 
         await expectRevertWithCustomError(
           lineaRollup,
@@ -1380,7 +1371,7 @@ describe("Linea Rollup contract", () => {
 
         const finalizeCall = lineaRollup
           .connect(operator)
-          .finalizeBlocksWithProof(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+          .finalizeBlocks(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(
           lineaRollup,
@@ -1407,7 +1398,7 @@ describe("Linea Rollup contract", () => {
 
         const finalizeCall = lineaRollup
           .connect(operator)
-          .finalizeBlocksWithProof(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+          .finalizeBlocks(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCall, "MissingMessageNumberForRollingHash", [
           finalizationData.l1RollingHash,
@@ -1431,7 +1422,7 @@ describe("Linea Rollup contract", () => {
 
         const finalizeCall = lineaRollup
           .connect(operator)
-          .finalizeBlocksWithProof(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+          .finalizeBlocks(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCall, "MissingRollingHashForMessageNumber", [
           finalizationData.l1RollingHashMessageNumber,
@@ -1455,7 +1446,7 @@ describe("Linea Rollup contract", () => {
 
         const finalizeCall = lineaRollup
           .connect(operator)
-          .finalizeBlocksWithProof(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+          .finalizeBlocks(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCall, "L1RollingHashDoesNotExistOnL1", [
           finalizationData.l1RollingHashMessageNumber,
@@ -1518,11 +1509,7 @@ describe("Linea Rollup contract", () => {
 
         const finalizeCompressedCall = lineaRollup
           .connect(operator)
-          .finalizeBlocksWithProof(
-            calldataAggregatedProof1To155.aggregatedProof,
-            TEST_PUBLIC_VERIFIER_INDEX,
-            finalizationData,
-          );
+          .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, "FinalizationStateIncorrect", [
           expectedHashValue,
@@ -1566,11 +1553,7 @@ describe("Linea Rollup contract", () => {
 
         const finalizeCompressedCall = lineaRollup
           .connect(operator)
-          .finalizeBlocksWithProof(
-            calldataAggregatedProof1To155.aggregatedProof,
-            TEST_PUBLIC_VERIFIER_INDEX,
-            finalizationData,
-          );
+          .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, "FinalizationInTheFuture", [
           finalizationData.finalTimestamp,
@@ -1619,11 +1602,7 @@ describe("Linea Rollup contract", () => {
 
         const finalizeCall = lineaRollup
           .connect(operator)
-          .finalizeBlocksWithProof(
-            calldataAggregatedProof1To155.aggregatedProof,
-            TEST_PUBLIC_VERIFIER_INDEX,
-            finalizationData,
-          );
+          .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCall, "FinalBlockStateEqualsZeroHash");
       });
@@ -1640,11 +1619,7 @@ describe("Linea Rollup contract", () => {
 
       const finalizeCall = lineaRollup
         .connect(nonAuthorizedAccount)
-        .finalizeBlocksWithProof(
-          calldataAggregatedProof1To155.aggregatedProof,
-          TEST_PUBLIC_VERIFIER_INDEX,
-          finalizationData,
-        );
+        .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
       await expectRevertWithReason(finalizeCall, buildAccessErrorMessage(nonAuthorizedAccount, OPERATOR_ROLE));
     });
 
@@ -1655,7 +1630,7 @@ describe("Linea Rollup contract", () => {
 
       const finalizeCall = lineaRollup
         .connect(operator)
-        .finalizeBlocksWithProof(EMPTY_CALLDATA, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+        .finalizeBlocks(EMPTY_CALLDATA, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
       await expectRevertWithCustomError(lineaRollup, finalizeCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
     });
 
@@ -1666,7 +1641,7 @@ describe("Linea Rollup contract", () => {
 
       const finalizeCall = lineaRollup
         .connect(operator)
-        .finalizeBlocksWithProof(EMPTY_CALLDATA, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+        .finalizeBlocks(EMPTY_CALLDATA, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
       await expectRevertWithCustomError(lineaRollup, finalizeCall, "IsPaused", [FINALIZATION_PAUSE_TYPE]);
     });
 
@@ -1675,7 +1650,7 @@ describe("Linea Rollup contract", () => {
 
       const finalizeCall = lineaRollup
         .connect(operator)
-        .finalizeBlocksWithProof(EMPTY_CALLDATA, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+        .finalizeBlocks(EMPTY_CALLDATA, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
       await expectRevertWithCustomError(lineaRollup, finalizeCall, "ProofIsEmpty");
     });
 
@@ -1702,14 +1677,9 @@ describe("Linea Rollup contract", () => {
 
       const finalizeCall = lineaRollup
         .connect(operator)
-        .finalizeBlocksWithProof(
-          calldataAggregatedProof1To155.aggregatedProof,
-          TEST_PUBLIC_VERIFIER_INDEX,
-          finalizationData,
-          {
-            gasLimit: 30_000_000,
-          },
-        );
+        .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData, {
+          gasLimit: 30_000_000,
+        });
       await expectRevertWithCustomError(lineaRollup, finalizeCall, "StartingRootHashDoesNotMatch");
     });
 
@@ -1769,7 +1739,7 @@ describe("Linea Rollup contract", () => {
 
       const finalizeCall = lineaRollup
         .connect(operator)
-        .finalizeBlocksWithProof(calldataAggregatedProof1To155.aggregatedProof, 99, finalizationData);
+        .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, 99, finalizationData);
       await expectRevertWithCustomError(lineaRollup, finalizeCall, "InvalidProofType");
     });
 
@@ -1810,11 +1780,7 @@ describe("Linea Rollup contract", () => {
 
       const finalizeCall = lineaRollup
         .connect(operator)
-        .finalizeBlocksWithProof(
-          calldataAggregatedProof1To155.aggregatedProof,
-          TEST_PUBLIC_VERIFIER_INDEX,
-          finalizationData,
-        );
+        .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
       await expectRevertWithCustomError(lineaRollup, finalizeCall, "InvalidProofType");
     });
 
@@ -1853,7 +1819,7 @@ describe("Linea Rollup contract", () => {
       // aggregatedProof1To81.aggregatedProof, wrong proof on purpose
       const finalizeCall = lineaRollup
         .connect(operator)
-        .finalizeBlocksWithProof(aggregatedProof1To81.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+        .finalizeBlocks(aggregatedProof1To81.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
       await expectRevertWithCustomError(lineaRollup, finalizeCall, "InvalidProof");
     });
 
@@ -1891,11 +1857,7 @@ describe("Linea Rollup contract", () => {
 
       const finalizeCall = lineaRollup
         .connect(operator)
-        .finalizeBlocksWithProof(
-          calldataAggregatedProof1To155.aggregatedProof,
-          TEST_PUBLIC_VERIFIER_INDEX,
-          finalizationData,
-        );
+        .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
       await expectRevertWithCustomError(lineaRollup, finalizeCall, "InvalidProof");
     });
 
@@ -2165,7 +2127,7 @@ describe("Linea Rollup contract", () => {
 
     const finalizeCompressedCall = lineaRollup
       .connect(operator)
-      .finalizeBlocksWithProof(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+      .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
     const eventArgs = [
       BigInt(proofData.lastFinalizedBlockNumber) + 1n,
