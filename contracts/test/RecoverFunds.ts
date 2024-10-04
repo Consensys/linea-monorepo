@@ -10,9 +10,9 @@ import {
   FUNCTION_EXECUTOR_ROLE,
   INITIALIZED_ALREADY_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
-import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "./utils/helpers";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
+import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "./common/helpers";
 
 describe("RecoverFunds contract", () => {
   let recoverFunds: RecoverFunds;

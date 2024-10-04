@@ -11,8 +11,8 @@ import {
   L1_L2_MESSAGE_SETTER_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
 import {
   buildAccessErrorMessage,
   calculateRollingHashFromCollection,
@@ -21,7 +21,7 @@ import {
   expectRevertWithReason,
   generateKeccak256Hash,
   generateNKeccak256Hashes,
-} from "./utils/helpers";
+} from "./common/helpers";
 
 describe("L2MessageManager", () => {
   let l2MessageManager: TestL2MessageManager;

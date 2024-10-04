@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { OPERATOR_ROLE } from "../../test/utils/constants";
+import { OPERATOR_ROLE } from "../../test/common/constants";
 import { LineaRollupInit__factory, LineaRollup__factory } from "../../typechain-types";
 
 const main = async () => {
