@@ -92,3 +92,5 @@ export type FinalizationData = {
   lastFinalizedL1RollingHash: string;
   lastFinalizedL1RollingHashMessageNumber: bigint;
 };
+
+export type ShnarfDataGenerator = (blobParentShnarfIndex: number, isMultiple?: boolean) => ShnarfData;

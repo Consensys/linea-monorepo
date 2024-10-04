@@ -1,37 +1,17 @@
 import { ethers, upgrades } from "hardhat";
 
 import { TokenBridge } from "../../../typechain-types";
-import { SupportedChainIds } from "../../../utils/supportedNetworks";
+import { SupportedChainIds } from "../../../common/supportedNetworks";
 import { deployBridgedTokenBeacon } from "./deployBridgedTokenBeacon";
-import {
-  SET_REMOTE_TOKENBRIDGE_ROLE,
-  SET_RESERVED_TOKEN_ROLE,
-  REMOVE_RESERVED_TOKEN_ROLE,
-  SET_CUSTOM_CONTRACT_ROLE,
-  SET_MESSAGE_SERVICE_ROLE,
-  PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
-  UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
-  PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
-  UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
-  pauseTypeRoles,
-  unpauseTypeRoles,
-} from "contracts/test/utils/constants";
+import { pauseTypeRoles, unpauseTypeRoles } from "../../../test/common/constants";
+import { generateRoleAssignments } from "contracts/common/helpers";
+import { TOKEN_BRIDGE_ROLES } from "contracts/common/constants";
 
 export async function deployTokenBridge(messageServiceAddress: string, verbose = false) {
   const [owner] = await ethers.getSigners();
   const chainIds = [SupportedChainIds.GOERLI, SupportedChainIds.LINEA_TESTNET];
 
-  const roleAddresses = [
-    { addressWithRole: owner.address, role: SET_REMOTE_TOKENBRIDGE_ROLE },
-    { addressWithRole: owner.address, role: SET_RESERVED_TOKEN_ROLE },
-    { addressWithRole: owner.address, role: REMOVE_RESERVED_TOKEN_ROLE },
-    { addressWithRole: owner.address, role: SET_CUSTOM_CONTRACT_ROLE },
-    { addressWithRole: owner.address, role: SET_MESSAGE_SERVICE_ROLE },
-    { addressWithRole: owner.address, role: PAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
-    { addressWithRole: owner.address, role: UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
-    { addressWithRole: owner.address, role: PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE },
-    { addressWithRole: owner.address, role: UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE },
-  ];
+  const roleAddresses = generateRoleAssignments(TOKEN_BRIDGE_ROLES, owner.address, []);
 
   // Deploy beacon for bridged tokens
   const tokenBeacons = await deployBridgedTokenBeacon(verbose);
@@ -41,6 +21,7 @@ export async function deployTokenBridge(messageServiceAddress: string, verbose =
 
   const l1TokenBridge = (await upgrades.deployProxy(TokenBridgeFactory, [
     {
+      defaultAdmin: owner.address,
       messageService: messageServiceAddress,
       tokenBeacon: await tokenBeacons.l1TokenBeacon.getAddress(),
       sourceChainId: chainIds[0],
@@ -58,6 +39,7 @@ export async function deployTokenBridge(messageServiceAddress: string, verbose =
 
   const l2TokenBridge = (await upgrades.deployProxy(TokenBridgeFactory, [
     {
+      defaultAdmin: owner.address,
       messageService: messageServiceAddress,
       tokenBeacon: await tokenBeacons.l2TokenBeacon.getAddress(),
       sourceChainId: chainIds[1],
