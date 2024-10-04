@@ -12,6 +12,7 @@ import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
 interface ITokenBridge {
   /**
    * @dev Contract will be used as proxy implementation.
+   * @param defaultAdmin The account to be given DEFAULT_ADMIN_ROLE on initialization.
    * @param messageService The address of the MessageService contract.
    * @param tokenBeacon The address of the tokenBeacon.
    * @param sourceChainId The source chain id of the current layer.
@@ -22,6 +23,7 @@ interface ITokenBridge {
    * @param unpauseTypeRoles The list of unpause type roles.
    */
   struct InitializationData {
+    address defaultAdmin;
     address messageService;
     address tokenBeacon;
     uint256 sourceChainId;

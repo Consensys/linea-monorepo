@@ -3,10 +3,10 @@ pragma solidity >=0.8.19 <=0.8.26;
 
 import { IMessageService } from "../../../interfaces/IMessageService.sol";
 import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
-import { PauseManager } from "../../../lib/PauseManager.sol";
+import { LineaRollupPauseManager } from "../../../lib/LineaRollupPauseManager.sol";
 import { L1MessageManager } from "../../../messageService/l1/L1MessageManager.sol";
 
-contract MockMessageServiceV2 is L1MessageManager, IMessageService, PauseManager, IGenericErrors {
+contract MockMessageServiceV2 is L1MessageManager, IMessageService, LineaRollupPauseManager, IGenericErrors {
   address internal messageSender = address(0);
   uint256 public nextMessageNumber = 1;
 
@@ -22,7 +22,7 @@ contract MockMessageServiceV2 is L1MessageManager, IMessageService, PauseManager
     address _to,
     uint256 _fee,
     bytes calldata _calldata
-  ) external payable whenTypeAndGeneralNotPaused(L1_L2_PAUSE_TYPE) {
+  ) external payable whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
     if (_to == address(0)) {
       revert ZeroAddressNotAllowed();
     }

@@ -1,11 +1,15 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { deployFromFactory, requireEnv } from "../scripts/hardhat/utils";
+import { deployFromFactory } from "../scripts/hardhat/utils";
 import { get1559Fees } from "../scripts/utils";
-import { validateDeployBranchAndTags } from "../utils/auditedDeployVerifier";
-import { getDeployedContractAddress, tryStoreAddress } from "../utils/storeAddress";
-import { tryVerifyContractWithConstructorArgs } from "../utils/verifyContract";
+import {
+  getDeployedContractAddress,
+  getRequiredEnvVar,
+  tryStoreAddress,
+  tryVerifyContractWithConstructorArgs,
+  validateDeployBranchAndTags,
+} from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -17,13 +21,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const provider = ethers.provider;
 
   // This should be the safe
-  const timeLockProposers = requireEnv("TIMELOCK_PROPOSERS");
+  const timeLockProposers = getRequiredEnvVar("TIMELOCK_PROPOSERS");
 
   // This should be the safe
-  const timelockExecutors = requireEnv("TIMELOCK_EXECUTORS");
+  const timelockExecutors = getRequiredEnvVar("TIMELOCK_EXECUTORS");
 
   // This should be the safe
-  const adminAddress = requireEnv("TIMELOCK_ADMIN_ADDRESS");
+  const adminAddress = getRequiredEnvVar("TIMELOCK_ADMIN_ADDRESS");
 
   const minDelay = process.env.MIN_DELAY || 0;
 

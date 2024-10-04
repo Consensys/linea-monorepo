@@ -9,9 +9,9 @@ import {
   INITIAL_WITHDRAW_LIMIT,
   ONE_DAY_IN_SECONDS,
   TEST_PUBLIC_VERIFIER_INDEX,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
-import { generateFinalizationDataFromJSON, generateSubmissionDataFromJSON } from "./utils/helpers";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
+import { generateFinalizationDataFromJSON, generateSubmissionDataFromJSON } from "./common/helpers";
 
 // This stores initialization data for the smart-contract
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";

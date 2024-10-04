@@ -1,6 +1,5 @@
 import { ethers, network, upgrades } from "hardhat";
-import { tryStoreAddress } from "../../../utils/storeAddress";
-import { tryVerifyContract } from "../../../utils/verifyContract";
+import { tryStoreAddress, tryVerifyContract } from "../../../common/helpers";
 
 export async function deployBridgedTokenBeacon(verbose = false) {
   const BridgedToken = await ethers.getContractFactory("BridgedToken");

@@ -3,8 +3,8 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Mimc, SparseMerkleProof } from "../typechain-types";
 import merkleProofTestData from "./testData/merkle-proof-data.json";
-import { deployFromFactory } from "./utils/deployment";
-import { expectRevertWithCustomError } from "./utils/helpers";
+import { deployFromFactory } from "./common/deployment";
+import { expectRevertWithCustomError } from "./common/helpers";
 
 describe("SparseMerkleProof", () => {
   let sparseMerkleProof: SparseMerkleProof;

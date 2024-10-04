@@ -1,10 +1,14 @@
 import { ethers, network } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { deployUpgradableFromFactory, requireEnv } from "../scripts/hardhat/utils";
-import { validateDeployBranchAndTags } from "../utils/auditedDeployVerifier";
-import { getDeployedContractAddress, tryStoreAddress } from "../utils/storeAddress";
-import { tryVerifyContract } from "../utils/verifyContract";
+import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
+import {
+  tryVerifyContract,
+  getDeployedContractAddress,
+  tryStoreAddress,
+  validateDeployBranchAndTags,
+  getRequiredEnvVar,
+} from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -13,10 +17,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "CustomBridgedToken";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
-  const CustomTokenBridge_name = requireEnv("CUSTOMTOKENBRIDGE_NAME");
-  const CustomTokenBridge_symbol = requireEnv("CUSTOMTOKENBRIDGE_SYMBOL");
-  const CustomTokenBridge_decimals = requireEnv("CUSTOMTOKENBRIDGE_DECIMALS");
-  const CustomTokenBridge_bridge_address = requireEnv("CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS");
+  const CustomTokenBridge_name = getRequiredEnvVar("CUSTOMTOKENBRIDGE_NAME");
+  const CustomTokenBridge_symbol = getRequiredEnvVar("CUSTOMTOKENBRIDGE_SYMBOL");
+  const CustomTokenBridge_decimals = getRequiredEnvVar("CUSTOMTOKENBRIDGE_DECIMALS");
+  const CustomTokenBridge_bridge_address = getRequiredEnvVar("CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS");
 
   const chainId = (await ethers.provider.getNetwork()).chainId;
   console.log(`Current network's chainId is ${chainId}`);

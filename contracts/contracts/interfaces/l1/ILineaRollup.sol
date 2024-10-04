@@ -22,6 +22,7 @@ interface ILineaRollup {
    * @param pauseTypeRoles The list of pause type roles.
    * @param unpauseTypeRoles The list of unpause type roles.
    * @param fallbackOperator The account to be given OPERATOR_ROLE on when the time since last finalization lapses.
+   * @param defaultAdmin The account to be given DEFAULT_ADMIN_ROLE on initialization.
    */
   struct InitializationData {
     bytes32 initialStateRootHash;
@@ -34,6 +35,7 @@ interface ILineaRollup {
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
     address fallbackOperator;
+    address defaultAdmin;
   }
 
   /**

@@ -3,9 +3,9 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { TestSparseMerkleTreeVerifier } from "../../../typechain-types";
-import { MESSAGE_FEE, MESSAGE_VALUE_1ETH } from "../../utils/constants";
-import { deployFromFactory } from "../../utils/deployment";
-import { expectRevertWithCustomError } from "contracts/test/utils/helpers";
+import { MESSAGE_FEE, MESSAGE_VALUE_1ETH } from "../../common/constants";
+import { deployFromFactory } from "../../common/deployment";
+import { expectRevertWithCustomError } from "contracts/test/common/helpers";
 
 describe("SparseMerkleTreeVerifier", () => {
   let sparseMerkleTreeVerifier: TestSparseMerkleTreeVerifier;

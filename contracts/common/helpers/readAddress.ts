@@ -12,5 +12,3 @@ export const getDeployedContractOnNetwork = async (
   const data = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(data).address;
 };
-
-export const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));

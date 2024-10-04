@@ -1,11 +1,15 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { deployFromFactory, requireEnv } from "../scripts/hardhat/utils";
+import { deployFromFactory } from "../scripts/hardhat/utils";
 import { get1559Fees } from "../scripts/utils";
-import { validateDeployBranchAndTags } from "../utils/auditedDeployVerifier";
-import { getDeployedContractAddress, tryStoreAddress } from "../utils/storeAddress";
-import { tryVerifyContractWithConstructorArgs } from "../utils/verifyContract";
+import {
+  tryVerifyContractWithConstructorArgs,
+  getDeployedContractAddress,
+  tryStoreAddress,
+  validateDeployBranchAndTags,
+  getRequiredEnvVar,
+} from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -15,7 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
   const provider = ethers.provider;
 
-  const adminAddress = requireEnv("LINEA_VOYAGE_XP_ADMIN_ADDRESS");
+  const adminAddress = getRequiredEnvVar("LINEA_VOYAGE_XP_ADMIN_ADDRESS");
 
   if (existingContractAddress === undefined) {
     console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);

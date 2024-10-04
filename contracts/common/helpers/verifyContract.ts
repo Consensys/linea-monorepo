@@ -1,5 +1,5 @@
 import { run } from "hardhat";
-import { delay } from "./storeAddress";
+import { delay } from "./general";
 
 export async function tryVerifyContract(contractAddress: string) {
   if (process.env.VERIFY_CONTRACT) {

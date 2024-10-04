@@ -1,19 +1,21 @@
 import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { requireEnv } from "../scripts/hardhat/utils";
-import { validateDeployBranchAndTags } from "../utils/auditedDeployVerifier";
-import { getDeployedContractAddress } from "../utils/storeAddress";
-import { tryVerifyContract } from "../utils/verifyContract";
+import {
+  getDeployedContractAddress,
+  getRequiredEnvVar,
+  tryVerifyContract,
+  validateDeployBranchAndTags,
+} from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
   validateDeployBranchAndTags(hre.network.name);
 
-  const contractName = requireEnv("CONTRACT_NAME");
+  const contractName = getRequiredEnvVar("CONTRACT_NAME");
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
-  const proxyAddress = requireEnv("PROXY_ADDRESS");
+  const proxyAddress = getRequiredEnvVar("PROXY_ADDRESS");
 
   const factory = await ethers.getContractFactory(contractName);
 

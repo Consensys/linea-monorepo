@@ -1,8 +1,8 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { TestUtils } from "../typechain-types";
-import { deployFromFactory } from "./utils/deployment";
-import { generateKeccak256, generateRandomBytes } from "./utils/helpers";
+import { deployFromFactory } from "./common/deployment";
+import { generateKeccak256, generateRandomBytes } from "./common/helpers";
 
 describe("Utils Library", () => {
   let contract: TestUtils;

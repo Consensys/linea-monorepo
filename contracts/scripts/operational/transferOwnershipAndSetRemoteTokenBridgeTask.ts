@@ -1,8 +1,8 @@
 // import { ethers, network, upgrades } from "hardhat";
 import { task } from "hardhat/config";
 import { ProxyAdminReplica, TokenBridge } from "../../typechain-types";
-import { getTaskCliOrEnvValue } from "../../utils/environmentHelper";
-import { getDeployedContractOnNetwork } from "../../utils/readAddress";
+import { getTaskCliOrEnvValue } from "../../common/helpers/environmentHelper";
+import { getDeployedContractOnNetwork } from "../../common/helpers/readAddress";
 
 /*
     *******************************************************************************************
