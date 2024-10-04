@@ -911,7 +911,7 @@ On finalization the value of the final (last in rollup data being finalized) Rol
 
 Whenever a transaction is executed on L2 to send a message to L1, a MessageSent event is emitted.
 
-Txs to send L2 -> L1 messages are sent to the L2 Message service function:
+Txs to send L2 -> L1 messages are sent to the L2 Message Service function:
 
 
 ```
