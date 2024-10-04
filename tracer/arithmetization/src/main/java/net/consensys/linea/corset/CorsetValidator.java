@@ -98,13 +98,12 @@ public class CorsetValidator {
       throw new RuntimeException("Neither corset nor go-corset are available");
     } else if (rustCorset.isActive() && goCorset.isActive() && rg.isValid() != rr.isValid()) {
       // Both Rust and Go corset are active, but disagree.
-      log.info("Output from Rust and Go tools differs ({} v {})", rr.isValid(), rg.isValid());
+      log.info("Outcome from Rust and Go tools differs ({} v {})", rr.isValid(), rg.isValid());
       // Return failing result to force a test failure.
       return rg.isValid() ? rr : rg;
     } else if (rustCorset.isActive()) {
       // Rust corset is active, and Go corset may or may not be.  Eitherway, default to Rust corset
-      // for the source of
-      // truth.
+      // for the source of truth.
       return rr;
     } else {
       // Only Go corset is active

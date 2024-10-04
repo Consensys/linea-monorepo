@@ -60,8 +60,7 @@ public class AbstractExecutable {
     Process child = builder.start();
     try {
       // Read output from child process.  Note that this will include both the STDOUT and STDERR
-      // since (for
-      // simplicity) the latter is redirected above.
+      // since (for simplicity) the latter is redirected above.
       String output = IOUtils.toString(child.getInputStream(), Charset.defaultCharset());
       // Second, read the result whilst checking for a timeout
       boolean success = child.waitFor(timeout, TimeUnit.SECONDS);
