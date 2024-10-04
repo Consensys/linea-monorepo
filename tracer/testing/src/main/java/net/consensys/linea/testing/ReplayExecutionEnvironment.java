@@ -85,6 +85,11 @@ public class ReplayExecutionEnvironment {
    */
   private final boolean txResultChecking;
 
+  /**
+   * Setting this to true will disable the clique consensus protocol for parsing coinbase address
+   * from block header. This is needed for manual tests like the Multi Block tests which do not have
+   * encoded coinbase address in the block header.
+   */
   @Builder.Default private final boolean useCoinbaseAddressFromBlockHeader = false;
 
   private final ZkTracer zkTracer = new ZkTracer();
