@@ -1120,7 +1120,7 @@ describe("Linea Rollup contract", () => {
       // Submit another 2 blobs
       await sendBlobTransaction(2, 4);
       // Finalize 4 blobs
-      await expectSuccessfulFinalizeWithProof(
+      await expectSuccessfulFinalize(
         blobAggregatedProof1To155,
         4,
         fourthCompressedDataContent.finalStateRootHash,
@@ -1310,7 +1310,7 @@ describe("Linea Rollup contract", () => {
       // Submit another 2 blobs
       await sendBlobTransaction(2, 4, true);
       // Finalize first 2 blobs
-      await expectSuccessfulFinalizeWithProof(
+      await expectSuccessfulFinalize(
         blobMultipleAggregatedProof1To81,
         2,
         secondCompressedDataContent.finalStateRootHash,
@@ -1318,7 +1318,7 @@ describe("Linea Rollup contract", () => {
         true,
       );
       // Finalize last 2 blobs
-      await expectSuccessfulFinalizeWithProof(
+      await expectSuccessfulFinalize(
         blobMultipleAggregatedProof82To153,
         4,
         fourthMultipleBlobDataContent.finalStateRootHash,
@@ -1666,7 +1666,7 @@ describe("Linea Rollup contract", () => {
         index++;
       }
 
-      await expectSuccessfulFinalizeWithProof(
+      await expectSuccessfulFinalize(
         calldataAggregatedProof1To155,
         index,
         fourthCompressedDataContent.finalStateRootHash,
@@ -1843,7 +1843,7 @@ describe("Linea Rollup contract", () => {
         index++;
       }
 
-      await expectSuccessfulFinalizeWithProof(
+      await expectSuccessfulFinalize(
         aggregatedProof1To81,
         2,
         secondCompressedDataContent.finalStateRootHash,
@@ -1851,7 +1851,7 @@ describe("Linea Rollup contract", () => {
         true,
       );
 
-      await expectSuccessfulFinalizeWithProof(
+      await expectSuccessfulFinalize(
         aggregatedProof82To153,
         4,
         fourthMultipleCompressedDataContent.finalStateRootHash,
@@ -2066,7 +2066,7 @@ describe("Linea Rollup contract", () => {
     expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
   }
 
-  async function expectSuccessfulFinalizeWithProof(
+  async function expectSuccessfulFinalize(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     proofData: any,
     blobParentShnarfIndex: number,
