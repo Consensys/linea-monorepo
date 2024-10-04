@@ -54,6 +54,7 @@ public class MultiBlockExecutionEnvironment {
 
   public void run() {
     ReplayExecutionEnvironment.builder()
+        .useCoinbaseAddressFromBlockHeader(true)
         .build()
         .replay(ToyExecutionEnvironmentV2.CHAIN_ID, this.buildConflationSnapshot());
   }

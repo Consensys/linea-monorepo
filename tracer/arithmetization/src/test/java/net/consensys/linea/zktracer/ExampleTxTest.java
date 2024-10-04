@@ -13,10 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.testing;
+package net.consensys.linea.zktracer;
 
 import java.util.List;
 
+import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.testing.ToyAccount;
+import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
+import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
