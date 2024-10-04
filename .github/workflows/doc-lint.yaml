@@ -12,11 +12,16 @@ jobs:
   lint:
     name: Lint Code Base, Spelling
     runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    timeout-minutes: 10
     permissions:
       contents: read
+    env:
+      NODE_VERSION: v20.9.0
     steps:
       - uses: actions/checkout@v4
-
+      - name: Create .nvmrc file
+        run: |
+          echo "${{ env.NODE_VERSION }}" > .nvmrc
       - name: Lint
         uses: Consensys/docs-gha/lint@main
         with:
@@ -24,7 +29,10 @@ jobs:
 
   linkCheck:
     name: Link Checking
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    timeout-minutes: 10
+    permissions:
+      contents: read
     strategy:
       matrix:
         file-extensions: [".md"]
