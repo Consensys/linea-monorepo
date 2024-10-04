@@ -1,6 +1,6 @@
 import { describe, it, expect } from "@jest/globals";
 import { ethers } from "ethers";
-import { calculateRewards } from "../utils";
+import { calculateRewards } from "../rewards";
 
 describe("Utils", () => {
   describe("calculateRewards", () => {

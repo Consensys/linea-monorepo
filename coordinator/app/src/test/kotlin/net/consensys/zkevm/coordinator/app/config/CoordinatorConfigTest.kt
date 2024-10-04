@@ -400,7 +400,7 @@ class CoordinatorConfigTest {
     )
 
     private val messageAnchoringServiceConfig = MessageAnchoringServiceConfig(
-      pollingInterval = Duration.parse("PT10S"),
+      pollingInterval = Duration.parse("PT1S"),
       maxMessagesToAnchor = 100U
     )
 
@@ -433,12 +433,9 @@ class CoordinatorConfigTest {
       ),
       jsonRpcGasPriceUpdaterConfig = GasPriceUpdaterImpl.Config(
         gethEndpoints = listOf(
-          URI("http://traces-node:8545/").toURL(),
           URI("http://l2-node:8545/").toURL()
         ),
-        besuEndPoints = listOf(
-          URI("http://sequencer:8545/").toURL()
-        ),
+        besuEndPoints = listOf(),
         retryConfig = l2NetworkGasPricingRequestRetryConfig
       ),
       jsonRpcPriceUpdateInterval = 12.seconds,
@@ -470,7 +467,7 @@ class CoordinatorConfigTest {
       gasPriceCapCalculation = L1DynamicGasPriceCapServiceConfig.GasPriceCapCalculation(
         adjustmentConstant = 25U,
         blobAdjustmentConstant = 25U,
-        finalizationTargetMaxDelay = Duration.parse("PT2M"),
+        finalizationTargetMaxDelay = Duration.parse("PT30S"),
         gasFeePercentileWindow = Duration.parse("PT1M"),
         gasFeePercentileWindowLeeway = Duration.parse("PT10S"),
         gasFeePercentile = 10.0,
