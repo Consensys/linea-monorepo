@@ -55,7 +55,11 @@ public class RequestLimiter {
     }
   }
 
+  public int availableConcurrentRequestSlots() {
+    return semaphore.availablePermits();
+  }
+
   public boolean isNodeAtMaxCapacity() {
-    return semaphore.availablePermits() == 0;
+    return availableConcurrentRequestSlots() == 0;
   }
 }

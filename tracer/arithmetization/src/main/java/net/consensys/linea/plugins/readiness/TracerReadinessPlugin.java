@@ -15,8 +15,6 @@
 
 package net.consensys.linea.plugins.readiness;
 
-import static java.util.Collections.singletonMap;
-
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -80,19 +78,26 @@ public class TracerReadinessPlugin extends AbstractLineaOptionsPlugin {
   public void start() {
     super.start();
 
-    BesuServiceProvider.getBesuEventsService(this.besuContext)
-        .addSyncStatusListener(
-            syncStatus ->
-                syncStatus.ifPresent(
-                    status -> {
-                      boolean isInMaxBlockBehindRange =
-                          status.getHighestBlock() - status.getCurrentBlock()
-                              <= configuration.maxBlocksBehind();
-
-                      //                      log.info("SYNC STATUS: {}", isInMaxBlockBehindRange);
-
-                      isInSync.set(isInMaxBlockBehindRange);
-                    }));
+    // TODO: Checking for isInMaxBlockBehindRange is temporarily disabled until we find a way for
+    // more frequent sync status updates, because currently they happen only if the node loses a
+    // peer.
+    //    BesuServiceProvider.getBesuEventsService(this.besuContext)
+    //        .addSyncStatusListener(
+    //            syncStatus ->
+    //                syncStatus.ifPresent(
+    //                    status -> {
+    //                      boolean isInMaxBlockBehindRange =
+    //                          status.getHighestBlock() - status.getCurrentBlock()
+    //                              <= configuration.maxBlocksBehind();
+    //
+    //                      log.info(
+    //                          "Sync Status (isInMaxBlocksBehind) Range: {}",
+    // isInMaxBlockBehindRange);
+    //                      log.info("Highest Block: {}", status.getHighestBlock());
+    //                      log.info("Current Block: {}", status.getCurrentBlock());
+    //
+    //                      isInSync.set(isInMaxBlockBehindRange);
+    //                    }));
 
     // Initialize Vertx
     final Vertx vertx = Vertx.vertx();
@@ -135,7 +140,22 @@ public class TracerReadinessPlugin extends AbstractLineaOptionsPlugin {
   }
 
   private String statusResponse(final String status) {
-    return new JsonObject(singletonMap("status", status)).encodePrettily();
+    final RequestLimiter requestLimiter =
+        RequestLimiterDispatcher.getLimiter(
+            RequestLimiterDispatcher.SINGLE_INSTANCE_REQUEST_LIMITER_KEY);
+
+    return new JsonObject(
+            Map.of(
+                "isInitialSyncPhaseDone",
+                synchronizationService.isInitialSyncPhaseDone(),
+                "status",
+                status,
+                // TODO: Temporarily disabled.
+                //              "isInMaxBlockBehindRange",
+                //                isInSync,
+                "availableConcurrentRequestSlots",
+                requestLimiter.availableConcurrentRequestSlots()))
+        .encodePrettily();
   }
 
   private HttpServerOptions httpServerOptions(final TracerReadinessConfiguration config) {
@@ -153,7 +173,8 @@ public class TracerReadinessPlugin extends AbstractLineaOptionsPlugin {
             RequestLimiterDispatcher.SINGLE_INSTANCE_REQUEST_LIMITER_KEY);
 
     return synchronizationService.isInitialSyncPhaseDone()
-        && isInSync.get()
+        // TODO: Temporarily disabled.
+        //        && isInSync.get()
         && !requestLimiter.isNodeAtMaxCapacity();
   }
 
