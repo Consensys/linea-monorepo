@@ -37,8 +37,8 @@ import {
   UNPAUSE_ALL_ROLE,
   PAUSE_BLOB_SUBMISSION_ROLE,
   UNPAUSE_BLOB_SUBMISSION_ROLE,
-  PAUSE_FINALIZE_WITHPROOF_ROLE,
-  UNPAUSE_FINALIZE_WITHPROOF_ROLE,
+  PAUSE_FINALIZATION_ROLE,
+  UNPAUSE_FINALIZATION_ROLE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   SIX_MONTHS_IN_SECONDS,
   USED_RATE_LIMIT_RESETTER_ROLE,
@@ -2169,8 +2169,8 @@ describe("Linea Rollup contract", () => {
         { addressWithRole: securityCouncilAddress, role: UNPAUSE_L2_L1_ROLE },
         { addressWithRole: securityCouncilAddress, role: PAUSE_BLOB_SUBMISSION_ROLE },
         { addressWithRole: securityCouncilAddress, role: UNPAUSE_BLOB_SUBMISSION_ROLE },
-        { addressWithRole: securityCouncilAddress, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
-        { addressWithRole: securityCouncilAddress, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
+        { addressWithRole: securityCouncilAddress, role: PAUSE_FINALIZATION_ROLE },
+        { addressWithRole: securityCouncilAddress, role: UNPAUSE_FINALIZATION_ROLE },
       ];
     });
 
