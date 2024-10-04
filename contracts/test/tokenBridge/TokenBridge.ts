@@ -5,7 +5,7 @@ import { deployTokenBridgeWithMockMessaging } from "../../scripts/tokenBridge/te
 import { deployTokens } from "../../scripts/tokenBridge/test/deployTokens";
 import { BridgedToken, TestTokenBridge, TokenBridge, ProxyAdmin } from "../../typechain-types";
 import { getPermitData } from "./utils/permitHelper";
-import { Contract } from "ethers";
+import { Contract, ZeroAddress } from "ethers";
 import {
   ADDRESS_ZERO,
   COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
@@ -18,7 +18,6 @@ import {
   SET_REMOTE_TOKENBRIDGE_ROLE,
   SET_RESERVED_TOKEN_ROLE,
   UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
-  DEFAULT_ADMIN_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
   PAUSE_ALL_ROLE,
@@ -78,6 +77,7 @@ describe("TokenBridge", function () {
       const { user, l1TokenBridge, chainIds } = await loadFixture(deployContractsFixture);
       await expectRevertWithReason(
         l1TokenBridge.connect(user).initialize({
+          defaultAdmin: PLACEHOLDER_ADDRESS,
           messageService: PLACEHOLDER_ADDRESS,
           tokenBeacon: PLACEHOLDER_ADDRESS,
           sourceChainId: chainIds[0],
@@ -99,6 +99,7 @@ describe("TokenBridge", function () {
         TokenBridge,
         upgrades.deployProxy(TokenBridge, [
           {
+            defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: ADDRESS_ZERO,
             tokenBeacon: PLACEHOLDER_ADDRESS,
             sourceChainId: chainIds[0],
@@ -116,6 +117,7 @@ describe("TokenBridge", function () {
         TokenBridge,
         upgrades.deployProxy(TokenBridge, [
           {
+            defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: PLACEHOLDER_ADDRESS,
             tokenBeacon: ADDRESS_ZERO,
             sourceChainId: chainIds[0],
@@ -133,6 +135,7 @@ describe("TokenBridge", function () {
         TokenBridge,
         upgrades.deployProxy(TokenBridge, [
           {
+            defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: PLACEHOLDER_ADDRESS,
             tokenBeacon: PLACEHOLDER_ADDRESS,
             sourceChainId: chainIds[0],
@@ -153,6 +156,7 @@ describe("TokenBridge", function () {
         TokenBridge,
         upgrades.deployProxy(TokenBridge, [
           {
+            defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: PLACEHOLDER_ADDRESS,
             tokenBeacon: PLACEHOLDER_ADDRESS,
             sourceChainId: chainIds[0],
@@ -173,6 +177,7 @@ describe("TokenBridge", function () {
       const TestTokenBridgeFactory = await ethers.getContractFactory("TestTokenBridge");
 
       const initData = {
+        defaultAdmin: PLACEHOLDER_ADDRESS,
         messageService: PLACEHOLDER_ADDRESS,
         tokenBeacon: PLACEHOLDER_ADDRESS,
         sourceChainId: 5,
@@ -628,7 +633,7 @@ describe("TokenBridge", function () {
         l1TokenBridge,
         tokens: { L1DAI },
       } = await loadFixture(deployContractsFixture);
-      l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address);
+      await l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address);
 
       await expectRevertWithCustomError(
         l1TokenBridge,
@@ -643,6 +648,7 @@ describe("TokenBridge", function () {
       const TokenBridgeFactory = await ethers.getContractFactory("TokenBridge");
       const l1TokenBridge = await upgrades.deployProxy(TokenBridgeFactory, [
         {
+          defaultAdmin: PLACEHOLDER_ADDRESS,
           messageService: PLACEHOLDER_ADDRESS,
           tokenBeacon: PLACEHOLDER_ADDRESS,
           sourceChainId: chainIds[0],
@@ -901,10 +907,7 @@ describe("TokenBridge", function () {
     it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializePauseTypesAndPermissions", async function () {
       const { l1TokenBridge } = await loadFixture(deployContractsFixture);
 
-      const roleAddresses = [
-        { addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE },
-        { addressWithRole: ethers.Wallet.createRandom().address, role: SET_RESERVED_TOKEN_ROLE },
-      ];
+      const roleAddresses = [{ addressWithRole: ZeroAddress, role: SET_RESERVED_TOKEN_ROLE }];
 
       await expectRevertWithCustomError(
         l1TokenBridge,
@@ -915,6 +918,18 @@ describe("TokenBridge", function () {
   });
 
   describe("TokenBridge Upgradeable Tests", function () {
+    let newRoleAddresses: { addressWithRole: string; role: string }[];
+
+    before(async () => {
+      const [owner] = await ethers.getSigners();
+      newRoleAddresses = [
+        { addressWithRole: owner.address, role: PAUSE_ALL_ROLE },
+        { addressWithRole: owner.address, role: UNPAUSE_ALL_ROLE },
+        { addressWithRole: owner.address, role: PAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
+        { addressWithRole: owner.address, role: UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
+      ];
+    });
+
     it("Should deploy and manually upgrade the TokenBridge contract", async function () {
       const { owner, messageService, chainIds } = await loadFixture(deployContractsFixture);
 
@@ -956,12 +971,7 @@ describe("TokenBridge", function () {
       await tokenBridgeV2Implementation.waitForDeployment();
 
       const reinitializeCallData = TokenBridgeV2.interface.encodeFunctionData("reinitializePauseTypesAndPermissions", [
-        [
-          { addressWithRole: owner.address, role: PAUSE_ALL_ROLE },
-          { addressWithRole: owner.address, role: UNPAUSE_ALL_ROLE },
-          { addressWithRole: owner.address, role: PAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
-          { addressWithRole: owner.address, role: UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
-        ],
+        newRoleAddresses,
         pauseTypeRoles,
         unpauseTypeRoles,
       ]);
@@ -1012,6 +1022,69 @@ describe("TokenBridge", function () {
 
       await upgradedTokenBridge.connect(owner).unPauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
       expect(await upgradedTokenBridge.isPaused(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE)).to.be.false;
+    });
+
+    it("Should set all permissions", async () => {
+      const { owner, messageService, chainIds } = await loadFixture(deployContractsFixture);
+
+      const TokenBridgeV1 = await ethers.getContractFactory(
+        "contracts/tokenBridge/mocks/TokenBridgeFlatten.sol:TokenBridgeFlatten",
+      );
+      const tokenBridgeV1 = (await upgrades.deployProxy(TokenBridgeV1, [
+        owner.address,
+        await messageService.getAddress(),
+        PLACEHOLDER_ADDRESS,
+        chainIds[0],
+        chainIds[1],
+        [],
+      ])) as unknown as TokenBridge;
+      await tokenBridgeV1.waitForDeployment();
+
+      // Check initial state
+      expect(await tokenBridgeV1.sourceChainId()).to.equal(chainIds[0]);
+      const initialTargetChainId = await tokenBridgeV1.targetChainId();
+
+      // setCustomContract
+      const nativeToken = ethers.Wallet.createRandom().address;
+      const targetContract = ethers.Wallet.createRandom().address;
+      await tokenBridgeV1.connect(owner).setCustomContract(nativeToken, targetContract);
+
+      // Verify the custom contract was set
+      expect(await tokenBridgeV1.nativeToBridgedToken(initialTargetChainId, nativeToken)).to.equal(targetContract);
+      expect(await tokenBridgeV1.bridgedToNativeToken(targetContract)).to.equal(nativeToken);
+
+      const proxyAdminAddress = await upgrades.erc1967.getAdminAddress(await tokenBridgeV1.getAddress());
+      const ProxyAdminFactory = await ethers.getContractFactory("ProxyAdmin");
+      const proxyAdmin = (await ProxyAdminFactory.attach(proxyAdminAddress)) as ProxyAdmin;
+
+      const TokenBridgeV2 = await ethers.getContractFactory("TokenBridge");
+      const tokenBridgeV2Implementation = await TokenBridgeV2.deploy();
+      await tokenBridgeV2Implementation.waitForDeployment();
+
+      const reinitializeCallData = TokenBridgeV2.interface.encodeFunctionData("reinitializePauseTypesAndPermissions", [
+        newRoleAddresses,
+        pauseTypeRoles,
+        unpauseTypeRoles,
+      ]);
+
+      expect(await ethers.provider.getStorage(await tokenBridgeV1.getAddress(), 101)).to.equal(
+        ethers.zeroPadValue(owner.address, 32), // _owner
+      );
+      expect(await ethers.provider.getStorage(await tokenBridgeV1.getAddress(), 213)).to.equal(
+        ethers.zeroPadValue("0x01", 32), //_status
+      );
+
+      await proxyAdmin.upgradeAndCall(
+        await tokenBridgeV1.getAddress(),
+        await tokenBridgeV2Implementation.getAddress(),
+        reinitializeCallData,
+      );
+
+      const upgradedTokenBridge = (await TokenBridgeV2.attach(await tokenBridgeV1.getAddress())) as TokenBridge;
+
+      for (const { role, addressWithRole } of newRoleAddresses) {
+        expect(await upgradedTokenBridge.hasRole(role, addressWithRole)).to.be.true;
+      }
     });
   });
 });

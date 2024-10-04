@@ -39,7 +39,6 @@ import {
   UNPAUSE_L2_BLOB_SUBMISSION_ROLE,
   PAUSE_FINALIZE_WITHPROOF_ROLE,
   UNPAUSE_FINALIZE_WITHPROOF_ROLE,
-  LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   SIX_MONTHS_IN_SECONDS,
   USED_RATE_LIMIT_RESETTER_ROLE,
@@ -47,6 +46,7 @@ import {
   PAUSE_L2_L1_ROLE,
   UNPAUSE_L1_L2_ROLE,
   UNPAUSE_L2_L1_ROLE,
+  LINEA_ROLLUP_INITIALIZE_SIGNATURE,
 } from "./common/constants";
 import { deployUpgradableFromFactory } from "./common/deployment";
 import {
@@ -123,10 +123,11 @@ describe("Linea Rollup contract", () => {
       defaultVerifier: verifier,
       rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
       rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-      roleAddresses: roleAddresses,
+      roleAddresses,
       pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
       unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
       fallbackOperator: multiCallAddress,
+      defaultAdmin: securityCouncil.address,
     };
 
     const lineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
@@ -186,6 +187,7 @@ describe("Linea Rollup contract", () => {
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: multiCallAddress,
+        defaultAdmin: securityCouncil.address,
       };
 
       const deployCall = deployUpgradableFromFactory("contracts/LineaRollup.sol:LineaRollup", [initializationData], {
@@ -208,6 +210,7 @@ describe("Linea Rollup contract", () => {
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: multiCallAddress,
+        defaultAdmin: securityCouncil.address,
       };
 
       const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
@@ -250,6 +253,7 @@ describe("Linea Rollup contract", () => {
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: multiCallAddress,
+        defaultAdmin: securityCouncil.address,
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
@@ -276,6 +280,7 @@ describe("Linea Rollup contract", () => {
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: multiCallAddress,
+        defaultAdmin: securityCouncil.address,
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
@@ -304,6 +309,7 @@ describe("Linea Rollup contract", () => {
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: multiCallAddress,
+        defaultAdmin: securityCouncil.address,
       });
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
