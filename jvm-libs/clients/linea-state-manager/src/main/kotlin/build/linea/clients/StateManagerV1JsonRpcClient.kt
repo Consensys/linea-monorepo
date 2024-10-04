@@ -1,5 +1,6 @@
 package build.linea.clients
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.michaelbull.result.Err
@@ -18,6 +19,7 @@ import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import net.consensys.linea.jsonrpc.client.JsonRpcClient
 import net.consensys.linea.jsonrpc.client.JsonRpcRequestRetryer
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
+import net.consensys.linea.jsonrpc.client.toPrimitiveOrJacksonJsonNode
 import net.consensys.zkevm.coordinator.clients.GetZkEVMStateMerkleProofResponse
 import net.consensys.zkevm.coordinator.clients.StateManagerClientV1
 import net.consensys.zkevm.coordinator.clients.StateManagerErrorType
@@ -103,7 +105,10 @@ class StateManagerV1JsonRpcClient(
       )
 
     return rpcClient
-      .makeRequest(jsonRequest).toSafeFuture()
+      .makeRequest(
+        request = jsonRequest,
+        resultMapper = ::toPrimitiveOrJacksonJsonNode
+      ).toSafeFuture()
       .thenApply { responseResult ->
         responseResult.mapEither(this::parseZkEVMStateMerkleProofResponse, this::mapErrorResponse)
       }
@@ -138,7 +143,7 @@ class StateManagerV1JsonRpcClient(
   private fun parseZkEVMStateMerkleProofResponse(
     jsonRpcResponse: JsonRpcSuccessResponse
   ): GetZkEVMStateMerkleProofResponse {
-    val json = objectMapper.readTree((jsonRpcResponse.result as JsonObject).toString())
+    val json = jsonRpcResponse.result as JsonNode
 
     return GetZkEVMStateMerkleProofResponse(
       zkStateManagerVersion = json.get("zkStateManagerVersion").asText(),

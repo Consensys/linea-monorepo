@@ -20,8 +20,8 @@ class VertxHttpJsonRpcClientFactory(
     endpoint: URL,
     maxPoolSize: Int? = null,
     httpVersion: HttpVersion? = null,
-    requestObjectMapper: ObjectMapper = VertxHttpJsonRpcClient.objectMapper,
-    responseObjectMapper: ObjectMapper = VertxHttpJsonRpcClient.objectMapper,
+    requestObjectMapper: ObjectMapper = objectMapper,
+    responseObjectMapper: ObjectMapper = objectMapper,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
     failuresLogLevel: Level = this.failuresLogLevel
@@ -50,8 +50,8 @@ class VertxHttpJsonRpcClientFactory(
     endpoints: Set<URL>,
     maxInflightRequestsPerClient: UInt,
     httpVersion: HttpVersion? = null,
-    requestObjectMapper: ObjectMapper = VertxHttpJsonRpcClient.objectMapper,
-    responseObjectMapper: ObjectMapper = VertxHttpJsonRpcClient.objectMapper,
+    requestObjectMapper: ObjectMapper = objectMapper,
+    responseObjectMapper: ObjectMapper = objectMapper,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
     failuresLogLevel: Level = this.failuresLogLevel
@@ -79,8 +79,8 @@ class VertxHttpJsonRpcClientFactory(
     retryConfig: RequestRetryConfig,
     methodsToRetry: Set<String>,
     httpVersion: HttpVersion? = null,
-    requestObjectMapper: ObjectMapper = VertxHttpJsonRpcClient.objectMapper,
-    responseObjectMapper: ObjectMapper = VertxHttpJsonRpcClient.objectMapper,
+    requestObjectMapper: ObjectMapper = objectMapper,
+    responseObjectMapper: ObjectMapper = objectMapper,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
     failuresLogLevel: Level = this.failuresLogLevel
@@ -114,8 +114,8 @@ class VertxHttpJsonRpcClientFactory(
     retryConfig: RequestRetryConfig,
     methodsToRetry: Set<String>,
     httpVersion: HttpVersion? = null,
-    requestObjectMapper: ObjectMapper = VertxHttpJsonRpcClient.objectMapper,
-    responseObjectMapper: ObjectMapper = VertxHttpJsonRpcClient.objectMapper,
+    requestObjectMapper: ObjectMapper = objectMapper,
+    responseObjectMapper: ObjectMapper = objectMapper,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
     failuresLogLevel: Level = this.failuresLogLevel
