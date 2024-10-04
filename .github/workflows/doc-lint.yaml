@@ -9,23 +9,24 @@ on:
       - main
 
 jobs:
-  lint:
-    name: Lint Code Base, Spelling
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    env:
-      NODE_VERSION: v20.9.0
-    steps:
-      - uses: actions/checkout@v4
-      - name: Create .nvmrc file
-        run: |
-          echo "${{ env.NODE_VERSION }}" > .nvmrc
-      - name: Lint
-        uses: Consensys/docs-gha/lint@main
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # This job is commented out because of the missing package-lock.json file
+  # lint:
+  #   name: Lint Code Base, Spelling
+  #   runs-on: [self-hosted, ubuntu-22.04, X64, small]
+  #   timeout-minutes: 10
+  #   permissions:
+  #     contents: read
+  #   env:
+  #     NODE_VERSION: v20.9.0
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Create .nvmrc file
+  #       run: |
+  #         echo "${{ env.NODE_VERSION }}" > .nvmrc
+  #     - name: Lint
+  #       uses: Consensys/docs-gha/lint@main
+  #       with:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   linkCheck:
     name: Link Checking
