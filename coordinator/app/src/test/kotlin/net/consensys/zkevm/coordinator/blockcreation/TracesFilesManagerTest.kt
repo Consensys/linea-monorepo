@@ -4,6 +4,7 @@ import io.vertx.core.Vertx
 import net.consensys.linea.traces.TracesFiles
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
@@ -93,14 +94,14 @@ class TracesFilesManagerTest {
   }
 
   @Test
-  fun `waitRawTracesGenerationOf - waits until traces file is found`() {
-    // write file with wrong extension
-    val inprogressFile =
-      tracesDir.resolve(Path.of("1-${block1Hash.toHexString()}.inprogress")).createFile()
+  fun `waitRawTracesGenerationOf waits until traces file is found`() {
+    val inprogressFile = tracesDir
+      .resolve(Path.of("1-${block1Hash.toHexString()}.inprogress"))
+      .createFile()
     assertThat(inprogressFile).exists()
 
     val future = tracesFilesManager.waitRawTracesGenerationOf(1uL, block1Hash)
-    vertx.setTimer((config.tracesGenerationTimeout.inWholeMilliseconds / 2)) {
+    vertx.setTimer(config.tracesGenerationTimeout.inWholeMilliseconds / 2) {
       Files.createFile(block1TracesFile)
     }
 
@@ -108,22 +109,22 @@ class TracesFilesManagerTest {
   }
 
   @RepeatedTest(10)
-  fun `waitRawTracesGenerationOf - returns error after timeout`() {
+  fun `waitRawTracesGenerationOf returns error after timeout`() {
     val future = tracesFilesManager.waitRawTracesGenerationOf(2uL, block2Hash1)
     val exception = assertThrows<ExecutionException> { future.get() }
     assertThat(exception.cause).isInstanceOf(FileNotFoundException::class.java)
-    assertThat(exception.message).matches(".* File matching '2-$block2Hash1.* not found .*")
+    assertThat(exception.message)
+      .matches(".* File matching '2-$block2Hash1.* not found .*")
   }
 
   @Test
-  fun `cleanNonCanonicalSiblingsByHeight - returns error when file to keep is not found`() {
+  fun `cleanNonCanonicalSiblingsByHeight returns error when file to keep is not found`() {
     val future = tracesFilesManager.cleanNonCanonicalSiblingsByHeight(1uL, block1Hash)
-
     assertThat(future.get()).isEmpty()
   }
 
   @Test
-  fun `cleanNonCanonicalSiblingsByHeight - removes found siblings`() {
+  fun `cleanNonCanonicalSiblingsByHeight removes found siblings`() {
     Files.createFile(block2TracesFile1)
     Files.createFile(block2TracesFile2)
     Files.createFile(block20TracesFile)
@@ -138,17 +139,66 @@ class TracesFilesManagerTest {
     assertThat(block20TracesFile).exists()
   }
 
-  // @Test
-  // @Disabled("This feature is not necessary anymore. Just keeping the test in case we need to revert")
-  // fun `waitRawTracesGenerationOf - cleans non canonical siblings`() {
-  //   Files.createFile(block2TracesFile1)
-  //   Files.createFile(block2TracesFile2)
-  //   assertThat(block2TracesFile1).exists()
-  //   assertThat(block2TracesFile2).exists()
-  //
-  //   tracesFilesManager.waitRawTracesGenerationOf(UInt64.valueOf(2), block2Hash1).get()
-  //
-  //   assertThat(block2TracesFile1).exists()
-  //   assertThat(block2TracesFile2).doesNotExist()
-  // }
+  @Test
+  fun `initialization fails when nonCanonicalTracesDir doesn't exist and creation is disabled`() {
+    val configWithoutDirCreation = config.copy(
+      createNonCanonicalTracesDirIfDoesNotExist = false
+    )
+    Files.delete(nonCanonicalBlocksTracesDir)
+
+    assertThrows<FileNotFoundException> {
+      TracesFilesManager(vertx, configWithoutDirCreation)
+    }
+  }
+
+  @Test
+  fun `initialization creates nonCanonicalTracesDir when it doesn't exist and creation is enabled`() {
+    Files.delete(nonCanonicalBlocksTracesDir)
+
+    TracesFilesManager(vertx, config)
+
+    assertThat(nonCanonicalBlocksTracesDir).exists()
+  }
+
+  @Test
+  fun `cleanNonCanonicalSiblingsByHeight moves files to nonCanonicalTracesDir`() {
+    Files.createFile(block2TracesFile1)
+    Files.createFile(block2TracesFile2)
+
+    tracesFilesManager.cleanNonCanonicalSiblingsByHeight(2uL, block2Hash1).get()
+
+    val movedFile = nonCanonicalBlocksTracesDir.resolve(block2TracesFile2.fileName)
+    assertThat(movedFile).exists()
+    assertThat(block2TracesFile2).doesNotExist()
+  }
+
+  @Test
+  fun `cleanNonCanonicalSiblingsByHeight handles case sensitivity correctly`() {
+    val mixedCaseHash = block2Hash1.toHexString().uppercase()
+    val tracesFileName = TracesFiles.rawTracesFileNameSupplierV1(
+      2uL,
+      Bytes32.fromHexString(mixedCaseHash),
+      tracesVersion,
+      tracesFileExtension
+    )
+    val mixedCaseFile = tracesDir.resolve(Path.of(tracesFileName))
+    Files.createFile(mixedCaseFile)
+    Files.createFile(block2TracesFile2)
+
+    tracesFilesManager.cleanNonCanonicalSiblingsByHeight(2uL, block2Hash1).get()
+
+    assertThat(mixedCaseFile).exists()
+    assertThat(block2TracesFile2).doesNotExist()
+  }
+
+  @Test
+  fun `waitRawTracesGenerationOf handles extremely short polling interval`() {
+    val configWithShortPolling = config.copy(pollingInterval = 1.milliseconds)
+    val manager = TracesFilesManager(vertx, configWithShortPolling)
+
+    val future = manager.waitRawTracesGenerationOf(1uL, block1Hash)
+    vertx.setTimer(50) { Files.createFile(block1TracesFile) }
+
+    assertThat(future.get()).endsWith(block1TracesFile.toString())
+  }
 }

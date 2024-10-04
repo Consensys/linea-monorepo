@@ -2118,7 +2118,7 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("fallback operator Role", () => {
-    const expectedLastFinalizedState = calculateLastFinalizedState(0, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
+    const expectedLastFinalizedState = calculateLastFinalizedState(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
 
     it("Should revert if trying to set fallback operator role before six months have passed", async () => {
       const initialBlock = await ethers.provider.getBlock("latest");
