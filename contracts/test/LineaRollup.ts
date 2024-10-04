@@ -29,24 +29,26 @@ import {
   GENESIS_L2_TIMESTAMP,
   EMPTY_CALLDATA,
   INITIALIZED_ALREADY_MESSAGE,
-  FINALIZE_WITHOUT_PROOF_ROLE,
   CALLDATA_SUBMISSION_PAUSE_TYPE,
   BLOB_SUBMISSION_PAUSE_TYPE,
   FINALIZATION_PAUSE_TYPE,
   PAUSE_ALL_ROLE,
-  unpauseTypeRoles,
-  pauseTypeRoles,
   DEFAULT_ADMIN_ROLE,
   UNPAUSE_ALL_ROLE,
-  PAUSE_L2_BLOB_SUBMISSION_ROLE,
-  UNPAUSE_L2_BLOB_SUBMISSION_ROLE,
+  PAUSE_BLOB_SUBMISSION_ROLE,
+  UNPAUSE_BLOB_SUBMISSION_ROLE,
   PAUSE_FINALIZE_WITHPROOF_ROLE,
   UNPAUSE_FINALIZE_WITHPROOF_ROLE,
-  LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   SIX_MONTHS_IN_SECONDS,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
+  USED_RATE_LIMIT_RESETTER_ROLE,
+  PAUSE_L1_L2_ROLE,
+  PAUSE_L2_L1_ROLE,
+  UNPAUSE_L1_L2_ROLE,
+  UNPAUSE_L2_L1_ROLE,
+  LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
 import {
   calculateRollingHash,
   encodeData,
@@ -54,7 +56,6 @@ import {
   generateRandomBytes,
   generateCallDataSubmission,
   generateCallDataSubmissionMultipleProofs,
-  generateParentSubmissionDataForIndex,
   generateKeccak256,
   expectEvent,
   buildAccessErrorMessage,
@@ -65,15 +66,21 @@ import {
   generateParentShnarfData,
   generateBlobDataSubmission,
   generateBlobParentShnarfData,
-  ShnarfDataGenerator,
-  expectEventDirectFromReceiptData,
   convertStringToPaddedHexBytes,
   calculateLastFinalizedState,
-} from "./utils/helpers";
-import { CalldataSubmissionData } from "./utils/types";
+  expectEvents,
+  expectEventDirectFromReceiptData,
+} from "./common/helpers";
+import { CalldataSubmissionData, ShnarfDataGenerator } from "./common/types";
 import aggregatedProof1To81 from "./testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
 import aggregatedProof82To153 from "./testData/compressedData/multipleProofs/aggregatedProof-82-153.json";
 import * as kzg from "c-kzg";
+import {
+  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_ROLES,
+  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+} from "contracts/common/constants";
+import { generateRoleAssignments } from "contracts/common/helpers";
 
 kzg.loadTrustedSetup(`${__dirname}/testData/trusted_setup.txt`);
 
@@ -87,6 +94,7 @@ describe("Linea Rollup contract", () => {
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
+  let roleAddresses: { addressWithRole: string; role: string }[];
 
   const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
@@ -108,21 +116,6 @@ describe("Linea Rollup contract", () => {
 
     verifier = await plonkVerifier.getAddress();
 
-    const securityCouncilAddress = securityCouncil.address;
-    const roleAddresses = [
-      { addressWithRole: securityCouncilAddress, role: DEFAULT_ADMIN_ROLE },
-      { addressWithRole: securityCouncilAddress, role: VERIFIER_SETTER_ROLE },
-      { addressWithRole: securityCouncilAddress, role: VERIFIER_UNSETTER_ROLE },
-      { addressWithRole: securityCouncilAddress, role: PAUSE_ALL_ROLE },
-      { addressWithRole: securityCouncilAddress, role: UNPAUSE_ALL_ROLE },
-      { addressWithRole: securityCouncilAddress, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
-      { addressWithRole: securityCouncilAddress, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
-      { addressWithRole: securityCouncilAddress, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
-      { addressWithRole: securityCouncilAddress, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
-      { addressWithRole: securityCouncilAddress, role: FINALIZE_WITHOUT_PROOF_ROLE },
-      { addressWithRole: operator.address, role: OPERATOR_ROLE },
-    ];
-
     const initializationData = {
       initialStateRootHash: parentStateRootHash,
       initialL2BlockNumber: 0,
@@ -130,10 +123,11 @@ describe("Linea Rollup contract", () => {
       defaultVerifier: verifier,
       rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
       rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-      roleAddresses: roleAddresses,
-      pauseTypeRoles: pauseTypeRoles,
-      unpauseTypeRoles: unpauseTypeRoles,
+      roleAddresses,
+      pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+      unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
       fallbackOperator: multiCallAddress,
+      defaultAdmin: securityCouncil.address,
     };
 
     const lineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
@@ -152,6 +146,14 @@ describe("Linea Rollup contract", () => {
 
   before(async () => {
     [admin, securityCouncil, operator, nonAuthorizedAccount] = await ethers.getSigners();
+    const securityCouncilAddress = securityCouncil.address;
+
+    roleAddresses = generateRoleAssignments(LINEA_ROLLUP_ROLES, securityCouncilAddress, [
+      {
+        role: OPERATOR_ROLE,
+        addresses: [operator.address],
+      },
+    ]);
   });
 
   beforeEach(async () => {
@@ -181,13 +183,11 @@ describe("Linea Rollup contract", () => {
         defaultVerifier: ADDRESS_ZERO,
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [
-          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-          { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-        ],
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        roleAddresses,
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: multiCallAddress,
+        defaultAdmin: securityCouncil.address,
       };
 
       const deployCall = deployUpgradableFromFactory("contracts/LineaRollup.sol:LineaRollup", [initializationData], {
@@ -206,14 +206,11 @@ describe("Linea Rollup contract", () => {
         defaultVerifier: verifier,
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [
-          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-          { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-          { addressWithRole: ADDRESS_ZERO, role: OPERATOR_ROLE },
-        ],
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: multiCallAddress,
+        defaultAdmin: securityCouncil.address,
       };
 
       const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
@@ -252,13 +249,11 @@ describe("Linea Rollup contract", () => {
         defaultVerifier: verifier,
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [
-          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-          { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-        ],
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        roleAddresses,
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: multiCallAddress,
+        defaultAdmin: securityCouncil.address,
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
@@ -281,14 +276,11 @@ describe("Linea Rollup contract", () => {
         defaultVerifier: verifier,
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [
-          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-          { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-          { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE },
-        ],
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: multiCallAddress,
+        defaultAdmin: securityCouncil.address,
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
@@ -313,13 +305,11 @@ describe("Linea Rollup contract", () => {
         defaultVerifier: verifier,
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [
-          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-          { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-        ],
-        pauseTypeRoles: pauseTypeRoles,
-        unpauseTypeRoles: unpauseTypeRoles,
+        roleAddresses,
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: multiCallAddress,
+        defaultAdmin: securityCouncil.address,
       });
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
@@ -1205,8 +1195,6 @@ describe("Linea Rollup contract", () => {
       finalizationData.lastFinalizedL1RollingHash = HASH_ZERO;
       finalizationData.lastFinalizedL1RollingHashMessageNumber = 0n;
 
-      finalizationData.lastFinalizedShnarf = blobAggregatedProof1To155.parentAggregationFinalShnarf;
-
       await lineaRollup.setRollingHash(
         blobAggregatedProof1To155.l1RollingHashMessageNumber,
         blobAggregatedProof1To155.l1RollingHash,
@@ -1244,8 +1232,6 @@ describe("Linea Rollup contract", () => {
       });
       finalizationData.lastFinalizedL1RollingHash = HASH_ZERO;
       finalizationData.lastFinalizedL1RollingHashMessageNumber = 0n;
-
-      finalizationData.lastFinalizedShnarf = blobAggregatedProof1To155.parentAggregationFinalShnarf;
 
       await lineaRollup.setRollingHash(
         blobAggregatedProof1To155.l1RollingHashMessageNumber,
@@ -1297,8 +1283,6 @@ describe("Linea Rollup contract", () => {
         });
         finalizationData.lastFinalizedL1RollingHash = HASH_ZERO;
         finalizationData.lastFinalizedL1RollingHashMessageNumber = 0n;
-
-        finalizationData.lastFinalizedShnarf = blobAggregatedProof1To155.parentAggregationFinalShnarf;
 
         await lineaRollup.setRollingHash(
           blobAggregatedProof1To155.l1RollingHashMessageNumber,
@@ -1364,9 +1348,6 @@ describe("Linea Rollup contract", () => {
         const parentStateRootHash = await lineaRollup.stateRootHashes(lastFinalizedBlockNumber);
         finalizationData.parentStateRootHash = parentStateRootHash;
 
-        const currentFinalizedShnarf = await lineaRollup.currentFinalizedShnarf();
-        finalizationData.lastFinalizedShnarf = currentFinalizedShnarf;
-
         const proof = calldataAggregatedProof1To155.aggregatedProof;
 
         const finalizeCall = lineaRollup
@@ -1390,9 +1371,6 @@ describe("Linea Rollup contract", () => {
         const lastFinalizedBlockNumber = await lineaRollup.currentL2BlockNumber();
         const parentStateRootHash = await lineaRollup.stateRootHashes(lastFinalizedBlockNumber);
         finalizationData.parentStateRootHash = parentStateRootHash;
-
-        const currentFinalizedShnarf = await lineaRollup.currentFinalizedShnarf();
-        finalizationData.lastFinalizedShnarf = currentFinalizedShnarf;
 
         const proof = calldataAggregatedProof1To155.aggregatedProof;
 
@@ -1439,9 +1417,6 @@ describe("Linea Rollup contract", () => {
         const parentStateRootHash = await lineaRollup.stateRootHashes(lastFinalizedBlockNumber);
         finalizationData.parentStateRootHash = parentStateRootHash;
 
-        const currentFinalizedShnarf = await lineaRollup.currentFinalizedShnarf();
-        finalizationData.lastFinalizedShnarf = currentFinalizedShnarf;
-
         const proof = calldataAggregatedProof1To155.aggregatedProof;
 
         const finalizeCall = lineaRollup
@@ -1480,8 +1455,6 @@ describe("Linea Rollup contract", () => {
           aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
           shnarfData: generateParentShnarfData(index),
         });
-
-        finalizationData.lastFinalizedShnarf = generateParentSubmissionDataForIndex(0).shnarf;
 
         await lineaRollup.setRollingHash(
           calldataAggregatedProof1To155.l1RollingHashMessageNumber,
@@ -1544,8 +1517,6 @@ describe("Linea Rollup contract", () => {
           shnarfData: generateParentShnarfData(index),
         });
 
-        finalizationData.lastFinalizedShnarf = generateParentSubmissionDataForIndex(0).shnarf;
-
         await lineaRollup.setRollingHash(
           calldataAggregatedProof1To155.l1RollingHashMessageNumber,
           calldataAggregatedProof1To155.l1RollingHash,
@@ -1589,8 +1560,6 @@ describe("Linea Rollup contract", () => {
           aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
           shnarfData: generateParentShnarfData(index),
         });
-
-        finalizationData.lastFinalizedShnarf = generateParentSubmissionDataForIndex(0).shnarf;
 
         await lineaRollup.setRollingHash(
           calldataAggregatedProof1To155.l1RollingHashMessageNumber,
@@ -1983,7 +1952,7 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("fallback operator Role", () => {
-    const expectedLastFinalizedState = calculateLastFinalizedState(0, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
+    const expectedLastFinalizedState = calculateLastFinalizedState(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
 
     it("Should revert if trying to set fallback operator role before six months have passed", async () => {
       const initialBlock = await ethers.provider.getBlock("latest");
@@ -2156,9 +2125,11 @@ describe("Linea Rollup contract", () => {
   }
 
   describe("LineaRollup Upgradeable Tests", () => {
+    let newRoleAddresses: { addressWithRole: string; role: string }[];
+
     async function deployLineaRollupFixture() {
-      const PlonkVerifierFactory = await ethers.getContractFactory("TestPlonkVerifierForDataAggregation");
-      const plonkVerifier = await PlonkVerifierFactory.deploy();
+      const plonkVerifierFactory = await ethers.getContractFactory("TestPlonkVerifierForDataAggregation");
+      const plonkVerifier = await plonkVerifierFactory.deploy();
       await plonkVerifier.waitForDeployment();
 
       verifier = await plonkVerifier.getAddress();
@@ -2184,6 +2155,25 @@ describe("Linea Rollup contract", () => {
       return lineaRollup;
     }
 
+    before(async () => {
+      const securityCouncilAddress = securityCouncil.address;
+
+      newRoleAddresses = [
+        { addressWithRole: securityCouncilAddress, role: USED_RATE_LIMIT_RESETTER_ROLE },
+        { addressWithRole: securityCouncilAddress, role: VERIFIER_UNSETTER_ROLE },
+        { addressWithRole: securityCouncilAddress, role: PAUSE_ALL_ROLE },
+        { addressWithRole: securityCouncilAddress, role: PAUSE_L1_L2_ROLE },
+        { addressWithRole: securityCouncilAddress, role: PAUSE_L2_L1_ROLE },
+        { addressWithRole: securityCouncilAddress, role: UNPAUSE_ALL_ROLE },
+        { addressWithRole: securityCouncilAddress, role: UNPAUSE_L1_L2_ROLE },
+        { addressWithRole: securityCouncilAddress, role: UNPAUSE_L2_L1_ROLE },
+        { addressWithRole: securityCouncilAddress, role: PAUSE_BLOB_SUBMISSION_ROLE },
+        { addressWithRole: securityCouncilAddress, role: UNPAUSE_BLOB_SUBMISSION_ROLE },
+        { addressWithRole: securityCouncilAddress, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
+        { addressWithRole: securityCouncilAddress, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
+      ];
+    });
+
     beforeEach(async () => {
       lineaRollup = await loadFixture(deployLineaRollupFixture);
     });
@@ -2192,17 +2182,14 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.currentL2BlockNumber()).to.equal(0);
 
       // Deploy new implementation
-      const NewLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, NewLineaRollupFactory);
+      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
       const upgradedContract = await newLineaRollup.waitForDeployment();
 
       const upgradeCall = upgradedContract.reinitializeLineaRollupV6(
-        [
-          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-          { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-        ],
-        pauseTypeRoles,
-        unpauseTypeRoles,
+        newRoleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         multiCallAddress,
       );
 
@@ -2219,16 +2206,13 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.currentL2BlockNumber()).to.equal(0);
 
       // Deploy new implementation
-      const NewLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, NewLineaRollupFactory);
+      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
       const upgradedContract = await newLineaRollup.waitForDeployment();
       const upgradeCall = upgradedContract.reinitializeLineaRollupV6(
-        [
-          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-          { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-        ],
-        pauseTypeRoles,
-        unpauseTypeRoles,
+        newRoleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         multiCallAddress,
       );
 
@@ -2239,26 +2223,20 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.currentL2BlockNumber()).to.equal(0);
 
       // Deploy new implementation
-      const NewLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, NewLineaRollupFactory);
+      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
       const upgradedContract = await newLineaRollup.waitForDeployment();
       await upgradedContract.reinitializeLineaRollupV6(
-        [
-          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-          { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-        ],
-        pauseTypeRoles,
-        unpauseTypeRoles,
+        newRoleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         multiCallAddress,
       );
 
       const secondCall = upgradedContract.reinitializeLineaRollupV6(
-        [
-          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-          { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-        ],
-        pauseTypeRoles,
-        unpauseTypeRoles,
+        newRoleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         multiCallAddress,
       );
 
@@ -2267,20 +2245,87 @@ describe("Linea Rollup contract", () => {
 
     it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializeLineaRollupV6", async () => {
       // Deploy new implementation
-      const NewLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, NewLineaRollupFactory);
+      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
       const upgradedContract = await newLineaRollup.waitForDeployment();
-      const roleAddresses = [
-        { addressWithRole: ZeroAddress, role: DEFAULT_ADMIN_ROLE },
-        { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-        { addressWithRole: operator.address, role: OPERATOR_ROLE },
-      ];
+      const roleAddresses = [{ addressWithRole: ZeroAddress, role: DEFAULT_ADMIN_ROLE }, ...newRoleAddresses.slice(1)];
 
       await expectRevertWithCustomError(
         upgradedContract,
-        upgradedContract.reinitializeLineaRollupV6(roleAddresses, pauseTypeRoles, unpauseTypeRoles, multiCallAddress),
+        upgradedContract.reinitializeLineaRollupV6(
+          roleAddresses,
+          LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+          LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+          multiCallAddress,
+        ),
         "ZeroAddressNotAllowed",
       );
+    });
+
+    it("Should set all permissions", async () => {
+      // Deploy new implementation
+      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
+      const upgradedContract = await newLineaRollup.waitForDeployment();
+
+      await upgradedContract.reinitializeLineaRollupV6(
+        newRoleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        multiCallAddress,
+      );
+
+      for (const { role, addressWithRole } of newRoleAddresses) {
+        expect(await upgradedContract.hasRole(role, addressWithRole)).to.be.true;
+      }
+    });
+
+    it("Should set all pause types and unpause types in mappings and emit events", async () => {
+      // Deploy new implementation
+      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
+      const upgradedContract = await newLineaRollup.waitForDeployment();
+
+      const reinitializePromise = upgradedContract.reinitializeLineaRollupV6(
+        newRoleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        multiCallAddress,
+      );
+
+      await Promise.all([
+        expectEvents(
+          upgradedContract,
+          reinitializePromise,
+          LINEA_ROLLUP_PAUSE_TYPES_ROLES.map(({ pauseType, role }) => ({
+            name: "PauseTypeRoleSet",
+            args: [pauseType, role],
+          })),
+        ),
+        expectEvents(
+          upgradedContract,
+          reinitializePromise,
+          LINEA_ROLLUP_UNPAUSE_TYPES_ROLES.map(({ pauseType, role }) => ({
+            name: "UnPauseTypeRoleSet",
+            args: [pauseType, role],
+          })),
+        ),
+      ]);
+
+      const pauseTypeRolesMappingSlot = 219;
+      const unpauseTypeRolesMappingSlot = 220;
+
+      for (const { pauseType, role } of LINEA_ROLLUP_PAUSE_TYPES_ROLES) {
+        const slot = generateKeccak256(["uint8", "uint256"], [pauseType, pauseTypeRolesMappingSlot]);
+        const roleInMapping = await ethers.provider.getStorage(upgradedContract.getAddress(), slot);
+        expect(roleInMapping).to.equal(role);
+      }
+
+      for (const { pauseType, role } of LINEA_ROLLUP_UNPAUSE_TYPES_ROLES) {
+        const slot = generateKeccak256(["uint8", "uint256"], [pauseType, unpauseTypeRolesMappingSlot]);
+        const roleInMapping = await ethers.provider.getStorage(upgradedContract.getAddress(), slot);
+        expect(roleInMapping).to.equal(role);
+      }
     });
   });
 });

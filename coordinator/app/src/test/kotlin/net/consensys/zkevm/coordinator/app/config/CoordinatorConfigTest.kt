@@ -433,12 +433,9 @@ class CoordinatorConfigTest {
       ),
       jsonRpcGasPriceUpdaterConfig = GasPriceUpdaterImpl.Config(
         gethEndpoints = listOf(
-          URI("http://traces-node:8545/").toURL(),
           URI("http://l2-node:8545/").toURL()
         ),
-        besuEndPoints = listOf(
-          URI("http://sequencer:8545/").toURL()
-        ),
+        besuEndPoints = listOf(),
         retryConfig = l2NetworkGasPricingRequestRetryConfig
       ),
       jsonRpcPriceUpdateInterval = 12.seconds,

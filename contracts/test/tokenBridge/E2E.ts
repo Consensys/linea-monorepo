@@ -10,12 +10,12 @@ import {
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
-} from "../utils/helpers";
+} from "../common/helpers";
 import {
   COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
   INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
   SET_MESSAGE_SERVICE_ROLE,
-} from "../utils/constants";
+} from "../common/constants";
 
 const initialUserBalance = BigInt(10 ** 9);
 const RESERVED_STATUS = ethers.getAddress("0x0000000000000000000000000000000000000111");
