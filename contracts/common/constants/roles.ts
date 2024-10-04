@@ -77,7 +77,7 @@ export const SET_MESSAGE_SERVICE_ROLE = generateKeccak256(["string"], ["SET_MESS
   encodePacked: true,
 });
 
-export const BASE_ROLES = [DEFAULT_ADMIN_ROLE, PAUSE_ALL_ROLE, UNPAUSE_ALL_ROLE];
+export const BASE_ROLES = [PAUSE_ALL_ROLE, UNPAUSE_ALL_ROLE];
 
 export const LINEA_ROLLUP_ROLES = [
   ...BASE_ROLES,

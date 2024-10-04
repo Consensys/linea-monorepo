@@ -7,7 +7,7 @@ export function getRequiredEnvVar(name: string): string {
   return envValue;
 }
 
-export function getEnvOrDefault(envVar: string, defaultValue: unknown) {
+export function getEnvVarOrDefault(envVar: string, defaultValue: unknown) {
   const envValue = process.env[envVar];
 
   if (!envValue) {

@@ -8,7 +8,7 @@ import {
 } from "../common/constants";
 import {
   generateRoleAssignments,
-  getEnvOrDefault,
+  getEnvVarOrDefault,
   tryVerifyContract,
   getDeployedContractAddress,
   tryStoreAddress,
@@ -31,12 +31,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const remoteChainId = getRequiredEnvVar("REMOTE_CHAIN_ID");
   const tokenBridgeSecurityCouncil = getRequiredEnvVar("TOKEN_BRIDGE_SECURITY_COUNCIL");
 
-  const pauseTypeRoles = getEnvOrDefault("TOKEN_BRIDGE_PAUSE_TYPES_ROLES", TOKEN_BRIDGE_PAUSE_TYPES_ROLES);
-  const unpauseTypeRoles = getEnvOrDefault("TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES", TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES);
+  const pauseTypeRoles = getEnvVarOrDefault("TOKEN_BRIDGE_PAUSE_TYPES_ROLES", TOKEN_BRIDGE_PAUSE_TYPES_ROLES);
+  const unpauseTypeRoles = getEnvVarOrDefault("TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES", TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES);
   const defaultRoleAddresses = generateRoleAssignments(TOKEN_BRIDGE_ROLES, tokenBridgeSecurityCouncil, []);
-  const roleAddresses = getEnvOrDefault("TOKEN_BRIDGE_ROLE_ADDRESSES", defaultRoleAddresses);
+  const roleAddresses = getEnvVarOrDefault("TOKEN_BRIDGE_ROLE_ADDRESSES", defaultRoleAddresses);
 
-  const [owner] = await ethers.getSigners();
   const chainId = (await ethers.provider.getNetwork()).chainId;
 
   console.log(`Current network's chainId is ${chainId}. Remote (target) network's chainId is ${remoteChainId}`);
@@ -87,15 +86,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const TokenBridgeFactory = await ethers.getContractFactory(contractName);
 
   const tokenBridge = await upgrades.deployProxy(TokenBridgeFactory, [
-    owner.address,
-    deployingChainMessageService,
-    bridgedTokenAddress,
-    chainId,
-    remoteChainId,
-    reservedAddresses,
-    roleAddresses,
-    pauseTypeRoles,
-    unpauseTypeRoles,
+    {
+      defaultAdmin: tokenBridgeSecurityCouncil,
+      messageService: deployingChainMessageService,
+      tokenBeacon: bridgedTokenAddress,
+      sourceChainId: chainId,
+      targetChainId: remoteChainId,
+      reservedTokens: reservedAddresses,
+      roleAddresses,
+      pauseTypeRoles,
+      unpauseTypeRoles,
+    },
   ]);
 
   await tokenBridge.waitForDeployment();

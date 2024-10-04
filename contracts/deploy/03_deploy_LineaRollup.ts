@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import {
   generateRoleAssignments,
-  getEnvOrDefault,
+  getEnvVarOrDefault,
   getRequiredEnvVar,
   tryVerifyContract,
   getDeployedContractAddress,
@@ -42,12 +42,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const lineaRollupGenesisTimestamp = getRequiredEnvVar("LINEA_ROLLUP_GENESIS_TIMESTAMP");
   const MultiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
-  const pauseTypeRoles = getEnvOrDefault("LINEA_ROLLUP_PAUSE_TYPE_ROLES", LINEA_ROLLUP_PAUSE_TYPES_ROLES);
-  const unpauseTypeRoles = getEnvOrDefault("LINEA_ROLLUP_UNPAUSE_TYPE_ROLES", LINEA_ROLLUP_UNPAUSE_TYPES_ROLES);
+  const pauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_PAUSE_TYPE_ROLES", LINEA_ROLLUP_PAUSE_TYPES_ROLES);
+  const unpauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_UNPAUSE_TYPE_ROLES", LINEA_ROLLUP_UNPAUSE_TYPES_ROLES);
   const defaultRoleAddresses = generateRoleAssignments(LINEA_ROLLUP_ROLES, lineaRollupSecurityCouncil, [
     { role: OPERATOR_ROLE, addresses: lineaRollupOperators },
   ]);
-  const roleAddresses = getEnvOrDefault("LINEA_ROLLUP_ROLE_ADDRESSES", defaultRoleAddresses);
+  const roleAddresses = getEnvVarOrDefault("LINEA_ROLLUP_ROLE_ADDRESSES", defaultRoleAddresses);
 
   if (!existingContractAddress) {
     console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
@@ -69,6 +69,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         pauseTypeRoles,
         unpauseTypeRoles,
         fallbackOperator: MultiCallAddress,
+        defaultAdmin: lineaRollupSecurityCouncil,
       },
     ],
     {

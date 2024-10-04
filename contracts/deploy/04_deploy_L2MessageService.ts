@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import {
   generateRoleAssignments,
-  getEnvOrDefault,
+  getEnvVarOrDefault,
   getRequiredEnvVar,
   tryVerifyContract,
   getDeployedContractAddress,
@@ -30,12 +30,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const l2MessageServiceRateLimitPeriod = getRequiredEnvVar("L2MSGSERVICE_RATE_LIMIT_PERIOD");
   const l2MessageServiceRateLimitAmount = getRequiredEnvVar("L2MSGSERVICE_RATE_LIMIT_AMOUNT");
 
-  const pauseTypeRoles = getEnvOrDefault("L2MSGSERVICE_PAUSE_TYPE_ROLES", L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES);
-  const unpauseTypeRoles = getEnvOrDefault("L2MSGSERVICE_UNPAUSE_TYPE_ROLES", L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES);
+  const pauseTypeRoles = getEnvVarOrDefault("L2MSGSERVICE_PAUSE_TYPE_ROLES", L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES);
+  const unpauseTypeRoles = getEnvVarOrDefault(
+    "L2MSGSERVICE_UNPAUSE_TYPE_ROLES",
+    L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
+  );
   const defaultRoleAddresses = generateRoleAssignments(L2_MESSAGE_SERVICE_ROLES, l2MessageServiceSecurityCouncil, [
     { role: L1_L2_MESSAGE_SETTER_ROLE, addresses: [l2MessageServiceL1L2MessageSetter] },
   ]);
-  const roleAddresses = getEnvOrDefault("L2MSGSERVICE_ROLE_ADDRESSES", defaultRoleAddresses);
+  const roleAddresses = getEnvVarOrDefault("L2MSGSERVICE_ROLE_ADDRESSES", defaultRoleAddresses);
 
   if (!existingContractAddress) {
     console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
@@ -45,7 +48,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const contract = await deployUpgradableFromFactory(
     "L2MessageService",
-    [l2MessageServiceRateLimitPeriod, l2MessageServiceRateLimitAmount, roleAddresses, pauseTypeRoles, unpauseTypeRoles],
+    [
+      l2MessageServiceRateLimitPeriod,
+      l2MessageServiceRateLimitAmount,
+      l2MessageServiceSecurityCouncil,
+      roleAddresses,
+      pauseTypeRoles,
+      unpauseTypeRoles,
+    ],
     {
       initializer: L2_MESSAGE_SERVICE_INITIALIZE_SIGNATURE,
       unsafeAllow: ["constructor"],
