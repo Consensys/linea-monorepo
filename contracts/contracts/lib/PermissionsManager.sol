@@ -25,7 +25,7 @@ abstract contract PermissionsManager is Initializable, AccessControlUpgradeable,
         revert ZeroAddressNotAllowed();
       }
 
-      if(_roleAddresses[i].role == 0x0) {
+      if (_roleAddresses[i].role == 0x0) {
         revert ZeroHashNotAllowed();
       }
 

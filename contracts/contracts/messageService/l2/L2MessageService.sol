@@ -52,7 +52,7 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
     /**
      * @dev DEFAULT_ADMIN_ROLE is set for the security council explicitly,
      * as the permissions init purposefully does not allow DEFAULT_ADMIN_ROLE to be set.
-    */
+     */
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
 
     __Permissions_init(_roleAddresses);

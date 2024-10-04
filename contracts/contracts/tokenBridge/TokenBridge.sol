@@ -132,7 +132,7 @@ contract TokenBridge is
     /**
      * @dev DEFAULT_ADMIN_ROLE is set for the security council explicitly,
      * as the permissions init purposefully does not allow DEFAULT_ADMIN_ROLE to be set.
-    */
+     */
     _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
 
     __Permissions_init(_initializationData.roleAddresses);

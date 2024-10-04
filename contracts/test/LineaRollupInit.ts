@@ -4,14 +4,12 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { TestLineaRollup, LineaRollupInit__factory } from "../typechain-types";
 import {
-  DEFAULT_ADMIN_ROLE,
   GENESIS_L2_TIMESTAMP,
   INITIALIZED_ALREADY_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   ONE_DAY_IN_SECONDS,
   OPERATOR_ROLE,
-  VERIFIER_SETTER_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
 } from "./common/constants";
