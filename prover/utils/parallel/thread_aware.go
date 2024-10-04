@@ -3,7 +3,6 @@ package parallel
 import (
 	"runtime"
 	"sync"
-	"sync/atomic"
 )
 
 type ThreadInit func(threadID int)
@@ -21,15 +20,16 @@ func ExecuteThreadAware(nbIterations int, init ThreadInit, worker Worker, numcpu
 	wg := sync.WaitGroup{}
 	wg.Add(nbIterations)
 
-	var tasksHandled atomic.Uint32
+	taskCounter := NewAtomicCounter(nbIterations)
+
 	// Each goroutine consumes the jobChan to
 	for p := 0; p < numcpu; p++ {
 		threadID := p
 		go func() {
 			init(threadID)
 			for {
-				taskID := int(tasksHandled.Add(1)) - 1
-				if taskID >= nbIterations {
+				taskID, ok := taskCounter.Next()
+				if !ok {
 					break
 				}
 

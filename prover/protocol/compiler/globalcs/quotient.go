@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
@@ -23,7 +25,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -357,12 +358,17 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 			stopTimer := profiling.LogTimer("ReEvaluate %v pols of size %v on coset %v/%v", len(handles), ctx.DomainSize, share, ratio)
 
-			parallel.ExecuteFromChan(len(roots), func(wg *sync.WaitGroup, indexChan chan int) {
+			parallel.ExecuteFromChan(len(roots), func(wg *sync.WaitGroup, index *parallel.AtomicCounter) {
 
 				localPool := mempool.WrapsWithMemCache(largePool)
 				defer localPool.TearDown()
 
-				for k := range indexChan {
+				for {
+					k, ok := index.Next()
+					if !ok {
+						break
+					}
+
 					root := roots[k]
 					name := root.GetColID()
 
@@ -383,12 +389,16 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				}
 			})
 
-			parallel.ExecuteFromChan(len(handles), func(wg *sync.WaitGroup, indexChan chan int) {
+			parallel.ExecuteFromChan(len(handles), func(wg *sync.WaitGroup, index *parallel.AtomicCounter) {
 
 				localPool := mempool.WrapsWithMemCache(largePool)
 				defer localPool.TearDown()
 
-				for k := range indexChan {
+				for {
+					k, ok := index.Next()
+					if !ok {
+						break
+					}
 
 					pol := handles[k]
 					// short-path, the column is a purely Shifted(Natural) or a Natural
@@ -424,7 +434,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 					}
 
 					name := pol.GetColID()
-					_, ok := computedReeval.Load(name)
+					_, ok = computedReeval.Load(name)
 					if ok {
 						wg.Done()
 						continue
