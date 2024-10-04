@@ -1,15 +1,12 @@
 FROM openjdk:21-jdk-slim AS builder
 
-RUN apt-get update \
-  && apt-get install unzip -y \
-	&& apt-get clean \
-	&& rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install unzip -y
 
-RUN mkdir -p src libs
+RUN mkdir -p /src /libs
 
 COPY --from=zip ./coordinator.zip /src
 
-RUN unzip /src/coordinator.zip -d libs/
+RUN unzip /src/coordinator.zip -d /libs
 
 FROM openjdk:21-jdk-slim
 
@@ -19,12 +16,9 @@ RUN apt-get update \
     && apt-get install curl -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /opt/consensys/linea/coordinator/libs/ \
-      /opt/consensys/linea/coordinator/logs \
-      /opt/consensys/linea/coordinator/tmp/prover/request \
-      /opt/consensys/linea/coordinator/tmp/prover/response
+    && mkdir -p /libs/ /logs /tmp/prover/request /tmp/prover/response
 
-COPY --from=builder libs/coordinator/lib/** libs/
+COPY --from=builder /libs/coordinator/lib/** libs/
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
