@@ -4,7 +4,6 @@ import io.vertx.core.Vertx
 import net.consensys.linea.traces.TracesFiles
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
