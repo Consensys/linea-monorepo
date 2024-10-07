@@ -58,7 +58,7 @@ jobs:
         with:
           platforms: 'arm64,arm'
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       - name: Show the "version" build argument
         run: |
           echo "We inject the commit tag in the docker image ${{ env.COMMIT_TAG }}"
