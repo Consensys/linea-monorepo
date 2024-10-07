@@ -1521,7 +1521,7 @@ describe("Linea Rollup contract", () => {
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
           finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
-          finalTimestamp: BigInt(new Date(new Date().setHours(new Date().getHours() + 2)).getTime()), //  Set to 2 hours in the future
+          finalTimestamp: BigInt(new Date(new Date().setHours(new Date().getHours() + 2)).getTime()), // Set to 2 hours in the future
           l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
           l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
           l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
