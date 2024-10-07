@@ -535,7 +535,7 @@ func (am *Module) checkLeafHashes() {
 	expr7 := symbolic.Mul(cols.IsActiveAccumulator,
 		symbolic.Sub(1, cols.IsInsert, cols.IsDelete),
 		cols.IsEmptyLeaf)
-	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_ZERO_FOR_OTHER_OPS"), expr7)	
+	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_ZERO_FOR_OTHER_OPS"), expr7)
 }
 
 func (am *Module) checkNextFreeNode() {
