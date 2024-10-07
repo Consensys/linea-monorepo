@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   run-tests:
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: besu-arm64
     name: Traces api facade tests
     steps:
       - name: Checkout

@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   run-tests:
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: ubuntu-22.04
     name: Postman & SDK tests
     steps:
       - name: Checkout
