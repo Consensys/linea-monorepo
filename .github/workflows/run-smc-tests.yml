@@ -55,7 +55,7 @@ jobs:
           fail_ci_if_error: true
           files: ./contracts/coverage/coverage-final.json
           flags: hardhat
-          os: linux-arm64
+          os: linux
           name: codecov-contracts
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
