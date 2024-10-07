@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.runtime.stack;
 
+import static net.consensys.linea.zktracer.runtime.stack.StackItem.*;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +29,7 @@ import org.apache.tuweni.bytes.Bytes;
 /**
  * As the zkEVM spec can only handle up to four stack operations per trace line of the {@link Hub},
  * operations on the stack must be decomposed in “lines” (mapping 1-to-1 with a trace line from the
- * hub, hence the name) of zero to four atomic {@link StackOperation}.
+ * hub, hence the name) of zero to four atomic {@link StackItem}.
  */
 @Accessors(fluent = true)
 public final class StackLine {
@@ -49,7 +51,7 @@ public final class StackLine {
   }
 
   /**
-   * Build a stack line from a set of {@link StackOperation}.
+   * Build a stack line from a set of {@link StackItem}.
    *
    * @param ct the index of this line within the parent {@link StackContext}
    * @param items the {@link IndexedStackOperation} to include in this line
@@ -60,14 +62,13 @@ public final class StackLine {
   }
 
   /**
-   * @return a consolidated 4-elements array of the {@link StackOperation} – or no-ops
+   * @return a consolidated 4-elements array of the {@link StackItem} – or no-ops
    */
-  public List<StackOperation> asStackOperations() {
-    StackOperation[] r =
-        new StackOperation[] {
-          new StackOperation(), new StackOperation(), new StackOperation(), new StackOperation()
-        };
-    for (IndexedStackOperation item : this.items) {
+  public List<StackItem> asStackItems() {
+    StackItem emptyStackItem = empty();
+    StackItem[] r =
+        new StackItem[] {emptyStackItem, emptyStackItem, emptyStackItem, emptyStackItem};
+    for (IndexedStackOperation item : items) {
       r[item.i()] = item.it();
     }
     return Arrays.asList(r);
@@ -81,7 +82,7 @@ public final class StackLine {
    * @param value the {@link Bytes} to use
    */
   public void setResult(int i, Bytes value) {
-    for (var item : this.items) {
+    for (var item : items) {
       if (item.i() == i - 1) {
         item.it().value(value);
         return;
@@ -98,16 +99,16 @@ public final class StackLine {
    * @param value the {@link Bytes} to use
    */
   public void setResult(Bytes value) {
-    if (this.resultColumn == -1) {
+    if (resultColumn == -1) {
       throw new RuntimeException("Stack line has no result column");
     }
-    this.setResult(this.resultColumn, value);
+    this.setResult(resultColumn, value);
   }
 
   /**
    * @return whether an item in this stack line requires a retroactively set value.
    */
   public boolean needsResult() {
-    return this.resultColumn >= 0;
+    return resultColumn >= 0;
   }
 }

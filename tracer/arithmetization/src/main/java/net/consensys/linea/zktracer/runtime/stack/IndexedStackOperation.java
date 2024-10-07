@@ -20,9 +20,9 @@ package net.consensys.linea.zktracer.runtime.stack;
  * sparse.
  *
  * @param i the index of the stack item within a stack line -- within [[1, 4]
- * @param it the details of the {@link StackOperation} to apply to a column of a stack line
+ * @param it the details of the {@link StackItem} to apply to a column of a stack line
  */
-record IndexedStackOperation(int i, StackOperation it) {
+record IndexedStackOperation(int i, StackItem it) {
   /**
    * For the sake of homogeneity with the zkEVM spec, {@param i} is set with 1-based indices.
    * However, these indices are used to index 0-based array; hence this sneaky conversion.

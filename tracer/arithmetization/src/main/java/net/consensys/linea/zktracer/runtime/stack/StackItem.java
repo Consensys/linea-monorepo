@@ -29,7 +29,7 @@ import org.apache.tuweni.bytes.Bytes;
  * metadata, in a {@link StackContext}.
  */
 @Accessors(fluent = true)
-public final class StackOperation {
+public final class StackItem {
   private static final Bytes MARKER = Bytes.fromHexString("0xDEADBEEF");
 
   /**
@@ -50,30 +50,38 @@ public final class StackOperation {
    */
   @Getter private final int stackStamp;
 
-  StackOperation() {
+  /** Singleton ``empty stack operation'' object. */
+  private static final StackItem EMPTY_STACK_ITEM = new StackItem();
+
+  public static StackItem empty() {
+    return EMPTY_STACK_ITEM;
+  }
+
+  /** private constructor for singleton definition in {@link StackItem#EMPTY_STACK_ITEM} */
+  private StackItem() {
     this.height = 0;
     this.value = Bytes.EMPTY;
     this.action = Stack.NONE;
     this.stackStamp = 0;
   }
 
-  StackOperation(int height, Bytes value, byte action, int stackStamp) {
+  StackItem(int height, Bytes value, byte action, int stackStamp) {
     this.height = height;
     this.value = value;
     this.action = action;
     this.stackStamp = stackStamp;
   }
 
-  public static StackOperation pop(int height, Bytes value, int stackStamp) {
-    return new StackOperation(height, value, Stack.POP, stackStamp);
+  public static StackItem pop(int height, Bytes value, int stackStamp) {
+    return new StackItem(height, value, Stack.POP, stackStamp);
   }
 
-  public static StackOperation push(int height, int stackStamp) {
-    return new StackOperation(
+  public static StackItem push(int height, int stackStamp) {
+    return new StackItem(
         height, MARKER /* marker value, erased on unlatching */, Stack.PUSH, stackStamp);
   }
 
-  public static StackOperation pushImmediate(int height, Bytes val, int stackStamp) {
-    return new StackOperation(height, val.copy(), Stack.PUSH, stackStamp);
+  public static StackItem pushImmediate(int height, Bytes val, int stackStamp) {
+    return new StackItem(height, val.copy(), Stack.PUSH, stackStamp);
   }
 }

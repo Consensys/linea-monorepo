@@ -164,7 +164,7 @@ public class TraceSection {
             StackFragment.prepare(
                 hub,
                 f.stack().snapshot(),
-                new StackLine().asStackOperations(),
+                new StackLine().asStackItems(),
                 hub.pch().exceptions(),
                 hub.pch().abortingConditions().snapshot(),
                 Hub.GAS_PROJECTOR.of(f.frame(), f.opCode()),
@@ -178,7 +178,7 @@ public class TraceSection {
             StackFragment.prepare(
                 hub,
                 f.stack().snapshot(),
-                line.asStackOperations(),
+                line.asStackItems(),
                 hub.pch().exceptions(),
                 hub.pch().abortingConditions().snapshot(),
                 Hub.GAS_PROJECTOR.of(f.frame(), f.opCode()),
