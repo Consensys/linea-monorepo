@@ -541,6 +541,15 @@ func (am *Module) checkNextFreeNode() {
 		cols.IsInsertRow3,
 		symbolic.Sub(cols.NextFreeNode, cols.InsertionPath, symbolic.NewConstant(1)))
 	am.comp.InsertGlobal(am.Round, am.qname("NEXT_FREE_NODE_CONSISTENCY_2"), expr4)
+
+	// If it is an empty leaf for the INSERT operation, then it must be at row 3
+	// and IsInsertRow3 is true i.e.,
+	// IsActive[i] * IsInsert[i] * IsEmptyLeaf[i] * (1-IsInsertRow3[i])
+	expr5 := symbolic.Mul(cols.IsActiveAccumulator,
+		cols.IsInsert,
+		cols.IsEmptyLeaf,
+		symbolic.Sub(1, cols.IsInsertRow3))
+	am.comp.InsertGlobal(am.Round, am.qname("IS_INSERT_ROW3_CONSISTENCY"), expr5)
 }
 
 func (am *Module) checkTopRootHash() {
