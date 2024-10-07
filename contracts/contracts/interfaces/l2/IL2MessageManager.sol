@@ -45,7 +45,7 @@ interface IL2MessageManager {
   /**
    * @notice Add cross-chain L1->L2 message hashes in storage.
    * @dev Only address that has the role 'L1_L2_MESSAGE_SETTER_ROLE' are allowed to call this function.
-   * @dev NB: In the unlikely event of a duplicate anchoring, the lastAnchoredL1MessageNumber MUST NOT be incremented
+   * @dev NB: In the unlikely event of a duplicate anchoring, the lastAnchoredL1MessageNumber MUST NOT be incremented.
    * @dev and the rolling hash not calculated, else synchronisation will break.
    * @dev If starting number is zero, an underflow error is expected.
    * @param _messageHashes New message hashes to anchor on L2.
