@@ -3,9 +3,9 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { LineaVoyageXP } from "../typechain-types";
-import { DEFAULT_ADMIN_ROLE, MINTER_ROLE } from "./utils/constants";
-import { deployFromFactory } from "./utils/deployment";
-import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "./utils/helpers";
+import { DEFAULT_ADMIN_ROLE, MINTER_ROLE } from "./common/constants";
+import { deployFromFactory } from "./common/deployment";
+import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "./common/helpers";
 
 describe("Linea Voyage XP Token Tests", () => {
   let contract: LineaVoyageXP;

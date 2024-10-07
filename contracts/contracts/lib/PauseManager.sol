@@ -13,30 +13,13 @@ import { IPauseManager } from "../interfaces/IPauseManager.sol";
 abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpgradeable {
   bytes32 public constant PAUSE_ALL_ROLE = keccak256("PAUSE_ALL_ROLE");
   bytes32 public constant UNPAUSE_ALL_ROLE = keccak256("UNPAUSE_ALL_ROLE");
-  bytes32 public constant PAUSE_L1_L2_ROLE = keccak256("PAUSE_L1_L2_ROLE");
-  bytes32 public constant UNPAUSE_L1_L2_ROLE = keccak256("UNPAUSE_L1_L2_ROLE");
-  bytes32 public constant PAUSE_L2_L1_ROLE = keccak256("PAUSE_L2_L1_ROLE");
-  bytes32 public constant UNPAUSE_L2_L1_ROLE = keccak256("UNPAUSE_L2_L1_ROLE");
-  bytes32 public constant PAUSE_L2_BLOB_SUBMISSION_ROLE = keccak256("PAUSE_L2_BLOB_SUBMISSION_ROLE");
-  bytes32 public constant UNPAUSE_L2_BLOB_SUBMISSION_ROLE = keccak256("UNPAUSE_L2_BLOB_SUBMISSION_ROLE");
-  bytes32 public constant PAUSE_FINALIZE_WITHPROOF_ROLE = keccak256("PAUSE_FINALIZE_WITHPROOF_ROLE");
-  bytes32 public constant UNPAUSE_FINALIZE_WITHPROOF_ROLE = keccak256("UNPAUSE_FINALIZE_WITHPROOF_ROLE");
-
-  uint8 public constant GENERAL_PAUSE_TYPE = 1;
-  uint8 public constant L1_L2_PAUSE_TYPE = 2;
-  uint8 public constant L2_L1_PAUSE_TYPE = 3;
-  uint8 public constant BLOB_SUBMISSION_PAUSE_TYPE = 4;
-  uint8 public constant CALLDATA_SUBMISSION_PAUSE_TYPE = 5;
-  uint8 public constant FINALIZATION_PAUSE_TYPE = 6;
-  uint8 public constant INITIATE_TOKEN_BRIDGING_PAUSE_TYPE = 7;
-  uint8 public constant COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE = 8;
 
   // @dev DEPRECATED. USE _pauseTypeStatusesBitMap INSTEAD
   mapping(bytes32 pauseType => bool pauseStatus) public pauseTypeStatuses;
 
   uint256 private _pauseTypeStatusesBitMap;
-  mapping(uint8 pauseType => bytes32 role) private pauseTypeRoles;
-  mapping(uint8 unPauseType => bytes32 role) private unPauseTypeRoles;
+  mapping(PauseType pauseType => bytes32 role) private _pauseTypeRoles;
+  mapping(PauseType unPauseType => bytes32 role) private _unPauseTypeRoles;
 
   /// @dev Total contract storage is 11 slots with the gap below.
   /// @dev Keep 7 free storage slots for future implementation updates to avoid storage collision.
@@ -50,7 +33,7 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
    *
    * - The type must not be paused.
    */
-  modifier whenTypeAndGeneralNotPaused(uint8 _pauseType) {
+  modifier whenTypeAndGeneralNotPaused(PauseType _pauseType) {
     _requireTypeAndGeneralNotPaused(_pauseType);
     _;
   }
@@ -62,7 +45,7 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
    *
    * - The type must not be paused.
    */
-  modifier whenTypeNotPaused(uint8 _pauseType) {
+  modifier whenTypeNotPaused(PauseType _pauseType) {
     _requireTypeNotPaused(_pauseType);
     _;
   }
@@ -70,20 +53,22 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
   /**
    * @notice Initializes the pause manager with the given pause and unpause roles.
    * @dev This function is called during contract initialization to set up the pause and unpause roles.
-   * @param _pauseTypeRoles An array of PauseTypeRole structs defining the pause types and their associated roles.
-   * @param _unPauseTypeRoles An array of PauseTypeRole structs defining the unpause types and their associated roles.
+   * @param _pauseTypeRoleAssignments An array of PauseTypeRole structs defining the pause types and their associated roles.
+   * @param _unpauseTypeRoleAssignments An array of PauseTypeRole structs defining the unpause types and their associated roles.
    */
   function __PauseManager_init(
-    PauseTypeRole[] calldata _pauseTypeRoles,
-    PauseTypeRole[] calldata _unPauseTypeRoles
+    PauseTypeRole[] calldata _pauseTypeRoleAssignments,
+    PauseTypeRole[] calldata _unpauseTypeRoleAssignments
   ) internal onlyInitializing {
-    uint256 arrayLength = _pauseTypeRoles.length;
+    uint256 arrayLength = _pauseTypeRoleAssignments.length;
     for (uint256 i; i < arrayLength; i++) {
-      pauseTypeRoles[_pauseTypeRoles[i].pauseType] = _pauseTypeRoles[i].role;
+      _pauseTypeRoles[_pauseTypeRoleAssignments[i].pauseType] = _pauseTypeRoleAssignments[i].role;
+      emit PauseTypeRoleSet(_pauseTypeRoleAssignments[i].pauseType, _pauseTypeRoleAssignments[i].role);
     }
-    arrayLength = _unPauseTypeRoles.length;
+    arrayLength = _unpauseTypeRoleAssignments.length;
     for (uint256 i; i < arrayLength; i++) {
-      unPauseTypeRoles[_unPauseTypeRoles[i].pauseType] = _unPauseTypeRoles[i].role;
+      _unPauseTypeRoles[_unpauseTypeRoleAssignments[i].pauseType] = _unpauseTypeRoleAssignments[i].role;
+      emit UnPauseTypeRoleSet(_unpauseTypeRoleAssignments[i].pauseType, _unpauseTypeRoleAssignments[i].role);
     }
   }
 
@@ -92,15 +77,15 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
    * @dev Checks the specific and general pause types.
    * @param _pauseType The pause type value being checked.
    */
-  function _requireTypeAndGeneralNotPaused(uint8 _pauseType) internal view virtual {
+  function _requireTypeAndGeneralNotPaused(PauseType _pauseType) internal view virtual {
     uint256 pauseBitMap = _pauseTypeStatusesBitMap;
 
     if (pauseBitMap & (1 << uint256(_pauseType)) != 0) {
       revert IsPaused(_pauseType);
     }
 
-    if (pauseBitMap & (1 << uint256(GENERAL_PAUSE_TYPE)) != 0) {
-      revert IsPaused(GENERAL_PAUSE_TYPE);
+    if (pauseBitMap & (1 << uint256(PauseType.GENERAL)) != 0) {
+      revert IsPaused(PauseType.GENERAL);
     }
   }
 
@@ -109,7 +94,7 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
    * @dev Checks the specific pause type.
    * @param _pauseType The pause type value being checked.
    */
-  function _requireTypeNotPaused(uint8 _pauseType) internal view virtual {
+  function _requireTypeNotPaused(PauseType _pauseType) internal view virtual {
     if (isPaused(_pauseType)) {
       revert IsPaused(_pauseType);
     }
@@ -117,10 +102,10 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
 
   /**
    * @notice Pauses functionality by specific type.
-   * @dev Requires the role mapped in pauseTypeRoles for the pauseType.
+   * @dev Requires the role mapped in `_pauseTypeRoles` for the pauseType.
    * @param _pauseType The pause type value.
    */
-  function pauseByType(uint8 _pauseType) external onlyRole(pauseTypeRoles[_pauseType]) {
+  function pauseByType(PauseType _pauseType) external onlyRole(_pauseTypeRoles[_pauseType]) {
     if (isPaused(_pauseType)) {
       revert IsPaused(_pauseType);
     }
@@ -131,10 +116,10 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
 
   /**
    * @notice Unpauses functionality by specific type.
-   * @dev Requires the role mapped in unPauseTypeRoles for the pauseType.
+   * @dev Requires the role mapped in `_unPauseTypeRoles` for the pauseType.
    * @param _pauseType The pause type value.
    */
-  function unPauseByType(uint8 _pauseType) external onlyRole(unPauseTypeRoles[_pauseType]) {
+  function unPauseByType(PauseType _pauseType) external onlyRole(_unPauseTypeRoles[_pauseType]) {
     if (!isPaused(_pauseType)) {
       revert IsNotPaused(_pauseType);
     }
@@ -148,7 +133,7 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
    * @param _pauseType The pause type value.
    * @return boolean True if the pause type if enabled, false otherwise.
    */
-  function isPaused(uint8 _pauseType) public view returns (bool) {
+  function isPaused(PauseType _pauseType) public view returns (bool) {
     return (_pauseTypeStatusesBitMap & (1 << uint256(_pauseType))) != 0;
   }
 }
