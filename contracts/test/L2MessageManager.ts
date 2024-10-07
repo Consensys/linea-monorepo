@@ -11,8 +11,8 @@ import {
   L1_L2_MESSAGE_SETTER_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
 import {
   buildAccessErrorMessage,
   calculateRollingHashFromCollection,
@@ -21,7 +21,7 @@ import {
   expectRevertWithReason,
   generateKeccak256Hash,
   generateNKeccak256Hashes,
-} from "./utils/helpers";
+} from "./common/helpers";
 
 describe("L2MessageManager", () => {
   let l2MessageManager: TestL2MessageManager;
@@ -75,6 +75,16 @@ describe("L2MessageManager", () => {
         l2MessageManager.connect(notAuthorizedAccount).anchorL1L2MessageHashes(messageHashes, 1, 100, HASH_ZERO),
         buildAccessErrorMessage(notAuthorizedAccount, L1_L2_MESSAGE_SETTER_ROLE),
       );
+    });
+
+    it("Should revert if message hashes array length is zero", async () => {
+      const messageHashes: [] = [];
+
+      const anchorCall = l2MessageManager
+        .connect(l1l2MessageSetter)
+        .anchorL1L2MessageHashes(messageHashes, 1, 100, HASH_ZERO);
+
+      await expectRevertWithCustomError(l2MessageManager, anchorCall, "MessageHashesListLengthIsZero");
     });
 
     it("Should update rolling hash and messages emitting events", async () => {

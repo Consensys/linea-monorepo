@@ -4,16 +4,17 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { TestL2MessageService, TestMessageServiceBase } from "../typechain-types";
 import {
-  DEFAULT_ADMIN_ROLE,
   INITIALIZED_ERROR_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
   L1_L2_MESSAGE_SETTER_ROLE,
   ONE_DAY_IN_SECONDS,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
-import { expectRevertWithCustomError, expectRevertWithReason } from "./utils/helpers";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
+import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "./common/helpers";
+import { generateRoleAssignments } from "contracts/common/helpers";
+import { L2_MESSAGE_SERVICE_ROLES } from "contracts/common/constants";
 
 describe("MessageServiceBase", () => {
   let messageServiceBase: TestMessageServiceBase;
@@ -25,14 +26,14 @@ describe("MessageServiceBase", () => {
   let l1L2MessageSetter: SignerWithAddress;
 
   async function deployMessageServiceBaseFixture() {
-    const roleAddresses = [
-      { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-      { addressWithRole: l1L2MessageSetter.address, role: L1_L2_MESSAGE_SETTER_ROLE },
-    ];
+    const roleAddresses = generateRoleAssignments(L2_MESSAGE_SERVICE_ROLES, securityCouncil.address, [
+      { role: L1_L2_MESSAGE_SETTER_ROLE, addresses: [l1L2MessageSetter.address] },
+    ]);
 
     const messageService = (await deployUpgradableFromFactory("TestL2MessageService", [
       ONE_DAY_IN_SECONDS,
       INITIAL_WITHDRAW_LIMIT,
+      securityCouncil.address,
       roleAddresses,
       pauseTypeRoles,
       unpauseTypeRoles,
@@ -82,6 +83,18 @@ describe("MessageServiceBase", () => {
 
     it("Should set the value of messageService variable in storage", async () => {
       expect(await messageServiceBase.messageService()).to.equal(await messageService.getAddress());
+    });
+  });
+
+  describe("RemoteSenderSet event", () => {
+    it("Should emit RemoteSenderSet event when testSetRemoteSender is called", async () => {
+      const newRemoteSender = ethers.Wallet.createRandom().address;
+      await expectEvent(
+        messageServiceBase,
+        messageServiceBase.testSetRemoteSender(newRemoteSender),
+        "RemoteSenderSet",
+        [newRemoteSender, admin.address],
+      );
     });
   });
 

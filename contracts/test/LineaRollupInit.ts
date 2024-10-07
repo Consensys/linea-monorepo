@@ -4,19 +4,19 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { TestLineaRollup, LineaRollupInit__factory } from "../typechain-types";
 import {
-  DEFAULT_ADMIN_ROLE,
   GENESIS_L2_TIMESTAMP,
   INITIALIZED_ALREADY_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   ONE_DAY_IN_SECONDS,
   OPERATOR_ROLE,
-  VERIFIER_SETTER_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
-import { expectRevertWithReason, generateRandomBytes } from "./utils/helpers";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
+import { expectRevertWithReason, generateRandomBytes } from "./common/helpers";
+import { generateRoleAssignments } from "contracts/common/helpers";
+import { LINEA_ROLLUP_ROLES } from "contracts/common/constants";
 
 describe("LineaRollup Init contract", () => {
   let LineaRollup: TestLineaRollup;
@@ -26,6 +26,8 @@ describe("LineaRollup Init contract", () => {
   let verifier: string;
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
+
+  const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
   const parentStateRootHash = generateRandomBytes(32);
 
@@ -45,13 +47,13 @@ describe("LineaRollup Init contract", () => {
       defaultVerifier: verifier,
       rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
       rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-      roleAddresses: [
-        { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-        { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-        { addressWithRole: operator.address, role: OPERATOR_ROLE },
-      ],
+      roleAddresses: generateRoleAssignments(LINEA_ROLLUP_ROLES, securityCouncil.address, [
+        { role: OPERATOR_ROLE, addresses: [operator.address] },
+      ]),
       pauseTypeRoles: pauseTypeRoles,
       unpauseTypeRoles: unpauseTypeRoles,
+      fallbackOperator: multiCallAddress,
+      defaultAdmin: securityCouncil.address,
     };
 
     const LineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [genesisData], {

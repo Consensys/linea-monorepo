@@ -180,6 +180,7 @@ class CoordinatorConfigTest {
         "3b174434" to "MessageHashesListLengthHigherThanOneHundred",
         "ca389c44" to "InvalidProofOrProofVerificationRanOutOfGas",
         // L2 Message Service
+        "6446cc9c" to "MessageHashesListLengthIsZero",
         "d39e75f9" to "L1MessageNumberSynchronizationWrong",
         "7557a60a" to "L1RollingHashSynchronizationWrong",
         "36a4bb94" to "FinalRollingHashIsZero"
@@ -246,7 +247,6 @@ class CoordinatorConfigTest {
         ),
         requestLimitPerEndpoint = 20U,
         requestRetry = RequestRetryConfigTomlFriendly(
-          maxRetries = 4,
           backoffDelay = Duration.parse("PT1S"),
           failuresWarningThreshold = 2
         )
@@ -257,7 +257,6 @@ class CoordinatorConfigTest {
         ),
         requestLimitPerEndpoint = 2U,
         requestRetry = RequestRetryConfigTomlFriendly(
-          maxRetries = 4,
           backoffDelay = Duration.parse("PT1S"),
           failuresWarningThreshold = 2
         )
@@ -275,7 +274,6 @@ class CoordinatorConfigTest {
     private val type2StateProofProviderConfig = Type2StateProofProviderConfig(
       endpoints = listOf(URI("http://shomei-frontend:8888/").toURL()),
       requestRetry = RequestRetryConfigTomlFriendly(
-        maxRetries = 3,
         backoffDelay = Duration.parse("PT1S"),
         failuresWarningThreshold = 2
       )
@@ -287,7 +285,6 @@ class CoordinatorConfigTest {
       ),
       requestLimitPerEndpoint = 3U,
       requestRetry = RequestRetryConfigTomlFriendly(
-        maxRetries = 5,
         backoffDelay = Duration.parse("PT2S"),
         failuresWarningThreshold = 2
       )
@@ -324,8 +321,7 @@ class CoordinatorConfigTest {
 
     private val persistenceRetryConfig = PersistenceRetryConfig(
       maxRetries = null,
-      backoffDelay = Duration.parse("PT1S"),
-      timeout = Duration.parse("PT60S")
+      backoffDelay = Duration.parse("PT1S")
     )
 
     private val l1Config = L1Config(
@@ -404,7 +400,7 @@ class CoordinatorConfigTest {
     )
 
     private val messageAnchoringServiceConfig = MessageAnchoringServiceConfig(
-      pollingInterval = Duration.parse("PT10S"),
+      pollingInterval = Duration.parse("PT1S"),
       maxMessagesToAnchor = 100U
     )
 
@@ -437,12 +433,9 @@ class CoordinatorConfigTest {
       ),
       jsonRpcGasPriceUpdaterConfig = GasPriceUpdaterImpl.Config(
         gethEndpoints = listOf(
-          URI("http://traces-node:8545/").toURL(),
           URI("http://l2-node:8545/").toURL()
         ),
-        besuEndPoints = listOf(
-          URI("http://sequencer:8545/").toURL()
-        ),
+        besuEndPoints = listOf(),
         retryConfig = l2NetworkGasPricingRequestRetryConfig
       ),
       jsonRpcPriceUpdateInterval = 12.seconds,
@@ -474,7 +467,7 @@ class CoordinatorConfigTest {
       gasPriceCapCalculation = L1DynamicGasPriceCapServiceConfig.GasPriceCapCalculation(
         adjustmentConstant = 25U,
         blobAdjustmentConstant = 25U,
-        finalizationTargetMaxDelay = Duration.parse("PT2M"),
+        finalizationTargetMaxDelay = Duration.parse("PT30S"),
         gasFeePercentileWindow = Duration.parse("PT1M"),
         gasFeePercentileWindowLeeway = Duration.parse("PT10S"),
         gasFeePercentile = 10.0,

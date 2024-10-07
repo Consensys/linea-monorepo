@@ -1,8 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { deployUpgradableFromFactory, requireEnv } from "../scripts/hardhat/utils";
-import { getDeployedContractAddress, tryStoreAddress } from "../utils/storeAddress";
-import { tryVerifyContract } from "../utils/verifyContract";
+import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
+import { tryVerifyContract, getDeployedContractAddress, tryStoreAddress, getRequiredEnvVar } from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -11,8 +10,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
   // RecoverFunds DEPLOYED AS UPGRADEABLE PROXY
-  const RecoverFunds_securityCouncil = requireEnv("RECOVERFUNDS_SECURITY_COUNCIL");
-  const RecoverFunds_executorAddress = requireEnv("RECOVERFUNDS_EXECUTOR_ADDRESS");
+  const RecoverFunds_securityCouncil = getRequiredEnvVar("RECOVERFUNDS_SECURITY_COUNCIL");
+  const RecoverFunds_executorAddress = getRequiredEnvVar("RECOVERFUNDS_EXECUTOR_ADDRESS");
 
   console.log(`Setting security council ${RecoverFunds_securityCouncil}`);
   console.log(`Setting executor address ${RecoverFunds_executorAddress}`);

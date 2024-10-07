@@ -27,10 +27,15 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
+concurrency:
+  group: traces-api-facade-build-and-publish-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     name: Traces api facade build
+    environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}

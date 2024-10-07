@@ -8,11 +8,11 @@ import {
   MINTER_ROLE,
   ONE_DAY_IN_SECONDS,
   RATE_LIMIT_SETTER_ROLE,
-} from "./utils/constants";
-import { deployFromFactory } from "./utils/deployment";
+} from "./common/constants";
+import { deployFromFactory } from "./common/deployment";
 import { TokenMintingRateLimiter } from "../typechain-types/contracts/token/TokenMintingRateLimiter";
 import { LineaVoyageXP } from "../typechain-types";
-import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "./utils/helpers";
+import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "./common/helpers";
 
 describe("Token Minting Rate Limiter", () => {
   let tokenMintingRateLimiter: TokenMintingRateLimiter;
@@ -57,7 +57,7 @@ describe("Token Minting Rate Limiter", () => {
   beforeEach(async () => {
     xpToken = await loadFixture(deployLineaVoyageXPFixture);
     tokenMintingRateLimiter = await loadFixture(deployTokenMintingRateLimiterFixture);
-    xpToken.connect(minter).grantRole(MINTER_ROLE, await tokenMintingRateLimiter.getAddress());
+    await xpToken.connect(minter).grantRole(MINTER_ROLE, await tokenMintingRateLimiter.getAddress());
   });
 
   describe("Initialization and roles", () => {
