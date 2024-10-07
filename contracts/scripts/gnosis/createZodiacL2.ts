@@ -1,7 +1,7 @@
 import { deployAndSetUpModule, KnownContracts } from "@gnosis.pm/zodiac";
 import Safe, { CreateTransactionProps, EthersAdapter } from "@safe-global/protocol-kit";
 import { ethers } from "ethers";
-import { L1_L2_MESSAGE_SETTER_ROLE, OPERATOR_ROLE } from "../../test/utils/constants";
+import { L1_L2_MESSAGE_SETTER_ROLE, OPERATOR_ROLE } from "../../test/common/constants";
 import { requireEnv } from "../hardhat/utils";
 import { get1559Fees } from "../utils";
 

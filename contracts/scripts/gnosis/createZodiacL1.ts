@@ -1,7 +1,7 @@
 import { deployAndSetUpModule, KnownContracts } from "@gnosis.pm/zodiac";
 import Safe, { CreateTransactionProps, EthersAdapter } from "@safe-global/protocol-kit";
 import { ethers } from "ethers";
-import { OPERATOR_ROLE } from "../../test/utils/constants";
+import { OPERATOR_ROLE } from "../../test/common/constants";
 import { requireEnv } from "../hardhat/utils";
 
 const main = async () => {

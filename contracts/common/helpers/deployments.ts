@@ -1,7 +1,7 @@
-import { GetContractTypeFromFactory } from "../typechain-types/common";
-import { ProxyAdmin, ProxyAdmin__factory, TransparentUpgradeableProxy__factory } from "../typechain-types";
 import { ContractFactory, Overrides, Wallet, ethers } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
+import { GetContractTypeFromFactory } from "../../typechain-types/common";
+import { ProxyAdmin, ProxyAdmin__factory, TransparentUpgradeableProxy__factory } from "../../typechain-types";
 
 export function getInitializerData(
   contractInterface: ethers.Interface,
