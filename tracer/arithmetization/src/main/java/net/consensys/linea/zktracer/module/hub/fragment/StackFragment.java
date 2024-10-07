@@ -38,7 +38,6 @@ import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjection;
-import net.consensys.linea.zktracer.runtime.stack.Action;
 import net.consensys.linea.zktracer.runtime.stack.Stack;
 import net.consensys.linea.zktracer.runtime.stack.StackOperation;
 import net.consensys.linea.zktracer.types.EWord;
@@ -213,7 +212,7 @@ public final class StackFragment implements TraceFragment {
       heightTracers.get(i).apply(Bytes.ofUnsignedShort(op.height()));
       valLoTracers.get(i).apply(eValue.lo());
       valHiTracers.get(i).apply(eValue.hi());
-      popTracers.get(i).apply(op.action() == Action.POP);
+      popTracers.get(i).apply(op.action() == Stack.POP);
       stampTracers.get(i).apply(Bytes.ofUnsignedLong(op.stackStamp()));
     }
 
