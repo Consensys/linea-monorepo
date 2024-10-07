@@ -37,7 +37,7 @@ class LoggingHelperTest {
   }
 
   @Test
-  fun `insufficient max fee per gas isEthCall is true triggers rewrite error message`() {
+  fun `insufficient max fee per gas with isEthCall is true triggers rewrite error message`() {
     val error = Error(insufficientMaxFeePerGasErrMsg)
     logSubmissionError(
       log = logger,
@@ -125,7 +125,7 @@ class LoggingHelperTest {
   }
 
   @Test
-  fun `Other error with isEthCall do not trigger rewrite error message`() {
+  fun `Other error with isEthCall is true do not trigger rewrite error message`() {
     val error = Error(unknownErrMsg)
     logSubmissionError(
       log = logger,
