@@ -254,6 +254,9 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	// also checks the booleanity of the column IsDeleteRow1
 	am.checkDelete()
 
+	// Checks that the HKey remains the same for an update operation
+	am.checkUpdate()
+
 	// Checks the root equality for the ReadZero operation, also checks the
 	// booleanity of the IsReadZeroRow1 column
 	am.checkReadZero()
@@ -371,6 +374,17 @@ func (am *Module) checkDelete() {
 		symbolic.Mul(symbolic.Square(cols.IsDelete), cols.IsActiveAccumulator),
 		cols.IsDelete)
 	am.comp.InsertGlobal(am.Round, am.qname("IS_DELETE_BOOLEAN"), expr3)
+}
+
+func (am *Module) checkUpdate() {
+	cols := am.Cols
+	// HKey remains the same for an update operation, i.e,
+	// IsActiveAccumulator[i] * IsUpdate[i] * IsFirst[i] * (HKey[i] - HKey[i+1])
+	expr := symbolic.Mul(cols.IsActiveAccumulator,
+		cols.IsUpdate,
+		cols.IsFirst,
+		symbolic.Sub(cols.HKey, ifaces.ColumnAsVariable(column.Shift(cols.HKey, 1))))
+	am.comp.InsertGlobal(am.Round, am.qname("HKEY_EQUAL_FOR_UPDATE"), expr)
 }
 
 func (am *Module) checkReadZero() {
