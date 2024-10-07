@@ -74,8 +74,8 @@ public final class StackLine {
   }
 
   /**
-   * Sets the value of a stack item in the line. Used to retroactively set the value of push {@link
-   * Action} during the unlatching process.
+   * Sets the value of a stack item in the line. Used to retroactively set the value of push during
+   * the unlatching process.
    *
    * @param i the 1-based stack item to alter
    * @param value the {@link Bytes} to use
@@ -93,7 +93,7 @@ public final class StackLine {
 
   /**
    * Sets the value of stack item <code>resultColumn</code>. Used to retroactively set the value of
-   * push {@link Action} during the unlatching process.
+   * push during the unlatching process.
    *
    * @param value the {@link Bytes} to use
    */

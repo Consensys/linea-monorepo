@@ -42,7 +42,7 @@ public final class StackOperation {
   @Getter @Setter private Bytes value;
 
   /** whether this action is a push or a pop. */
-  @Getter private final Action action;
+  @Getter private final byte action;
 
   /**
    * The stamp of this operation relative to the stack stamp before executing the linked EVM
@@ -53,11 +53,11 @@ public final class StackOperation {
   StackOperation() {
     this.height = 0;
     this.value = Bytes.EMPTY;
-    this.action = Action.NONE;
+    this.action = Stack.NONE;
     this.stackStamp = 0;
   }
 
-  StackOperation(int height, Bytes value, Action action, int stackStamp) {
+  StackOperation(int height, Bytes value, byte action, int stackStamp) {
     this.height = height;
     this.value = value;
     this.action = action;
@@ -65,15 +65,15 @@ public final class StackOperation {
   }
 
   public static StackOperation pop(int height, Bytes value, int stackStamp) {
-    return new StackOperation(height, value, Action.POP, stackStamp);
+    return new StackOperation(height, value, Stack.POP, stackStamp);
   }
 
   public static StackOperation push(int height, int stackStamp) {
     return new StackOperation(
-        height, MARKER /* marker value, erased on unlatching */, Action.PUSH, stackStamp);
+        height, MARKER /* marker value, erased on unlatching */, Stack.PUSH, stackStamp);
   }
 
   public static StackOperation pushImmediate(int height, Bytes val, int stackStamp) {
-    return new StackOperation(height, val.copy(), Action.PUSH, stackStamp);
+    return new StackOperation(height, val.copy(), Stack.PUSH, stackStamp);
   }
 }

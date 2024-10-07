@@ -26,7 +26,10 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class Stack {
-  public static final int MAX_STACK_SIZE = 1024;
+  public static final short MAX_STACK_SIZE = 1024;
+  public static final byte NONE = 0;
+  public static final byte PUSH = 1;
+  public static final byte POP = 2;
 
   @Getter int height;
   @Getter int heightNew;
