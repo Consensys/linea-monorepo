@@ -27,8 +27,8 @@
           <KnownError logLevel="INFO"  message="^.*?\bNonce too low\b.*?$" />
           <KnownError logLevel="DEBUG" message="^.*?\bConnection reset\b.*?$" stackTrace="true" />
           <KnownError logLevel="INFO"  message="^.*?\beth_call\b.*?\bContract Call has been reverted by the EVM with the reason\b.*?$"/>
-          <KnownError logLevel="INFO"  message="^.*?\beth_call for blob submission failed\b.*?$"/>
           <KnownError logLevel="INFO"  message="^.*?\brequest beyond head block\b.*?$"/>
+          <KnownError logLevel="INFO"  message="^.*?\beth_call for blob submission failed\b.*?\bmax fee per (blob )?gas less than block (blob gas|base) fee\b.*?$"/>
         </KnownErrors>
       </Log4jLineaRewriter>
     </Rewrite>
@@ -97,15 +97,15 @@
     <!--    <Logger name="net.consensys.zkevm.ethereum.coordination.blob" level="TRACE" additivity="false">-->
     <!--      <appender-ref ref="console"/>-->
     <!--    </Logger>-->
-    <Logger name="net.consensys.zkevm.ethereum.submission" level="INFO" additivity="false">
+    <Logger name="net.consensys.zkevm.ethereum.submission" level="DEBUG" additivity="false">
       <DebouncingFilter/>
       <appender-ref ref="rewrite"/>
     </Logger>
-    <Logger name="net.consensys.zkevm.ethereum.finalization" level="INFO" additivity="false">
+    <Logger name="net.consensys.zkevm.ethereum.finalization" level="DEBUG" additivity="false">
       <DebouncingFilter/>
       <appender-ref ref="rewrite"/>
     </Logger>
-    <Logger name="net.consensys.linea.ethereum.gaspricing.dynamiccap" level="INFO" additivity="false">
+    <Logger name="net.consensys.linea.ethereum.gaspricing.dynamiccap" level="DEBUG" additivity="false">
       <DebouncingFilter/>
       <appender-ref ref="rewrite"/>
     </Logger>
