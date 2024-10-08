@@ -16,11 +16,11 @@ package net.consensys.linea.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import java.net.MalformedURLException;
 import java.net.URI;
 
-import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.services.PicoCLIOptionsImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,18 +40,18 @@ class LineaRejectedTxReportingCliOptionsTest {
   }
 
   private MockLineaBesuCommand command;
-  private LineaRejectedTxReportingCliOptions lineaRejectedTxReportingCliOptions;
   private CommandLine commandLine;
-  private PicoCLIOptions picoCliService;
+  private LineaRejectedTxReportingCliOptions txReportingCliOptions;
 
   @BeforeEach
   public void setup() {
     command = new MockLineaBesuCommand();
     commandLine = new CommandLine(command);
-    picoCliService = new PicoCLIOptionsImpl(commandLine);
 
-    lineaRejectedTxReportingCliOptions = LineaRejectedTxReportingCliOptions.create();
-    picoCliService.addPicoCLIOptions("linea", lineaRejectedTxReportingCliOptions);
+    // add mixin option before parseArgs is called
+    final PicoCLIOptionsImpl picoCliService = new PicoCLIOptionsImpl(commandLine);
+    txReportingCliOptions = LineaRejectedTxReportingCliOptions.create();
+    picoCliService.addPicoCLIOptions("linea", txReportingCliOptions);
   }
 
   @Test
@@ -59,7 +59,8 @@ class LineaRejectedTxReportingCliOptionsTest {
     commandLine.parseArgs("--mock-option", "mockValue");
 
     assertThat(command.mockOption).isEqualTo("mockValue");
-    assertThat(lineaRejectedTxReportingCliOptions.dependentOptions).isNull();
+    assertThat(txReportingCliOptions.rejectedTxEndpoint).isNull();
+    assertThat(txReportingCliOptions.lineaNodeType).isNull();
   }
 
   @ParameterizedTest
@@ -72,30 +73,27 @@ class LineaRejectedTxReportingCliOptionsTest {
         "--plugin-linea-node-type",
         lineaNodeType.name());
 
-    assertThat(lineaRejectedTxReportingCliOptions.dependentOptions.rejectedTxEndpoint)
+    // parse args would not throw an exception, toDomainObject will perform the validation
+    assertThat(txReportingCliOptions.rejectedTxEndpoint)
         .isEqualTo(URI.create("http://localhost:8080").toURL());
-    assertThat(lineaRejectedTxReportingCliOptions.dependentOptions.lineaNodeType)
-        .isEqualTo(lineaNodeType);
+    assertThat(txReportingCliOptions.lineaNodeType).isEqualTo(lineaNodeType);
+    assertThatNoException().isThrownBy(() -> txReportingCliOptions.toDomainObject());
   }
 
   @Test
   void lineaRejectedTxReportingCliOptionsOnlyEndpointCauseException() {
-    assertThatExceptionOfType(CommandLine.ParameterException.class)
-        .isThrownBy(
-            () ->
-                commandLine.parseArgs(
-                    "--plugin-linea-rejected-tx-endpoint", "http://localhost:8080"))
+    commandLine.parseArgs("--plugin-linea-rejected-tx-endpoint", "http://localhost:8080");
+
+    assertThatExceptionOfType(IllegalArgumentException.class)
+        .isThrownBy(() -> txReportingCliOptions.toDomainObject())
         .withMessageContaining(
             "Error: Missing required argument(s): --plugin-linea-node-type=<NODE_TYPE>");
   }
 
   @Test
-  void lineaRejectedTxReportingCliOptionsOnlyNodeTypeCauseException() {
-    assertThatExceptionOfType(CommandLine.ParameterException.class)
-        .isThrownBy(
-            () -> commandLine.parseArgs("--plugin-linea-node-type", LineaNodeType.SEQUENCER.name()))
-        .withMessageContaining(
-            "Error: Missing required argument(s): --plugin-linea-rejected-tx-endpoint=<URL>");
+  void lineaRejectedTxReportingCliOptionsOnlyNodeTypeParsesWithoutProblem() {
+    commandLine.parseArgs("--plugin-linea-node-type", LineaNodeType.SEQUENCER.name());
+    assertThatNoException().isThrownBy(() -> txReportingCliOptions.toDomainObject());
   }
 
   @Test

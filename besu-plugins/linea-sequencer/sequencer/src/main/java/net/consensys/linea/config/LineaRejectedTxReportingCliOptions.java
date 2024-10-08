@@ -15,11 +15,9 @@
 package net.consensys.linea.config;
 
 import java.net.URL;
-import java.util.Optional;
 
 import com.google.common.base.MoreObjects;
 import net.consensys.linea.plugins.LineaCliOptions;
-import picocli.CommandLine.ArgGroup;
 import picocli.CommandLine.Option;
 
 /** The Linea Rejected Transaction Reporting CLI options. */
@@ -35,28 +33,21 @@ public class LineaRejectedTxReportingCliOptions implements LineaCliOptions {
   /** The Linea node type. */
   public static final String LINEA_NODE_TYPE = "--plugin-linea-node-type";
 
-  @ArgGroup(exclusive = false)
-  DependentOptions dependentOptions; // will be null if no options from this group are specified
+  @Option(
+      names = {REJECTED_TX_ENDPOINT},
+      hidden = true,
+      paramLabel = "<URL>",
+      description =
+          "Endpoint URI for reporting rejected transactions. Specify a valid URI to enable reporting.")
+  URL rejectedTxEndpoint = null;
 
-  static class DependentOptions {
-    @Option(
-        names = {REJECTED_TX_ENDPOINT},
-        hidden = true,
-        required = true, // required within the group
-        paramLabel = "<URL>",
-        description =
-            "Endpoint URI for reporting rejected transactions. Specify a valid URI to enable reporting.")
-    URL rejectedTxEndpoint = null;
-
-    @Option(
-        names = {LINEA_NODE_TYPE},
-        hidden = true,
-        required = true, // required within the group
-        paramLabel = "<NODE_TYPE>",
-        description =
-            "Linea Node type to use when reporting rejected transactions. (default: ${DEFAULT-VALUE}. Valid values: ${COMPLETION-CANDIDATES})")
-    LineaNodeType lineaNodeType = null;
-  }
+  @Option(
+      names = {LINEA_NODE_TYPE},
+      hidden = true,
+      paramLabel = "<NODE_TYPE>",
+      description =
+          "Linea Node type to use when reporting rejected transactions. (Valid values: ${COMPLETION-CANDIDATES})")
+  LineaNodeType lineaNodeType = null;
 
   /** Default constructor. */
   private LineaRejectedTxReportingCliOptions() {}
@@ -78,23 +69,19 @@ public class LineaRejectedTxReportingCliOptions implements LineaCliOptions {
   public static LineaRejectedTxReportingCliOptions fromConfig(
       final LineaRejectedTxReportingConfiguration config) {
     final LineaRejectedTxReportingCliOptions options = create();
-    // both options are required.
-    if (config.rejectedTxEndpoint() != null && config.lineaNodeType() != null) {
-      final var depOpts = new DependentOptions();
-      depOpts.rejectedTxEndpoint = config.rejectedTxEndpoint();
-      depOpts.lineaNodeType = config.lineaNodeType();
-      options.dependentOptions = depOpts;
-    }
-
+    options.rejectedTxEndpoint = config.rejectedTxEndpoint();
+    options.lineaNodeType = config.lineaNodeType();
     return options;
   }
 
   @Override
   public LineaRejectedTxReportingConfiguration toDomainObject() {
-    final var rejectedTxEndpoint =
-        Optional.ofNullable(dependentOptions).map(o -> o.rejectedTxEndpoint).orElse(null);
-    final var lineaNodeType =
-        Optional.ofNullable(dependentOptions).map(o -> o.lineaNodeType).orElse(null);
+    // perform validation here, if endpoint is specified then node type is required.
+    // We can ignore node type if endpoint is not specified.
+    if (rejectedTxEndpoint != null && lineaNodeType == null) {
+      throw new IllegalArgumentException(
+          "Error: Missing required argument(s): " + LINEA_NODE_TYPE + "=<NODE_TYPE>");
+    }
 
     return LineaRejectedTxReportingConfiguration.builder()
         .rejectedTxEndpoint(rejectedTxEndpoint)
@@ -104,10 +91,6 @@ public class LineaRejectedTxReportingCliOptions implements LineaCliOptions {
 
   @Override
   public String toString() {
-    final var rejectedTxEndpoint =
-        Optional.ofNullable(dependentOptions).map(o -> o.rejectedTxEndpoint).orElse(null);
-    final var lineaNodeType =
-        Optional.ofNullable(dependentOptions).map(o -> o.lineaNodeType).orElse(null);
 
     return MoreObjects.toStringHelper(this)
         .add(REJECTED_TX_ENDPOINT, rejectedTxEndpoint)
