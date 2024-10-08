@@ -73,11 +73,11 @@ var testCasesGBMMultiProvider = []makeTestCaseGBM{
 	{
 		Name:     "GenDataModule1",
 		SizeData: 8,
-		HashNum:  []int{1, 1, 1, 1, 2},
-		ToHash:   []int{1, 0, 1, 0, 1},
+		HashNum:  []int{1, 1, 1, 1},
+		ToHash:   []int{1, 0, 1, 0},
 		SizeInfo: 4,
-		IsHashHi: []int{0, 1, 0, 1}, // # ones = number of hash from above
-		IsHashLo: []int{1, 0, 0, 1},
+		IsHashHi: []int{0, 1, 0, 0}, // # ones = number of hash from above
+		IsHashLo: []int{1, 0, 0, 0},
 	},
 	{
 		Name:     "GenDataModule2",
