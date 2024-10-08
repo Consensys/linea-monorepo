@@ -5,9 +5,9 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IXPProvider } from "./interfaces/IXPProvider.sol";
 
 contract XPToken is Ownable {
-    string public name = "XP Token";
-    string public symbol = "XP";
-    uint8 public decimals = 18;
+    string public constant name = "XP Token";
+    string public constant symbol = "XP";
+    uint256 public constant decimals = 18;
 
     uint256 public totalSupply;
 
@@ -37,21 +37,25 @@ contract XPToken is Ownable {
         xpProviders.pop();
     }
 
+    function getXPProviders() external view returns (IXPProvider[] memory) {
+        return xpProviders;
+    }
+
     function balanceOf(address account) public view returns (uint256) {
-        uint256 userTotalXP = 0;
-        uint256 systemTotalXP = 0;
+        uint256 userTotalXPContribution = 0;
+        uint256 totalXPContribution = 0;
 
         for (uint256 i = 0; i < xpProviders.length; i++) {
             IXPProvider provider = xpProviders[i];
-            userTotalXP += provider.getUserXP(account);
-            systemTotalXP += provider.getTotalXP();
+            userTotalXPContribution += provider.getUserXPContribution(account);
+            totalXPContribution += provider.getTotalXPContribution();
         }
 
-        if (systemTotalXP == 0) {
+        if (totalXPContribution == 0) {
             return 0;
         }
 
-        return (totalSupply * userTotalXP) / systemTotalXP;
+        return (totalSupply * userTotalXPContribution) / totalXPContribution;
     }
 
     function transfer(address, uint256) external pure returns (bool) {
