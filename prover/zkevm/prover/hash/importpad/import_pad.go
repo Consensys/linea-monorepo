@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	cs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
@@ -253,6 +254,10 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 
 		if i > 0 && currHashNum != hashNum[i] && !currHashNum.IsZero() {
 			imp.padder.pushPaddingRows(currByteSize, &iab)
+		}
+
+		if currHashNum == hashNum[i] && index[i].IsZero() {
+			utils.Panic("ctx=%v broken assumption: the hashnum is constant but the index increased", imp.Inputs.Name)
 		}
 
 		if currHashNum != hashNum[i] {
