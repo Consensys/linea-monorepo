@@ -24,7 +24,6 @@ import net.consensys.linea.rpc.methods.LineaEstimateGas;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 
@@ -35,7 +34,6 @@ public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin 
   private BesuConfiguration besuConfiguration;
   private RpcEndpointService rpcEndpointService;
   private TransactionSimulationService transactionSimulationService;
-  private BlockchainService blockchainService;
   private LineaEstimateGas lineaEstimateGasMethod;
 
   /**
@@ -68,14 +66,6 @@ public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin 
                 () ->
                     new RuntimeException(
                         "Failed to obtain TransactionSimulatorService from the BesuContext."));
-
-    blockchainService =
-        context
-            .getService(BlockchainService.class)
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Failed to obtain BlockchainService from the BesuContext."));
 
     lineaEstimateGasMethod =
         new LineaEstimateGas(

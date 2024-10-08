@@ -131,6 +131,7 @@ public class SimulationValidatorTest {
     final var blockHeader = mock(BlockHeader.class);
     when(blockHeader.getBaseFee()).thenReturn(Optional.of(BASE_FEE));
     when(blockchainService.getChainHeadHeader()).thenReturn(blockHeader);
+    when(blockchainService.getChainId()).thenReturn(Optional.of(BigInteger.ONE));
 
     final var rejectedTxReportingConf =
         LineaRejectedTxReportingConfiguration.builder()

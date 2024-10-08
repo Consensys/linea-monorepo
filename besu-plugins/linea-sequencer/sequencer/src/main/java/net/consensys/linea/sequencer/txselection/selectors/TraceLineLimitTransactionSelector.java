@@ -19,6 +19,7 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
+import java.math.BigInteger;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +57,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   private static final Marker BLOCK_LINE_COUNT_MARKER = MarkerFactory.getMarker("BLOCK_LINE_COUNT");
   @VisibleForTesting protected static Set<Hash> overLineCountLimitCache = new LinkedHashSet<>();
   private final ZkTracer zkTracer;
+  private final BigInteger chainId;
   private final String limitFilePath;
   private final Map<String, Integer> moduleLimits;
   private final int overLimitCacheSize;
@@ -63,6 +65,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   private Map<String, Integer> currCumulatedLineCount;
 
   public TraceLineLimitTransactionSelector(
+      final BigInteger chainId,
       final Map<String, Integer> moduleLimits,
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
@@ -72,6 +75,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
       System.exit(1);
     }
 
+    this.chainId = chainId;
     this.moduleLimits = moduleLimits;
     this.limitFilePath = tracerConfiguration.moduleLimitsFilePath();
     this.overLimitCacheSize = txSelectorConfiguration.overLinesLimitCacheSize();
@@ -217,7 +221,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
 
   private class ZkTracerWithLog extends ZkTracer {
     public ZkTracerWithLog(final LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
-      super(bridgeConfiguration);
+      super(bridgeConfiguration, chainId);
     }
 
     @Override

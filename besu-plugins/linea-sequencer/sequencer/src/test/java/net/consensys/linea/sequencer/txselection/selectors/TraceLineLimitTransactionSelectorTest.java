@@ -22,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -250,6 +251,7 @@ public class TraceLineLimitTransactionSelectorTest {
         final Map<String, Integer> moduleLimits,
         final int overLimitCacheSize) {
       super(
+          BigInteger.ONE,
           moduleLimits,
           LineaTransactionSelectorConfiguration.builder()
               .overLinesLimitCacheSize(overLimitCacheSize)

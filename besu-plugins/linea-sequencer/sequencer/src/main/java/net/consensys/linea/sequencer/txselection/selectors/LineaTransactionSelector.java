@@ -80,7 +80,11 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
-            limitsMap, txSelectorConfiguration, l1L2BridgeConfiguration, tracerConfiguration);
+            blockchainService.getChainId().get(),
+            limitsMap,
+            txSelectorConfiguration,
+            l1L2BridgeConfiguration,
+            tracerConfiguration);
 
     return List.of(
         new MaxBlockCallDataTransactionSelector(txSelectorConfiguration.maxBlockCallDataSize()),

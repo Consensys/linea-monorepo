@@ -34,7 +34,6 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionPoolValidatorService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 
@@ -49,7 +48,6 @@ import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPlugin {
   public static final String NAME = "linea";
   private BesuConfiguration besuConfiguration;
-  private BlockchainService blockchainService;
   private TransactionPoolValidatorService transactionPoolValidatorService;
   private TransactionSimulationService transactionSimulationService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
@@ -68,14 +66,6 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
                 () ->
                     new RuntimeException(
                         "Failed to obtain BesuConfiguration from the BesuContext."));
-
-    blockchainService =
-        context
-            .getService(BlockchainService.class)
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Failed to obtain BlockchainService from the BesuContext."));
 
     transactionPoolValidatorService =
         context
@@ -97,6 +87,7 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
   @Override
   public void start() {
     super.start();
+
     try (Stream<String> lines =
         Files.lines(
             Path.of(new File(transactionPoolValidatorConfiguration().denyListPath()).toURI()))) {

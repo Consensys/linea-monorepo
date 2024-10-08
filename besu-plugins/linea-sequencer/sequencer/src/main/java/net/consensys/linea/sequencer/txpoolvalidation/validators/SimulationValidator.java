@@ -17,6 +17,7 @@ package net.consensys.linea.sequencer.txpoolvalidation.validators;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +87,7 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
           new ModuleLineCountValidator(moduleLineLimitsMap);
       final var chainHeadHeader = blockchainService.getChainHeadHeader();
 
-      final var zkTracer = createZkTracer(chainHeadHeader);
+      final var zkTracer = createZkTracer(chainHeadHeader, blockchainService.getChainId().get());
       final var maybeSimulationResults =
           transactionSimulationService.simulate(
               transaction, chainHeadHeader.getBlockHash(), zkTracer, true);
@@ -170,8 +171,8 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
         .log();
   }
 
-  private ZkTracer createZkTracer(final BlockHeader chainHeadHeader) {
-    var zkTracer = new ZkTracer(l1L2BridgeConfiguration);
+  private ZkTracer createZkTracer(final BlockHeader chainHeadHeader, BigInteger chainId) {
+    var zkTracer = new ZkTracer(l1L2BridgeConfiguration, chainId);
     zkTracer.traceStartConflation(1L);
     zkTracer.traceStartBlock(chainHeadHeader);
     return zkTracer;
