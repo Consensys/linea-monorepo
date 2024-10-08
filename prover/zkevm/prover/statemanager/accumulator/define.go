@@ -273,6 +273,10 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	// INSERT or a DELETE operation respectively.
 	am.checkEmptyLeaf()
 
+	// Check the consistency of the HKey, HKeyMinus, and HKeyPlus for INSERT and ReadZero operations.
+	// i.e., they are consistent with the corresponding leaf opening values
+	am.checkHKeyConsistency()
+
 	// Sandwitch check for INSERT and READ-ZERO operations
 	am.checkSandwitch()
 
@@ -456,6 +460,49 @@ func (am *Module) checkEmptyLeaf() {
 	expr2 := symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.Leaves, 3)), emptyLeaf)
 	expr2 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsDelete, expr2)
 	am.comp.InsertGlobal(am.Round, am.qname("EMPTY_LEAVES_FOR_DELETE"), expr2)
+}
+
+func (am *Module) checkHKeyConsistency() {
+	cols := am.Cols
+	// INSERT: The HKeyMinus in the leaf minus openings is the same as HKeyMinus column i.e.,
+	// IsActiveAccumulator[i] * IsInsert[i] * IsFirst[i] * (HKeyMinus[i] - LeafOpenings.Hkey[i])
+	expr1 := symbolic.Mul(cols.IsActiveAccumulator,
+		cols.IsInsert,
+		cols.IsFirst,
+		symbolic.Sub(cols.HKeyMinus, cols.LeafOpenings.HKey))
+	am.comp.InsertGlobal(am.Round, am.qname("HKEY_MINUS_CONSISTENCY_INSERT"), expr1)
+
+	// INSERT: The HKey in the inserted leaf openings (in the fourth row) is the same as HKey column i.e.,
+	// IsActiveAccumulator[i] * IsInsert[i] * IsFirst[i] * (HKey[i] - LeafOpenings.Hkey[i+3])
+	expr2 := symbolic.Mul(cols.IsActiveAccumulator,
+		cols.IsInsert,
+		cols.IsFirst,
+		symbolic.Sub(cols.HKey, ifaces.ColumnAsVariable(column.Shift(cols.LeafOpenings.HKey, 3))))
+	am.comp.InsertGlobal(am.Round, am.qname("HKEY_CONSISTENCY_INSERT"), expr2)
+
+	// INSERT: The HKeyPlus in the plus leaf openings is the same as HKeyPlus column i.e.,
+	// IsActiveAccumulator[i] * IsInsert[i] * IsFirst[i] * (HKeyPlus[i] - LeafOpenings.Hkey[i+4])
+	expr3 := symbolic.Mul(cols.IsActiveAccumulator,
+		cols.IsInsert,
+		cols.IsFirst,
+		symbolic.Sub(cols.HKeyPlus, ifaces.ColumnAsVariable(column.Shift(cols.LeafOpenings.HKey, 4))))
+	am.comp.InsertGlobal(am.Round, am.qname("HKEY_PLUS_CONSISTENCY_INSERT"), expr3)
+
+	// READ-ZERO: The HKeyMinus in the minus leaf openings is the same as HKeyMinus column i.e.,
+	// IsActiveAccumulator[i] * IsReadZero[i] * IsFirst[i] * (HKeyMinus[i] - LeafOpenings.Hkey[i])
+	expr4 := symbolic.Mul(cols.IsActiveAccumulator,
+		cols.IsReadZero,
+		cols.IsFirst,
+		symbolic.Sub(cols.HKeyMinus, cols.LeafOpenings.HKey))
+	am.comp.InsertGlobal(am.Round, am.qname("HKEY_MINUS_CONSISTENCY_READ_ZERO"), expr4)
+
+	// READ-ZERO: The HKeyPlus in the plus leaf openings is the same as HKeyPlus column i.e.,
+	// IsActiveAccumulator[i] * IsReadZero[i] * IsFirst[i] * (HKeyPlus[i] - LeafOpenings.Hkey[i+1])
+	expr5 := symbolic.Mul(cols.IsActiveAccumulator,
+		cols.IsReadZero,
+		cols.IsFirst,
+		symbolic.Sub(cols.HKeyPlus, ifaces.ColumnAsVariable(column.Shift(cols.LeafOpenings.HKey, 1))))
+	am.comp.InsertGlobal(am.Round, am.qname("HKEY_PLUS_CONSISTENCY_READ_ZERO"), expr5)
 }
 
 func (am *Module) checkSandwitch() {
