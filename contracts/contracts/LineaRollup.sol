@@ -127,9 +127,9 @@ contract LineaRollup is
   /**
    * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings and fallback operator.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _roleAddresses The list of addresses and their roles.
-   * @param _pauseTypeRoles The list of pause type roles.
-   * @param _unpauseTypeRoles The list of unpause type roles.
+   * @param _roleAddresses The list of addresses and roles to assign permissions to.
+   * @param _pauseTypeRoles The list of pause types to associate with roles.
+   * @param _unpauseTypeRoles The list of unpause types to associate with roles.
    * @param _fallbackOperator The address of the fallback operator.
    */
   function reinitializeLineaRollupV6(
