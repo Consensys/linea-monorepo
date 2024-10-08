@@ -28,10 +28,12 @@ flags:
   hardhat:
     paths:
       - contracts/
+    carryforward: true
   kotlin:
     paths:
       - coordinator/
       - jvm-libs/
+    carryforward: true
 
 github_checks:
   annotations: false

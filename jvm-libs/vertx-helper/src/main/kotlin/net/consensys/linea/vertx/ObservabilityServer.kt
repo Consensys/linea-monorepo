@@ -19,7 +19,7 @@ class ObservabilityServer(private val config: Config) : AbstractVerticle() {
 
   data class Config(
     val applicationName: String,
-    val port: Int,
+    val port: Int = 0, // 0 means random port will be assigned by the underlying OS
     val livenessPath: String = "/live",
     val readinessPath: String = "/ready",
     val metricsPath: String = "/metrics",
@@ -29,6 +29,9 @@ class ObservabilityServer(private val config: Config) : AbstractVerticle() {
     val healthCheckHandler: HealthCheckHandler? = null
   )
 
+  private var actualPort: Int? = null
+  val port: Int
+    get() = actualPort ?: throw IllegalStateException("Server not started")
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val okReply = JsonObject().put("status", "OK").encode()
   private var started = false
@@ -51,7 +54,8 @@ class ObservabilityServer(private val config: Config) : AbstractVerticle() {
         res: AsyncResult<HttpServer> ->
       started = res.succeeded()
       if (started) {
-        log.info("Monitoring Server started and listening on port {}", res.result().actualPort())
+        actualPort = res.result().actualPort()
+        log.info("Monitoring Server started and listening on port {}", actualPort)
         startPromise.complete()
       } else {
         startPromise.fail(res.cause())
