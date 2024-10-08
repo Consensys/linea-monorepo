@@ -64,8 +64,8 @@ public abstract class AbstractLineaRequiredPlugin extends AbstractLineaPrivateOp
   public abstract void doRegister(final BesuContext context);
 
   @Override
-  public void beforeExternalServices() {
-    super.beforeExternalServices();
+  public void start() {
+    super.start();
 
     blockchainService
         .getChainId()
