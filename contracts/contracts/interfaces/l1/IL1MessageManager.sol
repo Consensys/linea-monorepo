@@ -16,7 +16,7 @@ interface IL1MessageManager {
   event RollingHashUpdated(uint256 indexed messageNumber, bytes32 indexed rollingHash, bytes32 indexed messageHash);
 
   /**
-   * @notice Emitted when the L2 merkle root has been anchored on L1.
+   * @notice Emitted when the L2 Merkle root has been anchored on L1.
    * @param l2MerkleRoot The indexed L2 Merkle root that has been anchored on L1 Ethereum.
    * @param treeDepth The indexed tree depth of the Merkle root.
    * @dev There may be more than one of these in a finalization depending on the amount of L2->L1 messages in the finalization.
@@ -24,7 +24,7 @@ interface IL1MessageManager {
   event L2MerkleRootAdded(bytes32 indexed l2MerkleRoot, uint256 indexed treeDepth);
 
   /**
-   * @notice Emitted when the l2 block contains L2 messages during finalization.
+   * @notice Emitted when the L2 block contains L2 messages during finalization.
    * @param l2Block The indexed L2 block containing L2 to L1 messages.
    * @dev This is used externally in the logic for determining which messages belong to which Merkle root when claiming.
    */
@@ -36,7 +36,7 @@ interface IL1MessageManager {
   error MessageAlreadyClaimed(uint256 messageIndex);
 
   /**
-   * @dev Thrown when the L2 merkle root has already been anchored on L1.
+   * @dev Thrown when the L2 Merkle root has already been anchored on L1.
    */
   error L2MerkleRootAlreadyAnchored(bytes32 merkleRoot);
 
@@ -46,7 +46,7 @@ interface IL1MessageManager {
   error BytesLengthNotMultipleOfTwo(uint256 bytesLength);
 
   /**
-   * @notice Check if the L2->L1 message is claimed or not.
+   * @notice Checks if the L2->L1 message is claimed or not.
    * @param _messageNumber The message number on L2.
    */
   function isMessageClaimed(uint256 _messageNumber) external view returns (bool);
