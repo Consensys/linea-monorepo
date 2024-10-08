@@ -75,7 +75,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
-    runs-on: [self-hosted, ubuntu-22.04, X64, large]
+    runs-on: [self-hosted, Linux, X64, large]
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     steps:
       - name: Setup upterm session
