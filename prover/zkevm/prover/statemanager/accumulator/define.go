@@ -517,18 +517,18 @@ func (am *Module) checkLeafHashes() {
 	expr4 = symbolic.Mul(expr4, cols.IsActiveAccumulator)
 	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_BOOLEANITY"), expr4)
 	// IsEmptyLeaf is set to true only for the third row for INSERT
-	// i.e. IsActiveAccumulator[i] * IsInsert[i] * IsEmptyLeaf[i+2] * (1 - IsFirst[i])
+	// i.e. IsActiveAccumulator[i] * IsFirst[i] * IsEmptyLeaf[i+2] * (1 - IsInsert[i])
 	expr5 := symbolic.Mul(cols.IsActiveAccumulator,
-		cols.IsInsert,
+		cols.IsFirst,
 		ifaces.ColumnAsVariable(column.Shift(cols.IsEmptyLeaf, 2)),
-		symbolic.Sub(1, cols.IsFirst))
+		symbolic.Sub(1, cols.IsInsert))
 	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_ONE_FOR_INSERT_THIRD_ROW"), expr5)
 	// IsEmptyLeaf is set to true only for the fourth row for DELETE
-	// i.e. IsActiveAccumulator[i] * IsDelete[i] * IsEmptyLeaf[i+3] * (1 - IsFirst[i])
+	// i.e. IsActiveAccumulator[i] * IsFirst[i] * IsEmptyLeaf[i+3] * (1 - IsDelete[i])
 	expr6 := symbolic.Mul(cols.IsActiveAccumulator,
-		cols.IsDelete,
+		cols.IsFirst,
 		ifaces.ColumnAsVariable(column.Shift(cols.IsEmptyLeaf, 3)),
-		symbolic.Sub(1, cols.IsFirst))
+		symbolic.Sub(1, cols.IsDelete))
 	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_ONE_FOR_DELETE_FOURTH_ROW"), expr6)
 	// IsEmptyLeaf is set to false for every other operations
 	// i.e. IsActiveAccumulator[i] * (1 - IsInsert[i] - IsDelete[i]) * IsEmptyLeaf[i]
