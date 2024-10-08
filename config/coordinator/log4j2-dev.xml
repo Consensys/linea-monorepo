@@ -97,15 +97,15 @@
     <!--    <Logger name="net.consensys.zkevm.ethereum.coordination.blob" level="TRACE" additivity="false">-->
     <!--      <appender-ref ref="console"/>-->
     <!--    </Logger>-->
-    <Logger name="net.consensys.zkevm.ethereum.submission" level="DEBUG" additivity="false">
+    <Logger name="net.consensys.zkevm.ethereum.submission" level="INFO" additivity="false">
       <DebouncingFilter/>
       <appender-ref ref="rewrite"/>
     </Logger>
-    <Logger name="net.consensys.zkevm.ethereum.finalization" level="DEBUG" additivity="false">
+    <Logger name="net.consensys.zkevm.ethereum.finalization" level="INFO" additivity="false">
       <DebouncingFilter/>
       <appender-ref ref="rewrite"/>
     </Logger>
-    <Logger name="net.consensys.linea.ethereum.gaspricing.dynamiccap" level="DEBUG" additivity="false">
+    <Logger name="net.consensys.linea.ethereum.gaspricing.dynamiccap" level="INFO" additivity="false">
       <DebouncingFilter/>
       <appender-ref ref="rewrite"/>
     </Logger>
