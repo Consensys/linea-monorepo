@@ -19,10 +19,12 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, large]
     steps:
       - name: Install Go
         uses: actions/setup-go@v4
+        with:
+          go-version: 1.23.1
 
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
@@ -52,7 +54,7 @@ jobs:
 
   tests:
     needs: [ build ]
-    runs-on: ubuntu-latest-32
+    runs-on: [self-hosted, Linux, X64, large]
     steps:
       - name: Setup upterm session
         if: ${{ inputs.tests-with-ssh }}
@@ -105,7 +107,7 @@ jobs:
 
   go-corset-tests:
     needs: [ build ]
-    runs-on: ubuntu-latest-32
+    runs-on: [self-hosted, Linux, X64, large]
     continue-on-error: true
     steps:
       - name: Setup upterm session
@@ -138,6 +140,8 @@ jobs:
 
       - name: Install Go
         uses: actions/setup-go@v4
+        with:
+          go-version: 1.23.1
 
       - name: Install Go Corset
         run:
