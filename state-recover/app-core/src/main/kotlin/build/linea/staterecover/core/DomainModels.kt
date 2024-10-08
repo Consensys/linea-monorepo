@@ -44,8 +44,8 @@ data class BlockL1RecoveredData(
 data class TransactionL1RecoveredData(
   val type: UByte,
   val nonce: ULong,
-  val maxPriorityFeePerGas: ULong,
-  val maxFeePerGas: ULong,
+  val maxPriorityFeePerGas: BigInteger,
+  val maxFeePerGas: BigInteger,
   val gasLimit: ULong,
   val from: ByteArray,
   val to: ByteArray,
