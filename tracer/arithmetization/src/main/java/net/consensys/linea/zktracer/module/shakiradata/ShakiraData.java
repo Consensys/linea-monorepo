@@ -90,4 +90,22 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
       operation.trace(trace, ++stamp);
     }
   }
+
+  @Override
+  public String toString() {
+    return "ShakiraData{"
+        + "operations="
+        + operations.operationsInTransaction()
+        + ", wcp="
+        + wcp
+        + ", sha256Blocks="
+        + sha256Blocks
+        + ", keccak="
+        + keccak
+        + ", ripemdBlocks="
+        + ripemdBlocks
+        + ", previousID="
+        + previousID
+        + '}';
+  }
 }
