@@ -102,11 +102,11 @@ public final class StpOperation extends ModuleOperation {
           // .exists(false) // redundant
           // .warm(false)   // redundant
           .outOfGasException(stpCall.outOfGasException())
-          .gasActual(stpCall.gasActual())
-          .gasMxp(stpCall.memoryExpansionGas())
-          .gasUpfront(stpCall.upfrontGasCost())
-          .gasOutOfPocket(gasOopkt)
-          .gasStipend(stpCall.stipend())
+          .gasActual(Bytes.ofUnsignedLong(stpCall.gasActual()))
+          .gasMxp(Bytes.ofUnsignedLong(stpCall.memoryExpansionGas()))
+          .gasUpfront(Bytes.ofUnsignedLong(stpCall.upfrontGasCost()))
+          .gasOutOfPocket(Bytes.ofUnsignedLong(gasOopkt))
+          .gasStipend(Bytes.ofUnsignedLong(stpCall.stipend()))
           .arg1Hi(Bytes.EMPTY);
 
       switch (ct) {
@@ -158,11 +158,11 @@ public final class StpOperation extends ModuleOperation {
           .exists(stpCall.exists())
           .warm(stpCall.warm())
           .outOfGasException(stpCall.outOfGasException())
-          .gasActual(stpCall.gasActual())
-          .gasMxp(stpCall.memoryExpansionGas())
-          .gasUpfront(stpCall.upfrontGasCost())
-          .gasOutOfPocket(stpCall.gasPaidOutOfPocket())
-          .gasStipend(stpCall.stipend());
+          .gasActual(Bytes.ofUnsignedLong(stpCall.gasActual()))
+          .gasMxp(Bytes.ofUnsignedLong(stpCall.memoryExpansionGas()))
+          .gasUpfront(Bytes.ofUnsignedLong(stpCall.upfrontGasCost()))
+          .gasOutOfPocket(Bytes.ofUnsignedLong(stpCall.gasPaidOutOfPocket()))
+          .gasStipend(Bytes.ofUnsignedLong(stpCall.stipend()));
 
       switch (ct) {
         case 0 -> trace

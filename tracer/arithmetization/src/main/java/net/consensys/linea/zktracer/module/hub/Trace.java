@@ -339,11 +339,11 @@ public class Trace {
             "hub.EXISTS_xor_MMU_SUCCESS_BIT_xor_CALL_EOA_SUCCESS_CALLER_WONT_REVERT_xor_BTC_FLAG_xor_VALUE_CURR_IS_ORIG_xor_REQUIRES_EVM_EXECUTION",
             1,
             length),
-        new ColumnHeader("hub.GAS_ACTUAL", 4, length),
+        new ColumnHeader("hub.GAS_ACTUAL", 8, length),
         new ColumnHeader("hub.GAS_COST", 8, length),
-        new ColumnHeader("hub.GAS_EXPECTED", 4, length),
+        new ColumnHeader("hub.GAS_EXPECTED", 8, length),
         new ColumnHeader("hub.GAS_LIMIT", 8, length),
-        new ColumnHeader("hub.GAS_NEXT", 4, length),
+        new ColumnHeader("hub.GAS_NEXT", 8, length),
         new ColumnHeader("hub.GAS_PRICE", 8, length),
         new ColumnHeader(
             "hub.HAS_CODE_NEW_xor_MXP_MTNTOP_xor_CALL_PRC_SUCCESS_CALLER_WILL_REVERT_xor_COPY_FLAG_xor_VALUE_NEXT_IS_ORIG",
@@ -928,20 +928,28 @@ public class Trace {
     return this;
   }
 
-  public Trace gasActual(final long b) {
+  public Trace gasActual(final Bytes b) {
     if (filled.get(14)) {
       throw new IllegalStateException("hub.GAS_ACTUAL already set");
     } else {
       filled.set(14);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("gasActual has invalid value (" + b + ")");
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 64) {
+      throw new IllegalArgumentException(
+          "gasActual has invalid width (" + bs.bitLength() + "bits)");
     }
-    gasActual.put((byte) (b >> 24));
-    gasActual.put((byte) (b >> 16));
-    gasActual.put((byte) (b >> 8));
-    gasActual.put((byte) b);
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 8; i++) {
+      gasActual.put((byte) 0);
+    }
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      gasActual.put(bs.get(j));
+    }
 
     return this;
   }
@@ -971,38 +979,53 @@ public class Trace {
     return this;
   }
 
-  public Trace gasExpected(final long b) {
+  public Trace gasExpected(final Bytes b) {
     if (filled.get(16)) {
       throw new IllegalStateException("hub.GAS_EXPECTED already set");
     } else {
       filled.set(16);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("gasExpected has invalid value (" + b + ")");
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 64) {
+      throw new IllegalArgumentException(
+          "gasExpected has invalid width (" + bs.bitLength() + "bits)");
     }
-    gasExpected.put((byte) (b >> 24));
-    gasExpected.put((byte) (b >> 16));
-    gasExpected.put((byte) (b >> 8));
-    gasExpected.put((byte) b);
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 8; i++) {
+      gasExpected.put((byte) 0);
+    }
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      gasExpected.put(bs.get(j));
+    }
 
     return this;
   }
 
-  public Trace gasNext(final long b) {
+  public Trace gasNext(final Bytes b) {
     if (filled.get(17)) {
       throw new IllegalStateException("hub.GAS_NEXT already set");
     } else {
       filled.set(17);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("gasNext has invalid value (" + b + ")");
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 64) {
+      throw new IllegalArgumentException("gasNext has invalid width (" + bs.bitLength() + "bits)");
     }
-    gasNext.put((byte) (b >> 24));
-    gasNext.put((byte) (b >> 16));
-    gasNext.put((byte) (b >> 8));
-    gasNext.put((byte) b);
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 8; i++) {
+      gasNext.put((byte) 0);
+    }
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      gasNext.put(bs.get(j));
+    }
 
     return this;
   }
@@ -8191,7 +8214,7 @@ public class Trace {
     }
 
     if (!filled.get(14)) {
-      gasActual.position(gasActual.position() + 4);
+      gasActual.position(gasActual.position() + 8);
     }
 
     if (!filled.get(15)) {
@@ -8199,7 +8222,7 @@ public class Trace {
     }
 
     if (!filled.get(16)) {
-      gasExpected.position(gasExpected.position() + 4);
+      gasExpected.position(gasExpected.position() + 8);
     }
 
     if (!filled.get(120)) {
@@ -8207,7 +8230,7 @@ public class Trace {
     }
 
     if (!filled.get(17)) {
-      gasNext.position(gasNext.position() + 4);
+      gasNext.position(gasNext.position() + 8);
     }
 
     if (!filled.get(121)) {

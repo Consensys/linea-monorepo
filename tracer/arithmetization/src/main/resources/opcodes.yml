@@ -696,7 +696,6 @@ opcodes:
   - mnemonic: JUMPDEST
     value: 0x5b
     instructionFamily: MACHINE_STATE
-    jumpFlag: true
     stackSettings:
       pattern: ZERO_ZERO
       alpha: 0
@@ -708,7 +707,6 @@ opcodes:
   - mnemonic: PUSH1
     value: 0x60
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -720,7 +718,6 @@ opcodes:
   - mnemonic: PUSH2
     value: 0x61
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -732,7 +729,6 @@ opcodes:
   - mnemonic: PUSH3
     value: 0x62
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -744,7 +740,6 @@ opcodes:
   - mnemonic: PUSH4
     value: 0x63
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -756,7 +751,6 @@ opcodes:
   - mnemonic: PUSH5
     value: 0x64
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -768,7 +762,6 @@ opcodes:
   - mnemonic: PUSH6
     value: 0x65
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -780,7 +773,6 @@ opcodes:
   - mnemonic: PUSH7
     value: 0x66
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -792,7 +784,6 @@ opcodes:
   - mnemonic: PUSH8
     value: 0x67
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -804,7 +795,6 @@ opcodes:
   - mnemonic: PUSH9
     value: 0x68
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -816,7 +806,6 @@ opcodes:
   - mnemonic: PUSH10
     value: 0x69
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -828,7 +817,6 @@ opcodes:
   - mnemonic: PUSH11
     value: 0x6a
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -840,7 +828,6 @@ opcodes:
   - mnemonic: PUSH12
     value: 0x6b
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -852,7 +839,6 @@ opcodes:
   - mnemonic: PUSH13
     value: 0x6c
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -864,7 +850,6 @@ opcodes:
   - mnemonic: PUSH14
     value: 0x6d
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -876,7 +861,6 @@ opcodes:
   - mnemonic: PUSH15
     value: 0x6e
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -888,7 +872,6 @@ opcodes:
   - mnemonic: PUSH16
     value: 0x6f
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -900,7 +883,6 @@ opcodes:
   - mnemonic: PUSH17
     value: 0x70
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -912,7 +894,6 @@ opcodes:
   - mnemonic: PUSH18
     value: 0x71
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -924,7 +905,6 @@ opcodes:
   - mnemonic: PUSH19
     value: 0x72
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -936,7 +916,6 @@ opcodes:
   - mnemonic: PUSH20
     value: 0x73
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -948,7 +927,6 @@ opcodes:
   - mnemonic: PUSH21
     value: 0x74
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -960,7 +938,6 @@ opcodes:
   - mnemonic: PUSH22
     value: 0x75
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -972,7 +949,6 @@ opcodes:
   - mnemonic: PUSH23
     value: 0x76
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -984,7 +960,6 @@ opcodes:
   - mnemonic: PUSH24
     value: 0x77
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -996,7 +971,6 @@ opcodes:
   - mnemonic: PUSH25
     value: 0x78
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -1008,7 +982,6 @@ opcodes:
   - mnemonic: PUSH26
     value: 0x79
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -1020,7 +993,6 @@ opcodes:
   - mnemonic: PUSH27
     value: 0x7a
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -1032,7 +1004,6 @@ opcodes:
   - mnemonic: PUSH28
     value: 0x7b
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -1044,7 +1015,6 @@ opcodes:
   - mnemonic: PUSH29
     value: 0x7c
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -1056,7 +1026,6 @@ opcodes:
   - mnemonic: PUSH30
     value: 0x7d
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -1068,7 +1037,6 @@ opcodes:
   - mnemonic: PUSH31
     value: 0x7e
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1
@@ -1080,7 +1048,6 @@ opcodes:
   - mnemonic: PUSH32
     value: 0x7f
     instructionFamily: PUSH_POP
-    pushFlag: true
     stackSettings:
       pattern: ZERO_ONE
       alpha: 1

@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -105,6 +106,23 @@ public class CallFrame {
   @Getter @Setter private OpCode opCode = OpCode.STOP;
   @Getter @Setter private OpCodeData opCodeData = OpCodes.of(OpCode.STOP);
   @Getter private MessageFrame frame; // TODO: can we make this final ?
+
+  @Getter private boolean executionPaused = false;
+  @Getter private long lastValidGasNext = 0;
+
+  public void pauseCurrentFrame() {
+    Preconditions.checkState(!executionPaused);
+    executionPaused = true;
+  }
+
+  public void unpauseCurrentFrame() {
+    Preconditions.checkState(executionPaused);
+    executionPaused = false;
+  }
+
+  public void rememberGasNextBeforePausing() {
+    lastValidGasNext = frame.getRemainingGas();
+  }
 
   /** the ether amount given to this frame. */
   @Getter private Wei value = Wei.fromHexString("0xBadF00d"); // Marker for debugging

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.blockdata;
 
-import static net.consensys.linea.zktracer.module.blockdata.Trace.MAX_CT;
+import static net.consensys.linea.zktracer.module.blockdata.Trace.CT_MAX_FOR_BLOCKDATA;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_BASEFEE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_CHAINID;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_COINBASE;
@@ -51,12 +51,12 @@ public class BlockdataOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return MAX_CT + 1;
+    return CT_MAX_FOR_BLOCKDATA + 1;
   }
 
   public void trace(
       Trace trace, final int relBlock, final long firstBlockNumber, final BigInteger chainId) {
-    for (short ct = 0; ct <= MAX_CT; ct++) {
+    for (short ct = 0; ct <= CT_MAX_FOR_BLOCKDATA; ct++) {
       traceBlockConstant(trace, relBlock, firstBlockNumber);
       traceRowDependant(trace, ct, relBlock, chainId);
       trace.validateRow();
@@ -98,7 +98,7 @@ public class BlockdataOperation extends ModuleOperation {
         trace.inst(UnsignedByte.of(EVM_INST_BASEFEE)).wcpFlag(false);
       }
       default -> throw new IllegalArgumentException(
-          String.format("Blockdata max CT is %s, can't write %s", MAX_CT, ct));
+          String.format("Blockdata max CT is %s, can't write %s", CT_MAX_FOR_BLOCKDATA, ct));
     }
 
     trace

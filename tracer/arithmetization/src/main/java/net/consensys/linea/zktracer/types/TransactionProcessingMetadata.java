@@ -94,7 +94,7 @@ public class TransactionProcessingMetadata {
 
   @Setter int hubStampTransactionEnd;
 
-  @Setter int accumulatedGasUsedInBlock = -1;
+  @Setter long accumulatedGasUsedInBlock = -1;
 
   @Accessors(fluent = true)
   @Setter
@@ -161,7 +161,7 @@ public class TransactionProcessingMetadata {
       final long leftOverGas,
       final long refundCounterMax,
       final boolean coinbaseIsWarmAtFinalisation,
-      final int accumulatedGasUsedInBlockAtStartTx) {
+      final long accumulatedGasUsedInBlockAtStartTx) {
 
     isCoinbaseWarmAtTransactionEnd(coinbaseIsWarmAtFinalisation);
     this.refundCounterMax = refundCounterMax;
@@ -170,7 +170,7 @@ public class TransactionProcessingMetadata {
     refundEffective = computeRefundEffective();
     gasRefunded = computeRefunded();
     totalGasUsed = computeTotalGasUsed();
-    accumulatedGasUsedInBlock = (int) (accumulatedGasUsedInBlockAtStartTx + totalGasUsed);
+    accumulatedGasUsedInBlock = accumulatedGasUsedInBlockAtStartTx + totalGasUsed;
   }
 
   public void completeLineaTransaction(

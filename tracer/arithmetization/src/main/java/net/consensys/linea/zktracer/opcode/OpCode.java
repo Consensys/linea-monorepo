@@ -215,28 +215,21 @@ public enum OpCode {
 
   /** Returns true for JUMP-type instructions */
   public boolean isJump() {
-    return this == OpCode.JUMP || this == OpCode.JUMPI;
+    return getData().isJump();
   }
 
   public boolean isLog() {
-    return this == OpCode.LOG0
-        || this == OpCode.LOG1
-        || this == OpCode.LOG2
-        || this == OpCode.LOG3
-        || this == OpCode.LOG4;
+    return getData().isLog();
   }
 
   /** Returns whether the {@link OpCode} entails a contract creation. */
   public boolean isCreate() {
-    return this == OpCode.CREATE || this == OpCode.CREATE2;
+    return getData().isCreate();
   }
 
   /** Returns whether the {@link OpCode} is one of the CALL opcodes */
   public boolean isCall() {
-    return this == OpCode.CALL
-        || this == OpCode.CALLCODE
-        || this == OpCode.DELEGATECALL
-        || this == OpCode.STATICCALL;
+    return getData().isCall();
   }
 
   public boolean callMayNotTransferValue() {

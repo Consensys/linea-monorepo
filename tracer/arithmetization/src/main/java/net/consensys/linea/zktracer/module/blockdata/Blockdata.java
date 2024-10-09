@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.blockdata;
 
-import static net.consensys.linea.zktracer.module.blockdata.Trace.MAX_CT;
+import static net.consensys.linea.zktracer.module.blockdata.Trace.CT_MAX_FOR_BLOCKDATA;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
@@ -83,7 +83,7 @@ public class Blockdata implements Module {
   @Override
   public int lineCount() {
     final int numberOfBlock = conflationFinished ? operations.size() : operations.size() + 1;
-    return numberOfBlock * (MAX_CT + 1);
+    return numberOfBlock * (CT_MAX_FOR_BLOCKDATA + 1);
   }
 
   @Override

@@ -53,8 +53,8 @@ public class RamToExoWithPadding implements MmuInstruction {
   private long initialSourceLimbOffset;
   private short initialSourceByteOffset;
   private boolean hasRightPadding;
-  private int paddingSize;
-  private int extractionSize;
+  private long paddingSize;
+  private long extractionSize;
 
   public RamToExoWithPadding(Euc euc, Wcp wcp) {
     this.euc = euc;
@@ -128,7 +128,7 @@ public class RamToExoWithPadding implements MmuInstruction {
     paddingSize = hasRightPadding ? (int) (refSize - size) : 0;
     extractionSize = (int) (hasRightPadding ? size : refSize);
 
-    final Bytes dividend = Bytes.ofUnsignedShort(paddingSize);
+    final Bytes dividend = Bytes.ofUnsignedLong(paddingSize);
     final EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
 
     eucCallRecords.add(
@@ -144,7 +144,7 @@ public class RamToExoWithPadding implements MmuInstruction {
 
   private void row3(final MmuData mmuData) {
     // row n°3
-    final Bytes dividend = Bytes.ofUnsignedShort(extractionSize);
+    final Bytes dividend = Bytes.ofUnsignedLong(extractionSize);
     final EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
 
     Bytes quotient = eucOp.quotient();

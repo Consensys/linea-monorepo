@@ -96,10 +96,10 @@ public final class CommonFragment implements TraceFragment {
         .height(commonFragmentValues.height)
         .heightNew(commonFragmentValues.heightNew)
         // peeking flags are traced in the respective fragments
-        .gasExpected(commonFragmentValues.gasExpected)
-        .gasActual(commonFragmentValues.gasActual)
+        .gasExpected(Bytes.ofUnsignedLong(commonFragmentValues.gasExpected))
+        .gasActual(Bytes.ofUnsignedLong(commonFragmentValues.gasActual))
         .gasCost(Bytes.ofUnsignedLong(commonFragmentValues.gasCost))
-        .gasNext(commonFragmentValues.gasNext)
+        .gasNext(Bytes.ofUnsignedLong(commonFragmentValues.gasNext))
         .refundCounter(commonFragmentValues.gasRefund)
         .refundCounterNew(commonFragmentValues.gasRefundNew)
         .twoLineInstruction(commonFragmentValues.TLI)

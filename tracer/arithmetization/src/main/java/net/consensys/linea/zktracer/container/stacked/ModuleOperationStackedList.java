@@ -27,8 +27,9 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Implements a system of pseudo-stacked squashed List where {@link
- * operationsCommitedToTheConflation} represents the List of all operations since the beginning of
- * the conflation and {@link operationsInTransaction} represents the operations added by the last
+ * ModuleOperationStackedList#operationsCommitedToTheConflation} represents the List of all
+ * operations since the beginning of the conflation and {@link
+ * ModuleOperationStackedList#operationsInTransaction} represents the operations added by the last
  * transaction. We can pop only the operations added by last transaction. The line counting is done
  * by a separate {@link CountOnlyOperation}.
  *
