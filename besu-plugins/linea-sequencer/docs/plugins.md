@@ -70,7 +70,7 @@ The selectors are in the package `net.consensys.linea.sequencer.txselection.sele
 | `--plugin-linea-unprofitable-retry-limit`              | 10                   |
 
 
-### Transaction validation - LineaTransactionValidatorPlugin
+### Transaction validation - LineaTransactionPoolValidatorPlugin
 
 This plugin extends the default transaction validation rules for adding transactions to the
 transaction pool. It leverages the `PluginTransactionValidatorService` to manage and customize the
@@ -91,6 +91,14 @@ The validators are in the package `net.consensys.linea.sequencer.txpoolvalidatio
 | `--plugin-linea-tx-pool-profitability-check-api-enabled` | true              |
 | `--plugin-linea-tx-pool-profitability-check-p2p-enabled` | false             |
 
+### Reporting rejected transactions 
+The transaction selection and validation plugins can report rejected transactions as JSON-RPC calls to an external 
+service. This feature can be enabled by setting the following CLI options:
+
+| Command Line Argument                 | Default Value | Expected Values                                              |
+|---------------------------------------|---------------|--------------------------------------------------------------|
+| `--plugin-linea-rejected-tx-endpoint` | `null`        | A valid URL e.g. `http://localhost:9363` to enable reporting |
+| `--plugin-linea-node-type`            | `null`        | One of `SEQUENCER`, `RPC`, `P2P`                             |
 
 ## RPC methods
 
