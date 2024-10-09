@@ -8,6 +8,26 @@ COPY --from=zip ./coordinator.zip /src
 
 RUN unzip /src/coordinator.zip -d /libs
 
+RUN mkdir -p /libs/coordinator/lib/unpacked-blob-compressor /libs/coordinator/lib/unpacked-blob-shnarf-calculator && \
+  cd /libs/coordinator/lib/unpacked-blob-compressor/ && jar -xf ../blob-compressor-0.0.4.jar && \
+  cd /libs/coordinator/lib/unpacked-blob-shnarf-calculator/ && jar -xf /libs/coordinator/lib/blob-shnarf-calculator-0.0.4.jar
+
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
+        rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-aarch64/; \
+        rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
+        rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-aarch64/; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
+        rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-x86-64/; \
+        rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
+        rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-x86-64/; \
+    fi
+
+RUN jar -cf /libs/coordinator/lib/blob-compressor-0.0.4.jar -C /libs/coordinator/lib/unpacked-blob-compressor . && \
+    jar -cf /libs/coordinator/lib/blob-shnarf-calculator-0.0.4.jar -C /libs/coordinator/lib/unpacked-blob-shnarf-calculator . && \
+    rm -rf /libs/coordinator/lib/unpacked-blob-compressor && rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator
+
 FROM openjdk:21-jdk-slim
 
 WORKDIR /opt/consensys/linea/coordinator
