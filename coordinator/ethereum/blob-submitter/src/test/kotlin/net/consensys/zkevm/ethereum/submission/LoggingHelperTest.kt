@@ -37,7 +37,7 @@ class LoggingHelperTest {
   }
 
   @Test
-  fun `insufficient max fee per gas with isEthCall is true triggers rewrite error message`() {
+  fun `insufficient max fee per gas with isEthCall is true triggers rewrite info message`() {
     val error = Error(insufficientMaxFeePerGasErrMsg)
     logSubmissionError(
       log = logger,
@@ -47,21 +47,20 @@ class LoggingHelperTest {
       isEthCall = true
     )
     val expectedErrorMessage =
-      "max fee per gas less than block base fee:" +
+      "maxFeePerGas less than block base fee:" +
         " address 0x47C63d1E391FcB3dCdC40C4d7fA58ADb172f8c38, maxFeePerGas: 300000000000," +
         " baseFee: 302246075616 (supplied gas 1000000)"
 
-    verify(logger).error(
+    verify(logger).info(
       eq(blobSubmissionFailedLogMsg),
       eq("eth_call"),
       eq(blobSubmissionFailedIntervalStr),
-      eq(expectedErrorMessage),
-      eq(error)
+      eq(expectedErrorMessage)
     )
   }
 
   @Test
-  fun `insufficient max fee per blob gas with isEthCall is true triggers rewrite error message`() {
+  fun `insufficient max fee per blob gas with isEthCall is true triggers rewrite info message`() {
     val error = Error(insufficientMaxFeePerBlobGasErrMsg)
     logSubmissionError(
       log = logger,
@@ -71,16 +70,15 @@ class LoggingHelperTest {
       isEthCall = true
     )
     val expectedErrorMessage =
-      "max fee per blob gas less than block blob gas fee:" +
-        " address 0x47C63d1E391FcB3dCdC40C4d7fA58ADb172f8c38 blobGasFeeCap: 1875810596," +
+      "maxFeePerBlobGas less than block blob gas fee:" +
+        " address 0x47C63d1E391FcB3dCdC40C4d7fA58ADb172f8c38 maxFeePerBlobGas: 1875810596," +
         " blobBaseFee: 1962046498 (supplied gas 1000000)"
 
-    verify(logger).error(
+    verify(logger).info(
       eq(blobSubmissionFailedLogMsg),
       eq("eth_call"),
       eq(blobSubmissionFailedIntervalStr),
-      eq(expectedErrorMessage),
-      eq(error)
+      eq(expectedErrorMessage)
     )
   }
 

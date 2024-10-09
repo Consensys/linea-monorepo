@@ -2,10 +2,16 @@ package net.consensys.zkevm.ethereum.submission
 
 import org.apache.logging.log4j.Logger
 
-const val insufficientGasFeeRegexStr =
+private const val insufficientGasFeeRegexStr =
   "(max fee per (blob )?gas less than block (blob gas|base) fee:" +
     " address 0x[a-fA-F0-9]{40},? (blobGasFeeCap|maxFeePerGas): [0-9]+," +
     " (blobBaseFee|baseFee): [0-9]+ \\(supplied gas [0-9]+\\))"
+
+private fun rewriteInsufficientGasFeeErrorMessage(errorMessage: String): String? {
+  return Regex(insufficientGasFeeRegexStr).find(errorMessage)?.groupValues?.first()
+    ?.replace("max fee per gas", "maxFeePerGas")
+    ?.replace(Regex("max fee per blob gas|blobGasFeeCap"), "maxFeePerBlobGas")
+}
 
 fun logUnhandledError(
   log: Logger,
@@ -35,20 +41,32 @@ fun logSubmissionError(
   error: Throwable,
   isEthCall: Boolean = false
 ) {
+  var matchedInsufficientGasFeeRegex = false
   val ethMethod = if (isEthCall) "eth_call" else "eth_sendRawTransaction"
   val errorMessage = if (isEthCall) {
     error.message?.let {
-      Regex(insufficientGasFeeRegexStr).find(it)?.groupValues?.first()
+      rewriteInsufficientGasFeeErrorMessage(it)?.also {
+        matchedInsufficientGasFeeRegex = true
+      }
     } ?: error.message
   } else {
     error.message
   }
 
-  log.error(
-    logMessage,
-    ethMethod,
-    intervalString,
-    errorMessage,
-    error
-  )
+  if (matchedInsufficientGasFeeRegex) {
+    log.info(
+      logMessage,
+      ethMethod,
+      intervalString,
+      errorMessage
+    )
+  } else {
+    log.error(
+      logMessage,
+      ethMethod,
+      intervalString,
+      errorMessage,
+      error
+    )
+  }
 }

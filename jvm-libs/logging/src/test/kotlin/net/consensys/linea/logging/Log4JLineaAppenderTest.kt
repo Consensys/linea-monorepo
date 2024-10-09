@@ -110,31 +110,6 @@ class Log4JLineaAppenderTest {
   }
 
   @Test
-  fun `if error is eth_call with blob submission insufficient max fee per gas then log level is rewritten`() {
-    logger.error(
-      "eth_call for blob submission failed: blob=[4025752..4031499]5748 " +
-        "errorMessage=max fee per gas less than block base fee: address 0x47C63d1E391FcB3dCdC40C4d7fA58ADb172f8c38, " +
-        "maxFeePerGas: 300000000000, baseFee: 302246075616 (supplied gas 1000000)"
-    )
-    val logEvent = listAppender.events.last()
-
-    assertEquals(Level.INFO, logEvent.level)
-  }
-
-  @Test
-  fun `if error is eth_call with blob submission insufficient max fee per blob gas then log level is rewritten`() {
-    logger.error(
-      "eth_call for blob submission failed: blob=[4009632..4012276]2645 " +
-        "errorMessage=max fee per blob gas less than block blob gas fee: address " +
-        "0x47C63d1E391FcB3dCdC40C4d7fA58ADb172f8c38 blobGasFeeCap: 1875810596, " +
-        "blobBaseFee: 1962046498 (supplied gas 1000000)"
-    )
-    val logEvent = listAppender.events.last()
-
-    assertEquals(Level.INFO, logEvent.level)
-  }
-
-  @Test
   fun `if error is not an eth_call log level remains at ERROR level`() {
     logger.error(
       "aggregation finalization failed Contract Call has been reverted by the EVM with the reason"
