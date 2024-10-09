@@ -12,12 +12,13 @@ RUN mkdir -p /libs/coordinator/lib/unpacked-blob-compressor /libs/coordinator/li
   cd /libs/coordinator/lib/unpacked-blob-compressor/ && jar -xf ../blob-compressor-0.0.4.jar && \
   cd /libs/coordinator/lib/unpacked-blob-shnarf-calculator/ && jar -xf /libs/coordinator/lib/blob-shnarf-calculator-0.0.4.jar
 
-RUN if [ "$TARGETARCH" = "amd64" ]; then \
+RUN ARCH=`uname -m` && \
+    if [ "$ARCH" == "x86_64" ]; then \
         rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
         rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-aarch64/; \
         rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
         rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-aarch64/; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
+    elif [ "$ARCH" == "aarch64" ]; then \
         rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
         rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-x86-64/; \
         rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
