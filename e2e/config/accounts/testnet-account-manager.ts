@@ -32,7 +32,11 @@ class TestnetAccountManager implements AccountManager {
     this.txManagers = this.whaleAccounts.map((account) => getTransactionManager(this.provider, account.privateKey));
   }
 
-  selectWhaleAccount(): { account: Account; txManager: Wallet } {
+  selectWhaleAccount(accIndex?: number): { account: Account; txManager: Wallet } {
+    if (accIndex) {
+      return { account: this.whaleAccounts[accIndex], txManager: this.txManagers[accIndex] };
+    }
+
     const testWorkerId = process.pid;
     const accountIndex = testWorkerId % this.whaleAccounts.length;
     const whaleAccount = this.whaleAccounts[accountIndex];
@@ -41,8 +45,8 @@ class TestnetAccountManager implements AccountManager {
     return { account: whaleAccount, txManager: whaleTxManager };
   }
 
-  whaleAccount(): Account {
-    return this.selectWhaleAccount().account;
+  whaleAccount(accIndex?: number): Wallet {
+    return this.selectWhaleAccount(accIndex).txManager;
   }
 
   async generateAccount(initialBalanceWei = etherToWei(10)): Promise<Wallet> {

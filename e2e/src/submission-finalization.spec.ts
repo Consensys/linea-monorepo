@@ -6,10 +6,10 @@ import { MessageEvent } from "./common/types";
 import {
   getMessageSentEventFromLogs,
   sendMessage,
-  sendTransactionsWithInterval,
   waitForEvents,
   wait,
   getBlockByNumberOrBlockTag,
+  sendTransactionsToGenerateTrafficWithInterval,
 } from "./common/utils";
 import { config } from "../config";
 import { L2MessageService, LineaRollup } from "./typechain";
@@ -139,17 +139,7 @@ describe("Submission and finalization test suite", () => {
     const l2MessageSender = await config.getL2AccountManager().generateAccount();
 
     // Send transactions on L2 in the background to make the L2 chain moving forward
-    const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await l2Provider.getFeeData());
-    const sendTransactionsPromise = sendTransactionsWithInterval(
-      l2MessageSender,
-      {
-        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-        value: ethers.parseEther("0.0001"),
-        maxPriorityFeePerGas,
-        maxFeePerGas,
-      },
-      5_000,
-    );
+    const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender, 5_000);
 
     const [currentL2BlockNumber, startingRootHash] = await Promise.all([
       lineaRollup.currentL2BlockNumber(),
@@ -179,7 +169,7 @@ describe("Submission and finalization test suite", () => {
 
     console.log("Finalization with proof done.");
 
-    clearInterval(sendTransactionsPromise as NodeJS.Timeout);
+    stopPolling();
   }, 300_000);
 
   it("Check L2 safe/finalized tag update on sequencer", async () => {
@@ -218,17 +208,7 @@ describe("Submission and finalization test suite", () => {
     const l2MessageSender = await config.getL2AccountManager().generateAccount();
 
     // Send transactions on L2 in the background to make the L2 chain moving forward
-    const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await l2Provider.getFeeData());
-    const sendTransactionsPromise = sendTransactionsWithInterval(
-      l2MessageSender,
-      {
-        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-        value: ethers.parseEther("0.0001"),
-        maxPriorityFeePerGas,
-        maxFeePerGas,
-      },
-      1_000,
-    );
+    const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender, 2_000);
 
     const { messageHash, messageNumber, blockNumber } = l2Messages[0];
 
@@ -243,6 +223,6 @@ describe("Submission and finalization test suite", () => {
 
     console.log("L1 claiming done.");
 
-    clearInterval(sendTransactionsPromise as NodeJS.Timeout);
+    stopPolling();
   }, 400_000);
 });

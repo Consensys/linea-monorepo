@@ -146,17 +146,6 @@ export async function waitForFile(
   throw new Error("File check timed out");
 }
 
-export function sendTransactionsWithInterval(
-  signer: Wallet,
-  transactionRequest: ethers.TransactionRequest,
-  pollingInterval: number,
-) {
-  return setInterval(async function () {
-    const tx = await signer.sendTransaction(transactionRequest);
-    await tx.wait();
-  }, pollingInterval);
-}
-
 export async function sendXTransactions(
   signer: Wallet,
   transactionRequest: ethers.TransactionRequest,
@@ -177,10 +166,39 @@ export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wall
     maxFeePerGas: maxFeePerGas,
   };
 
-  return setInterval(async function () {
-    const tx = await signer.sendTransaction(transactionRequest);
-    await tx.wait();
-  }, pollingInterval);
+  let timeoutId: NodeJS.Timeout | null = null;
+  let isRunning = true;
+
+  const sendTransaction = async () => {
+    if (!isRunning) return;
+
+    try {
+      const tx = await signer.sendTransaction(transactionRequest);
+      await tx.wait();
+
+      if (isRunning) {
+        timeoutId = setTimeout(sendTransaction, pollingInterval);
+      }
+    } catch (error) {
+      console.error("Error sending transaction:", error);
+      if (isRunning) {
+        timeoutId = setTimeout(sendTransaction, pollingInterval);
+      }
+    }
+  };
+
+  const stop = () => {
+    isRunning = false;
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    console.log("Transaction loop stopped.");
+  };
+
+  sendTransaction();
+
+  return stop;
 }
 
 export function getMessageSentEventFromLogs<T extends BaseContract>(

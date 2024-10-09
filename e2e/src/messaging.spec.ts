@@ -52,7 +52,7 @@ describe("Messaging test suite", () => {
         }
 
         console.log("Moving the L2 chain forward to trigger anchoring...");
-        const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2Account);
+        const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2Account);
 
         const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
         const messageHash = messageSentEvent.topics[3];
@@ -64,7 +64,7 @@ describe("Messaging test suite", () => {
           l2MessageService,
           l2MessageService.filters.MessageClaimed(messageHash),
         );
-        clearInterval(intervalId as NodeJS.Timeout);
+        stopPolling();
         console.log(`Message claimed on L2: ${JSON.stringify(messageClaimedEvent)}`);
         expect(messageClaimedEvent).toBeDefined();
       },
@@ -123,11 +123,11 @@ describe("Messaging test suite", () => {
         console.log(`L2 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
         console.log("Moving the L2 chain forward to trigger conflation...");
-        const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness);
+        const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness);
 
         console.log("Waiting for MessageClaimed event on L1.");
         const [messageClaimedEvent] = await waitForEvents(lineaRollup, lineaRollup.filters.MessageClaimed(messageHash));
-        clearInterval(intervalId as NodeJS.Timeout);
+        stopPolling();
 
         console.log(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);
         expect(messageClaimedEvent).toBeDefined();

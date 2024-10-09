@@ -4,7 +4,7 @@ export type BaseConfig = {
   rpcUrl: URL;
   chainId: number;
   accountManager: AccountManager;
-  dummyContractAddress?: string;
+  dummyContractAddress: string;
 };
 
 export type L1Config = BaseConfig & {

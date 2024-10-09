@@ -67,7 +67,10 @@ class LocalAccountManager implements AccountManager {
     this.whaleAccountsInUse = new Set();
   }
 
-  selectWhaleAccount(): { account: Account; txManager: Wallet } {
+  selectWhaleAccount(accIndex?: number): { account: Account; txManager: Wallet } {
+    if (accIndex) {
+      return { account: this.whaleAccounts[accIndex], txManager: this.txManagers[accIndex] };
+    }
     const workerIdEnv = process.env.JEST_WORKER_ID || "1";
     const workerId = parseInt(workerIdEnv, 10) - 1;
 
@@ -91,8 +94,8 @@ class LocalAccountManager implements AccountManager {
     return { account: whaleAccount, txManager: whaleTxManager };
   }
 
-  whaleAccount(): Account {
-    return this.selectWhaleAccount().account;
+  whaleAccount(accIndex?: number): Wallet {
+    return this.selectWhaleAccount(accIndex).txManager;
   }
 
   async generateAccount(initialBalanceWei = etherToWei(10)): Promise<Wallet> {

@@ -16,7 +16,7 @@ describe("Coordinator restart test suite", () => {
     const l2AccountForLiveness = await config.getL2AccountManager().generateAccount();
 
     console.log("Moving the L2 chain forward to trigger conflation...");
-    const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness);
+    const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness);
     const lineaRollup = config.getLineaRollupContract();
     const l1Provider = config.getL1Provider();
     // await for a finalization to happen on L1
@@ -66,7 +66,7 @@ describe("Coordinator restart test suite", () => {
       },
     );
     console.log(`New DataFinalized event found: event=${JSON.stringify(dataFinalizedEventAfterRestart)}`);
-    clearInterval(intervalId as NodeJS.Timeout);
+    stopPolling();
 
     expect(dataFinalizedEventAfterRestart.args.lastBlockFinalized).toBeGreaterThan(
       lastDataFinalizedEventsBeforeRestart.args.lastBlockFinalized,
@@ -161,7 +161,7 @@ describe("Coordinator restart test suite", () => {
 
     console.log("Moving the L2 chain forward to trigger anchoring...");
     // Using 5 messages to give the coordinator time to restart
-    const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness);
+    const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness);
 
     // Wait for messages to be anchored on L2
     const lastNewL1MessageNumberAfterRestart = l1MessagesAfterRestart.slice(-1)[0].messageNumber;
@@ -185,7 +185,7 @@ describe("Coordinator restart test suite", () => {
       l2MessageService.lastAnchoredL1MessageNumber(),
     ]);
 
-    clearInterval(intervalId as NodeJS.Timeout);
+    stopPolling();
 
     expect(lastNewMessageRollingHashAfterRestart).toEqual(rollingHashUpdatedEventAfterRestart.args.rollingHash);
     expect(lastAnchoredL1MessageNumberAfterRestart).toEqual(rollingHashUpdatedEventAfterRestart.args.messageNumber);

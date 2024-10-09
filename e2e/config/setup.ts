@@ -8,7 +8,6 @@ import {
   LineaRollup,
   LineaRollup__factory,
 } from "../src/typechain";
-import { deployContract } from "../src/common/deployments";
 import { AccountManager } from "./accounts/account-manager";
 
 export default class TestSetup {
@@ -69,38 +68,22 @@ export default class TestSetup {
   }
 
   public async getL1DummyContract(signer?: Wallet): Promise<DummyContract> {
-    const l1DummyContractAddress = this.config.L1.dummyContractAddress;
-    if (l1DummyContractAddress) {
-      if (signer) {
-        return DummyContract__factory.connect(l1DummyContractAddress, signer);
-      }
-      return DummyContract__factory.connect(l1DummyContractAddress, this.getL1Provider());
+    const dummyContract = DummyContract__factory.connect(this.config.L1.dummyContractAddress, this.getL1Provider());
+
+    if (signer) {
+      return dummyContract.connect(signer);
     }
 
-    if (!signer) {
-      throw new Error("signer is required to deploy a contract");
-    }
-
-    const dummyContract = (await deployContract(new DummyContract__factory(), signer)) as unknown as DummyContract;
-    this.config.L1.dummyContractAddress = await dummyContract.getAddress();
     return dummyContract;
   }
 
   public async getL2DummyContract(signer?: Wallet): Promise<DummyContract> {
-    const l2DummyContractAddress = this.config.L2.dummyContractAddress;
-    if (l2DummyContractAddress) {
-      if (signer) {
-        return DummyContract__factory.connect(l2DummyContractAddress, signer);
-      }
-      return DummyContract__factory.connect(l2DummyContractAddress, this.getL2Provider());
+    const dummyContract = DummyContract__factory.connect(this.config.L2.dummyContractAddress, this.getL2Provider());
+
+    if (signer) {
+      return dummyContract.connect(signer);
     }
 
-    if (!signer) {
-      throw new Error("signer is required to deploy a contract");
-    }
-
-    const dummyContract = (await deployContract(new DummyContract__factory(), signer)) as unknown as DummyContract;
-    this.config.L2.dummyContractAddress = await dummyContract.getAddress();
     return dummyContract;
   }
 
