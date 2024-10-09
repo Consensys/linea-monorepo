@@ -25,7 +25,6 @@
     "@wagmi/connectors": "5.1.15",
     "@wagmi/core": "2.13.8",
     "@web3modal/wagmi": "5.1.11",
-    "axios": "1.7.7",
     "clsx": "^2.1.1",
     "compare-versions": "6.1.1",
     "date-fns": "4.1.0",
