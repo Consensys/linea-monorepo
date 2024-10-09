@@ -7,23 +7,23 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { BaseNFTMetadataGenerator } from "./BaseNFTMetadataGenerator.sol";
 
 contract NFTMetadataGeneratorSVG is BaseNFTMetadataGenerator {
-    string private _imagePrefix = "";
-    string private _imageSuffix = "";
+    string public imagePrefix = "";
+    string public imageSuffix = "";
 
-    constructor(address nft, string memory imagePrefix, string memory imageSuffix) BaseNFTMetadataGenerator(nft) {
-        _imagePrefix = imagePrefix;
-        _imageSuffix = imageSuffix;
+    constructor(address nft, string memory _imagePrefix, string memory _imageSuffix) BaseNFTMetadataGenerator(nft) {
+        imagePrefix = _imagePrefix;
+        imageSuffix = _imageSuffix;
     }
 
-    function setImageStrings(string memory imagePrefix, string memory imageSuffix) external onlyOwner {
-        _imagePrefix = imagePrefix;
-        _imageSuffix = imageSuffix;
+    function setImageStrings(string memory _imagePrefix, string memory _imageSuffix) external onlyOwner {
+        imagePrefix = _imagePrefix;
+        imageSuffix = _imageSuffix;
     }
 
     function generateImageURI(address, uint256 balance) internal view override returns (string memory) {
-        string memory text = Strings.toString(balance / 10e18);
-        bytes memory svg = abi.encodePacked(_imagePrefix, text, _imageSuffix);
+        string memory text = Strings.toString(balance / 1e18);
+        bytes memory svg = abi.encodePacked(imagePrefix, text, imageSuffix);
 
-        return Base64.encode(svg);
+        return string(abi.encodePacked("data:image/svg+xml;base64,", Base64.encode(svg)));
     }
 }
