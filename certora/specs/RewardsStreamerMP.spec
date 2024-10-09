@@ -38,3 +38,6 @@ invariant sumOfBalancesIsTotalStaked()
 invariant accountMPLessEqualAccountMaxMP(address account)
   to_mathint(getAccountMP(account)) <= to_mathint(getAccountMaxMP(account));
 
+invariant accountMPGreaterEqualAccountStakedBalance(address account)
+  to_mathint(getAccountMP(account)) >= to_mathint(getAccountStakedBalance(account));
+
