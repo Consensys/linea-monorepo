@@ -776,6 +776,98 @@ class CoordinatorConfigTest {
   }
 
   @Test
+  fun parsesValidTracesV2ConfigOverride() {
+    val smartContractErrorCodes: SmartContractErrors =
+      CoordinatorAppCli.loadConfigsOrError<SmartContractErrorCodesConfig>(
+        listOf(File("../../config/common/smart-contract-errors.toml"))
+      ).get()!!.smartContractErrors
+    val timeOfDayMultipliers =
+      CoordinatorAppCli.loadConfigsOrError<GasPriceCapTimeOfDayMultipliersConfig>(
+        listOf(File("../../config/common/gas-price-cap-time-of-day-multipliers.toml"))
+      )
+    val tracesLimitsConfigs =
+      CoordinatorAppCli.loadConfigsOrError<TracesLimitsV1ConfigFile>(
+        listOf(File("../../config/common/traces-limits-v1.toml"))
+      )
+    val tracesLimitsV2Configs =
+      CoordinatorAppCli.loadConfigsOrError<TracesLimitsV2ConfigFile>(
+        listOf(File("../../config/common/traces-limits-v2.toml"))
+      )
+
+    CoordinatorAppCli.loadConfigsOrError<CoordinatorConfigTomlDto>(
+      listOf(
+        File("../../config/coordinator/coordinator-docker.config.toml"),
+        File("../../config/coordinator/coordinator-docker-traces-v2-override.config.toml")
+      )
+    )
+      .onFailure { error: String -> fail(error) }
+      .onSuccess {
+        val configs = it.copy(
+          conflation = it.conflation.copy(
+            _tracesLimitsV1 = tracesLimitsConfigs.get()?.tracesLimits?.let { TracesCountersV1(it) },
+            _tracesLimitsV2 = tracesLimitsV2Configs.get()?.tracesLimits?.let { TracesCountersV2(it) },
+            _smartContractErrors = smartContractErrorCodes,
+          ),
+          l1DynamicGasPriceCapService = it.l1DynamicGasPriceCapService.copy(
+            gasPriceCapCalculation = it.l1DynamicGasPriceCapService.gasPriceCapCalculation.copy(
+              timeOfDayMultipliers = timeOfDayMultipliers.get()?.gasPriceCapTimeOfDayMultipliers
+            )
+          )
+        )
+
+        val expectedConfig =
+          coordinatorConfig.copy(
+            zkTraces = zkTracesConfig.copy(ethApi = URI("http://traces-node-v2:8545").toURL()),
+            l2NetworkGasPricingService = l2NetworkGasPricingServiceConfig.copy(
+              legacy =
+              l2NetworkGasPricingServiceConfig.legacy.copy(
+                transactionCostCalculatorConfig =
+                l2NetworkGasPricingServiceConfig.legacy.transactionCostCalculatorConfig?.copy(
+                  compressedTxSize = 350,
+                  expectedGas = 29400
+                )
+              )
+            ),
+            traces = tracesConfig.copy(
+              switchToLineaBesu = true,
+              expectedTracesApiVersionV2 = "v0.8.0-rc1",
+              conflationV2 = tracesConfig.conflation.copy(
+                endpoints = listOf(URI("http://traces-node-v2:8545/").toURL())
+              ),
+              countersV2 = TracesConfig.FunctionalityEndpoint(
+                listOf(
+                  URI("http://traces-node-v2:8545/").toURL()
+                ),
+                requestLimitPerEndpoint = 20U,
+                requestRetry = RequestRetryConfigTomlFriendly(
+                  backoffDelay = Duration.parse("PT1S"),
+                  failuresWarningThreshold = 2
+                )
+              )
+            ),
+            proversConfig = proversConfig.copy(
+              proverA = proversConfig.proverA.copy(
+                execution = proversConfig.proverA.execution.copy(
+                  requestsDirectory = Path.of("/data/prover/v3/execution/requests"),
+                  responsesDirectory = Path.of("/data/prover/v3/execution/responses"),
+                ),
+                blobCompression = proversConfig.proverA.blobCompression.copy(
+                  requestsDirectory = Path.of("/data/prover/v3/compression/requests"),
+                  responsesDirectory = Path.of("/data/prover/v3/compression/responses"),
+                ),
+                proofAggregation = proversConfig.proverA.proofAggregation.copy(
+                  requestsDirectory = Path.of("/data/prover/v3/aggregation/requests"),
+                  responsesDirectory = Path.of("/data/prover/v3/aggregation/responses"),
+                )
+              )
+            )
+          )
+
+        assertEquals(expectedConfig, configs.reified())
+      }
+  }
+
+  @Test
   fun invalidConfigReturnsErrorResult() {
     val configs =
       CoordinatorAppCli.loadConfigsOrError<TestConfig>(
@@ -832,8 +924,7 @@ class CoordinatorConfigTest {
   }
 
   @Test
-  fun testValidAggregationAndConflationByTargetBlockNumberWhenL2InclusiveBlockNumberToStopAndFlushAggregationSpecified
-  () {
+  fun testValidAggregationAndConflationByTargetBlockNumberWhenL2InclusiveBlockNumberToStopAndFlushAggregationSpecified() {
     val aggregationConfigWithoutSwithBlockNumber = aggregationConfig.copy(
       _targetEndBlocks = listOf(10L, 100L)
     )
