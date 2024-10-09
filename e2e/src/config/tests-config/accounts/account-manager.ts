@@ -1,40 +1,12 @@
 import { ethers, Provider, Wallet } from "ethers";
-import * as fs from "fs";
 import Account from "./account";
-import { AccountManager } from "./account-manager";
+import { etherToWei } from "../../../common/utils";
 
-// Helper function to parse Ether amounts
-function etherToWei(amount: number): bigint {
-  return ethers.parseEther(amount.toString());
-}
-
-function readJsonFile(filePath: string): unknown {
-  const data = fs.readFileSync(filePath, "utf8");
-  return JSON.parse(data);
-}
-
-interface GenesisJson {
-  config: {
-    chainId: number;
-  };
-  alloc: {
-    [address: string]: {
-      privateKey?: string;
-    };
-  };
-}
-
-function readGenesisFileAccounts(genesisJson: GenesisJson): Account[] {
-  const alloc = genesisJson.alloc;
-  const accounts: Account[] = [];
-  for (const address in alloc) {
-    const accountData = alloc[address];
-    if (accountData.privateKey) {
-      const addr = ethers.getAddress(address);
-      accounts.push(new Account(accountData.privateKey, addr));
-    }
-  }
-  return accounts;
+interface IAccountManager {
+  whaleAccount(accIndex?: number): Wallet;
+  generateAccount(initialBalanceWei?: bigint): Promise<Wallet>;
+  generateAccounts(numberOfAccounts: number, initialBalanceWei?: bigint): Promise<Wallet[]>;
+  getTransactionManager(account: Account): Wallet;
 }
 
 function getTransactionManager(provider: Provider, privateKey: string): Wallet {
@@ -50,19 +22,17 @@ function getTransactionManager(provider: Provider, privateKey: string): Wallet {
   return new Wallet(`0x${keyWithoutPrefix}`, provider);
 }
 
-class LocalAccountManager implements AccountManager {
-  private readonly chainId: number;
-  private readonly whaleAccounts: Account[];
+abstract class AccountManager implements IAccountManager {
+  protected readonly chainId: number;
+  protected readonly whaleAccounts: Account[];
+  protected provider: Provider;
+  protected txManagers: Wallet[];
   private whaleAccountsInUse: Set<string>;
-  private provider: Provider;
-  private txManagers: Wallet[];
 
-  constructor(provider: Provider, genesisFilePath: string) {
+  constructor(provider: Provider, whaleAccounts: Account[], chainId: number) {
     this.provider = provider;
-    const genesisJson = readJsonFile(genesisFilePath);
-    const genesis = genesisJson as GenesisJson;
-    this.chainId = genesis.config.chainId;
-    this.whaleAccounts = readGenesisFileAccounts(genesis);
+    this.whaleAccounts = whaleAccounts;
+    this.chainId = chainId;
     this.txManagers = this.whaleAccounts.map((account) => getTransactionManager(this.provider, account.privateKey));
     this.whaleAccountsInUse = new Set();
   }
@@ -98,12 +68,12 @@ class LocalAccountManager implements AccountManager {
     return this.selectWhaleAccount(accIndex).txManager;
   }
 
-  async generateAccount(initialBalanceWei = etherToWei(10)): Promise<Wallet> {
+  async generateAccount(initialBalanceWei = etherToWei("10")): Promise<Wallet> {
     const accounts = await this.generateAccounts(1, initialBalanceWei);
     return this.getTransactionManager(accounts[0]);
   }
 
-  async generateAccounts(numberOfAccounts: number, initialBalanceWei = etherToWei(10)): Promise<Wallet[]> {
+  async generateAccounts(numberOfAccounts: number, initialBalanceWei = etherToWei("10")): Promise<Wallet[]> {
     const { account: whaleAccount, txManager: whaleTxManager } = this.selectWhaleAccount();
 
     console.log(
@@ -164,4 +134,4 @@ class LocalAccountManager implements AccountManager {
   }
 }
 
-export { LocalAccountManager };
+export { AccountManager };

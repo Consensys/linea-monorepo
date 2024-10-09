@@ -1,7 +1,12 @@
 import { ethers } from "ethers";
 import { describe, expect, it } from "@jest/globals";
-import { config } from "../config";
-import { encodeFunctionCall, sendTransactionsToGenerateTrafficWithInterval, waitForEvents } from "./common/utils";
+import { config } from "./config/tests-config";
+import {
+  encodeFunctionCall,
+  etherToWei,
+  sendTransactionsToGenerateTrafficWithInterval,
+  waitForEvents,
+} from "./common/utils";
 import { getAndIncreaseFeeData } from "./common/helpers";
 import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
 
@@ -27,7 +32,7 @@ describe("Messaging test suite", () => {
         const dummyContract = config.getL2DummyContract(l2Account);
         const lineaRollup = config.getLineaRollupContract(l1Account);
 
-        const valueAndFee = ethers.parseEther("1.1");
+        const valueAndFee = etherToWei("1.1");
         const calldata = withCalldata
           ? encodeFunctionCall(dummyContract.interface, "setPayload", [ethers.randomBytes(100)])
           : "0x";
@@ -96,7 +101,7 @@ describe("Messaging test suite", () => {
         const l2MessageService = config.getL2MessageServiceContract(l2Account);
         const lineaRollup = config.getLineaRollupContract();
 
-        const valueAndFee = ethers.parseEther("0.001");
+        const valueAndFee = etherToWei("0.001");
         const calldata = withCalldata
           ? encodeFunctionCall(dummyContract.interface, "setPayload", [ethers.randomBytes(100)])
           : "0x";

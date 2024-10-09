@@ -1,5 +1,5 @@
 import { JsonRpcProvider, Wallet } from "ethers";
-import { Config } from "./type";
+import { Config } from "./types";
 import {
   DummyContract,
   DummyContract__factory,
@@ -7,7 +7,7 @@ import {
   L2MessageService__factory,
   LineaRollup,
   LineaRollup__factory,
-} from "../src/typechain";
+} from "../../typechain";
 import { AccountManager } from "./accounts/account-manager";
 
 export default class TestSetup {

@@ -3,7 +3,7 @@ import localConfig from "./environments/local";
 import devConfig from "./environments/dev";
 import sepoliaConfig from "./environments/sepolia";
 
-import { Config } from "./type";
+import { Config } from "./types";
 
 const testEnv = process.env.TEST_ENV || "local"; // Default to local environment
 

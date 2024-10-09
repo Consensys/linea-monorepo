@@ -8,6 +8,15 @@ import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEv
 import { MessageEvent, SendMessageArgs } from "./types";
 import { getAndIncreaseFeeData } from "./helpers";
 
+export function etherToWei(amount: string): bigint {
+  return ethers.parseEther(amount.toString());
+}
+
+export function readJsonFile(filePath: string): unknown {
+  const data = fs.readFileSync(filePath, "utf8");
+  return JSON.parse(data);
+}
+
 export const wait = (timeout: number) => new Promise((resolve) => setTimeout(resolve, timeout));
 
 export function increaseDate(currentDate: Date, seconds: number): Date {
@@ -166,7 +175,7 @@ export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wall
   const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await signer.provider!.getFeeData());
   const transactionRequest = {
     to: signer.address,
-    value: ethers.parseEther("0.000001"),
+    value: etherToWei("0.000001"),
     maxPriorityFeePerGas: maxPriorityFeePerGas,
     maxFeePerGas: maxFeePerGas,
   };

@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import path from "path";
 import { LocalAccountManager } from "../accounts/local-account-manager";
-import { Config } from "../type";
+import { Config } from "../types";
 
 const L1_RPC_URL = new URL("http://localhost:8445");
 const L2_RPC_URL = new URL("http://localhost:8845");
@@ -18,7 +18,8 @@ const config: Config = {
     accountManager: new LocalAccountManager(
       new ethers.JsonRpcProvider(L1_RPC_URL.toString()),
       path.resolve(
-        process.env.LOCAL_L1_GENESIS || path.resolve(__dirname, "../../..", "docker/config/l1-node/el", "genesis.json"),
+        process.env.LOCAL_L1_GENESIS ||
+          path.resolve(__dirname, "../../../..", "docker/config/l1-node/el", "genesis.json"),
       ),
     ),
   },
@@ -31,7 +32,7 @@ const config: Config = {
       new ethers.JsonRpcProvider(L2_RPC_URL.toString()),
       path.resolve(
         process.env.LOCAL_L2_GENESIS ||
-          path.resolve(__dirname, "../../..", "docker/config", "linea-local-dev-genesis.json"),
+          path.resolve(__dirname, "../../../..", "docker/config", "linea-local-dev-genesis.json"),
       ),
     ),
     shomeiEndpoint: SHOMEI_ENDPOINT,

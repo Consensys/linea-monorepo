@@ -1,8 +1,8 @@
-import { ethers } from "ethers";
-import { getAndIncreaseFeeData } from "../src/common/helpers";
-import { config } from ".";
-import { deployContract } from "../src/common/deployments";
-import { DummyContract__factory } from "../src/typechain";
+import { getAndIncreaseFeeData } from "../../common/helpers";
+import { config } from "../tests-config";
+import { deployContract } from "../../common/deployments";
+import { DummyContract__factory } from "../../typechain";
+import { etherToWei } from "../../common/utils";
 
 export default async (): Promise<void> => {
   const account = config.getL1AccountManager().whaleAccount(0);
@@ -20,8 +20,8 @@ export default async (): Promise<void> => {
   const lineaRollup = config.getLineaRollupContract(account);
   const l1JsonRpcProvider = config.getL1Provider();
 
-  const value = ethers.parseEther("500");
-  const fee = ethers.parseEther("3");
+  const value = etherToWei("500");
+  const fee = etherToWei("3");
   const to = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
   const calldata = "0x";
   const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await l1JsonRpcProvider.getFeeData());

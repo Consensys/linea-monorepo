@@ -1,9 +1,10 @@
 import { JsonRpcProvider, TransactionRequest, ethers } from "ethers";
 import { beforeAll, describe, expect, it } from "@jest/globals";
-import { config } from "../config";
+import { config } from "./config/tests-config";
 import { getAndIncreaseFeeData } from "./common/helpers";
 import {
   RollupGetZkEVMBlockNumberClient,
+  etherToWei,
   getEvents,
   sendTransactionsToGenerateTrafficWithInterval,
   wait,
@@ -69,7 +70,7 @@ describe("Layer 2 test suite", () => {
           to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
           maxPriorityFeePerGas,
           maxFeePerGas,
-          value: ethers.parseEther("0.01"),
+          value: etherToWei("0.01"),
           gasLimit: "21000",
           chainId: config.getL2ChainId(),
         };
@@ -196,7 +197,7 @@ describe("Layer 2 test suite", () => {
           nonce,
           to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
           gasPrice,
-          value: ethers.parseEther("0.01"),
+          value: etherToWei("0.01"),
           gasLimit: "0x466124",
           chainId: config.getL2ChainId(),
         })
@@ -221,7 +222,7 @@ describe("Layer 2 test suite", () => {
           to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
           maxPriorityFeePerGas,
           maxFeePerGas,
-          value: ethers.parseEther("0.01"),
+          value: etherToWei("0.01"),
           gasLimit: "21000",
           chainId: config.getL2ChainId(),
         })
@@ -246,7 +247,7 @@ describe("Layer 2 test suite", () => {
           nonce,
           to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
           gasPrice,
-          value: ethers.parseEther("0.01"),
+          value: etherToWei("0.01"),
           gasLimit: "21000",
           chainId: config.getL2ChainId(),
         })
@@ -277,7 +278,7 @@ describe("Layer 2 test suite", () => {
           nonce,
           to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
           gasPrice,
-          value: ethers.parseEther("0.01"),
+          value: etherToWei("0.01"),
           gasLimit: "200000",
           chainId: config.getL2ChainId(),
           accessList: ethers.accessListify(accessList),
@@ -318,7 +319,7 @@ describe("Layer 2 test suite", () => {
             to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
             maxPriorityFeePerGas,
             maxFeePerGas,
-            value: ethers.parseEther("0.01"),
+            value: etherToWei("0.01"),
             gasLimit: "21000",
             chainId: config.getL2ChainId(),
           })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { ethers, JsonRpcProvider } from "ethers";
+import { JsonRpcProvider } from "ethers";
 import { getAndIncreaseFeeData } from "./common/helpers";
 import {
   getMessageSentEventFromLogs,
@@ -8,8 +8,9 @@ import {
   wait,
   getBlockByNumberOrBlockTag,
   sendTransactionsToGenerateTrafficWithInterval,
+  etherToWei,
 } from "./common/utils";
-import { config } from "../config";
+import { config } from "./config/tests-config";
 import { L2MessageService, LineaRollup } from "./typechain";
 
 describe("Submission and finalization test suite", () => {
@@ -24,8 +25,8 @@ describe("Submission and finalization test suite", () => {
   });
 
   const sendMessages = async () => {
-    const messageFee = ethers.parseEther("0.0001");
-    const messageValue = ethers.parseEther("0.0051");
+    const messageFee = etherToWei("0.0001");
+    const messageValue = etherToWei("0.0051");
     const destinationAddress = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
     const l1MessageSender = await config.getL1AccountManager().generateAccount();
