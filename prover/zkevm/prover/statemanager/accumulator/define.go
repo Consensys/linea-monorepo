@@ -542,13 +542,12 @@ func (am *Module) checkNextFreeNode() {
 		symbolic.Sub(cols.NextFreeNode, cols.InsertionPath, symbolic.NewConstant(1)))
 	am.comp.InsertGlobal(am.Round, am.qname("NEXT_FREE_NODE_CONSISTENCY_2"), expr4)
 
-	// If it is an empty leaf for the INSERT operation, then it must be at row 3
-	// and IsInsertRow3 is true i.e.,
-	// IsActive[i] * IsInsert[i] * IsEmptyLeaf[i] * (1-IsInsertRow3[i])
+	// IsInsertRow3 is true if and only if it is row 3 for INSERT operation, i.e.,
+	// IsActiveAccumulator[i] * (IsInsert[i] * IsEmptyLeaf[i] - IsInsertRow3[i]). The constraint that
+	// IsEmptyLeaf is 1 if and only if it is row 3 for INSERT (and row 4 of DELETE) is imposed already.
 	expr5 := symbolic.Mul(cols.IsActiveAccumulator,
-		cols.IsInsert,
-		cols.IsEmptyLeaf,
-		symbolic.Sub(1, cols.IsInsertRow3))
+		symbolic.Sub(symbolic.Mul(cols.IsInsert, cols.IsEmptyLeaf),
+			cols.IsInsertRow3))
 	am.comp.InsertGlobal(am.Round, am.qname("IS_INSERT_ROW3_CONSISTENCY"), expr5)
 }
 
