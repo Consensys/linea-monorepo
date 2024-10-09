@@ -36,15 +36,15 @@ public class MmuWcpCallRecord {
   @Builder.Default private Bytes arg2Lo = Bytes.EMPTY;
   private boolean result;
 
-  public static MmuWcpCallRecord.MmuWcpCallRecordBuilder instLtBuilder() {
+  public static MmuWcpCallRecordBuilder instLtBuilder() {
     return builder().instruction(UnsignedByte.of(GlobalConstants.EVM_INST_LT));
   }
 
-  public static MmuWcpCallRecord.MmuWcpCallRecordBuilder instEqBuilder() {
+  public static MmuWcpCallRecordBuilder instEqBuilder() {
     return builder().instruction(UnsignedByte.of(GlobalConstants.EVM_INST_EQ));
   }
 
-  public static MmuWcpCallRecord.MmuWcpCallRecordBuilder instIsZeroBuilder() {
+  public static MmuWcpCallRecordBuilder instIsZeroBuilder() {
     return builder().instruction(OpCode.ISZERO.unsignedByteValue());
   }
 }

@@ -90,7 +90,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
     phase2(traceValue, chunk.status(), trace);
 
     // PHASE 3: Cumulative gas Ru.
-    phase3(traceValue, (long) chunk.gasUsed(), trace);
+    phase3(traceValue, chunk.gasUsed(), trace);
 
     // PHASE 4: Bloom Filter Rb.
     phase4(traceValue, chunk.logs(), trace);

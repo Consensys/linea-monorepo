@@ -30,7 +30,7 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
-  public static final int MAX_CT = 0x6;
+  public static final int CT_MAX_FOR_BLOCKDATA = 0x6;
   public static final int ROW_SHIFT_BASEFEE = 0x6;
   public static final int ROW_SHIFT_CHAINID = 0x5;
   public static final int ROW_SHIFT_COINBASE = 0x0;
@@ -130,8 +130,8 @@ public class Trace {
         new ColumnHeader("blockdata.DATA_LO", 16, length),
         new ColumnHeader("blockdata.FIRST_BLOCK_NUMBER", 6, length),
         new ColumnHeader("blockdata.INST", 1, length),
-        new ColumnHeader("blockdata.REL_BLOCK", 1, length),
-        new ColumnHeader("blockdata.REL_TX_NUM_MAX", 1, length),
+        new ColumnHeader("blockdata.REL_BLOCK", 2, length),
+        new ColumnHeader("blockdata.REL_TX_NUM_MAX", 2, length),
         new ColumnHeader("blockdata.WCP_FLAG", 1, length));
   }
 
@@ -762,9 +762,10 @@ public class Trace {
       filled.set(41);
     }
 
-    if (b >= 256L) {
+    if (b >= 1024L) {
       throw new IllegalArgumentException("relBlock has invalid value (" + b + ")");
     }
+    relBlock.put((byte) (b >> 8));
     relBlock.put((byte) b);
 
     return this;
@@ -777,9 +778,10 @@ public class Trace {
       filled.set(42);
     }
 
-    if (b >= 256L) {
+    if (b >= 1024L) {
       throw new IllegalArgumentException("relTxNumMax has invalid value (" + b + ")");
     }
+    relTxNumMax.put((byte) (b >> 8));
     relTxNumMax.put((byte) b);
 
     return this;
@@ -1146,11 +1148,11 @@ public class Trace {
     }
 
     if (!filled.get(41)) {
-      relBlock.position(relBlock.position() + 1);
+      relBlock.position(relBlock.position() + 2);
     }
 
     if (!filled.get(42)) {
-      relTxNumMax.position(relTxNumMax.position() + 1);
+      relTxNumMax.position(relTxNumMax.position() + 2);
     }
 
     if (!filled.get(43)) {
