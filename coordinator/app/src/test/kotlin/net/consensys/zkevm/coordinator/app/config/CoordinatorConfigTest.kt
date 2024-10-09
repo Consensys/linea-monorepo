@@ -806,7 +806,7 @@ class CoordinatorConfigTest {
           conflation = it.conflation.copy(
             _tracesLimitsV1 = tracesLimitsConfigs.get()?.tracesLimits?.let { TracesCountersV1(it) },
             _tracesLimitsV2 = tracesLimitsV2Configs.get()?.tracesLimits?.let { TracesCountersV2(it) },
-            _smartContractErrors = smartContractErrorCodes,
+            _smartContractErrors = smartContractErrorCodes
           ),
           l1DynamicGasPriceCapService = it.l1DynamicGasPriceCapService.copy(
             gasPriceCapCalculation = it.l1DynamicGasPriceCapService.gasPriceCapCalculation.copy(
@@ -849,15 +849,15 @@ class CoordinatorConfigTest {
               proverA = proversConfig.proverA.copy(
                 execution = proversConfig.proverA.execution.copy(
                   requestsDirectory = Path.of("/data/prover/v3/execution/requests"),
-                  responsesDirectory = Path.of("/data/prover/v3/execution/responses"),
+                  responsesDirectory = Path.of("/data/prover/v3/execution/responses")
                 ),
                 blobCompression = proversConfig.proverA.blobCompression.copy(
                   requestsDirectory = Path.of("/data/prover/v3/compression/requests"),
-                  responsesDirectory = Path.of("/data/prover/v3/compression/responses"),
+                  responsesDirectory = Path.of("/data/prover/v3/compression/responses")
                 ),
                 proofAggregation = proversConfig.proverA.proofAggregation.copy(
                   requestsDirectory = Path.of("/data/prover/v3/aggregation/requests"),
-                  responsesDirectory = Path.of("/data/prover/v3/aggregation/responses"),
+                  responsesDirectory = Path.of("/data/prover/v3/aggregation/responses")
                 )
               )
             )
@@ -924,7 +924,8 @@ class CoordinatorConfigTest {
   }
 
   @Test
-  fun testValidAggregationAndConflationByTargetBlockNumberWhenL2InclusiveBlockNumberToStopAndFlushAggregationSpecified() {
+  fun testValidAggregationAndConflationByTargetBlockNumberWhenL2InclusiveBlockNumberToStopAndFlushAggregationSpecified
+  () {
     val aggregationConfigWithoutSwithBlockNumber = aggregationConfig.copy(
       _targetEndBlocks = listOf(10L, 100L)
     )
