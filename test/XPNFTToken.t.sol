@@ -2,25 +2,21 @@
 pragma solidity ^0.8.26;
 
 import { Test, console } from "forge-std/Test.sol";
+import { Base64 } from "@openzeppelin/contracts/utils/Base64.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 import { XPNFTToken } from "../src/XPNFTToken.sol";
-import { XPNFTMetadataGenerator } from "../src/XPNFTMetadataGenerator.sol";
+import { MockMetadataGenerator } from "./mocks/MockMetadataGenerator.sol";
 
 contract XPNFTTokenTest is Test {
     MockToken erc20Token;
-    XPNFTMetadataGenerator metadataGenerator;
+    MockMetadataGenerator metadataGenerator;
     XPNFTToken nft;
 
     address alice = makeAddr("alice");
 
-    string imagePrefix =
-    // solhint-disable-next-line
-        '<svg xmlns="http://www.w3.org/2000/svg" height="200" width="200"><rect width="100%" height="100%" fill="blue"/><text x="50%" y="50%" fill="white" font-size="20" text-anchor="middle">';
-    string imageSuffix = "</text></svg>";
-
     function setUp() public {
         erc20Token = new MockToken("Test", "TEST");
-        metadataGenerator = new XPNFTMetadataGenerator(address(erc20Token), imagePrefix, imageSuffix);
+        metadataGenerator = new MockMetadataGenerator(address(erc20Token), "https://test.local/");
         nft = new XPNFTToken(address(erc20Token), address(metadataGenerator));
 
         address[1] memory users = [alice];
@@ -29,8 +25,13 @@ contract XPNFTTokenTest is Test {
         }
     }
 
-    function test() public {
+    function test() public view {
+        bytes memory expectedMetadata = abi.encodePacked(
+            '{"name":"XPNFT Token 0x328809bc894f92807417d2dad6b7c998c1afdac6",',
+            '"description":"This is a XPNFT token for address 0x328809bc894f92807417d2dad6b7c998c1afdac6 with balance 10000000000000000000",',
+            '"image":"https://test.local/0x328809bc894f92807417d2dad6b7c998c1afdac6"}'
+        );
         string memory metadata = nft.tokenURI(uint256(uint160(alice)));
-        console.log(metadata);
+        assertEq(metadata, string(abi.encodePacked("data:application/json;base64,", Base64.encode(expectedMetadata))));
     }
 }

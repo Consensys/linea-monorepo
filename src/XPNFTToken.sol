@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IMetadataGenerator } from "./XPNFTMetadataGenerator.sol";
+import { INFTMetadataGenerator } from "./interfaces/INFTMetadataGenerator.sol";
 
 interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
@@ -13,7 +13,7 @@ contract XPNFTToken is Ownable {
     error XPNFT__InvalidTokenId();
 
     IERC20 public xpToken;
-    IMetadataGenerator public metadataGenerator;
+    INFTMetadataGenerator public metadataGenerator;
 
     string private name = "XPNFT";
     string private symbol = "XPNFT";
@@ -29,11 +29,11 @@ contract XPNFTToken is Ownable {
 
     constructor(address xpTokenAddress, address _metadataGenerator) Ownable(msg.sender) {
         xpToken = IERC20(xpTokenAddress);
-        metadataGenerator = IMetadataGenerator(_metadataGenerator);
+        metadataGenerator = INFTMetadataGenerator(_metadataGenerator);
     }
 
     function setMetadataGenerator(address _metadataGenerator) external onlyOwner {
-        metadataGenerator = IMetadataGenerator(_metadataGenerator);
+        metadataGenerator = INFTMetadataGenerator(_metadataGenerator);
     }
 
     function mint() external {
