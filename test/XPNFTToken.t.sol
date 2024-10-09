@@ -33,6 +33,7 @@ contract XPNFTTokenTest is Test {
     function testTokenURI() public view {
         bytes memory expectedMetadata = abi.encodePacked(
             "{\"name\":\"XPNFT Token 0x328809bc894f92807417d2dad6b7c998c1afdac6\",",
+            // solhint-disable-next-line
             "\"description\":\"This is a XPNFT token for address 0x328809bc894f92807417d2dad6b7c998c1afdac6 with balance 10000000000000000000\",",
             "\"image\":\"https://test.local/0x328809bc894f92807417d2dad6b7c998c1afdac6\"}"
         );

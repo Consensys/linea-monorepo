@@ -3,7 +3,6 @@ pragma solidity ^0.8.26;
 
 import { Base64 } from "@openzeppelin/contracts/utils/Base64.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { BaseNFTMetadataGenerator } from "./BaseNFTMetadataGenerator.sol";
 
 contract NFTMetadataGeneratorSVG is BaseNFTMetadataGenerator {

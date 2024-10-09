@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { Test, console } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { Base64 } from "@openzeppelin/contracts/utils/Base64.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { MockToken } from "../mocks/MockToken.sol";
 import { NFTMetadataGeneratorSVG } from "../../src/nft-metadata-generators/NFTMetadataGeneratorSVG.sol";
 
 contract NFTMetadataGeneratorSVGTest is Test {
-    MockToken erc20Token;
-    NFTMetadataGeneratorSVG metadataGenerator;
+    MockToken private erc20Token;
+    NFTMetadataGeneratorSVG private metadataGenerator;
 
-    address alice = makeAddr("alice");
+    address private alice = makeAddr("alice");
 
     function setUp() public {
         erc20Token = new MockToken("Test", "TEST");
