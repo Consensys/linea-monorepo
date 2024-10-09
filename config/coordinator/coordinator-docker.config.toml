@@ -43,6 +43,7 @@ new-block-polling-interval="PT1S"
 
 [traces]
 switch-to-linea-besu=false
+blob-compressor-version="V0_1_0"
 raw-execution-traces-version="0.2.0"
 expected-traces-api-version="0.2.0"
 [traces.counters]
