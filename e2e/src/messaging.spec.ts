@@ -24,7 +24,7 @@ describe("Messaging test suite", () => {
           config.getL2AccountManager().generateAccount(),
         ]);
 
-        const dummyContract = await config.getL2DummyContract(l2Account);
+        const dummyContract = config.getL2DummyContract(l2Account);
         const lineaRollup = config.getLineaRollupContract(l1Account);
 
         const valueAndFee = ethers.parseEther("1.1");
@@ -52,7 +52,7 @@ describe("Messaging test suite", () => {
         }
 
         console.log("Moving the L2 chain forward to trigger anchoring...");
-        const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2Account);
+        const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2Account, 5_000);
 
         const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
         const messageHash = messageSentEvent.topics[3];
@@ -92,7 +92,7 @@ describe("Messaging test suite", () => {
 
         const l2Provider = config.getL2Provider();
 
-        const dummyContract = await config.getL1DummyContract(l1Account);
+        const dummyContract = config.getL1DummyContract(l1Account);
         const l2MessageService = config.getL2MessageServiceContract(l2Account);
         const lineaRollup = config.getLineaRollupContract();
 
@@ -112,10 +112,11 @@ describe("Messaging test suite", () => {
           maxFeePerGas,
         });
 
-        const receipt = await tx.wait();
+        let receipt = await tx.wait();
 
-        if (!receipt) {
-          throw new Error("Transaction receipt is undefined");
+        while (!receipt) {
+          console.log("Waiting for transaction to be mined...");
+          receipt = await tx.wait();
         }
 
         const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
@@ -123,10 +124,21 @@ describe("Messaging test suite", () => {
         console.log(`L2 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
         console.log("Moving the L2 chain forward to trigger conflation...");
-        const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness);
+        const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness, 5_000);
+
+        console.log(`Waiting for L2MessagingBlockAnchored... with blockNumber=${messageSentEvent.blockNumber}`);
+        await waitForEvents(
+          lineaRollup,
+          lineaRollup.filters.L2MessagingBlockAnchored(messageSentEvent.blockNumber),
+          1_000,
+        );
 
         console.log("Waiting for MessageClaimed event on L1.");
-        const [messageClaimedEvent] = await waitForEvents(lineaRollup, lineaRollup.filters.MessageClaimed(messageHash));
+        const [messageClaimedEvent] = await waitForEvents(
+          lineaRollup,
+          lineaRollup.filters.MessageClaimed(messageHash),
+          1_000,
+        );
         stopPolling();
 
         console.log(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);

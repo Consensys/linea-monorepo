@@ -67,7 +67,7 @@ export default class TestSetup {
     return l2MessageService;
   }
 
-  public async getL1DummyContract(signer?: Wallet): Promise<DummyContract> {
+  public getL1DummyContract(signer?: Wallet): DummyContract {
     const dummyContract = DummyContract__factory.connect(this.config.L1.dummyContractAddress, this.getL1Provider());
 
     if (signer) {
@@ -77,7 +77,7 @@ export default class TestSetup {
     return dummyContract;
   }
 
-  public async getL2DummyContract(signer?: Wallet): Promise<DummyContract> {
+  public getL2DummyContract(signer?: Wallet): DummyContract {
     const dummyContract = DummyContract__factory.connect(this.config.L2.dummyContractAddress, this.getL2Provider());
 
     if (signer) {

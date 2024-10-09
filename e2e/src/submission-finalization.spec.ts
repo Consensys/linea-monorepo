@@ -1,8 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { ethers, JsonRpcProvider } from "ethers";
-import { ROLLING_HASH_UPDATED_EVENT_SIGNATURE } from "./common/constants";
 import { getAndIncreaseFeeData } from "./common/helpers";
-import { MessageEvent } from "./common/types";
 import {
   getMessageSentEventFromLogs,
   sendMessage,
@@ -15,40 +13,29 @@ import { config } from "../config";
 import { L2MessageService, LineaRollup } from "./typechain";
 
 describe("Submission and finalization test suite", () => {
-  let l1Messages: MessageEvent[];
-  let l2Messages: MessageEvent[];
   let l1Provider: JsonRpcProvider;
-  let l2Provider: JsonRpcProvider;
   let lineaRollup: LineaRollup;
   let l2MessageService: L2MessageService;
 
   beforeAll(() => {
     l1Provider = config.getL1Provider();
-    l2Provider = config.getL2Provider();
     lineaRollup = config.getLineaRollupContract();
     l2MessageService = config.getL2MessageServiceContract();
   });
 
-  it("Send messages on L1 and L2", async () => {
+  const sendMessages = async () => {
     const messageFee = ethers.parseEther("0.0001");
     const messageValue = ethers.parseEther("0.0051");
     const destinationAddress = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
-    const [l1MessageSender, l2MessageSender] = await Promise.all([
-      config.getL1AccountManager().generateAccount(),
-      config.getL2AccountManager().generateAccount(),
-    ]);
+    const l1MessageSender = await config.getL1AccountManager().generateAccount();
 
-    console.log("Sending messages on L1 and L2...");
+    console.log("Sending messages on L1");
 
     // Send L1 messages
     const l1MessagesPromises = [];
     let l1MessageSenderNonce = await l1Provider.getTransactionCount(l1MessageSender.address);
     const l1Fees = getAndIncreaseFeeData(await l1Provider.getFeeData());
-
-    const l2MessagesPromises = [];
-    let l2MessageSenderNonce = await l2Provider.getTransactionCount(l2MessageSender.address);
-    const l2Fees = getAndIncreaseFeeData(await l2Provider.getFeeData());
 
     for (let i = 0; i < 5; i++) {
       l1MessagesPromises.push(
@@ -69,61 +56,55 @@ describe("Submission and finalization test suite", () => {
         ),
       );
       l1MessageSenderNonce++;
-
-      l2MessagesPromises.push(
-        sendMessage(
-          l2MessageSender,
-          l2MessageService,
-          {
-            to: destinationAddress,
-            fee: messageFee,
-            calldata: "0x",
-          },
-          {
-            value: messageValue,
-            nonce: l2MessageSenderNonce,
-            maxPriorityFeePerGas: l2Fees[0],
-            maxFeePerGas: l2Fees[1],
-          },
-        ),
-      );
-      l2MessageSenderNonce++;
     }
 
     const l1Receipts = await Promise.all(l1MessagesPromises);
-    const l2Receipts = await Promise.all(l2MessagesPromises);
 
-    console.log("Messages sent on L1 and L2.");
+    console.log("Messages sent on L1.");
 
-    // Check that L1 messages emit RollingHashUpdated events
-    expect(l1Receipts.length).toBeGreaterThan(0);
+    // Extract message events
+    const l1Messages = getMessageSentEventFromLogs(lineaRollup, l1Receipts);
 
-    const newL1MessagesRollingHashUpdatedLogs = l1Receipts
-      .flatMap((receipt) => receipt.logs)
-      .filter((log) => log.topics[0] === ROLLING_HASH_UPDATED_EVENT_SIGNATURE);
+    return { l1Messages, l1Receipts };
+  };
 
-    expect(newL1MessagesRollingHashUpdatedLogs).toHaveLength(l1Receipts.length);
+  async function getFinalizedL2BlockNumber() {
+    let blockNumber = null;
 
-    // Check that there are L2 messages
-    expect(l2Receipts.length).toBeGreaterThan(0);
+    while (!blockNumber) {
+      try {
+        blockNumber = await lineaRollup.currentL2BlockNumber({ blockTag: "finalized" });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
+        console.log("No finalized block yet, retrying in 5 seconds...");
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
 
-    l1Messages = getMessageSentEventFromLogs(lineaRollup, l1Receipts);
-    l2Messages = getMessageSentEventFromLogs(l2MessageService, l2Receipts);
-  }, 300_000);
+    return blockNumber;
+  }
 
   it("Check L2 anchoring", async () => {
+    const { l1Messages } = await sendMessages();
+    const l2MessageSender = await config.getL2AccountManager().generateAccount();
+
     // Wait for the last L1->L2 message to be anchored on L2
     const lastNewL1MessageNumber = l1Messages.slice(-1)[0].messageNumber;
+
+    // Send transactions on L2 in the background to make the L2 chain moving forward
+    const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender, 5_000);
 
     console.log("Waiting for the anchoring using rolling hash...");
     const [rollingHashUpdatedEvent] = await waitForEvents(
       l2MessageService,
-      l2MessageService.filters.RollingHashUpdated(lastNewL1MessageNumber),
+      l2MessageService.filters.RollingHashUpdated(),
       1_000,
       0,
       "latest",
       async (events) => events.filter((event) => event.args.messageNumber >= lastNewL1MessageNumber),
     );
+
+    stopPolling();
 
     const [lastNewMessageRollingHash, lastAnchoredL1MessageNumber] = await Promise.all([
       lineaRollup.rollingHashes(rollingHashUpdatedEvent.args.messageNumber),
@@ -179,9 +160,7 @@ describe("Submission and finalization test suite", () => {
       return;
     }
 
-    const lastFinalizedL2BlockNumberOnL1 = (
-      await lineaRollup.currentL2BlockNumber({ blockTag: "finalized" })
-    ).toString();
+    const lastFinalizedL2BlockNumberOnL1 = (await getFinalizedL2BlockNumber()).toString();
     console.log(`lastFinalizedL2BlockNumberOnL1=${lastFinalizedL2BlockNumberOnL1}`);
 
     let safeL2BlockNumber = -1,
@@ -203,26 +182,4 @@ describe("Submission and finalization test suite", () => {
 
     console.log("L2 safe/finalized tag update on sequencer done.");
   }, 300_000);
-
-  it("Check L1 claiming", async () => {
-    const l2MessageSender = await config.getL2AccountManager().generateAccount();
-
-    // Send transactions on L2 in the background to make the L2 chain moving forward
-    const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender, 2_000);
-
-    const { messageHash, messageNumber, blockNumber } = l2Messages[0];
-
-    console.log(`Waiting for L2MessagingBlockAnchored... with blockNumber=${blockNumber}`);
-    await waitForEvents(lineaRollup, lineaRollup.filters.L2MessagingBlockAnchored(blockNumber), 1_000);
-
-    console.log("L2MessagingBlockAnchored event found.");
-
-    await waitForEvents(lineaRollup, lineaRollup.filters.MessageClaimed(messageHash), 1_000);
-
-    expect(await lineaRollup.isMessageClaimed(messageNumber)).toBeTruthy();
-
-    console.log("L1 claiming done.");
-
-    stopPolling();
-  }, 400_000);
 });

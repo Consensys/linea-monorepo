@@ -2,7 +2,12 @@ import { JsonRpcProvider, TransactionRequest, ethers } from "ethers";
 import { beforeAll, describe, expect, it } from "@jest/globals";
 import { config } from "../config";
 import { getAndIncreaseFeeData } from "./common/helpers";
-import { RollupGetZkEVMBlockNumberClient, getEvents, wait } from "./common/utils";
+import {
+  RollupGetZkEVMBlockNumberClient,
+  getEvents,
+  sendTransactionsToGenerateTrafficWithInterval,
+  wait,
+} from "./common/utils";
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
 
 describe("Layer 2 test suite", () => {
@@ -15,7 +20,7 @@ describe("Layer 2 test suite", () => {
   describe("Transaction data size", () => {
     it("Should revert if transaction data size is above the limit", async () => {
       const account = await config.getL2AccountManager().generateAccount();
-      const dummyContract = await config.getL2DummyContract(account);
+      const dummyContract = config.getL2DummyContract(account);
 
       await expect(
         dummyContract.connect(account).setPayload(ethers.randomBytes(TRANSACTION_CALLDATA_LIMIT)),
@@ -24,7 +29,7 @@ describe("Layer 2 test suite", () => {
 
     it("Should succeed if transaction data size is below the limit", async () => {
       const account = await config.getL2AccountManager().generateAccount();
-      const dummyContract = await config.getL2DummyContract(account);
+      const dummyContract = config.getL2DummyContract(account);
 
       const [nonce, feeData] = await Promise.all([
         l2Provider.getTransactionCount(account.address),
@@ -46,7 +51,7 @@ describe("Layer 2 test suite", () => {
   describe("Block conflation", () => {
     it("Should succeed in conflating multiple blocks and proving on L1", async () => {
       const account = await config.getL2AccountManager().generateAccount();
-      const dummyContract = await config.getL2DummyContract(account);
+      const dummyContract = config.getL2DummyContract(account);
 
       const l2BlockNumbers: number[] = [];
 
@@ -96,21 +101,7 @@ describe("Layer 2 test suite", () => {
 
       // These is just to push the L1 verified block forward to the max number in
       // l2BlockNumbers as it's always 2 blocks behind the current L2 block number
-      for (let i = 0; i < 4; i++) {
-        const [nonce, feeData] = await Promise.all([
-          l2Provider.getTransactionCount(account.address),
-          l2Provider.getFeeData(),
-        ]);
-
-        const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(feeData);
-
-        const tx = await dummyContract.connect(account).setPayload(ethers.randomBytes(10), {
-          nonce,
-          maxPriorityFeePerGas,
-          maxFeePerGas,
-        });
-        await tx.wait();
-      }
+      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(account, 5_000);
 
       const lineaRollup = config.getLineaRollupContract();
 
@@ -130,11 +121,13 @@ describe("Layer 2 test suite", () => {
       console.log(`currentL2BlockNumber: ${currentL2BlockNumber.toString()}`);
 
       expect(currentL2BlockNumber).toBeGreaterThanOrEqual(BigInt(maxL2BlockNumber));
+
+      stopPolling();
     }, 300000);
 
     it("Should succeed in conflating transactions with large calldata with low gas into multiple L1 blocks", async () => {
       const account = await config.getL2AccountManager().generateAccount();
-      const dummyContract = await config.getL2DummyContract(account);
+      const dummyContract = config.getL2DummyContract(account);
 
       let nonce = await l2Provider.getTransactionCount(account.address, "pending");
 
@@ -163,21 +156,7 @@ describe("Layer 2 test suite", () => {
 
       // These is just to push the L1 verified block forward to the max number in
       // l2BlockNumbers as it's always 2 blocks behind the current L2 block number
-      for (let i = 0; i < 4; i++) {
-        const [nonce, feeData] = await Promise.all([
-          l2Provider.getTransactionCount(account.address, "pending"),
-          l2Provider.getFeeData(),
-        ]);
-
-        const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(feeData);
-
-        const tx = await dummyContract.setPayload(ethers.randomBytes(10), {
-          nonce,
-          maxPriorityFeePerGas,
-          maxFeePerGas,
-        });
-        await tx.wait();
-      }
+      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(account, 5_000);
 
       const lineaRollup = config.getLineaRollupContract();
 
@@ -196,6 +175,7 @@ describe("Layer 2 test suite", () => {
       console.log(`currentL2BlockNumber: ${currentL2BlockNumber}`);
 
       expect(currentL2BlockNumber).toBeGreaterThanOrEqual(BigInt(maxL2BlockNumber));
+      stopPolling();
     }, 600000);
   });
 
