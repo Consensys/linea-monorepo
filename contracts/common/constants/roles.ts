@@ -23,10 +23,10 @@ export const PAUSE_BLOB_SUBMISSION_ROLE = generateKeccak256(["string"], ["PAUSE_
 export const UNPAUSE_BLOB_SUBMISSION_ROLE = generateKeccak256(["string"], ["UNPAUSE_BLOB_SUBMISSION_ROLE"], {
   encodePacked: true,
 });
-export const PAUSE_FINALIZE_WITHPROOF_ROLE = generateKeccak256(["string"], ["PAUSE_FINALIZE_WITHPROOF_ROLE"], {
+export const PAUSE_FINALIZATION_ROLE = generateKeccak256(["string"], ["PAUSE_FINALIZATION_ROLE"], {
   encodePacked: true,
 });
-export const UNPAUSE_FINALIZE_WITHPROOF_ROLE = generateKeccak256(["string"], ["UNPAUSE_FINALIZE_WITHPROOF_ROLE"], {
+export const UNPAUSE_FINALIZATION_ROLE = generateKeccak256(["string"], ["UNPAUSE_FINALIZATION_ROLE"], {
   encodePacked: true,
 });
 export const MINIMUM_FEE_SETTER_ROLE = generateKeccak256(["string"], ["MINIMUM_FEE_SETTER_ROLE"], {
@@ -91,8 +91,8 @@ export const LINEA_ROLLUP_ROLES = [
   UNPAUSE_L2_L1_ROLE,
   PAUSE_BLOB_SUBMISSION_ROLE,
   UNPAUSE_BLOB_SUBMISSION_ROLE,
-  PAUSE_FINALIZE_WITHPROOF_ROLE,
-  UNPAUSE_FINALIZE_WITHPROOF_ROLE,
+  PAUSE_FINALIZATION_ROLE,
+  UNPAUSE_FINALIZATION_ROLE,
 ];
 
 export const L2_MESSAGE_SERVICE_ROLES = [
