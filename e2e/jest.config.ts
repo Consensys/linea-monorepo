@@ -4,11 +4,11 @@ const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
   rootDir: ".",
-  testRegex: "(spec|test).ts$",
+  testRegex: ".spec.ts$",
   verbose: true,
-  globalSetup: "./env-setup/global-setup.ts",
-  setupFilesAfterEnv: ["./env-setup/setup.ts"],
-  globalTeardown: "./env-setup/global-teardown.ts",
+  globalSetup: "./config/global-setup.ts",
+  maxWorkers: "50%",
+  testTimeout: 3 * 60 * 1000,
 };
 
 export default config;

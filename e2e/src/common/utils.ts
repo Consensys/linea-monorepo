@@ -1,11 +1,10 @@
-import { BlockTag } from "@ethersproject/providers";
 import * as fs from "fs";
 import assert from "assert";
-import {Contract, ContractReceipt, PayableOverrides, Wallet, ethers} from "ethers";
+import { BaseContract, BlockTag, ContractTransactionReceipt, TransactionReceipt, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageService, LineaRollup } from "../typechain";
-import { TypedEvent, TypedEventFilter } from "../typechain/common";
+import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
 import { getAndIncreaseFeeData } from "./helpers";
 
@@ -23,22 +22,22 @@ export const subtractSecondsToDate = (date: Date, seconds: number): Date => {
   return dateCopy;
 };
 
-export function getWallet(privateKey: string, provider: ethers.providers.JsonRpcProvider) {
+export function getWallet(privateKey: string, provider: ethers.JsonRpcProvider) {
   return new ethers.Wallet(privateKey, provider);
 }
 
-export function encodeFunctionCall(contractInterface: ethers.utils.Interface, functionName: string, args: unknown[]) {
+export function encodeFunctionCall(contractInterface: ethers.Interface, functionName: string, args: unknown[]) {
   return contractInterface.encodeFunctionData(functionName, args);
 }
 
 export const generateKeccak256 = (types: string[], values: unknown[], packed?: boolean) =>
-  ethers.utils.keccak256(encodeData(types, values, packed));
+  ethers.keccak256(encodeData(types, values, packed));
 
 export const encodeData = (types: string[], values: unknown[], packed?: boolean) => {
   if (packed) {
-    return ethers.utils.solidityPack(types, values);
+    return ethers.solidityPacked(types, values);
   }
-  return ethers.utils.defaultAbiCoder.encode(types, values);
+  return ethers.AbiCoder.defaultAbiCoder().encode(types, values);
 };
 
 export class RollupGetZkEVMBlockNumberClient {
@@ -65,22 +64,23 @@ export class RollupGetZkEVMBlockNumberClient {
   }
 }
 
-export async function getBlockByNumberOrBlockTag(
-  rpcUrl: URL,
-  blockTag: BlockTag
-): Promise<ethers.providers.Block> {
-  const provider = new ethers.providers.JsonRpcProvider(rpcUrl.href);
-  return provider.getBlock(blockTag)
+export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag): Promise<ethers.Block | null> {
+  const provider = new ethers.JsonRpcProvider(rpcUrl.href);
+  return provider.getBlock(blockTag);
 }
 
-export async function getEvents<TContract extends LineaRollup | L2MessageService, TEvent extends TypedEvent>(
+export async function getEvents<TContract extends LineaRollup | L2MessageService, TEvent extends TypedContractEvent>(
   contract: TContract,
-  eventFilter: TypedEventFilter<TEvent>,
+  eventFilter: TypedDeferredTopicFilter<TEvent>,
   fromBlock?: BlockTag,
   toBlock?: BlockTag,
-  criteria?: (events: TEvent[]) => Promise<TEvent[]>,
-): Promise<Array<TEvent>> {
-  const events = await contract.queryFilter(eventFilter, fromBlock, toBlock);
+  criteria?: (events: TypedEventLog<TEvent>[]) => Promise<TypedEventLog<TEvent>[]>,
+): Promise<Array<TypedEventLog<TEvent>>> {
+  const events = await contract.queryFilter(
+    eventFilter,
+    fromBlock as string | number | undefined,
+    toBlock as string | number | undefined,
+  );
 
   if (criteria) {
     return await criteria(events);
@@ -89,14 +89,17 @@ export async function getEvents<TContract extends LineaRollup | L2MessageService
   return events;
 }
 
-export async function waitForEvents<TContract extends LineaRollup | L2MessageService, TEvent extends TypedEvent>(
+export async function waitForEvents<
+  TContract extends LineaRollup | L2MessageService,
+  TEvent extends TypedContractEvent,
+>(
   contract: TContract,
-  eventFilter: TypedEventFilter<TEvent>,
+  eventFilter: TypedDeferredTopicFilter<TEvent>,
   pollingInterval: number = 500,
   fromBlock?: BlockTag,
   toBlock?: BlockTag,
-  criteria?: (events: TEvent[]) => Promise<TEvent[]>,
-): Promise<TEvent[]> {
+  criteria?: (events: TypedEventLog<TEvent>[]) => Promise<TypedEventLog<TEvent>[]>,
+): Promise<TypedEventLog<TEvent>[]> {
   let events = await getEvents(contract, eventFilter, fromBlock, toBlock, criteria);
 
   while (events.length === 0) {
@@ -120,37 +123,32 @@ export async function waitForFile(
   timeout: number,
   criteria?: (fileName: string) => boolean,
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const interval = setInterval(() => {
-      fs.readdir(directory, (err, files) => {
-        if (err) {
-          clearInterval(interval);
-          clearTimeout(timeoutId);
-          reject(new Error(`Error reading directory: ${err}`));
-          return;
-        }
+  const endTime = Date.now() + timeout;
 
-        for (const file of files) {
-          if (regex.test(file) && (!criteria || criteria(file))) {
-            clearInterval(interval);
-            clearTimeout(timeoutId);
-            resolve(fs.readFileSync(path.join(directory, file), "utf-8"));
-            return;
-          }
-        }
-      });
-    }, pollingInterval);
+  while (Date.now() < endTime) {
+    try {
+      const files = fs.readdirSync(directory);
 
-    const timeoutId = setTimeout(() => {
-      clearInterval(interval);
-      reject(new Error("File check timed out"));
-    }, timeout);
-  });
+      for (const file of files) {
+        if (regex.test(file) && (!criteria || criteria(file))) {
+          const filePath = path.join(directory, file);
+          const content = fs.readFileSync(filePath, "utf-8");
+          return content;
+        }
+      }
+    } catch (err) {
+      throw new Error(`Error reading directory: ${(err as Error).message}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollingInterval));
+  }
+
+  throw new Error("File check timed out");
 }
 
 export function sendTransactionsWithInterval(
   signer: Wallet,
-  transactionRequest: ethers.providers.TransactionRequest,
+  transactionRequest: ethers.TransactionRequest,
   pollingInterval: number,
 ) {
   return setInterval(async function () {
@@ -161,7 +159,7 @@ export function sendTransactionsWithInterval(
 
 export async function sendXTransactions(
   signer: Wallet,
-  transactionRequest: ethers.providers.TransactionRequest,
+  transactionRequest: ethers.TransactionRequest,
   numberOfTransactions: number,
 ) {
   for (let i = 0; i < numberOfTransactions; i++) {
@@ -170,17 +168,14 @@ export async function sendXTransactions(
   }
 }
 
-export async function sendTransactionsToGenerateTrafficWithInterval(
-  signer: Wallet,
-  pollingInterval: number = 1000,
-) {
-  const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await signer.provider.getFeeData());
+export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wallet, pollingInterval: number = 1000) {
+  const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await signer.provider!.getFeeData());
   const transactionRequest = {
     to: signer.address,
-    value: ethers.utils.parseEther("0.000001"),
+    value: ethers.parseEther("0.000001"),
     maxPriorityFeePerGas: maxPriorityFeePerGas,
     maxFeePerGas: maxFeePerGas,
-  }
+  };
 
   return setInterval(async function () {
     const tx = await signer.sendTransaction(transactionRequest);
@@ -188,16 +183,19 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
   }, pollingInterval);
 }
 
-export function getMessageSentEventFromLogs<T extends Contract>(
+export function getMessageSentEventFromLogs<T extends BaseContract>(
   contract: T,
-  receipts: ContractReceipt[],
+  receipts: TransactionReceipt[],
 ): MessageEvent[] {
   return receipts
     .flatMap((receipt) => receipt.logs)
     .filter((log) => log.topics[0] === "0xe856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c")
     .map((log) => {
-      const { args } = contract.interface.parseLog(log);
-
+      const logDescription = contract.interface.parseLog(log);
+      if (!logDescription) {
+        throw new Error("Invalid log description");
+      }
+      const { args } = logDescription;
       return {
         from: args._from,
         to: args._to,
@@ -217,41 +215,53 @@ export async function waitForMessageAnchoring(
   pollingInterval: number,
 ) {
   let messageStatus = await contract.inboxL1L2MessageStatus(messageHash);
-  while (messageStatus.toNumber() === 0) {
+  while (messageStatus === 0n) {
     messageStatus = await contract.inboxL1L2MessageStatus(messageHash);
     await wait(pollingInterval);
   }
 }
 
-export const sendMessage = async <T extends Contract>(
+export const sendMessage = async <T extends LineaRollup | L2MessageService>(
+  signer: Wallet,
   contract: T,
   args: SendMessageArgs,
   overrides?: PayableOverrides,
-): Promise<ContractReceipt> => {
-  const tx = await contract.sendMessage(args.to, args.fee, args.calldata, overrides);
-  return await tx.wait();
+): Promise<TransactionReceipt> => {
+  const tx = await signer.sendTransaction({
+    to: await contract.getAddress(),
+    value: overrides?.value || 0n,
+    data: contract.interface.encodeFunctionData("sendMessage", [args.to, args.fee, args.calldata]),
+    ...overrides,
+  });
+
+  const receipt = await tx.wait();
+
+  if (!receipt) {
+    throw new Error("Transaction receipt is undefined");
+  }
+  return receipt;
 };
 
-export const sendMessagesForNSeconds = async <T extends Contract>(
-  provider: ethers.providers.JsonRpcProvider,
+export const sendMessagesForNSeconds = async <T extends LineaRollup | L2MessageService>(
+  provider: ethers.JsonRpcProvider,
   signer: Wallet,
   contract: T,
   duration: number,
   args: SendMessageArgs,
   overrides?: PayableOverrides,
-): Promise<ContractReceipt[]> => {
+): Promise<ContractTransactionReceipt[]> => {
   let nonce = await provider.getTransactionCount(signer.address);
 
   const currentDate = new Date();
   const endDate = increaseDate(currentDate, duration);
 
-  const sendMessagePromises: Promise<ContractReceipt | null>[] = [];
+  const sendMessagePromises: Promise<TransactionReceipt | null>[] = [];
   let currentTime = new Date().getTime();
 
   const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await provider.getFeeData());
   while (currentTime < endDate.getTime()) {
     sendMessagePromises.push(
-      sendMessage(contract.connect(signer), args, {
+      sendMessage(signer, contract.connect(signer), args, {
         ...overrides,
         maxPriorityFeePerGas,
         maxFeePerGas,
@@ -268,7 +278,9 @@ export const sendMessagesForNSeconds = async <T extends Contract>(
     currentTime = new Date().getTime();
   }
 
-  const result = (await Promise.all(sendMessagePromises)).filter((receipt) => receipt !== null) as ContractReceipt[];
+  const result = (await Promise.all(sendMessagePromises)).filter(
+    (receipt) => receipt !== null,
+  ) as ContractTransactionReceipt[];
   return result;
 };
 
