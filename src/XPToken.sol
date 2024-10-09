@@ -47,8 +47,8 @@ contract XPToken is Ownable {
 
         for (uint256 i = 0; i < xpProviders.length; i++) {
             IXPProvider provider = xpProviders[i];
-            userTotalXPContribution += provider.getUserXPContribution(account);
-            totalXPContribution += provider.getTotalXPContribution();
+            userTotalXPContribution += provider.getUserXPShare(account);
+            totalXPContribution += provider.getTotalXPShares();
         }
 
         if (totalXPContribution == 0) {

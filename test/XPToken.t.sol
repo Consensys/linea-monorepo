@@ -80,11 +80,11 @@ contract XPTokenTest is Test {
     }
 
     function testBalanceOf() public {
-        provider1.setUserXPContribution(alice, 100e18);
-        provider1.setTotalXPContribution(1000e18);
+        provider1.setUserXPShare(alice, 100e18);
+        provider1.setTotalXPShares(1000e18);
 
-        provider2.setUserXPContribution(alice, 200e18);
-        provider2.setTotalXPContribution(2000e18);
+        provider2.setUserXPShare(alice, 200e18);
+        provider2.setTotalXPShares(2000e18);
 
         // Expected balance calculation
         uint256 userTotalXP = 100e18 + 200e18;
