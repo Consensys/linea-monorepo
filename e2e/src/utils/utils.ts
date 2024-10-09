@@ -1,7 +1,7 @@
 import { BlockTag } from "@ethersproject/providers";
 import * as fs from "fs";
 import assert from "assert";
-import {Contract, ContractReceipt, PayableOverrides, Wallet, ethers} from "ethers";
+import { Contract, ContractReceipt, PayableOverrides, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageService, LineaRollup } from "../typechain";
@@ -223,17 +223,14 @@ export async function sendXTransactions(
   }
 }
 
-export async function sendTransactionsToGenerateTrafficWithInterval(
-  signer: Wallet,
-  pollingInterval: number = 1000,
-) {
+export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wallet, pollingInterval: number = 1000) {
   const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await signer.provider.getFeeData());
   const transactionRequest = {
     to: signer.address,
     value: ethers.utils.parseEther("0.000001"),
     maxPriorityFeePerGas: maxPriorityFeePerGas,
     maxFeePerGas: maxFeePerGas,
-  }
+  };
 
   return setInterval(async function () {
     const tx = await signer.sendTransaction(transactionRequest);
@@ -327,14 +324,18 @@ export const sendMessagesForNSeconds = async <T extends Contract>(
 
 export async function execDockerCommand(command: string, containerName: string): Promise<string> {
   const dockerCommand = `docker ${command} ${containerName}`;
-  console.log(`Executing: ${dockerCommand}...`);
+  return execShellCommand(dockerCommand);
+}
+
+export async function execShellCommand(command: string): Promise<string> {
+  console.log(`Executing: ${command}...`);
   return new Promise((resolve, reject) => {
-    exec(dockerCommand, (error, stdout, stderr) => {
+    exec(command, (error, stdout, stderr) => {
       if (error) {
-        console.error(`Error executing (${dockerCommand}): ${stderr}`);
+        console.error(`Error executing (${command}): ${stderr}`);
         reject(error);
       }
-      console.log(`Execution success (${dockerCommand}): ${stdout}`);
+      console.log(`Execution success (${command}): ${stdout}`);
       resolve(stdout);
     });
   });

@@ -7,6 +7,8 @@ import {
   L2MessageService__factory,
   LineaRollup,
   LineaRollup__factory,
+  TestContract,
+  TestContract__factory,
 } from "../src/typechain";
 import {
   getL1Provider,
@@ -42,6 +44,8 @@ beforeAll(async () => {
   const l1Deployer = new Wallet(L1_DEPLOYER_ACCOUNT_PRIVATE_KEY, l1JsonRpcProvider);
   const l2Deployer = new Wallet(L2_DEPLOYER_ACCOUNT_PRIVATE_KEY, l2JsonRpcProvider);
 
+  const testContract = (await deployContract(new TestContract__factory(), l2Deployer)) as unknown as TestContract;
+
   const [dummyContract, l1DummyContract] = await Promise.all([
     deployContract(new DummyContract__factory(), l2Deployer) as unknown as DummyContract,
     deployContract(new DummyContract__factory(), l1Deployer) as unknown as DummyContract,
@@ -70,6 +74,7 @@ beforeAll(async () => {
   global.l1Provider = l1JsonRpcProvider;
   global.l2Provider = l2JsonRpcProvider;
   global.dummyContract = dummyContract;
+  global.testContract = testContract;
   global.l1DummyContract = l1DummyContract;
   global.l2MessageService = l2MessageService;
   global.L2_MESSAGE_SERVICE_ADDRESS = MESSAGE_SERVICE_ADDRESS;

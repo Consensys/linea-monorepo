@@ -51,6 +51,12 @@ start-whole-environment:
 start-whole-environment-traces-v2:
 		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 up -d
 
+start-environment-tx-exclusion:
+		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml -f docker/compose-besu-traces-limits-reduced.overrides.yml --profile l1 --profile l2 up -d
+
+start-environment-tx-exclusion-traces-v2:
+		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml -f docker/compose-besu-traces-limits-reduced.overrides.yml --profile l1 --profile l2 up -d
+
 pull-all-images:
 		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 pull
 
@@ -127,6 +133,12 @@ start-all:
 start-all-traces-v2:
 		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2
 		make deploy-contracts
+
+start-all-tx-exclusion:
+		L1_GENESIS_TIME=$(get_future_time) make start-environment-tx-exclusion
+
+start-all-tx-exclusion-traces-v2:
+		L1_GENESIS_TIME=$(get_future_time) make start-environment-tx-exclusion-traces-v2
 
 deploy-contracts-v4:
 	make compile-contracts

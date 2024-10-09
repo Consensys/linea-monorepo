@@ -1,7 +1,7 @@
 /* eslint-disable no-var */
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { TestEnvironment } from "./test-env";
-import { DummyContract, L2MessageService, L2TestContract, LineaRollup } from "src/typechain";
+import { DummyContract, L2MessageService, L2TestContract, LineaRollup, TestContract } from "src/typechain";
 
 declare global {
   var testingEnv: TestEnvironment;
@@ -9,6 +9,7 @@ declare global {
   var l2Provider: JsonRpcProvider;
   var l2MessageService: L2MessageService;
   var dummyContract: DummyContract;
+  var testContract: TestContract;
   var l1DummyContract: DummyContract;
   var l2TestContract: L2TestContract;
   var lineaRollup: LineaRollup;

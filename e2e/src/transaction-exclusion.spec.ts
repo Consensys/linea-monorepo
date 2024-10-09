@@ -1,5 +1,7 @@
 import { beforeAll, describe, expect, it } from "@jest/globals";
-import { TransactionExclusionClient } from "./utils/utils";
+import { TransactionExclusionClient, wait } from "./utils/utils";
+import { ethers, Wallet } from "ethers";
+import { getAndIncreaseFeeData } from "./utils/helpers";
 
 const transactionExclusionTestSuite = (title: string) => {
   describe(title, () => {
@@ -28,6 +30,88 @@ const transactionExclusionTestSuite = (title: string) => {
         transactionExclusionClient = new TransactionExclusionClient(TRANSACTION_EXCLUSION_ENDPOINT);
       }
     });
+
+    it("Should get the status of the rejected transaction reported from Besu P2P node", async () => {
+      if (transactionExclusionClient == null) {
+        // Skip this test for dev and uat environments
+        return;
+      }
+
+      const account = new Wallet(
+        L2_DEPLOYER_ACCOUNT_PRIVATE_KEY,
+        new ethers.providers.JsonRpcProvider("http://localhost:9045")
+      );
+
+      const [nonce, feeData] = await Promise.all([
+        l2Provider.getTransactionCount(account.address),
+        l2Provider.getFeeData(),
+      ]);
+
+      const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(feeData);
+
+      // This shall be rejected by the Besu node due to traces module limit overflow (as reduced traces limits)
+      let rejectedTxHash = "";
+      try {
+        await testContract.connect(account).testAddmod(1200, 31, {
+          nonce,
+          maxPriorityFeePerGas,
+          maxFeePerGas,
+        });
+      } catch (err) {
+        // This shall return SERVER_ERROR with traces limit overflow 
+        rejectedTxHash = (err as any).transactionHash
+        console.log(`rejectedTxHash: ${JSON.stringify(rejectedTxHash)}`)
+      }
+
+      let getResponse;
+      do {
+        await wait(5_000);
+        getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash);
+      } while (!getResponse?.result);
+
+      expect(getResponse.result.txHash).toStrictEqual(rejectedTxHash);
+      expect(getResponse.result.txRejectionStage).toStrictEqual("P2P");
+      expect(getResponse.result.from.toLowerCase()).toStrictEqual(account.address.toLowerCase());
+    }, 120_000);
+
+    it("Should get the status of the rejected transaction reported from Besu SEQUENCER node", async () => {
+      if (transactionExclusionClient == null) {
+        // Skip this test for dev and uat environments
+        return;
+      }
+
+      const account = new Wallet(
+        L2_DEPLOYER_ACCOUNT_PRIVATE_KEY,
+        new ethers.providers.JsonRpcProvider("http://localhost:8545")
+      );
+
+      const [nonce, feeData] = await Promise.all([
+        l2Provider.getTransactionCount(account.address),
+        l2Provider.getFeeData(),
+      ]);
+
+      const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(feeData);
+
+      // This shall be rejected by sequencer due to traces module limit overflow (as reduced traces limits)
+      const tx = await testContract.connect(account).testAddmod(1200, 31, {
+        nonce,
+        maxPriorityFeePerGas,
+        maxFeePerGas,
+      });
+
+      const rejectedTxHash = tx.hash;
+      console.log(`rejectedTxHash: ${rejectedTxHash}`);
+
+      let getResponse;
+      do {
+        await wait(5_000);
+        getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash);
+      } while (!getResponse?.result);
+
+      expect(getResponse.result.txHash).toStrictEqual(rejectedTxHash);
+      expect(getResponse.result.txRejectionStage).toStrictEqual("SEQUENCER");
+      expect(getResponse.result.from.toLowerCase()).toStrictEqual(account.address.toLowerCase());
+    }, 120_000);
 
     it("Should save the first rejected transaction from P2P without rejected block number", async () => {
       if (transactionExclusionClient == null) {
@@ -121,7 +205,7 @@ const transactionExclusionTestSuite = (title: string) => {
       const getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(unknownTxHash);
 
       console.log(`getResponse: ${JSON.stringify(getResponse)}`);
-      expect(getResponse.result).toStrictEqual(null)
+      expect(getResponse.result).toStrictEqual(null);
     }, 10_000);
   });
 };

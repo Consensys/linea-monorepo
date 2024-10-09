@@ -1,4 +1,4 @@
-import {describe, expect, it} from "@jest/globals";
+import { describe, expect, it } from "@jest/globals";
 import {
   getEvents,
   execDockerCommand,
@@ -7,8 +7,8 @@ import {
   sendMessage,
   sendTransactionsToGenerateTrafficWithInterval,
 } from "./utils/utils";
-import {getAndIncreaseFeeData} from "./utils/helpers";
-import {Wallet, ethers} from "ethers";
+import { getAndIncreaseFeeData } from "./utils/helpers";
+import { Wallet, ethers } from "ethers";
 
 const coordinatorRestartTestSuite = (title: string) => {
   describe(title, () => {
@@ -36,8 +36,8 @@ const coordinatorRestartTestSuite = (title: string) => {
       const lastDataFinalizedEventsBeforeRestart = dataFinalizedEventsBeforeRestart.slice(-1)[0];
       // Just some sanity checks
       // Check that the coordinator has submitted and finalized data before the restart
-      expect(lastDataSubmittedEventBeforeRestart.args.endBlock.toNumber()).toBeGreaterThan(0)
-      expect(lastDataFinalizedEventsBeforeRestart.args.lastBlockFinalized.toNumber()).toBeGreaterThan(0)
+      expect(lastDataSubmittedEventBeforeRestart.args.endBlock.toNumber()).toBeGreaterThan(0);
+      expect(lastDataFinalizedEventsBeforeRestart.args.lastBlockFinalized.toNumber()).toBeGreaterThan(0);
 
       await execDockerCommand("start", "coordinator");
       const currentBlockNumberAfterRestart = await l1Provider.getBlockNumber();
@@ -65,7 +65,7 @@ const coordinatorRestartTestSuite = (title: string) => {
         },
       );
       console.log(`New DataFinalized event found: event=${JSON.stringify(dataFinalizedEventAfterRestart)}`);
-      clearInterval(intervalId)
+      clearInterval(intervalId);
 
       expect(dataFinalizedEventAfterRestart.args.lastBlockFinalized.toNumber()).toBeGreaterThan(
         lastDataFinalizedEventsBeforeRestart.args.lastBlockFinalized.toNumber(),
@@ -149,7 +149,7 @@ const coordinatorRestartTestSuite = (title: string) => {
       const lastNewL1MessageNumberAfterRestart = l1MessagesAfterRestart.slice(-1)[0].messageNumber;
 
       console.log(
-        `Waiting L1->L2 anchoring after coordinator restart messageNumber=${lastNewL1MessageNumberAfterRestart}`
+        `Waiting L1->L2 anchoring after coordinator restart messageNumber=${lastNewL1MessageNumberAfterRestart}`,
       );
       const [rollingHashUpdatedEventAfterRestart] = await waitForEvents(
         l2MessageService,
@@ -162,7 +162,7 @@ const coordinatorRestartTestSuite = (title: string) => {
         l2MessageService.lastAnchoredL1MessageNumber(),
       ]);
 
-      clearInterval(intervalId)
+      clearInterval(intervalId);
 
       expect(lastNewMessageRollingHashAfterRestart).toEqual(rollingHashUpdatedEventAfterRestart.args.rollingHash);
       expect(lastAnchoredL1MessageNumberAfterRestart).toEqual(lastNewL1MessageNumberAfterRestart);
