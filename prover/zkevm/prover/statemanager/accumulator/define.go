@@ -334,12 +334,12 @@ func (am *Module) checkInsert() {
 	cols := am.Cols
 
 	// (Root[i+1] - Root[i+2]) * IsActiveAccumulator[i] * IsFirst[i] * IsInsert[i] = 0, The (i+1)th and (i+2)th roots are equal when there is an INSERT operation and the accumulator is active.
-	expr1 := symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.Roots, 1)), ifaces.ColumnAsVariable(column.Shift(cols.Roots, 2)))
+	expr1 := symbolic.Sub(column.Shift(cols.Roots, 1), column.Shift(cols.Roots, 2))
 	expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsInsert, expr1)
 	am.comp.InsertGlobal(am.Round, am.qname("ROOT_EQUALITY_INSERT_1"), expr1)
 
 	// (Root[i+3] - Root[i+4]) * IsActiveAccumulator[i] * IsFirst[i] * IsInsert[i] = 0, The (i+3)th and (i+4)th roots are equal when there is an INSERT operation and the accumulator is active.
-	expr2 := symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.Roots, 3)), ifaces.ColumnAsVariable(column.Shift(cols.Roots, 4)))
+	expr2 := symbolic.Sub(column.Shift(cols.Roots, 3), column.Shift(cols.Roots, 4))
 	expr2 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsInsert, expr2)
 	am.comp.InsertGlobal(am.Round, am.qname("ROOT_EQUALITY_INSERT_2"), expr2)
 
@@ -360,12 +360,12 @@ func (am *Module) checkDelete() {
 	cols := am.Cols
 
 	// (Root[i+1] - Root[i+2]) * IsActiveAccumulator[i] * IsFirst[i] * IsDelete[i] = 0, The (i+1)th and (i+2)th roots are equal when there is a DELETE operation and the accumulator is active.
-	expr1 := symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.Roots, 1)), ifaces.ColumnAsVariable(column.Shift(cols.Roots, 2)))
+	expr1 := symbolic.Sub(column.Shift(cols.Roots, 1), column.Shift(cols.Roots, 2))
 	expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsDelete, expr1)
 	am.comp.InsertGlobal(am.Round, am.qname("ROOT_EQUALITY_DELETE_1"), expr1)
 
 	// (Root[i+3] - Root[i+4]) * IsActiveAccumulator[i] * IsFirst[i] * IsDelete[i] = 0, The (i+3)th and (i+4)th roots are equal when there is a DELETE operation and the accumulator is active.
-	expr2 := symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.Roots, 3)), ifaces.ColumnAsVariable(column.Shift(cols.Roots, 4)))
+	expr2 := symbolic.Sub(column.Shift(cols.Roots, 3), column.Shift(cols.Roots, 4))
 	expr2 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsDelete, expr2)
 	am.comp.InsertGlobal(am.Round, am.qname("ROOT_EQUALITY_DELETE_2"), expr2)
 
@@ -383,7 +383,7 @@ func (am *Module) checkUpdate() {
 	expr := symbolic.Mul(cols.IsActiveAccumulator,
 		cols.IsUpdate,
 		cols.IsFirst,
-		symbolic.Sub(cols.HKey, ifaces.ColumnAsVariable(column.Shift(cols.HKey, 1))))
+		symbolic.Sub(cols.HKey, column.Shift(cols.HKey, 1)))
 	am.comp.InsertGlobal(am.Round, am.qname("HKEY_EQUAL_FOR_UPDATE"), expr)
 }
 
@@ -391,7 +391,7 @@ func (am *Module) checkReadZero() {
 	cols := am.Cols
 
 	// (Root[i] - Root[i+1]) * IsActiveAccumulator[i] * IsFirst[i] * IsReadZero[i] = 0, The ith and (i+1)th roots are equal when there is a READ-ZERO operation and the accumulator is active.
-	expr1 := symbolic.Sub(cols.Roots, ifaces.ColumnAsVariable(column.Shift(cols.Roots, 1)))
+	expr1 := symbolic.Sub(cols.Roots, column.Shift(cols.Roots, 1))
 	expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsReadZero, expr1)
 	am.comp.InsertGlobal(am.Round, am.qname("ROOT_EQUALITY_READ_ZERO"), expr1)
 
@@ -425,9 +425,9 @@ func (am *Module) checkConsistency() {
 
 	// Row-wise increment of AccumulatorCounter
 	// IsActiveAccumulator[i+1] * (AccumulatorCounter[i+1] - AccumulatorCounter[i] - 1)
-	expr4 := symbolic.Mul(ifaces.ColumnAsVariable(column.Shift(cols.IsActiveAccumulator, 1)),
-		symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.AccumulatorCounter, 1)),
-			cols.AccumulatorCounter, symbolic.NewConstant(1)))
+	expr4 := symbolic.Mul(column.Shift(cols.IsActiveAccumulator, 1),
+		symbolic.Sub(column.Shift(cols.AccumulatorCounter, 1),
+			cols.AccumulatorCounter, 1))
 	am.comp.InsertGlobal(am.Round, am.qname("COUNTER_INCREMENT"), expr4)
 	// Local constraint that AccumulatorCounter starts at zero
 	am.comp.InsertLocal(am.Round, am.qname("COUNTER_LOCAL"), symbolic.Sub(cols.AccumulatorCounter, 0))
@@ -440,7 +440,7 @@ func (am *Module) checkConsistency() {
 
 	// IsActiveAccumulator[i] = 0 IMPLIES IsActiveAccumulator[i+1] = 0 e.g. IsActiveAccumulator[i] = IsActiveAccumulator[i-1]*IsActiveAccumulator[i]
 	expr6 := symbolic.Sub(cols.IsActiveAccumulator,
-		symbolic.Mul(ifaces.ColumnAsVariable(column.Shift(cols.IsActiveAccumulator, -1)),
+		symbolic.Mul(column.Shift(cols.IsActiveAccumulator, -1),
 			cols.IsActiveAccumulator))
 	am.comp.InsertGlobal(am.Round, am.qname("IS_ACTIVE_ACCUMULATOR_ZERO_FOLLOWED_BY_ZERO"), expr6)
 
@@ -462,12 +462,12 @@ func (am *Module) checkEmptyLeaf() {
 	cols := am.Cols
 
 	// (Leaf[i+2] - emptyLeaf) * IsActiveAccumulator[i] * IsFirst[i] * IsInsert[i]
-	expr1 := symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.Leaves, 2)), emptyLeaf)
+	expr1 := symbolic.Sub(column.Shift(cols.Leaves, 2), emptyLeaf)
 	expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsInsert, expr1)
 	am.comp.InsertGlobal(am.Round, am.qname("EMPTY_LEAVES_FOR_INSERT"), expr1)
 
 	// (Leaf[i+3] - emptyLeaf) * IsActiveAccumulator[i] * IsFirst[i] * IsDelete[i]
-	expr2 := symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.Leaves, 3)), emptyLeaf)
+	expr2 := symbolic.Sub(column.Shift(cols.Leaves, 3), emptyLeaf)
 	expr2 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsDelete, expr2)
 	am.comp.InsertGlobal(am.Round, am.qname("EMPTY_LEAVES_FOR_DELETE"), expr2)
 }
@@ -541,9 +541,9 @@ func (am *Module) checkNextFreeNode() {
 		)
 	*/
 	expr1 := symbolic.Mul(cols.IsInsertRow3,
-		symbolic.Sub(cols.NextFreeNode, ifaces.ColumnAsVariable(column.Shift(cols.NextFreeNode, -1)), symbolic.NewConstant(1)))
+		symbolic.Sub(cols.NextFreeNode, column.Shift(cols.NextFreeNode, -1), symbolic.NewConstant(1)))
 	expr2 := symbolic.Mul(symbolic.Sub(symbolic.NewConstant(1), cols.IsInsertRow3),
-		symbolic.Sub(cols.NextFreeNode, ifaces.ColumnAsVariable(column.Shift(cols.NextFreeNode, -1))))
+		symbolic.Sub(cols.NextFreeNode, column.Shift(cols.NextFreeNode, -1)))
 	expr3 := symbolic.Mul(cols.IsActiveAccumulator,
 		symbolic.Sub(symbolic.NewConstant(1), cols.IsFirst),
 		symbolic.Add(expr1, expr2))
