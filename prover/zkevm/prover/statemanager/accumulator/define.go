@@ -273,11 +273,9 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	// INSERT or a DELETE operation respectively.
 	am.checkEmptyLeaf()
 
-	// Check the consistency of the HKey, HKeyMinus, and HKeyPlus for INSERT and ReadZero operations.
-	// i.e., they are consistent with the corresponding leaf opening values
-	am.checkHKeyConsistency()
-
 	// Sandwitch check for INSERT and READ-ZERO operations
+	// We also check the consistency of the HKey, HKeyMinus, and HKeyPlus for INSERT and ReadZero operations.
+	// i.e., they are consistent with the corresponding leaf opening values
 	am.checkSandwitch()
 
 	// Pointer check for INSERT, READ-ZERO, and DELETE operations
@@ -462,8 +460,13 @@ func (am *Module) checkEmptyLeaf() {
 	am.comp.InsertGlobal(am.Round, am.qname("EMPTY_LEAVES_FOR_DELETE"), expr2)
 }
 
-func (am *Module) checkHKeyConsistency() {
+func (am *Module) checkSandwitch() {
 	cols := am.Cols
+	// We want sandwitch check only at row 1 of INSERT and READ-ZERO
+	activeRow := symbolic.Add(symbolic.Mul(cols.IsFirst, cols.IsInsert), symbolic.Mul(cols.IsFirst, cols.IsReadZero))
+	byte32cmp.Bytes32Cmp(am.comp, 16, 16, string(am.qname("CMP_HKEY_HKEY_MINUS")), am.Cols.HKey, am.Cols.HKeyMinus, activeRow)
+	byte32cmp.Bytes32Cmp(am.comp, 16, 16, string(am.qname("CMP_HKEY_PLUS_HKEY")), am.Cols.HKeyPlus, am.Cols.HKey, activeRow)
+
 	// INSERT: The HKeyMinus in the leaf minus openings is the same as HKeyMinus column i.e.,
 	// IsActiveAccumulator[i] * IsInsert[i] * IsFirst[i] * (HKeyMinus[i] - LeafOpenings.Hkey[i])
 	expr1 := symbolic.Mul(cols.IsActiveAccumulator,
@@ -477,7 +480,7 @@ func (am *Module) checkHKeyConsistency() {
 	expr2 := symbolic.Mul(cols.IsActiveAccumulator,
 		cols.IsInsert,
 		cols.IsFirst,
-		symbolic.Sub(cols.HKey, ifaces.ColumnAsVariable(column.Shift(cols.LeafOpenings.HKey, 3))))
+		symbolic.Sub(cols.HKey, column.Shift(cols.LeafOpenings.HKey, 3)))
 	am.comp.InsertGlobal(am.Round, am.qname("HKEY_CONSISTENCY_INSERT"), expr2)
 
 	// INSERT: The HKeyPlus in the plus leaf openings is the same as HKeyPlus column i.e.,
@@ -485,7 +488,7 @@ func (am *Module) checkHKeyConsistency() {
 	expr3 := symbolic.Mul(cols.IsActiveAccumulator,
 		cols.IsInsert,
 		cols.IsFirst,
-		symbolic.Sub(cols.HKeyPlus, ifaces.ColumnAsVariable(column.Shift(cols.LeafOpenings.HKey, 4))))
+		symbolic.Sub(cols.HKeyPlus, column.Shift(cols.LeafOpenings.HKey, 4)))
 	am.comp.InsertGlobal(am.Round, am.qname("HKEY_PLUS_CONSISTENCY_INSERT"), expr3)
 
 	// READ-ZERO: The HKeyMinus in the minus leaf openings is the same as HKeyMinus column i.e.,
@@ -501,16 +504,8 @@ func (am *Module) checkHKeyConsistency() {
 	expr5 := symbolic.Mul(cols.IsActiveAccumulator,
 		cols.IsReadZero,
 		cols.IsFirst,
-		symbolic.Sub(cols.HKeyPlus, ifaces.ColumnAsVariable(column.Shift(cols.LeafOpenings.HKey, 1))))
+		symbolic.Sub(cols.HKeyPlus, column.Shift(cols.LeafOpenings.HKey, 1)))
 	am.comp.InsertGlobal(am.Round, am.qname("HKEY_PLUS_CONSISTENCY_READ_ZERO"), expr5)
-}
-
-func (am *Module) checkSandwitch() {
-	cols := am.Cols
-	// We want sandwitch check only at row 1 of INSERT and READ-ZERO
-	activeRow := symbolic.Add(symbolic.Mul(cols.IsFirst, cols.IsInsert), symbolic.Mul(cols.IsFirst, cols.IsReadZero))
-	byte32cmp.Bytes32Cmp(am.comp, 16, 16, string(am.qname("CMP_HKEY_HKEY_MINUS")), am.Cols.HKey, am.Cols.HKeyMinus, activeRow)
-	byte32cmp.Bytes32Cmp(am.comp, 16, 16, string(am.qname("CMP_HKEY_PLUS_HKEY")), am.Cols.HKeyPlus, am.Cols.HKey, activeRow)
 }
 
 func (am *Module) checkPointer() {
