@@ -19,9 +19,6 @@ func (ec *ECPair) csIsActiveActivation(comp *wizard.CompiledIOP) {
 
 func (ec *ECPair) csBinaryConstraints(comp *wizard.CompiledIOP) {
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfInstance)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorInit)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorCurr)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorPrev)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator)
 }
@@ -198,16 +195,11 @@ func (ec *ECPair) csIndexConsistency(comp *wizard.CompiledIOP) {
 
 func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 	// accumulator sum is IS_COMPUTED
-	comp.InsertGlobal(
-		roundNr,
-		ifaces.QueryIDf("%v_ACCUMULATOR_MASK", nameECPair),
-		sym.Sub(
-			ec.UnalignedPairingData.IsComputed,
-			ec.UnalignedPairingData.IsAccumulatorCurr,
-			ec.UnalignedPairingData.IsAccumulatorPrev,
-			ec.UnalignedPairingData.IsAccumulatorInit,
-		),
-	)
+	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.UnalignedPairingData.IsComputed, []ifaces.Column{
+		ec.UnalignedPairingData.IsAccumulatorCurr,
+		ec.UnalignedPairingData.IsAccumulatorPrev,
+		ec.UnalignedPairingData.IsAccumulatorInit,
+	})
 
 	// first prev accumulator is 1 when pairID*60 == index
 	comp.InsertGlobal(
