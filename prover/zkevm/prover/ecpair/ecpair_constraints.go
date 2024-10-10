@@ -286,3 +286,10 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 		),
 	)
 }
+
+func (ec *ECPair) csExclusiveUnalignedDatas(comp *wizard.CompiledIOP) {
+	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.IsActive, []ifaces.Column{
+		ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
+		ec.UnalignedPairingData.IsActive,
+	})
+}

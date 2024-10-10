@@ -111,6 +111,8 @@ func newECPair(comp *wizard.CompiledIOP, limits *Limits, ecSource *ECPairSource)
 	res.csLastPairToFinalExp(comp)
 	res.csIndexConsistency(comp)
 	res.csAccumulatorMask(comp)
+	// only Unaligned Pairing data or G2 membership data is active at a time
+	res.csExclusiveUnalignedDatas(comp)
 
 	return res
 }
