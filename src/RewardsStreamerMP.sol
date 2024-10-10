@@ -25,7 +25,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
 
     uint256 public totalStaked;
     uint256 public totalMP;
-    uint256 public potentialMP;
+    uint256 public totalMaxMP;
     uint256 public rewardIndex;
     uint256 public accountedRewards;
     uint256 public lastMPUpdatedTime;
@@ -34,7 +34,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
         uint256 stakedBalance;
         uint256 userRewardIndex;
         uint256 userMP;
-        uint256 userPotentialMP;
+        uint256 maxMP;
         uint256 lastMPUpdateTime;
         uint256 lockUntil;
     }
@@ -78,22 +78,25 @@ contract RewardsStreamerMP is ReentrancyGuard {
         totalStaked += amount;
 
         uint256 initialMP = amount;
-        uint256 userPotentialMP = amount * MAX_MULTIPLIER;
+        uint256 potentialMP = amount * MAX_MULTIPLIER;
+        uint256 bonusMP = 0;
 
         if (lockPeriod != 0) {
             uint256 lockMultiplier = (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR) / MAX_LOCKING_PERIOD;
-            initialMP += amount * lockMultiplier / SCALE_FACTOR;
-            userPotentialMP += (amount * lockMultiplier / SCALE_FACTOR);
+            bonusMP = amount * lockMultiplier / SCALE_FACTOR;
             user.lockUntil = block.timestamp + lockPeriod;
         } else {
             user.lockUntil = 0;
         }
 
-        user.userMP += initialMP;
-        totalMP += initialMP;
+        uint256 userMaxMP = initialMP + bonusMP + potentialMP;
+        uint256 userMP = initialMP + bonusMP;
 
-        user.userPotentialMP += userPotentialMP;
-        potentialMP += userPotentialMP;
+        user.userMP += userMP;
+        totalMP += userMP;
+
+        user.maxMP += userMaxMP;
+        totalMaxMP += userMaxMP;
 
         user.userRewardIndex = rewardIndex;
         user.lastMPUpdateTime = block.timestamp;
@@ -120,14 +123,13 @@ contract RewardsStreamerMP is ReentrancyGuard {
         uint256 previousStakedBalance = user.stakedBalance;
 
         uint256 mpToReduce = (user.userMP * amount * SCALE_FACTOR) / (previousStakedBalance * SCALE_FACTOR);
-        uint256 potentialMPToReduce =
-            (user.userPotentialMP * amount * SCALE_FACTOR) / (previousStakedBalance * SCALE_FACTOR);
+        uint256 maxMPToReduce = (user.maxMP * amount * SCALE_FACTOR) / (previousStakedBalance * SCALE_FACTOR);
 
         user.stakedBalance -= amount;
         user.userMP -= mpToReduce;
-        user.userPotentialMP -= potentialMPToReduce;
+        user.maxMP -= maxMPToReduce;
         totalMP -= mpToReduce;
-        potentialMP -= potentialMPToReduce;
+        totalMaxMP -= maxMPToReduce;
         totalStaked -= amount;
 
         bool success = STAKING_TOKEN.transfer(msg.sender, amount);
@@ -148,7 +150,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
     }
 
     function updateGlobalMP() internal {
-        if (potentialMP == 0) {
+        if (totalMaxMP == 0) {
             lastMPUpdatedTime = block.timestamp;
             return;
         }
@@ -160,8 +162,8 @@ contract RewardsStreamerMP is ReentrancyGuard {
         }
 
         uint256 accruedMP = (timeDiff * totalStaked * MP_RATE_PER_YEAR) / (365 days * SCALE_FACTOR);
-        if (accruedMP > potentialMP) {
-            accruedMP = potentialMP;
+        if (totalMP + accruedMP > totalMaxMP) {
+            accruedMP = totalMaxMP - totalMP;
         }
 
         // Adjust rewardIndex before updating totalMP
@@ -173,7 +175,6 @@ contract RewardsStreamerMP is ReentrancyGuard {
             rewardIndex = (rewardIndex * previousTotalWeight) / newTotalWeight;
         }
 
-        potentialMP -= accruedMP;
         lastMPUpdatedTime = currentTime;
     }
 
@@ -195,7 +196,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
     function _updateUserMP(address userAddress) internal {
         UserInfo storage user = users[userAddress];
 
-        if (user.userPotentialMP == 0 || user.stakedBalance == 0) {
+        if (user.maxMP == 0 || user.stakedBalance == 0) {
             user.lastMPUpdateTime = block.timestamp;
             return;
         }
@@ -207,13 +208,11 @@ contract RewardsStreamerMP is ReentrancyGuard {
 
         uint256 accruedMP = (timeDiff * user.stakedBalance * MP_RATE_PER_YEAR) / (365 days * SCALE_FACTOR);
 
-        if (accruedMP > user.userPotentialMP) {
-            accruedMP = user.userPotentialMP;
+        if (user.userMP + accruedMP > user.maxMP) {
+            accruedMP = user.maxMP - user.userMP;
         }
 
-        user.userPotentialMP -= accruedMP;
         user.userMP += accruedMP;
-
         user.lastMPUpdateTime = block.timestamp;
     }
 

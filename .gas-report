@@ -15,23 +15,40 @@
 | src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |        |        |        |         |
 |------------------------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                                      | Deployment Size |        |        |        |         |
-| 1114894                                              | 5025            |        |        |        |         |
+| 1115122                                              | 5026            |        |        |        |         |
 | Function Name                                        | min             | avg    | median | max    | # calls |
 | MAX_LOCKING_PERIOD                                   | 228             | 228    | 228    | 228    | 18      |
-| MAX_MULTIPLIER                                       | 274             | 274    | 274    | 274    | 34      |
+| MAX_MULTIPLIER                                       | 252             | 252    | 252    | 252    | 24      |
 | MIN_LOCKING_PERIOD                                   | 229             | 229    | 229    | 229    | 8       |
 | MP_RATE_PER_YEAR                                     | 231             | 231    | 231    | 231    | 2       |
 | SCALE_FACTOR                                         | 251             | 251    | 251    | 251    | 30      |
 | accountedRewards                                     | 373             | 921    | 373    | 2373   | 62      |
-| getUserInfo                                          | 1531            | 1531   | 1531   | 1531   | 61      |
-| potentialMP                                          | 330             | 330    | 330    | 330    | 62      |
+| getUserInfo                                          | 1576            | 1576   | 1576   | 1576   | 61      |
 | rewardIndex                                          | 373             | 405    | 373    | 2373   | 62      |
-| stake                                                | 167787          | 215055 | 228586 | 249379 | 43      |
-| totalMP                                              | 352             | 352    | 352    | 352    | 62      |
+| stake                                                | 168040          | 215222 | 228839 | 249323 | 43      |
+| totalMP                                              | 330             | 330    | 330    | 330    | 62      |
+| totalMaxMP                                           | 329             | 329    | 329    | 329    | 62      |
 | totalStaked                                          | 373             | 373    | 373    | 373    | 62      |
-| unstake                                              | 75511           | 107650 | 110519 | 134250 | 10      |
-| updateGlobalState                                    | 30008           | 57540  | 50309  | 80335  | 22      |
-| updateUserMP                                         | 29022           | 38080  | 40060  | 40060  | 16      |
+| unstake                                              | 75511           | 107624 | 110519 | 134250 | 10      |
+| updateGlobalState                                    | 30008           | 56707  | 47387  | 80335  | 22      |
+| updateUserMP                                         | 34631           | 36820  | 37133  | 37133  | 16      |
+
+
+| src/XPNFTToken.sol:XPNFTToken contract          |                 |       |        |       |         |
+|-------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                 | Deployment Size |       |        |       |         |
+| 737164                                          | 3407            |       |        |       |         |
+| Function Name                                   | min             | avg   | median | max   | # calls |
+| approve                                         | 393             | 393   | 393    | 393   | 1       |
+| getApproved                                     | 296             | 296   | 296    | 296   | 1       |
+| isApprovedForAll                                | 510             | 510   | 510    | 510   | 1       |
+| metadataGenerator                               | 325             | 325   | 325    | 325   | 1       |
+| safeTransferFrom(address,address,uint256)       | 485             | 485   | 485    | 485   | 1       |
+| safeTransferFrom(address,address,uint256,bytes) | 677             | 677   | 677    | 677   | 1       |
+| setApprovalForAll                               | 475             | 475   | 475    | 475   | 1       |
+| setMetadataGenerator                            | 23996           | 26489 | 26489  | 28983 | 2       |
+| tokenURI                                        | 76129           | 76129 | 76129  | 76129 | 1       |
+| transferFrom                                    | 530             | 530   | 530    | 530   | 1       |
 
 
 | src/XPToken.sol:XPToken contract |                 |       |        |       |         |
@@ -51,14 +68,44 @@
 | transferFrom                     | 521             | 521   | 521    | 521   | 1       |
 
 
+| src/nft-metadata-generators/NFTMetadataGeneratorSVG.sol:NFTMetadataGeneratorSVG contract |                 |       |        |       |         |
+|------------------------------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                                                          | Deployment Size |       |        |       |         |
+| 1196494                                                                                  | 5995            |       |        |       |         |
+| Function Name                                                                            | min             | avg   | median | max   | # calls |
+| generate                                                                                 | 54832           | 54832 | 54832  | 54832 | 1       |
+| imagePrefix                                                                              | 1183            | 2183  | 2183   | 3183  | 2       |
+| imageSuffix                                                                              | 1227            | 2227  | 2227   | 3227  | 2       |
+| setImageStrings                                                                          | 25255           | 30614 | 30614  | 35974 | 2       |
+
+
+| src/nft-metadata-generators/NFTMetadataGeneratorURL.sol:NFTMetadataGeneratorURL contract |                 |       |        |       |         |
+|------------------------------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                                                          | Deployment Size |       |        |       |         |
+| 1165211                                                                                  | 5808            |       |        |       |         |
+| Function Name                                                                            | min             | avg   | median | max   | # calls |
+| generate                                                                                 | 64528           | 64528 | 64528  | 64528 | 1       |
+| setURLStrings                                                                            | 25423           | 30782 | 30782  | 36142 | 2       |
+| urlPrefix                                                                                | 1184            | 1184  | 1184   | 1184  | 1       |
+| urlSuffix                                                                                | 1250            | 1250  | 1250   | 1250  | 1       |
+
+
+| test/mocks/MockMetadataGenerator.sol:MockMetadataGenerator contract |                 |       |        |       |         |
+|---------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                                     | Deployment Size |       |        |       |         |
+| 940871                                                              | 4711            |       |        |       |         |
+| Function Name                                                       | min             | avg   | median | max   | # calls |
+| generate                                                            | 60984           | 60984 | 60984  | 60984 | 1       |
+
+
 | test/mocks/MockToken.sol:MockToken contract |                 |       |        |       |         |
 |---------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                             | Deployment Size |       |        |       |         |
 | 639406                                      | 3369            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
 | approve                                     | 46346           | 46346 | 46346  | 46346 | 150     |
-| balanceOf                                   | 561             | 1321  | 561    | 2561  | 271     |
-| mint                                        | 51284           | 58124 | 51284  | 68384 | 150     |
+| balanceOf                                   | 561             | 1330  | 561    | 2561  | 273     |
+| mint                                        | 51284           | 59110 | 51284  | 68384 | 166     |
 | transfer                                    | 34390           | 48070 | 51490  | 51490 | 10      |
 
 
