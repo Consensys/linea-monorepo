@@ -9,21 +9,26 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	common "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
+func (ec *ECPair) csIsActiveActivation(comp *wizard.CompiledIOP) {
+	// IsActive is binary and cannot transition from 0 to 1
+	common.MustBeActivationColumns(comp, ec.IsActive)
+}
+
 func (ec *ECPair) csBinaryConstraints(comp *wizard.CompiledIOP) {
-	mustBeBinary(comp, ec.IsActive)
-	mustBeBinary(comp, ec.UnalignedPairingData.IsPulling)
-	mustBeBinary(comp, ec.UnalignedPairingData.IsComputed)
-	mustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfInstance)
-	mustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorInit)
-	mustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorCurr)
-	mustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorPrev)
-	mustBeBinary(comp, ec.UnalignedPairingData.ToMillerLoopCircuitMask)
-	mustBeBinary(comp, ec.UnalignedPairingData.ToFinalExpCircuitMask)
-	mustBeBinary(comp, ec.UnalignedG2MembershipData.IsPulling)
-	mustBeBinary(comp, ec.UnalignedG2MembershipData.IsComputed)
-	mustBeBinary(comp, ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask)
+	common.MustBeBinary(comp, ec.UnalignedPairingData.IsPulling)
+	common.MustBeBinary(comp, ec.UnalignedPairingData.IsComputed)
+	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfInstance)
+	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorInit)
+	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorCurr)
+	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorPrev)
+	common.MustBeBinary(comp, ec.UnalignedPairingData.ToMillerLoopCircuitMask)
+	common.MustBeBinary(comp, ec.UnalignedPairingData.ToFinalExpCircuitMask)
+	common.MustBeBinary(comp, ec.UnalignedG2MembershipData.IsPulling)
+	common.MustBeBinary(comp, ec.UnalignedG2MembershipData.IsComputed)
+	common.MustBeBinary(comp, ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask)
 }
 
 func (ec *ECPair) csFlagConsistency(comp *wizard.CompiledIOP) {
@@ -41,11 +46,13 @@ func (ec *ECPair) csFlagConsistency(comp *wizard.CompiledIOP) {
 
 func (ec *ECPair) csOffWhenInactive(comp *wizard.CompiledIOP) {
 	// nothing is set when inactive
-	isZeroWhenInactive(comp, ec.UnalignedPairingData.Limb, ec.IsActive)
-	isZeroWhenInactive(comp, ec.UnalignedPairingData.ToMillerLoopCircuitMask, ec.IsActive)
-	isZeroWhenInactive(comp, ec.UnalignedPairingData.ToFinalExpCircuitMask, ec.IsActive)
-	isZeroWhenInactive(comp, ec.UnalignedG2MembershipData.Limb, ec.IsActive)
-	isZeroWhenInactive(comp, ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask, ec.IsActive)
+	common.MustZeroWhenInactive(comp, ec.IsActive,
+		ec.UnalignedPairingData.Limb,
+		ec.UnalignedPairingData.ToMillerLoopCircuitMask,
+		ec.UnalignedPairingData.ToFinalExpCircuitMask,
+		ec.UnalignedG2MembershipData.Limb,
+		ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
+	)
 }
 
 func (ec *ECPair) csProjections(comp *wizard.CompiledIOP) {
@@ -275,25 +282,5 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 			ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator,
 			sym.Sub(nbGtLimbs, sumMask(ec.UnalignedPairingData.IsAccumulatorPrev)),
 		),
-	)
-}
-
-// -- utils. Copied from prover/zkevm/prover/statemanager/statesummary/state_summary.go
-
-// isZeroWhenInactive constraints the column to cancel when inactive.
-func isZeroWhenInactive(comp *wizard.CompiledIOP, c, isActive ifaces.Column) {
-	comp.InsertGlobal(
-		roundNr,
-		ifaces.QueryIDf("%v_IS_ZERO_WHEN_INACTIVE", c.GetColID()),
-		sym.Sub(c, sym.Mul(c, isActive)),
-	)
-}
-
-// mustBeBinary constrains the current column to be binary.
-func mustBeBinary(comp *wizard.CompiledIOP, c ifaces.Column) {
-	comp.InsertGlobal(
-		roundNr,
-		ifaces.QueryIDf("%v_MUST_BE_BINARY", c.GetColID()),
-		sym.Mul(c, sym.Sub(c, 1)),
 	)
 }

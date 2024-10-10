@@ -89,6 +89,8 @@ func newECPair(comp *wizard.CompiledIOP, limits *Limits, ecSource *ECPairSource)
 		UnalignedG2MembershipData: newUnalignedG2MembershipData(comp, limits),
 	}
 
+	// IsActive activation - can only go from 1 to {0, 1} and from 0 to 0.
+	res.csIsActiveActivation(comp)
 	// masks and flags are binary
 	res.csBinaryConstraints(comp)
 	// IsActive is only active when we are either pulling or computing in the unaligned submodules
