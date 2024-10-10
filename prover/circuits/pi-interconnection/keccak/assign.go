@@ -84,7 +84,7 @@ func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard
 
 	const blockNbBytesIn = lanesPerBlock * 8
 	for _, l := range *h {
-		nbKeccakF += (l + blockNbBytesIn - 1) / blockNbBytesIn
+		nbKeccakF += l/blockNbBytesIn + 1 // extra room for padding
 	}
 
 	wc := NewWizardVerifierSubCircuit(nbKeccakF, wizardCompilationOpts...)
