@@ -38,8 +38,16 @@ func (ec *ECPair) csFlagConsistency(comp *wizard.CompiledIOP) {
 func (ec *ECPair) csOffWhenInactive(comp *wizard.CompiledIOP) {
 	// nothing is set when inactive
 	common.MustZeroWhenInactive(comp, ec.IsActive,
+		ec.UnalignedPairingData.InstanceID,
+		ec.UnalignedPairingData.PairID,
+		ec.UnalignedPairingData.TotalPairs,
 		ec.UnalignedPairingData.Limb,
+		ec.UnalignedPairingData.Index,
+		ec.UnalignedPairingData.IsFirstLineOfInstance,
+		ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator,
+		ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator,
 		ec.UnalignedG2MembershipData.Limb,
+		ec.UnalignedG2MembershipData.SuccessBit,
 	)
 }
 
