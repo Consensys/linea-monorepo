@@ -86,8 +86,10 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	commoncs.MustBeBinary(comp, addr.isAddress)
 	commoncs.MustBeBinary(comp, addr.isAddressFromEcRec)
 	commoncs.MustBeBinary(comp, addr.isAddressFromTxnData)
-	isZeroWhenInactive(comp, addr.isAddress, ac.IsActive)
-	isZeroWhenInactive(comp, addr.hashNum, ac.IsActive)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive,
+		addr.isAddress,
+		addr.hashNum,
+	)
 
 	// check the  trimming of hashHi  to the addressHi
 	addr.csAddressTrimming(comp)

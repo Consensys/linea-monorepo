@@ -17,21 +17,11 @@ func (ac *antichamber) csIsActive(comp *wizard.CompiledIOP) {
 }
 
 func (ac *antichamber) csZeroWhenInactive(comp *wizard.CompiledIOP) {
-	for _, c := range ac.cols(false) {
-		isZeroWhenInactive(comp, c, ac.IsActive)
-	}
-	for _, c := range ac.EcRecover.cols() {
-		isZeroWhenInactive(comp, c, ac.IsActive)
-	}
-	for _, c := range ac.Addresses.cols() {
-		isZeroWhenInactive(comp, c, ac.IsActive)
-	}
-	for _, c := range ac.txSignature.cols() {
-		isZeroWhenInactive(comp, c, ac.IsActive)
-	}
-	for _, c := range ac.UnalignedGnarkData.cols() {
-		isZeroWhenInactive(comp, c, ac.IsActive)
-	}
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.cols(false)...)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.EcRecover.cols()...)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.Addresses.cols()...)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.txSignature.cols()...)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.UnalignedGnarkData.cols()...)
 }
 
 func (ac *antichamber) csConsistentPushingFetching(comp *wizard.CompiledIOP) {
