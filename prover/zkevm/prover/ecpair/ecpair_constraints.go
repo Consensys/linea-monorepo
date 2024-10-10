@@ -292,3 +292,11 @@ func (ec *ECPair) csExclusiveUnalignedDatas(comp *wizard.CompiledIOP) {
 		ec.UnalignedPairingData.IsActive,
 	})
 }
+
+func (ec *ECPair) csExclusivePairingCircuitMasks(comp *wizard.CompiledIOP) {
+	// the pairing circuit masks are mutually exclusive
+	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.UnalignedPairingData.IsActive, []ifaces.Column{
+		ec.UnalignedPairingData.ToMillerLoopCircuitMask,
+		ec.UnalignedPairingData.ToFinalExpCircuitMask,
+	})
+}

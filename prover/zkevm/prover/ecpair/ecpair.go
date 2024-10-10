@@ -113,6 +113,8 @@ func newECPair(comp *wizard.CompiledIOP, limits *Limits, ecSource *ECPairSource)
 	res.csAccumulatorMask(comp)
 	// only Unaligned Pairing data or G2 membership data is active at a time
 	res.csExclusiveUnalignedDatas(comp)
+	// only to Miller loop or to FinalExp
+	res.csExclusivePairingCircuitMasks(comp)
 
 	return res
 }
