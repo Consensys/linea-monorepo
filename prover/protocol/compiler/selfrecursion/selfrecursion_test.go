@@ -227,7 +227,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 			define,
 			vortex.Compile(
 				2,
-				vortex.ForceNumOpenedColumns(16),
+				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
@@ -235,7 +235,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 			compiler.Arcane(1<<8, 1<<10, false),
 			vortex.Compile(
 				2,
-				vortex.ForceNumOpenedColumns(16),
+				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
@@ -243,7 +243,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 			compiler.Arcane(1<<11, 1<<13, false),
 			vortex.Compile(
 				2,
-				vortex.ForceNumOpenedColumns(16),
+				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			dummy.Compile,

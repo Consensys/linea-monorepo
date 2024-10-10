@@ -37,7 +37,7 @@ func (f *finalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
 	}
 
 	if zSum != field.Zero() {
-		return fmt.Errorf("log-derivate lookup, the final evaluation check failed")
+		return fmt.Errorf("log-derivate lookup, the final evaluation check failed for %v,", f.Name)
 	}
 
 	return nil
