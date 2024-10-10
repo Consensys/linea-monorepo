@@ -29,7 +29,6 @@ contract LineaRollup is
 
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
-  bytes32 public constant FINALIZE_WITHOUT_PROOF_ROLE = keccak256("FINALIZE_WITHOUT_PROOF_ROLE");
   bytes32 public constant GENESIS_SHNARF =
     keccak256(
       abi.encode(
@@ -48,7 +47,7 @@ contract LineaRollup is
   uint256 internal constant POINT_EVALUATION_RETURN_DATA_LENGTH = 64;
   uint256 internal constant POINT_EVALUATION_FIELD_ELEMENTS_LENGTH = 4096;
 
-  uint256 internal constant SIX_MONTHS_IN_SECONDS = 15768000; // 365 / 2 * 86400
+  uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 
   /// @dev DEPRECATED in favor of the single shnarfFinalBlockNumbers mapping.
   mapping(bytes32 dataHash => bytes32 finalStateRootHash) public dataFinalStateRootHashes;
@@ -76,9 +75,9 @@ contract LineaRollup is
   /// @dev Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
   bytes32 public currentFinalizedState;
 
-  /// @dev The address of the gateway operator.
+  /// @dev The address of the fallback operator.
   /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
-  address public gatewayOperator;
+  address public fallbackOperator;
 
   /// @dev Total contract storage is 11 slots.
 
@@ -103,11 +102,19 @@ contract LineaRollup is
 
     __MessageService_init(_initializationData.rateLimitPeriodInSeconds, _initializationData.rateLimitAmountInWei);
 
+    /**
+     * @dev DEFAULT_ADMIN_ROLE is set for the security council explicitly,
+     * as the permissions init purposefully does not allow DEFAULT_ADMIN_ROLE to be set.
+     */
+    _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
+
     __Permissions_init(_initializationData.roleAddresses);
 
     verifiers[0] = _initializationData.defaultVerifier;
 
-    gatewayOperator = _initializationData.gatewayOperator;
+    fallbackOperator = _initializationData.fallbackOperator;
+    emit FallbackOperatorAddressSet(msg.sender, _initializationData.fallbackOperator);
+
     currentL2BlockNumber = _initializationData.initialL2BlockNumber;
     stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
@@ -118,22 +125,24 @@ contract LineaRollup is
   }
 
   /**
-   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings and gateway operator.
+   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings and fallback operator.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _roleAddresses The list of addresses and their roles.
-   * @param _pauseTypeRoles The list of pause type roles.
-   * @param _unpauseTypeRoles The list of unpause type roles.
-   * @param _gatewayOperator The address of the gateway operator.
+   * @param _roleAddresses The list of addresses and roles to assign permissions to.
+   * @param _pauseTypeRoles The list of pause types to associate with roles.
+   * @param _unpauseTypeRoles The list of unpause types to associate with roles.
+   * @param _fallbackOperator The address of the fallback operator.
    */
   function reinitializeLineaRollupV6(
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles,
-    address _gatewayOperator
+    address _fallbackOperator
   ) external reinitializer(6) {
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-    gatewayOperator = _gatewayOperator;
+
+    fallbackOperator = _fallbackOperator;
+    emit FallbackOperatorAddressSet(msg.sender, _fallbackOperator);
 
     /// @dev using the constants requires string memory and more complex code.
     emit LineaRollupVersionChanged(bytes8("5.0"), bytes8("6.0"));
@@ -156,13 +165,13 @@ contract LineaRollup is
   }
 
   /**
-   * @notice Sets the gateway operator role to the specified address if six months have passed since the last finalization.
+   * @notice Sets the fallback operator role to the specified address if six months have passed since the last finalization.
    * @dev Reverts if six months have not passed since the last finalization.
    * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
    * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
    * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
    */
-  function setGatewayOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external {
+  function setFallbackOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external {
     if (block.timestamp < _lastFinalizedTimestamp + SIX_MONTHS_IN_SECONDS) {
       revert LastFinalizationTimeNotLapsed();
     }
@@ -173,10 +182,10 @@ contract LineaRollup is
       );
     }
 
-    address gatewayOperatorAddress = gatewayOperator;
+    address fallbackOperatorAddress = fallbackOperator;
 
-    _grantRole(OPERATOR_ROLE, gatewayOperatorAddress);
-    emit GatewayOperatorRoleGranted(msg.sender, gatewayOperatorAddress);
+    _grantRole(OPERATOR_ROLE, fallbackOperatorAddress);
+    emit FallbackOperatorRoleGranted(msg.sender, fallbackOperatorAddress);
   }
 
   /**
@@ -202,7 +211,7 @@ contract LineaRollup is
     BlobSubmissionData[] calldata _blobSubmissionData,
     bytes32 _parentShnarf,
     bytes32 _finalBlobShnarf
-  ) external whenTypeAndGeneralNotPaused(BLOB_SUBMISSION_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.BLOB_SUBMISSION) onlyRole(OPERATOR_ROLE) {
     uint256 blobSubmissionLength = _blobSubmissionData.length;
 
     if (blobSubmissionLength == 0) {
@@ -286,7 +295,7 @@ contract LineaRollup is
     SubmissionDataV2 calldata _submissionData,
     bytes32 _parentShnarf,
     bytes32 _expectedShnarf
-  ) external whenTypeAndGeneralNotPaused(CALLDATA_SUBMISSION_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.CALLDATA_SUBMISSION) onlyRole(OPERATOR_ROLE) {
     if (_submissionData.compressedData.length == 0) {
       revert EmptySubmissionData();
     }
@@ -461,7 +470,7 @@ contract LineaRollup is
     bytes calldata _aggregatedProof,
     uint256 _proofType,
     FinalizationDataV2 calldata _finalizationData
-  ) external whenTypeAndGeneralNotPaused(FINALIZATION_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.FINALIZATION) onlyRole(OPERATOR_ROLE) {
     if (_aggregatedProof.length == 0) {
       revert ProofIsEmpty();
     }

@@ -6,6 +6,7 @@ import com.github.michaelbull.result.onFailure
 import com.github.michaelbull.result.onSuccess
 import com.sksamuel.hoplite.Masked
 import net.consensys.linea.BlockParameter
+import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.ExtraDataV1UpdaterImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.FeeHistoryFetcherImpl
@@ -239,6 +240,7 @@ class CoordinatorConfigTest {
 
     private val tracesConfig = TracesConfig(
       switchToLineaBesu = false,
+      blobCompressorVersion = BlobCompressorVersion.V0_1_0,
       rawExecutionTracesVersion = "0.2.0",
       expectedTracesApiVersion = "0.2.0",
       counters = TracesConfig.FunctionalityEndpoint(
@@ -400,7 +402,7 @@ class CoordinatorConfigTest {
     )
 
     private val messageAnchoringServiceConfig = MessageAnchoringServiceConfig(
-      pollingInterval = Duration.parse("PT10S"),
+      pollingInterval = Duration.parse("PT1S"),
       maxMessagesToAnchor = 100U
     )
 
@@ -433,12 +435,9 @@ class CoordinatorConfigTest {
       ),
       jsonRpcGasPriceUpdaterConfig = GasPriceUpdaterImpl.Config(
         gethEndpoints = listOf(
-          URI("http://traces-node:8545/").toURL(),
           URI("http://l2-node:8545/").toURL()
         ),
-        besuEndPoints = listOf(
-          URI("http://sequencer:8545/").toURL()
-        ),
+        besuEndPoints = listOf(),
         retryConfig = l2NetworkGasPricingRequestRetryConfig
       ),
       jsonRpcPriceUpdateInterval = 12.seconds,
@@ -470,7 +469,7 @@ class CoordinatorConfigTest {
       gasPriceCapCalculation = L1DynamicGasPriceCapServiceConfig.GasPriceCapCalculation(
         adjustmentConstant = 25U,
         blobAdjustmentConstant = 25U,
-        finalizationTargetMaxDelay = Duration.parse("PT2M"),
+        finalizationTargetMaxDelay = Duration.parse("PT30S"),
         gasFeePercentileWindow = Duration.parse("PT1M"),
         gasFeePercentileWindowLeeway = Duration.parse("PT10S"),
         gasFeePercentile = 10.0,

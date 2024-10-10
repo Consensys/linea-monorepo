@@ -1,5 +1,5 @@
 import { task } from "hardhat/config";
-import { getTaskCliOrEnvValue } from "../../utils/environmentHelper";
+import { getTaskCliOrEnvValue } from "../../common/helpers/environmentHelper";
 
 /*
     *******************************************************************************************

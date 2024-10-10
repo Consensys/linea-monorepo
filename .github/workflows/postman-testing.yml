@@ -10,11 +10,11 @@ on:
 
 concurrency:
   group: postman-testing-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   run-tests:
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, Linux, X64, large]
     name: Postman & SDK tests
     steps:
       - name: Checkout

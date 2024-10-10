@@ -20,13 +20,15 @@ export default function Stepper({ steps, activeStep }: StepperProps) {
               className={cn(
                 "-mx-px flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-card bg-cardBg p-1.5",
                 {
+                  "bg-primary": index < activeStep,
                   "border-primary": index <= activeStep,
                 },
               )}
             >
               <span
                 className={cn("text-base font-bold text-[#E5E5E5]", {
-                  "text-primary": index <= activeStep,
+                  "text-cardBg": index < activeStep,
+                  "text-primary": index === activeStep,
                 })}
               >
                 {index + 1}

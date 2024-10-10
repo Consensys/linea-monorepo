@@ -19,6 +19,7 @@ import (
 	plonk_bls12377 "github.com/consensys/gnark/backend/plonk/bls12-377"
 	plonk_bn254 "github.com/consensys/gnark/backend/plonk/bn254"
 	plonk_bw6761 "github.com/consensys/gnark/backend/plonk/bw6-761"
+	"github.com/consensys/gnark/backend/solidity"
 	"github.com/sirupsen/logrus"
 
 	kzg377 "github.com/consensys/gnark-crypto/ecc/bls12-377/kzg"
@@ -29,6 +30,12 @@ import (
 	gnarkio "github.com/consensys/gnark/io"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
+)
+
+const (
+	// solidityPragmaVersion is the version of the Solidity compiler to target.
+	// it is used for generating the verifier contract from the PLONK verifying key.
+	solidityPragmaVersion = "0.8.26"
 )
 
 // Setup contains the proving and verifying keys of a circuit, as well as the constraint system.
@@ -76,7 +83,7 @@ func MakeSetup(
 	hasSolidity := setup.Circuit.Field().String() == ecc.BN254.ScalarField().String()
 	if hasSolidity {
 		h := sha256.New()
-		if err = vk.ExportSolidity(h); err != nil {
+		if err = vk.ExportSolidity(h, solidity.WithPragmaVersion(solidityPragmaVersion)); err != nil {
 			return Setup{}, fmt.Errorf("computing checksum for verifier contract: %w", err)
 		}
 		setup.Manifest.Checksums.VerifierContract = "0x" + hex.EncodeToString(h.Sum(nil))
@@ -131,7 +138,7 @@ func (s *Setup) WriteTo(rootDir string) error {
 			return fmt.Errorf("creating verifier contract file: %w", err)
 		}
 		defer f.Close()
-		if err = s.VerifyingKey.ExportSolidity(f); err != nil {
+		if err = s.VerifyingKey.ExportSolidity(f, solidity.WithPragmaVersion(solidityPragmaVersion)); err != nil {
 			return fmt.Errorf("exporting verifier contract to file: %w", err)
 		}
 	}

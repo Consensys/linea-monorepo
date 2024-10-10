@@ -22,7 +22,7 @@ COPY ./bridge-ui ./bridge-ui
 COPY $ENV_FILE ./bridge-ui/.env.production
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store apk add --virtual build-dependencies --no-cache python3 make g++ \
-    && pnpm install --frozen-lockfile \
+    && pnpm install --frozen-lockfile --prefer-offline \
     && pnpm run -F bridge-ui build \
     && apk del build-dependencies
 

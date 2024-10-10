@@ -53,13 +53,19 @@ interface IRateLimiter {
   error LimitIsZero();
 
   /**
-   * @notice Resets the rate limit amount to the amount specified.
-   * @param _amount sets the new limit amount.
+   * @notice Resets the rate limit amount.
+   * @dev If the used amount is higher, it is set to the limit to avoid confusion/issues.
+   * @dev Only the RATE_LIMIT_SETTER_ROLE is allowed to execute this function.
+   * @dev Emits the LimitAmountChanged event.
+   * @dev usedLimitAmountToSet will use the default value of zero if period has expired.
+   * @param _amount The amount to reset the limit to.
    */
   function resetRateLimitAmount(uint256 _amount) external;
 
   /**
-   * @notice Resets the amount used in the period to zero.
+   * @notice Resets the amount used to zero.
+   * @dev Only the USED_RATE_LIMIT_RESETTER_ROLE is allowed to execute this function.
+   * @dev Emits the AmountUsedInPeriodReset event.
    */
   function resetAmountUsedInPeriod() external;
 }
