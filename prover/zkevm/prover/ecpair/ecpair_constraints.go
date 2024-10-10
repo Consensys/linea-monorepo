@@ -12,8 +12,12 @@ import (
 	common "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
+func (ec *ECPair) csIsActiveActivation(comp *wizard.CompiledIOP) {
+	// IsActive is binary and cannot transition from 0 to 1
+	common.MustBeActivationColumns(comp, ec.IsActive)
+}
+
 func (ec *ECPair) csBinaryConstraints(comp *wizard.CompiledIOP) {
-	common.MustBeBinary(comp, ec.IsActive)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsPulling)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsComputed)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfInstance)
