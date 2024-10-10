@@ -23,10 +23,13 @@ func Checksum(dict []byte, version uint16) ([]byte, error) {
 
 type Store []map[string][]byte
 
-func NewStore() Store {
+func NewStore(paths ...string) Store {
 	res := make(Store, 2)
 	for i := range res {
 		res[i] = make(map[string][]byte)
+	}
+	if err := res.Load(paths...); err != nil {
+		panic(err)
 	}
 	return res
 }
