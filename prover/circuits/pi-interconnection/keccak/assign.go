@@ -80,7 +80,7 @@ func (h *StrictHasherCompiler) WithHashLengths(l ...int) *StrictHasherCompiler {
 }
 
 func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard.CompiledIOP)) CompiledStrictHasher {
-	nbKeccakF := 0 // or len(*h) or 2*len(*h)?
+	nbKeccakF := 0 // Since the output size is smaller than the block size the squeezing phase is trivial TODO @Tabaie check with @azam.soleimanian that this is correct
 
 	const blockNbBytesIn = lanesPerBlock * 8
 	for _, l := range *h {
