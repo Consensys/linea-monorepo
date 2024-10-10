@@ -39,10 +39,7 @@ func (ec *ECPair) csOffWhenInactive(comp *wizard.CompiledIOP) {
 	// nothing is set when inactive
 	common.MustZeroWhenInactive(comp, ec.IsActive,
 		ec.UnalignedPairingData.Limb,
-		ec.UnalignedPairingData.ToMillerLoopCircuitMask,
-		ec.UnalignedPairingData.ToFinalExpCircuitMask,
 		ec.UnalignedG2MembershipData.Limb,
-		ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
 	)
 }
 
