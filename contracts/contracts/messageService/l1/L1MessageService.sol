@@ -80,9 +80,9 @@ abstract contract L1MessageService is
   }
 
   /**
-   * @notice Claims and delivers a cross-chain message using merkle proof.
-   * @dev if merkle depth is empty, it will revert with L2MerkleRootDoesNotExist.
-   * @dev if merkle depth is different than proof size, it will revert with ProofLengthDifferentThanMerkleDepth.
+   * @notice Claims and delivers a cross-chain message using a Merkle proof.
+   * @dev if tree depth is empty, it will revert with L2MerkleRootDoesNotExist.
+   * @dev if tree depth is different than proof size, it will revert with ProofLengthDifferentThanMerkleDepth.
    * @param _params Collection of claim data with proof and supporting data.
    */
   function claimMessageWithProof(

@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   run-load-test:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     name: Run Load Test
     steps:
       - name: Checkout

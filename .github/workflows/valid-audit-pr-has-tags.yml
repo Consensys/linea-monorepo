@@ -9,7 +9,7 @@ on:
 
 jobs:
   check:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
 
     steps:
     - name: Checkout code

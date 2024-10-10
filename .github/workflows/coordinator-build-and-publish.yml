@@ -29,11 +29,11 @@ on:
 
 concurrency:
   group: coordinator-build-and-publish-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref_name != 'main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build-and-publish:
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     name: Coordinator build
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     env:
@@ -54,17 +54,17 @@ jobs:
       - name: Build dist
         run: |
           ./gradlew coordinator:app:distZip --no-daemon
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v2
       - name: Login to Docker Hub
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
       - name: Docker meta
         id: coordinator
         uses: docker/metadata-action@v3

@@ -17,11 +17,11 @@ on:
 
 concurrency:
   group: traces-api-facade-testing-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref_name != 'main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   run-tests:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     name: Traces api facade tests
     steps:
       - name: Checkout

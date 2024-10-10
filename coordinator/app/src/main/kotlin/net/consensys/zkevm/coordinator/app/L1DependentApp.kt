@@ -3,7 +3,6 @@ package net.consensys.zkevm.coordinator.app
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import net.consensys.linea.BlockNumberAndHash
-import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.blob.ShnarfCalculatorVersion
 import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.linea.contract.Web3JL2MessageService
@@ -394,12 +393,7 @@ class L1DependentApp(
     val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
 
     // To fail faster for JNA reasons
-    val compressorVersion =
-      if (configs.traces.switchToLineaBesu) {
-        BlobCompressorVersion.V1_0_1
-      } else {
-        BlobCompressorVersion.V0_1_0
-      }
+    val compressorVersion = configs.traces.blobCompressorVersion
     val blobCompressor = GoBackedBlobCompressor.getInstance(
       compressorVersion = compressorVersion,
       dataLimit = configs.blobCompression.blobSizeLimit.toUInt()
