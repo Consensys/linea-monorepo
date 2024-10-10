@@ -42,11 +42,13 @@ func (ec *ECPair) csFlagConsistency(comp *wizard.CompiledIOP) {
 
 func (ec *ECPair) csOffWhenInactive(comp *wizard.CompiledIOP) {
 	// nothing is set when inactive
-	isZeroWhenInactive(comp, ec.UnalignedPairingData.Limb, ec.IsActive)
-	isZeroWhenInactive(comp, ec.UnalignedPairingData.ToMillerLoopCircuitMask, ec.IsActive)
-	isZeroWhenInactive(comp, ec.UnalignedPairingData.ToFinalExpCircuitMask, ec.IsActive)
-	isZeroWhenInactive(comp, ec.UnalignedG2MembershipData.Limb, ec.IsActive)
-	isZeroWhenInactive(comp, ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask, ec.IsActive)
+	common.MustZeroWhenInactive(comp, ec.IsActive,
+		ec.UnalignedPairingData.Limb,
+		ec.UnalignedPairingData.ToMillerLoopCircuitMask,
+		ec.UnalignedPairingData.ToFinalExpCircuitMask,
+		ec.UnalignedG2MembershipData.Limb,
+		ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
+	)
 }
 
 func (ec *ECPair) csProjections(comp *wizard.CompiledIOP) {
@@ -276,16 +278,5 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 			ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator,
 			sym.Sub(nbGtLimbs, sumMask(ec.UnalignedPairingData.IsAccumulatorPrev)),
 		),
-	)
-}
-
-// -- utils. Copied from prover/zkevm/prover/statemanager/statesummary/state_summary.go
-
-// isZeroWhenInactive constraints the column to cancel when inactive.
-func isZeroWhenInactive(comp *wizard.CompiledIOP, c, isActive ifaces.Column) {
-	comp.InsertGlobal(
-		roundNr,
-		ifaces.QueryIDf("%v_IS_ZERO_WHEN_INACTIVE", c.GetColID()),
-		sym.Sub(c, sym.Mul(c, isActive)),
 	)
 }
