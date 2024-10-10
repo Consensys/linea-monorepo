@@ -1,11 +1,13 @@
 import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { requireEnv } from "../scripts/hardhat/utils";
 import { LineaRollupInit__factory } from "../typechain-types";
-import { validateDeployBranchAndTags } from "../utils/auditedDeployVerifier";
-import { getDeployedContractAddress } from "../utils/storeAddress";
-import { tryVerifyContract } from "../utils/verifyContract";
+import {
+  tryVerifyContract,
+  getDeployedContractAddress,
+  validateDeployBranchAndTags,
+  getRequiredEnvVar,
+} from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -14,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "LineaRollupInit";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
-  const proxyAddress = requireEnv("LINEA_ROLLUP_ADDRESS");
+  const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
   const initialL2BlockNumber = "3";
   const initialStateRootHash = "0x3450000000000000000000000000000000000000000000000000000000000000";
 

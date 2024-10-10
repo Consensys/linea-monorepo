@@ -5,23 +5,24 @@ import { IPauseManager } from "../../interfaces/IPauseManager.sol";
 import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
 
 /**
- * @title LineaRollup interface for current functions, events and errors.
+ * @title LineaRollup interface for current functions, structs, events and errors.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 interface ILineaRollup {
   /**
    * @notice Initialization data structure for the LineaRollup contract.
-   * @param initialStateRootHash The initial hash at migration used for proof verification.
+   * @param initialStateRootHash The initial state root hash at migration used for proof verification.
    * @param initialL2BlockNumber The initial block number at migration.
    * @param genesisTimestamp The L2 genesis timestamp for first finalization.
    * @param defaultVerifier The default verifier for rollup proofs.
    * @param rateLimitPeriodInSeconds The period in which withdrawal amounts and fees will be accumulated.
    * @param rateLimitAmountInWei The limit allowed for withdrawing in the rate limit period.
-   * @param roleAddresses The list of role addresses.
-   * @param pauseTypeRoles The list of pause type roles.
-   * @param unpauseTypeRoles The list of unpause type roles.
+   * @param roleAddresses The list of role address and roles to assign permissions to.
+   * @param pauseTypeRoles The list of pause types to associate with roles.
+   * @param unpauseTypeRoles The list of unpause types to associate with roles.
    * @param fallbackOperator The account to be given OPERATOR_ROLE on when the time since last finalization lapses.
+   * @param defaultAdmin The account to be given DEFAULT_ADMIN_ROLE on initialization.
    */
   struct InitializationData {
     bytes32 initialStateRootHash;
@@ -34,6 +35,7 @@ interface ILineaRollup {
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
     address fallbackOperator;
+    address defaultAdmin;
   }
 
   /**
@@ -97,7 +99,7 @@ interface ILineaRollup {
   }
 
   /**
-   * @notice Supporting data for finalization with or without proof.
+   * @notice Supporting data for finalization with proof.
    * @dev NB: the dynamic sized fields are placed last on purpose for efficient keccaking on public input.
    * @dev parentStateRootHash is the expected last state root hash finalized.
    * @dev lastFinalizedShnarf is the last finalized shnarf for proof continuity checks.
@@ -112,7 +114,7 @@ interface ILineaRollup {
    * @dev l1RollingHashMessageNumber is the calculated message number on L2 that is expected to match the existing L1 rolling hash.
    * This value will be used along with the stored last finalized L2 calculated message number in the public input.
    * @dev l2MerkleTreesDepth is the depth of all l2MerkleRoots.
-   * @dev l2MerkleRoots is an array of L2 message merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockInData.
+   * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockInData.
    * @dev l2MessagingBlocksOffsets indicates by offset from currentL2BlockNumber which L2 blocks contain MessageSent events.
    */
   struct FinalizationDataV2 {
@@ -133,7 +135,7 @@ interface ILineaRollup {
 
   /**
    * @notice Emitted when the LineaRollup contract version has changed.
-   * @dev All bytes8 values are string based SemVer in the format M.m - e.g. "6.0";
+   * @dev All bytes8 values are string based SemVer in the format M.m - e.g. "6.0".
    * @param previousVersion The previous version.
    * @param newVersion The new version.
    */
@@ -141,7 +143,7 @@ interface ILineaRollup {
 
   /**
    * @notice Emitted when the fallback operator role is granted.
-   * @param caller The address that granted the role.
+   * @param caller The address that called the function granting the role.
    * @param fallbackOperator The fallback operator address that received the operator role.
    */
   event FallbackOperatorRoleGranted(address indexed caller, address indexed fallbackOperator);
@@ -198,12 +200,12 @@ interface ILineaRollup {
   error LastFinalizationTimeNotLapsed();
 
   /**
-   * @dev Thrown when the point evaluation precompile call return data field(s) are wrong.
+   * @dev Thrown when the point evaluation precompile's call return data field(s) are wrong.
    */
   error PointEvaluationResponseInvalid(uint256 fieldElements, uint256 blsCurveModulus);
 
   /**
-   * @dev Thrown when the point evaluation precompile call return data length is wrong.
+   * @dev Thrown when the point evaluation precompile's call return data length is wrong.
    */
   error PrecompileReturnDataLengthWrong(uint256 expected, uint256 actual);
 
@@ -213,7 +215,7 @@ interface ILineaRollup {
   error PointEvaluationFailed();
 
   /**
-   * @dev Thrown when the blobhash equals to the zero hash.
+   * @dev Thrown when the blobhash equals the zero hash.
    */
   error EmptyBlobData();
 
@@ -319,17 +321,12 @@ interface ILineaRollup {
   error FinalBlockDoesNotMatchShnarfFinalBlock(uint256 expected, uint256 actual);
 
   /**
-   * @dev Thrown when the lengths of the shnarfs array and final block numbers array don't match.
-   */
-  error ShnarfAndFinalBlockNumberLengthsMismatched(uint256 shnarfsLength, uint256 finalBlockNumbers);
-
-  /**
    * @dev Thrown when the computed shnarf does not match what is expected.
    */
   error FinalShnarfWrong(bytes32 expected, bytes32 value);
 
   /**
-   * @notice Adds or updated the verifier contract address for a proof type.
+   * @notice Adds or updates the verifier contract address for a proof type.
    * @dev VERIFIER_SETTER_ROLE is required to execute.
    * @param _newVerifierAddress The address for the verifier contract.
    * @param _proofType The proof type being set/updated.
@@ -346,8 +343,8 @@ interface ILineaRollup {
   function setFallbackOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external;
 
   /**
-   * @notice Unset the verifier contract address for a proof type.
-   * @dev VERIFIER_SETTER_ROLE is required to execute.
+   * @notice Unsets the verifier contract address for a proof type.
+   * @dev VERIFIER_UNSETTER_ROLE is required to execute.
    * @param _proofType The proof type being set/updated.
    */
   function unsetVerifierAddress(uint256 _proofType) external;
