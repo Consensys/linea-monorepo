@@ -1,20 +1,47 @@
-FROM openjdk:22-ea-17-slim-bookworm
+FROM openjdk:21-jdk-slim AS builder
 
-RUN apt-get update \
-	&& apt-get install curl -y \
-  && apt-get install unzip -y \
-	&& apt-get clean \
-	&& rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install unzip -y
+
+RUN mkdir -p /src /libs
+
+COPY --from=zip ./coordinator.zip /src
+
+RUN unzip /src/coordinator.zip -d /libs
+
+RUN mkdir -p /libs/coordinator/lib/unpacked-blob-compressor /libs/coordinator/lib/unpacked-blob-shnarf-calculator && \
+  cd /libs/coordinator/lib/unpacked-blob-compressor/ && jar -xf ../blob-compressor-0.0.4.jar && \
+  cd /libs/coordinator/lib/unpacked-blob-shnarf-calculator/ && jar -xf /libs/coordinator/lib/blob-shnarf-calculator-0.0.4.jar
+
+RUN case $(uname -m) in \
+    x86_64) \
+      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-aarch64/; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-aarch64/; \
+    ;; \
+    aarch64) \
+      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-x86-64/; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-x86-64/; \
+    ;; \
+  esac
+
+RUN jar -cf /libs/coordinator/lib/blob-compressor-0.0.4.jar -C /libs/coordinator/lib/unpacked-blob-compressor . && \
+    jar -cf /libs/coordinator/lib/blob-shnarf-calculator-0.0.4.jar -C /libs/coordinator/lib/unpacked-blob-shnarf-calculator . && \
+    rm -rf /libs/coordinator/lib/unpacked-blob-compressor && rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator
+
+FROM openjdk:21-jdk-slim
 
 WORKDIR /opt/consensys/linea/coordinator
 
-# copy application
-COPY --from=zip ./coordinator.zip /opt/consensys/linea/coordinator/libs/
-RUN unzip libs/coordinator.zip -d libs/ && mv libs/coordinator/lib/** libs/ && rm -R libs/coordinator/
+RUN apt-get update \
+    && apt-get install curl -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /libs/ /logs /tmp/prover/request /tmp/prover/response
 
-RUN mkdir -p /opt/consensys/linea/coordinator/logs
-RUN mkdir -p /opt/consensys/linea/coordinator/tmp/prover/request
-RUN mkdir -p /opt/consensys/linea/coordinator/tmp/prover/response
+COPY --from=builder /libs/coordinator/lib/** libs/
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
@@ -29,5 +56,3 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
 	org.label-schema.vendor="ConsenSys" \
 	org.label-schema.version=$VERSION \
 	org.label-schema.schema-version="1.0"
-
-WORKDIR /opt/consensys/linea/coordinator/
