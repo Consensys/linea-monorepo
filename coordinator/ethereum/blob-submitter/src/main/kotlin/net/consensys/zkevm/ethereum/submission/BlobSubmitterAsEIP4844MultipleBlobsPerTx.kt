@@ -71,7 +71,7 @@ class BlobSubmitterAsEIP4844MultipleBlobsPerTx(
               endBlockTime = blobs.last().endBlockTime,
               lastShnarf = blobs.last().expectedShnarf,
               submissionTimestamp = clock.now(),
-              transactionHash = transactionHash
+              transactionHash = transactionHash.toByteArray()
             )
             blobSubmittedEventConsumer.accept(blobSubmittedEvent)
           }

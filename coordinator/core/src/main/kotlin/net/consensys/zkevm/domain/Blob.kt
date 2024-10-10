@@ -169,7 +169,7 @@ data class BlobSubmittedEvent(
   val endBlockTime: Instant,
   val lastShnarf: ByteArray,
   val submissionTimestamp: Instant,
-  val transactionHash: String
+  val transactionHash: ByteArray
 ) {
   fun getSubmissionDelay(): Long {
     return submissionTimestamp.minus(endBlockTime).inWholeSeconds
@@ -185,7 +185,7 @@ data class BlobSubmittedEvent(
     if (endBlockTime != other.endBlockTime) return false
     if (!lastShnarf.contentEquals(other.lastShnarf)) return false
     if (submissionTimestamp != other.submissionTimestamp) return false
-    if (transactionHash != other.transactionHash) return false
+    if (transactionHash.contentEquals(transactionHash)) return false
 
     return true
   }
@@ -195,7 +195,7 @@ data class BlobSubmittedEvent(
     result = 31 * result + endBlockTime.hashCode()
     result = 31 * result + lastShnarf.contentHashCode()
     result = 31 * result + submissionTimestamp.hashCode()
-    result = 31 * result + transactionHash.hashCode()
+    result = 31 * result + transactionHash.contentHashCode()
     return result
   }
 }

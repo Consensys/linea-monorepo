@@ -97,7 +97,7 @@ class AggregationSubmitterImpl(
                   parentL1RollingHash = parentL1RollingHash,
                   parentL1RollingHashMessageNumber = parentL1RollingHashMessageNumber,
                   submissionTimestamp = clock.now(),
-                  transactionHash = transactionHash
+                  transactionHash = transactionHash.toByteArray()
                 )
                 aggregationSubmittedEventConsumer.accept(aggregationSubmittedEvent)
               }

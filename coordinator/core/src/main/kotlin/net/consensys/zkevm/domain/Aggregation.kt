@@ -139,7 +139,7 @@ data class FinalizationSubmittedEvent(
   val parentL1RollingHash: ByteArray,
   val parentL1RollingHashMessageNumber: Long,
   val submissionTimestamp: Instant,
-  val transactionHash: String
+  val transactionHash: ByteArray
 ) : BlockInterval by aggregationProof {
 
   override fun equals(other: Any?): Boolean {
@@ -153,7 +153,7 @@ data class FinalizationSubmittedEvent(
     if (!parentL1RollingHash.contentEquals(other.parentL1RollingHash)) return false
     if (parentL1RollingHashMessageNumber != other.parentL1RollingHashMessageNumber) return false
     if (submissionTimestamp != other.submissionTimestamp) return false
-    if (transactionHash != other.transactionHash) return false
+    if (transactionHash.contentEquals(other.transactionHash)) return false
 
     return true
   }
@@ -164,7 +164,7 @@ data class FinalizationSubmittedEvent(
     result = 31 * result + parentL1RollingHash.contentHashCode()
     result = 31 * result + parentL1RollingHashMessageNumber.hashCode()
     result = 31 * result + submissionTimestamp.hashCode()
-    result = 31 * result + transactionHash.hashCode()
+    result = 31 * result + transactionHash.contentHashCode()
     return result
   }
 
