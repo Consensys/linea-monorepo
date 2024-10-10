@@ -18,9 +18,9 @@ interface ITokenBridge {
    * @param sourceChainId The source chain id of the current layer.
    * @param targetChainId The target chaind id of the targeted layer.
    * @param reservedTokens The list of reserved tokens to be set.
-   * @param roleAddresses The list of role addresses.
-   * @param pauseTypeRoles The list of pause type roles.
-   * @param unpauseTypeRoles The list of unpause type roles.
+   * @param roleAddresses The list of addresses and roles to assign permissions to.
+   * @param pauseTypeRoles The list of pause types to associate with roles.
+   * @param unpauseTypeRoles The list of unpause types to associate with roles.
    */
   struct InitializationData {
     address defaultAdmin;
