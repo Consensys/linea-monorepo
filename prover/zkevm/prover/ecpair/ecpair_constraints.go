@@ -35,15 +35,14 @@ func (ec *ECPair) csBinaryConstraints(comp *wizard.CompiledIOP) {
 
 func (ec *ECPair) csFlagConsistency(comp *wizard.CompiledIOP) {
 	// flag consistency. That the assigned data is pulled from input or computed.
-	comp.InsertGlobal(
-		roundNr,
-		ifaces.QueryIDf("%v_FLAG_CONSISTENCY", nameECPair),
-		sym.Sub(ec.IsActive,
-			ec.UnalignedPairingData.IsPulling,
-			ec.UnalignedPairingData.IsComputed,
-			ec.UnalignedG2MembershipData.IsPulling,
-			ec.UnalignedG2MembershipData.IsComputed),
-	)
+	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.UnalignedPairingData.IsActive, []ifaces.Column{
+		ec.UnalignedPairingData.IsPulling,
+		ec.UnalignedPairingData.IsComputed,
+	})
+	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask, []ifaces.Column{
+		ec.UnalignedG2MembershipData.IsPulling,
+		ec.UnalignedG2MembershipData.IsComputed,
+	})
 }
 
 func (ec *ECPair) csOffWhenInactive(comp *wizard.CompiledIOP) {
