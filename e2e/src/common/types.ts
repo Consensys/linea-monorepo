@@ -1,4 +1,4 @@
-import { BigNumber, BytesLike } from "ethers";
+import { BytesLike } from "ethers";
 
 export type FinalizationData = {
   aggregatedProof: string;
@@ -21,9 +21,9 @@ export type FinalizationData = {
 export type MessageEvent = {
   from: string;
   to: string;
-  fee: BigNumber;
-  value: BigNumber;
-  messageNumber: BigNumber;
+  fee: bigint;
+  value: bigint;
+  messageNumber: bigint;
   calldata: string;
   messageHash: string;
   blockNumber: number;
@@ -31,6 +31,6 @@ export type MessageEvent = {
 
 export type SendMessageArgs = {
   to: string;
-  fee: BigNumber;
+  fee: bigint;
   calldata: BytesLike;
 };
