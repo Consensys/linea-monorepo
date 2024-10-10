@@ -110,6 +110,10 @@ jobs:
     runs-on: [self-hosted, ubuntu-22.04, X64, small]
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
+    steps:
+      - name: Deploy environment
+        run: |
+          echo "Build and e2e test environment deployed"
 
   docker-build:
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images, manual-docker-build-and-e2e-tests ]
