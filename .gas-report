@@ -15,21 +15,40 @@
 | src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |        |        |        |         |
 |------------------------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                                      | Deployment Size |        |        |        |         |
-| 1105804                                              | 4983            |        |        |        |         |
+| 1114894                                              | 5025            |        |        |        |         |
 | Function Name                                        | min             | avg    | median | max    | # calls |
 | MAX_LOCKING_PERIOD                                   | 228             | 228    | 228    | 228    | 18      |
-| MAX_MULTIPLIER                                       | 229             | 229    | 229    | 229    | 24      |
+| MAX_MULTIPLIER                                       | 274             | 274    | 274    | 274    | 34      |
 | MIN_LOCKING_PERIOD                                   | 229             | 229    | 229    | 229    | 8       |
-| SCALE_FACTOR                                         | 251             | 251    | 251    | 251    | 28      |
-| accountedRewards                                     | 373             | 963    | 373    | 2373   | 44      |
-| getUserInfo                                          | 1553            | 1553   | 1553   | 1553   | 41      |
-| potentialMP                                          | 330             | 330    | 330    | 330    | 44      |
-| rewardIndex                                          | 373             | 418    | 373    | 2373   | 44      |
-| stake                                                | 167821          | 215459 | 228608 | 249401 | 35      |
-| totalMP                                              | 352             | 352    | 352    | 352    | 44      |
-| totalStaked                                          | 330             | 330    | 330    | 330    | 44      |
+| MP_RATE_PER_YEAR                                     | 231             | 231    | 231    | 231    | 2       |
+| SCALE_FACTOR                                         | 251             | 251    | 251    | 251    | 30      |
+| accountedRewards                                     | 373             | 921    | 373    | 2373   | 62      |
+| getUserInfo                                          | 1531            | 1531   | 1531   | 1531   | 61      |
+| potentialMP                                          | 330             | 330    | 330    | 330    | 62      |
+| rewardIndex                                          | 373             | 405    | 373    | 2373   | 62      |
+| stake                                                | 167787          | 215055 | 228586 | 249379 | 43      |
+| totalMP                                              | 352             | 352    | 352    | 352    | 62      |
+| totalStaked                                          | 373             | 373    | 373    | 373    | 62      |
 | unstake                                              | 75511           | 107650 | 110519 | 134250 | 10      |
-| updateGlobalState                                    | 30008           | 69159  | 80335  | 80335  | 10      |
+| updateGlobalState                                    | 30008           | 57540  | 50309  | 80335  | 22      |
+| updateUserMP                                         | 29022           | 38080  | 40060  | 40060  | 16      |
+
+
+| src/XPToken.sol:XPToken contract |                 |       |        |       |         |
+|----------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                  | Deployment Size |       |        |       |         |
+| 725645                           | 3153            |       |        |       |         |
+| Function Name                    | min             | avg   | median | max   | # calls |
+| addXPProvider                    | 23968           | 57184 | 51091  | 68191 | 18      |
+| allowance                        | 488             | 488   | 488    | 488   | 1       |
+| approve                          | 390             | 390   | 390    | 390   | 1       |
+| balanceOf                        | 8808            | 14560 | 11066  | 23808 | 3       |
+| getXPProviders                   | 1033            | 3286  | 3286   | 5539  | 2       |
+| removeXPProvider                 | 23665           | 28074 | 25780  | 34777 | 3       |
+| setTotalSupply                   | 23792           | 26266 | 26266  | 28740 | 2       |
+| totalSupply                      | 363             | 1863  | 2363   | 2363  | 4       |
+| transfer                         | 411             | 411   | 411    | 411   | 1       |
+| transferFrom                     | 521             | 521   | 521    | 521   | 1       |
 
 
 | test/mocks/MockToken.sol:MockToken contract |                 |       |        |       |         |
@@ -37,10 +56,21 @@
 | Deployment Cost                             | Deployment Size |       |        |       |         |
 | 639406                                      | 3369            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
-| approve                                     | 46346           | 46346 | 46346  | 46346 | 120     |
-| balanceOf                                   | 561             | 1327  | 561    | 2561  | 201     |
-| mint                                        | 51284           | 58124 | 51284  | 68384 | 120     |
+| approve                                     | 46346           | 46346 | 46346  | 46346 | 150     |
+| balanceOf                                   | 561             | 1321  | 561    | 2561  | 271     |
+| mint                                        | 51284           | 58124 | 51284  | 68384 | 150     |
 | transfer                                    | 34390           | 48070 | 51490  | 51490 | 10      |
+
+
+| test/mocks/XPProviderMock.sol:XPProviderMock contract |                 |       |        |       |         |
+|-------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                       | Deployment Size |       |        |       |         |
+| 152145                                                | 489             |       |        |       |         |
+| Function Name                                         | min             | avg   | median | max   | # calls |
+| getTotalXPShares                                      | 302             | 968   | 302    | 2302  | 6       |
+| getUserXPShare                                        | 504             | 1837  | 2504   | 2504  | 6       |
+| setTotalXPShares                                      | 43632           | 43632 | 43632  | 43632 | 2       |
+| setUserXPShare                                        | 43900           | 43900 | 43900  | 43900 | 2       |
 
 
 
