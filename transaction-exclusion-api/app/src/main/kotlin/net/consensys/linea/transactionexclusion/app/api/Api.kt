@@ -12,8 +12,8 @@ import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.vertx.ObservabilityServer
 
 data class ApiConfig(
-  val port: Int,
-  val observabilityPort: Int,
+  val port: Int = 0,
+  val observabilityPort: Int = 0,
   val numberOfVerticles: Int = 0,
   val path: String = "/"
 )
@@ -26,6 +26,14 @@ class Api(
 ) {
   private var jsonRpcServerId: String? = null
   private var observabilityServerId: String? = null
+  private var serverPort: Int = -1
+  val bindedPort: Int
+    get() = if (serverPort > 0) {
+      serverPort
+    } else {
+      throw IllegalStateException("Http server not started")
+    }
+
   fun start(): Future<*> {
     val requestHandlersV1 =
       mapOf(
@@ -56,13 +64,15 @@ class Api(
           configs.observabilityPort
         )
       )
+    val httpServer = HttpJsonRpcServer(configs.port.toUInt(), configs.path, HttpRequestHandler(messageHandler))
     return vertx
       .deployVerticle(
-        { HttpJsonRpcServer(configs.port.toUInt(), configs.path, HttpRequestHandler(messageHandler)) },
+        httpServer,
         DeploymentOptions().setInstances(numberOfVerticles)
       )
       .compose { verticleId: String ->
         jsonRpcServerId = verticleId
+        serverPort = httpServer.bindedPort
         vertx.deployVerticle(observabilityServer).onSuccess { monitorVerticleId ->
           this.observabilityServerId = monitorVerticleId
         }
