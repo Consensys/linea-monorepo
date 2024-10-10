@@ -42,20 +42,20 @@ contract XPToken is Ownable {
     }
 
     function balanceOf(address account) public view returns (uint256) {
-        uint256 userTotalXPContribution = 0;
-        uint256 totalXPContribution = 0;
+        uint256 userTotalXPShare = 0;
+        uint256 totalXPShares = 0;
 
         for (uint256 i = 0; i < xpProviders.length; i++) {
             IXPProvider provider = xpProviders[i];
-            userTotalXPContribution += provider.getUserXPShare(account);
-            totalXPContribution += provider.getTotalXPShares();
+            userTotalXPShare += provider.getUserXPShare(account);
+            totalXPShares += provider.getTotalXPShares();
         }
 
-        if (totalXPContribution == 0) {
+        if (totalXPShares == 0) {
             return 0;
         }
 
-        return (totalSupply * userTotalXPContribution) / totalXPContribution;
+        return (totalSupply * userTotalXPShare) / totalXPShares;
     }
 
     function transfer(address, uint256) external pure returns (bool) {
