@@ -27,7 +27,7 @@ function readGenesisFileAccounts(genesisJson: GenesisJson): Account[] {
   return accounts;
 }
 
-class LocalAccountManager extends AccountManager {
+class GenesisBasedAccountManager extends AccountManager {
   constructor(provider: Provider, genesisFilePath: string) {
     const genesisJson = readJsonFile(genesisFilePath);
     const genesis = genesisJson as GenesisJson;
@@ -38,4 +38,4 @@ class LocalAccountManager extends AccountManager {
   }
 }
 
-export { LocalAccountManager };
+export { GenesisBasedAccountManager };

@@ -85,102 +85,118 @@ describe("Submission and finalization test suite", () => {
     return blockNumber;
   }
 
-  it("Check L2 anchoring", async () => {
-    const { l1Messages } = await sendMessages();
-    const l2MessageSender = await config.getL2AccountManager().generateAccount();
+  it.concurrent(
+    "Check L2 anchoring",
+    async () => {
+      const { l1Messages } = await sendMessages();
+      const l2MessageSender = await config.getL2AccountManager().generateAccount();
 
-    // Wait for the last L1->L2 message to be anchored on L2
-    const lastNewL1MessageNumber = l1Messages.slice(-1)[0].messageNumber;
+      // Wait for the last L1->L2 message to be anchored on L2
+      const lastNewL1MessageNumber = l1Messages.slice(-1)[0].messageNumber;
 
-    // Send transactions on L2 in the background to make the L2 chain moving forward
-    const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender, 5_000);
+      // Send transactions on L2 in the background to make the L2 chain moving forward
+      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender, 5_000);
 
-    console.log("Waiting for the anchoring using rolling hash...");
-    const [rollingHashUpdatedEvent] = await waitForEvents(
-      l2MessageService,
-      l2MessageService.filters.RollingHashUpdated(),
-      1_000,
-      0,
-      "latest",
-      async (events) => events.filter((event) => event.args.messageNumber >= lastNewL1MessageNumber),
-    );
+      console.log("Waiting for the anchoring using rolling hash...");
+      const [rollingHashUpdatedEvent] = await waitForEvents(
+        l2MessageService,
+        l2MessageService.filters.RollingHashUpdated(),
+        1_000,
+        0,
+        "latest",
+        async (events) => events.filter((event) => event.args.messageNumber >= lastNewL1MessageNumber),
+      );
 
-    stopPolling();
+      stopPolling();
 
-    const [lastNewMessageRollingHash, lastAnchoredL1MessageNumber] = await Promise.all([
-      lineaRollup.rollingHashes(rollingHashUpdatedEvent.args.messageNumber),
-      l2MessageService.lastAnchoredL1MessageNumber(),
-    ]);
-    expect(lastNewMessageRollingHash).toEqual(rollingHashUpdatedEvent.args.rollingHash);
-    expect(lastAnchoredL1MessageNumber).toEqual(rollingHashUpdatedEvent.args.messageNumber);
+      const [lastNewMessageRollingHash, lastAnchoredL1MessageNumber] = await Promise.all([
+        lineaRollup.rollingHashes(rollingHashUpdatedEvent.args.messageNumber),
+        l2MessageService.lastAnchoredL1MessageNumber(),
+      ]);
+      expect(lastNewMessageRollingHash).toEqual(rollingHashUpdatedEvent.args.rollingHash);
+      expect(lastAnchoredL1MessageNumber).toEqual(rollingHashUpdatedEvent.args.messageNumber);
 
-    console.log("New anchoring using rolling hash done.");
-  }, 300_000);
+      console.log("New anchoring using rolling hash done.");
+    },
+    300_000,
+  );
 
-  it("Check L1 data submission and finalization", async () => {
-    const l2MessageSender = await config.getL2AccountManager().generateAccount();
+  it.concurrent(
+    "Check L1 data submission and finalization",
+    async () => {
+      const l2MessageSender = await config.getL2AccountManager().generateAccount();
 
-    // Send transactions on L2 in the background to make the L2 chain moving forward
-    const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender, 5_000);
+      // Send transactions on L2 in the background to make the L2 chain moving forward
+      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender, 5_000);
 
-    const [currentL2BlockNumber, startingRootHash] = await Promise.all([
-      lineaRollup.currentL2BlockNumber(),
-      lineaRollup.stateRootHashes(await lineaRollup.currentL2BlockNumber()),
-    ]);
+      const [currentL2BlockNumber, startingRootHash] = await Promise.all([
+        lineaRollup.currentL2BlockNumber(),
+        lineaRollup.stateRootHashes(await lineaRollup.currentL2BlockNumber()),
+      ]);
 
-    console.log("Waiting for data submission used to finalize with proof...");
-    // Waiting for data submission starting from migration block number
-    await waitForEvents(lineaRollup, lineaRollup.filters.DataSubmittedV2(undefined, currentL2BlockNumber + 1n), 1_000);
+      console.log("Waiting for data submission used to finalize with proof...");
+      // Waiting for data submission starting from migration block number
+      await waitForEvents(
+        lineaRollup,
+        lineaRollup.filters.DataSubmittedV2(undefined, currentL2BlockNumber + 1n),
+        1_000,
+      );
 
-    console.log("Waiting for the first DataFinalized event with proof...");
-    // Waiting for first DataFinalized event with proof
-    const [dataFinalizedEvent] = await waitForEvents(
-      lineaRollup,
-      lineaRollup.filters.DataFinalized(undefined, startingRootHash),
-      1_000,
-    );
+      console.log("Waiting for the first DataFinalized event with proof...");
+      // Waiting for first DataFinalized event with proof
+      const [dataFinalizedEvent] = await waitForEvents(
+        lineaRollup,
+        lineaRollup.filters.DataFinalized(undefined, startingRootHash),
+        1_000,
+      );
 
-    const [lastBlockFinalized, newStateRootHash] = await Promise.all([
-      lineaRollup.currentL2BlockNumber(),
-      lineaRollup.stateRootHashes(dataFinalizedEvent.args.lastBlockFinalized),
-    ]);
+      const [lastBlockFinalized, newStateRootHash] = await Promise.all([
+        lineaRollup.currentL2BlockNumber(),
+        lineaRollup.stateRootHashes(dataFinalizedEvent.args.lastBlockFinalized),
+      ]);
 
-    expect(lastBlockFinalized).toBeGreaterThanOrEqual(dataFinalizedEvent.args.lastBlockFinalized);
-    expect(newStateRootHash).toEqual(dataFinalizedEvent.args.finalRootHash);
-    expect(dataFinalizedEvent.args.withProof).toBeTruthy();
+      expect(lastBlockFinalized).toBeGreaterThanOrEqual(dataFinalizedEvent.args.lastBlockFinalized);
+      expect(newStateRootHash).toEqual(dataFinalizedEvent.args.finalRootHash);
+      expect(dataFinalizedEvent.args.withProof).toBeTruthy();
 
-    console.log("Finalization with proof done.");
+      console.log("Finalization with proof done.");
 
-    stopPolling();
-  }, 300_000);
+      stopPolling();
+    },
+    300_000,
+  );
 
-  it("Check L2 safe/finalized tag update on sequencer", async () => {
-    const sequencerEndpoint = config.getSequencerEndpoint();
-    if (!sequencerEndpoint) {
-      console.log('Skipped the "Check L2 safe/finalized tag update on sequencer" test');
-      return;
-    }
+  it.concurrent(
+    "Check L2 safe/finalized tag update on sequencer",
+    async () => {
+      const sequencerEndpoint = config.getSequencerEndpoint();
+      if (!sequencerEndpoint) {
+        console.log('Skipped the "Check L2 safe/finalized tag update on sequencer" test');
+        return;
+      }
 
-    const lastFinalizedL2BlockNumberOnL1 = (await getFinalizedL2BlockNumber()).toString();
-    console.log(`lastFinalizedL2BlockNumberOnL1=${lastFinalizedL2BlockNumberOnL1}`);
+      const lastFinalizedL2BlockNumberOnL1 = (await getFinalizedL2BlockNumber()).toString();
+      console.log(`lastFinalizedL2BlockNumberOnL1=${lastFinalizedL2BlockNumberOnL1}`);
 
-    let safeL2BlockNumber = -1,
-      finalizedL2BlockNumber = -1;
-    while (
-      safeL2BlockNumber < parseInt(lastFinalizedL2BlockNumberOnL1) ||
-      finalizedL2BlockNumber < parseInt(lastFinalizedL2BlockNumberOnL1)
-    ) {
-      safeL2BlockNumber = (await getBlockByNumberOrBlockTag(sequencerEndpoint, "safe"))?.number || safeL2BlockNumber;
-      finalizedL2BlockNumber =
-        (await getBlockByNumberOrBlockTag(sequencerEndpoint, "finalized"))?.number || finalizedL2BlockNumber;
-      await wait(1_000);
-    }
+      let safeL2BlockNumber = -1,
+        finalizedL2BlockNumber = -1;
+      while (
+        safeL2BlockNumber < parseInt(lastFinalizedL2BlockNumberOnL1) ||
+        finalizedL2BlockNumber < parseInt(lastFinalizedL2BlockNumberOnL1)
+      ) {
+        safeL2BlockNumber = (await getBlockByNumberOrBlockTag(sequencerEndpoint, "safe"))?.number || safeL2BlockNumber;
+        finalizedL2BlockNumber =
+          (await getBlockByNumberOrBlockTag(sequencerEndpoint, "finalized"))?.number || finalizedL2BlockNumber;
+        await wait(1_000);
+      }
 
-    console.log(`safeL2BlockNumber=${safeL2BlockNumber} finalizedL2BlockNumber=${finalizedL2BlockNumber}`);
+      console.log(`safeL2BlockNumber=${safeL2BlockNumber} finalizedL2BlockNumber=${finalizedL2BlockNumber}`);
 
-    expect(safeL2BlockNumber).toBeGreaterThanOrEqual(parseInt(lastFinalizedL2BlockNumberOnL1));
-    expect(finalizedL2BlockNumber).toBeGreaterThanOrEqual(parseInt(lastFinalizedL2BlockNumberOnL1));
+      expect(safeL2BlockNumber).toBeGreaterThanOrEqual(parseInt(lastFinalizedL2BlockNumberOnL1));
+      expect(finalizedL2BlockNumber).toBeGreaterThanOrEqual(parseInt(lastFinalizedL2BlockNumberOnL1));
 
-    console.log("L2 safe/finalized tag update on sequencer done.");
-  }, 300_000);
+      console.log("L2 safe/finalized tag update on sequencer done.");
+    },
+    300_000,
+  );
 });

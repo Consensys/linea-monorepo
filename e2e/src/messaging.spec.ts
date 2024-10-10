@@ -12,7 +12,7 @@ import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
 
 describe("Messaging test suite", () => {
   describe("Message Service L1 -> L2", () => {
-    it.each([
+    it.concurrent.each([
       {
         subTitle: "with calldata",
         withCalldata: true,
@@ -78,7 +78,7 @@ describe("Messaging test suite", () => {
   });
 
   describe("Message Service L2 -> L1", () => {
-    it.each([
+    it.concurrent.each([
       {
         subTitle: "with calldata",
         withCalldata: true,

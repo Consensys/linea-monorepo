@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { TestnetAccountManager } from "../accounts/testnet-account-manager";
+import { EnvironmentBasedAccountManager } from "../accounts/environment-based-account-manager";
 import { Config } from "../types";
 import Account from "../accounts/account";
 
@@ -26,7 +26,7 @@ const config: Config = {
     rpcUrl: L1_RPC_URL,
     chainId: L1_CHAIN_ID,
     lineaRollupAddress: "0x2A5CDCfc38856e2590E9Bd32F54Fa348e5De5f48",
-    accountManager: new TestnetAccountManager(
+    accountManager: new EnvironmentBasedAccountManager(
       new ethers.JsonRpcProvider(L1_RPC_URL.toString()),
       L1_WHALE_ACCOUNTS,
       L1_CHAIN_ID,
@@ -37,7 +37,7 @@ const config: Config = {
     rpcUrl: L2_RPC_URL,
     chainId: L2_CHAIN_ID,
     l2MessageServiceAddress: "0x33bf916373159A8c1b54b025202517BfDbB7863D",
-    accountManager: new TestnetAccountManager(
+    accountManager: new EnvironmentBasedAccountManager(
       new ethers.JsonRpcProvider(L2_RPC_URL.toString()),
       L2_WHALE_ACCOUNTS,
       L2_CHAIN_ID,

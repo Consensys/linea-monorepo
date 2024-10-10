@@ -9,6 +9,7 @@ const config: Config = {
   globalSetup: "./config/jest/global-setup.ts",
   maxWorkers: "50%",
   testTimeout: 3 * 60 * 1000,
+  workerThreads: true,
 };
 
 export default config;

@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import path from "path";
-import { LocalAccountManager } from "../accounts/local-account-manager";
+import { GenesisBasedAccountManager } from "../accounts/genesis-based-account-manager";
 import { Config } from "../types";
 
 const L1_RPC_URL = new URL("http://localhost:8445");
@@ -15,7 +15,7 @@ const config: Config = {
     chainId: 31648428,
     lineaRollupAddress: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
     dummyContractAddress: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-    accountManager: new LocalAccountManager(
+    accountManager: new GenesisBasedAccountManager(
       new ethers.JsonRpcProvider(L1_RPC_URL.toString()),
       path.resolve(
         process.env.LOCAL_L1_GENESIS ||
@@ -28,7 +28,7 @@ const config: Config = {
     chainId: 1337,
     l2MessageServiceAddress: "0xe537D669CA013d86EBeF1D64e40fC74CADC91987",
     dummyContractAddress: "0x2f6dAaF8A81AB675fbD37Ca6Ed5b72cf86237453",
-    accountManager: new LocalAccountManager(
+    accountManager: new GenesisBasedAccountManager(
       new ethers.JsonRpcProvider(L2_RPC_URL.toString()),
       path.resolve(
         process.env.LOCAL_L2_GENESIS ||
