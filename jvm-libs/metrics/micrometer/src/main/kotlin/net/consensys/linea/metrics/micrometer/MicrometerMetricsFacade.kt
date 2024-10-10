@@ -13,17 +13,18 @@ import io.micrometer.core.instrument.Counter as MicrometerCounter
 
 class MicrometerMetricsFacade(private val registry: MeterRegistry, private val metricsPrefix: String) : MetricsFacade {
   companion object {
+    private val validBaseUnits = listOf(
+      "seconds",
+      "minutes",
+      "hours"
+    )
+
     fun requireValidMicrometerName(name: String) {
       require(name.lowercase().trim() == name && name.all { it.isLetterOrDigit() || it == '.' }) {
         "$name must adhere to Micrometer naming convention!"
       }
     }
     fun requireValidBaseUnit(baseUnit: String) {
-      val validBaseUnits = listOf(
-        "seconds",
-        "minutes",
-        "hours"
-      )
       require(validBaseUnits.contains(baseUnit))
     }
   }
