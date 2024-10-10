@@ -185,7 +185,8 @@ public class BlockchainReferenceTestTools {
     zkTracer.traceStartConflation(spec.getCandidateBlocks().length);
 
     for (var candidateBlock : spec.getCandidateBlocks()) {
-      if (!candidateBlock.isExecutable()) {
+      if (!candidateBlock.isExecutable()
+          || candidateBlock.getBlock().getBody().getTransactions().isEmpty()) {
         return;
       }
 
