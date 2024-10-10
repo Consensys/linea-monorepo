@@ -15,7 +15,7 @@ import (
 func TestAssign(t *testing.T) {
 
 	compiler := NewStrictHasherCompiler(1)
-	compiled := compiler.WithHashLengths(32).Compile(10, dummy.Compile)
+	compiled := compiler.WithHashLengths(32).Compile(dummy.Compile)
 
 	var zero [32]byte
 

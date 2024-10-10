@@ -26,7 +26,6 @@ func main() {
 	c, err := pi_interconnection.Compile(config.PublicInput{
 		MaxNbDecompression: 400,
 		MaxNbExecution:     400,
-		MaxNbKeccakF:       10000,
 		ExecutionMaxNbMsg:  16,
 		L2MsgMerkleDepth:   5,
 		L2MsgMaxNbMerkle:   10,
