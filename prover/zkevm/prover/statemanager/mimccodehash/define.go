@@ -113,7 +113,7 @@ func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 			symbolic.Sub(1, mh.IsNewHash)))
 
 	// Local constraint IsNewHash starts with 1
-	comp.InsertLocal(mh.inputs.Round, mh.qname("IS_NEW_HASH_LOCAL"), symbolic.Sub(mh.IsNewHash, 1))
+	comp.InsertLocal(mh.inputs.Round, mh.qname("IS_NEW_HASH_LOCAL"), symbolic.Sub(mh.IsNewHash, mh.IsActive))
 
 	// if CFI[i+1] - CFI[i] != 0, IsHashEnd[i] = 1, e.g., IsActive[i] * (CFI[i+1] - CFI[i]) * (1 - IsHashEnd[i]) = 0
 	comp.InsertGlobal(mh.inputs.Round, mh.qname("IS_HASH_END_CONSISTENCY_1"),
