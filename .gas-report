@@ -17,21 +17,21 @@
 | Deployment Cost                                      | Deployment Size |        |        |        |         |
 | 1115122                                              | 5026            |        |        |        |         |
 | Function Name                                        | min             | avg    | median | max    | # calls |
-| MAX_LOCKING_PERIOD                                   | 228             | 228    | 228    | 228    | 18      |
-| MAX_MULTIPLIER                                       | 252             | 252    | 252    | 252    | 24      |
-| MIN_LOCKING_PERIOD                                   | 229             | 229    | 229    | 229    | 8       |
+| MAX_LOCKING_PERIOD                                   | 228             | 228    | 228    | 228    | 21      |
+| MAX_MULTIPLIER                                       | 252             | 252    | 252    | 252    | 27      |
+| MIN_LOCKING_PERIOD                                   | 229             | 229    | 229    | 229    | 10      |
 | MP_RATE_PER_YEAR                                     | 231             | 231    | 231    | 231    | 2       |
-| SCALE_FACTOR                                         | 251             | 251    | 251    | 251    | 30      |
-| accountedRewards                                     | 373             | 921    | 373    | 2373   | 62      |
-| getUserInfo                                          | 1576            | 1576   | 1576   | 1576   | 61      |
-| rewardIndex                                          | 373             | 405    | 373    | 2373   | 62      |
-| stake                                                | 168040          | 215222 | 228839 | 249323 | 43      |
-| totalMP                                              | 330             | 330    | 330    | 330    | 62      |
-| totalMaxMP                                           | 329             | 329    | 329    | 329    | 62      |
-| totalStaked                                          | 373             | 373    | 373    | 373    | 62      |
-| unstake                                              | 75511           | 107624 | 110519 | 134250 | 10      |
-| updateGlobalState                                    | 30008           | 56707  | 47387  | 80335  | 22      |
-| updateUserMP                                         | 34631           | 36820  | 37133  | 37133  | 16      |
+| SCALE_FACTOR                                         | 251             | 251    | 251    | 251    | 36      |
+| accountedRewards                                     | 373             | 931    | 373    | 2373   | 68      |
+| getUserInfo                                          | 1576            | 1576   | 1576   | 1576   | 62      |
+| rewardIndex                                          | 373             | 402    | 373    | 2373   | 68      |
+| stake                                                | 168040          | 216282 | 228839 | 249323 | 45      |
+| totalMP                                              | 330             | 330    | 330    | 330    | 68      |
+| totalMaxMP                                           | 329             | 329    | 329    | 329    | 68      |
+| totalStaked                                          | 373             | 373    | 373    | 373    | 68      |
+| unstake                                              | 75511           | 104952 | 91588  | 134250 | 12      |
+| updateGlobalState                                    | 30008           | 55930  | 47387  | 80335  | 24      |
+| updateUserMP                                         | 34631           | 36855  | 37133  | 37133  | 18      |
 
 
 | src/XPNFTToken.sol:XPNFTToken contract          |                 |       |        |       |         |
@@ -103,9 +103,9 @@
 | Deployment Cost                             | Deployment Size |       |        |       |         |
 | 639406                                      | 3369            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
-| approve                                     | 46346           | 46346 | 46346  | 46346 | 150     |
-| balanceOf                                   | 561             | 1330  | 561    | 2561  | 273     |
-| mint                                        | 51284           | 59110 | 51284  | 68384 | 166     |
+| approve                                     | 46346           | 46346 | 46346  | 46346 | 160     |
+| balanceOf                                   | 561             | 1333  | 561    | 2561  | 290     |
+| mint                                        | 51284           | 59054 | 51284  | 68384 | 176     |
 | transfer                                    | 34390           | 48070 | 51490  | 51490 | 10      |
 
 
