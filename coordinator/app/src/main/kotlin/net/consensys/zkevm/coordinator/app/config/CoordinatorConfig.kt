@@ -6,6 +6,7 @@ import net.consensys.assertIs32Bytes
 import net.consensys.decodeHex
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.assertIsValidAddress
+import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORIES_STORAGE_PERIOD
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORY_BLOCK_COUNT
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_REWARD_PERCENTILES_SIZE
@@ -165,6 +166,7 @@ data class TracesConfig(
   val conflation: FunctionalityEndpoint,
   val fileManager: FileManager,
   val switchToLineaBesu: Boolean = false,
+  val blobCompressorVersion: BlobCompressorVersion,
   val expectedTracesApiVersionV2: String? = null,
   val countersV2: FunctionalityEndpoint? = null,
   val conflationV2: FunctionalityEndpoint? = null

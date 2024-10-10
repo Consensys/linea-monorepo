@@ -7,15 +7,14 @@ import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { IPermissionsManager } from "../interfaces/IPermissionsManager.sol";
 
 /**
- * @title Contract to manage cross-chain function pausing.
+ * @title Contract to manage permissions initialization.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 abstract contract PermissionsManager is Initializable, AccessControlUpgradeable, IPermissionsManager, IGenericErrors {
   /**
    * @notice Sets permissions for a list of addresses and their roles.
-   * @dev This function is a reinitializer and can only be called once per version.
-   * @param _roleAddresses The list of addresses and their roles.
+   * @param _roleAddresses The list of addresses and roles to assign permissions to.
    */
   function __Permissions_init(RoleAddress[] calldata _roleAddresses) internal onlyInitializing {
     uint256 roleAddressesLength = _roleAddresses.length;
