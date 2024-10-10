@@ -152,7 +152,7 @@ dockerCompose {
     startedServices = [
       "postgres"
     ]
-    composeAdditionalArgs = ["--profile", "l2"]
+    composeAdditionalArgs = ["--profile", "l2",  "--profile", "l1"]
     useComposeFiles = ["${project.rootDir.path}/docker/compose.yml"]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
     waitForTcpPorts = false

@@ -50,6 +50,7 @@ dependencies {
   testImplementation testFixtures(project(":jvm-libs:kotlin-extensions"))
   testImplementation testFixtures(project(":jvm-libs:persistence:db"))
   testImplementation testFixtures(project(":transaction-exclusion-api:core"))
+  testImplementation "net.javacrumbs.json-unit:json-unit-assertj:${libs.versions.jsonUnit.get()}"
 }
 
 application {
