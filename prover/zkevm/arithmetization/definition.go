@@ -87,7 +87,7 @@ func (s *schemaScanner) scanConstraints() {
 	corsetCSs := s.Schema.Constraints().Collect()
 
 	for _, corsetCS := range corsetCSs {
-		name := corsetCS.String()
+		name := fmt.Sprintf("%v", corsetCS)
 		if s.Comp.QueriesNoParams.Exists(ifaces.QueryID(name)) {
 			continue
 		}
@@ -230,8 +230,8 @@ func (s *schemaScanner) castExpression(expr air.Expr) *symbolic.Expression {
 		return symbolic.NewVariable(c)
 
 	default:
-
-		panic(fmt.Sprintf("unsupported type: %T for %v", e, e.String()))
+		eStr := fmt.Sprintf("%v", e)
+		panic(fmt.Sprintf("unsupported type: %T for %v", e, eStr)) // or use %T to display type
 	}
 }
 
