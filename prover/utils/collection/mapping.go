@@ -53,7 +53,7 @@ func (kv *Mapping[K, V]) Update(key K, value V) {
 
 // Returns the list of all the keys
 func (kv *Mapping[K, V]) ListAllKeys() []K {
-	var res []K
+	res := make([]K, 0, len(kv.innerMap))
 	for k := range kv.innerMap {
 		res = append(res, k)
 	}
@@ -102,7 +102,7 @@ func (kv *Mapping[K, V]) Exists(ks ...K) bool {
 
 // ToSlice lists all entries in a slice of tuple
 func (kv *Mapping[K, V]) ListValues() []V {
-	var res []V
+	res := make([]V, 0, len(kv.innerMap))
 	for _, v := range kv.innerMap {
 		res = append(res, v)
 	}
