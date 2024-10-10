@@ -8,12 +8,10 @@ import (
 	commoncs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
-// csIsActive constraints that IsActive module to be only one for antichamber rounds.
-func (ac *antichamber) csIsActive(comp *wizard.CompiledIOP) {
-	// column must be binary
-	commoncs.MustBeBinary(comp, ac.IsActive)
-	// allow becoming inactive from active but now vice versa
-	isZeroWhenInactive(comp, ac.IsActive, column.Shift(ac.IsActive, -1))
+// csIsActiveActivation constraints that IsActive module to be only one for antichamber rounds.
+func (ac *antichamber) csIsActiveActivation(comp *wizard.CompiledIOP) {
+	// IsActive must be binary and cannot transition from 0 to 1
+	commoncs.MustBeActivationColumns(comp, ac.IsActive)
 }
 
 func (ac *antichamber) csZeroWhenInactive(comp *wizard.CompiledIOP) {
