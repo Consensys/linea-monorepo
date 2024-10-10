@@ -36,6 +36,7 @@ type zCtx struct {
 	Zs []ifaces.Column
 	// ZOpenings are the opening queries to the end of each Z.
 	ZOpenings []query.LocalOpening
+	Name      string
 }
 
 // check permutation and see how/where compile is called (see how to constracut z there)

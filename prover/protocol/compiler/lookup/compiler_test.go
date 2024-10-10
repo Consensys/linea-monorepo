@@ -78,9 +78,11 @@ func TestLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 	define := func(b *wizard.Builder) {
 		cola := b.RegisterCommit("S", sizeA)
 		cola2 := b.RegisterCommit("S2", sizeA)
+		cola3 := b.RegisterCommit("S3", sizeA)
 		colb := b.RegisterCommit("T", sizeB)
 		b.Inclusion("LOOKUP", []ifaces.Column{colb}, []ifaces.Column{cola})
 		b.Inclusion("LOOKUP2", []ifaces.Column{colb}, []ifaces.Column{cola2})
+		b.Inclusion("LOOKUP3", []ifaces.Column{colb}, []ifaces.Column{cola3})
 	}
 
 	prover := func(run *wizard.ProverRuntime) {
@@ -88,10 +90,12 @@ func TestLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 		// assign a and b
 		cola := smartvectors.ForTest(1, 1, 1, 2, 3, 0, 0, 1, 1, 1, 1, 2, 3, 0, 0, 1)
 		cola2 := smartvectors.ForTest(2, 2, 2, 1, 0, 3, 3, 2, 2, 2, 2, 1, 0, 3, 3, 2)
+		cola3 := smartvectors.ForTest(2, 2, 2, 1, 0, 3, 3, 2, 2, 2, 2, 1, 0, 3, 3, 3)
 		colb := smartvectors.ForTest(0, 1, 2, 3)
 		// m expected to be
 		run.AssignColumn("S", cola)
 		run.AssignColumn("S2", cola2)
+		run.AssignColumn("S3", cola3)
 		run.AssignColumn("T", colb)
 	}
 
@@ -99,7 +103,7 @@ func TestLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 	proof := wizard.Prove(comp, prover)
 
 	// m should be
-	expectedM := smartvectors.ForTest(6, 10, 10, 6)
+	expectedM := smartvectors.ForTest(8, 12, 17, 11)
 	t.Logf("all columns = %v", runtime.Columns.ListAllKeys())
 	actualM := runtime.GetColumn("TABLE_T_0_LOGDERIVATIVE_M")
 
