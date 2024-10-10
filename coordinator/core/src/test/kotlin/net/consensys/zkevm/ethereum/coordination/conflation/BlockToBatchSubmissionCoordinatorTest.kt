@@ -24,8 +24,6 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.ethereum.executionclient.schema.randomExecutionPayload
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 class BlockToBatchSubmissionCoordinatorTest {
@@ -79,7 +77,7 @@ class BlockToBatchSubmissionCoordinatorTest {
 
     val captor = argumentCaptor<Throwable>()
     Assertions.assertThat(blockToBatchSubmissionCoordinator.acceptBlock(baseBlock)).isCompleted
-    Awaitility.await().atMost(200.milliseconds.toJavaDuration())
+    Awaitility.await()
       .untilAsserted {
         verify(testLogger, times(1)).error(
           eq("Failed to conflate block={} errorMessage={}"),

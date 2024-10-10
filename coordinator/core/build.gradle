@@ -36,6 +36,7 @@ dependencies {
   testImplementation(testFixtures(project(':jvm-libs:traces')))
   testImplementation(testFixtures(project(':jvm-libs:kotlin-extensions')))
   testImplementation("io.vertx:vertx-junit5")
+  testImplementation "org.apache.logging.log4j:log4j-core-test:${libs.versions.log4j.get()}"
 }
 
 test {

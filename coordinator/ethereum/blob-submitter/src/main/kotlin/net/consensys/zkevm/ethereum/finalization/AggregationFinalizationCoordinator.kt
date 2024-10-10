@@ -8,15 +8,16 @@ import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobRecord
+import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
-import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
 import net.consensys.zkevm.ethereum.submission.logUnhandledError
 import net.consensys.zkevm.persistence.AggregationsRepository
 import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.function.Consumer
 import kotlin.time.Duration
 
 class AggregationFinalizationCoordinator(
@@ -24,8 +25,7 @@ class AggregationFinalizationCoordinator(
   private val lineaRollup: LineaRollupSmartContractClient,
   private val aggregationsRepository: AggregationsRepository,
   private val blobsRepository: BlobsRepository,
-  private val alreadySubmittedBlobsFilter: AsyncFilter<BlobRecord> =
-    L1ShnarfBasedAlreadySubmittedBlobsFilter(lineaRollup),
+  private val alreadySubmittedBlobsFilter: AsyncFilter<BlobRecord>,
   private val aggregationSubmitter: AggregationSubmitter,
   private val vertx: Vertx,
   private val clock: Clock,
@@ -210,7 +210,8 @@ class AggregationFinalizationCoordinator(
       blobsRepository: BlobsRepository,
       lineaRollup: LineaRollupSmartContractClient,
       gasPriceCapProvider: GasPriceCapProvider?,
-      alreadySubmittedBlobFilter: AsyncFilter<BlobRecord> = L1ShnarfBasedAlreadySubmittedBlobsFilter(lineaRollup),
+      alreadySubmittedBlobFilter: AsyncFilter<BlobRecord>,
+      aggregationSubmittedEventConsumer: Consumer<FinalizationSubmittedEvent>,
       vertx: Vertx,
       clock: Clock
     ): AggregationFinalizationCoordinator {
@@ -219,7 +220,12 @@ class AggregationFinalizationCoordinator(
         lineaRollup = lineaRollup,
         aggregationsRepository = aggregationsRepository,
         blobsRepository = blobsRepository,
-        aggregationSubmitter = AggregationSubmitterImpl(lineaRollup, gasPriceCapProvider),
+        aggregationSubmitter = AggregationSubmitterImpl(
+          lineaRollup = lineaRollup,
+          gasPriceCapProvider = gasPriceCapProvider,
+          aggregationSubmittedEventConsumer = aggregationSubmittedEventConsumer,
+          clock = clock
+        ),
         alreadySubmittedBlobsFilter = alreadySubmittedBlobFilter,
         vertx = vertx,
         clock = clock

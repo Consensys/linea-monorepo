@@ -43,7 +43,7 @@ class HighestProvenBlobTracker(initialProvenBlockNumber: ULong) :
   }
 }
 
-class HighestAggregationTracker(initialProvenBlockNumber: ULong) :
+open class HighestULongTracker(initialProvenBlockNumber: ULong) :
   MaxLongTracker<ULong>(initialProvenBlockNumber.toLong()) {
   override fun convertToLong(trackable: ULong): Long {
     return trackable.toLong()
