@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 
@@ -91,7 +92,7 @@ func CraftResponse(req *Request) (*Response, error) {
 	}
 
 	// Compute all the prover fields
-	snarkHash, err := blob.MiMCChecksumPackedData(append(compressedStream, make([]byte, blob.MaxUsableBytes-len(compressedStream))...), fr381.Bits-1, blob.NoTerminalSymbol())
+	snarkHash, err := encode.MiMCChecksumPackedData(append(compressedStream, make([]byte, blob.MaxUsableBytes-len(compressedStream))...), fr381.Bits-1, encode.NoTerminalSymbol())
 	if err != nil {
 		return nil, fmt.Errorf("crafting response: could not compute snark hash: %w", err)
 	}
