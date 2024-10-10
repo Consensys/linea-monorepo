@@ -18,17 +18,10 @@ func (ec *ECPair) csIsActiveActivation(comp *wizard.CompiledIOP) {
 }
 
 func (ec *ECPair) csBinaryConstraints(comp *wizard.CompiledIOP) {
-	common.MustBeBinary(comp, ec.UnalignedPairingData.IsPulling)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.IsComputed)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfInstance)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorInit)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorCurr)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorPrev)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.ToMillerLoopCircuitMask)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.ToFinalExpCircuitMask)
-	common.MustBeBinary(comp, ec.UnalignedG2MembershipData.IsPulling)
-	common.MustBeBinary(comp, ec.UnalignedG2MembershipData.IsComputed)
-	common.MustBeBinary(comp, ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator)
 }
