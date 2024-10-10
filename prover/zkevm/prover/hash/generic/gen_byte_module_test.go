@@ -32,6 +32,7 @@ func TestScanByteStream(t *testing.T) {
 			Limb:    build.RegisterCommit("B", 32),
 			ToHash:  build.RegisterCommit("C", 32),
 			NBytes:  build.RegisterCommit("D", 32),
+			Index:   build.RegisterCommit("E", 32),
 		}
 	})
 
@@ -57,9 +58,11 @@ func assignGdbFromStream(run *wizard.ProverRuntime, gdm *GenDataModule, stream [
 		hashNum = common.NewVectorBuilder(gdm.HashNum)
 		nbBytes = common.NewVectorBuilder(gdm.NBytes)
 		toHash  = common.NewVectorBuilder(gdm.ToHash)
+		index   = common.NewVectorBuilder(gdm.Index)
 	)
 
 	for hashID := range stream {
+		ctr := 0
 
 		currStream := stream[hashID]
 		for i := 0; i < len(currStream); i += 2 {
@@ -73,8 +76,10 @@ func assignGdbFromStream(run *wizard.ProverRuntime, gdm *GenDataModule, stream [
 			copy(currLimbLA[16:], currLimb[:currNbBytes])
 			limbs.PushLo(currLimbLA)
 			hashNum.PushInt(hashID + 1)
+			index.PushInt(ctr)
 			nbBytes.PushInt(currNbBytes)
 			toHash.PushOne()
+			ctr++
 		}
 
 	}
@@ -83,4 +88,5 @@ func assignGdbFromStream(run *wizard.ProverRuntime, gdm *GenDataModule, stream [
 	hashNum.PadAndAssign(run, field.Zero())
 	nbBytes.PadAndAssign(run, field.Zero())
 	toHash.PadAndAssign(run, field.Zero())
+	index.PadAndAssign(run)
 }

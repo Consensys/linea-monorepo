@@ -251,11 +251,11 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 
 		sha2Count++
 
-		if i > 0 && currHashNum != hashNum[i] && !currHashNum.IsZero() {
+		if i > 0 && index[i].IsZero() && !currHashNum.IsZero() {
 			imp.padder.pushPaddingRows(currByteSize, &iab)
 		}
 
-		if currHashNum != hashNum[i] {
+		if index[i].IsZero() {
 			currHashNum = hashNum[i]
 			currByteSize = 0
 			iab.IsNewHash.PushOne()

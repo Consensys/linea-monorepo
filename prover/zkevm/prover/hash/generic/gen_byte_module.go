@@ -46,6 +46,7 @@ func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 
 	var (
 		numRow      = gdm.Limb.Size()
+		index       = gdm.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
 		limbs       = gdm.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
 		toHash      = gdm.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 		hashNum     = gdm.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -61,7 +62,7 @@ func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 			continue
 		}
 
-		if hashNum[row] != currHashNum {
+		if index[row].IsZero() {
 			if !currHashNum.IsZero() {
 				streams = append(streams, buffer.Bytes())
 				buffer = &bytes.Buffer{}
