@@ -231,7 +231,7 @@ func (s *schemaScanner) castExpression(expr air.Expr) *symbolic.Expression {
 
 	default:
 		eStr := fmt.Sprintf("%v", e)
-		panic(fmt.Sprintf("unsupported type: %T for %v", e, eStr)) // or use %T to display type
+		panic(fmt.Sprintf("unsupported type: %T for %v", e, eStr))
 	}
 }
 
