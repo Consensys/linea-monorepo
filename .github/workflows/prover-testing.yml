@@ -13,7 +13,7 @@ env:
 
 concurrency:
   group: prover-testing-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref_name != 'main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   staticcheck:
@@ -58,7 +58,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.23.x]
-    runs-on: [self-hosted, ubuntu-22.04, X64, medium]
+    runs-on: [self-hosted, Linux, X64, large]
     name: Prover testing
     needs:
       - staticcheck
