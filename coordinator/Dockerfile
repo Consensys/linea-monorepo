@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install unzip -y
 
 RUN mkdir -p /src /libs
 
-COPY ./app/build/distributions/coordinator.zip /src
+COPY --from=zip ./coordinator.zip /src
 
 RUN unzip /src/coordinator.zip -d /libs
 
