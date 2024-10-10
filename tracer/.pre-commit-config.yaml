@@ -9,18 +9,16 @@ repos:
       - id: check-yaml
       - id: check-xml
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: 3.5.3
+    rev: v3.29.1
     hooks:
       - id: commitizen
         stages: [ commit-msg ]
   - repo: https://github.com/jguttman94/pre-commit-gradle
     rev: v0.3.0  # Use the ref you want to point at
     hooks:
-      - id: gradle-check
-        args: [ "--wrapper", "--output" ]
       - id: gradle-spotless
         args: [ "--wrapper", "--output" ]
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.14
+    rev: 0.7.17
     hooks:
       - id: mdformat
