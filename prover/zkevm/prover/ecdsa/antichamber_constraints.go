@@ -5,12 +5,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	commoncs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 // csIsActive constraints that IsActive module to be only one for antichamber rounds.
 func (ac *antichamber) csIsActive(comp *wizard.CompiledIOP) {
 	// column must be binary
-	mustBeBinary(comp, ac.IsActive)
+	commoncs.MustBeBinary(comp, ac.IsActive)
 	// allow becoming inactive from active but now vice versa
 	isZeroWhenInactive(comp, ac.IsActive, column.Shift(ac.IsActive, -1))
 }
@@ -35,8 +36,8 @@ func (ac *antichamber) csZeroWhenInactive(comp *wizard.CompiledIOP) {
 
 func (ac *antichamber) csConsistentPushingFetching(comp *wizard.CompiledIOP) {
 	// pushing and fetching must be binary
-	mustBeBinary(comp, ac.IsPushing)
-	mustBeBinary(comp, ac.IsFetching)
+	commoncs.MustBeBinary(comp, ac.IsPushing)
+	commoncs.MustBeBinary(comp, ac.IsFetching)
 	// pushing and fetching cannot be active at the same time
 	comp.InsertGlobal(
 		ROUND_NR,
@@ -58,7 +59,7 @@ func (ac *antichamber) csIDSequential(comp *wizard.CompiledIOP) {
 func (ac *antichamber) csSource(comp *wizard.CompiledIOP) {
 	// source must be binary
 	// Source=0 <> ECRecover, Source=1 <> TxSignature
-	mustBeBinary(comp, ac.Source)
+	commoncs.MustBeBinary(comp, ac.Source)
 }
 
 func (ac *antichamber) csTransitions(comp *wizard.CompiledIOP) {
