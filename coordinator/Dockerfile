@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install unzip -y
 
 RUN mkdir -p /src /libs
 
-COPY --from=zip ./coordinator.zip /src
+COPY ./app/build/distributions/coordinator.zip /src
 
 RUN unzip /src/coordinator.zip -d /libs
 
@@ -12,18 +12,20 @@ RUN mkdir -p /libs/coordinator/lib/unpacked-blob-compressor /libs/coordinator/li
   cd /libs/coordinator/lib/unpacked-blob-compressor/ && jar -xf ../blob-compressor-0.0.4.jar && \
   cd /libs/coordinator/lib/unpacked-blob-shnarf-calculator/ && jar -xf /libs/coordinator/lib/blob-shnarf-calculator-0.0.4.jar
 
-RUN ARCH=`uname -m` && \
-    if [ "$ARCH" == "x86_64" ]; then \
-        rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
-        rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-aarch64/; \
-        rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
-        rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-aarch64/; \
-    elif [ "$ARCH" == "aarch64" ]; then \
-        rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
-        rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-x86-64/; \
-        rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
-        rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-x86-64/; \
-    fi
+RUN case $(uname -m) in \
+    x86_64) \
+      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-aarch64/; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-aarch64/; \
+    ;; \
+    aarch64) \
+      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-x86-64/; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
+      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-x86-64/; \
+    ;; \
+  esac
 
 RUN jar -cf /libs/coordinator/lib/blob-compressor-0.0.4.jar -C /libs/coordinator/lib/unpacked-blob-compressor . && \
     jar -cf /libs/coordinator/lib/blob-shnarf-calculator-0.0.4.jar -C /libs/coordinator/lib/unpacked-blob-shnarf-calculator . && \
