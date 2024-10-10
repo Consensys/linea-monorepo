@@ -80,7 +80,7 @@ func (ec *ECPair) csConstantWhenIsComputing(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_COUNTERS_CONSISTENCY", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsComputed,
 			sym.Sub(1, ec.UnalignedPairingData.IsFirstLineOfInstance),
 			sym.Sub(ec.UnalignedPairingData.PairID, column.Shift(ec.UnalignedPairingData.PairID, -1)),
@@ -108,8 +108,8 @@ func (ec *ECPair) csInstanceIDChangeWhenNewInstance(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_INSTANCE_ID_CHANGE", nameECPair),
 		sym.Mul(
-			column.Shift(verifiercol.NewConstantCol(field.One(), ec.IsActive.Size()), -1), // this "useless" line helps cancelling the constraint on the first row
-			ec.IsActive,
+			column.Shift(verifiercol.NewConstantCol(field.One(), ec.UnalignedPairingData.IsActive.Size()), -1), // this "useless" line helps cancelling the constraint on the first row
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfInstance,
 			ec.UnalignedPairingData.InstanceID,
 			prevEqualCurrID,
@@ -134,7 +134,7 @@ func (ec *ECPair) csAccumulatorInit(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_ACCUMULATOR_INIT", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfInstance,
 			accLimbSum,
 		),
@@ -159,7 +159,7 @@ func (ec *ECPair) csLastPairToFinalExp(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_LAST_PAIR_TO_FINAL_EXP", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			sym.Sub(ec.UnalignedPairingData.PairID, ec.UnalignedPairingData.TotalPairs),
 			ec.UnalignedPairingData.PairID,
 			ec.UnalignedPairingData.ToFinalExpCircuitMask,
@@ -173,7 +173,7 @@ func (ec *ECPair) csIndexConsistency(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_INDEX_START", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfInstance,
 			ec.UnalignedPairingData.Index,
 		),
@@ -182,7 +182,7 @@ func (ec *ECPair) csIndexConsistency(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_INDEX_INCREMENT", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			sym.Sub(1, ec.UnalignedG2MembershipData.IsPulling, ec.UnalignedG2MembershipData.IsComputed), // we dont use index in the G2 membership check
 			sym.Sub(1, ec.UnalignedPairingData.IsFirstLineOfInstance),
 			sym.Sub(ec.UnalignedPairingData.Index, column.Shift(ec.UnalignedPairingData.Index, -1), 1),
@@ -203,7 +203,7 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_FIRST_ACC_PREV", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator,
 			sym.Sub(
 				sym.Mul(nbG1Limbs+nbG2Limbs+2*nbGtLimbs, sym.Sub(ec.UnalignedPairingData.PairID, 1)),
@@ -217,7 +217,7 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_FIRST_ACC_CURR", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator,
 			sym.Sub(
 				sym.Mul(nbG1Limbs+nbG2Limbs+2*nbGtLimbs, ec.UnalignedPairingData.PairID),
@@ -239,7 +239,7 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_INIT_ACC_MASK", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfInstance,
 			sym.Sub(nbGtLimbs, sumMask(ec.UnalignedPairingData.IsAccumulatorInit)),
 		),
@@ -250,7 +250,7 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_CURR_ACC_MASK", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator,
 			sym.Sub(nbGtLimbs, sumMask(ec.UnalignedPairingData.IsAccumulatorCurr)),
 		),
@@ -261,7 +261,7 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_PREV_ACC_MASK", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator,
 			sym.Sub(nbGtLimbs, sumMask(ec.UnalignedPairingData.IsAccumulatorPrev)),
 		),
