@@ -28,6 +28,7 @@ import {
   OPERATOR_0_PRIVATE_KEY,
   SHOMEI_ENDPOINT,
   SHOMEI_FRONTEND_ENDPOINT,
+  TRANSACTION_EXCLUSION_ENDPOINT,
 } from "../src/utils/constants.local";
 import { deployContract, deployUpgradableContractWithProxyAdmin } from "../src/utils/deployments";
 
@@ -78,4 +79,5 @@ beforeAll(async () => {
   global.OPERATOR_0_PRIVATE_KEY = OPERATOR_0_PRIVATE_KEY;
   global.SHOMEI_ENDPOINT = SHOMEI_ENDPOINT;
   global.SHOMEI_FRONTEND_ENDPOINT = SHOMEI_FRONTEND_ENDPOINT;
+  global.TRANSACTION_EXCLUSION_ENDPOINT = TRANSACTION_EXCLUSION_ENDPOINT;
 });

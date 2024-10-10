@@ -41,3 +41,4 @@ export const L1_DUMMY_CONTRACT_ADDRESS = "0x75b33806dCdb0fC7BB06fd1121a3358a88Ed
 
 export const SHOMEI_ENDPOINT = null;
 export const SHOMEI_FRONTEND_ENDPOINT = null;
+export const TRANSACTION_EXCLUSION_ENDPOINT = null;

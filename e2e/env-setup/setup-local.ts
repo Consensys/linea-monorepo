@@ -7,6 +7,8 @@ import {
   L2MessageService__factory,
   LineaRollup,
   LineaRollup__factory,
+  TestContract,
+  TestContract__factory,
 } from "../src/typechain";
 import {
   getL1Provider,
@@ -24,6 +26,7 @@ import {
   SHOMEI_ENDPOINT,
   SHOMEI_FRONTEND_ENDPOINT,
   SEQUENCER_ENDPOINT,
+  TRANSACTION_EXCLUSION_ENDPOINT,
   OPERATOR_1,
   SECURITY_COUNCIL_PRIVATE_KEY,
   CONTRACT_GAS_OPTIMIZATION_SWITCH_BLOCK,
@@ -40,6 +43,8 @@ beforeAll(async () => {
 
   const l1Deployer = new Wallet(L1_DEPLOYER_ACCOUNT_PRIVATE_KEY, l1JsonRpcProvider);
   const l2Deployer = new Wallet(L2_DEPLOYER_ACCOUNT_PRIVATE_KEY, l2JsonRpcProvider);
+
+  const testContract = (await deployContract(new TestContract__factory(), l2Deployer)) as unknown as TestContract;
 
   const [dummyContract, l1DummyContract] = await Promise.all([
     deployContract(new DummyContract__factory(), l2Deployer) as unknown as DummyContract,
@@ -69,6 +74,7 @@ beforeAll(async () => {
   global.l1Provider = l1JsonRpcProvider;
   global.l2Provider = l2JsonRpcProvider;
   global.dummyContract = dummyContract;
+  global.testContract = testContract;
   global.l1DummyContract = l1DummyContract;
   global.l2MessageService = l2MessageService;
   global.L2_MESSAGE_SERVICE_ADDRESS = MESSAGE_SERVICE_ADDRESS;
@@ -86,6 +92,7 @@ beforeAll(async () => {
   global.SHOMEI_ENDPOINT = SHOMEI_ENDPOINT;
   global.SHOMEI_FRONTEND_ENDPOINT = SHOMEI_FRONTEND_ENDPOINT;
   global.SEQUENCER_ENDPOINT = SEQUENCER_ENDPOINT;
+  global.TRANSACTION_EXCLUSION_ENDPOINT = TRANSACTION_EXCLUSION_ENDPOINT;
   global.OPERATOR_1_ADDRESS = OPERATOR_1;
   global.SECURITY_COUNCIL_PRIVATE_KEY = SECURITY_COUNCIL_PRIVATE_KEY;
   global.CONTRACT_GAS_OPTIMIZATION_SWITCH_BLOCK = CONTRACT_GAS_OPTIMIZATION_SWITCH_BLOCK;

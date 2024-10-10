@@ -1,7 +1,7 @@
 import { BlockTag } from "@ethersproject/providers";
 import * as fs from "fs";
 import assert from "assert";
-import {Contract, ContractReceipt, PayableOverrides, Wallet, ethers} from "ethers";
+import { Contract, ContractReceipt, PayableOverrides, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageService, LineaRollup } from "../typechain";
@@ -65,12 +65,65 @@ export class RollupGetZkEVMBlockNumberClient {
   }
 }
 
-export async function getBlockByNumberOrBlockTag(
-  rpcUrl: URL,
-  blockTag: BlockTag
-): Promise<ethers.providers.Block> {
+export class TransactionExclusionClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async getTransactionExclusionStatusV1(txHash: String): Promise<any> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_getTransactionExclusionStatusV1",
+        params: [txHash],
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    return await response.json();
+  }
+
+  public async saveRejectedTransactionV1(
+    txRejectionStage: String,
+    timestamp: String, // ISO-8601
+    blockNumber: Number | null,
+    transactionRLP: String,
+    reasonMessage: String,
+    overflows: { module: String; count: Number; limit: Number }[],
+  ): Promise<any> {
+    let params: any = {
+      txRejectionStage,
+      timestamp,
+      transactionRLP,
+      reasonMessage,
+      overflows,
+    };
+    if (blockNumber != null) {
+      params = {
+        ...params,
+        blockNumber,
+      };
+    }
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_saveRejectedTransactionV1",
+        params: params,
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    return await response.json();
+  }
+}
+
+export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag): Promise<ethers.providers.Block> {
   const provider = new ethers.providers.JsonRpcProvider(rpcUrl.href);
-  return provider.getBlock(blockTag)
+  return provider.getBlock(blockTag);
 }
 
 export async function getEvents<TContract extends LineaRollup | L2MessageService, TEvent extends TypedEvent>(
@@ -170,17 +223,14 @@ export async function sendXTransactions(
   }
 }
 
-export async function sendTransactionsToGenerateTrafficWithInterval(
-  signer: Wallet,
-  pollingInterval: number = 1000,
-) {
+export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wallet, pollingInterval: number = 1000) {
   const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await signer.provider.getFeeData());
   const transactionRequest = {
     to: signer.address,
     value: ethers.utils.parseEther("0.000001"),
     maxPriorityFeePerGas: maxPriorityFeePerGas,
     maxFeePerGas: maxFeePerGas,
-  }
+  };
 
   return setInterval(async function () {
     const tx = await signer.sendTransaction(transactionRequest);
@@ -274,14 +324,18 @@ export const sendMessagesForNSeconds = async <T extends Contract>(
 
 export async function execDockerCommand(command: string, containerName: string): Promise<string> {
   const dockerCommand = `docker ${command} ${containerName}`;
-  console.log(`Executing: ${dockerCommand}...`);
+  return execShellCommand(dockerCommand);
+}
+
+export async function execShellCommand(command: string): Promise<string> {
+  console.log(`Executing: ${command}...`);
   return new Promise((resolve, reject) => {
-    exec(dockerCommand, (error, stdout, stderr) => {
+    exec(command, (error, stdout, stderr) => {
       if (error) {
-        console.error(`Error executing (${dockerCommand}): ${stderr}`);
+        console.error(`Error executing (${command}): ${stderr}`);
         reject(error);
       }
-      console.log(`Execution success (${dockerCommand}): ${stdout}`);
+      console.log(`Execution success (${command}): ${stdout}`);
       resolve(stdout);
     });
   });

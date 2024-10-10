@@ -1,14 +1,17 @@
 /* eslint-disable no-var */
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { TestEnvironment } from "./test-env";
-import { DummyContract, L2MessageService, L2TestContract, LineaRollup } from "src/typechain";
+import { DummyContract, L2MessageService, L2TestContract, LineaRollup, TestContract } from "src/typechain";
 
 declare global {
   var testingEnv: TestEnvironment;
   var l1Provider: JsonRpcProvider;
   var l2Provider: JsonRpcProvider;
+  var l2BesuNodeProvider: JsonRpcProvider;
+  var sequencerProvider: JsonRpcProvider;
   var l2MessageService: L2MessageService;
   var dummyContract: DummyContract;
+  var testContract: TestContract;
   var l1DummyContract: DummyContract;
   var l2TestContract: L2TestContract;
   var lineaRollup: LineaRollup;
@@ -27,6 +30,7 @@ declare global {
   var SHOMEI_ENDPOINT: URL | null;
   var SHOMEI_FRONTEND_ENDPOINT: URL | null;
   var SEQUENCER_ENDPOINT: URL | null;
+  var TRANSACTION_EXCLUSION_ENDPOINT: URL | null;
   var OPERATOR_1_ADDRESS: string;
   var SECURITY_COUNCIL_PRIVATE_KEY: string;
   var CONTRACT_GAS_OPTIMIZATION_SWITCH_BLOCK: number;

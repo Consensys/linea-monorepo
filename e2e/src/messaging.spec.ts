@@ -1,10 +1,6 @@
 import { Wallet, ethers } from "ethers";
 import { beforeAll, describe, expect, it } from "@jest/globals";
-import {
-  encodeFunctionCall,
-  sendTransactionsToGenerateTrafficWithInterval,
-  waitForEvents
-} from "./utils/utils";
+import { encodeFunctionCall, sendTransactionsToGenerateTrafficWithInterval, waitForEvents } from "./utils/utils";
 import { getAndIncreaseFeeData } from "./utils/helpers";
 import { MESSAGE_SENT_EVENT_SIGNATURE } from "./utils/constants";
 
@@ -113,7 +109,7 @@ const messagingTestSuite = (title: string) => {
           console.log("Waiting for MessageClaimed event on L1.");
           const [messageClaimedEvent] = await waitForEvents(
             lineaRollup,
-            lineaRollup.filters.MessageClaimed(messageHash)
+            lineaRollup.filters.MessageClaimed(messageHash),
           );
           clearInterval(intervalId);
 

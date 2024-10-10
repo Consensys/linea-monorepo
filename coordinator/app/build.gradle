@@ -18,6 +18,7 @@ dependencies {
   implementation project(':jvm-libs:core:metrics')
   implementation project(':jvm-libs:metrics:micrometer')
   implementation project(':jvm-libs:core:domain-models')
+  implementation project(':jvm-libs:persistence:db')
   implementation project(':coordinator:utilities')
   implementation project(':coordinator:core')
   implementation project(':coordinator:clients:shomei-client')
@@ -31,11 +32,11 @@ dependencies {
   implementation project(':coordinator:ethereum:blob-submitter')
   implementation project(':coordinator:ethereum:message-anchoring')
   implementation project(':coordinator:clients:web3signer-client')
-  implementation project(':coordinator:persistence:db')
   implementation project(':coordinator:persistence:blob')
   implementation project(':coordinator:persistence:aggregation')
   implementation project(':coordinator:persistence:batch')
   implementation project(':coordinator:persistence:feehistory')
+  implementation project(':coordinator:persistence:db-common')
   implementation project(":jvm-libs:teku-execution-client")
   implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
 

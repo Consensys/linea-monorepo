@@ -10,6 +10,7 @@
     "prettier:fix": "prettier -w '**/*.{js,ts}'",
     "test:e2e:local": "npx jest --config ./jest.local.config.ts --runInBand",
     "test:e2e:local:testenv": "npx jest --config ./jest.local.config.ts --runInBand --globalSetup ./env-setup/global-setup.ts --setupFilesAfterEnv ./env-setup/setup-local-deploy.ts  --globalTeardown ./env-setup/global-teardown.ts",
+    "test:e2e:tx-exclusion:local": "npx jest --config ./jest.tx-exclusion.local.config.ts --runInBand",
     "test:e2e:dev": "npx jest --config ./jest.dev.config.ts --bail --runInBand --testPathIgnorePatterns=restart.spec.ts",
     "test:e2e:uat": "npx jest --config ./jest.uat.config.ts --bail --runInBand --testPathIgnorePatterns=restart.spec.ts",
     "test:e2e:uat:shadow": "npx jest --config ./jest.uat.config.ts --bail --runInBand --testPathIgnorePatterns=restart.spec.ts",

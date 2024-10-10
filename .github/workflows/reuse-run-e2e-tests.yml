@@ -29,6 +29,11 @@ on:
         required: false
         type: boolean
         default: true
+      e2e-tests-for-tx-exclusion:
+        description: Run end to end tests for transaction exclusion
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       commit_tag:
@@ -56,6 +61,11 @@ on:
         required: false
         type: boolean
         default: true
+      e2e-tests-for-tx-exclusion:
+        description: Run end to end tests for transaction exclusion
+        required: false
+        type: boolean
+        default: false
     outputs:
       tests_outcome:
         value: ${{ jobs.run-e2e-tests.outputs.tests_outcome }}
@@ -72,9 +82,10 @@ jobs:
       POSTMAN_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
       PROVER_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
       TRACES_API_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
+      TRANSACTION_EXCLUSION_API_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
       GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
     outputs:
-      tests_outcome: ${{ steps.run_e2e_tests.outcome }}
+      tests_outcome: ${{ (inputs.e2e-tests-for-tx-exclusion && steps.run_e2e_tests_tx_exclusion.outcome) || (!inputs.e2e-tests-for-tx-exclusion && steps.run_e2e_tests.outcome) }}
     runs-on: [self-hosted, Linux, X64, large]
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     steps:
@@ -115,7 +126,7 @@ jobs:
           command: |
             make pull-all-images
       - name: Spin up fresh environment with geth tracing with retry
-        if: ${{ inputs.tracing-engine == 'geth' }}
+        if: ${{ inputs.tracing-engine == 'geth' && !inputs.e2e-tests-for-tx-exclusion }}
         uses: nick-fields/retry@v2
         with:
           max_attempts: 10
@@ -127,7 +138,7 @@ jobs:
           on_retry_command: |
             make clean-environment
       - name: Spin up fresh environment with besu tracing with retry
-        if: ${{ inputs.tracing-engine == 'besu' }}
+        if: ${{ inputs.tracing-engine == 'besu' && !inputs.e2e-tests-for-tx-exclusion }}
         uses: nick-fields/retry@v2
         with:
           max_attempts: 10
@@ -136,6 +147,30 @@ jobs:
           timeout_minutes: 10
           command: |
             make start-all-traces-v2
+          on_retry_command: |
+            make clean-environment
+      - name: Spin up fresh environment for tx-exclusion e2e tests with geth tracing with retry
+        if: ${{ inputs.tracing-engine == 'geth' && inputs.e2e-tests-for-tx-exclusion }}
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 30
+          timeout_minutes: 10
+          command: |
+            make start-all-tx-exclusion
+          on_retry_command: |
+            make clean-environment
+      - name: Spin up fresh environment for tx-exclusion e2e tests with besu tracing with retry
+        if: ${{ inputs.tracing-engine == 'besu' && inputs.e2e-tests-for-tx-exclusion }}
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 30
+          timeout_minutes: 10
+          command: |
+            make start-all-tx-exclusion-traces-v2
           on_retry_command: |
             make clean-environment
       - name: List docker containers/images
@@ -147,12 +182,19 @@ jobs:
       - name: Run e2e tests
         id: run_e2e_tests
         timeout-minutes: 25
+        if: ${{ !inputs.e2e-tests-for-tx-exclusion }}
         run: |
           pnpm run -F e2e test:e2e:local
+      - name: Run e2e tests for tx exclusion
+        id: run_e2e_tests_tx_exclusion
+        timeout-minutes: 25
+        if: ${{ inputs.e2e-tests-for-tx-exclusion }}
+        run: |
+          pnpm run -F e2e test:e2e:tx-exclusion:local
       - name: Show e2e tests result
         if: always()
         run: |
-          echo "E2E_TESTS_RESULT: ${{ steps.run_e2e_tests.outcome }}"
+          echo "E2E_TESTS_RESULT: ${{ (inputs.e2e-tests-for-tx-exclusion && steps.run_e2e_tests_tx_exclusion.outcome) || (!inputs.e2e-tests-for-tx-exclusion && steps.run_e2e_tests.outcome) }}"
       - name: Dump logs
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}
         run: |
@@ -167,6 +209,7 @@ jobs:
           docker logs postman --since 1h &>> docker_logs/postman.txt
           docker logs traces-node --since 1h &>> docker_logs/traces-node.txt
           docker logs traces-node-v2 --since 1h &>> docker_logs/traces-node-v2.txt;
+          docker logs transaction-exclusion-api --since 1h &>> docker_logs/transaction-exclusion-api.txt
           docker logs sequencer --since 1h &>> docker_logs/sequencer.txt
       - name: Archive debug logs
         uses: actions/upload-artifact@v4
