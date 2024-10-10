@@ -22,6 +22,11 @@ import org.junit.jupiter.api.Test;
 
 @Tag("nightly")
 public class NightlyTests {
+  @Test
+  void leoFailingRange() {
+    replay(LINEA_MAINNET, "5389571-5389577.json.gz");
+  }
+
   // Leo's range split up 5104800-5104883
   ///////////////////////////////////////
   @Test

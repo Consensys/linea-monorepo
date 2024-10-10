@@ -41,7 +41,7 @@ jobs:
           go install github.com/consensys/go-corset/cmd/go-corset@latest
 
       - name: Run Nightly tests
-        run: GOMEMLIMIT=196GiB ./gradlew nightlyTests
+        run: GOMEMLIMIT=100GiB ./gradlew nightlyTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
