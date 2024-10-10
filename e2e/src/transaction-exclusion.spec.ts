@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "@jest/globals";
 import { TransactionExclusionClient, wait } from "./utils/utils";
-import { ethers, Wallet } from "ethers";
+import { Wallet } from "ethers";
 import { getAndIncreaseFeeData } from "./utils/helpers";
 
 const transactionExclusionTestSuite = (title: string) => {
@@ -37,10 +37,7 @@ const transactionExclusionTestSuite = (title: string) => {
         return;
       }
 
-      const account = new Wallet(
-        L2_DEPLOYER_ACCOUNT_PRIVATE_KEY,
-        new ethers.providers.JsonRpcProvider("http://localhost:9045")
-      );
+      const account = new Wallet(L2_DEPLOYER_ACCOUNT_PRIVATE_KEY, l2BesuNodeProvider);
 
       const [nonce, feeData] = await Promise.all([
         l2Provider.getTransactionCount(account.address),
@@ -58,9 +55,9 @@ const transactionExclusionTestSuite = (title: string) => {
           maxFeePerGas,
         });
       } catch (err) {
-        // This shall return SERVER_ERROR with traces limit overflow 
-        rejectedTxHash = (err as any).transactionHash
-        console.log(`rejectedTxHash: ${JSON.stringify(rejectedTxHash)}`)
+        // This shall return SERVER_ERROR with traces limit overflow
+        rejectedTxHash = (err as any).transactionHash;
+        console.log(`rejectedTxHash: ${JSON.stringify(rejectedTxHash)}`);
       }
 
       let getResponse;
@@ -80,10 +77,7 @@ const transactionExclusionTestSuite = (title: string) => {
         return;
       }
 
-      const account = new Wallet(
-        L2_DEPLOYER_ACCOUNT_PRIVATE_KEY,
-        new ethers.providers.JsonRpcProvider("http://localhost:8545")
-      );
+      const account = new Wallet(L2_DEPLOYER_ACCOUNT_PRIVATE_KEY, sequencerProvider);
 
       const [nonce, feeData] = await Promise.all([
         l2Provider.getTransactionCount(account.address),
@@ -211,3 +205,5 @@ const transactionExclusionTestSuite = (title: string) => {
 };
 
 export default transactionExclusionTestSuite;
+
+transactionExclusionTestSuite("Transaction exclusion test suite");

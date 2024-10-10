@@ -14,7 +14,7 @@ rpc-http-enabled=true
 rpc-http-host="0.0.0.0"
 rpc-http-port=8545
 rpc-http-cors-origins=["*"]
-rpc-http-api=["ADMIN","DEBUG","NET","ETH","WEB3","PLUGINS","MINER","LINEA"]
+rpc-http-api=["ADMIN","DEBUG","NET","ETH","WEB3","PLUGINS","LINEA"]
 rpc-http-max-active-connections=200
 
 # ws
@@ -43,7 +43,7 @@ plugin-linea-l1l2-bridge-topic="e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7
 plugin-linea-tx-pool-profitability-check-p2p-enabled=false
 plugin-linea-tx-pool-profitability-check-api-enabled=false
 plugin-linea-tx-pool-simulation-check-api-enabled=true
-plugin-linea-tx-pool-simulation-check-p2p-enabled=true
+plugin-linea-tx-pool-simulation-check-p2p-enabled=false
 plugin-linea-estimate-gas-compatibility-mode-enabled=false
 
 Xbonsai-limit-trie-logs-enabled=false

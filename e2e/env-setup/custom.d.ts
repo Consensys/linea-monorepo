@@ -7,6 +7,8 @@ declare global {
   var testingEnv: TestEnvironment;
   var l1Provider: JsonRpcProvider;
   var l2Provider: JsonRpcProvider;
+  var l2BesuNodeProvider: JsonRpcProvider;
+  var sequencerProvider: JsonRpcProvider;
   var l2MessageService: L2MessageService;
   var dummyContract: DummyContract;
   var testContract: TestContract;

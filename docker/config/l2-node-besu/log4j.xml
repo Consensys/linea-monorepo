@@ -31,19 +31,11 @@
     <Logger name="io.opentelemetry" level="WARN" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Logger name="net.consensys.linea.bl.TransactionProfitabilityCalculator" level="DEBUG" />
     <Logger name="net.consensys.linea.sequencer.txselection.selectors" level="DEBUG">
       <AppenderRef ref="Console"/>
     </Logger>
     <Logger name="org.hyperledger.besu.ethereum.eth.transactions.TransactionPool" level="TRACE" additivity="false">
       <AppenderRef ref="Console"/>
-    </Logger>
-    <Logger name="org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.EthSendRawTransaction" level="DEBUG" />
-    <Logger name="org.hyperledger.besu.ethereum.blockcreation.txselection.BlockTransactionSelector" level="TRACE">
-      <Filters>
-        <LevelRangeFilter maxLevel="DEBUG" onMatch="ACCEPT" onMismatch="NEUTRAL" />
-        <RegexFilter regex="Transaction selection result .*" useRawMsg="true" onMatch="ACCEPT" onMismatch="DENY" />
-      </Filters>
     </Logger>
     <Root level="${sys:root.log.level}">
       <AppenderRef ref="Console"/>

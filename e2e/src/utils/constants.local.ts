@@ -5,14 +5,20 @@ dotenv.config();
 export const TRANSACTION_CALLDATA_LIMIT = 30000;
 export const L1_RPC_URL = "http://localhost:8445";
 export const L2_RPC_URL = "http://localhost:8845";
+export const SEQUENCER_RPC_URL = "http://localhost:8545";
+export const L2_BESU_NODE_RPC_URL = "http://localhost:9045";
 export const CHAIN_ID = 1337;
 
+export function getProvider(rpcUrl: string) {
+  return new ethers.providers.JsonRpcProvider(rpcUrl);
+}
+
 export function getL1Provider() {
-  return new ethers.providers.JsonRpcProvider(L1_RPC_URL);
+  return getProvider(L1_RPC_URL);
 }
 
 export function getL2Provider() {
-  return new ethers.providers.JsonRpcProvider(L2_RPC_URL);
+  return getProvider(L2_RPC_URL);
 }
 
 // WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
@@ -55,7 +61,7 @@ export const MESSAGE_SERVICE_ADDRESS = "0xe537D669CA013d86EBeF1D64e40fC74CADC919
 
 export const SHOMEI_ENDPOINT = new URL("http://localhost:8998");
 export const SHOMEI_FRONTEND_ENDPOINT = new URL("http://localhost:8889");
-export const SEQUENCER_ENDPOINT = new URL("http://localhost:8545");
+export const SEQUENCER_ENDPOINT = new URL(SEQUENCER_RPC_URL);
 export const TRANSACTION_EXCLUSION_ENDPOINT = new URL("http://localhost:8082");
 
 export const CONTRACT_GAS_OPTIMIZATION_SWITCH_BLOCK = 12;

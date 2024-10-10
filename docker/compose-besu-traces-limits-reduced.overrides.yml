@@ -75,3 +75,19 @@ services:
 
   linea-besu-sequencer-finalized-tag-updater-plugin-downloader:
     command: ["echo", "forced exit as not needed"]
+  
+  zkbesu-shomei:
+    entrypoint: ["echo", "forced exit as not needed"]
+
+  shomei-plugin-downloader:
+    command: ["echo", "forced exit as not needed"]
+
+  shomei:
+    entrypoint: ["echo", "forced exit as not needed"]
+
+  shomei-frontend:
+    restart: no
+    entrypoint: ["echo", "forced exit as not needed"]
+
+  l1-cl-node:
+    entrypoint: ["echo", "forced exit as not needed"]
