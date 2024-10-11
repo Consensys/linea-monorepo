@@ -36,7 +36,7 @@ public final class StackItem {
    * The relative height of the element with regard to the stack height just before executing the
    * linked EVM instruction.
    */
-  @Getter private final int height;
+  @Getter private final short height;
 
   /** The value having been popped from/pushed on the stack. */
   @Getter @Setter private Bytes value;
@@ -65,23 +65,23 @@ public final class StackItem {
     this.stackStamp = 0;
   }
 
-  StackItem(int height, Bytes value, byte action, int stackStamp) {
+  StackItem(short height, Bytes value, byte action, int stackStamp) {
     this.height = height;
     this.value = value;
     this.action = action;
     this.stackStamp = stackStamp;
   }
 
-  public static StackItem pop(int height, Bytes value, int stackStamp) {
+  public static StackItem pop(short height, Bytes value, int stackStamp) {
     return new StackItem(height, value, Stack.POP, stackStamp);
   }
 
-  public static StackItem push(int height, int stackStamp) {
+  public static StackItem push(short height, int stackStamp) {
     return new StackItem(
         height, MARKER /* marker value, erased on unlatching */, Stack.PUSH, stackStamp);
   }
 
-  public static StackItem pushImmediate(int height, Bytes val, int stackStamp) {
+  public static StackItem pushImmediate(short height, Bytes val, int stackStamp) {
     return new StackItem(height, val.copy(), Stack.PUSH, stackStamp);
   }
 }
