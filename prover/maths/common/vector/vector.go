@@ -39,11 +39,8 @@ func ScalarProd(a, b []field.Element) field.Element {
 		utils.Panic("The inputs should have the same length %v %v", len(a), len(b))
 	}
 
-	var res, tmp field.Element
-	for i := range a {
-		tmp.Mul(&a[i], &b[i])
-		res.Add(&res, &tmp)
-	}
+	a_ := fr.Vector(a)
+	res := a_.InnerProduct(fr.Vector(b))
 	return res
 }
 
@@ -68,9 +65,8 @@ func MulElementWise(res, a, b []field.Element) {
 		utils.Panic("The inputs should have the same length %v %v %v", len(res), len(a), len(b))
 	}
 
-	for i := range a {
-		res[i].Mul(&a[i], &b[i])
-	}
+	res_ := fr.Vector(res)
+	res_.Mul(fr.Vector(a), fr.Vector(b))
 }
 
 // Prettify returns a string representing `a` in a human-readable fashion
