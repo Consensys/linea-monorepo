@@ -37,8 +37,8 @@ import {
   PAUSE_L1_L2_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./utils/constants";
-import { deployFromFactory, deployUpgradableFromFactory } from "./utils/deployment";
+} from "./common/constants";
+import { deployFromFactory, deployUpgradableFromFactory } from "./common/deployment";
 import {
   buildAccessErrorMessage,
   calculateRollingHash,
@@ -47,7 +47,7 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256Hash,
-} from "./utils/helpers";
+} from "./common/helpers";
 
 describe("L1MessageService", () => {
   let l1MessageService: TestL1MessageService;

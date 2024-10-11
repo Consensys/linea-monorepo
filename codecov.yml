@@ -1,4 +1,5 @@
 codecov:
+  max_report_age: off
   notify:
     wait_for_ci: false
   require_ci_to_pass: false
@@ -27,10 +28,12 @@ flags:
   hardhat:
     paths:
       - contracts/
+    carryforward: true
   kotlin:
     paths:
       - coordinator/
       - jvm-libs/
+    carryforward: true
 
 github_checks:
   annotations: false

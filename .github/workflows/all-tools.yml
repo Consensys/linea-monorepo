@@ -5,22 +5,21 @@ on:
     branches:
       - main
     paths:
-      - 'operations/**'
+      - 'operations/'
+      - '.github/workflows/all-tools.yml'
   pull_request:
     branches:
       - main
     paths:
-      - 'operations/**'
-
-env:
-  DOCKER_IMAGE_NAME: consensys/linea-alltools
+      - 'operations/'
+      - '.github/workflows/all-tools.yml'
 
 jobs:
   changes:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     name: Filter commit changes
     outputs:
-      all-tools: ${{ steps.filter.outputs.all-tools }}
+      all-tools: ${{ steps.filter.outputs['all-tools'] }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -40,10 +39,10 @@ jobs:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
 
   check_image_tags_exist:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     name: Check image tags exist
     needs: [ changes, store_image_name_and_tags ]
-    if: ${{ needs.changes.outputs.all-tools == 'false' }}
+    if: ${{ needs.changes.outputs['all-tools'] == 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,15 +51,15 @@ jobs:
         with:
           last_commit_tag: ${{ needs.store_image_name_and_tags.outputs.last_commit_tag }}
           common_ancestor_tag: ${{ needs.store_image_name_and_tags.outputs.common_ancestor_tag }}
-          image_name: ${{ env.DOCKER_IMAGE_NAME }}
+          image_name: consensys/linea-alltools
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   all-tools-tag-only:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     name: All tools tag only
     needs: [ changes, store_image_name_and_tags, check_image_tags_exist ]
-    if: ${{ github.event_name != 'pull_request' && needs.changes.outputs.all-tools == 'false' }}
+    if: ${{ github.event_name != 'pull_request' && needs.changes.outputs['all-tools'] == 'false' }}
     outputs:
       image_tagged: ${{ steps.image_tag_push.outputs.image_tagged }}
     steps:
@@ -75,7 +74,7 @@ jobs:
           common_ancestor_tag: ${{ needs.store_image_name_and_tags.outputs.common_ancestor_tag }}
           develop_tag: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
           untested_tag_suffix: ${{ needs.store_image_name_and_tags.outputs.untested_tag_suffix }}
-          image_name: ${{ env.DOCKER_IMAGE_NAME }}
+          image_name: consensys/linea-alltools
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists }}
           common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -83,12 +82,12 @@ jobs:
 
   build-and-publish:
     needs: [ changes, store_image_name_and_tags, all-tools-tag-only ]
-    if: ${{ always() && (needs.changes.outputs.all-tools == 'true' || needs.all-tools-tag-only.result != 'success' || needs.all-tools-tag-only.outputs.image_tagged != 'true') }}
-    runs-on: ubuntu-22.04
+    if: ${{ always() && (needs.changes.outputs['all-tools'] == 'true' || needs.all-tools-tag-only.result != 'success' || needs.all-tools-tag-only.outputs.image_tagged != 'true') }}
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     env:
       COMMIT_TAG: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
       DEVELOP_TAG: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
-      IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
+      IMAGE_NAME: consensys/linea-alltools
     name: All tools build and push
     steps:
       - name: Checkout
@@ -98,7 +97,7 @@ jobs:
           submodules: true
           persist-credentials: false
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -116,15 +115,13 @@ jobs:
       - name: Show the "version" build argument
         run: |
           echo "We inject the commit tag in the docker image ${{ env.COMMIT_TAG }}"
-          echo COMMIT_TAG=${{ env.COMMIT_TAG }} >> $GITHUB_ENV
+          echo COMMIT_TAG=${{ env.COMMIT_TAG }} >> GITHUB_ENV
       - name: Build and push all tools image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./operations/Dockerfile
-          platforms: linux/amd64
-          # Note: Build amd64 image only
-          # platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64  # Note: Build amd64 image only
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}
