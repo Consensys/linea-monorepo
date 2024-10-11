@@ -1030,22 +1030,19 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 // the last value of TotalBytesCounter for which the filter IsActive = 1.
 func DefineTotalBytesCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
 	comp.InsertLocal(0, ifaces.QueryIDf("%s_%v_TOTAL_BYTES_COUNTER_START_LOCAL_CONSTRAINT", name, edc.TotalBytesCounter.GetColID()),
-		sym.Mul(
-			edc.IsActive,
-			sym.Sub(
-				edc.TotalBytesCounter,
-				edc.NoBytes, // blockIDs start from 1
-			),
+		sym.Sub(
+			edc.TotalBytesCounter,
+			edc.NoBytes, // the first value of the total bytes counter must be the number of bytes on the first row.
 		),
 	)
 
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%v_TOTAL_BYTES_COUNTER_GLOBAL_CONSTRAINT", name, edc.TotalBytesCounter.GetColID()),
 		sym.Mul(
-			edc.IsActive,
+			edc.IsActive, // Here, we only consider the active part. On the inactive part, edc.TotalBytesCounter is forced to be zero in DefineZeroizationConstraints.
 			sym.Sub(
 				edc.TotalBytesCounter,
 				edc.NoBytes,
-				column.Shift(edc.TotalBytesCounter, -1),
+				column.Shift(edc.TotalBytesCounter, -1), // the TotalBytes counter increases appropriately.
 			),
 		),
 	)
@@ -1054,6 +1051,7 @@ func DefineTotalBytesCounterConstraints(comp *wizard.CompiledIOP, edc *Execution
 	comp.Columns.SetStatus(edc.FinalTotalBytesCounter.GetColID(), column.Proof)
 	// get accessors
 	accessor := accessors.NewFromPublicColumn(edc.FinalTotalBytesCounter, 0)
+	// enforce that FinalTotalBytesCounter contains the last value of TotalBytesCounter on the active part.
 	util.CheckLastELemConsistency(comp, edc.IsActive, edc.TotalBytesCounter, accessor, name)
 }
 
@@ -1354,10 +1352,10 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			}
 
 		} else {
-			// finished processing all the blocks, move to padding
-			// we do not set the isActive filter to 1
-			// No more blocks to assign
-			// before breaking, set FinalTotalBytesCounter
+			// finished processing all the blocks, reached the inactive part of the module.
+			// therefore, we do not set the isActive filter to 1.
+			// No more blocks to assign.
+			// before breaking, set FinalTotalBytesCounter to correspond to TotalBytesCounter in the last active row (totalCt-1).
 			vect.FinalTotalBytesCounter = vect.TotalBytesCounter[totalCt-1]
 			break
 		}
