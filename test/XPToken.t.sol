@@ -9,9 +9,10 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract XPTokenTest is Test {
     XPToken xpToken;
-    address owner = address(0x1);
-    address alice = address(0x2);
-    address bob = address(0x3);
+
+    address owner = makeAddr("owner");
+    address alice = makeAddr("alice");
+    address bob = makeAddr("bob");
 
     XPProviderMock provider1;
     XPProviderMock provider2;
@@ -122,5 +123,31 @@ contract XPTokenTest is Test {
 
         uint256 allowance = xpToken.allowance(alice, bob);
         assertEq(allowance, 0);
+    }
+}
+
+contract XPTokenOwnershipTest is Test {
+    XPToken xpToken;
+
+    address owner = makeAddr("owner");
+    address alice = makeAddr("alice");
+
+    function setUp() public {
+        vm.prank(owner);
+        xpToken = new XPToken(1000e18);
+    }
+
+    function testInitialOwner() public view {
+        assertEq(xpToken.owner(), owner);
+    }
+
+    function testOwnershipTransfer() public {
+        vm.prank(owner);
+        xpToken.transferOwnership(alice);
+        assertEq(xpToken.owner(), owner);
+
+        vm.prank(alice);
+        xpToken.acceptOwnership();
+        assertEq(xpToken.owner(), alice);
     }
 }

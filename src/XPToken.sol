@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable, Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { IXPProvider } from "./interfaces/IXPProvider.sol";
 
-contract XPToken is Ownable {
+contract XPToken is Ownable2Step {
     string public constant name = "XP Token";
     string public constant symbol = "XP";
     uint256 public constant decimals = 18;

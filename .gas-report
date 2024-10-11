@@ -17,21 +17,21 @@
 | Deployment Cost                                      | Deployment Size |        |        |        |         |
 | 1115122                                              | 5026            |        |        |        |         |
 | Function Name                                        | min             | avg    | median | max    | # calls |
-| MAX_LOCKING_PERIOD                                   | 228             | 228    | 228    | 228    | 21      |
-| MAX_MULTIPLIER                                       | 252             | 252    | 252    | 252    | 27      |
-| MIN_LOCKING_PERIOD                                   | 229             | 229    | 229    | 229    | 10      |
-| MP_RATE_PER_YEAR                                     | 231             | 231    | 231    | 231    | 2       |
-| SCALE_FACTOR                                         | 251             | 251    | 251    | 251    | 36      |
+| MAX_LOCKING_PERIOD                                   | 228             | 228    | 228    | 228    | 22      |
+| MAX_MULTIPLIER                                       | 252             | 252    | 252    | 252    | 28      |
+| MIN_LOCKING_PERIOD                                   | 229             | 229    | 229    | 229    | 11      |
+| MP_RATE_PER_YEAR                                     | 231             | 231    | 231    | 231    | 3       |
+| SCALE_FACTOR                                         | 251             | 251    | 251    | 251    | 39      |
 | accountedRewards                                     | 373             | 931    | 373    | 2373   | 68      |
-| getUserInfo                                          | 1576            | 1576   | 1576   | 1576   | 62      |
+| getUserInfo                                          | 1576            | 1576   | 1576   | 1576   | 65      |
 | rewardIndex                                          | 373             | 402    | 373    | 2373   | 68      |
-| stake                                                | 168040          | 216282 | 228839 | 249323 | 45      |
-| totalMP                                              | 330             | 330    | 330    | 330    | 68      |
-| totalMaxMP                                           | 329             | 329    | 329    | 329    | 68      |
-| totalStaked                                          | 373             | 373    | 373    | 373    | 68      |
-| unstake                                              | 75511           | 104952 | 91588  | 134250 | 12      |
-| updateGlobalState                                    | 30008           | 55930  | 47387  | 80335  | 24      |
-| updateUserMP                                         | 34631           | 36855  | 37133  | 37133  | 18      |
+| stake                                                | 168040          | 217000 | 228839 | 249323 | 46      |
+| totalMP                                              | 330             | 330    | 330    | 330    | 71      |
+| totalMaxMP                                           | 329             | 329    | 329    | 329    | 71      |
+| totalStaked                                          | 373             | 373    | 373    | 373    | 71      |
+| unstake                                              | 75511           | 103924 | 91588  | 134250 | 13      |
+| updateGlobalState                                    | 30008           | 55589  | 47387  | 80335  | 25      |
+| updateUserMP                                         | 34631           | 36869  | 37133  | 37133  | 19      |
 
 
 | src/XPNFTToken.sol:XPNFTToken contract          |                 |       |        |       |         |
@@ -54,18 +54,21 @@
 | src/XPToken.sol:XPToken contract |                 |       |        |       |         |
 |----------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                  | Deployment Size |       |        |       |         |
-| 725645                           | 3153            |       |        |       |         |
+| 799398                           | 3520            |       |        |       |         |
 | Function Name                    | min             | avg   | median | max   | # calls |
-| addXPProvider                    | 23968           | 57184 | 51091  | 68191 | 18      |
-| allowance                        | 488             | 488   | 488    | 488   | 1       |
+| acceptOwnership                  | 28247           | 28247 | 28247  | 28247 | 1       |
+| addXPProvider                    | 23991           | 57207 | 51114  | 68214 | 18      |
+| allowance                        | 511             | 511   | 511    | 511   | 1       |
 | approve                          | 390             | 390   | 390    | 390   | 1       |
-| balanceOf                        | 8808            | 14560 | 11066  | 23808 | 3       |
-| getXPProviders                   | 1033            | 3286  | 3286   | 5539  | 2       |
-| removeXPProvider                 | 23665           | 28074 | 25780  | 34777 | 3       |
+| balanceOf                        | 8786            | 14538 | 11044  | 23786 | 3       |
+| getXPProviders                   | 1011            | 3264  | 3264   | 5517  | 2       |
+| owner                            | 374             | 1040  | 374    | 2374  | 3       |
+| removeXPProvider                 | 23666           | 28075 | 25781  | 34778 | 3       |
 | setTotalSupply                   | 23792           | 26266 | 26266  | 28740 | 2       |
 | totalSupply                      | 363             | 1863  | 2363   | 2363  | 4       |
-| transfer                         | 411             | 411   | 411    | 411   | 1       |
+| transfer                         | 389             | 389   | 389    | 389   | 1       |
 | transferFrom                     | 521             | 521   | 521    | 521   | 1       |
+| transferOwnership                | 47732           | 47732 | 47732  | 47732 | 1       |
 
 
 | src/nft-metadata-generators/NFTMetadataGeneratorSVG.sol:NFTMetadataGeneratorSVG contract |                 |       |        |       |         |
@@ -103,9 +106,9 @@
 | Deployment Cost                             | Deployment Size |       |        |       |         |
 | 639406                                      | 3369            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
-| approve                                     | 46346           | 46346 | 46346  | 46346 | 160     |
-| balanceOf                                   | 561             | 1333  | 561    | 2561  | 290     |
-| mint                                        | 51284           | 59054 | 51284  | 68384 | 176     |
+| approve                                     | 46346           | 46346 | 46346  | 46346 | 165     |
+| balanceOf                                   | 561             | 1341  | 561    | 2561  | 292     |
+| mint                                        | 51284           | 59028 | 51284  | 68384 | 181     |
 | transfer                                    | 34390           | 48070 | 51490  | 51490 | 10      |
 
 
@@ -117,7 +120,7 @@
 | getTotalXPShares                                      | 302             | 968   | 302    | 2302  | 6       |
 | getUserXPShare                                        | 504             | 1837  | 2504   | 2504  | 6       |
 | setTotalXPShares                                      | 43632           | 43632 | 43632  | 43632 | 2       |
-| setUserXPShare                                        | 43900           | 43900 | 43900  | 43900 | 2       |
+| setUserXPShare                                        | 44128           | 44128 | 44128  | 44128 | 2       |
 
 
 
