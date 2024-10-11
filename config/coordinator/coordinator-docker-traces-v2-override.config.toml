@@ -33,5 +33,7 @@ geth-gas-price-update-recipients=[
 
 [l2-network-gas-pricing.legacy.sample-transaction-gas-pricing]
 plain-transfer-cost-multiplier=1.0
+# Ratio of 350 / 29400 is based on data from Mainnet. Only 0.3% of transactions are less profitable than this
+# Meaning 99.7% of transactions will be includable if priced using eth_gasPrice
 compressed-tx-size=350
 expected-gas=29400
