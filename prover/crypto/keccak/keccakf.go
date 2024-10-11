@@ -5,6 +5,14 @@ package keccak
 const Dim = 5           // size of the keccak state matrix
 const NumRound int = 24 // number of rounds in the keccak permutation
 
+var LR = [Dim][Dim]int{
+	{0, 36, 3, 41, 18},
+	{1, 44, 10, 45, 2},
+	{62, 6, 43, 15, 61},
+	{28, 55, 25, 21, 56},
+	{27, 20, 39, 8, 14},
+}
+
 // RC stores the rounds constants for the \iota steps
 var RC = [NumRound]uint64{
 	0x0000000000000001,
@@ -208,4 +216,8 @@ func (a *State) Chi(b *State) {
 	a[14] = b[14] ^ (^b[10] & b[11])
 	a[19] = b[19] ^ (^b[15] & b[16])
 	a[24] = b[24] ^ (^b[20] & b[21])
+}
+
+func (a *State) Iota(round int) {
+	a[0] ^= RC[round]
 }
