@@ -81,8 +81,8 @@ public class CommonFragmentValues {
     // this.contextNumberNew = hub.contextNumberNew(callFrame);
     this.pc = hubProcessingPhase == TX_EXEC ? hub.currentFrame().pc() : 0;
     this.pcNew = computePcNew(hub, pc, noStackException, hub.state.getProcessingPhase() == TX_EXEC);
-    this.height = (short) callFrame.stack().getHeight();
-    this.heightNew = (short) callFrame.stack().getHeightNew();
+    this.height = callFrame.stack().getHeight();
+    this.heightNew = callFrame.stack().getHeightNew();
 
     // TODO: partial solution, will not work in general
     this.gasExpected = hub.expectedGas();
