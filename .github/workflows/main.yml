@@ -3,6 +3,8 @@ name: main
 on:
   pull_request:
   push:
+    branches:
+      - main
 
 jobs:
   store-image-name-and-tags:
