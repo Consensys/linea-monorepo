@@ -24,6 +24,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	mimcComp "github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -48,6 +54,10 @@ type Circuit struct {
 	UseGkrMimc       bool
 	MockKeccakWizard bool // for testing purposes, bypass expensive keccak verification
 }
+
+// type alias to denote a wizard-compilation suite. This is used when calling
+// compile and provides internal parameters for the wizard package.
+type compilationSuite = []func(*wizard.CompiledIOP)
 
 func (c *Circuit) Define(api frontend.API) error {
 	maxNbDecompression, maxNbExecution := len(c.DecompressionPublicInput), len(c.ExecutionPublicInput)
@@ -327,7 +337,42 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 }
 
 func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
-	panic("implement me") // TODO @alexandre.belling
+	var (
+		sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+
+		fullCompilationSuite = compilationSuite{
+
+			compiler.Arcane(1<<10, 1<<18, false),
+			vortex.Compile(
+				2,
+				vortex.ForceNumOpenedColumns(256),
+				vortex.WithSISParams(&sisInstance),
+			),
+
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			mimcComp.CompileMiMC,
+			compiler.Arcane(1<<10, 1<<16, false),
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.WithSISParams(&sisInstance),
+			),
+
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			mimcComp.CompileMiMC,
+			compiler.Arcane(1<<10, 1<<13, false),
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.ReplaceSisByMimc(),
+			),
+		}
+	)
+
+	return fullCompilationSuite
+
 }
 
 // GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution from the compiled constraint system
