@@ -44,6 +44,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
+          version: v1.61.0
           working-directory: prover
           args: --timeout=5m
     - name: generated files should not be modified

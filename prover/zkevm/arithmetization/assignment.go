@@ -40,14 +40,14 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema, expTraces
 
 		if uint(limit) < height {
 			level = logrus.ErrorLevel
-			err77 = errors.Join(err77, fmt.Errorf("limit overflow: module %q overflows its limit height=%v limit=%v ratio=%v", name, height, limit, ratio))
+			err77 = errors.Join(err77, fmt.Errorf("limit overflow: module '%s' overflows its limit height=%v limit=%v ratio=%v", name, height, limit, ratio))
 		}
 
 		logrus.StandardLogger().Logf(level, "module utilization module=%v height=%v limit=%v ratio=%v", name, height, limit, ratio)
 	}
 
 	if err77 != nil {
-		logrus.Errorf("Error code 77: \n%v", err77)
+		logrus.Errorf("Error code 77 %v", err77)
 		os.Exit(TraceOverflowExitCode)
 	}
 
