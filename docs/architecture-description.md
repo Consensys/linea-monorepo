@@ -109,7 +109,7 @@ Transactions exceeding trace limits are added to an unexecutableTxList in-memory
 
 Priority transactions are prioritized over normal ones. Priority transactions are those sent by a user whose address is in a predefined list. It typically corresponds to transactions triggered by the Linea system.
 
-Note that in case no transaction is received in the block window, no block is generated. This behavior differs from Ethereum mainnet behavior given that it’s not required to avoid attacks.
+Note that if no transactions are received within the block window, no block is generated. This behavior differs from Ethereum mainnet, where empty blocks are still produced to maintain chain continuity and prevent certain attacks.
 
 If a transaction could not be included in the current block, it will remain as a candidate for inclusion in the next block.
 
@@ -475,7 +475,7 @@ The paragraphs highlights the roles of the different proofs that are generated.
 
 ### Execution proofs
 
-It validates the correct execution of transactions within the Ethereum Virtual Machine (EVM). The proof system for the execution has a complex structure which involves the Vortex proof system, GKR and Plonk. The final proof takes the form of a BLS12-377-based Plonk proof.
+It validates the correct execution of transactions within the Ethereum Virtual Machine (EVM). The proof system for the execution has a complex structure which involves the Vortex proof system, GKR and PLONK. The final proof takes the form of a BLS12-377-based PLONK proof.
 
 An execution request proof is a file stored in the shared filesystem under the repository: with file name pattern: `$startBlockNumber-$endBlockNumber-etv$tracesVersion-stv$stateManagerVersion-getZkProof.json`
 
@@ -557,7 +557,7 @@ RollingHashUpdatedEvent
 
 ### Compression proof
 
-Verifies the effective compression of a byte stream of data, which represents the inputs for the EVM execution circuit. This circuit ensures that the compressed data submitted on Ethereum can be accurately decompressed, revealing the necessary inputs for validation. The proof system used for generating the compression proof is Plonk and is based on the curve BLS12-377. \
+Verifies the effective compression of a byte stream of data, which represents the inputs for the EVM execution circuit. This circuit ensures that the compressed data submitted on Ethereum can be accurately decompressed, revealing the necessary inputs for validation. The proof system used for generating the compression proof is PLONK and is based on the curve BLS12-377. \
 
 
 File name
@@ -627,7 +627,7 @@ BlobCompressionProofJsonResponse
 
 ### Aggregation proof
 
-Serves as the cornerstone of Linea's proof system, recursively verifying proofs from N execution circuits and M compression circuit instances. This circuit encapsulates the primary statement of Linea's prover and is the sole circuit subjected to external verification. The proof system used is a combination of several Plonk circuits on BW6, BLS12-377 and BN254 which tactically profits from the 2-chained curves BLS12-377 and BW6 to efficiently recurse the proofs. The final proof takes the form of a BN254 curve that can be efficiently verified on Ethereum thanks to the available precompiles.
+Serves as the cornerstone of Linea's proof system, recursively verifying proofs from N execution circuits and M compression circuit instances. This circuit encapsulates the primary statement of Linea's prover and is the sole circuit subjected to external verification. The proof system used is a combination of several PLONK circuits on BW6, BLS12-377 and BN254 which tactically profits from the 2-chained curves BLS12-377 and BW6 to efficiently recurse the proofs. The final proof takes the form of a BN254 curve that can be efficiently verified on Ethereum thanks to the available precompiles.
 
 File name
 
@@ -911,7 +911,7 @@ On finalization the value of the final (last in rollup data being finalized) Rol
 
 Whenever a transaction is executed on L2 to send a message to L1, a MessageSent event is emitted.
 
-Txs to send L2 -> L1 messages are sent to the L2 Message service function:
+Txs to send L2 -> L1 messages are sent to the L2 Message Service function:
 
 
 ```

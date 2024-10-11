@@ -93,7 +93,7 @@ With **Escape newlines** enabled in Grafana, the stack trace will be displayed a
 
 ### Java/Kotlin Guidelines
 
-These guidelines reelect some specificities of our logging library [Log4J2](https://logging.apache.org/log4j/2.x/)
+These guidelines reflect some specificities of our logging library [Log4J2](https://logging.apache.org/log4j/2.x/)
 
 #### Favor argument placeholder instead of String templating
 ```kotlin
