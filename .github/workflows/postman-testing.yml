@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   run-tests:
-    runs-on: [self-hosted, Linux, X64, large]
+    runs-on: [self-hosted, ubuntu-20.04, X64, large]
     name: Postman & SDK tests
     steps:
       - name: Checkout
