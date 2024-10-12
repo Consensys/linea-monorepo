@@ -95,6 +95,10 @@ contract RewardsStreamerMPTest is Test {
             / streamer.SCALE_FACTOR();
     }
 
+    function _calculeAccuredMP(uint256 totalStaked, uint256 timeDiff) public view returns (uint256) {
+        return (timeDiff * totalStaked * streamer.MP_RATE_PER_YEAR()) / (365 days * streamer.SCALE_FACTOR());
+    }
+
     function _calculateTimeToMPLimit(uint256 amount) public view returns (uint256) {
         uint256 maxMP = amount * streamer.MAX_MULTIPLIER();
         uint256 mpPerYear = (amount * streamer.MP_RATE_PER_YEAR()) / streamer.SCALE_FACTOR();
@@ -1210,6 +1214,103 @@ contract UnstakeTest is StakeTest {
                 maxMP: 10e18
             })
         );
+    }
+
+    function test_UnstakeBonusMPAndAccuredMP() public {
+        // setup variables
+        uint256 amountStaked = 10e18;
+        uint256 secondsLocked = streamer.MIN_LOCKING_PERIOD();
+        uint256 reducedStake = 5e18;
+        uint256 increasedTime = 365 days;
+
+        //initialize memory placehodlders
+        uint256[4] memory timestamp;
+        uint256[4] memory increasedAccuredMP;
+        uint256[4] memory predictedBonusMP;
+        uint256[4] memory predictedAccuredMP;
+        uint256[4] memory predictedTotalMP;
+        uint256[4] memory predictedTotalMaxMP;
+        uint256[4] memory totalStaked;
+
+        //stages variables setup
+        uint256 stage = 0; // first stage: initialization
+        {
+            timestamp[stage] = block.timestamp;
+            totalStaked[stage] = amountStaked;
+            predictedBonusMP[stage] = totalStaked[stage] + _calculateBonusMP(totalStaked[stage], secondsLocked);
+            predictedTotalMaxMP[stage] = 52_465_753_424_657_534_240;
+            increasedAccuredMP[stage] = 0; //no increased accured MP in first stage
+            predictedAccuredMP[stage] = 0; //no accured MP in first stage
+            predictedTotalMP[stage] = predictedBonusMP[stage] + predictedAccuredMP[stage];
+        }
+        stage++; // second stage: progress in time
+        {
+            timestamp[stage] = timestamp[stage - 1] + increasedTime;
+            totalStaked[stage] = totalStaked[stage - 1];
+            predictedBonusMP[stage] = predictedBonusMP[stage - 1]; //no change in bonusMP in second stage
+            predictedTotalMaxMP[stage] = predictedTotalMaxMP[stage - 1];
+            increasedAccuredMP[stage] = _calculeAccuredMP(totalStaked[stage], timestamp[stage] - timestamp[stage - 1]);
+            predictedAccuredMP[stage] = predictedAccuredMP[stage - 1] + increasedAccuredMP[stage];
+            predictedTotalMP[stage] = predictedBonusMP[stage] + predictedAccuredMP[stage];
+        }
+        stage++; //third stage: reduced stake
+        {
+            timestamp[stage] = timestamp[stage - 1]; //no time increased in third stage
+            totalStaked[stage] = totalStaked[stage - 1] - reducedStake;
+            //bonusMP from this stage is a proportion from the difference of remainingStake and amountStaked
+            //if the account reduced 50% of its stake, the bonusMP should be reduced by 50%
+            predictedBonusMP[stage] = (totalStaked[stage] * predictedBonusMP[stage - 1]) / totalStaked[stage - 1];
+            predictedTotalMaxMP[stage] = (totalStaked[stage] * predictedTotalMaxMP[stage - 1]) / totalStaked[stage - 1];
+            increasedAccuredMP[stage] = 0; //no accuredMP in third stage;
+            //total accuredMP from this stage is a proportion from the difference of remainingStake and amountStaked
+            //if the account reduced 50% of its stake, the accuredMP should be reduced by 50%
+            predictedAccuredMP[stage] = (totalStaked[stage] * predictedAccuredMP[stage - 1]) / totalStaked[stage - 1];
+            predictedTotalMP[stage] = predictedBonusMP[stage] + predictedAccuredMP[stage];
+        }
+
+        // stages execution
+        stage = 0; // first stage: initialization
+        {
+            _stake(alice, amountStaked, secondsLocked);
+            {
+                RewardsStreamerMP.UserInfo memory userInfo = streamer.getUserInfo(alice);
+                assertEq(userInfo.stakedBalance, totalStaked[stage], "stage 1: wrong user staked balance");
+                assertEq(userInfo.userMP, predictedTotalMP[stage], "stage 1: wrong user MP");
+                assertEq(userInfo.maxMP, predictedTotalMaxMP[stage], "stage 1: wrong user max MP");
+
+                assertEq(streamer.totalStaked(), totalStaked[stage], "stage 1: wrong total staked");
+                assertEq(streamer.totalMP(), predictedTotalMP[stage], "stage 1: wrong total MP");
+                assertEq(streamer.totalMaxMP(), predictedTotalMaxMP[stage], "stage 1: wrong totalMaxMP MP");
+            }
+        }
+
+        stage++; // second stage: progress in time
+        vm.warp(timestamp[stage]);
+        streamer.updateGlobalState();
+        streamer.updateUserMP(alice);
+        {
+            RewardsStreamerMP.UserInfo memory userInfo = streamer.getUserInfo(alice);
+            assertEq(userInfo.stakedBalance, totalStaked[stage], "stage 2: wrong user staked balance");
+            assertEq(userInfo.userMP, predictedTotalMP[stage], "stage 2: wrong user MP");
+            assertEq(userInfo.maxMP, predictedTotalMaxMP[stage], "stage 2: wrong user max MP");
+
+            assertEq(streamer.totalStaked(), totalStaked[stage], "stage 2: wrong total staked");
+            assertEq(streamer.totalMP(), predictedTotalMP[stage], "stage 2: wrong total MP");
+            assertEq(streamer.totalMaxMP(), predictedTotalMaxMP[stage], "stage 2: wrong totalMaxMP MP");
+        }
+
+        stage++; // third stage: reduced stake
+        _unstake(alice, reducedStake);
+        {
+            RewardsStreamerMP.UserInfo memory userInfo = streamer.getUserInfo(alice);
+            assertEq(userInfo.stakedBalance, totalStaked[stage], "stage 3: wrong user staked balance");
+            assertEq(userInfo.userMP, predictedTotalMP[stage], "stage 3: wrong user MP");
+            assertEq(userInfo.maxMP, predictedTotalMaxMP[stage], "stage 3: wrong user max MP");
+
+            assertEq(streamer.totalStaked(), totalStaked[stage], "stage 3: wrong total staked");
+            assertEq(streamer.totalMP(), predictedTotalMP[stage], "stage 3: wrong total MP");
+            assertEq(streamer.totalMaxMP(), predictedTotalMaxMP[stage], "stage 3: wrong totalMaxMP MP");
+        }
     }
 
     function test_UnstakeMultipleAccounts() public {
