@@ -110,7 +110,7 @@ jobs:
     secrets: inherit
 
   manual-docker-build-and-e2e-tests:
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     steps:
