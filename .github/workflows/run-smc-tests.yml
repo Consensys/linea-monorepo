@@ -1,7 +1,14 @@
 name: Smart contracts test
 
 on:
+  pull_request:
+    paths:
+      - 'contracts/**'
+      - 'testdata/**'
+      - 'prover/**'
   push:
+    branches:
+      - main
     paths:
       - 'contracts/**'
       - 'testdata/**'
