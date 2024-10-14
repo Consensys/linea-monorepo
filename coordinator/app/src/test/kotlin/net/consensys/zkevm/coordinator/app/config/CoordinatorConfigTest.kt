@@ -6,6 +6,7 @@ import com.github.michaelbull.result.onFailure
 import com.github.michaelbull.result.onSuccess
 import com.sksamuel.hoplite.Masked
 import net.consensys.linea.BlockParameter
+import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.ExtraDataV1UpdaterImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.FeeHistoryFetcherImpl
@@ -239,6 +240,7 @@ class CoordinatorConfigTest {
 
     private val tracesConfig = TracesConfig(
       switchToLineaBesu = false,
+      blobCompressorVersion = BlobCompressorVersion.V0_1_0,
       rawExecutionTracesVersion = "0.2.0",
       expectedTracesApiVersion = "0.2.0",
       counters = TracesConfig.FunctionalityEndpoint(
