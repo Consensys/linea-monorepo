@@ -23,15 +23,7 @@ interface Counter {
 }
 
 interface Histogram {
-  fun record(var1: Double)
-
-  fun count(): Long
-
-  fun totalAmount(): Double
-
-  fun mean(): Double
-
-  fun max(): Double
+  fun record(data: Double)
 }
 
 interface MetricsFacade {
