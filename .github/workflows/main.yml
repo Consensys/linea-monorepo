@@ -109,8 +109,17 @@ jobs:
       traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
     secrets: inherit
 
-  docker-build:
+  manual-docker-build-and-e2e-tests:
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
+    environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
+    steps:
+      - name: Deploy environment
+        run: |
+          echo "Build and e2e test environment deployed"
+
+  docker-build:
+    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images, manual-docker-build-and-e2e-tests ]
     uses: ./.github/workflows/build-and-publish.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -153,7 +162,7 @@ jobs:
     secrets: inherit
 
   run-e2e-tests-geth-tracing:
-    needs: [ store-image-name-and-tags, docker-build ]
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
     if: ${{ always() && needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-geth-tracing-${{ github.workflow }}-${{ github.ref }}
@@ -167,7 +176,7 @@ jobs:
     secrets: inherit
 
   run-e2e-tests:
-    needs: [ store-image-name-and-tags, docker-build ]
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
     if: ${{ always() && needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}

@@ -38,7 +38,6 @@ jobs:
   build-and-publish:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Prover build
-    environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}
