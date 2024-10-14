@@ -8,7 +8,7 @@ jobs:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
 
   filter-commit-changes:
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Filter commit changes
     outputs:
       coordinator: ${{ steps.filter.outputs.coordinator }}
@@ -191,7 +191,7 @@ jobs:
   cleanup-deployments:
     needs: [ run-e2e-tests, run-e2e-tests-geth-tracing ]
     if: ${{ always() }}
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     steps:
       - uses: strumwolf/delete-deployment-environment@v2
         with:
