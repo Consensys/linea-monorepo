@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -86,6 +87,8 @@ func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard
 	for _, l := range *h {
 		nbKeccakF += l/blockNbBytesIn + 1 // extra room for padding
 	}
+
+	logrus.Infof("Public-input interconnection requires %v keccak permutations", nbKeccakF)
 
 	wc := NewWizardVerifierSubCircuit(nbKeccakF, wizardCompilationOpts...)
 

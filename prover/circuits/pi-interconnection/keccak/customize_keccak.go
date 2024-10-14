@@ -1,6 +1,7 @@
 package keccak
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
@@ -16,19 +17,24 @@ type module struct {
 // The correctness of original blocks is checked outside of the module,
 // where one also should assert that the expected blocks are the same as correct original blocks.
 func NewCustomizedKeccak(comp *wizard.CompiledIOP, maxNbKeccakF int) *module {
+
 	var (
 		size = utils.NextPowerOfTwo(generic.KeccakUsecase.NbOfLanesPerBlock() * maxNbKeccakF)
 
 		inp = keccak.KeccakOverBlockInputs{
 			LaneInfo: keccak.LaneInfo{
-				Lanes:                comp.InsertCommit(0, "Lane", size),
-				IsFirstLaneOfNewHash: comp.InsertCommit(0, "IsFirstLaneOfNewHash", size),
-				IsLaneActive:         comp.InsertCommit(0, "IsLaneActive", size),
+				Lanes:                comp.InsertProof(0, "Lane", size),
+				IsFirstLaneOfNewHash: comp.InsertProof(0, "IsFirstLaneOfNewHash", size),
+				IsLaneActive:         comp.InsertProof(0, "IsLaneActive", size),
 			},
 			MaxNumKeccakF: maxNbKeccakF,
 		}
 		m = keccak.NewKeccakOverBlocks(comp, inp)
 	)
+
+	comp.Columns.SetStatus("HASH_OUTPUT_Hash_Lo", column.Proof)
+	comp.Columns.SetStatus("HASH_OUTPUT_Hash_Hi", column.Proof)
+
 	return &module{
 		keccak: *m,
 	}

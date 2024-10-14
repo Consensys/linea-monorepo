@@ -2,7 +2,6 @@ package pi_interconnection
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 	"slices"
 
@@ -324,14 +323,12 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 	if err != nil {
 		return nil, err
 	}
-	const estimatedNbConstraints = 35_000_000
+	const estimatedNbConstraints = 1 << 27
 	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit, frontend.WithCapacity(estimatedNbConstraints))
 	if err != nil {
 		return nil, err
 	}
-	if nbC := cs.GetNbConstraints(); nbC > estimatedNbConstraints || estimatedNbConstraints-nbC > 5_000_000 {
-		return nil, fmt.Errorf("constraint estimate is off; got %d", nbC)
-	}
+
 	return cs, nil
 }
 
