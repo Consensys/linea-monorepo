@@ -72,7 +72,11 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}-${{ env.UNTESTED_TAG_SUFFIX }}
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+          cache-from: |
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-amd64,platform=linux/amd64
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-arm64,platform=linux/arm64
+          cache-to: |
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-amd64,mode=max,platform=linux/amd64
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-arm64,mode=max,platform=linux/arm64
           build-args: |
             NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.0.1
