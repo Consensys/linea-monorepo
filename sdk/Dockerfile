@@ -5,7 +5,10 @@ ENV PATH="$PNPM_HOME:$PATH"
 
 RUN corepack enable
 
-RUN apt-get update && apt-get install -y --no-install-recommends python3 ca-certificates bash curl make g++
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 ca-certificates bash curl make g++ \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM base AS builder
 
