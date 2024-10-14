@@ -19,7 +19,7 @@ env:
 
 jobs:
   run-contract-tests:
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Run smart contracts tests
     steps:
       - uses: actions/checkout@v4
@@ -68,7 +68,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   solidity-format-check:
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Solidity format check
     steps:
       - uses: actions/checkout@v4
