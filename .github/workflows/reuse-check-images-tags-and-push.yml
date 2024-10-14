@@ -50,7 +50,7 @@ concurrency:
 
 jobs:
   check_image_tags_exist:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     name: Check image tags exist
     outputs:
       last_commit_tag_exists_coordinator: ${{ steps.check_image_tags_exist_coordinator.outputs.last_commit_tag_exists }}
@@ -110,7 +110,7 @@ jobs:
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   image_tag_push:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     name: Tag and push images
     needs: [ check_image_tags_exist ]
     outputs:
