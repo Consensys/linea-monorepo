@@ -29,7 +29,7 @@ import (
 // Finally, the gnark sub-circuit can produce a SNARK hasher to be used inside the circuit.Define function.
 
 // TODO Perhaps a permutation argument would help usability
-// i.e. compute \prod (r+ inLen + in_0 s + in_1 s^2 + ... + in_{maxInLen-1} s^{maxInLen} + out_0 s^{maxInLen+1} + ... + out_31 s^{maxInLen+32)
+// i.e. compute ∏ (r+ inLen + in₀ s + in₁ s² + ... + in_{maxInLen-1} sᵐᵃˣᴵⁿᴸᵉⁿ + out_0 sᵐᵃˣᴵⁿᴸᵉⁿ⁺¹ + ... + out₃₁ sᵐᵃˣᴵⁿᴸᵉⁿ⁺³²
 // on both sides and assert their equality
 // (can pack the in-outs first to reduce constraints slightly)
 
@@ -79,13 +79,20 @@ func (h *StrictHasherCompiler) WithHashLengths(l ...int) *StrictHasherCompiler {
 	return h
 }
 
-func (h *StrictHasherCompiler) Compile(maxNbKeccakF int, wizardCompilationOpts ...func(iop *wizard.CompiledIOP)) CompiledStrictHasher { // TODO compute maxNbKeccakF instead of taking as param
-	wc := NewWizardVerifierSubCircuit(maxNbKeccakF, wizardCompilationOpts...)
+func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard.CompiledIOP)) CompiledStrictHasher {
+	nbKeccakF := 0 // Since the output size is smaller than the block size the squeezing phase is trivial TODO @Tabaie check with @azam.soleimanian that this is correct
+
+	const blockNbBytesIn = lanesPerBlock * 8
+	for _, l := range *h {
+		nbKeccakF += l/blockNbBytesIn + 1 // extra room for padding
+	}
+
+	wc := NewWizardVerifierSubCircuit(nbKeccakF, wizardCompilationOpts...)
 
 	return CompiledStrictHasher{
 		wc:           *wc,
 		lengths:      *h,
-		maxNbKeccakF: maxNbKeccakF,
+		maxNbKeccakF: nbKeccakF,
 	}
 }
 
