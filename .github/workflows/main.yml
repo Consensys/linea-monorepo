@@ -1,14 +1,17 @@
 name: main
 
 on:
+  pull_request:
   push:
+    branches:
+      - main
 
 jobs:
   store-image-name-and-tags:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
 
   filter-commit-changes:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Filter commit changes
     outputs:
       coordinator: ${{ steps.filter.outputs.coordinator }}
@@ -106,8 +109,17 @@ jobs:
       traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
     secrets: inherit
 
-  docker-build:
+  manual-docker-build-and-e2e-tests:
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
+    environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
+    steps:
+      - name: Deploy environment
+        run: |
+          echo "Build and e2e test environment deployed"
+
+  docker-build:
+    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images, manual-docker-build-and-e2e-tests ]
     uses: ./.github/workflows/build-and-publish.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -150,11 +162,11 @@ jobs:
     secrets: inherit
 
   run-e2e-tests-geth-tracing:
-    needs: [ store-image-name-and-tags, docker-build ]
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
     if: ${{ always() && needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-geth-tracing-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: ${{ github.ref_name != 'main' }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -164,11 +176,11 @@ jobs:
     secrets: inherit
 
   run-e2e-tests:
-    needs: [ store-image-name-and-tags, docker-build ]
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
     if: ${{ always() && needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: ${{ github.ref_name != 'main' }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -191,7 +203,7 @@ jobs:
   cleanup-deployments:
     needs: [ run-e2e-tests, run-e2e-tests-geth-tracing ]
     if: ${{ always() }}
-    runs-on: besu-arm64
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     steps:
       - uses: strumwolf/delete-deployment-environment@v2
         with:

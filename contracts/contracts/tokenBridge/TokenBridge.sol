@@ -16,7 +16,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { BridgedToken } from "./BridgedToken.sol";
 import { MessageServiceBase } from "../messageService/MessageServiceBase.sol";
 
-import { PauseManager } from "../lib/PauseManager.sol";
+import { TokenBridgePauseManager } from "../lib/TokenBridgePauseManager.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { StorageFiller39 } from "./lib/StorageFiller39.sol";
 import { PermissionsManager } from "../lib/PermissionsManager.sol";
@@ -34,7 +34,7 @@ contract TokenBridge is
   ReentrancyGuardUpgradeable,
   AccessControlUpgradeable,
   MessageServiceBase,
-  PauseManager,
+  TokenBridgePauseManager,
   PermissionsManager,
   StorageFiller39
 {
@@ -49,11 +49,6 @@ contract TokenBridge is
   bytes32 public constant SET_RESERVED_TOKEN_ROLE = keccak256("SET_RESERVED_TOKEN_ROLE");
   bytes32 public constant REMOVE_RESERVED_TOKEN_ROLE = keccak256("REMOVE_RESERVED_TOKEN_ROLE");
   bytes32 public constant SET_CUSTOM_CONTRACT_ROLE = keccak256("SET_CUSTOM_CONTRACT_ROLE");
-
-  bytes32 public constant PAUSE_INITIATE_TOKEN_BRIDGING_ROLE = keccak256("PAUSE_INITIATE_TOKEN_BRIDGING_ROLE");
-  bytes32 public constant UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE = keccak256("UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE");
-  bytes32 public constant PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE = keccak256("PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE");
-  bytes32 public constant UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE = keccak256("UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE");
 
   // solhint-disable-next-line var-name-mixedcase
   bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
@@ -133,6 +128,13 @@ contract TokenBridge is
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
     __MessageServiceBase_init(_initializationData.messageService);
     __ReentrancyGuard_init();
+
+    /**
+     * @dev DEFAULT_ADMIN_ROLE is set for the security council explicitly,
+     * as the permissions init purposefully does not allow DEFAULT_ADMIN_ROLE to be set.
+     */
+    _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
+
     __Permissions_init(_initializationData.roleAddresses);
 
     tokenBeacon = _initializationData.tokenBeacon;
@@ -152,9 +154,9 @@ contract TokenBridge is
   /**
    * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _roleAddresses The list of addresses and their roles.
-   * @param _pauseTypeRoles The list of pause type roles.
-   * @param _unpauseTypeRoles The list of unpause type roles.
+   * @param _roleAddresses The list of addresses and roles to assign permissions to.
+   * @param _pauseTypeRoles The list of pause types to associate with roles.
+   * @param _unpauseTypeRoles The list of unpause types to associate with roles.
    */
   function reinitializePauseTypesAndPermissions(
     RoleAddress[] calldata _roleAddresses,
@@ -198,7 +200,7 @@ contract TokenBridge is
     uint256 _amount,
     address _recipient
   ) public payable nonZeroAddress(_token) nonZeroAddress(_recipient) nonZeroAmount(_amount) nonReentrant {
-    _requireTypeAndGeneralNotPaused(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
+    _requireTypeAndGeneralNotPaused(PauseType.INITIATE_TOKEN_BRIDGING);
     uint256 sourceChainIdCache = sourceChainId;
     address nativeMappingValue = nativeToBridgedToken[sourceChainIdCache][_token];
     if (nativeMappingValue == RESERVED_STATUS) {
@@ -289,7 +291,7 @@ contract TokenBridge is
     nonReentrant
     onlyMessagingService
     onlyAuthorizedRemoteSender
-    whenTypeAndGeneralNotPaused(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE)
+    whenTypeAndGeneralNotPaused(PauseType.COMPLETE_TOKEN_BRIDGING)
   {
     address nativeMappingValue = nativeToBridgedToken[_chainId][_nativeToken];
     address bridgedToken;

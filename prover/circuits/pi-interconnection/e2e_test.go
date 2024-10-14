@@ -30,7 +30,7 @@ import (
 
 // some of the execution data are faked
 func TestSingleBlockBlob(t *testing.T) {
-	testPI(t, 103, pitesting.AssignSingleBlockBlob(t), withSlack(0, 1, 2))
+	testPI(t, pitesting.AssignSingleBlockBlob(t), withSlack(0, 1, 2))
 }
 
 func TestSingleBlobBlobE2E(t *testing.T) {
@@ -38,7 +38,6 @@ func TestSingleBlobBlobE2E(t *testing.T) {
 	cfg := config.PublicInput{
 		MaxNbDecompression: len(req.Decompressions),
 		MaxNbExecution:     len(req.Executions),
-		MaxNbKeccakF:       100,
 		ExecutionMaxNbMsg:  1,
 		L2MsgMerkleDepth:   5,
 		L2MsgMaxNbMerkle:   1,
@@ -124,7 +123,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		},
 	}
 
-	testPI(t, 100, req, withSlack(0, 1, 2))
+	testPI(t, req, withSlack(0, 1, 2))
 }
 
 func TestTwoTwoBatchBlobs(t *testing.T) {
@@ -205,13 +204,13 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		},
 	}
 
-	testPI(t, 101, req, withSlack(0, 1, 2))
+	testPI(t, req, withSlack(0, 1, 2))
 }
 
 func TestEmpty(t *testing.T) {
 	const hexZeroBlock = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
-	testPI(t, 50, pi_interconnection.Request{
+	testPI(t, pi_interconnection.Request{
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             hexZeroBlock,
 			ParentAggregationFinalShnarf:            hexZeroBlock,
@@ -242,7 +241,7 @@ func withSlack(slack ...int) testPIOption {
 	}
 }
 
-func testPI(t *testing.T, maxNbKeccakF int, req pi_interconnection.Request, options ...testPIOption) {
+func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOption) {
 	var cfg testPIConfig
 	for _, o := range options {
 		o(&cfg)
@@ -267,7 +266,6 @@ func testPI(t *testing.T, maxNbKeccakF int, req pi_interconnection.Request, opti
 		cfg := config.PublicInput{
 			MaxNbDecompression: len(req.Decompressions) + slack[0],
 			MaxNbExecution:     len(req.Executions) + slack[1],
-			MaxNbKeccakF:       maxNbKeccakF,
 			ExecutionMaxNbMsg:  1 + slack[2],
 			L2MsgMerkleDepth:   5,
 			L2MsgMaxNbMerkle:   1 + slack[3],
