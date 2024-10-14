@@ -28,7 +28,8 @@ type BlockHasher interface {
 	Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [32]frontend.Variable
 }
 
-// Hasher is stateless from the user's perspective, but in the background it prepares columns for the Vortex prover
+// Hasher prepares the input columns for the Vortex verifier in a SNARK circuit.
+// It is stateless from the user's perspective, but it does its works as it is being fed input.
 type Hasher struct {
 	api         frontend.API
 	nbLanes     int

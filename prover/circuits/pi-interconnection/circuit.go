@@ -239,7 +239,7 @@ func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.Com
 		c.L2MsgMaxNbMerkle = (c.MaxNbExecution*c.ExecutionMaxNbMsg + merkleNbLeaves - 1) / merkleNbLeaves
 	}
 
-	sh := newKeccakCompiler(c).Compile(c.MaxNbKeccakF, wizardCompilationOpts...)
+	sh := newKeccakCompiler(c).Compile(wizardCompilationOpts...)
 	shc, err := sh.GetCircuit()
 	if err != nil {
 		return nil, err
@@ -271,7 +271,6 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 	return config.PublicInput{
 		MaxNbDecompression: len(c.Circuit.DecompressionFPIQ),
 		MaxNbExecution:     len(c.Circuit.ExecutionFPIQ),
-		MaxNbKeccakF:       c.Keccak.MaxNbKeccakF(),
 		ExecutionMaxNbMsg:  executionNbMsg,
 		L2MsgMerkleDepth:   c.Circuit.L2MessageMerkleDepth,
 		L2MsgMaxNbMerkle:   c.Circuit.L2MessageMaxNbMerkle,
