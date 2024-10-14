@@ -8,16 +8,13 @@ import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.domain.ProofToFinalize
-import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import net.consensys.zkevm.ethereum.submission.logUnhandledError
 import net.consensys.zkevm.persistence.AggregationsRepository
 import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.util.function.Consumer
 import kotlin.time.Duration
 
 class AggregationFinalizationCoordinator(
@@ -209,9 +206,8 @@ class AggregationFinalizationCoordinator(
       aggregationsRepository: AggregationsRepository,
       blobsRepository: BlobsRepository,
       lineaRollup: LineaRollupSmartContractClient,
-      gasPriceCapProvider: GasPriceCapProvider?,
       alreadySubmittedBlobFilter: AsyncFilter<BlobRecord>,
-      aggregationSubmittedEventConsumer: Consumer<FinalizationSubmittedEvent>,
+      aggregationSubmitter: AggregationSubmitter,
       vertx: Vertx,
       clock: Clock
     ): AggregationFinalizationCoordinator {
@@ -220,12 +216,7 @@ class AggregationFinalizationCoordinator(
         lineaRollup = lineaRollup,
         aggregationsRepository = aggregationsRepository,
         blobsRepository = blobsRepository,
-        aggregationSubmitter = AggregationSubmitterImpl(
-          lineaRollup = lineaRollup,
-          gasPriceCapProvider = gasPriceCapProvider,
-          aggregationSubmittedEventConsumer = aggregationSubmittedEventConsumer,
-          clock = clock
-        ),
+        aggregationSubmitter = aggregationSubmitter,
         alreadySubmittedBlobsFilter = alreadySubmittedBlobFilter,
         vertx = vertx,
         clock = clock
