@@ -77,9 +77,12 @@ class MicrometerMetricsFacadeTest {
       tags = expectedTags,
       baseUnit = "seconds"
     )
+
     val createdHistogram = meterRegistry.find("linea.test.batch.some.metric").summary()
     assertThat(createdHistogram).isNotNull
-    assertThat(createdHistogram!!.count()).isEqualTo(0L)
+    assertThat(createdHistogram!!.id.description).isEqualTo("This is a test metric")
+    assertThat(createdHistogram.id.baseUnit).isEqualTo("seconds")
+    assertThat(createdHistogram.count()).isEqualTo(0L)
 
     histogram.record(10.0)
     assertThat(createdHistogram.count()).isEqualTo(1L)
