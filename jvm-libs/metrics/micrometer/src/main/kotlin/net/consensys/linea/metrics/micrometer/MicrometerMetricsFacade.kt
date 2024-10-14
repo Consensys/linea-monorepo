@@ -84,16 +84,17 @@ class MicrometerMetricsFacade(private val registry: MeterRegistry, private val m
     requireValidMicrometerName(category.toString())
     requireValidMicrometerName(name)
     requireValidBaseUnit(baseUnit)
-    val builder = DistributionSummary.builder(metricHandle(category, name))
+    val distributionSummaryBuilder = DistributionSummary.builder(metricHandle(category, name))
     if (tags.isNotEmpty()) {
       val flatTags = tags.flatMap {
         requireValidMicrometerName(it.key)
         listOf(it.key, it.value)
       }
-      builder.tags(*flatTags.toTypedArray())
+      distributionSummaryBuilder.tags(*flatTags.toTypedArray())
     }
-    builder.description(description)
-    return MicrometerHistogramAdapter(builder.register(registry))
+    distributionSummaryBuilder.description(description)
+    distributionSummaryBuilder.baseUnit(baseUnit)
+    return MicrometerHistogramAdapter(distributionSummaryBuilder.register(registry))
   }
 
   private fun metricHandle(category: LineaMetricsCategory, metricName: String): String {
