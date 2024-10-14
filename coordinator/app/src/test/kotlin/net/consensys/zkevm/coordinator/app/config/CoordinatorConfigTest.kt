@@ -832,7 +832,7 @@ class CoordinatorConfigTest {
             ),
             traces = tracesConfig.copy(
               switchToLineaBesu = true,
-              expectedTracesApiVersionV2 = "v0.8.0-rc1",
+              expectedTracesApiVersionV2 = "v0.8.0-rc3",
               conflationV2 = tracesConfig.conflation.copy(
                 endpoints = listOf(URI("http://traces-node-v2:8545/").toURL())
               ),
