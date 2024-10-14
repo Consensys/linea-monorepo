@@ -7,21 +7,16 @@ import {
   waitForEvents,
   wait,
   getBlockByNumberOrBlockTag,
-  sendTransactionsToGenerateTrafficWithInterval,
   etherToWei,
 } from "./common/utils";
 import { config } from "./config/tests-config";
-import { L2MessageService, LineaRollup } from "./typechain";
+import { LineaRollup } from "./typechain";
 
 describe("Submission and finalization test suite", () => {
   let l1Provider: JsonRpcProvider;
-  let lineaRollup: LineaRollup;
-  let l2MessageService: L2MessageService;
 
   beforeAll(() => {
     l1Provider = config.getL1Provider();
-    lineaRollup = config.getLineaRollupContract();
-    l2MessageService = config.getL2MessageServiceContract();
   });
 
   const sendMessages = async () => {
@@ -30,6 +25,7 @@ describe("Submission and finalization test suite", () => {
     const destinationAddress = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
     const l1MessageSender = await config.getL1AccountManager().generateAccount();
+    const lineaRollup = config.getLineaRollupContract();
 
     console.log("Sending messages on L1");
 
@@ -69,7 +65,7 @@ describe("Submission and finalization test suite", () => {
     return { l1Messages, l1Receipts };
   };
 
-  async function getFinalizedL2BlockNumber() {
+  async function getFinalizedL2BlockNumber(lineaRollup: LineaRollup) {
     let blockNumber = null;
 
     while (!blockNumber) {
@@ -88,14 +84,13 @@ describe("Submission and finalization test suite", () => {
   it.concurrent(
     "Check L2 anchoring",
     async () => {
+      const lineaRollup = config.getLineaRollupContract();
+      const l2MessageService = config.getL2MessageServiceContract();
+
       const { l1Messages } = await sendMessages();
-      const l2MessageSender = await config.getL2AccountManager().generateAccount();
 
       // Wait for the last L1->L2 message to be anchored on L2
       const lastNewL1MessageNumber = l1Messages.slice(-1)[0].messageNumber;
-
-      // Send transactions on L2 in the background to make the L2 chain moving forward
-      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender, 5_000);
 
       console.log("Waiting for the anchoring using rolling hash...");
       const [rollingHashUpdatedEvent] = await waitForEvents(
@@ -107,8 +102,6 @@ describe("Submission and finalization test suite", () => {
         async (events) => events.filter((event) => event.args.messageNumber >= lastNewL1MessageNumber),
       );
 
-      stopPolling();
-
       const [lastNewMessageRollingHash, lastAnchoredL1MessageNumber] = await Promise.all([
         lineaRollup.rollingHashes(rollingHashUpdatedEvent.args.messageNumber),
         l2MessageService.lastAnchoredL1MessageNumber(),
@@ -118,16 +111,13 @@ describe("Submission and finalization test suite", () => {
 
       console.log("New anchoring using rolling hash done.");
     },
-    300_000,
+    150_000,
   );
 
   it.concurrent(
     "Check L1 data submission and finalization",
     async () => {
-      const l2MessageSender = await config.getL2AccountManager().generateAccount();
-
-      // Send transactions on L2 in the background to make the L2 chain moving forward
-      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender, 5_000);
+      const lineaRollup = config.getLineaRollupContract();
 
       const [currentL2BlockNumber, startingRootHash] = await Promise.all([
         lineaRollup.currentL2BlockNumber(),
@@ -160,22 +150,21 @@ describe("Submission and finalization test suite", () => {
       expect(dataFinalizedEvent.args.withProof).toBeTruthy();
 
       console.log("Finalization with proof done.");
-
-      stopPolling();
     },
-    300_000,
+    150_000,
   );
 
   it.concurrent(
     "Check L2 safe/finalized tag update on sequencer",
     async () => {
+      const lineaRollup = config.getLineaRollupContract();
       const sequencerEndpoint = config.getSequencerEndpoint();
       if (!sequencerEndpoint) {
         console.log('Skipped the "Check L2 safe/finalized tag update on sequencer" test');
         return;
       }
 
-      const lastFinalizedL2BlockNumberOnL1 = (await getFinalizedL2BlockNumber()).toString();
+      const lastFinalizedL2BlockNumberOnL1 = (await getFinalizedL2BlockNumber(lineaRollup)).toString();
       console.log(`lastFinalizedL2BlockNumberOnL1=${lastFinalizedL2BlockNumberOnL1}`);
 
       let safeL2BlockNumber = -1,
@@ -197,6 +186,6 @@ describe("Submission and finalization test suite", () => {
 
       console.log("L2 safe/finalized tag update on sequencer done.");
     },
-    300_000,
+    150_000,
   );
 });

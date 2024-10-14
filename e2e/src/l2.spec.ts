@@ -2,13 +2,7 @@ import { JsonRpcProvider, TransactionRequest, ethers } from "ethers";
 import { beforeAll, describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
 import { getAndIncreaseFeeData } from "./common/helpers";
-import {
-  RollupGetZkEVMBlockNumberClient,
-  etherToWei,
-  getEvents,
-  sendTransactionsToGenerateTrafficWithInterval,
-  wait,
-} from "./common/utils";
+import { RollupGetZkEVMBlockNumberClient, etherToWei, getEvents, wait } from "./common/utils";
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
 
 describe("Layer 2 test suite", () => {
@@ -99,10 +93,6 @@ describe("Layer 2 test suite", () => {
         l2BlockNumbers.push(receipt?.blockNumber || 0);
       }
 
-      // These is just to push the L1 verified block forward to the max number in
-      // l2BlockNumbers as it's always 2 blocks behind the current L2 block number
-      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(account, 5_000);
-
       const lineaRollup = config.getLineaRollupContract();
 
       const maxL2BlockNumber = Math.max(...l2BlockNumbers);
@@ -121,10 +111,8 @@ describe("Layer 2 test suite", () => {
       console.log(`currentL2BlockNumber: ${currentL2BlockNumber.toString()}`);
 
       expect(currentL2BlockNumber).toBeGreaterThanOrEqual(BigInt(maxL2BlockNumber));
-
-      stopPolling();
     },
-    300000,
+    150_000,
   );
 
   it.concurrent(
@@ -158,10 +146,6 @@ describe("Layer 2 test suite", () => {
         }),
       );
 
-      // These is just to push the L1 verified block forward to the max number in
-      // l2BlockNumbers as it's always 2 blocks behind the current L2 block number
-      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(account, 5_000);
-
       const lineaRollup = config.getLineaRollupContract();
 
       const maxL2BlockNumber = Math.max(...l2BlockNumbers);
@@ -179,9 +163,8 @@ describe("Layer 2 test suite", () => {
       console.log(`currentL2BlockNumber: ${currentL2BlockNumber}`);
 
       expect(currentL2BlockNumber).toBeGreaterThanOrEqual(BigInt(maxL2BlockNumber));
-      stopPolling();
     },
-    600000,
+    150_000,
   );
 
   it.concurrent("Should successfully send a legacy transaction", async () => {
@@ -334,5 +317,5 @@ describe("Layer 2 test suite", () => {
 
       expect(shomeiBlock).toBeGreaterThan(shomeiFrontendBlock);
     }
-  }, 300000);
+  }, 150_000);
 });

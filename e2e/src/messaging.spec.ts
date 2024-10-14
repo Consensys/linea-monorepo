@@ -1,12 +1,7 @@
 import { ethers, Wallet } from "ethers";
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
-import {
-  encodeFunctionCall,
-  etherToWei,
-  sendTransactionsToGenerateTrafficWithInterval,
-  waitForEvents,
-} from "./common/utils";
+import { encodeFunctionCall, etherToWei, waitForEvents } from "./common/utils";
 import { getAndIncreaseFeeData } from "./common/helpers";
 import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
 
@@ -99,9 +94,6 @@ describe("Messaging test suite", () => {
 
       const { tx, receipt } = await sendL1ToL2Message({ l1Account, l2Account, withCalldata: true });
 
-      console.log("Moving the L2 chain forward to trigger anchoring...");
-      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2Account, 5_000);
-
       const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
       const messageHash = messageSentEvent.topics[3];
       console.log(`L1 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
@@ -112,11 +104,11 @@ describe("Messaging test suite", () => {
         l2MessageService,
         l2MessageService.filters.MessageClaimed(messageHash),
       );
-      stopPolling();
+
       console.log(`Message claimed on L2: ${JSON.stringify(messageClaimedEvent)}`);
       expect(messageClaimedEvent).toBeDefined();
     },
-    300_000,
+    100_000,
   );
 
   it.concurrent(
@@ -129,9 +121,6 @@ describe("Messaging test suite", () => {
 
       const { tx, receipt } = await sendL1ToL2Message({ l1Account, l2Account, withCalldata: false });
 
-      console.log("Moving the L2 chain forward to trigger anchoring...");
-      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2Account, 5_000);
-
       const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
       const messageHash = messageSentEvent.topics[3];
       console.log(`L1 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
@@ -142,19 +131,18 @@ describe("Messaging test suite", () => {
         l2MessageService,
         l2MessageService.filters.MessageClaimed(messageHash),
       );
-      stopPolling();
       console.log(`Message claimed on L2: ${JSON.stringify(messageClaimedEvent)}`);
       expect(messageClaimedEvent).toBeDefined();
     },
-    300_000,
+    100_000,
   );
 
   it.concurrent(
     "Should send a transaction with calldata to L2 message service, be successfully claimed it on L1",
     async () => {
-      const [l1Account, [l2Account, l2AccountForLiveness]] = await Promise.all([
+      const [l1Account, l2Account] = await Promise.all([
         config.getL1AccountManager().generateAccount(),
-        config.getL2AccountManager().generateAccounts(2),
+        config.getL2AccountManager().generateAccount(),
       ]);
 
       const lineaRollup = config.getLineaRollupContract();
@@ -164,9 +152,6 @@ describe("Messaging test suite", () => {
       const messageHash = messageSentEvent.topics[3];
       console.log(`L2 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-      console.log("Moving the L2 chain forward to trigger conflation...");
-      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness, 5_000);
-
       console.log(`Waiting for L2MessagingBlockAnchored... with blockNumber=${messageSentEvent.blockNumber}`);
       await waitForEvents(
         lineaRollup,
@@ -180,20 +165,19 @@ describe("Messaging test suite", () => {
         lineaRollup.filters.MessageClaimed(messageHash),
         1_000,
       );
-      stopPolling();
 
       console.log(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);
       expect(messageClaimedEvent).toBeDefined();
     },
-    300_000,
+    100_000,
   );
 
   it.concurrent(
     "Should send a transaction without calldata to L2 message service, be successfully claimed it on L1",
     async () => {
-      const [l1Account, [l2Account, l2AccountForLiveness]] = await Promise.all([
+      const [l1Account, l2Account] = await Promise.all([
         config.getL1AccountManager().generateAccount(),
-        config.getL2AccountManager().generateAccounts(2),
+        config.getL2AccountManager().generateAccount(),
       ]);
 
       const lineaRollup = config.getLineaRollupContract();
@@ -203,9 +187,6 @@ describe("Messaging test suite", () => {
       const messageHash = messageSentEvent.topics[3];
       console.log(`L2 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-      console.log("Moving the L2 chain forward to trigger conflation...");
-      const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness, 5_000);
-
       console.log(`Waiting for L2MessagingBlockAnchored... with blockNumber=${messageSentEvent.blockNumber}`);
       await waitForEvents(
         lineaRollup,
@@ -219,11 +200,10 @@ describe("Messaging test suite", () => {
         lineaRollup.filters.MessageClaimed(messageHash),
         1_000,
       );
-      stopPolling();
 
       console.log(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);
       expect(messageClaimedEvent).toBeDefined();
     },
-    300_000,
+    100_000,
   );
 });

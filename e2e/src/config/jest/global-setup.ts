@@ -1,8 +1,13 @@
+/* eslint-disable no-var */
 import { getAndIncreaseFeeData } from "../../common/helpers";
 import { config } from "../tests-config";
 import { deployContract } from "../../common/deployments";
 import { DummyContract__factory } from "../../typechain";
-import { etherToWei } from "../../common/utils";
+import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
+
+declare global {
+  var stopL2TrafficGeneration: () => void;
+}
 
 export default async (): Promise<void> => {
   const account = config.getL1AccountManager().whaleAccount(0);
@@ -27,4 +32,9 @@ export default async (): Promise<void> => {
   const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await l1JsonRpcProvider.getFeeData());
   const tx = await lineaRollup.sendMessage(to, fee, calldata, { value, maxPriorityFeePerGas, maxFeePerGas });
   await tx.wait();
+
+  console.log("Generating L2 traffic...");
+  const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2Account, 5_000);
+
+  global.stopL2TrafficGeneration = stopPolling;
 };

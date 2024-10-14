@@ -7,7 +7,9 @@ const config: Config = {
   testRegex: ".spec.ts$",
   verbose: true,
   globalSetup: "./config/jest/global-setup.ts",
+  globalTeardown: "./config/jest/global-teardown.ts",
   maxWorkers: "50%",
+  maxConcurrency: 5,
   testTimeout: 3 * 60 * 1000,
   workerThreads: true,
 };
