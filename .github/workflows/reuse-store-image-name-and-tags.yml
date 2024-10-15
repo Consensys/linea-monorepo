@@ -37,8 +37,9 @@ jobs:
       - name: Get common ancestor commit
         id: step1
         run: |
-          git fetch --no-tags --depth=100 origin main ${{ env.BRANCH_NAME }}
-          echo COMMON_ANCESTOR=$(git merge-base refs/remotes/origin/main refs/remotes/origin/${{ env.BRANCH_NAME }}) >> $GITHUB_ENV
+          git fetch --no-tags --depth=100 "${{ github.event.pull_request.base.repo.clone_url }}" main
+          COMMON_ANCESTOR=$(git merge-base FETCH_HEAD HEAD)
+          echo "COMMON_ANCESTOR=${COMMON_ANCESTOR}" >> $GITHUB_ENV
       - name: Compute version tags
         id: step2
         run: |
