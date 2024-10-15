@@ -113,12 +113,54 @@ func checkPublicInputs(
 		)
 	)
 
+	// The way the chainID is extracted is by comparing a length-1 column accessor
+	// with the content of the transactions RLP. If there is at least one single
+	// non-legacy transaction, its RLP will contain the chainID (not used by the
+	// rest of the arithmetization) and the constraint will check that this
+	// chainID match the one we extract. This consequently ensure that all the
+	// non-legacy transactions have the same chainID.
+	//
+	// In case every transaction of the current batch is a legacy transaction,
+	// the constraints for the chainID and chainIDNbBytes are loose because there
+	// nothing to compare with the alleged chainID of the block. In that case,
+	// we do not impose additional constraint as it means that the same transactions
+	// would have given the same result regardless of the chainID. The prover
+	// will "honestly" use 0 as a value for the chainID but this is not enforced.
+	//
+	// The problem is that the witness value for `gnarkFuncInp.ChainID` will
+	// still be the "right" value. And thus, a direct equality constraint would
+	// not apply. We solve that by conditionning the equality-check to the case
+	// where the extracted chain-ID is non-zero.
+	//
+	// This gives us the following case disjunction.
+	//
+	// 1/ Only legacy transactions in the batch: the "fetched" chainID is a free
+	//		value for the prover.
+	//		a) The prover chooses zero => the corresponding public input is again
+	//			a free value
+	//		b) The prover chooses a non-zero value => the public input is enforced
+	//			to be equal to that non-zero value.
+	//
+	// In both (1.a) and (1.b) the public value of the chainID is a free value.
+	// And this is fine because every value of the chainID would have yielded the
+	// same exectution result.
+	//
+	// 2/ There is at least one non-legacy transaction in the batch: the "fetched"
+	// 		chainID is the "actual" value.
+	//		a) That chainID is always non-zero as Linea only uses non-zero chain-IDs
+	//		so the corresponding public input is enforced to be equal to it.
 	api.AssertIsEqual(
-		api.Div(
+		api.Mul(
+			api.Sub(
+				api.Div(
+					wvc.GetLocalPointEvalParams(wizardFuncInp.ChainID.ID).Y,
+					twoPow112,
+				),
+				gnarkFuncInp.ChainID,
+			),
 			wvc.GetLocalPointEvalParams(wizardFuncInp.ChainID.ID).Y,
-			twoPow112,
 		),
-		gnarkFuncInp.ChainID,
+		0,
 	)
 
 	api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)

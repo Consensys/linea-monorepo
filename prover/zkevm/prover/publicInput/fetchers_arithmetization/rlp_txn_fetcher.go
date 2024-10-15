@@ -51,6 +51,21 @@ func ConstrainChainID(comp *wizard.CompiledIOP, fetcher *RlpTxnFetcher, name str
 	// get accessors
 	accChainID := accessors.NewFromPublicColumn(fetcher.ChainID, 0)
 	accNBytesChainID := accessors.NewFromPublicColumn(fetcher.NBytesChainID, 0)
+
+	// The way the chainID is extracted is by comparing a length-1 column accessor
+	// with the content of the transactions RLP. If there is at least one single
+	// non-legacy transaction, its RLP will contain the chainID (not used by the
+	// rest of the arithmetization) and the constraint will check that this
+	// chainID match the one we extract. This consequently ensure that all the
+	// non-legacy transactions have the same chainID.
+	//
+	// In case every transaction of the current batch is a legacy transaction,
+	// the constraints for the chainID and chainIDNbBytes are loose because there
+	// nothing to compare with the alleged chainID of the block. In that case,
+	// we do not impose additional constraint as it means that the same transactions
+	// would have given the same result regardless of the chainID. The prover
+	// will "honestly" use 0 as a value for the chainID but this is not enforced.
+
 	// constraint for the ChainID column
 	comp.InsertGlobal(
 		0,
