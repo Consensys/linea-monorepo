@@ -542,10 +542,10 @@ public class OobOperation extends ModuleOperation {
   private boolean callToLT(
       int k, BigInteger arg1Hi, BigInteger arg1Lo, BigInteger arg2Hi, BigInteger arg2Lo) {
     // 128 = 8 * 16
-    checkArgument(arg1Hi.bitLength() <= 128);
-    checkArgument(arg1Lo.bitLength() <= 128);
-    checkArgument(arg2Hi.bitLength() <= 128);
-    checkArgument(arg2Lo.bitLength() <= 128);
+    checkArgument(arg1Hi.bitLength() <= 128, "arg1Hi.bitLength() has length " + arg1Hi.bitLength());
+    checkArgument(arg1Lo.bitLength() <= 128, "arg1Lo.bitLength() has length " + arg1Lo.bitLength());
+    checkArgument(arg2Hi.bitLength() <= 128, "arg2Hi.bitLength() has length " + arg2Hi.bitLength());
+    checkArgument(arg2Lo.bitLength() <= 128, "arg2Lo.bitLength() has length " + arg2Lo.bitLength());
     final EWord arg1 = EWord.of(arg1Hi, arg1Lo);
     final EWord arg2 = EWord.of(arg2Hi, arg2Lo);
     addFlag[k] = false;

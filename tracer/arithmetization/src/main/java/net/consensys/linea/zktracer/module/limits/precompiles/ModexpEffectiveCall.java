@@ -39,7 +39,8 @@ public class ModexpEffectiveCall implements CountingOnlyModule {
   @Override
   public void addPrecompileLimit(final int count) {
     Preconditions.checkArgument(
-        count == 1, "can't add more than one effective precompile call at a time");
+        count == 1 || count == Integer.MAX_VALUE,
+        "Either use 1 for one effective precompile call at a time or use Integer.MAX_VALUE");
     counts.add(count);
   }
 }
