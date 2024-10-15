@@ -1,9 +1,10 @@
 import org.web3j.solidity.gradle.plugin.EVMVersion
-import org.web3j.solidity.gradle.plugin.OutputComponent
+import org.web3j.gradle.plugin.GenerateContractWrappers
 
 plugins {
   id "common-plugins"
   id "org.web3j" version "4.12.2"
+  id "linea.yul-plugin"
 }
 
 apply from: rootProject.file("gradle/corset.gradle")
@@ -43,7 +44,13 @@ nodeSetup {
   mustRunAfter(spotlessBash, spotlessGroovy, spotlessSol)
 }
 
+tasks.withType(GenerateContractWrappers.class).configureEach {
+  mustRunAfter(processResources)
+}
 
+web3j {
+  generatedPackageName = "net.consensys.linea.testing.generated"
+}
 
 solidity {
   optimize = false
@@ -51,6 +58,7 @@ solidity {
   evmVersion = EVMVersion.LONDON
 }
 
-web3j {
-  generatedPackageName = "net.consensys.linea.testing.generated"
+yul {
+  solcVersion = "0.8.19"
+  compilerJsonTemplatePath = "src/main/resources/templates/compiler_yul.json.template"
 }

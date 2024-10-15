@@ -29,4 +29,14 @@ dependencies {
   implementation 'io.spring.dependency-management:io.spring.dependency-management.gradle.plugin:1.1.5'
   implementation 'de.undercouch.download:de.undercouch.download.gradle.plugin:5.6.0'
   implementation 'com.adarshr:gradle-test-logger-plugin:4.0.0'
+  implementation 'org.web3j:web3j-sokt:0.4.0'
+}
+
+gradlePlugin {
+  plugins {
+    create ("YulPlugin") {
+      id = "linea.yul-plugin"
+      implementationClass = "YulPlugin"
+    }
+  }
 }
