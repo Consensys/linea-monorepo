@@ -114,6 +114,7 @@ func checkPaddingAssignment(t *testing.T, run *wizard.ProverRuntime, paddingFunc
 			Limb:    mod.Limbs,
 			NBytes:  mod.NBytes,
 			ToHash:  mod.IsActive,
+			Index:   mod.Index,
 		}
 
 		inputStreams        = mod.Inputs.Src.Data.ScanStreams(run)

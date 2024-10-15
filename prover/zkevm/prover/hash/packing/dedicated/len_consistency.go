@@ -2,7 +2,6 @@ package dedicated
 
 import (
 	"slices"
-	"strconv"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -23,6 +22,8 @@ type LcInputs struct {
 	TableLen []ifaces.Column
 	// max length in bytes.
 	MaxLen int
+	// name of the table
+	Name string
 }
 
 // lengthConsistency stores the intermediate columns for [LengthConsistency] function.
@@ -44,7 +45,7 @@ type lengthConsistency struct {
 func LengthConsistency(comp *wizard.CompiledIOP, inp LcInputs) *lengthConsistency {
 
 	var (
-		name      = strconv.Itoa(len(comp.ListCommitments()))
+		name      = inp.Name
 		numCol    = len(inp.Table)
 		size      = inp.Table[0].Size()
 		numBytes  = inp.MaxLen
@@ -60,7 +61,7 @@ func LengthConsistency(comp *wizard.CompiledIOP, inp LcInputs) *lengthConsistenc
 	for j := 0; j < numCol; j++ {
 		res.bytesLen[j] = make([]ifaces.Column, numBytes)
 		for k := range res.bytesLen[0] {
-			res.bytesLen[j][k] = createCol("BytesLen", j, k)
+			res.bytesLen[j][k] = createCol("BYTE_LEN_%v_%v", j, k)
 		}
 	}
 

@@ -4,11 +4,8 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/splitter"
+	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/stitch_split"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -39,7 +36,7 @@ func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
 		comp.SubProvers.AppendToInner(comp.NumRounds()-1, func(run *wizard.ProverRuntime) {
-			for round := range comp.NumRounds() {
+			for round := range ctx.Stitchings {
 				for subCol := range ctx.Stitchings[round].BySubCol {
 					run.Columns.TryDel(subCol)
 				}
@@ -135,7 +132,11 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
 			stopTimer := profiling.LogTimer("stitching compiler")
 			defer stopTimer()
+			var maxSizeGroup int
+
 			for idBigCol, subColumns := range ctx.Stitchings[round].ByBigCol {
+
+				maxSizeGroup = ctx.MaxSize / subColumns[0].Size()
 
 				// Sanity-check
 				sizeBigCol := ctx.comp.Columns.GetHandle(idBigCol).Size()
@@ -154,10 +155,10 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 					witnesses[i] = subColumns[i].GetColAssignment(run)
 				}
 				assignement := smartvectors.
-					AllocateRegular(len(subColumns) * witnesses[0].Len()).(*smartvectors.Regular)
+					AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
 				for i := range subColumns {
 					for j := 0; j < witnesses[0].Len(); j++ {
-						(*assignement)[i+j*len(subColumns)] = witnesses[i].Get(j)
+						(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
 					}
 				}
 				run.AssignColumn(idBigCol, assignement)
@@ -225,13 +226,6 @@ func groupCols(cols []ifaces.Column, numToStitch int) (groups [][]ifaces.Column)
 		groups[i/numToStitch] = append(groups[i/numToStitch], col)
 	}
 
-	lastGroup := &groups[len(groups)-1]
-	zeroCol := verifiercol.NewConstantCol(field.Zero(), size)
-
-	for i := len(*lastGroup); i < numToStitch; i++ {
-		*lastGroup = append(*lastGroup, zeroCol)
-	}
-
 	return groups
 }
 
@@ -253,15 +247,25 @@ func (ctx *stitchingContext) stitchGroup(s alliance.Alliance) {
 	// Declare the new columns
 	switch status {
 	case column.Precomputed:
-		values := make([][]field.Element, len(group))
-		for j := range values {
-			values[j] = smartvectors.IntoRegVec(ctx.comp.Precomputed.MustGet(group[j].GetColID()))
+		maxSizeGroup := ctx.MaxSize / group[0].Size()
+		actualSize := len(group)
+
+		// get the assignment of the subColumns and interleave them
+		witnesses := make([]smartvectors.SmartVector, actualSize)
+		for i := range witnesses {
+			witnesses[i] = ctx.comp.Precomputed.MustGet(group[i].GetColID())
 		}
-		assignement := vector.Interleave(values...)
+		assignement := smartvectors.
+			AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
+		for i := range witnesses {
+			for j := 0; j < witnesses[0].Len(); j++ {
+				(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
+			}
+		}
+
 		stitchingCol = ctx.comp.InsertPrecomputed(
 			groupedName(group),
-			smartvectors.NewRegular(assignement),
-		)
+			assignement)
 	case column.Committed:
 		stitchingCol = ctx.comp.InsertCommit(
 			s.Round,
