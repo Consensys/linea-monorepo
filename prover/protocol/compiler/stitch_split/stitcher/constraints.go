@@ -5,7 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/splitter"
+	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/stitch_split"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -46,6 +46,11 @@ func (ctx stitchingContext) LocalOpening() {
 
 		if !isColEligible(ctx.Stitchings, q.Pol) {
 			continue
+		}
+
+		switch m := q.Pol.(type) {
+		case verifiercol.VerifierCol:
+			utils.Panic("unsupported, received a localOpening over the verifier column %v", m.GetColID())
 		}
 		// mark the query as ignored
 		ctx.comp.QueriesParams.MarkAsIgnored(qName)
@@ -101,7 +106,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the stitching columns
-			ctx.comp.InsertLocal(round, queryName(qName), ctx.adjustExpression(q.Expression, false))
+			ctx.comp.InsertLocal(round, queryName(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false))
 
 		case query.GlobalConstraint:
 			board = q.Board()
@@ -131,7 +136,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 
 			// adjust the query over the stitching columns
 			ctx.comp.InsertGlobal(round, queryName(qName),
-				ctx.adjustExpression(q.Expression, true),
+				ctx.adjustExpression(q.Expression, q.DomainSize, true),
 				q.NoBoundCancel)
 
 		default:
@@ -143,31 +148,52 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 // Takes a sub column and returns the stitching column.
 // the stitching column is shifted such that the first row agrees with the first row of the sub column.
 // more detailed, such stitching column agrees with the the sub column up to a subsampling with offset zero.
-func getStitchingCol(ctx stitchingContext, col ifaces.Column) ifaces.Column {
+// the col should only be either verifiercol or eligible col.
+// option is always empty, and used only for the recursive calls over the shifted columns.
+func getStitchingCol(ctx stitchingContext, col ifaces.Column, option ...int) ifaces.Column {
+	var (
+		stitchingCol ifaces.Column
+		newOffset    int
+		round        = col.Round()
+	)
 
 	switch m := col.(type) {
+	// case: verifier columns without shift
 	case verifiercol.VerifierCol:
 		scaling := ctx.MaxSize / col.Size()
-		return verifiercol.ExpandedVerifCol{
+		// expand the veriferCol
+		stitchingCol = verifiercol.ExpandedVerifCol{
 			Verifiercol: m,
 			Expansion:   scaling,
 		}
+		if len(option) != 0 {
+			// if it is a shifted veriferCol, set the offset for shifting the expanded column
+			newOffset = option[0] * col.Size()
+		}
+		return column.Shift(stitchingCol, newOffset)
+	case column.Natural:
+		// find the stitching column
+		subColInfo := ctx.Stitchings[round].BySubCol[col.GetColID()]
+		stitchingCol = ctx.comp.Columns.GetHandle(subColInfo.NameBigCol)
+		scaling := stitchingCol.Size() / col.Size()
+		if len(option) != 0 {
+			newOffset = scaling * option[0]
+		}
+		newOffset = newOffset + subColInfo.PosInBigCol
+		return column.Shift(stitchingCol, newOffset)
+
+	case column.Shifted:
+		// Shift the stitching column by the right position
+		offset := column.StackOffsets(col)
+		col = column.RootParents(col)[0]
+		res := getStitchingCol(ctx, col, offset)
+		return res
+
+	default:
+
+		panic("unsupported")
+
 	}
-
-	// Extract the assumedly single col
-	natural := column.RootParents(col)[0]
-
-	round := col.Round()
-	subColInfo := ctx.Stitchings[round].BySubCol[natural.GetColID()]
-	stitchingCol := ctx.comp.Columns.GetHandle(subColInfo.NameBigCol)
-
-	// Shift the stitching column by the right position
-	position := column.StackOffsets(col)
-
-	scaling := stitchingCol.Size() / natural.Size()
-	newPosition := scaling*position + subColInfo.PosInBigCol
-
-	return column.Shift(stitchingCol, newPosition)
 }
 
 func queryName(oldQ ifaces.QueryID) ifaces.QueryID {
@@ -179,7 +205,7 @@ func queryName(oldQ ifaces.QueryID) ifaces.QueryID {
 // This is due to the fact that the verifiercols are not tracked by the compiler and can not be stitched
 // via [scanAndClassifyEligibleColumns].
 func (ctx *stitchingContext) adjustExpression(
-	expr *symbolic.Expression,
+	expr *symbolic.Expression, domainSize int,
 	isGlobalConstraint bool,
 ) (
 	newExpr *symbolic.Expression,
@@ -188,13 +214,11 @@ func (ctx *stitchingContext) adjustExpression(
 	board := expr.Board()
 	metadata := board.ListVariableMetadata()
 	replaceMap := collection.NewMapping[string, *symbolic.Expression]()
-	domainSize := 0
 
 	for i := range metadata {
 		switch m := metadata[i].(type) {
 		case ifaces.Column:
 			// it's always a compiled column
-			domainSize = m.Size()
 			stitchingCol := getStitchingCol(*ctx, m)
 			replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
 		case coin.Info, ifaces.Accessor:
