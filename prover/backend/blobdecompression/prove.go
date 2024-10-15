@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/consensys/gnark/test"
 	"os"
 	"path/filepath"
 
@@ -159,14 +158,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	)
 
 	if err != nil {
-		sErr := test.IsSolved(
-			assignment,
-			assignment,
-			ecc.BLS12_377.ScalarField(),
-			test.WithBackendProverOptions(emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField())),
-		)
-
-		return nil, fmt.Errorf("while generating the proof: %w\nsolver error: %w", err, sErr)
+		return nil, fmt.Errorf("while generating the proof: %w", err)
 	}
 
 	logrus.Infof("prover successful : generated proof `%++v` for public input `%v`", proof, pubInput.String())
