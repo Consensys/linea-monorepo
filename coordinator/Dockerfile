@@ -8,28 +8,28 @@ COPY --from=zip ./coordinator.zip /src
 
 RUN unzip /src/coordinator.zip -d /libs
 
-RUN mkdir -p /libs/coordinator/lib/unpacked-blob-compressor /libs/coordinator/lib/unpacked-blob-shnarf-calculator && \
-  cd /libs/coordinator/lib/unpacked-blob-compressor/ && jar -xf ../blob-compressor-0.0.4.jar && \
-  cd /libs/coordinator/lib/unpacked-blob-shnarf-calculator/ && jar -xf /libs/coordinator/lib/blob-shnarf-calculator-0.0.4.jar
+WORKDIR /libs/coordinator/lib/
 
-RUN case $(uname -m) in \
+RUN mkdir -p unpacked-blob-compressor unpacked-blob-shnarf-calculator
+RUN cd unpacked-blob-compressor/ && jar -xf ../blob-compressor-0.0.4.jar
+RUN cd unpacked-blob-shnarf-calculator/ && jar -xf ../blob-shnarf-calculator-0.0.4.jar
+
+RUN rm -rf unpacked-blob-compressor/darwin-** && \
+    rm -rf unpacked-blob-shnarf-calculator/darwin-** && \
+    case $(uname -m) in \
     x86_64) \
-      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
-      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-aarch64/; \
-      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
-      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-aarch64/; \
+      rm -rf unpacked-blob-compressor/linux-aarch64/; \
+      rm -rf unpacked-blob-shnarf-calculator/linux-aarch64/; \
     ;; \
     aarch64) \
-      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/darwin-**; \
-      rm -rf /libs/coordinator/lib/unpacked-blob-compressor/linux-x86-64/; \
-      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/darwin-**; \
-      rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator/linux-x86-64/; \
+      rm -rf unpacked-blob-compressor/linux-x86-64/; \
+      rm -rf unpacked-blob-shnarf-calculator/linux-x86-64/; \
     ;; \
   esac
 
-RUN jar -cf /libs/coordinator/lib/blob-compressor-0.0.4.jar -C /libs/coordinator/lib/unpacked-blob-compressor . && \
-    jar -cf /libs/coordinator/lib/blob-shnarf-calculator-0.0.4.jar -C /libs/coordinator/lib/unpacked-blob-shnarf-calculator . && \
-    rm -rf /libs/coordinator/lib/unpacked-blob-compressor && rm -rf /libs/coordinator/lib/unpacked-blob-shnarf-calculator
+RUN jar -cf blob-compressor-0.0.4.jar -C unpacked-blob-compressor . && \
+    jar -cf blob-shnarf-calculator-0.0.4.jar -C unpacked-blob-shnarf-calculator . && \
+    rm -rf unpacked-blob-compressor && rm -rf unpacked-blob-shnarf-calculator
 
 FROM openjdk:21-jdk-slim
 
