@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -51,12 +52,19 @@ func (m *SetupManifest) GetInt(key string) (int, error) {
 		return 0, err
 	}
 
-	i, ok := v.(int)
-	if !ok {
-		return 0, fmt.Errorf("flag `%s` is not an int", key)
+	switch i := v.(type) {
+	case int:
+		return i, nil
+	case int64:
+		return int(i), nil
+	case float64:
+		return int(i), nil
+	case string:
+		// If stored as a string, try to parse it as an int
+		return strconv.Atoi(i)
+	default:
+		return 0, fmt.Errorf("flag `%s` is not an int, got %T", key, v)
 	}
-
-	return i, nil
 }
 
 func (m *SetupManifest) GetString(key string) (string, error) {
