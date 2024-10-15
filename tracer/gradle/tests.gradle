@@ -48,6 +48,7 @@ tasks.withType(Test).configureEach {
 
   jvmArgs = [
     '-XX:-UseGCOverheadLimit',
+    '-XX:+PrintGC',
     // Mockito and jackson-databind do some strange reflection during tests.
     // This suppresses an illegal access warning.
     '--add-opens',

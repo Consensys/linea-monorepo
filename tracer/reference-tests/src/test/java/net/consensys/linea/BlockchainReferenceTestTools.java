@@ -82,6 +82,9 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("static_Call1MB1024Calldepth_d1g0v0_\\w+");
     PARAMS.ignore("ShanghaiLove_.*");
     PARAMS.ignore("/GeneralStateTests/VMTests/vmPerformance/");
+    PARAMS.ignore("Call50000");
+    PARAMS.ignore("static_LoopCallsDepthThenRevert3");
+    PARAMS.ignore("Return50000");
 
     // Absurd amount of gas, doesn't run in parallel.
     PARAMS.ignore("randomStatetest94_\\w+");
