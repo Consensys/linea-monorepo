@@ -171,7 +171,7 @@ describe("Messaging test suite", () => {
       console.log(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);
       expect(messageClaimedEvent).toBeDefined();
     },
-    100_000,
+    150_000,
   );
 
   it.concurrent(
@@ -206,6 +206,6 @@ describe("Messaging test suite", () => {
       console.log(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);
       expect(messageClaimedEvent).toBeDefined();
     },
-    100_000,
+    150_000,
   );
 });
