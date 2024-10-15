@@ -1604,6 +1604,6 @@ opcodes:
       delta: 1
       nbAdded: 0
       nbRemoved: 1
-      staticGas: S_MXP #TODO check
+      staticGas: G_SELF_DESTRUCT
       forbiddenInStatic: true
       flag4: true
