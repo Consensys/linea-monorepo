@@ -2135,7 +2135,7 @@ describe("Linea Rollup contract", () => {
       verifier = await plonkVerifier.getAddress();
 
       const lineaRollup = (await deployUpgradableFromFactory(
-        "contracts/test-contracts/LineaRollupFlattened.sol:LineaRollupFlattened",
+        "contracts/test-contracts/LineaRollupV5.sol:LineaRollupV5",
         [
           parentStateRootHash,
           0,
