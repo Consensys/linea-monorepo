@@ -1,48 +1,35 @@
 import { describe, expect, it } from "@jest/globals";
-import { execDockerCommand, waitForEvents, getMessageSentEventFromLogs, sendMessage, etherToWei } from "./common/utils";
+import {
+  execDockerCommand,
+  waitForEvents,
+  getMessageSentEventFromLogs,
+  sendMessage,
+  etherToWei,
+  wait,
+} from "./common/utils";
 import { config } from "./config/tests-config";
 import { getAndIncreaseFeeData } from "./common/helpers";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let coordinatorRestartPromise: any = null;
 let testsWaitingForRestart = 0;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let resolveCoordinatorRestartPromise: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let rejectCoordinatorRestartPromise: any = null;
 const TOTAL_TESTS_WAITING = 2;
+let coordinatorHasRestarted = false;
 
-function waitForCoordinatorRestart() {
-  if (!coordinatorRestartPromise) {
-    coordinatorRestartPromise = new Promise((resolve, reject) => {
-      resolveCoordinatorRestartPromise = resolve;
-      rejectCoordinatorRestartPromise = reject;
-
-      setTimeout(() => {
-        if (testsWaitingForRestart < TOTAL_TESTS_WAITING) {
-          rejectCoordinatorRestartPromise(new Error("Timeout: Not all tests reached the coordinator restart point."));
-        }
-      }, 50_000);
-    });
-  }
-
+async function waitForCoordinatorRestart() {
   testsWaitingForRestart += 1;
-
-  if (testsWaitingForRestart === TOTAL_TESTS_WAITING) {
-    (async () => {
+  while (testsWaitingForRestart < TOTAL_TESTS_WAITING) {
+    console.log("Both tests have reached the restart point. Restarting coordinator...");
+    await wait(1_000);
+    if (!coordinatorHasRestarted) {
+      coordinatorHasRestarted = true;
       try {
-        console.log("Both tests have reached the restart point. Restarting coordinator...");
         await execDockerCommand("restart", "coordinator");
         console.log("Coordinator restarted.");
-        resolveCoordinatorRestartPromise();
       } catch (error) {
         console.error("Failed to restart coordinator:", error);
-        rejectCoordinatorRestartPromise(error);
+        throw error;
       }
-    })();
+    }
   }
-
-  return coordinatorRestartPromise;
 }
 
 describe("Coordinator restart test suite", () => {
