@@ -24,6 +24,7 @@ async function waitForCoordinatorRestart() {
       try {
         await execDockerCommand("restart", "coordinator");
         console.log("Coordinator restarted.");
+        return;
       } catch (error) {
         console.error("Failed to restart coordinator:", error);
         throw error;
@@ -65,6 +66,9 @@ describe("Coordinator restart test suite", () => {
         lineaRollup.filters.DataSubmittedV2(),
         1_000,
         currentBlockNumberAfterRestart,
+        "latest",
+        async (events) =>
+          events.filter((event) => event.args.startBlock > lastDataSubmittedEventBeforeRestart.args.endBlock),
       );
       console.log(`New DataSubmittedV2 event found: event=${JSON.stringify(dataSubmittedV2EventAfterRestart)}`);
 
@@ -74,6 +78,11 @@ describe("Coordinator restart test suite", () => {
         lineaRollup.filters.DataFinalized(),
         1_000,
         currentBlockNumberAfterRestart,
+        "latest",
+        async (events) =>
+          events.filter(
+            (event) => event.args.lastBlockFinalized > lastDataFinalizedEventsBeforeRestart.args.lastBlockFinalized,
+          ),
       );
       console.log(`New DataFinalized event found: event=${JSON.stringify(dataFinalizedEventAfterRestart)}`);
 
