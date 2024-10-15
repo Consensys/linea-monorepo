@@ -869,7 +869,7 @@ public class Hub implements Module {
   private void handleStack(MessageFrame frame) {
     this.currentFrame()
         .stack()
-        .processInstruction(this, frame, MULTIPLIER___STACK_HEIGHT * stamp());
+        .processInstruction(this, frame, MULTIPLIER___STACK_HEIGHT * (stamp() + 1));
   }
 
   void triggerModules(MessageFrame frame) {
