@@ -2,7 +2,6 @@ package blob
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,7 +51,7 @@ func GetRepoRootPath() (string, error) {
 	const repoName = "linea-monorepo"
 	i := strings.LastIndex(wd, repoName)
 	if i == -1 {
-		return "", fmt.Errorf("could not find repo root. Current working directory: %s", wd)
+		return "", errors.New("could not find repo root. Current working directory: " + wd)
 	}
 	i += len(repoName)
 	return wd[:i], nil
