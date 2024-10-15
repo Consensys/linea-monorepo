@@ -5,6 +5,8 @@ import { getAndIncreaseFeeData } from "./common/helpers";
 import { RollupGetZkEVMBlockNumberClient, etherToWei } from "./common/utils";
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
 
+const l2AccountManager = config.getL2AccountManager();
+
 describe("Layer 2 test suite", () => {
   let l2Provider: JsonRpcProvider;
 
@@ -13,7 +15,7 @@ describe("Layer 2 test suite", () => {
   });
 
   it.concurrent("Should revert if transaction data size is above the limit", async () => {
-    const account = await config.getL2AccountManager().generateAccount();
+    const account = await l2AccountManager.generateAccount();
     const dummyContract = config.getL2DummyContract(account);
 
     await expect(
@@ -22,7 +24,7 @@ describe("Layer 2 test suite", () => {
   });
 
   it.concurrent("Should succeed if transaction data size is below the limit", async () => {
-    const account = await config.getL2AccountManager().generateAccount();
+    const account = await l2AccountManager.generateAccount();
     const dummyContract = config.getL2DummyContract(account);
 
     const [nonce, feeData] = await Promise.all([
@@ -42,7 +44,7 @@ describe("Layer 2 test suite", () => {
   });
 
   it.concurrent("Should successfully send a legacy transaction", async () => {
-    const account = await config.getL2AccountManager().generateAccount();
+    const account = await l2AccountManager.generateAccount();
 
     const [nonce, feeData] = await Promise.all([
       l2Provider.getTransactionCount(account.address),
@@ -67,7 +69,7 @@ describe("Layer 2 test suite", () => {
   });
 
   it.concurrent("Should successfully send an EIP1559 transaction", async () => {
-    const account = await config.getL2AccountManager().generateAccount();
+    const account = await l2AccountManager.generateAccount();
 
     const [nonce, feeData] = await Promise.all([
       l2Provider.getTransactionCount(account.address),
@@ -92,7 +94,7 @@ describe("Layer 2 test suite", () => {
   });
 
   it.concurrent("Should successfully send an access list transaction with empty access list", async () => {
-    const account = await config.getL2AccountManager().generateAccount();
+    const account = await l2AccountManager.generateAccount();
 
     const [nonce, feeData] = await Promise.all([
       l2Provider.getTransactionCount(account.address),
@@ -117,7 +119,7 @@ describe("Layer 2 test suite", () => {
   });
 
   it.concurrent("Should successfully send an access list transaction with access list", async () => {
-    const account = await config.getL2AccountManager().generateAccount();
+    const account = await l2AccountManager.generateAccount();
 
     const [nonce, feeData] = await Promise.all([
       l2Provider.getTransactionCount(account.address),
@@ -150,7 +152,7 @@ describe("Layer 2 test suite", () => {
 
   // TODO: discuss new frontend
   it.skip("Shomei frontend always behind while conflating multiple blocks and proving on L1", async () => {
-    const account = await config.getL2AccountManager().generateAccount();
+    const account = await l2AccountManager.generateAccount();
 
     const shomeiEndpoint = config.getShomeiEndpoint();
     const shomeiFrontendEndpoint = config.getShomeiFrontendEndpoint();

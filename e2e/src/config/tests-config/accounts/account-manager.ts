@@ -60,7 +60,7 @@ abstract class AccountManager implements IAccountManager {
   async generateAccounts(
     numberOfAccounts: number,
     initialBalanceWei = etherToWei("10"),
-    retryDelayMs = 3_000,
+    retryDelayMs = 1_000,
   ): Promise<Wallet[]> {
     const { account: whaleAccount, accountWallet: whaleAccountWallet } = this.selectWhaleAccount();
 

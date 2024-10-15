@@ -83,13 +83,16 @@ async function sendL2ToL1Message({
   return { tx, receipt };
 }
 
+const l1AccountManager = config.getL1AccountManager();
+const l2AccountManager = config.getL2AccountManager();
+
 describe("Messaging test suite", () => {
   it.concurrent(
     "Should send a transaction with calldata to L1 message service, be successfully claimed it on L2",
     async () => {
       const [l1Account, l2Account] = await Promise.all([
-        config.getL1AccountManager().generateAccount(),
-        config.getL2AccountManager().generateAccount(),
+        l1AccountManager.generateAccount(),
+        l2AccountManager.generateAccount(),
       ]);
 
       const { tx, receipt } = await sendL1ToL2Message({ l1Account, l2Account, withCalldata: true });
@@ -115,8 +118,8 @@ describe("Messaging test suite", () => {
     "Should send a transaction without calldata to L1 message service, be successfully claimed it on L2",
     async () => {
       const [l1Account, l2Account] = await Promise.all([
-        config.getL1AccountManager().generateAccount(),
-        config.getL2AccountManager().generateAccount(),
+        l1AccountManager.generateAccount(),
+        l2AccountManager.generateAccount(),
       ]);
 
       const { tx, receipt } = await sendL1ToL2Message({ l1Account, l2Account, withCalldata: false });
@@ -141,8 +144,8 @@ describe("Messaging test suite", () => {
     "Should send a transaction with calldata to L2 message service, be successfully claimed it on L1",
     async () => {
       const [l1Account, l2Account] = await Promise.all([
-        config.getL1AccountManager().generateAccount(),
-        config.getL2AccountManager().generateAccount(),
+        l1AccountManager.generateAccount(),
+        l2AccountManager.generateAccount(),
       ]);
 
       const lineaRollup = config.getLineaRollupContract();
@@ -176,8 +179,8 @@ describe("Messaging test suite", () => {
     "Should send a transaction without calldata to L2 message service, be successfully claimed it on L1",
     async () => {
       const [l1Account, l2Account] = await Promise.all([
-        config.getL1AccountManager().generateAccount(),
-        config.getL2AccountManager().generateAccount(),
+        l1AccountManager.generateAccount(),
+        l2AccountManager.generateAccount(),
       ]);
 
       const lineaRollup = config.getLineaRollupContract();
