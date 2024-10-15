@@ -105,7 +105,7 @@ public class Trace {
         new ColumnHeader("rlptxrcpt.DEPTH_1", 1, length),
         new ColumnHeader("rlptxrcpt.DONE", 1, length),
         new ColumnHeader("rlptxrcpt.INDEX", 3, length),
-        new ColumnHeader("rlptxrcpt.INDEX_LOCAL", 2, length),
+        new ColumnHeader("rlptxrcpt.INDEX_LOCAL", 3, length),
         new ColumnHeader("rlptxrcpt.INPUT_1", 16, length),
         new ColumnHeader("rlptxrcpt.INPUT_2", 16, length),
         new ColumnHeader("rlptxrcpt.INPUT_3", 16, length),
@@ -512,9 +512,10 @@ public class Trace {
       filled.set(19);
     }
 
-    if (b >= 65536L) {
+    if (b >= 16777216L) {
       throw new IllegalArgumentException("indexLocal has invalid value (" + b + ")");
     }
+    indexLocal.put((byte) (b >> 16));
     indexLocal.put((byte) (b >> 8));
     indexLocal.put((byte) b);
 
@@ -1185,7 +1186,7 @@ public class Trace {
     }
 
     if (!filled.get(19)) {
-      indexLocal.position(indexLocal.position() + 2);
+      indexLocal.position(indexLocal.position() + 3);
     }
 
     if (!filled.get(20)) {

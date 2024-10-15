@@ -39,6 +39,9 @@ public class Trace {
   public static final int COMMON_RLP_TXN_PHASE_NUMBER_4 = 0xa;
   public static final int COMMON_RLP_TXN_PHASE_NUMBER_5 = 0x7;
   public static final int CREATE2_SHIFT = 0xff;
+  public static final int CT_MAX_TYPE_0 = 0x7;
+  public static final int CT_MAX_TYPE_1 = 0x8;
+  public static final int CT_MAX_TYPE_2 = 0x8;
   public static final long EIP2681_MAX_NONCE = 0xffffffffffffffffL;
   public static final int EIP_3541_MARKER = 0xef;
   public static final BigInteger EMPTY_KECCAK_HI =
@@ -250,6 +253,7 @@ public class Trace {
   public static final int LINEA_CHAIN_ID = 0xe708;
   public static final int LINEA_DIFFICULTY = 0x2;
   public static final int LINEA_GOERLI_CHAIN_ID = 0xe704;
+  public static final int LINEA_MAX_NUMBER_OF_TRANSACTIONS_IN_BATCH = 0xc8;
   public static final int LINEA_SEPOLIA_CHAIN_ID = 0xe705;
   public static final int LLARGE = 0x10;
   public static final int LLARGEMO = 0xf;
@@ -335,8 +339,7 @@ public class Trace {
   public static final int PHASE_RIPEMD_RESULT = 0x4;
   public static final int PHASE_SHA2_DATA = 0x1;
   public static final int PHASE_SHA2_RESULT = 0x2;
-  public static final int REFUND_CONST_R_SCLEAR = 0x3a98;
-  public static final int REFUND_CONST_R_SELFDESTRUCT = 0x5dc0;
+  public static final int REFUND_CONST_R_SCLEAR = 0x12c0;
   public static final int RLP_ADDR_RECIPE_1 = 0x1;
   public static final int RLP_ADDR_RECIPE_2 = 0x2;
   public static final int RLP_PREFIX_INT_LONG = 0xb7;
@@ -376,15 +379,15 @@ public class Trace {
   public static final int WCP_INST_LEQ = 0xf;
   public static final int WORD_SIZE = 0x20;
   public static final int WORD_SIZE_MO = 0x1f;
-  public static final int comparaison___computing_effective_gas_price_row_offset = 0x8;
-  public static final int comparaison___detecting_empty_call_data_row_offset = 0x5;
-  public static final int comparaison___effective_refund_row_offset = 0x4;
-  public static final int comparaison___initial_balance_row_offset = 0x1;
-  public static final int comparaison___max_fee_and_basefee_row_offset = 0x6;
-  public static final int comparaison___maxfee_and_max_priority_fee_row_offset = 0x7;
-  public static final int comparaison___nonce_row_offset = 0x0;
-  public static final int comparaison___sufficient_gas_row_offset = 0x2;
-  public static final int comparaison___upper_limit_refunds_row_offset = 0x3;
+  public static final int row_offset___computing_effective_gas_price_comparison = 0x8;
+  public static final int row_offset___detecting_empty_call_data_comparison = 0x5;
+  public static final int row_offset___effective_refund_comparison = 0x4;
+  public static final int row_offset___initial_balance_comparison = 0x1;
+  public static final int row_offset___max_fee_and_basefee_comparison = 0x6;
+  public static final int row_offset___max_fee_and_max_priority_fee_comparison = 0x7;
+  public static final int row_offset___nonce_comparison = 0x0;
+  public static final int row_offset___sufficient_gas_comparison = 0x2;
+  public static final int row_offset___upper_limit_refunds_comparison = 0x3;
 
   private final BitSet filled = new BitSet();
   private int currentLine = 0;

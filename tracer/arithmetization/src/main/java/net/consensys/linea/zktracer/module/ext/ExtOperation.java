@@ -28,7 +28,6 @@ import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.ext.calculator.AbstractExtCalculator;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.UnsignedByte;
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
@@ -273,13 +272,13 @@ public class ExtOperation extends ModuleOperation {
           .ofJ(this.overflowJ[i])
           .ofI(this.overflowI[i])
           .ofRes(this.overflowRes[i])
-          .ct(Bytes.of(i))
-          .inst(Bytes.of(this.opCode.byteValue()))
+          .ct(i)
+          .inst(UnsignedByte.of(this.opCode.byteValue()))
           .oli(this.isOneLineInstruction)
           .bit1(this.getBit1())
           .bit2(this.getBit2())
           .bit3(this.getBit3())
-          .stamp(Bytes.ofUnsignedLong(stamp))
+          .stamp(stamp)
           .validateRow();
     }
   }

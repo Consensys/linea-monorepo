@@ -181,14 +181,17 @@ public class Trace {
     return this;
   }
 
-  public Trace ct(final UnsignedByte b) {
+  public Trace ct(final long b) {
     if (filled.get(5)) {
       throw new IllegalStateException("trm.CT already set");
     } else {
       filled.set(5);
     }
 
-    ct.put(b.toByte());
+    if (b >= 16L) {
+      throw new IllegalArgumentException("ct has invalid value (" + b + ")");
+    }
+    ct.put((byte) b);
 
     return this;
   }

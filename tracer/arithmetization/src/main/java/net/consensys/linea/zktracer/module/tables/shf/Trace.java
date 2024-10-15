@@ -40,7 +40,7 @@ public class Trace {
   private final MappedByteBuffer ones;
   private final MappedByteBuffer rap;
 
-  static List<ColumnHeader> headers(int length) {
+  public static List<ColumnHeader> headers(int length) {
     return List.of(
         new ColumnHeader("shfreftable.BYTE1", 1, length),
         new ColumnHeader("shfreftable.IOMF", 1, length),

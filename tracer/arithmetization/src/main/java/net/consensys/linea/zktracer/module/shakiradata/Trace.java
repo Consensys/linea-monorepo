@@ -48,10 +48,10 @@ public class Trace {
   private final MappedByteBuffer nBytes;
   private final MappedByteBuffer nBytesAcc;
   private final MappedByteBuffer phase;
-  private final MappedByteBuffer shakiraStamp;
   private final MappedByteBuffer selectorKeccakResHi;
   private final MappedByteBuffer selectorRipemdResHi;
   private final MappedByteBuffer selectorSha2ResHi;
+  private final MappedByteBuffer shakiraStamp;
   private final MappedByteBuffer totalSize;
 
   static List<ColumnHeader> headers(int length) {
@@ -69,10 +69,10 @@ public class Trace {
         new ColumnHeader("shakiradata.nBYTES", 1, length),
         new ColumnHeader("shakiradata.nBYTES_ACC", 4, length),
         new ColumnHeader("shakiradata.PHASE", 1, length),
-        new ColumnHeader("shakiradata.SHAKIRA_STAMP", 4, length),
         new ColumnHeader("shakiradata.SELECTOR_KECCAK_RES_HI", 1, length),
         new ColumnHeader("shakiradata.SELECTOR_RIPEMD_RES_HI", 1, length),
         new ColumnHeader("shakiradata.SELECTOR_SHA2_RES_HI", 1, length),
+        new ColumnHeader("shakiradata.SHAKIRA_STAMP", 4, length),
         new ColumnHeader("shakiradata.TOTAL_SIZE", 4, length));
   }
 
@@ -90,10 +90,10 @@ public class Trace {
     this.nBytes = buffers.get(10);
     this.nBytesAcc = buffers.get(11);
     this.phase = buffers.get(12);
-    this.shakiraStamp = buffers.get(13);
-    this.selectorKeccakResHi = buffers.get(14);
-    this.selectorRipemdResHi = buffers.get(15);
-    this.selectorSha2ResHi = buffers.get(16);
+    this.selectorKeccakResHi = buffers.get(13);
+    this.selectorRipemdResHi = buffers.get(14);
+    this.selectorSha2ResHi = buffers.get(15);
+    this.shakiraStamp = buffers.get(16);
     this.totalSize = buffers.get(17);
   }
 
@@ -263,7 +263,7 @@ public class Trace {
       filled.set(16);
     }
 
-    if (b >= 256L) {
+    if (b >= 32L) {
       throw new IllegalArgumentException("nBytes has invalid value (" + b + ")");
     }
     nBytes.put((byte) b);
@@ -301,11 +301,47 @@ public class Trace {
     return this;
   }
 
-  public Trace shakiraStamp(final long b) {
+  public Trace selectorKeccakResHi(final Boolean b) {
     if (filled.get(11)) {
-      throw new IllegalStateException("shakiradata.RIPSHA_STAMP already set");
+      throw new IllegalStateException("shakiradata.SELECTOR_KECCAK_RES_HI already set");
     } else {
       filled.set(11);
+    }
+
+    selectorKeccakResHi.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace selectorRipemdResHi(final Boolean b) {
+    if (filled.get(12)) {
+      throw new IllegalStateException("shakiradata.SELECTOR_RIPEMD_RES_HI already set");
+    } else {
+      filled.set(12);
+    }
+
+    selectorRipemdResHi.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace selectorSha2ResHi(final Boolean b) {
+    if (filled.get(13)) {
+      throw new IllegalStateException("shakiradata.SELECTOR_SHA2_RES_HI already set");
+    } else {
+      filled.set(13);
+    }
+
+    selectorSha2ResHi.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace shakiraStamp(final long b) {
+    if (filled.get(14)) {
+      throw new IllegalStateException("shakiradata.SHAKIRA_STAMP already set");
+    } else {
+      filled.set(14);
     }
 
     if (b >= 4294967296L) {
@@ -315,42 +351,6 @@ public class Trace {
     shakiraStamp.put((byte) (b >> 16));
     shakiraStamp.put((byte) (b >> 8));
     shakiraStamp.put((byte) b);
-
-    return this;
-  }
-
-  public Trace selectorKeccakResHi(final Boolean b) {
-    if (filled.get(12)) {
-      throw new IllegalStateException("shakiradata.SELECTOR_KECCAK_RES_HI already set");
-    } else {
-      filled.set(12);
-    }
-
-    selectorKeccakResHi.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace selectorRipemdResHi(final Boolean b) {
-    if (filled.get(13)) {
-      throw new IllegalStateException("shakiradata.SELECTOR_RIPEMD_RES_HI already set");
-    } else {
-      filled.set(13);
-    }
-
-    selectorRipemdResHi.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace selectorSha2ResHi(final Boolean b) {
-    if (filled.get(14)) {
-      throw new IllegalStateException("shakiradata.SELECTOR_SHA2_RES_HI already set");
-    } else {
-      filled.set(14);
-    }
-
-    selectorSha2ResHi.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -427,19 +427,19 @@ public class Trace {
     }
 
     if (!filled.get(11)) {
-      throw new IllegalStateException("shakiradata.RIPSHA_STAMP has not been filled");
-    }
-
-    if (!filled.get(12)) {
       throw new IllegalStateException("shakiradata.SELECTOR_KECCAK_RES_HI has not been filled");
     }
 
-    if (!filled.get(13)) {
+    if (!filled.get(12)) {
       throw new IllegalStateException("shakiradata.SELECTOR_RIPEMD_RES_HI has not been filled");
     }
 
-    if (!filled.get(14)) {
+    if (!filled.get(13)) {
       throw new IllegalStateException("shakiradata.SELECTOR_SHA2_RES_HI has not been filled");
+    }
+
+    if (!filled.get(14)) {
+      throw new IllegalStateException("shakiradata.SHAKIRA_STAMP has not been filled");
     }
 
     if (!filled.get(15)) {
@@ -506,19 +506,19 @@ public class Trace {
     }
 
     if (!filled.get(11)) {
-      shakiraStamp.position(shakiraStamp.position() + 4);
-    }
-
-    if (!filled.get(12)) {
       selectorKeccakResHi.position(selectorKeccakResHi.position() + 1);
     }
 
-    if (!filled.get(13)) {
+    if (!filled.get(12)) {
       selectorRipemdResHi.position(selectorRipemdResHi.position() + 1);
     }
 
-    if (!filled.get(14)) {
+    if (!filled.get(13)) {
       selectorSha2ResHi.position(selectorSha2ResHi.position() + 1);
+    }
+
+    if (!filled.get(14)) {
+      shakiraStamp.position(shakiraStamp.position() + 4);
     }
 
     if (!filled.get(15)) {

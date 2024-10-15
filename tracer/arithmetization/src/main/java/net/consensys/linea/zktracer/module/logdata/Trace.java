@@ -20,7 +20,6 @@ import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
 /**
@@ -180,14 +179,17 @@ public class Trace {
     return this;
   }
 
-  public Trace sizeLimb(final UnsignedByte b) {
+  public Trace sizeLimb(final long b) {
     if (filled.get(6)) {
       throw new IllegalStateException("logdata.SIZE_LIMB already set");
     } else {
       filled.set(6);
     }
 
-    sizeLimb.put(b.toByte());
+    if (b >= 32L) {
+      throw new IllegalArgumentException("sizeLimb has invalid value (" + b + ")");
+    }
+    sizeLimb.put((byte) b);
 
     return this;
   }

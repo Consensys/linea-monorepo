@@ -185,14 +185,14 @@ public final class StackFragment implements TraceFragment {
             trace::pStackStackItemPop3,
             trace::pStackStackItemPop4);
 
-    final List<Function<Bytes, Trace>> heightTracers =
+    final List<Function<Short, Trace>> heightTracers =
         List.of(
             trace::pStackStackItemHeight1,
             trace::pStackStackItemHeight2,
             trace::pStackStackItemHeight3,
             trace::pStackStackItemHeight4);
 
-    final List<Function<Bytes, Trace>> stampTracers =
+    final List<Function<Integer, Trace>> stampTracers =
         List.of(
             trace::pStackStackItemStamp1,
             trace::pStackStackItemStamp2,
@@ -209,11 +209,11 @@ public final class StackFragment implements TraceFragment {
         pushValue = eValue;
       }
 
-      heightTracers.get(i).apply(Bytes.ofUnsignedShort(op.height()));
-      valLoTracers.get(i).apply(eValue.lo());
+      heightTracers.get(i).apply(op.height());
       valHiTracers.get(i).apply(eValue.hi());
+      valLoTracers.get(i).apply(eValue.lo());
       popTracers.get(i).apply(op.action() == Stack.POP);
-      stampTracers.get(i).apply(Bytes.ofUnsignedLong(op.stackStamp()));
+      stampTracers.get(i).apply(op.stackStamp());
     }
 
     final InstructionFamily currentInstFamily = stack.getCurrentOpcodeData().instructionFamily();
