@@ -182,6 +182,7 @@ services:
     image: consensys/linea-postman:${POSTMAN_TAG:-5a6fdf3}
     profiles: [ "l2", "debug" ]
     platform: linux/amd64
+    restart: on-failure
     depends_on:
       sequencer:
         condition: service_healthy
@@ -468,6 +469,7 @@ services:
       sequencer:
         condition: service_healthy
     privileged: true
+    restart: always
     user: root
     ports:
       - "8945:8545" # http

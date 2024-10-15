@@ -1,13 +1,13 @@
-import { ContractReceipt, Wallet, ethers } from "ethers";
-import { ProxyAdmin__factory } from "../typechain";
+import { ContractTransactionReceipt, Wallet, ethers } from "ethers";
+import { ProxyAdmin, ProxyAdmin__factory } from "../typechain";
 
 export function getInitializerData(
-  contractInterface: ethers.utils.Interface,
+  contractInterface: ethers.Interface,
   initializerFunctionName: string,
   args: unknown[],
 ) {
   const fragment = contractInterface.getFunction(initializerFunctionName);
-  return contractInterface.encodeFunctionData(fragment, args);
+  return contractInterface.encodeFunctionData(fragment!, args);
 }
 
 export async function upgradeContractAndCall(
@@ -16,11 +16,10 @@ export async function upgradeContractAndCall(
   proxyContractAddress: string,
   implementationContractAddress: string,
   initializerData = "0x",
-): Promise<ContractReceipt> {
+): Promise<ContractTransactionReceipt | null> {
   const proxyAdminFactory = new ProxyAdmin__factory(deployer);
-  const proxyAdmin = proxyAdminFactory.connect(deployer).attach(proxyAdminContractAddress);
+  const proxyAdmin = proxyAdminFactory.connect(deployer).attach(proxyAdminContractAddress) as ProxyAdmin;
   const tx = await proxyAdmin.upgradeAndCall(proxyContractAddress, implementationContractAddress, initializerData);
-
   return tx.wait();
 }
 
@@ -29,9 +28,9 @@ export async function upgradeContract(
   proxyAdminContractAddress: string,
   proxyContractAddress: string,
   implementationContractAddress: string,
-): Promise<ContractReceipt> {
+): Promise<ContractTransactionReceipt | null> {
   const proxyAdminFactory = new ProxyAdmin__factory(deployer);
-  const proxyAdmin = proxyAdminFactory.connect(deployer).attach(proxyAdminContractAddress);
+  const proxyAdmin = proxyAdminFactory.connect(deployer).attach(proxyAdminContractAddress) as ProxyAdmin;
   const tx = await proxyAdmin.upgrade(proxyContractAddress, implementationContractAddress);
 
   return tx.wait();
