@@ -16,7 +16,7 @@ import (
 func TestGlobal(t *testing.T) {
 	runTest(t, pythagoreTriplet, true)
 	runTest(t, fibonacci, true)
-
+	runTest(t, testDummyShifted, true)
 }
 
 func runTest(t *testing.T, gen GlobalConstraintGenerator, expectedCorrect bool) {
@@ -97,4 +97,26 @@ func pythagoreTriplet() (wizard.DefineFunc, wizard.ProverStep) {
 	}
 
 	return define, hLProver
+}
+
+func testDummyShifted() (wizard.DefineFunc, wizard.ProverStep) {
+	var (
+		X, Y ifaces.ColID = "X", "Y"
+	)
+	define := func(build *wizard.Builder) {
+		A := build.RegisterCommit(X, 4)
+		B := build.RegisterCommit(Y, 4)
+
+		expr := symbolic.Sub(column.Shift(A, 1),
+			symbolic.Mul(2, column.Shift(B, 1)))
+
+		build.InsertGlobal(0, "Q", expr)
+	}
+	Prover := func(run *wizard.ProverRuntime) {
+		x := smartvectors.ForTest(2, 8, 4, 0)
+		y := smartvectors.ForTest(1, 4, 2, 0)
+		run.AssignColumn(X, x)
+		run.AssignColumn(Y, y)
+	}
+	return define, Prover
 }

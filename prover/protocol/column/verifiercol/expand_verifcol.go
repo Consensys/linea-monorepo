@@ -52,7 +52,6 @@ func (ex ExpandedVerifCol) GetColAssignment(run ifaces.Runtime) ifaces.ColAssign
 
 // GetColAssignment returns a gnark assignment of the current column
 func (ex ExpandedVerifCol) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
-
 	assi := ex.Verifiercol.GetColAssignmentGnark(run)
 	res := make([]frontend.Variable, ex.Size())
 	for i := 0; i < len(assi); i++ {
