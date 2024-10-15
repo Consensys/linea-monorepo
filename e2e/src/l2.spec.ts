@@ -102,7 +102,7 @@ describe("Layer 2 test suite", () => {
       console.log(`initial currentL2BlockNumber: ${currentL2BlockNumber.toString()}`);
 
       while (BigInt(maxL2BlockNumber) > currentL2BlockNumber) {
-        await wait(2000);
+        await wait(1_000);
         currentL2BlockNumber = await lineaRollup.currentL2BlockNumber();
       }
 
@@ -154,7 +154,7 @@ describe("Layer 2 test suite", () => {
       console.log(`initial currentL2BlockNumber: ${currentL2BlockNumber.toString()}`);
 
       while (BigInt(maxL2BlockNumber) > currentL2BlockNumber) {
-        await wait(2000);
+        await wait(1_000);
         currentL2BlockNumber = await lineaRollup.currentL2BlockNumber();
       }
 

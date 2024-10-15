@@ -74,7 +74,7 @@ describe("Submission and finalization test suite", () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.log("No finalized block yet, retrying in 5 seconds...");
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
       }
     }
 

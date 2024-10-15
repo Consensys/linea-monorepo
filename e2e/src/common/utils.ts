@@ -171,7 +171,7 @@ export async function sendXTransactions(
   }
 }
 
-export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wallet, pollingInterval: number = 1000) {
+export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wallet, pollingInterval: number = 1_000) {
   const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await signer.provider!.getFeeData());
   const transactionRequest = {
     to: signer.address,
@@ -189,12 +189,9 @@ export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wall
     try {
       const tx = await signer.sendTransaction(transactionRequest);
       await tx.wait();
-
-      if (isRunning) {
-        timeoutId = setTimeout(sendTransaction, pollingInterval);
-      }
     } catch (error) {
       console.error("Error sending transaction:", error);
+    } finally {
       if (isRunning) {
         timeoutId = setTimeout(sendTransaction, pollingInterval);
       }

@@ -34,7 +34,7 @@ export default async (): Promise<void> => {
   await tx.wait();
 
   console.log("Generating L2 traffic...");
-  const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2Account, 5_000);
+  const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2Account, 1_000);
 
   global.stopL2TrafficGeneration = stopPolling;
 };
