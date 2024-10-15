@@ -298,6 +298,90 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   @Test
+  fun findConsecutiveProvenBlobsReturnsFullListOfProvenBlobsWithProvenBatches() {
+    val batch1 = createBatch(0L, 10L)
+    val batch2 = createBatch(11L, 20L)
+    val batch3 = createBatch(21L, 30L)
+
+    val blob1 = createBlobRecordFromBatches(listOf(batch1))
+    val blob2 = createBlobRecordFromBatches(listOf(batch2, batch3))
+
+    val batches = listOf(batch1, batch2, batch3)
+    val blobs = listOf(blob1, blob2)
+
+    batches.forEach { insertBatch(it).get() }
+    blobs.forEach { insertBlob(it).get() }
+
+    aggregationsPostgresDaoImpl.findConsecutiveProvenBlobs(0).get().also { blobCounters ->
+      assertThat(blobCounters).hasSameElementsAs(
+        listOf(
+          getBlobAndBatchCounters(listOf(batch1), blob1),
+          getBlobAndBatchCounters(listOf(batch2, batch3), blob2)
+        )
+      )
+    }
+  }
+
+  @Test
+  fun findConsecutiveProvenBlobsWhenDbIsEmpty() {
+    aggregationsPostgresDaoImpl.findConsecutiveProvenBlobs(0).get().also { blobCounters ->
+      assertThat(blobCounters).hasSameElementsAs(emptyList())
+    }
+  }
+
+  @Test
+  fun findConsecutiveProvenBlobsUnprovenBlobAndBatchAtDifferentIntervals() {
+    // Batch2 proof is missing
+    // Blob for batch3 is missing
+    val batch1 = createBatch(0L, 10L)
+    val batch2 = createBatch(11L, 20L, status = Batch.Status.Finalized)
+    val batch3 = createBatch(21L, 30L)
+    val batch4 = createBatch(31L, 40L)
+
+    val blob1 = createBlobRecordFromBatches(listOf(batch1, batch2))
+    val blob2 = createBlobRecordFromBatches(listOf(batch3), status = BlobStatus.COMPRESSION_PROVING)
+    val blob3 = createBlobRecordFromBatches(listOf(batch4))
+
+    val batches = listOf(batch1, batch2, batch3, batch4)
+    val blobs = listOf(blob1, blob2, blob3)
+
+    batches.forEach { insertBatch(it).get() }
+    blobs.forEach { insertBlob(it).get() }
+
+    aggregationsPostgresDaoImpl.findConsecutiveProvenBlobs(0).get().also { blobCounters ->
+      assertThat(blobCounters).hasSameElementsAs(emptyList())
+    }
+  }
+
+  @Test
+  fun findConsecutiveProvenBlobsUnprovenBlobAndBatchInTheMiddle() {
+    val batch1 = createBatch(1L, 10L)
+    val batch2 = createBatch(11L, 20L)
+    val batch3 = createBatch(21L, 30L)
+    val batch4 = createBatch(31L, 40L)
+    val batch6 = createBatch(51L, 60L)
+    val batches = listOf(batch1, batch2, batch3, batch4, batch6)
+
+    val blob1 = createBlobRecordFromBatches(listOf(batch1, batch2))
+    val blob2 = createBlobRecordFromBatches(listOf(batch3, batch4))
+    val blob4 = createBlobRecordFromBatches(listOf(batch6))
+    val blobs = listOf(blob1, blob2, blob4)
+
+    batches.forEach { insertBatch(it).get() }
+    blobs.forEach { insertBlob(it).get() }
+
+    aggregationsPostgresDaoImpl.findConsecutiveProvenBlobs(fromBlockNumber = 1).get()
+      .also { blobCounters ->
+        assertThat(blobCounters).hasSameElementsAs(
+          listOf(
+            getBlobAndBatchCounters(listOf(batch1, batch2), blob1),
+            getBlobAndBatchCounters(listOf(batch3, batch4), blob2)
+          )
+        )
+      }
+  }
+
+  @Test
   fun getProofsToFinalize_parsesAndReturnsProofToFinalize() {
     val aggregationProof1 = createProofToFinalize(
       firstBlockNumber = 0,
