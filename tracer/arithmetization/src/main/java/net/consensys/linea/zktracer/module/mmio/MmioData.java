@@ -221,11 +221,23 @@ public class MmioData {
       final short targetByteOffset,
       final short size) {
 
-    checkArgument(0 <= sourceByteOffset && sourceByteOffset <= LLARGEMO);
-    checkArgument(0 < size && size <= LLARGE);
-    checkArgument(sourceByteOffset + size - 1 <= LLARGEMO);
-    checkArgument(0 <= targetByteOffset && targetByteOffset <= LLARGEMO);
-    checkArgument(targetByteOffset + size - 1 <= LLARGEMO);
+    checkArgument(
+        0 <= sourceByteOffset && sourceByteOffset <= LLARGEMO,
+        "sourceByteOffset has value {}.",
+        sourceByteOffset);
+    checkArgument(0 < size && size <= LLARGE, "size has value {}.", size);
+    checkArgument(
+        sourceByteOffset + size - 1 <= LLARGEMO,
+        "sourceByteOffset has value {}.",
+        sourceByteOffset);
+    checkArgument(
+        0 <= targetByteOffset && targetByteOffset <= LLARGEMO,
+        "targetByteOffset has value {}.",
+        targetByteOffset);
+    checkArgument(
+        targetByteOffset + size - 1 <= LLARGEMO,
+        "targetByteOffset has value {}.",
+        targetByteOffset);
 
     for (short ct = 0; ct < LLARGE; ct++) {
       bit1.add(ct, plateau(sourceByteOffset, ct));

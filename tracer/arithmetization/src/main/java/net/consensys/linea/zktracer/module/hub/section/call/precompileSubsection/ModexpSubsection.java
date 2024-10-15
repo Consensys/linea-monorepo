@@ -73,6 +73,7 @@ public class ModexpSubsection extends PrecompileSubsection {
                 .compareTo(BigInteger.valueOf(PROVER_MAX_INPUT_BYTE_SIZE))
             >= 0) {
       hub.modexpEffectiveCall().addPrecompileLimit(Integer.MAX_VALUE);
+      hub.defers().unscheduleForContextReEntry(this, hub.currentFrame());
       return;
     }
 

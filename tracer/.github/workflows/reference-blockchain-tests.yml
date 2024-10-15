@@ -70,18 +70,23 @@ jobs:
           commit: ${{ inputs.commit || '' }}
           if_no_artifact_found: ignore
 
+      - name: Rename filter input file
+        if: ${{ inputs.failed_module != '' }}
+        run: mv ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests.json ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests-input.json
+
       - name: Run reference blockchain tests
         run: ./gradlew referenceBlockchainTests -x spotlessCheck
         timeout-minutes: 180
         continue-on-error: true
         env:
-          REFERENCE_TESTS_PARALLELISM: 20
+          REFERENCE_TESTS_PARALLELISM: 8
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -wd --ansi-escapes=false --report --air
           FAILED_TEST_JSON_DIRECTORY: ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/
           FAILED_MODULE: ${{ inputs.failed_module || '' }}
           FAILED_CONSTRAINT: ${{ inputs.failed_constraint || '' }}
+          REFERENCE_TEST_FILTER_INPUT: failedBlockchainReferenceTests.json
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

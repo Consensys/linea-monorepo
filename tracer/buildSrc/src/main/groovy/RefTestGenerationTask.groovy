@@ -77,7 +77,7 @@ abstract class RefTestGenerationTask extends DefaultTask {
         def parentPathFile = parentFile.getPath().substring(parentFile.getPath().indexOf(refTestJsonParamsDirectory))
         if (!testJsonFile.getName().toString().startsWith(".") && !excludedPath.contains(parentPathFile)) {
           def pathFile = testJsonFile.getPath()
-          paths << pathFile.substring(pathFile.indexOf(refTestJsonParamsDirectory))
+          paths << pathFile.substring(pathFile.indexOf(refTestJsonParamsDirectory)).replace('\\','/')
         }
       }
 
