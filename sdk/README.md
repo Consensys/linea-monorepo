@@ -40,5 +40,3 @@ This package exposes two main classes for usage:
 ## License
 
 This package is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for more information.
-
-
