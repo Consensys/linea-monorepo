@@ -473,7 +473,7 @@ public class MulOperation extends ModuleOperation {
           .exponentBitAccumulator(expAcc)
           .exponentBitSource(isExponentInSource())
           .squareAndMultiply(squareAndMultiply)
-          .bitNum(UnsignedByte.of(getBitNum()))
+          .bitNum(getBitNum())
           .validateRow();
     }
   }

@@ -87,7 +87,7 @@ public class GasOperation extends ModuleOperation {
           .first(i == 0)
           .ct(i)
           .ctMax(CT_MAX)
-          .gasActual(gasParameters.gasActual().longValue())
+          .gasActual(bigIntegerToBytes(gasParameters.gasActual()))
           .gasCost(bigIntegerToBytes(gasParameters.gasCost()))
           .exceptionsAhoy(gasParameters.xahoy())
           .outOfGasException(gasParameters.oogx())

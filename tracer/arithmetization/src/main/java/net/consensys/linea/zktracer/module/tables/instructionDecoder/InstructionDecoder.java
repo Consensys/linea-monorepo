@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
+import static net.consensys.linea.zktracer.module.tables.instructionDecoder.Trace.headers;
+
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -111,7 +113,8 @@ public final class InstructionDecoder implements Module {
 
   @Override
   public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+    return headers(this.lineCount());
+    // return Trace.headers(this.lineCount());
   }
 
   @Override

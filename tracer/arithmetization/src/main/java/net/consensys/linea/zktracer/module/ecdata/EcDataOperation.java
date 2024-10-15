@@ -677,9 +677,9 @@ public class EcDataOperation extends ModuleOperation {
           .id(id)
           .index(isData ? i : i - nRowsData)
           .limb(limb.get(i))
-          .totalSize(Bytes.ofUnsignedLong(getTotalSize(precompileFlag, isData)))
+          .totalSize(getTotalSize(precompileFlag, isData))
           .phase(getPhase(precompileFlag, isData))
-          .indexMax(Bytes.ofUnsignedLong(getIndexMax(precompileFlag, isData)))
+          .indexMax(getIndexMax(precompileFlag, isData))
           .successBit(successBit)
           .isEcrecoverData(precompileFlag == PRC_ECRECOVER && isData)
           .isEcrecoverResult(precompileFlag == PRC_ECRECOVER && !isData)
@@ -689,11 +689,11 @@ public class EcDataOperation extends ModuleOperation {
           .isEcmulResult(precompileFlag == PRC_ECMUL && !isData)
           .isEcpairingData(precompileFlag == PRC_ECPAIRING && isData)
           .isEcpairingResult(precompileFlag == PRC_ECPAIRING && !isData)
-          .totalPairings(Bytes.ofUnsignedLong(totalPairings))
+          .totalPairings(totalPairings)
           .accPairings(
               precompileFlag == PRC_ECPAIRING && isData
-                  ? Bytes.ofUnsignedLong(1 + i / (INDEX_MAX_ECPAIRING_DATA_MIN + 1))
-                  : Bytes.of(0))
+                  ? 1 + i / (INDEX_MAX_ECPAIRING_DATA_MIN + 1)
+                  : 0)
           .internalChecksPassed(internalChecksPassed)
           .hurdle(hurdle.get(i))
           .byteDelta(

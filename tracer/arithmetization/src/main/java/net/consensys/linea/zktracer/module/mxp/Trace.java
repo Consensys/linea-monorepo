@@ -121,9 +121,9 @@ public class Trace {
         new ColumnHeader("mxp.GWORD", 8, length),
         new ColumnHeader("mxp.INST", 1, length),
         new ColumnHeader("mxp.LIN_COST", 8, length),
-        new ColumnHeader("mxp.MAX_OFFSET", 32, length),
-        new ColumnHeader("mxp.MAX_OFFSET_1", 32, length),
-        new ColumnHeader("mxp.MAX_OFFSET_2", 32, length),
+        new ColumnHeader("mxp.MAX_OFFSET", 16, length),
+        new ColumnHeader("mxp.MAX_OFFSET_1", 16, length),
+        new ColumnHeader("mxp.MAX_OFFSET_2", 16, length),
         new ColumnHeader("mxp.MTNTOP", 1, length),
         new ColumnHeader("mxp.MXP_TYPE_1", 1, length),
         new ColumnHeader("mxp.MXP_TYPE_2", 1, length),
@@ -741,12 +741,12 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 256) {
+    if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
           "maxOffset has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 32; i++) {
+    for (int i = bs.size(); i < 16; i++) {
       maxOffset.put((byte) 0);
     }
     // Write bytes
@@ -767,12 +767,12 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 256) {
+    if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
           "maxOffset1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 32; i++) {
+    for (int i = bs.size(); i < 16; i++) {
       maxOffset1.put((byte) 0);
     }
     // Write bytes
@@ -793,12 +793,12 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 256) {
+    if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
           "maxOffset2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 32; i++) {
+    for (int i = bs.size(); i < 16; i++) {
       maxOffset2.put((byte) 0);
     }
     // Write bytes
@@ -1543,15 +1543,15 @@ public class Trace {
     }
 
     if (!filled.get(28)) {
-      maxOffset.position(maxOffset.position() + 32);
+      maxOffset.position(maxOffset.position() + 16);
     }
 
     if (!filled.get(29)) {
-      maxOffset1.position(maxOffset1.position() + 32);
+      maxOffset1.position(maxOffset1.position() + 16);
     }
 
     if (!filled.get(30)) {
-      maxOffset2.position(maxOffset2.position() + 32);
+      maxOffset2.position(maxOffset2.position() + 16);
     }
 
     if (!filled.get(31)) {

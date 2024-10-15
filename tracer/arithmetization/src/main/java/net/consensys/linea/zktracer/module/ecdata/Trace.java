@@ -123,7 +123,7 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("ecdata.ACC_PAIRINGS", 32, length),
+        new ColumnHeader("ecdata.ACC_PAIRINGS", 2, length),
         new ColumnHeader("ecdata.ACCEPTABLE_PAIR_OF_POINTS_FOR_PAIRING_CIRCUIT", 1, length),
         new ColumnHeader("ecdata.BYTE_DELTA", 1, length),
         new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECADD", 1, length),
@@ -147,7 +147,7 @@ public class Trace {
         new ColumnHeader("ecdata.HURDLE", 1, length),
         new ColumnHeader("ecdata.ID", 4, length),
         new ColumnHeader("ecdata.INDEX", 2, length),
-        new ColumnHeader("ecdata.INDEX_MAX", 32, length),
+        new ColumnHeader("ecdata.INDEX_MAX", 2, length),
         new ColumnHeader("ecdata.INTERNAL_CHECKS_PASSED", 1, length),
         new ColumnHeader("ecdata.IS_ECADD_DATA", 1, length),
         new ColumnHeader("ecdata.IS_ECADD_RESULT", 1, length),
@@ -168,8 +168,8 @@ public class Trace {
         new ColumnHeader("ecdata.PHASE", 2, length),
         new ColumnHeader("ecdata.STAMP", 4, length),
         new ColumnHeader("ecdata.SUCCESS_BIT", 1, length),
-        new ColumnHeader("ecdata.TOTAL_PAIRINGS", 32, length),
-        new ColumnHeader("ecdata.TOTAL_SIZE", 32, length),
+        new ColumnHeader("ecdata.TOTAL_PAIRINGS", 2, length),
+        new ColumnHeader("ecdata.TOTAL_SIZE", 2, length),
         new ColumnHeader("ecdata.WCP_ARG1_HI", 16, length),
         new ColumnHeader("ecdata.WCP_ARG1_LO", 16, length),
         new ColumnHeader("ecdata.WCP_ARG2_HI", 16, length),
@@ -244,28 +244,18 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace accPairings(final Bytes b) {
+  public Trace accPairings(final long b) {
     if (filled.get(1)) {
       throw new IllegalStateException("ecdata.ACC_PAIRINGS already set");
     } else {
       filled.set(1);
     }
 
-    // Trim array to size
-    Bytes bs = b.trimLeadingZeros();
-    // Sanity check against expected width
-    if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException(
-          "accPairings has invalid width (" + bs.bitLength() + "bits)");
+    if (b >= 65536L) {
+      throw new IllegalArgumentException("accPairings has invalid value (" + b + ")");
     }
-    // Write padding (if necessary)
-    for (int i = bs.size(); i < 32; i++) {
-      accPairings.put((byte) 0);
-    }
-    // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accPairings.put(bs.get(j));
-    }
+    accPairings.put((byte) (b >> 8));
+    accPairings.put((byte) b);
 
     return this;
   }
@@ -673,27 +663,18 @@ public class Trace {
     return this;
   }
 
-  public Trace indexMax(final Bytes b) {
+  public Trace indexMax(final long b) {
     if (filled.get(24)) {
       throw new IllegalStateException("ecdata.INDEX_MAX already set");
     } else {
       filled.set(24);
     }
 
-    // Trim array to size
-    Bytes bs = b.trimLeadingZeros();
-    // Sanity check against expected width
-    if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException("indexMax has invalid width (" + bs.bitLength() + "bits)");
+    if (b >= 65536L) {
+      throw new IllegalArgumentException("indexMax has invalid value (" + b + ")");
     }
-    // Write padding (if necessary)
-    for (int i = bs.size(); i < 32; i++) {
-      indexMax.put((byte) 0);
-    }
-    // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      indexMax.put(bs.get(j));
-    }
+    indexMax.put((byte) (b >> 8));
+    indexMax.put((byte) b);
 
     return this;
   }
@@ -961,54 +942,34 @@ public class Trace {
     return this;
   }
 
-  public Trace totalPairings(final Bytes b) {
+  public Trace totalPairings(final long b) {
     if (filled.get(45)) {
       throw new IllegalStateException("ecdata.TOTAL_PAIRINGS already set");
     } else {
       filled.set(45);
     }
 
-    // Trim array to size
-    Bytes bs = b.trimLeadingZeros();
-    // Sanity check against expected width
-    if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException(
-          "totalPairings has invalid width (" + bs.bitLength() + "bits)");
+    if (b >= 65536L) {
+      throw new IllegalArgumentException("totalPairings has invalid value (" + b + ")");
     }
-    // Write padding (if necessary)
-    for (int i = bs.size(); i < 32; i++) {
-      totalPairings.put((byte) 0);
-    }
-    // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      totalPairings.put(bs.get(j));
-    }
+    totalPairings.put((byte) (b >> 8));
+    totalPairings.put((byte) b);
 
     return this;
   }
 
-  public Trace totalSize(final Bytes b) {
+  public Trace totalSize(final long b) {
     if (filled.get(46)) {
       throw new IllegalStateException("ecdata.TOTAL_SIZE already set");
     } else {
       filled.set(46);
     }
 
-    // Trim array to size
-    Bytes bs = b.trimLeadingZeros();
-    // Sanity check against expected width
-    if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException(
-          "totalSize has invalid width (" + bs.bitLength() + "bits)");
+    if (b >= 65536L) {
+      throw new IllegalArgumentException("totalSize has invalid value (" + b + ")");
     }
-    // Write padding (if necessary)
-    for (int i = bs.size(); i < 32; i++) {
-      totalSize.put((byte) 0);
-    }
-    // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      totalSize.put(bs.get(j));
-    }
+    totalSize.put((byte) (b >> 8));
+    totalSize.put((byte) b);
 
     return this;
   }
@@ -1379,7 +1340,7 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(1)) {
-      accPairings.position(accPairings.position() + 32);
+      accPairings.position(accPairings.position() + 2);
     }
 
     if (!filled.get(0)) {
@@ -1476,7 +1437,7 @@ public class Trace {
     }
 
     if (!filled.get(24)) {
-      indexMax.position(indexMax.position() + 32);
+      indexMax.position(indexMax.position() + 2);
     }
 
     if (!filled.get(25)) {
@@ -1560,11 +1521,11 @@ public class Trace {
     }
 
     if (!filled.get(45)) {
-      totalPairings.position(totalPairings.position() + 32);
+      totalPairings.position(totalPairings.position() + 2);
     }
 
     if (!filled.get(46)) {
-      totalSize.position(totalSize.position() + 32);
+      totalSize.position(totalSize.position() + 2);
     }
 
     if (!filled.get(47)) {

@@ -28,7 +28,6 @@ import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcptOperation;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.log.Log;
 
@@ -118,7 +117,7 @@ public class LogData implements Module {
         .logsData(false)
         .sizeTotal(0)
         .sizeAcc(0)
-        .sizeLimb(UnsignedByte.ZERO)
+        .sizeLimb(0)
         .limb(Bytes.EMPTY)
         .index(0)
         .validateRow();
@@ -135,7 +134,7 @@ public class LogData implements Module {
           .logsData(true)
           .sizeTotal(log.getData().size())
           .sizeAcc(index == indexMax ? log.getData().size() : 16L * (index + 1))
-          .sizeLimb(index == indexMax ? UnsignedByte.of(lastLimbSize) : UnsignedByte.of(16))
+          .sizeLimb(index == indexMax ? lastLimbSize : 16)
           .limb(dataPadded.slice(16 * index, 16))
           .index(index)
           .validateRow();

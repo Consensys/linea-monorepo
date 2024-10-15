@@ -167,7 +167,7 @@ public class BlakeModexpDataOperation extends ModuleOperation {
 
   private void commonTrace(Trace trace, UnsignedByte stamp, int index, Bytes input, int indexMax) {
     trace
-        .stamp(stamp)
+        .stamp(stamp.toInteger())
         .id(id)
         .index(UnsignedByte.of(index))
         .indexMax(UnsignedByte.of(indexMax))

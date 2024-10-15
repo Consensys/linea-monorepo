@@ -82,7 +82,7 @@ public class Trace {
   private final MappedByteBuffer staticGas;
   private final MappedByteBuffer twoLineInstruction;
 
-  static List<ColumnHeader> headers(int length) {
+  public static List<ColumnHeader> headers(int length) {
     return List.of(
         new ColumnHeader("instdecoder.ALPHA", 1, length),
         new ColumnHeader("instdecoder.BILLING_PER_BYTE", 1, length),
@@ -129,7 +129,7 @@ public class Trace {
         new ColumnHeader("instdecoder.NB_REMOVED", 1, length),
         new ColumnHeader("instdecoder.OPCODE", 32, length),
         new ColumnHeader("instdecoder.STATIC_FLAG", 1, length),
-        new ColumnHeader("instdecoder.STATIC_GAS", 8, length),
+        new ColumnHeader("instdecoder.STATIC_GAS", 4, length),
         new ColumnHeader("instdecoder.TWO_LINE_INSTRUCTION", 1, length));
   }
 
@@ -714,11 +714,20 @@ public class Trace {
       filled.set(43);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 256) {
+      throw new IllegalArgumentException("opcode has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 32; i++) {
       opcode.put((byte) 0);
     }
-    opcode.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      opcode.put(bs.get(j));
+    }
 
     return this;
   }
@@ -742,7 +751,13 @@ public class Trace {
       filled.set(45);
     }
 
-    staticGas.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("staticGas has invalid value (" + b + ")");
+    }
+    staticGas.put((byte) (b >> 24));
+    staticGas.put((byte) (b >> 16));
+    staticGas.put((byte) (b >> 8));
+    staticGas.put((byte) b);
 
     return this;
   }
@@ -1136,7 +1151,7 @@ public class Trace {
     }
 
     if (!filled.get(45)) {
-      staticGas.position(staticGas.position() + 8);
+      staticGas.position(staticGas.position() + 4);
     }
 
     if (!filled.get(46)) {
