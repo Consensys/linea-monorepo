@@ -36,6 +36,10 @@ describe("Coordinator restart test suite", () => {
   it.concurrent(
     "When the coordinator restarts it should resume blob submission and finalization",
     async () => {
+      if (process.env.TEST_ENV !== "local") {
+        console.log("Skipping test because it's not running on a local environment.");
+        return;
+      }
       const lineaRollup = config.getLineaRollupContract();
       const l1Provider = config.getL1Provider();
       // await for a finalization to happen on L1
@@ -83,6 +87,11 @@ describe("Coordinator restart test suite", () => {
   it.concurrent(
     "When the coordinator restarts it should resume anchoring",
     async () => {
+      if (process.env.TEST_ENV !== "local") {
+        console.log("Skipping test because it's not running on a local environment.");
+        return;
+      }
+
       const l1Provider = config.getL1Provider();
       const l1MessageSender = await config.getL1AccountManager().generateAccount();
 
