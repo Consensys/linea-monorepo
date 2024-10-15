@@ -2,7 +2,6 @@ import { ethers, Wallet } from "ethers";
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
 import { encodeFunctionCall, etherToWei, waitForEvents } from "./common/utils";
-import { getAndIncreaseFeeData } from "./common/helpers";
 import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
 
 async function sendL1ToL2Message({
@@ -26,7 +25,7 @@ async function sendL1ToL2Message({
     : "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
   const l1Provider = config.getL1Provider();
-  const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await l1Provider.getFeeData());
+  const { maxPriorityFeePerGas, maxFeePerGas } = await l1Provider.getFeeData();
   const nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
   const tx = await lineaRollup.sendMessage(destinationAddress, valueAndFee, calldata, {
     value: valueAndFee,
@@ -64,7 +63,7 @@ async function sendL2ToL1Message({
 
   const destinationAddress = withCalldata ? await dummyContract.getAddress() : l1Account.address;
   const nonce = await l2Provider.getTransactionCount(l2Account.address, "pending");
-  const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await l2Provider.getFeeData());
+  const { maxPriorityFeePerGas, maxFeePerGas } = await l2Provider.getFeeData();
 
   const tx = await l2MessageService.sendMessage(destinationAddress, valueAndFee, calldata, {
     value: valueAndFee,

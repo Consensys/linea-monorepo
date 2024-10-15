@@ -1,5 +1,4 @@
 /* eslint-disable no-var */
-import { getAndIncreaseFeeData } from "../../common/helpers";
 import { config } from "../tests-config";
 import { deployContract } from "../../common/deployments";
 import { DummyContract__factory } from "../../typechain";
@@ -29,7 +28,7 @@ export default async (): Promise<void> => {
   const fee = etherToWei("3");
   const to = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
   const calldata = "0x";
-  const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await l1JsonRpcProvider.getFeeData());
+  const { maxPriorityFeePerGas, maxFeePerGas } = await l1JsonRpcProvider.getFeeData();
   const tx = await lineaRollup.sendMessage(to, fee, calldata, { value, maxPriorityFeePerGas, maxFeePerGas });
   await tx.wait();
 

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 import { JsonRpcProvider } from "ethers";
-import { getAndIncreaseFeeData } from "./common/helpers";
 import {
   getMessageSentEventFromLogs,
   sendMessage,
@@ -31,8 +30,11 @@ describe("Submission and finalization test suite", () => {
 
     // Send L1 messages
     const l1MessagesPromises = [];
-    let l1MessageSenderNonce = await l1Provider.getTransactionCount(l1MessageSender.address);
-    const l1Fees = getAndIncreaseFeeData(await l1Provider.getFeeData());
+    // eslint-disable-next-line prefer-const
+    let [l1MessageSenderNonce, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
+      l1Provider.getTransactionCount(l1MessageSender.address),
+      l1Provider.getFeeData(),
+    ]);
 
     for (let i = 0; i < 5; i++) {
       l1MessagesPromises.push(
@@ -47,8 +49,8 @@ describe("Submission and finalization test suite", () => {
           {
             value: messageValue,
             nonce: l1MessageSenderNonce,
-            maxPriorityFeePerGas: l1Fees[0],
-            maxFeePerGas: l1Fees[1],
+            maxPriorityFeePerGas,
+            maxFeePerGas,
           },
         ),
       );

@@ -1,12 +1,11 @@
 import * as fs from "fs";
 import assert from "assert";
-import { BaseContract, BlockTag, ContractTransactionReceipt, TransactionReceipt, Wallet, ethers } from "ethers";
+import { BaseContract, BlockTag, TransactionReceipt, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageService, LineaRollup } from "../typechain";
 import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
-import { getAndIncreaseFeeData } from "./helpers";
 
 export function etherToWei(amount: string): bigint {
   return ethers.parseEther(amount.toString());
@@ -160,19 +159,8 @@ export async function waitForFile(
   throw new Error("File check timed out");
 }
 
-export async function sendXTransactions(
-  signer: Wallet,
-  transactionRequest: ethers.TransactionRequest,
-  numberOfTransactions: number,
-) {
-  for (let i = 0; i < numberOfTransactions; i++) {
-    const tx = await signer.sendTransaction(transactionRequest);
-    await tx.wait();
-  }
-}
-
 export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wallet, pollingInterval: number = 1_000) {
-  const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await signer.provider!.getFeeData());
+  const { maxPriorityFeePerGas, maxFeePerGas } = await signer.provider!.getFeeData();
   const transactionRequest = {
     to: signer.address,
     value: etherToWei("0.000001"),
@@ -238,18 +226,6 @@ export function getMessageSentEventFromLogs<T extends BaseContract>(
     });
 }
 
-export async function waitForMessageAnchoring(
-  contract: L2MessageService,
-  messageHash: string,
-  pollingInterval: number,
-) {
-  let messageStatus = await contract.inboxL1L2MessageStatus(messageHash);
-  while (messageStatus === 0n) {
-    messageStatus = await contract.inboxL1L2MessageStatus(messageHash);
-    await wait(pollingInterval);
-  }
-}
-
 export const sendMessage = async <T extends LineaRollup | L2MessageService>(
   signer: Wallet,
   contract: T,
@@ -269,48 +245,6 @@ export const sendMessage = async <T extends LineaRollup | L2MessageService>(
     throw new Error("Transaction receipt is undefined");
   }
   return receipt;
-};
-
-export const sendMessagesForNSeconds = async <T extends LineaRollup | L2MessageService>(
-  provider: ethers.JsonRpcProvider,
-  signer: Wallet,
-  contract: T,
-  duration: number,
-  args: SendMessageArgs,
-  overrides?: PayableOverrides,
-): Promise<ContractTransactionReceipt[]> => {
-  let nonce = await provider.getTransactionCount(signer.address);
-
-  const currentDate = new Date();
-  const endDate = increaseDate(currentDate, duration);
-
-  const sendMessagePromises: Promise<TransactionReceipt | null>[] = [];
-  let currentTime = new Date().getTime();
-
-  const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await provider.getFeeData());
-  while (currentTime < endDate.getTime()) {
-    sendMessagePromises.push(
-      sendMessage(signer, contract.connect(signer), args, {
-        ...overrides,
-        maxPriorityFeePerGas,
-        maxFeePerGas,
-        nonce,
-      }).catch(() => {
-        return null;
-      }),
-    );
-    nonce++;
-
-    if (sendMessagePromises.length % 10 === 0) {
-      await wait(10_000);
-    }
-    currentTime = new Date().getTime();
-  }
-
-  const result = (await Promise.all(sendMessagePromises)).filter(
-    (receipt) => receipt !== null,
-  ) as ContractTransactionReceipt[];
-  return result;
 };
 
 export async function execDockerCommand(command: string, containerName: string): Promise<string> {

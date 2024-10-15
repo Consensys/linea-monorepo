@@ -8,7 +8,6 @@ import {
   wait,
 } from "./common/utils";
 import { config } from "./config/tests-config";
-import { getAndIncreaseFeeData } from "./common/helpers";
 
 let testsWaitingForRestart = 0;
 const TOTAL_TESTS_WAITING = 2;
@@ -114,7 +113,7 @@ describe("Coordinator restart test suite", () => {
 
       const l1MessagesPromises = [];
       let l1MessageSenderNonce = await l1Provider.getTransactionCount(l1MessageSender.address);
-      const l1Fees = getAndIncreaseFeeData(await l1Provider.getFeeData());
+      const { maxPriorityFeePerGas, maxFeePerGas } = await l1Provider.getFeeData();
 
       for (let i = 0; i < 5; i++) {
         l1MessagesPromises.push(
@@ -129,8 +128,8 @@ describe("Coordinator restart test suite", () => {
             {
               value: messageValue,
               nonce: l1MessageSenderNonce,
-              maxPriorityFeePerGas: l1Fees[0],
-              maxFeePerGas: l1Fees[1],
+              maxPriorityFeePerGas,
+              maxFeePerGas,
             },
           ),
         );
@@ -157,6 +156,7 @@ describe("Coordinator restart test suite", () => {
 
       // Restart Coordinator
       await waitForCoordinatorRestart();
+      const l1Fees = await l1Provider.getFeeData();
 
       // Send more messages L1 -> L2
       for (let i = 0; i < 5; i++) {
@@ -172,8 +172,8 @@ describe("Coordinator restart test suite", () => {
             {
               value: messageValue,
               nonce: l1MessageSenderNonce,
-              maxPriorityFeePerGas: l1Fees[0],
-              maxFeePerGas: l1Fees[1],
+              maxPriorityFeePerGas: l1Fees.maxPriorityFeePerGas,
+              maxFeePerGas: l1Fees.maxFeePerGas,
             },
           ),
         );
