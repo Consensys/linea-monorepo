@@ -20,6 +20,13 @@ interface JsonRpcRequest {
     }
 }
 
+internal data class JsonRpcRequestData(
+  @JsonProperty("jsonrpc") override val jsonrpc: String,
+  @JsonProperty("id") override val id: Any,
+  @JsonProperty("method") override val method: String,
+  @JsonProperty("params") override val params: Any
+) : JsonRpcRequest
+
 data class JsonRpcRequestListParams(
   @JsonProperty("jsonrpc") override val jsonrpc: String,
   @JsonProperty("id") override val id: Any,
