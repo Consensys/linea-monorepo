@@ -86,7 +86,7 @@ jobs:
             corset=corset/
             constraints=constraints/
           platforms: linux/amd64
-          load: ${{ !env.PUSH_IMAGE }}
+          load: true
           push: ${{ env.PUSH_IMAGE }}
           tags: ${{ env.TAGS }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
