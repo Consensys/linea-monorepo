@@ -112,7 +112,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			finalBlock := &po.BlocksData[len(po.BlocksData)-1]
 			piq, err := public_input.ExecutionSerializable{
 				L2MsgHashes:            l2MessageHashes,
-				FinalStateRootHash:     po.PublicInput.Hex(), // TODO @tabaie make sure this is the right value
+				FinalStateRootHash:     finalBlock.RootHash.Hex(),
 				FinalBlockNumber:       uint64(cf.FinalBlockNumber),
 				FinalBlockTimestamp:    finalBlock.TimeStamp,
 				FinalRollingHash:       cf.L1RollingHash,
