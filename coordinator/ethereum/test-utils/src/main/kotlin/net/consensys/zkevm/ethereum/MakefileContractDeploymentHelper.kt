@@ -75,7 +75,7 @@ fun executeCommand(
 }
 
 private val lineaRollupAddressPattern = Pattern.compile(
-  "^LineaRollupV(?:[0-9]+)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
+  "^LineaRollup(?:[a-zA-Z0-9]*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
 )
 private val l2MessageServiceAddressPattern = Pattern.compile(
   "^L2MessageService deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
