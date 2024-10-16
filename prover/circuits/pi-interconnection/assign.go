@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -121,7 +122,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		}
 
 		if prevShnarf = shnarf.Compute(); !bytes.Equal(prevShnarf, shnarfs[i]) {
-			err = errors.New("shnarf mismatch")
+			err = fmt.Errorf("shnarf mismatch, i:%d, shnarf: %x, prevShnarf: %x, ", i, shnarfs[i], prevShnarf)
 			return
 		}
 	}
@@ -216,13 +217,30 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		a.ExecutionFPIQ[i] = executionFPI.ToSnarkType().FunctionalPublicInputQSnark
 	}
 	// consistency check
-	if executionFPI.FinalBlockTimestamp != aggregationFPI.FinalBlockTimestamp ||
-		executionFPI.FinalBlockNumber != aggregationFPI.FinalBlockNumber ||
-		executionFPI.FinalRollingHash != aggregationFPI.FinalRollingHash ||
-		executionFPI.FinalRollingHashNumber != aggregationFPI.FinalRollingHashNumber {
-		err = errors.New("final execution values not matching final aggregation values")
+	if executionFPI.FinalBlockTimestamp != aggregationFPI.FinalBlockTimestamp {
+		err = fmt.Errorf("final block timestamps do not match: execution=%x, aggregation=%x",
+			executionFPI.FinalBlockTimestamp, aggregationFPI.FinalBlockTimestamp)
 		return
 	}
+	if executionFPI.FinalBlockNumber != aggregationFPI.FinalBlockNumber {
+		err = fmt.Errorf("final block numbers do not match: execution=%v, aggregation=%x",
+			executionFPI.FinalBlockNumber, aggregationFPI.FinalBlockNumber)
+		return
+	}
+	if executionFPI.FinalRollingHash != [32]byte{} {
+		if executionFPI.FinalRollingHash != aggregationFPI.FinalRollingHash {
+			err = fmt.Errorf("final rolling hashes do not match: execution=%x, aggregation=%x",
+				executionFPI.FinalRollingHash, aggregationFPI.FinalRollingHash)
+			return
+		}
+
+		if executionFPI.FinalRollingHashNumber != aggregationFPI.FinalRollingHashNumber {
+			err = fmt.Errorf("final rolling hash numbers do not match: execution=%v, aggregation=%v",
+				executionFPI.FinalRollingHashNumber, aggregationFPI.FinalRollingHashNumber)
+			return
+		}
+	}
+
 	if len(l2MessageHashes) > maxNbL2MessageHashes {
 		err = errors.New("too many L2 messages")
 		return
