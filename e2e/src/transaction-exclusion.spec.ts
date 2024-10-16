@@ -1,129 +1,87 @@
-import { beforeAll, describe, expect, it } from "@jest/globals";
-import { TransactionExclusionClient } from "./utils/utils";
+import { describe, expect, it } from "@jest/globals";
+import { config } from "./config/tests-config";
+import { etherToWei, getTransactionHash, getWallet, TransactionExclusionClient, wait } from "./common/utils";
+import { TransactionRequest } from "ethers";
 
-const transactionExclusionTestSuite = (title: string) => {
-  describe(title, () => {
-    let transactionExclusionClient: TransactionExclusionClient;
-    const rejectedBlockNumber = 12345;
-    const overflows = [
-      {
-        module: "ADD",
-        count: 402,
-        limit: 70,
-      },
-      {
-        module: "MUL",
-        count: 587,
-        limit: 400,
-      },
-    ];
-    const transactionRLP =
-      "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8";
-    const expectedTxHash = "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7";
-    const expectedNonce = 100;
-    const expectedFromAddress = "0x4d144d7b9c96b26361d6ac74dd1d8267edca4fc2";
+const l2AccountManager = config.getL2AccountManager();
 
-    beforeAll(async () => {
-      if (TRANSACTION_EXCLUSION_ENDPOINT != null) {
-        transactionExclusionClient = new TransactionExclusionClient(TRANSACTION_EXCLUSION_ENDPOINT);
-      }
-    });
-
-    it("Should save the first rejected transaction from P2P without rejected block number", async () => {
-      if (transactionExclusionClient == null) {
-        // Skip this test for dev and uat environments
+describe("Transaction exclusion test suite", () => {
+  it.concurrent(
+    "Should get the status of the rejected transaction reported from Besu RPC node",
+    async () => {
+      if (!config.getTransactionExclusionEndpoint()) {
+        // Skip this test if transaction exclusion endpoint is not defined
         return;
       }
 
-      const rejectedTimestamp = new Date().toISOString();
-      const saveResponse = await transactionExclusionClient.saveRejectedTransactionV1(
-        "P2P",
-        rejectedTimestamp,
-        null,
-        transactionRLP,
-        "Transaction line count for module ADD=402 is above the limit 1000 (from e2e test)",
-        overflows,
-      );
+      const transactionExclusionClient = new TransactionExclusionClient(config.getTransactionExclusionEndpoint()!!);
+      const l2Account = await l2AccountManager.generateAccount();
+      const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2BesuNodeProvider()!!);
+      const testContract = config.getL2TestContract(l2AccountLocal)!!;
 
-      console.log(`saveResponse: ${JSON.stringify(saveResponse)}`);
-      expect(saveResponse.result.status).toStrictEqual("SAVED");
-      expect(saveResponse.result.txHash).toStrictEqual(expectedTxHash);
+      // This shall be rejected by the Besu node due to traces module limit overflow (as reduced traces limits)
+      let rejectedTxHash = "";
+      try {
+        const txRequest: TransactionRequest = {
+          to: await testContract.getAddress(),
+          data: testContract.interface.encodeFunctionData("testAddmod", [13000, 31]),
+          maxPriorityFeePerGas: etherToWei("0.000000001"), // 1 Gwei
+          maxFeePerGas: etherToWei("0.00000001"), // 10 Gwei
+        };
+        rejectedTxHash = await getTransactionHash(txRequest, l2AccountLocal);
+        await l2AccountLocal.sendTransaction(txRequest);
+      } catch (err) {
+        // This shall return error with traces limit overflow
+        console.log(`sendTransaction expected err: ${JSON.stringify(err)}`);
+      }
 
-      const getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(expectedTxHash);
+      expect(!!rejectedTxHash).toBeTruthy();
+      console.log(`rejectedTxHash (RPC): ${rejectedTxHash}`);
 
-      console.log(`getResponse: ${JSON.stringify(getResponse)}`);
-      expect(getResponse.result.txHash).toStrictEqual(expectedTxHash);
-      expect(getResponse.result.txRejectionStage).toStrictEqual("P2P");
-      expect(getResponse.result.from).toStrictEqual(expectedFromAddress);
-      expect(getResponse.result.nonce).toStrictEqual(`0x${expectedNonce.toString(16)}`);
-      expect(getResponse.result.blockNumber).toBeUndefined();
-      expect(getResponse.result.timestamp).toStrictEqual(rejectedTimestamp);
-    }, 10_000);
+      let getResponse;
+      do {
+        await wait(5_000);
+        getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash);
+      } while (!getResponse?.result);
 
-    it("Should save the rejected transaction from SEQUENCER with same txHash but different reason message", async () => {
-      if (transactionExclusionClient == null) {
-        // Skip this test for dev and uat environments
+      expect(getResponse.result.txHash).toStrictEqual(rejectedTxHash);
+      expect(getResponse.result.txRejectionStage).toStrictEqual("RPC");
+      expect(getResponse.result.from.toLowerCase()).toStrictEqual(l2AccountLocal.address.toLowerCase());
+    },
+    120_000,
+  );
+
+  it.concurrent(
+    "Should get the status of the rejected transaction reported from Besu SEQUENCER node",
+    async () => {
+      if (!config.getTransactionExclusionEndpoint()) {
+        // Skip this test if transaction exclusion endpoint is not defined
         return;
       }
 
-      const rejectedTimestamp = new Date().toISOString();
-      const saveResponse = await transactionExclusionClient.saveRejectedTransactionV1(
-        "SEQUENCER",
-        rejectedTimestamp,
-        rejectedBlockNumber,
-        transactionRLP,
-        "Transaction line count for module MUL=587 is above the limit 400 (from e2e test)",
-        overflows,
-      );
+      const transactionExclusionClient = new TransactionExclusionClient(config.getTransactionExclusionEndpoint()!!);
+      const l2Account = await l2AccountManager.generateAccount();
+      const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2SequencerProvider()!!);
+      const testContract = config.getL2TestContract(l2AccountLocal);
 
-      console.log(`saveResponse: ${JSON.stringify(saveResponse)}`);
-      expect(saveResponse.result.status).toStrictEqual("SAVED");
-      expect(saveResponse.result.txHash).toStrictEqual(expectedTxHash);
+      console.log(`nonce: ${JSON.stringify(await l2AccountLocal.getNonce())}`);
 
-      const getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(expectedTxHash);
+      // This shall be rejected by sequencer due to traces module limit overflow (as reduced traces limits)
+      const tx = await testContract!!.connect(l2AccountLocal).testAddmod(13000, 31);
 
-      console.log(`getResponse: ${JSON.stringify(getResponse)}`);
-      expect(getResponse.result.txHash).toStrictEqual(expectedTxHash);
+      const rejectedTxHash = tx.hash;
+      console.log(`rejectedTxHash (SEQUENCER): ${rejectedTxHash}`);
+
+      let getResponse;
+      do {
+        await wait(5_000);
+        getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash);
+      } while (!getResponse?.result);
+
+      expect(getResponse.result.txHash).toStrictEqual(rejectedTxHash);
       expect(getResponse.result.txRejectionStage).toStrictEqual("SEQUENCER");
-      expect(getResponse.result.from).toStrictEqual(expectedFromAddress);
-      expect(getResponse.result.nonce).toStrictEqual(`0x${expectedNonce.toString(16)}`);
-      expect(getResponse.result.blockNumber).toStrictEqual(`0x${rejectedBlockNumber.toString(16)}`);
-      expect(getResponse.result.timestamp).toStrictEqual(rejectedTimestamp);
-    }, 10_000);
-
-    it("Should return DUPLICATE_ALREADY_SAVED_BEFORE when saving the rejected transaction from SEQUENCER with same txHash and reason message", async () => {
-      if (transactionExclusionClient == null) {
-        // Skip this test for dev and uat environments
-        return;
-      }
-
-      const saveResponse = await transactionExclusionClient.saveRejectedTransactionV1(
-        "SEQUENCER",
-        new Date().toISOString(),
-        rejectedBlockNumber,
-        transactionRLP,
-        "Transaction line count for module MUL=587 is above the limit 400 (from e2e test)",
-        overflows,
-      );
-
-      console.log(`saveResponse: ${JSON.stringify(saveResponse)}`);
-      expect(saveResponse.result.status).toStrictEqual("DUPLICATE_ALREADY_SAVED_BEFORE");
-      expect(saveResponse.result.txHash).toStrictEqual(expectedTxHash);
-    }, 10_000);
-
-    it("Should return result as null when getting the rejected transaction with unknown transaction hash", async () => {
-      if (transactionExclusionClient == null) {
-        // Skip this test for dev and uat environments
-        return;
-      }
-
-      const unknownTxHash = "0x7b37edcaacaceff0dc70a9ace28bd8e2284021c2df63d8e6b4f2f7673f032977";
-      const getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(unknownTxHash);
-
-      console.log(`getResponse: ${JSON.stringify(getResponse)}`);
-      expect(getResponse.result).toStrictEqual(null)
-    }, 10_000);
-  });
-};
-
-export default transactionExclusionTestSuite;
+      expect(getResponse.result.from.toLowerCase()).toStrictEqual(l2AccountLocal.address.toLowerCase());
+    },
+    120_000,
+  );
+});

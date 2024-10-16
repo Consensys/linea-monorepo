@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import assert from "assert";
-import { BaseContract, BlockTag, TransactionReceipt, Wallet, ethers } from "ethers";
+import { BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageService, LineaRollup } from "../typechain";
@@ -70,6 +70,68 @@ export class RollupGetZkEVMBlockNumberClient {
     assert("result" in data);
     return Number.parseInt(data.result);
   }
+}
+
+export class TransactionExclusionClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async getTransactionExclusionStatusV1(txHash: String): Promise<any> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_getTransactionExclusionStatusV1",
+        params: [txHash],
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    return await response.json();
+  }
+
+  public async saveRejectedTransactionV1(
+    txRejectionStage: String,
+    timestamp: String, // ISO-8601
+    blockNumber: Number | null,
+    transactionRLP: String,
+    reasonMessage: String,
+    overflows: { module: String; count: Number; limit: Number }[],
+  ): Promise<any> {
+    let params: any = {
+      txRejectionStage,
+      timestamp,
+      transactionRLP,
+      reasonMessage,
+      overflows,
+    };
+    if (blockNumber != null) {
+      params = {
+        ...params,
+        blockNumber,
+      };
+    }
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_saveRejectedTransactionV1",
+        params: params,
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    return await response.json();
+  }
+}
+
+export async function getTransactionHash(txRequest: TransactionRequest, signer: Wallet): Promise<string> {
+  const rawTransaction = await signer.populateTransaction(txRequest);
+  const signature = await signer.signTransaction(rawTransaction);
+  return ethers.keccak256(signature);
 }
 
 export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag): Promise<ethers.Block | null> {
