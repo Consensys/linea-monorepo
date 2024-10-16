@@ -109,22 +109,6 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "expected",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "actual",
-        "type": "uint256"
-      }
-    ],
-    "name": "FinalBlockDoesNotMatchShnarfFinalBlock",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
         "name": "finalBlockNumber",
         "type": "uint256"
       },
@@ -256,9 +240,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "pauseType",
-        "type": "uint256"
+        "type": "uint8"
       }
     ],
     "name": "IsNotPaused",
@@ -267,9 +251,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "pauseType",
-        "type": "uint256"
+        "type": "uint8"
       }
     ],
     "name": "IsPaused",
@@ -514,6 +498,11 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "ZeroHashNotAllowed",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -524,31 +513,6 @@
       }
     ],
     "name": "AmountUsedInPeriodReset",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "lastBlockFinalized",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "startingRootHash",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "finalRootHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "BlocksVerificationDone",
     "type": "event"
   },
   {
@@ -581,7 +545,7 @@
       {
         "indexed": false,
         "internalType": "bytes32",
-        "name": "finalRootHash",
+        "name": "finalStateRootHash",
         "type": "bytes32"
       }
     ],
@@ -614,6 +578,12 @@
         "internalType": "bytes32",
         "name": "shnarf",
         "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "finalStateRootHash",
+        "type": "bytes32"
       }
     ],
     "name": "DataSubmittedV3",
@@ -631,11 +601,30 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "gatewayOperatorAddress",
+        "name": "fallbackOperator",
         "type": "address"
       }
     ],
-    "name": "GatewayOperatorRoleGranted",
+    "name": "FallbackOperatorAddressSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "fallbackOperator",
+        "type": "address"
+      }
+    ],
+    "name": "FallbackOperatorRoleGranted",
     "type": "event"
   },
   {
@@ -800,15 +789,34 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "enum IPauseManager.PauseType",
+        "name": "pauseType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "PauseTypeRoleSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "address",
         "name": "messageSender",
         "type": "address"
       },
       {
         "indexed": true,
-        "internalType": "uint256",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "pauseType",
-        "type": "uint256"
+        "type": "uint8"
       }
     ],
     "name": "Paused",
@@ -944,15 +952,34 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "enum IPauseManager.PauseType",
+        "name": "unPauseType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "UnPauseTypeRoleSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "address",
         "name": "messageSender",
         "type": "address"
       },
       {
         "indexed": true,
-        "internalType": "uint256",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "pauseType",
-        "type": "uint256"
+        "type": "uint8"
       }
     ],
     "name": "UnPaused",
@@ -991,45 +1018,6 @@
   },
   {
     "inputs": [],
-    "name": "BLOB_SUBMISSION_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "CALLDATA_SUBMISSION_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "CONTRACT_VERSION",
     "outputs": [
       {
@@ -1049,45 +1037,6 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALIZATION_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALIZE_WITHOUT_PROOF_ROLE",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "GENERAL_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
       }
     ],
     "stateMutability": "view",
@@ -1122,45 +1071,6 @@
   {
     "inputs": [],
     "name": "INBOX_STATUS_UNKNOWN",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "INITIATE_TOKEN_BRIDGING_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "L1_L2_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "L2_L1_PAUSE_TYPE",
     "outputs": [
       {
         "internalType": "uint8",
@@ -1238,7 +1148,20 @@
   },
   {
     "inputs": [],
-    "name": "PAUSE_FINALIZE_WITHPROOF_ROLE",
+    "name": "PAUSE_BLOB_SUBMISSION_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PAUSE_FINALIZATION_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -1252,19 +1175,6 @@
   {
     "inputs": [],
     "name": "PAUSE_L1_L2_ROLE",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "PAUSE_L2_BLOB_SUBMISSION_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -1316,7 +1226,20 @@
   },
   {
     "inputs": [],
-    "name": "UNPAUSE_FINALIZE_WITHPROOF_ROLE",
+    "name": "UNPAUSE_BLOB_SUBMISSION_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "UNPAUSE_FINALIZATION_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -1330,19 +1253,6 @@
   {
     "inputs": [],
     "name": "UNPAUSE_L1_L2_ROLE",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "UNPAUSE_L2_BLOB_SUBMISSION_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -1713,6 +1623,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "fallbackOperator",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes",
@@ -1729,11 +1652,6 @@
           {
             "internalType": "bytes32",
             "name": "parentStateRootHash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "lastFinalizedShnarf",
             "type": "bytes32"
           },
           {
@@ -1819,27 +1737,14 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct ILineaRollup.FinalizationDataV2",
+        "internalType": "struct ILineaRollup.FinalizationDataV3",
         "name": "_finalizationData",
         "type": "tuple"
       }
     ],
-    "name": "finalizeBlocksWithProof",
+    "name": "finalizeBlocks",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "gatewayOperator",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -1976,7 +1881,7 @@
           {
             "components": [
               {
-                "internalType": "uint8",
+                "internalType": "enum IPauseManager.PauseType",
                 "name": "pauseType",
                 "type": "uint8"
               },
@@ -1993,7 +1898,7 @@
           {
             "components": [
               {
-                "internalType": "uint8",
+                "internalType": "enum IPauseManager.PauseType",
                 "name": "pauseType",
                 "type": "uint8"
               },
@@ -2009,7 +1914,12 @@
           },
           {
             "internalType": "address",
-            "name": "gatewayOperator",
+            "name": "fallbackOperator",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "defaultAdmin",
             "type": "address"
           }
         ],
@@ -2045,7 +1955,7 @@
   {
     "inputs": [
       {
-        "internalType": "uint8",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "_pauseType",
         "type": "uint8"
       }
@@ -2128,7 +2038,7 @@
   {
     "inputs": [
       {
-        "internalType": "uint8",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "_pauseType",
         "type": "uint8"
       }
@@ -2192,7 +2102,7 @@
       {
         "components": [
           {
-            "internalType": "uint8",
+            "internalType": "enum IPauseManager.PauseType",
             "name": "pauseType",
             "type": "uint8"
           },
@@ -2209,7 +2119,7 @@
       {
         "components": [
           {
-            "internalType": "uint8",
+            "internalType": "enum IPauseManager.PauseType",
             "name": "pauseType",
             "type": "uint8"
           },
@@ -2225,7 +2135,7 @@
       },
       {
         "internalType": "address",
-        "name": "_gatewayOperator",
+        "name": "_fallbackOperator",
         "type": "address"
       }
     ],
@@ -2363,7 +2273,7 @@
         "type": "uint256"
       }
     ],
-    "name": "setGatewayOperator",
+    "name": "setFallbackOperator",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -2576,7 +2486,7 @@
   {
     "inputs": [
       {
-        "internalType": "uint8",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "_pauseType",
         "type": "uint8"
       }

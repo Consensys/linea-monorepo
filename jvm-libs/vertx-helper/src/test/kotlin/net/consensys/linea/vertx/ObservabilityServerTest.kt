@@ -8,17 +8,15 @@ import io.restassured.specification.RequestSpecification
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import net.consensys.linea.async.get
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import kotlin.random.Random
 
 @ExtendWith(VertxExtension::class)
 class ObservabilityServerTest {
-  private var port: Int = 0
   private lateinit var monitorRequestSpecification: RequestSpecification
   private lateinit var observabilityServerDeploymentId: String
 
@@ -26,16 +24,41 @@ class ObservabilityServerTest {
   fun beforeEach(vertx: Vertx) {
     val (newDeploymentId, newPort) = runServerOnARandomPort(vertx)
     observabilityServerDeploymentId = newDeploymentId
-    port = newPort
     monitorRequestSpecification =
       RequestSpecBuilder()
-        .setBaseUri("http://localhost:$port/")
+        .setBaseUri("http://localhost:$newPort/")
         .build()
   }
 
   @AfterEach
   fun afterEach(vertx: Vertx) {
     vertx.undeploy(observabilityServerDeploymentId).get()
+  }
+
+  @Test
+  fun `when no port is defined it shall start server at random port`(vertx: Vertx) {
+    val observabilityServer = ObservabilityServer(
+      ObservabilityServer.Config(
+        applicationName = "test",
+        port = 0 // random port assigned by underlying OS
+      )
+    )
+    val deploymentId = vertx.deployVerticle(observabilityServer).get()
+
+    assertThat(observabilityServer.port).isGreaterThan(0)
+    RestAssured.given()
+      .spec(
+        RequestSpecBuilder()
+          .setBaseUri("http://localhost:${(observabilityServer.port)}/")
+          .build()
+      )
+      .When {
+        get("/live")
+      }
+      .then()
+      .statusCode(200)
+
+    vertx.undeploy(deploymentId).get()
   }
 
   @Test
@@ -80,27 +103,17 @@ class ObservabilityServerTest {
       .When {
         get("/metrics")
       }
-      .also { Assertions.assertThat(it.body.asString()).contains("vertx_http_server_response_bytes_bucket") }
+      .also { assertThat(it.body.asString()).contains("vertx_http_server_response_bytes_bucket") }
       .then()
       .statusCode(200)
       .contentType(ContentType.TEXT)
   }
 
   private fun runServerOnARandomPort(vertx: Vertx): Pair<String, Int> {
-    val maxAttempts = 3
-    var attempts = 0
-    while (attempts < maxAttempts) {
-      val randomPort = Random.nextInt(1000, UShort.MAX_VALUE.toInt())
-      try {
-        val observabilityServer = ObservabilityServer(
-          ObservabilityServer.Config(applicationName = "test", port = randomPort)
-        )
-        val deploymentId = vertx.deployVerticle(observabilityServer).get()
-        return deploymentId to randomPort
-      } catch (_: Exception) {
-        attempts += 1
-      }
-    }
-    throw RuntimeException("Couldn't start observability server on a random port after $maxAttempts attempts!")
+    val observabilityServer = ObservabilityServer(
+      ObservabilityServer.Config(applicationName = "test")
+    )
+    val deploymentId = vertx.deployVerticle(observabilityServer).get()
+    return deploymentId to observabilityServer.port
   }
 }
