@@ -48,7 +48,7 @@ jobs:
           echo "DEVELOP_TAG=${{ inputs.develop_tag }}" >> $GITHUB_ENV
           echo "IMAGE_NAME=${{ inputs.image_name }}" >> $GITHUB_ENV
           echo "PUSH_IMAGE=${{ inputs.push_image }}" >> $GITHUB_ENV
-          echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }},${{ env.IMAGE_NAME }}:${{ env.DEVELOP_TAG }}" >> $GITHUB_ENV
+          echo "TAGS=${{ inputs.image_name }}:${{ inputs.commit_tag }},${{ inputs.image_name }}:${{ inputs.develop_tag }}" >> $GITHUB_ENV
       - name: Set environment variables for manual workflow_dispatch
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
@@ -56,7 +56,7 @@ jobs:
           echo DEVELOP_TAG=develop >> $GITHUB_ENV
           echo "IMAGE_NAME=consensys/linea-traces-api-facade" >> $GITHUB_ENV
           echo "PUSH_IMAGE=${{ inputs.push_image }}" >> $GITHUB_ENV
-          echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}" >> $GITHUB_ENV
+          echo "TAGS=${{ inputs.image_name }}:${{ inputs.commit_tag }}" >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v4
         with:
