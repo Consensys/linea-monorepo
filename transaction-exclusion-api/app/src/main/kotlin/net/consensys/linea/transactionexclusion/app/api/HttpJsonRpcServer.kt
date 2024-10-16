@@ -18,6 +18,12 @@ class HttpJsonRpcServer(
 ) : AbstractVerticle() {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private lateinit var httpServer: HttpServer
+  val bindedPort: Int
+    get() = if (this::httpServer.isInitialized) {
+      httpServer.actualPort()
+    } else {
+      throw IllegalStateException("Http server not started")
+    }
 
   override fun start(startPromise: Promise<Void>) {
     val options = HttpServerOptions().setPort(port.toInt()).setReusePort(true)

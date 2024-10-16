@@ -72,6 +72,8 @@ class TransactionExclusionApp(config: AppConfig) {
   private val transactionExclusionService: TransactionExclusionServiceV1
   private val rejectedTransactionCleanupService: RejectedTransactionCleanupService
   private val micrometerMetricsFacade: MicrometerMetricsFacade
+  val apiBindedPort: Int
+    get() = api.bindedPort
 
   init {
     log.debug("System properties: {}", System.getProperties())
