@@ -45,7 +45,7 @@ class JsonRpcRequestRetryer(
   private val vertx: Vertx,
   private val delegate: JsonRpcClient,
   private val config: Config,
-  private val requestObjectMapper: ObjectMapper = VertxHttpJsonRpcClient.objectMapper,
+  private val requestObjectMapper: ObjectMapper = objectMapper,
   private val log: Logger = LogManager.getLogger(JsonRpcRequestRetryer::class.java),
   private val failuresLogLevel: Level = Level.WARN
 ) : JsonRpcClientWithRetries {
