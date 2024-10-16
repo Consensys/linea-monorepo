@@ -75,8 +75,9 @@ data class JsonRpcError(
   @JsonProperty("message") val message: String,
   @JsonProperty("data") val data: Any? = null
 ) {
-
-  inline fun asException() = JsonRpcErrorException(code, message, data.toString())
+  // inlining for better stacktrace
+  @Suppress("NOTHING_TO_INLINE")
+  inline fun asException() = JsonRpcErrorResponseException(code, message, data)
 
   companion object {
     @JvmStatic
@@ -103,7 +104,12 @@ data class JsonRpcError(
 }
 
 class JsonRpcErrorException(
+  override val message: String?,
+  val httpStatusCode: Int? = null
+) : RuntimeException(message)
+
+class JsonRpcErrorResponseException(
   val rpcErrorCode: Int,
   val rpcErrorMessage: String,
-  val rpcErrorData: Any?
+  val rpcErrorData: Any? = null
 ) : RuntimeException("code=$rpcErrorCode message=$rpcErrorMessage errorData=$rpcErrorData")

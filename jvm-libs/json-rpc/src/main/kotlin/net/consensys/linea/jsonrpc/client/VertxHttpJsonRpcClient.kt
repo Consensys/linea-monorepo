@@ -13,10 +13,11 @@ import io.vertx.core.http.HttpClient
 import io.vertx.core.http.HttpClientResponse
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.http.RequestOptions
-import io.vertx.core.json.JsonObject
 import net.consensys.linea.jsonrpc.JsonRpcError
+import net.consensys.linea.jsonrpc.JsonRpcErrorException
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequest
+import net.consensys.linea.jsonrpc.JsonRpcRequestData
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import net.consensys.linea.metrics.micrometer.SimpleTimerCapture
 import org.apache.logging.log4j.Level
@@ -29,7 +30,7 @@ class VertxHttpJsonRpcClient(
   private val httpClient: HttpClient,
   private val endpoint: URL,
   private val meterRegistry: MeterRegistry,
-  private val requestObjectMapper: ObjectMapper = objectMapper,
+  private val requestParamsObjectMapper: ObjectMapper = objectMapper,
   private val responseObjectMapper: ObjectMapper = objectMapper,
   private val log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
   private val requestResponseLogLevel: Level = Level.TRACE,
@@ -40,11 +41,22 @@ class VertxHttpJsonRpcClient(
     setAbsoluteURI(endpoint)
   }
 
+  private fun serializeRequest(request: JsonRpcRequest): String {
+    return requestEnvelopeObjectMapper.writeValueAsString(
+      JsonRpcRequestData(
+        jsonrpc = request.jsonrpc,
+        id = request.id,
+        method = request.method,
+        params = requestParamsObjectMapper.valueToTree(request.params)
+      )
+    )
+  }
+
   override fun makeRequest(
     request: JsonRpcRequest,
     resultMapper: (Any?) -> Any?
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
-    val json = requestObjectMapper.writeValueAsString(request)
+    val json = serializeRequest(request)
 
     return httpClient.request(requestOptions).flatMap { httpClientRequest ->
       httpClientRequest.putHeader("Content-Type", "application/json")
@@ -63,8 +75,10 @@ class VertxHttpJsonRpcClient(
                 responseBody = bodyBuffer.toString().lines().firstOrNull() ?: ""
               )
               Future.failedFuture(
-                Exception(
-                  "HTTP errorCode=${response.statusCode()}, message=${response.statusMessage()}"
+                JsonRpcErrorException(
+                  message =
+                  "HTTP errorCode=${response.statusCode()}, message=${response.statusMessage()}",
+                  httpStatusCode = response.statusCode()
                 )
               )
             }
@@ -110,12 +124,11 @@ class VertxHttpJsonRpcClient(
 
               jsonResponse.contains("error") -> {
                 isError = true
-                Err(
-                  JsonRpcErrorResponse(
-                    responseId,
-                    responseObjectMapper.treeToValue(jsonResponse["error"], JsonRpcError::class.java)
-                  )
+                val errorResponse = JsonRpcErrorResponse(
+                  responseId,
+                  responseObjectMapper.treeToValue(jsonResponse["error"], JsonRpcError::class.java)
                 )
+                Err(errorResponse)
               }
 
               else -> throw IllegalArgumentException("Invalid JSON-RPC response without result or error")
@@ -183,5 +196,9 @@ class VertxHttpJsonRpcClient(
 
   private fun isSuccessStatusCode(statusCode: Int): Boolean {
     return statusCode >= 200 && statusCode < 300
+  }
+
+  companion object {
+    private val requestEnvelopeObjectMapper: ObjectMapper = jacksonObjectMapper()
   }
 }
