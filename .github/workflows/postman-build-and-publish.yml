@@ -81,7 +81,7 @@ jobs:
           context: ./
           file: ./sdk/Dockerfile
           platforms: linux/amd64,linux/arm64
-          load: ${{ !env.PUSH_IMAGE }}
+          load: true
           push: ${{ env.PUSH_IMAGE }}
           tags: ${{ env.TAGS }}
           cache-from: |
