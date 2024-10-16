@@ -6,9 +6,6 @@ on:
       commit_tag:
         required: true
         type: string
-      last_commit_tag:
-        required: true
-        type: string
       develop_tag:
         required: true
         type: string
@@ -54,7 +51,6 @@ jobs:
     if: ${{ always() && (inputs.coordinator_changed == 'true' || inputs.coordinator_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
-      last_commit_tag: ${{ inputs.last_commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
       image_name: consensys/linea-coordinator
     secrets: inherit
@@ -64,7 +60,6 @@ jobs:
     if: ${{ always() && (inputs.prover_changed == 'true' || inputs.prover_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
-      last_commit_tag: ${{ inputs.last_commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
       image_name: consensys/linea-prover
     secrets: inherit
@@ -74,7 +69,6 @@ jobs:
     if: ${{ always() && (inputs.postman_changed == 'true' || inputs.postman_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
-      last_commit_tag: ${{ inputs.last_commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
       image_name: consensys/linea-postman
     secrets: inherit
@@ -84,7 +78,6 @@ jobs:
     if: ${{ always() && (inputs.traces_api_facade_changed == 'true' || inputs.traces_api_facade_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
-      last_commit_tag: ${{ inputs.last_commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
       image_name: consensys/linea-traces-api-facade
     secrets: inherit
