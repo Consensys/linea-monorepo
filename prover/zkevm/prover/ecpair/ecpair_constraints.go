@@ -18,42 +18,36 @@ func (ec *ECPair) csIsActiveActivation(comp *wizard.CompiledIOP) {
 }
 
 func (ec *ECPair) csBinaryConstraints(comp *wizard.CompiledIOP) {
-	common.MustBeBinary(comp, ec.UnalignedPairingData.IsPulling)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.IsComputed)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfInstance)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorInit)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorCurr)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.IsAccumulatorPrev)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.ToMillerLoopCircuitMask)
-	common.MustBeBinary(comp, ec.UnalignedPairingData.ToFinalExpCircuitMask)
-	common.MustBeBinary(comp, ec.UnalignedG2MembershipData.IsPulling)
-	common.MustBeBinary(comp, ec.UnalignedG2MembershipData.IsComputed)
-	common.MustBeBinary(comp, ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator)
 	common.MustBeBinary(comp, ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator)
 }
 
 func (ec *ECPair) csFlagConsistency(comp *wizard.CompiledIOP) {
 	// flag consistency. That the assigned data is pulled from input or computed.
-	comp.InsertGlobal(
-		roundNr,
-		ifaces.QueryIDf("%v_FLAG_CONSISTENCY", nameECPair),
-		sym.Sub(ec.IsActive,
-			ec.UnalignedPairingData.IsPulling,
-			ec.UnalignedPairingData.IsComputed,
-			ec.UnalignedG2MembershipData.IsPulling,
-			ec.UnalignedG2MembershipData.IsComputed),
-	)
+	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.UnalignedPairingData.IsActive, []ifaces.Column{
+		ec.UnalignedPairingData.IsPulling,
+		ec.UnalignedPairingData.IsComputed,
+	})
+	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask, []ifaces.Column{
+		ec.UnalignedG2MembershipData.IsPulling,
+		ec.UnalignedG2MembershipData.IsComputed,
+	})
 }
 
 func (ec *ECPair) csOffWhenInactive(comp *wizard.CompiledIOP) {
 	// nothing is set when inactive
 	common.MustZeroWhenInactive(comp, ec.IsActive,
+		ec.UnalignedPairingData.InstanceID,
+		ec.UnalignedPairingData.PairID,
+		ec.UnalignedPairingData.TotalPairs,
 		ec.UnalignedPairingData.Limb,
-		ec.UnalignedPairingData.ToMillerLoopCircuitMask,
-		ec.UnalignedPairingData.ToFinalExpCircuitMask,
+		ec.UnalignedPairingData.Index,
+		ec.UnalignedPairingData.IsFirstLineOfInstance,
+		ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator,
+		ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator,
 		ec.UnalignedG2MembershipData.Limb,
-		ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
+		ec.UnalignedG2MembershipData.SuccessBit,
 	)
 }
 
@@ -94,7 +88,7 @@ func (ec *ECPair) csConstantWhenIsComputing(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_COUNTERS_CONSISTENCY", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsComputed,
 			sym.Sub(1, ec.UnalignedPairingData.IsFirstLineOfInstance),
 			sym.Sub(ec.UnalignedPairingData.PairID, column.Shift(ec.UnalignedPairingData.PairID, -1)),
@@ -122,8 +116,8 @@ func (ec *ECPair) csInstanceIDChangeWhenNewInstance(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_INSTANCE_ID_CHANGE", nameECPair),
 		sym.Mul(
-			column.Shift(verifiercol.NewConstantCol(field.One(), ec.IsActive.Size()), -1), // this "useless" line helps cancelling the constraint on the first row
-			ec.IsActive,
+			column.Shift(verifiercol.NewConstantCol(field.One(), ec.UnalignedPairingData.IsActive.Size()), -1), // this "useless" line helps cancelling the constraint on the first row
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfInstance,
 			ec.UnalignedPairingData.InstanceID,
 			prevEqualCurrID,
@@ -148,7 +142,7 @@ func (ec *ECPair) csAccumulatorInit(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_ACCUMULATOR_INIT", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfInstance,
 			accLimbSum,
 		),
@@ -173,7 +167,7 @@ func (ec *ECPair) csLastPairToFinalExp(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_LAST_PAIR_TO_FINAL_EXP", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			sym.Sub(ec.UnalignedPairingData.PairID, ec.UnalignedPairingData.TotalPairs),
 			ec.UnalignedPairingData.PairID,
 			ec.UnalignedPairingData.ToFinalExpCircuitMask,
@@ -187,7 +181,7 @@ func (ec *ECPair) csIndexConsistency(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_INDEX_START", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfInstance,
 			ec.UnalignedPairingData.Index,
 		),
@@ -196,7 +190,7 @@ func (ec *ECPair) csIndexConsistency(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_INDEX_INCREMENT", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			sym.Sub(1, ec.UnalignedG2MembershipData.IsPulling, ec.UnalignedG2MembershipData.IsComputed), // we dont use index in the G2 membership check
 			sym.Sub(1, ec.UnalignedPairingData.IsFirstLineOfInstance),
 			sym.Sub(ec.UnalignedPairingData.Index, column.Shift(ec.UnalignedPairingData.Index, -1), 1),
@@ -206,23 +200,18 @@ func (ec *ECPair) csIndexConsistency(comp *wizard.CompiledIOP) {
 
 func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 	// accumulator sum is IS_COMPUTED
-	comp.InsertGlobal(
-		roundNr,
-		ifaces.QueryIDf("%v_ACCUMULATOR_MASK", nameECPair),
-		sym.Sub(
-			ec.UnalignedPairingData.IsComputed,
-			ec.UnalignedPairingData.IsAccumulatorCurr,
-			ec.UnalignedPairingData.IsAccumulatorPrev,
-			ec.UnalignedPairingData.IsAccumulatorInit,
-		),
-	)
+	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.UnalignedPairingData.IsComputed, []ifaces.Column{
+		ec.UnalignedPairingData.IsAccumulatorCurr,
+		ec.UnalignedPairingData.IsAccumulatorPrev,
+		ec.UnalignedPairingData.IsAccumulatorInit,
+	})
 
 	// first prev accumulator is 1 when pairID*60 == index
 	comp.InsertGlobal(
 		roundNr,
 		ifaces.QueryIDf("%v_FIRST_ACC_PREV", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator,
 			sym.Sub(
 				sym.Mul(nbG1Limbs+nbG2Limbs+2*nbGtLimbs, sym.Sub(ec.UnalignedPairingData.PairID, 1)),
@@ -236,7 +225,7 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_FIRST_ACC_CURR", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator,
 			sym.Sub(
 				sym.Mul(nbG1Limbs+nbG2Limbs+2*nbGtLimbs, ec.UnalignedPairingData.PairID),
@@ -258,7 +247,7 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_INIT_ACC_MASK", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfInstance,
 			sym.Sub(nbGtLimbs, sumMask(ec.UnalignedPairingData.IsAccumulatorInit)),
 		),
@@ -269,7 +258,7 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_CURR_ACC_MASK", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator,
 			sym.Sub(nbGtLimbs, sumMask(ec.UnalignedPairingData.IsAccumulatorCurr)),
 		),
@@ -280,9 +269,24 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 		roundNr,
 		ifaces.QueryIDf("%v_PREV_ACC_MASK", nameECPair),
 		sym.Mul(
-			ec.IsActive,
+			ec.UnalignedPairingData.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator,
 			sym.Sub(nbGtLimbs, sumMask(ec.UnalignedPairingData.IsAccumulatorPrev)),
 		),
 	)
+}
+
+func (ec *ECPair) csExclusiveUnalignedDatas(comp *wizard.CompiledIOP) {
+	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.IsActive, []ifaces.Column{
+		ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
+		ec.UnalignedPairingData.IsActive,
+	})
+}
+
+func (ec *ECPair) csExclusivePairingCircuitMasks(comp *wizard.CompiledIOP) {
+	// the pairing circuit masks are mutually exclusive
+	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.UnalignedPairingData.IsActive, []ifaces.Column{
+		ec.UnalignedPairingData.ToMillerLoopCircuitMask,
+		ec.UnalignedPairingData.ToFinalExpCircuitMask,
+	})
 }

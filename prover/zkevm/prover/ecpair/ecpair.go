@@ -111,6 +111,10 @@ func newECPair(comp *wizard.CompiledIOP, limits *Limits, ecSource *ECPairSource)
 	res.csLastPairToFinalExp(comp)
 	res.csIndexConsistency(comp)
 	res.csAccumulatorMask(comp)
+	// only Unaligned Pairing data or G2 membership data is active at a time
+	res.csExclusiveUnalignedDatas(comp)
+	// only to Miller loop or to FinalExp
+	res.csExclusivePairingCircuitMasks(comp)
 
 	return res
 }
@@ -221,6 +225,7 @@ func newUnalignedG2MembershipData(comp *wizard.CompiledIOP, limits *Limits) *Una
 //
 // Use [newUnalignedPairingData] to create a new instance of UnalignedPairingData.
 type UnalignedPairingData struct {
+	IsActive          ifaces.Column
 	IsPulling         ifaces.Column
 	IsComputed        ifaces.Column
 	IsAccumulatorInit ifaces.Column
@@ -246,6 +251,7 @@ func newUnalignedPairingData(comp *wizard.CompiledIOP, limits *Limits) *Unaligne
 	createCol := createColFn(comp, namePairingData, size)
 
 	return &UnalignedPairingData{
+		IsActive:                     createCol("IS_ACTIVE"),
 		IsPulling:                    createCol("IS_PULLING"),
 		IsComputed:                   createCol("IS_COMPUTED"),
 		Limb:                         createCol("LIMB"),
