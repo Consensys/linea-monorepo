@@ -102,7 +102,6 @@ interface ILineaRollup {
    * @notice Supporting data for finalization with proof.
    * @dev NB: the dynamic sized fields are placed last on purpose for efficient keccaking on public input.
    * @dev parentStateRootHash is the expected last state root hash finalized.
-   * @dev lastFinalizedShnarf is the last finalized shnarf for proof continuity checks.
    * @dev finalBlockInData is the final block finalizing until.
    * @dev shnarfData contains data about the last data submission's shnarf used in finalization.
    * @dev lastFinalizedTimestamp is the expected last finalized block's timestamp.
@@ -117,9 +116,8 @@ interface ILineaRollup {
    * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockInData.
    * @dev l2MessagingBlocksOffsets indicates by offset from currentL2BlockNumber which L2 blocks contain MessageSent events.
    */
-  struct FinalizationDataV2 {
+  struct FinalizationDataV3 {
     bytes32 parentStateRootHash;
-    bytes32 lastFinalizedShnarf;
     uint256 finalBlockInData;
     ShnarfData shnarfData;
     uint256 lastFinalizedTimestamp;
@@ -173,25 +171,35 @@ interface ILineaRollup {
 
   /**
    * @notice Emitted when compressed data is being submitted and verified succesfully on L1.
-   * @param shnarf The indexed shnarf for the data being submitted.
+   * @dev The block range is indexed and parent shnarf included for state reconstruction simplicity.
    * @param startBlock The indexed L2 block number indicating which block the data starts from.
    * @param endBlock The indexed L2 block number indicating which block the data ends on.
-   * @dev Please note, shnarf was previously dataHash and points to the shnarfFinalBlockNumbers mapping.
+   * @param parentShnarf The parent shnarf for the data being submitted.
+   * @param shnarf The indexed shnarf for the data being submitted.
+   * @param finalStateRootHash The L2 state root hash that the current blob submission ends on. NB: The last blob in the collection.
    */
-  event DataSubmittedV2(bytes32 indexed shnarf, uint256 indexed startBlock, uint256 indexed endBlock);
+  event DataSubmittedV3(
+    uint256 indexed startBlock,
+    uint256 indexed endBlock,
+    bytes32 parentShnarf,
+    bytes32 indexed shnarf,
+    bytes32 finalStateRootHash
+  );
 
   /**
    * @notice Emitted when L2 blocks have been finalized on L1.
-   * @param lastBlockFinalized The indexed last L2 block that is finalized in the finalization.
-   * @param startingRootHash The indexed initial (also last finalized) L2 state root hash that the finalization is from.
-   * @param finalRootHash The indexed L2 state root hash that the current finalization is up until.
-   * @param withProof Indicates if the finalization is proven or not.
+   * @param startBlockNumber The indexed L2 block number indicating which block the finalization the data starts from.
+   * @param endBlockNumber The indexed L2 block number indicating which block the finalization the data ends on.
+   * @param shnarf The shnarf being set as currentFinalizedShnarf in the current finalization.
+   * @param parentStateRootHash The indexed parent L2 state root hash that the current finalization starts from.
+   * @param finalStateRootHash The indexed L2 state root hash that the current finalization ends on.
    */
-  event DataFinalized(
-    uint256 indexed lastBlockFinalized,
-    bytes32 indexed startingRootHash,
-    bytes32 indexed finalRootHash,
-    bool withProof
+  event DataFinalizedV3(
+    uint256 indexed startBlockNumber,
+    uint256 indexed endBlockNumber,
+    bytes32 indexed shnarf,
+    bytes32 parentStateRootHash,
+    bytes32 finalStateRootHash
   );
 
   /**
@@ -316,11 +324,6 @@ interface ILineaRollup {
   error SnarkHashIsZeroHash();
 
   /**
-   * @dev Thrown when the block being finalized until does not match that of the shnarf data.
-   */
-  error FinalBlockDoesNotMatchShnarfFinalBlock(uint256 expected, uint256 actual);
-
-  /**
    * @dev Thrown when the computed shnarf does not match what is expected.
    */
   error FinalShnarfWrong(bytes32 expected, bytes32 value);
@@ -383,9 +386,9 @@ interface ILineaRollup {
    * @param _proofType The proof type.
    * @param _finalizationData The full finalization data.
    */
-  function finalizeBlocksWithProof(
+  function finalizeBlocks(
     bytes calldata _aggregatedProof,
     uint256 _proofType,
-    FinalizationDataV2 calldata _finalizationData
+    FinalizationDataV3 calldata _finalizationData
   ) external;
 }
