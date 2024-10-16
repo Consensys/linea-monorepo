@@ -1,8 +1,9 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { deployUpgradableFromFactory, requireEnv } from "../scripts/hardhat/utils";
+import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import {
   getDeployedContractAddress,
+  getRequiredEnvVar,
   tryStoreAddress,
   tryVerifyContract,
   validateDeployBranchAndTags,
@@ -28,13 +29,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   // LineaRollup DEPLOYED AS UPGRADEABLE PROXY
-  const LineaRollup_initialStateRootHash = requireEnv("LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH");
-  const LineaRollup_initialL2BlockNumber = requireEnv("LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER");
-  const LineaRollup_securityCouncil = requireEnv("LINEA_ROLLUP_SECURITY_COUNCIL");
-  const LineaRollup_operators = requireEnv("LINEA_ROLLUP_OPERATORS");
-  const LineaRollup_rateLimitPeriodInSeconds = requireEnv("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
-  const LineaRollup_rateLimitAmountInWei = requireEnv("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
-  const LineaRollup_genesisTimestamp = requireEnv("LINEA_ROLLUP_GENESIS_TIMESTAMP");
+  const LineaRollup_initialStateRootHash = getRequiredEnvVar("LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH");
+  const LineaRollup_initialL2BlockNumber = getRequiredEnvVar("LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER");
+  const LineaRollup_securityCouncil = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
+  const LineaRollup_operators = getRequiredEnvVar("LINEA_ROLLUP_OPERATORS");
+  const LineaRollup_rateLimitPeriodInSeconds = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
+  const LineaRollup_rateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
+  const LineaRollup_genesisTimestamp = getRequiredEnvVar("LINEA_ROLLUP_GENESIS_TIMESTAMP");
 
   console.log(`Setting operators ${LineaRollup_operators}`);
 
