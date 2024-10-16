@@ -3,10 +3,11 @@ import type { Config } from "jest";
 const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
-  rootDir: ".",
-  testRegex: "(spec|test).ts$",
+  rootDir: "src",
+  testRegex: ".spec.ts$",
   verbose: true,
-  setupFilesAfterEnv: ["./env-setup/setup-dev.ts"],
+  maxWorkers: "50%",
+  testTimeout: 3 * 60 * 1000,
 };
 
 export default config;
