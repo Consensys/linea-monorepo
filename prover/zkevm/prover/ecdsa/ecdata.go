@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	commoncs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 var (
@@ -173,7 +174,7 @@ func (ec *EcRecover) csEcDataProjection(comp *wizard.CompiledIOP, src *ecDataSou
 }
 
 func (ec *EcRecover) csConstraintAuxProjectionMask(comp *wizard.CompiledIOP) {
-	mustBeBinary(comp, ec.AuxProjectionMask)
+	commoncs.MustBeBinary(comp, ec.AuxProjectionMask)
 }
 
 // TODO: must be called from the antichamber to ensure that the mask is consistent with the column in the root antichamber

@@ -5,38 +5,27 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	commoncs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
-// csIsActive constraints that IsActive module to be only one for antichamber rounds.
-func (ac *antichamber) csIsActive(comp *wizard.CompiledIOP) {
-	// column must be binary
-	mustBeBinary(comp, ac.IsActive)
-	// allow becoming inactive from active but now vice versa
-	isZeroWhenInactive(comp, ac.IsActive, column.Shift(ac.IsActive, -1))
+// csIsActiveActivation constraints that IsActive module to be only one for antichamber rounds.
+func (ac *antichamber) csIsActiveActivation(comp *wizard.CompiledIOP) {
+	// IsActive must be binary and cannot transition from 0 to 1
+	commoncs.MustBeActivationColumns(comp, ac.IsActive)
 }
 
 func (ac *antichamber) csZeroWhenInactive(comp *wizard.CompiledIOP) {
-	for _, c := range ac.cols(false) {
-		isZeroWhenInactive(comp, c, ac.IsActive)
-	}
-	for _, c := range ac.EcRecover.cols() {
-		isZeroWhenInactive(comp, c, ac.IsActive)
-	}
-	for _, c := range ac.Addresses.cols() {
-		isZeroWhenInactive(comp, c, ac.IsActive)
-	}
-	for _, c := range ac.txSignature.cols() {
-		isZeroWhenInactive(comp, c, ac.IsActive)
-	}
-	for _, c := range ac.UnalignedGnarkData.cols() {
-		isZeroWhenInactive(comp, c, ac.IsActive)
-	}
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.cols(false)...)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.EcRecover.cols()...)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.Addresses.cols()...)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.txSignature.cols()...)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.UnalignedGnarkData.cols()...)
 }
 
 func (ac *antichamber) csConsistentPushingFetching(comp *wizard.CompiledIOP) {
 	// pushing and fetching must be binary
-	mustBeBinary(comp, ac.IsPushing)
-	mustBeBinary(comp, ac.IsFetching)
+	commoncs.MustBeBinary(comp, ac.IsPushing)
+	commoncs.MustBeBinary(comp, ac.IsFetching)
 	// pushing and fetching cannot be active at the same time
 	comp.InsertGlobal(
 		ROUND_NR,
@@ -58,7 +47,7 @@ func (ac *antichamber) csIDSequential(comp *wizard.CompiledIOP) {
 func (ac *antichamber) csSource(comp *wizard.CompiledIOP) {
 	// source must be binary
 	// Source=0 <> ECRecover, Source=1 <> TxSignature
-	mustBeBinary(comp, ac.Source)
+	commoncs.MustBeBinary(comp, ac.Source)
 }
 
 func (ac *antichamber) csTransitions(comp *wizard.CompiledIOP) {

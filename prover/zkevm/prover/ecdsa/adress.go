@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commoncs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
@@ -82,11 +83,13 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	comp.InsertGlobal(0, ifaces.QueryIDf("Format_IsAddress"),
 		sym.Sub(addr.isAddress, sym.Add(addr.isAddressFromEcRec, addr.isAddressFromTxnData)))
 
-	mustBeBinary(comp, addr.isAddress)
-	mustBeBinary(comp, addr.isAddressFromEcRec)
-	mustBeBinary(comp, addr.isAddressFromTxnData)
-	isZeroWhenInactive(comp, addr.isAddress, ac.IsActive)
-	isZeroWhenInactive(comp, addr.hashNum, ac.IsActive)
+	commoncs.MustBeBinary(comp, addr.isAddress)
+	commoncs.MustBeBinary(comp, addr.isAddressFromEcRec)
+	commoncs.MustBeBinary(comp, addr.isAddressFromTxnData)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive,
+		addr.isAddress,
+		addr.hashNum,
+	)
 
 	// check the  trimming of hashHi  to the addressHi
 	addr.csAddressTrimming(comp)
