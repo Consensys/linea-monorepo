@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
+import static net.consensys.linea.zktracer.module.HexStringUtils.xor;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,9 +53,8 @@ public class ShfExtensiveTest {
         shfTestSourceList.add(Arguments.of(value, k, l));
         for (String XY : XYs) {
           String mask = XY + "00".repeat(31);
-          String maskXorValue =
-              String.format("%064X", new BigInteger(mask, 16).xor(new BigInteger(value, 16)));
-          shfWithMaskTestSourceList.add(Arguments.of(maskXorValue, k, l, XY));
+          String valueXorMask = xor(value, mask);
+          shfWithMaskTestSourceList.add(Arguments.of(valueXorMask, k, l, XY));
         }
       }
     }
@@ -116,13 +117,13 @@ public class ShfExtensiveTest {
           .toArray(String[]::new);
 
   static final String[] P = {
-    "DF", "D5", "A2", "E7", "6E", "9D", "3A", "20",
-    "96", "2D", "17", "48", "19", "7F", "0D", "4C",
-    "FF", "3D", "57", "A4", "A8", "87", "45", "B9",
-    "C9", "34", "1A", "F3", "57", "84", "D3", "EE"
+    "df", "d5", "a2", "e7", "6e", "9d", "3a", "20",
+    "96", "2d", "17", "48", "19", "7f", "0d", "4c",
+    "ff", "3d", "57", "a4", "a8", "87", "45", "b9",
+    "c9", "34", "1a", "f3", "57", "84", "d3", "ee"
   }; // big-endian (from the least significant byte to the most significant byte)
 
-  static final String[] XYs = new String[] {"80", "90", "A0", "B0", "C0", "D0", "E0", "F0"};
+  static final String[] XYs = new String[] {"80", "90", "a0", "b0", "c0", "d0", "e0", "f0"};
 
   //  Creates a program that concatenates shifts operations (with different relevant shift values)
   //  for a given value and opcode
@@ -139,7 +140,7 @@ public class ShfExtensiveTest {
     // 0 to k - 1
     if (k >= 0) System.arraycopy(P, 0, v, 0, k);
     // k
-    v[k] = String.format("%02X", (1 << l) - 1);
+    v[k] = String.format("%02x", (1 << l) - 1);
     // k + 1 to 31
     for (int i = k + 1; i < 32; i++) {
       v[i] = "00";
@@ -151,7 +152,7 @@ public class ShfExtensiveTest {
   @Test
   void testValue() {
     Assertions.assertEquals(
-        "0000000000000000000000003F573DFF4C0D7F1948172D96203A9D6EE7A2D5DF", value(19, 6));
+        "0000000000000000000000003f573dff4c0d7f1948172d96203a9d6ee7a2d5df", value(19, 6));
   }
 
   // ###################################################################################################################
@@ -177,9 +178,8 @@ public class ShfExtensiveTest {
           // Adding additional cases for SAR
           for (String XY : XYs) {
             String mask = XY + "00".repeat(31);
-            String maskXorValue =
-                String.format("%064X", new BigInteger(mask, 16).xor(new BigInteger(value, 16)));
-            arguments.add(Arguments.of(shift, maskXorValue, OpCode.SAR));
+            String valueXorMask = xor(value, mask);
+            arguments.add(Arguments.of(shift, valueXorMask, OpCode.SAR));
           }
         }
       }
