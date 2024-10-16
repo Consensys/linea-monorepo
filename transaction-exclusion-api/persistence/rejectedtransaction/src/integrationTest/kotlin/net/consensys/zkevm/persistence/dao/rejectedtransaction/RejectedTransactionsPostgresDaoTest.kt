@@ -34,7 +34,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
     target = "1"
   }
 
-  override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-rejectedtxns-dao")
+  override val databaseName = DbHelper.generateUniqueDbName("tx-exclusion-api-rejectedtxns-dao-tests")
   private var fakeClock = FakeFixedClock(Clock.System.now())
   private lateinit var rejectedTransactionsPostgresDao: RejectedTransactionsPostgresDao
   private lateinit var notRejectedBefore: Instant
