@@ -39,7 +39,7 @@ jobs:
     name: Postman build
     steps:
       - name: Set environment variables for workflow_call
-        if: ${{ github.event_name == 'workflow_call' }}
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
           echo "COMMIT_TAG=${{ inputs.commit_tag }}" >> $GITHUB_ENV
           echo "DEVELOP_TAG=${{ inputs.develop_tag }}" >> $GITHUB_ENV
