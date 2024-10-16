@@ -86,7 +86,7 @@ func (z *zCtx) compile(comp *wizard.CompiledIOP) {
 			z.Size,
 		)
 
-		// complete the consistency by adding the edge-case at position 0
+		// initial condition
 		comp.InsertLocal(
 			z.Round,
 			deriveName[ifaces.QueryID]("Z_CONSISTENCY_START", comp.SelfRecursionCount, z.Round, z.Size, i),

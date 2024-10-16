@@ -55,7 +55,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 			checkTable      = mainLookupCtx.checkedTables[lookupTableName]
 			round           = mainLookupCtx.rounds[lookupTableName]
 			includedFilters = mainLookupCtx.includedFilters[lookupTableName]
-			tableCtx        = compileLookupTable(comp, round, lookupTableName, lookupTable, checkTable, includedFilters)
+			tableCtx        = compileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
 		)
 
 		// push to zCatalog
@@ -216,7 +216,6 @@ func captureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 func compileLookupTable(
 	comp *wizard.CompiledIOP,
 	round int,
-	name string,
 	lookupTable []table,
 	checkedTables []table,
 	includedFilters []ifaces.Column,
@@ -228,7 +227,6 @@ func compileLookupTable(
 		SFilters:  includedFilters,
 		T:         make([]*symbolic.Expression, len(lookupTable)),
 		M:         make([]ifaces.Column, len(lookupTable)),
-		Name:      name,
 	}
 
 	var (

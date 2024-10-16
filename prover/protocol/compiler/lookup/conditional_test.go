@@ -119,7 +119,7 @@ func TestConditionalLogDerivativeLookupSimple2(t *testing.T) {
 	// in the last appearance of 0 in filteredT
 	expectedM := smartvectors.ForTest(1, 2, 0, 4)
 	t.Logf("the list of columns is: %v", runtime.Columns.ListAllKeys())
-	actualM := runtime.GetColumn("TABLE_filterB_T_0_LOGDERIVATIVE_M")
+	actualM := runtime.GetColumn("TABLE_filterB,T_0_LOGDERIVATIVE_M")
 
 	assert.Equal(t, expectedM.Pretty(), actualM.Pretty(), "m does not match the expected value")
 
@@ -172,7 +172,7 @@ func TestConditionalLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 	// m should be
 	expectedM := smartvectors.ForTest(0, 4, 4, 3)
 	t.Logf("the list of columns is: %v", runtime.Columns.ListAllKeys())
-	actualM := runtime.GetColumn("TABLE_filterT_T_0_LOGDERIVATIVE_M")
+	actualM := runtime.GetColumn("TABLE_filterT,T_0_LOGDERIVATIVE_M")
 
 	assert.Equal(t, expectedM.Pretty(), actualM.Pretty(), "m does not match the expected value")
 
@@ -238,7 +238,7 @@ func TestConditionalLogDerivativeLookupOneXor(t *testing.T) {
 	expectedM := smartvectors.ForTest(0, 1, 1, 1, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)
 
 	t.Logf("the list of columns is: %v", runtime.Columns.ListAllKeys())
-	actualM := runtime.GetColumn("TABLE_filterT_XOR_TABLE_X_XOR_TABLE_XXORY_XOR_TABLE_Y_0_LOGDERIVATIVE_M")
+	actualM := runtime.GetColumn("TABLE_filterT,XOR_TABLE_X,XOR_TABLE_XXORY,XOR_TABLE_Y_0_LOGDERIVATIVE_M")
 
 	assert.Equal(t, expectedM.Pretty(), actualM.Pretty(), "m does not match the expected value")
 
@@ -318,7 +318,7 @@ func TestConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 	// m should be
 	expectedM := smartvectors.ForTest(1, 1, 1, 2, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0)
 	t.Logf("the list of columns is: %v", runtime.Columns.ListAllKeys())
-	actualM := runtime.GetColumn("TABLE_FILTER_T_XOR_TABLE_X_XOR_TABLE_XXORY_XOR_TABLE_Y_0_LOGDERIVATIVE_M")
+	actualM := runtime.GetColumn("TABLE_FILTER_T,XOR_TABLE_X,XOR_TABLE_XXORY,XOR_TABLE_Y_0_LOGDERIVATIVE_M")
 
 	assert.Equal(t, expectedM.Pretty(), actualM.Pretty(), "m does not match the expected value")
 
@@ -432,7 +432,7 @@ func TestMixedConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 	// m should be
 	expectedM := smartvectors.ForTest(2, 2, 1, 2, 2, 0, 1, 3, 0, 0, 0, 0, 2, 1, 1, 0) // 16 rows are included
 	t.Logf("the list of columns is: %v", runtime.Columns.ListAllKeys())
-	actualM := runtime.GetColumn("TABLE_FILTER_T_XOR_TABLE_X_XOR_TABLE_XXORY_XOR_TABLE_Y_0_LOGDERIVATIVE_M")
+	actualM := runtime.GetColumn("TABLE_FILTER_T,XOR_TABLE_X,XOR_TABLE_XXORY,XOR_TABLE_Y_0_LOGDERIVATIVE_M")
 
 	assert.Equal(t, expectedM.Pretty(), actualM.Pretty(), "m does not match the expected value")
 
