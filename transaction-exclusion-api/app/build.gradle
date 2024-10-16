@@ -47,7 +47,9 @@ dependencies {
   testImplementation "io.vertx:vertx-junit5"
   testImplementation "io.rest-assured:rest-assured:${libs.versions.restassured.get()}"
   testImplementation "io.rest-assured:json-schema-validator:${libs.versions.restassured.get()}"
+  testImplementation "net.javacrumbs.json-unit:json-unit-assertj:${libs.versions.jsonUnit.get()}"
   testImplementation testFixtures(project(":jvm-libs:kotlin-extensions"))
+  testImplementation testFixtures(project(":jvm-libs:persistence:db"))
   testImplementation testFixtures(project(":transaction-exclusion-api:core"))
 }
 
@@ -84,6 +86,27 @@ run {
           "config/transaction-exclusion-api/transaction-exclusion-app-local-dev.config.overrides.toml"]
 }
 
-test {
-  systemProperty "vertx.configurationFile", "vertx-options.json"
+sourceSets {
+  integrationTest {
+    kotlin {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+  }
+}
+
+task integrationTest(type: Test) {
+  test ->
+    systemProperty "vertx.configurationFile", "vertx-options.json"
+
+    description = "Runs integration tests."
+    group = "verification"
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    dependsOn(":localStackPostgresDbOnlyComposeUp")
 }
