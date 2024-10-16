@@ -39,9 +39,9 @@ const (
 func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 	var (
-		l2MessageHashes   []string
-		l2MsgBlockOffsets []bool
-		cf                = &CollectedFields{
+		allL2MessageHashes []string
+		l2MsgBlockOffsets  []bool
+		cf                 = &CollectedFields{
 			L2MsgTreeDepth:                          l2MsgMerkleTreeDepth,
 			ParentAggregationLastBlockTimestamp:     uint(req.ParentAggregationLastBlockTimestamp),
 			LastFinalizedL1RollingHash:              req.ParentAggregationLastL1RollingHash,
@@ -55,9 +55,10 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	for i, execReqFPath := range req.ExecutionProofs {
 
 		var (
-			po    = &execution.Response{}
-			fpath = path.Join(cfg.Execution.DirTo(), execReqFPath)
-			f     = files.MustRead(fpath)
+			po              = &execution.Response{}
+			l2MessageHashes []string
+			fpath           = path.Join(cfg.Execution.DirTo(), execReqFPath)
+			f               = files.MustRead(fpath)
 		)
 
 		if err := json.NewDecoder(f).Decode(po); err != nil {
@@ -166,7 +167,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	}
 
 	cf.L2MessagingBlocksOffsets = utils.HexEncodeToString(PackOffsets(l2MsgBlockOffsets))
-	cf.L2MsgRootHashes = PackInMiniTrees(l2MessageHashes)
+	cf.L2MsgRootHashes = PackInMiniTrees(allL2MessageHashes)
 
 	return cf, nil
 
