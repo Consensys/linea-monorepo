@@ -45,12 +45,14 @@ const useFetchHistory = () => {
       setIsLoading(true);
 
       // ToBlock: get last onchain block
-      const l1ToBlockNumber = await getBlockNumber(wagmiConfig, {
-        chainId: l1Chain.id,
-      });
-      const l2ToBlockNumber = await getBlockNumber(wagmiConfig, {
-        chainId: l2Chain.id,
-      });
+      const [l1ToBlockNumber, l2ToBlockNumber] = await Promise.all([
+        getBlockNumber(wagmiConfig, {
+          chainId: l1Chain.id,
+        }),
+        getBlockNumber(wagmiConfig, {
+          chainId: l2Chain.id,
+        }),
+      ]);
 
       const transactions = getTransactionsByKey(generateKey("transactions", address, currentNetworkType));
 

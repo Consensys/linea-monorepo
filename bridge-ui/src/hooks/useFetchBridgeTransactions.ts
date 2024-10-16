@@ -1,6 +1,6 @@
 import { useAccount } from "wagmi";
 import { getPublicClient } from "@wagmi/core";
-import { Chain } from "viem";
+import { Chain, PublicClient } from "viem";
 import { config, wagmiConfig, ConfigManager, NetworkLayer, NetworkType } from "@/config";
 import {
   eventERC20,
@@ -21,6 +21,7 @@ import { getChainNetworkLayer } from "@/utils/chainsUtil";
 import { useTokenStore } from "@/stores/tokenStore";
 import useMessageStatus from "./useMessageStatus";
 import useTokenFetch from "./useTokenFetch";
+import { MessageWithStatus } from "./useClaimTransaction";
 
 const useFetchBridgeTransactions = () => {
   // Wagmi
@@ -45,25 +46,26 @@ const useFetchBridgeTransactions = () => {
       return;
     }
 
-    const l1TxHistory = await fetchBridgeEvents(
-      l1Chain,
-      l2Chain,
-      l1FromBlockNumber,
-      l1ToBlockNumber,
-      networkType,
-      NetworkLayer.L1,
-      transactions,
-    );
-
-    const l2TxHistory = await fetchBridgeEvents(
-      l2Chain,
-      l1Chain,
-      l2FromBlockNumber,
-      l2ToBlockNumber,
-      networkType,
-      NetworkLayer.L2,
-      transactions,
-    );
+    const [l1TxHistory, l2TxHistory] = await Promise.all([
+      fetchBridgeEvents(
+        l1Chain,
+        l2Chain,
+        l1FromBlockNumber,
+        l1ToBlockNumber,
+        networkType,
+        NetworkLayer.L1,
+        transactions,
+      ),
+      fetchBridgeEvents(
+        l2Chain,
+        l1Chain,
+        l2FromBlockNumber,
+        l2ToBlockNumber,
+        networkType,
+        NetworkLayer.L2,
+        transactions,
+      ),
+    ]);
 
     const newTransactions = [...(l1TxHistory ?? []), ...(l2TxHistory ?? [])];
 
@@ -83,6 +85,7 @@ const useFetchBridgeTransactions = () => {
     allTransactions.sort((a, b) => (b.timestamp < a.timestamp ? -1 : 1));
 
     await updateMessagesStatus(allTransactions, messageHashes, networkType);
+    console.log(allTransactions);
     return allTransactions;
   };
 
@@ -172,200 +175,177 @@ const useFetchBridgeTransactions = () => {
       return;
     }
 
-    let history: TransactionHistory[] = [];
+    const [ethHistory, erc20History, usdcHistory] = await Promise.all([
+      fetchETHTransactions(client, fromChain, toChain, fromBlock, toBlock, networkType, networkLayer, transactions),
+      fetchERC20Transactions(client, fromChain, toChain, fromBlock, toBlock, networkType, networkLayer, transactions),
+      fetchUSDCTransactions(client, fromChain, toChain, fromBlock, toBlock, networkType, networkLayer, transactions),
+    ]);
 
-    /**
-     * Fetch ETH history
-     * @returns
-     */
-    const fetchETHTransactions = async (existingTransactions: TransactionHistory[]) => {
-      const messageServiceAddress = await ConfigManager.getMessageServiceAddress(networkType, networkLayer);
+    return [...ethHistory, ...erc20History, ...usdcHistory];
+  };
 
-      const [ethLogsForSender, ethLogsForRecipient] = await Promise.all([<Promise<ETHEvent[]>>client.getLogs({
-          event: eventETH,
-          fromBlock,
-          toBlock,
-          address: messageServiceAddress,
-          args: {
-            _from: address,
-          },
-        }), <Promise<ETHEvent[]>>client.getLogs({
-          event: eventETH,
-          fromBlock,
-          toBlock,
-          address: messageServiceAddress,
-          args: {
-            _to: address,
-          },
-        })]);
+  const fetchETHTransactions = async (
+    client: PublicClient,
+    fromChain: Chain,
+    toChain: Chain,
+    fromBlock: bigint,
+    toBlock: bigint,
+    networkType: NetworkType,
+    networkLayer: NetworkLayer,
+    existingTransactions: TransactionHistory[],
+  ) => {
+    const messageServiceAddress = await ConfigManager.getMessageServiceAddress(networkType, networkLayer);
+    const [ethLogsForSender, ethLogsForRecipient] = await Promise.all([<Promise<ETHEvent[]>>client.getLogs({
+        event: eventETH,
+        fromBlock,
+        toBlock,
+        address: messageServiceAddress,
+        args: {
+          _from: address,
+        },
+      }), <Promise<ETHEvent[]>>client.getLogs({
+        event: eventETH,
+        fromBlock,
+        toBlock,
+        address: messageServiceAddress,
+        args: {
+          _to: address,
+        },
+      })]);
 
-      // Remove duplicates
-      const uniqueMap = new Map<string, ETHEvent>();
+    const uniqueEthLogs = Array.from(
+      new Map(
+        [...ethLogsForSender, ...ethLogsForRecipient].map((log) => [
+          `${log.args._from}-${log.args._to}-${log.transactionHash.toString()}`,
+          log,
+        ]),
+      ).values(),
+    );
 
-      [...ethLogsForSender, ...ethLogsForRecipient].forEach((obj) => {
-        const uniqueKey = `${obj.args._from}-${obj.args._to}-${obj.transactionHash.toString()}`;
-        if (!uniqueMap.has(uniqueKey)) {
-          uniqueMap.set(uniqueKey, obj);
-        }
-      });
+    const newEthLogs = uniqueEthLogs.filter(
+      (log) => !existingTransactions.some((tx) => tx.transactionHash === log.transactionHash),
+    );
 
-      const ethLogs = Array.from(uniqueMap.values());
+    return parseETHEvents(newEthLogs, client, fromChain, toChain, tokensConfig, networkType);
+  };
 
-      // Filter out logs that already exist in transactions
-      const newEthLogs = ethLogs.filter(
-        (log) => !existingTransactions.some((tx) => tx.transactionHash === log.transactionHash),
-      );
+  const fetchERC20Transactions = async (
+    client: PublicClient,
+    fromChain: Chain,
+    toChain: Chain,
+    fromBlock: bigint,
+    toBlock: bigint,
+    networkType: NetworkType,
+    networkLayer: NetworkLayer,
+    existingTransactions: TransactionHistory[],
+  ) => {
+    const tokenBridgeAddress = await ConfigManager.getTokenBridgeAddress(networkType, networkLayer);
+    const [erc20Logs, erc20V2LogsForSender, erc20V2LogsForRecipient] = await Promise.all([
+      <Promise<ERC20Event[]>>client.getLogs({
+        event: eventERC20,
+        fromBlock,
+        toBlock,
+        address: tokenBridgeAddress,
+        args: {
+          sender: address,
+        },
+      }),
+      <Promise<ERC20V2Event[]>>client.getLogs({
+        event: eventERC20V2,
+        fromBlock,
+        toBlock,
+        address: tokenBridgeAddress,
+        args: {
+          sender: address,
+        },
+      }),
+      <Promise<ERC20V2Event[]>>client.getLogs({
+        event: eventERC20V2,
+        fromBlock,
+        toBlock,
+        address: tokenBridgeAddress,
+        args: {
+          recipient: address,
+        },
+      }),
+    ]);
 
-      const ethHistory = await parseETHEvents(newEthLogs, client, fromChain, toChain, tokensConfig, networkType);
+    const uniqueERC20V2Logs = Array.from(
+      new Map(
+        [...erc20V2LogsForSender, ...erc20V2LogsForRecipient].map((log) => [
+          `${log.args.sender}-${log.args.recipient}-${log.transactionHash.toString()}`,
+          log,
+        ]),
+      ).values(),
+    );
 
-      return ethHistory;
-    };
+    const filteredERC20Logs = erc20Logs.filter(
+      (log) => !existingTransactions.some((tx) => tx.transactionHash === log.transactionHash),
+    );
 
-    /**
-     * Fetch ERC20 history
-     * @returns
-     */
-    const fetchERC20Transactions = async (existingTransactions: TransactionHistory[]) => {
-      const tokenBridgeAddress = await ConfigManager.getTokenBridgeAddress(networkType, networkLayer);
+    const filteredERC20V2Logs = uniqueERC20V2Logs.filter(
+      (log) => !existingTransactions.some((tx) => tx.transactionHash === log.transactionHash),
+    );
 
-      const [erc20Logs, erc20V2LogsForSender, erc20V2LogsForRecipient] = await Promise.all([
-        <Promise<ERC20Event[]>>client.getLogs({
-          event: eventERC20,
-          fromBlock,
-          toBlock,
-          address: tokenBridgeAddress,
-          args: {
-            sender: address,
-          },
-        }),
-        <Promise<ERC20V2Event[]>>client.getLogs({
-          event: eventERC20V2,
-          fromBlock,
-          toBlock,
-          address: tokenBridgeAddress,
-          args: {
-            sender: address,
-          },
-        }),
-        <Promise<ERC20V2Event[]>>client.getLogs({
-          event: eventERC20V2,
-          fromBlock,
-          toBlock,
-          address: tokenBridgeAddress,
-          args: {
-            recipient: address,
-          },
-        }),
-      ]);
+    const [erc20History, erc20V2History] = await Promise.all([
+      parseERC20Events(filteredERC20Logs, client, fromChain, toChain, tokensConfig, networkType),
+      parseERC20V2Events(filteredERC20V2Logs, client, fromChain, toChain, tokensConfig, networkType),
+    ]);
 
-      // Remove duplicates
-      const uniqueERC20V2EventsMap = new Map<string, ERC20V2Event>();
-
-      [...erc20V2LogsForSender, ...erc20V2LogsForRecipient].forEach((obj) => {
-        const uniqueKey = `${obj.args.sender}-${obj.args.recipient}-${obj.transactionHash.toString()}`;
-        if (!uniqueERC20V2EventsMap.has(uniqueKey)) {
-          uniqueERC20V2EventsMap.set(uniqueKey, obj);
-        }
-      });
-
-      // Filter out logs that already exist in transactions
-      const filteredERC20Logs = erc20Logs.filter(
-        (log) => !existingTransactions.some((tx) => tx.transactionHash === log.transactionHash),
-      );
-
-      const filteredERC20V2Logs = Array.from(uniqueERC20V2EventsMap.values()).filter(
-        (log) => !existingTransactions.some((tx) => tx.transactionHash === log.transactionHash),
-      );
-
-      const er20History = await parseERC20Events(
-        filteredERC20Logs,
-        client,
-        fromChain,
-        toChain,
-        tokensConfig,
-        networkType,
-      );
-      const erc20V2History = await parseERC20V2Events(
-        filteredERC20V2Logs,
-        client,
-        fromChain,
-        toChain,
-        tokensConfig,
-        networkType,
-      );
-
-      const history = [...er20History, ...erc20V2History];
-
-      // Add the missing tokens to the user's token list
+    const history = [...erc20History, ...erc20V2History];
+    await Promise.all(
       history.map(async (transaction) => {
         await fillMissingTokenAddress(transaction.token);
         updateOrInsertUserTokenList(transaction.token, networkType);
-      });
-
-      return history;
-    };
-
-    /**
-     * Fetch USDC history
-     * @returns
-     */
-    const fetchUSDCTransactions = async (existingTransactions: TransactionHistory[]) => {
-      const usdcBridgeAddress = await ConfigManager.getUSDCBridgeAddress(networkType, networkLayer);
-
-      const [usdcLogsForSender, usdcLogsForRecipient] = await Promise.all([<Promise<USDCEvent[]>>client.getLogs({
-          event: eventUSDC,
-          fromBlock,
-          toBlock,
-          address: usdcBridgeAddress,
-          args: {
-            depositor: address,
-          },
-        }), <Promise<USDCEvent[]>>client.getLogs({
-          event: eventUSDC,
-          fromBlock,
-          toBlock,
-          address: usdcBridgeAddress,
-          args: {
-            to: address,
-          },
-        })]);
-
-      // Remove duplicates
-      const uniqueMap = new Map<string, USDCEvent>();
-
-      [...usdcLogsForSender, ...usdcLogsForRecipient].forEach((obj) => {
-        const uniqueKey = `${obj.args.depositor}-${obj.args.to}-${obj.transactionHash.toString()}`;
-        if (!uniqueMap.has(uniqueKey)) {
-          uniqueMap.set(uniqueKey, obj);
-        }
-      });
-
-      const usdcLogs = Array.from(uniqueMap.values());
-
-      // Filter out logs that already exist in transactions
-      const filteredUSDCLogs = usdcLogs.filter(
-        (log) => !existingTransactions.some((tx) => tx.transactionHash === log.transactionHash),
-      );
-
-      const usdcHistory = await parseUSDCEvents(
-        filteredUSDCLogs,
-        client,
-        fromChain,
-        toChain,
-        tokensConfig,
-        networkType,
-      );
-
-      return usdcHistory;
-    };
-
-    const ethHistory = await fetchETHTransactions(transactions);
-    const erc20History = await fetchERC20Transactions(transactions);
-    const usdcHistory = await fetchUSDCTransactions(transactions);
-
-    history = [...ethHistory, ...erc20History, ...usdcHistory];
+      }),
+    );
 
     return history;
+  };
+
+  const fetchUSDCTransactions = async (
+    client: PublicClient,
+    fromChain: Chain,
+    toChain: Chain,
+    fromBlock: bigint,
+    toBlock: bigint,
+    networkType: NetworkType,
+    networkLayer: NetworkLayer,
+    existingTransactions: TransactionHistory[],
+  ) => {
+    const usdcBridgeAddress = await ConfigManager.getUSDCBridgeAddress(networkType, networkLayer);
+    const [usdcLogsForSender, usdcLogsForRecipient] = await Promise.all([<Promise<USDCEvent[]>>client.getLogs({
+        event: eventUSDC,
+        fromBlock,
+        toBlock,
+        address: usdcBridgeAddress,
+        args: {
+          depositor: address,
+        },
+      }), <Promise<USDCEvent[]>>client.getLogs({
+        event: eventUSDC,
+        fromBlock,
+        toBlock,
+        address: usdcBridgeAddress,
+        args: {
+          to: address,
+        },
+      })]);
+
+    const uniqueUSDCLogs = Array.from(
+      new Map(
+        [...usdcLogsForSender, ...usdcLogsForRecipient].map((log) => [
+          `${log.args.depositor}-${log.args.to}-${log.transactionHash.toString()}`,
+          log,
+        ]),
+      ).values(),
+    );
+
+    const filteredUSDCLogs = uniqueUSDCLogs.filter(
+      (log) => !existingTransactions.some((tx) => tx.transactionHash === log.transactionHash),
+    );
+
+    return parseUSDCEvents(filteredUSDCLogs, client, fromChain, toChain, tokensConfig, networkType);
   };
 
   return { fetchTransactions };
