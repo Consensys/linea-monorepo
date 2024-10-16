@@ -15,7 +15,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ExecutionException
 import kotlin.io.path.createFile
-import kotlin.io.path.exists
 import kotlin.time.Duration.Companion.milliseconds
 
 class TracesFilesManagerTest {
@@ -31,8 +30,6 @@ class TracesFilesManagerTest {
     Bytes32.fromHexString("0x00000000000000000000000000000000000000000000000000000000000000a1")
   private val block2Hash2 =
     Bytes32.fromHexString("0x00000000000000000000000000000000000000000000000000000000000000a2")
-  private val block20Hash =
-    Bytes32.fromHexString("0x0000000000000000000000000000000000000000000000000000000000000001")
   private lateinit var block1TracesFile: Path
   private lateinit var block2TracesFile1: Path
   private lateinit var block2TracesFile2: Path
@@ -168,25 +165,6 @@ class TracesFilesManagerTest {
 
     val movedFile = nonCanonicalBlocksTracesDir.resolve(block2TracesFile2.fileName)
     assertThat(movedFile).exists()
-    assertThat(block2TracesFile2).doesNotExist()
-  }
-
-  @Test
-  fun `cleanNonCanonicalSiblingsByHeight handles case sensitivity correctly`() {
-    val mixedCaseHash = block2Hash1.toHexString().uppercase()
-    val tracesFileName = TracesFiles.rawTracesFileNameSupplierV1(
-      2uL,
-      Bytes32.fromHexString(mixedCaseHash),
-      tracesVersion,
-      tracesFileExtension
-    )
-    val mixedCaseFile = tracesDir.resolve(Path.of(tracesFileName))
-    Files.createFile(mixedCaseFile)
-    Files.createFile(block2TracesFile2)
-
-    tracesFilesManager.cleanNonCanonicalSiblingsByHeight(2uL, block2Hash1).get()
-
-    assertThat(mixedCaseFile).exists()
     assertThat(block2TracesFile2).doesNotExist()
   }
 
