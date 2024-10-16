@@ -26,5 +26,5 @@ timeout = "PT20S"
 [api]
 port=8080
 path="/"
-#number-of-verticles=0 commented as default(or 0) will create one verticle per core (or hyperthread if supported)
+number-of-verticles=1 #if 0 will create one verticle per core (or hyperthread if supported)
 observability-port=8090

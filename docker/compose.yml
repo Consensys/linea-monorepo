@@ -54,7 +54,9 @@ services:
         --node-private-key-file="/var/lib/besu/key" \
         --plugin-linea-l1-polling-interval="PT12S" \
         --plugin-linea-l1-smart-contract-address="0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9" \
-        --plugin-linea-l1-rpc-endpoint="http://l1-el-node:8545"
+        --plugin-linea-l1-rpc-endpoint="http://l1-el-node:8545" \
+        --plugin-linea-rejected-tx-endpoint="http://transaction-exclusion-api:8080" \
+        --plugin-linea-node-type="SEQUENCER"
     volumes:
       - ./config/linea-besu-sequencer/sequencer.config.toml:/var/lib/besu/sequencer.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
@@ -71,7 +73,7 @@ services:
   linea-besu-sequencer-plugin-downloader:
     image: busybox:1.36.1
     # profiles: ["l2", "l2-bc"] this works locally but breakes on CI, maybe Docker compose version issue
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.1.4-test34/besu-sequencer-plugins-v0.1.4-test34.jar",  "/linea-besu-sequencer" ]
+    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.1.4-test35/besu-sequencer-plugins-v0.1.4-test35.jar",  "/linea-besu-sequencer" ]
     volumes:
       - ./scripts/file-downloader.sh:/file-downloader.sh:ro
       - ../tmp/linea-besu-sequencer/plugins:/linea-besu-sequencer/
@@ -116,6 +118,54 @@ services:
     networks:
       linea:
         ipv4_address: 11.11.11.209
+  
+  l2-node-besu:
+    hostname: l2-node-besu
+    container_name: l2-node-besu
+    image: consensys/linea-besu:24.10-delivery34
+    profiles: [ "l2", "l2-bc", "debug" ]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    ports:
+      - "9045:8545"
+      - "9046:8546"
+      - "9050:8550"
+      - "9051:8548"
+      - "30309:30303"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu \
+        --config-file=/var/lib/besu/l2-node-besu.config.toml \
+        --genesis-file=/var/lib/besu/genesis.json \
+        --plugin-linea-l1-polling-interval="PT12S" \
+        --plugin-linea-l1-smart-contract-address="0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9" \
+        --plugin-linea-l1-rpc-endpoint="http://l1-el-node:8545" \
+        --plugin-linea-rejected-tx-endpoint="http://transaction-exclusion-api:8080" \
+        --plugin-linea-node-type="P2P" \
+        --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+    volumes:
+      - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
+      - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
+      - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+      - ../config/common/traces-limits-besu-v1.toml:/var/lib/besu/traces-limits.toml:ro
+      - ../tmp/linea-besu-sequencer/plugins:/opt/besu/plugins/
+      - ../tmp/local/:/data/:rw
+    networks:
+      l1-network:
+      linea:
+        ipv4_address: 11.11.11.119
 
   traces-node:
     container_name: traces-node
@@ -258,7 +308,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-a1e7eee}
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-d227ddf}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -520,7 +570,6 @@ services:
 
     volumes:
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
-      - ./config/zkbesu-shomei/key:/var/lib/besu/key:ro
       - ./config/zkbesu-shomei/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ../tmp/zkbesu-shomei/plugins:/opt/besu/plugins/

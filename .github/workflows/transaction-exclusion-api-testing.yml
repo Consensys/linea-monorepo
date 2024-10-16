@@ -17,7 +17,7 @@ on:
 
 jobs:
   run-tests:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Transaction exclusion api tests
     steps:
       - name: Checkout
