@@ -14,8 +14,22 @@ object IntToHexSerializer : JsonSerializer<Int>() {
   }
 }
 
+@Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+object JIntegerToHexSerializer : JsonSerializer<Integer>() {
+  override fun serialize(value: Integer, gen: JsonGenerator, serializers: SerializerProvider) {
+    gen.writeString(value.toHex())
+  }
+}
+
 object LongToHexSerializer : JsonSerializer<Long>() {
   override fun serialize(value: Long, gen: JsonGenerator, serializers: SerializerProvider) {
+    gen.writeString(value.toHex())
+  }
+}
+
+@Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+object JLongToHexSerializer : JsonSerializer<java.lang.Long>() {
+  override fun serialize(value: java.lang.Long, gen: JsonGenerator, serializers: SerializerProvider) {
     gen.writeString(value.toHex())
   }
 }

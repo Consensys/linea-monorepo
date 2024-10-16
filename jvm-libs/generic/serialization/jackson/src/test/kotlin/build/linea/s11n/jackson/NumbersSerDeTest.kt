@@ -41,7 +41,13 @@ class NumbersSerDeTest {
       // BigInteger
       val bigIntegerNull: BigInteger? = null,
       val bigIntegerZero: BigInteger = BigInteger.ZERO,
-      val bigIntegerSomeValue: BigInteger = BigInteger.valueOf(0xff00aaL)
+      val bigIntegerSomeValue: BigInteger = BigInteger.valueOf(0xff00aaL),
+
+      // nested Structures
+      val listOfInts: List<Int> = listOf(1, 10),
+      val listOfLongs: List<Long> = listOf(1, 10),
+      val listOfULongs: List<ULong> = listOf(1UL, 10UL),
+      val listOfBigIntegers: List<BigInteger> = listOf(1L, 10L).map(BigInteger::valueOf)
     )
 
     val json = objectMapper.writeValueAsString(SomeObject())
@@ -62,7 +68,11 @@ class NumbersSerDeTest {
           "uLongSomeValue": "0xff00aa",
           "bigIntegerNull": null,
           "bigIntegerZero": "0x0",
-          "bigIntegerSomeValue": "0xff00aa"
+          "bigIntegerSomeValue": "0xff00aa",
+          "listOfInts": ["0x1", "0xa"],
+          "listOfLongs": ["0x1", "0xa"],
+          "listOfULongs": ["0x1", "0xa"],
+          "listOfBigIntegers": ["0x1", "0xa"]
       }
       """.trimIndent()
     )
