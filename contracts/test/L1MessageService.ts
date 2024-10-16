@@ -1115,7 +1115,7 @@ describe("L1MessageService", () => {
       await expectRevertWithCustomError(l1MessageServiceMerkleProof, claimMessageCall, "MessageAlreadyClaimed", [1]);
     });
 
-    it("Should fail when l2 merkle root does not exist on L1", async () => {
+    it("Should fail when l2 Merkle root does not exist on L1", async () => {
       const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
         proof: VALID_MERKLE_PROOF.proof,
         messageNumber: 1,

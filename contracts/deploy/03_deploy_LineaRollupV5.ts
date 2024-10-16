@@ -1,20 +1,19 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { LineaRollupAlphaV3__factory } from "../typechain-types";
+import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import {
-  tryVerifyContract,
-  deployUpgradableContractWithProxyAdmin,
   getDeployedContractAddress,
-  tryStoreAddress,
-  validateDeployBranchAndTags,
   getRequiredEnvVar,
-} from "../common/helpers";
+  tryStoreAddress,
+  tryVerifyContract,
+  validateDeployBranchAndTags,
+} from "contracts/common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
   validateDeployBranchAndTags(hre.network.name);
 
-  const contractName = "LineaRollupAlphaV3";
+  const contractName = "LineaRollupV5";
   const verifierName = "PlonkVerifier";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
   let verifierAddress = await getDeployedContractAddress(verifierName, deployments);
@@ -45,12 +44,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   } else {
     console.log(`Deploying new version, NB: ${existingContractAddress} will be overwritten if env SAVE_ADDRESS=true.`);
   }
-
-  const [deployer] = await hre.ethers.getSigners();
-
-  const contract = await deployUpgradableContractWithProxyAdmin(new LineaRollupAlphaV3__factory(), deployer, {
-    functionName: "initialize",
-    args: [
+  const contract = await deployUpgradableFromFactory(
+    "LineaRollupV5",
+    [
       LineaRollup_initialStateRootHash,
       LineaRollup_initialL2BlockNumber,
       verifierAddress,
@@ -60,7 +56,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       LineaRollup_rateLimitAmountInWei,
       LineaRollup_genesisTimestamp,
     ],
-  });
+    {
+      initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
+      unsafeAllow: ["constructor"],
+    },
+  );
 
   const contractAddress = await contract.getAddress();
   const txReceipt = await contract.deploymentTransaction()?.wait();
@@ -76,4 +76,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ["LineaRollupAlphaV3"];
+func.tags = ["LineaRollupV5"];
