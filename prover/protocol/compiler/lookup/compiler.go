@@ -28,7 +28,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 
 	var (
 		mainLookupCtx = captureLookupTables(comp)
-		lastRound     = comp.NumRounds()
+		lastRound     = comp.NumRounds() - 1
 		proverActions = make([]proverTaskAtRound, comp.NumRounds()+1)
 		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
 		// which Z context should be used to handle a part of a given permutation
@@ -101,8 +101,9 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		// z-packing compile
 		zC.compile(comp)
 		// entry[0]:round, entry[1]: size
+		// the round that Gamma was registered.
 		round := entry[0]
-		proverActions[round+1].pushZAssignment(zAssignmentTask(*zC))
+		proverActions[round].pushZAssignment(zAssignmentTask(*zC))
 		va.ZOpenings = append(va.ZOpenings, zC.ZOpenings...)
 		va.Name = zC.Name
 	}
@@ -290,7 +291,7 @@ func compileLookupTable(
 func (stc *singleTableCtx) pushToZCatalog(zCatalog map[[2]int]*zCtx) {
 
 	var (
-		round = stc.M[0].Round()
+		round = stc.Gamma.Round
 	)
 
 	// tableCtx push to -> zCtx

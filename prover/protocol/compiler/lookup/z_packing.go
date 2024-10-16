@@ -81,27 +81,14 @@ func (z *zCtx) compile(comp *wizard.CompiledIOP) {
 		z.ZDenominatorBoarded[i] = zDenominator.Board()
 
 		z.Zs[i] = comp.InsertCommit(
-			z.Round+1,
+			z.Round,
 			deriveName[ifaces.ColID]("Z", comp.SelfRecursionCount, z.Round, z.Size, i),
 			z.Size,
 		)
 
-		// consistency check
-		comp.InsertGlobal(
-			z.Round+1,
-			deriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
-			sym.Sub(
-				zNumerator,
-				sym.Mul(
-					sym.Sub(z.Zs[i], column.Shift(z.Zs[i], -1)),
-					zDenominator,
-				),
-			),
-		)
-
 		// complete the consistency by adding the edge-case at position 0
 		comp.InsertLocal(
-			z.Round+1,
+			z.Round,
 			deriveName[ifaces.QueryID]("Z_CONSISTENCY_START", comp.SelfRecursionCount, z.Round, z.Size, i),
 			sym.Sub(
 				zNumerator,
@@ -112,9 +99,22 @@ func (z *zCtx) compile(comp *wizard.CompiledIOP) {
 			),
 		)
 
+		// consistency check
+		comp.InsertGlobal(
+			z.Round,
+			deriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
+			sym.Sub(
+				zNumerator,
+				sym.Mul(
+					sym.Sub(z.Zs[i], column.Shift(z.Zs[i], -1)),
+					zDenominator,
+				),
+			),
+		)
+
 		// local opening of the final value of the Z polynomial
 		z.ZOpenings[i] = comp.InsertLocalOpening(
-			z.Round+1,
+			z.Round,
 			deriveName[ifaces.QueryID]("Z_FINAL", comp.SelfRecursionCount, z.Round, z.Size, i),
 			column.Shift(z.Zs[i], -1),
 		)

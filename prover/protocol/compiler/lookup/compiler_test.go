@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -159,7 +161,7 @@ func TestLogDerivativeLookupOneXor(t *testing.T) {
 	// m should be
 	expectedM := smartvectors.ForTest(0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)
 	t.Logf("all columns = %v", runtime.Columns.ListAllKeys())
-	actualM := runtime.GetColumn("TABLE_XOR_TABLE_X_XOR_TABLE_XXORY_XOR_TABLE_Y_0_LOGDERIVATIVE_M")
+	actualM := runtime.GetColumn("TABLE_XOR_TABLE_X,XOR_TABLE_XXORY,XOR_TABLE_Y_0_LOGDERIVATIVE_M")
 
 	assert.Equal(t, expectedM.Pretty(), actualM.Pretty(), "m does not match the expected value")
 
@@ -226,10 +228,62 @@ func TestLogDerivativeLookupMultiXor(t *testing.T) {
 	// m should be
 	expectedM := smartvectors.ForTest(1, 1, 1, 2, 2, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0)
 	t.Logf("all column names = %v", runtime.Columns.ListAllKeys())
-	actualM := runtime.GetColumn("TABLE_XOR_TABLE_X_XOR_TABLE_XXORY_XOR_TABLE_Y_0_LOGDERIVATIVE_M")
+	actualM := runtime.GetColumn("TABLE_XOR_TABLE_X,XOR_TABLE_XXORY,XOR_TABLE_Y_0_LOGDERIVATIVE_M")
 
 	assert.Equal(t, expectedM.Pretty(), actualM.Pretty(), "m does not match the expected value")
 
+	err := wizard.Verify(comp, proof)
+	require.NoError(t, err)
+}
+
+func TestLogDerivativeLookupRandomLinComb(t *testing.T) {
+
+	var sizeA, sizeB int = 16, 8
+	var col1, col2 ifaces.Column
+	define := func(b *wizard.Builder) {
+		col1 = b.RegisterPrecomputed("P1", smartvectors.ForTest(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1))
+		col2 = b.RegisterPrecomputed("P2", smartvectors.ForTest(12, 6, 8, 0, 3, 12, 13, 23, 17, 9, 8, 7, 6, 5, 4, 3))
+		colI := b.RegisterPrecomputed("I", smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
+
+		_ = b.RegisterRandomCoin("COIN", coin.Field)
+
+		uCol := b.InsertProof(1, "LC", sizeA)
+
+		_ = b.RegisterRandomCoin("COIN1", coin.Field)
+
+		colQ := b.RegisterCommit("Q", sizeB)
+		uChosen := b.RegisterCommit("UChosen", sizeB)
+
+		// multi-col query
+		b.Inclusion("LOOKUP", []ifaces.Column{colI, uCol}, []ifaces.Column{colQ, uChosen})
+	}
+
+	prover := func(run *wizard.ProverRuntime) {
+		// assign a and b
+
+		coin := run.GetRandomCoinField("COIN")
+
+		a := col1.GetColAssignment(run)
+		b := col2.GetColAssignment(run)
+		lc := smartvectors.PolyEval([]smartvectors.SmartVector{a, b}, coin)
+
+		run.AssignColumn("LC", lc)
+
+		run.GetRandomCoinField("COIN1")
+
+		colQ := smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7)
+		run.AssignColumn("Q", colQ)
+
+		colQFr := colQ.IntoRegVecSaveAlloc()
+		var t []field.Element
+		for _, q := range colQFr {
+			t = append(t, lc.Get(int(q.Uint64())))
+		}
+		run.AssignColumn("UChosen", smartvectors.NewRegular(t))
+	}
+
+	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	proof := wizard.Prove(comp, prover)
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
 }
