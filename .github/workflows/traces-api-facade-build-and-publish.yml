@@ -84,14 +84,27 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: consensys/linea-traces-api-facade
+      - name: Build for testing
+        uses: docker/build-push-action@v6
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          context: .
+          build-contexts: jar=./traces-api-facade/app/build/libs/
+          file: ./traces-api-facade/Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: ${{ env.PUSH_IMAGE }}
+          tags: ${{ env.TAGS }}
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
       - name: Build & push
         uses: docker/build-push-action@v6
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         with:
           context: .
           build-contexts: jar=./traces-api-facade/app/build/libs/
           file: ./traces-api-facade/Dockerfile
           platforms: linux/amd64,linux/arm64
-          load: true
           push: ${{ env.PUSH_IMAGE }}
           tags: ${{ env.TAGS }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
