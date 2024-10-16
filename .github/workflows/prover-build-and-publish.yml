@@ -42,7 +42,7 @@ jobs:
     name: Prover build
     steps:
       - name: Set environment variables for workflow_call
-        if: github.event_name == 'workflow_call'
+        if: ${{ github.event_name == 'workflow_call' }}
         run: |
           echo "COMMIT_TAG=${{ inputs.commit_tag }}" >> $GITHUB_ENV
           echo "DEVELOP_TAG=${{ inputs.develop_tag }}" >> $GITHUB_ENV
@@ -50,7 +50,7 @@ jobs:
           echo "PUSH_IMAGE=${{ inputs.push_image }}" >> $GITHUB_ENV
           echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }},${{ env.IMAGE_NAME }}:${{ env.DEVELOP_TAG }}" >> $GITHUB_ENV
       - name: Set environment variables for manual workflow_dispatch
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           echo COMMIT_TAG=$(git rev-parse --short "$GITHUB_SHA") >> $GITHUB_ENV
           echo DEVELOP_TAG=develop >> $GITHUB_ENV
