@@ -74,11 +74,11 @@ fun executeCommand(
   return futureResult.toSafeFuture()
 }
 
-private val lineaRollupAddressPattern = Pattern.compile(
-  "^LineaRollup(?:AlphaV3)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
+internal val lineaRollupAddressPattern = Pattern.compile(
+  "^LineaRollup(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
 )
-private val l2MessageServiceAddressPattern = Pattern.compile(
-  "^L2MessageService deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
+internal val l2MessageServiceAddressPattern = Pattern.compile(
+  "^L2MessageService(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
 )
 
 data class DeployedContract(
@@ -91,7 +91,14 @@ fun getDeployedAddress(
   addressPattern: Pattern
 ): DeployedContract {
   val lines = commandResult.stdOut.toList().asReversed()
-  val matcher: Matcher? = lines
+  return getDeployedAddress(lines, addressPattern)
+}
+
+fun getDeployedAddress(
+  cmdStdoutLines: List<String>,
+  addressPattern: Pattern
+): DeployedContract {
+  val matcher: Matcher? = cmdStdoutLines
     .firstOrNull { line -> addressPattern.matcher(line).find() }
     ?.let { addressPattern.matcher(it).also { it.find() } }
 
