@@ -17,9 +17,7 @@ import (
 //
 // The current implementation is for packed Zs
 type finalEvaluationCheck struct {
-	// Name is a string repr of the verifier action. It is used to format errors
-	// so that we can easily know which verifier action is at fault during the
-	// verification is at fault.
+	// the name of a lookupTable in the pack, this can help for debugging.
 	Name string
 	// ZOpenings lists all the openings of all the zCtx
 	ZOpenings []query.LocalOpening

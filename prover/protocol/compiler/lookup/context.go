@@ -70,6 +70,4 @@ type singleTableCtx struct {
 	// is a variable if the lookup table has only a single column or a random
 	// linear combination of column if the table has only a single column.
 	T []*symbolic.Expression
-
-	Name string
 }

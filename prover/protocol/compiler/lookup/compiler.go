@@ -302,7 +302,7 @@ func (stc *singleTableCtx) pushToZCatalog(zCatalog map[[2]int]*zCtx) {
 			zCatalog[key] = &zCtx{
 				Size:  size,
 				Round: round,
-				Name:  stc.Name,
+				Name:  stc.TableName,
 			}
 		}
 
@@ -327,7 +327,7 @@ func (stc *singleTableCtx) pushToZCatalog(zCatalog map[[2]int]*zCtx) {
 			zCatalog[key] = &zCtx{
 				Size:  size,
 				Round: round,
-				Name:  stc.Name,
+				Name:  stc.TableName,
 			}
 		}
 
