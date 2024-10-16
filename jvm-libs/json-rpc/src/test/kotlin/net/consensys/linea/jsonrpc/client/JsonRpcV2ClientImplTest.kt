@@ -56,7 +56,7 @@ class JsonRpcV2ClientImplTest {
   private lateinit var endpoint: URL
   private val defaultRetryConfig = RequestRetryConfig(
     maxRetries = 3u,
-    timeout = 1.seconds,
+    timeout = 5.seconds, // bellow 2s we may have flacky tests when running whole test suite in parallel
     backoffDelay = 10.milliseconds
   )
 
