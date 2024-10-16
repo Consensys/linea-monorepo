@@ -221,7 +221,6 @@ jobs:
     uses: ./.github/workflows/build-and-publish.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
-      last_commit_tag: ${{ needs.store-image-name-and-tags.outputs.last_commit_tag }}
       develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
