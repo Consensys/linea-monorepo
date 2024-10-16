@@ -6,26 +6,28 @@ on:
       commit_tag:
         required: true
         type: string
-      last_commit_tag:
-        required: true
-        type: string
-      common_ancestor_tag:
-        required: true
-        type: string
       develop_tag:
-        required: true
-        type: string
-      untested_tag_suffix:
         required: true
         type: string
       image_name:
         required: true
         type: string
+      push_image:
+        required: true
+        type: boolean
+        default: false
     secrets:
       DOCKERHUB_USERNAME:
         required: true
       DOCKERHUB_TOKEN:
         required: true
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: 'Toggle whether to push image to docker registry'
+        required: true
+        type: boolean
+        default: true
 
 concurrency:
   group: prover-build-and-publish-${{ github.workflow }}-${{ github.ref }}
@@ -38,12 +40,23 @@ jobs:
   build-and-publish:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Prover build
-    env:
-      COMMIT_TAG: ${{ inputs.commit_tag }}
-      DEVELOP_TAG: ${{ inputs.develop_tag }}
-      UNTESTED_TAG_SUFFIX: ${{ inputs.untested_tag_suffix }}
-      IMAGE_NAME: ${{ inputs.image_name }}
     steps:
+      - name: Set environment variables for workflow_call
+        if: github.event_name == 'workflow_call'
+        run: |
+          echo "COMMIT_TAG=${{ inputs.commit_tag }}" >> $GITHUB_ENV
+          echo "DEVELOP_TAG=${{ inputs.develop_tag }}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${{ inputs.image_name }}" >> $GITHUB_ENV
+          echo "PUSH_IMAGE=${{ inputs.push_image }}" >> $GITHUB_ENV
+          echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }},${{ env.IMAGE_NAME }}:${{ env.DEVELOP_TAG }}" >> $GITHUB_ENV
+      - name: Set environment variables for manual workflow_dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo COMMIT_TAG=$(git rev-parse --short "$GITHUB_SHA") >> $GITHUB_ENV
+          echo DEVELOP_TAG=develop >> $GITHUB_ENV
+          echo "IMAGE_NAME=consensys/linea-traces-api-facade" >> $GITHUB_ENV
+          echo "PUSH_IMAGE=${{ inputs.push_image }}" >> $GITHUB_ENV
+          echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}" >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -73,8 +86,8 @@ jobs:
             corset=corset/
             constraints=constraints/
           platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}-${{ env.UNTESTED_TAG_SUFFIX }}
+          load: ${{ !env.PUSH_IMAGE }}
+          push: ${{ env.PUSH_IMAGE }}
+          tags: ${{ env.TAGS }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max

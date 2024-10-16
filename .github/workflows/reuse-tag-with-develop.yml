@@ -8,9 +8,6 @@ on:
       develop_tag:
         required: true
         type: string
-      untested_tag_suffix:
-        required: true
-        type: string
       image_names:
         required: true
         type: string
@@ -21,7 +18,7 @@ on:
         required: true
 
 jobs:
-  tag-without-untested-suffix:
+  tag-with-develop:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: tag without untested suffix
     strategy:
@@ -36,7 +33,4 @@ jobs:
       - name: Tag Docker image with develop if on main branch
         if: ${{ github.ref == 'refs/heads/main' }}
         run: |
-          docker buildx imagetools create --tag ${{ matrix.image_name }}:${{ inputs.develop_tag }} ${{ matrix.image_name }}:${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
-      - name: Tag Docker image with the commit hash (without the "untested" suffix)
-        run: |
-          docker buildx imagetools create --tag ${{ matrix.image_name }}:${{ inputs.commit_tag }} ${{ matrix.image_name }}:${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
+          docker buildx imagetools create --tag ${{ matrix.image_name }}:${{ inputs.develop_tag }}

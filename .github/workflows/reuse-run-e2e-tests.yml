@@ -6,10 +6,6 @@ on:
         description: 'The commit tag to use'
         required: true
         type: string
-      untested_tag_suffix:
-        description: 'The untested tag suffix to use'
-        required: true
-        type: string
       tracing-engine:
         description: Variable option for running tests against [besu] or [geth] stack
         required: true
@@ -32,9 +28,6 @@ on:
   workflow_call:
     inputs:
       commit_tag:
-        required: true
-        type: string
-      untested_tag_suffix:
         required: true
         type: string
       tracing-engine:
@@ -68,11 +61,11 @@ on:
 jobs:
   run-e2e-tests:
     env:
-      COORDINATOR_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
-      POSTMAN_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
-      PROVER_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
-      TRACES_API_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
-      TRANSACTION_EXCLUSION_API_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
+      COORDINATOR_TAG: ${{ inputs.commit_tag }}
+      POSTMAN_TAG: ${{ inputs.commit_tag }}
+      PROVER_TAG: ${{ inputs.commit_tag }}
+      TRACES_API_TAG: ${{ inputs.commit_tag }}
+      TRANSACTION_EXCLUSION_API_TAG: ${{ inputs.commit_tag }}
       GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
