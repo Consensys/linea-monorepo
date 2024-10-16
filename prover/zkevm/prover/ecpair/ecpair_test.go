@@ -136,6 +136,7 @@ func testModule(t *testing.T, tc pairingDataTestCase, withPairingCircuit, withG2
 			if checkPairingModule {
 				modCt.CheckAssignment(run,
 					"ECPAIR_IS_ACTIVE",
+					"ECPAIR_UNALIGNED_PAIRING_DATA_IS_ACTIVE",
 					"ECPAIR_UNALIGNED_PAIRING_DATA_INDEX",
 					"ECPAIR_UNALIGNED_PAIRING_DATA_INSTANCE_ID",
 					"ECPAIR_UNALIGNED_PAIRING_DATA_PAIR_ID",
