@@ -30,7 +30,7 @@ public abstract class AbstractLineaRequiredPlugin extends AbstractLineaPrivateOp
    *
    * <p>If that's NOT desired, the plugin should implement {@link BesuPlugin} directly.
    *
-   * @param context
+   * @param context the BesuContext to be used.
    */
   @Override
   public void register(final BesuContext context) {
@@ -59,7 +59,7 @@ public abstract class AbstractLineaRequiredPlugin extends AbstractLineaPrivateOp
   /**
    * Linea plugins need to implement this method. Called by {@link BesuPlugin} register method
    *
-   * @param context
+   * @param context the BesuContext to be used.
    */
   public abstract void doRegister(final BesuContext context);
 
