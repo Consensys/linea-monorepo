@@ -211,7 +211,7 @@ public class Hub implements Module {
   private final Blockhash blockhash = new Blockhash(this, wcp);
   private final Euc euc = new Euc(wcp);
   @Getter private final Ext ext = new Ext(this);
-  private final Gas gas = new Gas();
+  @Getter private final Gas gas = new Gas(wcp);
   private final Mul mul = new Mul(this);
   private final Mod mod = new Mod();
   private final Shf shf = new Shf();
@@ -332,6 +332,7 @@ public class Hub implements Module {
                 exp,
                 ext,
                 euc,
+                gas,
                 logData,
                 logInfo,
                 mmu, // WARN: must be traced before the MMIO

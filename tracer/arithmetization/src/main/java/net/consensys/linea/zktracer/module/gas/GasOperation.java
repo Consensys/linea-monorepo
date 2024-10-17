@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.gas;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LT;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_LEQ;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Utils.initArray;
 
 import java.math.BigInteger;
 
@@ -25,6 +26,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
 @Accessors(fluent = true)
@@ -35,58 +37,59 @@ public class GasOperation extends ModuleOperation {
   BigInteger[] wcpArg2Lo;
   UnsignedByte[] wcpInst;
   boolean[] wcpRes;
-  int CT_MAX;
+  int ctMax;
 
-  public GasOperation(GasParameters gasParameters) {
+  public GasOperation(GasParameters gasParameters, Wcp wcp) {
     this.gasParameters = gasParameters;
-    CT_MAX = gasParameters.ctMax();
+    ctMax = compareGasActualAndGasCost() ? 2 : 1;
 
     // init arrays
-    wcpArg1Lo = new BigInteger[CT_MAX + 1];
-    wcpArg2Lo = new BigInteger[CT_MAX + 1];
-    wcpInst = new UnsignedByte[CT_MAX + 1];
-    wcpRes = new boolean[CT_MAX + 1];
+    wcpArg1Lo = initArray(BigInteger.ZERO, ctMax + 1);
+    wcpArg2Lo = initArray(BigInteger.ZERO, ctMax + 1);
+    wcpInst = initArray(UnsignedByte.of(0), ctMax + 1);
+    wcpRes = new boolean[ctMax + 1];
 
     // row 0
     wcpArg1Lo[0] = BigInteger.ZERO;
     wcpArg2Lo[0] = gasParameters.gasActual();
     wcpInst[0] = UnsignedByte.of(WCP_INST_LEQ);
-    wcpRes[0] = true;
+    final boolean gasActualIsNonNegative = wcp.callLEQ(0, gasParameters.gasActual().longValue());
+    wcpRes[0] = gasActualIsNonNegative; // supposed to be true
 
     // row 1
     wcpArg1Lo[1] = BigInteger.ZERO;
     wcpArg2Lo[1] = gasParameters.gasCost();
     wcpInst[1] = UnsignedByte.of(WCP_INST_LEQ);
-    wcpRes[1] = true;
+    final boolean gasCostIsNonNegative = wcp.callLEQ(0, gasParameters.gasCost().longValue());
+    wcpRes[1] = gasCostIsNonNegative; // supposed to be true
 
     // row 2
-    if (gasParameters.oogx()) {
+    if (compareGasActualAndGasCost()) {
       wcpArg1Lo[2] = gasParameters.gasActual();
       wcpArg2Lo[2] = gasParameters.gasCost();
       wcpInst[2] = UnsignedByte.of(EVM_INST_LT);
-      wcpRes[2] = gasParameters.oogx();
-    } else {
-      // TODO: init the lists with zeros (or something equivalent) instead
-      wcpArg1Lo[2] = BigInteger.ZERO;
-      wcpArg2Lo[2] = BigInteger.ZERO;
-      wcpInst[2] = UnsignedByte.of(0);
-      wcpRes[2] = false;
+      final boolean gasActualLTGasCost =
+          wcp.callLT(gasParameters.gasActual().longValue(), gasParameters.gasCost().longValue());
+      wcpRes[2] = gasActualLTGasCost; // supposed to be equal to gasParameters.isOogx()
     }
+  }
+
+  private boolean compareGasActualAndGasCost() {
+    return !gasParameters.xahoy() || gasParameters.oogx();
   }
 
   @Override
   protected int computeLineCount() {
-    return gasParameters.ctMax() + 1;
+    return ctMax + 1;
   }
 
-  public void trace(int stamp, Trace trace) {
-    for (short i = 0; i < CT_MAX + 1; i++) {
-      // TODO: review traced values
+  public void trace(Trace trace) {
+    for (short i = 0; i < ctMax + 1; i++) {
       trace
-          .inputsAndOutputsAreMeaningful(stamp != 0)
+          .inputsAndOutputsAreMeaningful(true)
           .first(i == 0)
           .ct(i)
-          .ctMax(CT_MAX)
+          .ctMax(ctMax)
           .gasActual(bigIntegerToBytes(gasParameters.gasActual()))
           .gasCost(bigIntegerToBytes(gasParameters.gasCost()))
           .exceptionsAhoy(gasParameters.xahoy())
