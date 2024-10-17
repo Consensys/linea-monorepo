@@ -172,15 +172,15 @@ interface ILineaRollup {
   /**
    * @notice Emitted when compressed data is being submitted and verified succesfully on L1.
    * @dev The block range is indexed and parent shnarf included for state reconstruction simplicity.
-   * @param startBlock The indexed L2 block number indicating which block the data starts from.
-   * @param endBlock The indexed L2 block number indicating which block the data ends on.
+   * @param startBlockNumber The indexed L2 block number indicating which block the data starts from.
+   * @param endBlockNumber The indexed L2 block number indicating which block the data ends on.
    * @param parentShnarf The parent shnarf for the data being submitted.
    * @param shnarf The indexed shnarf for the data being submitted.
    * @param finalStateRootHash The L2 state root hash that the current blob submission ends on. NB: The last blob in the collection.
    */
   event DataSubmittedV3(
-    uint256 indexed startBlock,
-    uint256 indexed endBlock,
+    uint256 indexed startBlockNumber,
+    uint256 indexed endBlockNumber,
     bytes32 parentShnarf,
     bytes32 indexed shnarf,
     bytes32 finalStateRootHash
