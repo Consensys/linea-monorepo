@@ -19,7 +19,7 @@ describe("Transaction exclusion test suite", () => {
       const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2BesuNodeProvider()!!);
       const testContract = config.getL2TestContract(l2AccountLocal)!!;
 
-      // This shall be rejected by the Besu node due to traces module limit overflow (as reduced traces limits)
+      // This shall be rejected by the Besu node due to traces module limit overflow
       let rejectedTxHash = "";
       try {
         const txRequest: TransactionRequest = {
@@ -62,7 +62,7 @@ describe("Transaction exclusion test suite", () => {
     const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2SequencerProvider()!!);
     const testContract = config.getL2TestContract(l2AccountLocal);
 
-    // This shall be rejected by sequencer due to traces module limit overflow (as reduced traces limits)
+    // This shall be rejected by sequencer due to traces module limit overflow
     const tx = await testContract!!.connect(l2AccountLocal).testAddmod(13000, 31);
     const rejectedTxHash = tx.hash;
     console.log(`rejectedTxHash (SEQUENCER): ${rejectedTxHash}`);
