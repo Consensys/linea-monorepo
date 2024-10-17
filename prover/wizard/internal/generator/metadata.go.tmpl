@@ -41,6 +41,16 @@ func ({{ .RcvrName }} *{{ .TypeName }}) ListTags() []string {
 	return {{ .RcvrName }}.metadata.listTags()
 }
 
+func ({{ .RcvrName }} *{{ .TypeName }}) HasTag(tag string) bool {
+	tags := {{ .RcvrName }}.Tags()
+	for i := range tags {
+		if tags[i] == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func ({{ .RcvrName }} *{{ .TypeName }}) String() string {
 	return {{.RcvrName}}.metadata.scope.getFullScope() + "/" + {{ .RcvrName }}.metadata.nameOrDefault({{ .RcvrName }}) + "/" + strconv.Itoa(int({{ .RcvrName }}.metadata.id))
 }
@@ -56,16 +66,16 @@ func ({{ .RcvrName }} *{{ .TypeName }}) id() id {
 {{- end }}
 
 {{- if eq true .IsNoResultQuery }}
-// ComputeResult does not return any result for [{{ .TypeName }}] because Global
+// computeResult does not return any result for [{{ .TypeName }}] because Global
 // constraints do not return results as they are purely constraints that must
 // be satisfied.
-func ({{ .RcvrName }} {{ .TypeName }}) ComputeResult(run Runtime) QueryResult {
+func ({{ .RcvrName }} {{ .TypeName }}) computeResult(run Runtime) QueryResult {
 	return &QueryResNone{}
 }
 
-// ComputeResult does not return any result for [{{ .TypeName }}] because Global
+// computeResult does not return any result for [{{ .TypeName }}] because Global
 // constraints do not return results.
-func ({{ .RcvrName }} {{ .TypeName }}) ComputeResultGnark(_ frontend.API, run GnarkRuntime) QueryResultGnark {
+func ({{ .RcvrName }} {{ .TypeName }}) computeResultGnark(_ frontend.API, run RuntimeGnark) QueryResultGnark {
 	return &QueryResNoneGnark{}
 }
 {{- end}}
@@ -73,7 +83,7 @@ func ({{ .RcvrName }} {{ .TypeName }}) ComputeResultGnark(_ frontend.API, run Gn
 {{- if eq true .IsQueryWithResult }}
 func ({{ .RcvrName }} {{ .TypeName }}) Check(run Runtime) error {
 	var (
-		v          = {{ .RcvrName }}.ComputeResult(run).(*QueryResFE).R
+		v          = {{ .RcvrName }}.computeResult(run).(*QueryResFE).R
 		qr2, okQr2 = run.tryGetQueryRes(&{{ .RcvrName }})
 		v2         = qr2.(*QueryResFE).R
 	)
@@ -89,10 +99,10 @@ func ({{ .RcvrName }} {{ .TypeName }}) Check(run Runtime) error {
 	return nil
 }
 
-func ({{ .RcvrName }} {{ .TypeName }}) CheckGnark(api frontend.API, run GnarkRuntime) {
+func ({{ .RcvrName }} {{ .TypeName }}) CheckGnark(api frontend.API, run RuntimeGnark) {
 
 	var (
-		v          = {{ .RcvrName }}.ComputeResultGnark(api, run).(*QueryResFEGnark).R
+		v          = {{ .RcvrName }}.computeResultGnark(api, run).(*QueryResFEGnark).R
 		qr2, okQr2 = run.tryGetQueryRes(&{{ .RcvrName }})
 		v2         = qr2.(*QueryResFEGnark).R
 	)
