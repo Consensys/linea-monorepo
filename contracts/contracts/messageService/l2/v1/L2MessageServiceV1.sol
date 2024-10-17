@@ -148,6 +148,7 @@ abstract contract L2MessageServiceV1 is
 
   /**
    * @notice The Fee Manager sets a minimum fee to address DOS protection.
+   * @dev MINIMUM_FEE_SETTER_ROLE is required to set the minimum fee.
    * @param _feeInWei New minimum fee in Wei.
    */
   function setMinimumFee(uint256 _feeInWei) external onlyRole(MINIMUM_FEE_SETTER_ROLE) {

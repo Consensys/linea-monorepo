@@ -7,7 +7,7 @@ import { L1MessageServiceV1 } from "./messageService/l1/v1/L1MessageServiceV1.so
 import { IZkEvmV2 } from "./interfaces/l1/IZkEvmV2.sol";
 import { IPlonkVerifier } from "./interfaces/l1/IPlonkVerifier.sol";
 /**
- * @title Contract to manage cross-chain messaging on L1 and rollup proving.
+ * @title Contract to manage cross-chain L1 rollup proving.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
@@ -53,12 +53,11 @@ abstract contract ZkEvmV2 is Initializable, AccessControlUpgradeable, L1MessageS
         assembly {
           let dataOffset := add(result, 0x20)
 
-          // Store the modified first 32 bytes back into memory overwriting the location after having swapped out the selector
+          // Store the modified first 32 bytes back into memory overwriting the location after having swapped out the selector.
           mstore(
             dataOffset,
             or(
-              // InvalidProofOrProofVerificationRanOutOfGas(string) = 0xca389c44bf373a5a506ab5a7d8a53cb0ea12ba7c5872fd2bc4a0e31614c00a85
-              // Using the selector from a bytes4 variable and shl results in 0x00000000
+              // InvalidProofOrProofVerificationRanOutOfGas(string) = 0xca389c44bf373a5a506ab5a7d8a53cb0ea12ba7c5872fd2bc4a0e31614c00a85.
               shl(224, 0xca389c44),
               and(mload(dataOffset), 0x00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
             )
