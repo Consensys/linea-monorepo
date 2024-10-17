@@ -45,7 +45,7 @@ jobs:
       TAGS: ${{ inputs.image_name }}:${{ inputs.commit_tag }}
     steps:
       - name: Set develop tag if main branch
-        if: ${{ github.ref != 'refs/heads/main' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           echo "TAGS=${{ inputs.image_name }}:${{ inputs.commit_tag }},${{ inputs.image_name }}:${{ inputs.develop_tag }}" >> $GITHUB_ENV
       - name: Checkout
@@ -91,6 +91,17 @@ jobs:
           tags: ${{ env.TAGS }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+      - name: Save Docker image as artifact
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }} | gzip > linea-traces-api-facade.tar.gz
+        shell: bash
+      - name: Upload artifact
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linea-traces-api-facade
+          path: linea-traces-api-facade.tar.gz
       - name: Build & push
         uses: docker/build-push-action@v6
         if: ${{ github.event_name == 'workflow_dispatch' }}
