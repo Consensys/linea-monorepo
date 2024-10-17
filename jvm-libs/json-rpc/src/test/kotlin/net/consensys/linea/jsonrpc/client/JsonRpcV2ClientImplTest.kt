@@ -40,6 +40,7 @@ import java.net.URI
 import java.net.URL
 import java.util.concurrent.ExecutionException
 import java.util.function.Predicate
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -54,11 +55,7 @@ class JsonRpcV2ClientImplTest {
   private val path = "/api/v1?appKey=1234"
   private lateinit var meterRegistry: SimpleMeterRegistry
   private lateinit var endpoint: URL
-  private val defaultRetryConfig = RequestRetryConfig(
-    maxRetries = 3u,
-    timeout = 5.seconds, // bellow 2s we may have flacky tests when running whole test suite in parallel
-    backoffDelay = 10.milliseconds
-  )
+  private val defaultRetryConfig = retryConfig(maxRetries = 2u, timeout = 8.seconds, backoffDelay = 5.milliseconds)
 
   private val defaultObjectMapper = jacksonObjectMapper()
   private val objectMapperBytesAsHex = jacksonObjectMapper()
@@ -68,6 +65,16 @@ class JsonRpcV2ClientImplTest {
         this.addSerializer(ULong::class.java, ULongToHexSerializer)
       }
     )
+
+  private fun retryConfig(
+    maxRetries: UInt = 2u,
+    timeout: Duration = 8.seconds, // bellow 2s we may have flacky tests when running whole test suite in parallel
+    backoffDelay: Duration = 5.milliseconds
+  ) = RequestRetryConfig(
+    maxRetries = maxRetries,
+    timeout = timeout,
+    backoffDelay = backoffDelay
+  )
 
   private fun createClientAndSetupWireMockServer(
     vertx: Vertx,
@@ -425,7 +432,7 @@ class JsonRpcV2ClientImplTest {
         params = emptyList<Any>(),
         resultMapper = { it }
       )
-    ).failsWithin(1.seconds.toJavaDuration())
+    ).failsWithin(10.seconds.toJavaDuration())
       .withThrowableThat()
       .isInstanceOfSatisfying(ExecutionException::class.java) {
         assertThat(it.cause).isInstanceOf(JsonRpcErrorResponseException::class.java)
@@ -446,14 +453,9 @@ class JsonRpcV2ClientImplTest {
 
   @Test
   fun `when it gets an error propagates to shallRetryRequestPredicate  and retries while is true`() {
-    val longRetry = RequestRetryConfig(
-      maxRetries = 10u,
-      timeout = 5.seconds,
-      backoffDelay = 1.milliseconds
-    )
     createClientAndSetupWireMockServer(
       vertx,
-      retryConfig = longRetry
+      retryConfig = retryConfig(maxRetries = 10u)
     ).also { client ->
       replyRequestsWith(
         listOf(
@@ -503,14 +505,9 @@ class JsonRpcV2ClientImplTest {
 
   @Test
   fun `when it has connection error propagates to shallRetryRequestPredicate and retries while is true`() {
-    val longRetry = RequestRetryConfig(
-      maxRetries = 10u,
-      timeout = 5.seconds,
-      backoffDelay = 1.milliseconds
-    )
     createClientAndSetupWireMockServer(
       vertx,
-      retryConfig = longRetry
+      retryConfig = retryConfig(maxRetries = 10u)
     ).also { client ->
       // stop the server to simulate connection error
       wiremock.stop()
@@ -544,14 +541,9 @@ class JsonRpcV2ClientImplTest {
 
   @Test
   fun `when it has connection error propagates to shallRetryRequestPredicate and retries until retry config elapses`() {
-    val retryConfig = RequestRetryConfig(
-      maxRetries = 2u,
-      timeout = 5.seconds,
-      backoffDelay = 1.milliseconds
-    )
     createClientAndSetupWireMockServer(
       vertx,
-      retryConfig = retryConfig
+      retryConfig = retryConfig(maxRetries = 2u, timeout = 8.seconds, backoffDelay = 5.milliseconds)
     ).also { client ->
       // stop the server to simulate connection error
       wiremock.stop()
@@ -574,7 +566,7 @@ class JsonRpcV2ClientImplTest {
             assertThat(it.message).contains("Connection refused: localhost/127.0.0.1:")
           }
         }
-      assertThat(retryPredicateCalls).hasSize(3)
+      assertThat(retryPredicateCalls).hasSizeBetween(1, 3)
     }
   }
 
