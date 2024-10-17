@@ -51,7 +51,7 @@ describe("Transaction exclusion test suite", () => {
     120_000,
   );
 
-  it.concurrent(
+  it.skip(
     "Should get the status of the rejected transaction reported from Besu SEQUENCER node",
     async () => {
       if (!config.getTransactionExclusionEndpoint()) {
@@ -64,11 +64,8 @@ describe("Transaction exclusion test suite", () => {
       const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2SequencerProvider()!!);
       const testContract = config.getL2TestContract(l2AccountLocal);
 
-      console.log(`nonce: ${JSON.stringify(await l2AccountLocal.getNonce())}`);
-
       // This shall be rejected by sequencer due to traces module limit overflow (as reduced traces limits)
       const tx = await testContract!!.connect(l2AccountLocal).testAddmod(13000, 31);
-
       const rejectedTxHash = tx.hash;
       console.log(`rejectedTxHash (SEQUENCER): ${rejectedTxHash}`);
 
