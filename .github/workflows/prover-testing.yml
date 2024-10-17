@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   staticcheck:
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Prover static check
     steps:
     - name: install Go
@@ -44,6 +44,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
+          version: v1.61.0
           working-directory: prover
           args: --timeout=5m
     - name: generated files should not be modified
@@ -58,7 +59,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.23.x]
-    runs-on: [self-hosted, Linux, X64, large]
+    runs-on: [self-hosted, ubuntu-22.04, X64, large]
     name: Prover testing
     needs:
       - staticcheck
@@ -99,7 +100,7 @@ jobs:
     needs:
       - staticcheck
       - test
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     steps:
       - name: Notify slack -- workflow failed
         id: slack
@@ -122,7 +123,7 @@ jobs:
     needs:
       - staticcheck
       - test
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     steps:
       - name: Notify slack -- workflow succeeded
         id: slack
