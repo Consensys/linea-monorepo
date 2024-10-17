@@ -46,6 +46,21 @@ func (p *PaddedCircularWindow) Len() int {
 	return p.totLen
 }
 
+// Offset returns the offset of the PCW
+func (p *PaddedCircularWindow) Offset() int {
+	return p.offset
+}
+
+// Windows returns the length of the window of the PCQ
+func (p *PaddedCircularWindow) Window() []field.Element {
+	return p.window
+}
+
+// PaddingVal returns the value used for padding the window
+func (p *PaddedCircularWindow) PaddingVal() field.Element {
+	return p.paddingVal
+}
+
 // Returns a queries position
 func (p *PaddedCircularWindow) Get(n int) field.Element {
 	// Check if the queried index is in the window
