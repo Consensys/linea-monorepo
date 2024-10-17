@@ -7,6 +7,10 @@ import {
   L2MessageService__factory,
   LineaRollup,
   LineaRollup__factory,
+  TestERC20,
+  TestERC20__factory,
+  TokenBridge,
+  TokenBridge__factory,
 } from "../../typechain";
 import { AccountManager } from "./accounts/account-manager";
 
@@ -65,6 +69,42 @@ export default class TestSetup {
     }
 
     return l2MessageService;
+  }
+
+  public getL1TokenBridgeContract(signer?: Wallet): TokenBridge {
+    const l1TokenBridge: TokenBridge = TokenBridge__factory.connect(
+      this.config.L1.tokenBridgeAddress,
+      this.getL1Provider(),
+    );
+
+    if (signer) {
+      return l1TokenBridge.connect(signer);
+    }
+
+    return l1TokenBridge;
+  }
+
+  public getL2TokenBridgeContract(signer?: Wallet): TokenBridge {
+    const l2TokenBridge: TokenBridge = TokenBridge__factory.connect(
+      this.config.L2.tokenBridgeAddress,
+      this.getL2Provider(),
+    );
+
+    if (signer) {
+      return l2TokenBridge.connect(signer);
+    }
+
+    return l2TokenBridge;
+  }
+
+  public getL1TokenContract(signer?: Wallet): TestERC20 {
+    const l1Token: TestERC20 = TestERC20__factory.connect(this.config.L1.l1TokenAddress, this.getL1Provider());
+
+    if (signer) {
+      return l1Token.connect(signer);
+    }
+
+    return l1Token;
   }
 
   public getL1DummyContract(signer?: Wallet): DummyContract {

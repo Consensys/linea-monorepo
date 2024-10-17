@@ -48,7 +48,7 @@
     "f17f52151EbEF6C7334FAD080c5704D77216b732": {
       "@WARNING": "FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE",
       "privateKey": "ae6ae8e5ccbfb04590405997ee2d52d2b330726137b875053c36d94e974d162f",
-      "comment": "account 3, can be used as end user",
+      "comment": "L2 Security Council",
       "balance": "90000000000000000000003"
     },
     "6d26dcc30a1693043aefa35ed9171c16da53f275": {
