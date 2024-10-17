@@ -375,13 +375,13 @@ public class Stack {
     currentOpcodeData = hub.opCodeData();
     callFrame.pending(new StackContext(currentOpcodeData.mnemonic()));
 
-    final int alpha = currentOpcodeData.stackSettings().alpha();
-    final int delta = currentOpcodeData.stackSettings().delta();
+    final short delta = (short) currentOpcodeData.stackSettings().delta();
+    final short alpha = (short) currentOpcodeData.stackSettings().alpha();
 
     Preconditions.checkArgument(heightNew == frame.stackSize());
     height = (short) frame.stackSize();
-    heightNew += currentOpcodeData.stackSettings().nbAdded();
-    heightNew -= currentOpcodeData.stackSettings().nbRemoved();
+    heightNew -= delta;
+    heightNew += alpha;
 
     if (frame.stackSize() < delta) { // Testing for underflow
       status = Status.UNDERFLOW;
@@ -411,12 +411,8 @@ public class Stack {
 
     if (status.isFailure()) {
       heightNew = 0;
-
-      if (currentOpcodeData.stackSettings().twoLineInstruction()) {
-        stamp += callFrame.pending().addEmptyLines(2);
-      } else {
-        stamp += callFrame.pending().addEmptyLines(1);
-      }
+      final int numberOfStackRows = currentOpcodeData.numberOfStackRows();
+      callFrame.pending().addEmptyLines(numberOfStackRows);
 
       return;
     }

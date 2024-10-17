@@ -259,7 +259,7 @@ public enum OpCode {
   }
 
   public short numberOfStackRows() {
-    return (short) (this.getData().stackSettings().twoLineInstruction() ? 2 : 1);
+    return (short) (this.getData().numberOfStackRows());
   }
 
   public boolean mayTriggerStackUnderflow() {

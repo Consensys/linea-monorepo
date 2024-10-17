@@ -109,4 +109,8 @@ public record OpCodeData(
   public boolean isMxp() {
     return this.billing().type() != MxpType.NONE;
   }
+
+  public int numberOfStackRows() {
+    return stackSettings.twoLineInstruction() ? 2 : 1;
+  }
 }
