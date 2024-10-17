@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import net.consensys.decodeHex
+import net.consensys.encodeHex
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -17,6 +18,7 @@ class BytesSerDeTest {
         "nullBytes": null,
         "emptyBytes": "0x",
         "someBytes": "0x01aaff04",
+        "listOfByteArray": ["0x01aaff04", "0x01aaff05"],
         "nullUByte": null,
         "someUByte": "0xaf",
         "minUByte": "0x00",
@@ -32,6 +34,7 @@ class BytesSerDeTest {
     nullBytes = null,
     emptyBytes = byteArrayOf(),
     someBytes = "0x01aaff04".decodeHex(),
+    listOfByteArray = listOf("0x01aaff04", "0x01aaff05").map { it.decodeHex() },
 
     // UByte
     nullUByte = null,
@@ -59,18 +62,29 @@ class BytesSerDeTest {
     assertThat(objectMapper.readValue<SomeObject>(jsonObj)).isEqualTo(objWithBytesFields)
   }
 
+  @Test
+  fun testBytes() {
+    val list1 = listOf("0x01aaff04", "0x01aaff05").map { it.decodeHex() }
+    val list2 = listOf("0x01aaff04", "0x01aaff05", "0x01aaff06").map { it.decodeHex() }
+    list1.zip(list2).also { println(it) }
+    println(list1.zip(list2).all { (arr1, arr2) -> arr1.contentEquals(arr2) })
+
+    println(list1 == list2)
+    println(list1 != list2)
+  }
+
   private data class SomeObject(
     // ByteArray
     val nullBytes: ByteArray?,
     val emptyBytes: ByteArray,
     val someBytes: ByteArray,
+    val listOfByteArray: List<ByteArray>,
 
     // UByte
     val nullUByte: UByte?,
     val someUByte: UByte,
     val minUByte: UByte,
     val maxUByte: UByte,
-
     // Byte
     val nullByte: Byte?,
     val someByte: Byte,
@@ -89,6 +103,7 @@ class BytesSerDeTest {
       } else if (other.nullBytes != null) return false
       if (!emptyBytes.contentEquals(other.emptyBytes)) return false
       if (!someBytes.contentEquals(other.someBytes)) return false
+      if (!contentEquals(listOfByteArray, other.listOfByteArray)) return false
       if (nullUByte != other.nullUByte) return false
       if (someUByte != other.someUByte) return false
       if (minUByte != other.minUByte) return false
@@ -105,6 +120,7 @@ class BytesSerDeTest {
       var result = nullBytes?.contentHashCode() ?: 0
       result = 31 * result + emptyBytes.contentHashCode()
       result = 31 * result + someBytes.contentHashCode()
+      result = 31 * result + listOfByteArray.hashCode()
       result = 31 * result + (nullUByte?.hashCode() ?: 0)
       result = 31 * result + someUByte.hashCode()
       result = 31 * result + minUByte.hashCode()
@@ -114,6 +130,31 @@ class BytesSerDeTest {
       result = 31 * result + minByte
       result = 31 * result + maxByte
       return result
+    }
+
+    override fun toString(): String {
+      return "SomeObject(" +
+        "nullBytes=${nullBytes?.contentToString()}, " +
+        "emptyBytes=${emptyBytes.contentToString()}, " +
+        "someByte=${someBytes.contentToString()}, " +
+        "listOfByteArray=${listOfByteArray.joinToString(",", "[", "]") { it.encodeHex() }}, " +
+        "nullUByte=$nullUByte, " +
+        "someUByte=$someUByte, " +
+        "minUByte=$minUByte, " +
+        "maxUByte=$maxUByte, " +
+        "nullByte=$nullByte, " +
+        "someByte=$someByte, " +
+        "minByte=$minByte, " +
+        "maxByte=$maxByte" +
+        ")"
+    }
+  }
+
+  companion object {
+    fun contentEquals(list1: List<ByteArray>, list2: List<ByteArray>): Boolean {
+      if (list1.size != list2.size) return false
+
+      return list1.zip(list2).all { (arr1, arr2) -> arr1.contentEquals(arr2) }
     }
   }
 }
