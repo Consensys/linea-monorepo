@@ -95,9 +95,8 @@ func compileForSize(
 		// ctx.Collapsed = symbolic.NewPolyEval(batchingCoin.AsVariable(), pairProduct)
 		res := symbolic.NewConstant(0)
 		for i := len(pairProduct) - 1; i >= 0; i-- {
-			res2 := symbolic.Mul(pairProduct[i])
 			res = symbolic.Mul(res, batchingCoin)
-			res = symbolic.Add(res, res2)
+			res = symbolic.Add(res, pairProduct[i])
 		}
 
 		ctx.Collapsed = res
