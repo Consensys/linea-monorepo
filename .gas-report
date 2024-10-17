@@ -12,26 +12,34 @@
 | updateRewardIndex                                | 23374           | 45581  | 39585  | 73785  | 3       |
 
 
-| src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |        |        |        |         |
-|------------------------------------------------------|-----------------|--------|--------|--------|---------|
-| Deployment Cost                                      | Deployment Size |        |        |        |         |
-| 1115122                                              | 5026            |        |        |        |         |
-| Function Name                                        | min             | avg    | median | max    | # calls |
-| MAX_LOCKING_PERIOD                                   | 273             | 273    | 273    | 273    | 22      |
-| MAX_MULTIPLIER                                       | 252             | 252    | 252    | 252    | 28      |
-| MIN_LOCKING_PERIOD                                   | 273             | 273    | 273    | 273    | 11      |
-| MP_RATE_PER_YEAR                                     | 231             | 231    | 231    | 231    | 3       |
-| SCALE_FACTOR                                         | 229             | 229    | 229    | 229    | 39      |
-| accountedRewards                                     | 351             | 909    | 351    | 2351   | 68      |
-| getAccount                                           | 1574            | 1574   | 1574   | 1574   | 65      |
-| rewardIndex                                          | 351             | 380    | 351    | 2351   | 68      |
-| stake                                                | 168062          | 217022 | 228861 | 249345 | 46      |
-| totalMP                                              | 374             | 374    | 374    | 374    | 71      |
-| totalMaxMP                                           | 351             | 351    | 351    | 351    | 71      |
-| totalStaked                                          | 330             | 330    | 330    | 330    | 71      |
-| unstake                                              | 75493           | 103902 | 91566  | 134228 | 13      |
-| updateAccountMP                                      | 34610           | 36848  | 37112  | 37112  | 19      |
-| updateGlobalState                                    | 29986           | 55567  | 47365  | 80313  | 25      |
+| src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |       |        |       |         |
+|------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                      | Deployment Size |       |        |       |         |
+| 1010922                                              | 4521            |       |        |       |         |
+| Function Name                                        | min             | avg   | median | max   | # calls |
+| MAX_LOCKING_PERIOD                                   | 273             | 273   | 273    | 273   | 22      |
+| MAX_MULTIPLIER                                       | 252             | 252   | 252    | 252   | 28      |
+| MIN_LOCKING_PERIOD                                   | 273             | 273   | 273    | 273   | 11      |
+| MP_RATE_PER_YEAR                                     | 231             | 231   | 231    | 231   | 3       |
+| SCALE_FACTOR                                         | 229             | 229   | 229    | 229   | 39      |
+| STAKING_TOKEN                                        | 273             | 273   | 273    | 273   | 128     |
+| accountedRewards                                     | 351             | 909   | 351    | 2351  | 68      |
+| getAccount                                           | 1574            | 1574  | 1574   | 1574  | 65      |
+| rewardIndex                                          | 351             | 380   | 351    | 2351  | 68      |
+| totalMP                                              | 374             | 374   | 374    | 374   | 71      |
+| totalMaxMP                                           | 351             | 351   | 351    | 351   | 71      |
+| totalStaked                                          | 330             | 330   | 330    | 330   | 71      |
+| updateAccountMP                                      | 34610           | 36848 | 37112  | 37112 | 19      |
+| updateGlobalState                                    | 29986           | 55567 | 47365  | 80313 | 25      |
+
+
+| src/StakeVault.sol:StakeVault contract |                 |        |        |        |         |
+|----------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                        | Deployment Size |        |        |        |         |
+| 857122                                 | 4070            |        |        |        |         |
+| Function Name                          | min             | avg    | median | max    | # calls |
+| stake                                  | 194703          | 231763 | 238396 | 258880 | 46      |
+| unstake                                | 81435           | 109751 | 98993  | 141658 | 13      |
 
 
 | src/XPNFTToken.sol:XPNFTToken contract          |                 |       |        |       |         |
@@ -107,8 +115,8 @@
 | Deployment Cost                             | Deployment Size |       |        |       |         |
 | 639406                                      | 3369            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
-| approve                                     | 46346           | 46346 | 46346  | 46346 | 165     |
-| balanceOf                                   | 561             | 1341  | 561    | 2561  | 292     |
+| approve                                     | 46334           | 46343 | 46346  | 46346 | 165     |
+| balanceOf                                   | 561             | 1351  | 561    | 2561  | 286     |
 | mint                                        | 51284           | 59028 | 51284  | 68384 | 181     |
 | transfer                                    | 34390           | 48070 | 51490  | 51490 | 10      |
 

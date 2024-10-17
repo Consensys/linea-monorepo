@@ -69,11 +69,6 @@ contract RewardsStreamerMP is ReentrancyGuard {
             distributeRewards(msg.sender, accountRewards);
         }
 
-        bool success = STAKING_TOKEN.transferFrom(msg.sender, address(this), amount);
-        if (!success) {
-            revert StakingManager__TransferFailed();
-        }
-
         account.stakedBalance += amount;
         totalStaked += amount;
 
@@ -131,11 +126,6 @@ contract RewardsStreamerMP is ReentrancyGuard {
         totalMP -= mpToReduce;
         totalMaxMP -= maxMPToReduce;
         totalStaked -= amount;
-
-        bool success = STAKING_TOKEN.transfer(msg.sender, amount);
-        if (!success) {
-            revert StakingManager__TransferFailed();
-        }
 
         account.accountRewardIndex = rewardIndex;
     }
