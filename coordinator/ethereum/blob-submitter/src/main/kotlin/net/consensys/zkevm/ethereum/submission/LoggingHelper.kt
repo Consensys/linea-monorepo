@@ -7,10 +7,13 @@ private const val insufficientGasFeeRegexStr =
     " address 0x[a-fA-F0-9]{40},? (blobGasFeeCap|maxFeePerGas): [0-9]+," +
     " (blobBaseFee|baseFee): [0-9]+ \\(supplied gas [0-9]+\\))"
 
+private val insufficientGasFeeRegex = Regex(insufficientGasFeeRegexStr)
+private val maxFeePerBlobGasRegex = Regex("max fee per blob gas|blobGasFeeCap")
+
 private fun rewriteInsufficientGasFeeErrorMessage(errorMessage: String): String? {
-  return Regex(insufficientGasFeeRegexStr).find(errorMessage)?.groupValues?.first()
+  return insufficientGasFeeRegex.find(errorMessage)?.groupValues?.first()
     ?.replace("max fee per gas", "maxFeePerGas")
-    ?.replace(Regex("max fee per blob gas|blobGasFeeCap"), "maxFeePerBlobGas")
+    ?.replace(maxFeePerBlobGasRegex, "maxFeePerBlobGas")
 }
 
 fun logUnhandledError(

@@ -38,7 +38,7 @@ class LoggingHelperTest {
 
   @Test
   fun `insufficient max fee per gas with isEthCall is true triggers rewrite info message`() {
-    val error = Error(insufficientMaxFeePerGasErrMsg)
+    val error = RuntimeException(insufficientMaxFeePerGasErrMsg)
     logSubmissionError(
       log = logger,
       logMessage = blobSubmissionFailedLogMsg,
@@ -61,7 +61,7 @@ class LoggingHelperTest {
 
   @Test
   fun `insufficient max fee per blob gas with isEthCall is true triggers rewrite info message`() {
-    val error = Error(insufficientMaxFeePerBlobGasErrMsg)
+    val error = RuntimeException(insufficientMaxFeePerBlobGasErrMsg)
     logSubmissionError(
       log = logger,
       logMessage = blobSubmissionFailedLogMsg,
@@ -84,7 +84,7 @@ class LoggingHelperTest {
 
   @Test
   fun `insufficient max fee per gas with isEthCall is false do not trigger rewrite error message`() {
-    val error = Error(insufficientMaxFeePerGasErrMsg)
+    val error = RuntimeException(insufficientMaxFeePerGasErrMsg)
     logSubmissionError(
       log = logger,
       logMessage = blobSubmissionFailedLogMsg,
@@ -104,7 +104,7 @@ class LoggingHelperTest {
 
   @Test
   fun `insufficient max fee per blob gas with isEthCall is false do not trigger rewrite error message`() {
-    val error = Error(insufficientMaxFeePerBlobGasErrMsg)
+    val error = RuntimeException(insufficientMaxFeePerBlobGasErrMsg)
     logSubmissionError(
       log = logger,
       logMessage = blobSubmissionFailedLogMsg,
@@ -124,7 +124,7 @@ class LoggingHelperTest {
 
   @Test
   fun `Other error with isEthCall is true do not trigger rewrite error message`() {
-    val error = Error(unknownErrMsg)
+    val error = RuntimeException(unknownErrMsg)
     logSubmissionError(
       log = logger,
       logMessage = blobSubmissionFailedLogMsg,
