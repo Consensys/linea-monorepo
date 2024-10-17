@@ -206,7 +206,7 @@ jobs:
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:
-    needs: [ store-image-name-and-tags, testing, run-e2e-tests, run-e2e-tests-geth-tracing, tag-after-run-tests-success ]
+    needs: [ store-image-name-and-tags, testing, run-e2e-tests, run-e2e-tests-geth-tracing ]
     if: ${{ always() && github.ref == 'refs/heads/main' && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' && needs.run-e2e-tests-geth-tracing.outputs.tests_outcome == 'success' }}
     uses: ./.github/workflows/build-and-publish.yml
     with:
