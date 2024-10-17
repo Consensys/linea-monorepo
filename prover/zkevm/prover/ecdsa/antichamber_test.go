@@ -167,5 +167,5 @@ func generateDeterministicSignature(txHash []byte) (pk *ecdsa.PublicKey, r, s, v
 
 var testCaseAntiChamber = makeTestCase{
 	HashNum: []int{1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2},
-	ToHash:  []int{1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1},
+	ToHash:  []int{1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1},
 }
