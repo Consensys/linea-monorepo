@@ -82,10 +82,6 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("unsupported blob version: %v", version)
 	}
 
-	setup, err := circuits.LoadSetup(cfg, circuitID)
-	if err != nil {
-		return nil, fmt.Errorf("could not load the setup: %w", err)
-	}
 	dictPath := filepath.Join(cfg.PathForSetup(string(circuitID)), config.DictionaryFileName)
 
 	logrus.Infof("reading the dictionary at %v", dictPath)
@@ -93,6 +89,36 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	dict, err := os.ReadFile(dictPath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading the dictionary: %w", err)
+	}
+
+	// This computes the assignment
+
+	logrus.Infof("computing the circuit's assignment")
+
+	snarkHash, err := utils.HexDecodeString(req.SnarkHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse the snark hash: %w", err)
+	}
+
+	assignment, pubInput, _snarkHash, err := blobdecompression.Assign(
+		utils.RightPad(blobBytes, expectedMaxUsableBytes),
+		dict,
+		req.Eip4844Enabled,
+		xBytes,
+		y,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("while generating the assignment: %w", err)
+	}
+
+	if !bytes.Equal(snarkHash, _snarkHash) {
+		return nil, fmt.Errorf("blob checksum does not match the one computed by the assigner")
+	}
+
+	setup, err := circuits.LoadSetup(cfg, circuitID)
+	if err != nil {
+		return nil, fmt.Errorf("could not load the setup: %w", err)
 	}
 
 	maxUsableBytes, err := setup.Manifest.GetInt("maxUsableBytes")
@@ -112,46 +138,6 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	if maxUncompressedBytes != expectedMaxUncompressedBytes {
 		return nil, fmt.Errorf("invalid maxUncompressedBytes in the setup manifest: %v, expected %v", maxUncompressedBytes, expectedMaxUncompressedBytes)
 	}
-
-	// This computes the assignment
-
-	logrus.Infof("computing the circuit's assignment")
-
-	snarkHash, err := utils.HexDecodeString(req.SnarkHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse the snark hash: %w", err)
-	}
-
-	assignment, pubInput, _snarkHash, err := blobdecompression.Assign(
-		blobBytes,
-		dict,
-		req.Eip4844Enabled,
-		xBytes,
-		y,
-	)
-
-	if !bytes.Equal(snarkHash, _snarkHash) {
-		return nil, fmt.Errorf("blob checksum does not match the one computed by the assigner")
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("while generating the assignment: %w", err)
-	}
-
-	// Uncomment the following to activate the test.Solver. This is useful to
-	// debug when the circuit solving does not pass. It provides more useful
-	// information about what was wrong.
-
-	// err := test.IsSolved(
-	// 	&assignment,
-	// 	&assignment,
-	// 	ecc.BLS12_377.ScalarField(),
-	// 	test.WithBackendProverOptions(emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField())),
-	// )
-
-	// if err != nil {
-	// 		panic(err)
-	// }
 
 	// This section reads the public parameters. This is a time-consuming part
 	// of the process.
