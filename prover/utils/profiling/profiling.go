@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var SKIP_PROFILING = true
+var SKIP_PROFILING = false
 
 // ProfileTrace run the benchmark function with optionally, benchmarking and tracing
 // The path should neither start nor end with a "/".

@@ -1,11 +1,20 @@
 package execution
 
 import (
+	"fmt"
+	"io"
+	"math/rand/v2"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
@@ -170,6 +179,35 @@ func mustProveAndPass(
 		logrus.Infof("Prover starting the prover")
 		_ = fullZkEvm.ProveInner(w.ZkEVM)
 		logrus.Infof("Prover checks passed")
+		return "", ""
+
+	case config.ProverModeEncodeOnly:
+
+		profiling.ProfileTrace("encode-decode-no-circuit", true, false, func() {
+			filepath := "/tmp/wizard-assignment/blob-" + strconv.Itoa(rand.Int()) + ".bin"
+			encodeOnlyZkEvm := zkevm.EncodeOnlyZkEvm(traces)
+			encodeOnlyZkEvm.AssignAndEncodeInFile(filepath, w.ZkEVM)
+
+			t := time.Now()
+			f := files.MustRead(filepath)
+
+			fmt.Printf("[%v] reading the assignment file\n", time.Now())
+			b, errRead := io.ReadAll(f)
+			if errRead != nil {
+				panic(errRead)
+			}
+
+			fmt.Printf("[%v] decoding the assignment\n", time.Now())
+			_, errDec := serialization.DeserializeAssignment(b)
+			if errDec != nil {
+				panic(errDec)
+			}
+
+			f.Close()
+			fmt.Printf("[%v] took %v sec to read the file and decode it into an assignment\n", time.Now(), time.Since(t).Seconds())
+		})
+
+		os.Exit(0)
 		return "", ""
 
 	default:
