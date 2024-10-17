@@ -86,12 +86,12 @@ jobs:
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
       - name: Save Docker image as artifact
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
         run: |
           docker save ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }} | gzip > linea-prover.tar.gz
         shell: bash
       - name: Upload artifact
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
           name: linea-prover
