@@ -21,10 +21,10 @@ contract RewardsStreamerMPTest is Test {
         stakingToken = new MockToken("Staking Token", "ST");
         streamer = new RewardsStreamerMP(address(stakingToken), address(rewardToken));
 
-        address[4] memory users = [alice, bob, charlie, dave];
-        for (uint256 i = 0; i < users.length; i++) {
-            stakingToken.mint(users[i], 10_000e18);
-            vm.prank(users[i]);
+        address[4] memory accounts = [alice, bob, charlie, dave];
+        for (uint256 i = 0; i < accounts.length; i++) {
+            stakingToken.mint(accounts[i], 10_000e18);
+            vm.prank(accounts[i]);
             stakingToken.approve(address(streamer), 10_000e18);
         }
 
@@ -53,24 +53,24 @@ contract RewardsStreamerMPTest is Test {
         assertEq(streamer.accountedRewards(), p.accountedRewards, "wrong accounted rewards");
     }
 
-    struct CheckUserParams {
-        address user;
+    struct CheckAccountParams {
+        address account;
         uint256 rewardBalance;
         uint256 stakedBalance;
         uint256 rewardIndex;
-        uint256 userMP;
+        uint256 accountMP;
         uint256 maxMP;
     }
 
-    function checkUser(CheckUserParams memory p) public view {
-        assertEq(rewardToken.balanceOf(p.user), p.rewardBalance, "wrong user reward balance");
+    function checkAccount(CheckAccountParams memory p) public view {
+        assertEq(rewardToken.balanceOf(p.account), p.rewardBalance, "wrong account reward balance");
 
-        RewardsStreamerMP.UserInfo memory userInfo = streamer.getUserInfo(p.user);
+        RewardsStreamerMP.Account memory accountInfo = streamer.getAccount(p.account);
 
-        assertEq(userInfo.stakedBalance, p.stakedBalance, "wrong user staked balance");
-        assertEq(userInfo.userRewardIndex, p.rewardIndex, "wrong user reward index");
-        assertEq(userInfo.userMP, p.userMP, "wrong user MP");
-        assertEq(userInfo.maxMP, p.maxMP, "wrong user max MP");
+        assertEq(accountInfo.stakedBalance, p.stakedBalance, "wrong account staked balance");
+        assertEq(accountInfo.accountRewardIndex, p.rewardIndex, "wrong account reward index");
+        assertEq(accountInfo.accountMP, p.accountMP, "wrong account MP");
+        assertEq(accountInfo.maxMP, p.maxMP, "wrong account max MP");
     }
 
     function _stake(address account, uint256 amount, uint256 lockupTime) public {
@@ -145,13 +145,13 @@ contract IntegrationTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: 10e18,
                 rewardIndex: 0,
-                userMP: 10e18,
+                accountMP: 10e18,
                 maxMP: 50e18
             })
         );
@@ -172,24 +172,24 @@ contract IntegrationTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: 10e18,
                 rewardIndex: 0,
-                userMP: 10e18,
+                accountMP: 10e18,
                 maxMP: 50e18
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: 30e18,
                 rewardIndex: 0,
-                userMP: 30e18,
+                accountMP: 30e18,
                 maxMP: 150e18
             })
         );
@@ -211,24 +211,24 @@ contract IntegrationTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: 10e18,
                 rewardIndex: 0,
-                userMP: 10e18,
+                accountMP: 10e18,
                 maxMP: 50e18
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: 30e18,
                 rewardIndex: 0,
-                userMP: 30e18,
+                accountMP: 30e18,
                 maxMP: 150e18
             })
         );
@@ -268,24 +268,24 @@ contract IntegrationTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
                 rewardIndex: 10e18,
-                userMP: 0e18,
+                accountMP: 0e18,
                 maxMP: 0e18
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: 30e18,
                 rewardIndex: 0,
-                userMP: 30e18,
+                accountMP: 30e18,
                 maxMP: 150e18
             })
         );
@@ -306,35 +306,35 @@ contract IntegrationTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
                 rewardIndex: 10e18,
-                userMP: 0e18,
+                accountMP: 0e18,
                 maxMP: 0e18
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: 30e18,
                 rewardIndex: 0,
-                userMP: 30e18,
+                accountMP: 30e18,
                 maxMP: 150e18
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: charlie,
+        checkAccount(
+            CheckAccountParams({
+                account: charlie,
                 rewardBalance: 0,
                 stakedBalance: 30e18,
                 rewardIndex: 10e18,
-                userMP: 30e18,
+                accountMP: 30e18,
                 maxMP: 150e18
             })
         );
@@ -356,35 +356,35 @@ contract IntegrationTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
                 rewardIndex: 10e18,
-                userMP: 0e18,
+                accountMP: 0e18,
                 maxMP: 0e18
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: 30e18,
                 rewardIndex: 0,
-                userMP: 30e18,
+                accountMP: 30e18,
                 maxMP: 150e18
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: charlie,
+        checkAccount(
+            CheckAccountParams({
+                account: charlie,
                 rewardBalance: 0,
                 stakedBalance: 30e18,
                 rewardIndex: 10e18,
-                userMP: 30e18,
+                accountMP: 30e18,
                 maxMP: 150e18
             })
         );
@@ -406,20 +406,20 @@ contract IntegrationTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
                 rewardIndex: 10e18,
-                userMP: 0,
+                accountMP: 0,
                 maxMP: 0
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 // bob had 30 staked + 30 initial MP + 15 MP accrued in 6 months
                 // so in the second bucket we have 1000 rewards with
                 // bob's weight = 75
@@ -430,18 +430,18 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 rewardBalance: 1_305_555_555_555_555_555_525,
                 stakedBalance: 0e18,
                 rewardIndex: 17_407_407_407_407_407_407,
-                userMP: 0,
+                accountMP: 0,
                 maxMP: 0
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: charlie,
+        checkAccount(
+            CheckAccountParams({
+                account: charlie,
                 rewardBalance: 0,
                 stakedBalance: 30e18,
                 rewardIndex: 10e18,
-                userMP: 30e18,
+                accountMP: 30e18,
                 maxMP: 150e18
             })
         );
@@ -468,13 +468,13 @@ contract StakeTest is RewardsStreamerMPTest {
                 accountedRewards: 0
             })
         );
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: 10e18,
                 rewardIndex: 0,
-                userMP: 10e18,
+                accountMP: 10e18,
                 maxMP: 50e18
             })
         );
@@ -495,13 +495,13 @@ contract StakeTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: 10e18,
                 rewardIndex: 0,
-                userMP: 10e18,
+                accountMP: 10e18,
                 maxMP: 50e18
             })
         );
@@ -608,7 +608,7 @@ contract StakeTest is RewardsStreamerMPTest {
         vm.warp(currentTime + (365 days));
 
         streamer.updateGlobalState();
-        streamer.updateUserMP(alice);
+        streamer.updateAccountMP(alice);
 
         uint256 expectedMPIncrease = stakeAmount; // 1 year passed, 1 MP accrued per token staked
         totalMP = totalMP + expectedMPIncrease;
@@ -625,13 +625,13 @@ contract StakeTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: stakeAmount,
                 rewardIndex: 0,
-                userMP: totalMP, // userMP == totalMP because only one user is staking
+                accountMP: totalMP, // accountMP == totalMP because only one account is staking
                 maxMP: totalMaxMP
             })
         );
@@ -640,7 +640,7 @@ contract StakeTest is RewardsStreamerMPTest {
         vm.warp(currentTime + (365 days / 2));
 
         streamer.updateGlobalState();
-        streamer.updateUserMP(alice);
+        streamer.updateAccountMP(alice);
 
         expectedMPIncrease = stakeAmount / 2; // 1/2 year passed, 1/2 MP accrued per token staked
         totalMP = totalMP + expectedMPIncrease;
@@ -657,13 +657,13 @@ contract StakeTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: stakeAmount,
                 rewardIndex: 0,
-                userMP: totalMP, // userMP == totalMP because only one user is staking
+                accountMP: totalMP, // accountMP == totalMP because only one account is staking
                 maxMP: totalMaxMP
             })
         );
@@ -688,14 +688,14 @@ contract StakeTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: stakeAmount,
                 rewardIndex: 0,
-                userMP: totalMP, // userMP == totalMP because only one user is staking
-                maxMP: totalMaxMP // maxMP == totalMaxMP because only one user is staking
+                accountMP: totalMP, // accountMP == totalMP because only one account is staking
+                maxMP: totalMaxMP // maxMP == totalMaxMP because only one account is staking
              })
         );
 
@@ -704,7 +704,7 @@ contract StakeTest is RewardsStreamerMPTest {
         vm.warp(currentTime + timeToMaxMP);
 
         streamer.updateGlobalState();
-        streamer.updateUserMP(alice);
+        streamer.updateAccountMP(alice);
 
         checkStreamer(
             CheckStreamerParams({
@@ -718,13 +718,13 @@ contract StakeTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: stakeAmount,
                 rewardIndex: 0,
-                userMP: totalMaxMP,
+                accountMP: totalMaxMP,
                 maxMP: totalMaxMP
             })
         );
@@ -734,7 +734,7 @@ contract StakeTest is RewardsStreamerMPTest {
         vm.warp(currentTime + 1);
 
         streamer.updateGlobalState();
-        streamer.updateUserMP(alice);
+        streamer.updateAccountMP(alice);
 
         checkStreamer(
             CheckStreamerParams({
@@ -768,24 +768,24 @@ contract StakeTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: 10e18,
                 rewardIndex: 0,
-                userMP: 10e18,
+                accountMP: 10e18,
                 maxMP: 50e18
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: 30e18,
                 rewardIndex: 0,
-                userMP: 30e18,
+                accountMP: 30e18,
                 maxMP: 150e18
             })
         );
@@ -810,24 +810,24 @@ contract StakeTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: 10e18,
                 rewardIndex: 0,
-                userMP: 10e18,
+                accountMP: 10e18,
                 maxMP: 50e18
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: 30e18,
                 rewardIndex: 0,
-                userMP: 30e18,
+                accountMP: 30e18,
                 maxMP: 150e18
             })
         );
@@ -937,23 +937,23 @@ contract StakeTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: aliceStakeAmount,
                 rewardIndex: 0,
-                userMP: aliceMP,
+                accountMP: aliceMP,
                 maxMP: aliceMaxMP
             })
         );
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: bobStakeAmount,
                 rewardIndex: 0,
-                userMP: bobMP,
+                accountMP: bobMP,
                 maxMP: bobMaxMP
             })
         );
@@ -962,8 +962,8 @@ contract StakeTest is RewardsStreamerMPTest {
         vm.warp(currentTime + (365 days));
 
         streamer.updateGlobalState();
-        streamer.updateUserMP(alice);
-        streamer.updateUserMP(bob);
+        streamer.updateAccountMP(alice);
+        streamer.updateAccountMP(bob);
 
         uint256 aliceExpectedMPIncrease = aliceStakeAmount; // 1 year passed, 1 MP accrued per token staked
         uint256 bobExpectedMPIncrease = bobStakeAmount; // 1 year passed, 1 MP accrued per token staked
@@ -985,23 +985,23 @@ contract StakeTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: aliceStakeAmount,
                 rewardIndex: 0,
-                userMP: aliceMP,
+                accountMP: aliceMP,
                 maxMP: aliceMaxMP
             })
         );
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: bobStakeAmount,
                 rewardIndex: 0,
-                userMP: bobMP,
+                accountMP: bobMP,
                 maxMP: bobMaxMP
             })
         );
@@ -1010,8 +1010,8 @@ contract StakeTest is RewardsStreamerMPTest {
         vm.warp(currentTime + (365 days / 2));
 
         streamer.updateGlobalState();
-        streamer.updateUserMP(alice);
-        streamer.updateUserMP(bob);
+        streamer.updateAccountMP(alice);
+        streamer.updateAccountMP(bob);
 
         aliceExpectedMPIncrease = aliceStakeAmount / 2;
         bobExpectedMPIncrease = bobStakeAmount / 2;
@@ -1033,23 +1033,23 @@ contract StakeTest is RewardsStreamerMPTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: aliceStakeAmount,
                 rewardIndex: 0,
-                userMP: aliceMP,
+                accountMP: aliceMP,
                 maxMP: aliceMaxMP
             })
         );
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: bobStakeAmount,
                 rewardIndex: 0,
-                userMP: bobMP,
+                accountMP: bobMP,
                 maxMP: bobMaxMP
             })
         );
@@ -1078,13 +1078,13 @@ contract UnstakeTest is StakeTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 0,
                 stakedBalance: 2e18,
                 rewardIndex: 0,
-                userMP: 2e18,
+                accountMP: 2e18,
                 maxMP: 10e18
             })
         );
@@ -1112,7 +1112,7 @@ contract UnstakeTest is StakeTest {
         vm.warp(currentTime + (365 days));
 
         streamer.updateGlobalState();
-        streamer.updateUserMP(alice);
+        streamer.updateAccountMP(alice);
 
         checkStreamer(
             CheckStreamerParams({
@@ -1155,7 +1155,7 @@ contract UnstakeTest is StakeTest {
         vm.warp(currentTime + (365 days));
 
         streamer.updateGlobalState();
-        streamer.updateUserMP(alice);
+        streamer.updateAccountMP(alice);
 
         checkStreamer(
             CheckStreamerParams({
@@ -1204,13 +1204,13 @@ contract UnstakeTest is StakeTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 1000e18,
                 stakedBalance: 2e18,
                 rewardIndex: 50e18, // alice reward index has been updated
-                userMP: 2e18,
+                accountMP: 2e18,
                 maxMP: 10e18
             })
         );
@@ -1273,10 +1273,10 @@ contract UnstakeTest is StakeTest {
         {
             _stake(alice, amountStaked, secondsLocked);
             {
-                RewardsStreamerMP.UserInfo memory userInfo = streamer.getUserInfo(alice);
-                assertEq(userInfo.stakedBalance, totalStaked[stage], "stage 1: wrong user staked balance");
-                assertEq(userInfo.userMP, predictedTotalMP[stage], "stage 1: wrong user MP");
-                assertEq(userInfo.maxMP, predictedTotalMaxMP[stage], "stage 1: wrong user max MP");
+                RewardsStreamerMP.Account memory accountInfo = streamer.getAccount(alice);
+                assertEq(accountInfo.stakedBalance, totalStaked[stage], "stage 1: wrong account staked balance");
+                assertEq(accountInfo.accountMP, predictedTotalMP[stage], "stage 1: wrong account MP");
+                assertEq(accountInfo.maxMP, predictedTotalMaxMP[stage], "stage 1: wrong account max MP");
 
                 assertEq(streamer.totalStaked(), totalStaked[stage], "stage 1: wrong total staked");
                 assertEq(streamer.totalMP(), predictedTotalMP[stage], "stage 1: wrong total MP");
@@ -1287,12 +1287,12 @@ contract UnstakeTest is StakeTest {
         stage++; // second stage: progress in time
         vm.warp(timestamp[stage]);
         streamer.updateGlobalState();
-        streamer.updateUserMP(alice);
+        streamer.updateAccountMP(alice);
         {
-            RewardsStreamerMP.UserInfo memory userInfo = streamer.getUserInfo(alice);
-            assertEq(userInfo.stakedBalance, totalStaked[stage], "stage 2: wrong user staked balance");
-            assertEq(userInfo.userMP, predictedTotalMP[stage], "stage 2: wrong user MP");
-            assertEq(userInfo.maxMP, predictedTotalMaxMP[stage], "stage 2: wrong user max MP");
+            RewardsStreamerMP.Account memory accountInfo = streamer.getAccount(alice);
+            assertEq(accountInfo.stakedBalance, totalStaked[stage], "stage 2: wrong account staked balance");
+            assertEq(accountInfo.accountMP, predictedTotalMP[stage], "stage 2: wrong account MP");
+            assertEq(accountInfo.maxMP, predictedTotalMaxMP[stage], "stage 2: wrong account max MP");
 
             assertEq(streamer.totalStaked(), totalStaked[stage], "stage 2: wrong total staked");
             assertEq(streamer.totalMP(), predictedTotalMP[stage], "stage 2: wrong total MP");
@@ -1302,10 +1302,10 @@ contract UnstakeTest is StakeTest {
         stage++; // third stage: reduced stake
         _unstake(alice, reducedStake);
         {
-            RewardsStreamerMP.UserInfo memory userInfo = streamer.getUserInfo(alice);
-            assertEq(userInfo.stakedBalance, totalStaked[stage], "stage 3: wrong user staked balance");
-            assertEq(userInfo.userMP, predictedTotalMP[stage], "stage 3: wrong user MP");
-            assertEq(userInfo.maxMP, predictedTotalMaxMP[stage], "stage 3: wrong user max MP");
+            RewardsStreamerMP.Account memory accountInfo = streamer.getAccount(alice);
+            assertEq(accountInfo.stakedBalance, totalStaked[stage], "stage 3: wrong account staked balance");
+            assertEq(accountInfo.accountMP, predictedTotalMP[stage], "stage 3: wrong account MP");
+            assertEq(accountInfo.maxMP, predictedTotalMaxMP[stage], "stage 3: wrong account max MP");
 
             assertEq(streamer.totalStaked(), totalStaked[stage], "stage 3: wrong total staked");
             assertEq(streamer.totalMP(), predictedTotalMP[stage], "stage 3: wrong total MP");
@@ -1331,17 +1331,24 @@ contract UnstakeTest is StakeTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({ user: alice, rewardBalance: 0, stakedBalance: 0, rewardIndex: 0, userMP: 0, maxMP: 0 })
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
+                rewardBalance: 0,
+                stakedBalance: 0,
+                rewardIndex: 0,
+                accountMP: 0,
+                maxMP: 0
+            })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 0,
                 stakedBalance: 20e18,
                 rewardIndex: 0,
-                userMP: 20e18,
+                accountMP: 20e18,
                 maxMP: 100e18
             })
         );
@@ -1365,13 +1372,13 @@ contract UnstakeTest is StakeTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: alice,
+        checkAccount(
+            CheckAccountParams({
+                account: alice,
                 rewardBalance: 250e18,
                 stakedBalance: 0,
                 rewardIndex: 125e17,
-                userMP: 0,
+                accountMP: 0,
                 maxMP: 0
             })
         );
@@ -1390,13 +1397,13 @@ contract UnstakeTest is StakeTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 750e18,
                 stakedBalance: 20e18,
                 rewardIndex: 125e17,
-                userMP: 20e18,
+                accountMP: 20e18,
                 maxMP: 100e18
             })
         );
@@ -1415,13 +1422,13 @@ contract UnstakeTest is StakeTest {
             })
         );
 
-        checkUser(
-            CheckUserParams({
-                user: bob,
+        checkAccount(
+            CheckAccountParams({
+                account: bob,
                 rewardBalance: 750e18,
                 stakedBalance: 0,
                 rewardIndex: 125e17,
-                userMP: 0,
+                accountMP: 0,
                 maxMP: 0
             })
         );

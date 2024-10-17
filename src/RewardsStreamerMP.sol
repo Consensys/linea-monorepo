@@ -30,16 +30,16 @@ contract RewardsStreamerMP is ReentrancyGuard {
     uint256 public accountedRewards;
     uint256 public lastMPUpdatedTime;
 
-    struct UserInfo {
+    struct Account {
         uint256 stakedBalance;
-        uint256 userRewardIndex;
-        uint256 userMP;
+        uint256 accountRewardIndex;
+        uint256 accountMP;
         uint256 maxMP;
         uint256 lastMPUpdateTime;
         uint256 lockUntil;
     }
 
-    mapping(address account => UserInfo data) public users;
+    mapping(address account => Account data) public accounts;
 
     constructor(address _stakingToken, address _rewardToken) {
         STAKING_TOKEN = IERC20(_stakingToken);
@@ -57,16 +57,16 @@ contract RewardsStreamerMP is ReentrancyGuard {
         }
 
         _updateGlobalState();
-        _updateUserMP(msg.sender);
+        _updateAccountMP(msg.sender);
 
-        UserInfo storage user = users[msg.sender];
-        if (user.lockUntil != 0 && user.lockUntil > block.timestamp) {
+        Account storage account = accounts[msg.sender];
+        if (account.lockUntil != 0 && account.lockUntil > block.timestamp) {
             revert StakingManager__CannotRestakeWithLockedFunds();
         }
 
-        uint256 userRewards = calculateUserRewards(msg.sender);
-        if (userRewards > 0) {
-            distributeRewards(msg.sender, userRewards);
+        uint256 accountRewards = calculateAccountRewards(msg.sender);
+        if (accountRewards > 0) {
+            distributeRewards(msg.sender, accountRewards);
         }
 
         bool success = STAKING_TOKEN.transferFrom(msg.sender, address(this), amount);
@@ -74,7 +74,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
             revert StakingManager__TransferFailed();
         }
 
-        user.stakedBalance += amount;
+        account.stakedBalance += amount;
         totalStaked += amount;
 
         uint256 initialMP = amount;
@@ -84,50 +84,50 @@ contract RewardsStreamerMP is ReentrancyGuard {
         if (lockPeriod != 0) {
             uint256 lockMultiplier = (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR) / MAX_LOCKING_PERIOD;
             bonusMP = amount * lockMultiplier / SCALE_FACTOR;
-            user.lockUntil = block.timestamp + lockPeriod;
+            account.lockUntil = block.timestamp + lockPeriod;
         } else {
-            user.lockUntil = 0;
+            account.lockUntil = 0;
         }
 
-        uint256 userMaxMP = initialMP + bonusMP + potentialMP;
-        uint256 userMP = initialMP + bonusMP;
+        uint256 accountMaxMP = initialMP + bonusMP + potentialMP;
+        uint256 accountMP = initialMP + bonusMP;
 
-        user.userMP += userMP;
-        totalMP += userMP;
+        account.accountMP += accountMP;
+        totalMP += accountMP;
 
-        user.maxMP += userMaxMP;
-        totalMaxMP += userMaxMP;
+        account.maxMP += accountMaxMP;
+        totalMaxMP += accountMaxMP;
 
-        user.userRewardIndex = rewardIndex;
-        user.lastMPUpdateTime = block.timestamp;
+        account.accountRewardIndex = rewardIndex;
+        account.lastMPUpdateTime = block.timestamp;
     }
 
     function unstake(uint256 amount) external nonReentrant {
-        UserInfo storage user = users[msg.sender];
-        if (amount > user.stakedBalance) {
+        Account storage account = accounts[msg.sender];
+        if (amount > account.stakedBalance) {
             revert StakingManager__InsufficientBalance();
         }
 
-        if (block.timestamp < user.lockUntil) {
+        if (block.timestamp < account.lockUntil) {
             revert StakingManager__TokensAreLocked();
         }
 
         _updateGlobalState();
-        _updateUserMP(msg.sender);
+        _updateAccountMP(msg.sender);
 
-        uint256 userRewards = calculateUserRewards(msg.sender);
-        if (userRewards > 0) {
-            distributeRewards(msg.sender, userRewards);
+        uint256 accountRewards = calculateAccountRewards(msg.sender);
+        if (accountRewards > 0) {
+            distributeRewards(msg.sender, accountRewards);
         }
 
-        uint256 previousStakedBalance = user.stakedBalance;
+        uint256 previousStakedBalance = account.stakedBalance;
 
-        uint256 mpToReduce = (user.userMP * amount * SCALE_FACTOR) / (previousStakedBalance * SCALE_FACTOR);
-        uint256 maxMPToReduce = (user.maxMP * amount * SCALE_FACTOR) / (previousStakedBalance * SCALE_FACTOR);
+        uint256 mpToReduce = (account.accountMP * amount * SCALE_FACTOR) / (previousStakedBalance * SCALE_FACTOR);
+        uint256 maxMPToReduce = (account.maxMP * amount * SCALE_FACTOR) / (previousStakedBalance * SCALE_FACTOR);
 
-        user.stakedBalance -= amount;
-        user.userMP -= mpToReduce;
-        user.maxMP -= maxMPToReduce;
+        account.stakedBalance -= amount;
+        account.accountMP -= mpToReduce;
+        account.maxMP -= maxMPToReduce;
         totalMP -= mpToReduce;
         totalMaxMP -= maxMPToReduce;
         totalStaked -= amount;
@@ -137,7 +137,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
             revert StakingManager__TransferFailed();
         }
 
-        user.userRewardIndex = rewardIndex;
+        account.accountRewardIndex = rewardIndex;
     }
 
     function _updateGlobalState() internal {
@@ -193,38 +193,38 @@ contract RewardsStreamerMP is ReentrancyGuard {
         }
     }
 
-    function _updateUserMP(address userAddress) internal {
-        UserInfo storage user = users[userAddress];
+    function _updateAccountMP(address accountAddress) internal {
+        Account storage account = accounts[accountAddress];
 
-        if (user.maxMP == 0 || user.stakedBalance == 0) {
-            user.lastMPUpdateTime = block.timestamp;
+        if (account.maxMP == 0 || account.stakedBalance == 0) {
+            account.lastMPUpdateTime = block.timestamp;
             return;
         }
 
-        uint256 timeDiff = block.timestamp - user.lastMPUpdateTime;
+        uint256 timeDiff = block.timestamp - account.lastMPUpdateTime;
         if (timeDiff == 0) {
             return;
         }
 
-        uint256 accruedMP = (timeDiff * user.stakedBalance * MP_RATE_PER_YEAR) / (365 days * SCALE_FACTOR);
+        uint256 accruedMP = (timeDiff * account.stakedBalance * MP_RATE_PER_YEAR) / (365 days * SCALE_FACTOR);
 
-        if (user.userMP + accruedMP > user.maxMP) {
-            accruedMP = user.maxMP - user.userMP;
+        if (account.accountMP + accruedMP > account.maxMP) {
+            accruedMP = account.maxMP - account.accountMP;
         }
 
-        user.userMP += accruedMP;
-        user.lastMPUpdateTime = block.timestamp;
+        account.accountMP += accruedMP;
+        account.lastMPUpdateTime = block.timestamp;
     }
 
-    function updateUserMP(address userAddress) external {
-        _updateUserMP(userAddress);
+    function updateAccountMP(address accountAddress) external {
+        _updateAccountMP(accountAddress);
     }
 
-    function calculateUserRewards(address userAddress) public view returns (uint256) {
-        UserInfo storage user = users[userAddress];
-        uint256 userWeight = user.stakedBalance + user.userMP;
-        uint256 deltaRewardIndex = rewardIndex - user.userRewardIndex;
-        return (userWeight * deltaRewardIndex) / SCALE_FACTOR;
+    function calculateAccountRewards(address accountAddress) public view returns (uint256) {
+        Account storage account = accounts[accountAddress];
+        uint256 accountWeight = account.stakedBalance + account.accountMP;
+        uint256 deltaRewardIndex = rewardIndex - account.accountRewardIndex;
+        return (accountWeight * deltaRewardIndex) / SCALE_FACTOR;
     }
 
     function distributeRewards(address to, uint256 amount) internal {
@@ -242,15 +242,15 @@ contract RewardsStreamerMP is ReentrancyGuard {
         }
     }
 
-    function getStakedBalance(address userAddress) external view returns (uint256) {
-        return users[userAddress].stakedBalance;
+    function getStakedBalance(address accountAddress) external view returns (uint256) {
+        return accounts[accountAddress].stakedBalance;
     }
 
-    function getPendingRewards(address userAddress) external view returns (uint256) {
-        return calculateUserRewards(userAddress);
+    function getPendingRewards(address accountAddress) external view returns (uint256) {
+        return calculateAccountRewards(accountAddress);
     }
 
-    function getUserInfo(address userAddress) external view returns (UserInfo memory) {
-        return users[userAddress];
+    function getAccount(address accountAddress) external view returns (Account memory) {
+        return accounts[accountAddress];
     }
 }
