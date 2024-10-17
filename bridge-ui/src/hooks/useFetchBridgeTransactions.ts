@@ -1,7 +1,7 @@
 import { useAccount } from "wagmi";
 import { getPublicClient } from "@wagmi/core";
 import { Chain, PublicClient } from "viem";
-import { config, wagmiConfig, ConfigManager, NetworkLayer, NetworkType } from "@/config";
+import { wagmiConfig, ConfigManager, NetworkLayer, NetworkType } from "@/config";
 import {
   eventERC20,
   eventERC20V2,
@@ -15,19 +15,16 @@ import {
 import { ERC20Event, ERC20V2Event, ETHEvent, USDCEvent } from "@/models";
 import useERC20Storage from "./useERC20Storage";
 import { BlockRange, TransactionHistory } from "@/models/history";
-import useFetchAnchoringEvents from "./useFetchAnchoringEvents";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { getChainNetworkLayer } from "@/utils/chainsUtil";
 import { useTokenStore } from "@/stores/tokenStore";
 import useMessageStatus from "./useMessageStatus";
 import useTokenFetch from "./useTokenFetch";
-import { MessageWithStatus } from "./useClaimTransaction";
 
 const useFetchBridgeTransactions = () => {
   // Wagmi
   const { address } = useAccount();
-  const tokensConfig = useTokenStore((state) => state.tokensConfig);
-  const { fetchAnchoringMessageHashes } = useFetchAnchoringEvents();
+  const tokensList = useTokenStore((state) => state.tokensList);
   const { getMessageStatuses } = useMessageStatus();
   const { fetchBridgedToken, fillMissingTokenAddress } = useTokenFetch();
   const { updateOrInsertUserTokenList } = useERC20Storage();
@@ -37,9 +34,7 @@ const useFetchBridgeTransactions = () => {
     l1Chain,
     l2Chain,
     l1FromBlockNumber,
-    l1ToBlockNumber,
     l2FromBlockNumber,
-    l2ToBlockNumber,
     transactions,
   }: BlockRange) => {
     if (!l1Chain || !l2Chain) {
@@ -47,24 +42,8 @@ const useFetchBridgeTransactions = () => {
     }
 
     const [l1TxHistory, l2TxHistory] = await Promise.all([
-      fetchBridgeEvents(
-        l1Chain,
-        l2Chain,
-        l1FromBlockNumber,
-        l1ToBlockNumber,
-        networkType,
-        NetworkLayer.L1,
-        transactions,
-      ),
-      fetchBridgeEvents(
-        l2Chain,
-        l1Chain,
-        l2FromBlockNumber,
-        l2ToBlockNumber,
-        networkType,
-        NetworkLayer.L2,
-        transactions,
-      ),
+      fetchBridgeEvents(l1Chain, l2Chain, l1FromBlockNumber, networkType, NetworkLayer.L1, transactions),
+      fetchBridgeEvents(l2Chain, l1Chain, l2FromBlockNumber, networkType, NetworkLayer.L2, transactions),
     ]);
 
     const newTransactions = [...(l1TxHistory ?? []), ...(l2TxHistory ?? [])];
@@ -74,33 +53,22 @@ const useFetchBridgeTransactions = () => {
       (newTx) => !transactions.some((existingTx) => existingTx.transactionHash === newTx.transactionHash),
     );
 
-    // Get currently anchoring messages
-    const messageHashes = await fetchAnchoringMessageHashes(
-      l2Chain,
-      config.networks[networkType].L2.messageServiceAddress,
-    );
-
     // Update the messages status for each transactions
     const allTransactions = [...transactions, ...uniqueTransactions];
     allTransactions.sort((a, b) => (b.timestamp < a.timestamp ? -1 : 1));
 
-    await updateMessagesStatus(allTransactions, messageHashes, networkType);
-    console.log(allTransactions);
+    await updateMessagesStatus(allTransactions, networkType);
     return allTransactions;
   };
 
-  const updateMessagesStatus = async (
-    transactions: TransactionHistory[],
-    messageHashes: string[],
-    networkType: NetworkType,
-  ) => {
+  const updateMessagesStatus = async (transactions: TransactionHistory[], networkType: NetworkType) => {
     const promises = transactions.map(async (transaction, index) => {
       // Only process the transaction that haves messages with unclaimed or unknwon statuses
-      const messages = transaction.messages;
-      if (messages && messages.length > 0) {
-        const hasUnClaimedMessage = messages.filter((message) => message.status !== OnChainMessageStatus.CLAIMED);
+      const message = transaction.message;
+      if (message) {
+        const isMessageClaimed = message.status === OnChainMessageStatus.CLAIMED;
 
-        if (hasUnClaimedMessage.length === 0) {
+        if (isMessageClaimed) {
           // We skip this one since all the messages have been claimed
           return;
         }
@@ -128,22 +96,9 @@ const useFetchBridgeTransactions = () => {
             ...transaction.token,
             [toLayer]: toLayerToken,
           },
-          messages: newMessages,
+          message: newMessages?.[0],
         };
         transactions[index] = updatedTransaction;
-      }
-
-      // Check pending anchoring to remove claim button
-      for (const transaction of transactions) {
-        if (!transaction.messages?.length) {
-          continue;
-        }
-        for (const message of transaction.messages) {
-          if (messageHashes.find((messageHash) => messageHash === message.messageHash)) {
-            // Set to UNKNOWN if recent anchoring found, should directly mutate _transactions
-            message.status = OnChainMessageStatus.UNKNOWN;
-          }
-        }
       }
     });
 
@@ -154,7 +109,6 @@ const useFetchBridgeTransactions = () => {
     fromChain: Chain,
     toChain: Chain,
     fromBlock: bigint,
-    toBlock: bigint,
     networkType: NetworkType,
     networkLayer: NetworkLayer,
     transactions: TransactionHistory[],
@@ -171,14 +125,14 @@ const useFetchBridgeTransactions = () => {
       return;
     }
 
-    if (fromBlock < BigInt(0) || toBlock < BigInt(0) || fromBlock > toBlock) {
+    if (fromBlock < BigInt(0)) {
       return;
     }
 
     const [ethHistory, erc20History, usdcHistory] = await Promise.all([
-      fetchETHTransactions(client, fromChain, toChain, fromBlock, toBlock, networkType, networkLayer, transactions),
-      fetchERC20Transactions(client, fromChain, toChain, fromBlock, toBlock, networkType, networkLayer, transactions),
-      fetchUSDCTransactions(client, fromChain, toChain, fromBlock, toBlock, networkType, networkLayer, transactions),
+      fetchETHTransactions(client, fromChain, toChain, fromBlock, networkType, networkLayer, transactions),
+      fetchERC20Transactions(client, fromChain, toChain, fromBlock, networkType, networkLayer, transactions),
+      fetchUSDCTransactions(client, fromChain, toChain, fromBlock, networkType, networkLayer, transactions),
     ]);
 
     return [...ethHistory, ...erc20History, ...usdcHistory];
@@ -189,7 +143,6 @@ const useFetchBridgeTransactions = () => {
     fromChain: Chain,
     toChain: Chain,
     fromBlock: bigint,
-    toBlock: bigint,
     networkType: NetworkType,
     networkLayer: NetworkLayer,
     existingTransactions: TransactionHistory[],
@@ -198,7 +151,7 @@ const useFetchBridgeTransactions = () => {
     const [ethLogsForSender, ethLogsForRecipient] = await Promise.all([<Promise<ETHEvent[]>>client.getLogs({
         event: eventETH,
         fromBlock,
-        toBlock,
+        toBlock: "latest",
         address: messageServiceAddress,
         args: {
           _from: address,
@@ -206,7 +159,7 @@ const useFetchBridgeTransactions = () => {
       }), <Promise<ETHEvent[]>>client.getLogs({
         event: eventETH,
         fromBlock,
-        toBlock,
+        toBlock: "latest",
         address: messageServiceAddress,
         args: {
           _to: address,
@@ -226,7 +179,7 @@ const useFetchBridgeTransactions = () => {
       (log) => !existingTransactions.some((tx) => tx.transactionHash === log.transactionHash),
     );
 
-    return parseETHEvents(newEthLogs, client, fromChain, toChain, tokensConfig, networkType);
+    return parseETHEvents(newEthLogs, client, fromChain, toChain, tokensList, networkType);
   };
 
   const fetchERC20Transactions = async (
@@ -234,7 +187,6 @@ const useFetchBridgeTransactions = () => {
     fromChain: Chain,
     toChain: Chain,
     fromBlock: bigint,
-    toBlock: bigint,
     networkType: NetworkType,
     networkLayer: NetworkLayer,
     existingTransactions: TransactionHistory[],
@@ -244,7 +196,7 @@ const useFetchBridgeTransactions = () => {
       <Promise<ERC20Event[]>>client.getLogs({
         event: eventERC20,
         fromBlock,
-        toBlock,
+        toBlock: "latest",
         address: tokenBridgeAddress,
         args: {
           sender: address,
@@ -253,7 +205,7 @@ const useFetchBridgeTransactions = () => {
       <Promise<ERC20V2Event[]>>client.getLogs({
         event: eventERC20V2,
         fromBlock,
-        toBlock,
+        toBlock: "latest",
         address: tokenBridgeAddress,
         args: {
           sender: address,
@@ -262,7 +214,7 @@ const useFetchBridgeTransactions = () => {
       <Promise<ERC20V2Event[]>>client.getLogs({
         event: eventERC20V2,
         fromBlock,
-        toBlock,
+        toBlock: "latest",
         address: tokenBridgeAddress,
         args: {
           recipient: address,
@@ -288,8 +240,8 @@ const useFetchBridgeTransactions = () => {
     );
 
     const [erc20History, erc20V2History] = await Promise.all([
-      parseERC20Events(filteredERC20Logs, client, fromChain, toChain, tokensConfig, networkType),
-      parseERC20V2Events(filteredERC20V2Logs, client, fromChain, toChain, tokensConfig, networkType),
+      parseERC20Events(filteredERC20Logs, client, fromChain, toChain, tokensList, networkType),
+      parseERC20V2Events(filteredERC20V2Logs, client, fromChain, toChain, tokensList, networkType),
     ]);
 
     const history = [...erc20History, ...erc20V2History];
@@ -308,7 +260,6 @@ const useFetchBridgeTransactions = () => {
     fromChain: Chain,
     toChain: Chain,
     fromBlock: bigint,
-    toBlock: bigint,
     networkType: NetworkType,
     networkLayer: NetworkLayer,
     existingTransactions: TransactionHistory[],
@@ -317,7 +268,7 @@ const useFetchBridgeTransactions = () => {
     const [usdcLogsForSender, usdcLogsForRecipient] = await Promise.all([<Promise<USDCEvent[]>>client.getLogs({
         event: eventUSDC,
         fromBlock,
-        toBlock,
+        toBlock: "latest",
         address: usdcBridgeAddress,
         args: {
           depositor: address,
@@ -325,7 +276,7 @@ const useFetchBridgeTransactions = () => {
       }), <Promise<USDCEvent[]>>client.getLogs({
         event: eventUSDC,
         fromBlock,
-        toBlock,
+        toBlock: "latest",
         address: usdcBridgeAddress,
         args: {
           to: address,
@@ -345,7 +296,7 @@ const useFetchBridgeTransactions = () => {
       (log) => !existingTransactions.some((tx) => tx.transactionHash === log.transactionHash),
     );
 
-    return parseUSDCEvents(filteredUSDCLogs, client, fromChain, toChain, tokensConfig, networkType);
+    return parseUSDCEvents(filteredUSDCLogs, client, fromChain, toChain, tokensList, networkType);
   };
 
   return { fetchTransactions };

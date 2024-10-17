@@ -4,51 +4,67 @@ import { safeGetAddress } from "@/utils/format";
 import { useTokenStore } from "@/stores/tokenStore";
 
 const useERC20Storage = () => {
-  const { storedTokens, setStoredTokens } = useTokenStore((state) => ({
-    storedTokens: state.usersTokens,
-    setStoredTokens: state.setUsersTokens,
-  }));
+  const tokensList = useTokenStore((state) => state.tokensList);
+  const setTokensList = useTokenStore((state) => state.setTokensList);
 
   const getStoredToken = useCallback(
     (token: TokenInfo, networkType: NetworkType) => {
-      if (networkType !== NetworkType.WRONG_NETWORK) {
-        for (let i = 0; i < storedTokens[networkType].length; i++) {
-          const storedToken = storedTokens[networkType][i];
-          const l1Address = safeGetAddress(token.L1);
-          const l2Address = safeGetAddress(token.L2);
-          const storedL1Address = safeGetAddress(storedToken.L1);
-          const storedL2Address = safeGetAddress(storedToken.L2);
-          if (
-            (l1Address && storedL1Address === l1Address) ||
-            (l2Address && storedL2Address === l2Address) ||
-            token.type === TokenType.ETH
-          ) {
-            return { storedToken, index: i };
-          }
-        }
+      if (networkType === NetworkType.WRONG_NETWORK) {
+        return undefined;
       }
+
+      const currentNetworkTokens = tokensList[networkType] || [];
+
+      const index = currentNetworkTokens.findIndex((storedToken) => {
+        const l1Address = safeGetAddress(token.L1);
+        const l2Address = safeGetAddress(token.L2);
+        const storedL1Address = safeGetAddress(storedToken.L1);
+        const storedL2Address = safeGetAddress(storedToken.L2);
+
+        return (
+          (l1Address && storedL1Address === l1Address) ||
+          (l2Address && storedL2Address === l2Address) ||
+          token.type === TokenType.ETH
+        );
+      });
+
+      if (index === -1) {
+        return undefined;
+      }
+
+      return { storedToken: currentNetworkTokens[index], index };
     },
-    [storedTokens],
+    [tokensList],
   );
 
   const updateOrInsertUserTokenList = useCallback(
     (token: TokenInfo, networkType: NetworkType) => {
-      if (networkType !== NetworkType.WRONG_NETWORK && !token.isDefault) {
-        const found = getStoredToken(token, networkType);
-        if (found) {
-          if (found.storedToken !== token) {
-            // Update the token found
-            storedTokens[networkType][found.index] = token;
-            setStoredTokens(storedTokens);
-          }
-        } else {
-          // Insert it to the list
-          storedTokens[networkType].push(token);
-          setStoredTokens(storedTokens);
-        }
+      if (networkType === NetworkType.WRONG_NETWORK || token.isDefault) {
+        return;
       }
+
+      const found = getStoredToken(token, networkType);
+      const updatedTokens = [...(tokensList[networkType] || [])];
+
+      if (found) {
+        if (found.storedToken !== token) {
+          updatedTokens[found.index] = token;
+        } else {
+          // No update needed if the token is the same
+          return;
+        }
+      } else {
+        updatedTokens.push(token);
+      }
+
+      const newTokensList = {
+        ...tokensList,
+        [networkType]: updatedTokens,
+      };
+
+      setTokensList(newTokensList);
     },
-    [setStoredTokens, storedTokens, getStoredToken],
+    [setTokensList, tokensList, getStoredToken],
   );
 
   return { updateOrInsertUserTokenList };

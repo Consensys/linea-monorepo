@@ -45,38 +45,29 @@ export const defaultTokensConfig: NetworkTokens = {
 };
 
 export type TokenState = {
-  tokensConfig: NetworkTokens;
-  defaultTokenList: NetworkTokens;
-  usersTokens: NetworkTokens;
+  tokensList: NetworkTokens;
 };
 
 export type TokenActions = {
-  setTokensConfig: (tokensConfig: NetworkTokens) => void;
-  setDefaultTokenList: (defaultTokenList: NetworkTokens) => void;
-  setUsersTokens: (usersTokens: NetworkTokens) => void;
+  setTokensList: (tokensConfig: NetworkTokens) => void;
 };
 
 export type TokenStore = TokenState & TokenActions;
 
 export const defaultInitState: TokenState = {
-  tokensConfig: defaultTokensConfig,
-  defaultTokenList: { MAINNET: [], SEPOLIA: [], UNKNOWN: [] },
-  usersTokens: { MAINNET: [], SEPOLIA: [], UNKNOWN: [] },
+  tokensList: defaultTokensConfig,
 };
 
 export const useTokenStore = create<TokenStore>()(
   persist(
     (set) => ({
       ...defaultInitState,
-      setTokensConfig: (tokensConfig: NetworkTokens) => set({ tokensConfig }),
-      setDefaultTokenList: (defaultTokenList: NetworkTokens) => set({ defaultTokenList }),
-      setUsersTokens: (usersTokens: NetworkTokens) => set({ usersTokens }),
+      setTokensList: (tokensList: NetworkTokens) => set({ tokensList }),
     }),
     {
       name: "token-storage", // name of the item in the storage (must be unique)
       storage: createJSONStorage(() => localStorage),
       version: parseInt(config.storage.minVersion),
-      partialize: (state) => ({ usersTokens: state.usersTokens }),
       migrate: () => {
         return defaultInitState;
       },

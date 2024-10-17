@@ -17,7 +17,7 @@ export interface TransactionHistory {
   event: Log;
   data?: WaitForTransactionReceiptReturnType;
   timestamp: bigint;
-  messages?: MessageWithStatus[];
+  message?: MessageWithStatus;
   isWaiting?: boolean;
 }
 
@@ -26,8 +26,6 @@ export interface BlockRange {
   l1Chain: Chain;
   l2Chain: Chain;
   l1FromBlockNumber: bigint;
-  l1ToBlockNumber: bigint;
   l2FromBlockNumber: bigint;
-  l2ToBlockNumber: bigint;
   transactions: TransactionHistory[];
 }

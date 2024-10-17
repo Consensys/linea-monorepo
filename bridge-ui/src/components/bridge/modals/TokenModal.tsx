@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { isAddress, getAddress, Address, zeroAddress } from "viem";
 import TokenDetails from "./TokenDetails";
 import { NetworkType, TokenInfo, TokenType } from "@/config/config";
@@ -13,6 +13,7 @@ import { FieldValues, UseFormClearErrors, UseFormSetValue } from "react-hook-for
 import { CiSearch } from "react-icons/ci";
 import useTokenPrices from "@/hooks/useTokenPrices";
 import { isEmptyObject } from "@/utils/utils";
+import useDebounce from "@/hooks/useDebounce";
 
 interface TokenModalProps {
   setValue: UseFormSetValue<FieldValues>;
@@ -20,7 +21,7 @@ interface TokenModalProps {
 }
 
 export default function TokenModal({ setValue, clearErrors }: TokenModalProps) {
-  const tokensConfig = useTokenStore((state) => state.tokensConfig);
+  const tokensList = useTokenStore((state) => state.tokensList);
   const [filteredTokens, setFilteredTokens] = useState<TokenInfo[]>([]);
   const [searchTokenIsNew, setSearchTokenIsNew] = useState<boolean>(false);
   const { fillMissingTokenAddress } = useTokenFetch();
@@ -33,63 +34,101 @@ export default function TokenModal({ setValue, clearErrors }: TokenModalProps) {
   }));
   const { updateOrInsertUserTokenList } = useERC20Storage();
   const [searchQuery, setSearchQuery] = useState("");
+
   const { data } = useTokenPrices(
-    filteredTokens.map((token) =>
-      token.name === "Ether" ? zeroAddress : (safeGetAddress(token[networkLayer]) as Address),
+    useMemo(
+      () =>
+        filteredTokens.map((token) =>
+          token.name === "Ether" ? zeroAddress : (safeGetAddress(token[networkLayer]) as Address),
+        ),
+      [filteredTokens, networkLayer],
     ),
     fromChain?.id,
   );
 
-  useMemo(async () => {
-    let found = false;
-    if (networkType === NetworkType.SEPOLIA || networkType === NetworkType.MAINNET) {
-      const filtered = (tokensConfig?.[networkType] ?? []).filter(
-        (token: TokenInfo) =>
-          (token[networkLayer] || token.type === TokenType.ETH) &&
-          (token.name.toLowerCase()?.includes(searchQuery) ||
-            token.symbol.toLowerCase()?.includes(searchQuery) ||
-            safeGetAddress(token[networkLayer])?.includes(searchQuery)),
-      );
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-      if (filtered.length > 0) {
-        found = true;
-        setFilteredTokens(filtered);
-        setSearchTokenIsNew(false);
-      } else if (isAddress(searchQuery)) {
-        // Get token info from contract
-        const newToken = await fetchTokenInfo(searchQuery, networkType, fromChain);
-        if (newToken) {
-          await fillMissingTokenAddress(newToken);
+  const handleTokenSearch = useCallback(
+    async (query: string) => {
+      let found = false;
+
+      if (networkType === NetworkType.SEPOLIA || networkType === NetworkType.MAINNET) {
+        const currentNetworkTokens = tokensList?.[networkType] || [];
+
+        // Filter tokens based on the search query
+        const filtered = currentNetworkTokens.filter(
+          (token: TokenInfo) =>
+            (token[networkLayer] || token.type === TokenType.ETH) &&
+            (token.name.toLowerCase().includes(query) ||
+              token.symbol.toLowerCase().includes(query) ||
+              safeGetAddress(token[networkLayer])?.toLowerCase().includes(query)),
+        );
+
+        if (filtered.length > 0) {
           found = true;
-          setFilteredTokens([newToken]);
-          setSearchTokenIsNew(true);
+          setFilteredTokens(filtered);
+          setSearchTokenIsNew(false);
+        } else if (isAddress(query)) {
+          // Fetch token info from the contract if the query is a valid address
+          const newToken = await fetchTokenInfo(query, networkType, fromChain);
+          if (newToken) {
+            await fillMissingTokenAddress(newToken);
+            found = true;
+            setFilteredTokens([newToken]);
+            setSearchTokenIsNew(true);
+          } else {
+            setSearchTokenIsNew(false);
+          }
         } else {
           setSearchTokenIsNew(false);
         }
-      } else {
-        setSearchTokenIsNew(false);
       }
-    }
-    if (!found) {
-      setFilteredTokens([]);
-    }
-  }, [searchQuery, networkType, networkLayer, tokensConfig, fromChain, fillMissingTokenAddress]);
 
-  const onTokenClick = (token: TokenInfo) => {
-    if (searchTokenIsNew && token[networkLayer]) {
-      updateOrInsertUserTokenList(token, networkType);
-    }
+      if (!found) {
+        setFilteredTokens([]);
+      }
+    },
+    [networkType, networkLayer, tokensList, fromChain, fillMissingTokenAddress],
+  );
 
-    setSearchTokenIsNew(false);
-  };
+  const handleTokenClick = useCallback(
+    (token: TokenInfo) => {
+      if (searchTokenIsNew && token[networkLayer]) {
+        updateOrInsertUserTokenList(token, networkType);
+      }
+      setSearchTokenIsNew(false);
+    },
+    [searchTokenIsNew, networkLayer, updateOrInsertUserTokenList, networkType],
+  );
+
+  const getTokenPrice = useCallback(
+    (token: TokenInfo): number | undefined => {
+      if (networkType === NetworkType.MAINNET && !isEmptyObject(data)) {
+        const tokenAddress = (safeGetAddress(token[networkLayer]) || zeroAddress).toLowerCase();
+        return data[tokenAddress]?.usd;
+      }
+      return undefined;
+    },
+    [networkType, networkLayer, data],
+  );
 
   const normalizeInput = (input: string): string => {
-    if (isAddress(input)) {
-      return getAddress(input);
-    } else {
-      return input.toLowerCase();
-    }
+    return isAddress(input) ? getAddress(input) : input.toLowerCase();
   };
+
+  useEffect(() => {
+    if (debouncedSearchQuery.trim() === "") {
+      if (networkType === NetworkType.SEPOLIA || networkType === NetworkType.MAINNET) {
+        setFilteredTokens(tokensList[networkType]);
+        setSearchTokenIsNew(false);
+        return;
+      }
+      setFilteredTokens([]);
+      setSearchTokenIsNew(false);
+      return;
+    }
+    handleTokenSearch(debouncedSearchQuery);
+  }, [debouncedSearchQuery, handleTokenSearch, networkType, tokensList]);
 
   return (
     <div id="token-picker-modal">
@@ -111,16 +150,11 @@ export default function TokenModal({ setValue, clearErrors }: TokenModalProps) {
             filteredTokens.map((token: TokenInfo, index: number) => (
               <TokenDetails
                 token={token}
-                onTokenClick={onTokenClick}
-                key={index}
+                onTokenClick={handleTokenClick}
+                key={`token-details-${index}`}
                 setValue={setValue}
                 clearErrors={clearErrors}
-                tokenPrice={
-                  (networkType === NetworkType.MAINNET &&
-                    !isEmptyObject(data) &&
-                    data[safeGetAddress(token[networkLayer])?.toLowerCase() || zeroAddress]?.usd) ||
-                  undefined
-                }
+                tokenPrice={getTokenPrice(token)}
               />
             ))
           ) : (

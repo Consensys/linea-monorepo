@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { TransactionHistory } from "@/models/history";
 import { config } from "@/config";
+import { OnChainMessageStatus } from "@consensys/linea-sdk";
+import { isEmptyObject } from "@/utils/utils";
 
 export type HistoryState = {
   isLoading: boolean;
@@ -13,6 +15,7 @@ export type HistoryActions = {
   setTransactions: (key: string, transactions: TransactionHistory[]) => void;
   getTransactionsByKey: (key: string) => TransactionHistory[];
   clearStorage: (key: string) => void;
+  getMinEventBlockNumber: (key: string, fromChainId: number) => bigint;
 };
 
 export type HistoryStore = HistoryState & HistoryActions;
@@ -39,6 +42,28 @@ export const useHistoryStore = create<HistoryStore>()(
       getTransactionsByKey: (key) => {
         const { transactions } = get();
         return transactions[key] ?? [];
+      },
+      getMinEventBlockNumber: (key, fromChainId) => {
+        const { transactions } = get();
+
+        if (isEmptyObject(transactions)) {
+          return 0n;
+        }
+        let minBlockNumber = BigInt(Number.MAX_SAFE_INTEGER);
+
+        const filteredTransactions = transactions[key].filter(
+          (transaction) => transaction.fromChain.id === fromChainId,
+        );
+
+        filteredTransactions.forEach((transaction) => {
+          if (transaction.message && transaction.message.status !== OnChainMessageStatus.CLAIMED) {
+            if (transaction.event.blockNumber && transaction.event?.blockNumber < minBlockNumber) {
+              minBlockNumber = transaction.event.blockNumber;
+            }
+          }
+        });
+
+        return minBlockNumber;
       },
     }),
     {
