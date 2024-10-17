@@ -105,7 +105,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make pull-all-images
+            make pull-images-for-ci-testing
       - name: Spin up fresh environment with geth tracing with retry
         if: ${{ inputs.tracing-engine == 'geth' }}
         uses: nick-fields/retry@v2

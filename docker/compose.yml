@@ -24,7 +24,7 @@ services:
     hostname: sequencer
     container_name: sequencer
     image: consensys/linea-besu:${SEQUENCER_TAG:-24.10-delivery34}
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "ci-testing" ]
     depends_on:
       linea-besu-sequencer-plugin-downloader:
         condition: service_completed_successfully
@@ -90,7 +90,7 @@ services:
     hostname: l2-node
     image: consensys/linea-geth:${ZKGETH_TAG:-0588665}
     platform: linux/amd64
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "ci-testing" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -172,7 +172,7 @@ services:
     hostname: traces-node
     image: consensys/linea-geth:${ZKGETH_TAG:-0588665}
     platform: linux/amd64
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "ci-testing" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -208,7 +208,7 @@ services:
     image: consensys/linea-prover:b4550ce-untested
     platform: linux/amd64
     # to avoid spinning up on CI for now
-    profiles: [ "l2" ]
+    profiles: [ "l2", "ci-testing" ]
     environment:
       GOMAXPROCS: 16
       CONTROLLER_CONFIG: "/opt/linea/prover/config/controller/controller.config.toml"
@@ -230,7 +230,7 @@ services:
     container_name: postman
     hostname: postman
     image: consensys/linea-postman:${POSTMAN_TAG:-5a6fdf3}
-    profiles: [ "l2", "debug" ]
+    profiles: [ "l2", "debug", "ci-testing" ]
     platform: linux/amd64
     restart: on-failure
     depends_on:
@@ -288,7 +288,7 @@ services:
     hostname: traces-api
     container_name: traces-api
     image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-e9f2bcc}
-    profiles: [ "l2", "debug" ]
+    profiles: [ "l2", "debug", "ci-testing" ]
     restart: on-failure
     depends_on:
       traces-node:
@@ -331,7 +331,7 @@ services:
     container_name: coordinator
     image: consensys/linea-coordinator:${COORDINATOR_TAG:-2ee4363}
     platform: linux/amd64
-    profiles: [ "l2", "debug" ]
+    profiles: [ "l2", "debug", "ci-testing" ]
     depends_on:
       postgres:
         condition: service_healthy
@@ -367,7 +367,7 @@ services:
     hostname: web3signer
     container_name: web3signer
     image: consensys/web3signer:23.3-jdk17
-    profiles: [ "l2", "debug" ]
+    profiles: [ "l2", "debug", "ci-testing" ]
     ports:
       - "9000:9000"
     command:
@@ -396,7 +396,7 @@ services:
     image: postgres:14.5
     hostname: postgres
     container_name: postgres
-    profiles: [ "l2", "debug" ]
+    profiles: [ "l2", "debug", "ci-testing" ]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -426,7 +426,7 @@ services:
     container_name: l1-el-node
     hostname: l1-el-node
     image: hyperledger/besu:24.6.0
-    profiles: [ "l1", "debug" ]
+    profiles: [ "l1", "debug", "ci-testing" ]
     depends_on:
       l1-node-genesis-generator:
           condition: service_completed_successfully
@@ -458,7 +458,7 @@ services:
     container_name: l1-cl-node
     hostname: l1-cl-node
     image: consensys/teku:24.2.0
-    profiles: [ "l1", "debug" ]
+    profiles: [ "l1", "debug", "ci-testing" ]
     depends_on:
       l1-el-node:
         condition: service_healthy
@@ -484,7 +484,7 @@ services:
   l1-node-genesis-generator:
     build:
       context: ./config/l1-node/
-    profiles: [ "l1", "debug" ]
+    profiles: [ "l1", "debug", "ci-testing" ]
     entrypoint:
       - /bin/sh
       - -c
@@ -532,7 +532,7 @@ services:
     image: consensys/linea-besu:linea-delivery-27
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
-    profiles: [ "l2", "l2-bc" ]
+    profiles: [ "l2", "l2-bc", "ci-testing" ]
     depends_on:
       shomei-plugin-downloader:
         condition: service_completed_successfully
@@ -578,7 +578,7 @@ services:
     image: consensys/linea-shomei:2.2.0
     hostname: shomei
     container_name: shomei
-    profiles: [ "l2", "l2-bc" ]
+    profiles: [ "l2", "l2-bc", "ci-testing" ]
     depends_on:
       zkbesu-shomei:
         condition: service_started
@@ -614,7 +614,7 @@ services:
     image: consensys/linea-shomei:2.2.0
     hostname: shomei-frontend
     container_name: shomei-frontend
-    profiles: [ "l2", "l2-bc" ]
+    profiles: [ "l2", "l2-bc", "ci-testing" ]
     depends_on:
       zkbesu-shomei:
         condition: service_started
@@ -655,7 +655,7 @@ services:
 
   shomei-plugin-downloader:
     container_name: shomei-plugin-downloader
-    profiles: ["l2", "l2-bc"]
+    profiles: [ "l2", "l2-bc", "ci-testing" ]
     image: busybox:1.36.1
     command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/besu-shomei-plugin/releases/download/v0.3.1/besu-shomei-plugin-v0.3.1.jar",  "/shomei-plugin" ]
     volumes:
