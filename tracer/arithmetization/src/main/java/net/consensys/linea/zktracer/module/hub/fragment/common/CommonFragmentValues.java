@@ -41,6 +41,7 @@ import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 @Accessors(fluent = true)
 @RequiredArgsConstructor
 public class CommonFragmentValues {
+  public final Hub hub;
   public final TransactionProcessingMetadata txMetadata;
   public final HubProcessingPhase hubProcessingPhase;
   public final int hubStamp;
@@ -48,7 +49,8 @@ public class CommonFragmentValues {
   public final State.TxState.Stamps stamps; // for MMU and MXP stamps
   @Setter public int logStamp = -1;
   @Getter final CallFrame callFrame;
-  public final boolean exceptionAhoy;
+  public final short exceptions;
+  public final boolean contextMayChange;
   @Setter public int contextNumberNew;
   public final int pc;
   public final int pcNew;
@@ -56,9 +58,9 @@ public class CommonFragmentValues {
   final short heightNew;
   public final long gasExpected;
   public final long gasActual;
-  public final boolean contextMayChange;
-  @Setter long gasCost; // Set at Post Execution
-  @Setter long gasNext; // Set at Post Execution
+  @Getter final long gasCost;
+  final long gasNext;
+  @Getter final long gasCostExcluduingDeploymentCost;
   @Setter public long refundDelta = 0; // 0 is default Value, can be modified only by SSTORE section
   @Setter public long gasRefund; // Set at commit time
   @Setter public long gasRefundNew; // Set at commit time
@@ -71,22 +73,28 @@ public class CommonFragmentValues {
     final short exceptions = hub.pch().exceptions();
     final boolean noStackException = !stackException(exceptions);
 
+    final boolean isExec = hub.state.getProcessingPhase() == TX_EXEC;
+
+    this.hub = hub;
     this.txMetadata = hub.txStack().current();
     this.hubProcessingPhase = hub.state().getProcessingPhase();
     this.hubStamp = hub.stamp();
     this.callStack = hub.callStack();
     this.stamps = hub.state().stamps();
     this.callFrame = hub.currentFrame();
-    this.exceptionAhoy = any(exceptions);
+    this.exceptions = exceptions;
     // this.contextNumberNew = hub.contextNumberNew(callFrame);
-    this.pc = hubProcessingPhase == TX_EXEC ? hub.currentFrame().pc() : 0;
-    this.pcNew = computePcNew(hub, pc, noStackException, hub.state.getProcessingPhase() == TX_EXEC);
+    this.pc = isExec ? hub.currentFrame().pc() : 0;
+    this.pcNew = computePcNew(hub, pc, noStackException, isExec);
     this.height = callFrame.stack().getHeight();
     this.heightNew = callFrame.stack().getHeightNew();
 
     // TODO: partial solution, will not work in general
-    this.gasExpected = hub.expectedGas();
-    this.gasActual = hub.remainingGas();
+    this.gasExpected = isExec ? computeGasExpected() : 0;
+    this.gasActual = isExec ? computeGasRemaining() : 0;
+    this.gasCost = isExec ? computeGasCost() : 0;
+    this.gasNext = isExec ? computeGasNext() : 0;
+    this.gasCostExcluduingDeploymentCost = isExec ? computeGasCostExcludingDeploymentCost() : 0;
 
     final InstructionFamily instructionFamily = hub.opCode().getData().instructionFamily();
     this.contextMayChange =
@@ -95,7 +103,7 @@ public class CommonFragmentValues {
                     || instructionFamily == CREATE
                     || instructionFamily == HALT
                     || instructionFamily == INVALID)
-                || exceptionAhoy);
+                || any(this.exceptions));
 
     if (none(exceptions)) {
       tracedException = TracedException.NONE;
@@ -185,5 +193,57 @@ public class CommonFragmentValues {
     ;
 
     return pc + 1;
+  }
+
+  private long computeGasRemaining() {
+    return hub.remainingGas();
+  }
+
+  public long computeGasExpected() {
+
+    final CallFrame currentFrame = hub.currentFrame();
+
+    if (hub.state().getProcessingPhase() != TX_EXEC) return 0;
+
+    if (currentFrame.executionPaused()) {
+      currentFrame.unpauseCurrentFrame();
+      return currentFrame.lastValidGasNext();
+    }
+
+    return currentFrame.frame().getRemainingGas();
+  }
+
+  private long computeGasCost() {
+    return Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode()).upfrontGasCost();
+  }
+
+  private long computeGasCostExcludingDeploymentCost() {
+    return Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode()).gasCostExcludingDeploymentCost();
+  }
+
+  public long computeGasNext() {
+
+    if (hub.isExceptional()) {
+      return 0;
+    }
+
+    final long gasAfterDeductingCost = computeGasRemaining() - computeGasCost();
+
+    return switch (hub.opCodeData().instructionFamily()) {
+      case KEC, COPY, STACK_RAM, STORAGE, LOG, HALT -> (hub.raisesOogxOrIsUnexceptional()
+          ? gasAfterDeductingCost
+          : 0);
+      case CREATE -> gasAfterDeductingCost
+          - Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode()).gasPaidOutOfPocket();
+      case CALL -> // TODO: this will not work because of 1. aborts with value transfers 2. EOA
+      // calls 3. precompile calls
+      gasAfterDeductingCost
+          - Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode()).gasPaidOutOfPocket();
+      default -> // ADD, MUL, MOD, EXT, WCP, BIN, SHF, CONTEXT, ACCOUNT, TRANSACTION, BATCH, JUMP,
+      // MACHINE_STATE, PUSH_POP, DUP, SWAP, INVALID
+      // TODO: this may not work for EXP, EXTCODEHASH, EXTCODESIZE, BALANCE as they require extra
+      //  care for pricing because of ⒈ warmth and ⒉ log computations
+      gasAfterDeductingCost;
+    };
   }
 }

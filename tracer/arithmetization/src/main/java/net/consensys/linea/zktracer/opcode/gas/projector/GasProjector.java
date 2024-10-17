@@ -152,13 +152,13 @@ public class GasProjector {
       case CREATE2 -> new Create2(frame);
       case CALL -> {
         if (frame.stackSize() > 6) {
-          final long stipend = clampedToLong(frame.getStackItem(0));
+          final long maxGasAllowance = clampedToLong(frame.getStackItem(0));
           final Address to = Words.toAddress(frame.getStackItem(1));
           final Account recipient = frame.getWorldUpdater().get(to);
           final Wei value = Wei.wrap(frame.getStackItem(2));
           yield new Call(
               frame,
-              stipend,
+              maxGasAllowance,
               OperationAncillaries.callDataSegment(frame),
               OperationAncillaries.returnDataRequestedSegment(frame),
               value,

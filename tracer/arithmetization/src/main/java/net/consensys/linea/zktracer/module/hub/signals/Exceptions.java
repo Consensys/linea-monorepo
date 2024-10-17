@@ -138,7 +138,7 @@ public class Exceptions {
   }
 
   private static boolean isOutOfGas(MessageFrame frame, OpCode opCode, GasProjector gp) {
-    final long required = gp.of(frame, opCode).total();
+    final long required = gp.of(frame, opCode).upfrontGasCost();
     return required > frame.getRemainingGas();
   }
 

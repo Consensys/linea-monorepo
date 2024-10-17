@@ -22,6 +22,8 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_INIT
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_WARM;
 import static net.consensys.linea.zktracer.module.hub.Trace.MULTIPLIER___STACK_HEIGHT;
+import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
+import static net.consensys.linea.zktracer.opcode.OpCode.RETURN;
 import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static org.hyperledger.besu.evm.frame.MessageFrame.Type.*;
@@ -733,42 +735,21 @@ public class Hub implements Module {
         this.state().processingPhase == TX_EXEC,
         "There can't be any execution if the HUB is not in execution phase");
 
-    final long gasCost = operationResult.getGasCost();
     final TraceSection currentSection = state.currentTxTrace().currentSection();
 
-    final short exceptions = this.pch().exceptions();
+    compareLineaAndBesuGasCosts(frame, operationResult);
 
-    final boolean memoryExpansionException = Exceptions.memoryExpansionException(exceptions);
-    final boolean outOfGasException = Exceptions.outOfGasException(exceptions);
-    final boolean unexceptional = Exceptions.none(exceptions);
-    final boolean exceptional = Exceptions.any(exceptions);
-
-    // NOTE: whenever there is an exception, a context row
-    // is added at the end of the section; its purpose is
-    // to update the caller / creator context with empty
-    // return data.
-    ///////////////////////////////////////////////////////
-    if (exceptional) {
+    /*
+     * NOTE: whenever there is an exception, a context row
+     * is added at the end of the section; its purpose is
+     * to update the caller / creator context with empty
+     * return data.
+     */
+    if (isExceptional()) {
       this.currentTraceSection()
           .addFragments(ContextFragment.executionProvidesEmptyReturnData(this));
       this.squashCurrentFrameOutputData();
       this.squashParentFrameReturnData();
-    }
-
-    // Setting gas cost IN MOST CASES
-    // TODO:
-    //  * complete this for CREATE's and CALL's
-    //    + are we getting the correct cost (i.e. excluding the 63/64-th's) ?
-    //  * make sure this aligns with exception handling of the zkevm
-    //  * write a method `final boolean requiresGasCost()` (huge switch case)
-    if ((!memoryExpansionException & outOfGasException) || unexceptional) {
-      currentSection.commonValues.gasCost(gasCost);
-      currentSection.commonValues.gasNext(
-          unexceptional ? currentSection.commonValues.gasActual - gasCost : 0);
-    } else {
-      currentSection.commonValues.gasCost(
-          0); // TODO: fill with correct values --- make sure this works in all cases
-      currentSection.commonValues.gasNext(0);
     }
 
     defers.resolvePostExecution(this, frame, operationResult);
@@ -776,6 +757,60 @@ public class Hub implements Module {
     if (!this.currentFrame().opCode().isCall() && !this.currentFrame().opCode().isCreate()) {
       this.unlatchStack(frame, currentSection);
     }
+  }
+
+  /**
+   * Compares the gas costs between Linea and Besu. The total cost should be the same for both, but
+   * it is batched/split differently. This is especially true for opcodes requiring memory
+   * expansion. In Linea's arithmetization, the cost of CALLs and CREATEs doesn't include the gas
+   * paid to the child context. This cost is accounted for separately. The deployment cost is
+   * included in the arithmetization but paid separately in Besu.
+   *
+   * @param frame the current message frame
+   * @param operationResult the result of the operation being executed
+   */
+  private void compareLineaAndBesuGasCosts(
+      MessageFrame frame, Operation.OperationResult operationResult) {
+    TraceSection currentSection = state.currentTxTrace().currentSection();
+    long besuGasCost = operationResult.getGasCost();
+    long lineaGasCost = currentSection.commonValues.gasCost();
+    long lineaGasCostExcludingDeploymentCost =
+        currentSection.commonValues.gasCostExcluduingDeploymentCost();
+
+    if (operationResult.getHaltReason() != null) {
+      return;
+    }
+
+    if (returnFromDeployment(frame)) {
+      checkState(
+          besuGasCost == lineaGasCostExcludingDeploymentCost,
+          "besuGasCost: %d, lineaGasCostExcludingDeploymentCost: %d",
+          besuGasCost,
+          lineaGasCostExcludingDeploymentCost);
+      return;
+    }
+
+    // TODO: same check but for CALL and CREATE's
+    if (!opCode().isCall() && !opCode().isCreate()) {
+      checkState(
+          besuGasCost == lineaGasCost,
+          "besuGasCost: %d, lineaGasCost: %d",
+          besuGasCost,
+          lineaGasCost);
+    }
+  }
+
+  public boolean isUnexceptional() {
+    return currentTraceSection().commonValues.tracedException() == NONE;
+  }
+
+  public boolean isExceptional() {
+    return !isUnexceptional();
+  }
+
+  public boolean raisesOogxOrIsUnexceptional() {
+    return currentTraceSection().commonValues.tracedException() == OUT_OF_GAS_EXCEPTION
+        || isUnexceptional();
   }
 
   /**
@@ -978,18 +1013,6 @@ public class Hub implements Module {
         : 0;
   }
 
-  public long expectedGas() {
-
-    if (this.state().getProcessingPhase() != TX_EXEC) return 0;
-
-    if (this.currentFrame().executionPaused()) {
-      currentFrame().unpauseCurrentFrame();
-      return currentFrame().lastValidGasNext();
-    }
-
-    return this.currentFrame().frame().getRemainingGas();
-  }
-
   public int cumulatedTxCount() {
     return state.txCount();
   }
@@ -1140,5 +1163,13 @@ public class Hub implements Module {
 
   public final boolean deploymentStatusOfAccountAddress() {
     return deploymentStatusOf(this.accountAddress());
+  }
+
+  public final boolean returnFromMessageCall(MessageFrame frame) {
+    return opCode() == RETURN && frame.getType() == MESSAGE_CALL;
+  }
+
+  public final boolean returnFromDeployment(MessageFrame frame) {
+    return opCode() == RETURN && frame.getType() == CONTRACT_CREATION;
   }
 }
