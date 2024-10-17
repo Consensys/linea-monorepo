@@ -7,6 +7,8 @@ import {
   L2MessageService__factory,
   LineaRollup,
   LineaRollup__factory,
+  TestContract,
+  TestContract__factory,
 } from "../../typechain";
 import { AccountManager } from "./accounts/account-manager";
 
@@ -19,6 +21,22 @@ export default class TestSetup {
 
   public getL2Provider(): JsonRpcProvider {
     return new JsonRpcProvider(this.config.L2.rpcUrl.toString());
+  }
+
+  public getL2SequencerProvider(): JsonRpcProvider | undefined {
+    if (this.config.L2.sequencerEndpoint) {
+      return new JsonRpcProvider(this.config.L2.sequencerEndpoint.toString());
+    } else {
+      return undefined;
+    }
+  }
+
+  public getL2BesuNodeProvider(): JsonRpcProvider | undefined {
+    if (this.config.L2.besuNodeRpcUrl) {
+      return new JsonRpcProvider(this.config.L2.besuNodeRpcUrl.toString());
+    } else {
+      return undefined;
+    }
   }
 
   public getL1ChainId(): number {
@@ -39,6 +57,10 @@ export default class TestSetup {
 
   public getSequencerEndpoint(): URL | undefined {
     return this.config.L2.sequencerEndpoint;
+  }
+
+  public getTransactionExclusionEndpoint(): URL | undefined {
+    return this.config.L2.transactionExclusionEndpoint;
   }
 
   public getLineaRollupContract(signer?: Wallet): LineaRollup {
@@ -85,6 +107,20 @@ export default class TestSetup {
     }
 
     return dummyContract;
+  }
+
+  public getL2TestContract(signer?: Wallet): TestContract | undefined {
+    if (this.config.L2.l2TestContractAddress) {
+      const testContract = TestContract__factory.connect(this.config.L2.l2TestContractAddress, this.getL2Provider());
+
+      if (signer) {
+        return testContract.connect(signer);
+      }
+
+      return testContract;
+    } else {
+      return undefined;
+    }
   }
 
   public getL1AccountManager(): AccountManager {

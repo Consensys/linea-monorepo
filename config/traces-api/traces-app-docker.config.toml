@@ -3,12 +3,6 @@ output_traces_directory = "/data/traces/v1/conflated"
 traces_api_version = "0.2.0"
 traces_file_extension = "json.gz"
 
-# Inmemory cache of the traces read from the file system
-# Save IO and  CPU unzipping and JSON parsing
-[read_traces_cache]
-size = 20
-expiration_duration = "PT20M"
-
 [api]
 port = 8080
 path = "/"
