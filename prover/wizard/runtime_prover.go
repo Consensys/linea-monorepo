@@ -87,7 +87,7 @@ func (run *RuntimeProver) Proof() Proof {
 			QueryRes: collection.NewMapping[id, QueryResult](),
 		}
 		proofMsg    = ProofMsg
-		allCols     = run.comp.AllMatchingColumns(nil, &proofMsg)
+		allCols     = run.comp.AllMatchingColumns(nil, &proofMsg, nil)
 		allQueryRes = run.comp.queries.all()
 		err         error
 	)

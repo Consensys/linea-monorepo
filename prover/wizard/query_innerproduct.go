@@ -41,7 +41,7 @@ func (api *API) NewQueryInnerProduct(a Column, b Column) *QueryInnerProduct {
 	return res
 }
 
-func (r QueryInnerProduct) ComputeResult(run Runtime) QueryResult {
+func (r QueryInnerProduct) computeResult(run Runtime) QueryResult {
 	var (
 		a = r.A.GetAssignment(run)
 		b = r.B.GetAssignment(run)
@@ -49,7 +49,7 @@ func (r QueryInnerProduct) ComputeResult(run Runtime) QueryResult {
 	return &QueryResFE{R: smartvectors.InnerProduct(a, b)}
 }
 
-func (r QueryInnerProduct) ComputeResultGnark(api frontend.API, run GnarkRuntime) QueryResultGnark {
+func (r QueryInnerProduct) computeResultGnark(api frontend.API, run RuntimeGnark) QueryResultGnark {
 	var (
 		a   = r.A.GetAssignmentGnark(api, run)
 		b   = r.B.GetAssignmentGnark(api, run)

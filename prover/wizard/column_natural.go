@@ -3,8 +3,14 @@ package wizard
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+)
+
+var (
+	_ Item   = &ColNatural{}
+	_ Column = &ColNatural{}
 )
 
 // ColNatural designate a column that is explicitly part of the AIR it serves
@@ -17,14 +23,17 @@ type ColNatural struct {
 	metadata   *metadata
 }
 
+// NewCommit declares and returns a column with a [Committed] visibility.
 func (api *API) NewCommit(round, size int) *ColNatural {
 	return api.newColumn(round, size, Committed)
 }
 
+// NewColumn declares and returns a column with a user-provided visibility.
 func (api *API) NewColumn(round, size int, visibility Visibility) *ColNatural {
 	return api.newColumn(round, size, visibility)
 }
 
+// NewPrecomputed declares a column with a [Precomputed] visibility.
 func (api *API) NewPrecomputed(sv smartvectors.SmartVector) *ColNatural {
 	res := api.newColumn(0, sv.Len(), Precomputed)
 	api.precomputeds.InsertNew(res.id(), sv)
@@ -50,11 +59,17 @@ func (api *API) newColumn(round, size int, visibility Visibility) *ColNatural {
 	return &nat
 }
 
+// AllColumns returns the list of all the columns declared in the [CompiledIOP]
 func (api *CompiledIOP) AllColumns() []ColNatural {
 	return api.columns.all()
 }
 
-func (api *CompiledIOP) AllMatchingColumns(optRoundFilter *int, optVisibilityFilter *Visibility) []ColNatural {
+// AllMatchingColumns returns a list of columns matching the specified condition.
+// The user pass a non-nill value to `optRoundFilter`, the function will return
+// only the columns that are declared during the provided rounds. The user can
+// also provide a filter over the visibility of the columns. The function will
+// only return NaturalColumns.
+func (api *CompiledIOP) AllMatchingColumns(optRoundFilter *int, optVisibilityFilter *Visibility, optTagFilter *string) []ColNatural {
 
 	var (
 		fullList = api.columns.all()
@@ -71,20 +86,28 @@ func (api *CompiledIOP) AllMatchingColumns(optRoundFilter *int, optVisibilityFil
 			continue
 		}
 
+		if optTagFilter != nil && !nat.HasTag(*optTagFilter) {
+			continue
+		}
+
 		res = append(res, nat)
 	}
 
 	return res
 }
 
+// ChangeVisibility alters the visibility of the receiver [ColNatural]
 func (nat *ColNatural) ChangeVisibility(v Visibility) {
 	*nat.visibility = v
 }
 
+// Visibility returns the [Visibility] of the column.
 func (nat *ColNatural) Visibility() Visibility {
 	return *nat.visibility
 }
 
+// GetAssignment returns the assignment of the column if it is accessible to
+// the caller. If it is not available, the function panics.
 func (nat *ColNatural) GetAssignment(run Runtime) smartvectors.SmartVector {
 	n, ok := run.tryGetColumn(nat)
 	if !ok {
@@ -93,7 +116,10 @@ func (nat *ColNatural) GetAssignment(run Runtime) smartvectors.SmartVector {
 	return n
 }
 
-func (nat *ColNatural) GetAssignmentGnark(_ frontend.API, run GnarkRuntime) []frontend.Variable {
+// GetAssignmentGnark is as [GetAssignment] but in a gnark verifier circuit. In
+// that context, we remind the reader that the column will be only be available
+// if it has a visibility that allows the verifier to see it.
+func (nat *ColNatural) GetAssignmentGnark(_ frontend.API, run RuntimeGnark) []frontend.Variable {
 	n, ok := run.tryGetColumn(nat)
 	if !ok {
 		utils.Panic("assignment for column %v is missing. Explainer: \n%v", nat.String(), nat.Explain())
@@ -101,14 +127,17 @@ func (nat *ColNatural) GetAssignmentGnark(_ frontend.API, run GnarkRuntime) []fr
 	return n
 }
 
+// Size returns the static size of the column.
 func (nat *ColNatural) Size() int {
 	return nat.size
 }
 
+// Round returns the declaration round of the column.
 func (nat *ColNatural) Round() int {
 	return nat.round
 }
 
+// Shift returns a shifted version of the column.
 func (nat *ColNatural) Shift(n int) Column {
 
 	if n == 0 {
@@ -143,4 +172,8 @@ func (nat *ColNatural) AssignRightZeroPadded(run *RuntimeProver, vec []field.Ele
 
 func (nat *ColNatural) AssignSlice(run *RuntimeProver, vec []field.Element) {
 	run.columns.InsertNew(nat.id(), smartvectors.NewRegular(vec))
+}
+
+func (nat *ColNatural) AssignSmallInts(run *RuntimeProver, ints ...int) {
+	nat.AssignSlice(run, vector.ForTest(ints...))
 }

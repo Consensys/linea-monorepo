@@ -7,6 +7,8 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
+// This are compiler assertions that CoinField implements both the Accessor and
+// the Coin interface.
 var (
 	_ Accessor = &CoinField{}
 	_ Coin     = &CoinField{}
@@ -31,6 +33,8 @@ func (api *API) NewCoinField(round int) *CoinField {
 	return res
 }
 
+// Round returns the round of interaction where the value of the coin is sampled
+// by the verifier.
 func (c *CoinField) Round() int {
 	return c.round
 }
@@ -39,6 +43,7 @@ func (c *CoinField) sample(fs *fiatshamir.State) any {
 	return fs.RandomField()
 }
 
+// GetVal implements the [Accessor] interface
 func (c *CoinField) GetVal(run Runtime) field.Element {
 	v, ok := run.tryGetCoin(c)
 	if !ok {
@@ -48,7 +53,8 @@ func (c *CoinField) GetVal(run Runtime) field.Element {
 	return v.(field.Element)
 }
 
-func (c *CoinField) GetValGnark(api frontend.API, run GnarkRuntime) frontend.Variable {
+// GetValGnark implements the [Accessor] interface
+func (c *CoinField) GetValGnark(api frontend.API, run RuntimeGnark) frontend.Variable {
 	v, ok := run.tryGetCoin(c)
 	if !ok {
 		utils.Panic("missing value for the coin %v. Explainer: \n%v", c.String(), c.Explain())

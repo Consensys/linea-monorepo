@@ -35,7 +35,7 @@ func (api *API) NewQueryUnivariateEval(pol Column, x Accessor) *QueryUnivariateE
 }
 
 // Test that the polynomial evaluation holds
-func (r QueryUnivariateEval) ComputeResult(run Runtime) QueryResult {
+func (r QueryUnivariateEval) computeResult(run Runtime) QueryResult {
 
 	var (
 		pol = r.Pol.GetAssignment(run)
@@ -49,7 +49,7 @@ func (r QueryUnivariateEval) ComputeResult(run Runtime) QueryResult {
 }
 
 // Test that the polynomial evaluation holds
-func (r QueryUnivariateEval) ComputeResultGnark(api frontend.API, run GnarkRuntime) QueryResultGnark {
+func (r QueryUnivariateEval) computeResultGnark(api frontend.API, run RuntimeGnark) QueryResultGnark {
 
 	var (
 		pol = r.Pol.GetAssignmentGnark(api, run)

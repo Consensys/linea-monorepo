@@ -30,6 +30,16 @@ func (i *QueryFixedPermutation) ListTags() []string {
 	return i.metadata.listTags()
 }
 
+func (i *QueryFixedPermutation) HasTag(tag string) bool {
+	tags := i.Tags()
+	for i := range tags {
+		if tags[i] == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func (i *QueryFixedPermutation) String() string {
 	return i.metadata.scope.getFullScope() + "/" + i.metadata.nameOrDefault(i) + "/" + strconv.Itoa(int(i.metadata.id))
 }
@@ -40,15 +50,15 @@ func (i *QueryFixedPermutation) Explain() string {
 func (i *QueryFixedPermutation) id() id {
 	return i.metadata.id
 }
-// ComputeResult does not return any result for [QueryFixedPermutation] because Global
+// computeResult does not return any result for [QueryFixedPermutation] because Global
 // constraints do not return results as they are purely constraints that must
 // be satisfied.
-func (i QueryFixedPermutation) ComputeResult(run Runtime) QueryResult {
+func (i QueryFixedPermutation) computeResult(run Runtime) QueryResult {
 	return &QueryResNone{}
 }
 
-// ComputeResult does not return any result for [QueryFixedPermutation] because Global
+// computeResult does not return any result for [QueryFixedPermutation] because Global
 // constraints do not return results.
-func (i QueryFixedPermutation) ComputeResultGnark(_ frontend.API, run GnarkRuntime) QueryResultGnark {
+func (i QueryFixedPermutation) computeResultGnark(_ frontend.API, run RuntimeGnark) QueryResultGnark {
 	return &QueryResNoneGnark{}
 }

@@ -91,7 +91,7 @@ func (run *runtimeCommon) getOrComputeQueryRes(q Query) QueryResult {
 		return v
 	}
 
-	v := q.ComputeResult(run)
+	v := q.computeResult(run)
 	run.queryRes.InsertNew(q.id(), v)
 	return v
 }

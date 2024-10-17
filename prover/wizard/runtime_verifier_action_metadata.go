@@ -26,6 +26,16 @@ func (va *runtimeVerifierAction) ListTags() []string {
 	return va.metadata.listTags()
 }
 
+func (va *runtimeVerifierAction) HasTag(tag string) bool {
+	tags := va.Tags()
+	for i := range tags {
+		if tags[i] == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func (va *runtimeVerifierAction) String() string {
 	return va.metadata.scope.getFullScope() + "/" + va.metadata.nameOrDefault(va) + "/" + strconv.Itoa(int(va.metadata.id))
 }

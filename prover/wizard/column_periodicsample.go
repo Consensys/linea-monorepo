@@ -63,6 +63,7 @@ func newPeriodicSample(period, offset, size int) ColPeriodicSampling {
 	}
 }
 
+// OnCoset returns an equivalent column defined on a coset.
 func (t ColPeriodicSampling) OnCoset(cosetID, cosetRatio int, shiftByMulGen bool) ColPeriodicSampling {
 
 	var (
@@ -191,7 +192,7 @@ func (t ColPeriodicSampling) GetAssignment(_ Runtime) sv.SmartVector {
 	return sv.NewRegular(res)
 }
 
-func (t ColPeriodicSampling) GetAssignmentGnark(_ frontend.API, _ GnarkRuntime) []frontend.Variable {
+func (t ColPeriodicSampling) GetAssignmentGnark(_ frontend.API, _ RuntimeGnark) []frontend.Variable {
 
 	var (
 		res_ = t.GetAssignment(nil)

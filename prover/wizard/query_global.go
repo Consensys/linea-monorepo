@@ -7,6 +7,13 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/symbolic"
 )
 
+// QueryGlobal is an arbitrary low-degree arithmetic constraint between columns
+// and possibly Accessors. The constraint enforces that the arithmetic
+// expression vanishes completely. Implictly, the expression is required to
+// have a least one column as its variable. In case the expression includes
+// shifted columns, the constraint becomes void where the positions of the
+// shifted column wrap around. This behavior can be cancelled using the
+// NoBoundCancel flag.
 type QueryGlobal struct {
 	Expr          *ColExpression
 	NoBoundCancel bool
@@ -15,6 +22,7 @@ type QueryGlobal struct {
 	*subQuery
 }
 
+// NewQueryGlobal declares and returns a new [QueryGlobal]
 func (api *API) NewQueryGlobal(expr *symbolic.Expression, noBoundCancel ...bool) *QueryGlobal {
 
 	var (
@@ -54,7 +62,7 @@ func (q QueryGlobal) Check(run Runtime) error {
 	return nil
 }
 
-func (q QueryGlobal) CheckGnark(api frontend.API, run GnarkRuntime) {
+func (q QueryGlobal) CheckGnark(api frontend.API, run RuntimeGnark) {
 	res := q.Expr.GetAssignmentGnark(api, run)
 	for i := range res {
 		api.AssertIsEqual(res[i], 0)

@@ -30,6 +30,16 @@ func (i *QueryGlobal) ListTags() []string {
 	return i.metadata.listTags()
 }
 
+func (i *QueryGlobal) HasTag(tag string) bool {
+	tags := i.Tags()
+	for i := range tags {
+		if tags[i] == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func (i *QueryGlobal) String() string {
 	return i.metadata.scope.getFullScope() + "/" + i.metadata.nameOrDefault(i) + "/" + strconv.Itoa(int(i.metadata.id))
 }
@@ -40,15 +50,15 @@ func (i *QueryGlobal) Explain() string {
 func (i *QueryGlobal) id() id {
 	return i.metadata.id
 }
-// ComputeResult does not return any result for [QueryGlobal] because Global
+// computeResult does not return any result for [QueryGlobal] because Global
 // constraints do not return results as they are purely constraints that must
 // be satisfied.
-func (i QueryGlobal) ComputeResult(run Runtime) QueryResult {
+func (i QueryGlobal) computeResult(run Runtime) QueryResult {
 	return &QueryResNone{}
 }
 
-// ComputeResult does not return any result for [QueryGlobal] because Global
+// computeResult does not return any result for [QueryGlobal] because Global
 // constraints do not return results.
-func (i QueryGlobal) ComputeResultGnark(_ frontend.API, run GnarkRuntime) QueryResultGnark {
+func (i QueryGlobal) computeResultGnark(_ frontend.API, run RuntimeGnark) QueryResultGnark {
 	return &QueryResNoneGnark{}
 }

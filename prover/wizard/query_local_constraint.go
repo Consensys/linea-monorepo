@@ -84,7 +84,7 @@ func (cs QueryLocalConstraint) Check(run Runtime) error {
 }
 
 // Test the polynomial identity in a circuit setting
-func (cs QueryLocalConstraint) CheckGnark(api frontend.API, run GnarkRuntime) {
+func (cs QueryLocalConstraint) CheckGnark(api frontend.API, run RuntimeGnark) {
 
 	var (
 		board     = cs.Board()

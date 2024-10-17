@@ -21,7 +21,7 @@ func (shf *ColShifted) GetAssignment(run Runtime) smartvectors.SmartVector {
 	return shf.parent.GetAssignment(run).RotateRight(-shf.offset)
 }
 
-func (shf *ColShifted) GetAssignmentGnark(api frontend.API, run GnarkRuntime) []frontend.Variable {
+func (shf *ColShifted) GetAssignmentGnark(api frontend.API, run RuntimeGnark) []frontend.Variable {
 	parent := shf.parent.GetAssignmentGnark(api, run) // [a b c d e f g h]
 	return shiftFrontendVarSlice(parent, shf.offset)
 }

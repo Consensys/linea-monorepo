@@ -30,6 +30,16 @@ func (i *QueryInclusion) ListTags() []string {
 	return i.metadata.listTags()
 }
 
+func (i *QueryInclusion) HasTag(tag string) bool {
+	tags := i.Tags()
+	for i := range tags {
+		if tags[i] == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func (i *QueryInclusion) String() string {
 	return i.metadata.scope.getFullScope() + "/" + i.metadata.nameOrDefault(i) + "/" + strconv.Itoa(int(i.metadata.id))
 }
@@ -40,15 +50,15 @@ func (i *QueryInclusion) Explain() string {
 func (i *QueryInclusion) id() id {
 	return i.metadata.id
 }
-// ComputeResult does not return any result for [QueryInclusion] because Global
+// computeResult does not return any result for [QueryInclusion] because Global
 // constraints do not return results as they are purely constraints that must
 // be satisfied.
-func (i QueryInclusion) ComputeResult(run Runtime) QueryResult {
+func (i QueryInclusion) computeResult(run Runtime) QueryResult {
 	return &QueryResNone{}
 }
 
-// ComputeResult does not return any result for [QueryInclusion] because Global
+// computeResult does not return any result for [QueryInclusion] because Global
 // constraints do not return results.
-func (i QueryInclusion) ComputeResultGnark(_ frontend.API, run GnarkRuntime) QueryResultGnark {
+func (i QueryInclusion) computeResultGnark(_ frontend.API, run RuntimeGnark) QueryResultGnark {
 	return &QueryResNoneGnark{}
 }

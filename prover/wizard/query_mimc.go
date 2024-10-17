@@ -82,7 +82,7 @@ func (m QueryMiMC) Check(run Runtime) error {
 }
 
 // Check the mimc relation in a gnark circuit
-func (m QueryMiMC) CheckGnark(api frontend.API, run GnarkRuntime) {
+func (m QueryMiMC) CheckGnark(api frontend.API, run RuntimeGnark) {
 
 	var (
 		blocks    = m.Blocks.GetAssignmentGnark(api, run)

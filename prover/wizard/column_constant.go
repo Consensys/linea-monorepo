@@ -37,7 +37,7 @@ func (c ColumnConstant) GetAssignment(run Runtime) sv.SmartVector {
 }
 
 // Evaluate the variable, but not over a coset
-func (c ColumnConstant) GetAssignmentGnark(_ frontend.API, _ GnarkRuntime) []frontend.Variable {
+func (c ColumnConstant) GetAssignmentGnark(_ frontend.API, _ RuntimeGnark) []frontend.Variable {
 	res := make([]frontend.Variable, c.size)
 	for i := range res {
 		res[i] = c.v

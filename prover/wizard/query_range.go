@@ -63,6 +63,6 @@ func (r QueryRange) Check(run Runtime) error {
 
 // CheckGnark will panic in this construction because we do not have a good way
 // to check the query within a circuit
-func (r QueryRange) CheckGnark(api frontend.API, run GnarkRuntime) {
+func (r QueryRange) CheckGnark(api frontend.API, run RuntimeGnark) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }

@@ -41,6 +41,12 @@ type QueryInclusion struct {
 	*subQuery
 }
 
+// NewInclusionBasic is as [NewInclusion] but for an unfragmented lookup with
+// no conditional.
+func (api *API) NewInclusionBasic(included []Column, including []Column) *QueryInclusion {
+	return api.NewInclusion(included, [][]Column{including}, nil, nil)
+}
+
 // NewInclusion constructs an inclusion. Will panic if it is mal-formed
 func (api *API) NewInclusion(
 	included []Column,
@@ -229,6 +235,6 @@ func (r QueryInclusion) Check(run Runtime) error {
 // GnarkCheck implements the [Query] interface. It will panic in this
 // construction because we do not have a good way to check the query within a
 // circuit
-func (i QueryInclusion) CheckGnark(api frontend.API, run GnarkRuntime) {
+func (i QueryInclusion) CheckGnark(api frontend.API, run RuntimeGnark) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }

@@ -188,6 +188,6 @@ func CheckQueryFixedPermutation(a, b []smartvectors.SmartVector, S []smartvector
 
 // GnarkCheck will panic in this construction because we do not have a good way
 // to check the query within a circuit
-func (f QueryFixedPermutation) CheckGnark(api frontend.API, run GnarkRuntime) {
+func (f QueryFixedPermutation) CheckGnark(api frontend.API, run RuntimeGnark) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }

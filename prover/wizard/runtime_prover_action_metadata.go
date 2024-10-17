@@ -26,6 +26,16 @@ func (pa *runtimeProverAction) ListTags() []string {
 	return pa.metadata.listTags()
 }
 
+func (pa *runtimeProverAction) HasTag(tag string) bool {
+	tags := pa.Tags()
+	for i := range tags {
+		if tags[i] == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func (pa *runtimeProverAction) String() string {
 	return pa.metadata.scope.getFullScope() + "/" + pa.metadata.nameOrDefault(pa) + "/" + strconv.Itoa(int(pa.metadata.id))
 }

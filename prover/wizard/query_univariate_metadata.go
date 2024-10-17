@@ -32,6 +32,16 @@ func (u *QueryUnivariateEval) ListTags() []string {
 	return u.metadata.listTags()
 }
 
+func (u *QueryUnivariateEval) HasTag(tag string) bool {
+	tags := u.Tags()
+	for i := range tags {
+		if tags[i] == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func (u *QueryUnivariateEval) String() string {
 	return u.metadata.scope.getFullScope() + "/" + u.metadata.nameOrDefault(u) + "/" + strconv.Itoa(int(u.metadata.id))
 }
@@ -44,7 +54,7 @@ func (u *QueryUnivariateEval) id() id {
 }
 func (u QueryUnivariateEval) Check(run Runtime) error {
 	var (
-		v          = u.ComputeResult(run).(*QueryResFE).R
+		v          = u.computeResult(run).(*QueryResFE).R
 		qr2, okQr2 = run.tryGetQueryRes(&u)
 		v2         = qr2.(*QueryResFE).R
 	)
@@ -60,10 +70,10 @@ func (u QueryUnivariateEval) Check(run Runtime) error {
 	return nil
 }
 
-func (u QueryUnivariateEval) CheckGnark(api frontend.API, run GnarkRuntime) {
+func (u QueryUnivariateEval) CheckGnark(api frontend.API, run RuntimeGnark) {
 
 	var (
-		v          = u.ComputeResultGnark(api, run).(*QueryResFEGnark).R
+		v          = u.computeResultGnark(api, run).(*QueryResFEGnark).R
 		qr2, okQr2 = run.tryGetQueryRes(&u)
 		v2         = qr2.(*QueryResFEGnark).R
 	)

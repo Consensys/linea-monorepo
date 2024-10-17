@@ -9,7 +9,7 @@ import (
 type Column interface {
 	symbolic.Metadata
 	GetAssignment(run Runtime) smartvectors.SmartVector
-	GetAssignmentGnark(api frontend.API, run GnarkRuntime) []frontend.Variable
+	GetAssignmentGnark(api frontend.API, run RuntimeGnark) []frontend.Variable
 	Size() int
 	Round() int
 	Shift(n int) Column

@@ -3,6 +3,7 @@ package wizard
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
@@ -135,6 +136,35 @@ func NewColExpression(e *symbolic.Expression) *ColExpression {
 	}
 }
 
+// NewColLinComb returns a column representing an abstract linear combination
+// of other columns. x must be either a [symbolic.Metadata] a *[symbolic.Expression]
+// or a field.Element.
+func NewColLinComb(x any, cols []Column) *ColExpression {
+
+	colVar := make([]*symbolic.Expression, len(cols))
+	for i := range colVar {
+		colVar[i] = symbolic.NewVariable(cols[i])
+	}
+
+	var c *symbolic.Expression
+
+	switch z := x.(type) {
+	case *symbolic.Expression:
+		c = z
+	case symbolic.Metadata:
+		c = symbolic.NewVariable(z)
+	case field.Element:
+		c = symbolic.NewConstant(z)
+	}
+
+	return NewColExpression(
+		symbolic.NewPolyEval(
+			c,
+			colVar,
+		),
+	)
+}
+
 func (e *ColExpression) GetAssignment(run Runtime) smartvectors.SmartVector {
 
 	var (
@@ -156,7 +186,7 @@ func (e *ColExpression) GetAssignment(run Runtime) smartvectors.SmartVector {
 	return board.Evaluate(inputs)
 }
 
-func (e *ColExpression) GetAssignmentGnark(api frontend.API, run GnarkRuntime) []frontend.Variable {
+func (e *ColExpression) GetAssignmentGnark(api frontend.API, run RuntimeGnark) []frontend.Variable {
 
 	var (
 		board  = e.getBoardSafe()

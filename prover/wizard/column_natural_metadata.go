@@ -26,6 +26,16 @@ func (nat *ColNatural) ListTags() []string {
 	return nat.metadata.listTags()
 }
 
+func (nat *ColNatural) HasTag(tag string) bool {
+	tags := nat.Tags()
+	for i := range tags {
+		if tags[i] == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func (nat *ColNatural) String() string {
 	return nat.metadata.scope.getFullScope() + "/" + nat.metadata.nameOrDefault(nat) + "/" + strconv.Itoa(int(nat.metadata.id))
 }

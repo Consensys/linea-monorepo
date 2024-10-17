@@ -32,6 +32,16 @@ func (i *QueryInnerProduct) ListTags() []string {
 	return i.metadata.listTags()
 }
 
+func (i *QueryInnerProduct) HasTag(tag string) bool {
+	tags := i.Tags()
+	for i := range tags {
+		if tags[i] == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func (i *QueryInnerProduct) String() string {
 	return i.metadata.scope.getFullScope() + "/" + i.metadata.nameOrDefault(i) + "/" + strconv.Itoa(int(i.metadata.id))
 }
@@ -44,7 +54,7 @@ func (i *QueryInnerProduct) id() id {
 }
 func (i QueryInnerProduct) Check(run Runtime) error {
 	var (
-		v          = i.ComputeResult(run).(*QueryResFE).R
+		v          = i.computeResult(run).(*QueryResFE).R
 		qr2, okQr2 = run.tryGetQueryRes(&i)
 		v2         = qr2.(*QueryResFE).R
 	)
@@ -60,10 +70,10 @@ func (i QueryInnerProduct) Check(run Runtime) error {
 	return nil
 }
 
-func (i QueryInnerProduct) CheckGnark(api frontend.API, run GnarkRuntime) {
+func (i QueryInnerProduct) CheckGnark(api frontend.API, run RuntimeGnark) {
 
 	var (
-		v          = i.ComputeResultGnark(api, run).(*QueryResFEGnark).R
+		v          = i.computeResultGnark(api, run).(*QueryResFEGnark).R
 		qr2, okQr2 = run.tryGetQueryRes(&i)
 		v2         = qr2.(*QueryResFEGnark).R
 	)

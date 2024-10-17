@@ -12,7 +12,7 @@ type Runtime interface {
 	getOrComputeQueryRes(q Query) QueryResult
 }
 
-type GnarkRuntime interface {
+type RuntimeGnark interface {
 	tryGetColumn(col *ColNatural) ([]frontend.Variable, bool)
 	tryGetQueryRes(q Query) (QueryResultGnark, bool)
 	tryGetCoin(c Coin) (any, bool)

@@ -29,7 +29,7 @@ type RuntimeVerifierAction interface {
 	Run(Runtime) error
 	// RunGnark is as Run but in a gnark circuit. Instead, of the returning an
 	// error the function enforces the passing of the verifier's checks.
-	RunGnark(frontend.API, GnarkRuntime)
+	RunGnark(frontend.API, RuntimeGnark)
 }
 
 func (api *API) AddRuntimeProverAction(round int, pa RuntimeProverAction) *runtimeProverAction {

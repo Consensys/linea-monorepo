@@ -100,7 +100,7 @@ func (x *ColumnX) GetAssignment(run Runtime) sv.SmartVector {
 }
 
 // Evaluate the variable, but not over a coset
-func (x *ColumnX) GetAssignmentGnark(_ frontend.API, _ GnarkRuntime) []frontend.Variable {
+func (x *ColumnX) GetAssignmentGnark(_ frontend.API, _ RuntimeGnark) []frontend.Variable {
 	var (
 		res_ = x.GetAssignment(nil)
 		res  = make([]frontend.Variable, res_.Len())

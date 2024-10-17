@@ -32,6 +32,16 @@ func (l *QueryLocalOpening) ListTags() []string {
 	return l.metadata.listTags()
 }
 
+func (l *QueryLocalOpening) HasTag(tag string) bool {
+	tags := l.Tags()
+	for i := range tags {
+		if tags[i] == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func (l *QueryLocalOpening) String() string {
 	return l.metadata.scope.getFullScope() + "/" + l.metadata.nameOrDefault(l) + "/" + strconv.Itoa(int(l.metadata.id))
 }
@@ -44,7 +54,7 @@ func (l *QueryLocalOpening) id() id {
 }
 func (l QueryLocalOpening) Check(run Runtime) error {
 	var (
-		v          = l.ComputeResult(run).(*QueryResFE).R
+		v          = l.computeResult(run).(*QueryResFE).R
 		qr2, okQr2 = run.tryGetQueryRes(&l)
 		v2         = qr2.(*QueryResFE).R
 	)
@@ -60,10 +70,10 @@ func (l QueryLocalOpening) Check(run Runtime) error {
 	return nil
 }
 
-func (l QueryLocalOpening) CheckGnark(api frontend.API, run GnarkRuntime) {
+func (l QueryLocalOpening) CheckGnark(api frontend.API, run RuntimeGnark) {
 
 	var (
-		v          = l.ComputeResultGnark(api, run).(*QueryResFEGnark).R
+		v          = l.computeResultGnark(api, run).(*QueryResFEGnark).R
 		qr2, okQr2 = run.tryGetQueryRes(&l)
 		v2         = qr2.(*QueryResFEGnark).R
 	)

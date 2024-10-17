@@ -51,7 +51,7 @@ func (c ColumnVerifierPatchwork) GetAssignment(run Runtime) sv.SmartVector {
 	return sv.NewRegular(res).RotateRight(-c.shift)
 }
 
-func (c ColumnVerifierPatchwork) GetAssignmentGnark(api frontend.API, run GnarkRuntime) []frontend.Variable {
+func (c ColumnVerifierPatchwork) GetAssignmentGnark(api frontend.API, run RuntimeGnark) []frontend.Variable {
 
 	res := []frontend.Variable{}
 
