@@ -3,9 +3,10 @@ pragma solidity ^0.8.26;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IStakeManager } from "./interfaces/IStakeManager.sol";
 
 // Rewards Streamer with Multiplier Points
-contract RewardsStreamerMP is ReentrancyGuard {
+contract RewardsStreamerMP is ReentrancyGuard, IStakeManager {
     error StakingManager__AmountCannotBeZero();
     error StakingManager__TransferFailed();
     error StakingManager__InsufficientBalance();
@@ -19,8 +20,8 @@ contract RewardsStreamerMP is ReentrancyGuard {
     uint256 public constant SCALE_FACTOR = 1e18;
     uint256 public constant MP_RATE_PER_YEAR = 1e18;
 
-    uint256 public constant MIN_LOCKING_PERIOD = 90 days;
-    uint256 public constant MAX_LOCKING_PERIOD = 4 * 365 days;
+    uint256 public constant MIN_LOCKUP_PERIOD = 90 days;
+    uint256 public constant MAX_LOCKUP_PERIOD = 4 * 365 days;
     uint256 public constant MAX_MULTIPLIER = 4;
 
     uint256 public totalStaked;
@@ -52,7 +53,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
             revert StakingManager__AmountCannotBeZero();
         }
 
-        if (lockPeriod != 0 && (lockPeriod < MIN_LOCKING_PERIOD || lockPeriod > MAX_LOCKING_PERIOD)) {
+        if (lockPeriod != 0 && (lockPeriod < MIN_LOCKUP_PERIOD || lockPeriod > MAX_LOCKUP_PERIOD)) {
             revert StakingManager__InvalidLockingPeriod();
         }
 
@@ -77,7 +78,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
         uint256 bonusMP = 0;
 
         if (lockPeriod != 0) {
-            uint256 lockMultiplier = (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR) / MAX_LOCKING_PERIOD;
+            uint256 lockMultiplier = (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR) / MAX_LOCKUP_PERIOD;
             bonusMP = amount * lockMultiplier / SCALE_FACTOR;
             account.lockUntil = block.timestamp + lockPeriod;
         } else {

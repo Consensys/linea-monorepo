@@ -107,7 +107,7 @@ contract RewardsStreamerMPTest is Test {
 
     function _calculateBonusMP(uint256 amount, uint256 lockupTime) public view returns (uint256) {
         return amount
-            * (lockupTime * streamer.MAX_MULTIPLIER() * streamer.SCALE_FACTOR() / streamer.MAX_LOCKING_PERIOD())
+            * (lockupTime * streamer.MAX_MULTIPLIER() * streamer.SCALE_FACTOR() / streamer.MAX_LOCKUP_PERIOD())
             / streamer.SCALE_FACTOR();
     }
 
@@ -535,7 +535,7 @@ contract StakeTest is RewardsStreamerMPTest {
 
     function test_StakeOneAccountWithMinLockUp() public {
         uint256 stakeAmount = 10e18;
-        uint256 lockUpPeriod = streamer.MIN_LOCKING_PERIOD();
+        uint256 lockUpPeriod = streamer.MIN_LOCKUP_PERIOD();
         uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockUpPeriod);
 
         _stake(alice, stakeAmount, lockUpPeriod);
@@ -543,7 +543,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
-                // 10e18 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKING_PERIOD) / SCALE_FACTOR)
+                // 10e18 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKUP_PERIOD) / SCALE_FACTOR)
                 totalMP: stakeAmount + expectedBonusMP,
                 totalMaxMP: 52_465_753_424_657_534_240,
                 stakingBalance: stakeAmount,
@@ -556,7 +556,7 @@ contract StakeTest is RewardsStreamerMPTest {
 
     function test_StakeOneAccountWithMaxLockUp() public {
         uint256 stakeAmount = 10e18;
-        uint256 lockUpPeriod = streamer.MAX_LOCKING_PERIOD();
+        uint256 lockUpPeriod = streamer.MAX_LOCKUP_PERIOD();
         uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockUpPeriod);
 
         _stake(alice, stakeAmount, lockUpPeriod);
@@ -564,7 +564,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
-                // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKING_PERIOD) / SCALE_FACTOR)
+                // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKUP_PERIOD) / SCALE_FACTOR)
                 totalMP: stakeAmount + expectedBonusMP,
                 totalMaxMP: 90e18,
                 stakingBalance: stakeAmount,
@@ -577,7 +577,7 @@ contract StakeTest is RewardsStreamerMPTest {
 
     function test_StakeOneAccountWithRandomLockUp() public {
         uint256 stakeAmount = 10e18;
-        uint256 lockUpPeriod = streamer.MIN_LOCKING_PERIOD() + 13 days;
+        uint256 lockUpPeriod = streamer.MIN_LOCKUP_PERIOD() + 13 days;
         uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockUpPeriod);
 
         _stake(alice, stakeAmount, lockUpPeriod);
@@ -585,7 +585,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
-                // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKING_PERIOD) / SCALE_FACTOR)
+                // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKUP_PERIOD) / SCALE_FACTOR)
                 totalMP: stakeAmount + expectedBonusMP,
                 totalMaxMP: 52_821_917_808_219_178_080,
                 stakingBalance: stakeAmount,
@@ -860,7 +860,7 @@ contract StakeTest is RewardsStreamerMPTest {
 
     function test_StakeMultipleAccountsWithMinLockUp() public {
         uint256 aliceStakeAmount = 10e18;
-        uint256 aliceLockUpPeriod = streamer.MIN_LOCKING_PERIOD();
+        uint256 aliceLockUpPeriod = streamer.MIN_LOCKUP_PERIOD();
         uint256 aliceExpectedBonusMP = _calculateBonusMP(aliceStakeAmount, aliceLockUpPeriod);
 
         uint256 bobStakeAmount = 30e18;
@@ -891,11 +891,11 @@ contract StakeTest is RewardsStreamerMPTest {
 
     function test_StakeMultipleAccountsWithRandomLockUp() public {
         uint256 aliceStakeAmount = 10e18;
-        uint256 aliceLockUpPeriod = streamer.MAX_LOCKING_PERIOD() - 21 days;
+        uint256 aliceLockUpPeriod = streamer.MAX_LOCKUP_PERIOD() - 21 days;
         uint256 aliceExpectedBonusMP = _calculateBonusMP(aliceStakeAmount, aliceLockUpPeriod);
 
         uint256 bobStakeAmount = 30e18;
-        uint256 bobLockUpPeriod = streamer.MIN_LOCKING_PERIOD() + 43 days;
+        uint256 bobLockUpPeriod = streamer.MIN_LOCKUP_PERIOD() + 43 days;
         uint256 bobExpectedBonusMP = _calculateBonusMP(bobStakeAmount, bobLockUpPeriod);
 
         // alice stakes with lockup period
@@ -1157,7 +1157,7 @@ contract UnstakeTest is StakeTest {
         test_StakeOneAccountWithMinLockUp();
 
         uint256 stakeAmount = 10e18;
-        uint256 lockUpPeriod = streamer.MIN_LOCKING_PERIOD();
+        uint256 lockUpPeriod = streamer.MIN_LOCKUP_PERIOD();
         // 10e18 is what's used in `test_StakeOneAccountWithMinLockUp`
         uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockUpPeriod);
 
@@ -1230,7 +1230,7 @@ contract UnstakeTest is StakeTest {
     function test_UnstakeBonusMPAndAccuredMP() public {
         // setup variables
         uint256 amountStaked = 10e18;
-        uint256 secondsLocked = streamer.MIN_LOCKING_PERIOD();
+        uint256 secondsLocked = streamer.MIN_LOCKUP_PERIOD();
         uint256 reducedStake = 5e18;
         uint256 increasedTime = 365 days;
 
