@@ -20,18 +20,31 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.defer.PostOpcodeDefer;
+import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragmentValues;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
+import net.consensys.linea.zktracer.module.hub.signals.TracedException;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.operation.Operation;
 
+@RequiredArgsConstructor
 @Accessors(fluent = true)
-public class Gas implements OperationSetModule<GasOperation> {
+public class Gas implements OperationSetModule<GasOperation>, PostOpcodeDefer {
   /** A list of the operations to trace */
   @Getter
   private final ModuleOperationStackedSet<GasOperation> operations =
       new ModuleOperationStackedSet<>();
+
+  private CommonFragmentValues commonValues;
+  private GasParameters gasParameters;
+  private final Wcp wcp;
 
   @Override
   public String moduleKey() {
@@ -40,28 +53,30 @@ public class Gas implements OperationSetModule<GasOperation> {
 
   @Override
   public List<ColumnHeader> columnsHeaders() {
-    return null;
+    return Trace.headers(this.lineCount());
   }
 
-  @Override
-  public void tracePreOpcode(MessageFrame frame) {
-    GasParameters gasParameters = extractGasParameters(frame);
-    this.operations.add(new GasOperation(gasParameters));
-  }
-
-  private GasParameters extractGasParameters(MessageFrame frame) {
-    // TODO: fill it with the actual values
-    return new GasParameters(0, BigInteger.ZERO, BigInteger.ZERO, false, false);
+  public void call(GasParameters gasParameters, Hub hub, CommonFragmentValues commonValues) {
+    this.commonValues = commonValues;
+    this.gasParameters = gasParameters;
+    hub.defers().scheduleForPostExecution(this);
   }
 
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
-    int stamp = 0;
     for (GasOperation gasOperation : operations.sortOperations(new GasOperationComparator())) {
-      // TODO: I thought we don't have stamp for gas anymore ?
-      stamp++;
-      gasOperation.trace(stamp, trace);
+      gasOperation.trace(trace);
     }
+  }
+
+  @Override
+  public void resolvePostExecution(
+      Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
+    gasParameters.gasActual(BigInteger.valueOf(commonValues.gasActual));
+    gasParameters.gasCost(BigInteger.valueOf(commonValues.gasCost()));
+    gasParameters.xahoy(Exceptions.any(commonValues.exceptions));
+    gasParameters.oogx(commonValues.tracedException() == TracedException.OUT_OF_GAS_EXCEPTION);
+    this.operations.add(new GasOperation(gasParameters, wcp));
   }
 }

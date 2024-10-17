@@ -21,7 +21,10 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.toml.Toml;
@@ -111,5 +114,34 @@ public class Utils {
     table.toMap().keySet().forEach(k -> spillings.put(k, Math.toIntExact(table.getLong(k))));
 
     return spillings;
+  }
+
+  /**
+   * Initializes an array with a specified value and size.
+   *
+   * @param <T> The type of the elements in the array.
+   * @param initValue The value to initialize each element of the array with.
+   * @param size The size of the array to be created.
+   * @return An array of the specified size, with each element initialized to the specified value.
+   */
+  @SuppressWarnings("unchecked")
+  public static <T> T[] initArray(T initValue, int size) {
+    return Stream.generate(() -> initValue)
+        .limit(size)
+        .toArray(i -> (T[]) java.lang.reflect.Array.newInstance(initValue.getClass(), i));
+  }
+
+  /**
+   * Initializes a list with a specified value and size.
+   *
+   * @param <T> The type of the elements in the list.
+   * @param initValue The value to initialize each element of the list with.
+   * @param size The size of the list to be created.
+   * @return A list of the specified size, with each element initialized to the specified value.
+   */
+  public static <T> List<T> initList(T initValue, int size) {
+    return Stream.generate(() -> initValue)
+        .limit(size)
+        .collect(Collectors.toCollection(ArrayList::new));
   }
 }
