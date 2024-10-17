@@ -15,6 +15,6 @@ abstract contract LineaRollupPauseManager is PauseManager {
   bytes32 public constant UNPAUSE_L2_L1_ROLE = keccak256("UNPAUSE_L2_L1_ROLE");
   bytes32 public constant PAUSE_BLOB_SUBMISSION_ROLE = keccak256("PAUSE_BLOB_SUBMISSION_ROLE");
   bytes32 public constant UNPAUSE_BLOB_SUBMISSION_ROLE = keccak256("UNPAUSE_BLOB_SUBMISSION_ROLE");
-  bytes32 public constant PAUSE_FINALIZE_WITHPROOF_ROLE = keccak256("PAUSE_FINALIZE_WITHPROOF_ROLE");
-  bytes32 public constant UNPAUSE_FINALIZE_WITHPROOF_ROLE = keccak256("UNPAUSE_FINALIZE_WITHPROOF_ROLE");
+  bytes32 public constant PAUSE_FINALIZATION_ROLE = keccak256("PAUSE_FINALIZATION_ROLE");
+  bytes32 public constant UNPAUSE_FINALIZATION_ROLE = keccak256("UNPAUSE_FINALIZATION_ROLE");
 }
