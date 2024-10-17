@@ -9,10 +9,20 @@ declare global {
 }
 
 export default async (): Promise<void> => {
+  const l1JsonRpcProvider = config.getL1Provider();
+  const l1AccountManager = config.getL1AccountManager();
+  const l2AccountManager = config.getL2AccountManager();
+
   const account = config.getL1AccountManager().whaleAccount(0);
   const l2Account = config.getL2AccountManager().whaleAccount(0);
   const lineaRollup = config.getLineaRollupContract(account);
-  const l1JsonRpcProvider = config.getL1Provider();
+
+  const l1TokenBridge = config.getL1TokenBridgeContract();
+  const l2TokenBridge = config.getL2TokenBridgeContract();
+  const l1SecurityCouncil = l1AccountManager.whaleAccount(3);
+  const l2SecurityCouncil = l2AccountManager.whaleAccount(3);
+  const l2JsonRpcProvider = config.getL2Provider();
+  console.log("l2SecurityCouncil.address", await l2SecurityCouncil.getAddress());
 
   const [l1AccountNonce, l2AccountNonce, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
     account.getNonce(),
@@ -42,6 +52,29 @@ export default async (): Promise<void> => {
   console.log(`L1 Dummy contract deployed at address: ${await dummyContract.getAddress()}`);
   console.log(`L2 Dummy contract deployed at address: ${await l2DummyContract.getAddress()}`);
   console.log(`L2 Test contract deployed at address: ${await l2TestContract.getAddress()}`);
+
+  // Setting the Remote TokenBridge
+  console.log("Setting the TokenBridge L1 Remote");
+  await (await l1TokenBridge.connect(l1SecurityCouncil).setRemoteTokenBridge(await l2TokenBridge.getAddress())).wait();
+  let remoteSender = await l1TokenBridge.remoteSender();
+
+  console.log("L1 TokenBridge remote sender :", remoteSender);
+  const l1TokenBridgeAddress = await l1TokenBridge.getAddress();
+
+  console.log("Setting the TokenBridge L2 remote");
+
+  const { maxPriorityFeePerGas: l2MaxPriorityFeePerGas, maxFeePerGas: l2MaxFeePerGas } =
+    await l2JsonRpcProvider.getFeeData();
+
+  const setRemoteTx = await l2TokenBridge.connect(l2SecurityCouncil).setRemoteTokenBridge(l1TokenBridgeAddress, {
+    maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
+    maxFeePerGas: l2MaxFeePerGas,
+  });
+
+  await setRemoteTx.wait();
+
+  remoteSender = await l2TokenBridge.remoteSender();
+  console.log("L2 TokenBridge remote sender :", remoteSender);
 
   console.log("Generating L2 traffic...");
   const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"));
