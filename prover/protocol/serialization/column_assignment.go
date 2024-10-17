@@ -27,7 +27,7 @@ func SerializeAssignment(a WAssignment) []byte {
 		lock  = &sync.Mutex{}
 	)
 
-	parallel.Execute(len(names), func(start, stop int) {
+	parallel.ExecuteChunky(len(names), func(start, stop int) {
 		for i := start; i < stop; i++ {
 			v := CompressSmartVector(as[names[i]])
 			lock.Lock()
@@ -45,7 +45,7 @@ func DeserializeAssignment(data []byte) (WAssignment, error) {
 
 	var (
 		ser  = map[string]*CompressedSmartVector{}
-		res  = WAssignment{}
+		res  = collection.NewMapping[ifaces.ColID, smartvectors.SmartVector]()
 		lock = &sync.Mutex{}
 	)
 
@@ -58,7 +58,7 @@ func DeserializeAssignment(data []byte) (WAssignment, error) {
 		names = append(names, n)
 	}
 
-	parallel.Execute(len(names), func(start, stop int) {
+	parallel.ExecuteChunky(len(names), func(start, stop int) {
 		for i := start; i < stop; i++ {
 			v := ser[names[i]].Decompress()
 			lock.Lock()
@@ -180,7 +180,7 @@ func (sv *CompressedSmartVector) Decompress() smartvectors.SmartVector {
 }
 
 func (f *CompressedSVFragment) isConstant() bool {
-	return f.X == nil
+	return f.X != nil
 }
 
 func (f *CompressedSVFragment) isPlain() bool {
@@ -190,10 +190,17 @@ func (f *CompressedSVFragment) isPlain() bool {
 func (f *CompressedSVFragment) readSlice() []field.Element {
 
 	var (
-		l   = f.L
+		l   = int(f.L)
 		buf = bytes.NewBuffer(f.V)
 		tmp = [32]byte{}
-		n   = len(f.V) / 8
+		n   = f.N
+	)
+
+	if l > 0 {
+		n = len(f.V) / l
+	}
+
+	var (
 		res = make([]field.Element, n)
 	)
 
@@ -238,8 +245,17 @@ func newSliceSVFragment(fv []field.Element) CompressedSVFragment {
 		resBuf.Write(fbytes[32-l:])
 	}
 
-	return CompressedSVFragment{
+	compressed := CompressedSVFragment{
 		L: uint8(l),
 		V: resBuf.Bytes(),
 	}
+
+	// Can happen if the caller provides a vector of the form [0, 0, 0, 0]. In
+	// that case the value of "n" cannot be infered from the slice because the
+	// slice will be empty. The solution is to provide a length to the vector
+	if l == 0 {
+		compressed.N = len(fv)
+	}
+
+	return compressed
 }
