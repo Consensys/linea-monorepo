@@ -9,6 +9,10 @@ on:
       develop_tag:
         required: true
         type: string
+      push_image:
+        required: false
+        type: boolean
+        default: false
       coordinator_changed:
         required: true
         type: string
@@ -53,6 +57,7 @@ jobs:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
       image_name: consensys/linea-coordinator
+      push_image: ${{ inputs.push_image }}
     secrets: inherit
 
   prover:
@@ -62,6 +67,7 @@ jobs:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
       image_name: consensys/linea-prover
+      push_image: ${{ inputs.push_image }}
     secrets: inherit
 
   postman:
@@ -71,6 +77,7 @@ jobs:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
       image_name: consensys/linea-postman
+      push_image: ${{ inputs.push_image }}
     secrets: inherit
 
   traces-api-facade:
@@ -80,6 +87,7 @@ jobs:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
       image_name: consensys/linea-traces-api-facade
+      push_image: ${{ inputs.push_image }}
     secrets: inherit
 
   transaction_exclusion_api:
