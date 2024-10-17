@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { BaseContract, ContractFactory } from "ethers";
+import { BaseContract, ContractFactory, TransactionReceipt } from "ethers";
 
 export async function expectRevertWithCustomError<T extends BaseContract | ContractFactory>(
   contract: T,
@@ -33,4 +33,23 @@ export async function expectEvents<T extends BaseContract>(
   events: { name: string; args: unknown[] }[],
 ) {
   await Promise.all(events.map((event) => expectEvent(contract, asyncCall, event.name, event.args)));
+}
+
+export function expectEventDirectFromReceiptData(
+  contract: BaseContract,
+  transactionReceipt: TransactionReceipt,
+  expectedEventName: string,
+  expectedEventArgs: undefined[] = [],
+) {
+  const logSnippet = {
+    topics: transactionReceipt?.logs[0].topics as ReadonlyArray<string>,
+    data: transactionReceipt!.logs[0].data,
+  };
+
+  const event = contract.interface.parseLog(logSnippet);
+  expect(event).is.not.null;
+  expect(expectedEventName).equal(event!.name);
+
+  // this is cast to array as the readonly is not compatible with deep
+  expect(event!.args.toArray()).to.have.deep.members(expectedEventArgs);
 }
