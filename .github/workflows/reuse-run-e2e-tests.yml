@@ -110,10 +110,10 @@ jobs:
         uses: actions/download-artifact@v4
       - name: Load Docker images
         run: |
-          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-coordinator.tar.gz | docker load &&
-          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-postman.tar.gz | docker load &&
-          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-prover.tar.gz | docker load &&
-          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-traces-api-facade.tar.gz | docker load
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-coordinator/linea-coordinator.tar.gz | docker load &&
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-postman/linea-postman.tar.gz | docker load &&
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-prover/linea-prover.tar.gz | docker load &&
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-traces-api-facade/linea-traces-api-facade.tar.gz | docker load
         shell: bash
       - name: Spin up fresh environment with geth tracing with retry
         if: ${{ inputs.tracing-engine == 'geth' }}
