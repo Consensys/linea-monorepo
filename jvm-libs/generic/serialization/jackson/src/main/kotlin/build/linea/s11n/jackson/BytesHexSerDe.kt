@@ -11,22 +11,24 @@ import java.util.HexFormat
 private val hexFormatter = HexFormat.of()
 
 object ByteArrayToHexSerializer : JsonSerializer<ByteArray>() {
-  override fun serialize(value: ByteArray?, gen: JsonGenerator?, serializers: SerializerProvider?) {
-    gen?.writeString(value?.let { "0x" + hexFormatter.formatHex(it) })
+  override fun serialize(value: ByteArray, gen: JsonGenerator, serializers: SerializerProvider?) {
+    gen.writeString("0x" + hexFormatter.formatHex(value))
+  }
+
+  override fun handledType(): Class<ByteArray> {
+    return ByteArray::class.java
   }
 }
 
 object ByteToHexSerializer : JsonSerializer<Byte>() {
-  @OptIn(ExperimentalStdlibApi::class)
-  override fun serialize(value: Byte?, gen: JsonGenerator?, serializers: SerializerProvider?) {
-    gen?.writeString(value?.let { "0x" + it.toUByte().toHexString() })
+  override fun serialize(value: Byte, gen: JsonGenerator, serializers: SerializerProvider?) {
+    gen.writeString("0x" + hexFormatter.toHexDigits(value))
   }
 }
 
 object UByteToHexSerializer : JsonSerializer<UByte>() {
-  @OptIn(ExperimentalStdlibApi::class)
-  override fun serialize(value: UByte?, gen: JsonGenerator?, serializers: SerializerProvider?) {
-    gen?.writeString(value?.let { "0x" + it.toHexString() })
+  override fun serialize(value: UByte, gen: JsonGenerator, serializers: SerializerProvider?) {
+    gen.writeString("0x" + hexFormatter.toHexDigits(value.toByte()))
   }
 }
 

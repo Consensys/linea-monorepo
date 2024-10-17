@@ -77,7 +77,7 @@ class JsonRpcRequestRetryerV2(
         )
       }
       retriesCount.incrementAndGet()
-      val future: SafeFuture<Result<T, Throwable>> = delegate.makeRequest(request, resultMapper)
+      delegate.makeRequest(request, resultMapper)
         .toSafeFuture()
         .thenApply { unfoldResultValueOrException<T>(it) }
         .exceptionally { th ->
@@ -88,7 +88,6 @@ class JsonRpcRequestRetryerV2(
             Err(th.cause ?: th)
           }
         }
-      future
     }
       .handleComposed { result, throwable ->
         when {
