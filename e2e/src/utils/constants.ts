@@ -1,9 +1,0 @@
-import { ethers } from "ethers";
-
-export const ROLLING_HASH_UPDATED_EVENT_SIGNATURE =
-  "0xea3b023b4c8680d4b4824f0143132c95476359a2bb70a81d6c5a36f6918f6339";
-export const OPERATOR_ROLE = "0x97667070c54ef182b0f5858b034beac1b6f3089aa2d3188bb1e8929f4fa9b929";
-export const VERIFIER_SETTER_ROLE = "0x32937fd5162e282df7e9a14a5073a2425321c7966eaf70ed6c838a1006d84c4c";
-export const MESSAGE_SENT_EVENT_SIGNATURE = "0xe856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c";
-
-export const HASH_ZERO = ethers.constants.HashZero;

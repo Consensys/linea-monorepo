@@ -15,11 +15,11 @@ on:
 
 concurrency:
   group: store-image-name-and-tags-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref_name != 'main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   store_image_name_and_tags:
-    runs-on: besu-arm64
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Compute version tags
     env:
       # REF_NAME: ${{ github.ref_name }}

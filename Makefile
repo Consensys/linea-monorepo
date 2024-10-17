@@ -13,7 +13,7 @@ pnpm-install:
 		pnpm install
 
 docker-pull-develop:
-		docker compose -f docker/compose.yml --profile l2 pull
+		L1_GENESIS_TIME=$(get_future_time) docker compose -f docker/compose.yml pull
 
 clean-smc-folders:
 		rm -f contracts/.openzeppelin/unknown-31648428.json
@@ -81,7 +81,7 @@ deploy-linea-rollup:
 		LINEA_ROLLUP_RATE_LIMIT_PERIOD=86400 \
 		LINEA_ROLLUP_RATE_LIMIT_AMOUNT=1000000000000000000000 \
 		LINEA_ROLLUP_GENESIS_TIMESTAMP=1683325137 \
-		npx hardhat deploy --no-compile --network zkevm_dev --tags PlonkVerifier,LineaRollup
+		npx hardhat deploy --no-compile --network zkevm_dev --tags PlonkVerifier,LineaRollupV5
 
 deploy-l2messageservice:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE

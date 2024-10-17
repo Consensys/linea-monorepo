@@ -8,7 +8,7 @@ export const FooterLinks = ({ toggleMenu }: FooterLinksProps) => (
   <div className="space-y-2 py-4">
     <Link
       className="flex items-center hover:text-primary"
-      href="https://support.linea.build/"
+      href="https://support.linea.build/bridging/how-to-bridge-to-linea"
       passHref
       target="_blank"
       rel="noopener noreferrer"

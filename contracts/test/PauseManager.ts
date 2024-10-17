@@ -15,18 +15,18 @@ import {
   UNPAUSE_L1_L2_ROLE,
   PAUSE_L2_L1_ROLE,
   UNPAUSE_L2_L1_ROLE,
-  PAUSE_FINALIZE_WITHPROOF_ROLE,
-  PAUSE_L2_BLOB_SUBMISSION_ROLE,
-  UNPAUSE_FINALIZE_WITHPROOF_ROLE,
-  UNPAUSE_L2_BLOB_SUBMISSION_ROLE,
+  PAUSE_FINALIZATION_ROLE,
+  PAUSE_BLOB_SUBMISSION_ROLE,
+  UNPAUSE_FINALIZATION_ROLE,
+  UNPAUSE_BLOB_SUBMISSION_ROLE,
   BLOB_SUBMISSION_PAUSE_TYPE,
   CALLDATA_SUBMISSION_PAUSE_TYPE,
   FINALIZATION_PAUSE_TYPE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./utils/constants";
-import { deployUpgradableFromFactory } from "./utils/deployment";
-import { buildAccessErrorMessage, expectEvent } from "./utils/helpers";
+} from "./common/constants";
+import { deployUpgradableFromFactory } from "./common/deployment";
+import { buildAccessErrorMessage, expectEvent } from "./common/helpers";
 
 async function deployTestPauseManagerFixture(): Promise<TestPauseManager> {
   return deployUpgradableFromFactory("TestPauseManager", [
@@ -46,20 +46,18 @@ describe("PauseManager", () => {
     [defaultAdmin, pauseManagerAccount, nonManager] = await ethers.getSigners();
     pauseManager = await loadFixture(deployTestPauseManagerFixture);
 
-    await pauseManager.grantRole(PAUSE_ALL_ROLE, pauseManagerAccount.address);
-    await pauseManager.grantRole(UNPAUSE_ALL_ROLE, pauseManagerAccount.address);
-
-    await pauseManager.grantRole(PAUSE_L1_L2_ROLE, pauseManagerAccount.address);
-    await pauseManager.grantRole(UNPAUSE_L1_L2_ROLE, pauseManagerAccount.address);
-
-    await pauseManager.grantRole(PAUSE_L2_L1_ROLE, pauseManagerAccount.address);
-    await pauseManager.grantRole(UNPAUSE_L2_L1_ROLE, pauseManagerAccount.address);
-
-    await pauseManager.grantRole(PAUSE_L2_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address);
-    await pauseManager.grantRole(UNPAUSE_L2_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address);
-
-    await pauseManager.grantRole(PAUSE_FINALIZE_WITHPROOF_ROLE, pauseManagerAccount.address);
-    await pauseManager.grantRole(UNPAUSE_FINALIZE_WITHPROOF_ROLE, pauseManagerAccount.address);
+    await Promise.all([
+      pauseManager.grantRole(PAUSE_ALL_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_ALL_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(PAUSE_L1_L2_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_L1_L2_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(PAUSE_L2_L1_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_L2_L1_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(PAUSE_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(PAUSE_FINALIZATION_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_FINALIZATION_ROLE, pauseManagerAccount.address),
+    ]);
   });
 
   async function pauseByType(pauseType: number, account: SignerWithAddress = pauseManagerAccount) {
@@ -226,7 +224,7 @@ describe("PauseManager", () => {
 
       it("cannot pause the BLOB_SUBMISSION_PAUSE_TYPE as non-manager", async () => {
         await expect(pauseByType(BLOB_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_L2_BLOB_SUBMISSION_ROLE),
+          buildAccessErrorMessage(nonManager, PAUSE_BLOB_SUBMISSION_ROLE),
         );
       });
 
@@ -234,13 +232,13 @@ describe("PauseManager", () => {
         await pauseByType(BLOB_SUBMISSION_PAUSE_TYPE);
 
         await expect(unPauseByType(BLOB_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, UNPAUSE_L2_BLOB_SUBMISSION_ROLE),
+          buildAccessErrorMessage(nonManager, UNPAUSE_BLOB_SUBMISSION_ROLE),
         );
       });
 
       it("cannot pause the CALLDATA_SUBMISSION_PAUSE_TYPE as non-manager", async () => {
         await expect(pauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_L2_BLOB_SUBMISSION_ROLE),
+          buildAccessErrorMessage(nonManager, PAUSE_BLOB_SUBMISSION_ROLE),
         );
       });
 
@@ -248,13 +246,13 @@ describe("PauseManager", () => {
         await pauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE);
 
         await expect(unPauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, UNPAUSE_L2_BLOB_SUBMISSION_ROLE),
+          buildAccessErrorMessage(nonManager, UNPAUSE_BLOB_SUBMISSION_ROLE),
         );
       });
 
       it("cannot pause the FINALIZATION_PAUSE_TYPE as non-manager", async () => {
         await expect(pauseByType(FINALIZATION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_FINALIZE_WITHPROOF_ROLE),
+          buildAccessErrorMessage(nonManager, PAUSE_FINALIZATION_ROLE),
         );
       });
 
@@ -262,7 +260,7 @@ describe("PauseManager", () => {
         await pauseByType(FINALIZATION_PAUSE_TYPE);
 
         await expect(unPauseByType(FINALIZATION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, UNPAUSE_FINALIZE_WITHPROOF_ROLE),
+          buildAccessErrorMessage(nonManager, UNPAUSE_FINALIZATION_ROLE),
         );
       });
     });

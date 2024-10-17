@@ -162,6 +162,9 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 		stop -= offsetRange.Max
 	}
 
+	start = max(start, 0)
+	stop = min(stop, cs.DomainSize)
+
 	for i := start; i < stop; i++ {
 
 		resx := res.Get(i)

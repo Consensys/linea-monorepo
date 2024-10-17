@@ -72,6 +72,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 	)
 
 	var (
+		dstIsActive     = common.NewVectorBuilder(ec.UnalignedPairingData.IsActive)
 		dstLimb         = common.NewVectorBuilder(ec.UnalignedPairingData.Limb)
 		dstToMillerLoop = common.NewVectorBuilder(ec.UnalignedPairingData.ToMillerLoopCircuitMask)
 		dstToFinalExp   = common.NewVectorBuilder(ec.UnalignedPairingData.ToFinalExpCircuitMask)
@@ -130,6 +131,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			}
 			dstInstanceId.PushField(instanceId)
 			dstIndex.PushInt(i)
+			dstIsActive.PushOne()
 		}
 		for i := 0; i < nbInputs-1; i++ {
 			for j := 0; j < nbGtLimbs; j++ {
@@ -221,6 +223,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		}
 		currPos += nbInputs*(nbG1Limbs+nbG2Limbs) + 2
 	}
+	dstIsActive.PadAndAssign(run, field.Zero())
 	dstLimb.PadAndAssign(run, field.Zero())
 	dstPairId.PadAndAssign(run, field.Zero())
 	dstTotalPairs.PadAndAssign(run, field.Zero())

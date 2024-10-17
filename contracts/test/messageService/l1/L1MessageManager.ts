@@ -1,15 +1,15 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { TestL1MessageManager } from "../../../typechain-types";
-import { INBOX_STATUS_UNKNOWN, OUTBOX_STATUS_RECEIVED, OUTBOX_STATUS_SENT } from "../../utils/constants";
-import { deployFromFactory } from "../../utils/deployment";
+import { INBOX_STATUS_UNKNOWN, OUTBOX_STATUS_RECEIVED, OUTBOX_STATUS_SENT } from "../../common/constants";
+import { deployFromFactory } from "../../common/deployment";
 import {
   generateKeccak256Hash,
   generateL2MessagingBlocksOffsets,
   generateNKeccak256Hashes,
   generateRandomBytes,
   range,
-} from "../../utils/helpers";
+} from "../../common/helpers";
 
 describe("L1MessageManager", () => {
   let l1MessageManager: TestL1MessageManager;
