@@ -19,7 +19,7 @@ contract XPTokenTest is Test {
 
     function setUp() public {
         vm.prank(owner);
-        xpToken = new XPToken(1000e18);
+        xpToken = new XPToken();
 
         provider1 = new XPProviderMock();
         provider2 = new XPProviderMock();
@@ -67,9 +67,15 @@ contract XPTokenTest is Test {
         xpToken.removeXPProvider(10);
     }
 
-    function testTotalSupply() public view {
+    function testTotalSupply() public {
+        provider1.setTotalXPShares(1000 ether);
+        provider2.setTotalXPShares(2000 ether);
+
+        vm.prank(owner);
+        xpToken.mint(owner, 500 ether);
+
         uint256 totalSupply = xpToken.totalSupply();
-        assertEq(totalSupply, 1000 ether);
+        assertEq(totalSupply, 3500 ether);
     }
 
     function testBalanceOfWithNoSystemTotalXP() public view {
@@ -82,33 +88,27 @@ contract XPTokenTest is Test {
 
     function testBalanceOf() public {
         provider1.setUserXPShare(alice, 100e18);
-        provider1.setTotalXPShares(1000e18);
-
         provider2.setUserXPShare(alice, 200e18);
-        provider2.setTotalXPShares(2000e18);
 
-        // Expected balance calculation
-        uint256 userTotalXP = 100e18 + 200e18;
-        uint256 systemTotalXP = 1000e18 + 2000e18;
+        vm.prank(owner);
+        xpToken.mint(alice, 500e18);
 
-        uint256 expectedBalance = (xpToken.totalSupply() * userTotalXP) / systemTotalXP;
+        uint256 expectedBalance = 800e18;
 
         uint256 balance = xpToken.balanceOf(alice);
         assertEq(balance, expectedBalance);
     }
 
-    function testSetTotalSupplyOnlyOwner() public {
-        uint256 totalSupply = xpToken.totalSupply();
-        assertEq(totalSupply, 1000e18);
+    function testMintOnlyOwner() public {
+        assertEq(xpToken.totalSupply(), 0);
 
         vm.prank(alice);
         vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
-        xpToken.setExternalSupply(2000e18);
+        xpToken.mint(alice, 100e18);
 
         vm.prank(owner);
-        xpToken.setExternalSupply(2000e18);
-        totalSupply = xpToken.totalSupply();
-        assertEq(totalSupply, 2000e18);
+        xpToken.mint(alice, 100e18);
+        assertEq(xpToken.totalSupply(), 100e18);
     }
 
     function testTransfersNotAllowed() public {

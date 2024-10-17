@@ -9,20 +9,12 @@ contract XPToken is ERC20, Ownable2Step {
     string public constant NAME = "XP Token";
     string public constant SYMBOL = "XP";
 
-    uint256 public externalSupply;
-
     IXPProvider[] public xpProviders;
 
     error XPToken__TransfersNotAllowed();
     error XPProvider__IndexOutOfBounds();
 
-    constructor(uint256 _totalSupply) ERC20(NAME, SYMBOL) Ownable(msg.sender) {
-        externalSupply = _totalSupply;
-    }
-
-    function setExternalSupply(uint256 _externalSupply) external onlyOwner {
-        externalSupply = _externalSupply;
-    }
+    constructor() ERC20(NAME, SYMBOL) Ownable(msg.sender) { }
 
     function addXPProvider(IXPProvider provider) external onlyOwner {
         xpProviders.push(provider);
@@ -42,24 +34,31 @@ contract XPToken is ERC20, Ownable2Step {
     }
 
     function totalSupply() public view override returns (uint256) {
-        return super.totalSupply() + externalSupply;
+        return super.totalSupply() + _externalSupply();
+    }
+
+    function mint(address account, uint256 amount) external onlyOwner {
+        _mint(account, amount);
+    }
+
+    function _externalSupply() internal view returns (uint256) {
+        uint256 externalSupply;
+
+        for (uint256 i = 0; i < xpProviders.length; i++) {
+            externalSupply += xpProviders[i].getTotalXPShares();
+        }
+
+        return externalSupply;
     }
 
     function balanceOf(address account) public view override returns (uint256) {
-        uint256 userTotalXPShare = 0;
-        uint256 totalXPShares = 0;
+        uint256 externalBalance;
 
         for (uint256 i = 0; i < xpProviders.length; i++) {
             IXPProvider provider = xpProviders[i];
-            userTotalXPShare += provider.getUserXPShare(account);
-            totalXPShares += provider.getTotalXPShares();
+            externalBalance += provider.getUserXPShare(account);
         }
 
-        if (totalXPShares == 0) {
-            return 0;
-        }
-
-        uint256 externalBalance = (externalSupply * userTotalXPShare) / totalXPShares;
         return super.balanceOf(account) + externalBalance;
     }
 
