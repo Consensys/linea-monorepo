@@ -76,7 +76,7 @@ func compileForSize(
 	if hasMoreThan1Pair {
 
 		var (
-			pairProduct = []ifaces.Column{}
+			pairProduct = []*symbolic.Expression{}
 		)
 
 		batchingCoin = comp.InsertCoin(
@@ -87,7 +87,7 @@ func compileForSize(
 
 		for _, q := range queries {
 			for _, b := range q.Bs {
-				pairProduct = append(pairProduct, q.A, b)
+				pairProduct = append(pairProduct, symbolic.Mul(q.A, b))
 			}
 		}
 
@@ -95,10 +95,9 @@ func compileForSize(
 		// ctx.Collapsed = symbolic.NewPolyEval(batchingCoin.AsVariable(), pairProduct)
 		res := symbolic.NewConstant(0)
 		for i := len(pairProduct) - 1; i >= 0; i-- {
-			res2 := symbolic.Mul(pairProduct[i], pairProduct[i-1])
+			res2 := symbolic.Mul(pairProduct[i])
 			res = symbolic.Mul(res, batchingCoin)
 			res = symbolic.Add(res, res2)
-			i--
 		}
 
 		ctx.Collapsed = res
