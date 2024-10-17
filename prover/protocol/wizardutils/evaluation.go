@@ -51,13 +51,22 @@ func EvalExprColumn(run *wizard.ProverRuntime, board symbolic.ExpressionBoard) s
 
 // returns the symbolic expression of a column obtained as a random linear combinations of differents handles
 // without committing to the column itself
-func RandLinCombColSymbolic(x coin.Info, hs []ifaces.Column) *symbolic.Expression {
+// @Azam this function is temporarily ignored and addressed in issue https://github.com/Consensys/linea-monorepo/issues/192
+/*func RandLinCombColSymbolic(x coin.Info, hs []ifaces.Column) *symbolic.Expression {
 	cols := make([]*symbolic.Expression, len(hs))
 	for c := range cols {
 		cols[c] = ifaces.ColumnAsVariable(hs[c])
 	}
 	expr := symbolic.NewPolyEval(x.AsVariable(), cols)
 	return expr
+}*/
+func RandLinCombColSymbolic(x coin.Info, hs []ifaces.Column) *symbolic.Expression {
+	res := symbolic.NewConstant(0)
+	for i := len(hs) - 1; i >= 0; i-- {
+		res = symbolic.Mul(res, x)
+		res = symbolic.Add(res, hs[i])
+	}
+	return res
 }
 
 // return the runtime assignments of a linear combination column
