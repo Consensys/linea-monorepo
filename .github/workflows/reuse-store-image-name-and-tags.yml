@@ -27,10 +27,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Compute version tags
         id: step1
         run: |
-          echo COMMIT_TAG=$(git rev-parse --short HEAD) >> $GITHUB_OUTPUT
+          echo COMMIT_TAG=$(git rev-parse --short "$GITHUB_SHA") >> $GITHUB_OUTPUT
           echo LAST_COMMIT_TAG=$(git rev-parse --short "${{ env.EVENT_BEFORE }}") >> $GITHUB_OUTPUT
           echo DEVELOP_TAG=develop >> $GITHUB_OUTPUT
       - name: Show version tags
