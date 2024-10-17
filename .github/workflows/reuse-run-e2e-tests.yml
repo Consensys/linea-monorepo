@@ -108,12 +108,12 @@ jobs:
             make pull-images-for-ci-testing
       - name: Download local docker images
         uses: actions/download-artifact@v4
-      - name: Load Docker image
+      - name: Load Docker images
         run: |
-          gunzip -c linea-coordinator.tar.gz | docker load &&
-          gunzip -c linea-postman.tar.gz | docker load &&
-          gunzip -c linea-prover.tar.gz | docker load &&
-          gunzip -c linea-traces-api-facade.tar.gz | docker load
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-coordinator.tar.gz | docker load &&
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-postman.tar.gz | docker load &&
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-prover.tar.gz | docker load &&
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-traces-api-facade.tar.gz | docker load
         shell: bash
       - name: Spin up fresh environment with geth tracing with retry
         if: ${{ inputs.tracing-engine == 'geth' }}
