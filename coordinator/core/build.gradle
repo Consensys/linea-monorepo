@@ -9,6 +9,7 @@ dependencies {
   api project(':jvm-libs:core:domain-models')
   api project(':jvm-libs:core:metrics')
   api project(':jvm-libs:core:long-running-service')
+  api project(':jvm-libs:core:client-interface')
   api project(':jvm-libs:traces')
   api project(':jvm-libs:errors')
   api project(':jvm-libs:kotlin-extensions')

@@ -39,7 +39,7 @@ class JsonRpcRequestFanOut(
 
   fun fanoutRequest(
     request: JsonRpcRequest,
-    resultMapper: (Any?) -> Any? = ::identityMapper
+    resultMapper: (Any?) -> Any? = ::toPrimitiveOrVertxJson
   ): Future<List<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>> {
     return Future
       .all(targets.map { it.makeRequest(request, resultMapper) })
