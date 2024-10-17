@@ -31,9 +31,11 @@ func Compile(comp *wizard.CompiledIOP) {
 		// same protocol if the same step of compilation are applied in the same
 		// order.
 		sizes = []int{}
-		// contextsForSize list all the sub-compilation context in the same
-		// order as `sizes`
-		proverTask proverTask
+		// contextsForSize list all the sub-compilation context
+		// in the same order as `sizes`.
+		// proverTaskCollaps indicates when we have more than one pair of inner-product with the same size
+		// and thus collapsing all pairs to a single column is required.
+		proverTaskNoCollaps, proverTaskCollpas proverTask
 	)
 
 	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
@@ -60,9 +62,24 @@ func Compile(comp *wizard.CompiledIOP) {
 	}
 
 	for _, size := range sizes {
-		proverTask = append(proverTask, compileForSize(comp, round, queryMap[size]))
+		ctx := compileForSize(comp, round, queryMap[size])
+		switch ctx.round {
+		case round:
+			proverTaskNoCollaps = append(proverTaskNoCollaps, ctx)
+		case round + 1:
+			proverTaskCollpas = append(proverTaskCollpas, ctx)
+		default:
+			utils.Panic("round before compilation was  %v and after compilation %v", round, ctx.round)
+		}
+
+	}
+	// run the prover of the relevant round
+	if len(proverTaskNoCollaps) >= 1 {
+		comp.RegisterProverAction(round, proverTaskNoCollaps)
 	}
 
-	comp.RegisterProverAction(round+1, proverTask)
+	if len(proverTaskCollpas) >= 1 {
+		comp.RegisterProverAction(round+1, proverTaskCollpas)
+	}
 
 }
