@@ -54,20 +54,21 @@
 | src/XPToken.sol:XPToken contract |                 |       |        |       |         |
 |----------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                  | Deployment Size |       |        |       |         |
-| 799398                           | 3520            |       |        |       |         |
+| 1061807                          | 4968            |       |        |       |         |
 | Function Name                    | min             | avg   | median | max   | # calls |
-| acceptOwnership                  | 28247           | 28247 | 28247  | 28247 | 1       |
-| addXPProvider                    | 23991           | 57207 | 51114  | 68214 | 18      |
-| allowance                        | 511             | 511   | 511    | 511   | 1       |
-| approve                          | 390             | 390   | 390    | 390   | 1       |
-| balanceOf                        | 8786            | 14538 | 11044  | 23786 | 3       |
-| getXPProviders                   | 1011            | 3264  | 3264   | 5517  | 2       |
+| acceptOwnership                  | 28284           | 28284 | 28284  | 28284 | 1       |
+| addXPProvider                    | 23968           | 57630 | 51091  | 68191 | 44      |
+| allowance                        | 533             | 533   | 533    | 533   | 2       |
+| approve                          | 413             | 413   | 413    | 413   | 2       |
+| balanceOf                        | 3618            | 11284 | 9618   | 20618 | 6       |
+| getXPProviders                   | 1032            | 3285  | 3285   | 5538  | 4       |
+| mint                             | 24246           | 75896 | 91049  | 91061 | 14      |
+| mintAllowance                    | 5626            | 5662  | 5662   | 5699  | 2       |
 | owner                            | 374             | 1040  | 374    | 2374  | 3       |
-| removeXPProvider                 | 23666           | 28075 | 25781  | 34778 | 3       |
-| setTotalSupply                   | 23792           | 26266 | 26266  | 28740 | 2       |
-| totalSupply                      | 363             | 1863  | 2363   | 2363  | 4       |
-| transfer                         | 389             | 389   | 389    | 389   | 1       |
-| transferFrom                     | 521             | 521   | 521    | 521   | 1       |
+| removeXPProvider                 | 23688           | 28097 | 25803  | 34800 | 6       |
+| totalSupply                      | 2963            | 4963  | 2963   | 10963 | 8       |
+| transfer                         | 411             | 411   | 411    | 411   | 2       |
+| transferFrom                     | 499             | 499   | 499    | 499   | 2       |
 | transferOwnership                | 47732           | 47732 | 47732  | 47732 | 1       |
 
 
@@ -117,10 +118,10 @@
 | Deployment Cost                                       | Deployment Size |       |        |       |         |
 | 152145                                                | 489             |       |        |       |         |
 | Function Name                                         | min             | avg   | median | max   | # calls |
-| getTotalXPShares                                      | 302             | 968   | 302    | 2302  | 6       |
-| getUserXPShare                                        | 504             | 1837  | 2504   | 2504  | 6       |
-| setTotalXPShares                                      | 43632           | 43632 | 43632  | 43632 | 2       |
-| setUserXPShare                                        | 44128           | 44128 | 44128  | 44128 | 2       |
+| getTotalXPShares                                      | 302             | 968   | 302    | 2302  | 72      |
+| getUserXPShare                                        | 504             | 1837  | 2504   | 2504  | 12      |
+| setTotalXPShares                                      | 43632           | 43632 | 43632  | 43632 | 20      |
+| setUserXPShare                                        | 44128           | 44128 | 44128  | 44128 | 4       |
 
 
 
