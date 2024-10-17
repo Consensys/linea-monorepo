@@ -15,22 +15,24 @@
 | src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |       |        |       |         |
 |------------------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                                      | Deployment Size |       |        |       |         |
-| 1010922                                              | 4521            |       |        |       |         |
+| 1216069                                              | 5542            |       |        |       |         |
 | Function Name                                        | min             | avg   | median | max   | # calls |
-| MAX_LOCKUP_PERIOD                                    | 273             | 273   | 273    | 273   | 22      |
-| MAX_MULTIPLIER                                       | 274             | 274   | 274    | 274   | 28      |
-| MIN_LOCKUP_PERIOD                                    | 230             | 230   | 230    | 230   | 11      |
+| MAX_LOCKUP_PERIOD                                    | 228             | 228   | 228    | 228   | 22      |
+| MAX_MULTIPLIER                                       | 229             | 229   | 229    | 229   | 28      |
+| MIN_LOCKUP_PERIOD                                    | 275             | 275   | 275    | 275   | 11      |
 | MP_RATE_PER_YEAR                                     | 231             | 231   | 231    | 231   | 3       |
 | SCALE_FACTOR                                         | 229             | 229   | 229    | 229   | 39      |
 | STAKING_TOKEN                                        | 273             | 273   | 273    | 273   | 128     |
-| accountedRewards                                     | 373             | 931   | 373    | 2373  | 68      |
-| getAccount                                           | 1574            | 1574  | 1574   | 1574  | 65      |
+| accountedRewards                                     | 395             | 953   | 395    | 2395  | 68      |
+| getAccount                                           | 1596            | 1596  | 1596   | 1596  | 65      |
+| isTrustedCodehash                                    | 496             | 996   | 496    | 2496  | 128     |
 | rewardIndex                                          | 351             | 380   | 351    | 2351  | 68      |
-| totalMP                                              | 330             | 330   | 330    | 330   | 71      |
-| totalMaxMP                                           | 373             | 373   | 373    | 373   | 71      |
-| totalStaked                                          | 352             | 352   | 352    | 352   | 71      |
-| updateAccountMP                                      | 34632           | 36870 | 37134  | 37134 | 19      |
-| updateGlobalState                                    | 29986           | 55567 | 47365  | 80313 | 25      |
+| setTrustedCodehash                                   | 47926           | 47926 | 47926  | 47926 | 32      |
+| totalMP                                              | 352             | 352   | 352    | 352   | 71      |
+| totalMaxMP                                           | 395             | 395   | 395    | 395   | 71      |
+| totalStaked                                          | 374             | 374   | 374    | 374   | 71      |
+| updateAccountMP                                      | 34654           | 36892 | 37156  | 37156 | 19      |
+| updateGlobalState                                    | 30008           | 55588 | 47387  | 80334 | 25      |
 
 
 | src/StakeVault.sol:StakeVault contract |                 |        |        |        |         |
@@ -38,8 +40,8 @@
 | Deployment Cost                        | Deployment Size |        |        |        |         |
 | 857122                                 | 4070            |        |        |        |         |
 | Function Name                          | min             | avg    | median | max    | # calls |
-| stake                                  | 194660          | 231720 | 238353 | 258837 | 46      |
-| unstake                                | 81452           | 109772 | 99015  | 141680 | 13      |
+| stake                                  | 196978          | 234038 | 240671 | 261155 | 46      |
+| unstake                                | 83287           | 111971 | 101308 | 144002 | 13      |
 
 
 | src/XPNFTToken.sol:XPNFTToken contract          |                 |       |        |       |         |

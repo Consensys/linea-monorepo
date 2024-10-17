@@ -22,7 +22,7 @@ contract RewardsStreamerMPTest is Test {
     function setUp() public virtual {
         rewardToken = new MockToken("Reward Token", "RT");
         stakingToken = new MockToken("Staking Token", "ST");
-        streamer = new RewardsStreamerMP(address(stakingToken), address(rewardToken));
+        streamer = new RewardsStreamerMP(address(this), address(stakingToken), address(rewardToken));
 
         address[4] memory accounts = [alice, bob, charlie, dave];
         for (uint256 i = 0; i < accounts.length; i++) {
@@ -85,6 +85,10 @@ contract RewardsStreamerMPTest is Test {
     function _createTestVault(address owner) internal returns (StakeVault vault) {
         vm.prank(owner);
         vault = new StakeVault(owner, streamer);
+
+        if (!streamer.isTrustedCodehash(address(vault).codehash)) {
+            streamer.setTrustedCodehash(address(vault).codehash, true);
+        }
     }
 
     function _stake(address account, uint256 amount, uint256 lockupTime) public {

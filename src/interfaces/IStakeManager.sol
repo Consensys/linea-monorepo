@@ -2,8 +2,9 @@
 pragma solidity ^0.8.26;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ITrustedCodehashAccess } from "./ITrustedCodehashAccess.sol";
 
-interface IStakeManager {
+interface IStakeManager is ITrustedCodehashAccess {
     error StakeManager__FundsLocked();
     error StakeManager__InvalidLockTime();
     error StakeManager__InsufficientFunds();

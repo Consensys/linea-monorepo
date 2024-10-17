@@ -4,9 +4,10 @@ pragma solidity ^0.8.26;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IStakeManager } from "./interfaces/IStakeManager.sol";
+import { TrustedCodehashAccess } from "./TrustedCodehashAccess.sol";
 
 // Rewards Streamer with Multiplier Points
-contract RewardsStreamerMP is ReentrancyGuard, IStakeManager {
+contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGuard {
     error StakingManager__AmountCannotBeZero();
     error StakingManager__TransferFailed();
     error StakingManager__InsufficientBalance();
@@ -42,13 +43,13 @@ contract RewardsStreamerMP is ReentrancyGuard, IStakeManager {
 
     mapping(address account => Account data) public accounts;
 
-    constructor(address _stakingToken, address _rewardToken) {
+    constructor(address _owner, address _stakingToken, address _rewardToken) TrustedCodehashAccess(_owner) {
         STAKING_TOKEN = IERC20(_stakingToken);
         REWARD_TOKEN = IERC20(_rewardToken);
         lastMPUpdatedTime = block.timestamp;
     }
 
-    function stake(uint256 amount, uint256 lockPeriod) external nonReentrant {
+    function stake(uint256 amount, uint256 lockPeriod) external onlyTrustedCodehash nonReentrant {
         if (amount == 0) {
             revert StakingManager__AmountCannotBeZero();
         }
@@ -98,7 +99,7 @@ contract RewardsStreamerMP is ReentrancyGuard, IStakeManager {
         account.lastMPUpdateTime = block.timestamp;
     }
 
-    function unstake(uint256 amount) external nonReentrant {
+    function unstake(uint256 amount) external onlyTrustedCodehash nonReentrant {
         Account storage account = accounts[msg.sender];
         if (amount > account.stakedBalance) {
             revert StakingManager__InsufficientBalance();
