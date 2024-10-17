@@ -6,6 +6,8 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IXPProvider } from "./interfaces/IXPProvider.sol";
 
 contract XPToken is ERC20, Ownable2Step {
+    error XPToken__MintAllowanceExceeded();
+
     string public constant NAME = "XP Token";
     string public constant SYMBOL = "XP";
 
@@ -33,12 +35,34 @@ contract XPToken is ERC20, Ownable2Step {
         return xpProviders;
     }
 
-    function totalSupply() public view override returns (uint256) {
+    function _totalSupply() public view returns (uint256) {
         return super.totalSupply() + _externalSupply();
     }
 
+    function totalSupply() public view override returns (uint256) {
+        return _totalSupply();
+    }
+
     function mint(address account, uint256 amount) external onlyOwner {
+        if (amount > _mintAllowance()) {
+            revert XPToken__MintAllowanceExceeded();
+        }
+
         _mint(account, amount);
+    }
+
+    function _mintAllowance() internal view returns (uint256) {
+        uint256 maxSupply = _externalSupply() * 3;
+        uint256 fullTotalSupply = _totalSupply();
+        if (maxSupply <= fullTotalSupply) {
+            return 0;
+        }
+
+        return maxSupply - fullTotalSupply;
+    }
+
+    function mintAllowance() public view returns (uint256) {
+        return _mintAllowance();
     }
 
     function _externalSupply() internal view returns (uint256) {
