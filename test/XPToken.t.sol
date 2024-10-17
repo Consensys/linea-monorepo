@@ -103,10 +103,10 @@ contract XPTokenTest is Test {
 
         vm.prank(alice);
         vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
-        xpToken.setTotalSupply(2000e18);
+        xpToken.setExternalSupply(2000e18);
 
         vm.prank(owner);
-        xpToken.setTotalSupply(2000e18);
+        xpToken.setExternalSupply(2000e18);
         totalSupply = xpToken.totalSupply();
         assertEq(totalSupply, 2000e18);
     }
