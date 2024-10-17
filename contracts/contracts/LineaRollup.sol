@@ -233,6 +233,13 @@ contract LineaRollup is
 
     uint256 blobFinalBlockNumber = shnarfFinalBlockNumbers[computedShnarf];
 
+    if (_blobSubmissionData[0].submissionData.firstBlockInData <= lastFinalizedBlockNumber) {
+      revert FirstBlockLessThanOrEqualToLastFinalizedBlock(
+        _blobSubmissionData[0].submissionData.firstBlockInData,
+        lastFinalizedBlockNumber
+      );
+    }
+
     for (uint256 i; i < blobSubmissionLength; i++) {
       blobSubmissionData = _blobSubmissionData[i];
 
@@ -242,7 +249,7 @@ contract LineaRollup is
         revert EmptyBlobDataAtIndex(i);
       }
 
-      _validateSubmissionData(blobSubmissionData.submissionData, blobFinalBlockNumber, lastFinalizedBlockNumber);
+      _validateSubmissionData(blobSubmissionData.submissionData, blobFinalBlockNumber);
 
       currentDataEvaluationPoint = Utils._efficientKeccak(blobSubmissionData.submissionData.snarkHash, currentDataHash);
 
@@ -315,7 +322,11 @@ contract LineaRollup is
 
     bytes32 currentDataHash = keccak256(_submissionData.compressedData);
 
-    _validateSubmissionData(submissionData, shnarfFinalBlockNumbers[_parentShnarf], currentL2BlockNumber);
+    if (_submissionData.firstBlockInData <= currentL2BlockNumber) {
+      revert FirstBlockLessThanOrEqualToLastFinalizedBlock(_submissionData.firstBlockInData, currentL2BlockNumber);
+    }
+
+    _validateSubmissionData(submissionData, shnarfFinalBlockNumbers[_parentShnarf]);
 
     bytes32 dataEvaluationPoint = Utils._efficientKeccak(_submissionData.snarkHash, currentDataHash);
     bytes32 computedShnarf = _computeShnarf(
@@ -349,12 +360,10 @@ contract LineaRollup is
    * @notice Internal function to validate submission data.
    * @param _submissionData The supporting data for compressed data submission excluding compressed data.
    * @param _parentFinalBlockNumber The final block number for the parent blob.
-   * @param _lastFinalizedBlockNumber The last finalized block number.
    */
   function _validateSubmissionData(
     SupportingSubmissionDataV2 memory _submissionData,
-    uint256 _parentFinalBlockNumber,
-    uint256 _lastFinalizedBlockNumber
+    uint256 _parentFinalBlockNumber
   ) internal pure {
     if (_submissionData.finalStateRootHash == EMPTY_HASH) {
       revert FinalBlockStateEqualsZeroHash();
@@ -369,10 +378,6 @@ contract LineaRollup is
       if (_parentFinalBlockNumber + 1 != _submissionData.firstBlockInData) {
         revert DataStartingBlockDoesNotMatch(_parentFinalBlockNumber + 1, _submissionData.firstBlockInData);
       }
-    }
-
-    if (_submissionData.firstBlockInData <= _lastFinalizedBlockNumber) {
-      revert FirstBlockLessThanOrEqualToLastFinalizedBlock(_submissionData.firstBlockInData, _lastFinalizedBlockNumber);
     }
 
     if (_submissionData.firstBlockInData > _submissionData.finalBlockInData) {
