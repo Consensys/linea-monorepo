@@ -4,6 +4,9 @@ using ERC20A as staked;
 methods {
     function totalStaked() external returns (uint256) envfree;
     function users(address) external returns (uint256, uint256, uint256, uint256, uint256, uint256) envfree;
+    function lastMPUpdatedTime() external returns (uint256) envfree;
+    function updateGlobalState() external;
+    function updateUserMP(address userAddress) external;
 }
 
 ghost mathint sumOfBalances {
@@ -32,6 +35,12 @@ function getAccountStakedBalance(address account) returns uint256 {
     return stakedBalance;
 }
 
+function getAccountLockUntil(address account) returns uint256 {
+    uint256 lockUntil;
+    _, _, _, _, _, lockUntil = streamer.users(account);
+    return lockUntil;
+}
+
 invariant sumOfBalancesIsTotalStaked()
   sumOfBalances == to_mathint(totalStaked());
 
@@ -41,3 +50,32 @@ invariant accountMPLessEqualAccountMaxMP(address account)
 invariant accountMPGreaterEqualAccountStakedBalance(address account)
   to_mathint(getAccountMP(account)) >= to_mathint(getAccountStakedBalance(account));
 
+rule stakingMintsMultiplierPoints1To1Ratio {
+
+  env e;
+  uint256 amount;
+  uint256 lockupTime;
+  uint256 multiplierPointsBefore;
+  uint256 multiplierPointsAfter;
+
+  requireInvariant accountMPGreaterEqualAccountStakedBalance(e.msg.sender);
+
+  require getAccountLockUntil(e.msg.sender) <= e.block.timestamp;
+
+  updateGlobalState(e);
+  updateUserMP(e, e.msg.sender);
+  uint256 t = lastMPUpdatedTime();
+
+  multiplierPointsBefore = getAccountMP(e.msg.sender);
+
+  stake(e, amount, lockupTime);
+
+  // we need to ensure time has not progressed because that would accrue MP
+  // which makes it harder to proof this rule
+  require lastMPUpdatedTime() == t;
+
+  multiplierPointsAfter = getAccountMP(e.msg.sender);
+
+  assert lockupTime == 0 => to_mathint(multiplierPointsAfter) == multiplierPointsBefore + amount;
+  assert to_mathint(multiplierPointsAfter) >= multiplierPointsBefore + amount;
+}
