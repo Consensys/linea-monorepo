@@ -51,34 +51,30 @@ describe("Transaction exclusion test suite", () => {
     120_000,
   );
 
-  it.skip(
-    "Should get the status of the rejected transaction reported from Besu SEQUENCER node",
-    async () => {
-      if (!config.getTransactionExclusionEndpoint()) {
-        // Skip this test if transaction exclusion endpoint is not defined
-        return;
-      }
+  it.skip("Should get the status of the rejected transaction reported from Besu SEQUENCER node", async () => {
+    if (!config.getTransactionExclusionEndpoint()) {
+      // Skip this test if transaction exclusion endpoint is not defined
+      return;
+    }
 
-      const transactionExclusionClient = new TransactionExclusionClient(config.getTransactionExclusionEndpoint()!!);
-      const l2Account = await l2AccountManager.generateAccount();
-      const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2SequencerProvider()!!);
-      const testContract = config.getL2TestContract(l2AccountLocal);
+    const transactionExclusionClient = new TransactionExclusionClient(config.getTransactionExclusionEndpoint()!!);
+    const l2Account = await l2AccountManager.generateAccount();
+    const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2SequencerProvider()!!);
+    const testContract = config.getL2TestContract(l2AccountLocal);
 
-      // This shall be rejected by sequencer due to traces module limit overflow (as reduced traces limits)
-      const tx = await testContract!!.connect(l2AccountLocal).testAddmod(13000, 31);
-      const rejectedTxHash = tx.hash;
-      console.log(`rejectedTxHash (SEQUENCER): ${rejectedTxHash}`);
+    // This shall be rejected by sequencer due to traces module limit overflow (as reduced traces limits)
+    const tx = await testContract!!.connect(l2AccountLocal).testAddmod(13000, 31);
+    const rejectedTxHash = tx.hash;
+    console.log(`rejectedTxHash (SEQUENCER): ${rejectedTxHash}`);
 
-      let getResponse;
-      do {
-        await wait(5_000);
-        getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash);
-      } while (!getResponse?.result);
+    let getResponse;
+    do {
+      await wait(5_000);
+      getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash);
+    } while (!getResponse?.result);
 
-      expect(getResponse.result.txHash).toStrictEqual(rejectedTxHash);
-      expect(getResponse.result.txRejectionStage).toStrictEqual("SEQUENCER");
-      expect(getResponse.result.from.toLowerCase()).toStrictEqual(l2AccountLocal.address.toLowerCase());
-    },
-    120_000,
-  );
+    expect(getResponse.result.txHash).toStrictEqual(rejectedTxHash);
+    expect(getResponse.result.txRejectionStage).toStrictEqual("SEQUENCER");
+    expect(getResponse.result.from.toLowerCase()).toStrictEqual(l2AccountLocal.address.toLowerCase());
+  }, 120_000);
 });
