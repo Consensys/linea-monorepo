@@ -6,26 +6,28 @@ on:
       commit_tag:
         required: true
         type: string
-      last_commit_tag:
-        required: true
-        type: string
-      common_ancestor_tag:
-        required: true
-        type: string
       develop_tag:
-        required: true
-        type: string
-      untested_tag_suffix:
         required: true
         type: string
       image_name:
         required: true
         type: string
+      push_image:
+        required: false
+        type: boolean
+        default: false
     secrets:
       DOCKERHUB_USERNAME:
         required: true
       DOCKERHUB_TOKEN:
         required: true
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: 'Toggle whether to push image to docker registry'
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: prover-build-and-publish-${{ github.workflow }}-${{ github.ref }}
@@ -41,9 +43,14 @@ jobs:
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}
-      UNTESTED_TAG_SUFFIX: ${{ inputs.untested_tag_suffix }}
       IMAGE_NAME: ${{ inputs.image_name }}
+      PUSH_IMAGE: ${{ inputs.push_image }}
+      TAGS: ${{ inputs.image_name }}:${{ inputs.commit_tag }}
     steps:
+      - name: Set develop tag if main branch
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          echo "TAGS=${{ inputs.image_name }}:${{ inputs.commit_tag }},${{ inputs.image_name }}:${{ inputs.develop_tag }}" >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -73,8 +80,19 @@ jobs:
             corset=corset/
             constraints=constraints/
           platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}-${{ env.UNTESTED_TAG_SUFFIX }}
+          load: ${{ env.PUSH_IMAGE == 'false' }}
+          push: ${{ env.PUSH_IMAGE }}
+          tags: ${{ env.TAGS }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+      - name: Save Docker image as artifact
+        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }} | gzip > linea-prover.tar.gz
+        shell: bash
+      - name: Upload artifact
+        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linea-prover
+          path: linea-prover.tar.gz
