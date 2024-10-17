@@ -2,7 +2,7 @@
 pragma solidity >=0.8.19 <=0.8.26;
 
 /**
- * @title Library to hash messages.
+ * @title Library to hash cross-chain messages.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
