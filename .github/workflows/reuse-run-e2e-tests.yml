@@ -113,7 +113,7 @@ jobs:
           gunzip -c linea-coordinator.tar.gz | docker load &&
           gunzip -c linea-postman.tar.gz | docker load &&
           gunzip -c linea-prover.tar.gz | docker load &&
-          gunzip -c linea-traces-api-facade.tar.gz | docker load &&
+          gunzip -c linea-traces-api-facade.tar.gz | docker load
         shell: bash
       - name: Spin up fresh environment with geth tracing with retry
         if: ${{ inputs.tracing-engine == 'geth' }}
