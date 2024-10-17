@@ -27,7 +27,7 @@ services:
     hostname: traces-node-v2
     container_name: traces-node-v2
     image: consensys/linea-besu:24.9-delivery32
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "ci-testing" ]
     depends_on:
       traces-node-v2-plugin-downloader:
         condition: service_completed_successfully

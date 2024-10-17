@@ -208,7 +208,7 @@ services:
     image: consensys/linea-prover:b4550ce-untested
     platform: linux/amd64
     # to avoid spinning up on CI for now
-    profiles: [ "l2", "ci-testing" ]
+    profiles: [ "l2" ]
     environment:
       GOMAXPROCS: 16
       CONTROLLER_CONFIG: "/opt/linea/prover/config/controller/controller.config.toml"
@@ -230,7 +230,7 @@ services:
     container_name: postman
     hostname: postman
     image: consensys/linea-postman:${POSTMAN_TAG:-5a6fdf3}
-    profiles: [ "l2", "debug", "ci-testing" ]
+    profiles: [ "l2", "debug" ]
     platform: linux/amd64
     restart: on-failure
     depends_on:
@@ -288,7 +288,7 @@ services:
     hostname: traces-api
     container_name: traces-api
     image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-e9f2bcc}
-    profiles: [ "l2", "debug", "ci-testing" ]
+    profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
       traces-node:
@@ -331,7 +331,7 @@ services:
     container_name: coordinator
     image: consensys/linea-coordinator:${COORDINATOR_TAG:-2ee4363}
     platform: linux/amd64
-    profiles: [ "l2", "debug", "ci-testing" ]
+    profiles: [ "l2", "debug" ]
     depends_on:
       postgres:
         condition: service_healthy
