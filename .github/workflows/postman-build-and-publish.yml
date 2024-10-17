@@ -71,7 +71,7 @@ jobs:
           echo COMMIT_TAG=${{ env.COMMIT_TAG }} >> $GITHUB_ENV
       - name: Build postman image for testing
         uses: docker/build-push-action@v6
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
         with:
           context: ./
           file: ./sdk/Dockerfile
