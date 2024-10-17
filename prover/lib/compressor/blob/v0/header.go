@@ -2,6 +2,7 @@ package v0
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 
@@ -22,11 +23,17 @@ type Header struct {
 }
 
 func (s *Header) Equals(other *Header) bool {
+	return s.CheckEquality(other) == nil
+}
+
+// CheckEquality similar to Equals but returning a description of the mismatch,
+// returning nil if the objects are equal
+func (s *Header) CheckEquality(other *Header) error {
 	if other == nil {
-		return false
+		return errors.New("empty header")
 	}
 	if s.DictChecksum != other.DictChecksum {
-		return false
+		return errors.New("dictionary mismatch")
 	}
 
 	// we ignore batches of len(0), since caller could have
@@ -36,25 +43,27 @@ func (s *Header) Equals(other *Header) bool {
 		small, large = other, s
 	}
 
+	absJ := 0
 	for i := range small.table {
 		if len(small.table[i]) != len(large.table[i]) {
-			return false
+			return fmt.Errorf("batch size mismatch at #%d", i)
 		}
 		for j := range small.table[i] {
 			if small.table[i][j] != large.table[i][j] {
-				return false
+				return fmt.Errorf("block size mismatch at block #%d of batch #%d, #%d total", j, i, absJ+j)
 			}
 		}
+		absJ += len(small.table[i])
 	}
 
 	// remaining batches of large should be empty
 	for i := len(small.table); i < len(large.table); i++ {
 		if len(large.table[i]) != 0 {
-			return false
+			return errors.New("batch count mismatch")
 		}
 	}
 
-	return true
+	return nil
 }
 
 func (s *Header) NbBatches() int {
