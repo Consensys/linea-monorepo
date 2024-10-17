@@ -44,10 +44,6 @@ jobs:
       PUSH_IMAGE: ${{ inputs.push_image }}
       TAGS: ${{ inputs.image_name }}:${{ inputs.commit_tag }}
     steps:
-      - name: Set develop tag if main branch
-        if: ${{ github.ref == 'refs/heads/main' }}
-        run: |
-          echo "TAGS=${{ inputs.image_name }}:${{ inputs.commit_tag }},${{ inputs.image_name }}:${{ inputs.develop_tag }}" >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -80,7 +76,7 @@ jobs:
           images: consensys/linea-traces-api-facade
       - name: Build for testing
         uses: docker/build-push-action@v6
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
         with:
           context: .
           build-contexts: jar=./traces-api-facade/app/build/libs/
@@ -92,25 +88,25 @@ jobs:
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
       - name: Save Docker image as artifact
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
         run: |
           docker save ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }} | gzip > linea-traces-api-facade.tar.gz
         shell: bash
       - name: Upload artifact
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
           name: linea-traces-api-facade
           path: linea-traces-api-facade.tar.gz
       - name: Build & push
         uses: docker/build-push-action@v6
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        if: ${{ env.PUSH_IMAGE == 'true' || github.event_name == 'workflow_dispatch' }}
         with:
           context: .
           build-contexts: jar=./traces-api-facade/app/build/libs/
           file: ./traces-api-facade/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ env.PUSH_IMAGE }}
-          tags: ${{ env.TAGS }}
+          tags: ${{ inputs.image_name }}:${{ inputs.commit_tag }},${{ inputs.image_name }}:${{ inputs.develop_tag }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
