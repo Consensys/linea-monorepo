@@ -50,7 +50,7 @@ public final class Create extends GasProjection {
   }
 
   @Override
-  public long rawStipend() {
+  public long gasPaidOutOfPocket() {
     long currentGas = frame.getRemainingGas();
     long gasCost = this.staticGas() + this.memoryExpansion();
 

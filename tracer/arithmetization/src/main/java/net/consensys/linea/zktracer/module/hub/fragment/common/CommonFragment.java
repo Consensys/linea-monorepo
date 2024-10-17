@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.common;
 
+import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.*;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 
 import java.util.function.Supplier;
@@ -23,10 +24,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
+import net.consensys.linea.zktracer.module.hub.signals.TracedException;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -66,18 +67,21 @@ public final class CommonFragment implements TraceFragment {
     final CallFrame frame = commonFragmentValues.callFrame;
     final TransactionProcessingMetadata tx = commonFragmentValues.txMetadata;
     final boolean isExec = commonFragmentValues.hubProcessingPhase == TX_EXEC;
+    final boolean oogx =
+        commonFragmentValues.tracedException() == TracedException.OUT_OF_GAS_EXCEPTION;
+    final boolean nonOogException = Exceptions.any(commonFragmentValues.exceptions) && !oogx;
     return trace
         .absoluteTransactionNumber(tx.getAbsoluteTransactionNumber())
         .relativeBlockNumber(tx.getRelativeBlockNumber())
-        .txSkip(commonFragmentValues.hubProcessingPhase == HubProcessingPhase.TX_SKIP)
-        .txWarm(commonFragmentValues.hubProcessingPhase == HubProcessingPhase.TX_WARM)
-        .txInit(commonFragmentValues.hubProcessingPhase == HubProcessingPhase.TX_INIT)
-        .txExec(commonFragmentValues.hubProcessingPhase == HubProcessingPhase.TX_EXEC)
-        .txFinl(commonFragmentValues.hubProcessingPhase == HubProcessingPhase.TX_FINL)
+        .txSkip(commonFragmentValues.hubProcessingPhase == TX_SKIP)
+        .txWarm(commonFragmentValues.hubProcessingPhase == TX_WARM)
+        .txInit(commonFragmentValues.hubProcessingPhase == TX_INIT)
+        .txExec(commonFragmentValues.hubProcessingPhase == TX_EXEC)
+        .txFinl(commonFragmentValues.hubProcessingPhase == TX_FINL)
         .hubStamp(commonFragmentValues.hubStamp)
         .hubStampTransactionEnd(tx.getHubStampTransactionEnd())
         .contextMayChange(commonFragmentValues.contextMayChange)
-        .exceptionAhoy(commonFragmentValues.exceptionAhoy && isExec)
+        .exceptionAhoy(Exceptions.any(commonFragmentValues.exceptions) && isExec)
         .logInfoStamp(commonFragmentValues.logStamp)
         .mmuStamp(commonFragmentValues.stamps.mmu())
         .mxpStamp(commonFragmentValues.stamps.mxp())
@@ -94,24 +98,36 @@ public final class CommonFragment implements TraceFragment {
         .programCounter(commonFragmentValues.pc)
         .programCounterNew(commonFragmentValues.pcNew)
         .height(
-            commonFragmentValues.hubProcessingPhase == HubProcessingPhase.TX_EXEC
-                ? commonFragmentValues.height
-                : 0)
+            commonFragmentValues.hubProcessingPhase == TX_EXEC ? commonFragmentValues.height : 0)
         .heightNew(
-            commonFragmentValues.hubProcessingPhase == HubProcessingPhase.TX_EXEC
-                ? commonFragmentValues.heightNew
-                : 0)
+            commonFragmentValues.hubProcessingPhase == TX_EXEC ? commonFragmentValues.heightNew : 0)
         // peeking flags are traced in the respective fragments
         .gasExpected(Bytes.ofUnsignedLong(commonFragmentValues.gasExpected))
         .gasActual(Bytes.ofUnsignedLong(commonFragmentValues.gasActual))
-        .gasCost(Bytes.ofUnsignedLong(commonFragmentValues.gasCost))
-        .gasNext(Bytes.ofUnsignedLong(commonFragmentValues.gasNext))
+        .gasCost(gasCostToTrace())
+        .gasNext(Bytes.ofUnsignedLong(isExec ? commonFragmentValues.gasNext : 0))
         .refundCounter(commonFragmentValues.gasRefund)
         .refundCounterNew(commonFragmentValues.gasRefundNew)
         .twoLineInstruction(commonFragmentValues.TLI)
         .counterTli(twoLineInstructionCounter)
         .nonStackRows((short) commonFragmentValues.numberOfNonStackRows)
         .counterNsr((short) nonStackRowsCounter);
+  }
+
+  private Bytes gasCostToTrace() {
+
+    if (commonFragmentValues.hubProcessingPhase != TX_EXEC) {
+      return Bytes.EMPTY;
+    }
+
+    final boolean oogx =
+        commonFragmentValues.tracedException() == TracedException.OUT_OF_GAS_EXCEPTION;
+    final boolean nonOogException = Exceptions.any(commonFragmentValues.exceptions) && !oogx;
+    if (nonOogException) {
+      return Bytes.EMPTY;
+    }
+
+    return Bytes.ofUnsignedLong(commonFragmentValues.gasCost);
   }
 
   static long computeGasCost(Hub hub, WorldView world) {

@@ -27,7 +27,6 @@ public final class ExtCodeCopy extends GasProjection {
   private final MessageFrame frame;
   private long offset = 0;
   private long size = 0;
-  private long bitSize = 0;
   private Address target = Address.ZERO;
 
   public ExtCodeCopy(MessageFrame frame) {
@@ -36,7 +35,6 @@ public final class ExtCodeCopy extends GasProjection {
       this.target = Words.toAddress(frame.getStackItem(0));
       this.offset = clampedToLong(frame.getStackItem(1));
       this.size = clampedToLong(frame.getStackItem(3));
-      this.bitSize = frame.getStackItem(3).bitLength();
     }
   }
 
@@ -62,6 +60,6 @@ public final class ExtCodeCopy extends GasProjection {
 
   @Override
   public long linearPerWord() {
-    return linearCost(GlobalConstants.GAS_CONST_G_COPY, this.bitSize, 32);
+    return linearCost(GlobalConstants.GAS_CONST_G_COPY, this.size, 32);
   }
 }
