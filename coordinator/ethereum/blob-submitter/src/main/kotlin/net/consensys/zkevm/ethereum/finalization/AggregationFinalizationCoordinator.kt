@@ -9,8 +9,6 @@ import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartCon
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ProofToFinalize
-import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
-import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
 import net.consensys.zkevm.ethereum.submission.logUnhandledError
 import net.consensys.zkevm.persistence.AggregationsRepository
 import net.consensys.zkevm.persistence.BlobsRepository
@@ -24,8 +22,7 @@ class AggregationFinalizationCoordinator(
   private val lineaRollup: LineaRollupSmartContractClient,
   private val aggregationsRepository: AggregationsRepository,
   private val blobsRepository: BlobsRepository,
-  private val alreadySubmittedBlobsFilter: AsyncFilter<BlobRecord> =
-    L1ShnarfBasedAlreadySubmittedBlobsFilter(lineaRollup),
+  private val alreadySubmittedBlobsFilter: AsyncFilter<BlobRecord>,
   private val aggregationSubmitter: AggregationSubmitter,
   private val vertx: Vertx,
   private val clock: Clock,
@@ -209,8 +206,8 @@ class AggregationFinalizationCoordinator(
       aggregationsRepository: AggregationsRepository,
       blobsRepository: BlobsRepository,
       lineaRollup: LineaRollupSmartContractClient,
-      gasPriceCapProvider: GasPriceCapProvider?,
-      alreadySubmittedBlobFilter: AsyncFilter<BlobRecord> = L1ShnarfBasedAlreadySubmittedBlobsFilter(lineaRollup),
+      alreadySubmittedBlobFilter: AsyncFilter<BlobRecord>,
+      aggregationSubmitter: AggregationSubmitter,
       vertx: Vertx,
       clock: Clock
     ): AggregationFinalizationCoordinator {
@@ -219,7 +216,7 @@ class AggregationFinalizationCoordinator(
         lineaRollup = lineaRollup,
         aggregationsRepository = aggregationsRepository,
         blobsRepository = blobsRepository,
-        aggregationSubmitter = AggregationSubmitterImpl(lineaRollup, gasPriceCapProvider),
+        aggregationSubmitter = aggregationSubmitter,
         alreadySubmittedBlobsFilter = alreadySubmittedBlobFilter,
         vertx = vertx,
         clock = clock
