@@ -1,11 +1,11 @@
 package net.consensys.linea.traces
 
 import com.fasterxml.jackson.databind.MapperFeature
+import com.fasterxml.jackson.databind.json.JsonMapper
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import io.vertx.core.json.JsonObject
-import io.vertx.core.json.jackson.DatabindCodec
 import net.consensys.linea.ErrorType
 import net.consensys.linea.TracesConflator
 import net.consensys.linea.TracesError
@@ -1161,10 +1161,7 @@ class ConflatedTrace : ConflatedTraceStorage() {
 }
 
 class RawJsonTracesConflator(private val tracesEngineVersion: String) : TracesConflator {
-  init {
-    @Suppress("DEPRECATION")
-    DatabindCodec.mapper().configure(MapperFeature.USE_GETTERS_AS_SETTERS, false)
-  }
+  private val objectMapper: JsonMapper = JsonMapper.builder().disable(MapperFeature.USE_GETTERS_AS_SETTERS).build()
 
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -1183,7 +1180,7 @@ class RawJsonTracesConflator(private val tracesEngineVersion: String) : TracesCo
           log.trace("Parsing trace: {}", jsonPath)
           trace.getTrace(jsonPath)?.let {
             if (!it.isEmpty) {
-              ax.add(it.mapTo(klass))
+              ax.add(objectMapper.convertValue(it, klass))
             }
           } ?: run {
             log.warn("Could not parse object with path: '{}'", jsonPath.joinToString("."))
