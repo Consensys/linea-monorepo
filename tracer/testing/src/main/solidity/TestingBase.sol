@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.26;
 
 /**
  * @notice Shared base contract for functions and events relating to call execution and contract creation.

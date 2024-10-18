@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.26;
 
 import {TestingFrameworkStorageLayout} from "./TestingFrameworkStorageLayout.sol";
 import {TestingBase} from "./TestingBase.sol";
