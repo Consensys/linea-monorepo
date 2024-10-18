@@ -6,6 +6,11 @@ on:
       commit_tag:
         required: true
         type: string
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
 
 concurrency:
   group: coordinator-testing-${{ github.workflow }}-${{ github.ref }}
@@ -46,6 +51,11 @@ jobs:
       - name: Build coordinator and Unit tests
         run: |
           ./gradlew -V coordinator:app:buildNeeded
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Run integration tests
         run: |
           ./gradlew integrationTest
