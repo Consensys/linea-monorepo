@@ -218,18 +218,16 @@ function mapToTuple(blobSubmissionDataItems: BlobSubmissionData[]): any {
 }
 
 function encodeCall(submissionData: BlobSubmissionData[]): DataHexString {
-  //submitBlobs((uint256,bytes,bytes,bytes32,bytes32)[],bytes32,bytes32,uint256,uint256)": "f92f3716
+  //submitBlobs((uint256,bytes,bytes,bytes32,bytes32)[],bytes32,bytes32)": "99467a35"
 
   const encodedCall = ethers.concat([
-    "0xf92f3716",
+    "0x99467a35",
     ethers.AbiCoder.defaultAbiCoder().encode(
-      ["tuple(uint256,bytes,bytes,bytes32,bytes32)[]", "bytes32", "bytes32", "uint256", "uint256"],
+      ["tuple(uint256,bytes,bytes,bytes32,bytes32)[]", "bytes32", "bytes32"],
       [
         mapToTuple(submissionData),
         submissionData[0].parentSubmissionData.shnarf,
         dataItems[dataItems.length - 1].expectedShnarf,
-        submissionData[0].submissionData.firstBlockInData,
-        submissionData[submissionData.length - 1].submissionData.finalBlockInData,
       ],
     ),
   ]);
@@ -354,6 +352,7 @@ async function sendProof(
   ];
 
   console.log(proofData);
+  //finalizeBlocks(bytes,uint256,(bytes32,uint256,(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,bytes32[],bytes))": "5603c65f"
   //finalizeBlocks(bytes,uint256,(bytes32,uint256,(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,bytes32[],bytes))": "5603c65f"
   const encodedCall = ethers.concat([
     "0x5603c65f",

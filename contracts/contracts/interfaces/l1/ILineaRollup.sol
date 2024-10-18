@@ -41,15 +41,11 @@ interface ILineaRollup {
   /**
    * @notice Supporting data for compressed calldata submission including compressed data.
    * @dev finalStateRootHash is used to set state root at the end of the data.
-   * @dev firstBlockNumber is the first block that is included in the data submitted.
-   * @dev finalBlockNumber is the last block that is included in the data submitted.
    * @dev snarkHash is the computed hash for compressed data (using a SNARK-friendly hash function) that aggregates per data submission to be used in public input.
    * @dev compressedData is the compressed transaction data. It contains ordered data for each L2 block - l2Timestamps, the encoded txData.
    */
   struct CompressedCalldataSubmission {
     bytes32 finalStateRootHash;
-    uint256 firstBlockNumber;
-    uint256 finalBlockNumber;
     bytes32 snarkHash;
     bytes compressedData;
   }
@@ -159,19 +155,11 @@ interface ILineaRollup {
   /**
    * @notice Emitted when compressed data is being submitted and verified succesfully on L1.
    * @dev The block range is indexed and parent shnarf included for state reconstruction simplicity.
-   * @param startBlockNumber The indexed L2 block number indicating which block the data starts from.
-   * @param endBlockNumber The indexed L2 block number indicating which block the data ends on.
    * @param parentShnarf The parent shnarf for the data being submitted.
    * @param shnarf The indexed shnarf for the data being submitted.
    * @param finalStateRootHash The L2 state root hash that the current blob submission ends on. NB: The last blob in the collection.
    */
-  event DataSubmittedV3(
-    uint256 indexed startBlockNumber,
-    uint256 indexed endBlockNumber,
-    bytes32 parentShnarf,
-    bytes32 indexed shnarf,
-    bytes32 finalStateRootHash
-  );
+  event DataSubmittedV3(bytes32 parentShnarf, bytes32 indexed shnarf, bytes32 finalStateRootHash);
 
   /**
    * @notice Emitted when L2 blocks have been finalized on L1.
@@ -210,11 +198,6 @@ interface ILineaRollup {
   error PointEvaluationFailed();
 
   /**
-   * @dev Thrown when the blobhash equals the zero hash.
-   */
-  error EmptyBlobData();
-
-  /**
    * @dev Thrown when the blobhash at an index equals to the zero hash.
    */
   error EmptyBlobDataAtIndex(uint256 index);
@@ -230,19 +213,9 @@ interface ILineaRollup {
   error BlobSubmissionDataEmpty(uint256 emptyBlobIndex);
 
   /**
-   * @dev Thrown when the starting block in the data item is out of sequence with the last block number.
-   */
-  error DataStartingBlockDoesNotMatch(uint256 expected, uint256 actual);
-
-  /**
    * @dev Thrown when the current data was already submitted.
    */
   error DataAlreadySubmitted(bytes32 currentDataHash);
-
-  /**
-   * @dev Thrown when the last finalized shnarf does not match the parent finalizing from.
-   */
-  error LastFinalizedShnarfWrong(bytes32 expected, bytes32 actual);
 
   /**
    * @dev Thrown when submissionData is empty.
@@ -258,16 +231,6 @@ interface ILineaRollup {
    * @dev Thrown when finalization state does not match.
    */
   error FinalizationStateIncorrect(bytes32 expected, bytes32 value);
-
-  /**
-   * @dev Thrown when the first block is greater than final block in submission data.
-   */
-  error FirstBlockGreaterThanFinalBlock(uint256 firstBlockNumber, uint256 finalBlockNumber);
-
-  /**
-   * @dev Thrown when the first block in data is less than or equal to the last finalized block during data submission.
-   */
-  error FirstBlockLessThanOrEqualToLastFinalizedBlock(uint256 firstBlockNumber, uint256 lastFinalizedBlock);
 
   /**
    * @dev Thrown when the final block number in finalization data is less than or equal to the last finalized block during finalization.
@@ -306,14 +269,14 @@ interface ILineaRollup {
   error BytesLengthNotMultipleOf32();
 
   /**
-   * @dev Thrown when the snarkhash is the zero hash.
-   */
-  error SnarkHashIsZeroHash();
-
-  /**
    * @dev Thrown when the computed shnarf does not match what is expected.
    */
   error FinalShnarfWrong(bytes32 expected, bytes32 value);
+
+  /**
+   * @dev Thrown when a parent shnarf does not exist.
+   */
+  error ParentShnarfDoesNotExist(bytes32 shnarf);
 
   /**
    * @notice Adds or updates the verifier contract address for a proof type.
@@ -346,15 +309,11 @@ interface ILineaRollup {
    * @param _blobSubmissions The data for blob submission including proofs and required polynomials.
    * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
    * @param _finalBlobShnarf The expected final shnarf post computation of all the blob shnarfs.
-   * @param _firstBlockNumber The first block number in the data being submitted.
-   * @param _finalBlockNumber The final block number in the data being submitted.
    */
   function submitBlobs(
     BlobSubmission[] calldata _blobSubmissions,
     bytes32 _parentShnarf,
-    bytes32 _finalBlobShnarf,
-    uint256 _firstBlockNumber,
-    uint256 _finalBlockNumber
+    bytes32 _finalBlobShnarf
   ) external;
 
   /**

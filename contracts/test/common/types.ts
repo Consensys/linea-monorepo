@@ -63,8 +63,6 @@ export type ShnarfData = {
 
 export type CalldataSubmissionData = {
   finalStateRootHash: string;
-  firstBlockNumber: bigint;
-  finalBlockNumber: bigint;
   snarkHash: string;
   compressedData: string;
 };

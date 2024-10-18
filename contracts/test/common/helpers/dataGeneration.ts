@@ -46,8 +46,6 @@ export function generateCallDataSubmission(startDataIndex: number, finalDataInde
   return COMPRESSED_SUBMISSION_DATA.slice(startDataIndex, finalDataIndex).map((data) => {
     const returnData = {
       finalStateRootHash: data.finalStateRootHash,
-      firstBlockNumber: BigInt(data.conflationOrder.startingBlockNumber),
-      finalBlockNumber: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
       snarkHash: data.snarkHash,
       compressedData: ethers.hexlify(ethers.decodeBase64(data.compressedData)),
     };
@@ -64,15 +62,11 @@ export function generateBlobDataSubmission(
   compressedBlobs: string[];
   parentShnarf: string;
   finalShnarf: string;
-  firstBlockNumber: bigint;
-  finalBlockNumber: bigint;
 } {
   const dataSet = isMultiple ? BLOB_SUBMISSION_DATA_MULTIPLE_PROOF : BLOB_SUBMISSION_DATA;
   const compressedBlobs: string[] = [];
   const parentShnarf = dataSet[startDataIndex].prevShnarf;
   const finalShnarf = dataSet[finalDataIndex - 1].expectedShnarf;
-  const firstBlockNumber = BigInt(dataSet[startDataIndex].conflationOrder.startingBlockNumber);
-  const finalBlockNumber = BigInt(dataSet[finalDataIndex - 1].conflationOrder.upperBoundaries.slice(-1)[0]);
 
   const blobDataSubmission = dataSet.slice(startDataIndex, finalDataIndex).map((data) => {
     compressedBlobs.push(ethers.hexlify(ethers.decodeBase64(data.compressedData)));
@@ -90,8 +84,6 @@ export function generateBlobDataSubmission(
     blobDataSubmission,
     parentShnarf,
     finalShnarf,
-    firstBlockNumber,
-    finalBlockNumber,
   };
 }
 

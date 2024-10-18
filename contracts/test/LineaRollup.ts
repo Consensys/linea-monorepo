@@ -400,8 +400,8 @@ describe("Linea Rollup contract", () => {
           .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 }),
       ).to.not.be.reverted;
 
-      const finalBlockNumber = await lineaRollup.shnarfFinalBlockNumbers(expectedShnarf);
-      expect(finalBlockNumber).to.equal(submissionData.finalBlockNumber);
+      const shnarfExists = await lineaRollup.shnarfExists(expectedShnarf);
+      expect(shnarfExists).to.equal(1n);
     });
 
     it("Should successfully submit 2 compressed data chunks in two transactions", async () => {
@@ -419,9 +419,8 @@ describe("Linea Rollup contract", () => {
         }),
       ).to.not.be.reverted;
 
-      const finalBlockNumber = await lineaRollup.shnarfFinalBlockNumbers(secondExpectedShnarf);
-
-      expect(finalBlockNumber).to.equal(secondSubmissionData.finalBlockNumber);
+      const shnarfExists = await lineaRollup.shnarfExists(expectedShnarf);
+      expect(shnarfExists).to.equal(1n);
     });
 
     it("Should emit an event while submitting 1 compressed data chunk", async () => {
@@ -430,28 +429,9 @@ describe("Linea Rollup contract", () => {
       const submitDataCall = lineaRollup
         .connect(operator)
         .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
-      const eventArgs = [
-        submissionData.firstBlockNumber,
-        submissionData.finalBlockNumber,
-        prevShnarf,
-        expectedShnarf,
-        submissionData.finalStateRootHash,
-      ];
+      const eventArgs = [prevShnarf, expectedShnarf, submissionData.finalStateRootHash];
 
       await expectEvent(lineaRollup, submitDataCall, "DataSubmittedV3", eventArgs);
-    });
-
-    it("Should fail if the stored shnarf block number + 1 does not match the starting submission number", async () => {
-      const [submissionData] = generateCallDataSubmission(0, 1);
-
-      await lineaRollup.setShnarfFinalBlockNumber(prevShnarf, 99n);
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, secondExpectedShnarf, { gasLimit: 30_000_000 });
-      const eventArgs = [100n, 1n];
-
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "DataStartingBlockDoesNotMatch", eventArgs);
     });
 
     it("Should fail if the final state root hash is empty", async () => {
@@ -464,27 +444,10 @@ describe("Linea Rollup contract", () => {
         .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
 
       // TODO: Make the failure shnarf dynamic and computed
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [expectedShnarf, "0xf53c28b2287f506b4df1b9de48cf3601392d54a73afe400a6f8f4ded2e0929ad"]);
-    });
-
-    it("Should fail if the block numbers are out of sequence", async () => {
-      const [firstSubmissionData, secondSubmissionData] = generateCallDataSubmission(0, 2);
-
-      await expect(
-        lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 }),
-      ).to.not.be.reverted;
-
-      const expectedFirstBlock = secondSubmissionData.firstBlockNumber;
-      secondSubmissionData.firstBlockNumber = secondSubmissionData.firstBlockNumber + 1n;
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(secondSubmissionData, expectedShnarf, secondExpectedShnarf, { gasLimit: 30_000_000 });
-      const eventArgs = [expectedFirstBlock, secondSubmissionData.firstBlockNumber];
-
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "DataStartingBlockDoesNotMatch", eventArgs);
+      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [
+        expectedShnarf,
+        "0xf53c28b2287f506b4df1b9de48cf3601392d54a73afe400a6f8f4ded2e0929ad",
+      ]);
     });
 
     it("Should fail to submit where expected shnarf is wrong", async () => {
@@ -535,19 +498,6 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [CALLDATA_SUBMISSION_PAUSE_TYPE]);
     });
 
-    it("Should revert with FirstBlockLessThanOrEqualToLastFinalizedBlock when submitting data with firstBlockNumber less than currentL2BlockNumber", async () => {
-      await lineaRollup.setLastFinalizedBlock(1_000_000);
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
-
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FirstBlockLessThanOrEqualToLastFinalizedBlock", [
-        DATA_ONE.firstBlockNumber,
-        1000000,
-      ]);
-    });
-
     it("Should revert with DataAlreadySubmitted when submitting same compressed data twice in 2 separate transactions", async () => {
       await lineaRollup
         .connect(operator)
@@ -586,14 +536,17 @@ describe("Linea Rollup contract", () => {
         .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
 
       // TODO: Make the failure shnarf dynamic and computed
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong",[expectedShnarf, "0xa6b52564082728b51bb81a4fa92cfb4ec3af8de3f18b5d68ec27b89eead93293"]);
+      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [
+        expectedShnarf,
+        "0xa6b52564082728b51bb81a4fa92cfb4ec3af8de3f18b5d68ec27b89eead93293",
+      ]);
     });
   });
 
   describe("EIP-4844 Blob submission tests", () => {
     beforeEach(async () => {
       await lineaRollup.setLastFinalizedBlock(0);
-      await lineaRollup.setupParentShnarf(prevShnarf, 0);
+      await lineaRollup.setupParentShnarf(prevShnarf);
       await lineaRollup.setupParentDataShnarf(parentDataHash, prevShnarf);
       await lineaRollup.setupParentFinalizedStateRoot(parentDataHash, parentStateRootHash);
     });
@@ -601,15 +554,12 @@ describe("Linea Rollup contract", () => {
     it("Should successfully submit blobs", async () => {
       const operatorHDSigner = getWalletForIndex(2);
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -637,8 +587,6 @@ describe("Linea Rollup contract", () => {
       expect(receipt).is.not.null;
 
       const expectedEventArgs = [
-        firstBlockNumber,
-        finalBlockNumber,
         parentShnarf,
         finalShnarf,
         blobDataSubmission[blobDataSubmission.length - 1].finalStateRootHash,
@@ -646,24 +594,58 @@ describe("Linea Rollup contract", () => {
 
       expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
 
-      const foundFinalBlockNumber = await lineaRollup.shnarfFinalBlockNumbers(finalShnarf);
-      expect(foundFinalBlockNumber).to.equal(finalBlockNumber);
+      const shnarfExists = await lineaRollup.shnarfExists(finalShnarf);
+      expect(shnarfExists).to.equal(1n);
+    });
+
+    it("Fails the blob submission when the parent shnarf is missing", async () => {
+      const operatorHDSigner = getWalletForIndex(2);
+
+      const lineaRollupAddress = await lineaRollup.getAddress();
+      const { blobDataSubmission, compressedBlobs, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const nonExistingParentShnarf = generateRandomBytes(32);
+
+      const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
+        blobDataSubmission,
+        nonExistingParentShnarf,
+        finalShnarf,
+      ]);
+
+      const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
+      const nonce = await operatorHDSigner.getNonce();
+
+      const transaction = Transaction.from({
+        data: encodedCall,
+        maxPriorityFeePerGas: maxPriorityFeePerGas!,
+        maxFeePerGas: maxFeePerGas!,
+        to: lineaRollupAddress,
+        chainId: (await ethers.provider.getNetwork()).chainId,
+        type: 3,
+        nonce,
+        value: 0,
+        gasLimit: 5_000_000,
+        kzg,
+        maxFeePerBlobGas: 1n,
+        blobs: compressedBlobs,
+      });
+
+      const signedTx = await operatorHDSigner.signTransaction(transaction);
+
+      await expectRevertWithCustomError(
+        lineaRollup,
+        ethers.provider.broadcastTransaction(signedTx),
+        "ParentShnarfDoesNotExist",
+        [nonExistingParentShnarf],
+      );
     });
 
     it("Fails when the blob submission data is missing", async () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 1);
+      const { compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
-      const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
-        [],
-        parentShnarf,
-        finalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
-      ]);
+      const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [[], parentShnarf, finalShnarf]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
       const nonce = await operatorHDSigner.getNonce();
@@ -693,44 +675,35 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should revert if the caller does not have the OPERATOR_ROLE", async () => {
-      const { blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
       await expectRevertWithReason(
-        lineaRollup
-          .connect(nonAuthorizedAccount)
-          .submitBlobs(blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber),
+        lineaRollup.connect(nonAuthorizedAccount).submitBlobs(blobDataSubmission, parentShnarf, finalShnarf),
         buildAccessErrorMessage(nonAuthorizedAccount, OPERATOR_ROLE),
       );
     });
 
     it("Should revert if GENERAL_PAUSE_TYPE is enabled", async () => {
-      const { blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
       await lineaRollup.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup
-          .connect(operator)
-          .submitBlobs(blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber),
+        lineaRollup.connect(operator).submitBlobs(blobDataSubmission, parentShnarf, finalShnarf),
         "IsPaused",
         [GENERAL_PAUSE_TYPE],
       );
     });
 
     it("Should revert if BLOB_SUBMISSION_PAUSE_TYPE is enabled", async () => {
-      const { blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
       await lineaRollup.connect(securityCouncil).pauseByType(BLOB_SUBMISSION_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup
-          .connect(operator)
-          .submitBlobs(blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber),
+        lineaRollup.connect(operator).submitBlobs(blobDataSubmission, parentShnarf, finalShnarf),
         "IsPaused",
         [BLOB_SUBMISSION_PAUSE_TYPE],
       );
@@ -739,15 +712,12 @@ describe("Linea Rollup contract", () => {
     it("Should revert if the blob data is empty at any index", async () => {
       const operatorHDSigner = getWalletForIndex(2);
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 2);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 2);
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -781,8 +751,7 @@ describe("Linea Rollup contract", () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
       blobDataSubmission[0].finalStateRootHash = HASH_ZERO;
 
@@ -790,8 +759,6 @@ describe("Linea Rollup contract", () => {
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -818,7 +785,8 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(
         lineaRollup,
         ethers.provider.broadcastTransaction(signedTx),
-        "FinalShnarfWrong", [finalShnarf, "0x22f8fb954df8328627fe9c48b60192f4d970a92891417aaadea39300ca244d36"]
+        "FinalShnarfWrong",
+        [finalShnarf, "0x22f8fb954df8328627fe9c48b60192f4d970a92891417aaadea39300ca244d36"],
       );
     });
 
@@ -826,8 +794,7 @@ describe("Linea Rollup contract", () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
       // Set the snarkHash to HASH_ZERO for a specific index
       const emptyDataIndex = 0;
@@ -837,8 +804,6 @@ describe("Linea Rollup contract", () => {
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -868,111 +833,16 @@ describe("Linea Rollup contract", () => {
       );
     });
 
-    it("Should fail if the block numbers are out of sequence", async () => {
-      const operatorHDSigner = getWalletForIndex(2);
-
-      const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 2);
-
-      const sentFirstBlockNumber = firstBlockNumber + 1n;
-
-      const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
-        blobDataSubmission,
-        parentShnarf,
-        finalShnarf,
-        sentFirstBlockNumber,
-        finalBlockNumber,
-      ]);
-
-      const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
-      const nonce = await operatorHDSigner.getNonce();
-
-      const transaction = Transaction.from({
-        data: encodedCall,
-        maxPriorityFeePerGas: maxPriorityFeePerGas!,
-        maxFeePerGas: maxFeePerGas!,
-        to: lineaRollupAddress,
-        chainId: (await ethers.provider.getNetwork()).chainId,
-        type: 3,
-        nonce,
-        value: 0,
-        gasLimit: 5_000_000,
-        kzg,
-        maxFeePerBlobGas: 1n,
-        blobs: compressedBlobs,
-      });
-
-      const signedTx = await operatorHDSigner.signTransaction(transaction);
-
-      await expectRevertWithCustomError(
-        lineaRollup,
-        ethers.provider.broadcastTransaction(signedTx),
-        "DataStartingBlockDoesNotMatch",
-        [firstBlockNumber, sentFirstBlockNumber],
-      );
-    });
-
-    it("Should revert with FirstBlockLessThanOrEqualToLastFinalizedBlock when submitting data with firstBlockNumber less than currentL2BlockNumber", async () => {
-      const operatorHDSigner = getWalletForIndex(2);
-
-      const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 1);
-
-      // Set the currentL2BlockNumber to a value greater than the firstBlockNumber
-      const currentL2BlockNumber = 1_000_000n;
-      await lineaRollup.setLastFinalizedBlock(currentL2BlockNumber);
-
-      const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
-        blobDataSubmission,
-        parentShnarf,
-        finalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
-      ]);
-
-      const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
-      const nonce = await operatorHDSigner.getNonce();
-
-      const transaction = Transaction.from({
-        data: encodedCall,
-        maxPriorityFeePerGas: maxPriorityFeePerGas!,
-        maxFeePerGas: maxFeePerGas!,
-        to: lineaRollupAddress,
-        chainId: (await ethers.provider.getNetwork()).chainId,
-        type: 3,
-        nonce,
-        value: 0,
-        gasLimit: 5_000_000,
-        kzg,
-        maxFeePerBlobGas: 1n,
-        blobs: compressedBlobs,
-      });
-
-      const signedTx = await operatorHDSigner.signTransaction(transaction);
-
-      await expectRevertWithCustomError(
-        lineaRollup,
-        ethers.provider.broadcastTransaction(signedTx),
-        "FirstBlockLessThanOrEqualToLastFinalizedBlock",
-        [firstBlockNumber, currentL2BlockNumber],
-      );
-    });
-
     it("Should revert if the final shnarf is wrong", async () => {
       const operatorHDSigner = getWalletForIndex(2);
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 2);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 2);
       const badFinalShnarf = generateRandomBytes(32);
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         badFinalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -1009,16 +879,13 @@ describe("Linea Rollup contract", () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
       // Try to submit the same blob data again
       const encodedCall2 = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
       ]);
 
       const { maxFeePerGas: maxFeePerGas2, maxPriorityFeePerGas: maxPriorityFeePerGas2 } =
@@ -1054,8 +921,7 @@ describe("Linea Rollup contract", () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
-        generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
       // Modify the kzgProof to an invalid value to trigger the PointEvaluationFailed revert
       blobDataSubmission[0].kzgProof = HASH_ZERO;
@@ -1064,8 +930,6 @@ describe("Linea Rollup contract", () => {
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -1118,16 +982,12 @@ describe("Linea Rollup contract", () => {
         compressedBlobs: compressedBlobs,
         parentShnarf: parentShnarf,
         finalShnarf: finalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
       } = generateBlobDataSubmission(0, 2, true);
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         [blobSubmission[0]],
         parentShnarf,
         finalShnarf,
-        firstBlockNumber,
-        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -2009,16 +1869,12 @@ describe("Linea Rollup contract", () => {
       compressedBlobs: compressedBlobs,
       parentShnarf: parentShnarf,
       finalShnarf: finalShnarf,
-      firstBlockNumber,
-      finalBlockNumber,
     } = generateBlobDataSubmission(startIndex, finalIndex, isMultiple);
 
     const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
       blobSubmission,
       parentShnarf,
       finalShnarf,
-      firstBlockNumber,
-      finalBlockNumber,
     ]);
 
     const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -2044,13 +1900,7 @@ describe("Linea Rollup contract", () => {
 
     const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
 
-    const expectedEventArgs = [
-      firstBlockNumber,
-      finalBlockNumber,
-      parentShnarf,
-      finalShnarf,
-      blobSubmission[blobSubmission.length - 1].finalStateRootHash,
-    ];
+    const expectedEventArgs = [parentShnarf, finalShnarf, blobSubmission[blobSubmission.length - 1].finalStateRootHash];
 
     expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
   }
@@ -2172,7 +2022,9 @@ describe("Linea Rollup contract", () => {
 
       // Deploy new implementation
       const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+        unsafeAllowRenames: true,
+      });
       const upgradedContract = await newLineaRollup.waitForDeployment();
 
       const upgradeCall = upgradedContract.reinitializeLineaRollupV6(
@@ -2196,7 +2048,9 @@ describe("Linea Rollup contract", () => {
 
       // Deploy new implementation
       const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+        unsafeAllowRenames: true,
+      });
       const upgradedContract = await newLineaRollup.waitForDeployment();
       const upgradeCall = upgradedContract.reinitializeLineaRollupV6(
         newRoleAddresses,
@@ -2213,7 +2067,9 @@ describe("Linea Rollup contract", () => {
 
       // Deploy new implementation
       const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+        unsafeAllowRenames: true,
+      });
       const upgradedContract = await newLineaRollup.waitForDeployment();
       await upgradedContract.reinitializeLineaRollupV6(
         newRoleAddresses,
@@ -2235,7 +2091,9 @@ describe("Linea Rollup contract", () => {
     it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializeLineaRollupV6", async () => {
       // Deploy new implementation
       const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+        unsafeAllowRenames: true,
+      });
       const upgradedContract = await newLineaRollup.waitForDeployment();
       const roleAddresses = [{ addressWithRole: ZeroAddress, role: DEFAULT_ADMIN_ROLE }, ...newRoleAddresses.slice(1)];
 
@@ -2254,7 +2112,9 @@ describe("Linea Rollup contract", () => {
     it("Should set all permissions", async () => {
       // Deploy new implementation
       const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+        unsafeAllowRenames: true,
+      });
       const upgradedContract = await newLineaRollup.waitForDeployment();
 
       await upgradedContract.reinitializeLineaRollupV6(
@@ -2272,7 +2132,9 @@ describe("Linea Rollup contract", () => {
     it("Should set all pause types and unpause types in mappings and emit events", async () => {
       // Deploy new implementation
       const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory);
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+        unsafeAllowRenames: true,
+      });
       const upgradedContract = await newLineaRollup.waitForDeployment();
 
       const reinitializePromise = upgradedContract.reinitializeLineaRollupV6(

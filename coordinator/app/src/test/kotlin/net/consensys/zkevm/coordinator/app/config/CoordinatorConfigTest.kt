@@ -167,7 +167,7 @@ class CoordinatorConfigTest {
         "b1504a5f" to "BlobSubmissionDataIsMissing",
         "c0e41e1d" to "EmptyBlobDataAtIndex",
         "fb4cd6ef" to "FinalBlockDoesNotMatchShnarfFinalBlock",
-        "2526F108 " to "ShnarfAndFinalBlockNumberLengthsMismatched",
+        "2526F108" to "ShnarfAndFinalBlockNumberLengthsMismatched",
         "d3664fb3" to "FinalShnarfWrong",
         "4e686675" to "L2MerkleRootDoesNotExist",
         "e5d14425" to "L2MerkleRootAlreadyAnchored",
@@ -180,6 +180,7 @@ class CoordinatorConfigTest {
         "b015579f" to "IsNotPaused",
         "3b174434" to "MessageHashesListLengthHigherThanOneHundred",
         "ca389c44" to "InvalidProofOrProofVerificationRanOutOfGas",
+        "74a071d9" to "ParentShnarfDoesNotExist",
         // L2 Message Service
         "6446cc9c" to "MessageHashesListLengthIsZero",
         "d39e75f9" to "L1MessageNumberSynchronizationWrong",

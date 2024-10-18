@@ -40,6 +40,7 @@ contract LineaRollup is
       )
     );
 
+  uint256 internal constant SHNARF_EXISTS_DEFAULT_VALUE = 1;
   bytes32 internal constant EMPTY_HASH = 0x0;
   uint256 internal constant BLS_CURVE_MODULUS =
     52435875175126190479447740508185965837690552500527637822603658699938581184513;
@@ -49,15 +50,15 @@ contract LineaRollup is
 
   uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 
-  /// @dev DEPRECATED in favor of the single shnarfFinalBlockNumbers mapping.
+  /// @dev DEPRECATED in favor of the single shnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 finalStateRootHash) public dataFinalStateRootHashes;
-  /// @dev DEPRECATED in favor of the single shnarfFinalBlockNumbers mapping.
+  /// @dev DEPRECATED in favor of the single shnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 parentHash) public dataParents;
-  /// @dev DEPRECATED in favor of the single shnarfFinalBlockNumbers mapping.
+  /// @dev DEPRECATED in favor of the single shnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 shnarfHash) public dataShnarfHashes;
-  /// @dev DEPRECATED in favor of the single shnarfFinalBlockNumbers mapping.
+  /// @dev DEPRECATED in favor of the single shnarfExists mapping.
   mapping(bytes32 dataHash => uint256 startingBlock) public dataStartingBlock;
-  /// @dev DEPRECATED in favor of the single shnarfFinalBlockNumbers mapping.
+  /// @dev DEPRECATED in favor of the single shnarfExists mapping.
   mapping(bytes32 dataHash => uint256 endingBlock) public dataEndingBlock;
 
   /// @dev DEPRECATED in favor of currentFinalizedState hash.
@@ -69,8 +70,9 @@ contract LineaRollup is
 
   /**
    * @dev NB: THIS IS THE ONLY MAPPING BEING USED FOR DATA SUBMISSION TRACKING.
+   * @dev NB: NB: This was shnarfFinalBlockNumbers and is replaced to indicate only that a shnarf exists with a value of 1.
    */
-  mapping(bytes32 shnarf => uint256 finalBlockNumber) public shnarfFinalBlockNumbers;
+  mapping(bytes32 shnarf => uint256 exists) public shnarfExists;
 
   /// @dev Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
   bytes32 public currentFinalizedState;
@@ -118,7 +120,7 @@ contract LineaRollup is
     currentL2BlockNumber = _initializationData.initialL2BlockNumber;
     stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
-    shnarfFinalBlockNumbers[GENESIS_SHNARF] = _initializationData.initialL2BlockNumber;
+    shnarfExists[GENESIS_SHNARF] = SHNARF_EXISTS_DEFAULT_VALUE;
 
     currentFinalizedShnarf = GENESIS_SHNARF;
     currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
@@ -206,15 +208,11 @@ contract LineaRollup is
    * @param _blobSubmissions The data for blob submission including proofs and required polynomials.
    * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
    * @param _finalBlobShnarf The expected final shnarf post computation of all the blob shnarfs.
-   * @param _firstBlockNumber The first block number in the data being submitted.
-   * @param _finalBlockNumber The final block number in the data being submitted.
    */
   function submitBlobs(
     BlobSubmission[] calldata _blobSubmissions,
     bytes32 _parentShnarf,
-    bytes32 _finalBlobShnarf,
-    uint256 _firstBlockNumber,
-    uint256 _finalBlockNumber
+    bytes32 _finalBlobShnarf
   ) external whenTypeAndGeneralNotPaused(PauseType.BLOB_SUBMISSION) onlyRole(OPERATOR_ROLE) {
     uint256 blobSubmissionLength = _blobSubmissions.length;
 
@@ -232,9 +230,11 @@ contract LineaRollup is
     /// @dev Assigning in memory saves a lot of gas vs. calldata reading.
     BlobSubmission memory blobSubmission;
 
-    bytes32 computedShnarf = _parentShnarf;
+    if (shnarfExists[_parentShnarf] == 0) {
+      revert ParentShnarfDoesNotExist(_parentShnarf);
+    }
 
-    _validateSubmissionContinuity(_parentShnarf, _firstBlockNumber);
+    bytes32 computedShnarf = _parentShnarf;
 
     for (uint256 i; i < blobSubmissionLength; i++) {
       blobSubmission = _blobSubmissions[i];
@@ -275,20 +275,14 @@ contract LineaRollup is
      * Note: As only the last shnarf is stored, we don't need to validate shnarfs,
      * computed for any previous blobs in the submission (if multiple are submitted).
      */
-    if (shnarfFinalBlockNumbers[computedShnarf] != 0) {
+    if (shnarfExists[computedShnarf] != 0) {
       revert DataAlreadySubmitted(computedShnarf);
     }
 
     /// @dev use the last shnarf as the submission to store as technically it becomes the next parent shnarf.
-    shnarfFinalBlockNumbers[computedShnarf] = _finalBlockNumber;
+    shnarfExists[computedShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
 
-    emit DataSubmittedV3(
-      _firstBlockNumber,
-      _finalBlockNumber,
-      _parentShnarf,
-      computedShnarf,
-      blobSubmission.finalStateRootHash
-    );
+    emit DataSubmittedV3(_parentShnarf, computedShnarf, blobSubmission.finalStateRootHash);
   }
 
   /**
@@ -309,8 +303,6 @@ contract LineaRollup is
 
     bytes32 currentDataHash = keccak256(_submission.compressedData);
 
-    _validateSubmissionContinuity(_parentShnarf, _submission.firstBlockNumber);
-
     bytes32 dataEvaluationPoint = Utils._efficientKeccak(_submission.snarkHash, currentDataHash);
 
     bytes32 computedShnarf = _computeShnarf(
@@ -325,36 +317,13 @@ contract LineaRollup is
       revert FinalShnarfWrong(_expectedShnarf, computedShnarf);
     }
 
-    if (shnarfFinalBlockNumbers[computedShnarf] != 0) {
+    if (shnarfExists[computedShnarf] != 0) {
       revert DataAlreadySubmitted(computedShnarf);
     }
 
-    shnarfFinalBlockNumbers[computedShnarf] = _submission.finalBlockNumber;
+    shnarfExists[computedShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
 
-    emit DataSubmittedV3(
-      _submission.firstBlockNumber,
-      _submission.finalBlockNumber,
-      _parentShnarf,
-      computedShnarf,
-      _submission.finalStateRootHash
-    );
-  }
-
-  /**
-   * @notice Internal function to validate blob submission continuity.
-   * @param _parentShnarf The parent shnarf.
-   * @param _firstBlockNumber The first block number in the submission.
-   */
-  function _validateSubmissionContinuity(bytes32 _parentShnarf, uint256 _firstBlockNumber) internal view {
-    if (_firstBlockNumber <= currentL2BlockNumber) {
-      revert FirstBlockLessThanOrEqualToLastFinalizedBlock(_firstBlockNumber, currentL2BlockNumber);
-    }
-
-    unchecked {
-      if (shnarfFinalBlockNumbers[_parentShnarf] + 1 != _firstBlockNumber) {
-        revert DataStartingBlockDoesNotMatch(shnarfFinalBlockNumbers[_parentShnarf] + 1, _firstBlockNumber);
-      }
-    }
+    emit DataSubmittedV3(_parentShnarf, computedShnarf, _submission.finalStateRootHash);
   }
 
   /**
@@ -479,7 +448,7 @@ contract LineaRollup is
       lastFinalizedShnarf,
       finalShnarf,
       lastFinalizedBlockNumber,
-      shnarfFinalBlockNumbers[finalShnarf]
+      _finalizationData.finalBlockNumber
     );
 
     _verifyProof(publicInput, _proofType, _aggregatedProof);
@@ -553,7 +522,6 @@ contract LineaRollup is
     );
 
     emit DataFinalizedV3(
-      /// @dev incremented to cover the starting block of data being finalized
       ++_lastFinalizedBlock,
       _finalizationData.finalBlockNumber,
       finalShnarf,
@@ -691,7 +659,7 @@ contract LineaRollup is
 
       mstore(add(mPtr, 0x80), _lastFinalizedBlockNumber)
 
-      // shnarfFinalBlockNumbers[finalShnarf]
+      // _finalizationData.finalBlockNumber
       mstore(add(mPtr, 0xA0), _finalBlockNumber)
 
       /**

@@ -46,3 +46,4 @@
 "d39e75f9" = "L1MessageNumberSynchronizationWrong"
 "7557a60a" = "L1RollingHashSynchronizationWrong"
 "36a4bb94" = "FinalRollingHashIsZero"
+"74a071d9" = "ParentShnarfDoesNotExist"
