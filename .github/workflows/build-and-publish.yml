@@ -45,9 +45,9 @@ on:
         type: string
     secrets:
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
-        required: true
+        required: false
 
 jobs:
   coordinator:
