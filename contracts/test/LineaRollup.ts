@@ -463,7 +463,8 @@ describe("Linea Rollup contract", () => {
         .connect(operator)
         .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
 
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalBlockStateEqualsZeroHash");
+      // TODO: Make the failure shnarf dynamic and computed
+      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [expectedShnarf, "0xf53c28b2287f506b4df1b9de48cf3601392d54a73afe400a6f8f4ded2e0929ad"]);
     });
 
     it("Should fail if the block numbers are out of sequence", async () => {
@@ -584,7 +585,8 @@ describe("Linea Rollup contract", () => {
         .connect(operator)
         .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
 
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "SnarkHashIsZeroHash");
+      // TODO: Make the failure shnarf dynamic and computed
+      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong",[expectedShnarf, "0xa6b52564082728b51bb81a4fa92cfb4ec3af8de3f18b5d68ec27b89eead93293"]);
     });
   });
 
@@ -812,10 +814,11 @@ describe("Linea Rollup contract", () => {
 
       const signedTx = await operatorHDSigner.signTransaction(transaction);
 
+      // TODO: Make the failure shnarf dynamic and computed
       await expectRevertWithCustomError(
         lineaRollup,
         ethers.provider.broadcastTransaction(signedTx),
-        "FinalBlockStateEqualsZeroHash",
+        "FinalShnarfWrong", [finalShnarf, "0x22f8fb954df8328627fe9c48b60192f4d970a92891417aaadea39300ca244d36"]
       );
     });
 
@@ -828,7 +831,7 @@ describe("Linea Rollup contract", () => {
 
       // Set the snarkHash to HASH_ZERO for a specific index
       const emptyDataIndex = 0;
-      blobDataSubmission[emptyDataIndex].snarkHash = HASH_ZERO;
+      blobDataSubmission[emptyDataIndex].snarkHash = generateRandomBytes(32);
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
@@ -861,7 +864,7 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(
         lineaRollup,
         ethers.provider.broadcastTransaction(signedTx),
-        "SnarkHashIsZeroHash",
+        "PointEvaluationFailed",
       );
     });
 

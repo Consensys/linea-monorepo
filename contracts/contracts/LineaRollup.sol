@@ -246,9 +246,6 @@ contract LineaRollup is
       }
 
       bytes32 snarkHash = blobSubmission.snarkHash;
-      bytes32 finalStateRootHash = blobSubmission.finalStateRootHash;
-
-      _validateEmptySubmissionData(finalStateRootHash, snarkHash);
 
       currentDataEvaluationPoint = Utils._efficientKeccak(snarkHash, currentDataHash);
 
@@ -263,7 +260,7 @@ contract LineaRollup is
       computedShnarf = _computeShnarf(
         computedShnarf,
         snarkHash,
-        finalStateRootHash,
+        blobSubmission.finalStateRootHash,
         currentDataEvaluationPoint,
         bytes32(blobSubmission.dataEvaluationClaim)
       );
@@ -312,7 +309,6 @@ contract LineaRollup is
 
     bytes32 currentDataHash = keccak256(_submission.compressedData);
 
-    _validateEmptySubmissionData(_submission.finalStateRootHash, _submission.snarkHash);
     _validateSubmissionContinuity(_parentShnarf, _submission.firstBlockNumber);
 
     bytes32 dataEvaluationPoint = Utils._efficientKeccak(_submission.snarkHash, currentDataHash);
@@ -342,21 +338,6 @@ contract LineaRollup is
       computedShnarf,
       _submission.finalStateRootHash
     );
-  }
-
-  /**
-   * @notice Internal function to validate against empty submission data.
-   * @param _finalStateRootHash The final state root hash in the blob.
-   * @param _snarkHash The snark hash for the blob.
-   */
-  function _validateEmptySubmissionData(bytes32 _finalStateRootHash, bytes32 _snarkHash) internal pure {
-    if (_finalStateRootHash == EMPTY_HASH) {
-      revert FinalBlockStateEqualsZeroHash();
-    }
-
-    if (_snarkHash == EMPTY_HASH) {
-      revert SnarkHashIsZeroHash();
-    }
   }
 
   /**
