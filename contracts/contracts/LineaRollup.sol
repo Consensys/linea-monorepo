@@ -230,11 +230,12 @@ contract LineaRollup is
 
     bytes32 computedShnarf = _parentShnarf;
 
+    uint256 blobFirstBlockNumber = _blobSubmissionData[0].submissionData.firstBlockInData;
     uint256 blobFinalBlockNumber = shnarfFinalBlockNumbers[computedShnarf];
 
-    if (_blobSubmissionData[0].submissionData.firstBlockInData <= currentL2BlockNumber) {
+    if (blobFirstBlockNumber <= currentL2BlockNumber) {
       revert FirstBlockLessThanOrEqualToLastFinalizedBlock(
-        _blobSubmissionData[0].submissionData.firstBlockInData,
+        blobFirstBlockNumber,
         currentL2BlockNumber
       );
     }
@@ -288,7 +289,7 @@ contract LineaRollup is
     shnarfFinalBlockNumbers[computedShnarf] = blobFinalBlockNumber;
 
     emit DataSubmittedV3(
-      _blobSubmissionData[0].submissionData.firstBlockInData,
+      blobFirstBlockNumber,
       blobFinalBlockNumber,
       _parentShnarf,
       computedShnarf,
