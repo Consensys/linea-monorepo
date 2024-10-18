@@ -190,7 +190,7 @@ interface ILineaRollup {
    * @notice Emitted when L2 blocks have been finalized on L1.
    * @param startBlockNumber The indexed L2 block number indicating which block the finalization the data starts from.
    * @param endBlockNumber The indexed L2 block number indicating which block the finalization the data ends on.
-   * @param shnarf indexed The shnarf being set as currentFinalizedShnarf in the current finalization.
+   * @param shnarf The indexed shnarf being set as currentFinalizedShnarf in the current finalization.
    * @param parentStateRootHash The parent L2 state root hash that the current finalization starts from.
    * @param finalStateRootHash The L2 state root hash that the current finalization ends on.
    */
