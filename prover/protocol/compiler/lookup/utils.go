@@ -102,7 +102,7 @@ func nameTable(t []table) string {
 		for col := range t[0] {
 			colNames[col] = string(t[0][col].GetColID())
 		}
-		return fmt.Sprintf("TABLE_%v", strings.Join(colNames, "_"))
+		return fmt.Sprintf("TABLE_%v", strings.Join(colNames, ","))
 	}
 
 	fragNames := make([]string, len(t))
