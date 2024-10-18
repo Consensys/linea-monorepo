@@ -60,8 +60,8 @@ start-whole-environment-traces-v2-with-finalized-tag-updater:
 pull-all-images:
 		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 pull
 
-pull-images-for-ci-testing:
-		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile ci-testing pull
+pull-images-external-to-monorepo:
+		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile external-to-monorepo pull
 
 compile-contracts:
 		cd contracts; \
