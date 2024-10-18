@@ -26,7 +26,7 @@ export const generateL2MessagingBlocksOffsets = (start: number, end: number) =>
 export async function generateFinalizationData(overrides?: Partial<FinalizationData>): Promise<FinalizationData> {
   return {
     aggregatedProof: generateRandomBytes(928),
-    finalBlockNumber: 99n,
+    endBlockNumber: 99n,
     shnarfData: generateParentShnarfData(1),
     parentStateRootHash: generateRandomBytes(32),
     lastFinalizedTimestamp: BigInt((await networkTime.latest()) - 2),
@@ -139,14 +139,14 @@ export function generateBlobParentShnarfData(index: number, multiple?: boolean):
 
 export function generateExpectedParentSubmissionHash(
   firstBlockNumber: bigint,
-  finalBlockNumber: bigint,
+  endBlockNumber: bigint,
   finalStateRootHash: string,
   shnarf: string,
   dataParentHash: string,
 ): string {
   return generateKeccak256(
     ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
-    [firstBlockNumber, finalBlockNumber, finalStateRootHash, shnarf, dataParentHash],
+    [firstBlockNumber, endBlockNumber, finalStateRootHash, shnarf, dataParentHash],
   );
 }
 
@@ -155,7 +155,7 @@ export function generateParentSubmissionDataForIndex(index: number): ParentSubmi
     return {
       finalStateRootHash: COMPRESSED_SUBMISSION_DATA[0].parentStateRootHash,
       firstBlockNumber: 0n,
-      finalBlockNumber: 0n,
+      endBlockNumber: 0n,
       shnarf: generateKeccak256(
         ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
         [HASH_ZERO, HASH_ZERO, COMPRESSED_SUBMISSION_DATA[0].parentStateRootHash, HASH_ZERO, HASH_ZERO],
@@ -166,7 +166,7 @@ export function generateParentSubmissionDataForIndex(index: number): ParentSubmi
   return {
     finalStateRootHash: COMPRESSED_SUBMISSION_DATA[index - 1].finalStateRootHash,
     firstBlockNumber: BigInt(COMPRESSED_SUBMISSION_DATA[index - 1].conflationOrder.startingBlockNumber),
-    finalBlockNumber: BigInt(COMPRESSED_SUBMISSION_DATA[index - 1].conflationOrder.upperBoundaries.slice(-1)[0]),
+    endBlockNumber: BigInt(COMPRESSED_SUBMISSION_DATA[index - 1].conflationOrder.upperBoundaries.slice(-1)[0]),
     shnarf: COMPRESSED_SUBMISSION_DATA[index - 1].expectedShnarf,
   };
 }
@@ -190,7 +190,7 @@ export function generateParentSubmissionDataForIndexForMultiple(index: number): 
     return {
       finalStateRootHash: COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[0].parentStateRootHash,
       firstBlockNumber: 0n,
-      finalBlockNumber: 0n,
+      endBlockNumber: 0n,
       shnarf: generateKeccak256(
         ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
         [HASH_ZERO, HASH_ZERO, COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[0].parentStateRootHash, HASH_ZERO, HASH_ZERO],
@@ -200,7 +200,7 @@ export function generateParentSubmissionDataForIndexForMultiple(index: number): 
   return {
     finalStateRootHash: COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[index - 1].finalStateRootHash,
     firstBlockNumber: BigInt(COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[index - 1].conflationOrder.startingBlockNumber),
-    finalBlockNumber: BigInt(
+    endBlockNumber: BigInt(
       COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[index - 1].conflationOrder.upperBoundaries.slice(-1)[0],
     ),
     shnarf: COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[index - 1].expectedShnarf,
@@ -215,7 +215,7 @@ export function generateSubmissionData(startDataIndex: number, finalDataIndex: n
         dataParentHash: data.parentDataHash,
         finalStateRootHash: data.finalStateRootHash,
         firstBlockNumber: BigInt(data.conflationOrder.startingBlockNumber),
-        finalBlockNumber: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
+        endBlockNumber: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
         snarkHash: data.snarkHash,
       },
       compressedData: ethers.hexlify(ethers.decodeBase64(data.compressedData)),
@@ -235,7 +235,7 @@ export function generateSubmissionDataMultipleProofs(
         dataParentHash: data.parentDataHash,
         finalStateRootHash: data.finalStateRootHash,
         firstBlockNumber: BigInt(data.conflationOrder.startingBlockNumber),
-        finalBlockNumber: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
+        endBlockNumber: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
         snarkHash: data.snarkHash,
       },
       compressedData: ethers.hexlify(ethers.decodeBase64(data.compressedData)),
@@ -253,7 +253,7 @@ export function generateCallDataSubmissionMultipleProofs(
       dataParentHash: data.parentDataHash,
       finalStateRootHash: data.finalStateRootHash,
       firstBlockNumber: BigInt(data.conflationOrder.startingBlockNumber),
-      finalBlockNumber: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
+      endBlockNumber: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
       snarkHash: data.snarkHash,
       compressedData: ethers.hexlify(ethers.decodeBase64(data.compressedData)),
       parentShnarf: data.prevShnarf,
@@ -273,7 +273,7 @@ export function generateSubmissionDataFromJSON(
     dataParentHash: parsedJSONData.parentDataHash,
     finalStateRootHash: parsedJSONData.finalStateRootHash,
     firstBlockNumber: BigInt(startingBlockNumber),
-    finalBlockNumber: BigInt(endingBlockNumber),
+    endBlockNumber: BigInt(endingBlockNumber),
     snarkHash: parsedJSONData.snarkHash,
     compressedData: ethers.hexlify(ethers.decodeBase64(parsedJSONData.compressedData)),
   };
@@ -287,7 +287,7 @@ export function generateFinalizationDataFromJSON(parsedJSONData: any): Finalizat
   const { aggregatedProverVersion, aggregatedVerifierIndex, aggregatedProofPublicInput, ...data } = parsedJSONData;
   return {
     ...data,
-    finalBlockNumber: BigInt(data.finalBlockNumber),
+    endBlockNumber: BigInt(data.endBlockNumber),
     l1RollingHashMessageNumber: BigInt(data.l1RollingHashMessageNumber),
     l2MerkleTreesDepth: BigInt(data.l2MerkleTreesDepth),
     l2MessagingBlocksOffsets: data.l2MessagingBlocksOffsets,

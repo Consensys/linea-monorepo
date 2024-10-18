@@ -85,7 +85,7 @@ interface ILineaRollup {
    * @notice Supporting data for finalization with proof.
    * @dev NB: the dynamic sized fields are placed last on purpose for efficient keccaking on public input.
    * @dev parentStateRootHash is the expected last state root hash finalized.
-   * @dev finalBlockNumber is the final block finalizing until.
+   * @dev endBlockNumber is the end block finalizing until.
    * @dev shnarfData contains data about the last data submission's shnarf used in finalization.
    * @dev lastFinalizedTimestamp is the expected last finalized block's timestamp.
    * @dev finalTimestamp is the timestamp of the last block being finalized.
@@ -101,7 +101,7 @@ interface ILineaRollup {
    */
   struct FinalizationDataV3 {
     bytes32 parentStateRootHash;
-    uint256 finalBlockNumber;
+    uint256 endBlockNumber;
     ShnarfData shnarfData;
     uint256 lastFinalizedTimestamp;
     uint256 finalTimestamp;
@@ -165,7 +165,7 @@ interface ILineaRollup {
    * @notice Emitted when L2 blocks have been finalized on L1.
    * @param startBlockNumber The indexed L2 block number indicating which block the finalization the data starts from.
    * @param endBlockNumber The indexed L2 block number indicating which block the finalization the data ends on.
-   * @param shnarf The shnarf being set as currentFinalizedShnarf in the current finalization.
+   * @param shnarf The indexed shnarf being set as currentFinalizedShnarf in the current finalization.
    * @param parentStateRootHash The indexed parent L2 state root hash that the current finalization starts from.
    * @param finalStateRootHash The indexed L2 state root hash that the current finalization ends on.
    */
@@ -274,9 +274,9 @@ interface ILineaRollup {
   error FinalShnarfWrong(bytes32 expected, bytes32 value);
 
   /**
-   * @dev Thrown when a parent shnarf does not exist.
+   * @dev Thrown when a shnarf does not exist for a parent blob.
    */
-  error ParentShnarfDoesNotExist(bytes32 shnarf);
+  error ParentBlobNotSubmitted(bytes32 shnarf);
 
   /**
    * @notice Adds or updates the verifier contract address for a proof type.

@@ -44,7 +44,7 @@ export type BlobSubmission = {
 export type ParentSubmissionData = {
   finalStateRootHash: string;
   firstBlockNumber: bigint;
-  finalBlockNumber: bigint;
+  endBlockNumber: bigint;
   shnarf: string;
 };
 
@@ -69,7 +69,7 @@ export type CalldataSubmissionData = {
 
 export type FinalizationData = {
   aggregatedProof: string;
-  finalBlockNumber: bigint;
+  endBlockNumber: bigint;
   shnarfData: ShnarfData;
   parentStateRootHash: string;
   lastFinalizedTimestamp: bigint;

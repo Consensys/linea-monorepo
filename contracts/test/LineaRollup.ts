@@ -400,8 +400,8 @@ describe("Linea Rollup contract", () => {
           .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 }),
       ).to.not.be.reverted;
 
-      const shnarfExists = await lineaRollup.shnarfExists(expectedShnarf);
-      expect(shnarfExists).to.equal(1n);
+      const blobShnarfExists = await lineaRollup.blobShnarfExists(expectedShnarf);
+      expect(blobShnarfExists).to.equal(1n);
     });
 
     it("Should successfully submit 2 compressed data chunks in two transactions", async () => {
@@ -419,8 +419,8 @@ describe("Linea Rollup contract", () => {
         }),
       ).to.not.be.reverted;
 
-      const shnarfExists = await lineaRollup.shnarfExists(expectedShnarf);
-      expect(shnarfExists).to.equal(1n);
+      const blobShnarfExists = await lineaRollup.blobShnarfExists(expectedShnarf);
+      expect(blobShnarfExists).to.equal(1n);
     });
 
     it("Should emit an event while submitting 1 compressed data chunk", async () => {
@@ -516,7 +516,7 @@ describe("Linea Rollup contract", () => {
         .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
 
       const [dataOneCopy] = generateCallDataSubmission(0, 1);
-      dataOneCopy.finalBlockNumber = 234253242n;
+      dataOneCopy.endBlockNumber = 234253242n;
 
       const submitDataCall = lineaRollup
         .connect(operator)
@@ -594,8 +594,8 @@ describe("Linea Rollup contract", () => {
 
       expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
 
-      const shnarfExists = await lineaRollup.shnarfExists(finalShnarf);
-      expect(shnarfExists).to.equal(1n);
+      const blobShnarfExists = await lineaRollup.blobShnarfExists(finalShnarf);
+      expect(blobShnarfExists).to.equal(1n);
     });
 
     it("Fails the blob submission when the parent shnarf is missing", async () => {
@@ -634,7 +634,7 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(
         lineaRollup,
         ethers.provider.broadcastTransaction(signedTx),
-        "ParentShnarfDoesNotExist",
+        "ParentBlobNotSubmitted",
         [nonExistingParentShnarf],
       );
     });
@@ -1028,7 +1028,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
+        endBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: blobAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
@@ -1066,7 +1066,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
+        endBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: blobAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
@@ -1117,7 +1117,7 @@ describe("Linea Rollup contract", () => {
           l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
           l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
           lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-          finalBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
+          endBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: blobAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
           l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
@@ -1184,7 +1184,7 @@ describe("Linea Rollup contract", () => {
     });
 
     describe("With and without submission data", () => {
-      it("Should revert if _finalizationData.finalBlockNumber is less than or equal to currentL2BlockNumber", async () => {
+      it("Should revert if _finalizationData.endBlockNumber is less than or equal to currentL2BlockNumber", async () => {
         await lineaRollup.setLastFinalizedBlock(10_000_000);
 
         const finalizationData = await generateFinalizationData();
@@ -1203,7 +1203,7 @@ describe("Linea Rollup contract", () => {
           lineaRollup,
           finalizeCall,
           "FinalBlockNumberLessThanOrEqualToLastFinalizedBlock",
-          [finalizationData.finalBlockNumber, 10_000_000],
+          [finalizationData.endBlockNumber, 10_000_000],
         );
       });
 
@@ -1237,9 +1237,6 @@ describe("Linea Rollup contract", () => {
         const lastFinalizedBlockNumber = await lineaRollup.currentL2BlockNumber();
         const parentStateRootHash = await lineaRollup.stateRootHashes(lastFinalizedBlockNumber);
         finalizationData.parentStateRootHash = parentStateRootHash;
-
-        const currentFinalizedShnarf = await lineaRollup.currentFinalizedShnarf();
-        finalizationData.lastFinalizedShnarf = currentFinalizedShnarf;
 
         const proof = calldataAggregatedProof1To155.aggregatedProof;
 
@@ -1291,7 +1288,7 @@ describe("Linea Rollup contract", () => {
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
           l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1352,7 +1349,7 @@ describe("Linea Rollup contract", () => {
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(new Date(new Date().setHours(new Date().getHours() + 2)).getTime()), // Set to 2 hours in the future
           l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1396,7 +1393,7 @@ describe("Linea Rollup contract", () => {
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
           l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1536,7 +1533,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+        endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1574,7 +1571,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+        endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1615,7 +1612,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+        endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1654,7 +1651,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+        endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1919,7 +1916,7 @@ describe("Linea Rollup contract", () => {
       l1RollingHash: proofData.l1RollingHash,
       l1RollingHashMessageNumber: BigInt(proofData.l1RollingHashMessageNumber),
       lastFinalizedTimestamp: BigInt(proofData.parentAggregationLastBlockTimestamp),
-      finalBlockNumber: BigInt(proofData.finalBlockNumber),
+      endBlockNumber: BigInt(proofData.finalBlockNumber),
       parentStateRootHash: proofData.parentStateRootHash,
       finalTimestamp: BigInt(proofData.finalTimestamp),
       l2MerkleRoots: proofData.l2MerkleRoots,
@@ -1939,7 +1936,7 @@ describe("Linea Rollup contract", () => {
 
     const eventArgs = [
       BigInt(proofData.lastFinalizedBlockNumber) + 1n,
-      finalizationData.finalBlockNumber,
+      finalizationData.endBlockNumber,
       proofData.finalShnarf,
       finalizationData.parentStateRootHash,
       finalStateRootHash,
@@ -1948,13 +1945,13 @@ describe("Linea Rollup contract", () => {
     await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV3", eventArgs);
 
     const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
-      lineaRollup.stateRootHashes(finalizationData.finalBlockNumber),
+      lineaRollup.stateRootHashes(finalizationData.endBlockNumber),
       lineaRollup.currentL2BlockNumber(),
       lineaRollup.currentFinalizedState(),
     ]);
 
     expect(expectedFinalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
-    expect(lastFinalizedBlockNumber).to.equal(finalizationData.finalBlockNumber);
+    expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
     expect(lastFinalizedState).to.equal(
       generateKeccak256(
         ["uint256", "bytes32", "uint256"],
