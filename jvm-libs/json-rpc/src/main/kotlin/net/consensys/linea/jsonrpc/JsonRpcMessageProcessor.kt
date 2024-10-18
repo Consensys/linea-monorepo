@@ -1,5 +1,6 @@
 package net.consensys.linea.jsonrpc
 
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
@@ -19,6 +20,7 @@ import io.vertx.core.json.DecodeException
 import io.vertx.core.json.Json
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.core.json.jackson.DatabindCodec
 import io.vertx.ext.auth.User
 import net.consensys.linea.metrics.micrometer.DynamicTagTimerCapture
 import net.consensys.linea.metrics.micrometer.SimpleTimerCapture
@@ -51,6 +53,9 @@ class JsonRpcMessageProcessor(
   private val meterRegistry: MeterRegistry,
   private val requestParser: JsonRpcRequestParser = Companion::parseRequest
 ) : JsonRpcMessageHandler {
+  init {
+    DatabindCodec.mapper().registerKotlinModule()
+  }
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val counterBuilder = Counter.builder("jsonrpc.counter")
   override fun invoke(user: User?, messageJsonStr: String): Future<String> =

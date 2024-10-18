@@ -1,10 +1,7 @@
 package net.consensys.linea.jsonrpc.client
 
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.databind.JsonSerializer
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializerProvider
-import com.fasterxml.jackson.databind.module.SimpleModule
+import com.fasterxml.jackson.module.kotlin.contains
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
@@ -16,24 +13,24 @@ import io.vertx.core.http.HttpClient
 import io.vertx.core.http.HttpClientResponse
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.http.RequestOptions
-import io.vertx.core.json.JsonObject
-import io.vertx.core.json.jackson.VertxModule
 import net.consensys.linea.jsonrpc.JsonRpcError
+import net.consensys.linea.jsonrpc.JsonRpcErrorException
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequest
+import net.consensys.linea.jsonrpc.JsonRpcRequestData
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import net.consensys.linea.metrics.micrometer.SimpleTimerCapture
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.net.URL
-import java.util.HexFormat
 
+@Suppress("UNCHECKED_CAST")
 class VertxHttpJsonRpcClient(
   private val httpClient: HttpClient,
   private val endpoint: URL,
   private val meterRegistry: MeterRegistry,
-  private val requestObjectMapper: ObjectMapper = objectMapper,
+  private val requestParamsObjectMapper: ObjectMapper = objectMapper,
   private val responseObjectMapper: ObjectMapper = objectMapper,
   private val log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
   private val requestResponseLogLevel: Level = Level.TRACE,
@@ -44,11 +41,22 @@ class VertxHttpJsonRpcClient(
     setAbsoluteURI(endpoint)
   }
 
+  private fun serializeRequest(request: JsonRpcRequest): String {
+    return requestEnvelopeObjectMapper.writeValueAsString(
+      JsonRpcRequestData(
+        jsonrpc = request.jsonrpc,
+        id = request.id,
+        method = request.method,
+        params = requestParamsObjectMapper.valueToTree(request.params)
+      )
+    )
+  }
+
   override fun makeRequest(
     request: JsonRpcRequest,
     resultMapper: (Any?) -> Any?
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
-    val json = requestObjectMapper.writeValueAsString(request)
+    val json = serializeRequest(request)
 
     return httpClient.request(requestOptions).flatMap { httpClientRequest ->
       httpClientRequest.putHeader("Content-Type", "application/json")
@@ -67,8 +75,10 @@ class VertxHttpJsonRpcClient(
                 responseBody = bodyBuffer.toString().lines().firstOrNull() ?: ""
               )
               Future.failedFuture(
-                Exception(
-                  "HTTP errorCode=${response.statusCode()}, message=${response.statusMessage()}"
+                JsonRpcErrorException(
+                  message =
+                  "HTTP errorCode=${response.statusCode()}, message=${response.statusMessage()}",
+                  httpStatusCode = response.statusCode()
                 )
               )
             }
@@ -99,37 +109,41 @@ class VertxHttpJsonRpcClient(
       .flatMap { bodyBuffer: Buffer ->
         responseBody = bodyBuffer.toString()
         try {
-          @Suppress("UNCHECKED_CAST")
-          val jsonResponse = (responseObjectMapper.readValue(responseBody, Map::class.java) as Map<String, Any>)
-            .let(::JsonObject)
+          val jsonResponse = responseObjectMapper.readTree(responseBody)
+          val responseId = responseObjectMapper.convertValue(jsonResponse.get("id"), Any::class.java)
           val response =
             when {
-              jsonResponse.containsKey("result") ->
+              jsonResponse.contains("result") -> {
                 Ok(
                   JsonRpcSuccessResponse(
-                    jsonResponse.getValue("id"),
-                    resultMapper(jsonResponse.getValue("result"))
-                  )
-                )
-
-              jsonResponse.containsKey("error") -> {
-                isError = true
-                Err(
-                  JsonRpcErrorResponse(
-                    jsonResponse.getValue("id"),
-                    jsonResponse.getJsonObject("error").mapTo(JsonRpcError::class.java)
+                    responseId,
+                    resultMapper(jsonResponse.get("result").toPrimitiveOrJsonNode())
                   )
                 )
               }
 
+              jsonResponse.contains("error") -> {
+                isError = true
+                val errorResponse = JsonRpcErrorResponse(
+                  responseId,
+                  responseObjectMapper.treeToValue(jsonResponse["error"], JsonRpcError::class.java)
+                )
+                Err(errorResponse)
+              }
+
               else -> throw IllegalArgumentException("Invalid JSON-RPC response without result or error")
             }
-          Future.succeededFuture(response)
+          Future.succeededFuture<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>(response)
         } catch (e: Throwable) {
           isError = true
           when (e) {
             is IllegalArgumentException -> Future.failedFuture(e)
-            else -> Future.failedFuture(IllegalArgumentException("Invalid JSON-RPC response.", e))
+            else -> Future.failedFuture(
+              IllegalArgumentException(
+                "Error parsing JSON-RPC response: message=${e.message}",
+                e
+              )
+            )
           }
         }
       }
@@ -185,19 +199,6 @@ class VertxHttpJsonRpcClient(
   }
 
   companion object {
-    val objectMapper = jacksonObjectMapper()
-      .registerModules(VertxModule())
-      .registerModules(
-        SimpleModule().apply {
-          this.addSerializer(ByteArray::class.java, ByteArrayToHexStringSerializer())
-        }
-      )
-  }
-}
-
-class ByteArrayToHexStringSerializer : JsonSerializer<ByteArray>() {
-  private val hexFormatter = HexFormat.of()
-  override fun serialize(value: ByteArray?, gen: JsonGenerator?, serializers: SerializerProvider?) {
-    gen?.writeString(value?.let { "0x" + hexFormatter.formatHex(it) })
+    private val requestEnvelopeObjectMapper: ObjectMapper = jacksonObjectMapper()
   }
 }
