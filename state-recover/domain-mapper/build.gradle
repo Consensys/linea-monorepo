@@ -1,0 +1,22 @@
+
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  implementation(project(':jvm-libs:kotlin-extensions'))
+  implementation(project(':jvm-libs:web3j-extensions'))
+  implementation(project(':state-recover:app-core'))
+  implementation("org.hyperledger.besu:besu-datatypes:${libs.versions.besu.get()}")
+  implementation "org.hyperledger.besu:evm:${libs.versions.besu.get()}"
+  implementation("org.hyperledger.besu.internal:core:${libs.versions.besu.get()}")
+  implementation("org.hyperledger.besu.internal:crypto:${libs.versions.besu.get()}")
+  implementation("org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}")
+
+  testImplementation(project(":coordinator:ethereum:test-utils"))
+  testImplementation(project(":jvm-libs:blob-compressor"))
+  testImplementation(project(":jvm-libs:blob-decompressor"))
+  testImplementation(project(":jvm-libs:testing:l1-blob-and-proof-submission"))
+  testImplementation(testFixtures(project(":jvm-libs:blob-compressor")))
+
+}
