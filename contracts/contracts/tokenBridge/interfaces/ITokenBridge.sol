@@ -123,14 +123,14 @@ interface ITokenBridge {
   event RemoteTokenBridgeSet(address indexed remoteTokenBridge, address indexed setBy);
 
   /**
-   * @notice Emitted when the a token is set as deployed.
+   * @notice Emitted when the token is set as deployed.
    * @dev This can be triggered by anyone calling confirmDeployment on the alternate chain.
    * @param token The indexed token address.
    */
   event TokenDeployed(address indexed token);
 
   /**
-   * @notice Emitted when the a token deployment is confirmed.
+   * @notice Emitted when the token deployment is confirmed.
    * @dev This can be triggered by anyone provided there is correctly mapped token data.
    * @param tokens The token address list.
    * @param confirmedBy The indexed address confirming deployment.
@@ -138,7 +138,7 @@ interface ITokenBridge {
   event DeploymentConfirmed(address[] tokens, address indexed confirmedBy);
 
   /**
-   * @notice Emitted when the a message service address is set.
+   * @notice Emitted when the message service address is set.
    * @param newMessageService The indexed new message service address.
    * @param oldMessageService The indexed old message service address.
    * @param setBy The indexed address setting the new message service address.
@@ -150,7 +150,7 @@ interface ITokenBridge {
   );
 
   /**
-   * @dev Thrown when the attempting to bridge a reserved token.
+   * @dev Thrown when attempting to bridge a reserved token.
    */
   error ReservedToken(address token);
 
@@ -160,7 +160,7 @@ interface ITokenBridge {
   error RemoteTokenBridgeAlreadySet(address remoteTokenBridge);
 
   /**
-   * @dev Thrown when the attempting to reserve an already bridged token.
+   * @dev Thrown when attempting to reserve an already bridged token.
    */
   error AlreadyBridgedToken(address token);
 
@@ -205,7 +205,7 @@ interface ITokenBridge {
   error NativeToBridgedTokenAlreadySet(address token);
 
   /**
-   * @dev Thrown when trying to set a token is already either native, deployed or reserved.
+   * @dev Thrown when trying to set a token that is already either native, deployed or reserved.
    */
   error StatusAddressNotAllowed(address token);
 
