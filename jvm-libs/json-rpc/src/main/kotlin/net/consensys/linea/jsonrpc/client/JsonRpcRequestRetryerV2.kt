@@ -7,7 +7,6 @@ import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.map
 import com.github.michaelbull.result.mapError
 import com.github.michaelbull.result.onFailure
-import com.github.michaelbull.result.onSuccess
 import io.vertx.core.Vertx
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.async.RetriedExecutionException
@@ -40,15 +39,21 @@ class JsonRpcRequestRetryerV2(
     return makeRequestWithRetryer(request, resultMapper, shallRetryRequestPredicate)
   }
 
+  private fun shallWarnFailureRetries(retries: Int): Boolean {
+    return requestRetry.failuresWarningThreshold > 0u &&
+      retries > 0 &&
+      (retries % requestRetry.failuresWarningThreshold.toInt()) == 0
+  }
+
   private fun <T> makeRequestWithRetryer(
     request: JsonRpcRequest,
     resultMapper: (Any?) -> T,
     shallRetryRequestPredicate: Predicate<Result<T, Throwable>>
   ): SafeFuture<T> {
-    val lastResult = AtomicReference<T>()
     val lastException = AtomicReference<Throwable>()
     val retriesCount = AtomicInteger(0)
     val requestPredicate = Predicate<Result<T, Throwable>> { result ->
+      log.info("result: {}", result)
       shallRetryRequestsClientBasePredicate.test(result) || shallRetryRequestPredicate.test(result)
     }
 
@@ -58,16 +63,11 @@ class JsonRpcRequestRetryerV2(
       maxRetries = requestRetry.maxRetries?.toInt(),
       timeout = requestRetry.timeout,
       stopRetriesPredicate = { result: Result<T, Throwable> ->
-        result
-          .onSuccess { lastResult.set(it) }
-          .onFailure { lastException.set(it) }
+        result.onFailure(lastException::set)
         !requestPredicate.test(result)
       }
     ) {
-      if (requestRetry.failuresWarningThreshold > 0u &&
-        retriesCount.get() > 0 &&
-        (retriesCount.get() % requestRetry.failuresWarningThreshold.toInt()) == 0
-      ) {
+      if (shallWarnFailureRetries(retriesCount.get())) {
         log.log(
           failuresLogLevel,
           "Request '{}' already retried {} times. lastError={}",
@@ -77,9 +77,7 @@ class JsonRpcRequestRetryerV2(
         )
       }
       retriesCount.incrementAndGet()
-      delegate.makeRequest(request, resultMapper)
-        .toSafeFuture()
-        .thenApply { unfoldResultValueOrException<T>(it) }
+      delegate.makeRequest(request, resultMapper).toSafeFuture().thenApply { unfoldResultValueOrException<T>(it) }
         .exceptionally { th ->
           if (th is Error || th.cause is Error) {
             // Very serious JVM error, we should stop retrying anyway
@@ -88,15 +86,14 @@ class JsonRpcRequestRetryerV2(
             Err(th.cause ?: th)
           }
         }
-    }
-      .handleComposed { result, throwable ->
-        when {
-          result is Ok -> SafeFuture.completedFuture(result.value)
-          result is Err -> SafeFuture.failedFuture<T>(result.error)
-          throwable != null && throwable is RetriedExecutionException -> SafeFuture.failedFuture(lastException.get())
-          else -> SafeFuture.failedFuture(throwable)
-        }
+    }.handleComposed { result, throwable ->
+      when {
+        result is Ok -> SafeFuture.completedFuture(result.value)
+        result is Err -> SafeFuture.failedFuture<T>(result.error)
+        throwable != null && throwable is RetriedExecutionException -> SafeFuture.failedFuture(lastException.get())
+        else -> SafeFuture.failedFuture(throwable)
       }
+    }
   }
 
   companion object {

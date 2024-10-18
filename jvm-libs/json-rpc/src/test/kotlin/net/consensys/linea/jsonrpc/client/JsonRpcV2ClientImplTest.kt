@@ -65,6 +65,7 @@ class JsonRpcV2ClientImplTest {
         this.addSerializer(ULong::class.java, ULongToHexSerializer)
       }
     )
+  private val jsonRpcResultOk = """{"jsonrpc": "2.0", "id": 1, "result": "OK"}"""
 
   private fun retryConfig(
     maxRetries: UInt = 2u,
@@ -116,7 +117,7 @@ class JsonRpcV2ClientImplTest {
 
   @Test
   fun `when request is a list of params shall serialize to json array`() {
-    replyRequestWith(200, """{"jsonrpc": "2.0", "id": 1, "result": "OK"}""")
+    replyRequestWith(200, jsonRpcResultOk)
 
     client.makeRequest(
       method = "someMethod",
@@ -138,7 +139,7 @@ class JsonRpcV2ClientImplTest {
 
   @Test
   fun `when request is a map of params shall serialize to json object`() {
-    replyRequestWith(200, """{"jsonrpc": "2.0", "id": 1, "result": "OK"}""")
+    replyRequestWith(200, jsonRpcResultOk)
 
     client.makeRequest(
       method = "someMethod",
@@ -167,7 +168,7 @@ class JsonRpcV2ClientImplTest {
 
   @Test
   fun `when request is Pojo object shall serialize to json object`() {
-    replyRequestWith(200, """{"jsonrpc": "2.0", "id": 1, "result": "OK"}""")
+    replyRequestWith(200, jsonRpcResultOk)
 
     client.makeRequest(
       method = "someMethod",
@@ -192,7 +193,7 @@ class JsonRpcV2ClientImplTest {
     val obj = User(name = "John", email = "email@example.com", address = "0x01ffbb".decodeHex(), value = 987UL)
 
     createClientAndSetupWireMockServer(vertx, requestObjectMapper = defaultObjectMapper).also { client ->
-      replyRequestWith(200, """{"jsonrpc": "2.0", "id": 1, "result": "OK"}""")
+      replyRequestWith(200, jsonRpcResultOk)
       client.makeRequest(
         method = "someMethod",
         params = obj,
@@ -223,7 +224,7 @@ class JsonRpcV2ClientImplTest {
       )
 
     createClientAndSetupWireMockServer(vertx, requestObjectMapper = objMapperWithNumbersAsHex).also { client ->
-      replyRequestWith(200, """{"jsonrpc": "2.0", "id": 1, "result": "OK"}""")
+      replyRequestWith(200, jsonRpcResultOk)
       client.makeRequest(
         method = "someMethod",
         params = obj,
@@ -245,7 +246,7 @@ class JsonRpcV2ClientImplTest {
 
   @Test
   fun `when multiple requests are made, each request shall have an unique id`() {
-    replyRequestWith(200, """{"jsonrpc": "2.0", "id": 1, "result": "OK"}""")
+    replyRequestWith(200, jsonRpcResultOk)
     val numberOfRequests = 20
     val requestsPromises = IntRange(1, numberOfRequests).map { index ->
       client.makeRequest(
@@ -354,7 +355,8 @@ class JsonRpcV2ClientImplTest {
     )
       .get()
       .also { response ->
-        val expectedObj: ObjectNode = objectMapperBytesAsHex.readTree("""{"name": "Alice", "age": 23}""") as ObjectNode
+        val expectedObj: ObjectNode =
+          objectMapperBytesAsHex.readTree("""{"name": "Alice", "age": 23}""") as ObjectNode
         assertThat(response).isEqualTo(expectedObj)
       }
   }
@@ -457,16 +459,15 @@ class JsonRpcV2ClientImplTest {
       vertx,
       retryConfig = retryConfig(maxRetries = 10u)
     ).also { client ->
-      replyRequestsWith(
-        listOf(
-          500 to "Internal Error",
-          200 to "Invalid Json",
-          200 to """{"jsonrpc": "2.0", "id": 1, "error": {"code": -32602, "message": "Invalid params"}}""",
-          200 to """{"jsonrpc": "2.0", "id": 1, "result": null }""",
-          200 to """{"jsonrpc": "2.0", "id": 1, "result": "some result" }""",
-          200 to """{"jsonrpc": "2.0", "id": 1, "result": "expected result" }"""
-        )
+      val responses = listOf(
+        500 to "Internal Error",
+        200 to "Invalid Json",
+        200 to """{"jsonrpc": "2.0", "id": 1, "error": {"code": -32602, "message": "Invalid params"}}""",
+        200 to """{"jsonrpc": "2.0", "id": 1, "result": null }""",
+        200 to """{"jsonrpc": "2.0", "id": 1, "result": "some result" }""",
+        200 to """{"jsonrpc": "2.0", "id": 1, "result": "expected result" }"""
       )
+      replyRequestsWith(responses = responses)
       val retryPredicateCalls = mutableListOf<Result<String?, Throwable>>()
 
       client.makeRequest(
@@ -482,8 +483,8 @@ class JsonRpcV2ClientImplTest {
         }
       ).get()
 
-      assertThat(wiremock.serveEvents.serveEvents.size).isEqualTo(6)
-      assertThat(retryPredicateCalls.size).isEqualTo(6)
+      assertThat(wiremock.serveEvents.serveEvents).hasSize(responses.size)
+      assertThat(retryPredicateCalls).hasSize(responses.size)
       assertThatThrownBy { retryPredicateCalls[0].orElseThrow() }
         .isInstanceOfSatisfying(Exception::class.java) {
           assertThat(it.message).contains("HTTP errorCode=500, message=Server Error")
