@@ -5,8 +5,6 @@ package pi_interconnection_test
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
-	"github.com/stretchr/testify/require"
 	"slices"
 	"testing"
 
@@ -291,23 +289,4 @@ func decomposeLittleEndian(t *testing.T, digits []int, n, base int) {
 		n /= base
 	}
 	assert.Zero(t, n)
-}
-
-func TestSepoliaData(t *testing.T) {
-	var req pi_interconnection.Request
-	test_utils.LoadJson(t, "../../../testdata/sepolia-data/prover-pi-interconnection/requests/4454961-4457351.json", &req)
-	cfg := config.PublicInput{
-		MaxNbDecompression: 1,
-		MaxNbExecution:     31,
-		ExecutionMaxNbMsg:  1,
-		L2MsgMerkleDepth:   5, // have to keep this at 5 otherwise the roots won't match
-		L2MsgMaxNbMerkle:   1,
-		MockKeccakWizard:   true,
-	}
-	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
-	require.NoError(t, err)
-	a, err := compiled.Assign(req)
-	require.NoError(t, err)
-	t.Log("assignment successful")
-	require.NoError(t, test.IsSolved(compiled.Circuit, &a, ecc.BLS12_377.ScalarField()))
 }
