@@ -245,9 +245,12 @@ contract LineaRollup is
         revert EmptyBlobDataAtIndex(i);
       }
 
-      _validateEmptySubmissionData(blobSubmission.finalStateRootHash, blobSubmission.snarkHash);
+      bytes32 snarkHash = blobSubmission.snarkHash;
+      bytes32 finalStateRootHash = blobSubmission.finalStateRootHash;
 
-      currentDataEvaluationPoint = Utils._efficientKeccak(blobSubmission.snarkHash, currentDataHash);
+      _validateEmptySubmissionData(finalStateRootHash, snarkHash);
+
+      currentDataEvaluationPoint = Utils._efficientKeccak(snarkHash, currentDataHash);
 
       _verifyPointEvaluation(
         currentDataHash,
@@ -259,8 +262,8 @@ contract LineaRollup is
 
       computedShnarf = _computeShnarf(
         computedShnarf,
-        blobSubmission.snarkHash,
-        blobSubmission.finalStateRootHash,
+        snarkHash,
+        finalStateRootHash,
         currentDataEvaluationPoint,
         bytes32(blobSubmission.dataEvaluationClaim)
       );
