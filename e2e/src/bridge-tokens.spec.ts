@@ -2,9 +2,6 @@ import { ethers } from "ethers";
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
 import { waitForEvents, etherToWei } from "./common/utils";
-import { BridgedToken } from "./typechain";
-// import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
-// import { sendTransactionsToGenerateTrafficWithInterval, waitForEvents } from "./utils/utils";
 
 const l1AccountManager = config.getL1AccountManager();
 const l2AccountManager = config.getL2AccountManager();
@@ -12,12 +9,10 @@ const tokenTotalSuppy = ethers.parseEther("100000");
 const bridgeAmount = ethers.parseEther("100");
 
 describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
-  let bridgedToken: BridgedToken;
-
-  it("Bridge a token from L1 to L2", async () => {
+  it.concurrent("Bridge a token from L1 to L2", async () => {
     const [l1Account, l2Account] = await Promise.all([
-      l1AccountManager.generateAccount(),
-      l2AccountManager.generateAccount(),
+      l1AccountManager.whaleAccount(4),
+      l2AccountManager.whaleAccount(4),
     ]);
 
     const [lineaRollup, l2MessageService, l1TokenBridge, l2TokenBridge, l1Token] = await Promise.all([
@@ -41,21 +36,16 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     console.log("Calling the bridgeToken function on the L1 TokenBridge contract");
 
     const l1Provider = config.getL1Provider();
-    // const { maxPriorityFeePerGas, maxFeePerGas } = await l1Provider.getFeeData();
-    // const nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
 
     const balance = await l1Provider.getBalance(l1Account.address);
 
     console.log("balance", balance);
-    console.log("l1TokenBridge", l1TokenBridge);
     const bridgeTokenTx = await l1TokenBridge
       .connect(l1Account)
       .bridgeToken(l1TokenAddress, bridgeAmount, l2Account.address, {
         value: etherToWei("0.01"),
         gasPrice: ethers.parseUnits("300", "gwei"),
       });
-    // await bridgeTokenTx.wait();
-    console.log("bridgeTokenTx", bridgeTokenTx);
 
     let receipt = await bridgeTokenTx.wait();
     while (!receipt) {
@@ -75,17 +65,13 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       lineaRollup,
       lineaRollup.filters.MessageSent(),
       500,
-      bridgeTokenTx.blockNumber!, // TODO: recheck this
+      bridgeTokenTx.blockNumber!,
     );
     const messageEventArgs = messageSentEvent.args;
     const messageNumber = messageEventArgs._nonce;
     const messageHash = messageEventArgs._messageHash;
 
     console.log(`Message sent on L1 : ${JSON.stringify(messageSentEvent)}`);
-
-    //   // Move L2 chain forward
-    //   console.log("Moving the L2 chain forward to trigger anchoring...");
-    //   const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness, 1_500);
 
     console.log("Waiting for anchoring...");
 
@@ -115,7 +101,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     console.log(`Message claimed on L2 : ${JSON.stringify(claimedEvent)}.`);
 
-    const l2Token = bridgedToken.attach(newTokenDeployed.args.bridgedToken) as BridgedToken;
+    const l2Token = config.getL2BridgedTokenContract(newTokenDeployed.args.bridgedToken);
 
     console.log("Verify the token balance on L2");
 
@@ -123,28 +109,23 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     console.log("Token balance of L2 account :", l2TokenBalance.toString());
 
     expect(l2TokenBalance).toEqual(bridgeAmount);
-
-    //   clearInterval(intervalId);
   });
 
-  it("Bridge a token from L2 to L1", async () => {
+  it.concurrent("Bridge a token from L2 to L1", async () => {
     const [l1Account, l2Account] = await Promise.all([
-      l1AccountManager.generateAccount(),
-      l2AccountManager.generateAccount(),
+      l1AccountManager.whaleAccount(4),
+      l2AccountManager.whaleAccount(4),
     ]);
 
     const lineaRollup = config.getLineaRollupContract(l1Account);
     const l2MessageService = config.getL2MessageServiceContract(l2Account);
     const l2TokenBridge = config.getL2TokenBridgeContract(l2Account);
     const l1Token = config.getL1TokenContract(l1Account);
-    //   // Move L2 chain forward
-    //   console.log("Moving the L2 chain forward to trigger conflation...");
-    //   const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness, 1_500);
 
     const [newTokenDeployed] = await waitForEvents(l2TokenBridge, l2TokenBridge.filters.NewTokenDeployed());
     expect(newTokenDeployed).not.toBeNull();
 
-    const l2Token = bridgedToken.attach(newTokenDeployed.args.bridgedToken) as BridgedToken;
+    const l2Token = config.getL2BridgedTokenContract(newTokenDeployed.args.bridgedToken);
 
     console.log("Approving tokens to L2 TokenBridge");
 
@@ -160,17 +141,23 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const allowanceL2Account = await l2Token.allowance(l2Account.address, l2TokenBridge.getAddress());
     console.log("Current allowance of L2 account to L2 TokenBridge is :", allowanceL2Account.toString());
+    console.log("Current balance of  L2 account is :", await l2Token.balanceOf(l2Account));
 
     console.log("Calling the bridgeToken function on the L1 TokenBridge contract");
 
     const bridgeTokenTx = await l2TokenBridge
       .connect(l2Account)
-      .bridgeToken(l2Token.getAddress(), bridgeAmount, l1Account.address, {
+      .bridgeToken(await l2Token.getAddress(), bridgeAmount, l1Account.address, {
         value: etherToWei("0.01"),
         maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
         maxFeePerGas: l2MaxFeePerGas,
       });
-    const receipt = await bridgeTokenTx.wait();
+    let receipt = await bridgeTokenTx.wait();
+    while (!receipt) {
+      console.log("Waiting for transaction to be mined...");
+      receipt = await bridgeTokenTx.wait();
+      console.log("receipt", receipt);
+    }
 
     console.log("Waiting for MessageSent event on L2...");
 
@@ -178,8 +165,11 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       l2MessageService,
       l2MessageService.filters.MessageSent(),
       500,
-      receipt!.blockNumber, // TODO : recheck this
+      receipt!.blockNumber,
     );
+
+    const blockNr = receipt!.blockNumber;
+    console.log("blockNr", blockNr);
 
     console.log(`L2 message sent : ${JSON.stringify(messageSentEvent)}`);
 
@@ -198,7 +188,5 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     console.log("Token balance of L1 account :", l1TokenBalance.toString());
 
     expect(l1TokenBalance).toEqual(tokenTotalSuppy);
-
-    //   clearInterval(intervalId);
   });
 });

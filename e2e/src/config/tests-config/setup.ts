@@ -1,6 +1,8 @@
 import { AbstractSigner, JsonRpcProvider, Wallet } from "ethers";
 import { Config } from "./types";
 import {
+  BridgedToken,
+  BridgedToken__factory,
   DummyContract,
   DummyContract__factory,
   L2MessageService,
@@ -129,6 +131,25 @@ export default class TestSetup {
     return l1Token;
   }
 
+  public getL1BridgedTokenContract(bridgedTokenAddress: string, signer?: Wallet): BridgedToken {
+    const l1Token: BridgedToken = BridgedToken__factory.connect(bridgedTokenAddress, this.getL1Provider());
+
+    if (signer) {
+      return l1Token.connect(signer);
+    }
+
+    return l1Token;
+  }
+
+  public getL2BridgedTokenContract(bridgedTokenAddress: string, signer?: Wallet): BridgedToken {
+    const l2TokenBridge: BridgedToken = BridgedToken__factory.connect(bridgedTokenAddress, this.getL2Provider());
+
+    if (signer) {
+      return l2TokenBridge.connect(signer);
+    }
+
+    return l2TokenBridge;
+  }
   public getL1DummyContract(signer?: Wallet): DummyContract {
     const dummyContract = DummyContract__factory.connect(this.config.L1.dummyContractAddress, this.getL1Provider());
 
