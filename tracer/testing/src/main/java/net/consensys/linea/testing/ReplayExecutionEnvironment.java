@@ -92,6 +92,11 @@ public class ReplayExecutionEnvironment {
    */
   @Builder.Default private final boolean useCoinbaseAddressFromBlockHeader = false;
 
+  /** A transaction validator of each transaction; by default, it does not do anything. */
+  @Builder.Default
+  private final TransactionProcessingResultValidator transactionProcessingResultValidator =
+      TransactionProcessingResultValidator.EMPTY_VALIDATOR;
+
   private final ZkTracer zkTracer = new ZkTracer();
 
   public void checkTracer(String inputFilePath) {
@@ -163,7 +168,12 @@ public class ReplayExecutionEnvironment {
     }
     // Execute the conflation
     executeFrom(
-        chainId, conflation, tracer, this.txResultChecking, this.useCoinbaseAddressFromBlockHeader);
+        chainId,
+        conflation,
+        tracer,
+        this.txResultChecking,
+        this.useCoinbaseAddressFromBlockHeader,
+        this.transactionProcessingResultValidator);
     //
     if (debugBlockCapturer) {
       writeCaptureToFile(conflation, capturer);
@@ -175,7 +185,8 @@ public class ReplayExecutionEnvironment {
       final ConflationSnapshot conflation,
       final ConflationAwareOperationTracer tracer,
       final boolean txResultChecking,
-      final boolean useCoinbaseAddressFromBlockHeader) {
+      final boolean useCoinbaseAddressFromBlockHeader,
+      final TransactionProcessingResultValidator resultValidator) {
     BlockHashOperation.BlockHashLookup blockHashLookup = conflation.toBlockHashLookup();
     // Initialise world state from conflation
     MutableWorldState world = initWorld(conflation);
@@ -210,6 +221,7 @@ public class ReplayExecutionEnvironment {
                 blockHashLookup,
                 false,
                 Wei.ZERO);
+        resultValidator.accept(tx, outcome);
         // Commit transaction
         updater.commit();
       }

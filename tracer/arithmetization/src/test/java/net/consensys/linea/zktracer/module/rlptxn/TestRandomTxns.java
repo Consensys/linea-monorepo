@@ -40,7 +40,8 @@ class TestRandomTxns {
   //    ToyExecutionEnvironment.builder()
   //        .toyWorld(world.build())
   //        .transactions(txList)
-  //        .testValidator(x -> {})
+  //
+  // .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
   //        .build()
   //        .run();
   //  }

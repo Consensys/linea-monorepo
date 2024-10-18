@@ -25,6 +25,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
+import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.types.EWord;
@@ -199,7 +200,8 @@ public class OobCallTest {
         ToyExecutionEnvironmentV2.builder()
             .accounts(List.of(userAccount, contractCallerAccount, contractCalleeAccount))
             .transaction(tx)
-            .testValidator(x -> {})
+            .transactionProcessingResultValidator(
+                TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
     toyExecutionEnvironmentV2.run();
@@ -251,7 +253,8 @@ public class OobCallTest {
         ToyExecutionEnvironmentV2.builder()
             .accounts(List.of(userAccount, contractCallerAccount))
             .transaction(tx)
-            .testValidator(x -> {})
+            .transactionProcessingResultValidator(
+                TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
     toyExecutionEnvironmentV2.run();

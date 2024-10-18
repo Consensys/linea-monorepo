@@ -60,7 +60,7 @@ public class GeneralStateReferenceTestTools {
       final GeneralStateTestCaseEipSpec spec,
       final ProtocolSpec protocolSpec,
       final ZkTracer tracer,
-      final Consumer<TransactionProcessingResult> transactionProcessingResultValidator,
+      final TransactionProcessingResultValidator transactionProcessingResultValidator,
       final Consumer<ZkTracer> zkTracerValidator) {
     final BlockHeader blockHeader = spec.getBlockHeader();
     final ReferenceTestWorldState initialWorldState = spec.getInitialWorldState();
@@ -116,9 +116,6 @@ public class GeneralStateReferenceTestTools {
               TransactionValidationParams.processingBlock(),
               blobGasPrice);
 
-      transactionProcessingResultValidator.accept(result);
-      zkTracerValidator.accept(tracer);
-
       if (result.isInvalid()) {
         final TransactionProcessingResult finalResult = result;
         assertThat(spec.getExpectException())
@@ -126,6 +123,9 @@ public class GeneralStateReferenceTestTools {
             .isNotNull();
         return;
       }
+
+      transactionProcessingResultValidator.accept(transaction, result);
+      zkTracerValidator.accept(tracer);
     }
 
     tracer.traceEndBlock(blockHeader, blockBody);

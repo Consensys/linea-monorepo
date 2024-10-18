@@ -27,6 +27,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
+import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -66,7 +67,7 @@ public class StpTest {
     ToyExecutionEnvironmentV2.builder()
         .accounts(world)
         .transactions(txList)
-        .testValidator(x -> {})
+        .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
         .run();
   }
@@ -89,7 +90,7 @@ public class StpTest {
     ToyExecutionEnvironmentV2.builder()
         .accounts(world)
         .transactions(txList)
-        .testValidator(x -> {})
+        .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
         .run();
   }

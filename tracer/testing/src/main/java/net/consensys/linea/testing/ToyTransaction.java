@@ -59,6 +59,7 @@ public class ToyTransaction {
   private final List<AccessListEntry> accessList;
   private final Wei maxPriorityFeePerGas;
   private final Wei maxFeePerGas;
+  private final Long nonce;
 
   /** Customizations applied to the Lombok generated builder. */
   public static class ToyTransactionBuilder {
@@ -72,7 +73,7 @@ public class ToyTransaction {
       final Transaction.Builder builder =
           Transaction.builder()
               .to(to != null ? to.getAddress() : null)
-              .nonce(sender.getNonce())
+              .nonce(nonce != null ? nonce : sender.getNonce())
               .accessList(accessList)
               .type(Optional.ofNullable(transactionType).orElse(DEFAULT_TX_TYPE))
               .gasPrice(Optional.ofNullable(gasPrice).orElse(DEFAULT_GAS_PRICE))
