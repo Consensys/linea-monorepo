@@ -300,7 +300,7 @@ func TestSepoliaData(t *testing.T) {
 		MaxNbDecompression: 1,
 		MaxNbExecution:     31,
 		ExecutionMaxNbMsg:  1,
-		L2MsgMerkleDepth:   1,
+		L2MsgMerkleDepth:   5, // have to keep this at 5 otherwise the roots won't match
 		L2MsgMaxNbMerkle:   1,
 		MockKeccakWizard:   true,
 	}
