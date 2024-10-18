@@ -333,7 +333,6 @@ async function sendProof(
     0,
     [
       proofFile.parentStateRootHash,
-      submissionData.shnarf,
       finalSubmissionData.finalBlockInData,
       [
         finalSubmission.prevShnarf,
@@ -357,12 +356,12 @@ async function sendProof(
   console.log(proofData);
 
   const encodedCall = ethers.concat([
-    "0xabffac32",
+    "0x227be0dc",
     ethers.AbiCoder.defaultAbiCoder().encode(
       [
         "bytes",
         "uint256",
-        "tuple(bytes32,bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,bytes32[],bytes)",
+        "tuple(bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,bytes32[],bytes)",
       ],
       proofData,
     ),

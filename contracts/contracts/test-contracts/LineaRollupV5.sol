@@ -1346,7 +1346,7 @@ abstract contract AccessControlUpgradeable is
   uint256[49] private __gap;
 }
 
-// File contracts/interfaces/l1/ILineaRollupFlattened.sol
+// File contracts/interfaces/l1/ILineaRollupV5.sol
 
 // Original license: SPDX_License_Identifier: Apache-2.0
 pragma solidity 0.8.24;
@@ -1356,7 +1356,7 @@ pragma solidity 0.8.24;
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface ILineaRollupFlattened {
+interface ILineaRollupV5 {
   /**
    * @notice Supporting data for compressed calldata submission including compressed data.
    * @dev finalStateRootHash is used to set state root at the end of the data.
@@ -3094,7 +3094,7 @@ abstract contract ZkEvmV2 is Initializable, AccessControlUpgradeable, L1MessageS
   }
 }
 
-// File contracts/LineaRollupFlattened.sol
+// File contracts/LineaRollupV5.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
 pragma solidity 0.8.24;
@@ -3104,7 +3104,7 @@ pragma solidity 0.8.24;
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollupFlattened is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILineaRollupFlattened {
+contract LineaRollupV5 is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILineaRollupV5 {
   using Utils for *;
 
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
@@ -3699,7 +3699,7 @@ contract LineaRollupFlattened is AccessControlUpgradeable, ZkEvmV2, L1MessageSer
       revert BytesLengthNotMultipleOf32();
     }
 
-    bytes4 errorSelector = ILineaRollupFlattened.FirstByteIsNotZero.selector;
+    bytes4 errorSelector = ILineaRollupV5.FirstByteIsNotZero.selector;
     assembly {
       for {
         let i := _data.length
