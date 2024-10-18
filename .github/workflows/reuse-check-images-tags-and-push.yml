@@ -131,7 +131,6 @@ jobs:
           develop_tag: ${{ inputs.develop_tag }}
           image_name: consensys/linea-coordinator
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_coordinator }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_coordinator }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -145,7 +144,6 @@ jobs:
           develop_tag: ${{ inputs.develop_tag }}
           image_name: consensys/linea-postman
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_postman }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_postman }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -159,7 +157,6 @@ jobs:
           develop_tag: ${{ inputs.develop_tag }}
           image_name: consensys/linea-prover
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_prover }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_prover }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -173,7 +170,6 @@ jobs:
           develop_tag: ${{ inputs.develop_tag }}
           image_name: consensys/linea-traces-api-facade
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_traces_api_facade }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_traces_api_facade }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 

@@ -19,10 +19,10 @@ inputs:
     required: true
   docker_username:
     description: 'The username to login to Docker Hub'
-    required: true
+    required: false
   docker_password:
     description: 'The password to login to Docker Hub'
-    required: true
+    required: false
 
 outputs:
   image_tagged:

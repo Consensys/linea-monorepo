@@ -51,8 +51,6 @@ jobs:
         with:
           last_commit_tag: ${{ needs.store_image_name_and_tags.outputs.last_commit_tag }}
           image_name: consensys/linea-alltools
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   all-tools-tag-only:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
@@ -73,7 +71,6 @@ jobs:
           develop_tag: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
           image_name: consensys/linea-alltools
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
