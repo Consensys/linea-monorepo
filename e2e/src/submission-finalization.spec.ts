@@ -1,5 +1,4 @@
 import { describe, expect, it } from "@jest/globals";
-import { JsonRpcProvider } from "ethers";
 import {
   getMessageSentEventFromLogs,
   sendMessage,
@@ -12,12 +11,6 @@ import { config } from "./config/tests-config";
 import { LineaRollup } from "./typechain";
 
 describe("Submission and finalization test suite", () => {
-  let l1Provider: JsonRpcProvider;
-
-  beforeAll(() => {
-    l1Provider = config.getL1Provider();
-  });
-
   const sendMessages = async () => {
     const messageFee = etherToWei("0.0001");
     const messageValue = etherToWei("0.0051");
@@ -32,8 +25,8 @@ describe("Submission and finalization test suite", () => {
     const l1MessagesPromises = [];
     // eslint-disable-next-line prefer-const
     let [l1MessageSenderNonce, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
-      l1Provider.getTransactionCount(l1MessageSender.address),
-      l1Provider.getFeeData(),
+      config.getL1Provider().getTransactionCount(l1MessageSender.address),
+      config.getL1Provider().getFeeData(),
     ]);
 
     for (let i = 0; i < 5; i++) {
