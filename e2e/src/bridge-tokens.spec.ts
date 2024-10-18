@@ -35,11 +35,6 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     console.log("Calling the bridgeToken function on the L1 TokenBridge contract");
 
-    const l1Provider = config.getL1Provider();
-
-    const balance = await l1Provider.getBalance(l1Account.address);
-
-    console.log("balance", balance);
     const bridgeTokenTx = await l1TokenBridge
       .connect(l1Account)
       .bridgeToken(l1TokenAddress, bridgeAmount, l2Account.address, {
@@ -167,9 +162,6 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       500,
       receipt!.blockNumber,
     );
-
-    const blockNr = receipt!.blockNumber;
-    console.log("blockNr", blockNr);
 
     console.log(`L2 message sent : ${JSON.stringify(messageSentEvent)}`);
 
