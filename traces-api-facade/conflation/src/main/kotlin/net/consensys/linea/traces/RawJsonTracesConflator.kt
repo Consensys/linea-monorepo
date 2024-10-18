@@ -1,5 +1,7 @@
 package net.consensys.linea.traces
 
+import com.fasterxml.jackson.databind.MapperFeature
+import com.fasterxml.jackson.databind.json.JsonMapper
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
@@ -1028,22 +1030,18 @@ class ConflatedTrace : ConflatedTraceStorage() {
   fun reAssembleRom() {
     fun hiLoToAddr(hi: String, lo: String): BigInteger {
       val addrShift = 256.toBigInteger().pow(16)
-      return hi
-        .toBigInteger()
-        .multiply(addrShift)
-        .add(lo.toBigInteger())
+      return hi.toBigInteger().multiply(addrShift).add(lo.toBigInteger())
     }
 
     val idxs = (0 until this.rom.PC.size).toList()
-    val sortedIdxs =
-      idxs.sortedWith(
-        compareBy(
-          { hiLoToAddr(this.rom.SC_ADDRESS_HI[it], this.rom.SC_ADDRESS_LO[it]) },
-          // we want the initcode *FIRST*
-          { -this.rom.IS_INITCODE[it].toInt() },
-          { this.rom.PC[it].toInt() }
-        )
+    val sortedIdxs = idxs.sortedWith(
+      compareBy(
+        { hiLoToAddr(this.rom.SC_ADDRESS_HI[it], this.rom.SC_ADDRESS_LO[it]) },
+        // we want the initcode *FIRST*
+        { -this.rom.IS_INITCODE[it].toInt() },
+        { this.rom.PC[it].toInt() }
       )
+    )
 
     // Awfully suboptimal, but it just works
     val copiedRom = this.rom.copy()
@@ -1054,9 +1052,8 @@ class ConflatedTrace : ConflatedTraceStorage() {
       if (i > 0) {
         for (column in Rom::class.memberProperties) {
           if (column != Rom::ADDRESS_INDEX && column != Rom::CODE_FRAGMENT_INDEX) {
-            duplicate = duplicate &&
-              getColumn(copiedRom, column)[sortedIdxs[i]].toBigInteger()
-                .equals(getColumn(this.rom, column).last().toBigInteger())
+            duplicate = duplicate && getColumn(copiedRom, column)[sortedIdxs[i]].toBigInteger()
+              .equals(getColumn(this.rom, column).last().toBigInteger())
           }
         }
       } else {
@@ -1163,7 +1160,9 @@ class ConflatedTrace : ConflatedTraceStorage() {
   }
 }
 
-class RawJsonTracesConflator(val tracesEngineVersion: String) : TracesConflator {
+class RawJsonTracesConflator(private val tracesEngineVersion: String) : TracesConflator {
+  private val objectMapper: JsonMapper = JsonMapper.builder().disable(MapperFeature.USE_GETTERS_AS_SETTERS).build()
+
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   override fun conflateTraces(
@@ -1181,12 +1180,11 @@ class RawJsonTracesConflator(val tracesEngineVersion: String) : TracesConflator 
           log.trace("Parsing trace: {}", jsonPath)
           trace.getTrace(jsonPath)?.let {
             if (!it.isEmpty) {
-              ax.add(it.mapTo(klass))
+              ax.add(objectMapper.convertValue(it, klass))
             }
+          } ?: run {
+            log.warn("Could not parse object with path: '{}'", jsonPath.joinToString("."))
           }
-            ?: run {
-              log.warn("Could not parse object with path: '{}'", jsonPath.joinToString("."))
-            }
         }
       }
 
