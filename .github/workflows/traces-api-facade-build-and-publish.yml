@@ -18,9 +18,9 @@ on:
         default: false
     secrets:
       DOCKERHUB_USERNAME:
-        required: false
+        required: true
       DOCKERHUB_TOKEN:
-        required: false
+        required: true
   workflow_dispatch:
     inputs:
       push_image:
@@ -63,6 +63,11 @@ jobs:
         run: |
           ./gradlew traces-api-facade:app:shadowJar
           echo ${{ github.workspace }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -95,12 +100,6 @@ jobs:
         with:
           name: linea-traces-api-facade
           path: linea-traces-api-facade-docker-image.tar.gz
-      - name: Login to Docker Hub
-        if: ${{ env.PUSH_IMAGE == 'true' || github.event_name == 'workflow_dispatch' }}
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build & push
         uses: docker/build-push-action@v6
         if: ${{ env.PUSH_IMAGE == 'true' || github.event_name == 'workflow_dispatch' }}
