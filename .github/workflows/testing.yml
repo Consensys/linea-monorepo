@@ -33,11 +33,6 @@ on:
       transaction_exclusion_api_image_tagged:
         required: true
         type: string
-    secrets:
-      DOCKERHUB_USERNAME:
-        required: true
-      DOCKERHUB_TOKEN:
-        required: true
 
 jobs:
   coordinator:
@@ -45,14 +40,17 @@ jobs:
     if: ${{ always() && (inputs.coordinator_changed == 'true' || inputs.coordinator_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
+    secrets: inherit
 
   prover:
     uses: ./.github/workflows/prover-testing.yml
     if: ${{ always() && inputs.prover_changed == 'true' }}
+    secrets: inherit
 
   postman:
     uses: ./.github/workflows/postman-testing.yml
     if: ${{ always() && (inputs.postman_changed == 'true' || inputs.postman_image_tagged != 'true') }}
+    secrets: inherit
 
   traces-api-facade:
     uses: ./.github/workflows/traces-api-facade-testing.yml
