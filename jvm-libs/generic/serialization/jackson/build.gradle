@@ -1,0 +1,13 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  implementation(project(':jvm-libs:kotlin-extensions'))
+  api "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
+  api "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
+  api "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
+  api "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}"
+
+  testImplementation "net.javacrumbs.json-unit:json-unit-assertj:${libs.versions.jsonUnit.get()}"
+}
