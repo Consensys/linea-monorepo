@@ -65,7 +65,7 @@ abstract contract MessageServiceBase is Initializable, IGenericErrors {
 
   /**
    * @notice Initializes the message service
-   * @dev Must be initialized in the initialize function of the main contract or constructor
+   * @dev Must be initialized in the initialize function of the main contract or constructor.
    * @param _messageService The message service address, cannot be empty.
    */
   function __MessageServiceBase_init(address _messageService) internal onlyInitializing {

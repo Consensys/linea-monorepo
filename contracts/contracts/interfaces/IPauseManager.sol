@@ -22,6 +22,7 @@ interface IPauseManager {
    * @notice Enum defining the different types of pausing.
    * @dev The pause types are used to pause and unpause specific functionality.
    * @dev The UNUSED pause type is used as a default value to avoid accidental general pausing.
+   * @dev Enums are uint8 by default.
    */
   enum PauseType {
     UNUSED,
