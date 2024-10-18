@@ -34,16 +34,24 @@ func DictionaryChecksum(dict []byte, version uint16) ([]byte, error) {
 	return nil, errors.New("unsupported version")
 }
 
-// GetRepoRootPath assumes that current working directory is within the repo
+// GetRepoRootPath returns the root path of the repository
 func GetRepoRootPath() (string, error) {
+	// First, check if the deployment path exists
+	deploymentPath := "/opt/linea"
+	if _, err := os.Stat(deploymentPath); err == nil {
+		return deploymentPath, nil
+	}
+
+	// If not found, fall back to checking the local development path based on the current directory
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
+
 	const repoName = "linea-monorepo"
 	i := strings.LastIndex(wd, repoName)
 	if i == -1 {
-		return "", errors.New("could not find repo root")
+		return "", errors.New("could not find repo root. Current working directory: " + wd)
 	}
 	i += len(repoName)
 	return wd[:i], nil
