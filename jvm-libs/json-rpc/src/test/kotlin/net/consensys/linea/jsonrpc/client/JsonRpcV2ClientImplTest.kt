@@ -452,7 +452,7 @@ class JsonRpcV2ClientImplTest {
   }
 
   @Test
-  fun `when it gets an error propagates to shallRetryRequestPredicate  and retries while is true`() {
+  fun `when it gets an error propagates to shallRetryRequestPredicate and retries while is true`() {
     createClientAndSetupWireMockServer(
       vertx,
       retryConfig = retryConfig(maxRetries = 10u)
