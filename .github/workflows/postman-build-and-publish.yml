@@ -18,9 +18,9 @@ on:
         default: false
     secrets:
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
-        required: true
+        required: false
   workflow_dispatch:
     inputs:
       push_image:
@@ -54,11 +54,6 @@ jobs:
           ssh-key: ${{ secrets.SELF_GITHUB_SSH_KEY }}
           submodules: true
           persist-credentials: false
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
@@ -77,14 +72,8 @@ jobs:
           file: ./sdk/Dockerfile
           platforms: linux/amd64
           load: true
-          push: ${{ env.PUSH_IMAGE }}
+          push: false
           tags: ${{ env.TAGS }}
-          cache-from: |
-            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-amd64,platform=linux/amd64
-            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-arm64,platform=linux/arm64
-          cache-to: |
-            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-amd64,mode=max,platform=linux/amd64
-            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-arm64,mode=max,platform=linux/arm64
           build-args: |
             NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.0.1
       - name: Save Docker image as artifact
@@ -98,6 +87,12 @@ jobs:
         with:
           name: linea-postman
           path: linea-postman.tar.gz
+      - name: Login to Docker Hub
+        if: ${{ env.PUSH_IMAGE == 'true' || github.event_name == 'workflow_dispatch' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push postman image
         uses: docker/build-push-action@v6
         if: ${{ env.PUSH_IMAGE == 'true' || github.event_name == 'workflow_dispatch' }}
@@ -105,7 +100,7 @@ jobs:
           context: ./
           file: ./sdk/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: ${{ env.PUSH_IMAGE }}
+          push: true
           tags: ${{ env.TAGS }}
           cache-from: |
             type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-amd64,platform=linux/amd64

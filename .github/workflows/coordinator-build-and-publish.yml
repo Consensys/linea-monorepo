@@ -78,7 +78,7 @@ jobs:
           file: ./coordinator/Dockerfile
           platforms: linux/amd64
           load: true
-          push: ${{ env.PUSH_IMAGE }}
+          push: false
           tags: ${{ env.TAGS }}
       - name: Save Docker image as artifact
         if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
@@ -105,7 +105,7 @@ jobs:
           build-contexts: zip=./coordinator/app/build/distributions/
           file: ./coordinator/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: ${{ env.PUSH_IMAGE }}
+          push: true
           tags: ${{ env.TAGS }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
