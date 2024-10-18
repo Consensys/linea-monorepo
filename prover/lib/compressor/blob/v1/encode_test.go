@@ -6,13 +6,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+	encodeTesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode/test_utils"
 	"testing"
 
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
-
-	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -33,56 +32,55 @@ func TestEncodeDecode(t *testing.T) {
 				t.Fatalf("could not decode test RLP block: %s", err.Error())
 			}
 
-			var (
-				buf      = &bytes.Buffer{}
-				expected = test_utils.DecodedBlockData{
-					BlockHash: block.Hash(),
-					Txs:       make([]ethtypes.Transaction, len(block.Transactions())),
-					Timestamp: block.Time(),
-				}
-			)
+			var buf bytes.Buffer
 
-			for i := range expected.Txs {
-				expected.Txs[i] = *block.Transactions()[i]
-			}
-
-			if err := v1.EncodeBlockForCompression(&block, buf); err != nil {
+			if err := v1.EncodeBlockForCompression(&block, &buf); err != nil {
 				t.Fatalf("failed encoding the block: %s", err.Error())
 			}
 
-			var (
-				encoded       = buf.Bytes()
-				r             = bytes.NewReader(encoded)
-				decoded, err  = test_utils.DecodeBlockFromUncompressed(r)
-				size, errScan = v1.ScanBlockByteLen(encoded)
-			)
+			encoded := buf.Bytes()
+			r := bytes.NewReader(encoded)
+			decoded, err := v1.DecodeBlockFromUncompressed(r)
+			size, errScan := v1.ScanBlockByteLen(encoded)
 
 			assert.NoError(t, errScan, "error scanning the payload length")
 			assert.NotZero(t, size, "scanned a block size of zero")
 
 			require.NoError(t, err)
-			assert.Equal(t, expected.BlockHash, decoded.BlockHash)
-			assert.Equal(t, expected.Timestamp, decoded.Timestamp)
-			assert.Equal(t, len(expected.Txs), len(decoded.Txs))
+			assert.Equal(t, block.Hash(), decoded.BlockHash)
+			assert.Equal(t, block.Time(), decoded.Timestamp)
+			assert.Equal(t, len(block.Transactions()), len(decoded.Txs))
 
-			for i := range expected.Txs {
-				checkSameTx(t, &expected.Txs[i], &decoded.Txs[i], decoded.Froms[i])
+			for i := range block.Transactions() {
+				encodeTesting.CheckSameTx(t, block.Transactions()[i], ethtypes.NewTx(decoded.Txs[i]), decoded.Froms[i])
 				if t.Failed() {
 					return
 				}
 			}
+
+			t.Log("attempting RLP serialization")
+
+			encoded, err = rlp.EncodeToBytes(decoded.ToStd())
+			assert.NoError(t, err)
+
+			var blockBack ethtypes.Block
+			assert.NoError(t, rlp.Decode(bytes.NewReader(encoded), &blockBack))
+
+			assert.Equal(t, block.Hash(), blockBack.ParentHash())
+			assert.Equal(t, block.Time(), blockBack.Time())
+			assert.Equal(t, len(block.Transactions()), len(blockBack.Transactions()))
+
+			for i := range block.Transactions() {
+				tx := blockBack.Transactions()[i]
+				encodeTesting.CheckSameTx(t, block.Transactions()[i], ethtypes.NewTx(decoded.Txs[i]), common.Address(encode.GetAddressFromR(tx)))
+				if t.Failed() {
+					return
+				}
+			}
+
 		})
 	}
 
-}
-
-func checkSameTx(t *testing.T, orig, decoded *ethtypes.Transaction, from common.Address) {
-	assert.Equal(t, orig.To(), decoded.To())
-	assert.Equal(t, orig.Nonce(), decoded.Nonce())
-	assert.Equal(t, orig.Data(), decoded.Data())
-	assert.Equal(t, orig.Value(), decoded.Value())
-	assert.Equal(t, orig.Cost(), decoded.Cost())
-	assert.Equal(t, ethereum.GetFrom(orig), types.EthAddress(from))
 }
 
 func TestPassRlpList(t *testing.T) {
@@ -138,7 +136,7 @@ func TestVectorDecode(t *testing.T) {
 		var (
 			postPadded = append(b, postPad[:]...)
 			r          = bytes.NewReader(b)
-			_, errDec  = test_utils.DecodeBlockFromUncompressed(r)
+			_, errDec  = v1.DecodeBlockFromUncompressed(r)
 			_, errScan = v1.ScanBlockByteLen(postPadded)
 		)
 

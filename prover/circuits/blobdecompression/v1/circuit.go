@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -235,7 +237,12 @@ func AssignFPI(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.
 		return
 	}
 
-	header, payload, _, err := blob.DecompressBlob(blobBytes, dict)
+	dictStore, err := dictionary.SingletonStore(dict, 1)
+	if err != nil {
+		err = fmt.Errorf("failed to create dictionary store %w", err)
+		return
+	}
+	header, payload, _, err := blob.DecompressBlob(blobBytes, dictStore)
 	if err != nil {
 		return
 	}
@@ -266,7 +273,7 @@ func AssignFPI(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.
 	if len(blobBytes) != 128*1024 {
 		panic("blobBytes length is not 128*1024")
 	}
-	fpi.SnarkHash, err = blob.MiMCChecksumPackedData(blobBytes, fr381.Bits-1, blob.NoTerminalSymbol()) // TODO if forced to remove the above check, pad with zeros
+	fpi.SnarkHash, err = encode.MiMCChecksumPackedData(blobBytes, fr381.Bits-1, encode.NoTerminalSymbol()) // TODO if forced to remove the above check, pad with zeros
 
 	return
 }
