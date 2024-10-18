@@ -28,7 +28,7 @@
 "b1504a5f" = "BlobSubmissionDataIsMissing"
 "c0e41e1d" = "EmptyBlobDataAtIndex"
 "fb4cd6ef" = "FinalBlockDoesNotMatchShnarfFinalBlock"
-"2526F108 " = "ShnarfAndFinalBlockNumberLengthsMismatched"
+"2526F108" = "ShnarfAndFinalBlockNumberLengthsMismatched"
 "d3664fb3" = "FinalShnarfWrong"
 "4e686675" = "L2MerkleRootDoesNotExist"
 "e5d14425" = "L2MerkleRootAlreadyAnchored"
