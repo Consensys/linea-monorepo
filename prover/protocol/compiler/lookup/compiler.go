@@ -28,7 +28,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 
 	var (
 		mainLookupCtx = captureLookupTables(comp)
-		lastRound     = comp.NumRounds()
+		lastRound     = comp.NumRounds() - 1
 		proverActions = make([]proverTaskAtRound, comp.NumRounds()+1)
 		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
 		// which Z context should be used to handle a part of a given permutation
@@ -101,9 +101,11 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		// z-packing compile
 		zC.compile(comp)
 		// entry[0]:round, entry[1]: size
+		// the round that Gamma was registered.
 		round := entry[0]
-		proverActions[round+1].pushZAssignment(zAssignmentTask(*zC))
+		proverActions[round].pushZAssignment(zAssignmentTask(*zC))
 		va.ZOpenings = append(va.ZOpenings, zC.ZOpenings...)
+		va.Name = zC.Name
 	}
 
 	for round := range proverActions {
@@ -209,6 +211,8 @@ func captureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 //   - (3) The verifier makes a `Local` query : $(\Sigma_T)[0] = \frac{M_0}{T_0 + \gamma}$
 //   - (4) **(For all k)** The verifier makes a `Global` query : $\left((\Sigma_{S,k})[i] - (\Sigma_{S,k})[i-1]\right)(S_{k,i} + \gamma) = 1$
 //   - (5) The verier makes a `Global` query : $\left((\Sigma_T)[i] - (\Sigma_T)[i-1]\right)(T_i + \gamma) = M_i$
+
+// here we are looking up set of columns S in a single column T
 func compileLookupTable(
 	comp *wizard.CompiledIOP,
 	round int,
@@ -228,7 +232,7 @@ func compileLookupTable(
 	var (
 		// isMultiColumn indicates whether the lookup table (and thus the
 		// checked tables) have the same number of
-		isMultiColumn = len(lookupTable) > 1
+		isMultiColumn = len(lookupTable[0]) > 1
 	)
 
 	if !isMultiColumn {
@@ -285,7 +289,7 @@ func compileLookupTable(
 func (stc *singleTableCtx) pushToZCatalog(zCatalog map[[2]int]*zCtx) {
 
 	var (
-		round = stc.M[0].Round()
+		round = stc.Gamma.Round
 	)
 
 	// tableCtx push to -> zCtx
@@ -298,6 +302,7 @@ func (stc *singleTableCtx) pushToZCatalog(zCatalog map[[2]int]*zCtx) {
 			zCatalog[key] = &zCtx{
 				Size:  size,
 				Round: round,
+				Name:  stc.TableName,
 			}
 		}
 
@@ -307,14 +312,14 @@ func (stc *singleTableCtx) pushToZCatalog(zCatalog map[[2]int]*zCtx) {
 	}
 
 	// Process the S columns
-	for frag := range stc.S {
+	for table := range stc.S {
 		var (
-			_, _, size = wizardutils.AsExpr(stc.S[frag])
+			_, _, size = wizardutils.AsExpr(stc.S[table])
 			sFilter    = symbolic.NewConstant(1)
 		)
 
-		if stc.SFilters[frag] != nil {
-			sFilter = symbolic.NewVariable(stc.SFilters[frag])
+		if stc.SFilters[table] != nil {
+			sFilter = symbolic.NewVariable(stc.SFilters[table])
 		}
 
 		key := [2]int{round, size}
@@ -322,11 +327,12 @@ func (stc *singleTableCtx) pushToZCatalog(zCatalog map[[2]int]*zCtx) {
 			zCatalog[key] = &zCtx{
 				Size:  size,
 				Round: round,
+				Name:  stc.TableName,
 			}
 		}
 
 		zCtxEntry := zCatalog[key]
 		zCtxEntry.SigmaNumerator = append(zCtxEntry.SigmaNumerator, sFilter)
-		zCtxEntry.SigmaDenominator = append(zCtxEntry.SigmaDenominator, symbolic.Add(stc.Gamma, stc.S[frag]))
+		zCtxEntry.SigmaDenominator = append(zCtxEntry.SigmaDenominator, symbolic.Add(stc.Gamma, stc.S[table]))
 	}
 }
