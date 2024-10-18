@@ -224,7 +224,6 @@ contract LineaRollup is
 
     bytes32 currentDataEvaluationPoint;
     bytes32 currentDataHash;
-    uint256 lastFinalizedBlockNumber = currentL2BlockNumber;
 
     /// @dev Assigning in memory saves a lot of gas vs. calldata reading.
     BlobSubmissionData memory blobSubmissionData;
@@ -233,10 +232,10 @@ contract LineaRollup is
 
     uint256 blobFinalBlockNumber = shnarfFinalBlockNumbers[computedShnarf];
 
-    if (_blobSubmissionData[0].submissionData.firstBlockInData <= lastFinalizedBlockNumber) {
+    if (_blobSubmissionData[0].submissionData.firstBlockInData <= currentL2BlockNumber) {
       revert FirstBlockLessThanOrEqualToLastFinalizedBlock(
         _blobSubmissionData[0].submissionData.firstBlockInData,
-        lastFinalizedBlockNumber
+        currentL2BlockNumber
       );
     }
 
