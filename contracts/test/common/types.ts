@@ -33,24 +33,18 @@ export type DebugData = {
   finalHash: string;
 };
 
-export type SubmissionData = {
-  finalStateRootHash: string;
-  firstBlockInData: bigint;
-  finalBlockInData: bigint;
-  snarkHash: string;
-};
-
-export type BlobSubmissionData = {
-  submissionData: SubmissionData;
+export type BlobSubmission = {
   dataEvaluationClaim: string;
   kzgCommitment: string;
   kzgProof: string;
+  finalStateRootHash: string;
+  snarkHash: string;
 };
 
 export type ParentSubmissionData = {
   finalStateRootHash: string;
-  firstBlockInData: bigint;
-  finalBlockInData: bigint;
+  firstBlockNumber: bigint;
+  endBlockNumber: bigint;
   shnarf: string;
 };
 
@@ -67,18 +61,15 @@ export type ShnarfData = {
   dataEvaluationClaim: string;
 };
 
-export type CalldataSubmissionData = SubmissionData & {
-  compressedData: string;
-};
-
-export type SubmissionAndCompressedData = {
-  submissionData: SubmissionData;
+export type CalldataSubmissionData = {
+  finalStateRootHash: string;
+  snarkHash: string;
   compressedData: string;
 };
 
 export type FinalizationData = {
   aggregatedProof: string;
-  finalBlockInData: bigint;
+  endBlockNumber: bigint;
   shnarfData: ShnarfData;
   parentStateRootHash: string;
   lastFinalizedTimestamp: bigint;

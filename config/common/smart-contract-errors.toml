@@ -28,7 +28,7 @@
 "b1504a5f" = "BlobSubmissionDataIsMissing"
 "c0e41e1d" = "EmptyBlobDataAtIndex"
 "fb4cd6ef" = "FinalBlockDoesNotMatchShnarfFinalBlock"
-"2526F108 " = "ShnarfAndFinalBlockNumberLengthsMismatched"
+"2526F108" = "ShnarfAndFinalBlockNumberLengthsMismatched"
 "d3664fb3" = "FinalShnarfWrong"
 "4e686675" = "L2MerkleRootDoesNotExist"
 "e5d14425" = "L2MerkleRootAlreadyAnchored"
@@ -46,3 +46,4 @@
 "d39e75f9" = "L1MessageNumberSynchronizationWrong"
 "7557a60a" = "L1RollingHashSynchronizationWrong"
 "36a4bb94" = "FinalRollingHashIsZero"
+"42ab979d" = "ParentBlobNotSubmitted"
