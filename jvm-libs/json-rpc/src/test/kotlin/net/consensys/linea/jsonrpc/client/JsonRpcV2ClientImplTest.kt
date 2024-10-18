@@ -571,7 +571,7 @@ class JsonRpcV2ClientImplTest {
   }
 
   @Test
-  fun `when shared predicate is defined shall retry when any of then returns true`() {
+  fun `when shared predicate is defined shall retry when any of them returns true`() {
     val baseRetryPredicateCalls = mutableListOf<Result<Any?, Throwable>>()
     val baseRetryPredicate = Predicate<Result<Any?, Throwable>> {
       baseRetryPredicateCalls.add(it)
