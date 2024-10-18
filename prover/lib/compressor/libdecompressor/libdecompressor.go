@@ -48,8 +48,11 @@ func LoadDictionaries(dictPaths *C.char) C.int {
 	return C.int(len(paths))
 }
 
-// Decompress processes a blob b and writes the resulting blocks in out, serialized in the format of
-// prover/backend/ethereum.
+// Decompress processes a Linea blob and outputs an RLP encoded list of blocks.
+// Due to information loss during pre-compression encoding, two pieces of information are represented "hackily":
+// The block hash is in the ParentHash field.
+// The transaction from address is in the signature.R field.
+//
 // Returns the number of bytes in out, or -1 in case of failure
 // If -1 is returned, the Error() method will return a string describing the error.
 //
