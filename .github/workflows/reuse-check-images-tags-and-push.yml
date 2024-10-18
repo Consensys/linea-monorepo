@@ -39,9 +39,9 @@ on:
         value: ${{ jobs.image_tag_push.outputs.image_tagged_transaction_exclusion_api }}
     secrets:
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
-        required: true
+        required: false
 
 concurrency:
   group: check-images-tags-and-push-${{ github.workflow }}-${{ github.ref }}
@@ -68,13 +68,11 @@ jobs:
 
       - name: Check image tags exist for coordinator
         uses: ./.github/actions/check-image-tags-exist
-        if: ${{ inputs.coordinator_changed != 'false' }}
+        if: ${{ inputs.coordinator_changed == 'false' }}
         id: check_image_tags_exist_coordinator
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}
           image_name: consensys/linea-coordinator
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Check image tags exist for postman
         uses: ./.github/actions/check-image-tags-exist
@@ -83,8 +81,6 @@ jobs:
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}
           image_name: consensys/linea-postman
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Check image tags exist for prover
         uses: ./.github/actions/check-image-tags-exist
@@ -93,8 +89,6 @@ jobs:
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}
           image_name: consensys/linea-prover
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Check image tags exist for traces-api-facade
         uses: ./.github/actions/check-image-tags-exist
@@ -103,8 +97,6 @@ jobs:
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}
           image_name: consensys/linea-traces-api-facade
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: Check image tags exist for transaction-exclusion-api
         uses: ./.github/actions/check-image-tags-exist
@@ -112,13 +104,11 @@ jobs:
         id: check_image_tags_exist_transaction_exclusion_api
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           image_name: consensys/linea-transaction-exclusion-api
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   image_tag_push:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    if: ${{ github.ref == 'refs/heads/main' }}
     name: Tag and push images
     needs: [ check_image_tags_exist ]
     outputs:

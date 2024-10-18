@@ -8,12 +8,6 @@ inputs:
   image_name:
     description: 'The name of the image to check'
     required: true
-  docker_username:
-    description: 'The username to login to Docker Hub'
-    required: true
-  docker_password:
-    description: 'The password to login to Docker Hub'
-    required: true
 outputs:
   last_commit_tag_exists:
     description: 'Whether the last commit image tag exists'
