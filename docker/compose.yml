@@ -673,3 +673,4 @@ services:
       - loki
     networks:
       - linea
+
