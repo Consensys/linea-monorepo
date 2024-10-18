@@ -1,7 +1,6 @@
 package net.consensys.linea.jsonrpc
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.annotation.JsonProperty
 import java.util.StringJoiner
 
 interface JsonRpcRequest {
@@ -20,11 +19,18 @@ interface JsonRpcRequest {
     }
 }
 
+internal data class JsonRpcRequestData(
+  override val jsonrpc: String,
+  override val id: Any,
+  override val method: String,
+  override val params: Any
+) : JsonRpcRequest
+
 data class JsonRpcRequestListParams(
-  @JsonProperty("jsonrpc") override val jsonrpc: String,
-  @JsonProperty("id") override val id: Any,
-  @JsonProperty("method") override val method: String,
-  @JsonProperty("params") override val params: List<Any?>
+  override val jsonrpc: String,
+  override val id: Any,
+  override val method: String,
+  override val params: List<Any?>
 ) : JsonRpcRequest {
   override fun toString(): String {
     return StringJoiner(", ", JsonRpcRequestListParams::class.java.simpleName + "[", "]")
@@ -37,10 +43,10 @@ data class JsonRpcRequestListParams(
 }
 
 data class JsonRpcRequestMapParams(
-  @JsonProperty("jsonrpc") override val jsonrpc: String,
-  @JsonProperty("id") override val id: Any,
-  @JsonProperty("method") override val method: String,
-  @JsonProperty("params") override val params: Map<String, *>
+  override val jsonrpc: String,
+  override val id: Any,
+  override val method: String,
+  override val params: Map<String, *>
 ) : JsonRpcRequest {
   override fun toString(): String {
     return StringJoiner(", ", JsonRpcRequestMapParams::class.java.simpleName + "[", "]")
