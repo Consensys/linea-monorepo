@@ -327,7 +327,7 @@
         "type": "bytes32"
       }
     ],
-    "name": "ParentShnarfDoesNotExist",
+    "name": "ParentBlobNotSubmitted",
     "type": "error"
   },
   {
@@ -439,6 +439,18 @@
   {
     "anonymous": false,
     "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "startBlockNumber",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "endBlockNumber",
+        "type": "uint256"
+      },
       {
         "indexed": true,
         "internalType": "bytes32",
@@ -1215,6 +1227,25 @@
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "shnarf",
+        "type": "bytes32"
+      }
+    ],
+    "name": "blobShnarfExists",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "exists",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "_from",
         "type": "address"
@@ -1553,7 +1584,7 @@
           },
           {
             "internalType": "uint256",
-            "name": "finalBlockNumber",
+            "name": "endBlockNumber",
             "type": "uint256"
           },
           {
@@ -2191,25 +2222,6 @@
     "name": "setVerifierAddress",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "shnarf",
-        "type": "bytes32"
-      }
-    ],
-    "name": "shnarfExists",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "exists",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
