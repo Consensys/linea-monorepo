@@ -4,7 +4,7 @@ pragma solidity >=0.8.19 <=0.8.26;
 import { PauseManager } from "./PauseManager.sol";
 
 /**
- * @title Contract to manage cross-chain function pausing for LineaRollup.
+ * @title Contract to manage cross-chain function pausing roles for the L2 Message Service.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */

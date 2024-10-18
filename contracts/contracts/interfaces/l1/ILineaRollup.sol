@@ -12,9 +12,9 @@ import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
 interface ILineaRollup {
   /**
    * @notice Initialization data structure for the LineaRollup contract.
-   * @param initialStateRootHash The initial state root hash at migration used for proof verification.
-   * @param initialL2BlockNumber The initial block number at migration.
-   * @param genesisTimestamp The L2 genesis timestamp for first finalization.
+   * @param initialStateRootHash The initial state root hash at initialization used for proof verification.
+   * @param initialL2BlockNumber The initial block number at initialization.
+   * @param genesisTimestamp The L2 genesis timestamp for first initialization.
    * @param defaultVerifier The default verifier for rollup proofs.
    * @param rateLimitPeriodInSeconds The period in which withdrawal amounts and fees will be accumulated.
    * @param rateLimitAmountInWei The limit allowed for withdrawing in the rate limit period.
@@ -42,7 +42,7 @@ interface ILineaRollup {
    * @notice Supporting data for compressed calldata submission including compressed data.
    * @dev finalStateRootHash is used to set state root at the end of the data.
    * @dev snarkHash is the computed hash for compressed data (using a SNARK-friendly hash function) that aggregates per data submission to be used in public input.
-   * @dev compressedData is the compressed transaction data. It contains ordered data for each L2 block - l2Timestamps, the encoded txData.
+   * @dev compressedData is the compressed transaction data. It contains ordered data for each L2 block - l2Timestamps, the encoded transaction data.
    */
   struct CompressedCalldataSubmission {
     bytes32 finalStateRootHash;
@@ -166,8 +166,8 @@ interface ILineaRollup {
    * @param startBlockNumber The indexed L2 block number indicating which block the finalization the data starts from.
    * @param endBlockNumber The indexed L2 block number indicating which block the finalization the data ends on.
    * @param shnarf The indexed shnarf being set as currentFinalizedShnarf in the current finalization.
-   * @param parentStateRootHash The indexed parent L2 state root hash that the current finalization starts from.
-   * @param finalStateRootHash The indexed L2 state root hash that the current finalization ends on.
+   * @param parentStateRootHash The parent L2 state root hash that the current finalization starts from.
+   * @param finalStateRootHash The L2 state root hash that the current finalization ends on.
    */
   event DataFinalizedV3(
     uint256 indexed startBlockNumber,
