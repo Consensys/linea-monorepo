@@ -9,10 +9,7 @@ describe("Transaction exclusion test suite", () => {
   it.concurrent(
     "Should get the status of the rejected transaction reported from Besu RPC node",
     async () => {
-      if (!config.getTransactionExclusionEndpoint()) {
-        // Skip this test if transaction exclusion endpoint is not defined
-        return;
-      }
+      expect(config.getTransactionExclusionEndpoint()).toBeDefined();
 
       const transactionExclusionClient = new TransactionExclusionClient(config.getTransactionExclusionEndpoint()!!);
       const l2Account = await l2AccountManager.generateAccount();
@@ -20,7 +17,7 @@ describe("Transaction exclusion test suite", () => {
       const testContract = config.getL2TestContract(l2AccountLocal)!!;
 
       // This shall be rejected by the Besu node due to traces module limit overflow
-      let rejectedTxHash = "";
+      let rejectedTxHash;
       try {
         const txRequest: TransactionRequest = {
           to: await testContract.getAddress(),
@@ -32,16 +29,16 @@ describe("Transaction exclusion test suite", () => {
         await l2AccountLocal.sendTransaction(txRequest);
       } catch (err) {
         // This shall return error with traces limit overflow
-        console.log(`sendTransaction expected err: ${JSON.stringify(err)}`);
+        console.debug(`sendTransaction expected err: ${JSON.stringify(err)}`);
       }
 
-      expect(!!rejectedTxHash).toBeTruthy();
+      expect(rejectedTxHash).toBeDefined();
       console.log(`rejectedTxHash (RPC): ${rejectedTxHash}`);
 
       let getResponse;
       do {
-        await wait(5_000);
-        getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash);
+        await wait(1_000);
+        getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash!);
       } while (!getResponse?.result);
 
       expect(getResponse.result.txHash).toStrictEqual(rejectedTxHash);
@@ -52,10 +49,7 @@ describe("Transaction exclusion test suite", () => {
   );
 
   it.skip("Should get the status of the rejected transaction reported from Besu SEQUENCER node", async () => {
-    if (!config.getTransactionExclusionEndpoint()) {
-      // Skip this test if transaction exclusion endpoint is not defined
-      return;
-    }
+    expect(config.getTransactionExclusionEndpoint()).toBeDefined();
 
     const transactionExclusionClient = new TransactionExclusionClient(config.getTransactionExclusionEndpoint()!!);
     const l2Account = await l2AccountManager.generateAccount();
@@ -69,7 +63,7 @@ describe("Transaction exclusion test suite", () => {
 
     let getResponse;
     do {
-      await wait(5_000);
+      await wait(1_000);
       getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash);
     } while (!getResponse?.result);
 

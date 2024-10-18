@@ -152,14 +152,12 @@ dockerCompose {
     startedServices = [
       "postgres"
     ]
-    composeAdditionalArgs = ["--profile", "l2",  "--profile", "l1"]
     useComposeFiles = ["${project.rootDir.path}/docker/compose.yml"]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
     waitForTcpPorts = false
     removeOrphans = true
     noRecreate = true
     projectName = "docker"
-    environment.put("L1_GENESIS_TIME", "${Instant.now().plusSeconds(3).getEpochSecond()}")
   }
 }
 
