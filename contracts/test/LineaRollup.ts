@@ -401,7 +401,7 @@ describe("Linea Rollup contract", () => {
       ).to.not.be.reverted;
 
       const finalBlockNumber = await lineaRollup.shnarfFinalBlockNumbers(expectedShnarf);
-      expect(finalBlockNumber).to.equal(submissionData.finalBlockInData);
+      expect(finalBlockNumber).to.equal(submissionData.finalBlockNumber);
     });
 
     it("Should successfully submit 2 compressed data chunks in two transactions", async () => {
@@ -421,7 +421,7 @@ describe("Linea Rollup contract", () => {
 
       const finalBlockNumber = await lineaRollup.shnarfFinalBlockNumbers(secondExpectedShnarf);
 
-      expect(finalBlockNumber).to.equal(secondSubmissionData.finalBlockInData);
+      expect(finalBlockNumber).to.equal(secondSubmissionData.finalBlockNumber);
     });
 
     it("Should emit an event while submitting 1 compressed data chunk", async () => {
@@ -431,8 +431,8 @@ describe("Linea Rollup contract", () => {
         .connect(operator)
         .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
       const eventArgs = [
-        submissionData.firstBlockInData,
-        submissionData.finalBlockInData,
+        submissionData.firstBlockNumber,
+        submissionData.finalBlockNumber,
         prevShnarf,
         expectedShnarf,
         submissionData.finalStateRootHash,
@@ -475,13 +475,13 @@ describe("Linea Rollup contract", () => {
           .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 }),
       ).to.not.be.reverted;
 
-      const expectedFirstBlock = secondSubmissionData.firstBlockInData;
-      secondSubmissionData.firstBlockInData = secondSubmissionData.firstBlockInData + 1n;
+      const expectedFirstBlock = secondSubmissionData.firstBlockNumber;
+      secondSubmissionData.firstBlockNumber = secondSubmissionData.firstBlockNumber + 1n;
 
       const submitDataCall = lineaRollup
         .connect(operator)
         .submitDataAsCalldata(secondSubmissionData, expectedShnarf, secondExpectedShnarf, { gasLimit: 30_000_000 });
-      const eventArgs = [expectedFirstBlock, secondSubmissionData.firstBlockInData];
+      const eventArgs = [expectedFirstBlock, secondSubmissionData.firstBlockNumber];
 
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "DataStartingBlockDoesNotMatch", eventArgs);
     });
@@ -534,7 +534,7 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [CALLDATA_SUBMISSION_PAUSE_TYPE]);
     });
 
-    it("Should revert with FirstBlockLessThanOrEqualToLastFinalizedBlock when submitting data with firstBlockInData less than currentL2BlockNumber", async () => {
+    it("Should revert with FirstBlockLessThanOrEqualToLastFinalizedBlock when submitting data with firstBlockNumber less than currentL2BlockNumber", async () => {
       await lineaRollup.setLastFinalizedBlock(1_000_000);
 
       const submitDataCall = lineaRollup
@@ -542,25 +542,8 @@ describe("Linea Rollup contract", () => {
         .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
 
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "FirstBlockLessThanOrEqualToLastFinalizedBlock", [
-        DATA_ONE.firstBlockInData,
+        DATA_ONE.firstBlockNumber,
         1000000,
-      ]);
-    });
-
-    it("Should revert with FirstBlockGreaterThanFinalBlock when submitting data with firstBlockInData greater than finalBlockInData", async () => {
-      const submissionData: CalldataSubmissionData = {
-        ...DATA_ONE,
-        firstBlockInData: DATA_ONE.firstBlockInData,
-        finalBlockInData: DATA_ONE.firstBlockInData - 1n,
-      };
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
-
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FirstBlockGreaterThanFinalBlock", [
-        submissionData.firstBlockInData,
-        submissionData.finalBlockInData,
       ]);
     });
 
@@ -582,7 +565,7 @@ describe("Linea Rollup contract", () => {
         .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
 
       const [dataOneCopy] = generateCallDataSubmission(0, 1);
-      dataOneCopy.finalBlockInData = 234253242n;
+      dataOneCopy.finalBlockNumber = 234253242n;
 
       const submitDataCall = lineaRollup
         .connect(operator)
@@ -616,12 +599,15 @@ describe("Linea Rollup contract", () => {
     it("Should successfully submit blobs", async () => {
       const operatorHDSigner = getWalletForIndex(2);
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 1);
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -649,26 +635,33 @@ describe("Linea Rollup contract", () => {
       expect(receipt).is.not.null;
 
       const expectedEventArgs = [
-        blobDataSubmission[0].submissionData.firstBlockInData,
-        blobDataSubmission[0].submissionData.finalBlockInData,
+        firstBlockNumber,
+        finalBlockNumber,
         parentShnarf,
         finalShnarf,
-        blobDataSubmission[blobDataSubmission.length - 1].submissionData.finalStateRootHash,
+        blobDataSubmission[blobDataSubmission.length - 1].finalStateRootHash,
       ];
 
       expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
 
-      const finalBlockNumber = await lineaRollup.shnarfFinalBlockNumbers(finalShnarf);
-      expect(finalBlockNumber).to.equal(blobDataSubmission[0].submissionData.finalBlockInData);
+      const foundFinalBlockNumber = await lineaRollup.shnarfFinalBlockNumbers(finalShnarf);
+      expect(foundFinalBlockNumber).to.equal(finalBlockNumber);
     });
 
     it("Fails when the blob submission data is missing", async () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const { compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 1);
 
-      const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [[], parentShnarf, finalShnarf]);
+      const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
+        [],
+        parentShnarf,
+        finalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
+      ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
       const nonce = await operatorHDSigner.getNonce();
@@ -698,35 +691,44 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should revert if the caller does not have the OPERATOR_ROLE", async () => {
-      const { blobDataSubmission, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 1);
 
       await expectRevertWithReason(
-        lineaRollup.connect(nonAuthorizedAccount).submitBlobs(blobDataSubmission, parentShnarf, finalShnarf),
+        lineaRollup
+          .connect(nonAuthorizedAccount)
+          .submitBlobs(blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber),
         buildAccessErrorMessage(nonAuthorizedAccount, OPERATOR_ROLE),
       );
     });
 
     it("Should revert if GENERAL_PAUSE_TYPE is enabled", async () => {
-      const { blobDataSubmission, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 1);
 
       await lineaRollup.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.connect(operator).submitBlobs(blobDataSubmission, parentShnarf, finalShnarf),
+        lineaRollup
+          .connect(operator)
+          .submitBlobs(blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber),
         "IsPaused",
         [GENERAL_PAUSE_TYPE],
       );
     });
 
     it("Should revert if BLOB_SUBMISSION_PAUSE_TYPE is enabled", async () => {
-      const { blobDataSubmission, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 1);
 
       await lineaRollup.connect(securityCouncil).pauseByType(BLOB_SUBMISSION_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.connect(operator).submitBlobs(blobDataSubmission, parentShnarf, finalShnarf),
+        lineaRollup
+          .connect(operator)
+          .submitBlobs(blobDataSubmission, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber),
         "IsPaused",
         [BLOB_SUBMISSION_PAUSE_TYPE],
       );
@@ -735,12 +737,15 @@ describe("Linea Rollup contract", () => {
     it("Should revert if the blob data is empty at any index", async () => {
       const operatorHDSigner = getWalletForIndex(2);
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 2);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 2);
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -774,14 +779,17 @@ describe("Linea Rollup contract", () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 1);
 
-      blobDataSubmission[0].submissionData.finalStateRootHash = HASH_ZERO;
+      blobDataSubmission[0].finalStateRootHash = HASH_ZERO;
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -815,16 +823,19 @@ describe("Linea Rollup contract", () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 1);
 
       // Set the snarkHash to HASH_ZERO for a specific index
       const emptyDataIndex = 0;
-      blobDataSubmission[emptyDataIndex].submissionData.snarkHash = HASH_ZERO;
+      blobDataSubmission[emptyDataIndex].snarkHash = HASH_ZERO;
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -858,15 +869,17 @@ describe("Linea Rollup contract", () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 2);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 2);
 
-      blobDataSubmission[1].submissionData.firstBlockInData =
-        blobDataSubmission[1].submissionData.finalBlockInData + 1n;
+      const sentFirstBlockNumber = firstBlockNumber + 1n;
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
+        sentFirstBlockNumber,
+        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -893,20 +906,18 @@ describe("Linea Rollup contract", () => {
         lineaRollup,
         ethers.provider.broadcastTransaction(signedTx),
         "DataStartingBlockDoesNotMatch",
-        [
-          blobDataSubmission[0].submissionData.finalBlockInData + 1n,
-          blobDataSubmission[1].submissionData.firstBlockInData,
-        ],
+        [firstBlockNumber, sentFirstBlockNumber],
       );
     });
 
-    it("Should revert with FirstBlockLessThanOrEqualToLastFinalizedBlock when submitting data with firstBlockInData less than currentL2BlockNumber", async () => {
+    it("Should revert with FirstBlockLessThanOrEqualToLastFinalizedBlock when submitting data with firstBlockNumber less than currentL2BlockNumber", async () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 1);
 
-      // Set the currentL2BlockNumber to a value greater than the firstBlockInData
+      // Set the currentL2BlockNumber to a value greater than the firstBlockNumber
       const currentL2BlockNumber = 1_000_000n;
       await lineaRollup.setLastFinalizedBlock(currentL2BlockNumber);
 
@@ -914,6 +925,8 @@ describe("Linea Rollup contract", () => {
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -940,64 +953,23 @@ describe("Linea Rollup contract", () => {
         lineaRollup,
         ethers.provider.broadcastTransaction(signedTx),
         "FirstBlockLessThanOrEqualToLastFinalizedBlock",
-        [blobDataSubmission[0].submissionData.firstBlockInData, currentL2BlockNumber],
-      );
-    });
-
-    it("Should revert with FirstBlockGreaterThanFinalBlock when submitting data with firstBlockInData greater than finalBlockInData", async () => {
-      const operatorHDSigner = getWalletForIndex(2);
-
-      const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
-
-      // Set the firstBlockInData to be greater than the finalBlockInData
-      blobDataSubmission[0].submissionData.finalBlockInData =
-        blobDataSubmission[0].submissionData.firstBlockInData - 1n;
-
-      const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
-        blobDataSubmission,
-        parentShnarf,
-        finalShnarf,
-      ]);
-
-      const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
-      const nonce = await operatorHDSigner.getNonce();
-
-      const transaction = Transaction.from({
-        data: encodedCall,
-        maxPriorityFeePerGas: maxPriorityFeePerGas!,
-        maxFeePerGas: maxFeePerGas!,
-        to: lineaRollupAddress,
-        chainId: (await ethers.provider.getNetwork()).chainId,
-        type: 3,
-        nonce,
-        value: 0,
-        gasLimit: 5_000_000,
-        kzg,
-        maxFeePerBlobGas: 1n,
-        blobs: compressedBlobs,
-      });
-
-      const signedTx = await operatorHDSigner.signTransaction(transaction);
-
-      await expectRevertWithCustomError(
-        lineaRollup,
-        ethers.provider.broadcastTransaction(signedTx),
-        "FirstBlockGreaterThanFinalBlock",
-        [blobDataSubmission[0].submissionData.firstBlockInData, blobDataSubmission[0].submissionData.finalBlockInData],
+        [firstBlockNumber, currentL2BlockNumber],
       );
     });
 
     it("Should revert if the final shnarf is wrong", async () => {
       const operatorHDSigner = getWalletForIndex(2);
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 2);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 2);
       const badFinalShnarf = generateRandomBytes(32);
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         badFinalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -1034,13 +1006,16 @@ describe("Linea Rollup contract", () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 1);
 
       // Try to submit the same blob data again
       const encodedCall2 = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
       ]);
 
       const { maxFeePerGas: maxFeePerGas2, maxPriorityFeePerGas: maxPriorityFeePerGas2 } =
@@ -1076,7 +1051,8 @@ describe("Linea Rollup contract", () => {
       const operatorHDSigner = getWalletForIndex(2);
 
       const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
+      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf, firstBlockNumber, finalBlockNumber } =
+        generateBlobDataSubmission(0, 1);
 
       // Modify the kzgProof to an invalid value to trigger the PointEvaluationFailed revert
       blobDataSubmission[0].kzgProof = HASH_ZERO;
@@ -1085,6 +1061,8 @@ describe("Linea Rollup contract", () => {
         blobDataSubmission,
         parentShnarf,
         finalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -1137,12 +1115,16 @@ describe("Linea Rollup contract", () => {
         compressedBlobs: compressedBlobs,
         parentShnarf: parentShnarf,
         finalShnarf: finalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
       } = generateBlobDataSubmission(0, 2, true);
 
       const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
         [blobSubmission[0]],
         parentShnarf,
         finalShnarf,
+        firstBlockNumber,
+        finalBlockNumber,
       ]);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -1183,7 +1165,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockInData: BigInt(blobAggregatedProof1To155.finalBlockNumber),
+        finalBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: blobAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
@@ -1221,7 +1203,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockInData: BigInt(blobAggregatedProof1To155.finalBlockNumber),
+        finalBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: blobAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
@@ -1272,7 +1254,7 @@ describe("Linea Rollup contract", () => {
           l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
           l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
           lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-          finalBlockInData: BigInt(blobAggregatedProof1To155.finalBlockNumber),
+          finalBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: blobAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
           l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
@@ -1358,7 +1340,7 @@ describe("Linea Rollup contract", () => {
           lineaRollup,
           finalizeCall,
           "FinalBlockNumberLessThanOrEqualToLastFinalizedBlock",
-          [finalizationData.finalBlockInData, 10_000_000],
+          [finalizationData.finalBlockNumber, 10_000_000],
         );
       });
 
@@ -1446,7 +1428,7 @@ describe("Linea Rollup contract", () => {
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
           l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1507,7 +1489,7 @@ describe("Linea Rollup contract", () => {
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(new Date(new Date().setHours(new Date().getHours() + 2)).getTime()), // Set to 2 hours in the future
           l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1551,7 +1533,7 @@ describe("Linea Rollup contract", () => {
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
           l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1691,7 +1673,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+        finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1729,7 +1711,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+        finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1770,7 +1752,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+        finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -1809,7 +1791,7 @@ describe("Linea Rollup contract", () => {
         l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+        finalBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
         parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
         finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
         l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
@@ -2024,12 +2006,16 @@ describe("Linea Rollup contract", () => {
       compressedBlobs: compressedBlobs,
       parentShnarf: parentShnarf,
       finalShnarf: finalShnarf,
+      firstBlockNumber,
+      finalBlockNumber,
     } = generateBlobDataSubmission(startIndex, finalIndex, isMultiple);
 
     const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
       blobSubmission,
       parentShnarf,
       finalShnarf,
+      firstBlockNumber,
+      finalBlockNumber,
     ]);
 
     const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -2056,11 +2042,11 @@ describe("Linea Rollup contract", () => {
     const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
 
     const expectedEventArgs = [
-      blobSubmission[0].submissionData.firstBlockInData,
-      blobSubmission[blobSubmission.length - 1].submissionData.finalBlockInData,
+      firstBlockNumber,
+      finalBlockNumber,
       parentShnarf,
       finalShnarf,
-      blobSubmission[blobSubmission.length - 1].submissionData.finalStateRootHash,
+      blobSubmission[blobSubmission.length - 1].finalStateRootHash,
     ];
 
     expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
@@ -2080,7 +2066,7 @@ describe("Linea Rollup contract", () => {
       l1RollingHash: proofData.l1RollingHash,
       l1RollingHashMessageNumber: BigInt(proofData.l1RollingHashMessageNumber),
       lastFinalizedTimestamp: BigInt(proofData.parentAggregationLastBlockTimestamp),
-      finalBlockInData: BigInt(proofData.finalBlockNumber),
+      finalBlockNumber: BigInt(proofData.finalBlockNumber),
       parentStateRootHash: proofData.parentStateRootHash,
       finalTimestamp: BigInt(proofData.finalTimestamp),
       l2MerkleRoots: proofData.l2MerkleRoots,
@@ -2100,7 +2086,7 @@ describe("Linea Rollup contract", () => {
 
     const eventArgs = [
       BigInt(proofData.lastFinalizedBlockNumber) + 1n,
-      finalizationData.finalBlockInData,
+      finalizationData.finalBlockNumber,
       proofData.finalShnarf,
       finalizationData.parentStateRootHash,
       finalStateRootHash,
@@ -2109,13 +2095,13 @@ describe("Linea Rollup contract", () => {
     await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV3", eventArgs);
 
     const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
-      lineaRollup.stateRootHashes(finalizationData.finalBlockInData),
+      lineaRollup.stateRootHashes(finalizationData.finalBlockNumber),
       lineaRollup.currentL2BlockNumber(),
       lineaRollup.currentFinalizedState(),
     ]);
 
     expect(expectedFinalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
-    expect(lastFinalizedBlockNumber).to.equal(finalizationData.finalBlockInData);
+    expect(lastFinalizedBlockNumber).to.equal(finalizationData.finalBlockNumber);
     expect(lastFinalizedState).to.equal(
       generateKeccak256(
         ["uint256", "bytes32", "uint256"],

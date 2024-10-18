@@ -41,31 +41,17 @@ interface ILineaRollup {
   /**
    * @notice Supporting data for compressed calldata submission including compressed data.
    * @dev finalStateRootHash is used to set state root at the end of the data.
-   * @dev firstBlockInData is the first block that is included in the data submitted.
-   * @dev finalBlockInData is the last block that is included in the data submitted.
+   * @dev firstBlockNumber is the first block that is included in the data submitted.
+   * @dev finalBlockNumber is the last block that is included in the data submitted.
    * @dev snarkHash is the computed hash for compressed data (using a SNARK-friendly hash function) that aggregates per data submission to be used in public input.
    * @dev compressedData is the compressed transaction data. It contains ordered data for each L2 block - l2Timestamps, the encoded txData.
    */
-  struct SubmissionDataV2 {
+  struct CompressedCalldataSubmission {
     bytes32 finalStateRootHash;
-    uint256 firstBlockInData;
-    uint256 finalBlockInData;
+    uint256 firstBlockNumber;
+    uint256 finalBlockNumber;
     bytes32 snarkHash;
     bytes compressedData;
-  }
-
-  /**
-   * @notice Supporting data for compressed blob data submission.
-   * @dev finalStateRootHash is used to set state root at the end of the data.
-   * @dev firstBlockInData is the first block that is included in the data submitted.
-   * @dev finalBlockInData is the last block that is included in the data submitted.
-   * @dev snarkHash is the computed hash for compressed data (using a SNARK-friendly hash function) that aggregates per data submission to be used in public input.
-   */
-  struct SupportingSubmissionDataV2 {
-    bytes32 finalStateRootHash;
-    uint256 firstBlockInData;
-    uint256 finalBlockInData;
-    bytes32 snarkHash;
   }
 
   /**
@@ -91,18 +77,19 @@ interface ILineaRollup {
    * @dev kzgCommitment The blob KZG commitment.
    * @dev kzgProof The blob KZG point proof.
    */
-  struct BlobSubmissionData {
-    SupportingSubmissionDataV2 submissionData;
+  struct BlobSubmission {
     uint256 dataEvaluationClaim;
     bytes kzgCommitment;
     bytes kzgProof;
+    bytes32 finalStateRootHash;
+    bytes32 snarkHash;
   }
 
   /**
    * @notice Supporting data for finalization with proof.
    * @dev NB: the dynamic sized fields are placed last on purpose for efficient keccaking on public input.
    * @dev parentStateRootHash is the expected last state root hash finalized.
-   * @dev finalBlockInData is the final block finalizing until.
+   * @dev finalBlockNumber is the final block finalizing until.
    * @dev shnarfData contains data about the last data submission's shnarf used in finalization.
    * @dev lastFinalizedTimestamp is the expected last finalized block's timestamp.
    * @dev finalTimestamp is the timestamp of the last block being finalized.
@@ -113,12 +100,12 @@ interface ILineaRollup {
    * @dev l1RollingHashMessageNumber is the calculated message number on L2 that is expected to match the existing L1 rolling hash.
    * This value will be used along with the stored last finalized L2 calculated message number in the public input.
    * @dev l2MerkleTreesDepth is the depth of all l2MerkleRoots.
-   * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockInData.
+   * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockNumber.
    * @dev l2MessagingBlocksOffsets indicates by offset from currentL2BlockNumber which L2 blocks contain MessageSent events.
    */
   struct FinalizationDataV3 {
     bytes32 parentStateRootHash;
-    uint256 finalBlockInData;
+    uint256 finalBlockNumber;
     ShnarfData shnarfData;
     uint256 lastFinalizedTimestamp;
     uint256 finalTimestamp;
@@ -356,25 +343,29 @@ interface ILineaRollup {
    * @notice Submit one or more EIP-4844 blobs.
    * @dev OPERATOR_ROLE is required to execute.
    * @dev This should be a blob carrying transaction.
-   * @param _blobSubmissionData The data for blob submission including proofs and required polynomials.
+   * @param _blobSubmissions The data for blob submission including proofs and required polynomials.
    * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
    * @param _finalBlobShnarf The expected final shnarf post computation of all the blob shnarfs.
+   * @param _firstBlockNumber The first block number in the data being submitted.
+   * @param _finalBlockNumber The final block number in the data being submitted.
    */
   function submitBlobs(
-    BlobSubmissionData[] calldata _blobSubmissionData,
+    BlobSubmission[] calldata _blobSubmissions,
     bytes32 _parentShnarf,
-    bytes32 _finalBlobShnarf
+    bytes32 _finalBlobShnarf,
+    uint256 _firstBlockNumber,
+    uint256 _finalBlockNumber
   ) external;
 
   /**
    * @notice Submit blobs using compressed data via calldata.
    * @dev OPERATOR_ROLE is required to execute.
-   * @param _submissionData The supporting data for compressed data submission including compressed data.
+   * @param _submission The supporting data for compressed data submission including compressed data.
    * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
    * @param _expectedShnarf The expected shnarf post computation of all the submission.
    */
   function submitDataAsCalldata(
-    SubmissionDataV2 calldata _submissionData,
+    CompressedCalldataSubmission calldata _submission,
     bytes32 _parentShnarf,
     bytes32 _expectedShnarf
   ) external;

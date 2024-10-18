@@ -209,27 +209,27 @@ async function main() {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapToTuple(blobSubmissionDataItems: BlobSubmissionData[]): any {
   return blobSubmissionDataItems.map((blobSubmissionData) => [
-    [
-      blobSubmissionData.submissionData.finalStateRootHash,
-      blobSubmissionData.submissionData.firstBlockInData,
-      blobSubmissionData.submissionData.finalBlockInData,
-      blobSubmissionData.submissionData.snarkHash,
-    ],
     blobSubmissionData.dataEvaluationClaim,
     blobSubmissionData.kzgCommitment,
     blobSubmissionData.kzgProof,
+    blobSubmissionData.submissionData.finalStateRootHash,
+    blobSubmissionData.submissionData.snarkHash,
   ]);
 }
 
 function encodeCall(submissionData: BlobSubmissionData[]): DataHexString {
+  //submitBlobs((uint256,bytes,bytes,bytes32,bytes32)[],bytes32,bytes32,uint256,uint256)": "f92f3716
+
   const encodedCall = ethers.concat([
-    "0x42fbe842",
+    "0xf92f3716",
     ethers.AbiCoder.defaultAbiCoder().encode(
-      ["tuple(tuple(bytes32,uint256,uint256,bytes32),uint256,bytes,bytes)[]", "bytes32", "bytes32"],
+      ["tuple(uint256,bytes,bytes,bytes32,bytes32)[]", "bytes32", "bytes32", "uint256", "uint256"],
       [
         mapToTuple(submissionData),
         submissionData[0].parentSubmissionData.shnarf,
         dataItems[dataItems.length - 1].expectedShnarf,
+        submissionData[0].submissionData.firstBlockInData,
+        submissionData[submissionData.length - 1].submissionData.finalBlockInData,
       ],
     ),
   ]);
@@ -354,9 +354,9 @@ async function sendProof(
   ];
 
   console.log(proofData);
-
+  //finalizeBlocks(bytes,uint256,(bytes32,uint256,(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,bytes32[],bytes))": "5603c65f"
   const encodedCall = ethers.concat([
-    "0x227be0dc",
+    "0x5603c65f",
     ethers.AbiCoder.defaultAbiCoder().encode(
       [
         "bytes",
