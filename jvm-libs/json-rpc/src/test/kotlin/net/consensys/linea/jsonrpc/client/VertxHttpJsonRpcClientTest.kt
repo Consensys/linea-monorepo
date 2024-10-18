@@ -16,6 +16,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpClientOptions
 import io.vertx.core.http.HttpVersion
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import net.consensys.linea.async.get
 import net.consensys.linea.async.toSafeFuture
@@ -115,27 +116,37 @@ class VertxHttpJsonRpcClientTest {
   }
 
   @Test
-  fun makesRequest_successNullResult() {
+  fun makesRequest_success_result_is_null() {
     replyRequestWith(JsonObject().put("jsonrpc", "2.0").put("id", "1").put("result", null))
 
-    val response =
-      client.makeRequest(JsonRpcRequestListParams("2.0", 1, "eth_blockNumber", emptyList())).get()
-
-    assertThat(response).isEqualTo(Ok(JsonRpcSuccessResponse("1", null)))
+    client.makeRequest(JsonRpcRequestListParams("2.0", 1, "eth_blockNumber", emptyList())).get()
+      .also { response ->
+        assertThat(response).isEqualTo(Ok(JsonRpcSuccessResponse("1", null)))
+      }
   }
 
   @Test
-  fun makesRequest_successSingleValue() {
+  fun makesRequest_success_result_is_number() {
     replyRequestWith(JsonObject().put("jsonrpc", "2.0").put("id", "1").put("result", 3))
 
-    val response =
-      client.makeRequest(JsonRpcRequestListParams("2.0", 1, "randomNumber", emptyList())).get()
-
-    assertThat(response).isEqualTo(Ok(JsonRpcSuccessResponse("1", 3)))
+    client.makeRequest(JsonRpcRequestListParams("2.0", 1, "randomNumber", emptyList())).get()
+      .also { response ->
+        assertThat(response).isEqualTo(Ok(JsonRpcSuccessResponse("1", 3)))
+      }
   }
 
   @Test
-  fun makesRequest_successJsonObject() {
+  fun makesRequest_success_result_is_string() {
+    replyRequestWith(JsonObject().put("jsonrpc", "2.0").put("id", "1").put("result", "0x1234"))
+
+    client.makeRequest(JsonRpcRequestListParams("2.0", 1, "randomNumber", emptyList())).get()
+      .also { response ->
+        assertThat(response).isEqualTo(Ok(JsonRpcSuccessResponse("1", "0x1234")))
+      }
+  }
+
+  @Test
+  fun makesRequest_success_result_is_Object() {
     replyRequestWith(
       JsonObject()
         .put("jsonrpc", "2.0")
@@ -143,11 +154,60 @@ class VertxHttpJsonRpcClientTest {
         .put("result", JsonObject().put("odd", 23).put("even", 10))
     )
 
-    val response =
-      client.makeRequest(JsonRpcRequestListParams("2.0", 1, "randomNumbers", emptyList())).get()
+    client
+      .makeRequest(JsonRpcRequestListParams("2.0", 1, "randomNumbers", emptyList()))
+      .get()
+      .also { response ->
+        val expectedJsonNode = JsonObject("""{"odd":23,"even":10}""")
+        assertThat(response)
+          .isEqualTo(Ok(JsonRpcSuccessResponse("1", expectedJsonNode)))
+      }
 
-    assertThat(response)
-      .isEqualTo(Ok(JsonRpcSuccessResponse("1", JsonObject().put("odd", 23).put("even", 10))))
+    client
+      .makeRequest(
+        request = JsonRpcRequestListParams("2.0", 1, "randomNumbers", emptyList()),
+        resultMapper = ::toPrimitiveOrJacksonJsonNode
+      )
+      .get()
+      .also { response ->
+        val expectedJsonNode = objectMapper.readTree("""{"odd":23,"even":10}""")
+        assertThat(response)
+          .isEqualTo(Ok(JsonRpcSuccessResponse("1", expectedJsonNode)))
+      }
+  }
+
+  @Test
+  fun makesRequest_success_result_is_array() {
+    replyRequestWith(
+      statusCode = 200,
+      """{
+        |"jsonrpc": "2.0",
+        |"id": "1",
+        |"result": ["a", 2, "c", 4]
+        |}
+      """.trimMargin()
+    )
+
+    client
+      .makeRequest(JsonRpcRequestListParams("2.0", 1, "randomNumbers", emptyList()))
+      .get()
+      .also { response ->
+        val expectedJsonNode = JsonArray("""["a", 2, "c", 4]""")
+        assertThat(response)
+          .isEqualTo(Ok(JsonRpcSuccessResponse("1", expectedJsonNode)))
+      }
+
+    client
+      .makeRequest(
+        request = JsonRpcRequestListParams("2.0", 1, "randomNumbers", emptyList()),
+        resultMapper = ::toPrimitiveOrJacksonJsonNode
+      )
+      .get()
+      .also { response ->
+        val expectedJsonNode = objectMapper.readTree("""["a", 2, "c", 4]""")
+        assertThat(response)
+          .isEqualTo(Ok(JsonRpcSuccessResponse("1", expectedJsonNode)))
+      }
   }
 
   @Test
@@ -156,12 +216,13 @@ class VertxHttpJsonRpcClientTest {
       JsonObject().put("jsonrpc", "2.0").put("id", "1").put("result", "some_random_value")
     )
     val resultMapper = { value: Any? -> (value as String).uppercase() }
-    val response =
-      client
-        .makeRequest(JsonRpcRequestListParams("2.0", 1, "randomNumbers", emptyList()), resultMapper)
-        .get()
 
-    assertThat(response).isEqualTo(Ok(JsonRpcSuccessResponse("1", "SOME_RANDOM_VALUE")))
+    client
+      .makeRequest(JsonRpcRequestListParams("2.0", 1, "randomNumbers", emptyList()), resultMapper)
+      .get()
+      .also { response ->
+        assertThat(response).isEqualTo(Ok(JsonRpcSuccessResponse("1", "SOME_RANDOM_VALUE")))
+      }
   }
 
   @Test

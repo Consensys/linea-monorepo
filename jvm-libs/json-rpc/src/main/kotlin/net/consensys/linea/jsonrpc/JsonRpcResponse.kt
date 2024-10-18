@@ -61,6 +61,7 @@ data class JsonRpcErrorResponse(
     fun internalError(id: Any, data: Any?): JsonRpcErrorResponse {
       return JsonRpcErrorResponse(id, JsonRpcError.internalError(data))
     }
+
     fun invalidParams(id: Any, message: String?): JsonRpcErrorResponse {
       return JsonRpcErrorResponse(id, JsonRpcError.invalidMethodParameter(message))
     }
@@ -74,8 +75,10 @@ data class JsonRpcError(
   @JsonProperty("message") val message: String,
   @JsonProperty("data") val data: Any? = null
 ) {
+  // inlining for better stacktrace
+  @Suppress("NOTHING_TO_INLINE")
+  inline fun asException() = JsonRpcErrorResponseException(code, message, data)
 
-  fun asException() = JsonRpcErrorException("Code: $code, message: '$message'")
   companion object {
     @JvmStatic
     fun invalidMethodParameter(message: String?): JsonRpcError =
@@ -88,14 +91,25 @@ data class JsonRpcError(
     fun invalidMethodParameter(message: String, data: Any): JsonRpcError =
       JsonRpcError(JsonRpcErrorCode.INVALID_PARAMS.code, message, data)
 
-    @JvmStatic fun internalError(): JsonRpcError = JsonRpcErrorCode.INTERNAL_ERROR.toErrorObject()
+    @JvmStatic
+    fun internalError(): JsonRpcError = JsonRpcErrorCode.INTERNAL_ERROR.toErrorObject()
 
     @JvmStatic
     fun internalError(data: Any?): JsonRpcError =
       JsonRpcErrorCode.INTERNAL_ERROR.toErrorObject(data)
 
-    @JvmStatic fun unauthorized(): JsonRpcError = JsonRpcErrorCode.UNAUTHORIZED.toErrorObject()
+    @JvmStatic
+    fun unauthorized(): JsonRpcError = JsonRpcErrorCode.UNAUTHORIZED.toErrorObject()
   }
 }
 
-class JsonRpcErrorException(override val message: String) : Exception(message)
+class JsonRpcErrorException(
+  override val message: String?,
+  val httpStatusCode: Int? = null
+) : RuntimeException(message)
+
+class JsonRpcErrorResponseException(
+  val rpcErrorCode: Int,
+  val rpcErrorMessage: String,
+  val rpcErrorData: Any? = null
+) : RuntimeException("code=$rpcErrorCode message=$rpcErrorMessage errorData=$rpcErrorData")
