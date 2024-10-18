@@ -68,7 +68,7 @@ jobs:
 
       - name: Check image tags exist for coordinator
         uses: ./.github/actions/check-image-tags-exist
-        if: ${{ inputs.coordinator_changed == 'false' }}
+        if: ${{ inputs.coordinator_changed != 'false' }}
         id: check_image_tags_exist_coordinator
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}

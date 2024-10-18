@@ -742,3 +742,4 @@ services:
       - loki
     networks:
       - linea
+
