@@ -176,7 +176,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	}
 
 	// first, we need to collect the verifying keys
-	var allowedVkForAggregation []plonk.VerifyingKey
+	allowedVkForAggregation := make([]plonk.VerifyingKey, 0, len(cfg.Aggregation.AllowedInputs))
 	for _, allowedInput := range cfg.Aggregation.AllowedInputs {
 		// first if it's a dummy circuit, we just run the setup here, we don't need to persist it.
 		if isDummyCircuit(allowedInput) {
@@ -223,7 +223,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	}
 
 	// now for each aggregation circuit, we update the setup if needed, and collect the verifying keys
-	var allowedVkForEmulation []plonk.VerifyingKey
+	allowedVkForEmulation := make([]plonk.VerifyingKey, 0, len(cfg.Aggregation.NumProofs))
 	for _, numProofs := range cfg.Aggregation.NumProofs {
 		c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), numProofs))
 		logrus.Infof("setting up %s (numProofs=%d)", c, numProofs)
