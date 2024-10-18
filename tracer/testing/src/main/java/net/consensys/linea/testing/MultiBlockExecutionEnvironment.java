@@ -34,6 +34,14 @@ public class MultiBlockExecutionEnvironment {
 
   private final List<BlockSnapshot> blocks;
 
+  /**
+   * A transaction validator of each transaction; by default, it asserts that the transaction was
+   * successfully processed.
+   */
+  @Builder.Default
+  private final TransactionProcessingResultValidator transactionProcessingResultValidator =
+      TransactionProcessingResultValidator.DEFAULT_VALIDATOR;
+
   public static class MultiBlockExecutionEnvironmentBuilder {
 
     private List<BlockSnapshot> blocks = new ArrayList<>();
@@ -55,6 +63,7 @@ public class MultiBlockExecutionEnvironment {
   public void run() {
     ReplayExecutionEnvironment.builder()
         .useCoinbaseAddressFromBlockHeader(true)
+        .transactionProcessingResultValidator(this.transactionProcessingResultValidator)
         .build()
         .replay(ToyExecutionEnvironmentV2.CHAIN_ID, this.buildConflationSnapshot());
   }

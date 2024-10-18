@@ -24,6 +24,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
+import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -137,7 +138,7 @@ public class TestRlpAddress {
     ToyExecutionEnvironmentV2.builder()
         .accounts(List.of(senderAccount, contractAccount))
         .transaction(tx)
-        .testValidator(x -> {})
+        .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
         .run();
   }

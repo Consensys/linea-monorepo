@@ -28,6 +28,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
+import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.EWord;
@@ -292,7 +293,12 @@ public class MxpTest {
             contractMO1Account,
             contractMO2Account);
 
-    ToyExecutionEnvironmentV2.builder().accounts(accounts).transaction(tx).build().run();
+    ToyExecutionEnvironmentV2.builder()
+        .accounts(accounts)
+        .transaction(tx)
+        .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
+        .build()
+        .run();
   }
 
   // Support methods

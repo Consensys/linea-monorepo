@@ -133,7 +133,7 @@ tasks.register("fastReplayTests", Test) {
     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
     systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
     systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-      System.getenv().get("REPLAY_TESTS_PARALLELISM").toInteger())
+      System.getenv().getOrDefault("REPLAY_TESTS_PARALLELISM", "1").toInteger())
   }
   useJUnitPlatform {
     includeTags("replay")
@@ -152,7 +152,7 @@ tasks.register("nightlyReplayTests", Test) {
     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
     systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
     systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-      System.getenv().get("REPLAY_TESTS_PARALLELISM").toInteger())
+      System.getenv().getOrDefault("REPLAY_TESTS_PARALLELISM", "1").toInteger())
   }
 
   useJUnitPlatform {

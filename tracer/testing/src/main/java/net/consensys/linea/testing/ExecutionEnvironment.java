@@ -92,6 +92,7 @@ public class ExecutionEnvironment {
                 .number(parentBlockHeader.get().getNumber() + 1)
                 .timestamp(parentBlockHeader.get().getTimestamp() + 100)
                 .parentHash(parentBlockHeader.get().getHash())
+                .nonce(parentBlockHeader.get().getNonce() + 1)
                 .blockHeaderFunctions(new CliqueBlockHeaderFunctions())
             : BlockHeaderBuilder.createDefault();
 

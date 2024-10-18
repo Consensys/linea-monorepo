@@ -113,7 +113,8 @@ public final class BytecodeRunner {
 
     toyExecutionEnvironmentV2 =
         ToyExecutionEnvironmentV2.builder()
-            .testValidator(x -> {})
+            .transactionProcessingResultValidator(
+                TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .accounts(accounts)
             .zkTracerValidator(zkTracerValidator)
             .transaction(tx)

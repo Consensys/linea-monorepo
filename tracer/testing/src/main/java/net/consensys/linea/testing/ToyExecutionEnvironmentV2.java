@@ -30,7 +30,6 @@ import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
-import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.referencetests.GeneralStateTestCaseEipSpec;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 
@@ -51,10 +50,12 @@ public class ToyExecutionEnvironmentV2 {
   @Singular private final List<Transaction> transactions;
 
   /**
-   * A function applied to the {@link TransactionProcessingResult} of each transaction; by default,
-   * asserts that the transaction is successful.
+   * A transaction validator of each transaction; by default, it asserts that the transaction was
+   * successfully processed.
    */
-  @Builder.Default private final Consumer<TransactionProcessingResult> testValidator = x -> {};
+  @Builder.Default
+  private final TransactionProcessingResultValidator transactionProcessingResultValidator =
+      TransactionProcessingResultValidator.DEFAULT_VALIDATOR;
 
   @Builder.Default private final Consumer<ZkTracer> zkTracerValidator = x -> {};
 
@@ -66,7 +67,11 @@ public class ToyExecutionEnvironmentV2 {
         this.buildGeneralStateTestCaseSpec(protocolSpec);
 
     GeneralStateReferenceTestTools.executeTest(
-        generalStateTestCaseEipSpec, protocolSpec, tracer, testValidator, zkTracerValidator);
+        generalStateTestCaseEipSpec,
+        protocolSpec,
+        tracer,
+        transactionProcessingResultValidator,
+        zkTracerValidator);
   }
 
   public Hub getHub() {
