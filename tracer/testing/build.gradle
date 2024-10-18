@@ -59,6 +59,6 @@ solidity {
 }
 
 yul {
-  solcVersion = "0.8.19"
+  solcVersion = "0.8.26"
   compilerJsonTemplatePath = "src/main/resources/templates/compiler_yul.json.template"
 }
