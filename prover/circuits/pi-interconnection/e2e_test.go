@@ -5,6 +5,8 @@ package pi_interconnection_test
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/stretchr/testify/require"
 	"slices"
 	"testing"
 
@@ -15,7 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
+	circuittesting "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	pitesting "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -101,7 +103,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	blobResp, err := blobsubmission.CraftResponse(&blobReq)
 	assert.NoError(t, err)
 
-	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes))
+	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes))
 
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp},
@@ -182,7 +184,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	blobResp1, err := blobsubmission.CraftResponse(&blobReq1)
 	assert.NoError(t, err)
 
-	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes, execReq[2].L2MsgHashes, execReq[3].L2MsgHashes))
+	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes, execReq[2].L2MsgHashes, execReq[3].L2MsgHashes))
 
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp0, *blobResp1},
@@ -289,4 +291,23 @@ func decomposeLittleEndian(t *testing.T, digits []int, n, base int) {
 		n /= base
 	}
 	assert.Zero(t, n)
+}
+
+func TestSepoliaData(t *testing.T) {
+	var req pi_interconnection.Request
+	test_utils.LoadJson(t, "../../../testdata/sepolia-data/prover-pi-interconnection/requests/4454961-4457351.json", &req)
+	cfg := config.PublicInput{
+		MaxNbDecompression: 1,
+		MaxNbExecution:     31,
+		ExecutionMaxNbMsg:  1,
+		L2MsgMerkleDepth:   1,
+		L2MsgMaxNbMerkle:   1,
+		MockKeccakWizard:   true,
+	}
+	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
+	require.NoError(t, err)
+	a, err := compiled.Assign(req)
+	require.NoError(t, err)
+	t.Log("assignment successful")
+	require.NoError(t, test.IsSolved(compiled.Circuit, &a, ecc.BLS12_377.ScalarField()))
 }

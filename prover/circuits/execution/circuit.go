@@ -61,9 +61,13 @@ func assign(
 	funcInputs FunctionalPublicInput,
 ) CircuitExecution {
 	wizardVerifier := wizard.GetWizardVerifierCircuitAssignment(comp, proof)
+	fpiSnark, err := funcInputs.ToSnarkType()
+	if err != nil {
+		panic(err) // TODO error handling
+	}
 	return CircuitExecution{
 		WizardVerifier: *wizardVerifier,
-		FuncInputs:     funcInputs.ToSnarkType(),
+		FuncInputs:     fpiSnark,
 		PublicInput:    new(big.Int).SetBytes(funcInputs.Sum()),
 	}
 }
