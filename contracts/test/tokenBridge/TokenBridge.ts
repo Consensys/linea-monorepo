@@ -30,6 +30,7 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
 } from "../common/helpers";
+import { DEFAULT_ADMIN_ROLE } from "contracts/common/constants";
 
 const initialUserBalance = BigInt(10 ** 9);
 const mockName = "L1 DAI";
@@ -905,13 +906,35 @@ describe("TokenBridge", function () {
 
   describe("reinitializePauseTypesAndPermissions", function () {
     it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializePauseTypesAndPermissions", async function () {
-      const { l1TokenBridge } = await loadFixture(deployContractsFixture);
+      const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
 
       const roleAddresses = [{ addressWithRole: ZeroAddress, role: SET_RESERVED_TOKEN_ROLE }];
 
       await expectRevertWithCustomError(
         l1TokenBridge,
-        l1TokenBridge.reinitializePauseTypesAndPermissions(roleAddresses, pauseTypeRoles, unpauseTypeRoles),
+        l1TokenBridge.reinitializePauseTypesAndPermissions(
+          owner.address,
+          roleAddresses,
+          pauseTypeRoles,
+          unpauseTypeRoles,
+        ),
+        "ZeroAddressNotAllowed",
+      );
+    });
+
+    it("Should revert with ZeroAddressNotAllowed when default admin is zero address", async function () {
+      const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
+
+      const roleAddresses = [{ addressWithRole: owner.address, role: SET_RESERVED_TOKEN_ROLE }];
+
+      await expectRevertWithCustomError(
+        l1TokenBridge,
+        l1TokenBridge.reinitializePauseTypesAndPermissions(
+          ZeroAddress, //owner is set to zeroaddress
+          roleAddresses,
+          pauseTypeRoles,
+          unpauseTypeRoles,
+        ),
         "ZeroAddressNotAllowed",
       );
     });
@@ -971,6 +994,7 @@ describe("TokenBridge", function () {
       await tokenBridgeV2Implementation.waitForDeployment();
 
       const reinitializeCallData = TokenBridgeV2.interface.encodeFunctionData("reinitializePauseTypesAndPermissions", [
+        owner.address,
         newRoleAddresses,
         pauseTypeRoles,
         unpauseTypeRoles,
@@ -1062,6 +1086,7 @@ describe("TokenBridge", function () {
       await tokenBridgeV2Implementation.waitForDeployment();
 
       const reinitializeCallData = TokenBridgeV2.interface.encodeFunctionData("reinitializePauseTypesAndPermissions", [
+        owner.address,
         newRoleAddresses,
         pauseTypeRoles,
         unpauseTypeRoles,
@@ -1085,6 +1110,8 @@ describe("TokenBridge", function () {
       for (const { role, addressWithRole } of newRoleAddresses) {
         expect(await upgradedTokenBridge.hasRole(role, addressWithRole)).to.be.true;
       }
+
+      expect(await upgradedTokenBridge.hasRole(DEFAULT_ADMIN_ROLE, owner.address)).to.be.true;
     });
   });
 });
