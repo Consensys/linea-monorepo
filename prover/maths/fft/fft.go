@@ -17,7 +17,7 @@ const (
 )
 
 // parallelize threshold for a single butterfly op, if the fft stage is not parallelized already
-const butterflyThreshold = 512
+const butterflyThreshold = 16
 
 // FFT computes (recursively) the discrete Fourier transform of a and stores the result in a
 // if decimation == DIT (decimation in time), the input must be in bit-reversed order
