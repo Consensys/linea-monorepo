@@ -6,9 +6,9 @@ import com.github.michaelbull.result.onSuccess
 import com.github.michaelbull.result.recover
 import com.github.michaelbull.result.runCatching
 import net.consensys.encodeHex
+import net.consensys.linea.BlockInterval
+import net.consensys.linea.BlockIntervals
 import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.BlockInterval
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -109,7 +109,7 @@ class RollingBlobShnarfCalculator(
     finalStateRootHash: ByteArray,
     conflationOrder: BlockIntervals
   ): SafeFuture<RollingBlobShnarfResult> {
-    val blobBlockRange = BlockInterval.between(
+    val blobBlockRange = BlockInterval(
       conflationOrder.startingBlockNumber,
       conflationOrder.upperBoundaries.last()
     )

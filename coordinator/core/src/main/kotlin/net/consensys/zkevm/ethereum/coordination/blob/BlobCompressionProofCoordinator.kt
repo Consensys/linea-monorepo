@@ -3,18 +3,18 @@ package net.consensys.zkevm.ethereum.coordination.blob
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
+import net.consensys.linea.BlockInterval
+import net.consensys.linea.BlockIntervals
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.toBlockIntervalsString
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobStatus
-import net.consensys.zkevm.domain.BlockInterval
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ConflationCalculationResult
-import net.consensys.zkevm.domain.toBlockIntervalsString
 import net.consensys.zkevm.ethereum.coordination.conflation.BlobCreationHandler
 import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
@@ -149,7 +149,7 @@ class BlobCompressionProofCoordinator(
           blobsRepository.saveNewBlob(blobRecord),
           blobCompressionProofHandler.acceptNewBlobCompressionProof(
             BlobCompressionProofUpdate(
-              blockInterval = BlockInterval.between(
+              blockInterval = BlockInterval(
                 startBlockNumber = blobRecord.startBlockNumber,
                 endBlockNumber = blobRecord.endBlockNumber
               ),
