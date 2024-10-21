@@ -236,8 +236,8 @@ func TestOpBasicEdgeCases(t *testing.T) {
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
 			t.Logf("test-case details: %v", testCase.explainer)
-			res := testCase.fn(testCase.inputs...)
-			actual := res
+			res := testCase.fn(testCase.inputs...).(*Pooled)
+			actual := NewRegular(res.Regular)
 			require.Equal(t, testCase.expectedRes, actual, "expectedRes=%v\nres=%v", testCase.expectedRes.Pretty(), res.Pretty())
 		})
 	}

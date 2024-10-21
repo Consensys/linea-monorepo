@@ -110,12 +110,12 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...mempoo
 
 	switch {
 	case matchedRegular == totalToMatch:
-		return &regularRes.Regular
+		return regularRes
 	case matchedRegular+matchedConst == totalToMatch:
 		// In this case, there are no windowed in the list. This means we only
 		// need to merge the const one into the regular one before returning
 		op.constTermIntoVec(regularRes.Regular, &constRes.val)
-		return &regularRes.Regular
+		return regularRes
 	default:
 
 		// If windowRes is a regular (can happen if all windows arguments cover the full circle)
