@@ -172,16 +172,35 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 	rExecution := internal.NewRange(api, nbExecution, maxNbExecution)
 
+	twoPow8 := big.NewInt(256)
+	hi16B := func(block [32]frontend.Variable) frontend.Variable {
+		return compress.ReadNum(api, block[:16], twoPow8)
+	}
+	lo16B := func(block [32]frontend.Variable) frontend.Variable {
+		return compress.ReadNum(api, block[16:], twoPow8)
+	}
+
+	{ // if rolling hash values are present in the last execution, they must match those of aggregation
+		finalRollingHashFromExec := rExecution.LastArray32F(func(i int) [32]frontend.Variable { return c.ExecutionFPIQ[i].FinalRollingHash })
+		finalRollingHashNumFromExec := rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalRollingHashNumber })
+
+		h, l := hi16B(finalRollingHashFromExec), lo16B(finalRollingHashFromExec)
+
+		finalRollingHashPresent := api.Sub(1, api.Mul(api.IsZero(h), api.IsZero(l)))
+
+		internal.AssertEqualIf(api, finalRollingHashPresent, h, hi16B(c.FinalRollingHash))
+		internal.AssertEqualIf(api, finalRollingHashPresent, l, lo16B(c.FinalRollingHash))
+		internal.AssertEqualIf(api, finalRollingHashPresent, finalRollingHashNumFromExec, c.FinalRollingHashNumber)
+	}
+
 	pi := public_input.AggregationFPISnark{
-		AggregationFPIQSnark:   c.AggregationFPIQSnark,
-		NbL2Messages:           merkleLeavesConcat.Length,
-		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, c.L2MessageMaxNbMerkle),
-		FinalBlockNumber:       rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
-		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
-		FinalRollingHash:       rExecution.LastArray32F(func(i int) [32]frontend.Variable { return c.ExecutionFPIQ[i].FinalRollingHash }),
-		FinalRollingHashNumber: rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalRollingHashNumber }),
-		FinalShnarf:            rDecompression.LastArray32(shnarfs),
-		L2MsgMerkleTreeDepth:   c.L2MessageMerkleDepth,
+		AggregationFPIQSnark: c.AggregationFPIQSnark,
+		NbL2Messages:         merkleLeavesConcat.Length,
+		L2MsgMerkleTreeRoots: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle),
+		FinalBlockNumber:     rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
+		FinalBlockTimestamp:  rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
+		FinalShnarf:          rDecompression.LastArray32(shnarfs),
+		L2MsgMerkleTreeDepth: c.L2MessageMerkleDepth,
 	}
 
 	for i := range pi.L2MsgMerkleTreeRoots {
@@ -190,7 +209,6 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	// "open" aggregation public input
 	aggregationPIBytes := pi.Sum(api, &hshK)
-	twoPow8 := big.NewInt(256)
 	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
 	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
 

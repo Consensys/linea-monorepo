@@ -2,6 +2,7 @@ package execution
 
 import (
 	"encoding/binary"
+	"fmt"
 	"hash"
 	"slices"
 
@@ -147,7 +148,7 @@ func (pi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldH
 	return hsh.Sum()
 }
 
-func (pi *FunctionalPublicInput) ToSnarkType() FunctionalPublicInputSnark {
+func (pi *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error) {
 	res := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 			DataChecksum:           slices.Clone(pi.DataChecksum[:]),
@@ -167,7 +168,12 @@ func (pi *FunctionalPublicInput) ToSnarkType() FunctionalPublicInputSnark {
 	utils.Copy(res.FinalRollingHash[:], pi.FinalRollingHash[:])
 	utils.Copy(res.InitialRollingHash[:], pi.InitialRollingHash[:])
 
-	return res
+	var err error
+	if nbMsg := len(pi.L2MessageHashes); nbMsg > pi.MaxNbL2MessageHashes {
+		err = fmt.Errorf("has %d L2 message hashes but a maximum of %d is allowed", nbMsg, pi.MaxNbL2MessageHashes)
+	}
+
+	return res, err
 }
 
 func (pi *FunctionalPublicInput) Sum() []byte { // all mimc; no need to provide a keccak hasher
