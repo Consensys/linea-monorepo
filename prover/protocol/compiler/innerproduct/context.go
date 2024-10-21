@@ -91,13 +91,8 @@ func compileForSize(
 			}
 		}
 
-		// @Azam the following function is commented out due to the issue https://github.com/Consensys/linea-monorepo/issues/192
-		// ctx.Collapsed = symbolic.NewPolyEval(batchingCoin.AsVariable(), pairProduct)
-		res := symbolic.NewConstant(0)
-		for i := len(pairProduct) - 1; i >= 0; i-- {
-			res = symbolic.Mul(res, batchingCoin)
-			res = symbolic.Add(res, pairProduct[i])
-		}
+		// random linear combination over the pairs of inner-product.
+		res := symbolic.NewPolyEval(batchingCoin.AsVariable(), pairProduct)
 
 		ctx.Collapsed = res
 		ctx.CollapsedBoard = ctx.Collapsed.Board()
