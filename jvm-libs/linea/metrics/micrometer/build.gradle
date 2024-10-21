@@ -1,0 +1,8 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  api "io.vertx:vertx-micrometer-metrics"
+  implementation project(':jvm-libs:linea:core:metrics')
+}
