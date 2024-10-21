@@ -56,27 +56,6 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "expected",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "actual",
-        "type": "uint256"
-      }
-    ],
-    "name": "DataStartingBlockDoesNotMatch",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "EmptyBlobData",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
         "name": "index",
         "type": "uint256"
       }
@@ -175,38 +154,6 @@
     "type": "error"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "firstBlockNumber",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "finalBlockNumber",
-        "type": "uint256"
-      }
-    ],
-    "name": "FirstBlockGreaterThanFinalBlock",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "firstBlockNumber",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "lastFinalizedBlock",
-        "type": "uint256"
-      }
-    ],
-    "name": "FirstBlockLessThanOrEqualToLastFinalizedBlock",
-    "type": "error"
-  },
-  {
     "inputs": [],
     "name": "FirstByteIsNotZero",
     "type": "error"
@@ -299,22 +246,6 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "expected",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "actual",
-        "type": "bytes32"
-      }
-    ],
-    "name": "LastFinalizedShnarfWrong",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "uint32",
         "name": "leafIndex",
         "type": "uint32"
@@ -386,6 +317,17 @@
       }
     ],
     "name": "MissingRollingHashForMessageNumber",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "shnarf",
+        "type": "bytes32"
+      }
+    ],
+    "name": "ParentBlobNotSubmitted",
     "type": "error"
   },
   {
@@ -462,27 +404,6 @@
     "type": "error"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "shnarfsLength",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "finalBlockNumbers",
-        "type": "uint256"
-      }
-    ],
-    "name": "ShnarfAndFinalBlockNumberLengthsMismatched",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "SnarkHashIsZeroHash",
-    "type": "error"
-  },
-  {
     "inputs": [],
     "name": "StartingRootHashDoesNotMatch",
     "type": "error"
@@ -555,18 +476,6 @@
   {
     "anonymous": false,
     "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "startBlock",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "endBlock",
-        "type": "uint256"
-      },
       {
         "indexed": false,
         "internalType": "bytes32",
@@ -1318,6 +1227,25 @@
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "shnarf",
+        "type": "bytes32"
+      }
+    ],
+    "name": "blobShnarfExists",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "exists",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "_from",
         "type": "address"
@@ -1656,7 +1584,7 @@
           },
           {
             "internalType": "uint256",
-            "name": "finalBlockInData",
+            "name": "endBlockNumber",
             "type": "uint256"
           },
           {
@@ -2299,25 +2227,6 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "shnarf",
-        "type": "bytes32"
-      }
-    ],
-    "name": "shnarfFinalBlockNumbers",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "finalBlockNumber",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "uint256",
         "name": "blockNumber",
         "type": "uint256"
@@ -2339,33 +2248,6 @@
       {
         "components": [
           {
-            "components": [
-              {
-                "internalType": "bytes32",
-                "name": "finalStateRootHash",
-                "type": "bytes32"
-              },
-              {
-                "internalType": "uint256",
-                "name": "firstBlockInData",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "finalBlockInData",
-                "type": "uint256"
-              },
-              {
-                "internalType": "bytes32",
-                "name": "snarkHash",
-                "type": "bytes32"
-              }
-            ],
-            "internalType": "struct ILineaRollup.SupportingSubmissionDataV2",
-            "name": "submissionData",
-            "type": "tuple"
-          },
-          {
             "internalType": "uint256",
             "name": "dataEvaluationClaim",
             "type": "uint256"
@@ -2379,10 +2261,20 @@
             "internalType": "bytes",
             "name": "kzgProof",
             "type": "bytes"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "finalStateRootHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "snarkHash",
+            "type": "bytes32"
           }
         ],
-        "internalType": "struct ILineaRollup.BlobSubmissionData[]",
-        "name": "_blobSubmissionData",
+        "internalType": "struct ILineaRollup.BlobSubmission[]",
+        "name": "_blobSubmissions",
         "type": "tuple[]"
       },
       {
@@ -2411,16 +2303,6 @@
             "type": "bytes32"
           },
           {
-            "internalType": "uint256",
-            "name": "firstBlockInData",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "finalBlockInData",
-            "type": "uint256"
-          },
-          {
             "internalType": "bytes32",
             "name": "snarkHash",
             "type": "bytes32"
@@ -2431,8 +2313,8 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct ILineaRollup.SubmissionDataV2",
-        "name": "_submissionData",
+        "internalType": "struct ILineaRollup.CompressedCalldataSubmission",
+        "name": "_submission",
         "type": "tuple"
       },
       {
