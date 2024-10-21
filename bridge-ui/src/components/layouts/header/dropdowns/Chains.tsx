@@ -11,11 +11,9 @@ import { useAccount } from "wagmi";
 import { getChainLogoPath } from "@/utils/chainsUtil";
 
 export function Chains() {
-  const { networkType, networkLayer, resetToken } = useChainStore((state) => ({
-    networkType: state.networkType,
-    networkLayer: state.networkLayer,
-    resetToken: state.resetToken,
-  }));
+  const networkType = useChainStore((state) => state.networkType);
+  const networkLayer = useChainStore((state) => state.networkLayer);
+  const resetToken = useChainStore((state) => state.resetToken);
 
   const { chain } = useAccount();
 
