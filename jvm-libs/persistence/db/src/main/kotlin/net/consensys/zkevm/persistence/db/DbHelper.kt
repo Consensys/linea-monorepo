@@ -12,7 +12,7 @@ object DbHelper {
   private var formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
 
   fun generateUniqueDbName(
-    prefix: String = "coordinator_test",
+    prefix: String = "test",
     clock: Clock = Clock.systemUTC()
   ): String {
     // Just time is not enough, as we can have multiple tests running in parallel
