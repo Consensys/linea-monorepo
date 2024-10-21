@@ -86,4 +86,29 @@ public class HexStringUtils {
     return new BigInteger("0".repeat(nLeadingZeros) + "1".repeat(256 - nLeadingZeros), 2)
         .toString(16);
   }
+
+  /**
+   * Generates a hexadecimal string with `k` bytes, where the first `k-l` bytes are "00" and the
+   * last `l` bytes are "ff".
+   *
+   * @param k the total number of bytes in the resulting string
+   * @param l the number of trailing "ff" bytes
+   * @return the resulting hexadecimal string
+   */
+  public static String trailingFF(int k, int l) {
+    return "00".repeat(k - l) + "ff".repeat(l);
+  }
+
+  /**
+   * Generates a hexadecimal string with `a` leading "00" bytes, followed by `b` "ff" bytes, and `c`
+   * trailing "00" bytes.
+   *
+   * @param a the number of leading "00" bytes
+   * @param b the number of "ff" bytes in the middle
+   * @param c the number of trailing "00" bytes
+   * @return the resulting hexadecimal string
+   */
+  public static String middleFF(int a, int b, int c) {
+    return "00".repeat(a) + "ff".repeat(b) + "00".repeat(c);
+  }
 }

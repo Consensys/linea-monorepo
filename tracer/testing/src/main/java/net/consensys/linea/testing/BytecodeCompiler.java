@@ -266,4 +266,33 @@ public class BytecodeCompiler {
   public Bytes compile() {
     return Bytes.concatenate(byteCode);
   }
+
+  /**
+   * Adds an incomplete PUSH operation of the given width and its argument to the bytecode sequence.
+   *
+   * @param w the width to push (in the range [1, 32])
+   * @param bs byte array to be added
+   * @return current instance
+   */
+  public BytecodeCompiler incompletePush(final int w, final byte[] bs) {
+    Preconditions.condition(w > 0 && w <= 32, "Invalid PUSH width");
+    Preconditions.condition(bs.length <= w, "PUSH argument must be smaller than the width");
+
+    this.op(OpCode.of(0x5f + w));
+    this.byteCode.add(Bytes.of(bs));
+
+    return this;
+  }
+
+  /**
+   * Adds an incomplete PUSH operation of the given width and its argument to the bytecode sequence.
+   *
+   * @param w the width to push (in the range [1, 32])
+   * @param x string representing a hex number to be added
+   * @return current instance
+   */
+  public BytecodeCompiler incompletePush(final int w, String x) {
+    return this.incompletePush(
+        w, bigIntegerToBytes(new BigInteger(x.isEmpty() ? "0" : x, 16)).toArray());
+  }
 }
