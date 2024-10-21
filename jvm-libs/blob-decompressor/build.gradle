@@ -1,5 +1,5 @@
 plugins {
-  id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
   id 'net.consensys.zkevm.linea-native-libs-helper'
   alias(libs.plugins.jreleaser)
   id 'java-test-fixtures'
@@ -12,8 +12,16 @@ dependencies {
   implementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"
   implementation project(":jvm-libs:kotlin-extensions")
   testImplementation project(":jvm-libs:blob-compressor")
-//  testImplementation project(":jvm-libs:web3j-extensions")
+
   testImplementation(testFixtures(project(":jvm-libs:blob-compressor")))
+  testImplementation(project(":jvm-libs:testing:file-system"))
+  testImplementation("org.apache.tuweni:tuweni-bytes:${libs.versions.tuweni.get()}")
+//  testImplementation("org.apache.tuweni:tuweni-rlp:${libs.versions.tuweni.get()}")
+  testImplementation("org.hyperledger.besu:besu-datatypes:${libs.versions.besu.get()}")
+  testImplementation "org.hyperledger.besu:evm:${libs.versions.besu.get()}"
+  testImplementation("org.hyperledger.besu.internal:core:${libs.versions.besu.get()}")
+  testImplementation("org.hyperledger.besu.internal:crypto:${libs.versions.besu.get()}")
+  testImplementation("org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}")
 }
 
 jar {
@@ -31,7 +39,7 @@ def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get()
 
 task downloadNativeLibs {
   doLast {
-    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.1.0-test6/linea-blob-libs-v1.1.0-test6.zip", "blob_decompressor", libsZipDownloadOutputDir)
+    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.1.0-test7/linea-blob-libs-v1.1.0-test7.zip", "blob_decompressor", libsZipDownloadOutputDir)
   }
 }
 
