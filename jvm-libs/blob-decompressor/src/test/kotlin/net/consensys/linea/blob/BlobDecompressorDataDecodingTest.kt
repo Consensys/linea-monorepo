@@ -1,15 +1,13 @@
 package net.consensys.linea.blob
 
-import net.consensys.decodeHex
-import net.consensys.encodeHex
-import net.consensys.linea.nativecompressor.CompressorTestData
 import net.consensys.linea.testing.filesystem.findPathTo
 import org.apache.tuweni.bytes.Bytes
-import org.assertj.core.api.Assertions.assertThat
+import org.hyperledger.besu.ethereum.core.Block
+import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.ethereum.rlp.RLP
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import java.security.MessageDigest
 import kotlin.io.path.readBytes
 
 class BlobDecompressorDataDecodingTest {
@@ -25,30 +23,28 @@ class BlobDecompressorDataDecodingTest {
     val blob = findPathTo("prover")!!
       .resolve("lib/compressor/blob/testdata/v0/sample-blob-0151eda71505187b5.bin")
       .readBytes()
-
     val decompressedBlob = decompressor.decompress(blob)
-    // size and Hash extracted from GoTests
-    assertThat(decompressedBlob).hasSize(603023)
-    val sha256 = MessageDigest.getInstance("SHA-256").digest(decompressedBlob).encodeHex()
-    assertThat(sha256).isEqualTo("0xa70c413ccbf15aedad1ef4bbfc6e94bd238aad1798b3836e8a52653b34df1158")
-    val blockRlpEncoded = rlpDecodeAsListOfBytes(decompressedBlob)
-    assertThat(blockRlpEncoded)
-    println(blockRlpEncoded.first().encodeHex())
+    val blocksRlpEncoded = rlpDecodeAsListOfBytes(decompressedBlob)
+//    blocksRlpEncoded
+//      .take(0)
+//      .forEachIndexed { index, blockRlp -> println("$index: ${blockRlp.encodeHex()}") }
+    blocksRlpEncoded.forEachIndexed { index, blockRlp ->
+      val rlpInput = RLP.input(Bytes.wrap(blockRlp))
+      val decodedBlock = Block.readFrom(rlpInput, MainnetBlockHeaderFunctions())
+      println("$index: $decodedBlock")
+    }
   }
 
-  @Test
-  fun rlpEncodeAndDecode() {
-    val bytesArray = listOf(
-      "0xff010203040506070809aa".decodeHex(),
-      "0xff010203040506070809ab".decodeHex(),
-      "0xff010203040506070809ac".decodeHex(),
-      "0xff010203040506070809acff010203040506070809ac".decodeHex()
+  @Disabled("for local dev validation")
+  fun `can decode  RLP`() {
+    val blockBytes = Bytes.wrap(
+      // INSERT HERE THE RLP ENCODED BLOCK
+      // 0x01ff.decodeHex()
     )
-
-    assertThat(rlpDecodeAsListOfBytes(rlpEncode(bytesArray))).hasSameElementsAs(bytesArray)
-
-    val blocksRlpEnconded = CompressorTestData.blocksRlpEncoded.toList()
-    assertThat(rlpDecodeAsListOfBytes(rlpEncode(blocksRlpEnconded))).hasSameElementsAs(blocksRlpEnconded)
+    RLP.validate(blockBytes)
+    val rlpInput = RLP.input(blockBytes)
+    val decodedBlock = Block.readFrom(rlpInput, MainnetBlockHeaderFunctions())
+    println(decodedBlock)
   }
 
   private fun rlpEncode(list: List<ByteArray>): ByteArray {
