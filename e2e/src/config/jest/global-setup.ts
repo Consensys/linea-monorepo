@@ -53,9 +53,16 @@ export default async (): Promise<void> => {
   console.log(`L2 Dummy contract deployed at address: ${await l2DummyContract.getAddress()}`);
   console.log(`L2 Test contract deployed at address: ${await l2TestContract.getAddress()}`);
 
-  // Setting the Remote TokenBridge
+  // // Setting the Remote TokenBridge
+
+  let nonce = await l1JsonRpcProvider.getTransactionCount(l1SecurityCouncil.address, "pending");
+
   console.log("Setting the TokenBridge L1 Remote");
-  await (await l1TokenBridge.connect(l1SecurityCouncil).setRemoteTokenBridge(await l2TokenBridge.getAddress())).wait();
+  await (
+    await l1TokenBridge
+      .connect(l1SecurityCouncil)
+      .setRemoteTokenBridge(await l2TokenBridge.getAddress(), { nonce: nonce })
+  ).wait();
   let remoteSender = await l1TokenBridge.remoteSender();
 
   console.log("L1 TokenBridge remote sender :", remoteSender);
@@ -66,9 +73,11 @@ export default async (): Promise<void> => {
   const { maxPriorityFeePerGas: l2MaxPriorityFeePerGas, maxFeePerGas: l2MaxFeePerGas } =
     await l2JsonRpcProvider.getFeeData();
 
+  nonce = await l2JsonRpcProvider.getTransactionCount(l2SecurityCouncil.address, "pending");
   const setRemoteTx = await l2TokenBridge.connect(l2SecurityCouncil).setRemoteTokenBridge(l1TokenBridgeAddress, {
     maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
     maxFeePerGas: l2MaxFeePerGas,
+    nonce: nonce,
   });
 
   await setRemoteTx.wait();
