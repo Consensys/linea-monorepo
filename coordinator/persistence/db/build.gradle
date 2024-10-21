@@ -18,7 +18,7 @@ dependencies {
     because("Flyway DB and other dependencies use SLF4J")
   }
 
-  testImplementation testFixtures(project(':jvm-libs:kotlin-extensions'))
+  testImplementation testFixtures(project(':jvm-libs:generic:extensions:kotlin'))
   testFixturesApi(platform("org.junit:junit-bom:${libs.versions.junit.get()}"))
   testFixturesApi("io.vertx:vertx-junit5:${libs.versions.vertx.get()}")
 }

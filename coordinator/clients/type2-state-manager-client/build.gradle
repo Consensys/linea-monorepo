@@ -4,9 +4,9 @@ plugins {
 
 dependencies {
   implementation project(':coordinator:core')
-  implementation project(':jvm-libs:json-rpc')
-  implementation project(':jvm-libs:metrics:micrometer')
-  implementation project(':jvm-libs:future-extensions')
+  implementation project(':jvm-libs:generic:json-rpc')
+  implementation project(':jvm-libs:linea:metrics:micrometer')
+  implementation project(':jvm-libs:generic:extensions:futures')
 
   implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
   implementation "io.vertx:vertx-core"

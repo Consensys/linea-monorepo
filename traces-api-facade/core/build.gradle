@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    api project(':jvm-libs:core:domain-models')
-    api project(':jvm-libs:traces')
+    api project(':jvm-libs:linea:core:domain-models')
+    api project(':jvm-libs:linea:core:traces')
     api "io.vertx:vertx-core"
 }
