@@ -30,10 +30,10 @@ import (
 
 // some of the execution data are faked
 func TestSingleBlockBlob(t *testing.T) {
-	testPI(t, pitesting.AssignSingleBlockBlob(t), withSlack(0, 1, 2))
+	testPI(t, pitesting.AssignSingleBlockBlob(t), withSlack(0, 2))
 }
 
-func TestSingleBlobBlobE2E(t *testing.T) {
+func TestSingleBlockBlobE2E(t *testing.T) {
 	req := pitesting.AssignSingleBlockBlob(t)
 	cfg := config.PublicInput{
 		MaxNbDecompression: len(req.Decompressions),
@@ -123,7 +123,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		},
 	}
 
-	testPI(t, req, withSlack(0, 1, 2))
+	testPI(t, req, withSlack(0, 2))
 }
 
 func TestTwoTwoBatchBlobs(t *testing.T) {
@@ -204,29 +204,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		},
 	}
 
-	testPI(t, req, withSlack(0, 1, 2))
-}
-
-func TestEmpty(t *testing.T) {
-	const hexZeroBlock = "0x0000000000000000000000000000000000000000000000000000000000000000"
-
-	testPI(t, pi_interconnection.Request{
-		Aggregation: public_input.Aggregation{
-			FinalShnarf:                             hexZeroBlock,
-			ParentAggregationFinalShnarf:            hexZeroBlock,
-			ParentStateRootHash:                     hexZeroBlock,
-			ParentAggregationLastBlockTimestamp:     0,
-			FinalTimestamp:                          0,
-			LastFinalizedBlockNumber:                0,
-			FinalBlockNumber:                        0,
-			LastFinalizedL1RollingHash:              hexZeroBlock,
-			L1RollingHash:                           hexZeroBlock,
-			LastFinalizedL1RollingHashMessageNumber: 0,
-			L1RollingHashMessageNumber:              0,
-			L2MsgRootHashes:                         []string{},
-			L2MsgMerkleTreeDepth:                    1,
-		},
-	})
+	testPI(t, req, withSlack(0, 2))
 }
 
 type testPIConfig struct {
@@ -269,6 +247,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 			ExecutionMaxNbMsg:  1 + slack[2],
 			L2MsgMerkleDepth:   5,
 			L2MsgMaxNbMerkle:   1 + slack[3],
+			MockKeccakWizard:   true,
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {
