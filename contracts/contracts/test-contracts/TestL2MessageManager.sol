@@ -29,16 +29,12 @@ contract TestL2MessageManager is Initializable, L2MessageManager, IGenericErrors
     __ERC165_init();
     __Context_init();
     __AccessControl_init();
-    __L2MessageManager_init(_l1l2MessageSetter);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     _grantRole(PAUSE_ALL_ROLE, _pauserManager);
     _grantRole(UNPAUSE_ALL_ROLE, _pauserManager);
-  }
-
-  function tryInitialize(address _l1l2MessageSetter) external {
-    __L2MessageManager_init(_l1l2MessageSetter);
+    _grantRole(L1_L2_MESSAGE_SETTER_ROLE, _l1l2MessageSetter);
   }
 
   function updateL1L2MessageStatusToClaimed(bytes32 _messageHash) external {
