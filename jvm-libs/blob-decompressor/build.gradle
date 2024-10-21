@@ -43,18 +43,18 @@ task downloadNativeLibs {
   }
 }
 
-compileKotlin {
-  dependsOn tasks.downloadNativeLibs
-}
+//compileKotlin {
+//  dependsOn tasks.downloadNativeLibs
+//}
 
-task cleanResources(type: Delete) {
-  fileTree(project.layout.projectDirectory.dir('src/main/resources'))
-    .filter {
-      it.name.endsWith(".so") || it.name.endsWith(".dll") || it.name.endsWith(".dylib")
-    }.each {
-      println("Deleting: ${it}")
-      delete it
-    }
-}
+//task cleanResources(type: Delete) {
+//  fileTree(project.layout.projectDirectory.dir('src/main/resources'))
+//    .filter {
+//      it.name.endsWith(".so") || it.name.endsWith(".dll") || it.name.endsWith(".dylib")
+//    }.each {
+//      println("Deleting: ${it}")
+//      delete it
+//    }
+//}
 
-clean.dependsOn cleanResources
+//clean.dependsOn cleanResources
