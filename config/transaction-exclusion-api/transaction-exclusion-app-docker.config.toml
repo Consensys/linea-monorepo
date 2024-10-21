@@ -1,0 +1,30 @@
+data-queryable-window-since-rejected-timestamp="P7D"
+
+[database]
+schema="linea_transaction_exclusion"
+read_pool_size=10
+read_pipelining_limit=10
+transactional_pool_size=10
+[database.read]
+host="postgres"
+port="5432"
+username="postgres"
+password="postgres"
+[database.write]
+host="postgres"
+port="5432"
+username="postgres"
+password="postgres"
+[database.cleanup]
+polling-interval="PT60S"
+storage-period="P7D"
+[database.persistence-retry]
+#max-retries = 10 commented as can be null
+backoff-delay = "PT5S"
+timeout = "PT20S"
+
+[api]
+port=8080
+path="/"
+number-of-verticles=1 #if 0 will create one verticle per core (or hyperthread if supported)
+observability-port=8090

@@ -1,5 +1,5 @@
-import { JsonRpcProvider, ethers } from "ethers";
-import { beforeAll, describe, expect, it } from "@jest/globals";
+import { ethers } from "ethers";
+import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
 import { RollupGetZkEVMBlockNumberClient, etherToWei } from "./common/utils";
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
@@ -7,12 +7,6 @@ import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Layer 2 test suite", () => {
-  let l2Provider: JsonRpcProvider;
-
-  beforeAll(() => {
-    l2Provider = config.getL2Provider();
-  });
-
   it.concurrent("Should revert if transaction data size is above the limit", async () => {
     const account = await l2AccountManager.generateAccount();
     const dummyContract = config.getL2DummyContract(account);
@@ -35,7 +29,7 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send a legacy transaction", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    const { gasPrice } = await l2Provider.getFeeData();
+    const { gasPrice } = await config.getL2Provider().getFeeData();
 
     const receipt = await (
       await account.sendTransaction({
@@ -54,7 +48,7 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send an EIP1559 transaction", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    const { maxPriorityFeePerGas, maxFeePerGas } = await l2Provider.getFeeData();
+    const { maxPriorityFeePerGas, maxFeePerGas } = await config.getL2Provider().getFeeData();
 
     const receipt = await (
       await account.sendTransaction({
@@ -74,7 +68,7 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send an access list transaction with empty access list", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    const { gasPrice } = await l2Provider.getFeeData();
+    const { gasPrice } = await config.getL2Provider().getFeeData();
 
     const receipt = await (
       await account.sendTransaction({
@@ -93,7 +87,7 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send an access list transaction with access list", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    const { gasPrice } = await l2Provider.getFeeData();
+    const { gasPrice } = await config.getL2Provider().getFeeData();
     const accessList = {
       "0x8D97689C9818892B700e27F316cc3E41e17fBeb9": [
         "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -131,7 +125,7 @@ describe("Layer 2 test suite", () => {
     const shomeiFrontendClient = new RollupGetZkEVMBlockNumberClient(shomeiFrontendEndpoint);
 
     for (let i = 0; i < 5; i++) {
-      const { maxPriorityFeePerGas, maxFeePerGas } = await l2Provider.getFeeData();
+      const { maxPriorityFeePerGas, maxFeePerGas } = await config.getL2Provider().getFeeData();
 
       await (
         await account.sendTransaction({
