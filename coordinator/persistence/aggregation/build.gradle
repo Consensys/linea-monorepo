@@ -12,7 +12,7 @@ dependencies {
   testImplementation(project(":coordinator:persistence:blob"))
   testImplementation(testFixtures(project(":coordinator:persistence:db")))
   testImplementation(testFixtures(project(":coordinator:core")))
-  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
   testImplementation("io.vertx:vertx-junit5")
 }
 

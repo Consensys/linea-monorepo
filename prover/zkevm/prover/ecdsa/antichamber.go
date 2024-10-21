@@ -126,7 +126,7 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 	res.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
 
 	// root module constraints
-	res.csIsActive(comp)
+	res.csIsActiveActivation(comp)
 	res.csZeroWhenInactive(comp)
 	res.csConsistentPushingFetching(comp)
 	res.csIDSequential(comp)

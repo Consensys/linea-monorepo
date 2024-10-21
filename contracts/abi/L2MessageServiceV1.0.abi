@@ -33,9 +33,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "pauseType",
-        "type": "uint256"
+        "type": "uint8"
       }
     ],
     "name": "IsNotPaused",
@@ -44,9 +44,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "pauseType",
-        "type": "uint256"
+        "type": "uint8"
       }
     ],
     "name": "IsPaused",
@@ -145,6 +145,11 @@
   {
     "inputs": [],
     "name": "ZeroAddressNotAllowed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroHashNotAllowed",
     "type": "error"
   },
   {
@@ -309,15 +314,34 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "enum IPauseManager.PauseType",
+        "name": "pauseType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "PauseTypeRoleSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "address",
         "name": "messageSender",
         "type": "address"
       },
       {
         "indexed": true,
-        "internalType": "uint256",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "pauseType",
-        "type": "uint256"
+        "type": "uint8"
       }
     ],
     "name": "Paused",
@@ -460,58 +484,38 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "enum IPauseManager.PauseType",
+        "name": "unPauseType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "UnPauseTypeRoleSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "address",
         "name": "messageSender",
         "type": "address"
       },
       {
         "indexed": true,
-        "internalType": "uint256",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "pauseType",
-        "type": "uint256"
+        "type": "uint8"
       }
     ],
     "name": "UnPaused",
     "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "BLOB_SUBMISSION_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "CALLDATA_SUBMISSION_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
   },
   {
     "inputs": [],
@@ -534,32 +538,6 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALIZATION_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "GENERAL_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
       }
     ],
     "stateMutability": "view",
@@ -606,51 +584,12 @@
   },
   {
     "inputs": [],
-    "name": "INITIATE_TOKEN_BRIDGING_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "L1_L2_MESSAGE_SETTER_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "L1_L2_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "L2_L1_PAUSE_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
       }
     ],
     "stateMutability": "view",
@@ -684,33 +623,7 @@
   },
   {
     "inputs": [],
-    "name": "PAUSE_FINALIZE_WITHPROOF_ROLE",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "PAUSE_L1_L2_ROLE",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "PAUSE_L2_BLOB_SUBMISSION_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -762,33 +675,7 @@
   },
   {
     "inputs": [],
-    "name": "UNPAUSE_FINALIZE_WITHPROOF_ROLE",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "UNPAUSE_L1_L2_ROLE",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "UNPAUSE_L2_BLOB_SUBMISSION_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -1015,6 +902,11 @@
         "type": "uint256"
       },
       {
+        "internalType": "address",
+        "name": "_defaultAdmin",
+        "type": "address"
+      },
+      {
         "components": [
           {
             "internalType": "address",
@@ -1034,7 +926,7 @@
       {
         "components": [
           {
-            "internalType": "uint8",
+            "internalType": "enum IPauseManager.PauseType",
             "name": "pauseType",
             "type": "uint8"
           },
@@ -1051,7 +943,7 @@
       {
         "components": [
           {
-            "internalType": "uint8",
+            "internalType": "enum IPauseManager.PauseType",
             "name": "pauseType",
             "type": "uint8"
           },
@@ -1074,7 +966,7 @@
   {
     "inputs": [
       {
-        "internalType": "uint8",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "_pauseType",
         "type": "uint8"
       }
@@ -1164,7 +1056,7 @@
   {
     "inputs": [
       {
-        "internalType": "uint8",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "_pauseType",
         "type": "uint8"
       }
@@ -1228,7 +1120,7 @@
       {
         "components": [
           {
-            "internalType": "uint8",
+            "internalType": "enum IPauseManager.PauseType",
             "name": "pauseType",
             "type": "uint8"
           },
@@ -1245,7 +1137,7 @@
       {
         "components": [
           {
-            "internalType": "uint8",
+            "internalType": "enum IPauseManager.PauseType",
             "name": "pauseType",
             "type": "uint8"
           },
@@ -1392,7 +1284,7 @@
   {
     "inputs": [
       {
-        "internalType": "uint8",
+        "internalType": "enum IPauseManager.PauseType",
         "name": "_pauseType",
         "type": "uint8"
       }

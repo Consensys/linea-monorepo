@@ -1,14 +1,17 @@
 name: main
 
 on:
+  pull_request:
   push:
+    branches:
+      - main
 
 jobs:
   store-image-name-and-tags:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
 
   filter-commit-changes:
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Filter commit changes
     outputs:
       coordinator: ${{ steps.filter.outputs.coordinator }}
@@ -32,7 +35,6 @@ jobs:
               - 'testdata/**'
               - 'buildSrc/**'
               - 'jvm-libs/**'
-              - 'prover/lib/compressor/**'
               - 'gradle/**'
               - 'build.gradle'
               - 'gradle.properties'
@@ -45,8 +47,6 @@ jobs:
               - 'config/common/traces-limits-v2.toml'
               - 'config/coordinator/**'
               - 'e2e/**'
-              - 'contracts/abi/**'
-              - 'contracts/contracts/**'
               - 'docker/compose.yml'
               - 'docker/compose-local-dev.overrides.yml'
               - 'docker/compose-local-dev-traces-v2.overrides.yml'
@@ -65,13 +65,14 @@ jobs:
               - 'constraints'
             traces-api-facade:
               - 'traces-api-facade/**'
-              - 'jvm-libs/core/domain-models/**'
-              - 'jvm-libs/json-rpc/**'
-              - 'jvm-libs/kotlin-extensions/**'
-              - 'jvm-libs/future-extensions/**'
-              - 'jvm-libs/vertx-helper/**'
-              - 'jvm-libs/traces/**'
-              - 'jvm-libs/metrics/**'
+              - 'jvm-libs/linea/core/domain-models/**'
+              - 'jvm-libs/linea/core/traces/**'
+              - 'jvm-libs/linea/core/metrics/**'
+              - 'jvm-libs/generic/json-rpc/**'
+              - 'jvm-libs/generic/extensions/kotlin/**'
+              - 'jvm-libs/generic/extensions/futures/**'
+              - 'jvm-libs/generic/vertx-helper/**'
+              - 'jvm-libs/linea/metrics/**'
               - 'config/common/traces-limits-v1.toml'
               - '.github/workflows/traces-api-facade-*.yml'
               - '.github/workflows/build-and-publish.yml'
@@ -83,10 +84,10 @@ jobs:
               - 'gradle.properties'
               - 'settings.gradle'
             finalized-tag-updater:
-              - 'jvm-libs/core/long-running-service/**'
-              - 'jvm-libs/kotlin-extensions/**'
-              - 'jvm-libs/future-extensions/**'
-              - 'jvm-libs/web3j-extensions/**'
+              - 'jvm-libs/linea/core/long-running-service/**'
+              - 'jvm-libs/linea/web3j-extensions/**'
+              - 'jvm-libs/extensions/kotlin/**'
+              - 'jvm-libs/extensions/futures/**'
               - 'finalized-tag-updater/**'
               - '.github/workflows/main.yml'
               - '.github/workflows/finalized-tag-updater-github-release.yml'
@@ -106,8 +107,17 @@ jobs:
       traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
     secrets: inherit
 
-  docker-build:
+  manual-docker-build-and-e2e-tests:
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
+    environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
+    steps:
+      - name: Deploy environment
+        run: |
+          echo "Build and e2e test environment deployed"
+
+  docker-build:
+    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images, manual-docker-build-and-e2e-tests ]
     uses: ./.github/workflows/build-and-publish.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -150,7 +160,7 @@ jobs:
     secrets: inherit
 
   run-e2e-tests-geth-tracing:
-    needs: [ store-image-name-and-tags, docker-build ]
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
     if: ${{ always() && needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-geth-tracing-${{ github.workflow }}-${{ github.ref }}
@@ -164,7 +174,7 @@ jobs:
     secrets: inherit
 
   run-e2e-tests:
-    needs: [ store-image-name-and-tags, docker-build ]
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
     if: ${{ always() && needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
@@ -191,7 +201,7 @@ jobs:
   cleanup-deployments:
     needs: [ run-e2e-tests, run-e2e-tests-geth-tracing ]
     if: ${{ always() }}
-    runs-on: [self-hosted, ubuntu-22.04, X64, small]
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     steps:
       - uses: strumwolf/delete-deployment-environment@v2
         with:

@@ -60,7 +60,7 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	}
 
 	for i := range items {
-		if items[i].ESHash.IsZero() {
+		if items[i].ESHash.IsZero() && exponents[i] != 0 {
 			return NewConstant(0)
 		}
 	}
