@@ -15,7 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
+	circuittesting "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	pitesting "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -101,7 +101,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	blobResp, err := blobsubmission.CraftResponse(&blobReq)
 	assert.NoError(t, err)
 
-	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes))
+	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes))
 
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp},
@@ -182,7 +182,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	blobResp1, err := blobsubmission.CraftResponse(&blobReq1)
 	assert.NoError(t, err)
 
-	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes, execReq[2].L2MsgHashes, execReq[3].L2MsgHashes))
+	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes, execReq[2].L2MsgHashes, execReq[3].L2MsgHashes))
 
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp0, *blobResp1},
