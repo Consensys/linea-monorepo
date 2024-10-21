@@ -89,6 +89,11 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 	return e
 }
 
+// Name outputs the name for the LinComb [Operator]
+func (LinComb) Name() string {
+	return "LinComb"
+}
+
 // Degree implements the [Operator] interface and returns the maximum degree of
 // the underlying expression.
 func (LinComb) Degree(inputDegrees []int) int {

@@ -112,6 +112,11 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	return e
 }
 
+// Name outputs the name for the Product [Operator]
+func (Product) Name() string {
+	return "Product"
+}
+
 // Degree implements the [Operator] interface and returns the sum of the degree
 // of all the operands weighted by the exponents.
 func (prod Product) Degree(inputDegrees []int) int {

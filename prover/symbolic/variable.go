@@ -28,6 +28,11 @@ type Variable struct {
 	Metadata Metadata
 }
 
+// Name outputs the name for the Variable [Operator].
+func (Variable) Name() string {
+	return "Variable"
+}
+
 // Degree implements the [Operator] interface. Yet, this panics if this is called.
 func (Variable) Degree([]int) int {
 	panic("we never call it for a variable")

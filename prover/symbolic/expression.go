@@ -65,6 +65,8 @@ type Operator interface {
 	Degree([]int) int
 	// GnarkEval returns an evaluation of the operator in a gnark circuit.
 	GnarkEval(frontend.API, []frontend.Variable) frontend.Variable
+	// Name of the operator, used for debugging.
+	Name() string
 }
 
 // Board pins down the expression into an ExpressionBoard. This converts the
