@@ -52,6 +52,11 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 	}
 }
 
+// Name outputs the name for the PolyEval [Operator].
+func (PolyEval) Name() string {
+	return "PolyEval"
+}
+
 /*
 Returns the degree of the operation given, as input, the degree of the children
 */

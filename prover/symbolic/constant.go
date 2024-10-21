@@ -16,6 +16,11 @@ type Constant struct {
 	Val field.Element
 }
 
+// Name returns the name for the Constant [Operator].
+func (Constant) Name() string {
+	return "Constant"
+}
+
 // Degree implements the [Operator] interface
 func (Constant) Degree([]int) int {
 	panic("we never call it for a constant")
