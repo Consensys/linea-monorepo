@@ -1,11 +1,12 @@
 import { useCallback } from "react";
 import { NetworkType, TokenInfo, TokenType } from "@/config/config";
 import { safeGetAddress } from "@/utils/format";
-import { useTokenStore } from "@/stores/tokenStore";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
+import { shallow } from "zustand/vanilla/shallow";
 
 const useERC20Storage = () => {
   const tokensList = useTokenStore((state) => state.tokensList);
-  const setTokensList = useTokenStore((state) => state.setTokensList);
+  const upsertToken = useTokenStore((state) => state.upsertToken);
 
   const getStoredToken = useCallback(
     (token: TokenInfo, networkType: NetworkType) => {
@@ -44,27 +45,19 @@ const useERC20Storage = () => {
       }
 
       const found = getStoredToken(token, networkType);
-      const updatedTokens = [...(tokensList[networkType] || [])];
 
       if (found) {
-        if (found.storedToken !== token) {
-          updatedTokens[found.index] = token;
+        if (!shallow(found.storedToken, token)) {
+          upsertToken(token, networkType);
         } else {
           // No update needed if the token is the same
           return;
         }
       } else {
-        updatedTokens.push(token);
+        upsertToken(token, networkType);
       }
-
-      const newTokensList = {
-        ...tokensList,
-        [networkType]: updatedTokens,
-      };
-
-      setTokensList(newTokensList);
     },
-    [setTokensList, tokensList, getStoredToken],
+    [upsertToken, getStoredToken],
   );
 
   return { updateOrInsertUserTokenList };

@@ -17,7 +17,7 @@ import useERC20Storage from "./useERC20Storage";
 import { BlockRange, TransactionHistory } from "@/models/history";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { getChainNetworkLayer } from "@/utils/chainsUtil";
-import { useTokenStore } from "@/stores/tokenStore";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
 import useMessageStatus from "./useMessageStatus";
 import useTokenFetch from "./useTokenFetch";
 

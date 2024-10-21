@@ -7,7 +7,7 @@ import { NetworkType, TokenInfo, TokenType } from "@/config/config";
 import { useERC20Storage, useTokenFetch } from "@/hooks";
 import { safeGetAddress } from "@/utils/format";
 import { useChainStore } from "@/stores/chainStore";
-import { useTokenStore } from "@/stores/tokenStore";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
 import { fetchTokenInfo } from "@/services";
 import { FieldValues, UseFormClearErrors, UseFormSetValue } from "react-hook-form";
 import { CiSearch } from "react-icons/ci";
@@ -27,11 +27,10 @@ export default function TokenModal({ setValue, clearErrors }: TokenModalProps) {
   const { fillMissingTokenAddress } = useTokenFetch();
 
   // Context
-  const { networkType, networkLayer, fromChain } = useChainStore((state) => ({
-    networkType: state.networkType,
-    networkLayer: state.networkLayer,
-    fromChain: state.fromChain,
-  }));
+  const networkType = useChainStore((state) => state.networkType);
+  const networkLayer = useChainStore((state) => state.networkLayer);
+  const fromChain = useChainStore((state) => state.fromChain);
+
   const { updateOrInsertUserTokenList } = useERC20Storage();
   const [searchQuery, setSearchQuery] = useState("");
 

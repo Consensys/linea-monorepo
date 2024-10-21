@@ -3,7 +3,7 @@
 import { useAccount } from "wagmi";
 import Bridge from "../bridge/Bridge";
 import { BridgeExternal } from "./BridgeExternal";
-import { useTokenStore } from "@/stores/tokenStore";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
 import { FormProvider, useForm } from "react-hook-form";
 import { BridgeForm } from "@/models";
 import { useChainStore } from "@/stores/chainStore";

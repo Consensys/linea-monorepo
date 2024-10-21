@@ -1,5 +1,7 @@
-import { create } from "zustand";
-import { config, NetworkTokens, TokenType } from "@/config";
+import { createWithEqualityFn } from "zustand/traditional";
+import { shallow } from "zustand/vanilla/shallow";
+
+import { config, NetworkTokens, NetworkType, TokenInfo, TokenType } from "@/config";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 export const defaultTokensConfig: NetworkTokens = {
@@ -49,7 +51,7 @@ export type TokenState = {
 };
 
 export type TokenActions = {
-  setTokensList: (tokensConfig: NetworkTokens) => void;
+  upsertToken: (token: TokenInfo, network: NetworkType) => void;
 };
 
 export type TokenStore = TokenState & TokenActions;
@@ -58,19 +60,45 @@ export const defaultInitState: TokenState = {
   tokensList: defaultTokensConfig,
 };
 
-export const useTokenStore = create<TokenStore>()(
-  persist(
-    (set) => ({
-      ...defaultInitState,
-      setTokensList: (tokensList: NetworkTokens) => set({ tokensList }),
-    }),
-    {
-      name: "token-storage", // name of the item in the storage (must be unique)
-      storage: createJSONStorage(() => localStorage),
-      version: parseInt(config.storage.minVersion),
-      migrate: () => {
-        return defaultInitState;
+export const createTokenStore = (initState: TokenState = defaultInitState) => {
+  return createWithEqualityFn<TokenStore>()(
+    persist(
+      (set, get) => ({
+        ...initState,
+        upsertToken: (token: TokenInfo, network: NetworkType) => {
+          const { tokensList } = get();
+          if (network === NetworkType.WRONG_NETWORK) {
+            return;
+          }
+
+          const networkTokens = tokensList[network];
+          const existingTokenIndex = networkTokens.findIndex((t) => t.L1 === token.L1 || t.L2 === token.L2);
+
+          let updatedTokens;
+          if (existingTokenIndex !== -1) {
+            updatedTokens = [...networkTokens];
+            updatedTokens[existingTokenIndex] = token;
+          } else {
+            updatedTokens = [...networkTokens, token];
+          }
+
+          set({
+            tokensList: {
+              ...tokensList,
+              [network]: updatedTokens,
+            },
+          });
+        },
+      }),
+      {
+        name: "token-storage", // name of the item in the storage (must be unique)
+        storage: createJSONStorage(() => localStorage),
+        version: parseInt(config.storage.minVersion),
+        migrate: () => {
+          return defaultInitState;
+        },
       },
-    },
-  ),
-);
+    ),
+    shallow,
+  );
+};
