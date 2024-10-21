@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-  implementation project(":jvm-libs:kotlin-extensions")
+  implementation project(":jvm-libs:generic:extensions:kotlin")
 
-  testFixtures implementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testFixtures implementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
 }

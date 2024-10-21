@@ -4,11 +4,11 @@ plugins {
 }
 
 dependencies {
-  testImplementation(project(":jvm-libs:persistence:db"))
-  testImplementation(project(":jvm-libs:future-extensions"))
-  testImplementation(project(":jvm-libs:kotlin-extensions"))
-  testImplementation(testFixtures(project(":jvm-libs:persistence:db")))
-  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation(project(":jvm-libs:generic:extensions:futures"))
+  testImplementation(project(":jvm-libs:generic:extensions:kotlin"))
+  testImplementation(project(":jvm-libs:generic:persistence:db"))
+  testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
 
   testFixturesImplementation(project(":coordinator:core"))
   testFixturesImplementation("io.vertx:vertx-pg-client:${libs.versions.vertx.get()}")

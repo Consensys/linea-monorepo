@@ -5,14 +5,14 @@ plugins {
 dependencies {
   implementation project(':transaction-exclusion-api:core')
   implementation project(':transaction-exclusion-api:persistence:rejectedtransaction')
-  implementation project(':jvm-libs:json-rpc')
-  implementation project(':jvm-libs:metrics:micrometer')
-  implementation project(':jvm-libs:kotlin-extensions')
-  implementation project(':jvm-libs:future-extensions')
-  implementation project(':jvm-libs:vertx-helper')
-  implementation project(':jvm-libs:core:long-running-service')
-  implementation project(':jvm-libs:core:metrics')
-  implementation project(':jvm-libs:persistence:db')
+  implementation project(':jvm-libs:generic:extensions:futures')
+  implementation project(':jvm-libs:generic:extensions:kotlin')
+  implementation project(':jvm-libs:generic:json-rpc')
+  implementation project(':jvm-libs:generic:persistence:db')
+  implementation project(':jvm-libs:generic:vertx-helper')
+  implementation project(':jvm-libs:linea:core:long-running-service')
+  implementation project(':jvm-libs:linea:core:metrics')
+  implementation project(':jvm-libs:linea:metrics:micrometer')
 
   implementation "com.github.ben-manes.caffeine:caffeine:${libs.versions.caffeine.get()}"
   implementation "io.vertx:vertx-core"
@@ -48,8 +48,8 @@ dependencies {
   testImplementation "io.rest-assured:rest-assured:${libs.versions.restassured.get()}"
   testImplementation "io.rest-assured:json-schema-validator:${libs.versions.restassured.get()}"
   testImplementation "net.javacrumbs.json-unit:json-unit-assertj:${libs.versions.jsonUnit.get()}"
-  testImplementation testFixtures(project(":jvm-libs:kotlin-extensions"))
-  testImplementation testFixtures(project(":jvm-libs:persistence:db"))
+  testImplementation testFixtures(project(":jvm-libs:generic:extensions:kotlin"))
+  testImplementation testFixtures(project(":jvm-libs:generic:persistence:db"))
   testImplementation testFixtures(project(":transaction-exclusion-api:core"))
 }
 

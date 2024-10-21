@@ -8,16 +8,16 @@ plugins {
 dependencies {
   api(project(":coordinator:core"))
   api(project(":coordinator:clients:prover-client:serialization"))
-  implementation(project(":jvm-libs:persistence:db"))
+  implementation(project(":jvm-libs:generic:persistence:db"))
 
   testImplementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
   testImplementation("tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}")
   testImplementation(project(":coordinator:persistence:db-common"))
-  testImplementation(testFixtures(project(":jvm-libs:persistence:db")))
   testImplementation(testFixtures(project(":coordinator:core")))
   testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
   testImplementation("io.vertx:vertx-junit5")
 }
 
