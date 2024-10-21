@@ -19,7 +19,6 @@ dependencies {
     because("Flyway DB and other dependencies use SLF4J")
   }
 
-  testImplementation(project(":coordinator:persistence:db-common"))
   testImplementation testFixtures(project(':jvm-libs:generic:extensions:kotlin'))
 
   testFixturesImplementation(platform("org.junit:junit-bom:${libs.versions.junit.get()}"))
