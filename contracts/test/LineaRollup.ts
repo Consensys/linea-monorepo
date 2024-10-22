@@ -1332,6 +1332,56 @@ describe("Linea Rollup contract", () => {
         ]);
       });
 
+      it("Should revert if the final shnarf does not exist", async () => {
+        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
+        let index = 0;
+        for (const data of submissionDataBeforeFinalization) {
+          const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
+          await lineaRollup
+            .connect(operator)
+            .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
+              gasLimit: 30_000_000,
+            });
+          index++;
+        }
+
+        const finalizationData = await generateFinalizationData({
+          l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
+          l1RollingHashMessageNumber: 10n,
+          lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
+          endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
+          finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
+          l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
+          l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
+          l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
+          aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
+          shnarfData: generateParentShnarfData(index),
+        });
+
+        await lineaRollup.setRollingHash(
+          calldataAggregatedProof1To155.l1RollingHashMessageNumber,
+          calldataAggregatedProof1To155.l1RollingHash,
+        );
+
+        finalizationData.shnarfData.snarkHash = generateRandomBytes(32);
+
+        const { dataEvaluationClaim, dataEvaluationPoint, finalStateRootHash, parentShnarf, snarkHash } =
+          finalizationData.shnarfData;
+        const expectedMissingBlobShnarf = generateKeccak256(
+          ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
+          [parentShnarf, snarkHash, finalStateRootHash, dataEvaluationPoint, dataEvaluationClaim],
+        );
+
+        const finalizeCompressedCall = lineaRollup
+          .connect(operator)
+          .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+
+        await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, "FinalBlobNotSubmitted", [
+          expectedMissingBlobShnarf,
+        ]);
+      });
+
       it("Should revert if finalizationData.finalTimestamp is greater than the block.timestamp", async () => {
         const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
         let index = 0;

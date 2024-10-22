@@ -441,6 +441,7 @@ contract LineaRollup is
 
     /// @dev currentFinalizedShnarf is updated in _finalizeBlocks and lastFinalizedShnarf MUST be set beforehand for the transition.
     bytes32 lastFinalizedShnarf = currentFinalizedShnarf;
+
     bytes32 finalShnarf = _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber);
 
     uint256 publicInput = _computePublicInput(
@@ -502,6 +503,10 @@ contract LineaRollup is
       _finalizationData.shnarfData.dataEvaluationPoint,
       _finalizationData.shnarfData.dataEvaluationClaim
     );
+
+    if (blobShnarfExists[finalShnarf] == 0) {
+      revert FinalBlobNotSubmitted(finalShnarf);
+    }
 
     _addL2MerkleRoots(_finalizationData.l2MerkleRoots, _finalizationData.l2MerkleTreesDepth);
     _anchorL2MessagingBlocks(_finalizationData.l2MessagingBlocksOffsets, _lastFinalizedBlock);
