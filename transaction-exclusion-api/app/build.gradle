@@ -2,15 +2,6 @@ plugins {
   id 'net.consensys.zkevm.kotlin-application-conventions'
 }
 
-repositories {
-  maven {
-    url "https://artifacts.consensys.net/public/linea-besu/maven/"
-    content {
-      includeGroupByRegex('io\\.consensys\\..*')
-    }
-  }
-}
-
 dependencies {
   implementation project(':transaction-exclusion-api:core')
   implementation project(':transaction-exclusion-api:persistence:rejectedtransaction')
@@ -38,13 +29,8 @@ dependencies {
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
 
-  implementation "org.hyperledger.besu:besu-datatypes:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu:evm:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}"
   implementation "org.hyperledger.besu.internal:core:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu.internal:algorithms:${libs.versions.besu.get()}"
-
-  compileOnly 'io.consensys.linea-besu:plugin-api:24.7-develop-c0029e6'
+  implementation "org.hyperledger.besu:plugin-api:${libs.versions.besu.get()}"
 
   api("io.netty:netty-transport-native-epoll:${libs.versions.netty.get()}:linux-x86_64") {
     because "It enables native transport for Linux."

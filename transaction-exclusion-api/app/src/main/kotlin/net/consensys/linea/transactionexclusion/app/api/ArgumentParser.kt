@@ -8,6 +8,7 @@ import net.consensys.linea.transactionexclusion.RejectedTransaction
 import net.consensys.linea.transactionexclusion.TransactionInfo
 import net.consensys.linea.transactionexclusion.dto.ModuleOverflowJsonDto
 import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.ethereum.core.encoding.EncodingContext
 import org.hyperledger.besu.ethereum.core.encoding.TransactionDecoder
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -32,7 +33,8 @@ object ArgumentParser {
   fun getTransactionInfoFromRLP(rlp: ByteArray): TransactionInfo {
     try {
       return TransactionDecoder.decodeOpaqueBytes(
-        Bytes.wrap(rlp)
+        Bytes.wrap(rlp),
+        EncodingContext.BLOCK_BODY
       ).run {
         TransactionInfo(
           hash = this.hash.toArray(),
