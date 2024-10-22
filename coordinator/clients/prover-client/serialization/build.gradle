@@ -9,8 +9,6 @@ dependencies {
     api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
     api(project(":jvm-libs:generic:extensions:kotlin"))
     api(project(":coordinator:core"))
-    // TODO: to remove from our internal domain classes
-    implementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
 }
 
 test {
