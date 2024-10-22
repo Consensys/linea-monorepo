@@ -108,8 +108,8 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
   it.concurrent("Bridge a token from L2 to L1", async () => {
     const [l1Account, l2Account] = await Promise.all([
-      l1AccountManager.whaleAccount(4),
-      l2AccountManager.whaleAccount(4),
+      l1AccountManager.whaleAccount(5),
+      l2AccountManager.whaleAccount(5),
     ]);
 
     const lineaRollup = config.getLineaRollupContract(l1Account);
