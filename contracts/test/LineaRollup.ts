@@ -391,6 +391,16 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "EmptySubmissionData");
     });
 
+    it("Should fail when the parent shnarf does not exist", async () => {
+      const [submissionData] = generateCallDataSubmission(0, 1);
+      const nonExistingParentShnarf = generateRandomBytes(32);
+      const asyncCall = lineaRollup
+        .connect(operator)
+        .submitDataAsCalldata(submissionData, nonExistingParentShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "ParentBlobNotSubmitted", [nonExistingParentShnarf]);
+    });
+
     it("Should succesfully submit 1 compressed data chunk setting values", async () => {
       const [submissionData] = generateCallDataSubmission(0, 1);
 
