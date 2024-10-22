@@ -5,7 +5,7 @@ spotless = { id = "com.diffplug.spotless", version = "6.16.0" }
 jreleaser = {id = "org.jreleaser", version = "1.13.1"}
 
 [versions]
-besu = "22.4.2"
+besu = "24.10.0"
 caffeine = "3.1.6"
 hoplite = "2.7.5"
 jackson = "2.18.0"

@@ -9,6 +9,7 @@ dependencies {
   implementation "org.hyperledger.besu:evm:${libs.versions.besu.get()}"
   implementation "org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}"
   implementation "org.hyperledger.besu.internal:core:${libs.versions.besu.get()}"
+  implementation "org.hyperledger.besu:plugin-api:${libs.versions.besu.get()}"
 
   testImplementation project(":jvm-libs:linea:testing:teku-helper")
 }
