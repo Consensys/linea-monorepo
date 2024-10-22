@@ -4,7 +4,8 @@ plugins {
 
 dependencies {
   implementation project(":jvm-libs:generic:extensions:kotlin")
-  implementation "org.apache.tuweni:tuweni-units:${libs.versions.tuweni.get()}"
+  // TODO: to remove from our internal domain classes
+  api "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
 }
 
 jar {
