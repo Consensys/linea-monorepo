@@ -1,4 +1,4 @@
-package net.consensys.jvm
+package build.linea.jvm
 
 import java.io.File
 import java.nio.file.Files
