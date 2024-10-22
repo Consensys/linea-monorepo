@@ -34,6 +34,17 @@ interface BlockInterval {
       }
       return BlockIntervalData(startBlockNumber.toLong().toULong(), endBlockNumber.toLong().toULong())
     }
+
+    // Todo: remove later
+    /**
+     * Please use BlockInterval(startBlockNumber, endBlockNumber) instead
+     */
+    fun between(
+      startBlockNumber: ULong,
+      endBlockNumber: ULong
+    ): BlockInterval {
+      return BlockIntervalData(startBlockNumber, endBlockNumber)
+    }
   }
 }
 
