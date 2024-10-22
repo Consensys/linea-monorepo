@@ -4,9 +4,12 @@ plugins {
 
 configurations.configureEach {
   exclude group: "org.rocksdb", module: "rocksdbjni"
-  exclude group: "it.unimi.dsi", module: "fastutil"
   exclude group: "org.hyperledger.besu", module: "bls12-381"
   exclude group: "org.hyperledger.besu", module: "secp256r1"
+}
+
+configurations {
+  runtimeClasspath.exclude group: "it.unimi.dsi", module: "fastutil"
 }
 
 dependencies {
