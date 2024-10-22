@@ -13,7 +13,7 @@ class Bytes32Test {
   @BeforeEach
   fun setUp() {
     // workaround: need this to load the functions otherwise JUNit gets stuck ¯\_(ツ)_/¯
-    Random.Default.nextBytes(3 * 32 - 1).sliceAsBytes32(0)
+    Random.Default.nextBytes(32).sliceAsBytes32(0)
     UInt256.ZERO.toBytes().toULong()
   }
 
@@ -28,9 +28,13 @@ class Bytes32Test {
 
   @Test
   fun testToULong() {
-    assertThat(UInt256.ZERO.toBytes().toULong()).isEqualTo(0uL)
-    assertThat(UInt256.valueOf(Long.MAX_VALUE).toULong()).isEqualTo(Long.MAX_VALUE.toULong())
-    assertThat(UInt256.valueOf(Long.MAX_VALUE).add(UInt256.ONE).toULong()).isEqualTo(Long.MAX_VALUE.toULong() + 1UL)
-    assertThat(UInt256.valueOf(ULong.MAX_VALUE.toBigInteger()).toULong()).isEqualTo(ULong.MAX_VALUE)
+    UInt256.ZERO.toBytes()
+      .also { bytes -> assertThat(bytes.toULong()).isEqualTo(0uL) }
+    UInt256.valueOf(Long.MAX_VALUE)
+      .also { bytes -> assertThat(bytes.toULong()).isEqualTo(Long.MAX_VALUE.toULong()) }
+    UInt256.valueOf(Long.MAX_VALUE).add(UInt256.ONE)
+      .also { bytes -> assertThat(bytes.toULong()).isEqualTo(Long.MAX_VALUE.toULong() + 1UL) }
+    UInt256.valueOf(ULong.MAX_VALUE.toBigInteger())
+      .also { bytes -> assertThat(bytes.toULong()).isEqualTo(ULong.MAX_VALUE) }
   }
 }
