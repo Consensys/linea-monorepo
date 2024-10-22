@@ -24,7 +24,6 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.ethereum.executionclient.schema.randomExecutionPayload
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
