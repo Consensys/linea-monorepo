@@ -1,0 +1,4 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
+  id 'java-library'
+}

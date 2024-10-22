@@ -15,6 +15,8 @@ dependencies {
   implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
+  // TODO: to remove from our internal domain classes
+  implementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
 
   testImplementation "io.vertx:vertx-junit5"
   testImplementation "com.github.tomakehurst:wiremock-jre8:${libs.versions.wiremock.get()}"
