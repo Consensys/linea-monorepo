@@ -88,6 +88,11 @@ distributions {
   }
 }
 
+tasks.distTar {
+  // we don't need the tar distribution
+  onlyIf { false }
+}
+
 run {
   workingDir = rootProject.projectDir
   jvmArgs = [
