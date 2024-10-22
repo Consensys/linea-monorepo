@@ -2,6 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.datetime.Instant
+import net.consensys.ByteArrayExt
 import net.consensys.FakeFixedClock
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -9,7 +10,6 @@ import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockHeaderSummary
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
-import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -112,7 +112,7 @@ class GlobalAggregationCalculatorTest {
           BlockHeaderSummary(
             number = blockNumber,
             timestamp = timestamp,
-            hash = Bytes32.random()
+            hash = ByteArrayExt.random32()
           )
         )
       )
@@ -319,7 +319,7 @@ class GlobalAggregationCalculatorTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = blob2.endBlockNumber,
-            hash = Bytes32.random(),
+            hash = ByteArrayExt.random32(),
             timestamp = blob2.endBlockTimestamp
           )
         )
@@ -429,7 +429,7 @@ class GlobalAggregationCalculatorTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = 30u,
-            hash = Bytes32.random(),
+            hash = ByteArrayExt.random32(),
             timestamp = Instant.fromEpochMilliseconds(250)
           )
         )
@@ -497,7 +497,7 @@ class GlobalAggregationCalculatorTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = firstBlobEndBlockNumber,
-            hash = Bytes32.random(),
+            hash = ByteArrayExt.random32(),
             timestamp = firstBlobEndBlockTimeStamp
           )
         )
@@ -521,7 +521,7 @@ class GlobalAggregationCalculatorTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = secondBlobEndBlockNumber,
-            hash = Bytes32.random(),
+            hash = ByteArrayExt.random32(),
             timestamp = secondBlobEndTimestamp
           )
         )

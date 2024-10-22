@@ -9,9 +9,11 @@ class ByteArrayExtensionsTest {
   @Test
   fun `ByteArray#encodeHex`() {
     assertThat(byteArrayOf().encodeHex()).isEqualTo("0x")
+    assertThat(byteArrayOf().encodeHex(false)).isEqualTo("")
     assertThat(byteArrayOf(0).encodeHex()).isEqualTo("0x00")
     assertThat(byteArrayOf(1).encodeHex()).isEqualTo("0x01")
     assertThat(byteArrayOf(0x12, 0x34, 0x56).encodeHex()).isEqualTo("0x123456")
+    assertThat(byteArrayOf(0x12, 0x34, 0x56).encodeHex(false)).isEqualTo("123456")
   }
 
   @Test

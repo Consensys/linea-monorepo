@@ -58,7 +58,7 @@ class ProofGeneratingConflationHandlerImpl(
 
   private fun conflationToProofCreation(conflation: BlocksConflation): SafeFuture<*> {
     val blockNumbersAndHash = conflation.blocks.map {
-      BlockNumberAndHash(it.blockNumber.toULong(), it.blockHash)
+      BlockNumberAndHash(it.blockNumber.toULong(), it.blockHash.toArray())
     }
     val blockIntervalString = conflation.conflationResult.intervalString()
     return tracesProductionCoordinator

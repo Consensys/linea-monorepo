@@ -48,8 +48,8 @@ class ExecutionProofRequestDataDecoratorTest {
 
   @Test
   fun `should decorate data with bridge logs and parent stateRootHash`() {
-    val executionPayload1 = executionPayloadV1(blockNumber = 123)
-    val executionPayload2 = executionPayloadV1(blockNumber = 124)
+    val executionPayload1 = executionPayloadV1(blockNumber = 123, gasLimit = 20_000_000UL)
+    val executionPayload2 = executionPayloadV1(blockNumber = 124, gasLimit = 20_000_000UL)
     val type2StateResponse = GetZkEVMStateMerkleProofResponse(
       zkStateMerkleProof = ArrayNode(null),
       zkParentStateRootHash = Bytes32.random(),
