@@ -48,3 +48,17 @@ fun ByteArray.sliceOf(
 fun ByteArray.sliceOf32(sliceNumber: Int): ByteArray {
   return this.sliceOf(sliceSize = 32, sliceNumber)
 }
+
+/**
+ * This a temporary extension to ByteArray.
+ * We expect Kotlin to add Companion to ByteArray in the future, like it did for Int and Byte.
+ * This extension object ByteArrayE will be removed once that happens
+ * and it's function's migrated to ByteArray.Companion.
+ */
+object ByteArrayE {
+  fun random(size: Int): ByteArray {
+    return kotlin.random.Random.nextBytes(size)
+  }
+
+  fun random32(): ByteArray = random(32)
+}

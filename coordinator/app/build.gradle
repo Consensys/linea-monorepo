@@ -63,6 +63,7 @@ dependencies {
   implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
   testImplementation "org.apache.logging.log4j:log4j-slf4j2-impl:${libs.versions.log4j.get()}"
   testImplementation project(':coordinator:ethereum:test-utils')
+  testImplementation project(':jvm-libs:linea:testing:teku-helper')
   testImplementation "io.vertx:vertx-junit5"
 }
 

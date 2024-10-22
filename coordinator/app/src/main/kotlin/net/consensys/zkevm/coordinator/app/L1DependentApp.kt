@@ -969,7 +969,7 @@ class L1DependentApp(
     ),
     "type 2 state proof provider finalization updates" to FinalizationHandler {
       finalizedBlockNotifier.updateFinalizedBlock(
-        BlockNumberAndHash(it.blockNumber, it.blockHash)
+        BlockNumberAndHash(it.blockNumber, it.blockHash.toArray())
       )
     },
     "last_proven_block_provider" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->

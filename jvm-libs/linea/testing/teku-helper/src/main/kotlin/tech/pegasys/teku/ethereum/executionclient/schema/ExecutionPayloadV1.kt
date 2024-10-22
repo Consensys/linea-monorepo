@@ -1,5 +1,9 @@
 package tech.pegasys.teku.ethereum.executionclient.schema
 
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import net.consensys.ByteArrayE
+import net.consensys.toBigInteger
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.units.bigints.UInt256
@@ -7,6 +11,41 @@ import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 import tech.pegasys.teku.spec.TestSpecFactory
 import tech.pegasys.teku.spec.util.DataStructureUtil
+import java.math.BigInteger
+
+fun executionPayloadV1(
+  blockNumber: Long = 0,
+  parentHash: ByteArray = ByteArrayE.random32(),
+  feeRecipient: ByteArray = ByteArrayE.random(20),
+  stateRoot: ByteArray = ByteArrayE.random32(),
+  receiptsRoot: ByteArray = ByteArrayE.random32(),
+  logsBloom: ByteArray = ByteArrayE.random32(),
+  prevRandao: ByteArray = ByteArrayE.random32(),
+  gasLimit: ULong = 0UL,
+  gasUsed: ULong = 0UL,
+  timestamp: Instant = Clock.System.now(),
+  extraData: ByteArray = ByteArrayE.random32(),
+  baseFeePerGas: BigInteger = BigInteger.valueOf(256),
+  blockHash: ByteArray = ByteArrayE.random32(),
+  transactions: List<ByteArray> = emptyList()
+): ExecutionPayloadV1 {
+  return ExecutionPayloadV1(
+    Bytes32.wrap(parentHash),
+    Bytes20(Bytes.wrap(feeRecipient)),
+    Bytes32.wrap(stateRoot),
+    Bytes32.wrap(receiptsRoot),
+    Bytes.wrap(logsBloom),
+    Bytes32.wrap(prevRandao),
+    UInt64.valueOf(blockNumber),
+    UInt64.valueOf(gasLimit.toBigInteger()),
+    UInt64.valueOf(gasUsed.toBigInteger()),
+    UInt64.valueOf(timestamp.epochSeconds),
+    Bytes.wrap(extraData),
+    UInt256.valueOf(baseFeePerGas),
+    Bytes32.wrap(blockHash),
+    transactions.map { Bytes.wrap(it) }
+  )
+}
 
 fun executionPayloadV1(
   blockNumber: Long = 0,
