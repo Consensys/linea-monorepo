@@ -40,8 +40,8 @@ dependencies {
   implementation 'org.assertj:assertj-core'
 }
 
-nodeSetup {
-  mustRunAfter(spotlessBash, spotlessGroovy, spotlessSol)
+node {
+  download = false
 }
 
 tasks.withType(GenerateContractWrappers.class).configureEach {

@@ -52,10 +52,12 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ethereum-tests-report
-          path: reference-tests/build/reports/tests/**/*
+          path: |
+            reference-tests/build/reports/tests/**/*
+            tmp/local/*
 
 
   ethereum-tests-go-corset:
@@ -108,7 +110,9 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ethereum-tests-go-corset-report
-          path: reference-tests/build/reports/tests/**/*
+          path: | 
+            reference-tests/build/reports/tests/**/*
+            tmp/local/*
