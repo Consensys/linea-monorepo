@@ -124,6 +124,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			}
 			cf.ExecutionPI = append(cf.ExecutionPI, piq)
 		}
+
+		allL2MessageHashes = append(allL2MessageHashes, l2MessageHashes...)
 	}
 
 	cf.DecompressionPI = make([]blobsubmission.Response, 0, len(req.DecompressionProofs))

@@ -5,10 +5,10 @@ spotless = { id = "com.diffplug.spotless", version = "6.16.0" }
 jreleaser = {id = "org.jreleaser", version = "1.13.1"}
 
 [versions]
-besu = "22.4.2"
+besu = "24.10.0"
 caffeine = "3.1.6"
 hoplite = "2.7.5"
-jackson = "2.14.2"
+jackson = "2.18.0"
 jna = "5.14.0"
 junit = "5.10.1"
 kotlinxDatetime = "0.4.0"
@@ -23,5 +23,6 @@ tuweni = "2.3.1"
 vertx = "4.5.0"
 web3j = "4.12.0"
 wiremock = "3.0.1"
+jsonUnit = "3.4.1"
 blobCompressor = "0.0.4"
 blobShnarfCalculator = "0.0.4"

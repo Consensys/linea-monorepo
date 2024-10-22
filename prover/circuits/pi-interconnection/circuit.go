@@ -2,6 +2,8 @@ package pi_interconnection
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"math/big"
 	"slices"
 
@@ -121,8 +123,11 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	shnarfs := ComputeShnarfs(&hshK, c.ParentShnarf, shnarfParams)
 
+	rExecution := internal.NewRange(api, nbExecution, maxNbExecution)
+
 	initBlockNum, initHashNum, initHash := c.InitialBlockNumber, c.InitialRollingHashNumber, c.InitialRollingHash
 	initBlockTime, initState := c.InitialBlockTimestamp, c.InitialStateRootHash
+	finalRollingHash, finalRollingHashNum := c.InitialRollingHash, c.InitialRollingHashNumber
 	var l2MessagesByByte [32][]internal.VarSlice
 
 	execMaxNbL2Msg := len(c.ExecutionFPIQ[0].L2MessageHashes.Values)
@@ -139,9 +144,17 @@ func (c *Circuit) Define(api frontend.API) error {
 	for i, piq := range c.ExecutionFPIQ {
 		piq.RangeCheck(api)
 
-		comparator.IsLess(initBlockTime, piq.FinalBlockTimestamp)
-		comparator.IsLess(initBlockNum, piq.FinalBlockNumber)
-		comparator.IsLess(initHashNum, piq.FinalRollingHashNumber)
+		inRange := rExecution.InRange[i]
+		rollingHashNotUpdated := api.Select(inRange, api.IsZero(piq.FinalRollingHashNumber), 1) // padded input past nbExecutions is not required to be 0. So we multiply by inRange
+
+		newFinalRollingHashNum := api.Select(rollingHashNotUpdated, finalRollingHashNum, piq.FinalRollingHashNumber)
+
+		api.AssertIsEqual(comparator.IsLess(initBlockTime, api.Select(inRange, piq.FinalBlockTimestamp, uint64(math.MaxUint64))), 1) // don't compare if not updating
+		api.AssertIsEqual(comparator.IsLess(initBlockNum, api.Select(inRange, piq.FinalBlockNumber, uint64(math.MaxUint64))), 1)
+		api.AssertIsEqual(comparator.IsLess(finalRollingHashNum, api.Add(newFinalRollingHashNum, rollingHashNotUpdated)), 1) // if the rolling hash is updated, check that it has increased
+
+		finalRollingHashNum = newFinalRollingHashNum
+		copy(finalRollingHash[:], internal.SelectMany(api, rollingHashNotUpdated, finalRollingHash[:], piq.FinalRollingHash[:]))
 
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
@@ -171,7 +184,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	merkleLeavesConcat := internal.Slice[[32]frontend.Variable]{Values: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle*merkleNbLeaves)}
+	merkleLeavesConcat := internal.Var32Slice{Values: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle*merkleNbLeaves)}
 	for i := 0; i < 32; i++ {
 		ithBytes := internal.Concat(api, len(merkleLeavesConcat.Values), l2MessagesByByte[i]...)
 		for j := range merkleLeavesConcat.Values {
@@ -179,7 +192,6 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 		merkleLeavesConcat.Length = ithBytes.Length // same value regardless of i
 	}
-	rExecution := internal.NewRange(api, nbExecution, maxNbExecution)
 
 	pi := public_input.AggregationFPISnark{
 		AggregationFPIQSnark:   c.AggregationFPIQSnark,
@@ -187,9 +199,9 @@ func (c *Circuit) Define(api frontend.API) error {
 		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, c.L2MessageMaxNbMerkle),
 		FinalBlockNumber:       rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
 		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
-		FinalRollingHash:       rExecution.LastArray32F(func(i int) [32]frontend.Variable { return c.ExecutionFPIQ[i].FinalRollingHash }),
-		FinalRollingHashNumber: rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalRollingHashNumber }),
 		FinalShnarf:            rDecompression.LastArray32(shnarfs),
+		FinalRollingHashNumber: finalRollingHashNum,
+		FinalRollingHash:       finalRollingHash,
 		L2MsgMerkleTreeDepth:   c.L2MessageMerkleDepth,
 	}
 
@@ -197,9 +209,9 @@ func (c *Circuit) Define(api frontend.API) error {
 		pi.L2MsgMerkleTreeRoots[i] = MerkleRootSnark(&hshK, merkleLeavesConcat.Values[i*merkleNbLeaves:(i+1)*merkleNbLeaves])
 	}
 
+	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input
 	aggregationPIBytes := pi.Sum(api, &hshK)
-	twoPow8 := big.NewInt(256)
 	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
 	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
 
