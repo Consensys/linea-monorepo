@@ -1,5 +1,7 @@
 package net.consensys
 
+import java.util.HexFormat
+
 fun ByteArray.assertSize(expectedSize: UInt, fieldName: String = ""): ByteArray = apply {
   require(size == expectedSize.toInt()) { "$fieldName expected to have $expectedSize bytes, but got $size" }
 }
@@ -47,6 +49,15 @@ fun ByteArray.sliceOf(
  */
 fun ByteArray.sliceOf32(sliceNumber: Int): ByteArray {
   return this.sliceOf(sliceSize = 32, sliceNumber)
+}
+
+fun ByteArray.encodeHex(prefix: Boolean = true): String {
+  val hexStr = HexFormat.of().formatHex(this)
+  if (prefix) {
+    return "0x$hexStr"
+  } else {
+    return hexStr
+  }
 }
 
 /**
