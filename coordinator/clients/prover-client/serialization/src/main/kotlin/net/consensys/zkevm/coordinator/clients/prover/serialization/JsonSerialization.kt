@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.JsonSerializer
 import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializerProvider
-import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonMapperBuilder
 import org.apache.tuweni.bytes.Bytes
@@ -17,7 +16,7 @@ object JsonSerialization {
       .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
       .addModule(JavaTimeModule())
-      .addModule(SimpleModule().addSerializer(Bytes::class.java, TuweniBytesSerializer()))
+//      .addModule(SimpleModule().addSerializer(Bytes::class.java, TuweniBytesSerializer()))
       .build()
 }
 
