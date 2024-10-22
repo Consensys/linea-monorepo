@@ -8,11 +8,12 @@ import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.units.bigints.UInt256
 import org.bouncycastle.math.ec.custom.sec.SecP256K1Curve
 import org.hyperledger.besu.crypto.SECPSignature
+import org.hyperledger.besu.datatypes.AccessListEntry
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.ethereum.core.Transaction
+import org.hyperledger.besu.ethereum.core.encoding.EncodingContext
 import org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder
-import org.hyperledger.besu.evm.AccessListEntry
 import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
@@ -133,11 +134,5 @@ fun EthBlock.TransactionObject.toBytes(): Bytes {
     }
     .build()
 
-  if (signature != null) {
-    if (this.v != transaction.v.toLong()) {
-      throw RuntimeException("Transactions v values do not match: original=${this.v}, inferred=${transaction.v}")
-    }
-  }
-
-  return TransactionEncoder.encodeOpaqueBytes(transaction)
+  return TransactionEncoder.encodeOpaqueBytes(transaction, EncodingContext.BLOCK_BODY)
 }
