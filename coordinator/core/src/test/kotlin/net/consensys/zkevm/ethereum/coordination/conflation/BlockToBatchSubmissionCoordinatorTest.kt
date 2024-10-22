@@ -49,7 +49,7 @@ class BlockToBatchSubmissionCoordinatorTest {
           it.rollupGetTracesCounters(
             BlockNumberAndHash(
               randomExecutionPayload.blockNumber.toULong(),
-              randomExecutionPayload.blockHash
+              randomExecutionPayload.blockHash.toArray()
             )
           )
         ).thenReturn(
