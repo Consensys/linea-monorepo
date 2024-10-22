@@ -30,6 +30,9 @@ on:
       traces_api_facade_changed:
         required: true
         type: string
+      transaction_exclusion_api_changed:
+        required: true
+        type: string
       coordinator_image_tagged:
         required: true
         type: string
@@ -40,6 +43,9 @@ on:
         required: true
         type: string
       traces_api_facade_image_tagged:
+        required: true
+        type: string
+      transaction_exclusion_api_image_tagged:
         required: true
         type: string
     secrets:
@@ -95,4 +101,16 @@ jobs:
       develop_tag: ${{ inputs.develop_tag }}
       untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
       image_name: consensys/linea-traces-api-facade
+    secrets: inherit
+
+  transaction_exclusion_api:
+    uses: ./.github/workflows/transaction-exclusion-api-build-and-publish.yml
+    if: ${{ always() && (inputs.transaction_exclusion_api_changed == 'true' || inputs.transaction_exclusion_api_image_tagged != 'true') }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
+      last_commit_tag: ${{ inputs.last_commit_tag }}
+      common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
+      develop_tag: ${{ inputs.develop_tag }}
+      untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
+      image_name: consensys/linea-transaction-exclusion-api
     secrets: inherit

@@ -5,9 +5,11 @@ import { Config } from "../types";
 
 const L1_RPC_URL = new URL("http://localhost:8445");
 const L2_RPC_URL = new URL("http://localhost:8845");
+const L2_BESU_NODE_RPC_URL = new URL("http://localhost:9045");
 const SHOMEI_ENDPOINT = new URL("http://localhost:8998");
 const SHOMEI_FRONTEND_ENDPOINT = new URL("http://localhost:8889");
 const SEQUENCER_ENDPOINT = new URL("http://localhost:8545");
+const TRANSACTION_EXCLUSION_ENDPOINT = new URL("http://localhost:8082");
 
 const config: Config = {
   L1: {
@@ -25,8 +27,10 @@ const config: Config = {
   },
   L2: {
     rpcUrl: L2_RPC_URL,
+    besuNodeRpcUrl: L2_BESU_NODE_RPC_URL,
     chainId: 1337,
     l2MessageServiceAddress: "0xe537D669CA013d86EBeF1D64e40fC74CADC91987",
+    l2TestContractAddress: "0xeB0b0a14F92e3BA35aEF3a2B6A24D7ED1D11631B",
     dummyContractAddress: "0x2f6dAaF8A81AB675fbD37Ca6Ed5b72cf86237453",
     accountManager: new GenesisBasedAccountManager(
       new ethers.JsonRpcProvider(L2_RPC_URL.toString()),
@@ -38,6 +42,7 @@ const config: Config = {
     shomeiEndpoint: SHOMEI_ENDPOINT,
     shomeiFrontendEndpoint: SHOMEI_FRONTEND_ENDPOINT,
     sequencerEndpoint: SEQUENCER_ENDPOINT,
+    transactionExclusionEndpoint: TRANSACTION_EXCLUSION_ENDPOINT,
   },
 };
 

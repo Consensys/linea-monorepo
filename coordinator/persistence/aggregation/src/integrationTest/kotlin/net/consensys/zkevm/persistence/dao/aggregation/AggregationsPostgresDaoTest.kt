@@ -25,8 +25,8 @@ import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
-import net.consensys.zkevm.persistence.test.CleanDbTestSuiteParallel
-import net.consensys.zkevm.persistence.test.DbQueries
+import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
+import net.consensys.zkevm.persistence.db.test.DbQueries
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -39,6 +39,10 @@ import java.util.concurrent.TimeUnit
 
 @ExtendWith(VertxExtension::class)
 class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+  }
+
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-aggregations-dao")
 
   private val maxBlobReturnLimit = 10u

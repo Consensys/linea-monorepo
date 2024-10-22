@@ -13,9 +13,12 @@ export type L1Config = BaseConfig & {
 
 export type L2Config = BaseConfig & {
   l2MessageServiceAddress: string;
+  l2TestContractAddress?: string;
+  besuNodeRpcUrl?: URL;
   shomeiEndpoint?: URL;
   shomeiFrontendEndpoint?: URL;
   sequencerEndpoint?: URL;
+  transactionExclusionEndpoint?: URL;
 };
 
 export type Config = {

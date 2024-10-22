@@ -18,8 +18,9 @@ jobs:
       postman: ${{ steps.filter.outputs.postman }}
       prover: ${{ steps.filter.outputs.prover }}
       traces-api-facade: ${{ steps.filter.outputs.traces-api-facade }}
+      transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       finalized-tag-updater: ${{ steps.filter.outputs.finalized-tag-updater }}
-      no-changes: ${{ steps.filter.outputs.coordinator == 'false' && steps.filter.outputs.postman == 'false' && steps.filter.outputs.prover == 'false' && steps.filter.outputs.traces-api-facade == 'false' }}
+      no-changes: ${{ steps.filter.outputs.coordinator == 'false' && steps.filter.outputs.postman == 'false' && steps.filter.outputs.prover == 'false' && steps.filter.outputs.traces-api-facade == 'false' && steps.filter.outputs.transaction-exclusion-api == 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -83,6 +84,25 @@ jobs:
               - 'build.gradle'
               - 'gradle.properties'
               - 'settings.gradle'
+            transaction-exclusion-api:
+              - 'transaction-exclusion-api/**'
+              - 'jvm-libs/generic/extensions/futures/**'
+              - 'jvm-libs/generic/extensions/kotlin/**'
+              - 'jvm-libs/generic/json-rpc/**'
+              - 'jvm-libs/generic/persistence/**'
+              - 'jvm-libs/generic/vertx-helper/**'
+              - 'jvm-libs/linea/core/long-running-service/**'
+              - 'jvm-libs/linea/core/metrics/**'
+              - 'jvm-libs/linea/metrics/**'
+              - '.github/workflows/transaction-exclusion-api-*.yml'
+              - '.github/workflows/build-and-publish.yml'
+              - '.github/workflows/main.yml'
+              - '.github/workflows/reuse-*.yml'
+              - 'buildSrc/**'
+              - 'gradle/**'
+              - 'build.gradle'
+              - 'gradle.properties'
+              - 'settings.gradle'
             finalized-tag-updater:
               - 'jvm-libs/linea/core/long-running-service/**'
               - 'jvm-libs/linea/web3j-extensions/**'
@@ -105,6 +125,7 @@ jobs:
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
+      transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
     secrets: inherit
 
   manual-docker-build-and-e2e-tests:
@@ -129,10 +150,12 @@ jobs:
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
+      transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
       postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
       prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
       traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
+      transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
     secrets: inherit
 
   # Comment out the auto build and release step below as the plugin release should be
@@ -154,9 +177,11 @@ jobs:
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
+      transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
       postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
       traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
+      transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
     secrets: inherit
 
   run-e2e-tests-geth-tracing:
@@ -195,7 +220,7 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
       untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
-      image_names: '["consensys/linea-coordinator", "consensys/linea-postman", "consensys/linea-prover", "consensys/linea-traces-api-facade"]'
+      image_names: '["consensys/linea-coordinator", "consensys/linea-postman", "consensys/linea-prover", "consensys/linea-traces-api-facade", "consensys/linea-transaction-exclusion-api"]'
     secrets: inherit
 
   cleanup-deployments:
