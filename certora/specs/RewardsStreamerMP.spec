@@ -1,7 +1,11 @@
-using RewardsStreamerMP as streamer;
+import "./shared.spec";
+
 using ERC20A as staked;
 
 methods {
+    function ERC20A.balanceOf(address) external returns (uint256) envfree;
+    function ERC20A.allowance(address, address) external returns(uint256) envfree;
+    function ERC20A.totalSupply() external returns(uint256) envfree;
     function totalStaked() external returns (uint256) envfree;
     function accounts(address) external returns (uint256, uint256, uint256, uint256, uint256, uint256) envfree;
     function lastMPUpdatedTime() external returns (uint256) envfree;
@@ -27,12 +31,6 @@ function getAccountMP(address account) returns uint256 {
     uint256 accountMP;
     _, _, accountMP, _, _, _ = streamer.accounts(account);
     return accountMP;
-}
-
-function getAccountStakedBalance(address account) returns uint256 {
-    uint256 stakedBalance;
-    stakedBalance, _, _, _, _, _ = streamer.accounts(account);
-    return stakedBalance;
 }
 
 function getAccountLockUntil(address account) returns uint256 {
