@@ -137,7 +137,16 @@ public class ReferenceTestOutcomeRecorderToolTest {
             + "\n"
             + "Caused by:\n"
             + "    constraints failed: \u001B[31m\u001B[1mrlptxrcpt.phase3\u001B[0m\u001B[39m, \u001B[31m\u001B[1mtxndata-into-wcp\u001B[0m\u001B[39m, \u001B[31m\u001B[1mtxndata-into-rlptxrcpt\u001B[0m\u001B[39m, \u001B[31m\u001B[1mtxndata.cumulative-gas\u001B[0m\u001B[39m, \u001B[31m\u001B[1mrlptxrcpt.phase-transition\u001B[0m\u001B[39m\n"
-            + "]";
+            + "]"
+            + "      at app//net.consensys.linea.testing.ExecutionEnvironment.checkTracer(ExecutionEnvironment.java:72)\n"
+            + "      at app//net.consensys.linea.GeneralStateReferenceTestTools.executeTest(GeneralStateReferenceTestTools.java:235)\n"
+            + "      at app//net.consensys.linea.generated.generalstate.GeneralStateReferenceTest_200.execution(GeneralStateReferenceTest_200.java:60)\n"
+            + "      at java.base@21.0.2/java.lang.reflect.Method.invoke(Method.java:580)\n"
+            + "      at java.base@21.0.2/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:387)\n"
+            + "      at java.base@21.0.2/java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(ForkJoinPool.java:1312)\n"
+            + "      at java.base@21.0.2/java.util.concurrent.ForkJoinPool.scan(ForkJoinPool.java:1843)\n"
+            + "      at java.base@21.0.2/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1808)\n"
+            + "      at java.base@21.0.2/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:188)";
 
     Map<String, Set<String>> res = ReferenceTestOutcomeRecorderTool.extractConstraints(message);
     assertThat(res.size()).isEqualTo(2);

@@ -71,6 +71,8 @@ tasks.register('referenceGeneralStateTests', Test) {
   description = 'Runs ETH reference general state tests.'
   dependsOn generateGeneralStateReferenceTests
 
+  environment.put("REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "GeneralStateReferenceTestOutcome.json")
+
   useJUnitPlatform {
     includeTags("GeneralStateReferenceTest")
   }

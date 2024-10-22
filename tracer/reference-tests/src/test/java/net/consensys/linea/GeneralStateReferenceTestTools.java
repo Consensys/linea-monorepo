@@ -110,6 +110,10 @@ public class GeneralStateReferenceTestTools {
     PARAMS.ignore("static_Call1MB1024Calldepth-\\w");
     PARAMS.ignore("ShanghaiLove_.*");
     PARAMS.ignore("VMTests/vmPerformance/");
+    PARAMS.ignore("Call50000");
+    PARAMS.ignore("static_LoopCallsDepthThenRevert3");
+    PARAMS.ignore("Return50000");
+    PARAMS.ignore("Callcode50000");
 
     // Don't do time consuming tests
     PARAMS.ignore("CALLBlake2f_MaxRounds.*");

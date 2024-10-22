@@ -36,8 +36,14 @@ import net.consensys.linea.zktracer.json.JsonConverter;
 @Slf4j
 public class ReferenceTestOutcomeRecorderTool {
 
-  public static final String JSON_INPUT_FILENAME = "failedBlockchainReferenceTests-input.json";
-  public static final String JSON_OUTPUT_FILENAME = "failedBlockchainReferenceTests.json";
+  public static final String JSON_INPUT_FILENAME =
+      System.getenv()
+          .getOrDefault(
+              "REFERENCE_TEST_OUTCOME_INPUT_FILE", "failedBlockchainReferenceTests-input.json");
+  public static final String JSON_OUTPUT_FILENAME =
+      System.getenv()
+          .getOrDefault(
+              "REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "failedBlockchainReferenceTests.json");
   public static JsonConverter jsonConverter = JsonConverter.builder().build();
   private static volatile AtomicInteger failedCounter = new AtomicInteger(0);
   private static volatile AtomicInteger successCounter = new AtomicInteger(0);
@@ -91,34 +97,37 @@ public class ReferenceTestOutcomeRecorderTool {
 
     // case where corset sends constraint failed and the list of constraints
     if (message.contains("constraints failed:")) {
-      cleaned =
-          cleaned.substring(
-              message.indexOf("constraints failed:") + "constraints failed:".length());
-      String[] constraints = cleaned.split(",");
-      for (int i = 0; i < constraints.length; i++) {
-        getPairFromString(constraints[i], pairs);
+      List<String> lines = cleaned.lines().toList();
+      for (String line : lines) {
+        if (line.contains("constraints failed:")) {
+          String[] failingConstraints =
+              line.substring(line.indexOf("constraints failed:") + "constraints failed:".length())
+                  .split(",");
+          for (String constraint : failingConstraints) {
+            getPairFromString(constraint, pairs);
+          }
+        }
       }
     } else if (message.contains("failing constraint")) {
       // case where corset sends failing constraint with constraints one by one
-      String[] lines = cleaned.split("\\n");
-      for (int i = 0; i < lines.length; i++) {
-        if (lines[i].contains("failing constraint")) {
-          String line =
-              lines[i].substring(
-                  lines[i].indexOf("failing constraint") + "failing constraint".length());
-          line = line.replace(':', ' ');
-          getPairFromString(line, pairs);
+      List<String> lines = cleaned.lines().toList();
+      for (String line : lines) {
+        if (line.contains("failing constraint")) {
+          String failingConstraints =
+              line.substring(line.indexOf("failing constraint") + "failing constraint".length())
+                  .replace(':', ' ');
+          getPairFromString(failingConstraints, pairs);
         }
       }
     } else {
       // case where corset can't expend the trace
       if (message.contains("Error: while expanding ")) {
-        String[] lines = cleaned.split("\\n");
-        for (int i = 0; i < lines.length; i++) {
-          if (lines[i].contains("reading data for")) {
+        List<String> lines = cleaned.lines().toList();
+        for (String line : lines) {
+          if (line.contains("reading data for")) {
             String regex = "for\\s+(\\w+)\\s+\\.\\s+(\\w+)";
             Pattern pattern = Pattern.compile(regex);
-            Matcher matcher = pattern.matcher(lines[i]);
+            Matcher matcher = pattern.matcher(line);
             if (matcher.find()) {
               String module = matcher.group(1);
               String constraint = matcher.group(2);
@@ -198,7 +207,7 @@ public class ReferenceTestOutcomeRecorderTool {
     }
     return CompletableFuture.runAsync(
         () -> {
-          try (FileWriter file = new FileWriter(fileDirectory + name)) {
+          try (FileWriter file = new FileWriter(Path.of(fileDirectory, name).toString())) {
             objectMapper.writeValue(
                 file,
                 new BlockchainReferenceTestOutcome(
