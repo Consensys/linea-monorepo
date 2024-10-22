@@ -117,10 +117,11 @@ func TestTransactionSigning(t *testing.T) {
 			assert.Equal(t, from.Hex(), recovered.Hex(), "Mismatch of the recovered address")
 
 			// Simulates the decoding of the transaction
-			var decodedTx types.Transaction
-			err = DecodeTxFromBytes(bytes.NewReader(rlp), &decodedTx)
-
+			decodedTxData, err := DecodeTxFromBytes(bytes.NewReader(rlp))
 			require.NoError(t, err)
+
+			decodedTx := types.NewTx(decodedTxData)
+
 			assert.Equal(t, tx.To(), decodedTx.To())
 			assert.Equal(t, tx.Nonce(), decodedTx.Nonce())
 			assert.Equal(t, tx.Data(), decodedTx.Data())
