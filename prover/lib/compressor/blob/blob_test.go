@@ -80,7 +80,6 @@ func withNoError[X, Y any](t *testing.T, f func(X) (Y, error), x X) Y {
 func TestDecompressBlob(t *testing.T) {
 	store := dictionary.NewStore("../compressor_dict.bin")
 	files := newRecursiveFolderIterator(t, "testdata")
-	var blocks []types.Block
 	for files.hasNext() {
 		f := files.next()
 		if filepath.Ext(f.path) == ".bin" {
@@ -90,11 +89,13 @@ func TestDecompressBlob(t *testing.T) {
 				t.Log("decompressed length", len(decompressed))
 
 				// load decompressed blob as blocks
-				assert.NoError(t, rlp.DecodeBytes(decompressed, &blocks))
-				t.Log("number of decoded blocks", len(blocks))
-
-				_, title := filepath.Split(f.path)
-				assert.NoError(t, os.WriteFile("/Users/arya/Desktop/"+title, decompressed, 0600))
+				var blocksSerialized [][]byte
+				assert.NoError(t, rlp.DecodeBytes(decompressed, &blocksSerialized))
+				t.Log("number of decoded blocks", len(blocksSerialized))
+				for _, blockSerialized := range blocksSerialized {
+					var b types.Block
+					assert.NoError(t, rlp.DecodeBytes(blockSerialized, &b))
+				}
 			})
 		}
 	}

@@ -239,16 +239,19 @@ func InjectFromAddressIntoR(txData types.TxData, from *common.Address) *types.Tr
 		tx := *txData
 		tx.R = new(big.Int)
 		tx.R.SetBytes(from[:])
+		tx.S = big.NewInt(1)
 		return types.NewTx(&tx)
 	case *types.AccessListTx:
 		tx := *txData
 		tx.R = new(big.Int)
 		tx.R.SetBytes(from[:])
+		tx.S = big.NewInt(1)
 		return types.NewTx(&tx)
 	case *types.LegacyTx:
 		tx := *txData
 		tx.R = new(big.Int)
 		tx.R.SetBytes(from[:])
+		tx.S = big.NewInt(1)
 		return types.NewTx(&tx)
 	default:
 		panic("unexpected transaction type")

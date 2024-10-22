@@ -3,7 +3,6 @@ package blob
 import (
 	"bytes"
 	"errors"
-	"github.com/ethereum/go-ethereum/core/types"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,13 +74,15 @@ func DecompressBlob(blob []byte, dictStore dictionary.Store) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	blockObjs := make([]*types.Block, len(blocks))
+	blocksSerialized := make([][]byte, len(blocks))
 	var decodedBlock encode.DecodedBlockData
 	for i, block := range blocks {
 		if decodedBlock, err = blockDecoder(bytes.NewReader(block)); err != nil {
 			return nil, err
 		}
-		blockObjs[i] = decodedBlock.ToStd()
+		if blocksSerialized[i], err = rlp.EncodeToBytes(decodedBlock.ToStd()); err != nil {
+			return nil, err
+		}
 	}
-	return rlp.EncodeToBytes(blockObjs)
+	return rlp.EncodeToBytes(blocksSerialized)
 }
