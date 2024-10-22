@@ -38,7 +38,7 @@ class BlockToBatchSubmissionCoordinator(
       .rollupGetTracesCounters(
         BlockNumberAndHash(
           blockEvent.executionPayload.blockNumber.toULong(),
-          blockEvent.executionPayload.blockHash
+          blockEvent.executionPayload.blockHash.toArray()
         )
       )
       .thenCompose { result ->

@@ -50,21 +50,6 @@ fun ULong.toGWei(): Double = this.toDouble().toGWei()
  */
 fun ULong.Companion.fromHexString(value: String): ULong = value.replace("0x", "").toULong(16)
 
-// ULong extensions
-fun ByteArray.encodeHex(prefix: Boolean = true): String =
-  "${if (prefix) "0x" else ""}${joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }}"
-
-fun String.decodeHex(): ByteArray {
-  check(length % 2 == 0) { "Must have an even length" }
-  return removePrefix("0x").chunked(2)
-    .map { it.toInt(16).toByte() }
-    .toByteArray()
-}
-
-fun String.containsAny(strings: List<String>, ignoreCase: Boolean): Boolean {
-  return strings.any { this.contains(it, ignoreCase) }
-}
-
 fun <T : Comparable<T>> ClosedRange<T>.toIntervalString(): String {
   val size = if (start <= endInclusive) {
     this.endInclusive.toString().toBigDecimal() - this.start.toString().toBigDecimal() + 1.toBigDecimal()
