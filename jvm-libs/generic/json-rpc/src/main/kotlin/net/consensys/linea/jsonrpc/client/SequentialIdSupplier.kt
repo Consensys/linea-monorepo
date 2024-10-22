@@ -2,9 +2,7 @@ package net.consensys.linea.jsonrpc.client
 
 import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Supplier
-import javax.annotation.concurrent.ThreadSafe
 
-@ThreadSafe
 class SequentialIdSupplier : Supplier<Any> {
   private var id = AtomicLong(0)
 

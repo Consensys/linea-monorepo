@@ -2,41 +2,10 @@ plugins {
   id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
 }
 
-repositories {
-  // Use Maven Central for resolving dependencies.
-  mavenCentral()
-  maven {
-    url 'https://artifacts.consensys.net/public/teku/maven/'
-    content { includeGroupAndSubgroups('tech.pegasys') }
-  }
-  maven {
-    url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
-    content { includeGroupAndSubgroups('org.hyperledger.besu') }
-  }
-  maven {
-    url "https://artifacts.consensys.net/public/maven/maven/"
-  }
-  // to allow locally published artifacts to be resolved uncomment enable mavenLocal() below
-  // build.linea:blob-compressor:2.0.0-SNAPSHOT
-  // useful to test WIP development versions
-  //mavenLocal() {
-  //  content {
-  //    includeModule('build.linea', 'blob-compressor')
-  //    includeModule('build.linea', 'shnarf-calculator')
-  //  }
-  //}
-}
-
 dependencies {
-  constraints {
-    // Define dependency versions as constraints
-    implementation 'org.apache.commons:commons-text:1.9'
-  }
-
   api platform("io.vertx:vertx-stack-depchain:${libs.versions.vertx.get()}")
   //<utils>
-  implementation 'com.michael-bull.kotlin-result:kotlin-result:1.1.16'
-  implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
+  implementation "com.michael-bull.kotlin-result:kotlin-result:${libs.versions.kotlinResult.get()}"
   implementation ("tech.pegasys.teku.internal:async:${libs.versions.teku.get()}") {
     exclude group: 'org.slf4j'
     exclude group: 'com.github.jnr'
@@ -44,9 +13,7 @@ dependencies {
     exclude group: 'org.apache.logging.log4j'
     exclude group: 'tech.pegasys.teku.internal', module: 'metrics'
     exclude group: 'tech.pegasys.teku.internal', module: 'time'
-  }
-  implementation "org.apache.tuweni:tuweni-units:${libs.versions.tuweni.get()}"
-  //</utils>
+  } because("We are using Teku's SafeFuture, an improved/extension of CompletableFuture.")
 
   //<logging>
   implementation "org.apache.logging.log4j:log4j-api:${libs.versions.log4j.get()}"
