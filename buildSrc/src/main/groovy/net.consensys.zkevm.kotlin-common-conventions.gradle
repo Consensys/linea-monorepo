@@ -45,7 +45,8 @@ dependencies {
     exclude group: 'tech.pegasys.teku.internal', module: 'metrics'
     exclude group: 'tech.pegasys.teku.internal', module: 'time'
   }
-  implementation "org.apache.tuweni:tuweni-units:${libs.versions.tuweni.get()}"
+
+  implementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
   //</utils>
 
   //<logging>
