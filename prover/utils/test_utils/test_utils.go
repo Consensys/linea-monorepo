@@ -3,9 +3,12 @@ package test_utils
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"math"
 	"os"
+	"testing"
 )
 
 type FakeTestingT struct{}
@@ -36,4 +39,10 @@ func RandIntSliceN(length, n int) []int {
 		res[i] = RandIntN(n)
 	}
 	return res
+}
+
+func LoadJson(t *testing.T, path string, v any) {
+	in, err := os.Open(path)
+	require.NoError(t, err)
+	require.NoError(t, json.NewDecoder(in).Decode(v))
 }
