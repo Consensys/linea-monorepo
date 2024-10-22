@@ -179,6 +179,8 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	maxNbL2MessageHashes := config.L2MsgMaxNbMerkle * merkleNbLeaves
 	l2MessageHashes := make([][32]byte, 0, maxNbL2MessageHashes)
 
+	finalRollingHashNum, finalRollingHash := aggregationFPI.InitialRollingHashNumber, aggregationFPI.InitialRollingHash
+
 	// Execution FPI
 	executionFPI := execution.FunctionalPublicInput{
 		FinalStateRootHash:     aggregationFPI.InitialStateRootHash,
@@ -211,6 +213,11 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			executionFPI.L2MessageHashes = r.Executions[i].L2MsgHashes
 
 			l2MessageHashes = append(l2MessageHashes, r.Executions[i].L2MsgHashes...)
+
+			if r.Executions[i].FinalRollingHashNumber != 0 { // if the rolling hash is being updated, record the change
+				finalRollingHash = r.Executions[i].FinalRollingHash
+				finalRollingHashNum = r.Executions[i].FinalRollingHashNumber
+			}
 		}
 
 		a.ExecutionPublicInput[i] = executionFPI.Sum()
@@ -232,18 +239,17 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			executionFPI.FinalBlockNumber, aggregationFPI.FinalBlockNumber)
 		return
 	}
-	if executionFPI.FinalRollingHash != [32]byte{} {
-		if executionFPI.FinalRollingHash != aggregationFPI.FinalRollingHash {
-			err = fmt.Errorf("final rolling hashes do not match: execution=%x, aggregation=%x",
-				executionFPI.FinalRollingHash, aggregationFPI.FinalRollingHash)
-			return
-		}
 
-		if executionFPI.FinalRollingHashNumber != aggregationFPI.FinalRollingHashNumber {
-			err = fmt.Errorf("final rolling hash numbers do not match: execution=%v, aggregation=%v",
-				executionFPI.FinalRollingHashNumber, aggregationFPI.FinalRollingHashNumber)
-			return
-		}
+	if finalRollingHash != aggregationFPI.FinalRollingHash {
+		err = fmt.Errorf("final rolling hashes do not match: execution=%x, aggregation=%x",
+			executionFPI.FinalRollingHash, aggregationFPI.FinalRollingHash)
+		return
+	}
+
+	if finalRollingHashNum != aggregationFPI.FinalRollingHashNumber {
+		err = fmt.Errorf("final rolling hash numbers do not match: execution=%v, aggregation=%v",
+			executionFPI.FinalRollingHashNumber, aggregationFPI.FinalRollingHashNumber)
+		return
 	}
 
 	if len(l2MessageHashes) > maxNbL2MessageHashes {

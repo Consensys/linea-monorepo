@@ -123,15 +123,15 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			InitialRollingHashNumber: pi.InitialRollingHashNumber,
 			InitialStateRootHash:     pi.InitialStateRootHash[:],
 
-			NbDecompression:        pi.NbDecompression,
-			ChainID:                pi.ChainID,
-			L2MessageServiceAddr:   pi.L2MessageServiceAddr[:],
-			FinalRollingHashNumber: pi.FinalRollingHashNumber,
+			NbDecompression:      pi.NbDecompression,
+			ChainID:              pi.ChainID,
+			L2MessageServiceAddr: pi.L2MessageServiceAddr[:],
 		},
-		L2MsgMerkleTreeRoots: make([][32]frontend.Variable, len(pi.L2MsgMerkleTreeRoots)),
-		FinalBlockNumber:     pi.FinalBlockNumber,
-		FinalBlockTimestamp:  pi.FinalBlockTimestamp,
-		L2MsgMerkleTreeDepth: pi.L2MsgMerkleTreeDepth,
+		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, len(pi.L2MsgMerkleTreeRoots)),
+		FinalBlockNumber:       pi.FinalBlockNumber,
+		FinalBlockTimestamp:    pi.FinalBlockTimestamp,
+		L2MsgMerkleTreeDepth:   pi.L2MsgMerkleTreeDepth,
+		FinalRollingHashNumber: pi.FinalRollingHashNumber,
 	}
 
 	utils.Copy(s.FinalRollingHash[:], pi.FinalRollingHash[:])
@@ -154,12 +154,8 @@ type AggregationFPIQSnark struct {
 	InitialBlockTimestamp    frontend.Variable
 	InitialRollingHash       [32]frontend.Variable
 	InitialRollingHashNumber frontend.Variable
-	// Ideally, FinalRollingHash and FinalRollingHashNumber would be inferred from the executions
-	// but sometimes executions are missing those values
-	FinalRollingHash       [32]frontend.Variable
-	FinalRollingHashNumber frontend.Variable
-	ChainID                frontend.Variable // for now we're forcing all executions to have the same chain ID
-	L2MessageServiceAddr   frontend.Variable // 20 bytes
+	ChainID                  frontend.Variable // for now we're forcing all executions to have the same chain ID
+	L2MessageServiceAddr     frontend.Variable // 20 bytes
 }
 
 type AggregationFPISnark struct {
@@ -167,10 +163,12 @@ type AggregationFPISnark struct {
 	NbL2Messages         frontend.Variable // TODO not used in hash. delete if not necessary
 	L2MsgMerkleTreeRoots [][32]frontend.Variable
 	// FinalStateRootHash     frontend.Variable redundant: incorporated into final shnarf
-	FinalBlockNumber     frontend.Variable
-	FinalBlockTimestamp  frontend.Variable
-	FinalShnarf          [32]frontend.Variable
-	L2MsgMerkleTreeDepth int
+	FinalBlockNumber       frontend.Variable
+	FinalBlockTimestamp    frontend.Variable
+	FinalShnarf            [32]frontend.Variable
+	FinalRollingHash       [32]frontend.Variable
+	FinalRollingHashNumber frontend.Variable
+	L2MsgMerkleTreeDepth   int
 }
 
 // NewAggregationFPI does NOT set all fields, only the ones covered in public_input.Aggregation
