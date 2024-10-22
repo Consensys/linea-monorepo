@@ -2,7 +2,6 @@ package pi_interconnection
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"math/big"
 	"slices"
