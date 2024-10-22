@@ -117,6 +117,10 @@ func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result
 			anyReg = true
 			v := *casted
 			accumulateReg(resReg, v, xPow)
+		case *Pooled: // e.g. from product
+			anyReg = true
+			v := casted.Regular
+			accumulateReg(resReg, v, xPow)
 		case *PaddedCircularWindow:
 			// treat it as a regular, reusing the buffer
 			anyReg = true
