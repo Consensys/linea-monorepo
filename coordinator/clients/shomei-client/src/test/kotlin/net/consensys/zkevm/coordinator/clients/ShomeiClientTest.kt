@@ -9,7 +9,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
-import net.consensys.ByteArrayE
+import net.consensys.ByteArrayExt
 import net.consensys.encodeHex
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.async.get
@@ -66,7 +66,7 @@ class ShomeiClientTest {
           WireMock.ok().withHeader("Content-type", "application/json").withBody(successResponse.toString())
         )
     )
-    val blockNumberAndHash = BlockNumberAndHash(1U, ByteArrayE.random32())
+    val blockNumberAndHash = BlockNumberAndHash(1U, ByteArrayExt.random32())
     val resultFuture = shomeiClient.rollupForkChoiceUpdated(blockNumberAndHash)
     val result = resultFuture.get()
     Assertions.assertThat(resultFuture)
@@ -116,7 +116,7 @@ class ShomeiClientTest {
             .withBody(jsonRpcErrorResponse.toString())
         )
     )
-    val blockNumberAndHash = BlockNumberAndHash(1U, ByteArrayE.random32())
+    val blockNumberAndHash = BlockNumberAndHash(1U, ByteArrayExt.random32())
     val resultFuture = shomeiClient.rollupForkChoiceUpdated(blockNumberAndHash)
     val result = resultFuture.get()
     Assertions.assertThat(resultFuture)

@@ -2,7 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.datetime.Instant
-import net.consensys.ByteArrayE
+import net.consensys.ByteArrayExt
 import net.consensys.FakeFixedClock
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -112,7 +112,7 @@ class GlobalAggregationCalculatorTest {
           BlockHeaderSummary(
             number = blockNumber,
             timestamp = timestamp,
-            hash = ByteArrayE.random32()
+            hash = ByteArrayExt.random32()
           )
         )
       )
@@ -319,7 +319,7 @@ class GlobalAggregationCalculatorTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = blob2.endBlockNumber,
-            hash = ByteArrayE.random32(),
+            hash = ByteArrayExt.random32(),
             timestamp = blob2.endBlockTimestamp
           )
         )
@@ -429,7 +429,7 @@ class GlobalAggregationCalculatorTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = 30u,
-            hash = ByteArrayE.random32(),
+            hash = ByteArrayExt.random32(),
             timestamp = Instant.fromEpochMilliseconds(250)
           )
         )
@@ -497,7 +497,7 @@ class GlobalAggregationCalculatorTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = firstBlobEndBlockNumber,
-            hash = ByteArrayE.random32(),
+            hash = ByteArrayExt.random32(),
             timestamp = firstBlobEndBlockTimeStamp
           )
         )
@@ -521,7 +521,7 @@ class GlobalAggregationCalculatorTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = secondBlobEndBlockNumber,
-            hash = ByteArrayE.random32(),
+            hash = ByteArrayExt.random32(),
             timestamp = secondBlobEndTimestamp
           )
         )

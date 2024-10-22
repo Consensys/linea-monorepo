@@ -2,7 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.blockcreation
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
-import net.consensys.ByteArrayE
+import net.consensys.ByteArrayExt
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.zkevm.coordinator.clients.RollupForkChoiceUpdatedClient
@@ -32,7 +32,7 @@ class ForkChoiceUpdaterImplTest {
       .thenReturn(SafeFuture.completedFuture(Ok(RollupForkChoiceUpdatedResponse("success"))))
 
     val finalizedBlockNotifierImpl = ForkChoiceUpdaterImpl(listOf(mockClient1, mockClient2))
-    val blockNumberAndHash = BlockNumberAndHash(100U, ByteArrayE.random32())
+    val blockNumberAndHash = BlockNumberAndHash(100U, ByteArrayExt.random32())
     val result = finalizedBlockNotifierImpl.updateFinalizedBlock(blockNumberAndHash)
     assertThat(result).isCompleted()
     verify(mockClient1).rollupForkChoiceUpdated(blockNumberAndHash)
@@ -53,7 +53,7 @@ class ForkChoiceUpdaterImplTest {
       .thenReturn(SafeFuture.completedFuture(Err(ErrorResponse(RollupForkChoiceUpdatedError.UNKNOWN, ""))))
 
     val finalizedBlockNotifierImpl = ForkChoiceUpdaterImpl(listOf(mockClient1, mockClient2))
-    val blockNumberAndHash = BlockNumberAndHash(100U, ByteArrayE.random32())
+    val blockNumberAndHash = BlockNumberAndHash(100U, ByteArrayExt.random32())
     val result = finalizedBlockNotifierImpl.updateFinalizedBlock(blockNumberAndHash)
     assertThat(result).isCompleted()
     verify(mockClient1).rollupForkChoiceUpdated(blockNumberAndHash)

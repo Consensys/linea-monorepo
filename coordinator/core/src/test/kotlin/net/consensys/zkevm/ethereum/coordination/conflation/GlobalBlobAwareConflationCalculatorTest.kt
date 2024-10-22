@@ -1,7 +1,7 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
 import kotlinx.datetime.Instant
-import net.consensys.ByteArrayE
+import net.consensys.ByteArrayExt
 import net.consensys.FakeFixedClock
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.fakeTracesCountersV1
@@ -357,7 +357,7 @@ class GlobalBlobAwareConflationCalculatorTest {
       SafeFuture.completedFuture(
         BlockHeaderSummary(
           number = block5Counters.blockNumber,
-          hash = ByteArrayE.random32(),
+          hash = ByteArrayExt.random32(),
           timestamp = block5Counters.blockTimestamp
         )
       )
@@ -903,7 +903,7 @@ class GlobalBlobAwareConflationCalculatorTest {
       SafeFuture.completedFuture(
         BlockHeaderSummary(
           number = block5Counters.blockNumber,
-          hash = ByteArrayE.random32(),
+          hash = ByteArrayExt.random32(),
           timestamp = block5Counters.blockTimestamp
         )
       )

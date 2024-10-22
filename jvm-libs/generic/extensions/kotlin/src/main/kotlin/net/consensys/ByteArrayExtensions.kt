@@ -55,7 +55,7 @@ fun ByteArray.sliceOf32(sliceNumber: Int): ByteArray {
  * This extension object ByteArrayE will be removed once that happens
  * and it's function's migrated to ByteArray.Companion.
  */
-object ByteArrayE {
+object ByteArrayExt {
   fun random(size: Int): ByteArray {
     return kotlin.random.Random.nextBytes(size)
   }

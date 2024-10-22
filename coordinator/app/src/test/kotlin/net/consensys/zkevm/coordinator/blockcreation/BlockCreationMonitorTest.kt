@@ -3,7 +3,7 @@ package net.consensys.zkevm.coordinator.blockcreation
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import net.consensys.ByteArrayE
+import net.consensys.ByteArrayExt
 import net.consensys.decodeHex
 import net.consensys.linea.async.get
 import net.consensys.linea.web3j.ExtendedWeb3J
@@ -302,7 +302,7 @@ class BlockCreationMonitorTest {
     val payload2 =
       executionPayloadV1(
         blockNumber = startingBlockNumberInclusive + 1,
-        parentHash = ByteArrayE.random32()
+        parentHash = ByteArrayExt.random32()
       )
     val headBlockNumber = startingBlockNumberInclusive + config.blocksToFinalization
     whenever(web3jClient.ethBlockNumber())

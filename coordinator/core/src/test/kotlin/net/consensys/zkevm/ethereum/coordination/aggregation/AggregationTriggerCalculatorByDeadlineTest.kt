@@ -2,7 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import net.consensys.ByteArrayE
+import net.consensys.ByteArrayExt
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockHeaderSummary
@@ -36,7 +36,7 @@ class AggregationTriggerCalculatorByDeadlineTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = latestBlockNumber,
-            hash = ByteArrayE.random32(),
+            hash = ByteArrayExt.random32(),
             timestamp = latestBlockTimestamp
           )
         )
@@ -184,7 +184,7 @@ class AggregationTriggerCalculatorByDeadlineTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = 15u,
-            hash = ByteArrayE.random32(),
+            hash = ByteArrayExt.random32(),
             timestamp = firstBlobEndBlockTimeStamp
           )
         )
@@ -217,7 +217,7 @@ class AggregationTriggerCalculatorByDeadlineTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = latestBlockNumber,
-            hash = ByteArrayE.random32(),
+            hash = ByteArrayExt.random32(),
             timestamp = latestBlockTimestamp
           )
         )

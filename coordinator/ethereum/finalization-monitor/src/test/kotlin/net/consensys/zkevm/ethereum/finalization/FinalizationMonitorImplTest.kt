@@ -3,7 +3,7 @@ package net.consensys.zkevm.ethereum.finalization
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import net.consensys.ByteArrayE
+import net.consensys.ByteArrayExt
 import net.consensys.encodeHex
 import net.consensys.linea.BlockParameter
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
@@ -54,11 +54,11 @@ class FinalizationMonitorImplTest {
   fun start_startsPollingProcess(vertx: Vertx, testContext: VertxTestContext) {
     whenever(contractMock.finalizedL2BlockNumber(eq(BlockParameter.Tag.FINALIZED)))
       .thenReturn(SafeFuture.completedFuture(expectedBlockNumber))
-    val expectedStateRootHash = ByteArrayE.random32()
+    val expectedStateRootHash = ByteArrayExt.random32()
     whenever(contractMock.blockStateRootHash(any(), any()))
       .thenReturn(SafeFuture.completedFuture(expectedStateRootHash))
 
-    val expectedBlockHash = ByteArrayE.random32()
+    val expectedBlockHash = ByteArrayExt.random32()
     val mockBlockByNumberReturn = mock<EthBlock>()
     val mockBlock = mock<EthBlock.Block>()
     whenever(mockBlockByNumberReturn.block).thenReturn(mockBlock)
