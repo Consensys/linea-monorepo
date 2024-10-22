@@ -24,7 +24,17 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     ]);
 
     console.log("Approving tokens to L1 TokenBridge");
-    const approveTx = await l1Token.connect(l1Account).approve(l1TokenBridge.getAddress(), ethers.parseEther("100"));
+
+    const l1Provider = config.getL1Provider();
+    let { maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData();
+
+    let nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
+
+    const approveTx = await l1Token.connect(l1Account).approve(l1TokenBridge.getAddress(), ethers.parseEther("100"), {
+      maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+      maxFeePerGas: l1MaxFeePerGas,
+      nonce: nonce,
+    });
     await approveTx.wait();
 
     const l1TokenBridgeAddress = await l1TokenBridge.getAddress();
@@ -35,11 +45,16 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     console.log("Calling the bridgeToken function on the L1 TokenBridge contract");
 
+    ({ maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData());
+    nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
+
     const bridgeTokenTx = await l1TokenBridge
       .connect(l1Account)
       .bridgeToken(l1TokenAddress, bridgeAmount, l2Account.address, {
         value: etherToWei("0.01"),
-        gasPrice: ethers.parseUnits("300", "gwei"),
+        maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+        maxFeePerGas: l1MaxFeePerGas,
+        nonce: nonce,
       });
 
     let receipt = await bridgeTokenTx.wait();
