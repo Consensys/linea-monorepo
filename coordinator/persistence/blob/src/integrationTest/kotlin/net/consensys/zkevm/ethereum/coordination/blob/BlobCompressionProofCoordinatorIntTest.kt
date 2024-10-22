@@ -24,6 +24,7 @@ import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
+import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.waitAtMost
 import org.junit.jupiter.api.BeforeEach
@@ -101,8 +102,8 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
             GetZkEVMStateMerkleProofResponse(
               zkStateManagerVersion = zkStateManagerVersion,
               zkStateMerkleProof = zkStateMerkleProof,
-              zkParentStateRootHash = ByteArrayE.random32(),
-              zkEndStateRootHash = ByteArrayE.random32()
+              zkParentStateRootHash = Bytes32.random(),
+              zkEndStateRootHash = Bytes32.random()
             )
           )
         )
@@ -111,8 +112,8 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       .thenReturn(
         SafeFuture.completedFuture(
           BlobZkState(
-            parentStateRootHash = ByteArrayE.random32().toArray(),
-            finalStateRootHash = ByteArrayE.random32().toArray()
+            parentStateRootHash = Bytes32.random().toArray(),
+            finalStateRootHash = Bytes32.random().toArray()
           )
         )
       )
@@ -386,8 +387,8 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       } else {
         SafeFuture.completedFuture(
           BlobZkState(
-            parentStateRootHash = ByteArrayE.random32().toArray(),
-            finalStateRootHash = ByteArrayE.random32().toArray()
+            parentStateRootHash = Bytes32.random().toArray(),
+            finalStateRootHash = Bytes32.random().toArray()
           )
         )
       }
