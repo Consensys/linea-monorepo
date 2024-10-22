@@ -7,6 +7,8 @@ import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Layer 2 test suite", () => {
+  const l2Provider = config.getL2Provider();
+
   it.concurrent("Should revert if transaction data size is above the limit", async () => {
     const account = await l2AccountManager.generateAccount();
     const dummyContract = config.getL2DummyContract(account);
