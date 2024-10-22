@@ -113,7 +113,7 @@ deploy-token-bridge-l2:
 		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
 		npx hardhat deploy --network zkevm_dev --tags BridgedToken,TokenBridge
 
-deploy-test-erc20:
+deploy-l1-test-erc20:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
@@ -122,6 +122,17 @@ deploy-test-erc20:
 		TEST_ERC20_SYMBOL=TERC20 \
 		TEST_ERC20_INITIAL_SUPPLY=100000 \
 		TEST_ERC20_MINT_RECEIVER=0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65 \
+		npx hardhat deploy --network zkevm_dev --tags TestERC20
+
+deploy-l2-test-erc20:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		BLOCKCHAIN_NODE=http:\\localhost:8545/ \
+		TEST_ERC20_NAME=TestERC20 \
+		TEST_ERC20_SYMBOL=TERC20 \
+		TEST_ERC20_INITIAL_SUPPLY=100000 \
+		TEST_ERC20_MINT_RECEIVER=0x6d26dcc30a1693043aefa35ed9171c16da53f275 \
 		npx hardhat deploy --network zkevm_dev --tags TestERC20
 
 upgrade-linea-rollup-on-uat:
@@ -172,7 +183,7 @@ deploy-contracts:
 	make compile-contracts
 	$(MAKE) -j2 deploy-linea-rollup deploy-l2messageservice
 	$(MAKE) -j2 deploy-token-bridge-l1 deploy-token-bridge-l2 
-	$(MAKE) -j1 deploy-test-erc20
+	$(MAKE) -j2 deploy-l1-test-erc20 deploy-l2-test-erc20
 
 testnet-start-l2:
 		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml --profile l2 up -d

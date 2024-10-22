@@ -131,24 +131,34 @@ export default class TestSetup {
     return l1Token;
   }
 
-  public getL1BridgedTokenContract(bridgedTokenAddress: string, signer?: Wallet): BridgedToken {
-    const l1Token: BridgedToken = BridgedToken__factory.connect(bridgedTokenAddress, this.getL1Provider());
+  public getL2TokenContract(signer?: Wallet): TestERC20 {
+    const l2Token: TestERC20 = TestERC20__factory.connect(this.config.L2.l2TokenAddress, this.getL2Provider());
 
     if (signer) {
-      return l1Token.connect(signer);
+      return l2Token.connect(signer);
     }
 
-    return l1Token;
+    return l2Token;
+  }
+
+  public getL1BridgedTokenContract(bridgedTokenAddress: string, signer?: Wallet): BridgedToken {
+    const l1BridgedToken: BridgedToken = BridgedToken__factory.connect(bridgedTokenAddress, this.getL1Provider());
+
+    if (signer) {
+      return l1BridgedToken.connect(signer);
+    }
+
+    return l1BridgedToken;
   }
 
   public getL2BridgedTokenContract(bridgedTokenAddress: string, signer?: Wallet): BridgedToken {
-    const l2TokenBridge: BridgedToken = BridgedToken__factory.connect(bridgedTokenAddress, this.getL2Provider());
+    const l2BridgedToken: BridgedToken = BridgedToken__factory.connect(bridgedTokenAddress, this.getL2Provider());
 
     if (signer) {
-      return l2TokenBridge.connect(signer);
+      return l2BridgedToken.connect(signer);
     }
 
-    return l2TokenBridge;
+    return l2BridgedToken;
   }
   public getL1DummyContract(signer?: Wallet): DummyContract {
     const dummyContract = DummyContract__factory.connect(this.config.L1.dummyContractAddress, this.getL1Provider());

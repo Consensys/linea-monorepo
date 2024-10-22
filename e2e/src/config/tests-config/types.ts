@@ -18,6 +18,7 @@ export type L2Config = BaseConfig & {
   l2TestContractAddress?: string;
   besuNodeRpcUrl?: URL;
   tokenBridgeAddress: string;
+  l2TokenAddress: string;
   shomeiEndpoint?: URL;
   shomeiFrontendEndpoint?: URL;
   sequencerEndpoint?: URL;

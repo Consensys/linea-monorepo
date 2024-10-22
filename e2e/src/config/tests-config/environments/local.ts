@@ -35,6 +35,7 @@ const config: Config = {
     l2TestContractAddress: "0xeB0b0a14F92e3BA35aEF3a2B6A24D7ED1D11631B",
     dummyContractAddress: "0x2f6dAaF8A81AB675fbD37Ca6Ed5b72cf86237453",
     tokenBridgeAddress: "0x9145615d34Afba9F8ECB4e2384325646f2393dde",
+    l2TokenAddress: "0x5C95Bcd50E6D1B4E3CDC478484C9030Ff0a7D493",
     accountManager: new GenesisBasedAccountManager(
       new ethers.JsonRpcProvider(L2_RPC_URL.toString()),
       path.resolve(
