@@ -7,7 +7,6 @@ import net.consensys.toBigInteger
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.units.bigints.UInt256
-import tech.pegasys.teku.ethereum.executionclient.schema.SharedUtils.dataStructureUtil
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 import tech.pegasys.teku.spec.TestSpecFactory
@@ -86,7 +85,7 @@ fun randomExecutionPayload(
   transactionsRlp: List<Bytes> = emptyList(),
   blockNumber: Long? = null
 ): ExecutionPayloadV1 {
-  val executionPayload = dataStructureUtil().randomExecutionPayload()
+  val executionPayload = dataStructureUtil.randomExecutionPayload()
   return ExecutionPayloadV1(
     /* parentHash = */ executionPayload.parentHash,
     /* feeRecipient = */
@@ -118,17 +117,7 @@ fun randomExecutionPayload(
   )
 }
 
-private object SharedUtils {
-  // Lazy loaded to avoid issues on coordinator tests
-  private var dataStructureUtil: DataStructureUtil? = null
-
-  fun dataStructureUtil(): DataStructureUtil {
-    if (dataStructureUtil == null) {
-      dataStructureUtil = DataStructureUtil(TestSpecFactory.createMinimalBellatrix())
-    }
-    return dataStructureUtil!!
-  }
-}
+val dataStructureUtil: DataStructureUtil = DataStructureUtil(TestSpecFactory.createMinimalBellatrix())
 
 // Teku UInt64 has a bug allow negative number to be created
 // random test payload creates such cases we need to fix it
