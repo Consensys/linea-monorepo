@@ -10,13 +10,15 @@ import {
 import { config } from "./config/tests-config";
 import { LineaRollup } from "./typechain";
 
+const l1AccountManager = config.getL1AccountManager();
+
 describe("Submission and finalization test suite", () => {
   const sendMessages = async () => {
     const messageFee = etherToWei("0.0001");
     const messageValue = etherToWei("0.0051");
     const destinationAddress = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
-    const l1MessageSender = await config.getL1AccountManager().generateAccount();
+    const l1MessageSender = await l1AccountManager.generateAccount();
     const lineaRollup = config.getLineaRollupContract();
 
     console.log("Sending messages on L1");

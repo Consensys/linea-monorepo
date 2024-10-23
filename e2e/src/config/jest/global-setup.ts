@@ -35,7 +35,8 @@ export default async (): Promise<void> => {
   await tx.wait();
 
   console.log("Generating L2 traffic...");
-  const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(l2Account, 2_000);
+  const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"));
+  const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(pollingAccount, 2_000);
 
   global.stopL2TrafficGeneration = stopPolling;
 };

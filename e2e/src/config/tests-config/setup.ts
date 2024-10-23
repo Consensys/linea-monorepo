@@ -1,4 +1,4 @@
-import { JsonRpcProvider, Wallet } from "ethers";
+import { AbstractSigner, JsonRpcProvider, Wallet } from "ethers";
 import { Config } from "./types";
 import {
   DummyContract,
@@ -63,7 +63,7 @@ export default class TestSetup {
     return this.config.L2.transactionExclusionEndpoint;
   }
 
-  public getLineaRollupContract(signer?: Wallet): LineaRollup {
+  public getLineaRollupContract(signer?: AbstractSigner): LineaRollup {
     const lineaRollup: LineaRollup = LineaRollup__factory.connect(
       this.config.L1.lineaRollupAddress,
       this.getL1Provider(),
