@@ -33,6 +33,8 @@ public class LineaProfitabilityConfiguration implements LineaOptionsConfiguratio
   /** It is safe to keep this as long, since it will store value <= max_int * 1000 */
   private long variableCostWei;
 
+  private long ethGasPriceWei;
+
   private double minMargin;
   private double estimateGasMinMargin;
   private double txPoolMinMargin;
@@ -46,11 +48,13 @@ public class LineaProfitabilityConfiguration implements LineaOptionsConfiguratio
    *
    * @param fixedCostWei fixed cost in Wei
    * @param variableCostWei variable cost in Wei
+   * @param ethGasPriceWei gas price in Wei
    */
-  public synchronized void updateFixedAndVariableCost(
-      final long fixedCostWei, final long variableCostWei) {
+  public synchronized void updateFixedVariableAndGasPrice(
+      final long fixedCostWei, final long variableCostWei, final long ethGasPriceWei) {
     this.fixedCostWei = fixedCostWei;
     this.variableCostWei = variableCostWei;
+    this.ethGasPriceWei = ethGasPriceWei;
   }
 
   public synchronized long fixedCostWei() {
@@ -59,5 +63,9 @@ public class LineaProfitabilityConfiguration implements LineaOptionsConfiguratio
 
   public synchronized long variableCostWei() {
     return variableCostWei;
+  }
+
+  public synchronized long ethGasPriceWei() {
+    return ethGasPriceWei;
   }
 }

@@ -103,6 +103,7 @@ public class LineaExtraDataHandler {
     private final FieldConsumer[] fieldsSequence;
     private final MutableLong currFixedCostKWei = new MutableLong();
     private final MutableLong currVariableCostKWei = new MutableLong();
+    private final MutableLong currEthGasPriceKWei = new MutableLong();
 
     public Version1Consumer(final LineaProfitabilityConfiguration profitabilityConf) {
       this.profitabilityConf = profitabilityConf;
@@ -113,11 +114,11 @@ public class LineaExtraDataHandler {
       final FieldConsumer variableGasCostField =
           new FieldConsumer<>(
               "variableGasCost", 4, ExtraDataConsumer::toLong, currVariableCostKWei::setValue);
-      final FieldConsumer minGasPriceField =
-          new FieldConsumer<>("minGasPrice", 4, ExtraDataConsumer::toLong, this::updateMinGasPrice);
+      final FieldConsumer ethGasPriceField =
+          new FieldConsumer<>("ethGasPrice", 4, ExtraDataConsumer::toLong, this::updateEthGasPrice);
 
       this.fieldsSequence =
-          new FieldConsumer[] {fixedGasCostField, variableGasCostField, minGasPriceField};
+          new FieldConsumer[] {fixedGasCostField, variableGasCostField, ethGasPriceField};
     }
 
     public boolean canConsume(final Bytes rawExtraData) {
@@ -132,14 +133,16 @@ public class LineaExtraDataHandler {
         startIndex += fieldConsumer.length;
       }
 
-      profitabilityConf.updateFixedAndVariableCost(
+      profitabilityConf.updateFixedVariableAndGasPrice(
           currFixedCostKWei.longValue() * WEI_IN_KWEI,
-          currVariableCostKWei.longValue() * WEI_IN_KWEI);
+          currVariableCostKWei.longValue() * WEI_IN_KWEI,
+          currEthGasPriceKWei.longValue() * WEI_IN_KWEI);
     }
 
-    void updateMinGasPrice(final Long minGasPriceKWei) {
+    void updateEthGasPrice(final Long ethGasPriceKWei) {
+      currEthGasPriceKWei.setValue(ethGasPriceKWei);
       if (profitabilityConf.extraDataSetMinGasPriceEnabled()) {
-        final var minGasPriceWei = Wei.of(minGasPriceKWei).multiply(WEI_IN_KWEI);
+        final var minGasPriceWei = Wei.of(ethGasPriceKWei).multiply(WEI_IN_KWEI);
         final var resp =
             rpcEndpointService.call(
                 "miner_setMinGasPrice", new Object[] {minGasPriceWei.toShortHexString()});
