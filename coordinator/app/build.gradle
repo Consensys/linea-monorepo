@@ -22,6 +22,7 @@ dependencies {
   implementation project(':jvm-libs:linea:core:metrics')
   implementation project(':jvm-libs:linea:metrics:micrometer')
   implementation project(':jvm-libs:linea:core:domain-models')
+  implementation project(':jvm-libs:linea:clients:linea-state-manager')
   implementation project(':coordinator:utilities')
   implementation project(':coordinator:core')
   implementation project(':coordinator:clients:shomei-client')

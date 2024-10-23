@@ -7,7 +7,7 @@ import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 data class BatchExecutionProofRequestV1(
   val blocks: List<ExecutionPayloadV1>,
   val tracesResponse: GenerateTracesResponse,
-  val type2StateData: GetZkEVMStateMerkleProofResponse
+  val type2StateData: build.linea.clients.GetZkEVMStateMerkleProofResponse
 ) : BlockInterval {
   override val startBlockNumber: ULong
     get() = blocks.first().blockNumber.toULong()

@@ -1,5 +1,7 @@
 package net.consensys.zkevm.coordinator.app
 
+import build.linea.clients.StateManagerClientV1
+import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import net.consensys.linea.BlockNumberAndHash
@@ -319,6 +321,20 @@ class L1DependentApp(
     )
   }
 
+  private fun createStateManagerClientNew(
+    stateManagerConfig: StateManagerClientConfig,
+    logger: Logger
+  ): StateManagerClientV1 {
+    return StateManagerV1JsonRpcClient(
+      rpcClientFactory = httpJsonRpcClientFactory,
+      endpoints = stateManagerConfig.endpoints.map { it.toURI() },
+      maxInflightRequestsPerClient = stateManagerConfig.requestLimitPerEndpoint,
+      requestRetry = stateManagerConfig.requestRetryConfig,
+      zkStateManagerVersion = stateManagerConfig.version,
+      logger = logger
+    )
+  }
+
   private val lastFinalizedBlock = lastFinalizedBlock().get()
   private val lastProcessedBlockNumber = resumeConflationFrom(
     aggregationsRepository,
@@ -422,8 +438,16 @@ class L1DependentApp(
   private val conflationService: ConflationService =
     ConflationServiceImpl(calculator = conflationCalculator, metricsFacade = metricsFacade)
 
-  private val zkStateClient: Type2StateManagerClient =
-    createStateManagerClient(configs.stateManager, LogManager.getLogger("clients.StateManagerShomeiClient"))
+//  private val zkStateClient: Type2StateManagerClient =
+//    createStateManagerClient(configs.stateManager, LogManager.getLogger("clients.StateManagerShomeiClient"))
+  private val zkStateClient: StateManagerClientV1 = StateManagerV1JsonRpcClient(
+    rpcClientFactory = httpJsonRpcClientFactory,
+    endpoints = configs.stateManager.endpoints.map { it.toURI() },
+    maxInflightRequestsPerClient = configs.stateManager.requestLimitPerEndpoint,
+    requestRetry = configs.stateManager.requestRetryConfig,
+    zkStateManagerVersion = configs.stateManager.version,
+    logger = LogManager.getLogger("clients.StateManagerShomeiClient")
+  )
 
   private val lineaSmartContractClientForDataSubmission: LineaRollupSmartContractClient = run {
     // The below gas provider will act as the primary gas provider if L1

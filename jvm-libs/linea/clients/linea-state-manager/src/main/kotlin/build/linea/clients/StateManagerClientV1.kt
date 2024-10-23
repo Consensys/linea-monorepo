@@ -13,11 +13,12 @@ enum class StateManagerErrorType : ClientError {
   BLOCK_MISSING_IN_CHAIN
 }
 
-sealed interface StateManagerRequest
-sealed class GetChainHeadRequest() : StateManagerRequest
-data class GetStateMerkleProofRequest(
-  val blockInterval: BlockInterval
-) : StateManagerRequest, BlockInterval by blockInterval
+sealed interface StateManagerRequest<ResponseType : StateManagerResponse> : ClientRequest<ResponseType>
+sealed class GetChainHeadRequest() : StateManagerRequest<GetChainHeadResponse>
+
+data class GetStateMerkleProofRequest(val blockInterval: BlockInterval) :
+  StateManagerRequest<GetZkEVMStateMerkleProofResponse>,
+  BlockInterval by blockInterval
 
 sealed interface StateManagerResponse
 
@@ -57,14 +58,9 @@ data class GetZkEVMStateMerkleProofResponse(
   }
 }
 
-// Type alias dedicated for each method
-typealias StateManagerClientToGetStateMerkleProofV0 =
-  AsyncClient<GetStateMerkleProofRequest, GetZkEVMStateMerkleProofResponse>
+data class GetChainHeadResponse(val headBlockNumber: ULong) : StateManagerResponse
 
-typealias StateManagerClientToGetChainHeadV1 =
-  AsyncClient<GetChainHeadRequest, ULong>
-
-interface StateManagerClientV1 {
+interface StateManagerClientV1 : AsyncClient<StateManagerRequest<*>> {
   /**
    * Get the head block number of the chain.
    * @return GetZkEVMStateMerkleProofResponse
@@ -84,4 +80,15 @@ interface StateManagerClientV1 {
   ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>>
 
   fun rollupGetHeadBlockNumber(): SafeFuture<ULong>
+
+  override fun <Response> makeRequest(request: ClientRequest<Response>): SafeFuture<Response> {
+    @Suppress("UNCHECKED_CAST")
+    return when (request) {
+      is GetStateMerkleProofRequest -> rollupGetStateMerkleProof(request.blockInterval) as SafeFuture<Response>
+      is GetChainHeadRequest -> rollupGetHeadBlockNumber()
+        .thenApply { GetChainHeadResponse(it) } as SafeFuture<Response>
+
+      else -> throw IllegalArgumentException("Unknown request type: $request")
+    }
+  }
 }
