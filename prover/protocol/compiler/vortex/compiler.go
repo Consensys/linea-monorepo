@@ -61,7 +61,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		lastRound := comp.NumRounds() - 1
 
 		// Stores a pointer to the cryptographic compiler of Vortex
-		comp.CryptographicCompilerCtx = &ctx
+		comp.PcsCtxs = &ctx
 
 		// Converts the precomputed as verifying key (e.g. send
 		// them to the verifier) in the offline phase if the

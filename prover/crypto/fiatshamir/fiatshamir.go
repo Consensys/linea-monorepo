@@ -4,6 +4,7 @@ import (
 	"hash"
 	"math"
 
+	gmimc "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -41,6 +42,22 @@ func NewMiMCFiatShamir() *State {
 	return &State{
 		hasher: mimc.NewMiMC(),
 	}
+}
+
+// State returns the internal state of the Fiat-Shamir hasher. Only works for
+// MiMC.
+func (s *State) State() []field.Element {
+	_ = s.hasher.Sum(nil)
+	b := s.hasher.(*gmimc.Digest).State()
+	f := new(field.Element).SetBytes(b)
+	return []field.Element{*f}
+}
+
+// SetState sets the fiat-shamir state to the requested value
+func (s *State) SetState(f []field.Element) {
+	_ = s.hasher.Sum(nil)
+	b := f[0].Bytes()
+	s.hasher.(*gmimc.Digest).SetState(b[:])
 }
 
 // Update the Fiat-Shamir state with a one or more of field elements. The

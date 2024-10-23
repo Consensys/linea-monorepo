@@ -366,12 +366,15 @@ func (ci *Alignment) checkActivators(comp *wizard.CompiledIOP) {
 
 	ci.circMaskOpenings = openings
 
-	comp.RegisterVerifierAction(ci.Round, checkActivatorAndMask(*ci))
+	comp.RegisterVerifierAction(ci.Round, &checkActivatorAndMask{Alignment: *ci})
 }
 
-type checkActivatorAndMask Alignment
+type checkActivatorAndMask struct {
+	Alignment
+	skipped bool
+}
 
-func (c checkActivatorAndMask) Run(run *wizard.VerifierRuntime) error {
+func (c *checkActivatorAndMask) Run(run *wizard.VerifierRuntime) error {
 	for i := range c.circMaskOpenings {
 		var (
 			localOpening = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID)
@@ -390,7 +393,7 @@ func (c checkActivatorAndMask) Run(run *wizard.VerifierRuntime) error {
 	return nil
 }
 
-func (c checkActivatorAndMask) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (c *checkActivatorAndMask) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
 	for i := range c.circMaskOpenings {
 		var (
 			valOpened = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID).Y
@@ -399,4 +402,12 @@ func (c checkActivatorAndMask) RunGnark(api frontend.API, run *wizard.WizardVeri
 
 		api.AssertIsEqual(valOpened, valActiv)
 	}
+}
+
+func (c *checkActivatorAndMask) Skip() {
+	c.skipped = true
+}
+
+func (c *checkActivatorAndMask) IsSkipped() bool {
+	return c.skipped
 }
