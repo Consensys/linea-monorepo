@@ -1,6 +1,6 @@
 package net.consensys.zkevm.coordinator.clients
 
-import net.consensys.zkevm.domain.BlockInterval
+import build.linea.domain.BlockInterval
 import net.consensys.zkevm.toULong
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 
