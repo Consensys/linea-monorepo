@@ -2,7 +2,6 @@ name: transaction-exclusion-api-testing
 
 on:
   workflow_call:
-  
   workflow_dispatch:
     inputs:
       coverage:
