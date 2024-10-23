@@ -39,7 +39,6 @@ import net.consensys.linea.web3j.Web3jBlobExtended
 import net.consensys.linea.web3j.okHttpClientBuilder
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
-import net.consensys.zkevm.coordinator.app.config.StateManagerClientConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
@@ -51,8 +50,6 @@ import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV1
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
-import net.consensys.zkevm.coordinator.clients.Type2StateManagerClient
-import net.consensys.zkevm.coordinator.clients.Type2StateManagerJsonRpcClient
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
@@ -301,40 +298,6 @@ class L1DependentApp(
     null
   }
 
-  private fun createStateManagerClient(
-    stateManagerConfig: StateManagerClientConfig,
-    logger: Logger
-  ): Type2StateManagerClient {
-    return Type2StateManagerJsonRpcClient(
-      vertx = vertx,
-      rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-        endpoints = stateManagerConfig.endpoints.toSet(),
-        maxInflightRequestsPerClient = stateManagerConfig.requestLimitPerEndpoint,
-        log = logger
-      ),
-      config = Type2StateManagerJsonRpcClient.Config(
-        requestRetry = stateManagerConfig.requestRetryConfig,
-        zkStateManagerVersion = stateManagerConfig.version
-      ),
-      retryConfig = stateManagerConfig.requestRetryConfig,
-      log = logger
-    )
-  }
-
-  private fun createStateManagerClientNew(
-    stateManagerConfig: StateManagerClientConfig,
-    logger: Logger
-  ): StateManagerClientV1 {
-    return StateManagerV1JsonRpcClient(
-      rpcClientFactory = httpJsonRpcClientFactory,
-      endpoints = stateManagerConfig.endpoints.map { it.toURI() },
-      maxInflightRequestsPerClient = stateManagerConfig.requestLimitPerEndpoint,
-      requestRetry = stateManagerConfig.requestRetryConfig,
-      zkStateManagerVersion = stateManagerConfig.version,
-      logger = logger
-    )
-  }
-
   private val lastFinalizedBlock = lastFinalizedBlock().get()
   private val lastProcessedBlockNumber = resumeConflationFrom(
     aggregationsRepository,
@@ -438,8 +401,6 @@ class L1DependentApp(
   private val conflationService: ConflationService =
     ConflationServiceImpl(calculator = conflationCalculator, metricsFacade = metricsFacade)
 
-//  private val zkStateClient: Type2StateManagerClient =
-//    createStateManagerClient(configs.stateManager, LogManager.getLogger("clients.StateManagerShomeiClient"))
   private val zkStateClient: StateManagerClientV1 = StateManagerV1JsonRpcClient(
     rpcClientFactory = httpJsonRpcClientFactory,
     endpoints = configs.stateManager.endpoints.map { it.toURI() },
