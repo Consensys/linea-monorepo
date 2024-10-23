@@ -7,7 +7,7 @@ services:
       JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
     volumes:
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
-  
+
   l2-node-besu:
     environment:
       JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
@@ -52,7 +52,7 @@ services:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu \
+        /opt/besu/bin/besu-untuned \
         --config-file=/var/lib/besu/traces-node-v2.config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
         --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
