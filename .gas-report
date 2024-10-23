@@ -15,32 +15,33 @@
 | src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |       |        |       |         |
 |------------------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                                      | Deployment Size |       |        |       |         |
-| 1216069                                              | 5542            |       |        |       |         |
+| 1327847                                              | 6066            |       |        |       |         |
 | Function Name                                        | min             | avg   | median | max   | # calls |
-| MAX_LOCKUP_PERIOD                                    | 228             | 228   | 228    | 228   | 22      |
-| MAX_MULTIPLIER                                       | 229             | 229   | 229    | 229   | 28      |
+| MAX_LOCKUP_PERIOD                                    | 228             | 228   | 228    | 228   | 23      |
+| MAX_MULTIPLIER                                       | 274             | 274   | 274    | 274   | 30      |
 | MIN_LOCKUP_PERIOD                                    | 275             | 275   | 275    | 275   | 11      |
 | MP_RATE_PER_YEAR                                     | 231             | 231   | 231    | 231   | 3       |
-| SCALE_FACTOR                                         | 229             | 229   | 229    | 229   | 39      |
-| STAKING_TOKEN                                        | 273             | 273   | 273    | 273   | 128     |
-| accountedRewards                                     | 395             | 953   | 395    | 2395  | 68      |
-| getAccount                                           | 1596            | 1596  | 1596   | 1596  | 65      |
-| isTrustedCodehash                                    | 496             | 996   | 496    | 2496  | 128     |
+| SCALE_FACTOR                                         | 295             | 295   | 295    | 295   | 41      |
+| STAKING_TOKEN                                        | 273             | 273   | 273    | 273   | 140     |
+| accountedRewards                                     | 373             | 931   | 373    | 2373  | 68      |
+| getAccount                                           | 1596            | 1596  | 1596   | 1596  | 67      |
+| isTrustedCodehash                                    | 496             | 996   | 496    | 2496  | 140     |
 | rewardIndex                                          | 351             | 380   | 351    | 2351  | 68      |
-| setTrustedCodehash                                   | 47926           | 47926 | 47926  | 47926 | 32      |
-| totalMP                                              | 352             | 352   | 352    | 352   | 71      |
-| totalMaxMP                                           | 395             | 395   | 395    | 395   | 71      |
-| totalStaked                                          | 374             | 374   | 374    | 374   | 71      |
-| updateAccountMP                                      | 34654           | 36892 | 37156  | 37156 | 19      |
+| setTrustedCodehash                                   | 47926           | 47926 | 47926  | 47926 | 35      |
+| totalMP                                              | 330             | 330   | 330    | 330   | 71      |
+| totalMaxMP                                           | 373             | 373   | 373    | 373   | 71      |
+| totalStaked                                          | 352             | 352   | 352    | 352   | 71      |
+| updateAccountMP                                      | 34632           | 36870 | 37134  | 37134 | 19      |
 | updateGlobalState                                    | 30008           | 55588 | 47387  | 80334 | 25      |
 
 
 | src/StakeVault.sol:StakeVault contract |                 |        |        |        |         |
 |----------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                        | Deployment Size |        |        |        |         |
-| 857122                                 | 4070            |        |        |        |         |
+| 894174                                 | 4243            |        |        |        |         |
 | Function Name                          | min             | avg    | median | max    | # calls |
-| stake                                  | 196978          | 234038 | 240671 | 261155 | 46      |
+| lock                                   | 36236           | 58390  | 40615  | 98319  | 3       |
+| stake                                  | 196956          | 234305 | 240649 | 261178 | 48      |
 | unstake                                | 83287           | 111971 | 101308 | 144002 | 13      |
 
 
@@ -117,9 +118,9 @@
 | Deployment Cost                             | Deployment Size |       |        |       |         |
 | 639406                                      | 3369            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
-| approve                                     | 46334           | 46343 | 46346  | 46346 | 165     |
-| balanceOf                                   | 561             | 1351  | 561    | 2561  | 286     |
-| mint                                        | 51284           | 59028 | 51284  | 68384 | 181     |
+| approve                                     | 46334           | 46343 | 46346  | 46346 | 180     |
+| balanceOf                                   | 561             | 1351  | 561    | 2561  | 291     |
+| mint                                        | 51284           | 58959 | 51284  | 68384 | 196     |
 | transfer                                    | 34390           | 48070 | 51490  | 51490 | 10      |
 
 

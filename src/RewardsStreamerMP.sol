@@ -14,6 +14,7 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
     error StakingManager__InvalidLockingPeriod();
     error StakingManager__CannotRestakeWithLockedFunds();
     error StakingManager__TokensAreLocked();
+    error StakingManager__AlreadyLocked();
 
     IERC20 public immutable STAKING_TOKEN;
     IERC20 public immutable REWARD_TOKEN;
@@ -79,8 +80,7 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
         uint256 bonusMP = 0;
 
         if (lockPeriod != 0) {
-            uint256 lockMultiplier = (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR) / MAX_LOCKUP_PERIOD;
-            bonusMP = amount * lockMultiplier / SCALE_FACTOR;
+            bonusMP = _calculateBonusMP(amount, lockPeriod);
             account.lockUntil = block.timestamp + lockPeriod;
         } else {
             account.lockUntil = 0;
@@ -94,6 +94,39 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
 
         account.maxMP += accountMaxMP;
         totalMaxMP += accountMaxMP;
+
+        account.accountRewardIndex = rewardIndex;
+        account.lastMPUpdateTime = block.timestamp;
+    }
+
+    function lock(uint256 lockPeriod) external onlyTrustedCodehash nonReentrant {
+        if (lockPeriod < MIN_LOCKUP_PERIOD || lockPeriod > MAX_LOCKUP_PERIOD) {
+            revert StakingManager__InvalidLockingPeriod();
+        }
+
+        Account storage account = accounts[msg.sender];
+
+        if (account.lockUntil > 0) {
+            revert StakingManager__AlreadyLocked();
+        }
+
+        if (account.stakedBalance == 0) {
+            revert StakingManager__InsufficientBalance();
+        }
+
+        _updateGlobalState();
+        _updateAccountMP(msg.sender);
+
+        uint256 additionalBonusMP = _calculateBonusMP(account.stakedBalance, lockPeriod);
+
+        // Update account state
+        account.lockUntil = block.timestamp + lockPeriod;
+        account.accountMP += additionalBonusMP;
+        account.maxMP += additionalBonusMP;
+
+        // Update global state
+        totalMP += additionalBonusMP;
+        totalMaxMP += additionalBonusMP;
 
         account.accountRewardIndex = rewardIndex;
         account.lastMPUpdateTime = block.timestamp;
@@ -183,6 +216,11 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
             rewardIndex += (newRewards * SCALE_FACTOR) / totalWeight;
             accountedRewards += newRewards;
         }
+    }
+
+    function _calculateBonusMP(uint256 amount, uint256 lockPeriod) internal view returns (uint256) {
+        uint256 lockMultiplier = (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR) / MAX_LOCKUP_PERIOD;
+        return amount * lockMultiplier / SCALE_FACTOR;
     }
 
     function _updateAccountMP(address accountAddress) internal {

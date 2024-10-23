@@ -11,6 +11,7 @@ interface IStakeManager is ITrustedCodehashAccess {
     error StakeManager__StakeIsTooLow();
 
     function stake(uint256 _amount, uint256 _seconds) external;
+    function lock(uint256 _seconds) external;
     function unstake(uint256 _amount) external;
 
     function totalStaked() external view returns (uint256);

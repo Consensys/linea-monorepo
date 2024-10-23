@@ -1072,7 +1072,7 @@ contract StakeTest is RewardsStreamerMPTest {
 }
 
 contract UnstakeTest is StakeTest {
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
     }
 
@@ -1447,5 +1447,69 @@ contract UnstakeTest is StakeTest {
                 maxMP: 0
             })
         );
+    }
+}
+
+contract LockTest is RewardsStreamerMPTest {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function _lock(address account, uint256 lockPeriod) internal {
+        StakeVault vault = StakeVault(vaults[account]);
+        vm.prank(account);
+        vault.lock(lockPeriod);
+    }
+
+    function test_LockWithoutPriorLock() public {
+        // Setup - alice stakes 10 tokens without lock
+        uint256 stakeAmount = 10e18;
+        _stake(alice, stakeAmount, 0);
+
+        uint256 initialAccountMP = stakeAmount; // 10e18
+        uint256 initialMaxMP = stakeAmount * streamer.MAX_MULTIPLIER() + stakeAmount; // 50e18
+
+        // Verify initial state
+        checkAccount(
+            CheckAccountParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                rewardIndex: 0,
+                accountMP: initialAccountMP,
+                maxMP: initialMaxMP
+            })
+        );
+
+        // Lock for 1 year
+        uint256 lockPeriod = 365 days;
+        uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockPeriod);
+
+        _lock(alice, lockPeriod);
+
+        // Check updated state
+        checkAccount(
+            CheckAccountParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                rewardIndex: 0,
+                accountMP: initialAccountMP + expectedBonusMP,
+                maxMP: initialMaxMP + expectedBonusMP
+            })
+        );
+    }
+
+    function test_LockFailsWithNoStake() public {
+        vm.expectRevert(RewardsStreamerMP.StakingManager__InsufficientBalance.selector);
+        _lock(alice, 365 days);
+    }
+
+    function test_LockFailsWithInvalidPeriod() public {
+        _stake(alice, 10e18, 0);
+
+        // Test with period = 0
+        vm.expectRevert(RewardsStreamerMP.StakingManager__InvalidLockingPeriod.selector);
+        _lock(alice, 0);
     }
 }

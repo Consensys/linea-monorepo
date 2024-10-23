@@ -71,6 +71,14 @@ contract StakeVault is Ownable {
     }
 
     /**
+     * @notice Lock the staked amount for a specified time.
+     * @param _seconds The time period to lock the staked amount for.
+     */
+    function lock(uint256 _seconds) external onlyOwner {
+        stakeManager.lock(_seconds);
+    }
+
+    /**
      * @notice Unstake a specified amount of tokens and send to the owner.
      * @param _amount The amount of tokens to unstake.
      */
