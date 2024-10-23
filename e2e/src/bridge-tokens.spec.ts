@@ -5,32 +5,42 @@ import { waitForEvents, etherToWei } from "./common/utils";
 
 const l1AccountManager = config.getL1AccountManager();
 const l2AccountManager = config.getL2AccountManager();
-const tokenTotalSuppy = ethers.parseEther("100000");
 const bridgeAmount = ethers.parseEther("100");
 
 describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
   it.concurrent("Bridge a token from L1 to L2", async () => {
     const [l1Account, l2Account] = await Promise.all([
-      l1AccountManager.whaleAccount(4),
-      l2AccountManager.whaleAccount(4),
+      l1AccountManager.generateAccount(),
+      l2AccountManager.generateAccount(),
     ]);
 
-    const [lineaRollup, l2MessageService, l1TokenBridge, l2TokenBridge, l1Token] = await Promise.all([
-      config.getLineaRollupContract(),
-      config.getL2MessageServiceContract(),
-      config.getL1TokenBridgeContract(),
-      config.getL2TokenBridgeContract(),
-      config.getL1TokenContract(),
-    ]);
+    const lineaRollup = config.getLineaRollupContract();
+    const l2MessageService = config.getL2MessageServiceContract();
+    const l1TokenBridge = config.getL1TokenBridgeContract();
+    const l2TokenBridge = config.getL2TokenBridgeContract();
+    const l1Token = config.getL1TokenContract();
+    const l1Provider = config.getL1Provider();
+
+    console.log("Minting ERC20 tokens to L1 Account");
+
+    let { maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData();
+    let nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
+
+    const mintTx = await l1Token.connect(l1Account).mint(l1Account.address, bridgeAmount, {
+      nonce: nonce,
+      maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+      maxFeePerGas: l1MaxFeePerGas,
+    });
+
+    await mintTx.wait();
 
     console.log("Approving tokens to L1 TokenBridge");
 
-    const l1Provider = config.getL1Provider();
-    let { maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData();
+    ({ maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData());
 
-    let nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
+    nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
 
-    const approveTx = await l1Token.connect(l1Account).approve(l1TokenBridge.getAddress(), ethers.parseEther("100"), {
+    const approveTx = await l1Token.connect(l1Account).approve(l1TokenBridge.getAddress(), bridgeAmount, {
       maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
       maxFeePerGas: l1MaxFeePerGas,
       nonce: nonce,
@@ -67,7 +77,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     const l1TokenBalance = await l1Token.balanceOf(l1Account.address);
     console.log("Token balance of L1 account :", l1TokenBalance.toString());
 
-    expect(l1TokenBalance).toEqual(tokenTotalSuppy - ethers.parseEther("100"));
+    expect(l1TokenBalance).toEqual(0n);
 
     console.log("Waiting for MessageSent event on L1.");
 
@@ -123,25 +133,35 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
   it.concurrent("Bridge a token from L2 to L1", async () => {
     const [l1Account, l2Account] = await Promise.all([
-      l1AccountManager.whaleAccount(5),
-      l2AccountManager.whaleAccount(5),
+      l1AccountManager.generateAccount(),
+      l2AccountManager.generateAccount(),
     ]);
 
-    const lineaRollup = config.getLineaRollupContract(l1Account);
-    const l2MessageService = config.getL2MessageServiceContract(l2Account);
+    const lineaRollup = config.getLineaRollupContract();
+    const l2MessageService = config.getL2MessageServiceContract();
+    const l1TokenBridge = config.getL1TokenBridgeContract();
+    const l2TokenBridge = config.getL2TokenBridgeContract();
+    const l2Token = config.getL2TokenContract();
+    const l2Provider = config.getL2Provider();
 
-    const l1TokenBridge = config.getL1TokenBridgeContract(l1Account);
-    const l2TokenBridge = config.getL2TokenBridgeContract(l2Account);
+    console.log("Minting ERC20 tokens to L2 Account");
 
-    const l2Token = config.getL2TokenContract(l2Account);
+    let { maxPriorityFeePerGas: l2MaxPriorityFeePerGas, maxFeePerGas: l2MaxFeePerGas } = await l2Provider.getFeeData();
+    let nonce = await l2Provider.getTransactionCount(l2Account.address, "pending");
+
+    const mintTx = await l2Token.connect(l2Account).mint(l2Account.address, bridgeAmount, {
+      nonce: nonce,
+      maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
+      maxFeePerGas: l2MaxFeePerGas,
+    });
+
+    await mintTx.wait();
 
     console.log("Approving tokens to L2 TokenBridge");
 
-    const l2Provider = config.getL2Provider();
-    const { maxPriorityFeePerGas: l2MaxPriorityFeePerGas, maxFeePerGas: l2MaxFeePerGas } =
-      await l2Provider.getFeeData();
+    ({ maxPriorityFeePerGas: l2MaxPriorityFeePerGas, maxFeePerGas: l2MaxFeePerGas } = await l2Provider.getFeeData());
 
-    let nonce = await l2Provider.getTransactionCount(l2Account.address, "pending");
+    nonce = await l2Provider.getTransactionCount(l2Account.address, "pending");
 
     const approveTx = await l2Token.connect(l2Account).approve(l2TokenBridge.getAddress(), ethers.parseEther("100"), {
       maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
@@ -154,7 +174,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     console.log("Current allowance of L2 account to L2 TokenBridge is :", allowanceL2Account.toString());
     console.log("Current balance of  L2 account is :", await l2Token.balanceOf(l2Account));
 
-    console.log("Calling the bridgeToken function on the L1 TokenBridge contract");
+    console.log("Calling the bridgeToken function on the L2 TokenBridge contract");
 
     nonce = await l2Provider.getTransactionCount(l2Account.address, "pending");
 

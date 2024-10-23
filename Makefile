@@ -121,7 +121,6 @@ deploy-l1-test-erc20:
 		TEST_ERC20_NAME=TestERC20 \
 		TEST_ERC20_SYMBOL=TERC20 \
 		TEST_ERC20_INITIAL_SUPPLY=100000 \
-		TEST_ERC20_MINT_RECEIVER=0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65 \
 		npx hardhat deploy --network zkevm_dev --tags TestERC20
 
 deploy-l2-test-erc20:
@@ -132,7 +131,6 @@ deploy-l2-test-erc20:
 		TEST_ERC20_NAME=TestERC20 \
 		TEST_ERC20_SYMBOL=TERC20 \
 		TEST_ERC20_INITIAL_SUPPLY=100000 \
-		TEST_ERC20_MINT_RECEIVER=0xe00cad48944330a60bbaedfbf2e0ac97e9762a1e \
 		npx hardhat deploy --network zkevm_dev --tags TestERC20
 
 upgrade-linea-rollup-on-uat:

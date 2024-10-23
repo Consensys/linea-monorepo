@@ -15,8 +15,8 @@ contract TestERC20 is ERC20, Ownable {
    * @dev Constructor that gives msg.sender all of existing tokens.
    */
 
-  constructor(string memory _name, string memory _symbol, uint256 _initialSupply, address _mintReceiver) ERC20(_name, _symbol) {
-    _mint(_mintReceiver, _initialSupply);
+  constructor(string memory _name, string memory _symbol, uint256 _initialSupply) ERC20(_name, _symbol) {
+    _mint(msg.sender, _initialSupply);
   }
 
   /**
@@ -25,7 +25,7 @@ contract TestERC20 is ERC20, Ownable {
    * @param _amount The amount of tokens to mint.
    */
 
-  function mint(address _to, uint256 _amount) public onlyOwner {
+  function mint(address _to, uint256 _amount) public {
     _mint(_to, _amount);
   }
 

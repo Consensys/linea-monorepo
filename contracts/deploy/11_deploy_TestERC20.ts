@@ -19,7 +19,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const tokenName = getRequiredEnvVar("TEST_ERC20_NAME");
   const tokenSymbol = getRequiredEnvVar("TEST_ERC20_SYMBOL");
   const initialSupply = getRequiredEnvVar("TEST_ERC20_INITIAL_SUPPLY");
-  const mintReceiver = getRequiredEnvVar("TEST_ERC20_MINT_RECEIVER");
 
   if (!existingContractAddress) {
     console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
@@ -28,12 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   const TestERC20Factory = await ethers.getContractFactory(contractName);
-  const contract = await TestERC20Factory.deploy(
-    tokenName,
-    tokenSymbol,
-    ethers.parseEther(initialSupply),
-    mintReceiver,
-  );
+  const contract = await TestERC20Factory.deploy(tokenName, tokenSymbol, ethers.parseEther(initialSupply));
 
   await contract.waitForDeployment();
   const contractAddress = await contract.getAddress();
