@@ -39,3 +39,4 @@ jobs:
           echo "COMMIT_TAG: ${{ steps.step1.outputs.COMMIT_TAG }}"
           echo "LAST_COMMIT_TAG: ${{ steps.step1.outputs.LAST_COMMIT_TAG }}"
           echo "DEVELOP_TAG: ${{ steps.step1.outputs.DEVELOP_TAG }}"
+          echo "github.ref: ${{ github.ref }}"
