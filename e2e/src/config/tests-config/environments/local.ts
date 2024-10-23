@@ -32,8 +32,8 @@ const config: Config = {
     besuNodeRpcUrl: L2_BESU_NODE_RPC_URL,
     chainId: 1337,
     l2MessageServiceAddress: "0xe537D669CA013d86EBeF1D64e40fC74CADC91987",
-    l2TestContractAddress: "0xeB0b0a14F92e3BA35aEF3a2B6A24D7ED1D11631B",
-    dummyContractAddress: "0x2f6dAaF8A81AB675fbD37Ca6Ed5b72cf86237453",
+    l2TestContractAddress: "0xE4392c8ecC46b304C83cDB5edaf742899b1bda93",
+    dummyContractAddress: "0xCC1B08B17301e090cbb4c1F5598Cbaa096d591FB",
     tokenBridgeAddress: "0x9145615d34Afba9F8ECB4e2384325646f2393dde",
     l2TokenAddress: "0x5C95Bcd50E6D1B4E3CDC478484C9030Ff0a7D493",
     accountManager: new GenesisBasedAccountManager(
