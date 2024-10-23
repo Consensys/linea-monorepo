@@ -48,12 +48,12 @@ raw-execution-traces-version="0.2.0"
 expected-traces-api-version="0.2.0"
 [traces.counters]
 endpoints=["http://traces-api:8080/"]
-request-limit-per-endpoint=1
+request-limit-per-endpoint=2
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
 [traces.conflation]
 endpoints=["http://traces-api:8080/"]
-request-limit-per-endpoint=1
+request-limit-per-endpoint=2
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
 
