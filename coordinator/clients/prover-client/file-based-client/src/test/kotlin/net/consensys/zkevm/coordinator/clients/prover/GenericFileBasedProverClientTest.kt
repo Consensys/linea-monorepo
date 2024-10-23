@@ -1,9 +1,9 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
+import build.linea.domain.BlockInterval
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import net.consensys.zkevm.coordinator.clients.prover.serialization.JsonSerialization
-import net.consensys.zkevm.domain.BlockInterval
 import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.fileio.FileReader
 import net.consensys.zkevm.fileio.FileWriter

@@ -1,5 +1,7 @@
 package net.consensys.zkevm.domain
 
+import build.linea.domain.BlockInterval
+
 data class ProofIndex(
   override val startBlockNumber: ULong,
   override val endBlockNumber: ULong,

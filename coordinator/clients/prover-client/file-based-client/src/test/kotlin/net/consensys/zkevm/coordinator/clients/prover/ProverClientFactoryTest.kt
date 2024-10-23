@@ -1,5 +1,6 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
+import build.linea.domain.BlockIntervals
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
@@ -8,7 +9,6 @@ import kotlinx.datetime.Clock
 import net.consensys.ByteArrayExt
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.domain.ProofsToAggregate
 import org.assertj.core.api.Assertions.assertThat

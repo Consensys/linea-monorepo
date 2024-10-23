@@ -1,5 +1,6 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
+import build.linea.domain.BlockInterval
 import io.vertx.core.Vertx
 import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
 import net.consensys.linea.metrics.LineaMetricsCategory
@@ -9,7 +10,6 @@ import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.coordinator.clients.ProverClient
-import net.consensys.zkevm.domain.BlockInterval
 import org.web3j.protocol.Web3j
 
 class ProverClientFactory(

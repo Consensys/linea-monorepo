@@ -1,4 +1,4 @@
-package net.consensys.zkevm.domain
+package build.linea.domain
 
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test

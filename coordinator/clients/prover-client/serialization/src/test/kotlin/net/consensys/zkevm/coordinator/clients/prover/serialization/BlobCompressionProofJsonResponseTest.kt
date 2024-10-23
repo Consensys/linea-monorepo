@@ -1,7 +1,7 @@
 package net.consensys.zkevm.coordinator.clients.prover.serialization
 
+import build.linea.domain.BlockIntervals
 import net.consensys.zkevm.coordinator.clients.prover.serialization.JsonSerialization.proofResponseMapperV1
-import net.consensys.zkevm.domain.BlockIntervals
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
