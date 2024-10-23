@@ -11,6 +11,7 @@ include 'jvm-libs:generic:vertx-helper'
 include 'jvm-libs:generic:errors'
 include 'jvm-libs:generic:persistence:db'
 
+include 'jvm-libs:linea:clients:linea-state-manager'
 include 'jvm-libs:linea:core:client-interface'
 include 'jvm-libs:linea:core:domain-models'
 include 'jvm-libs:linea:core:long-running-service'

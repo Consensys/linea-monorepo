@@ -51,7 +51,6 @@ task cleanResources(type: Delete) {
     .filter {
       it.name.endsWith(".so") || it.name.endsWith(".dll") || it.name.endsWith(".dylib")
     }.each {
-      println("Deleting: ${it}")
       delete it
     }
 }
