@@ -10,7 +10,7 @@ apply from: rootProject.file("gradle/publishing.gradle")
 
 dependencies {
   implementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"
-  testImplementation project(":jvm-libs:generic:extensions:kotlin")
+  implementation project(":jvm-libs:generic:extensions:kotlin")
   testImplementation project(":jvm-libs:linea:blob-shnarf-calculator")
 }
 

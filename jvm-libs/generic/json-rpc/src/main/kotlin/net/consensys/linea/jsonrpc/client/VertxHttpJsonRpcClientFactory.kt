@@ -150,7 +150,6 @@ class VertxHttpJsonRpcClientFactory(
   }
 
   fun createV2(
-    vertx: Vertx,
     endpoints: Set<URL>,
     maxInflightRequestsPerClient: UInt? = null,
     retryConfig: RequestRetryConfig,

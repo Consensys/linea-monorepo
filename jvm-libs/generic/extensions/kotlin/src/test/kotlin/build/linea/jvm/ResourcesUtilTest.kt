@@ -1,6 +1,6 @@
-package net.consensys.jvm
+package build.linea.jvm
 
-import net.consensys.jvm.ResourcesUtil.copyResourceToTmpDir
+import build.linea.jvm.ResourcesUtil.copyResourceToTmpDir
 import org.assertj.core.api.AssertionsForClassTypes.assertThat
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
