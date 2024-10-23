@@ -16,6 +16,12 @@
 package net.consensys.linea.zktracer.module.constants;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.List;
+
+import net.consensys.linea.zktracer.ColumnHeader;
 
 /**
  * WARNING: This code is generated automatically.
@@ -320,8 +326,7 @@ public class GlobalConstants {
   public static final int PHASE_RIPEMD_RESULT = 0x4;
   public static final int PHASE_SHA2_DATA = 0x1;
   public static final int PHASE_SHA2_RESULT = 0x2;
-  public static final int REFUND_CONST_R_SCLEAR = 0x3a98;
-  public static final int REFUND_CONST_R_SELFDESTRUCT = 0x5dc0;
+  public static final int REFUND_CONST_R_SCLEAR = 0x12c0;
   public static final int RLP_ADDR_RECIPE_1 = 0x1;
   public static final int RLP_ADDR_RECIPE_2 = 0x2;
   public static final int RLP_PREFIX_INT_LONG = 0xb7;
@@ -356,4 +361,42 @@ public class GlobalConstants {
   public static final int WCP_INST_LEQ = 0xf;
   public static final int WORD_SIZE = 0x20;
   public static final int WORD_SIZE_MO = 0x1f;
+
+  private final BitSet filled = new BitSet();
+  private int currentLine = 0;
+
+  static List<ColumnHeader> headers(int length) {
+    List<ColumnHeader> headers = new ArrayList<>();
+    return headers;
+  }
+
+  public GlobalConstants(List<MappedByteBuffer> buffers) {}
+
+  public int size() {
+    if (!filled.isEmpty()) {
+      throw new RuntimeException("Cannot measure a trace with a non-validated row.");
+    }
+
+    return this.currentLine;
+  }
+
+  public GlobalConstants validateRow() {
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public GlobalConstants fillAndValidateRow() {
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public void build() {
+    if (!filled.isEmpty()) {
+      throw new IllegalStateException("Cannot build trace with a non-validated row.");
+    }
+  }
 }
