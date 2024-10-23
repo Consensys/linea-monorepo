@@ -1,9 +1,7 @@
 ---
 name: Epic/Major Feature
 about: File an Epic
-title: ''
-assignees: ''
-
+assignees: 'dfox-consensys,julien-marchand'
 ---
 
 ## Description
@@ -28,5 +26,5 @@ This section should indicate what value we are receiving from it.
 - [ ] What is the impact and migration steps required for the infrastructure and node operators
 
 ## Documentation & communication
- - [ ] What needs to be documented for this feature?
+- [ ] What needs to be documented for this feature?
  
