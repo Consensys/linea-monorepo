@@ -27,7 +27,7 @@ class GoNativeBlobDecompressorTest {
 
   @Test
   fun `when blocks are compressed with compressor shall decompress them back`() {
-    val blocks = CompressorTestData.blocksRlpEncoded.slice(0..1)
+    val blocks = CompressorTestData.blocksRlpEncoded
     assertTrue(compressor.Write(blocks[0], blocks[0].size))
     assertTrue(compressor.Write(blocks[1], blocks[1].size))
 
@@ -36,6 +36,7 @@ class GoNativeBlobDecompressorTest {
 
     val decompressedBlob = decompressor.decompress(compressedData)
     assertThat(decompressedBlob.size).isGreaterThan(compressedData.size)
-    // TODO: assert decompressedDataBuffer content
+    val decompressedBlocks: List<ByteArray> = rlpDecodeAsListOfBytes(decompressedBlob)
+    assertThat(decompressedBlocks).hasSize(2)
   }
 }
