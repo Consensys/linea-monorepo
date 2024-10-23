@@ -180,11 +180,8 @@ jobs:
         with:
           commit_tag: ${{ inputs.commit_tag }}
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           develop_tag: ${{ inputs.develop_tag }}
-          untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
           image_name: consensys/linea-transaction-exclusion-api
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_transaction_exclusion_api }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_transaction_exclusion_api }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}

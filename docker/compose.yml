@@ -123,7 +123,7 @@ services:
     hostname: l2-node-besu
     container_name: l2-node-besu
     image: consensys/linea-besu:24.10-delivery34
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -308,7 +308,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-d227ddf}
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-cd58916}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:

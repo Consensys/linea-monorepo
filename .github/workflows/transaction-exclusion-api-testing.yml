@@ -2,11 +2,7 @@ name: transaction-exclusion-api-testing
 
 on:
   workflow_call:
-    secrets:
-      DOCKERHUB_USERNAME:
-        required: true
-      DOCKERHUB_TOKEN:
-        required: true
+  
   workflow_dispatch:
     inputs:
       coverage:
@@ -14,6 +10,10 @@ on:
         required: false
         type: boolean
         default: false
+  
+concurrency:
+  group: transaction-exclusion-api-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   run-tests:
