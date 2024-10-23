@@ -73,9 +73,4 @@ public final class SelfDestruct extends GasProjection {
       return 0L;
     }
   }
-
-  @Override
-  public long refund() {
-    return GlobalConstants.REFUND_CONST_R_SELFDESTRUCT;
-  }
 }

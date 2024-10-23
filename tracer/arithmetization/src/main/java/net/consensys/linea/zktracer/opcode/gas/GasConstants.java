@@ -38,7 +38,6 @@ public enum GasConstants {
   G_S_SET(GlobalConstants.GAS_CONST_G_SSET),
   G_S_RESET(GlobalConstants.GAS_CONST_G_SRESET),
   R_S_CLEAR(GlobalConstants.REFUND_CONST_R_SCLEAR),
-  R_SELF_DESTRUCT(GlobalConstants.REFUND_CONST_R_SELFDESTRUCT),
   G_SELF_DESTRUCT(GlobalConstants.GAS_CONST_G_SELFDESTRUCT),
   G_CREATE(GlobalConstants.GAS_CONST_G_CREATE),
   G_CODE_DEPOSIT(GlobalConstants.GAS_CONST_G_CODE_DEPOSIT),
