@@ -55,8 +55,8 @@ class StateManagerV1JsonRpcClientTest {
     wiremock.start()
     meterRegistry = SimpleMeterRegistry()
     val rpcClientFactory = VertxHttpJsonRpcClientFactory(vertx, meterRegistry)
-    val vertxHttpJsonRpcClient = rpcClientFactory.createV2(
-      endpoints = setOf(URI("http://127.0.0.1:" + wiremock.port()).toURL()),
+    val vertxHttpJsonRpcClient = rpcClientFactory.createJsonRpcV2Client(
+      endpoints = listOf(URI("http://127.0.0.1:" + wiremock.port())),
       retryConfig = RequestRetryConfig(
         maxRetries = 2u,
         timeout = 2.seconds,
