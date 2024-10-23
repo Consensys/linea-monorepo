@@ -96,7 +96,6 @@ abstract class AccountManager implements IAccountManager {
       } catch (error: any) {
         console.error(`Failed to fund account ${newAccount.address}: ${error.message}`);
         whaleAccountWallet.reset();
-        throw error;
       } finally {
         release();
       }
