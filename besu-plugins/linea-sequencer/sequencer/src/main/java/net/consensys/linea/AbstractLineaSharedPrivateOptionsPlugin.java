@@ -60,8 +60,10 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   protected static BlockchainService blockchainService;
   protected static MetricsSystem metricsSystem;
 
-  private static AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
-  private static AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
+  private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
+  private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
+
+  private BesuContext besuContext;
 
   static {
     // force the initialization of the gnark compress native library to fail fast in case of issues
@@ -125,12 +127,14 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public synchronized void register(final BesuContext context) {
     super.register(context);
 
+    besuContext = context;
+
     if (sharedRegisterTasksDone.compareAndSet(false, true)) {
       performSharedRegisterTasksOnce(context);
     }
   }
 
-  protected void performSharedRegisterTasksOnce(final BesuContext context) {
+  protected static void performSharedRegisterTasksOnce(final BesuContext context) {
     blockchainService =
         context
             .getService(BlockchainService.class)
@@ -138,12 +142,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
                 () ->
                     new RuntimeException(
                         "Failed to obtain BlockchainService from the BesuContext."));
-
-    metricsSystem =
-        context
-            .getService(MetricsSystem.class)
-            .orElseThrow(
-                () -> new RuntimeException("Failed to obtain MetricSystem from the BesuContext."));
 
     context
         .getService(MetricCategoryRegistry.class)
@@ -159,11 +157,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     super.start();
 
     if (sharedStartTasksDone.compareAndSet(false, true)) {
-      performSharedStartTasksOnce();
+      performSharedStartTasksOnce(besuContext);
     }
   }
 
-  private static void performSharedStartTasksOnce() {
+  private static void performSharedStartTasksOnce(final BesuContext context) {
     blockchainService
         .getChainId()
         .ifPresentOrElse(
@@ -175,6 +173,12 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
             () -> {
               throw new IllegalArgumentException("Chain id required");
             });
+
+    metricsSystem =
+        context
+            .getService(MetricsSystem.class)
+            .orElseThrow(
+                () -> new RuntimeException("Failed to obtain MetricSystem from the BesuContext."));
   }
 
   @Override
