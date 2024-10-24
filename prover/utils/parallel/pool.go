@@ -5,8 +5,8 @@ import (
 	"sync"
 )
 
-var queue chan func()
-var available chan struct{}
+var queue chan func() = make(chan func())
+var available chan struct{} = make(chan struct{})
 var once sync.Once
 
 func ExecutePool(task func()) chan struct{} {
