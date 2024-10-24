@@ -15,8 +15,6 @@ import (
 )
 
 func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) {
-	// Evaluate explicitly the public columns
-	ctx.gnarkExplicitPublicEvaluation(api, vr)
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does

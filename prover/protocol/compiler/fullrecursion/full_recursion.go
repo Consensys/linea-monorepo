@@ -18,52 +18,53 @@ import (
 // FullRecursion "recurses" the wizard protocol by wrapping all the verifier
 // steps in a Plonk-in-Wizard context as well as all the Proof columns. The
 // Vortex PCS verification is done via self-recursion.
-func FullRecursion(comp *wizard.CompiledIOP) {
+func FullRecursion(withoutGkr bool) func(comp *wizard.CompiledIOP) {
 
-	var (
-		ctx   = captureCtx(comp)
-		c     = allocateGnarkCircuit(comp, ctx)
-		numPI = len(c.ctx.NonEmptyMerkleRootPositions) +
-			len(c.Pubs) +
-			len(c.Ys) +
-			3 // (1.) for X (2.) for the initial FS state (3.) for the final state
-		funcPiOffset = 3 + len(ctx.NonEmptyMerkleRootPositions) + len(ctx.PolyQuery.Pols)
-	)
-
-	selfrecursion.SelfRecurse(comp)
-
-	piw := plonk.PlonkCheck(comp, "full-recursion-"+strconv.Itoa(comp.SelfRecursionCount), ctx.LastRound, c, 1)
-
-	ctx.PlonkInWizard.PI = piw.ConcatenatedTinyPIs(utils.NextPowerOfTwo(numPI))
-	ctx.PlonkInWizard.ProverAction = piw.GetPlonkProverAction()
-
-	for i := 0; i < numPI; i++ {
-
+	return func(comp *wizard.CompiledIOP) {
 		var (
-			pi = ctx.PlonkInWizard.PI
-			lo = comp.InsertLocalOpening(
-				ctx.PlonkInWizard.PI.Round(),
-				ifaces.QueryIDf("%v_LO_%v", pi.String(), i),
-				column.Shift(pi, i),
+			ctx   = captureCtx(comp)
+			c     = allocateGnarkCircuit(comp, ctx)
+			numPI = len(c.ctx.NonEmptyMerkleRootPositions) +
+				len(c.Pubs) +
+				len(c.Ys) +
+				3 // (1.) for X (2.) for the initial FS state (3.) for the final state
+			funcPiOffset = 3 + len(ctx.NonEmptyMerkleRootPositions) + len(ctx.PolyQuery.Pols)
+		)
+
+		selfrecursion.SelfRecurse(comp)
+
+		piw := plonk.PlonkCheck(comp, "full-recursion-"+strconv.Itoa(comp.SelfRecursionCount), ctx.LastRound, c, 1)
+
+		ctx.PlonkInWizard.PI = piw.ConcatenatedTinyPIs(utils.NextPowerOfTwo(numPI))
+		ctx.PlonkInWizard.ProverAction = piw.GetPlonkProverAction()
+
+		for i := 0; i < numPI; i++ {
+
+			var (
+				pi = ctx.PlonkInWizard.PI
+				lo = comp.InsertLocalOpening(
+					ctx.PlonkInWizard.PI.Round(),
+					ifaces.QueryIDf("%v_LO_%v", pi.String(), i),
+					column.Shift(pi, i),
+				)
 			)
-		)
 
-		ctx.LocalOpenings = append(ctx.LocalOpenings, lo)
+			ctx.LocalOpenings = append(ctx.LocalOpenings, lo)
+		}
+
+		for i := range comp.PublicInputs {
+			comp.PublicInputs[i].Acc = accessors.NewLocalOpeningAccessor(
+				ctx.LocalOpenings[funcPiOffset+i],
+				ctx.PlonkInWizard.PI.Round(),
+			)
+		}
+
+		comp.FiatShamirHooks.AppendToInner(ctx.LastRound, &ResetFsActions{fullRecursionCtx: *ctx})
+		comp.RegisterProverAction(ctx.LastRound, CircuitAssignment(*ctx))
+		comp.RegisterProverAction(ctx.LastRound, ReplacementAssignment(*ctx))
+		comp.RegisterProverAction(ctx.PlonkInWizard.PI.Round(), LocalOpeningAssignment(*ctx))
+		comp.RegisterVerifierAction(ctx.PlonkInWizard.PI.Round(), &ConsistencyCheck{fullRecursionCtx: *ctx})
 	}
-
-	for i := range comp.PublicInputs {
-		comp.PublicInputs[i].Acc = accessors.NewLocalOpeningAccessor(
-			ctx.LocalOpenings[funcPiOffset+i],
-			ctx.PlonkInWizard.PI.Round(),
-		)
-	}
-
-	comp.FiatShamirHooks.AppendToInner(ctx.LastRound, &ResetFsActions{fullRecursionCtx: *ctx})
-	comp.RegisterProverAction(ctx.LastRound, CircuitAssignment(*ctx))
-	comp.RegisterProverAction(ctx.LastRound, ReplacementAssignment(*ctx))
-	comp.RegisterProverAction(ctx.PlonkInWizard.PI.Round(), LocalOpeningAssignment(*ctx))
-	comp.RegisterVerifierAction(ctx.PlonkInWizard.PI.Round(), &ConsistencyCheck{fullRecursionCtx: *ctx})
-
 }
 
 // fullRecursionCtx holds compilation context informations about the wizard
@@ -83,6 +84,7 @@ type fullRecursionCtx struct {
 	Columns                     [][]ifaces.Column
 	VerifierActions             [][]wizard.VerifierAction
 	Coins                       [][]coin.Info
+	FsHooks                     [][]wizard.VerifierAction
 	PlonkInWizard               struct {
 		ProverAction plonk.PlonkInWizardProverAction
 		PI           ifaces.Column
@@ -113,6 +115,7 @@ func captureCtx(comp *wizard.CompiledIOP) *fullRecursionCtx {
 		ctx.Columns = append(ctx.Columns, []ifaces.Column{})
 		ctx.VerifierActions = append(ctx.VerifierActions, []wizard.VerifierAction{})
 		ctx.Coins = append(ctx.Coins, []coin.Info{})
+		ctx.FsHooks = append(ctx.FsHooks, []wizard.VerifierAction{})
 
 		for _, colName := range comp.Columns.AllKeysAt(round) {
 
@@ -149,8 +152,15 @@ func captureCtx(comp *wizard.CompiledIOP) *fullRecursionCtx {
 			comp.QueriesParams.MarkAsSkippedFromVerifierTranscript(qName)
 		}
 
-		for _, coinName := range comp.Coins.AllKeysAt(round) {
-			comp.Coins.MarkAsSkippedFromVerifierTranscript(coinName)
+		for _, cname := range comp.Coins.AllKeysAt(round) {
+
+			if comp.Coins.IsSkippedFromVerifierTranscript(cname) {
+				continue
+			}
+
+			coin := comp.Coins.Data(cname)
+			ctx.Coins[round] = append(ctx.Coins[round], coin)
+			comp.Coins.MarkAsSkippedFromVerifierTranscript(cname)
 		}
 
 		verifierActions := comp.SubVerifiers.Inner()
@@ -169,14 +179,14 @@ func captureCtx(comp *wizard.CompiledIOP) *fullRecursionCtx {
 		if comp.FiatShamirHooks.Len() > round {
 			resetFs := comp.FiatShamirHooks.Inner()[round]
 			for i := range resetFs {
-				resetFs[i].Skip()
-			}
-		}
 
-		if round >= ctx.FirstRound {
-			for _, cname := range comp.Coins.AllKeysAt(round) {
-				coin := comp.Coins.Data(cname)
-				ctx.Coins[round] = append(ctx.Coins[round], coin)
+				fsHook := resetFs[i]
+				if fsHook.IsSkipped() {
+					continue
+				}
+
+				ctx.FsHooks[round] = append(ctx.VerifierActions[round], fsHook)
+				fsHook.Skip()
 			}
 		}
 	}
@@ -210,6 +220,8 @@ func captureCtx(comp *wizard.CompiledIOP) *fullRecursionCtx {
 		polyQuery.QueryID+"_REPLACEMENT",
 		polyQuery.Pols,
 	)
+
+	comp.QueriesParams.MarkAsIgnored(newPolyQuery.QueryID)
 
 	ctx.PolyQueryReplacement = newPolyQuery
 	pcsCtxReplacement.Query = ctx.PolyQueryReplacement

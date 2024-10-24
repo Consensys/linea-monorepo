@@ -238,9 +238,9 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 		}
 
 		c.FiatShamirHistory[currRound] = [3][]frontend.Variable{
-			{initialState},
-			{postUpdateFsState},
-			{c.FS.State()},
+			initialState,
+			postUpdateFsState,
+			c.FS.State(),
 		}
 	}
 }

@@ -54,7 +54,7 @@ func (c *ConsistencyCheck) Run(run *wizard.VerifierRuntime) error {
 
 	var (
 		initialFsCirc = run.GetLocalPointEvalParams(c.LocalOpenings[0].ID).Y
-		initialFsRt   = run.FiatShamirHistory[c.FirstRound][0][0]
+		initialFsRt   = run.FiatShamirHistory[c.FirstRound+1][0][0]
 		piCursor      = 2
 	)
 
@@ -114,7 +114,7 @@ func (c *ConsistencyCheck) RunGnark(api frontend.API, run *wizard.WizardVerifier
 
 	var (
 		initialFsCirc = run.GetLocalPointEvalParams(c.LocalOpenings[0].ID).Y
-		initialFsRt   = run.FiatShamirHistory[c.FirstRound][0][0]
+		initialFsRt   = run.FiatShamirHistory[c.FirstRound+1][0][0]
 		piCursor      = 2
 	)
 

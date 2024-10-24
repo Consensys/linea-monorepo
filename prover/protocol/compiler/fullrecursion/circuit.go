@@ -23,6 +23,7 @@ type gnarkCircuit struct {
 	WizardVerifier *wizard.WizardVerifierCircuit
 	comp           *wizard.CompiledIOP `gnark:"-"`
 	ctx            *fullRecursionCtx   `gnark:"-"`
+	withoutGkr     bool                `gnark:"-"`
 }
 
 func allocateGnarkCircuit(comp *wizard.CompiledIOP, ctx *fullRecursionCtx) *gnarkCircuit {
@@ -67,12 +68,18 @@ func (c *gnarkCircuit) Define(api frontend.API) error {
 
 	w := c.WizardVerifier
 
-	w.HasherFactory = gkrmimc.NewHasherFactory(api)
-	w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
+	if c.withoutGkr {
+		w.FS = fiatshamir.NewGnarkFiatShamir(api, nil)
+	} else {
+		w.HasherFactory = gkrmimc.NewHasherFactory(api)
+		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
+	}
+
+	w.FiatShamirHistory = make([][3][]frontend.Variable, c.comp.NumRounds())
 
 	c.generateAllRandomCoins(api)
 
-	for round := c.ctx.FirstRound; round < c.ctx.LastRound; round++ {
+	for round := 0; round <= c.ctx.LastRound; round++ {
 		roundSteps := c.ctx.VerifierActions[round]
 		for _, step := range roundSteps {
 			step.RunGnark(api, w)
@@ -114,7 +121,9 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 
 	w.FS.SetState([]frontend.Variable{c.InitialFsState})
 
-	for currRound := c.ctx.FirstRound + 1; currRound <= c.ctx.LastRound; currRound++ {
+	for currRound := 0; currRound <= c.ctx.LastRound; currRound++ {
+
+		initialState := w.FS.State()
 
 		if currRound > 0 {
 
@@ -131,6 +140,8 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 			}
 		}
 
+		postUpdateFsState := w.FS.State()
+
 		for _, info := range ctx.Coins[currRound] {
 			switch info.Type {
 			case coin.Field:
@@ -140,6 +151,16 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 				value := w.FS.RandomManyIntegers(info.Size, info.UpperBound)
 				w.Coins.InsertNew(info.Name, value)
 			}
+		}
+
+		for _, fsHook := range ctx.FsHooks[currRound] {
+			fsHook.RunGnark(api, w)
+		}
+
+		w.FiatShamirHistory[currRound] = [3][]frontend.Variable{
+			initialState,
+			postUpdateFsState,
+			w.FS.State(),
 		}
 	}
 

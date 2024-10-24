@@ -86,6 +86,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// Registers the prover and verifier steps
 		comp.SubProvers.AppendToInner(lastRound+1, ctx.ComputeLinearComb)
 		comp.SubProvers.AppendToInner(lastRound+2, ctx.OpenSelectedColumns)
+		comp.InsertVerifier(lastRound, ctx.explicitPublicEvaluation, ctx.gnarkExplicitPublicEvaluation)
 		comp.InsertVerifier(lastRound+2, ctx.Verify, ctx.GnarkVerify)
 	}
 }

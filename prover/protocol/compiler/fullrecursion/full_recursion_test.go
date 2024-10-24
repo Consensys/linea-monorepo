@@ -44,7 +44,7 @@ func TestLookup(t *testing.T) {
 		univariates.Naturalize,
 		univariates.MultiPointToSinglePoint(8),
 		vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams)),
-		fullrecursion.FullRecursion,
+		fullrecursion.FullRecursion(true),
 	)
 
 	proof := wizard.Prove(comp, prove)
