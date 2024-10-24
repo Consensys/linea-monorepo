@@ -140,6 +140,8 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 			}
 		}
 
+		postUpdateFsState := w.FS.State()
+
 		for _, info := range ctx.Coins[currRound] {
 			switch info.Type {
 			case coin.Field:
