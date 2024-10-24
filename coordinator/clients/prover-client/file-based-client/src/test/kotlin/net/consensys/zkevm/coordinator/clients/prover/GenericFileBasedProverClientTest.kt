@@ -10,11 +10,13 @@ import net.consensys.zkevm.fileio.FileWriter
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -102,7 +104,9 @@ class GenericFileBasedProverClientTest {
   }
 
   private fun saveToFile(file: Path, content: Any) {
-    JsonSerialization.proofResponseMapperV1.writeValue(file.toFile(), content)
+    val writeInProgessFile = file.resolveSibling(file.fileName.toString() + ".coordinator_writing_inprogress")
+    JsonSerialization.proofResponseMapperV1.writeValue(writeInProgessFile.toFile(), content)
+    Files.move(writeInProgessFile, file)
   }
 
   private fun <T> readFromFile(file: Path, valueType: Class<T>): T {
