@@ -1,5 +1,5 @@
 import { HASH_ZERO } from "./general";
-import { generateKeccak256 } from "../helpers";
+import { generateKeccak256 } from "../helpers/hashing";
 
 // Roles hashes
 export const DEFAULT_ADMIN_ROLE = HASH_ZERO;

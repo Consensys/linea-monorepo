@@ -32,6 +32,8 @@ async function waitForCoordinatorRestart() {
   }
 }
 
+const l1AccountManager = config.getL1AccountManager();
+
 describe("Coordinator restart test suite", () => {
   it.concurrent(
     "When the coordinator restarts it should resume blob submission and finalization",
@@ -101,7 +103,7 @@ describe("Coordinator restart test suite", () => {
       }
 
       const l1Provider = config.getL1Provider();
-      const l1MessageSender = await config.getL1AccountManager().generateAccount();
+      const l1MessageSender = await l1AccountManager.generateAccount();
 
       const lineaRollup = config.getLineaRollupContract();
       const l2MessageService = config.getL2MessageServiceContract();

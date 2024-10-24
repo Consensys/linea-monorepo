@@ -37,6 +37,7 @@ const config: Config = {
     rpcUrl: L2_RPC_URL,
     chainId: L2_CHAIN_ID,
     l2MessageServiceAddress: "0x33bf916373159A8c1b54b025202517BfDbB7863D",
+    l2TestContractAddress: "",
     accountManager: new EnvironmentBasedAccountManager(
       new ethers.JsonRpcProvider(L2_RPC_URL.toString()),
       L2_WHALE_ACCOUNTS,
