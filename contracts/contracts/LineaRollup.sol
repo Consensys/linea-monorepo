@@ -301,6 +301,10 @@ contract LineaRollup is
       revert EmptySubmissionData();
     }
 
+    if (blobShnarfExists[_parentShnarf] == 0) {
+      revert ParentBlobNotSubmitted(_parentShnarf);
+    }
+
     bytes32 currentDataHash = keccak256(_submission.compressedData);
 
     bytes32 dataEvaluationPoint = Utils._efficientKeccak(_submission.snarkHash, currentDataHash);
