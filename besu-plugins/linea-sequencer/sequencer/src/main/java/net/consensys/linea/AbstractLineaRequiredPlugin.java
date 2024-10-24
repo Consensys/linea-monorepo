@@ -18,11 +18,9 @@ package net.consensys.linea;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 
 @Slf4j
-public abstract class AbstractLineaRequiredPlugin extends AbstractLineaPrivateOptionsPlugin {
-  protected BlockchainService blockchainService;
+public abstract class AbstractLineaRequiredPlugin extends AbstractLineaSharedPrivateOptionsPlugin {
 
   /**
    * Linea plugins extending this class will halt startup of Besu in case of exception during
@@ -37,14 +35,6 @@ public abstract class AbstractLineaRequiredPlugin extends AbstractLineaPrivateOp
     super.register(context);
     try {
       log.info("Registering Linea plugin {}", this.getClass().getName());
-
-      blockchainService =
-          context
-              .getService(BlockchainService.class)
-              .orElseThrow(
-                  () ->
-                      new RuntimeException(
-                          "Failed to obtain BlockchainService from the BesuContext."));
 
       doRegister(context);
 
@@ -62,21 +52,4 @@ public abstract class AbstractLineaRequiredPlugin extends AbstractLineaPrivateOp
    * @param context the BesuContext to be used.
    */
   public abstract void doRegister(final BesuContext context);
-
-  @Override
-  public void start() {
-    super.start();
-
-    blockchainService
-        .getChainId()
-        .ifPresentOrElse(
-            chainId -> {
-              if (chainId.signum() <= 0) {
-                throw new IllegalArgumentException("Chain id must be greater than zero.");
-              }
-            },
-            () -> {
-              throw new IllegalArgumentException("Chain id required");
-            });
-  }
 }

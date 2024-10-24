@@ -17,6 +17,7 @@ package net.consensys.linea;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.compress.LibCompress;
@@ -32,21 +33,35 @@ import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
+import net.consensys.linea.metrics.LineaMetricCategory;
 import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
+import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.hyperledger.besu.plugin.services.MetricsSystem;
+import org.hyperledger.besu.plugin.services.metrics.MetricCategoryRegistry;
 
 /**
  * This abstract class is used as superclass for all the plugins that share one or more
- * configuration options.
+ * configuration options, services and common initializations.
  *
  * <p>Configuration options that are exclusive of a single plugin, are not required to be added
  * here, but they could stay in the class that implement a plugin, but in case that configuration
  * becomes to be used by multiple plugins, then to avoid code duplications and possible different
  * management of the options, it is better to move the configuration here so all plugins will
  * automatically see it.
+ *
+ * <p>Same for services and other initialization tasks, that are shared by more than one plugin,
+ * like registration of metrics categories or check to perform once at startup
  */
 @Slf4j
-public abstract class AbstractLineaPrivateOptionsPlugin extends AbstractLineaSharedOptionsPlugin {
+public abstract class AbstractLineaSharedPrivateOptionsPlugin
+    extends AbstractLineaSharedOptionsPlugin {
+  protected static BlockchainService blockchainService;
+  protected static MetricsSystem metricsSystem;
+
+  private static AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
+  private static AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
 
   static {
     // force the initialization of the gnark compress native library to fail fast in case of issues
@@ -107,7 +122,67 @@ public abstract class AbstractLineaPrivateOptionsPlugin extends AbstractLineaSha
   }
 
   @Override
+  public synchronized void register(final BesuContext context) {
+    super.register(context);
+
+    if (sharedRegisterTasksDone.compareAndSet(false, true)) {
+      performSharedRegisterTasksOnce(context);
+    }
+  }
+
+  protected void performSharedRegisterTasksOnce(final BesuContext context) {
+    blockchainService =
+        context
+            .getService(BlockchainService.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain BlockchainService from the BesuContext."));
+
+    metricsSystem =
+        context
+            .getService(MetricsSystem.class)
+            .orElseThrow(
+                () -> new RuntimeException("Failed to obtain MetricSystem from the BesuContext."));
+
+    context
+        .getService(MetricCategoryRegistry.class)
+        .orElseThrow(
+            () ->
+                new RuntimeException(
+                    "Failed to obtain MetricCategoryRegistry from the BesuContext."))
+        .addMetricCategory(LineaMetricCategory.PROFITABILITY);
+  }
+
+  @Override
   public void start() {
     super.start();
+
+    if (sharedStartTasksDone.compareAndSet(false, true)) {
+      performSharedStartTasksOnce();
+    }
+  }
+
+  private static void performSharedStartTasksOnce() {
+    blockchainService
+        .getChainId()
+        .ifPresentOrElse(
+            chainId -> {
+              if (chainId.signum() <= 0) {
+                throw new IllegalArgumentException("Chain id must be greater than zero.");
+              }
+            },
+            () -> {
+              throw new IllegalArgumentException("Chain id required");
+            });
+  }
+
+  @Override
+  public void stop() {
+    super.stop();
+    sharedRegisterTasksDone.set(false);
+    sharedStartTasksDone.set(false);
+    blockchainService = null;
+    metricsSystem = null;
   }
 }

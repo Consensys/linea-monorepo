@@ -14,6 +14,7 @@
  */
 package linea.plugin.acc.test.extradata;
 
+import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.util.List;
 
 import linea.plugin.acc.test.LineaPluginTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
+import net.consensys.linea.metrics.LineaMetricCategory;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
@@ -78,7 +80,7 @@ public class ExtraDataPricingTest extends LineaPluginTestBase {
   }
 
   @Test
-  public void updateProfitabilityParamsViaExtraData() throws IOException {
+  public void updateProfitabilityParamsViaExtraData() throws IOException, InterruptedException {
     final Web3j web3j = minerNode.nodeRequests().eth();
     final Account sender = accounts.getSecondaryBenefactor();
     final Account recipient = accounts.createAccount("recipient");
@@ -121,6 +123,28 @@ public class ExtraDataPricingTest extends LineaPluginTestBase {
     assertThat(signedUnprofitableTxResp.getError().getMessage()).isEqualTo("Gas price too low");
 
     assertThat(getTxPoolContent()).isEmpty();
+
+    final var fixedCostMetric =
+        getMetricValue(
+            LineaMetricCategory.PROFITABILITY, "conf", List.of(entry("field", "fixed_cost_wei")));
+
+    assertThat(fixedCostMetric).isEqualTo(MIN_GAS_PRICE.multiply(2).getValue().doubleValue());
+
+    final var variableCostMetric =
+        getMetricValue(
+            LineaMetricCategory.PROFITABILITY,
+            "conf",
+            List.of(entry("field", "variable_cost_wei")));
+
+    assertThat(variableCostMetric).isEqualTo(MIN_GAS_PRICE.getValue().doubleValue());
+
+    final var ethGasPriceMetric =
+        getMetricValue(
+            LineaMetricCategory.PROFITABILITY,
+            "conf",
+            List.of(entry("field", "eth_gas_price_wei")));
+
+    assertThat(ethGasPriceMetric).isEqualTo(MIN_GAS_PRICE.getValue().doubleValue());
   }
 
   static class MinerSetExtraDataRequest implements Transaction<Boolean> {

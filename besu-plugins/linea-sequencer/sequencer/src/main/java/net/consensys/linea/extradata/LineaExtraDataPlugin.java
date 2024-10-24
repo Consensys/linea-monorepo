@@ -20,6 +20,8 @@ import java.util.Optional;
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
+import net.consensys.linea.config.LineaProfitabilityConfiguration;
+import net.consensys.linea.metrics.LineaMetricCategory;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.BesuEvents;
@@ -97,5 +99,19 @@ public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
             }
           });
     }
+
+    initMetrics(profitabilityConfiguration());
+  }
+
+  private void initMetrics(final LineaProfitabilityConfiguration lineaProfitabilityConfiguration) {
+    final var confLabelledGauge =
+        metricsSystem.createLabelledGauge(
+            LineaMetricCategory.PROFITABILITY,
+            "conf",
+            "Profitability configuration values at runtime",
+            "field");
+    confLabelledGauge.labels(lineaProfitabilityConfiguration::fixedCostWei, "fixed_cost_wei");
+    confLabelledGauge.labels(lineaProfitabilityConfiguration::variableCostWei, "variable_cost_wei");
+    confLabelledGauge.labels(lineaProfitabilityConfiguration::ethGasPriceWei, "eth_gas_price_wei");
   }
 }

@@ -19,6 +19,10 @@ import static org.assertj.core.api.Assertions.*;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -34,6 +38,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
+import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.metrics.LineaMetricCategory;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -42,6 +48,8 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.eth.transactions.ImmutableTransactionPoolConfiguration;
 import org.hyperledger.besu.ethereum.eth.transactions.TransactionPoolConfiguration;
+import org.hyperledger.besu.metrics.prometheus.MetricsConfiguration;
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory;
 import org.hyperledger.besu.tests.acceptance.dsl.AcceptanceTestBase;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.txpool.TxPoolConditions;
@@ -66,6 +74,7 @@ import org.web3j.tx.response.PollingTransactionReceiptProcessor;
 import org.web3j.tx.response.TransactionReceiptProcessor;
 
 /** Base class for plugin tests. */
+@Slf4j
 public class LineaPluginTestBase extends AcceptanceTestBase {
   public static final int MAX_CALLDATA_SIZE = 1188; // contract has a call data size of 1160
   public static final int MAX_TX_GAS_LIMIT = DefaultGasProvider.GAS_LIMIT.intValue();
@@ -73,6 +82,7 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
   public static final CliqueOptions LINEA_CLIQUE_OPTIONS =
       new CliqueOptions(
           CliqueOptions.DEFAULT.blockPeriodSeconds(), CliqueOptions.DEFAULT.epochLength(), false);
+  protected static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   protected BesuNode minerNode;
 
   @BeforeEach
@@ -122,6 +132,11 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
             .genesisConfigProvider(
                 validators -> Optional.of(provideGenesisConfig(validators, cliqueOptions)))
             .extraCLIOptions(extraCliOptions)
+            .metricsConfiguration(
+                MetricsConfiguration.builder()
+                    .enabled(true)
+                    .metricCategories(Set.of(LineaMetricCategory.PROFITABILITY))
+                    .build())
             .requestedPlugins(
                 List.of(
                     "LineaExtraDataPlugin",
@@ -305,5 +320,34 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
 
     return Bytes32.rightPad(
         Bytes.concatenate(Bytes.of((byte) 1), fixed.toBytes(), variable.toBytes(), min.toBytes()));
+  }
+
+  protected double getMetricValue(
+      final MetricCategory category,
+      final String metricName,
+      final List<Map.Entry<String, String>> labelValues)
+      throws IOException, InterruptedException {
+
+    final var metricsReq =
+        HttpRequest.newBuilder().GET().uri(URI.create("http://127.0.0.1:9545/metrics")).build();
+
+    final var respLines = HTTP_CLIENT.send(metricsReq, HttpResponse.BodyHandlers.ofLines());
+
+    final var searchString =
+        category.getApplicationPrefix().orElse("")
+            + category.getName()
+            + "_"
+            + metricName
+            + labelValues.stream()
+                .map(lv -> lv.getKey() + "=\"" + lv.getValue() + "\"")
+                .collect(Collectors.joining(",", "{", ",}"));
+
+    final var foundMetric =
+        respLines.body().filter(line -> line.startsWith(searchString)).findFirst();
+
+    return foundMetric
+        .map(line -> line.substring(searchString.length()).trim())
+        .map(Double::valueOf)
+        .orElse(Double.NaN);
   }
 }
