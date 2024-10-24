@@ -23,6 +23,22 @@ on:
         required: true
   workflow_dispatch:
     inputs:
+      commit_tag:
+        description: 'Image tag'
+        required: true
+        type: string
+      develop_tag:
+        description: 'Image tag will be "develop" if target branch is main'
+        required: true
+        type: choice
+        options:
+          - develop
+        default: 'develop'
+      image_name:
+        description: 'Image name'
+        required: true
+        type: string
+        default: 'consensys/linea-coordinator'
       push_image:
         description: 'Toggle whether to push image to docker registry'
         required: false
@@ -87,7 +103,7 @@ jobs:
           platforms: linux/amd64
           load: true
           push: false
-          tags: ${{ env.TAGS }}
+          tags: ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}
       - name: Save Docker image as artifact
         if: ${{ env.PUSH_IMAGE == 'false' }}
         run: |
