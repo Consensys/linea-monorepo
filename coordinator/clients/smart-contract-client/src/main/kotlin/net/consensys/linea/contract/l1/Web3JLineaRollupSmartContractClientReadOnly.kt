@@ -1,10 +1,10 @@
 package net.consensys.linea.contract.l1
 
+import build.linea.contract.LineaRollupV6
 import net.consensys.encodeHex
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.contract.LineaRollup
-import net.consensys.linea.contract.LineaRollupV6
 import net.consensys.toBigInteger
 import net.consensys.toULong
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion

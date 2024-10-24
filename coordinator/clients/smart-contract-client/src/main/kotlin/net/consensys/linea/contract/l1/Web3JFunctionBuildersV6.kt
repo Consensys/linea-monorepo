@@ -1,6 +1,6 @@
 package net.consensys.linea.contract.l1
 
-import net.consensys.linea.contract.LineaRollupV6
+import build.linea.contract.LineaRollupV6
 import net.consensys.toBigInteger
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
 import net.consensys.zkevm.domain.BlobRecord
