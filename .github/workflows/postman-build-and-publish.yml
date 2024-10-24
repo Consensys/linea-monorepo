@@ -74,7 +74,7 @@ jobs:
           echo COMMIT_TAG=${{ env.COMMIT_TAG }} >> $GITHUB_ENV
       - name: Build postman image for testing
         uses: docker/build-push-action@v6
-        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' }}
         with:
           context: ./
           file: ./sdk/Dockerfile
@@ -85,12 +85,12 @@ jobs:
           build-args: |
             NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.0.1
       - name: Save Docker image as artifact
-        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' }}
         run: |
           docker save ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }} | gzip > linea-postman-docker-image.tar.gz
         shell: bash
       - name: Upload Docker image artifact
-        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' }}
         uses: actions/upload-artifact@v4
         with:
           name: linea-postman

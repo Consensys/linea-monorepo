@@ -73,7 +73,7 @@ jobs:
           echo COMMIT_TAG=${{ env.COMMIT_TAG }} >> $GITHUB_ENV
       - name: Build and push prover image
         uses: docker/build-push-action@v6
-        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' }}
         with:
           context: .
           file: ./prover/Dockerfile
@@ -88,12 +88,12 @@ jobs:
           push: false
           tags: ${{ env.TAGS }}
       - name: Save Docker image as artifact
-        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' }}
         run: |
           docker save ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }} | gzip > linea-prover-docker-image.tar.gz
         shell: bash
       - name: Upload Docker image artifact
-        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' }}
         uses: actions/upload-artifact@v4
         with:
           name: linea-prover
