@@ -48,12 +48,14 @@ private constructor(
       }
     }
   }
+
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   private data class RpcClientContext(val rpcClient: JsonRpcClient, var inflightRequests: UInt)
   private data class RpcRequestContext(
     val request: JsonRpcRequest,
-    val promise: Promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>
+    val promise: Promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>,
+    val resultMapper: (Any?) -> Any?
   )
 
   private val clientsPool: List<RpcClientContext> = rpcClients.map { RpcClientContext(it, 0u) }
@@ -93,11 +95,12 @@ private constructor(
   }
 
   private fun enqueueRequest(
-    request: JsonRpcRequest
+    request: JsonRpcRequest,
+    resultMapper: (Any?) -> Any?
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     val resultPromise: Promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> =
       Promise.promise()
-    waitingQueue.add(RpcRequestContext(request, resultPromise))
+    waitingQueue.add(RpcRequestContext(request, resultPromise, resultMapper))
     return resultPromise.future()
   }
 
@@ -105,7 +108,7 @@ private constructor(
     request: JsonRpcRequest,
     resultMapper: (Any?) -> Any?
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
-    val result = enqueueRequest(request)
+    val result = enqueueRequest(request, resultMapper)
     serveNextWaitingInTheQueue()
     return result
   }
@@ -114,21 +117,23 @@ private constructor(
     rpcClientContext: RpcClientContext,
     queuedRequest: RpcRequestContext
   ) {
-    rpcClientContext.rpcClient.makeRequest(queuedRequest.request).onComplete { asyncResult ->
-      try {
-        writeLock.lock()
-        rpcClientContext.inflightRequests--
-      } finally {
-        writeLock.unlock()
+    rpcClientContext.rpcClient
+      .makeRequest(queuedRequest.request, queuedRequest.resultMapper)
+      .onComplete { asyncResult ->
+        try {
+          writeLock.lock()
+          rpcClientContext.inflightRequests--
+        } finally {
+          writeLock.unlock()
+        }
+        try {
+          queuedRequest.promise.handle(asyncResult)
+        } catch (e: Exception) {
+          log.error("Response handler threw error:", e)
+        } finally {
+          serveNextWaitingInTheQueue()
+        }
       }
-      try {
-        queuedRequest.promise.handle(asyncResult)
-      } catch (e: Exception) {
-        log.error("Response handler threw error:", e)
-      } finally {
-        serveNextWaitingInTheQueue()
-      }
-    }
   }
 
   fun close() {

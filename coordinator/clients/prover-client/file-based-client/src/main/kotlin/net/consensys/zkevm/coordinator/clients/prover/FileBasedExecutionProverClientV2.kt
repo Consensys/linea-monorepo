@@ -61,7 +61,7 @@ internal class ExecutionProofRequestDataDecorator(
         getBlockStateRootHash(request.blocks.first().blockNumber.toULong() - 1UL)
       ) { blocksAndBridgeLogs, previousKeccakStateRootHash ->
         BatchExecutionProofRequestDto(
-          zkParentStateRootHash = request.type2StateData.zkParentStateRootHash.toHexString(),
+          zkParentStateRootHash = request.type2StateData.zkParentStateRootHash.encodeHex(),
           keccakParentStateRootHash = previousKeccakStateRootHash,
           conflatedExecutionTracesFile = request.tracesResponse.tracesFileName,
           tracesEngineVersion = request.tracesResponse.tracesEngineVersion,

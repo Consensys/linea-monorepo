@@ -11,23 +11,47 @@ import net.consensys.decodeHex
 import net.consensys.fromHexString
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponseException
+import net.consensys.linea.jsonrpc.client.JsonRpcClientFactory
 import net.consensys.linea.jsonrpc.client.JsonRpcV2Client
+import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.net.URI
 
 class StateManagerV1JsonRpcClient(
   private val rpcClient: JsonRpcV2Client,
-  private val zkStateManagerVersion: String
+  private val zkStateManagerVersion: String,
+  private val log: Logger = LogManager.getLogger(StateManagerV1JsonRpcClient::class.java)
 ) : StateManagerClientV1 {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+
+  companion object {
+    fun create(
+      rpcClientFactory: JsonRpcClientFactory,
+      endpoints: List<URI>,
+      maxInflightRequestsPerClient: UInt,
+      requestRetry: RequestRetryConfig,
+      zkStateManagerVersion: String,
+      logger: Logger = LogManager.getLogger(StateManagerV1JsonRpcClient::class.java)
+    ): StateManagerV1JsonRpcClient {
+      return StateManagerV1JsonRpcClient(
+        rpcClient = rpcClientFactory.createJsonRpcV2Client(
+          endpoints = endpoints,
+          maxInflightRequestsPerClient = maxInflightRequestsPerClient,
+          retryConfig = requestRetry,
+          log = logger,
+          shallRetryRequestsClientBasePredicate = { it is Err }
+        ),
+        zkStateManagerVersion = zkStateManagerVersion
+      )
+    }
+  }
 
   override fun rollupGetHeadBlockNumber(): SafeFuture<ULong> {
     return rpcClient
       .makeRequest(
         method = "rollup_getZkEVMBlockNumber",
         params = emptyList<Unit>(),
-        shallRetryRequestPredicate = { it is Err },
         resultMapper = { ULong.fromHexString(it as String) }
       )
   }
@@ -48,8 +72,7 @@ class StateManagerV1JsonRpcClient(
       .makeRequest(
         method = "rollup_getZkEVMStateMerkleProofV0",
         params = params,
-        shallRetryRequestPredicate = { it is Err },
-        resultMapper = { it as JsonNode; parseZkEVMStateMerkleProofResponse(it) }
+        resultMapper = ::parseZkEVMStateMerkleProofResponse
       )
   }
 
@@ -97,8 +120,9 @@ class StateManagerV1JsonRpcClient(
   }
 
   private fun parseZkEVMStateMerkleProofResponse(
-    result: JsonNode
+    result: Any?
   ): GetZkEVMStateMerkleProofResponse {
+    result as JsonNode
     return GetZkEVMStateMerkleProofResponse(
       zkStateManagerVersion = result.get("zkStateManagerVersion").asText(),
       zkStateMerkleProof = result.get("zkStateMerkleProof") as ArrayNode,
