@@ -49,7 +49,7 @@ services:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu \
+        /opt/besu/bin/besu-untuned \
         --config-file=/var/lib/besu/sequencer.config.toml \
         --node-private-key-file="/var/lib/besu/key" \
         --plugin-linea-l1-polling-interval="PT12S" \
@@ -118,7 +118,7 @@ services:
     networks:
       linea:
         ipv4_address: 11.11.11.209
-  
+
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
@@ -145,7 +145,7 @@ services:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu \
+        /opt/besu/bin/besu-untuned \
         --config-file=/var/lib/besu/l2-node-besu.config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
         --plugin-linea-l1-polling-interval="PT12S" \
@@ -425,7 +425,7 @@ services:
   l1-el-node:
     container_name: l1-el-node
     hostname: l1-el-node
-    image: hyperledger/besu:24.6.0
+    image: hyperledger/besu:24.10.0
     profiles: [ "l1", "debug" ]
     depends_on:
       l1-node-genesis-generator:
@@ -437,7 +437,11 @@ services:
       retries: 120
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
-    command: [ "--config-file=/config/config.toml" ]
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu-untuned --config-file=/config/config.toml
     volumes:
       - ./config/l1-node/el/besu.key:/config/keys/besu.key:ro
       - ./config/l1-node/el/config.toml:/config/config.toml:ro
@@ -560,7 +564,7 @@ services:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu \
+        /opt/besu/bin/besu-untuned \
         --config-file=/var/lib/besu/zkbesu-config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
         --plugin-shomei-http-host="11.11.11.114" \
