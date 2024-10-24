@@ -22,8 +22,9 @@ interface Client<Request, Response> {
   fun makeRequest(request: Request): Response
 }
 
-interface AsyncClient<Request, Response> {
-  fun makeRequest(request: Request): SafeFuture<Response>
+interface ClientRequest<Response>
+interface AsyncClient<ReqSupperType> {
+  fun <Response> makeRequest(request: ClientRequest<Response>): SafeFuture<Response>
 }
 
 fun <T, E : ClientError> SafeFuture<Result<T, ErrorResponse<E>>>.unwrapResultMonad(): SafeFuture<T> {

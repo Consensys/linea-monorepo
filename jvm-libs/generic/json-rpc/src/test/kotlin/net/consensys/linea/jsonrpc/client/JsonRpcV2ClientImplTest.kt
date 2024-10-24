@@ -37,7 +37,6 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
 import java.net.ConnectException
 import java.net.URI
-import java.net.URL
 import java.util.concurrent.ExecutionException
 import java.util.function.Predicate
 import kotlin.time.Duration
@@ -54,7 +53,6 @@ class JsonRpcV2ClientImplTest {
   private lateinit var wiremock: WireMockServer
   private val path = "/api/v1?appKey=1234"
   private lateinit var meterRegistry: SimpleMeterRegistry
-  private lateinit var endpoint: URL
   private val defaultRetryConfig = retryConfig(maxRetries = 2u, timeout = 8.seconds, backoffDelay = 5.milliseconds)
 
   private val defaultObjectMapper = jacksonObjectMapper()
@@ -85,10 +83,9 @@ class JsonRpcV2ClientImplTest {
   ): JsonRpcV2Client {
     wiremock = WireMockServer(WireMockConfiguration.options().dynamicPort())
     wiremock.start()
-    endpoint = URI(wiremock.baseUrl() + path).toURL()
 
-    return factory.createV2(
-      endpoints = setOf(endpoint),
+    return factory.createJsonRpcV2Client(
+      endpoints = listOf(URI(wiremock.baseUrl() + path)),
       retryConfig = retryConfig,
       requestObjectMapper = requestObjectMapper,
       responseObjectMapper = responseObjectMapper,

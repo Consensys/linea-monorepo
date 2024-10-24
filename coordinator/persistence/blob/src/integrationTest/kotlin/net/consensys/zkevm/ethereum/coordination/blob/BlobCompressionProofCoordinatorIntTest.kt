@@ -1,5 +1,7 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
+import build.linea.clients.GetZkEVMStateMerkleProofResponse
+import build.linea.clients.StateManagerClientV1
 import build.linea.domain.BlockIntervals
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -9,12 +11,11 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import net.consensys.ByteArrayExt
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
-import net.consensys.zkevm.coordinator.clients.GetZkEVMStateMerkleProofResponse
-import net.consensys.zkevm.coordinator.clients.Type2StateManagerClient
 import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
@@ -74,7 +75,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
   )
   private var expectedBlobCompressionProofResponse: BlobCompressionProof? = null
 
-  private val zkStateClientMock = mock<Type2StateManagerClient>()
+  private val zkStateClientMock = mock<StateManagerClientV1>()
   private val blobCompressionProverClientMock = mock<BlobCompressionProverClientV2>()
   private val blobZkStateProvider = mock<BlobZkStateProvider>()
   private lateinit var mockShnarfCalculator: BlobShnarfCalculator
@@ -95,15 +96,15 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
         connection = sqlClient,
         clock = fixedClock
       )
-    whenever(zkStateClientMock.rollupGetZkEVMStateMerkleProof(any(), any()))
+    whenever(zkStateClientMock.rollupGetStateMerkleProof(any()))
       .thenAnswer {
         SafeFuture.completedFuture(
           Ok(
             GetZkEVMStateMerkleProofResponse(
               zkStateManagerVersion = zkStateManagerVersion,
               zkStateMerkleProof = zkStateMerkleProof,
-              zkParentStateRootHash = Bytes32.random(),
-              zkEndStateRootHash = Bytes32.random()
+              zkParentStateRootHash = ByteArrayExt.random32(),
+              zkEndStateRootHash = ByteArrayExt.random32()
             )
           )
         )
