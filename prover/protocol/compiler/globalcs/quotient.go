@@ -238,7 +238,11 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				if !isNatural {
 					witness = pol.GetColAssignment(run)
 				}
-				witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
+
+				ch := parallel.ExecutePool(func() {
+					witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
+				})
+				<-ch
 
 				lock.Lock()
 				coeffs[name] = witness
@@ -263,7 +267,15 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 				// normal case for interleaved or repeated columns
 				witness := pol.GetColAssignment(run)
-				witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
+
+				ch := parallel.ExecutePool(
+					func() {
+						witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
+					},
+				)
+
+				<-ch
+
 				name := pol.GetColID()
 				lock.Lock()
 				coeffs[name] = witness
@@ -382,8 +394,14 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 					// else it's the first value of j that sees it. so we compute the
 					// coset reevaluation.
-					reevaledRoot := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
-					computedReeval.Store(name, reevaledRoot)
+					ch := parallel.ExecutePool(
+						func() {
+							reevaledRoot := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
+							computedReeval.Store(name, reevaledRoot)
+						},
+					)
+
+					<-ch
 
 					wg.Done()
 				}
@@ -444,8 +462,12 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 						utils.Panic("handle %v not found in the coeffs\n", name)
 					}
 
-					res := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
-					computedReeval.Store(name, res)
+					ch := parallel.ExecutePool(func() {
+						res := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
+						computedReeval.Store(name, res)
+					})
+
+					<-ch
 
 					wg.Done()
 				}
