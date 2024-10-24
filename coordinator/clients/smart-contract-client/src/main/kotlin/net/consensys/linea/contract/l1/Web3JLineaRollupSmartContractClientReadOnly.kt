@@ -4,6 +4,7 @@ import net.consensys.encodeHex
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.contract.LineaRollup
+import net.consensys.linea.contract.LineaRollupV6
 import net.consensys.toBigInteger
 import net.consensys.toULong
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
@@ -13,6 +14,8 @@ import org.apache.logging.log4j.Logger
 import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
+import org.web3j.tx.Contract
+import org.web3j.tx.exceptions.ContractCallException
 import org.web3j.tx.gas.StaticGasProvider
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
@@ -34,41 +37,76 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
 ) : LineaRollupSmartContractClientReadOnly {
 
   protected fun contractClientAtBlock(blockParameter: BlockParameter): LineaRollup {
-    return LineaRollup.load(
-      contractAddress,
-      web3j,
-      fakeCredentials,
-      StaticGasProvider(BigInteger.ZERO, BigInteger.ZERO)
-    ).apply {
-      this.setDefaultBlockParameter(blockParameter.toWeb3j())
-    }
+    return contractClientAtBlock(blockParameter, LineaRollup::class.java)
+  }
+
+  protected fun <T : Contract> contractClientAtBlock(blockParameter: BlockParameter, contract: Class<T>): T {
+    @Suppress("UNCHECKED_CAST")
+    return when {
+      LineaRollupV6::class.java.isAssignableFrom(contract) -> LineaRollupV6.load(
+        contractAddress,
+        web3j,
+        fakeCredentials,
+        StaticGasProvider(BigInteger.ZERO, BigInteger.ZERO)
+      ).apply {
+        this.setDefaultBlockParameter(blockParameter.toWeb3j())
+      }
+
+      LineaRollup::class.java.isAssignableFrom(contract) -> LineaRollup.load(
+        contractAddress,
+        web3j,
+        fakeCredentials,
+        StaticGasProvider(BigInteger.ZERO, BigInteger.ZERO)
+      ).apply {
+        this.setDefaultBlockParameter(blockParameter.toWeb3j())
+      }
+
+      else -> throw IllegalArgumentException("Unsupported contract type: ${contract::class.java}")
+    } as T
   }
 
   protected val smartContractVersionCache: AtomicReference<LineaContractVersion> =
     AtomicReference(fetchSmartContractVersion().get())
 
   private fun getSmartContractVersion(): SafeFuture<LineaContractVersion> {
-    return if (smartContractVersionCache.get() == LineaContractVersion.V5) {
+    return if (smartContractVersionCache.get() == LineaContractVersion.V6) {
       // once upgraded, it's not downgraded
-      SafeFuture.completedFuture(LineaContractVersion.V5)
+      SafeFuture.completedFuture(LineaContractVersion.V6)
     } else {
-      fetchSmartContractVersion().thenPeek { contractLatestVersion ->
-        if (contractLatestVersion != smartContractVersionCache.get()) {
-          log.info(
-            "Smart contract upgraded: prevVersion={} upgradedVersion={}",
-            smartContractVersionCache.get(),
-            contractLatestVersion
-          )
+      fetchSmartContractVersion()
+        .thenPeek { contractLatestVersion ->
+          if (contractLatestVersion != smartContractVersionCache.get()) {
+            log.info(
+              "Smart contract upgraded: prevVersion={} upgradedVersion={}",
+              smartContractVersionCache.get(),
+              contractLatestVersion
+            )
+          }
+          smartContractVersionCache.set(contractLatestVersion)
         }
-        smartContractVersionCache.set(contractLatestVersion)
-      }
     }
   }
 
   private fun fetchSmartContractVersion(): SafeFuture<LineaContractVersion> {
-    // FIXME: this is a temporary solution to determine the smart contract version.
-    //  It should rely on events
-    return SafeFuture.completedFuture(LineaContractVersion.V5)
+    return contractClientAtBlock(BlockParameter.Tag.LATEST, LineaRollupV6::class.java)
+      .CONTRACT_VERSION()
+      .sendAsync()
+      .toSafeFuture()
+      .thenApply { version ->
+        when {
+          version.startsWith("6") -> LineaContractVersion.V6
+          else -> throw IllegalStateException("Unsupported contract version: $version")
+        }
+      }
+      .exceptionallyCompose { error ->
+        if (error.cause is ContractCallException) {
+          // this means that the contract is still in V5 and does not have CONTRACT_VERSION method available yet
+          // defaulting to V6
+          SafeFuture.completedFuture(LineaContractVersion.V5)
+        } else {
+          SafeFuture.failedFuture(error)
+        }
+      }
   }
 
   override fun getAddress(): String = contractAddress
@@ -94,11 +132,18 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
     return contractClientAtBlock(blockParameter).rollingHashes(messageNumber.toBigInteger()).sendAsync().toSafeFuture()
   }
 
-  override fun findBlobFinalBlockNumberByShnarf(blockParameter: BlockParameter, shnarf: ByteArray): SafeFuture<ULong?> {
-    return contractClientAtBlock(blockParameter)
-      .shnarfFinalBlockNumbers(shnarf).sendAsync()
-      .thenApply { if (it == BigInteger.ZERO) null else it.toULong() }
-      .toSafeFuture()
+  override fun isBlobShnarfPresent(blockParameter: BlockParameter, shnarf: ByteArray): SafeFuture<Boolean> {
+    return getVersion()
+      .thenCompose { version ->
+        if (version == LineaContractVersion.V5) {
+          contractClientAtBlock(blockParameter, LineaRollup::class.java).shnarfFinalBlockNumbers(shnarf)
+        } else {
+          contractClientAtBlock(blockParameter, LineaRollupV6::class.java).blobShnarfExists(shnarf)
+        }
+          .sendAsync()
+          .thenApply { it != BigInteger.ZERO }
+          .toSafeFuture()
+      }
   }
 
   override fun blockStateRootHash(blockParameter: BlockParameter, lineaL2BlockNumber: ULong): SafeFuture<ByteArray> {

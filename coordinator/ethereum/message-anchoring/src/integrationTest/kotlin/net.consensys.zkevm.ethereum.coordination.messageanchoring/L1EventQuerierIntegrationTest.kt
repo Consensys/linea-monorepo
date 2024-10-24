@@ -8,6 +8,7 @@ import net.consensys.linea.contract.LineaRollup
 import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.toBigInteger
 import net.consensys.toULong
+import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.Web3jClientManager
 import org.apache.tuweni.bytes.Bytes32
@@ -35,7 +36,9 @@ class L1EventQuerierIntegrationTest {
 
   @BeforeEach
   fun beforeEach() {
-    val deploymentResult = ContractsManager.get().deployLineaRollup().get()
+    val deploymentResult = ContractsManager.get()
+      .deployLineaRollup(contractVersion = LineaContractVersion.V5)
+      .get()
     testLineaRollupContractAddress = deploymentResult.contractAddress
     web3Client = Web3jClientManager.l1Client
     @Suppress("DEPRECATION")
