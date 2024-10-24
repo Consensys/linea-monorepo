@@ -2,13 +2,14 @@ export const name = 'Linea';
 export const version = '0.0.1';
 export const license = 'MIT';
 
-const WETH_ADDR = '0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f';
-const USDC_ADDR = '0x176211869cA2b568f2A7D4EE941E073a821EE1ff';
-const FROM_ADDR = '0x8C8766c1Ac7308604C80387f1bF8128386b64de9';
-const TO_ADDR = '0xB1c25ff9F709cA3cd88D398586dd02aC62fce5BB'
+const WETH_ADDR = process.env.WETH_ADDR || '0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f';
+const USDC_ADDR = process.env.USDC_ADDR || '0x176211869cA2b568f2A7D4EE941E073a821EE1ff';
+const FROM_ADDR = process.env.FROM_ADDR || '0x8C8766c1Ac7308604C80387f1bF8128386b64de9';
+const TO_ADDR = process.env.TO_ADDR || '0xB1c25ff9F709cA3cd88D398586dd02aC62fce5BB';
 
 const PANCAKE_SWAP_ROUTER = '0x1b81D678ffb9C0263b24A97847620C99d213eB14';
 type TxType = 'EthTransfer' | 'ERC20Transfer' | 'ERC20Swap';
+
 const PANCAKE_SWAP_EXACT_INPUT_SINGLE_ABI = [
   {
     "inputs": [
@@ -71,7 +72,7 @@ const PANCAKE_SWAP_EXACT_INPUT_SINGLE_ABI = [
     "stateMutability": "payable",
     "type": "function"
   }
-]
+];
 
 const USDC_CONTRACT_TRANSFER_ABI = [
   {
@@ -98,7 +99,7 @@ const USDC_CONTRACT_TRANSFER_ABI = [
     "stateMutability": "nonpayable",
     "type": "function"
   }
-]
+];
 
 export function setup(sdk: Context) {
   sdk.ethers.addProvider('linea', 'https://rpc.linea.build');
@@ -107,7 +108,8 @@ export function setup(sdk: Context) {
     const weiPerGas = await sdk.ethers.getProvider('linea').getGasPrice();
     const ethPrice = await sdk.defiLlama.getCurrentPrice('coingecko', 'ethereum');
 
-    return (weiPerGas * gasAmt * ethPrice) / 1e18;
+    // Fix: Convert wei to ether before multiplying by ethPrice in USD
+    return ((weiPerGas * gasAmt) / 1e18) * ethPrice;
   };
 
   const getGasAmount = async (txType: TxType): Promise<number> => {
@@ -123,19 +125,23 @@ export function setup(sdk: Context) {
         data: '0x'
       });
     } else if (txType === 'ERC20Transfer') {
-      return usdcContract.estimateGas.transfer(USDC_ADDR, 1, { from: FROM_ADDR });
+      // Fix: Use TO_ADDR as the recipient in the transfer
+      return usdcContract.estimateGas.transfer(TO_ADDR, 1, { from: FROM_ADDR });
     } else if (txType === 'ERC20Swap') {
       const params = {
         tokenIn: USDC_ADDR,
         tokenOut: WETH_ADDR,
-        fee: '500',
+        // Fix: `fee` should be a number, not a string
+        fee: 500,
         recipient: FROM_ADDR,
-        deadline: 4102401129,
+        deadline: 4102401129, // December 31, 2099
         amountIn: 9447000,
         amountOutMinimum: 0,
-        sqrtPriceLimitX96: 0,
-      }
-      // swap 1 USDC to ETH using KyberSwap with transaction deadline of Dec 31, 2099
+        sqrtPriceLimitX96: 0
+      };
+
+      // Fix: Comment correction to PancakeSwap
+      // swap 1 USDC to ETH using PancakeSwap with transaction deadline of Dec 31, 2099
       return pancakeSwapContract.estimateGas.exactInputSingle(params, {
         from: FROM_ADDR,
       });
