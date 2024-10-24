@@ -25,23 +25,27 @@ class StateManagerV1JsonRpcClient(
   private val log: Logger = LogManager.getLogger(StateManagerV1JsonRpcClient::class.java)
 ) : StateManagerClientV1 {
 
-  constructor(
-    rpcClientFactory: JsonRpcClientFactory,
-    endpoints: List<URI>,
-    maxInflightRequestsPerClient: UInt,
-    requestRetry: RequestRetryConfig,
-    zkStateManagerVersion: String,
-    logger: Logger = LogManager.getLogger(StateManagerV1JsonRpcClient::class.java)
-  ) : this(
-    rpcClient = rpcClientFactory.createJsonRpcV2Client(
-      endpoints = endpoints,
-      maxInflightRequestsPerClient = maxInflightRequestsPerClient,
-      retryConfig = requestRetry,
-      log = logger,
-      shallRetryRequestsClientBasePredicate = { it is Err }
-    ),
-    zkStateManagerVersion = zkStateManagerVersion
-  )
+  companion object {
+    fun create(
+      rpcClientFactory: JsonRpcClientFactory,
+      endpoints: List<URI>,
+      maxInflightRequestsPerClient: UInt,
+      requestRetry: RequestRetryConfig,
+      zkStateManagerVersion: String,
+      logger: Logger = LogManager.getLogger(StateManagerV1JsonRpcClient::class.java)
+    ): StateManagerV1JsonRpcClient {
+      return StateManagerV1JsonRpcClient(
+        rpcClient = rpcClientFactory.createJsonRpcV2Client(
+          endpoints = endpoints,
+          maxInflightRequestsPerClient = maxInflightRequestsPerClient,
+          retryConfig = requestRetry,
+          log = logger,
+          shallRetryRequestsClientBasePredicate = { it is Err }
+        ),
+        zkStateManagerVersion = zkStateManagerVersion
+      )
+    }
+  }
 
   override fun rollupGetHeadBlockNumber(): SafeFuture<ULong> {
     return rpcClient
@@ -68,7 +72,7 @@ class StateManagerV1JsonRpcClient(
       .makeRequest(
         method = "rollup_getZkEVMStateMerkleProofV0",
         params = params,
-        resultMapper = { it as JsonNode; parseZkEVMStateMerkleProofResponse(it) }
+        resultMapper = ::parseZkEVMStateMerkleProofResponse
       )
   }
 
@@ -116,8 +120,9 @@ class StateManagerV1JsonRpcClient(
   }
 
   private fun parseZkEVMStateMerkleProofResponse(
-    result: JsonNode
+    result: Any?
   ): GetZkEVMStateMerkleProofResponse {
+    result as JsonNode
     return GetZkEVMStateMerkleProofResponse(
       zkStateManagerVersion = result.get("zkStateManagerVersion").asText(),
       zkStateMerkleProof = result.get("zkStateMerkleProof") as ArrayNode,

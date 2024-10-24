@@ -401,7 +401,7 @@ class L1DependentApp(
   private val conflationService: ConflationService =
     ConflationServiceImpl(calculator = conflationCalculator, metricsFacade = metricsFacade)
 
-  private val zkStateClient: StateManagerClientV1 = StateManagerV1JsonRpcClient(
+  private val zkStateClient: StateManagerClientV1 = StateManagerV1JsonRpcClient.create(
     rpcClientFactory = httpJsonRpcClientFactory,
     endpoints = configs.stateManager.endpoints.map { it.toURI() },
     maxInflightRequestsPerClient = configs.stateManager.requestLimitPerEndpoint,
