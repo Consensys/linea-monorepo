@@ -83,7 +83,7 @@ jobs:
           images: consensys/linea-traces-api-facade
       - name: Build for testing
         uses: docker/build-push-action@v6
-        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' }}
         with:
           context: .
           build-contexts: jar=./traces-api-facade/app/build/libs/
@@ -93,12 +93,12 @@ jobs:
           push: false
           tags: ${{ env.TAGS }}
       - name: Save Docker image as artifact
-        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' }}
         run: |
           docker save ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }} | gzip > linea-traces-api-facade-docker-image.tar.gz
         shell: bash
       - name: Upload Docker image artifact
-        if: ${{ env.PUSH_IMAGE == 'false' && github.event_name == 'pull_request' }}
+        if: ${{ env.PUSH_IMAGE == 'false' }}
         uses: actions/upload-artifact@v4
         with:
           name: linea-traces-api-facade
