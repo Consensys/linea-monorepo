@@ -100,8 +100,8 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
       }
       .exceptionallyCompose { error ->
         if (error.cause is ContractCallException) {
-          // this means that the contract is still in V5 and does not have CONTRACT_VERSION method available yet
-          // defaulting to V6
+          // means that contract does not have CONTRACT_VERSION method available yet
+          // so it is still V5, so defaulting to V5
           SafeFuture.completedFuture(LineaContractVersion.V5)
         } else {
           SafeFuture.failedFuture(error)
