@@ -239,11 +239,11 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 
 		// precompute the lagrange polynomials
 		lagranges = getLagrangesPolys(hs)
-		pool      = mempool.CreateFromSyncPool(ctx.targetSize).Prewarm(runtime.NumCPU())
+		pool      = mempool.CreateFromSyncPool(ctx.targetSize).Prewarm(runtime.GOMAXPROCS(0))
 		mainWg    = &sync.WaitGroup{}
 	)
 
-	mainWg.Add(runtime.NumCPU())
+	mainWg.Add(runtime.GOMAXPROCS(0))
 
 	parallel.ExecuteFromChan(len(ctx.polys), func(wg *sync.WaitGroup, index *parallel.AtomicCounter) {
 
@@ -608,9 +608,9 @@ func (ctx mptsCtx) gnarkVerify(api frontend.API, c *wizard.WizardVerifierCircuit
 
 // collect all the alleged opening values in a map, so that we can utilize them later.
 func (ctx mptsCtx) getYsHs(
-// func that can be used to return the parameters of a given query
+	// func that can be used to return the parameters of a given query
 	getParam func(ifaces.QueryID) query.UnivariateEvalParams,
-// func that can be used to return the query's metadata given its name
+	// func that can be used to return the query's metadata given its name
 	getQuery func(ifaces.QueryID) query.UnivariateEval,
 
 ) (
