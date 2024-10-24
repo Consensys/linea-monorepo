@@ -6,18 +6,13 @@ on:
       commit_tag:
         required: true
         type: string
-      last_commit_tag:
-        required: true
-        type: string
-      common_ancestor_tag:
-        required: true
-        type: string
       develop_tag:
         required: true
         type: string
-      untested_tag_suffix:
-        required: true
-        type: string
+      push_image:
+        required: false
+        type: boolean
+        default: false
       coordinator_changed:
         required: true
         type: string
@@ -50,9 +45,9 @@ on:
         type: string
     secrets:
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
-        required: true
+        required: false
 
 jobs:
   coordinator:
@@ -60,11 +55,9 @@ jobs:
     if: ${{ always() && (inputs.coordinator_changed == 'true' || inputs.coordinator_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
-      last_commit_tag: ${{ inputs.last_commit_tag }}
-      common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
       develop_tag: ${{ inputs.develop_tag }}
-      untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
       image_name: consensys/linea-coordinator
+      push_image: ${{ inputs.push_image }}
     secrets: inherit
 
   prover:
@@ -72,11 +65,9 @@ jobs:
     if: ${{ always() && (inputs.prover_changed == 'true' || inputs.prover_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
-      last_commit_tag: ${{ inputs.last_commit_tag }}
-      common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
       develop_tag: ${{ inputs.develop_tag }}
-      untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
       image_name: consensys/linea-prover
+      push_image: ${{ inputs.push_image }}
     secrets: inherit
 
   postman:
@@ -84,11 +75,9 @@ jobs:
     if: ${{ always() && (inputs.postman_changed == 'true' || inputs.postman_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
-      last_commit_tag: ${{ inputs.last_commit_tag }}
-      common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
       develop_tag: ${{ inputs.develop_tag }}
-      untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
       image_name: consensys/linea-postman
+      push_image: ${{ inputs.push_image }}
     secrets: inherit
 
   traces-api-facade:
@@ -96,11 +85,9 @@ jobs:
     if: ${{ always() && (inputs.traces_api_facade_changed == 'true' || inputs.traces_api_facade_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
-      last_commit_tag: ${{ inputs.last_commit_tag }}
-      common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
       develop_tag: ${{ inputs.develop_tag }}
-      untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
       image_name: consensys/linea-traces-api-facade
+      push_image: ${{ inputs.push_image }}
     secrets: inherit
 
   transaction_exclusion_api:
@@ -108,9 +95,7 @@ jobs:
     if: ${{ always() && (inputs.transaction_exclusion_api_changed == 'true' || inputs.transaction_exclusion_api_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
-      last_commit_tag: ${{ inputs.last_commit_tag }}
-      common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
       develop_tag: ${{ inputs.develop_tag }}
-      untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
       image_name: consensys/linea-transaction-exclusion-api
+      push_image: ${{ inputs.push_image }}
     secrets: inherit
