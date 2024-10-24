@@ -13,8 +13,6 @@ const parseUSDCEvents = async (
   storedTokens: NetworkTokens,
   networkType: NetworkType,
 ) => {
-  const newHistory: TransactionHistory[] = [];
-
   if (
     networkType !== NetworkType.MAINNET &&
     networkType !== NetworkType.SEPOLIA &&
@@ -23,41 +21,52 @@ const parseUSDCEvents = async (
     throw new Error("Invalid network type");
   }
 
-  for (const event of events) {
-    const receipt = await client.getTransactionReceipt({
-      hash: event.transactionHash,
-    });
-    if (!receipt) {
-      log.warn(`No receipt found for tx ${event.transactionHash}`);
+  const history = await Promise.all(
+    events.map(async (event) => {
+      const receipt = await client.getTransactionReceipt({
+        hash: event.transactionHash,
+      });
+      if (!receipt) {
+        log.warn(`No receipt found for tx ${event.transactionHash}`);
+        return null;
+      }
+
+      const tokenAddress = getAddress(receipt.logs[0].address);
+      const token = findTokenByAddress(tokenAddress, storedTokens, networkType);
+
+      // Token list may change, skip old tokens
+      if (!token) {
+        log.warn("Token not found");
+        return null;
+      }
+
+      const { timestamp } = await client.getBlock({
+        blockNumber: receipt.blockNumber,
+      });
+
+      const logHistory: TransactionHistory = {
+        transactionHash: event.transactionHash,
+        fromChain,
+        toChain,
+        tokenAddress,
+        token,
+        amount: event.args.amount,
+        recipient: event.args.to,
+        pending: true,
+        event,
+        timestamp,
+      };
+
+      return logHistory;
+    }),
+  );
+
+  const newHistory: TransactionHistory[] = [];
+
+  for (const event of history) {
+    if (event) {
+      newHistory.push(event);
     }
-
-    const tokenAddress = getAddress(receipt.logs[0].address);
-    const token = findTokenByAddress(tokenAddress, storedTokens, networkType);
-
-    // Token list may change, skip old tokens
-    if (!token) {
-      log.warn("Token not found");
-      continue;
-    }
-
-    // Get block timestamp
-    const blockInfo = await client.getBlock({
-      blockNumber: receipt.blockNumber,
-    });
-
-    const logHistory: TransactionHistory = {
-      transactionHash: event.transactionHash,
-      fromChain,
-      toChain,
-      tokenAddress,
-      token,
-      amount: event.args.amount,
-      recipient: event.args.to,
-      pending: true,
-      event,
-      timestamp: blockInfo.timestamp,
-    };
-    newHistory.push(logHistory);
   }
 
   return newHistory;
