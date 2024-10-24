@@ -205,7 +205,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 		stopTimer = profiling.LogTimer("Computing the coeffs %v pols of size %v", len(ctx.AllInvolvedColumns), ctx.DomainSize)
 		lock      = sync.Mutex{}
 		lockRun   = sync.Mutex{}
-		pool      = mempool.CreateFromSyncPool(symbolic.MaxChunkSize).Prewarm(runtime.NumCPU() * ctx.MaxNbExprNode)
+		pool      = mempool.CreateFromSyncPool(symbolic.MaxChunkSize).Prewarm(runtime.GOMAXPROCS(0) * ctx.MaxNbExprNode)
 		largePool = mempool.CreateFromSyncPool(ctx.DomainSize).Prewarm(len(ctx.AllInvolvedColumns))
 	)
 

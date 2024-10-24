@@ -34,7 +34,7 @@ func TransversalHash(
 		// To optimize memory usage, we limit ourself to hash only 16 columns per
 		// iteration.
 		numColumnPerJob int = 16
-		numWorker           = runtime.NumCPU()
+		numWorker           = runtime.GOMAXPROCS(0)
 
 		// In theory, it should be a div ceil. But in practice we only process power's
 		// of two number of columns. If that's not the case, then the function will panic

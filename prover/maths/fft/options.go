@@ -40,7 +40,7 @@ func fftOptions(opts ...Option) fftConfig {
 	// apply options
 	opt := fftConfig{
 		coset:   false,
-		nbTasks: runtime.NumCPU(),
+		nbTasks: runtime.GOMAXPROCS(0),
 	}
 	for _, option := range opts {
 		opt = option(opt)
