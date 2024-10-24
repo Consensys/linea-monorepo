@@ -9,12 +9,16 @@ export type BaseConfig = {
 
 export type L1Config = BaseConfig & {
   lineaRollupAddress: string;
+  tokenBridgeAddress: string;
+  l1TokenAddress: string;
 };
 
 export type L2Config = BaseConfig & {
   l2MessageServiceAddress: string;
   l2TestContractAddress?: string;
   besuNodeRpcUrl?: URL;
+  tokenBridgeAddress: string;
+  l2TokenAddress: string;
   shomeiEndpoint?: URL;
   shomeiFrontendEndpoint?: URL;
   sequencerEndpoint?: URL;

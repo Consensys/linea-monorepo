@@ -113,8 +113,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await tryStoreProxyAdminAddress(network.name, contractName, proxyAdminAddress);
 
-  console.log(`TokenBridge deployed on ${network.name}, at address: ${tokenBridgeAddress}`);
-
+  if (process.env.TOKEN_BRIDGE_L1 === "true") {
+    console.log(`L1 TokenBridge deployed on ${network.name}, at address: ${tokenBridgeAddress}`);
+  } else {
+    console.log(`L2 TokenBridge deployed on ${network.name}, at address: ${tokenBridgeAddress}`);
+  }
   await tryVerifyContract(tokenBridgeAddress);
 };
 export default func;
