@@ -181,6 +181,7 @@ class CoordinatorConfigTest {
         "3b174434" to "MessageHashesListLengthHigherThanOneHundred",
         "ca389c44" to "InvalidProofOrProofVerificationRanOutOfGas",
         "42ab979d" to "ParentBlobNotSubmitted",
+        "edeae83c" to "FinalBlobNotSubmitted",
         // L2 Message Service
         "6446cc9c" to "MessageHashesListLengthIsZero",
         "d39e75f9" to "L1MessageNumberSynchronizationWrong",
