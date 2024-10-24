@@ -7,7 +7,8 @@ import net.consensys.zkevm.ethereum.gaspricing.GasPriceCaps
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 enum class LineaContractVersion : Comparable<LineaContractVersion> {
-  V5 // "EIP4844 multiple blobs per tx support - version in all networks",
+  V5, // "EIP4844 multiple blobs per tx support - version in all networks"
+  V6 // more efficient data submission and new events for state recovery
 }
 
 interface LineaRollupSmartContractClientReadOnly : ContractVersionProvider<LineaContractVersion> {
@@ -30,12 +31,14 @@ interface LineaRollupSmartContractClientReadOnly : ContractVersionProvider<Linea
   ): SafeFuture<ByteArray>
 
   /**
-   * Get the final block number of a shnarf
+   * Checks if a blob's shnarf is already present in the smart contract
+   * It meant blob was sent to l1 and accepted by the smart contract.
+   * Note: snarf in the future may be cleanned up after finalization.
    */
-  fun findBlobFinalBlockNumberByShnarf(
+  fun isBlobShnarfPresent(
     blockParameter: BlockParameter = BlockParameter.Tag.LATEST,
     shnarf: ByteArray
-  ): SafeFuture<ULong?>
+  ): SafeFuture<Boolean>
 
   /**
    * Gets Type 2 StateRootHash for Linea Block

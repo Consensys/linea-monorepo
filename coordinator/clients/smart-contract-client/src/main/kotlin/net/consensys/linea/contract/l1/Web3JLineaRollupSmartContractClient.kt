@@ -105,53 +105,39 @@ class Web3JLineaRollupSmartContractClient internal constructor(
       }
   }
 
-  override fun submitBlobs(
-    blobs: List<BlobRecord>,
-    gasPriceCaps: GasPriceCaps?
-  ): SafeFuture<String> {
-    return submitBlobsV5(blobs, gasPriceCaps)
-  }
-
   /**
    * Sends EIP4844 blob carrying transaction to the smart contract.
    * Uses SMC `submitBlobs` function that supports multiple blobs per call.
    */
-  private fun submitBlobsV5(
+  override fun submitBlobs(
     blobs: List<BlobRecord>,
     gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String> {
-    require(blobs.size in 1..6) { "Blobs size=${blobs.size} must be between 1 and 6." }
-    val function = buildSubmitBlobsFunction(
-      blobs
-    )
-
-    return helper.sendBlobCarryingTransactionAndGetTxHash(
-      function = function,
-      blobs = blobs.map { it.blobCompressionProof!!.compressedData },
-      gasPriceCaps = gasPriceCaps
-    )
+    return getVersion()
+      .thenCompose { version ->
+        val function = buildSubmitBlobsFunction(version, blobs)
+        helper.sendBlobCarryingTransactionAndGetTxHash(
+          function = function,
+          blobs = blobs.map { it.blobCompressionProof!!.compressedData },
+          gasPriceCaps = gasPriceCaps
+        )
+      }
   }
 
   override fun submitBlobsEthCall(
     blobs: List<BlobRecord>,
     gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String?> {
-    return submitBlobsEthCallImpl(blobs, gasPriceCaps)
-  }
-
-  private fun submitBlobsEthCallImpl(
-    blobs: List<BlobRecord>,
-    gasPriceCaps: GasPriceCaps? = null
-  ): SafeFuture<String?> {
-    val function = buildSubmitBlobsFunction(blobs)
-
-    val transaction = helper.createEip4844Transaction(
-      function,
-      blobs.map { it.blobCompressionProof!!.compressedData }.toWeb3JTxBlob(),
-      gasPriceCaps
-    )
-
-    return web3j.informativeEthCall(transaction, smartContractErrors)
+    return getVersion()
+      .thenCompose { version ->
+        val function = buildSubmitBlobsFunction(version, blobs)
+        val transaction = helper.createEip4844Transaction(
+          function,
+          blobs.map { it.blobCompressionProof!!.compressedData }.toWeb3JTxBlob(),
+          gasPriceCaps
+        )
+        web3j.informativeEthCall(transaction, smartContractErrors)
+      }
   }
 
   override fun finalizeBlocks(
@@ -162,38 +148,22 @@ class Web3JLineaRollupSmartContractClient internal constructor(
     parentL1RollingHashMessageNumber: Long,
     gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String> {
-    return finalizeBlocksV5(
-      aggregation,
-      aggregationLastBlob,
-      parentShnarf,
-      parentL1RollingHash,
-      parentL1RollingHashMessageNumber,
-      gasPriceCaps
-    )
-  }
-
-  private fun finalizeBlocksV5(
-    aggregation: ProofToFinalize,
-    aggregationLastBlob: BlobRecord,
-    parentShnarf: ByteArray,
-    parentL1RollingHash: ByteArray,
-    parentL1RollingHashMessageNumber: Long,
-    gasPriceCaps: GasPriceCaps?
-  ): SafeFuture<String> {
-    val function = buildFinalizeBlobsFunction(
-      aggregation,
-      aggregationLastBlob,
-      parentShnarf,
-      parentL1RollingHash,
-      parentL1RollingHashMessageNumber
-    )
-
-    return SafeFuture.of(
-      helper.sendTransactionAsync(function, BigInteger.ZERO, gasPriceCaps)
-    ).thenApply { result ->
-      throwExceptionIfJsonRpcErrorReturned("eth_sendRawTransaction", result)
-      result.transactionHash
-    }
+    return getVersion()
+      .thenCompose { version ->
+        val function = buildFinalizeBlocksFunction(
+          version,
+          aggregation,
+          aggregationLastBlob,
+          parentShnarf,
+          parentL1RollingHash,
+          parentL1RollingHashMessageNumber
+        )
+        helper.sendTransactionAsync(function, BigInteger.ZERO, gasPriceCaps)
+          .thenApply { result ->
+            throwExceptionIfJsonRpcErrorReturned("eth_sendRawTransaction", result)
+            result.transactionHash
+          }
+      }
   }
 
   override fun finalizeBlocksEthCall(
@@ -203,30 +173,17 @@ class Web3JLineaRollupSmartContractClient internal constructor(
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long
   ): SafeFuture<String?> {
-    return finalizeBlocksEthCallV5(
-      aggregation,
-      aggregationLastBlob,
-      parentShnarf,
-      parentL1RollingHash,
-      parentL1RollingHashMessageNumber
-    )
-  }
-
-  private fun finalizeBlocksEthCallV5(
-    aggregation: ProofToFinalize,
-    aggregationLastBlob: BlobRecord,
-    parentShnarf: ByteArray,
-    parentL1RollingHash: ByteArray,
-    parentL1RollingHashMessageNumber: Long
-  ): SafeFuture<String?> {
-    val function = buildFinalizeBlobsFunction(
-      aggregation,
-      aggregationLastBlob,
-      parentShnarf,
-      parentL1RollingHash,
-      parentL1RollingHashMessageNumber
-    )
-
-    return helper.executeEthCall(function)
+    return getVersion()
+      .thenCompose { version ->
+        val function = buildFinalizeBlocksFunction(
+          version,
+          aggregation,
+          aggregationLastBlob,
+          parentShnarf,
+          parentL1RollingHash,
+          parentL1RollingHashMessageNumber
+        )
+        helper.executeEthCall(function)
+      }
   }
 }

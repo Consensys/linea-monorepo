@@ -61,12 +61,12 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
     vertx: Vertx,
     smartContractVersion: LineaContractVersion
   ) {
-    if (smartContractVersion != LineaContractVersion.V5) {
+    if (listOf(LineaContractVersion.V5, LineaContractVersion.V6).contains(smartContractVersion).not()) {
       // V6 with prover V3 is soon comming, so we will need to update/extend this test setup
-      throw IllegalArgumentException("Only V5 contract version is supported")
+      throw IllegalArgumentException("unsupported contract version=$smartContractVersion!")
     }
     val rollupDeploymentFuture = ContractsManager.get()
-      .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V5)
+      .deployLineaRollup(numberOfOperators = 2, contractVersion = smartContractVersion)
     // load files from FS while smc deploy
     loadBlobsAndAggregations(
       blobsResponsesDir = "$testDataDir/compression/responses",
@@ -90,10 +90,10 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
     )
     aggregationsRepository = AggregationsRepositoryImpl(PostgresAggregationsDao(sqlClient, fakeClock))
 
-    val lineaRollupContractForDataSubmissionV4 = rollupDeploymentResult.rollupOperatorClient
+    val lineaRollupContractForDataSubmissionV5 = rollupDeploymentResult.rollupOperatorClient
 
     @Suppress("DEPRECATION")
-    val alreadySubmittedBlobFilter = L1ShnarfBasedAlreadySubmittedBlobsFilter(lineaRollupContractForDataSubmissionV4)
+    val alreadySubmittedBlobFilter = L1ShnarfBasedAlreadySubmittedBlobsFilter(lineaRollupContractForDataSubmissionV5)
 
     blobSubmissionCoordinator = run {
       BlobSubmissionCoordinator.create(
@@ -105,7 +105,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
         ),
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
-        lineaSmartContractClient = lineaRollupContractForDataSubmissionV4,
+        lineaSmartContractClient = lineaRollupContractForDataSubmissionV5,
         alreadySubmittedBlobsFilter = alreadySubmittedBlobFilter,
         gasPriceCapProvider = FakeGasPriceCapProvider(),
         vertx = vertx,
@@ -115,9 +115,10 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
 
     aggregationFinalizationCoordinator = run {
       lineaRollupContractForAggregationSubmission = MakeFileDelegatedContractsManager
-        .connectToLineaRollupContractV5(
+        .connectToLineaRollupContract(
           rollupDeploymentResult.contractAddress,
           rollupDeploymentResult.rollupOperators[1].txManager
+
         )
 
       val aggregationSubmitter = AggregationSubmitterImpl(
@@ -139,15 +140,6 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
         clock = fakeClock
       )
     }
-  }
-
-  @Test
-  @Timeout(3, timeUnit = TimeUnit.MINUTES)
-  fun `submission works with contract V5`(
-    vertx: Vertx,
-    testContext: VertxTestContext
-  ) {
-    testSubmission(vertx, testContext, LineaContractVersion.V5)
   }
 
   private fun testSubmission(
@@ -179,5 +171,23 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
           }
         testContext.completeNow()
       }.whenException(testContext::failNow)
+  }
+
+  @Test
+  @Timeout(3, timeUnit = TimeUnit.MINUTES)
+  fun `submission works with contract V5`(
+    vertx: Vertx,
+    testContext: VertxTestContext
+  ) {
+    testSubmission(vertx, testContext, LineaContractVersion.V5)
+  }
+
+  @Test
+  @Timeout(3, timeUnit = TimeUnit.MINUTES)
+  fun `submission works with contract V6`(
+    vertx: Vertx,
+    testContext: VertxTestContext
+  ) {
+    testSubmission(vertx, testContext, LineaContractVersion.V6)
   }
 }
