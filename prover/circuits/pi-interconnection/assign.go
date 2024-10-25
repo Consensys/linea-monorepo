@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -304,13 +305,13 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			roots = append(roots, emptyRootHex)
 		}
 
-		aggrPi := r.Aggregation
-		aggrPi.L2MsgRootHashes = roots
-		aggregationPI := aggrPi.Sum(&hshK)
+		aggregationPI := r.Aggregation.Sum(&hshK)
+
 		a.AggregationPublicInput[0] = aggregationPI[:16]
 		a.AggregationPublicInput[1] = aggregationPI[16:]
 	}
 
+	logrus.Infof("generating wizard proof for %d hashes from %d permutations", hshK.NbHashes(), hshK.MaxNbKeccakF())
 	a.Keccak, err = hshK.Assign()
 
 	return

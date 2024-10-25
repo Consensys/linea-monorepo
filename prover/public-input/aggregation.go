@@ -89,7 +89,7 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 
 // GetPublicInputHex computes the public input of the finalization proof
 func (p Aggregation) GetPublicInputHex() string {
-	return utils.HexEncodeToString(p.Sum(sha3.NewLegacyKeccak256()))
+	return utils.HexEncodeToString(p.Sum(nil))
 }
 
 // AggregationFPI holds the same info as public_input.Aggregation, except in parsed form

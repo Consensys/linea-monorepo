@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -87,6 +88,8 @@ func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard
 		nbKeccakF += l/blockNbBytesIn + 1 // extra room for padding
 	}
 
+	logrus.Infof("Public-input interconnection requires %v keccak permutations", nbKeccakF)
+
 	wc := NewWizardVerifierSubCircuit(nbKeccakF, wizardCompilationOpts...)
 
 	return CompiledStrictHasher{
@@ -155,6 +158,14 @@ func (h *StrictHasherCircuit) NewHasher(api frontend.API) StrictHasherSnark {
 
 func (h *StrictHasher) Write(p []byte) (n int, err error) {
 	return h.buffer.Write(p)
+}
+
+func (h *StrictHasher) NbHashes() int {
+	return len(h.ins)
+}
+
+func (h *StrictHasher) MaxNbKeccakF() int {
+	return h.maxNbKeccakF
 }
 
 func (h *StrictHasher) Sum(b []byte) []byte {
