@@ -20,7 +20,8 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class LineaSubmissionEventsClientWeb3jIpml(
   private val logsClient: Web3JLogsClient,
-  private val smartContractAddress: String
+  private val smartContractAddress: String,
+  private val mostRecentBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED
 ) : LineaRollupSubmissionEventsClient {
 
   override fun findDataFinalizedEventContainingBlock(blockNumber: ULong): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
@@ -31,7 +32,7 @@ class LineaSubmissionEventsClientWeb3jIpml(
     // TODO: be less eager on block range to search
     return findDataFinalizedV3Event(
       fromL1BlockNumber = BlockParameter.Tag.EARLIEST,
-      toL1BlockNumber = BlockParameter.Tag.FINALIZED,
+      toL1BlockNumber = mostRecentBlockTag,
       startBlockNumber = blockNumber
     )
   }
@@ -41,7 +42,7 @@ class LineaSubmissionEventsClientWeb3jIpml(
   ): SafeFuture<FinalizationAndDataEventsV3?> {
     return findDataFinalizedV3Event(
       fromL1BlockNumber = BlockParameter.Tag.EARLIEST,
-      toL1BlockNumber = BlockParameter.Tag.FINALIZED,
+      toL1BlockNumber = mostRecentBlockTag,
       startBlockNumber = l2StartBlockNumberInclusive
     )
       .thenCompose { finalizationEvent ->

@@ -7,6 +7,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import net.consensys.linea.BlockParameter
 import net.consensys.linea.contract.Web3JLogsClient
 import net.consensys.linea.testing.submission.loadBlobsAndAggregations
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
@@ -72,7 +73,8 @@ class LineaSubmissionEventsClientIntTest {
           lookBackRange = 100
         )
       ),
-      smartContractAddress = rollupDeploymentResult.contractAddress
+      smartContractAddress = rollupDeploymentResult.contractAddress,
+      mostRecentBlockTag = BlockParameter.Tag.LATEST
     )
   }
 
