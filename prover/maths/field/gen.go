@@ -13,7 +13,7 @@ import (
 func ParBatchInvert(a []Element, numCPU int) []Element {
 
 	if numCPU == 0 {
-		numCPU = runtime.GOMAXPROCS(0)
+		numCPU = runtime.NumCPU()
 	}
 
 	res := make([]Element, len(a))

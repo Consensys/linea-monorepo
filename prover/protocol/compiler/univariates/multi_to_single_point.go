@@ -239,7 +239,7 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 
 		// precompute the lagrange polynomials
 		lagranges = getLagrangesPolys(hs)
-		pool      = mempool.CreateFromSyncPool(ctx.targetSize).Prewarm(runtime.GOMAXPROCS(0))
+		pool      = mempool.CreateFromSyncPool(ctx.targetSize).Prewarm(runtime.NumCPU())
 		mainWg    = &sync.WaitGroup{}
 	)
 
