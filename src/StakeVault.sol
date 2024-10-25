@@ -5,6 +5,7 @@ pragma solidity ^0.8.26;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IStakeManagerProxy } from "./interfaces/IStakeManagerProxy.sol";
+import { IStakeVault } from "./interfaces/IStakeVault.sol";
 
 /**
  * @title StakeVault
@@ -12,7 +13,7 @@ import { IStakeManagerProxy } from "./interfaces/IStakeManagerProxy.sol";
  * @notice A contract to secure user stakes and manage staking with IStakeManager.
  * @dev This contract is owned by the user and allows staking, unstaking, and withdrawing tokens.
  */
-contract StakeVault is Ownable {
+contract StakeVault is IStakeVault, Ownable {
     error StakeVault__NotEnoughAvailableBalance();
     error StakeVault__InvalidDestinationAddress();
     error StakeVault__UpdateNotAvailable();
@@ -26,7 +27,7 @@ contract StakeVault is Ownable {
     //if is needed that STAKING_TOKEN to be a variable, StakeManager should be changed to check codehash and
     //StakeVault(msg.sender).STAKING_TOKEN()
     IERC20 public immutable STAKING_TOKEN;
-    IStakeManagerProxy private stakeManager;
+    IStakeManagerProxy public stakeManager;
     address public stakeManagerImplementationAddress;
 
     /**
@@ -69,6 +70,20 @@ contract StakeVault is Ownable {
      */
     function trustStakeManager(address stakeManagerAddress) external onlyOwner {
         stakeManagerImplementationAddress = stakeManagerAddress;
+    }
+
+    /**
+     * @notice Registers the vault with the stake manager.
+     */
+    function register() public {
+        stakeManager.registerVault();
+    }
+
+    /**
+     * @notice Returns the address of the current owner.
+     */
+    function owner() public view override(Ownable, IStakeVault) returns (address) {
+        return super.owner();
     }
 
     /**

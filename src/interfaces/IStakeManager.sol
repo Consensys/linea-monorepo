@@ -11,6 +11,7 @@ interface IStakeManager is ITrustedCodehashAccess {
     error StakingManager__StakeIsTooLow();
     error StakingManager__NotAllowedToLeave();
 
+    function registerVault() external;
     function stake(uint256 _amount, uint256 _seconds) external;
     function lock(uint256 _seconds) external;
     function unstake(uint256 _amount) external;

@@ -32,6 +32,14 @@ contract RewardsStreamerMPTest is Test {
         address proxy = address(new StakeManagerProxy(impl, initializeData));
         streamer = RewardsStreamerMP(proxy);
 
+        // Create a temporary vault just to get the codehash
+        StakeVault tempVault = new StakeVault(address(this), IStakeManagerProxy(address(streamer)));
+        bytes32 vaultCodeHash = address(tempVault).codehash;
+
+        // Register the codehash before creating any user vaults
+        vm.prank(admin);
+        streamer.setTrustedCodehash(vaultCodeHash, true);
+
         address[4] memory accounts = [alice, bob, charlie, dave];
         for (uint256 i = 0; i < accounts.length; i++) {
             // ensure user has tokens
@@ -85,9 +93,23 @@ contract RewardsStreamerMPTest is Test {
         assertEq(accountInfo.maxMP, p.maxMP, "wrong account max MP");
     }
 
+    struct CheckUserTotalsParams {
+        address user;
+        uint256 totalStakedBalance;
+        uint256 totalMP;
+        uint256 totalMaxMP;
+    }
+
+    function checkUserTotals(CheckUserTotalsParams memory p) public view {
+        assertEq(streamer.getUserTotalStakedBalance(p.user), p.totalStakedBalance, "wrong user total stake balance");
+        assertEq(streamer.getUserTotalMP(p.user), p.totalMP, "wrong user total MP");
+        assertEq(streamer.getUserTotalMaxMP(p.user), p.totalMaxMP, "wrong user total MP");
+    }
+
     function _createTestVault(address owner) internal returns (StakeVault vault) {
         vm.prank(owner);
         vault = new StakeVault(owner, IStakeManagerProxy(address(streamer)));
+        vault.register();
 
         if (!streamer.isTrustedCodehash(address(vault).codehash)) {
             vm.prank(admin);
@@ -134,6 +156,21 @@ contract RewardsStreamerMPTest is Test {
         uint256 mpPerYear = (amount * streamer.MP_RATE_PER_YEAR()) / streamer.SCALE_FACTOR();
         uint256 timeInSeconds = (maxMP * 365 days) / mpPerYear;
         return timeInSeconds;
+    }
+}
+
+contract VaultRegistrationTest is RewardsStreamerMPTest {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function test_VaultRegistration() public view {
+        address[4] memory accounts = [alice, bob, charlie, dave];
+        for (uint256 i = 0; i < accounts.length; i++) {
+            address[] memory userVaults = streamer.getUserVaults(accounts[i]);
+            assertEq(userVaults.length, 1, "wrong number of vaults");
+            assertEq(userVaults[0], vaults[accounts[i]], "wrong vault address");
+        }
     }
 }
 
@@ -2039,5 +2076,56 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
 
         assertEq(streamer.totalRewardsSupply(), 1000e18, "Total rewards supply mismatch");
         assertApproxEqAbs(streamer.rewardsBalanceOf(vaults[alice]), 1000e18, tolerance);
+    }
+}
+
+contract MultipleVaultsStakeTest is RewardsStreamerMPTest {
+    StakeVault public vault1;
+    StakeVault public vault2;
+    StakeVault public vault3;
+
+    function setUp() public override {
+        super.setUp();
+
+        vault1 = _createTestVault(alice);
+        vault2 = _createTestVault(alice);
+        vault3 = _createTestVault(alice);
+
+        vm.startPrank(alice);
+        stakingToken.approve(address(vault1), 10_000e18);
+        stakingToken.approve(address(vault2), 10_000e18);
+        stakingToken.approve(address(vault3), 10_000e18);
+        vm.stopPrank();
+    }
+
+    function _stakeWithVault(address account, StakeVault vault, uint256 amount, uint256 lockupTime) public {
+        vm.prank(account);
+        vault.stake(amount, lockupTime);
+    }
+
+    function test_StakeMultipleVaults() public {
+        // Alice vault1 stakes 10 tokens
+        _stakeWithVault(alice, vault1, 10e18, 0);
+
+        // Alice vault2 stakes 20 tokens
+        _stakeWithVault(alice, vault2, 20e18, 0);
+
+        // Alice vault3 stakes 30 tokens
+        _stakeWithVault(alice, vault3, 60e18, 0);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 90e18,
+                totalMP: 90e18,
+                totalMaxMP: 450e18,
+                stakingBalance: 90e18,
+                rewardBalance: 0,
+                rewardIndex: 0
+            })
+        );
+
+        checkUserTotals(
+            CheckUserTotalsParams({ user: alice, totalStakedBalance: 90e18, totalMP: 90e18, totalMaxMP: 450e18 })
+        );
     }
 }

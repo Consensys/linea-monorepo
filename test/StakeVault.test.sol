@@ -2,7 +2,6 @@
 pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
 import { StakeManagerProxy } from "../src/StakeManagerProxy.sol";
@@ -24,10 +23,7 @@ contract StakeVaultTest is Test {
     function _createTestVault(address owner) internal returns (StakeVault vault) {
         vm.prank(owner);
         vault = new StakeVault(owner, IStakeManagerProxy(address(streamer)));
-
-        if (!streamer.isTrustedCodehash(address(vault).codehash)) {
-            streamer.setTrustedCodehash(address(vault).codehash, true);
-        }
+        vault.register();
     }
 
     function setUp() public virtual {
@@ -41,6 +37,14 @@ contract StakeVaultTest is Test {
         streamer = RewardsStreamerMP(proxy);
 
         stakingToken.mint(alice, 10_000e18);
+
+        // Create a temporary vault just to get the codehash
+        StakeVault tempVault = new StakeVault(address(this), IStakeManagerProxy(address(streamer)));
+        bytes32 vaultCodeHash = address(tempVault).codehash;
+
+        // Register the codehash before creating any user vaults
+        streamer.setTrustedCodehash(vaultCodeHash, true);
+
         stakeVault = _createTestVault(alice);
 
         vm.prank(alice);

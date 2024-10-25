@@ -65,4 +65,8 @@ contract StackOverflowStakeManager is
     function getAccount(address _account) external view returns (Account memory) {
         return accounts[_account];
     }
+
+    function registerVault() external override {
+        // implementation
+    }
 }

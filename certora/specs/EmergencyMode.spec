@@ -29,7 +29,14 @@ definition isViewFunction(method f) returns bool = (
   f.selector == sig:streamer.rewardAmount().selector ||
   f.selector == sig:streamer.totalRewardsAccrued().selector ||
   f.selector == sig:streamer.rewardStartTime().selector ||
-  f.selector == sig:streamer.rewardEndTime().selector
+  f.selector == sig:streamer.rewardEndTime().selector ||
+  f.selector == sig:streamer.getUserTotalMP(address).selector ||
+  f.selector == sig:streamer.getUserTotalMaxMP(address).selector ||
+  f.selector == sig:streamer.getUserTotalStakedBalance(address).selector ||
+  f.selector == sig:streamer.vaults(address,uint256).selector ||
+  f.selector == sig:streamer.vaultOwners(address).selector ||
+  f.selector == sig:streamer.registerVault().selector ||
+  f.selector == sig:streamer.getUserVaults(address).selector
 );
 
 definition isOwnableFunction(method f) returns bool = (

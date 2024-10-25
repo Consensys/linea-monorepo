@@ -6,6 +6,7 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { IStakeManager } from "./interfaces/IStakeManager.sol";
+import { IStakeVault } from "./interfaces/IStakeVault.sol";
 import { TrustedCodehashAccess } from "./TrustedCodehashAccess.sol";
 
 // Rewards Streamer with Multiplier Points
@@ -16,6 +17,9 @@ contract RewardsStreamerMP is
     TrustedCodehashAccess,
     ReentrancyGuardUpgradeable
 {
+    error StakingManager__InvalidVault();
+    error StakingManager__VaultNotRegistered();
+    error StakingManager__VaultAlreadyRegistered();
     error StakingManager__AmountCannotBeZero();
     error StakingManager__TransferFailed();
     error StakingManager__InsufficientBalance();
@@ -57,7 +61,16 @@ contract RewardsStreamerMP is
         uint256 lockUntil;
     }
 
-    mapping(address account => Account data) public accounts;
+    mapping(address vault => Account data) public accounts;
+    mapping(address owner => address[] vault) public vaults;
+    mapping(address vault => address owner) public vaultOwners;
+
+    modifier onlyRegisteredVault() {
+        if (vaultOwners[msg.sender] == address(0)) {
+            revert StakingManager__VaultNotRegistered();
+        }
+        _;
+    }
 
     modifier onlyNotEmergencyMode() {
         if (emergencyModeEnabled) {
@@ -83,7 +96,95 @@ contract RewardsStreamerMP is
         _checkOwner();
     }
 
-    function stake(uint256 amount, uint256 lockPeriod) external onlyTrustedCodehash onlyNotEmergencyMode nonReentrant {
+    /**
+     * @notice Registers a vault with its owner. Called by the vault itself during initialization.
+     * @dev Only callable by contracts with trusted codehash
+     */
+    function registerVault() external onlyTrustedCodehash {
+        address vault = msg.sender;
+        address owner = IStakeVault(vault).owner();
+
+        if (vaultOwners[vault] != address(0)) {
+            revert StakingManager__VaultAlreadyRegistered();
+        }
+
+        // Verify this is a legitimate vault by checking it points to stakeManager
+        if (address(IStakeVault(vault).stakeManager()) != address(this)) {
+            revert StakingManager__InvalidVault();
+        }
+
+        vaultOwners[vault] = owner;
+        vaults[owner].push(vault);
+    }
+
+    /**
+     * @notice Get the vaults owned by a user
+     * @param user The address of the user
+     * @return The vaults owned by the user
+     */
+    function getUserVaults(address user) external view returns (address[] memory) {
+        return vaults[user];
+    }
+
+    /**
+     * @notice Get the total multiplier points for a user
+     * @dev Iterates over all vaults owned by the user and sums the multiplier points
+     * @param user The address of the user
+     * @return The total multiplier points for the user
+     */
+    function getUserTotalMP(address user) external view returns (uint256) {
+        address[] memory userVaults = vaults[user];
+        uint256 userTotalMP = 0;
+
+        for (uint256 i = 0; i < userVaults.length; i++) {
+            Account storage account = accounts[userVaults[i]];
+            userTotalMP += account.accountMP + _getAccountAccruedMP(account);
+        }
+        return userTotalMP;
+    }
+
+    /**
+     * @notice Get the total maximum multiplier points for a user
+     * @dev Iterates over all vaults owned by the user and sums the maximum multiplier points
+     * @param user The address of the user
+     * @return The total maximum multiplier points for the user
+     */
+    function getUserTotalMaxMP(address user) external view returns (uint256) {
+        address[] memory userVaults = vaults[user];
+        uint256 userTotalMaxMP = 0;
+
+        for (uint256 i = 0; i < userVaults.length; i++) {
+            userTotalMaxMP += accounts[userVaults[i]].maxMP;
+        }
+        return userTotalMaxMP;
+    }
+
+    /**
+     * @notice Get the total staked balance for a user
+     * @dev Iterates over all vaults owned by the user and sums the staked balances
+     * @param user The address of the user
+     * @return The total staked balance for the user
+     */
+    function getUserTotalStakedBalance(address user) external view returns (uint256) {
+        address[] memory userVaults = vaults[user];
+        uint256 userTotalStake = 0;
+
+        for (uint256 i = 0; i < userVaults.length; i++) {
+            userTotalStake += accounts[userVaults[i]].stakedBalance;
+        }
+        return userTotalStake;
+    }
+
+    function stake(
+        uint256 amount,
+        uint256 lockPeriod
+    )
+        external
+        onlyTrustedCodehash
+        onlyNotEmergencyMode
+        onlyRegisteredVault
+        nonReentrant
+    {
         if (amount == 0) {
             revert StakingManager__AmountCannotBeZero();
         }
@@ -127,7 +228,13 @@ contract RewardsStreamerMP is
         account.lastMPUpdateTime = block.timestamp;
     }
 
-    function lock(uint256 lockPeriod) external onlyTrustedCodehash onlyNotEmergencyMode nonReentrant {
+    function lock(uint256 lockPeriod)
+        external
+        onlyTrustedCodehash
+        onlyNotEmergencyMode
+        onlyRegisteredVault
+        nonReentrant
+    {
         if (lockPeriod < MIN_LOCKUP_PERIOD || lockPeriod > MAX_LOCKUP_PERIOD) {
             revert StakingManager__InvalidLockingPeriod();
         }
@@ -160,7 +267,13 @@ contract RewardsStreamerMP is
         account.lastMPUpdateTime = block.timestamp;
     }
 
-    function unstake(uint256 amount) external onlyTrustedCodehash onlyNotEmergencyMode nonReentrant {
+    function unstake(uint256 amount)
+        external
+        onlyTrustedCodehash
+        onlyNotEmergencyMode
+        onlyRegisteredVault
+        nonReentrant
+    {
         Account storage account = accounts[msg.sender];
         if (amount > account.stakedBalance) {
             revert StakingManager__InsufficientBalance();
@@ -316,22 +429,19 @@ contract RewardsStreamerMP is
         lastRewardTime = block.timestamp < rewardEndTime ? block.timestamp : rewardEndTime;
     }
 
-    function _calculateBonusMP(uint256 amount, uint256 lockPeriod) internal view returns (uint256) {
+    function _calculateBonusMP(uint256 amount, uint256 lockPeriod) internal pure returns (uint256) {
         uint256 lockMultiplier = (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR) / MAX_LOCKUP_PERIOD;
         return amount * lockMultiplier / SCALE_FACTOR;
     }
 
-    function _updateAccountMP(address accountAddress) internal {
-        Account storage account = accounts[accountAddress];
-
+    function _getAccountAccruedMP(Account storage account) internal view returns (uint256) {
         if (account.maxMP == 0 || account.stakedBalance == 0) {
-            account.lastMPUpdateTime = block.timestamp;
-            return;
+            return 0;
         }
 
         uint256 timeDiff = block.timestamp - account.lastMPUpdateTime;
         if (timeDiff == 0) {
-            return;
+            return 0;
         }
 
         uint256 accruedMP = (timeDiff * account.stakedBalance * MP_RATE_PER_YEAR) / (365 days * SCALE_FACTOR);
@@ -339,6 +449,12 @@ contract RewardsStreamerMP is
         if (account.accountMP + accruedMP > account.maxMP) {
             accruedMP = account.maxMP - account.accountMP;
         }
+        return accruedMP;
+    }
+
+    function _updateAccountMP(address accountAddress) internal {
+        Account storage account = accounts[accountAddress];
+        uint256 accruedMP = _getAccountAccruedMP(account);
 
         account.accountMP += accruedMP;
         account.lastMPUpdateTime = block.timestamp;
