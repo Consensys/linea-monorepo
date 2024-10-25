@@ -20,7 +20,6 @@ jobs:
       - id: check-secrets-present-step
         run: |
           echo DOCKERHUB_SECRET_PRESENT=${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }} >> $GITHUB_OUTPUT
-          echo "DOCKERHUB_SECRET_PRESENT: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}"
 
   changes:
     needs: [ check-dockerhub-secrets-present ]
