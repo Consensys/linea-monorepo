@@ -1,5 +1,7 @@
 package net.consensys.zkevm.persistence.dao.aggregation
 
+import build.linea.domain.BlockIntervals
+import build.linea.domain.toBlockIntervalsString
 import io.vertx.core.Future
 import io.vertx.pgclient.PgException
 import io.vertx.sqlclient.Row
@@ -13,9 +15,7 @@ import net.consensys.zkevm.coordinator.clients.prover.serialization.ProofToFinal
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobCounters
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ProofToFinalize
-import net.consensys.zkevm.domain.toBlockIntervalsString
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.SQLQueryLogger
 import org.apache.logging.log4j.Level

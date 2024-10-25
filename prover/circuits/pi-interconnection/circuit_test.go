@@ -118,7 +118,6 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 				MaxNbDecompression: maxNbDecompression,
 				MaxNbExecution:     maxNbExecution,
 				MaxNbCircuits:      20,
-				MaxNbKeccakF:       200,
 				ExecutionMaxNbMsg:  2,
 				L2MsgMerkleDepth:   5,
 				L2MsgMaxNbMerkle:   2,

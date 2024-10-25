@@ -880,3 +880,14 @@ func InnerProd(api frontend.API, x, y []frontend.Variable) frontend.Variable {
 	}
 	return res
 }
+
+func SelectMany(api frontend.API, c frontend.Variable, ifSo, ifNot []frontend.Variable) []frontend.Variable {
+	if len(ifSo) != len(ifNot) {
+		panic("incompatible lengths")
+	}
+	res := make([]frontend.Variable, len(ifSo))
+	for i := range res {
+		res[i] = api.Select(c, ifSo[i], ifNot[i])
+	}
+	return res
+}

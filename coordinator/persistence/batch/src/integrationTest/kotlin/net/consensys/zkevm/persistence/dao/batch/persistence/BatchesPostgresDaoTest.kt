@@ -12,8 +12,8 @@ import net.consensys.zkevm.domain.createBatch
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesDao.Companion.batchesDaoTableName
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
-import net.consensys.zkevm.persistence.test.CleanDbTestSuiteParallel
-import net.consensys.zkevm.persistence.test.DbQueries
+import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
+import net.consensys.zkevm.persistence.db.test.DbQueries
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -26,6 +26,10 @@ import kotlin.time.Duration.Companion.seconds
 
 @ExtendWith(VertxExtension::class)
 class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+  }
+
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-batches")
   private var fakeClockTime = Instant.parse("2023-12-11T00:00:00.000Z")
   private var fakeClock = FakeFixedClock(fakeClockTime)

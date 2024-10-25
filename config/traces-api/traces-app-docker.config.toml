@@ -3,15 +3,9 @@ output_traces_directory = "/data/traces/v1/conflated"
 traces_api_version = "0.2.0"
 traces_file_extension = "json.gz"
 
-# Inmemory cache of the traces read from the file system
-# Save IO and  CPU unzipping and JSON parsing
-[read_traces_cache]
-size = 20
-expiration_duration = "PT20M"
-
 [api]
 port = 8080
 path = "/"
 # if =0, it will create one verticle per core (or hyperthread if supported)
-number_of_verticles = 0
+number_of_verticles = 2
 observability_port = 8090
