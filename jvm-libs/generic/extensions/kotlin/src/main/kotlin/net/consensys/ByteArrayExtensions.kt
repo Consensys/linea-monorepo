@@ -1,5 +1,6 @@
 package net.consensys
 
+import java.math.BigInteger
 import java.util.HexFormat
 
 fun ByteArray.assertSize(expectedSize: UInt, fieldName: String = ""): ByteArray = apply {
@@ -58,6 +59,14 @@ fun ByteArray.encodeHex(prefix: Boolean = true): String {
   } else {
     return hexStr
   }
+}
+
+fun ByteArray.toULongFromLast8Bytes(lenient: Boolean = false): ULong {
+  if (!lenient && size < 8) {
+    throw IllegalArgumentException("ByteArray size should be >= 8 to convert to ULong")
+  }
+  val significantBytes = this.sliceArray((this.size - 8).coerceAtLeast(0) until this.size)
+  return BigInteger(1, significantBytes).toULong()
 }
 
 /**
