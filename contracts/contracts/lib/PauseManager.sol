@@ -60,13 +60,12 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
     PauseTypeRole[] calldata _pauseTypeRoleAssignments,
     PauseTypeRole[] calldata _unpauseTypeRoleAssignments
   ) internal onlyInitializing {
-    uint256 arrayLength = _pauseTypeRoleAssignments.length;
-    for (uint256 i; i < arrayLength; i++) {
+    for (uint256 i; i < _pauseTypeRoleAssignments.length; i++) {
       _pauseTypeRoles[_pauseTypeRoleAssignments[i].pauseType] = _pauseTypeRoleAssignments[i].role;
       emit PauseTypeRoleSet(_pauseTypeRoleAssignments[i].pauseType, _pauseTypeRoleAssignments[i].role);
     }
-    arrayLength = _unpauseTypeRoleAssignments.length;
-    for (uint256 i; i < arrayLength; i++) {
+
+    for (uint256 i; i < _unpauseTypeRoleAssignments.length; i++) {
       _unPauseTypeRoles[_unpauseTypeRoleAssignments[i].pauseType] = _unpauseTypeRoleAssignments[i].role;
       emit UnPauseTypeRoleSet(_unpauseTypeRoleAssignments[i].pauseType, _unpauseTypeRoleAssignments[i].role);
     }
