@@ -30,10 +30,7 @@ jobs:
 
   pull-and-cache-images:
     needs: [ changes ]
-    env:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    if: ${{ always() && needs.changes.outputs.cache-images == 'true' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+    if: ${{ always() && needs.changes.outputs.cache-images == 'true' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     steps:
       - name: Checkout
