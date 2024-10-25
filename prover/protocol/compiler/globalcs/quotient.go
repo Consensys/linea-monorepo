@@ -359,10 +359,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 			stopTimer := profiling.LogTimer("ReEvaluate %v pols of size %v on coset %v/%v", len(handles), ctx.DomainSize, share, ratio)
 
-			parallel.ExecutePoolChunky(len(roots), func(k int) {
-				localPool := mempool.WrapsWithMemCache(largePool)
-				defer localPool.TearDown()
-
+			parallel.ExecutePoolChunkyWithCache(len(roots), largePool, func(k int, localPool *mempool.SliceArena) {
 				root := roots[k]
 				name := root.GetColID()
 
@@ -379,11 +376,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				computedReeval.Store(name, reevaledRoot)
 			})
 
-			parallel.ExecutePoolChunky(len(handles), func(k int) {
-
-				localPool := mempool.WrapsWithMemCache(largePool)
-				defer localPool.TearDown()
-
+			parallel.ExecutePoolChunkyWithCache(len(handles), largePool, func(k int, localPool *mempool.SliceArena) {
 				pol := handles[k]
 				// short-path, the column is a purely Shifted(Natural) or a Natural
 				// (this excludes repeats and/or interleaved columns)
