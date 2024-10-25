@@ -425,7 +425,7 @@ services:
   l1-el-node:
     container_name: l1-el-node
     hostname: l1-el-node
-    image: hyperledger/besu:24.10.0
+    image: hyperledger/besu:24.6.0
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-node-genesis-generator:
@@ -489,21 +489,16 @@ services:
     build:
       context: ./config/l1-node/
     profiles: [ "l1", "debug", "external-to-monorepo" ]
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        /config/generate-genesis.sh \
-        --genesis-time ${L1_GENESIS_TIME} \
-        --l1-genesis /config/l1-genesis.json \
-        --network-config /config/network-config.yml \
-        --mnemonics /config/mnemonics.yaml \
-        --output-dir /data/l1-node-config
+    command: 
+      --genesis-time ${L1_GENESIS_TIME}
+      --l1-genesis /config/l1-genesis.json
+      --network-config /config/network-config.yml
+      --mnemonics /config/mnemonics.yaml
+      --output-dir /data/l1-node-config
     volumes:
       - ./config/l1-node/cl/network-config.yml:/config/network-config.yml:ro
       - ./config/l1-node/cl/mnemonics.yaml:/config/mnemonics.yaml:ro
       - ./config/l1-node/el/genesis.json:/config/l1-genesis.json
-      - ./config/l1-node/generate-genesis.sh:/config/generate-genesis.sh
       - local-dev:/data
 
   l1-blockscout:
