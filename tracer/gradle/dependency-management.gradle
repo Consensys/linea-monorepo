@@ -31,6 +31,7 @@ repositories {
     content { includeGroupByRegex('com\\.splunk\\..*') }
   }
   mavenCentral()
+  mavenLocal()
 }
 
 configurations.all {
@@ -46,85 +47,17 @@ dependencyManagement {
   generatedPomCustomization {
     enabled = false
   }
+  imports {
+    mavenBom "${besuArtifactGroup}:bom:${besuVersion}"
+  }
 
   dependencies {
-    dependencySet(group: 'io.tmio', version: '2.4.2') {
-      entry 'tuweni-bytes'
-      entry 'tuweni-net'
-      entry 'tuweni-toml'
-      entry 'tuweni-units'
-    }
-
-    dependencySet(group: 'org.bouncycastle', version: '1.78.1') {
-      entry 'bcpkix-jdk18on'
-      entry 'bcprov-jdk18on'
-      entry 'jcajce'
-    }
-
-    dependency 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
-    dependency 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.2'
-    dependency 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.2'
-
-    dependency 'commons-io:commons-io:2.16.1'
-    dependency 'org.apache.commons:commons-lang3:3.17.0'
-    dependency 'com.google.guava:guava:33.3.0-jre'
-
-    // Besu dependencies
-
-    dependencySet(group: "${besuArtifactGroup}", version: "${besuVersion}") {
-      entry "besu-datatypes"
-      entry "evm"
-      entry "plugin-api"
-    }
-
     // Logging dependencies
-    dependency 'org.slf4j:slf4j-api:2.0.16'
     dependencySet(group: 'ch.qos.logback', version: '1.4.9') {
       entry 'logback-core'
       entry 'logback-classic'
     }
 
-    // auto service
-    dependency 'com.google.auto.service:auto-service:1.1.1'
-
-    dependencySet(group: 'info.picocli', version: '4.7.6') {
-      entry 'picocli'
-      entry 'picocli-codegen'
-    }
-
-    dependencySet(group: 'org.web3j', version: '4.12.1') {
-      entry 'abi'
-      entry 'besu'
-      entry 'core'
-      entry 'crypto'
-    }
-
-    dependency 'junit:junit:4.13.2'
-    dependency 'org.junit.vintage:junit-vintage-engine:5.10.1'
-    dependencySet(group: 'org.junit.jupiter', version: '5.11.0') {
-      entry 'junit-jupiter-api'
-      entry 'junit-jupiter-engine'
-      entry 'junit-jupiter-params'
-    }
-    dependencySet(group: 'org.mockito', version: '5.13.0') {
-      entry 'mockito-core'
-      entry 'mockito-junit-jupiter'
-    }
-
-    dependency 'org.assertj:assertj-core:3.26.3'
-    dependency 'org.awaitility:awaitility:4.2.2'
-
-    dependency 'com.splunk.logging:splunk-library-javalogging:1.11.8'
-
-    dependencySet(group: 'io.vertx', version: '4.5.10') {
-      entry 'vertx-core'
-      entry 'vertx-web'
-    }
-
     dependency 'com.slack.api:slack-api-client:1.32.1'
-
-    dependency 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
-
-    dependency 'net.java.dev.jna:jna:5.14.0'
   }
 }
