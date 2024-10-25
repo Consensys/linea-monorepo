@@ -106,3 +106,7 @@ run {
     .collect { "-D${it.key}=${it.value}" }
   args = ["--traces-limits", "config/common/traces-limits-v1.toml", "--smart-contract-errors", "config/common/smart-contract-errors.toml", "--gas-price-cap-time-of-day-multipliers", "config/common/gas-price-cap-time-of-day-multipliers.toml", "config/coordinator/coordinator-docker.config.toml", "config/coordinator/coordinator-local-dev.config.overrides.toml"]
 }
+
+test {
+  inputs.dir("$rootDir/config/coordinator/")
+}
