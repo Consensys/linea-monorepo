@@ -243,12 +243,9 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 		pool      = mempool.CreateFromSyncPool(ctx.targetSize).Prewarm(runtime.NumCPU())
 	)
 
-	ppool.ExecutePoolChunky(len(ctx.polys), func(i int) {
+	ppool.ExecutePoolChunkyWithAllocated(len(ctx.polys), ctx.maxSize, func(i int, subQuotientReg sv.SmartVector) {
 		var (
-			pool = mempool.WrapsWithMemCache(pool)
-
-			// Preallocate the value of the quotient
-			subQuotientReg  = sv.AllocateRegular(ctx.maxSize)
+			pool            = mempool.WrapsWithMemCache(pool)
 			subQuotientCnst = field.Zero()
 		)
 
