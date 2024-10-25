@@ -1,11 +1,11 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
+import build.linea.domain.BlockInterval
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.map
 import io.vertx.core.Vertx
 import net.consensys.linea.errors.ErrorResponse
-import net.consensys.zkevm.domain.BlockInterval
 import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.fileio.FileMonitor
 import net.consensys.zkevm.fileio.FileReader

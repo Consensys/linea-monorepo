@@ -171,7 +171,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 		// otherwise.
 		tCollapsed = make([]sv.SmartVector, len(a.T))
 
-		// tCollapsed contains either the assignment of the Ss if the table is a
+		// sCollapsed contains either the assignment of the Ss if the table is a
 		// single column (e.g. isMultiColumn=false) or their collapsed version
 		// otherwise.
 		sCollapsed = make([]sv.SmartVector, len(a.S))
@@ -211,6 +211,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 	}
 
 	var (
+		// m  is associated with tCollapsed
 		// m stores the assignment to the column M as we build it.
 		m = make([][]field.Element, len(a.T))
 

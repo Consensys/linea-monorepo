@@ -2,11 +2,6 @@ name: postman-and-SDK-testing
 
 on:
   workflow_call:
-    secrets:
-      DOCKERHUB_USERNAME:
-        required: true
-      DOCKERHUB_TOKEN:
-        required: true
 
 concurrency:
   group: postman-testing-${{ github.workflow }}-${{ github.ref }}
@@ -14,14 +9,11 @@ concurrency:
 
 jobs:
   run-tests:
-    runs-on: [self-hosted, ubuntu-22.04, X64, medium]
+    runs-on: [self-hosted, ubuntu-22.04, X64, large]
     name: Postman & SDK tests
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          ref: ${{ github.head_ref }}
+        uses: actions/checkout@v4
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs

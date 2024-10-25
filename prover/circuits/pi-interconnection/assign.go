@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -121,7 +122,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		}
 
 		if prevShnarf = shnarf.Compute(); !bytes.Equal(prevShnarf, shnarfs[i]) {
-			err = errors.New("shnarf mismatch")
+			err = fmt.Errorf("shnarf mismatch, i:%d, shnarf: %x, prevShnarf: %x, ", i, shnarfs[i], prevShnarf)
 			return
 		}
 	}
@@ -163,7 +164,6 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	}
 
 	// Aggregation FPI
-
 	aggregationFPI, err := public_input.NewAggregationFPI(&r.Aggregation)
 	if err != nil {
 		return
@@ -178,6 +178,9 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	merkleNbLeaves := 1 << config.L2MsgMerkleDepth
 	maxNbL2MessageHashes := config.L2MsgMaxNbMerkle * merkleNbLeaves
 	l2MessageHashes := make([][32]byte, 0, maxNbL2MessageHashes)
+
+	finalRollingHashNum, finalRollingHash := aggregationFPI.InitialRollingHashNumber, aggregationFPI.InitialRollingHash
+
 	// Execution FPI
 	executionFPI := execution.FunctionalPublicInput{
 		FinalStateRootHash:     aggregationFPI.InitialStateRootHash,
@@ -210,21 +213,52 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			executionFPI.L2MessageHashes = r.Executions[i].L2MsgHashes
 
 			l2MessageHashes = append(l2MessageHashes, r.Executions[i].L2MsgHashes...)
+
+			if r.Executions[i].FinalRollingHashNumber != 0 { // if the rolling hash is being updated, record the change
+				finalRollingHash = r.Executions[i].FinalRollingHash
+				finalRollingHashNum = r.Executions[i].FinalRollingHashNumber
+			}
 		}
 
 		a.ExecutionPublicInput[i] = executionFPI.Sum()
-		a.ExecutionFPIQ[i] = executionFPI.ToSnarkType().FunctionalPublicInputQSnark
+		if snarkFPI, _err := executionFPI.ToSnarkType(); _err != nil {
+			err = fmt.Errorf("execution #%d: %w", i, _err)
+			return
+		} else {
+			a.ExecutionFPIQ[i] = snarkFPI.FunctionalPublicInputQSnark
+		}
 	}
 	// consistency check
-	if executionFPI.FinalBlockTimestamp != aggregationFPI.FinalBlockTimestamp ||
-		executionFPI.FinalBlockNumber != aggregationFPI.FinalBlockNumber ||
-		executionFPI.FinalRollingHash != aggregationFPI.FinalRollingHash ||
-		executionFPI.FinalRollingHashNumber != aggregationFPI.FinalRollingHashNumber {
-		err = errors.New("final execution values not matching final aggregation values")
+	if executionFPI.FinalBlockTimestamp != aggregationFPI.FinalBlockTimestamp {
+		err = fmt.Errorf("final block timestamps do not match: execution=%x, aggregation=%x",
+			executionFPI.FinalBlockTimestamp, aggregationFPI.FinalBlockTimestamp)
 		return
 	}
+	if executionFPI.FinalBlockNumber != aggregationFPI.FinalBlockNumber {
+		err = fmt.Errorf("final block numbers do not match: execution=%v, aggregation=%x",
+			executionFPI.FinalBlockNumber, aggregationFPI.FinalBlockNumber)
+		return
+	}
+
+	if finalRollingHash != aggregationFPI.FinalRollingHash {
+		err = fmt.Errorf("final rolling hashes do not match: execution=%x, aggregation=%x",
+			executionFPI.FinalRollingHash, aggregationFPI.FinalRollingHash)
+		return
+	}
+
+	if finalRollingHashNum != aggregationFPI.FinalRollingHashNumber {
+		err = fmt.Errorf("final rolling hash numbers do not match: execution=%v, aggregation=%v",
+			executionFPI.FinalRollingHashNumber, aggregationFPI.FinalRollingHashNumber)
+		return
+	}
+
 	if len(l2MessageHashes) > maxNbL2MessageHashes {
 		err = errors.New("too many L2 messages")
+		return
+	}
+
+	if minNbRoots := (len(l2MessageHashes) + merkleNbLeaves - 1) / merkleNbLeaves; len(r.Aggregation.L2MsgRootHashes) < minNbRoots {
+		err = fmt.Errorf("the %d merkle roots provided are too few to accommodate all %d execution messages. A minimum of %d is needed", len(r.Aggregation.L2MsgRootHashes), len(l2MessageHashes), minNbRoots)
 		return
 	}
 
@@ -239,6 +273,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			return
 		}
 	}
+
 	// padding merkle root hashes
 	emptyTree := make([][]byte, config.L2MsgMerkleDepth+1)
 	emptyTree[0] = make([]byte, 64)

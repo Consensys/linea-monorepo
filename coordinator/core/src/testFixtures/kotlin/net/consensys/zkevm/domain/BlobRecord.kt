@@ -1,5 +1,6 @@
 package net.consensys.zkevm.domain
 
+import build.linea.domain.BlockIntervals
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import net.consensys.linea.blob.ShnarfCalculatorVersion

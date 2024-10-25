@@ -1,9 +1,10 @@
 package net.consensys.zkevm.coordinator.app
 
+import build.linea.clients.StateManagerClientV1
+import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import net.consensys.linea.BlockNumberAndHash
-import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.blob.ShnarfCalculatorVersion
 import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.linea.contract.Web3JL2MessageService
@@ -38,7 +39,6 @@ import net.consensys.linea.web3j.Web3jBlobExtended
 import net.consensys.linea.web3j.okHttpClientBuilder
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
-import net.consensys.zkevm.coordinator.app.config.StateManagerClientConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
@@ -50,8 +50,6 @@ import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV1
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
-import net.consensys.zkevm.coordinator.clients.Type2StateManagerClient
-import net.consensys.zkevm.coordinator.clients.Type2StateManagerJsonRpcClient
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
@@ -300,26 +298,6 @@ class L1DependentApp(
     null
   }
 
-  private fun createStateManagerClient(
-    stateManagerConfig: StateManagerClientConfig,
-    logger: Logger
-  ): Type2StateManagerClient {
-    return Type2StateManagerJsonRpcClient(
-      vertx = vertx,
-      rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-        endpoints = stateManagerConfig.endpoints.toSet(),
-        maxInflightRequestsPerClient = stateManagerConfig.requestLimitPerEndpoint,
-        log = logger
-      ),
-      config = Type2StateManagerJsonRpcClient.Config(
-        requestRetry = stateManagerConfig.requestRetryConfig,
-        zkStateManagerVersion = stateManagerConfig.version
-      ),
-      retryConfig = stateManagerConfig.requestRetryConfig,
-      log = logger
-    )
-  }
-
   private val lastFinalizedBlock = lastFinalizedBlock().get()
   private val lastProcessedBlockNumber = resumeConflationFrom(
     aggregationsRepository,
@@ -394,12 +372,7 @@ class L1DependentApp(
     val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
 
     // To fail faster for JNA reasons
-    val compressorVersion =
-      if (configs.traces.switchToLineaBesu) {
-        BlobCompressorVersion.V1_0_1
-      } else {
-        BlobCompressorVersion.V0_1_0
-      }
+    val compressorVersion = configs.traces.blobCompressorVersion
     val blobCompressor = GoBackedBlobCompressor.getInstance(
       compressorVersion = compressorVersion,
       dataLimit = configs.blobCompression.blobSizeLimit.toUInt()
@@ -428,8 +401,14 @@ class L1DependentApp(
   private val conflationService: ConflationService =
     ConflationServiceImpl(calculator = conflationCalculator, metricsFacade = metricsFacade)
 
-  private val zkStateClient: Type2StateManagerClient =
-    createStateManagerClient(configs.stateManager, LogManager.getLogger("clients.StateManagerShomeiClient"))
+  private val zkStateClient: StateManagerClientV1 = StateManagerV1JsonRpcClient.create(
+    rpcClientFactory = httpJsonRpcClientFactory,
+    endpoints = configs.stateManager.endpoints.map { it.toURI() },
+    maxInflightRequestsPerClient = configs.stateManager.requestLimitPerEndpoint,
+    requestRetry = configs.stateManager.requestRetryConfig,
+    zkStateManagerVersion = configs.stateManager.version,
+    logger = LogManager.getLogger("clients.StateManagerShomeiClient")
+  )
 
   private val lineaSmartContractClientForDataSubmission: LineaRollupSmartContractClient = run {
     // The below gas provider will act as the primary gas provider if L1
@@ -975,7 +954,7 @@ class L1DependentApp(
     ),
     "type 2 state proof provider finalization updates" to FinalizationHandler {
       finalizedBlockNotifier.updateFinalizedBlock(
-        BlockNumberAndHash(it.blockNumber, it.blockHash)
+        BlockNumberAndHash(it.blockNumber, it.blockHash.toArray())
       )
     },
     "last_proven_block_provider" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
