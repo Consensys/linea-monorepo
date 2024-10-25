@@ -8,11 +8,22 @@ on:
         required: false
 
 jobs:
+  check-dockerhub-secrets-present:
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    name: Check if DockerHub secrets are present
+    outputs:
+      secrets_present: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+
   changes:
+    needs: [ check-dockerhub-secrets-present ]
+    if: ${{ always() && needs.check-dockerhub-secrets-present.outputs.secrets_present == 'true' }}
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Filter commit changes
     outputs:
-      cache-images: ${{ steps.filter.outputs.cache-images }}
+      cache_images: ${{ steps.filter.outputs.cache_images }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,14 +34,14 @@ jobs:
           base: ${{ github.ref }}
           list-files: "json"
           filters: |
-            cache-images:
+            cache_images:
               - 'docker/compose.yml'
               - 'docker/compose-local-dev.overrides.yml'
               - 'docker/compose-local-dev-traces-v2.overrides.yml'
 
   pull-and-cache-images:
-    needs: [ changes ]
-    if: ${{ always() && needs.changes.outputs.cache-images == 'true' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+    needs: [ check-dockerhub-secrets-present, changes ]
+    if: ${{ always() && needs.check-dockerhub-secrets-present.outputs.secrets_present == 'true' && needs.changes.outputs.cache_images == 'true' }}
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     steps:
       - name: Checkout
