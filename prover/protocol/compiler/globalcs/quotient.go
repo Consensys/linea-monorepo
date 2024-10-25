@@ -222,65 +222,54 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 	go func() {
 		// Compute once the FFT of the natural columns
-		parallel.ExecuteChunky(len(ctx.AllInvolvedRoots), func(start, stop int) {
-			for k := start; k < stop; k++ {
-				pol := ctx.AllInvolvedRoots[k]
-				name := pol.GetColID()
 
-				// gets directly a shallow copy in the map of the runtime
-				var witness sv.SmartVector
-				lockRun.Lock()
-				witness, isNatural := run.Columns.TryGet(name)
-				lockRun.Unlock()
+		parallel.ExecutePoolChunky(len(ctx.AllInvolvedRoots), func(k int) {
+			pol := ctx.AllInvolvedRoots[k]
+			name := pol.GetColID()
 
-				// can happen if the column is verifier defined. In that case, no
-				// need to protect with a lock. This will not touch run.Columns.
-				if !isNatural {
-					witness = pol.GetColAssignment(run)
-				}
+			// gets directly a shallow copy in the map of the runtime
+			var witness sv.SmartVector
+			lockRun.Lock()
+			witness, isNatural := run.Columns.TryGet(name)
+			lockRun.Unlock()
 
-				ch := parallel.ExecutePool(func() {
-					witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
-				})
-				<-ch
-
-				lock.Lock()
-				coeffs[name] = witness
-				lock.Unlock()
+			// can happen if the column is verifier defined. In that case, no
+			// need to protect with a lock. This will not touch run.Columns.
+			if !isNatural {
+				witness = pol.GetColAssignment(run)
 			}
+
+			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
+
+			lock.Lock()
+			coeffs[name] = witness
+			lock.Unlock()
 		})
+
 		wg.Done()
 	}()
 
 	go func() {
-		parallel.ExecuteChunky(len(ctx.AllInvolvedColumns), func(start, stop int) {
-			for k := start; k < stop; k++ {
-				pol := ctx.AllInvolvedColumns[k]
+		parallel.ExecutePoolChunky(len(ctx.AllInvolvedColumns), func(k int) {
+			pol := ctx.AllInvolvedColumns[k]
 
-				// short-path, the column is a shifted column of an already
-				// present columns rule out interleaved and repeated columns.
-				rootCols := column.RootParents(pol)
-				if len(rootCols) == 1 && rootCols[0].Size() == pol.Size() {
-					// It was already processed by the above loop. Go on with the next entry
-					continue
-				}
-
-				// normal case for interleaved or repeated columns
-				witness := pol.GetColAssignment(run)
-
-				ch := parallel.ExecutePool(
-					func() {
-						witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
-					},
-				)
-
-				<-ch
-
-				name := pol.GetColID()
-				lock.Lock()
-				coeffs[name] = witness
-				lock.Unlock()
+			// short-path, the column is a shifted column of an already
+			// present columns rule out interleaved and repeated columns.
+			rootCols := column.RootParents(pol)
+			if len(rootCols) == 1 && rootCols[0].Size() == pol.Size() {
+				// It was already processed by the above loop. Go on with the next entry
+				return
 			}
+
+			// normal case for interleaved or repeated columns
+			witness := pol.GetColAssignment(run)
+
+			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
+
+			name := pol.GetColID()
+			lock.Lock()
+			coeffs[name] = witness
+			lock.Unlock()
 		})
 		wg.Done()
 	}()
@@ -370,107 +359,75 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 			stopTimer := profiling.LogTimer("ReEvaluate %v pols of size %v on coset %v/%v", len(handles), ctx.DomainSize, share, ratio)
 
-			parallel.ExecuteFromChan(len(roots), func(wg *sync.WaitGroup, index *parallel.AtomicCounter) {
-
+			parallel.ExecutePoolChunky(len(roots), func(k int) {
 				localPool := mempool.WrapsWithMemCache(largePool)
 				defer localPool.TearDown()
 
-				for {
-					k, ok := index.Next()
-					if !ok {
-						break
-					}
+				root := roots[k]
+				name := root.GetColID()
 
-					root := roots[k]
-					name := root.GetColID()
+				_, found := computedReeval.Load(name)
 
-					_, found := computedReeval.Load(name)
-
-					if found {
-						// it was already computed in a previous iteration of `j`
-						wg.Done()
-						continue
-					}
-
-					// else it's the first value of j that sees it. so we compute the
-					// coset reevaluation.
-					ch := parallel.ExecutePool(
-						func() {
-							reevaledRoot := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
-							computedReeval.Store(name, reevaledRoot)
-						},
-					)
-
-					<-ch
-
-					wg.Done()
+				if found {
+					// it was already computed in a previous iteration of `j`
+					return
 				}
+
+				// else it's the first value of j that sees it. so we compute the
+				// coset reevaluation.
+				reevaledRoot := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
+				computedReeval.Store(name, reevaledRoot)
 			})
 
-			parallel.ExecuteFromChan(len(handles), func(wg *sync.WaitGroup, index *parallel.AtomicCounter) {
+			parallel.ExecutePoolChunky(len(handles), func(k int) {
 
 				localPool := mempool.WrapsWithMemCache(largePool)
 				defer localPool.TearDown()
 
-				for {
-					k, ok := index.Next()
-					if !ok {
-						break
+				pol := handles[k]
+				// short-path, the column is a purely Shifted(Natural) or a Natural
+				// (this excludes repeats and/or interleaved columns)
+				rootCols := column.RootParents(pol)
+				if len(rootCols) == 1 && rootCols[0].Size() == pol.Size() {
+
+					root := rootCols[0]
+					name := root.GetColID()
+
+					reevaledRoot, found := computedReeval.Load(name)
+
+					if !found {
+						// it is expected to computed in the above loop
+						utils.Panic("did not find the reevaluation of %v", name)
 					}
 
-					pol := handles[k]
-					// short-path, the column is a purely Shifted(Natural) or a Natural
-					// (this excludes repeats and/or interleaved columns)
-					rootCols := column.RootParents(pol)
-					if len(rootCols) == 1 && rootCols[0].Size() == pol.Size() {
-
-						root := rootCols[0]
-						name := root.GetColID()
-
-						reevaledRoot, found := computedReeval.Load(name)
-
-						if !found {
-							// it is expected to computed in the above loop
-							utils.Panic("did not find the reevaluation of %v", name)
-						}
-
-						// Now, we can reuse a soft-rotation of the smart-vector to save memory
-						if !pol.IsComposite() {
-							// in this case, the right vector was the root so we are done
-							wg.Done()
-							continue
-						}
-
-						if shifted, isShifted := pol.(column.Shifted); isShifted {
-							polName := pol.GetColID()
-							res := sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
-							computedReeval.Store(polName, res)
-							wg.Done()
-							continue
-						}
-
+					// Now, we can reuse a soft-rotation of the smart-vector to save memory
+					if !pol.IsComposite() {
+						// in this case, the right vector was the root so we are done
+						return
 					}
 
-					name := pol.GetColID()
-					_, ok = computedReeval.Load(name)
-					if ok {
-						wg.Done()
-						continue
+					if shifted, isShifted := pol.(column.Shifted); isShifted {
+						polName := pol.GetColID()
+						res := sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
+						computedReeval.Store(polName, res)
+						return
 					}
 
-					if _, ok := coeffs[name]; !ok {
-						utils.Panic("handle %v not found in the coeffs\n", name)
-					}
-
-					ch := parallel.ExecutePool(func() {
-						res := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
-						computedReeval.Store(name, res)
-					})
-
-					<-ch
-
-					wg.Done()
 				}
+
+				name := pol.GetColID()
+				_, ok := computedReeval.Load(name)
+				if ok {
+					return
+				}
+
+				if _, ok := coeffs[name]; !ok {
+					utils.Panic("handle %v not found in the coeffs\n", name)
+				}
+
+				res := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
+				computedReeval.Store(name, res)
+
 			})
 
 			stopTimer()
