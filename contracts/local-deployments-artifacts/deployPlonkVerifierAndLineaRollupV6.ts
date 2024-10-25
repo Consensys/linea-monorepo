@@ -2,14 +2,21 @@ import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
 import * as dotenv from "dotenv";
-import { abi as LineaRollupV5Abi, bytecode as LineaRollupV5Bytecode } from "./dynamic-artifacts/LineaRollupV5.json";
+import { abi as LineaRollupV6Abi, bytecode as LineaRollupV6Bytecode } from "./dynamic-artifacts/LineaRollupV6.json";
 import { abi as ProxyAdminAbi, bytecode as ProxyAdminBytecode } from "./static-artifacts/ProxyAdmin.json";
 import {
   abi as TransparentUpgradeableProxyAbi,
   bytecode as TransparentUpgradeableProxyBytecode,
 } from "./static-artifacts/TransparentUpgradeableProxy.json";
-import { getRequiredEnvVar } from "../common/helpers/environment";
+import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
 import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
+import { generateRoleAssignments } from "../common/helpers/roles";
+import {
+  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_ROLES,
+  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+  OPERATOR_ROLE,
+} from "../common/constants";
 
 dotenv.config();
 
@@ -42,9 +49,17 @@ async function main() {
   const lineaRollupSecurityCouncil = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
   const lineaRollupOperators = getRequiredEnvVar("LINEA_ROLLUP_OPERATORS").split(",");
   const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
-  const lineaRollupTateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
+  const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
   const lineaRollupGenesisTimestamp = getRequiredEnvVar("LINEA_ROLLUP_GENESIS_TIMESTAMP");
-  const lineaRollupName = "LineaRollupV5";
+  const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+  const lineaRollupName = "LineaRollupV6";
+
+  const pauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_PAUSE_TYPE_ROLES", LINEA_ROLLUP_PAUSE_TYPES_ROLES);
+  const unpauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_UNPAUSE_TYPE_ROLES", LINEA_ROLLUP_UNPAUSE_TYPES_ROLES);
+  const defaultRoleAddresses = generateRoleAssignments(LINEA_ROLLUP_ROLES, lineaRollupSecurityCouncil, [
+    { role: OPERATOR_ROLE, addresses: lineaRollupOperators },
+  ]);
+  const roleAddresses = getEnvVarOrDefault("LINEA_ROLLUP_ROLE_ADDRESSES", defaultRoleAddresses);
 
   const verifierArtifacts = findContractArtifacts(path.join(__dirname, "./dynamic-artifacts"), verifierName);
 
@@ -55,7 +70,7 @@ async function main() {
 
   const [verifier, lineaRollupImplementation, proxyAdmin] = await Promise.all([
     deployContractFromArtifacts(verifierArtifacts.abi, verifierArtifacts.bytecode, wallet, { nonce: walletNonce }),
-    deployContractFromArtifacts(LineaRollupV5Abi, LineaRollupV5Bytecode, wallet, {
+    deployContractFromArtifacts(LineaRollupV6Abi, LineaRollupV6Bytecode, wallet, {
       nonce: walletNonce + 1,
     }),
     deployContractFromArtifacts(ProxyAdminAbi, ProxyAdminBytecode, wallet, { nonce: walletNonce + 2 }),
@@ -68,15 +83,20 @@ async function main() {
   console.log(`${verifierName} deployed: address=${verifierAddress}`);
   console.log(`L1 ProxyAdmin deployed: address=${proxyAdminAddress}`);
 
-  const initializer = getInitializerData(LineaRollupV5Abi, "initialize", [
-    lineaRollupInitialStateRootHash,
-    lineaRollupInitialL2BlockNumber,
-    verifierAddress,
-    lineaRollupSecurityCouncil,
-    lineaRollupOperators,
-    lineaRollupRateLimitPeriodInSeconds,
-    lineaRollupTateLimitAmountInWei,
-    lineaRollupGenesisTimestamp,
+  const initializer = getInitializerData(LineaRollupV6Abi, "initialize", [
+    {
+      initialStateRootHash: lineaRollupInitialStateRootHash,
+      initialL2BlockNumber: lineaRollupInitialL2BlockNumber,
+      genesisTimestamp: lineaRollupGenesisTimestamp,
+      defaultVerifier: verifierAddress,
+      rateLimitPeriodInSeconds: lineaRollupRateLimitPeriodInSeconds,
+      rateLimitAmountInWei: lineaRollupRateLimitAmountInWei,
+      roleAddresses,
+      pauseTypeRoles,
+      unpauseTypeRoles,
+      fallbackOperator: multiCallAddress,
+      defaultAdmin: lineaRollupSecurityCouncil,
+    },
   ]);
 
   const proxyContract = await deployContractFromArtifacts(
