@@ -182,7 +182,7 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
       .thenCompose { api.start().toSafeFuture() }
       .get()
 
-    log.info("Started :)")
+    log.info("Started Coordinator :)")
   }
 
   fun stop(): Int {
