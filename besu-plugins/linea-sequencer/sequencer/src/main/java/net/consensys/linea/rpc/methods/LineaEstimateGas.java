@@ -239,7 +239,7 @@ public class LineaEstimateGas {
   }
 
   private Wei calculateTxMaxGasPrice(final JsonCallParameter callParameters) {
-    return callParameters.getMaxFeePerGas().orElseGet(() -> callParameters.getGasPrice());
+    return callParameters.getMaxFeePerGas().orElseGet(callParameters::getGasPrice);
   }
 
   private Wei getEstimatedPriorityFee(
@@ -258,11 +258,8 @@ public class LineaEstimateGas {
               .toBigInteger());
     }
 
-    final Wei profitablePriorityFee =
-        txProfitabilityCalculator.profitablePriorityFeePerGas(
-            transaction, profitabilityConf.estimateGasMinMargin(), estimatedGasUsed, minGasPrice);
-
-    return profitablePriorityFee;
+    return txProfitabilityCalculator.profitablePriorityFeePerGas(
+        transaction, profitabilityConf.estimateGasMinMargin(), estimatedGasUsed, minGasPrice);
   }
 
   private Long estimateGasUsed(
