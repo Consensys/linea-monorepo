@@ -2,7 +2,6 @@ package univariates
 
 import (
 	"fmt"
-	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 	"math/big"
 	"reflect"
 	"runtime"
@@ -241,92 +240,108 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 		// precompute the lagrange polynomials
 		lagranges = getLagrangesPolys(hs)
 		pool      = mempool.CreateFromSyncPool(ctx.targetSize).Prewarm(runtime.NumCPU())
+		mainWg    = &sync.WaitGroup{}
 	)
 
-	ppool.ExecutePoolChunkyWithAllocated(len(ctx.polys), ctx.maxSize, func(i int, subQuotientReg sv.SmartVector) {
+	mainWg.Add(runtime.NumCPU())
+
+	parallel.ExecuteFromChan(len(ctx.polys), func(wg *sync.WaitGroup, index *parallel.AtomicCounter) {
+
 		var (
-			pool            = mempool.WrapsWithMemCache(pool)
+			pool = mempool.WrapsWithMemCache(pool)
+
+			// Preallocate the value of the quotient
+			subQuotientReg  = sv.AllocateRegular(ctx.maxSize)
 			subQuotientCnst = field.Zero()
 		)
 
 		defer pool.TearDown()
 
-		var (
-			polHandle  = ctx.polys[i]
-			polWitness = polHandle.GetColAssignment(run)
-			ri         field.Element
-		)
-
-		ri.Exp(r, big.NewInt(int64(i)))
-
-		if cnst, isCnst := polWitness.(*sv.Constant); isCnst {
-			polWitness = sv.NewRegular([]field.Element{cnst.Val()})
-		} else if pool.Size() == polWitness.Len() {
-			polWitness = sv.FFTInverse(polWitness, fft.DIF, true, 0, 0, pool)
-		} else {
-			polWitness = sv.FFTInverse(polWitness, fft.DIF, true, 0, 0, nil)
-		}
-
-		/*
-			Substract by the lagrange interpolator and get the quotient
-		*/
-		for j, hpos := range ctx.xPoly[polHandle.GetColID()] {
-			var lagrange sv.SmartVector = sv.NewRegular(lagranges[hpos])
-			// Get the associated `y` value
-			y := ys[polHandle.GetColID()][j]
-			lagrange = sv.ScalarMul(lagrange, y) // this is a copy op
-			polWitness = sv.PolySub(polWitness, lagrange)
-		}
-
-		/*
-			Then gets the quotient by Z_{S_i}
-		*/
-		var rem field.Element
-		for _, hpos := range ctx.xPoly[polHandle.GetColID()] {
-			h := hs[hpos]
-			polWitness, rem = sv.RuffiniQuoRem(polWitness, h)
-
-			if rem != field.Zero() {
-				/*
-					Panic mode, try re-evaluating the witness polynomial from
-					the original witness and see if there is a problem there
-
-					TODO use structured logging for this
-				*/
-
-				panicMsg := "bug in during multi-point\n"
-				panicMsg = fmt.Sprintf("%v\ton the polynomial %v from query %v (hpos = %v)\n", panicMsg, polHandle.GetColID(), ctx.hs[hpos], hpos)
-
-				witness := polHandle.GetColAssignment(run)
-				yEvaluated := sv.Interpolate(witness, h)
-				panicMsg += fmt.Sprintf("\twhose witness evaluates to y = %v x = %v\n", yEvaluated.String(), h.String())
-
-				q := run.GetUnivariateEval(ctx.hs[hpos])
-				params := run.GetUnivariateParams(ctx.hs[hpos])
-
-				panicMsg += fmt.Sprintf("\tlooking at the query, we have\n\t\tx=%v\n", params.X.String())
-				for i := range q.Pols {
-					panicMsg += fmt.Sprintf("\t\tfor %v, P(x) = %v\n", q.Pols[i].GetColID(), params.Ys[i].String())
-				}
-
-				utils.Panic("%vremainder was %v (while reducing %v from query %v) \n", panicMsg, rem.String(), polHandle.GetColID(), ctx.hs[hpos])
+		for {
+			i, ok := index.Next()
+			if !ok {
+				break
 			}
-		}
 
-		// Should be very uncommon
-		if subQuotientReg.Len() < polWitness.Len() {
-			logrus.Warnf("Warning reallocation of the subquotient for MPTS. If there are too many it's an issue")
-			// It's the only known use-case for concatenating smart-vectors
-			newSubquotient := make([]field.Element, polWitness.Len())
-			subQuotientReg.WriteInSlice(newSubquotient[:subQuotientReg.Len()])
-			subQuotientReg = sv.NewRegular(newSubquotient)
-		}
+			var (
+				polHandle  = ctx.polys[i]
+				polWitness = polHandle.GetColAssignment(run)
+				ri         field.Element
+			)
 
-		tmp := sv.ScalarMul(polWitness, ri)
-		subQuotientReg = sv.PolyAdd(tmp, subQuotientReg)
+			ri.Exp(r, big.NewInt(int64(i)))
 
-		if pooled, ok := polWitness.(*sv.Pooled); ok {
-			pooled.Free(pool)
+			if cnst, isCnst := polWitness.(*sv.Constant); isCnst {
+				polWitness = sv.NewRegular([]field.Element{cnst.Val()})
+			} else if pool.Size() == polWitness.Len() {
+				polWitness = sv.FFTInverse(polWitness, fft.DIF, true, 0, 0, pool)
+			} else {
+				polWitness = sv.FFTInverse(polWitness, fft.DIF, true, 0, 0, nil)
+			}
+
+			/*
+				Substract by the lagrange interpolator and get the quotient
+			*/
+			for j, hpos := range ctx.xPoly[polHandle.GetColID()] {
+				var lagrange sv.SmartVector = sv.NewRegular(lagranges[hpos])
+				// Get the associated `y` value
+				y := ys[polHandle.GetColID()][j]
+				lagrange = sv.ScalarMul(lagrange, y) // this is a copy op
+				polWitness = sv.PolySub(polWitness, lagrange)
+			}
+
+			/*
+				Then gets the quotient by Z_{S_i}
+			*/
+			var rem field.Element
+			for _, hpos := range ctx.xPoly[polHandle.GetColID()] {
+				h := hs[hpos]
+				polWitness, rem = sv.RuffiniQuoRem(polWitness, h)
+
+				if rem != field.Zero() {
+					/*
+						Panic mode, try re-evaluating the witness polynomial from
+						the original witness and see if there is a problem there
+
+						TODO use structured logging for this
+					*/
+
+					panicMsg := "bug in during multi-point\n"
+					panicMsg = fmt.Sprintf("%v\ton the polynomial %v from query %v (hpos = %v)\n", panicMsg, polHandle.GetColID(), ctx.hs[hpos], hpos)
+
+					witness := polHandle.GetColAssignment(run)
+					yEvaluated := sv.Interpolate(witness, h)
+					panicMsg += fmt.Sprintf("\twhose witness evaluates to y = %v x = %v\n", yEvaluated.String(), h.String())
+
+					q := run.GetUnivariateEval(ctx.hs[hpos])
+					params := run.GetUnivariateParams(ctx.hs[hpos])
+
+					panicMsg += fmt.Sprintf("\tlooking at the query, we have\n\t\tx=%v\n", params.X.String())
+					for i := range q.Pols {
+						panicMsg += fmt.Sprintf("\t\tfor %v, P(x) = %v\n", q.Pols[i].GetColID(), params.Ys[i].String())
+					}
+
+					utils.Panic("%vremainder was %v (while reducing %v from query %v) \n", panicMsg, rem.String(), polHandle.GetColID(), ctx.hs[hpos])
+				}
+			}
+
+			// Should be very uncommon
+			if subQuotientReg.Len() < polWitness.Len() {
+				logrus.Warnf("Warning reallocation of the subquotient for MPTS. If there are too many it's an issue")
+				// It's the only known use-case for concatenating smart-vectors
+				newSubquotient := make([]field.Element, polWitness.Len())
+				subQuotientReg.WriteInSlice(newSubquotient[:subQuotientReg.Len()])
+				subQuotientReg = sv.NewRegular(newSubquotient)
+			}
+
+			tmp := sv.ScalarMul(polWitness, ri)
+			subQuotientReg = sv.PolyAdd(tmp, subQuotientReg)
+
+			if pooled, ok := polWitness.(*sv.Pooled); ok {
+				pooled.Free(pool)
+			}
+
+			wg.Done()
 		}
 
 		subQuotientReg = sv.PolyAdd(subQuotientReg, sv.NewConstant(subQuotientCnst, 1))
@@ -335,7 +350,11 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 		quoLock.Lock()
 		quotient = sv.PolyAdd(quotient, subQuotientReg)
 		quoLock.Unlock()
+
+		mainWg.Done()
 	})
+
+	mainWg.Wait()
 
 	if quotient.Len() < ctx.targetSize {
 		quo := sv.IntoRegVec(quotient)
