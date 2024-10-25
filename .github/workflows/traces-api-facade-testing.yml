@@ -2,11 +2,7 @@ name: traces-api-facade-testing
 
 on:
   workflow_call:
-    secrets:
-      DOCKERHUB_USERNAME:
-        required: true
-      DOCKERHUB_TOKEN:
-        required: true
+
   workflow_dispatch:
     inputs:
       coverage:
