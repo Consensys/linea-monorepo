@@ -2,11 +2,7 @@ name: traces-api-facade-testing
 
 on:
   workflow_call:
-    secrets:
-      DOCKERHUB_USERNAME:
-        required: true
-      DOCKERHUB_TOKEN:
-        required: true
+
   workflow_dispatch:
     inputs:
       coverage:
@@ -43,7 +39,7 @@ jobs:
           retry_on: error
           timeout_minutes: 20
           command: |
-            ./gradlew traces-api-facade:app:buildNeeded jacocoRootReport
+            ./gradlew -V traces-api-facade:app:buildNeeded jacocoRootReport
       - name: Run tests without coverage
         uses: nick-fields/retry@v2
         if: ${{ !inputs.coverage }}
@@ -52,4 +48,4 @@ jobs:
           retry_on: error
           timeout_minutes: 20
           command: |
-            ./gradlew traces-api-facade:app:buildNeeded
+            ./gradlew -V traces-api-facade:app:buildNeeded

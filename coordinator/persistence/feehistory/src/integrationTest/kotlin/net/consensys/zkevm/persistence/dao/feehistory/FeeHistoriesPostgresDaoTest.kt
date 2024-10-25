@@ -9,7 +9,7 @@ import net.consensys.FakeFixedClock
 import net.consensys.linea.FeeHistory
 import net.consensys.linea.async.get
 import net.consensys.zkevm.persistence.db.DbHelper
-import net.consensys.zkevm.persistence.test.CleanDbTestSuiteParallel
+import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -17,6 +17,9 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 @ExtendWith(VertxExtension::class)
 class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+  }
 
   fun createFeeHistory(
     oldestBlockNumber: ULong,

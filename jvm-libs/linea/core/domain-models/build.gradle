@@ -1,0 +1,11 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-common-conventions'
+}
+
+dependencies {
+  implementation project(":jvm-libs:generic:extensions:kotlin")
+}
+
+jar {
+    dependsOn configurations.runtimeClasspath
+}

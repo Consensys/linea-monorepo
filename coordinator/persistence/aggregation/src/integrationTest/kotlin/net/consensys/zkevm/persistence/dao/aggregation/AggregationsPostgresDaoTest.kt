@@ -1,5 +1,6 @@
 package net.consensys.zkevm.persistence.dao.aggregation
 
+import build.linea.domain.BlockIntervals
 import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
@@ -15,7 +16,6 @@ import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobStatus
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createBatch
@@ -25,8 +25,8 @@ import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
-import net.consensys.zkevm.persistence.test.CleanDbTestSuiteParallel
-import net.consensys.zkevm.persistence.test.DbQueries
+import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
+import net.consensys.zkevm.persistence.db.test.DbQueries
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -39,6 +39,10 @@ import java.util.concurrent.TimeUnit
 
 @ExtendWith(VertxExtension::class)
 class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+  }
+
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-aggregations-dao")
 
   private val maxBlobReturnLimit = 10u

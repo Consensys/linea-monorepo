@@ -7,21 +7,17 @@ import org.hyperledger.besu.ethereum.core.Block
 import org.hyperledger.besu.ethereum.core.BlockBody
 import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder
 import org.hyperledger.besu.ethereum.core.Difficulty
+import org.hyperledger.besu.ethereum.core.encoding.EncodingContext
 import org.hyperledger.besu.ethereum.core.encoding.TransactionDecoder
 import org.hyperledger.besu.ethereum.mainnet.BodyValidation
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.evm.log.LogsBloomFilter
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 
-object FakeRLPEncoder : ExecutionPayloadV1Encoder {
-  override fun encode(payload: ExecutionPayloadV1): ByteArray {
-    return ByteArray(0)
-  }
-}
-
 object ExecutionPayloadV1RLPEncoderByBesuImplementation : ExecutionPayloadV1Encoder {
   override fun encode(payload: ExecutionPayloadV1): ByteArray {
-    val parsedTransactions = payload.transactions.map(TransactionDecoder::decodeOpaqueBytes)
+    val parsedTransactions = payload.transactions
+      .map { TransactionDecoder.decodeOpaqueBytes(it, EncodingContext.BLOCK_BODY) }
     val parsedBody = BlockBody(parsedTransactions, emptyList())
     val blockHeader =
       BlockHeaderBuilder.create()

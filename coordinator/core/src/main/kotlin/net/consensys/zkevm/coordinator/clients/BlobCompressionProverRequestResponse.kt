@@ -1,7 +1,7 @@
 package net.consensys.zkevm.coordinator.clients
 
-import net.consensys.zkevm.domain.BlockInterval
-import net.consensys.zkevm.domain.BlockIntervals
+import build.linea.domain.BlockInterval
+import build.linea.domain.BlockIntervals
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.ethereum.coordination.blob.ShnarfResult
 
