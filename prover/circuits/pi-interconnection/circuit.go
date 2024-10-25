@@ -298,16 +298,16 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
 	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, 2)
 	for i := 0; i < nbShnarf; i++ {
-		res.WithHashLengths(160) // 5 components in every shnarf
+		res.WithStrictHashLengths(160) // 5 components in every shnarf
 	}
 
 	for i := 0; i < nbMerkle; i++ {
-		res.WithHashLengths(64) // 2 tree nodes
+		res.WithStrictHashLengths(64) // 2 tree nodes
 	}
 
 	// aggregation PI opening
-	res.WithHashLengths(32 * c.L2MsgMaxNbMerkle)
-	res.WithHashLengths(384)
+	res.WithStrictHashLengths(32 * c.L2MsgMaxNbMerkle)
+	res.WithStrictHashLengths(384)
 
 	return &res
 }

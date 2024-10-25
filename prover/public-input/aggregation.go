@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"golang.org/x/crypto/sha3"
 )
 
 // Aggregation collects all the field that are used to construct the public
@@ -32,9 +31,30 @@ type Aggregation struct {
 	L2MsgMerkleTreeDepth                    int
 }
 
-func (p Aggregation) Sum(hsh hash.Hash) []byte {
-	if hsh == nil {
-		hsh = sha3.NewLegacyKeccak256()
+type aggregationSumSettings struct {
+	h            hash.Hash
+	treesPadding []string
+}
+
+type AggregationSumOption func(*aggregationSumSettings)
+
+func WithHash(h hash.Hash) AggregationSumOption {
+	return func(s *aggregationSumSettings) {
+		s.h = h
+	}
+}
+
+func WithTreesPadding(treesPadding []string) AggregationSumOption {
+	return func(s *aggregationSumSettings) {
+		s.treesPadding = treesPadding
+	}
+}
+
+func (p Aggregation) Sum(options ...AggregationSumOption) []byte {
+	var s aggregationSumSettings
+
+	for _, o := range options {
+		o(&s)
 	}
 
 	writeHex := func(hex string) {
@@ -42,28 +62,31 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 		if err != nil {
 			panic(err)
 		}
-		hsh.Write(b)
+		s.h.Write(b)
 	}
 
 	writeInt := func(i int) {
 		b := utils.FmtInt32Bytes(i)
-		hsh.Write(b[:])
+		s.h.Write(b[:])
 	}
 
 	writeUint := func(i uint) {
 		b := utils.FmtUint32Bytes(i)
-		hsh.Write(b[:])
+		s.h.Write(b[:])
 	}
 
-	hsh.Reset()
+	s.h.Reset()
 
 	for _, hex := range p.L2MsgRootHashes {
 		writeHex(hex)
 	}
+	for _, hex := range s.treesPadding {
+		writeHex(hex)
+	}
 
-	l2Msgs := hsh.Sum(nil)
+	l2Msgs := s.h.Sum(nil)
 
-	hsh.Reset()
+	s.h.Reset()
 	writeHex(p.ParentAggregationFinalShnarf)
 	writeHex(p.FinalShnarf)
 	writeUint(p.ParentAggregationLastBlockTimestamp)
@@ -75,11 +98,11 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 	writeUint(p.LastFinalizedL1RollingHashMessageNumber)
 	writeUint(p.L1RollingHashMessageNumber)
 	writeInt(p.L2MsgMerkleTreeDepth)
-	hsh.Write(l2Msgs)
+	s.h.Write(l2Msgs)
 
 	// represent canonically as a bn254 scalar
 	var x bn254fr.Element
-	x.SetBytes(hsh.Sum(nil))
+	x.SetBytes(s.h.Sum(nil))
 
 	res := x.Bytes()
 

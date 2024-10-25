@@ -3,6 +3,7 @@ package keccak
 import (
 	"bytes"
 	"errors"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"hash"
 	"math/big"
 	"slices"
@@ -39,7 +40,7 @@ type StrictHasherCompiler []int
 // CompiledStrictHasher must be stored and reloaded
 type CompiledStrictHasher struct {
 	wc           HashWizardVerifierSubCircuit
-	lengths      []int
+	lengths      []int // expected lengths of hashes; Strict lengths are represented as negative numbers, and the absolute value is the length. Flexible lengths are represented as positive numbers.
 	maxNbKeccakF int
 }
 
@@ -66,17 +67,30 @@ type StrictHasherSnark struct {
 	c   *StrictHasherCircuit
 }
 
+// NewStrictHasherCompiler creates a new strict hasher compiler with capacity for a number of hashes equal to the sum of the arguments
 func NewStrictHasherCompiler(lengthsOfLengths ...int) StrictHasherCompiler {
 	return make([]int, 0, internal.Sum(lengthsOfLengths...))
 }
 
-func (h *StrictHasherCompiler) WithHashLengths(l ...int) *StrictHasherCompiler {
+func (h *StrictHasherCompiler) WithFlexibleHashLengths(l ...int) *StrictHasherCompiler {
 	for _, li := range l {
 		if li%32 != 0 {
 			panic("length must divide 32")
 		}
 	}
 	*h = append(*h, l...)
+	return h
+}
+
+func (h *StrictHasherCompiler) WithStrictHashLengths(l ...int) *StrictHasherCompiler {
+	for _, li := range l {
+		if li%32 != 0 {
+			panic("length must divide 32")
+		}
+	}
+	for _, li := range l {
+		*h = append(*h, -li)
+	}
 	return h
 }
 
@@ -102,7 +116,7 @@ func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard
 func assignIns(lengths []int) [][][2]frontend.Variable {
 	ins := make([][][2]frontend.Variable, len(lengths))
 	for i := range ins {
-		ins[i] = make([][2]frontend.Variable, lengths[i]/32)
+		ins[i] = make([][2]frontend.Variable, utils.Abs(lengths[i])/32)
 	}
 	return ins
 }
@@ -176,7 +190,7 @@ func (h *StrictHasher) Sum(b []byte) []byte {
 	if len(h.remainingExpectedLengths) == 0 {
 		panic("more hashes than expected")
 	}
-	if len(p) != h.remainingExpectedLengths[0] {
+	if l := h.remainingExpectedLengths[0]; len(p) > l && len(p) != -l {
 		panic("hash length mismatch")
 	}
 	h.remainingExpectedLengths = h.remainingExpectedLengths[1:]
@@ -227,10 +241,6 @@ func (h *StrictHasher) SkipN(n int) {
 
 func (s *StrictHasherSnark) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [32]frontend.Variable {
 	api := s.h.api
-
-	if nbIn != nil {
-		panic("currently only static size supported")
-	}
 
 	if len(s.ins) == 0 {
 		panic("more snark hashes than expected")
