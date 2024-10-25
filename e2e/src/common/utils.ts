@@ -3,7 +3,7 @@ import assert from "assert";
 import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
-import { L2MessageService, LineaRollup } from "../typechain";
+import { L2MessageService, LineaRollupV5 } from "../typechain";
 import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
 
@@ -147,7 +147,7 @@ export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag
   }
 }
 
-export async function getEvents<TContract extends LineaRollup | L2MessageService, TEvent extends TypedContractEvent>(
+export async function getEvents<TContract extends LineaRollupV5 | L2MessageService, TEvent extends TypedContractEvent>(
   contract: TContract,
   eventFilter: TypedDeferredTopicFilter<TEvent>,
   fromBlock?: BlockTag,
@@ -168,7 +168,7 @@ export async function getEvents<TContract extends LineaRollup | L2MessageService
 }
 
 export async function waitForEvents<
-  TContract extends LineaRollup | L2MessageService,
+  TContract extends LineaRollupV5 | L2MessageService,
   TEvent extends TypedContractEvent,
 >(
   contract: TContract,
@@ -294,7 +294,7 @@ export function getMessageSentEventFromLogs<T extends BaseContract>(
     });
 }
 
-export const sendMessage = async <T extends LineaRollup | L2MessageService>(
+export const sendMessage = async <T extends LineaRollupV5 | L2MessageService>(
   signer: AbstractSigner,
   contract: T,
   args: SendMessageArgs,

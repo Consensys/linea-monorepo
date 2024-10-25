@@ -5,8 +5,8 @@ import {
   DummyContract__factory,
   L2MessageService,
   L2MessageService__factory,
-  LineaRollup,
-  LineaRollup__factory,
+  LineaRollupV5,
+  LineaRollupV5__factory,
   TestContract,
   TestContract__factory,
 } from "../../typechain";
@@ -73,8 +73,8 @@ export default class TestSetup {
     return this.config.L2.transactionExclusionEndpoint;
   }
 
-  public getLineaRollupContract(signer?: AbstractSigner): LineaRollup {
-    const lineaRollup: LineaRollup = LineaRollup__factory.connect(
+  public getLineaRollupContract(signer?: AbstractSigner): LineaRollupV5 {
+    const lineaRollup: LineaRollupV5 = LineaRollupV5__factory.connect(
       this.config.L1.lineaRollupAddress,
       this.getL1Provider(),
     );
