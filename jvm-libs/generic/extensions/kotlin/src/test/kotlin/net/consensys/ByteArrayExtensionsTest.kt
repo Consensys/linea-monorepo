@@ -118,5 +118,6 @@ class ByteArrayExtensionsTest {
     assertThat(byteArrayOf(0x01).toULongFromLast8Bytes(lenient = true)).isEqualTo(1uL)
     val max = ByteArray(32) { 0xff.toByte() }
     assertThat(max.toULongFromLast8Bytes()).isEqualTo(ULong.MAX_VALUE)
+    assertThat(max.apply { set(31, 0xfe.toByte()) }.toULongFromLast8Bytes()).isEqualTo(ULong.MAX_VALUE - 1UL)
   }
 }
