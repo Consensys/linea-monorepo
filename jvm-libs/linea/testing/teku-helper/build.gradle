@@ -9,4 +9,6 @@ dependencies {
 
   implementation "tech.pegasys.teku.internal:spec:${libs.versions.teku.get()}"
   implementation "tech.pegasys.teku.internal:spec:${libs.versions.teku.get()}:test-fixtures"
+  implementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
+  implementation project(':jvm-libs:generic:extensions:kotlin')
 }
