@@ -9,9 +9,11 @@ class ByteArrayExtensionsTest {
   @Test
   fun `ByteArray#encodeHex`() {
     assertThat(byteArrayOf().encodeHex()).isEqualTo("0x")
+    assertThat(byteArrayOf().encodeHex(false)).isEqualTo("")
     assertThat(byteArrayOf(0).encodeHex()).isEqualTo("0x00")
     assertThat(byteArrayOf(1).encodeHex()).isEqualTo("0x01")
     assertThat(byteArrayOf(0x12, 0x34, 0x56).encodeHex()).isEqualTo("0x123456")
+    assertThat(byteArrayOf(0x12, 0x34, 0x56).encodeHex(false)).isEqualTo("123456")
   }
 
   @Test
@@ -108,5 +110,14 @@ class ByteArrayExtensionsTest {
     }
       .isInstanceOf(AssertionError::class.java)
       .hasMessage("slice 64..95 is out of array size=80")
+  }
+
+  @Test
+  fun toULongFromLast8Bytes() {
+    assertThat(byteArrayOf(0x00).toULongFromLast8Bytes(lenient = true)).isEqualTo(0uL)
+    assertThat(byteArrayOf(0x01).toULongFromLast8Bytes(lenient = true)).isEqualTo(1uL)
+    val max = ByteArray(32) { 0xff.toByte() }
+    assertThat(max.toULongFromLast8Bytes()).isEqualTo(ULong.MAX_VALUE)
+    assertThat(max.apply { set(31, 0xfe.toByte()) }.toULongFromLast8Bytes()).isEqualTo(ULong.MAX_VALUE - 1UL)
   }
 }

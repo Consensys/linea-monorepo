@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-  implementation "org.apache.tuweni:tuweni-units:${libs.versions.tuweni.get()}"
+  implementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
   implementation project(':jvm-libs:generic:extensions:kotlin')
   testImplementation project(':jvm-libs:linea:testing:file-system')
   testImplementation "com.sksamuel.hoplite:hoplite-core:${libs.versions.hoplite.get()}"

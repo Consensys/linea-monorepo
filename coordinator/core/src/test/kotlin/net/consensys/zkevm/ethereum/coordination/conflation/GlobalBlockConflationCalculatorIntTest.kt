@@ -1,6 +1,7 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
 import kotlinx.datetime.Instant
+import net.consensys.ByteArrayExt
 import net.consensys.FakeFixedClock
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.traces.TracesCountersV1
@@ -11,7 +12,6 @@ import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.ethereum.coordination.blob.FakeBlobCompressor
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockHeaderSummary
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
-import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -277,7 +277,7 @@ class GlobalBlockConflationCalculatorIntTest {
       SafeFuture.completedFuture(
         BlockHeaderSummary(
           number = 7uL,
-          hash = Bytes32.random(),
+          hash = ByteArrayExt.random32(),
           timestamp = block7Counters.blockTimestamp
         )
       )

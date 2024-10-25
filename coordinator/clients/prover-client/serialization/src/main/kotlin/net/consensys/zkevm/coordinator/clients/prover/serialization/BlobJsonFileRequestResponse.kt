@@ -1,5 +1,6 @@
 package net.consensys.zkevm.coordinator.clients.prover.serialization
 
+import build.linea.domain.BlockIntervals
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonParser
@@ -13,7 +14,6 @@ import net.consensys.decodeHex
 import net.consensys.encodeHex
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
-import net.consensys.zkevm.domain.BlockIntervals
 
 internal class ByteArrayDeserializer : JsonDeserializer<ByteArray>() {
   override fun deserialize(p: JsonParser, ctxt: DeserializationContext): ByteArray {

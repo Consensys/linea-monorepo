@@ -3,14 +3,13 @@ package net.consensys.zkevm.coordinator.blockcreation
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import net.consensys.ByteArrayExt
+import net.consensys.decodeHex
 import net.consensys.linea.async.get
 import net.consensys.linea.web3j.ExtendedWeb3J
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreated
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreationListener
 import org.apache.logging.log4j.Logger
-import org.apache.tuweni.bytes.Bytes
-import org.apache.tuweni.bytes.Bytes32
-import org.apache.tuweni.units.bigints.UInt256
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterEach
@@ -31,10 +30,8 @@ import org.mockito.kotlin.whenever
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.Request
 import org.web3j.protocol.core.methods.response.EthBlock
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
+import tech.pegasys.teku.ethereum.executionclient.schema.executionPayloadV1
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.infrastructure.bytes.Bytes20
-import tech.pegasys.teku.infrastructure.unsigned.UInt64
 import java.math.BigInteger
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -45,8 +42,7 @@ import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 class BlockCreationMonitorTest {
-  private val parentHash =
-    Bytes32.fromHexString("0x1000000000000000000000000000000000000000000000000000000000000000")
+  private val parentHash = "0x1000000000000000000000000000000000000000000000000000000000000000".decodeHex()
   private val startingBlockNumberInclusive: Long = 100
   private val blocksToFetch: Long = 5L
   private val lastBlockNumberInclusiveToProcess: ULong = startingBlockNumberInclusive.toULong() + 10uL
@@ -136,12 +132,12 @@ class BlockCreationMonitorTest {
     val payload2 =
       executionPayloadV1(
         blockNumber = lastBlockNumberInclusiveToProcess.toLong(),
-        parentHash = payload.blockHash
+        parentHash = payload.blockHash.toArray()
       )
     val payload3 =
       executionPayloadV1(
         blockNumber = lastBlockNumberInclusiveToProcess.toLong() + 1,
-        parentHash = payload2.blockHash
+        parentHash = payload2.blockHash.toArray()
       )
 
     val headBlockNumber = lastBlockNumberInclusiveToProcess.toLong() + config.blocksToFinalization
@@ -180,7 +176,7 @@ class BlockCreationMonitorTest {
     val payload2 =
       executionPayloadV1(
         blockNumber = startingBlockNumberInclusive + 1,
-        parentHash = payload.blockHash
+        parentHash = payload.blockHash.toArray()
       )
     val headBlockNumber = startingBlockNumberInclusive + config.blocksToFinalization
     whenever(web3jClient.ethBlockNumber())
@@ -306,7 +302,7 @@ class BlockCreationMonitorTest {
     val payload2 =
       executionPayloadV1(
         blockNumber = startingBlockNumberInclusive + 1,
-        parentHash = Bytes32.random()
+        parentHash = ByteArrayExt.random32()
       )
     val headBlockNumber = startingBlockNumberInclusive + config.blocksToFinalization
     whenever(web3jClient.ethBlockNumber())
@@ -347,7 +343,7 @@ class BlockCreationMonitorTest {
     val payload2 =
       executionPayloadV1(
         blockNumber = startingBlockNumberInclusive + 1,
-        parentHash = payload.blockHash
+        parentHash = payload.blockHash.toArray()
       )
     val headBlockNumber = startingBlockNumberInclusive + config.blocksToFinalization
 
@@ -388,7 +384,7 @@ class BlockCreationMonitorTest {
     val payload2 =
       executionPayloadV1(
         blockNumber = startingBlockNumberInclusive + 1,
-        parentHash = payload.blockHash
+        parentHash = payload.blockHash.toArray()
       )
     val headBlockNumber = startingBlockNumberInclusive + config.blocksToFinalization
     whenever(web3jClient.ethBlockNumber())
@@ -426,12 +422,18 @@ class BlockCreationMonitorTest {
   @Test
   fun `block shouldn't be fetched when block gap is greater than fetch limit`(testContext: VertxTestContext) {
     val payload = executionPayloadV1(blockNumber = startingBlockNumberInclusive, parentHash = parentHash)
-    val payload2 = executionPayloadV1(blockNumber = startingBlockNumberInclusive + 1, parentHash = payload.blockHash)
-    val payload3 = executionPayloadV1(blockNumber = startingBlockNumberInclusive + 2, parentHash = payload2.blockHash)
-    val payload4 = executionPayloadV1(blockNumber = startingBlockNumberInclusive + 3, parentHash = payload3.blockHash)
-    val payload5 = executionPayloadV1(blockNumber = startingBlockNumberInclusive + 4, parentHash = payload4.blockHash)
-    val payload6 = executionPayloadV1(blockNumber = startingBlockNumberInclusive + 5, parentHash = payload5.blockHash)
-    val payload7 = executionPayloadV1(blockNumber = startingBlockNumberInclusive + 6, parentHash = payload6.blockHash)
+    val payload2 =
+      executionPayloadV1(blockNumber = startingBlockNumberInclusive + 1, parentHash = payload.blockHash.toArray())
+    val payload3 =
+      executionPayloadV1(blockNumber = startingBlockNumberInclusive + 2, parentHash = payload2.blockHash.toArray())
+    val payload4 =
+      executionPayloadV1(blockNumber = startingBlockNumberInclusive + 3, parentHash = payload3.blockHash.toArray())
+    val payload5 =
+      executionPayloadV1(blockNumber = startingBlockNumberInclusive + 4, parentHash = payload4.blockHash.toArray())
+    val payload6 =
+      executionPayloadV1(blockNumber = startingBlockNumberInclusive + 5, parentHash = payload5.blockHash.toArray())
+    val payload7 =
+      executionPayloadV1(blockNumber = startingBlockNumberInclusive + 6, parentHash = payload6.blockHash.toArray())
 
     val headBlockNumber = startingBlockNumberInclusive + config.blocksToFinalization
     whenever(web3jClient.ethGetExecutionPayloadByNumber(any()))
@@ -531,39 +533,5 @@ class BlockCreationMonitorTest {
       testContext.completeNow()
     }
       .whenException(testContext::failNow)
-  }
-
-  private fun executionPayloadV1(
-    blockNumber: Long = 0,
-    parentHash: Bytes32 = Bytes32.random(),
-    feeRecipient: Bytes20 = Bytes20(Bytes.random(20)),
-    stateRoot: Bytes32 = Bytes32.random(),
-    receiptsRoot: Bytes32 = Bytes32.random(),
-    logsBloom: Bytes = Bytes32.random(),
-    prevRandao: Bytes32 = Bytes32.random(),
-    gasLimit: UInt64 = UInt64.valueOf(0),
-    gasUsed: UInt64 = UInt64.valueOf(0),
-    timestamp: UInt64 = UInt64.valueOf(0),
-    extraData: Bytes = Bytes32.random(),
-    baseFeePerGas: UInt256 = UInt256.valueOf(256),
-    blockHash: Bytes32 = Bytes32.random(),
-    transactions: List<Bytes> = emptyList()
-  ): ExecutionPayloadV1 {
-    return ExecutionPayloadV1(
-      parentHash,
-      feeRecipient,
-      stateRoot,
-      receiptsRoot,
-      logsBloom,
-      prevRandao,
-      UInt64.valueOf(blockNumber),
-      gasLimit,
-      gasUsed,
-      timestamp,
-      extraData,
-      baseFeePerGas,
-      blockHash,
-      transactions
-    )
   }
 }
