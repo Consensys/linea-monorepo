@@ -7,5 +7,5 @@ traces_file_extension = "json.gz"
 port = 8080
 path = "/"
 # if =0, it will create one verticle per core (or hyperthread if supported)
-number_of_verticles = 0
+number_of_verticles = 2
 observability_port = 8090
