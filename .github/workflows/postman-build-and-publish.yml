@@ -67,7 +67,7 @@ jobs:
         run: |
           echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }},${{ env.IMAGE_NAME }}:${{ env.DEVELOP_TAG }}" >> $GITHUB_ENV
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ssh-key: ${{ secrets.SELF_GITHUB_SSH_KEY }}
           submodules: true
