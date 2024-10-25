@@ -56,12 +56,13 @@ library SparseMerkleTreeVerifier {
   /**
    * @notice Tries to safely cast to uint32.
    * @param _value The value being cast to uint32.
+   * @return castUint32 Returns a uint32 safely cast.
    * @dev This is based on OpenZeppelin's SafeCast library.
    */
-  function safeCastToUint32(uint256 _value) internal pure returns (uint32) {
+  function safeCastToUint32(uint256 _value) internal pure returns (uint32 castUint32) {
     if (_value > type(uint32).max) {
       revert SafeCastOverflowedUintDowncast(32, _value);
     }
-    return uint32(_value);
+    castUint32 = uint32(_value);
   }
 }
