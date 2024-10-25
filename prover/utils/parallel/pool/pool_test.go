@@ -1,4 +1,4 @@
-package parallel
+package pool
 
 import (
 	"fmt"
