@@ -131,9 +131,9 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
   /**
    * @notice Check if a pause type is enabled.
    * @param _pauseType The pause type value.
-   * @return boolean True if the pause type if enabled, false otherwise.
+   * @return pauseTypeIsPaused Returns true if the pause type if paused, false otherwise.
    */
-  function isPaused(PauseType _pauseType) public view returns (bool) {
-    return (_pauseTypeStatusesBitMap & (1 << uint256(_pauseType))) != 0;
+  function isPaused(PauseType _pauseType) public view returns (bool pauseTypeIsPaused) {
+    pauseTypeIsPaused = (_pauseTypeStatusesBitMap & (1 << uint256(_pauseType))) != 0;
   }
 }

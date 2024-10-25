@@ -145,9 +145,9 @@ abstract contract L1MessageService is
   /**
    * @notice Claims and delivers a cross-chain message.
    * @dev The message sender address is set temporarily in the transient storage when claiming.
-   * @return addr The message sender address that is stored temporarily in the transient storage when claiming.
+   * @return originalSender The message sender address that is stored temporarily in the transient storage when claiming.
    */
-  function sender() external view returns (address addr) {
-    return TransientStorageHelpers.tloadAddress(MESSAGE_SENDER_TRANSIENT_KEY);
+  function sender() external view returns (address originalSender) {
+    originalSender = TransientStorageHelpers.tloadAddress(MESSAGE_SENDER_TRANSIENT_KEY);
   }
 }
