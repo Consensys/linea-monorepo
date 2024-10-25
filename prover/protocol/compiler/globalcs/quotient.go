@@ -23,7 +23,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
@@ -223,7 +223,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 	go func() {
 		// Compute once the FFT of the natural columns
 
-		parallel.ExecutePoolChunky(len(ctx.AllInvolvedRoots), func(k int) {
+		ppool.ExecutePoolChunky(len(ctx.AllInvolvedRoots), func(k int) {
 			pol := ctx.AllInvolvedRoots[k]
 			name := pol.GetColID()
 
@@ -250,7 +250,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 	}()
 
 	go func() {
-		parallel.ExecutePoolChunky(len(ctx.AllInvolvedColumns), func(k int) {
+		ppool.ExecutePoolChunky(len(ctx.AllInvolvedColumns), func(k int) {
 			pol := ctx.AllInvolvedColumns[k]
 
 			// short-path, the column is a shifted column of an already
@@ -359,7 +359,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 			stopTimer := profiling.LogTimer("ReEvaluate %v pols of size %v on coset %v/%v", len(handles), ctx.DomainSize, share, ratio)
 
-			parallel.ExecutePoolChunkyWithCache(len(roots), largePool, func(k int, localPool *mempool.SliceArena) {
+			ppool.ExecutePoolChunkyWithCache(len(roots), largePool, func(k int, localPool *mempool.SliceArena) {
 				root := roots[k]
 				name := root.GetColID()
 
@@ -376,7 +376,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				computedReeval.Store(name, reevaledRoot)
 			})
 
-			parallel.ExecutePoolChunkyWithCache(len(handles), largePool, func(k int, localPool *mempool.SliceArena) {
+			ppool.ExecutePoolChunkyWithCache(len(handles), largePool, func(k int, localPool *mempool.SliceArena) {
 				pol := handles[k]
 				// short-path, the column is a purely Shifted(Natural) or a Natural
 				// (this excludes repeats and/or interleaved columns)
