@@ -22,6 +22,8 @@ func ExecutePool(task func()) {
 }
 
 func ExecutePoolChunky(nbIterations int, work func(k int)) {
+	once.Do(run)
+
 	wg := sync.WaitGroup{}
 	wg.Add(nbIterations)
 
