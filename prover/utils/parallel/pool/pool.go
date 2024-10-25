@@ -46,11 +46,11 @@ func ExecutePoolChunkyWithCache(nbIterations int, lagerPool mempool.MemPool, wor
 
 	wg.Wait()
 
+	close(pool)
+
 	for localPool := range pool {
 		localPool.TearDown()
 	}
-
-	close(pool)
 }
 
 func ExecutePoolChunky(nbIterations int, work func(k int)) {
