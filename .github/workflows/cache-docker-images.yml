@@ -15,7 +15,12 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     name: Check if DockerHub secrets are present
     outputs:
-      secrets_present: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+      secrets_present: ${{ steps.check-secrets-present-step.outputs.DOCKERHUB_SECRET_PRESENT }}
+    steps:
+      - id: check-secrets-present-step
+        run: |
+          echo DOCKERHUB_SECRET_PRESENT=${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }} >> $GITHUB_OUTPUT
+          echo "DOCKERHUB_SECRET_PRESENT: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}"
 
   changes:
     needs: [ check-dockerhub-secrets-present ]
