@@ -1,4 +1,4 @@
-package parallel
+package pool
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
