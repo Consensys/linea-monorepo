@@ -1,6 +1,7 @@
 package net.consensys
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.math.BigInteger
@@ -19,6 +20,59 @@ class TypingsExtensionsTest {
     uLongParsingTestCases.forEach { (number: ULong, hexString: String) ->
       assertThat(number.toHexString()).isEqualTo(hexString)
     }
+  }
+
+  @Test
+  fun `toHexStringPaddedToBitSize_shouldPathToDesireNumberOfBitsWhenItFits`() {
+    assertThat(0.toULong().toHexStringPaddedToBitSize(4)).isEqualTo("0x0")
+    assertThat(0.toULong().toHexStringPaddedToBitSize(8)).isEqualTo("0x00")
+    assertThat(1.toULong().toHexStringPaddedToBitSize(4)).isEqualTo("0x1")
+    assertThat(1.toULong().toHexStringPaddedToBitSize(12)).isEqualTo("0x001")
+    assertThat(255.toULong().toHexStringPaddedToBitSize(8)).isEqualTo("0xff")
+
+    assertThat(ULong.MAX_VALUE.toHexStringPaddedToBitSize(64))
+      .isEqualTo("0xffffffffffffffff")
+    assertThat(ULong.MAX_VALUE.toHexStringPaddedToBitSize(80))
+      .isEqualTo("0x0000ffffffffffffffff")
+  }
+
+  @Test
+  fun `toHexStringPaddedToBitSize_shouldThrowErrorWhenBitSizeIsMultipleOf4`() {
+    assertThatThrownBy { 2.toULong().toHexStringPaddedToBitSize(9) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+      .hasMessage("targetBitSize=9 should be a multiple of 4")
+  }
+
+  @Test
+  fun `toHexStringPaddedToBitSize_shouldThrowErrorWhenNumberDoesFitWithTargetNumberOfBits`() {
+    assertThatThrownBy { 256.toULong().toHexStringPaddedToBitSize(8) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+      .hasMessage("Number 256 needs 3 hex digits (12 bits), targetBitSize=8")
+  }
+
+  @Test
+  fun `toHexStringPaddedToByteSize_shouldPathToDesireNumberOfBitsWhenItFits`() {
+    assertThat(0.toULong().toHexStringPaddedToByteSize(1)).isEqualTo("0x00")
+    assertThat(1.toULong().toHexStringPaddedToByteSize(1)).isEqualTo("0x01")
+    assertThat(2.toULong().toHexStringPaddedToByteSize(3)).isEqualTo("0x000002")
+    assertThat(255.toULong().toHexStringPaddedToByteSize(1)).isEqualTo("0xff")
+    assertThat(ULong.MAX_VALUE.toHexStringPaddedToByteSize(8))
+      .isEqualTo("0xffffffffffffffff")
+    assertThat(ULong.MAX_VALUE.toHexStringPaddedToByteSize(10))
+      .isEqualTo("0x0000ffffffffffffffff")
+  }
+
+  @Test
+  fun `toHexStringPaddedToByteSize_shouldThrowErrorWhenNumberDoesFitWithTargetNumber`() {
+    assertThatThrownBy { 256.toULong().toHexStringPaddedToByteSize(1) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+      .hasMessage("Number 256 needs 3 hex digits (12 bits), targetBitSize=8")
+  }
+
+  @Test
+  fun `toHexStringUInt256_shouldPathTo256Bit`() {
+    assertThat(0.toULong().toHexStringUInt256()).isEqualTo("0x" + "0".repeat(64))
+    assertThat(15.toULong().toHexStringUInt256()).isEqualTo("0x" + "0".repeat(63) + "f")
   }
 
   @Test
