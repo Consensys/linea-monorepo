@@ -444,9 +444,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			// Evaluates the constraint expression on the coset
 			evalInputs := make([]sv.SmartVector, len(metadatas))
 
-			ppool.ExecutePoolChunky(len(metadatas), func(k int) {
-				metadataInterface := metadatas[k]
-
+			for k, metadataInterface := range metadatas {
 				switch metadata := metadataInterface.(type) {
 				case ifaces.Column:
 					//name := metadata.GetColID()
@@ -464,7 +462,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				default:
 					utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
 				}
-			})
+			}
 
 			if len(handles) >= GC_HANDLES_SIZE {
 				// Force the GC to run
