@@ -5,7 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // OpeningProof represents an opening proof for a Vortex commitment. The proof
@@ -50,15 +50,15 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 	// Compute the linear combination
 	linComb := make([]field.Element, params.NbColumns)
 
-	ppool.ExecutePoolChunky(len(linComb), func(k int) {
+	parallel.ExecuteChunky(len(linComb), func(start, stop int) {
 		subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
 		for i := range committedSV {
-			subTask = append(subTask, committedSV[i].SubVector(k, k+1))
+			subTask = append(subTask, committedSV[i].SubVector(start, stop))
 		}
 		// Collect the result in the larger slice at the end
 
 		subResult := smartvectors.PolyEval(subTask, randomCoin)
-		subResult.WriteInSlice(linComb[k : k+1])
+		subResult.WriteInSlice(linComb[start:stop])
 	})
 
 	linCombSV := smartvectors.NewRegular(linComb)
