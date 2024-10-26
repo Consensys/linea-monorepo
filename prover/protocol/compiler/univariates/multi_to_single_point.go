@@ -240,10 +240,7 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 		// precompute the lagrange polynomials
 		lagranges = getLagrangesPolys(hs)
 		pool      = mempool.CreateFromSyncPool(ctx.targetSize).Prewarm(runtime.NumCPU())
-		mainWg    = &sync.WaitGroup{}
 	)
-
-	mainWg.Add(runtime.NumCPU())
 
 	parallel.ExecuteFromChan(len(ctx.polys), func(wg *sync.WaitGroup, index *parallel.AtomicCounter) {
 
@@ -350,11 +347,7 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 		quoLock.Lock()
 		quotient = sv.PolyAdd(quotient, subQuotientReg)
 		quoLock.Unlock()
-
-		mainWg.Done()
 	})
-
-	mainWg.Wait()
 
 	if quotient.Len() < ctx.targetSize {
 		quo := sv.IntoRegVec(quotient)
