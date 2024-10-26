@@ -38,15 +38,9 @@ import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 @Slf4j
 @AutoService(BesuPlugin.class)
 public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin {
-  public static final String NAME = "linea";
   private TransactionSelectionService transactionSelectionService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
   private BesuConfiguration besuConfiguration;
-
-  @Override
-  public Optional<String> getName() {
-    return Optional.of(NAME);
-  }
 
   @Override
   public void doRegister(final BesuContext context) {

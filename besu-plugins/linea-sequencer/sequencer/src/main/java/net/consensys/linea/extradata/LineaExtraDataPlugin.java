@@ -15,7 +15,6 @@
 
 package net.consensys.linea.extradata;
 
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.auto.service.AutoService;
@@ -34,14 +33,8 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
 @Slf4j
 @AutoService(BesuPlugin.class)
 public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
-  public static final String NAME = "linea";
   private BesuContext besuContext;
   private RpcEndpointService rpcEndpointService;
-
-  @Override
-  public Optional<String> getName() {
-    return Optional.of(NAME);
-  }
 
   @Override
   public void doRegister(final BesuContext context) {
