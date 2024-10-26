@@ -18,9 +18,9 @@ on:
         default: false
     secrets:
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
-        required: true
+        required: false
   workflow_dispatch:
     inputs:
       commit_tag:
