@@ -3,7 +3,6 @@ package globalcs
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"math/big"
 	"reflect"
 	"runtime"
@@ -445,27 +444,25 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			// Evaluates the constraint expression on the coset
 			evalInputs := make([]sv.SmartVector, len(metadatas))
 
-			parallel.Execute(len(metadatas), func(start int, stop int) {
-				for k := start; k < stop; k++ {
-					metadataInterface := metadatas[k]
+			ppool.ExecutePoolChunky(len(metadatas), func(k int) {
+				metadataInterface := metadatas[k]
 
-					switch metadata := metadataInterface.(type) {
-					case ifaces.Column:
-						//name := metadata.GetColID()
-						//evalInputs[k] = computedReeval[name]
-						value, _ := computedReeval.Load(metadata.GetColID())
-						evalInputs[k] = value.(sv.SmartVector)
-					case coin.Info:
-						evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
-					case variables.X:
-						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
-					case variables.PeriodicSample:
-						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
-					case ifaces.Accessor:
-						evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.DomainSize)
-					default:
-						utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
-					}
+				switch metadata := metadataInterface.(type) {
+				case ifaces.Column:
+					//name := metadata.GetColID()
+					//evalInputs[k] = computedReeval[name]
+					value, _ := computedReeval.Load(metadata.GetColID())
+					evalInputs[k] = value.(sv.SmartVector)
+				case coin.Info:
+					evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
+				case variables.X:
+					evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
+				case variables.PeriodicSample:
+					evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
+				case ifaces.Accessor:
+					evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.DomainSize)
+				default:
+					utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
 				}
 			})
 
