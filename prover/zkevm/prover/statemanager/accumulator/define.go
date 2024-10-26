@@ -572,6 +572,14 @@ func (am *Module) checkLeafHashes() {
 	expr4 := symbolic.Sub(symbolic.Square(cols.IsEmptyLeaf), cols.IsEmptyLeaf)
 	expr4 = symbolic.Mul(expr4, cols.IsActiveAccumulator)
 	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_BOOLEANITY"), expr4)
+
+	// IsEmptyLeaf is set to true if and only if it is the third row for INSERT, or fourth row for DELETE
+	// i.e. IsActiveAccumulator[i] * (IsEmptyLeaf[i] - IsFirst[i-2] * IsInsert[i-2] - IsFirst[i-3] * IsDelete[i-3])
+	expr5 := symbolic.Mul(cols.IsActiveAccumulator,
+		symbolic.Sub(cols.IsEmptyLeaf,
+			symbolic.Mul(column.Shift(cols.IsFirst, -2), column.Shift(cols.IsInsert, -2)),
+			symbolic.Mul(column.Shift(cols.IsFirst, -3), column.Shift(cols.IsDelete, -3))))
+	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_ONE_FOR_INSERT_THIRD_ROW_AND_DELETE_FOURTH_ROW"), expr5)
 }
 
 func (am *Module) checkNextFreeNode() {
