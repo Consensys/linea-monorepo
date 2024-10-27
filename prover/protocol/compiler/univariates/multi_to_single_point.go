@@ -2,6 +2,7 @@ package univariates
 
 import (
 	"fmt"
+	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 	"math/big"
 	"reflect"
 	"runtime"
@@ -383,17 +384,10 @@ func (ctx mptsCtx) claimEvaluation(run *wizard.ProverRuntime) {
 	polys := append(ctx.polys, ctx.Quotients...)
 
 	ys := make([]field.Element, len(polys))
-	parallel.Execute(len(polys), func(start, stop int) {
 
-		maxSize := 0
-		for i := start; i < stop; i++ {
-			maxSize = utils.Max(maxSize, polys[i].Size())
-		}
-
-		for i := start; i < stop; i++ {
-			witness := polys[i].GetColAssignment(run)
-			ys[i] = sv.Interpolate(witness, x)
-		}
+	ppool.ExecutePoolChunky(len(polys), func(i int) {
+		witness := polys[i].GetColAssignment(run)
+		ys[i] = sv.Interpolate(witness, x)
 	})
 
 	run.AssignUnivariate(ctx.EvaluationQuery, x, ys...)
