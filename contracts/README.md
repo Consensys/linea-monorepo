@@ -38,6 +38,8 @@ This project uses following libraries
 - [GoLang](https://go.dev/) for the compilation of code to autogenerate data for L2 data and proofs (not strictly required)
 - [Docker](https://www.docker.com/) for the local stack to run in
 
+If you already have an understanding of the tech stack, use our [Get Started](docs/get-started.md) guide.
+
 To run the tests:
 
 ## Testing without coverage
@@ -74,14 +76,41 @@ Please read the MakeFile: [MakeFile](../Makefile)
 make fresh-start-all
 ```
 
+### To deploy all the contracts
 
+If the stack is *already running*, to redeploy the contracts, the following commands can be used:
 
-### To deploy ZkEvm to local docker compose
+Note: The addresses change per deployment due to nonce increments, so be sure to validate the correct ones are being used.
 
-Run in ./contracts with running docker-compose stack.
+**NB:** The end to end tests run against a fresh stack and deploy with predetermined addresses.
 
-```shell
-sed "s/BLOCKCHAIN_NODE=.*/BLOCKCHAIN_NODE=http:\/\/localhost:8445/" .env.template > .env
-npx hardhat run ./scripts/deployment/deployZkEVM.ts --network zkevm_dev
+**Deploying the L1 contracts**
+```
+# This will deploy the Linea Rollup that is currently deployed on Mainnet - the current version is the LineaRollupV5.
+# Some end to end tests will test future upgrades to validate the stack remains functional.
+
+# Note: By default a test/placeholder verifier contract is used `IntegrationTestTrueVerifier`
+
+make deploy-linea-rollup
+
+#PLACEHOLDER FOR THE TOKENBRIDGE DEPLOYMENTS
 ```
 
+**Deploying the L2 contracts**
+```
+# This will deploy the current L2 Message Service.
+# Some end to end tests will test future upgrades to validate the stack remains functional.
+
+make deploy-l2messageservice
+
+#PLACEHOLDER FOR THE TOKENBRIDGE DEPLOYMENTS
+```
+
+**Deploying L1 and L2 together**
+```
+make deploy-contracts
+
+##  This will trigger the following commands:
+##	make compile-contracts
+##	$(MAKE) -j2 deploy-linea-rollup deploy-l2messageservice
+```
