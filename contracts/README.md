@@ -111,6 +111,6 @@ make deploy-l2messageservice
 make deploy-contracts
 
 ##  This will trigger the following commands:
-##	make compile-contracts
+##	make compile-contracts - In a future update, this will no longer apply due to cached ABI and bytecode.
 ##	$(MAKE) -j2 deploy-linea-rollup deploy-l2messageservice
 ```
