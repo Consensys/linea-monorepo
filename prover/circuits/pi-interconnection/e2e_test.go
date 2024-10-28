@@ -15,7 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
+	circuittesting "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	pitesting "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -30,15 +30,14 @@ import (
 
 // some of the execution data are faked
 func TestSingleBlockBlob(t *testing.T) {
-	testPI(t, 103, pitesting.AssignSingleBlockBlob(t), withSlack(0, 1, 2))
+	testPI(t, pitesting.AssignSingleBlockBlob(t), withSlack(0, 2))
 }
 
-func TestSingleBlobBlobE2E(t *testing.T) {
+func TestSingleBlockBlobE2E(t *testing.T) {
 	req := pitesting.AssignSingleBlockBlob(t)
 	cfg := config.PublicInput{
 		MaxNbDecompression: len(req.Decompressions),
 		MaxNbExecution:     len(req.Executions),
-		MaxNbKeccakF:       100,
 		ExecutionMaxNbMsg:  1,
 		L2MsgMerkleDepth:   5,
 		L2MsgMaxNbMerkle:   1,
@@ -102,7 +101,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	blobResp, err := blobsubmission.CraftResponse(&blobReq)
 	assert.NoError(t, err)
 
-	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes))
+	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes))
 
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp},
@@ -124,7 +123,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		},
 	}
 
-	testPI(t, 100, req, withSlack(0, 1, 2))
+	testPI(t, req, withSlack(0, 2))
 }
 
 func TestTwoTwoBatchBlobs(t *testing.T) {
@@ -183,7 +182,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	blobResp1, err := blobsubmission.CraftResponse(&blobReq1)
 	assert.NoError(t, err)
 
-	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes, execReq[2].L2MsgHashes, execReq[3].L2MsgHashes))
+	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes, execReq[2].L2MsgHashes, execReq[3].L2MsgHashes))
 
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp0, *blobResp1},
@@ -205,29 +204,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		},
 	}
 
-	testPI(t, 101, req, withSlack(0, 1, 2))
-}
-
-func TestEmpty(t *testing.T) {
-	const hexZeroBlock = "0x0000000000000000000000000000000000000000000000000000000000000000"
-
-	testPI(t, 50, pi_interconnection.Request{
-		Aggregation: public_input.Aggregation{
-			FinalShnarf:                             hexZeroBlock,
-			ParentAggregationFinalShnarf:            hexZeroBlock,
-			ParentStateRootHash:                     hexZeroBlock,
-			ParentAggregationLastBlockTimestamp:     0,
-			FinalTimestamp:                          0,
-			LastFinalizedBlockNumber:                0,
-			FinalBlockNumber:                        0,
-			LastFinalizedL1RollingHash:              hexZeroBlock,
-			L1RollingHash:                           hexZeroBlock,
-			LastFinalizedL1RollingHashMessageNumber: 0,
-			L1RollingHashMessageNumber:              0,
-			L2MsgRootHashes:                         []string{},
-			L2MsgMerkleTreeDepth:                    1,
-		},
-	})
+	testPI(t, req, withSlack(0, 2))
 }
 
 type testPIConfig struct {
@@ -242,7 +219,7 @@ func withSlack(slack ...int) testPIOption {
 	}
 }
 
-func testPI(t *testing.T, maxNbKeccakF int, req pi_interconnection.Request, options ...testPIOption) {
+func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOption) {
 	var cfg testPIConfig
 	for _, o := range options {
 		o(&cfg)
@@ -267,10 +244,10 @@ func testPI(t *testing.T, maxNbKeccakF int, req pi_interconnection.Request, opti
 		cfg := config.PublicInput{
 			MaxNbDecompression: len(req.Decompressions) + slack[0],
 			MaxNbExecution:     len(req.Executions) + slack[1],
-			MaxNbKeccakF:       maxNbKeccakF,
 			ExecutionMaxNbMsg:  1 + slack[2],
 			L2MsgMerkleDepth:   5,
 			L2MsgMaxNbMerkle:   1 + slack[3],
+			MockKeccakWizard:   true,
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {

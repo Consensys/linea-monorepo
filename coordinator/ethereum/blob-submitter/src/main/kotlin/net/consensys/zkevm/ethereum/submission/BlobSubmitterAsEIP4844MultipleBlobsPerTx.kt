@@ -1,11 +1,11 @@
 package net.consensys.zkevm.ethereum.submission
 
+import build.linea.domain.BlockIntervalData
+import build.linea.domain.toBlockIntervalsString
 import kotlinx.datetime.Clock
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobSubmittedEvent
-import net.consensys.zkevm.domain.BlockIntervalData
-import net.consensys.zkevm.domain.toBlockIntervalsString
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

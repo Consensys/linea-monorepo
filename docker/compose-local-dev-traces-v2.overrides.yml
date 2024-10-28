@@ -8,8 +8,14 @@ services:
     volumes:
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
 
+  l2-node-besu:
+    environment:
+      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+    volumes:
+      - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
+
   linea-besu-sequencer-plugin-downloader:
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.8.0-rc1.1/linea-sequencer-v0.8.0-rc1.1.jar",  "/linea-besu-sequencer" ]
+    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.8.0-rc4.1/linea-sequencer-v0.8.0-rc4.1.jar",  "/linea-besu-sequencer" ]
 
   traces-node:
     command: ['echo', 'forced exit as replaced by traces-node-v2']
@@ -21,7 +27,7 @@ services:
     hostname: traces-node-v2
     container_name: traces-node-v2
     image: consensys/linea-besu:24.9-delivery32
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       traces-node-v2-plugin-downloader:
         condition: service_completed_successfully
@@ -40,18 +46,18 @@ services:
       retries: 120
     restart: "no"
     environment:
+      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
     entrypoint:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu \
+        /opt/besu/bin/besu-untuned \
         --config-file=/var/lib/besu/traces-node-v2.config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
         --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
     volumes:
       - ./config/traces-node-v2/traces-node-v2-config.toml:/var/lib/besu/traces-node-v2.config.toml:ro
-      - ./config/traces-node-v2/key:/var/lib/besu/key:ro
       - ./config/traces-node-v2/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ../tmp/traces-node-v2/plugins:/opt/besu/plugins/

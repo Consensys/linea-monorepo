@@ -22,7 +22,15 @@ class L1ShnarfBasedAlreadySubmittedBlobsFilter(
     blobRecords: List<BlobRecord>
   ): SafeFuture<List<BlobRecord>> {
     val blockByShnarfQueryFutures = blobRecords.map { blobRecord ->
-      lineaRollup.findBlobFinalBlockNumberByShnarf(shnarf = blobRecord.expectedShnarf)
+      lineaRollup
+        .isBlobShnarfPresent(shnarf = blobRecord.expectedShnarf)
+        .thenApply { isShnarfPresent ->
+          if (isShnarfPresent) {
+            blobRecord.endBlockNumber
+          } else {
+            null
+          }
+        }
     }
 
     return SafeFuture.collectAll(blockByShnarfQueryFutures.stream())

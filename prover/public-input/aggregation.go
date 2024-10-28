@@ -130,8 +130,8 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, len(pi.L2MsgMerkleTreeRoots)),
 		FinalBlockNumber:       pi.FinalBlockNumber,
 		FinalBlockTimestamp:    pi.FinalBlockTimestamp,
-		FinalRollingHashNumber: pi.FinalRollingHashNumber,
 		L2MsgMerkleTreeDepth:   pi.L2MsgMerkleTreeDepth,
+		FinalRollingHashNumber: pi.FinalRollingHashNumber,
 	}
 
 	utils.Copy(s.FinalRollingHash[:], pi.FinalRollingHash[:])
@@ -165,9 +165,9 @@ type AggregationFPISnark struct {
 	// FinalStateRootHash     frontend.Variable redundant: incorporated into final shnarf
 	FinalBlockNumber       frontend.Variable
 	FinalBlockTimestamp    frontend.Variable
+	FinalShnarf            [32]frontend.Variable
 	FinalRollingHash       [32]frontend.Variable
 	FinalRollingHashNumber frontend.Variable
-	FinalShnarf            [32]frontend.Variable
 	L2MsgMerkleTreeDepth   int
 }
 

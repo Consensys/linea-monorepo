@@ -82,7 +82,7 @@ func dispatchPermutation(
 			)
 
 			if isMultiColumn {
-				factor = wizardutils.RandLinCombColSymbolic(alpha, q.A[frag])
+				factor = wizardutils.RandLinCombColSymbolic(alpha, aOrB[frag])
 			}
 
 			factor = symbolic.Add(factor, beta)

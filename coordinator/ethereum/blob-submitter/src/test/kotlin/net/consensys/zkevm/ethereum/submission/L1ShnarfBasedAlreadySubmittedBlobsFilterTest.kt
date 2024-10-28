@@ -27,13 +27,13 @@ class L1ShnarfBasedAlreadySubmittedBlobsFilterTest {
     val blobs = listOf(blob1, blob2, blob3, blob4, blob5, blob6, blob7)
 
     val l1SmcClient = mock<LineaRollupSmartContractClient>()
-    whenever(l1SmcClient.findBlobFinalBlockNumberByShnarf(any(), any()))
+    whenever(l1SmcClient.isBlobShnarfPresent(any(), any()))
       .thenAnswer { invocation ->
         val shnarfQueried = invocation.getArgument<ByteArray>(1)
         val endBlockNumber = when {
-          shnarfQueried.contentEquals(blob3.expectedShnarf) -> blob3.endBlockNumber
-          shnarfQueried.contentEquals(blob5.expectedShnarf) -> blob5.endBlockNumber
-          else -> null
+          shnarfQueried.contentEquals(blob3.expectedShnarf) -> true
+          shnarfQueried.contentEquals(blob5.expectedShnarf) -> true
+          else -> false
         }
         SafeFuture.completedFuture(endBlockNumber)
       }

@@ -35,7 +35,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
@@ -75,3 +75,11 @@ jobs:
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{matrix.language}}"
+        output: sarif-results
+        sarif-file: ${{ matrix.language }}-results.sarif
+    - name: Upload CodeQL Results
+      uses: actions/upload-artifact@v3
+      with:
+        name: codeql-results-${{ matrix.language }}
+        path: sarif-results
+        retention-days: 1

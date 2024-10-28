@@ -1,5 +1,8 @@
 package net.consensys.zkevm.ethereum.submission
 
+import build.linea.domain.filterOutWithEndBlockNumberBefore
+import build.linea.domain.toBlockIntervals
+import build.linea.domain.toBlockIntervalsString
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import net.consensys.linea.async.AsyncFilter
@@ -10,9 +13,6 @@ import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.domain.ProofToFinalize
-import net.consensys.zkevm.domain.filterOutWithEndBlockNumberBefore
-import net.consensys.zkevm.domain.toBlockIntervals
-import net.consensys.zkevm.domain.toBlockIntervalsString
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import net.consensys.zkevm.persistence.AggregationsRepository
 import net.consensys.zkevm.persistence.BlobsRepository

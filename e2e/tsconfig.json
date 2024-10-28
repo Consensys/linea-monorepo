@@ -12,7 +12,6 @@
     "isolatedModules": true,
     "noFallthroughCasesInSwitch": true,
     "strictPropertyInitialization": false,
-    "typeRoots": ["./env-setup/custom.d.ts"],
   },
   "references": [
     {
