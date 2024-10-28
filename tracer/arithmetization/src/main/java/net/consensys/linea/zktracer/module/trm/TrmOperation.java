@@ -54,7 +54,7 @@ public class TrmOperation extends ModuleOperation {
           .ct(ct)
           .stamp(stamp)
           .isPrecompile(isPrec)
-          .pbit(ct >= PIVOT_BIT_FLIPS_TO_TRUE)
+          .plateauBit(ct >= PIVOT_BIT_FLIPS_TO_TRUE)
           .rawAddressHi(this.rawAddress.hi())
           .rawAddressLo(this.rawAddress.lo())
           .trmAddressHi(trmHi)

@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.mxp;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -85,66 +86,71 @@ public class Trace {
   private final MappedByteBuffer roob;
   private final MappedByteBuffer size1Hi;
   private final MappedByteBuffer size1Lo;
+  private final MappedByteBuffer size1NonzeroNoMxpx;
   private final MappedByteBuffer size2Hi;
   private final MappedByteBuffer size2Lo;
+  private final MappedByteBuffer size2NonzeroNoMxpx;
   private final MappedByteBuffer stamp;
   private final MappedByteBuffer words;
   private final MappedByteBuffer wordsNew;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("mxp.ACC_1", 17, length),
-        new ColumnHeader("mxp.ACC_2", 17, length),
-        new ColumnHeader("mxp.ACC_3", 17, length),
-        new ColumnHeader("mxp.ACC_4", 17, length),
-        new ColumnHeader("mxp.ACC_A", 17, length),
-        new ColumnHeader("mxp.ACC_Q", 17, length),
-        new ColumnHeader("mxp.ACC_W", 17, length),
-        new ColumnHeader("mxp.BYTE_1", 1, length),
-        new ColumnHeader("mxp.BYTE_2", 1, length),
-        new ColumnHeader("mxp.BYTE_3", 1, length),
-        new ColumnHeader("mxp.BYTE_4", 1, length),
-        new ColumnHeader("mxp.BYTE_A", 1, length),
-        new ColumnHeader("mxp.BYTE_Q", 1, length),
-        new ColumnHeader("mxp.BYTE_QQ", 1, length),
-        new ColumnHeader("mxp.BYTE_R", 1, length),
-        new ColumnHeader("mxp.BYTE_W", 1, length),
-        new ColumnHeader("mxp.C_MEM", 8, length),
-        new ColumnHeader("mxp.C_MEM_NEW", 8, length),
-        new ColumnHeader("mxp.CN", 8, length),
-        new ColumnHeader("mxp.COMP", 1, length),
-        new ColumnHeader("mxp.CT", 1, length),
-        new ColumnHeader("mxp.DEPLOYS", 1, length),
-        new ColumnHeader("mxp.EXPANDS", 1, length),
-        new ColumnHeader("mxp.GAS_MXP", 8, length),
-        new ColumnHeader("mxp.GBYTE", 8, length),
-        new ColumnHeader("mxp.GWORD", 8, length),
-        new ColumnHeader("mxp.INST", 1, length),
-        new ColumnHeader("mxp.LIN_COST", 8, length),
-        new ColumnHeader("mxp.MAX_OFFSET", 16, length),
-        new ColumnHeader("mxp.MAX_OFFSET_1", 16, length),
-        new ColumnHeader("mxp.MAX_OFFSET_2", 16, length),
-        new ColumnHeader("mxp.MTNTOP", 1, length),
-        new ColumnHeader("mxp.MXP_TYPE_1", 1, length),
-        new ColumnHeader("mxp.MXP_TYPE_2", 1, length),
-        new ColumnHeader("mxp.MXP_TYPE_3", 1, length),
-        new ColumnHeader("mxp.MXP_TYPE_4", 1, length),
-        new ColumnHeader("mxp.MXP_TYPE_5", 1, length),
-        new ColumnHeader("mxp.MXPX", 1, length),
-        new ColumnHeader("mxp.NOOP", 1, length),
-        new ColumnHeader("mxp.OFFSET_1_HI", 16, length),
-        new ColumnHeader("mxp.OFFSET_1_LO", 16, length),
-        new ColumnHeader("mxp.OFFSET_2_HI", 16, length),
-        new ColumnHeader("mxp.OFFSET_2_LO", 16, length),
-        new ColumnHeader("mxp.QUAD_COST", 8, length),
-        new ColumnHeader("mxp.ROOB", 1, length),
-        new ColumnHeader("mxp.SIZE_1_HI", 16, length),
-        new ColumnHeader("mxp.SIZE_1_LO", 16, length),
-        new ColumnHeader("mxp.SIZE_2_HI", 16, length),
-        new ColumnHeader("mxp.SIZE_2_LO", 16, length),
-        new ColumnHeader("mxp.STAMP", 4, length),
-        new ColumnHeader("mxp.WORDS", 8, length),
-        new ColumnHeader("mxp.WORDS_NEW", 8, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("mxp.ACC_1", 17, length));
+    headers.add(new ColumnHeader("mxp.ACC_2", 17, length));
+    headers.add(new ColumnHeader("mxp.ACC_3", 17, length));
+    headers.add(new ColumnHeader("mxp.ACC_4", 17, length));
+    headers.add(new ColumnHeader("mxp.ACC_A", 17, length));
+    headers.add(new ColumnHeader("mxp.ACC_Q", 17, length));
+    headers.add(new ColumnHeader("mxp.ACC_W", 17, length));
+    headers.add(new ColumnHeader("mxp.BYTE_1", 1, length));
+    headers.add(new ColumnHeader("mxp.BYTE_2", 1, length));
+    headers.add(new ColumnHeader("mxp.BYTE_3", 1, length));
+    headers.add(new ColumnHeader("mxp.BYTE_4", 1, length));
+    headers.add(new ColumnHeader("mxp.BYTE_A", 1, length));
+    headers.add(new ColumnHeader("mxp.BYTE_Q", 1, length));
+    headers.add(new ColumnHeader("mxp.BYTE_QQ", 1, length));
+    headers.add(new ColumnHeader("mxp.BYTE_R", 1, length));
+    headers.add(new ColumnHeader("mxp.BYTE_W", 1, length));
+    headers.add(new ColumnHeader("mxp.C_MEM", 8, length));
+    headers.add(new ColumnHeader("mxp.C_MEM_NEW", 8, length));
+    headers.add(new ColumnHeader("mxp.CN", 8, length));
+    headers.add(new ColumnHeader("mxp.COMP", 1, length));
+    headers.add(new ColumnHeader("mxp.CT", 1, length));
+    headers.add(new ColumnHeader("mxp.DEPLOYS", 1, length));
+    headers.add(new ColumnHeader("mxp.EXPANDS", 1, length));
+    headers.add(new ColumnHeader("mxp.GAS_MXP", 8, length));
+    headers.add(new ColumnHeader("mxp.GBYTE", 8, length));
+    headers.add(new ColumnHeader("mxp.GWORD", 8, length));
+    headers.add(new ColumnHeader("mxp.INST", 1, length));
+    headers.add(new ColumnHeader("mxp.LIN_COST", 8, length));
+    headers.add(new ColumnHeader("mxp.MAX_OFFSET", 16, length));
+    headers.add(new ColumnHeader("mxp.MAX_OFFSET_1", 16, length));
+    headers.add(new ColumnHeader("mxp.MAX_OFFSET_2", 16, length));
+    headers.add(new ColumnHeader("mxp.MTNTOP", 1, length));
+    headers.add(new ColumnHeader("mxp.MXP_TYPE_1", 1, length));
+    headers.add(new ColumnHeader("mxp.MXP_TYPE_2", 1, length));
+    headers.add(new ColumnHeader("mxp.MXP_TYPE_3", 1, length));
+    headers.add(new ColumnHeader("mxp.MXP_TYPE_4", 1, length));
+    headers.add(new ColumnHeader("mxp.MXP_TYPE_5", 1, length));
+    headers.add(new ColumnHeader("mxp.MXPX", 1, length));
+    headers.add(new ColumnHeader("mxp.NOOP", 1, length));
+    headers.add(new ColumnHeader("mxp.OFFSET_1_HI", 16, length));
+    headers.add(new ColumnHeader("mxp.OFFSET_1_LO", 16, length));
+    headers.add(new ColumnHeader("mxp.OFFSET_2_HI", 16, length));
+    headers.add(new ColumnHeader("mxp.OFFSET_2_LO", 16, length));
+    headers.add(new ColumnHeader("mxp.QUAD_COST", 8, length));
+    headers.add(new ColumnHeader("mxp.ROOB", 1, length));
+    headers.add(new ColumnHeader("mxp.SIZE_1_HI", 16, length));
+    headers.add(new ColumnHeader("mxp.SIZE_1_LO", 16, length));
+    headers.add(new ColumnHeader("mxp.SIZE_1_NONZERO_NO_MXPX", 1, length));
+    headers.add(new ColumnHeader("mxp.SIZE_2_HI", 16, length));
+    headers.add(new ColumnHeader("mxp.SIZE_2_LO", 16, length));
+    headers.add(new ColumnHeader("mxp.SIZE_2_NONZERO_NO_MXPX", 1, length));
+    headers.add(new ColumnHeader("mxp.STAMP", 4, length));
+    headers.add(new ColumnHeader("mxp.WORDS", 8, length));
+    headers.add(new ColumnHeader("mxp.WORDS_NEW", 8, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -195,11 +201,13 @@ public class Trace {
     this.roob = buffers.get(44);
     this.size1Hi = buffers.get(45);
     this.size1Lo = buffers.get(46);
-    this.size2Hi = buffers.get(47);
-    this.size2Lo = buffers.get(48);
-    this.stamp = buffers.get(49);
-    this.words = buffers.get(50);
-    this.wordsNew = buffers.get(51);
+    this.size1NonzeroNoMxpx = buffers.get(47);
+    this.size2Hi = buffers.get(48);
+    this.size2Lo = buffers.get(49);
+    this.size2NonzeroNoMxpx = buffers.get(50);
+    this.stamp = buffers.get(51);
+    this.words = buffers.get(52);
+    this.wordsNew = buffers.get(53);
   }
 
   public int size() {
@@ -1096,11 +1104,23 @@ public class Trace {
     return this;
   }
 
-  public Trace size2Hi(final Bytes b) {
+  public Trace size1NonzeroNoMxpx(final Boolean b) {
     if (filled.get(47)) {
-      throw new IllegalStateException("mxp.SIZE_2_HI already set");
+      throw new IllegalStateException("mxp.SIZE_1_NONZERO_NO_MXPX already set");
     } else {
       filled.set(47);
+    }
+
+    size1NonzeroNoMxpx.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace size2Hi(final Bytes b) {
+    if (filled.get(48)) {
+      throw new IllegalStateException("mxp.SIZE_2_HI already set");
+    } else {
+      filled.set(48);
     }
 
     // Trim array to size
@@ -1122,10 +1142,10 @@ public class Trace {
   }
 
   public Trace size2Lo(final Bytes b) {
-    if (filled.get(48)) {
+    if (filled.get(49)) {
       throw new IllegalStateException("mxp.SIZE_2_LO already set");
     } else {
-      filled.set(48);
+      filled.set(49);
     }
 
     // Trim array to size
@@ -1146,11 +1166,23 @@ public class Trace {
     return this;
   }
 
+  public Trace size2NonzeroNoMxpx(final Boolean b) {
+    if (filled.get(50)) {
+      throw new IllegalStateException("mxp.SIZE_2_NONZERO_NO_MXPX already set");
+    } else {
+      filled.set(50);
+    }
+
+    size2NonzeroNoMxpx.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
   public Trace stamp(final long b) {
-    if (filled.get(49)) {
+    if (filled.get(51)) {
       throw new IllegalStateException("mxp.STAMP already set");
     } else {
-      filled.set(49);
+      filled.set(51);
     }
 
     if (b >= 4294967296L) {
@@ -1165,10 +1197,10 @@ public class Trace {
   }
 
   public Trace words(final Bytes b) {
-    if (filled.get(50)) {
+    if (filled.get(52)) {
       throw new IllegalStateException("mxp.WORDS already set");
     } else {
-      filled.set(50);
+      filled.set(52);
     }
 
     // Trim array to size
@@ -1190,10 +1222,10 @@ public class Trace {
   }
 
   public Trace wordsNew(final Bytes b) {
-    if (filled.get(51)) {
+    if (filled.get(53)) {
       throw new IllegalStateException("mxp.WORDS_NEW already set");
     } else {
-      filled.set(51);
+      filled.set(53);
     }
 
     // Trim array to size
@@ -1404,22 +1436,30 @@ public class Trace {
     }
 
     if (!filled.get(47)) {
-      throw new IllegalStateException("mxp.SIZE_2_HI has not been filled");
+      throw new IllegalStateException("mxp.SIZE_1_NONZERO_NO_MXPX has not been filled");
     }
 
     if (!filled.get(48)) {
-      throw new IllegalStateException("mxp.SIZE_2_LO has not been filled");
+      throw new IllegalStateException("mxp.SIZE_2_HI has not been filled");
     }
 
     if (!filled.get(49)) {
-      throw new IllegalStateException("mxp.STAMP has not been filled");
+      throw new IllegalStateException("mxp.SIZE_2_LO has not been filled");
     }
 
     if (!filled.get(50)) {
-      throw new IllegalStateException("mxp.WORDS has not been filled");
+      throw new IllegalStateException("mxp.SIZE_2_NONZERO_NO_MXPX has not been filled");
     }
 
     if (!filled.get(51)) {
+      throw new IllegalStateException("mxp.STAMP has not been filled");
+    }
+
+    if (!filled.get(52)) {
+      throw new IllegalStateException("mxp.WORDS has not been filled");
+    }
+
+    if (!filled.get(53)) {
       throw new IllegalStateException("mxp.WORDS_NEW has not been filled");
     }
 
@@ -1619,22 +1659,30 @@ public class Trace {
     }
 
     if (!filled.get(47)) {
-      size2Hi.position(size2Hi.position() + 16);
+      size1NonzeroNoMxpx.position(size1NonzeroNoMxpx.position() + 1);
     }
 
     if (!filled.get(48)) {
-      size2Lo.position(size2Lo.position() + 16);
+      size2Hi.position(size2Hi.position() + 16);
     }
 
     if (!filled.get(49)) {
-      stamp.position(stamp.position() + 4);
+      size2Lo.position(size2Lo.position() + 16);
     }
 
     if (!filled.get(50)) {
-      words.position(words.position() + 8);
+      size2NonzeroNoMxpx.position(size2NonzeroNoMxpx.position() + 1);
     }
 
     if (!filled.get(51)) {
+      stamp.position(stamp.position() + 4);
+    }
+
+    if (!filled.get(52)) {
+      words.position(words.position() + 8);
+    }
+
+    if (!filled.get(53)) {
       wordsNew.position(wordsNew.position() + 8);
     }
 

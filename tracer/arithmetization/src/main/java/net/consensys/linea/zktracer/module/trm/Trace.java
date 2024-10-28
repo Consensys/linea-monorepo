@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.trm;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -42,27 +43,28 @@ public class Trace {
   private final MappedByteBuffer ct;
   private final MappedByteBuffer isPrecompile;
   private final MappedByteBuffer one;
-  private final MappedByteBuffer pbit;
+  private final MappedByteBuffer plateauBit;
   private final MappedByteBuffer rawAddressHi;
   private final MappedByteBuffer rawAddressLo;
   private final MappedByteBuffer stamp;
   private final MappedByteBuffer trmAddressHi;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("trm.ACC_HI", 16, length),
-        new ColumnHeader("trm.ACC_LO", 16, length),
-        new ColumnHeader("trm.ACC_T", 4, length),
-        new ColumnHeader("trm.BYTE_HI", 1, length),
-        new ColumnHeader("trm.BYTE_LO", 1, length),
-        new ColumnHeader("trm.CT", 1, length),
-        new ColumnHeader("trm.IS_PRECOMPILE", 1, length),
-        new ColumnHeader("trm.ONE", 1, length),
-        new ColumnHeader("trm.PBIT", 1, length),
-        new ColumnHeader("trm.RAW_ADDRESS_HI", 16, length),
-        new ColumnHeader("trm.RAW_ADDRESS_LO", 16, length),
-        new ColumnHeader("trm.STAMP", 3, length),
-        new ColumnHeader("trm.TRM_ADDRESS_HI", 4, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("trm.ACC_HI", 16, length));
+    headers.add(new ColumnHeader("trm.ACC_LO", 16, length));
+    headers.add(new ColumnHeader("trm.ACC_T", 4, length));
+    headers.add(new ColumnHeader("trm.BYTE_HI", 1, length));
+    headers.add(new ColumnHeader("trm.BYTE_LO", 1, length));
+    headers.add(new ColumnHeader("trm.CT", 1, length));
+    headers.add(new ColumnHeader("trm.IS_PRECOMPILE", 1, length));
+    headers.add(new ColumnHeader("trm.ONE", 1, length));
+    headers.add(new ColumnHeader("trm.PLATEAU_BIT", 1, length));
+    headers.add(new ColumnHeader("trm.RAW_ADDRESS_HI", 16, length));
+    headers.add(new ColumnHeader("trm.RAW_ADDRESS_LO", 16, length));
+    headers.add(new ColumnHeader("trm.STAMP", 3, length));
+    headers.add(new ColumnHeader("trm.TRM_ADDRESS_HI", 4, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -74,7 +76,7 @@ public class Trace {
     this.ct = buffers.get(5);
     this.isPrecompile = buffers.get(6);
     this.one = buffers.get(7);
-    this.pbit = buffers.get(8);
+    this.plateauBit = buffers.get(8);
     this.rawAddressHi = buffers.get(9);
     this.rawAddressLo = buffers.get(10);
     this.stamp = buffers.get(11);
@@ -220,14 +222,14 @@ public class Trace {
     return this;
   }
 
-  public Trace pbit(final Boolean b) {
+  public Trace plateauBit(final Boolean b) {
     if (filled.get(8)) {
-      throw new IllegalStateException("trm.PBIT already set");
+      throw new IllegalStateException("trm.PLATEAU_BIT already set");
     } else {
       filled.set(8);
     }
 
-    pbit.put((byte) (b ? 1 : 0));
+    plateauBit.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -353,7 +355,7 @@ public class Trace {
     }
 
     if (!filled.get(8)) {
-      throw new IllegalStateException("trm.PBIT has not been filled");
+      throw new IllegalStateException("trm.PLATEAU_BIT has not been filled");
     }
 
     if (!filled.get(9)) {
@@ -412,7 +414,7 @@ public class Trace {
     }
 
     if (!filled.get(8)) {
-      pbit.position(pbit.position() + 1);
+      plateauBit.position(plateauBit.position() + 1);
     }
 
     if (!filled.get(9)) {

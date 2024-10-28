@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.add;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -51,22 +52,23 @@ public class Trace {
   private final MappedByteBuffer stamp;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("add.ACC_1", 16, length),
-        new ColumnHeader("add.ACC_2", 16, length),
-        new ColumnHeader("add.ARG_1_HI", 16, length),
-        new ColumnHeader("add.ARG_1_LO", 16, length),
-        new ColumnHeader("add.ARG_2_HI", 16, length),
-        new ColumnHeader("add.ARG_2_LO", 16, length),
-        new ColumnHeader("add.BYTE_1", 1, length),
-        new ColumnHeader("add.BYTE_2", 1, length),
-        new ColumnHeader("add.CT", 1, length),
-        new ColumnHeader("add.CT_MAX", 1, length),
-        new ColumnHeader("add.INST", 1, length),
-        new ColumnHeader("add.OVERFLOW", 1, length),
-        new ColumnHeader("add.RES_HI", 16, length),
-        new ColumnHeader("add.RES_LO", 16, length),
-        new ColumnHeader("add.STAMP", 4, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("add.ACC_1", 16, length));
+    headers.add(new ColumnHeader("add.ACC_2", 16, length));
+    headers.add(new ColumnHeader("add.ARG_1_HI", 16, length));
+    headers.add(new ColumnHeader("add.ARG_1_LO", 16, length));
+    headers.add(new ColumnHeader("add.ARG_2_HI", 16, length));
+    headers.add(new ColumnHeader("add.ARG_2_LO", 16, length));
+    headers.add(new ColumnHeader("add.BYTE_1", 1, length));
+    headers.add(new ColumnHeader("add.BYTE_2", 1, length));
+    headers.add(new ColumnHeader("add.CT", 1, length));
+    headers.add(new ColumnHeader("add.CT_MAX", 1, length));
+    headers.add(new ColumnHeader("add.INST", 1, length));
+    headers.add(new ColumnHeader("add.OVERFLOW", 1, length));
+    headers.add(new ColumnHeader("add.RES_HI", 16, length));
+    headers.add(new ColumnHeader("add.RES_LO", 16, length));
+    headers.add(new ColumnHeader("add.STAMP", 4, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
