@@ -47,7 +47,7 @@ type CompiledStrictHasher struct {
 type StrictHasherCircuit struct {
 	Wc           *wizard.WizardVerifierCircuit
 	Ins          [][][2]frontend.Variable // every 32-byte block is prepacked into 2 16-byte blocks
-	InLengths    []int                    // actual lengths of the inputs
+	InLengths    []frontend.Variable      // actual lengths of the inputs
 	maxNbKeccakF int
 }
 
@@ -125,7 +125,7 @@ func allocateIns(lengths []int) [][][2]frontend.Variable {
 
 func (h *CompiledStrictHasher) GetCircuit() (c StrictHasherCircuit, err error) {
 	c.Ins = allocateIns(h.lengths)
-	c.InLengths = make([]int, len(h.lengths))
+	c.InLengths = make([]frontend.Variable, len(h.lengths))
 	c.maxNbKeccakF = h.maxNbKeccakF
 	c.Wc, err = h.wc.Compile()
 	return
@@ -157,7 +157,7 @@ func (h *StrictHasher) Assign() (c StrictHasherCircuit, err error) {
 	}*/
 	c.Wc = h.wc.Assign(h.ins)
 	c.Ins = make([][][2]frontend.Variable, len(h.ins))
-	c.InLengths = make([]int, len(h.ins))
+	c.InLengths = make([]frontend.Variable, len(h.ins))
 	for i, in := range h.ins {
 		c.Ins[i] = make([][2]frontend.Variable, utils.Abs(h.expectedLengths[i])/32) // already checked that the lengths are multiples of 32
 		for j := range c.Ins[i] {
@@ -168,7 +168,7 @@ func (h *StrictHasher) Assign() (c StrictHasherCircuit, err error) {
 				c.Ins[i][j] = [2]frontend.Variable{0, 0}
 			}
 		}
-		c.InLengths[i] = len(in)
+		c.InLengths[i] = len(in) / 32
 	}
 	return
 }
@@ -285,7 +285,7 @@ func (s *StrictHasherSnark) Sum(nbIn frontend.Variable, bytess ...[32]frontend.V
 		api.AssertIsEqual(expectedBytess[i][0], left)
 		api.AssertIsEqual(expectedBytess[i][1], right)
 	}
-	s.ins = s.ins[1:]
+	s.ins, s.inLenghts = s.ins[1:], s.inLenghts[1:]
 
 	// create lanes for wizard proof
 	return s.h.Sum(nbIn, bytess...)

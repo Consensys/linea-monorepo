@@ -20,8 +20,14 @@ func TestAssignStrict(t *testing.T) {
 	testAssign(t, []int{-1, -1}, []int{64, 32})
 }
 
-func TestAssignSingleFlexible(t *testing.T) {
+func TestAssignFlexible(t *testing.T) {
 	testAssign(t, []int{32}, []int{0})
+	testAssign(t, []int{32}, []int{32})
+	testAssign(t, []int{32, 32, 64}, []int{32, 0, 32})
+}
+
+func TestAssignMixed(t *testing.T) {
+
 }
 
 // maxSize = -1 means strict
