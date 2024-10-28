@@ -2,9 +2,11 @@ package net.consensys.linea.async
 
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-fun interface AsyncFilter<T> : (List<T>) -> SafeFuture<List<T>> {
+fun interface AsyncFilter<T> {
+  fun invoke(items: List<T>): SafeFuture<List<T>>
+
   fun then(next: AsyncFilter<T>): AsyncFilter<T> = AsyncFilter { items ->
-    this(items).thenCompose(next)
+    this.invoke(items).thenCompose(next::invoke)
   }
 
   companion object {
