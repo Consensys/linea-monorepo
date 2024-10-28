@@ -2,7 +2,6 @@ package net.consensys.zkevm.ethereum.coordination.common
 
 import net.consensys.zkevm.ethereum.coordination.SimpleCompositeSafeFutureHandler
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -28,7 +27,7 @@ class SimpleCompositeSafeFutureHandlerTest {
     assertThat(handler3Calls).containsExactly("handler3:123")
   }
 
-  @Disabled("Clarify what is the expected behaviour of this test")
+  @Test
   fun `should be resilient_or_not_to handler failure`() {
     val handler1Calls = mutableListOf<String>()
     val handler2Calls = mutableListOf<String>()
