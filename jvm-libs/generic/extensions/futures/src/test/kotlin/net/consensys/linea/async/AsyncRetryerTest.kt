@@ -266,21 +266,19 @@ class AsyncRetryerTest {
       AsyncRetryer.retry(
         vertx,
         backoffDelay = 5.milliseconds,
-        timeout = 60.seconds,
+        timeout = 60.milliseconds,
         stopRetriesPredicate = { false } // stop condition will never be met
       ) {
         SafeFuture.completedFuture("${callCount.incrementAndGet()}")
       }
-    runCatching { future.get() }
     assertThat(future)
-      .isCompletedExceptionally
-      .isNotCancelled
       .failsWithin(2.seconds.toJavaDuration())
       .withThrowableOfType(ExecutionException::class.java)
       .withCauseInstanceOf(RetriedExecutionException::class.java)
-      .withMessageContaining("Stop condition wasn't met after timeout of 40ms.")
+      .withMessageContaining("Stop condition wasn't met after timeout of 60ms")
 
-    assertThat(callCount.get()).isGreaterThan(1).isLessThan(4)
+    // 60ms / 5ms = 12 retries
+    assertThat(callCount.get()).isBetween(1, 13)
   }
 
   @Test
