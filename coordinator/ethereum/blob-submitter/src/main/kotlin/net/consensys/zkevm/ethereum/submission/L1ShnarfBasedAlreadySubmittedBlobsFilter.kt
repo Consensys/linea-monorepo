@@ -17,9 +17,9 @@ class L1ShnarfBasedAlreadySubmittedBlobsFilter(
    * if blobRecords=[b1, b2, b3, b4, b5, b6] the result will be [b4, b5, b6]
    */
   override fun invoke(
-    blobRecords: List<BlobRecord>
+    items: List<BlobRecord>
   ): SafeFuture<List<BlobRecord>> {
-    val blockByShnarfQueryFutures = blobRecords.map { blobRecord ->
+    val blockByShnarfQueryFutures = items.map { blobRecord ->
       lineaRollup
         .isBlobShnarfPresent(shnarf = blobRecord.expectedShnarf)
         .thenApply { isShnarfPresent ->
@@ -39,8 +39,8 @@ class L1ShnarfBasedAlreadySubmittedBlobsFilter(
       }
       .thenApply { highestBlobEndBlockNumberFoundInL1 ->
         highestBlobEndBlockNumberFoundInL1
-          ?.let { blockNumber -> blobRecords.filter { it.startBlockNumber > blockNumber } }
-          ?: blobRecords
+          ?.let { blockNumber -> items.filter { it.startBlockNumber > blockNumber } }
+          ?: items
       }
   }
 }

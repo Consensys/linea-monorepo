@@ -384,7 +384,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       blobZkStateCount += 1
       if (blobZkStateFailures <= maxMockedBlobZkStateFailures && blobZkStateCount % 2 == 0) {
         blobZkStateFailures += 1
-        SafeFuture.failedFuture(RuntimeException("Forced mock blobZkStateProvider failure"))
+        SafeFuture.failedFuture<BlobZkState>(RuntimeException("Forced mock blobZkStateProvider failure"))
       } else {
         SafeFuture.completedFuture(
           BlobZkState(
