@@ -165,3 +165,39 @@ enum class BlobStatus {
   COMPRESSION_PROVING,
   COMPRESSION_PROVEN
 }
+
+data class BlobSubmittedEvent(
+  val blobs: List<BlockInterval>,
+  val endBlockTime: Instant,
+  val lastShnarf: ByteArray,
+  val submissionTimestamp: Instant,
+  val transactionHash: ByteArray
+) {
+  fun getSubmissionDelay(): Long {
+    return submissionTimestamp.minus(endBlockTime).inWholeSeconds
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as BlobSubmittedEvent
+
+    if (blobs != other.blobs) return false
+    if (endBlockTime != other.endBlockTime) return false
+    if (!lastShnarf.contentEquals(other.lastShnarf)) return false
+    if (submissionTimestamp != other.submissionTimestamp) return false
+    if (transactionHash.contentEquals(transactionHash)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = blobs.hashCode()
+    result = 31 * result + endBlockTime.hashCode()
+    result = 31 * result + lastShnarf.contentHashCode()
+    result = 31 * result + submissionTimestamp.hashCode()
+    result = 31 * result + transactionHash.contentHashCode()
+    return result
+  }
+}
