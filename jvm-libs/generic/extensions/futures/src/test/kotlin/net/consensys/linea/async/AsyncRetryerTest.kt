@@ -261,13 +261,13 @@ class AsyncRetryerTest {
 
   @Test
   fun `retry should stop after timeout is elapsed - promise resolves, predicate evaluation`(vertx: Vertx) {
-    var callCount = AtomicInteger(0)
+    val callCount = AtomicInteger(0)
     val future =
       AsyncRetryer.retry(
         vertx,
-        20.milliseconds,
-        timeout = 40.milliseconds,
-        stopRetriesPredicate = { result -> result == "20" }
+        backoffDelay = 5.milliseconds,
+        timeout = 60.seconds,
+        stopRetriesPredicate = { false } // stop condition will never be met
       ) {
         SafeFuture.completedFuture("${callCount.incrementAndGet()}")
       }
