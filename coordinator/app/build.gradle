@@ -10,6 +10,7 @@ configurations.configureEach {
 
 configurations {
   runtimeClasspath.exclude group: "it.unimi.dsi", module: "fastutil"
+  runtimeClasspath.exclude group: "org.hyperledger.besu", module: "gnark"
 }
 
 dependencies {

@@ -3,6 +3,11 @@ plugins {
   id 'linea.web3j-codegen'
   alias(libs.plugins.jreleaser)
 }
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
+}
 
 description = 'Web3J Java client for Linea L2 Message Service Contract'
 ext.artifactId = 'l2-message-service-contract-client'
