@@ -57,13 +57,14 @@ func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 	}
 
 	hsh := compiled.GetHasher()
-	for i := range actualSizes {
+	for i := range actualSizes { // for each hash
 		hsh.Reset()
 		maxSize := maxSizes[i]
 		if maxSize == -1 {
 			maxSize = actualSizes[i]
-			assignment.NbIns[i], err = rand.Read(buf[:2])
+			_, err = rand.Read(buf[:2])
 			require.NoError(t, err)
+			assignment.NbIns[i] = binary.LittleEndian.Uint64(buf[:]) // put garbage in to make sure it's not used
 		} else {
 			assignment.NbIns[i] = actualSizes[i] / 32
 		}

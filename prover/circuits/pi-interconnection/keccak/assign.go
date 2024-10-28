@@ -53,12 +53,13 @@ type StrictHasherCircuit struct {
 
 // StrictHasher implements hash.Hash
 type StrictHasher struct {
-	remainingExpectedLengths []int
-	ins                      [][]byte
-	wc                       *HashWizardVerifierSubCircuit
-	maxNbKeccakF             int
-	buffer                   bytes.Buffer
-	h                        hash.Hash
+	expectedLengths []int
+	nbSumsYet       int
+	ins             [][]byte
+	wc              *HashWizardVerifierSubCircuit
+	maxNbKeccakF    int
+	buffer          bytes.Buffer
+	h               hash.Hash
 }
 
 type StrictHasherSnark struct {
@@ -130,11 +131,11 @@ func (h *CompiledStrictHasher) GetCircuit() (c StrictHasherCircuit, err error) {
 
 func (h *CompiledStrictHasher) GetHasher() StrictHasher {
 	return StrictHasher{
-		remainingExpectedLengths: h.lengths,
-		ins:                      make([][]byte, 0, len(h.lengths)),
-		wc:                       &h.wc,
-		maxNbKeccakF:             h.maxNbKeccakF,
-		h:                        sha3.NewLegacyKeccak256(),
+		expectedLengths: h.lengths,
+		ins:             make([][]byte, 0, len(h.lengths)),
+		wc:              &h.wc,
+		maxNbKeccakF:    h.maxNbKeccakF,
+		h:               sha3.NewLegacyKeccak256(),
 	}
 }
 
@@ -143,10 +144,14 @@ func (h *CompiledStrictHasher) MaxNbKeccakF() int {
 }
 
 func (h *StrictHasher) Assign() (c StrictHasherCircuit, err error) {
-	if len(h.remainingExpectedLengths) != 0 {
+	if h.nbSumsYet < len(h.expectedLengths) {
 		return c, errors.New("fewer hashes than expected")
 	}
 	c.maxNbKeccakF = h.maxNbKeccakF
+	/*insForWizard := make([][]byte, len(h.ins))
+	for i := range h.ins {
+		insForWizard[i] = h.ins[i][:h.]
+	}*/
 	c.Wc = h.wc.Assign(h.ins)
 	c.Ins = make([][][2]frontend.Variable, len(h.ins))
 	for i, in := range h.ins {
@@ -182,21 +187,31 @@ func (h *StrictHasher) MaxNbKeccakF() int {
 	return h.maxNbKeccakF
 }
 
+// sumLenAllowed is len an acceptable length for the hash at offset + current position?
+func (h *StrictHasher) sumLenAllowed(len, offset int) bool {
+	allowed := h.expectedLengths[h.nbSumsYet+offset]
+	return len <= allowed || len == -allowed
+}
+
 func (h *StrictHasher) Sum(b []byte) []byte {
 	if b != nil {
 		panic("not supported")
 	}
-	p := h.buffer.Bytes()
-	if len(h.remainingExpectedLengths) == 0 {
+	actualLen := h.buffer.Len()
+	if h.nbSumsYet >= len(h.expectedLengths) {
 		panic("more hashes than expected")
 	}
-	if l := h.remainingExpectedLengths[0]; len(p) > l && len(p) != -l {
+	if !h.sumLenAllowed(actualLen, 0) {
 		panic("hash length mismatch")
 	}
-	h.remainingExpectedLengths = h.remainingExpectedLengths[1:]
-	h.ins = append(h.ins, slices.Clone(p))
+
 	h.h.Reset()
-	h.h.Write(p)
+	h.h.Write(h.buffer.Bytes())
+	// h.buffer.Write(make([]byte, utils.Abs(h.expectedLengths[h.nbSumsYet])-actualLen)) // pad with zeros for input matching
+	h.ins = append(h.ins, slices.Clone(h.buffer.Bytes()))
+	//h.buffer.Truncate(actualLen)
+
+	h.nbSumsYet++
 	return h.h.Sum(nil)
 }
 
@@ -214,21 +229,21 @@ func (h *StrictHasher) BlockSize() int {
 
 // Skip records the given input without actually computing a hash
 func (h *StrictHasher) Skip(b ...[]byte) {
-	if len(b) > len(h.remainingExpectedLengths) {
+	if len(b) > len(h.expectedLengths)-h.nbSumsYet {
 		panic("more hashes than expected")
 	}
 	for i := range b {
-		if len(b[i]) != h.remainingExpectedLengths[i] {
+		if !h.sumLenAllowed(len(b[i]), i) {
 			panic("hash length mismatch")
 		}
 	}
 	h.ins = append(h.ins, b...)
-	h.remainingExpectedLengths = h.remainingExpectedLengths[len(b):]
+	h.nbSumsYet += len(b)
 }
 
 func (h *StrictHasher) SkipN(n int) {
 	maxSize := 0
-	toSkip := h.remainingExpectedLengths[:n]
+	toSkip := h.expectedLengths[h.nbSumsYet : h.nbSumsYet+n]
 	for i := range toSkip {
 		maxSize = max(maxSize, toSkip[i])
 	}
@@ -236,7 +251,7 @@ func (h *StrictHasher) SkipN(n int) {
 	for _, l := range toSkip {
 		h.ins = append(h.ins, b[:l])
 	}
-	h.remainingExpectedLengths = h.remainingExpectedLengths[n:]
+	h.nbSumsYet += n
 }
 
 func (s *StrictHasherSnark) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [32]frontend.Variable {
