@@ -627,8 +627,8 @@ contract LineaRollup is
    * 0x1a0   l2MerkleTreesDepth
    * 0x1c0   l2MerkleRootsLengthLocation
    * 0x1e0   l2MessagingBlocksOffsetsLengthLocation
-   * 0x200   l2MerkleRootsLength
-   * 0x220   l2MerkleRoots
+   * Dynamic l2MerkleRootsLength
+   * Dynamic l2MerkleRoots
    * Dynamic l2MessagingBlocksOffsetsLength (location depends on where l2MerkleRoots ends)
    * Dynamic l2MessagingBlocksOffsets (location depends on where l2MerkleRoots ends)
    * @param _finalizationData The full finalization data.
@@ -674,8 +674,9 @@ contract LineaRollup is
        * as we need the space left for the array hash to be stored at 0x160.
        */
       let mPtrMerkleRoot := add(mPtr, 0x180)
-      let merkleRootsLen := calldataload(add(_finalizationData, 0x200))
-      calldatacopy(mPtrMerkleRoot, add(_finalizationData, 0x220), mul(merkleRootsLen, 0x20))
+      let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x1c0)))
+      let merkleRootsLen := calldataload(merkleRootsLengthLocation)
+      calldatacopy(mPtrMerkleRoot, add(merkleRootsLengthLocation, 0x20), mul(merkleRootsLen, 0x20))
       let l2MerkleRootsHash := keccak256(mPtrMerkleRoot, mul(merkleRootsLen, 0x20))
       mstore(add(mPtr, 0x160), l2MerkleRootsHash)
 
