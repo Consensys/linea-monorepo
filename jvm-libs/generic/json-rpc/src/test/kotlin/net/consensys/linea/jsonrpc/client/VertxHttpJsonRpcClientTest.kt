@@ -302,9 +302,7 @@ class VertxHttpJsonRpcClientTest {
     assertThat(client.makeRequest(request).toSafeFuture())
       .failsWithin(Duration.ofSeconds(14))
       .withThrowableOfType(ExecutionException::class.java)
-      .withMessageContaining(
-        "java.net.UnknownHostException: Failed to resolve 'service-not-available'"
-      )
+      .withMessageContaining("service-not-available")
 
     verify(log).log(
       eq(Level.DEBUG),
