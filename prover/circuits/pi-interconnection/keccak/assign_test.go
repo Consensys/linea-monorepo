@@ -15,21 +15,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAssignSingleStrict(t *testing.T) {
+func TestAssignStrict(t *testing.T) {
 	testAssign(t, []int{-1}, []int{32})
+	testAssign(t, []int{-1, -1}, []int{64, 32})
 }
 
 func TestAssignSingleFlexible(t *testing.T) {
-
+	testAssign(t, []int{32}, []int{0})
 }
 
 // maxSize = -1 means strict
 func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 	assert.Equal(t, len(maxSizes), len(actualSizes))
 	compiler := NewStrictHasherCompiler(len(maxSizes))
-	for i, l := range actualSizes {
+	for i, l := range maxSizes {
 		if maxSizes[i] == -1 {
-			compiler.WithStrictHashLengths(l)
+			compiler.WithStrictHashLengths(actualSizes[i])
 		} else {
 			compiler.WithFlexibleHashLengths(l)
 		}
@@ -37,9 +38,10 @@ func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 	compiled := compiler.Compile(dummy.Compile)
 
 	var (
-		buf [32]byte
-		v   uint64
-		err error
+		buf  [32]byte
+		v    uint64
+		err  error
+		zero [32]byte
 	)
 
 	assignment := testAssignCircuit{
@@ -48,7 +50,7 @@ func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 		Outs:  make([][32]frontend.Variable, len(actualSizes)),
 	}
 	circuit := testAssignCircuit{
-		Ins:        [][][32]frontend.Variable{make([][32]frontend.Variable, len(actualSizes))},
+		Ins:        make([][][32]frontend.Variable, len(actualSizes)),
 		strictSize: internal.MapSlice(func(i int) bool { return i == -1 }, maxSizes...),
 		NbIns:      make([]frontend.Variable, len(actualSizes)),
 		Outs:       make([][32]frontend.Variable, len(actualSizes)),
@@ -57,21 +59,25 @@ func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 	hsh := compiled.GetHasher()
 	for i := range actualSizes {
 		hsh.Reset()
-		if maxSizes[i] == -1 {
+		maxSize := maxSizes[i]
+		if maxSize == -1 {
+			maxSize = actualSizes[i]
 			assignment.NbIns[i], err = rand.Read(buf[:2])
 			require.NoError(t, err)
 		} else {
-			assignment.NbIns[i] = maxSizes[i]
+			assignment.NbIns[i] = actualSizes[i] / 32
 		}
-		assignment.Ins[i] = make([][32]frontend.Variable, actualSizes[i]/32)
+		assignment.Ins[i] = make([][32]frontend.Variable, maxSize/32)
 		circuit.Ins[i] = make([][32]frontend.Variable, len(assignment.Ins[i]))
 		for j := range assignment.Ins[i] {
+			if j*32 >= actualSizes[i] {
+				utils.Copy(assignment.Ins[i][j][:], zero[:])
+				continue
+			}
 			binary.LittleEndian.PutUint64(buf[:], v)
 			v++
-
 			_, err = hsh.Write(buf[:])
 			require.NoError(t, err)
-
 			utils.Copy(assignment.Ins[i][j][:], buf[:])
 		}
 
@@ -82,7 +88,7 @@ func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 	assert.NoError(t, err)
 
 	assignment.H, err = hsh.Assign()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
 }
