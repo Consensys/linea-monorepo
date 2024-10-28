@@ -165,6 +165,10 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 		// 1. underlying writer error (shouldn't happen we use a simple in memory buffer)
 		// 2. we exceed the maximum input size of 2Mb (shouldn't happen either)
 		// In both cases, we can't do anything, so we reset the state.
+		if innerErr := bm.compressor.Revert(); innerErr != nil {
+			return false, fmt.Errorf("when reverting compressor because writing failed: %w\noriginal error: %w", innerErr, err)
+		}
+		bm.Header.removeLastBlock()
 		return false, fmt.Errorf("when writing block to compressor: %w", err)
 	}
 
