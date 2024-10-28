@@ -18,9 +18,9 @@ on:
         default: false
     secrets:
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
-        required: true
+        required: false
   workflow_dispatch:
     inputs:
       commit_tag:
@@ -73,7 +73,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
       - name: Build dist
         run: |
           ./gradlew coordinator:app:distZip --no-daemon
