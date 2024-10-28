@@ -56,13 +56,13 @@ runs:
       id: split
       shell: bash
       run: |
-        echo "::set-output name=image_name_suffix::${IMAGE_NAME##*/}"
+        echo "image_name_suffix=${IMAGE_NAME##*/}" >> $GITHUB_OUTPUT
     - name: Save Docker image as artifact for later use in e2e test
       if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
       shell: bash
       run: |
-        docker pull ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}
-        docker save ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }} | gzip > ${{ steps.split.outputs.image_name_suffix }}-docker-image.tar.gz
+        docker pull ${{ inputs.image_name }}:${{ inputs.commit_tag }}
+        docker save ${{ inputs.image_name }}:${{ inputs.commit_tag }} | gzip > ${{ steps.split.outputs.image_name_suffix }}-docker-image.tar.gz
     - name: Upload Docker image artifact for later use in e2e test
       if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
       uses: actions/upload-artifact@v4
