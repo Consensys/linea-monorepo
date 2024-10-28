@@ -292,24 +292,18 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		return
 	}
 
-	{
-		roots := internal.CloneSlice(r.Aggregation.L2MsgRootHashes, config.L2MsgMaxNbMerkle)
-		emptyRootHex := utils.HexEncodeToString(emptyTree[len(emptyTree)-1][:32])
-
-		for i := len(r.Aggregation.L2MsgRootHashes); i < config.L2MsgMaxNbMerkle; i++ {
-			for depth := config.L2MsgMerkleDepth; depth > 0; depth-- {
-				for j := 0; j < 1<<(depth-1); j++ {
-					hshK.Skip(emptyTree[config.L2MsgMerkleDepth-depth])
-				}
+	for i := len(r.Aggregation.L2MsgRootHashes); i < config.L2MsgMaxNbMerkle; i++ {
+		for depth := config.L2MsgMerkleDepth; depth > 0; depth-- {
+			for j := 0; j < 1<<(depth-1); j++ {
+				hshK.Skip(emptyTree[config.L2MsgMerkleDepth-depth])
 			}
-			roots = append(roots, emptyRootHex)
 		}
-
-		aggregationPI := r.Aggregation.Sum(&hshK)
-
-		a.AggregationPublicInput[0] = aggregationPI[:16]
-		a.AggregationPublicInput[1] = aggregationPI[16:]
 	}
+
+	aggregationPI := r.Aggregation.Sum(&hshK)
+
+	a.AggregationPublicInput[0] = aggregationPI[:16]
+	a.AggregationPublicInput[1] = aggregationPI[16:]
 
 	logrus.Infof("generating wizard proof for %d hashes from %d permutations", hshK.NbHashes(), hshK.MaxNbKeccakF())
 	a.Keccak, err = hshK.Assign()

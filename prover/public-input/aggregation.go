@@ -50,43 +50,40 @@ func WithTreesPadding(treesPadding []string) AggregationSumOption {
 	}
 }
 
-func (p Aggregation) Sum(options ...AggregationSumOption) []byte {
-	var s aggregationSumSettings
+func (p Aggregation) Sum(hsh hash.Hash /*options ...AggregationSumOption*/) []byte {
+	/*var s aggregationSumSettings
 
 	for _, o := range options {
 		o(&s)
-	}
+	}*/
 
 	writeHex := func(hex string) {
 		b, err := utils.HexDecodeString(hex)
 		if err != nil {
 			panic(err)
 		}
-		s.h.Write(b)
+		hsh.Write(b)
 	}
 
 	writeInt := func(i int) {
 		b := utils.FmtInt32Bytes(i)
-		s.h.Write(b[:])
+		hsh.Write(b[:])
 	}
 
 	writeUint := func(i uint) {
 		b := utils.FmtUint32Bytes(i)
-		s.h.Write(b[:])
+		hsh.Write(b[:])
 	}
 
-	s.h.Reset()
+	hsh.Reset()
 
 	for _, hex := range p.L2MsgRootHashes {
 		writeHex(hex)
 	}
-	for _, hex := range s.treesPadding {
-		writeHex(hex)
-	}
 
-	l2Msgs := s.h.Sum(nil)
+	l2Msgs := hsh.Sum(nil)
 
-	s.h.Reset()
+	hsh.Reset()
 	writeHex(p.ParentAggregationFinalShnarf)
 	writeHex(p.FinalShnarf)
 	writeUint(p.ParentAggregationLastBlockTimestamp)
@@ -98,11 +95,11 @@ func (p Aggregation) Sum(options ...AggregationSumOption) []byte {
 	writeUint(p.LastFinalizedL1RollingHashMessageNumber)
 	writeUint(p.L1RollingHashMessageNumber)
 	writeInt(p.L2MsgMerkleTreeDepth)
-	s.h.Write(l2Msgs)
+	hsh.Write(l2Msgs)
 
 	// represent canonically as a bn254 scalar
 	var x bn254fr.Element
-	x.SetBytes(s.h.Sum(nil))
+	x.SetBytes(hsh.Sum(nil))
 
 	res := x.Bytes()
 
@@ -183,8 +180,9 @@ type AggregationFPIQSnark struct {
 
 type AggregationFPISnark struct {
 	AggregationFPIQSnark
-	NbL2Messages         frontend.Variable // TODO not used in hash. delete if not necessary
-	L2MsgMerkleTreeRoots [][32]frontend.Variable
+	NbL2Messages           frontend.Variable // TODO not used in hash. delete if not necessary
+	L2MsgMerkleTreeRoots   [][32]frontend.Variable
+	NbL2MsgMerkleTreeRoots frontend.Variable
 	// FinalStateRootHash     frontend.Variable redundant: incorporated into final shnarf
 	FinalBlockNumber       frontend.Variable
 	FinalBlockTimestamp    frontend.Variable
@@ -245,7 +243,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 		utils.ToBytes(api, pi.InitialRollingHashNumber),
 		utils.ToBytes(api, pi.FinalRollingHashNumber),
 		utils.ToBytes(api, pi.L2MsgMerkleTreeDepth),
-		hash.Sum(nil, pi.L2MsgMerkleTreeRoots...),
+		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 	)
 
 	// turn the hash into a bn254 element

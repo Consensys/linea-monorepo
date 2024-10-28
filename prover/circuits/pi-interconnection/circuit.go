@@ -190,10 +190,13 @@ func (c *Circuit) Define(api frontend.API) error {
 		FinalBlockNumber:       rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
 		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
 		FinalShnarf:            rDecompression.LastArray32(shnarfs),
-		FinalRollingHashNumber: finalRollingHashNum,
 		FinalRollingHash:       finalRollingHash,
+		FinalRollingHashNumber: finalRollingHashNum,
 		L2MsgMerkleTreeDepth:   c.L2MessageMerkleDepth,
 	}
+
+	quotient, remainder := internal.DivEuclidean(api, merkleLeavesConcat.Length, merkleNbLeaves)
+	pi.NbL2MsgMerkleTreeRoots = api.Add(quotient, api.Sub(1, api.IsZero(remainder)))
 
 	for i := range pi.L2MsgMerkleTreeRoots {
 		pi.L2MsgMerkleTreeRoots[i] = MerkleRootSnark(&hshK, merkleLeavesConcat.Values[i*merkleNbLeaves:(i+1)*merkleNbLeaves])
@@ -306,7 +309,7 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 	}
 
 	// aggregation PI opening
-	res.WithStrictHashLengths(32 * c.L2MsgMaxNbMerkle)
+	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
 	res.WithStrictHashLengths(384)
 
 	return &res

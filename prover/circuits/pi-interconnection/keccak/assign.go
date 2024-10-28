@@ -101,7 +101,7 @@ func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard
 
 	const blockNbBytesIn = lanesPerBlock * 8
 	for _, l := range *h {
-		nbKeccakF += l/blockNbBytesIn + 1 // extra room for padding
+		nbKeccakF += utils.Abs(l)/blockNbBytesIn + 1 // extra room for padding
 	}
 
 	logrus.Infof("Public-input interconnection requires %v keccak permutations", nbKeccakF)
@@ -277,13 +277,21 @@ func (s *StrictHasherSnark) Sum(nbIn frontend.Variable, bytess ...[32]frontend.V
 	if len(bytess) != len(expectedBytess) {
 		panic("unexpected hash size")
 	}
+	var inRange *internal.Range
 	if nbIn != nil {
 		api.AssertIsEqual(s.inLenghts[0], nbIn)
+		inRange = internal.NewRange(api, nbIn, len(bytess))
 	}
 	for i := range bytess {
 		left, right := compress.ReadNum(api, bytess[i][:16], radix), compress.ReadNum(api, bytess[i][16:], radix)
-		api.AssertIsEqual(expectedBytess[i][0], left)
-		api.AssertIsEqual(expectedBytess[i][1], right)
+
+		if nbIn == nil {
+			api.AssertIsEqual(expectedBytess[i][0], left)
+			api.AssertIsEqual(expectedBytess[i][1], right)
+		} else {
+			inRange.AssertEqualI(i, expectedBytess[i][0], left) // no need to check if past the end of the input
+			inRange.AssertEqualI(i, expectedBytess[i][1], right)
+		}
 	}
 	s.ins, s.inLenghts = s.ins[1:], s.inLenghts[1:]
 
@@ -299,5 +307,5 @@ func (s *StrictHasherSnark) Finalize() error {
 }
 
 func RegisterHints() {
-	solver.RegisterHint(keccakHint)
+	solver.RegisterHint(keccakHint, divByLanesPerBlockHint)
 }
