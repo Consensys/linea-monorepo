@@ -23,8 +23,7 @@ import (
 // TODO eliminate the order equality requirement using set equality arguments
 // The strict hasher compiler collects the expected number and length of hashes to be done.
 // It produces the compiled strict hasher, which contains the compiled verifier sub-sub-circuit (and its assigner "module")
-// It can be costly to create todo verify
-// and hence must be stored on disk alongside the gnark circuit it helps create.
+// It can be costly to create and hence must be stored on disk alongside the gnark circuit it helps create.
 // The compiled strict hasher can on the fly create the gnark sub-circuit used for circuit compilation, and an assigner,
 // adhering to the Go hash.Hash interface.
 // The assigner creates the wizard proof and the assigned gnark sub-circuit.
@@ -48,6 +47,7 @@ type CompiledStrictHasher struct {
 type StrictHasherCircuit struct {
 	Wc           *wizard.WizardVerifierCircuit
 	Ins          [][][2]frontend.Variable // every 32-byte block is prepacked into 2 16-byte blocks
+	InLengths    []int                    // actual lengths of the inputs
 	maxNbKeccakF int
 }
 
@@ -63,9 +63,10 @@ type StrictHasher struct {
 }
 
 type StrictHasherSnark struct {
-	ins [][][2]frontend.Variable
-	h   Hasher
-	c   *StrictHasherCircuit
+	ins       [][][2]frontend.Variable
+	h         Hasher
+	c         *StrictHasherCircuit
+	inLenghts []frontend.Variable
 }
 
 // NewStrictHasherCompiler creates a new strict hasher compiler with capacity for a number of hashes equal to the sum of the arguments
@@ -114,7 +115,7 @@ func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard
 	}
 }
 
-func assignIns(lengths []int) [][][2]frontend.Variable {
+func allocateIns(lengths []int) [][][2]frontend.Variable {
 	ins := make([][][2]frontend.Variable, len(lengths))
 	for i := range ins {
 		ins[i] = make([][2]frontend.Variable, utils.Abs(lengths[i])/32)
@@ -123,7 +124,8 @@ func assignIns(lengths []int) [][][2]frontend.Variable {
 }
 
 func (h *CompiledStrictHasher) GetCircuit() (c StrictHasherCircuit, err error) {
-	c.Ins = assignIns(h.lengths)
+	c.Ins = allocateIns(h.lengths)
+	c.InLengths = make([]int, len(h.lengths))
 	c.maxNbKeccakF = h.maxNbKeccakF
 	c.Wc, err = h.wc.Compile()
 	return
@@ -135,6 +137,7 @@ func (h *CompiledStrictHasher) GetHasher() StrictHasher {
 		ins:             make([][]byte, 0, len(h.lengths)),
 		wc:              &h.wc,
 		maxNbKeccakF:    h.maxNbKeccakF,
+		buffer:          bytes.Buffer{},
 		h:               sha3.NewLegacyKeccak256(),
 	}
 }
@@ -154,12 +157,18 @@ func (h *StrictHasher) Assign() (c StrictHasherCircuit, err error) {
 	}*/
 	c.Wc = h.wc.Assign(h.ins)
 	c.Ins = make([][][2]frontend.Variable, len(h.ins))
+	c.InLengths = make([]int, len(h.ins))
 	for i, in := range h.ins {
-		c.Ins[i] = make([][2]frontend.Variable, len(in)/32) // already checked that the lengths are multiples of 32
+		c.Ins[i] = make([][2]frontend.Variable, utils.Abs(h.expectedLengths[i])/32) // already checked that the lengths are multiples of 32
 		for j := range c.Ins[i] {
-			c.Ins[i][j][0] = in[j*32 : j*32+16]
-			c.Ins[i][j][1] = in[j*32+16 : j*32+32]
+			if j < len(in)/32 {
+				c.Ins[i][j][0] = in[j*32 : j*32+16]
+				c.Ins[i][j][1] = in[j*32+16 : j*32+32]
+			} else {
+				c.Ins[i][j] = [2]frontend.Variable{0, 0}
+			}
 		}
+		c.InLengths[i] = len(in)
 	}
 	return
 }
@@ -171,7 +180,8 @@ func (h *StrictHasherCircuit) NewHasher(api frontend.API) StrictHasherSnark {
 			api:     api,
 			nbLanes: lanesPerBlock * h.maxNbKeccakF,
 		},
-		ins: h.Ins,
+		ins:       h.Ins,
+		inLenghts: utils.ToVariableSlice(h.InLengths),
 	}
 }
 
@@ -266,6 +276,9 @@ func (s *StrictHasherSnark) Sum(nbIn frontend.Variable, bytess ...[32]frontend.V
 	expectedBytess := s.ins[0]
 	if len(bytess) != len(expectedBytess) {
 		panic("unexpected hash size")
+	}
+	if nbIn != nil {
+		api.AssertIsEqual(s.inLenghts[0], nbIn)
 	}
 	for i := range bytess {
 		left, right := compress.ReadNum(api, bytess[i][:16], radix), compress.ReadNum(api, bytess[i][16:], radix)
