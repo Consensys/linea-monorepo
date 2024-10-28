@@ -94,7 +94,7 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
+task transactionExclusionApi_integrationTest(type: Test) {
   test ->
     systemProperty "vertx.configurationFile", "vertx-options.json"
 
@@ -105,5 +105,5 @@ task integrationTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
+    dependsOn(":localStackPostgresDbOnlyComposeUp")
 }
