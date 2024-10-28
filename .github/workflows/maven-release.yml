@@ -7,10 +7,10 @@ on:
         type: choice
         description: 'Library to release, e.g :jvm-libs:blob-compressor'
         options:
-          - ':jvm-libs:blob-compressor'
-          - ':jvm-libs:blob-shnarf-calculator'
-          - ':jvm-libs:linea-contracts:l1-rollup'
-          - ':jvm-libs:linea-contracts:l2-message-service'
+          - ':jvm-libs:linea:blob-compressor'
+          - ':jvm-libs:linea:blob-shnarf-calculator'
+          - ':jvm-libs:linea:linea-contracts:l1-rollup'
+          - ':jvm-libs:linea:linea-contracts:l2-message-service'
       version:
         required: true
         type: string
