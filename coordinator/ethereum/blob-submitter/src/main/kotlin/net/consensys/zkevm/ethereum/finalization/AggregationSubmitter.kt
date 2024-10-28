@@ -1,12 +1,15 @@
 package net.consensys.zkevm.ethereum.finalization
 
+import kotlinx.datetime.Clock
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord
+import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import net.consensys.zkevm.ethereum.submission.logSubmissionError
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.function.Consumer
 
 interface AggregationSubmitter {
   /**
@@ -25,7 +28,10 @@ interface AggregationSubmitter {
 
 class AggregationSubmitterImpl(
   private val lineaRollup: LineaRollupSmartContractClient,
-  private val gasPriceCapProvider: GasPriceCapProvider?
+  private val gasPriceCapProvider: GasPriceCapProvider?,
+  private val aggregationSubmittedEventConsumer: Consumer<FinalizationSubmittedEvent> =
+    Consumer<FinalizationSubmittedEvent> { },
+  private val clock: Clock = Clock.System
 ) : AggregationSubmitter {
   private val log = LogManager.getLogger(this::class.java)
 
@@ -85,6 +91,15 @@ class AggregationSubmitterImpl(
                   nonce,
                   gasPriceCaps
                 )
+                val aggregationSubmittedEvent = FinalizationSubmittedEvent(
+                  aggregationProof = aggregationProof,
+                  parentShnarf = parentShnarf,
+                  parentL1RollingHash = parentL1RollingHash,
+                  parentL1RollingHashMessageNumber = parentL1RollingHashMessageNumber,
+                  submissionTimestamp = clock.now(),
+                  transactionHash = transactionHash.toByteArray()
+                )
+                aggregationSubmittedEventConsumer.accept(aggregationSubmittedEvent)
               }
           }
         }
