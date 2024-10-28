@@ -1,6 +1,7 @@
 package public_input
 
 import (
+	"golang.org/x/crypto/sha3"
 	"hash"
 	"slices"
 
@@ -31,31 +32,10 @@ type Aggregation struct {
 	L2MsgMerkleTreeDepth                    int
 }
 
-type aggregationSumSettings struct {
-	h            hash.Hash
-	treesPadding []string
-}
-
-type AggregationSumOption func(*aggregationSumSettings)
-
-func WithHash(h hash.Hash) AggregationSumOption {
-	return func(s *aggregationSumSettings) {
-		s.h = h
+func (p Aggregation) Sum(hsh hash.Hash) []byte {
+	if hsh == nil {
+		hsh = sha3.NewLegacyKeccak256()
 	}
-}
-
-func WithTreesPadding(treesPadding []string) AggregationSumOption {
-	return func(s *aggregationSumSettings) {
-		s.treesPadding = treesPadding
-	}
-}
-
-func (p Aggregation) Sum(hsh hash.Hash /*options ...AggregationSumOption*/) []byte {
-	/*var s aggregationSumSettings
-
-	for _, o := range options {
-		o(&s)
-	}*/
 
 	writeHex := func(hex string) {
 		b, err := utils.HexDecodeString(hex)
