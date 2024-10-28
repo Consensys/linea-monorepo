@@ -18,7 +18,7 @@
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
-
+        className = "Trace"
         module = moduleName
         files = ["alu/${moduleName}/columns.lisp"]
     }
@@ -29,8 +29,8 @@
 //
 tasks.register("hub", TraceFilesTask) {
     group "Trace files generation"
-    // dependsOn corsetExists
-
+    dependsOn corsetExists
+    className = "Trace"
     module = 'hub'
     files = ['hub/constants.lisp', 'hub/columns/account.lisp', 'hub/columns/context.lisp', 'hub/columns/shared.lisp', 'hub/columns/stack.lisp',
              'hub/columns/storage.lisp', 'hub/columns/transaction.lisp', 'hub/columns/scenario.lisp', 'hub/columns/miscellaneous.lisp']
@@ -71,8 +71,8 @@ tasks.register('binreftable', TraceFilesTask) {
 ['bin', 'blockhash', 'euc', 'mmio', 'shf', 'wcp', 'rlptxn', 'rom', 'romlex', 'trm', 'stp', 'loginfo', 'logdata', 'gas'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
-        // dependsOn corsetExists
-
+        dependsOn corsetExists
+className = "Trace"
         module = moduleName
         files = ["${moduleName}/columns.lisp"]
     }
@@ -84,8 +84,8 @@ tasks.register('binreftable', TraceFilesTask) {
 ['mmu', 'blake2fmodexpdata', 'blockdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
-        // dependsOn corsetExists
-
+        dependsOn corsetExists
+        className = "Trace"
         module = moduleName
         files = ["${moduleName}/columns.lisp", "${moduleName}/constants.lisp"]
     }
@@ -98,8 +98,8 @@ tasks.register('binreftable', TraceFilesTask) {
 ['txndata'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
-        // dependsOn corsetExists
-
+         dependsOn corsetExists
+        className = "Trace"
         module = moduleName
         files = ["${moduleName}/columns.lisp", "constants/constants.lisp", "${moduleName}/constants.lisp"]
     }

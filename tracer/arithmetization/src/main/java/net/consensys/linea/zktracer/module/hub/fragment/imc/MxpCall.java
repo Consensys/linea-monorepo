@@ -55,8 +55,12 @@ public class MxpCall implements TraceSubFragment {
     return Exceptions.memoryExpansionException(hub.pch().exceptions());
   }
 
-  public final boolean type4InstructionMayTriggerNonTrivialOperation(Hub hub) {
-    return !getMemoryExpansionException(hub) && !this.size1.isZero();
+  public boolean getSize1NonZeroNoMxpx() {
+    return !this.mxpx && !this.size1.isZero();
+  }
+
+  public boolean getSize2NonZeroNoMxpx() {
+    return !this.mxpx && !this.size2.isZero();
   }
 
   public Trace trace(Trace trace, State.TxState.Stamps stamps) {
@@ -74,6 +78,8 @@ public class MxpCall implements TraceSubFragment {
         .pMiscMxpSize2Hi(this.size2.hi())
         .pMiscMxpSize2Lo(this.size2.lo())
         .pMiscMxpMtntop(this.mayTriggerNontrivialMmuOperation)
+        .pMiscMxpSize1NonzeroNoMxpx(this.getSize1NonZeroNoMxpx())
+        .pMiscMxpSize2NonzeroNoMxpx(this.getSize2NonZeroNoMxpx())
         .pMiscMxpMxpx(this.mxpx)
         .pMiscMxpWords(Bytes.ofUnsignedLong(this.memorySizeInWords))
         .pMiscMxpGasMxp(Bytes.ofUnsignedLong(this.gasMxp));
