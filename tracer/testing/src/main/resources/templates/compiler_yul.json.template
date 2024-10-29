@@ -7,7 +7,7 @@
 	},
 	"settings": {
 		"evmVersion": "london",
-		"optimizer": { "enabled": true, "details": { "yul": true } },
+		"optimizer": { "enabled": false, "details": { "yul": true } },
 		"outputSelection": {
 			"*": {
 			"": ["ast"],

@@ -63,7 +63,7 @@ public class ExampleSolidityTest {
             .address(Address.fromHexString("0x22222"))
             .balance(Wei.ONE)
             .nonce(5)
-            .code(SmartContractUtils.getSolidityContractByteCode(FrameworkEntrypoint.class))
+            .code(SmartContractUtils.getSolidityContractRuntimeByteCode(FrameworkEntrypoint.class))
             .build();
 
     ToyAccount snippetAccount =
@@ -71,7 +71,7 @@ public class ExampleSolidityTest {
             .address(Address.fromHexString("0x11111"))
             .balance(Wei.ONE)
             .nonce(6)
-            .code(SmartContractUtils.getSolidityContractByteCode(TestSnippet_Events.class))
+            .code(SmartContractUtils.getSolidityContractRuntimeByteCode(TestSnippet_Events.class))
             .build();
 
     Function snippetFunction =
@@ -151,7 +151,7 @@ public class ExampleSolidityTest {
             .address(Address.fromHexString("0x11111"))
             .balance(Wei.ONE)
             .nonce(6)
-            .code(SmartContractUtils.getSolidityContractByteCode(TestSnippet_Events.class))
+            .code(SmartContractUtils.getSolidityContractRuntimeByteCode(TestSnippet_Events.class))
             .build();
 
     Function function =
@@ -201,7 +201,7 @@ public class ExampleSolidityTest {
             .address(Address.fromHexString("0x11111"))
             .balance(Wei.ONE)
             .nonce(6)
-            .code(SmartContractUtils.getSolidityContractByteCode(TestStorage.class))
+            .code(SmartContractUtils.getSolidityContractRuntimeByteCode(TestStorage.class))
             .build();
 
     Function function =
@@ -240,7 +240,7 @@ public class ExampleSolidityTest {
             .address(Address.fromHexString("0x22222"))
             .balance(Wei.ONE)
             .nonce(5)
-            .code(SmartContractUtils.getSolidityContractByteCode(FrameworkEntrypoint.class))
+            .code(SmartContractUtils.getSolidityContractRuntimeByteCode(FrameworkEntrypoint.class))
             .build();
 
     ToyAccount yulAccount =
@@ -248,7 +248,7 @@ public class ExampleSolidityTest {
             .address(Address.fromHexString("0x11111"))
             .balance(Wei.ONE)
             .nonce(6)
-            .code(SmartContractUtils.getYulContractByteCode("DynamicBytecode.yul"))
+            .code(SmartContractUtils.getYulContractRuntimeByteCode("DynamicBytecode.yul"))
             .build();
 
     Function yulFunction = new Function("Write", Collections.emptyList(), Collections.emptyList());

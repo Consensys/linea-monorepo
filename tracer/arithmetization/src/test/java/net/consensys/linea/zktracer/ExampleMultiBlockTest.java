@@ -225,7 +225,7 @@ class ExampleMultiBlockTest {
             .address(Address.fromHexString("0x22222"))
             .balance(Wei.of(1000))
             .nonce(6)
-            .code(SmartContractUtils.getSolidityContractByteCode(FrameworkEntrypoint.class))
+            .code(SmartContractUtils.getSolidityContractRuntimeByteCode(FrameworkEntrypoint.class))
             .build();
 
     ToyAccount snippetAccount =
@@ -233,7 +233,7 @@ class ExampleMultiBlockTest {
             .address(Address.fromHexString("0x11111"))
             .balance(Wei.of(1000))
             .nonce(7)
-            .code(SmartContractUtils.getSolidityContractByteCode(TestSnippet_Events.class))
+            .code(SmartContractUtils.getSolidityContractRuntimeByteCode(TestSnippet_Events.class))
             .build();
 
     Function snippetFunction =
