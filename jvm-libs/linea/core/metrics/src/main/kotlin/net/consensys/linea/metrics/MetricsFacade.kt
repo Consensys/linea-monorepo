@@ -59,7 +59,6 @@ interface MetricsFacade {
   ): Histogram
 
   fun <T> createSimpleTimer(
-    category: LineaMetricsCategory,
     name: String,
     description: String,
     tags: List<Tag> = emptyList()

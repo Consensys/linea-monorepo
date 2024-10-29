@@ -103,14 +103,17 @@ class MicrometerMetricsFacade(private val registry: MeterRegistry, private val m
     return "$metricsPrefix.$category.$metricName"
   }
 
+  private fun metricName(metricName: String): String {
+    return "$metricsPrefix.$metricName"
+  }
+
   override fun <T> createSimpleTimer(
-    category: LineaMetricsCategory,
     name: String,
     description: String,
     tags: List<Tag>
   ): TimerCapture<T> {
     requireValidMicrometerName(name)
-    val builder = MicrometerTimer.builder(metricHandle(category, name))
+    val builder = MicrometerTimer.builder(metricName(name))
     if (tags.isNotEmpty()) {
       val flatTags = tags.flatMap {
         requireValidMicrometerName(it.key)

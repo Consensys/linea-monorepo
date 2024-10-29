@@ -110,7 +110,6 @@ class MicrometerMetricsFacadeTest {
 
     val expectedTags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
     val timer = metricsFacade.createSimpleTimer<Unit>(
-      category = LineaMetricsCategory.BLOB,
       name = "some.timer.metric",
       description = "This is a test metric",
       tags = expectedTags

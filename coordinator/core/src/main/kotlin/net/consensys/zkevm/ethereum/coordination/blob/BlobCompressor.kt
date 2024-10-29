@@ -4,7 +4,6 @@ import net.consensys.encodeHex
 import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.blob.GoNativeBlobCompressor
 import net.consensys.linea.blob.GoNativeBlobCompressorFactory
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.TimerCapture
 import org.apache.logging.log4j.LogManager
@@ -75,12 +74,10 @@ class GoBackedBlobCompressor private constructor(
   }
 
   private val canAppendBlockTimer: TimerCapture<Boolean> = metricsFacade.createSimpleTimer(
-    category = LineaMetricsCategory.BLOB,
     name = "go.backed.blob.compressor.can.append.block",
     description = "Time taken to run CanWrite method"
   )
   private val appendBlockTimer: TimerCapture<BlobCompressor.AppendResult> = metricsFacade.createSimpleTimer(
-    category = LineaMetricsCategory.BLOB,
     name = "go.backed.blob.compressor.append.block",
     description = "Time taken to run AppendResult method"
   )
