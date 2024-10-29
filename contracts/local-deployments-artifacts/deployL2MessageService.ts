@@ -73,7 +73,13 @@ async function main() {
   );
 
   const proxyContractAddress = await proxyContract.getAddress();
-  console.log(`${messageServiceName} deployed: address=${proxyContractAddress}`);
+  const txReceipt = await proxyContract.deploymentTransaction()?.wait();
+
+  if (!txReceipt) {
+    throw "Contract deployment transaction receipt not found.";
+  }
+
+  console.log(`${messageServiceName} deployed: address=${proxyContractAddress} blockNumber=${txReceipt.blockNumber}`);
 }
 
 main().catch((error) => {
