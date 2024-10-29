@@ -65,13 +65,12 @@ compile-contracts-no-cache:
 		cd contracts/; \
 		make force-compile
 
-deploy-linea-rollup:
+deploy-linea-rollup-v5:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		VERIFIER_CONTRACT_NAME=IntegrationTestTrueVerifier \
-		LINEA_ROLLUP_CONTRACT_NAME=LineaRollupV5 \
 		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
 		RPC_URL=http:\\localhost:8445/ \
+		VERIFIER_CONTRACT_NAME=IntegrationTestTrueVerifier \
 		LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH=0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd \
 		LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER=0 \
 		LINEA_ROLLUP_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
@@ -86,8 +85,8 @@ deploy-linea-rollup-v6:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
-		BLOCKCHAIN_NODE=http:\\localhost:8445/ \
-		PLONKVERIFIER_NAME=IntegrationTestTrueVerifier \
+		RPC_URL=http:\\localhost:8445/ \
+		VERIFIER_CONTRACT_NAME=IntegrationTestTrueVerifier \
 		LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH=0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd \
 		LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER=0 \
 		LINEA_ROLLUP_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
@@ -95,7 +94,7 @@ deploy-linea-rollup-v6:
 		LINEA_ROLLUP_RATE_LIMIT_PERIOD=86400 \
 		LINEA_ROLLUP_RATE_LIMIT_AMOUNT=1000000000000000000000 \
 		LINEA_ROLLUP_GENESIS_TIMESTAMP=1683325137 \
-		npx hardhat deploy --no-compile --network zkevm_dev --tags PlonkVerifier,LineaRollup
+		npx ts-node local-deployments-artifacts/deployPlonkVerifierAndLineaRollupV6.ts
 
 deploy-l2messageservice:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
@@ -199,7 +198,7 @@ deploy-contracts-v4:
 	$(MAKE) -j2 deploy-linea-rollup-v4 deploy-l2messageservice
 
 deploy-contracts:
-	$(MAKE) -j2 deploy-linea-rollup deploy-l2messageservice
+	$(MAKE) -j2 deploy-linea-rollup-v5 deploy-l2messageservice
 	$(MAKE) -j2 deploy-token-bridge-l1 deploy-token-bridge-l2 
 	$(MAKE) -j2 deploy-l1-test-erc20 deploy-l2-test-erc20
 
@@ -209,7 +208,7 @@ testnet-start-l2:
 testnet-start-l2-traces-node-only:
 		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overries.yml up traces-node -d
 
-testnet-start: start-l1 deploy-linea-rollup testnet-start-l2
+testnet-start: start-l1 deploy-linea-rollup-v5 testnet-start-l2
 testnet-restart-l2-keep-state:
 		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml rm -f -s -v sequencer traces-node coordinator
 		make testnet-start-l2

@@ -22,7 +22,7 @@ jobs:
       all-tools: ${{ steps.filter.outputs['all-tools'] }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Filter commit changes
         uses: dorny/paths-filter@v2
         id: filter
@@ -85,7 +85,7 @@ jobs:
     name: All tools build and push
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ssh-key: ${{ secrets.SELF_GITHUB_SSH_KEY }}
           submodules: true
