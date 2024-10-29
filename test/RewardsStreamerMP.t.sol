@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Test } from "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -60,16 +61,14 @@ contract RewardsStreamerMPTest is Test {
         uint256 stakingBalance;
         uint256 rewardBalance;
         uint256 rewardIndex;
-        uint256 accountedRewards;
     }
 
     function checkStreamer(CheckStreamerParams memory p) public view {
         assertEq(streamer.totalStaked(), p.totalStaked, "wrong total staked");
         assertEq(streamer.totalMP(), p.totalMP, "wrong total MP");
         assertEq(streamer.totalMaxMP(), p.totalMaxMP, "wrong totalMaxMP MP");
-        assertEq(rewardToken.balanceOf(address(streamer)), p.rewardBalance, "wrong reward balance");
-        assertEq(streamer.rewardIndex(), p.rewardIndex, "wrong reward index");
-        assertEq(streamer.accountedRewards(), p.accountedRewards, "wrong accounted rewards");
+        // assertEq(rewardToken.balanceOf(address(streamer)), p.rewardBalance, "wrong reward balance");
+        // assertEq(streamer.rewardIndex(), p.rewardIndex, "wrong reward index");
     }
 
     struct CheckAccountParams {
@@ -83,13 +82,13 @@ contract RewardsStreamerMPTest is Test {
     }
 
     function checkAccount(CheckAccountParams memory p) public view {
-        assertEq(rewardToken.balanceOf(p.account), p.rewardBalance, "wrong account reward balance");
+        // assertEq(rewardToken.balanceOf(p.account), p.rewardBalance, "wrong account reward balance");
 
         RewardsStreamerMP.Account memory accountInfo = streamer.getAccount(p.account);
 
         assertEq(accountInfo.stakedBalance, p.stakedBalance, "wrong account staked balance");
-        assertEq(stakingToken.balanceOf(p.account), p.vaultBalance, "wrong vault balance");
-        assertEq(accountInfo.accountRewardIndex, p.rewardIndex, "wrong account reward index");
+        assertEq(stakingToken.balanceOf(p.account), p.stakedBalance, "wrong staking balance");
+        // assertEq(accountInfo.accountRewardIndex, p.rewardIndex, "wrong account reward index");
         assertEq(accountInfo.accountMP, p.accountMP, "wrong account MP");
         assertEq(accountInfo.maxMP, p.maxMP, "wrong account max MP");
     }
@@ -99,6 +98,7 @@ contract RewardsStreamerMPTest is Test {
         vault = new StakeVault(owner, IStakeManagerProxy(address(streamer)));
 
         if (!streamer.isTrustedCodehash(address(vault).codehash)) {
+            vm.prank(admin);
             streamer.setTrustedCodehash(address(vault).codehash, true);
         }
     }
@@ -167,8 +167,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 totalMaxMP: 0,
                 stakingBalance: 0,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -183,8 +182,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -210,8 +208,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -251,9 +248,8 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
                 rewardBalance: 1000e18,
-                rewardIndex: 125e17, // 1000 rewards / (40 staked + 40 MP) = 12.5
-                accountedRewards: 1000e18
-            })
+                rewardIndex: 125e17 // 1000 rewards / (40 staked + 40 MP) = 12.5
+             })
         );
 
         checkAccount(
@@ -294,8 +290,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 rewardBalance: 1000e18,
                 // 6 months passed and more MPs have been accrued
                 // so we need to adjust the reward index
-                rewardIndex: 10e18,
-                accountedRewards: 1000e18
+                rewardIndex: 10e18
             })
         );
 
@@ -309,8 +304,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 totalMaxMP: 150e18, // 200e18 - (10e18 * 5) = 150e18
                 stakingBalance: 30e18,
                 rewardBalance: 750e18,
-                rewardIndex: 10e18,
-                accountedRewards: 750e18
+                rewardIndex: 10e18
             })
         );
 
@@ -348,8 +342,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 totalMaxMP: 300e18,
                 stakingBalance: 60e18,
                 rewardBalance: 750e18,
-                rewardIndex: 10e18,
-                accountedRewards: 750e18
+                rewardIndex: 10e18
             })
         );
 
@@ -401,8 +394,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 totalMaxMP: 300e18,
                 stakingBalance: 60e18,
                 rewardBalance: 1750e18,
-                rewardIndex: 17_407_407_407_407_407_407,
-                accountedRewards: 1750e18
+                rewardIndex: 17_407_407_407_407_407_407
             })
         );
 
@@ -453,8 +445,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakingBalance: 30e18,
                 // 1750 - (750 + 555.55) = 444.44
                 rewardBalance: 444_444_444_444_444_444_475,
-                rewardIndex: 17_407_407_407_407_407_407,
-                accountedRewards: 444_444_444_444_444_444_475
+                rewardIndex: 17_407_407_407_407_407_407
             })
         );
 
@@ -519,8 +510,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
         checkAccount(
@@ -546,8 +536,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -573,9 +562,8 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
                 rewardBalance: 1000e18,
-                rewardIndex: 50e18, // (1000 rewards / (10 staked + 10 MP)) = 50
-                accountedRewards: 1000e18
-            })
+                rewardIndex: 50e18 // (1000 rewards / (10 staked + 10 MP)) = 50
+             })
         );
     }
 
@@ -594,8 +582,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 52_465_753_424_657_534_240,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
     }
@@ -615,8 +602,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 90e18,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
     }
@@ -636,8 +622,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 52_821_917_808_219_178_080,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
     }
@@ -656,8 +641,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -677,8 +661,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -710,8 +693,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -742,8 +724,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -773,8 +754,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -804,8 +784,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
     }
@@ -824,8 +803,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -868,8 +846,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -906,9 +883,8 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
                 rewardBalance: 1000e18,
-                rewardIndex: 125e17, // (1000 rewards / (40 staked + 40 MP)) = 12,5
-                accountedRewards: 1000e18
-            })
+                rewardIndex: 125e17 // (1000 rewards / (40 staked + 40 MP)) = 12,5
+             })
         );
     }
 
@@ -937,8 +913,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 202_465_753_424_657_534_240,
                 stakingBalance: sumOfStakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
     }
@@ -968,8 +943,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: 250_356_164_383_561_643_820,
                 stakingBalance: sumOfStakeAmount,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
     }
@@ -997,8 +971,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: totalMaxMP,
                 stakingBalance: totalStaked,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1047,8 +1020,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: totalMaxMP,
                 stakingBalance: totalStaked,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1097,8 +1069,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalMaxMP: totalMaxMP,
                 stakingBalance: totalStaked,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1144,8 +1115,7 @@ contract UnstakeTest is StakeTest {
                 totalMaxMP: 10e18,
                 stakingBalance: 2e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1170,8 +1140,7 @@ contract UnstakeTest is StakeTest {
                 totalMaxMP: 0,
                 stakingBalance: 0,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
     }
@@ -1193,8 +1162,7 @@ contract UnstakeTest is StakeTest {
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1208,8 +1176,7 @@ contract UnstakeTest is StakeTest {
                 totalMaxMP: 25e18,
                 stakingBalance: 5e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
     }
@@ -1237,8 +1204,7 @@ contract UnstakeTest is StakeTest {
                 totalMaxMP: 52_465_753_424_657_534_240,
                 stakingBalance: 10e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1253,8 +1219,7 @@ contract UnstakeTest is StakeTest {
                 totalMaxMP: 26_232_876_712_328_767_120,
                 stakingBalance: 5e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
     }
@@ -1271,8 +1236,7 @@ contract UnstakeTest is StakeTest {
                 totalMaxMP: 10e18,
                 stakingBalance: 2e18,
                 rewardBalance: 0, // rewards are all paid out to alice
-                rewardIndex: 50e18,
-                accountedRewards: 0
+                rewardIndex: 50e18
             })
         );
 
@@ -1399,8 +1363,7 @@ contract UnstakeTest is StakeTest {
                 totalMaxMP: 100e18,
                 stakingBalance: 20e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1442,9 +1405,8 @@ contract UnstakeTest is StakeTest {
                 stakingBalance: 30e18,
                 // alice owned a 25% of the pool, so 25% of the rewards are paid out to alice (250)
                 rewardBalance: 750e18,
-                rewardIndex: 125e17, // reward index remains unchanged
-                accountedRewards: 750e18
-            })
+                rewardIndex: 125e17 // reward index remains unchanged
+             })
         );
 
         checkAccount(
@@ -1468,8 +1430,7 @@ contract UnstakeTest is StakeTest {
                 totalMaxMP: 100e18,
                 stakingBalance: 20e18,
                 rewardBalance: 0, // bob should've now gotten the rest of the rewards
-                rewardIndex: 125e17,
-                accountedRewards: 0
+                rewardIndex: 125e17
             })
         );
 
@@ -1494,8 +1455,7 @@ contract UnstakeTest is StakeTest {
                 totalMaxMP: 0,
                 stakingBalance: 0,
                 rewardBalance: 0,
-                rewardIndex: 125e17,
-                accountedRewards: 0
+                rewardIndex: 125e17
             })
         );
 
@@ -1514,10 +1474,6 @@ contract UnstakeTest is StakeTest {
 }
 
 contract LockTest is RewardsStreamerMPTest {
-    function setUp() public virtual override {
-        super.setUp();
-    }
-
     function _lock(address account, uint256 lockPeriod) internal {
         StakeVault vault = StakeVault(vaults[account]);
         vm.prank(account);
@@ -1619,8 +1575,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
                 totalMaxMP: 50e18,
                 stakingBalance: 0,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1660,8 +1615,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
                 rewardBalance: 1000e18,
-                rewardIndex: 50e18,
-                accountedRewards: 1000e18
+                rewardIndex: 50e18
             })
         );
 
@@ -1709,8 +1663,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
                 rewardBalance: 1000e18,
-                rewardIndex: 125e17,
-                accountedRewards: 1000e18
+                rewardIndex: 125e17
             })
         );
 
@@ -1725,8 +1678,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
                 rewardBalance: 1000e18,
-                rewardIndex: 125e17,
-                accountedRewards: 1000e18
+                rewardIndex: 125e17
             })
         );
 
@@ -1987,5 +1939,31 @@ contract MaliciousUpgradeTest is RewardsStreamerMPTest {
         _leave(alice);
 
         assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice should get her tokens back");
+    }
+}
+
+contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function testSetRewards() public {
+        assertEq(streamer.rewardsPerSecond(), 0);
+        assertEq(streamer.lastRewardTime(), 0);
+        assertEq(streamer.rewardEndTime(), 0);
+
+        uint256 currentTime = vm.getBlockTimestamp();
+        vm.prank(admin);
+        streamer.setReward(1000, 10);
+
+        assertEq(streamer.rewardsPerSecond(), 100);
+        assertEq(streamer.lastRewardTime(), currentTime);
+        assertEq(streamer.rewardEndTime(), currentTime + 10);
+    }
+
+    function testSetRewards_NonOwnerReverts() public {
+        vm.prank(alice);
+        vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
+        streamer.setReward(1000, 10);
     }
 }

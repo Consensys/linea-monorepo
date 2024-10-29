@@ -18,6 +18,7 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
     error StakingManager__TokensAreLocked();
     error StakingManager__AlreadyLocked();
     error StakingManager__EmergencyModeEnabled();
+    error StakingManager__DurationCannotBeZero();
 
     IERC20 public STAKING_TOKEN;
     IERC20 public REWARD_TOKEN;
@@ -33,9 +34,12 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
     uint256 public totalMP;
     uint256 public totalMaxMP;
     uint256 public rewardIndex;
-    uint256 public accountedRewards;
     uint256 public lastMPUpdatedTime;
     bool public emergencyModeEnabled;
+
+    uint256 public rewardsPerSecond;
+    uint256 public lastRewardTime;
+    uint256 public rewardEndTime;
 
     struct Account {
         uint256 stakedBalance;
@@ -246,19 +250,44 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
         lastMPUpdatedTime = currentTime;
     }
 
+    function setReward(uint256 amount, uint256 duration) external onlyOwner {
+        if (duration == 0) {
+            revert StakingManager__DurationCannotBeZero();
+        }
+
+        if (amount == 0) {
+            revert StakingManager__AmountCannotBeZero();
+        }
+
+        _updateGlobalState();
+
+        rewardsPerSecond = amount / duration;
+
+        rewardEndTime = block.timestamp + duration;
+        lastRewardTime = block.timestamp;
+    }
+
     function updateRewardIndex() internal {
         uint256 totalWeight = totalStaked + totalMP;
         if (totalWeight == 0) {
             return;
         }
 
-        uint256 rewardBalance = REWARD_TOKEN.balanceOf(address(this));
-        uint256 newRewards = rewardBalance > accountedRewards ? rewardBalance - accountedRewards : 0;
+        uint256 currentTime = block.timestamp;
+        uint256 applicableTime = rewardEndTime > currentTime ? currentTime : rewardEndTime;
+        uint256 elapsedTime = applicableTime - lastRewardTime;
+
+        if (elapsedTime == 0) {
+            return;
+        }
+
+        uint256 newRewards = rewardsPerSecond * elapsedTime;
 
         if (newRewards > 0) {
             rewardIndex += (newRewards * SCALE_FACTOR) / totalWeight;
-            accountedRewards += newRewards;
         }
+
+        lastRewardTime = applicableTime;
     }
 
     function _calculateBonusMP(uint256 amount, uint256 lockPeriod) internal view returns (uint256) {
@@ -306,8 +335,6 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
         if (amount > rewardBalance) {
             amount = rewardBalance;
         }
-
-        accountedRewards -= amount;
 
         bool success = REWARD_TOKEN.transfer(to, amount);
         if (!success) {
