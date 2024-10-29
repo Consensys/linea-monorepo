@@ -12,6 +12,7 @@ const config: Config = {
   maxConcurrency: 7,
   maxWorkers: "75%",
   workerThreads: true,
+  forceExit: true,
 };
 
 export default config;

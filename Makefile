@@ -54,6 +54,9 @@ start-whole-environment-traces-v2:
 pull-all-images:
 		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 pull
 
+pull-images-external-to-monorepo:
+		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile external-to-monorepo pull
+
 compile-contracts:
 		cd contracts; \
 		make compile
@@ -63,6 +66,23 @@ compile-contracts-no-cache:
 		make force-compile
 
 deploy-linea-rollup:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		VERIFIER_CONTRACT_NAME=IntegrationTestTrueVerifier \
+		LINEA_ROLLUP_CONTRACT_NAME=LineaRollupV5 \
+		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
+		RPC_URL=http:\\localhost:8445/ \
+		LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH=0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd \
+		LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER=0 \
+		LINEA_ROLLUP_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
+		LINEA_ROLLUP_OPERATORS=$${LINEA_ROLLUP_OPERATORS:-0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC} \
+		LINEA_ROLLUP_RATE_LIMIT_PERIOD=86400 \
+		LINEA_ROLLUP_RATE_LIMIT_AMOUNT=1000000000000000000000 \
+		LINEA_ROLLUP_GENESIS_TIMESTAMP=1683325137 \
+		npx ts-node local-deployments-artifacts/deployPlonkVerifierAndLineaRollupV5.ts
+
+
+deploy-linea-rollup-v6:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
@@ -75,18 +95,19 @@ deploy-linea-rollup:
 		LINEA_ROLLUP_RATE_LIMIT_PERIOD=86400 \
 		LINEA_ROLLUP_RATE_LIMIT_AMOUNT=1000000000000000000000 \
 		LINEA_ROLLUP_GENESIS_TIMESTAMP=1683325137 \
-		npx hardhat deploy --no-compile --network zkevm_dev --tags PlonkVerifier,LineaRollupV5
+		npx hardhat deploy --no-compile --network zkevm_dev --tags PlonkVerifier,LineaRollup
 
 deploy-l2messageservice:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
+		MESSAGE_SERVICE_CONTRACT_NAME=L2MessageService \
 		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
-		BLOCKCHAIN_NODE=http:\\localhost:8545/ \
+		RPC_URL=http:\\localhost:8545/ \
 		L2MSGSERVICE_SECURITY_COUNCIL=0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 \
 		L2MSGSERVICE_L1L2_MESSAGE_SETTER=$${L2MSGSERVICE_L1L2_MESSAGE_SETTER:-0xd42e308fc964b71e18126df469c21b0d7bcb86cc} \
 		L2MSGSERVICE_RATE_LIMIT_PERIOD=86400 \
 		L2MSGSERVICE_RATE_LIMIT_AMOUNT=1000000000000000000000 \
-		npx hardhat deploy --no-compile  --network zkevm_dev --tags L2MessageService
+		npx ts-node local-deployments-artifacts/deployL2MessageService.ts
 
 deploy-token-bridge-l1:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
@@ -178,7 +199,6 @@ deploy-contracts-v4:
 	$(MAKE) -j2 deploy-linea-rollup-v4 deploy-l2messageservice
 
 deploy-contracts:
-	make compile-contracts
 	$(MAKE) -j2 deploy-linea-rollup deploy-l2messageservice
 	$(MAKE) -j2 deploy-token-bridge-l1 deploy-token-bridge-l2 
 	$(MAKE) -j2 deploy-l1-test-erc20 deploy-l2-test-erc20

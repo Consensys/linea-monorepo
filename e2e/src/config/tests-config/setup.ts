@@ -1,5 +1,5 @@
 import { AbstractSigner, JsonRpcProvider, Wallet } from "ethers";
-import { Config } from "./types";
+import { Config, L2Config, LocalL2Config } from "./types";
 import {
   BridgedToken,
   BridgedToken__factory,
@@ -30,19 +30,17 @@ export default class TestSetup {
   }
 
   public getL2SequencerProvider(): JsonRpcProvider | undefined {
-    if (this.config.L2.sequencerEndpoint) {
-      return new JsonRpcProvider(this.config.L2.sequencerEndpoint.toString());
-    } else {
+    if (!this.isLocalL2Config(this.config.L2)) {
       return undefined;
     }
+    return new JsonRpcProvider(this.config.L2.sequencerEndpoint.toString());
   }
 
   public getL2BesuNodeProvider(): JsonRpcProvider | undefined {
-    if (this.config.L2.besuNodeRpcUrl) {
-      return new JsonRpcProvider(this.config.L2.besuNodeRpcUrl.toString());
-    } else {
+    if (!this.isLocalL2Config(this.config.L2)) {
       return undefined;
     }
+    return new JsonRpcProvider(this.config.L2.besuNodeRpcUrl.toString());
   }
 
   public getL1ChainId(): number {
@@ -54,18 +52,30 @@ export default class TestSetup {
   }
 
   public getShomeiEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.shomeiEndpoint;
   }
 
   public getShomeiFrontendEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.shomeiFrontendEndpoint;
   }
 
   public getSequencerEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.sequencerEndpoint;
   }
 
   public getTransactionExclusionEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.transactionExclusionEndpoint;
   }
 
@@ -200,5 +210,15 @@ export default class TestSetup {
 
   public getL2AccountManager(): AccountManager {
     return this.config.L2.accountManager;
+  }
+
+  private isLocalL2Config(config: L2Config): config is LocalL2Config {
+    return (
+      (config as LocalL2Config).besuNodeRpcUrl !== undefined &&
+      (config as LocalL2Config).sequencerEndpoint !== undefined &&
+      (config as LocalL2Config).shomeiEndpoint !== undefined &&
+      (config as LocalL2Config).shomeiFrontendEndpoint !== undefined &&
+      (config as LocalL2Config).transactionExclusionEndpoint !== undefined
+    );
   }
 }

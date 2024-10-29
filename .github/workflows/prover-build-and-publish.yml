@@ -6,26 +6,44 @@ on:
       commit_tag:
         required: true
         type: string
-      last_commit_tag:
-        required: true
-        type: string
-      common_ancestor_tag:
-        required: true
-        type: string
       develop_tag:
-        required: true
-        type: string
-      untested_tag_suffix:
         required: true
         type: string
       image_name:
         required: true
         type: string
+      push_image:
+        required: false
+        type: boolean
+        default: false
     secrets:
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
+        required: false
+  workflow_dispatch:
+    inputs:
+      commit_tag:
+        description: 'Image tag'
         required: true
+        type: string
+      develop_tag:
+        description: 'Image tag will be "develop" if target branch is main'
+        required: true
+        type: choice
+        options:
+          - develop
+        default: 'develop'
+      image_name:
+        description: 'Image name'
+        required: true
+        type: string
+        default: 'consensys/linea-prover'
+      push_image:
+        description: 'Toggle whether to push image to docker registry'
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: prover-build-and-publish-${{ github.workflow }}-${{ github.ref }}
@@ -41,9 +59,16 @@ jobs:
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}
-      UNTESTED_TAG_SUFFIX: ${{ inputs.untested_tag_suffix }}
       IMAGE_NAME: ${{ inputs.image_name }}
+      PUSH_IMAGE: ${{ inputs.push_image }}
+      TAGS: ${{ inputs.image_name }}:${{ inputs.commit_tag }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
+      - name: Set develop tag if main branch
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }},${{ env.IMAGE_NAME }}:${{ env.DEVELOP_TAG }}" >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -51,6 +76,7 @@ jobs:
           submodules: true
           persist-credentials: false
       - name: Login to Docker Hub
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -63,6 +89,7 @@ jobs:
           echo COMMIT_TAG=${{ env.COMMIT_TAG }} >> $GITHUB_ENV
       - name: Build and push prover image
         uses: docker/build-push-action@v6
+        if: ${{ env.PUSH_IMAGE == 'false' }}
         with:
           context: .
           file: ./prover/Dockerfile
@@ -73,8 +100,35 @@ jobs:
             corset=corset/
             constraints=constraints/
           platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}
+      - name: Save Docker image as artifact
+        if: ${{ env.PUSH_IMAGE == 'false' }}
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }} | gzip > linea-prover-docker-image.tar.gz
+        shell: bash
+      - name: Upload Docker image artifact
+        if: ${{ env.PUSH_IMAGE == 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linea-prover
+          path: linea-prover-docker-image.tar.gz
+      - name: Build and push prover image
+        uses: docker/build-push-action@v6
+        if: ${{ env.PUSH_IMAGE == 'true' || github.event_name == 'workflow_dispatch' }}
+        with:
+          context: .
+          file: ./prover/Dockerfile
+          build-args: |
+            RUSTFLAGS="-C target-cpu=x86-64-v3"
+          build-contexts: |
+            prover=prover/
+            corset=corset/
+            constraints=constraints/
+          platforms: linux/amd64
+          load: false
           push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}-${{ env.UNTESTED_TAG_SUFFIX }}
+          tags: ${{ env.TAGS }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max

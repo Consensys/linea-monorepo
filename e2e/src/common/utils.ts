@@ -298,7 +298,7 @@ export function getMessageSentEventFromLogs<T extends BaseContract>(
 }
 
 export const sendMessage = async <T extends LineaRollup | L2MessageService>(
-  signer: Wallet,
+  signer: AbstractSigner,
   contract: T,
   args: SendMessageArgs,
   overrides?: PayableOverrides,

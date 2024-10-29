@@ -40,6 +40,7 @@ const config: Config = {
     l2MessageServiceAddress: "0x971e727e956690b9957be6d51Ec16E73AcAC83A7",
     tokenBridgeAddress: "0x93DcAdf238932e6e6a85852caC89cBd71798F463",
     l2TokenAddress: "",
+    l2TestContractAddress: "",
     accountManager: new EnvironmentBasedAccountManager(
       new ethers.JsonRpcProvider(L2_RPC_URL.toString()),
       L2_WHALE_ACCOUNTS,

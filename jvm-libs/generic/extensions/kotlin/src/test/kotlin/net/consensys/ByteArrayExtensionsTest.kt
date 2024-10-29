@@ -111,4 +111,13 @@ class ByteArrayExtensionsTest {
       .isInstanceOf(AssertionError::class.java)
       .hasMessage("slice 64..95 is out of array size=80")
   }
+
+  @Test
+  fun toULongFromLast8Bytes() {
+    assertThat(byteArrayOf(0x00).toULongFromLast8Bytes(lenient = true)).isEqualTo(0uL)
+    assertThat(byteArrayOf(0x01).toULongFromLast8Bytes(lenient = true)).isEqualTo(1uL)
+    val max = ByteArray(32) { 0xff.toByte() }
+    assertThat(max.toULongFromLast8Bytes()).isEqualTo(ULong.MAX_VALUE)
+    assertThat(max.apply { set(31, 0xfe.toByte()) }.toULongFromLast8Bytes()).isEqualTo(ULong.MAX_VALUE - 1UL)
+  }
 }
