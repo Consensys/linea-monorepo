@@ -105,7 +105,7 @@ class MicrometerMetricsFacadeTest {
   @Test
   fun `createSimpleTimer creates Timer with specified parameters`() {
     fun mockTimer() {
-      Thread.sleep(2000L)
+      Thread.sleep(200L)
     }
 
     val expectedTags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
@@ -116,13 +116,13 @@ class MicrometerMetricsFacadeTest {
     )
 
     timer.captureTime(::mockTimer)
-    val createdTimer = meterRegistry.find("linea.test.blob.some.timer.metric").timer()
+    val createdTimer = meterRegistry.find("linea.test.some.timer.metric").timer()
     assertThat(createdTimer).isNotNull
     assertThat(createdTimer!!.id.description).isEqualTo("This is a test metric")
-    assertThat(createdTimer.max(TimeUnit.SECONDS)).isGreaterThan(2.0)
+    assertThat(createdTimer.max(TimeUnit.SECONDS)).isGreaterThan(0.2)
 
     timer.captureTime(::mockTimer)
-    assertThat(createdTimer.totalTime(TimeUnit.SECONDS)).isGreaterThan(4.0)
-    assertThat(createdTimer.mean(TimeUnit.SECONDS)).isGreaterThan(2.0)
+    assertThat(createdTimer.totalTime(TimeUnit.SECONDS)).isGreaterThan(0.4)
+    assertThat(createdTimer.mean(TimeUnit.SECONDS)).isGreaterThan(0.2)
   }
 }
