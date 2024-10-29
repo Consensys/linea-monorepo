@@ -32,8 +32,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await contract.waitForDeployment();
   const contractAddress = await contract.getAddress();
 
-  console.log(`${contractName} deployed at ${contractAddress}`);
-
   const deployTx = contract.deploymentTransaction();
   if (!deployTx) {
     throw "Deployment transaction not found.";
@@ -41,7 +39,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await tryStoreAddress(network.name, contractName, contractAddress, deployTx.hash);
 
-  console.log(`${contractName} deployed on ${network.name}, at address: ${contractAddress}`);
+  const chainId = (await ethers.provider.getNetwork()).chainId;
+  console.log(`${contractName} deployed on ${network.name}, chainId=${chainId}, at address: ${contractAddress}`);
   await tryVerifyContract(contractAddress);
 };
 
