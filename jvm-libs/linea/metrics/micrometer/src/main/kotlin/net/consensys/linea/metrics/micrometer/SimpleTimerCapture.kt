@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
+import net.consensys.linea.metrics.Timer as LineaTimer
 
 /**
  * An abstract class which contains everything is needed to make pretty much any Timer capture.
@@ -12,7 +13,7 @@ import java.util.concurrent.CompletableFuture
  * captures TODO: In order to improve performance, Timer instances can be cached into a thread safe
  * Map
  */
-class SimpleTimerCapture<T> : AbstractTimerCapture<T> {
+class SimpleTimerCapture<T> : AbstractTimerCapture<T>, LineaTimer<T> {
   constructor(meterRegistry: MeterRegistry, name: String) : super(meterRegistry, name)
   constructor(
     meterRegistry: MeterRegistry,

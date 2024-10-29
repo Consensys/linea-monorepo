@@ -10,6 +10,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Offset
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.TimeUnit
 
 class MicrometerMetricsFacadeTest {
   private lateinit var meterRegistry: MeterRegistry
@@ -99,5 +100,30 @@ class MicrometerMetricsFacadeTest {
     assertThat(createdHistogram.totalAmount()).isEqualTo(115.0)
     assertThat(createdHistogram.mean()).isCloseTo(38.333, Offset.offset(0.1))
     assertThat(createdHistogram.max()).isEqualTo(100.0)
+  }
+
+  @Test
+  fun `createSimpleTimer creates Timer with specified parameters`() {
+    fun mockTimer() {
+      Thread.sleep(2000L)
+    }
+
+    val expectedTags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
+    val timer = metricsFacade.createSimpleTimer<Unit>(
+      category = LineaMetricsCategory.BLOB,
+      name = "some.timer.metric",
+      description = "This is a test metric",
+      tags = expectedTags
+    )
+
+    timer.captureTime(::mockTimer)
+    val createdTimer = meterRegistry.find("linea.test.blob.some.timer.metric").timer()
+    assertThat(createdTimer).isNotNull
+    assertThat(createdTimer!!.id.description).isEqualTo("This is a test metric")
+    assertThat(createdTimer.max(TimeUnit.SECONDS)).isGreaterThan(2.0)
+
+    timer.captureTime(::mockTimer)
+    assertThat(createdTimer.totalTime(TimeUnit.SECONDS)).isGreaterThan(4.0)
+    assertThat(createdTimer.mean(TimeUnit.SECONDS)).isGreaterThan(2.0)
   }
 }

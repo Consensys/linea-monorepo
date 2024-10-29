@@ -8,8 +8,10 @@ import net.consensys.linea.metrics.Histogram
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
+import net.consensys.linea.metrics.Timer
 import java.util.function.Supplier
 import io.micrometer.core.instrument.Counter as MicrometerCounter
+import io.micrometer.core.instrument.Timer as MicrometerTimer
 
 class MicrometerMetricsFacade(private val registry: MeterRegistry, private val metricsPrefix: String) : MetricsFacade {
   companion object {
@@ -99,5 +101,25 @@ class MicrometerMetricsFacade(private val registry: MeterRegistry, private val m
 
   private fun metricHandle(category: LineaMetricsCategory, metricName: String): String {
     return "$metricsPrefix.$category.$metricName"
+  }
+
+  override fun <T> createSimpleTimer(
+    category: LineaMetricsCategory,
+    name: String,
+    description: String,
+    tags: List<Tag>
+  ): Timer<T> {
+    requireValidMicrometerName(name)
+    val builder = MicrometerTimer.builder(metricHandle(category, name))
+    if (tags.isNotEmpty()) {
+      val flatTags = tags.flatMap {
+        requireValidMicrometerName(it.key)
+        listOf(it.key, it.value)
+      }
+      builder.tags(*flatTags.toTypedArray())
+    }
+    builder.description(description)
+
+    return SimpleTimerCapture(registry, builder)
   }
 }

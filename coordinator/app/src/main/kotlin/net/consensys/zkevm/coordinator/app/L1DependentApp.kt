@@ -380,7 +380,8 @@ class L1DependentApp(
     val compressorVersion = configs.traces.blobCompressorVersion
     val blobCompressor = GoBackedBlobCompressor.getInstance(
       compressorVersion = compressorVersion,
-      dataLimit = configs.blobCompression.blobSizeLimit.toUInt()
+      dataLimit = configs.blobCompression.blobSizeLimit.toUInt(),
+      metricsFacade = metricsFacade
     )
 
     val compressedBlobCalculator = ConflationCalculatorByDataCompressed(
