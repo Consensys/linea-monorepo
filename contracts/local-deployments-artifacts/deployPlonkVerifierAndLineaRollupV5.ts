@@ -10,6 +10,7 @@ import {
 } from "./static-artifacts/TransparentUpgradeableProxy.json";
 import { getRequiredEnvVar } from "../common/helpers/environment";
 import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
+import { get1559Fees } from "../scripts/utils";
 
 dotenv.config();
 
@@ -51,14 +52,21 @@ async function main() {
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
-  const walletNonce = await wallet.getNonce();
+  const [walletNonce, { gasPrice }] = await Promise.all([wallet.getNonce(), get1559Fees(provider)]);
 
   const [verifier, lineaRollupImplementation, proxyAdmin] = await Promise.all([
-    deployContractFromArtifacts(verifierArtifacts.abi, verifierArtifacts.bytecode, wallet, { nonce: walletNonce }),
+    deployContractFromArtifacts(verifierArtifacts.abi, verifierArtifacts.bytecode, wallet, {
+      nonce: walletNonce,
+      gasPrice,
+    }),
     deployContractFromArtifacts(LineaRollupV5Abi, LineaRollupV5Bytecode, wallet, {
       nonce: walletNonce + 1,
+      gasPrice,
     }),
-    deployContractFromArtifacts(ProxyAdminAbi, ProxyAdminBytecode, wallet, { nonce: walletNonce + 2 }),
+    deployContractFromArtifacts(ProxyAdminAbi, ProxyAdminBytecode, wallet, {
+      nonce: walletNonce + 2,
+      gasPrice,
+    }),
   ]);
 
   const proxyAdminAddress = await proxyAdmin.getAddress();
@@ -86,6 +94,7 @@ async function main() {
     lineaRollupImplementationAddress,
     proxyAdminAddress,
     initializer,
+    { gasPrice },
   );
 
   const proxyContractAddress = await proxyContract.getAddress();
