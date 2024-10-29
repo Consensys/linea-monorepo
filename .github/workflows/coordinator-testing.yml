@@ -60,6 +60,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Run integration tests
+        timeout-minutes: 15
         run: |
           ./gradlew integrationTest
       - name: Run Jacoco
