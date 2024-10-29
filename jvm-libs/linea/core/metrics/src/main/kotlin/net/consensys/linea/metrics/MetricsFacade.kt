@@ -29,7 +29,7 @@ interface Histogram {
   fun record(data: Double)
 }
 
-interface Timer<T> {
+interface TimerCapture<T> {
   fun captureTime(f: CompletableFuture<T>): CompletableFuture<T>
   fun captureTime(f: Callable<T>): T
 }
@@ -63,5 +63,5 @@ interface MetricsFacade {
     name: String,
     description: String,
     tags: List<Tag> = emptyList()
-  ): Timer<T>
+  ): TimerCapture<T>
 }
