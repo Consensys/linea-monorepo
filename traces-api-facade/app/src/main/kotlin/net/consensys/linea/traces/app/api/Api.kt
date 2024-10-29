@@ -11,6 +11,7 @@ import net.consensys.linea.jsonrpc.JsonRpcMessageHandler
 import net.consensys.linea.jsonrpc.JsonRpcMessageProcessor
 import net.consensys.linea.jsonrpc.JsonRpcRequestRouter
 import net.consensys.linea.jsonrpc.httpserver.HttpJsonRpcServer
+import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
 
 data class ApiConfig(
@@ -23,6 +24,7 @@ data class ApiConfig(
 class Api(
   private val configs: ApiConfig,
   private val vertx: Vertx,
+  private val metricsFacade: MetricsFacade,
   private val meterRegistry: MeterRegistry,
   private val semVerValidator: TracesSemanticVersionValidator,
   private val tracesCountingService: TracesCountingServiceV1,
@@ -43,7 +45,7 @@ class Api(
       )
 
     val messageHandler: JsonRpcMessageHandler =
-      JsonRpcMessageProcessor(JsonRpcRequestRouter(requestHandlersV1), meterRegistry)
+      JsonRpcMessageProcessor(JsonRpcRequestRouter(requestHandlersV1), metricsFacade, meterRegistry)
 
     val numberOfVerticles: Int =
       if (configs.numberOfVerticles.toInt() > 0) {

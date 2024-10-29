@@ -130,6 +130,7 @@ class TransactionExclusionApp(config: AppConfig) {
         configs = config.api,
         vertx = vertx,
         meterRegistry = meterRegistry,
+        metricsFacade = micrometerMetricsFacade,
         transactionExclusionService = transactionExclusionService
       )
   }
