@@ -3,14 +3,10 @@
 
 services:
   sequencer:
-    environment:
-      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
     volumes:
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
 
   l2-node-besu:
-    environment:
-      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
     volumes:
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
 
@@ -111,11 +107,3 @@ services:
       - ../config/common/traces-limits-v2.toml:/opt/consensys/linea/coordinator/config/traces-limits-v2.toml:ro
       - ../config/coordinator/coordinator-docker-traces-v2-override.config.toml:/opt/consensys/linea/coordinator/config/coordinator-docker-traces-v2-override.config.toml:ro
       - ../tmp/local/:/data/
-
-  zkbesu-shomei:
-    environment:
-      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
-
-  l1-el-node:
-    environment:
-      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
