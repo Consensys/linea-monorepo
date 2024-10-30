@@ -27,18 +27,8 @@ jobs:
           java-version: 21
           distribution: temurin
 
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      - name: Install Corset
-        run: RUSTFLAGS=-Awarnings cargo install --git ssh://git@github.com/ConsenSys/corset --tag v9.7.15 --locked --force
-
-      - name: Install Go
-        uses: actions/setup-go@v4
-
-      - name: Install Go Corset
-        run:
-          go install github.com/consensys/go-corset/cmd/go-corset@latest
+      - name: Setup Go Corset
+        uses: ./.github/actions/setup-go-corset
 
       - name: Run Nightly tests
         run: GOMEMLIMIT=100GiB ./gradlew nightlyTests

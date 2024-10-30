@@ -1,0 +1,15 @@
+name: 'Setup go corset'
+description: 'Install go and go corset'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup rust and rust corset
+      uses: ./.github/actions/setup-rust-corset
+
+    - name: Install Go
+      uses: actions/setup-go@v4
+
+    - name: Install Go Corset
+      shell: bash
+      run: go install github.com/consensys/go-corset/cmd/go-corset@latest
