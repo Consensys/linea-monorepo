@@ -190,10 +190,13 @@ func (c *Circuit) Define(api frontend.API) error {
 		FinalBlockNumber:       rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
 		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
 		FinalShnarf:            rDecompression.LastArray32(shnarfs),
-		FinalRollingHashNumber: finalRollingHashNum,
 		FinalRollingHash:       finalRollingHash,
+		FinalRollingHashNumber: finalRollingHashNum,
 		L2MsgMerkleTreeDepth:   c.L2MessageMerkleDepth,
 	}
+
+	quotient, remainder := internal.DivEuclidean(api, merkleLeavesConcat.Length, merkleNbLeaves)
+	pi.NbL2MsgMerkleTreeRoots = api.Add(quotient, api.Sub(1, api.IsZero(remainder)))
 
 	for i := range pi.L2MsgMerkleTreeRoots {
 		pi.L2MsgMerkleTreeRoots[i] = MerkleRootSnark(&hshK, merkleLeavesConcat.Values[i*merkleNbLeaves:(i+1)*merkleNbLeaves])
@@ -298,16 +301,16 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
 	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, 2)
 	for i := 0; i < nbShnarf; i++ {
-		res.WithHashLengths(160) // 5 components in every shnarf
+		res.WithStrictHashLengths(160) // 5 components in every shnarf
 	}
 
 	for i := 0; i < nbMerkle; i++ {
-		res.WithHashLengths(64) // 2 tree nodes
+		res.WithStrictHashLengths(64) // 2 tree nodes
 	}
 
 	// aggregation PI opening
-	res.WithHashLengths(32 * c.L2MsgMaxNbMerkle)
-	res.WithHashLengths(384)
+	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
+	res.WithStrictHashLengths(384)
 
 	return &res
 }
