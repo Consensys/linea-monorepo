@@ -172,6 +172,33 @@ export async function fetchTokenPrices(
   return data;
 }
 
+export async function validateTokenURI(url: string): Promise<string> {
+  try {
+    await fetch(url);
+    return url;
+  } catch (error) {
+    return "/images/logo/noTokenLogo.svg";
+  }
+}
+
+export async function formatToken(token: Token): Promise<TokenInfo> {
+  const tokenType = token.symbol === USDC_TYPE ? TokenType.USDC : TokenType.ERC20;
+
+  const logoURI = await validateTokenURI(token.logoURI);
+
+  return {
+    name: token.name,
+    symbol: token.symbol,
+    decimals: token.decimals,
+    type: tokenType,
+    L1: token?.extension?.rootAddress ?? null,
+    L2: token.address,
+    UNKNOWN: null,
+    image: logoURI,
+    isDefault: true,
+  };
+}
+
 export async function getTokenConfig(): Promise<NetworkTokens> {
   const [mainnetTokens, sepoliaTokens] = await Promise.all([
     getTokens(NetworkTypes.MAINNET),
@@ -182,46 +209,12 @@ export async function getTokenConfig(): Promise<NetworkTokens> {
 
   updatedTokensConfig.MAINNET = [
     ...defaultTokensConfig.MAINNET,
-    ...(await Promise.all(
-      mainnetTokens.map(async (token: Token): Promise<TokenInfo> => {
-        const tokenType = token.symbol === USDC_TYPE ? TokenType.USDC : TokenType.ERC20;
-        try {
-          await fetch(token.logoURI);
-        } catch (error) {
-          token.logoURI = "/images/logo/noTokenLogo.svg";
-        }
-
-        return {
-          name: token.name,
-          symbol: token.symbol,
-          decimals: token.decimals,
-          type: tokenType,
-          L1: token?.extension?.rootAddress ?? null,
-          L2: token.address,
-          UNKNOWN: null,
-          image: token.logoURI,
-          isDefault: true,
-        };
-      }),
-    )),
+    ...(await Promise.all(mainnetTokens.map(async (token: Token): Promise<TokenInfo> => formatToken(token)))),
   ];
 
   updatedTokensConfig.SEPOLIA = [
     ...defaultTokensConfig.SEPOLIA,
-    ...sepoliaTokens.map((token: Token): TokenInfo => {
-      const tokenType = token.symbol === USDC_TYPE ? TokenType.USDC : TokenType.ERC20;
-      return {
-        name: token.name,
-        symbol: token.symbol,
-        decimals: token.decimals,
-        type: tokenType,
-        L1: token?.extension?.rootAddress ?? null,
-        L2: token.address,
-        UNKNOWN: null,
-        image: token.logoURI,
-        isDefault: true,
-      };
-    }),
+    ...(await Promise.all(sepoliaTokens.map((token: Token): Promise<TokenInfo> => formatToken(token)))),
   ];
 
   return updatedTokensConfig;
