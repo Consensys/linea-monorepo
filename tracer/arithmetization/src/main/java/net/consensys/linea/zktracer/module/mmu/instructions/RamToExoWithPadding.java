@@ -147,7 +147,7 @@ public class RamToExoWithPadding implements MmuInstruction {
     final Bytes dividend = Bytes.ofUnsignedLong(extractionSize);
     final EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
 
-    Bytes quotient = eucOp.quotient();
+    final Bytes quotient = eucOp.quotient();
     eucCallRecords.add(
         MmuEucCallRecord.builder()
             .dividend(dividend.toLong())

@@ -91,16 +91,18 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
     final MmuCall firstMmuCall;
     final boolean nonemptyCallData = !callData.isEmpty();
 
+    final boolean successBitMmuCall = flag() == PRC_ECRECOVER ? !returnData.isEmpty() : callSuccess;
+
     if (nonemptyCallData) {
       switch (flag()) {
-        case PRC_ECRECOVER -> {
-          final boolean successfulRecovery = !returnData.isEmpty();
-          firstMmuCall = MmuCall.callDataExtractionForEcrecover(hub, this, successfulRecovery);
-        }
-        case PRC_ECADD -> firstMmuCall = MmuCall.callDataExtractionForEcadd(hub, this, callSuccess);
-        case PRC_ECMUL -> firstMmuCall = MmuCall.callDataExtractionForEcmul(hub, this, callSuccess);
+        case PRC_ECRECOVER -> firstMmuCall =
+            MmuCall.callDataExtractionForEcrecover(hub, this, successBitMmuCall);
+        case PRC_ECADD -> firstMmuCall =
+            MmuCall.callDataExtractionForEcadd(hub, this, successBitMmuCall);
+        case PRC_ECMUL -> firstMmuCall =
+            MmuCall.callDataExtractionForEcmul(hub, this, successBitMmuCall);
         case PRC_ECPAIRING -> firstMmuCall =
-            MmuCall.callDataExtractionForEcpairing(hub, this, callSuccess);
+            MmuCall.callDataExtractionForEcpairing(hub, this, successBitMmuCall);
         default -> throw new IllegalArgumentException("Not an elliptic curve precompile");
       }
       firstImcFragment.callMmu(firstMmuCall);
@@ -126,14 +128,14 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
     if (producesNonemptyReturnData) {
       switch (flag()) {
         case PRC_ECRECOVER -> {
-          secondMmuCall = MmuCall.fullReturnDataTransferForEcrecover(hub, this);
+          secondMmuCall = MmuCall.fullReturnDataTransferForEcrecover(hub, this, successBitMmuCall);
           if (callerMayReceiveReturnData) {
             thirdMmuCall = MmuCall.partialReturnDataCopyForEcrecover(hub, this);
           }
         }
         case PRC_ECADD -> {
           if (nonemptyCallData) {
-            secondMmuCall = MmuCall.fullReturnDataTransferForEcadd(hub, this);
+            secondMmuCall = MmuCall.fullReturnDataTransferForEcadd(hub, this, successBitMmuCall);
           }
           if (callerMayReceiveReturnData) {
             thirdMmuCall = MmuCall.partialCopyOfReturnDataForEcadd(hub, this);
@@ -141,15 +143,14 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
         }
         case PRC_ECMUL -> {
           if (nonemptyCallData) {
-            secondMmuCall = MmuCall.fullReturnDataTransferForEcmul(hub, this);
+            secondMmuCall = MmuCall.fullReturnDataTransferForEcmul(hub, this, successBitMmuCall);
           }
           if (callerMayReceiveReturnData) {
             thirdMmuCall = MmuCall.partialCopyOfReturnDataForEcmul(hub, this);
           }
         }
         case PRC_ECPAIRING -> {
-          secondMmuCall = MmuCall.fullReturnDataTransferForEcpairing(hub, this);
-
+          secondMmuCall = MmuCall.fullReturnDataTransferForEcpairing(hub, this, successBitMmuCall);
           if (callerMayReceiveReturnData) {
             thirdMmuCall = MmuCall.partialCopyOfReturnDataForEcpairing(hub, this);
           }

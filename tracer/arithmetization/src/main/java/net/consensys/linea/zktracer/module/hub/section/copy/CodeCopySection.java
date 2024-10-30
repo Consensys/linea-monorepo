@@ -28,9 +28,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.evm.account.Account;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class CodeCopySection extends TraceSection {
 
@@ -66,19 +63,9 @@ public class CodeCopySection extends TraceSection {
     this.addFragment(contextFragment);
 
     // Account row
-    final MessageFrame frame = hub.messageFrame();
-    final Address codeAddress = frame.getContractAddress();
-    final Account codeAccount = frame.getWorldUpdater().get(codeAddress);
-
-    final boolean warmth = frame.isAddressWarm(codeAddress);
-    checkArgument(warmth);
-
     final AccountSnapshot codeAccountSnapshot =
-        AccountSnapshot.fromAccount(
-            codeAccount,
-            warmth,
-            hub.deploymentNumberOf(codeAddress),
-            hub.deploymentStatusOf(codeAddress));
+        AccountSnapshot.canonical(hub, hub.messageFrame().getContractAddress());
+    checkArgument(codeAccountSnapshot.isWarm());
 
     final DomSubStampsSubFragment doingDomSubStamps =
         DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0); // Specifics for CODECOPY
@@ -94,7 +81,7 @@ public class CodeCopySection extends TraceSection {
 
     final boolean triggerMmu = mxpCall.mayTriggerNontrivialMmuOperation;
     if (triggerMmu) {
-      MmuCall mmuCall = MmuCall.codeCopy(hub);
+      final MmuCall mmuCall = MmuCall.codeCopy(hub);
       imcFragment.callMmu(mmuCall);
     }
   }

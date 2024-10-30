@@ -19,6 +19,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 import static net.consensys.linea.zktracer.module.hub.fragment.ContextFragment.readCurrentContextData;
+import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.extractContiguousLimbsFromMemory;
+import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -30,40 +32,33 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.CallDataLoadOobCall;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrameType;
 import net.consensys.linea.zktracer.types.EWord;
+import net.consensys.linea.zktracer.types.MemorySpan;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.internal.Words;
 
 public class CallDataLoadSection extends TraceSection {
-  final short exception;
-  final Bytes callDataRam;
-  final int currentContextNumber;
-  final long callDataCN;
-  final EWord sourceOffset;
-
-  long callDataOffset = -1;
-  long callDataSize = -1;
 
   public CallDataLoadSection(Hub hub) {
     super(hub, (short) (hub.opCode().equals(OpCode.CALLDATALOAD) ? 4 : 3));
     this.addStack(hub);
 
-    this.exception = hub.pch().exceptions();
-    this.currentContextNumber = hub.currentFrame().contextNumber();
-    this.callDataSize = hub.currentFrame().callDataInfo().memorySpan().length();
-    this.callDataOffset = hub.currentFrame().callDataInfo().memorySpan().offset();
-    this.sourceOffset = EWord.of(hub.currentFrame().frame().getStackItem(0));
-    this.callDataCN = hub.currentFrame().callDataInfo().callDataContextNumber();
-    this.callDataRam = hub.currentFrame().callDataInfo().data();
+    final short exception = hub.pch().exceptions();
 
     final ImcFragment imcFragment = ImcFragment.empty(hub);
+    this.addFragment(imcFragment);
 
     final CallDataLoadOobCall oobCall = new CallDataLoadOobCall();
     imcFragment.callOob(oobCall);
 
     if (Exceptions.none(exception)) {
-
       if (!oobCall.isCdlOutOfBounds()) {
+        final long callDataSize = hub.currentFrame().callDataInfo().memorySpan().length();
+        final long callDataOffset = hub.currentFrame().callDataInfo().memorySpan().offset();
+        final EWord sourceOffset = EWord.of(hub.currentFrame().frame().getStackItem(0));
+        final long callDataCN = hub.currentFrame().callDataInfo().callDataContextNumber();
 
         final EWord read =
             EWord.of(
@@ -73,23 +68,31 @@ public class CallDataLoadSection extends TraceSection {
                         Words.clampedToInt(sourceOffset),
                         Words.clampedToInt(sourceOffset) + WORD_SIZE)));
 
+        final CallFrame callDataCallFrame = hub.callStack().getByContextNumber(callDataCN);
+
         final MmuCall call =
             new MmuCall(hub, MMU_INST_RIGHT_PADDED_WORD_EXTRACTION)
                 .sourceId((int) callDataCN)
+                .sourceRamBytes(
+                    Optional.of(
+                        callDataCallFrame.type() == CallFrameType.TRANSACTION_CALL_DATA_HOLDER
+                            ? callDataCallFrame.callDataInfo().data()
+                            : extractContiguousLimbsFromMemory(
+                                callDataCallFrame.frame(),
+                                MemorySpan.fromStartLength(
+                                    clampedToLong(sourceOffset) + callDataOffset, WORD_SIZE))))
                 .sourceOffset(sourceOffset)
                 .referenceOffset(callDataOffset)
                 .referenceSize(callDataSize)
                 .limb1(read.hi())
-                .limb2(read.lo())
-                .sourceRamBytes(Optional.of(callDataRam));
+                .limb2(read.lo());
 
         imcFragment.callMmu(call);
       }
     } else {
+      // Sanity check
       checkArgument(Exceptions.outOfGasException(exception));
     }
-
-    this.addFragment(imcFragment);
 
     final ContextFragment context = readCurrentContextData(hub);
     this.addFragment(context);

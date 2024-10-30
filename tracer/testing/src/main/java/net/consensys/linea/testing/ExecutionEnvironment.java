@@ -61,19 +61,21 @@ public class ExecutionEnvironment {
   public static void checkTracer(
       ZkTracer zkTracer, CorsetValidator corsetValidator, Optional<Logger> logger) {
     Path traceFilePath = null;
+    boolean traceValidated = false;
     try {
       traceFilePath = Files.createTempFile(null, ".lt");
       zkTracer.writeToFile(traceFilePath);
       final Path finalTraceFilePath = traceFilePath;
       logger.ifPresent(log -> log.debug("trace written to {}", finalTraceFilePath));
       CorsetValidator.Result corsetValidationResult = corsetValidator.validate(traceFilePath);
-      assertThat(corsetValidationResult.isValid())
+      traceValidated = corsetValidationResult.isValid();
+      assertThat(traceValidated)
           .withFailMessage(CORSET_VALIDATION_RESULT + "%s", corsetValidationResult.corsetOutput())
           .isTrue();
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {
-      if (traceFilePath != null) {
+      if (traceFilePath != null && traceValidated) {
         if (System.getenv("PRESERVE_TRACE_FILES") == null) {
           boolean traceFileDeleted = traceFilePath.toFile().delete();
           final Path finalTraceFilePath = traceFilePath;

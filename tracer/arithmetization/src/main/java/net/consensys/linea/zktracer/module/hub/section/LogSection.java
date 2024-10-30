@@ -103,10 +103,10 @@ public class LogSection extends TraceSection implements PostRollbackDefer, PostT
   public void resolvePostTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     if (!logReverted) {
-      hub.state.stamps().incrementLogStamp();
-      commonValues.logStamp(hub.state.stamps().log());
+      final int logStamp = hub.state.stamps().incrementLogStamp();
+      commonValues.logStamp(logStamp);
       if (mmuCall != null) {
-        mmuCall.targetId(hub.state.stamps().log());
+        mmuCall.targetId(logStamp);
       }
     }
   }

@@ -16,14 +16,17 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode;
 
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_ANY_TO_RAM_WITH_PADDING;
+import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.extractContiguousLimbsFromMemory;
+import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.util.Optional;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
-import org.hyperledger.besu.evm.internal.Words;
+import net.consensys.linea.zktracer.types.MemorySpan;
 
 /**
  * A specialization of {@link MmuCall} that addresses the fact that the MMU requires access to the
@@ -37,23 +40,26 @@ public class CodeCopy extends MmuCall {
     super(hub, MMU_INST_ANY_TO_RAM_WITH_PADDING);
     this.hub = hub;
     this.contract = hub.currentFrame().metadata();
+    final CallFrame currentFrame = hub.currentFrame();
+    final EWord targetOffset = EWord.of(currentFrame.frame().getStackItem(0));
+    final long size = clampedToLong(currentFrame.frame().getStackItem(2));
 
-    this.exoBytes(Optional.of(hub.romLex().getCodeByMetadata(contract)))
-        .targetId(hub.currentFrame().contextNumber())
+    this.exoBytes(Optional.of(currentFrame.code().bytecode()))
+        .targetId(currentFrame.contextNumber())
         .targetRamBytes(
             Optional.of(
-                hub.currentFrame()
-                    .frame()
-                    .shadowReadMemory(0, hub.currentFrame().frame().memoryByteSize())))
-        .sourceOffset(EWord.of(hub.messageFrame().getStackItem(1)))
-        .targetOffset(EWord.of(hub.messageFrame().getStackItem(0)))
-        .size(Words.clampedToLong(hub.messageFrame().getStackItem(2)))
-        .referenceSize(hub.currentFrame().code().getSize())
+                extractContiguousLimbsFromMemory(
+                    currentFrame.frame(),
+                    MemorySpan.fromStartLength(clampedToLong(targetOffset), size))))
+        .sourceOffset(EWord.of(currentFrame.frame().getStackItem(1)))
+        .targetOffset(targetOffset)
+        .size(size)
+        .referenceSize(currentFrame.code().getSize())
         .setRom();
   }
 
   @Override
   public int sourceId() {
-    return this.hub.romLex().getCodeFragmentIndexByMetadata(this.contract);
+    return hub.romLex().getCodeFragmentIndexByMetadata(contract);
   }
 }

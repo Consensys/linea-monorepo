@@ -87,26 +87,23 @@ public class Mmio implements Module {
     Trace trace = new Trace(buffers);
     int stamp = 0;
     for (MmuOperation mmuOperation : mmu.operations().getAll()) {
-      if (mmuOperation.traceMe()) {
 
-        final MmuData currentMmuData = mmuOperation.mmuData();
+      final MmuData currentMmuData = mmuOperation.mmuData();
 
-        for (int currentMmioInstNumber = 0;
-            currentMmioInstNumber < currentMmuData.numberMmioInstructions();
-            currentMmioInstNumber++) {
-          stamp++;
+      for (int currentMmioInstNumber = 0;
+          currentMmioInstNumber < currentMmuData.mmuToMmioInstructions().size();
+          currentMmioInstNumber++) {
 
-          final MmioInstructions mmioInstructions =
-              new MmioInstructions(currentMmuData, currentMmioInstNumber);
-          final MmioData mmioData =
-              mmioInstructions.compute(
-                  currentMmuData
-                      .mmuToMmioInstructions()
-                      .get(currentMmioInstNumber)
-                      .mmioInstruction());
+        final MmioInstructions mmioInstructions =
+            new MmioInstructions(currentMmuData, currentMmioInstNumber);
+        final MmioData mmioData =
+            mmioInstructions.compute(
+                currentMmuData
+                    .mmuToMmioInstructions()
+                    .get(currentMmioInstNumber)
+                    .mmioInstruction());
 
-          trace(trace, mmioData, stamp);
-        }
+        trace(trace, mmioData, ++stamp);
       }
     }
   }

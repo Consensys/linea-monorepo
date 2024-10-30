@@ -140,7 +140,7 @@ public class CallFrame {
   @Getter @Setter private Bytes returnData = Bytes.EMPTY;
 
   /** returnData position within the latest callee memory space. */
-  @Getter @Setter private MemorySpan returnDataSpan = new MemorySpan(0, 0);
+  @Getter @Setter private MemorySpan returnDataSpan = MemorySpan.empty();
 
   /** the return data provided by this frame */
   @Getter @Setter private Bytes outputData = Bytes.EMPTY;
@@ -149,7 +149,7 @@ public class CallFrame {
   @Getter @Setter private MemorySpan outputDataSpan;
 
   /** where this frame is expected to write its outputData within its parent's memory space. */
-  @Getter private MemorySpan returnDataTargetInCaller = MemorySpan.empty();
+  @Getter @Setter private MemorySpan returnDataTargetInCaller = MemorySpan.empty();
 
   @Getter @Setter private boolean selfReverts = false;
   @Getter @Setter private boolean getsReverted = false;

@@ -179,8 +179,8 @@ public class State implements StackedContainer {
         mxp++;
       }
 
-      public void incrementLogStamp() {
-        log++;
+      public int incrementLogStamp() {
+        return ++log;
       }
     }
   }

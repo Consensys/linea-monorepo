@@ -184,4 +184,8 @@ public class Conversions {
     }
     return sb.toString().trim();
   }
+
+  public static int bytesToInt(Bytes bytes) {
+    return bytes.trimLeadingZeros().toInt();
+  }
 }

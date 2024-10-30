@@ -42,7 +42,7 @@ public class RamToRamTwoSource extends MmioInstruction {
     mmioData.indexX(0);
 
     mmioData.valA(readLimb(mmuData.sourceRamBytes(), mmioData.indexA()));
-    mmioData.valB(readLimb(mmuData.targetRamBytes(), mmioData.indexB()));
+    mmioData.valB(readLimb(mmuData.sourceRamBytes(), mmioData.indexB()));
     mmioData.valC(readLimb(mmuData.targetRamBytes(), mmioData.indexC()));
     mmioData.limb(Bytes16.ZERO);
 

@@ -83,6 +83,7 @@ public class ExoToRamTransplants implements MmuInstruction {
             .phase(hubToMmuValues.phase())
             .exoId((int) hubToMmuValues.sourceId())
             .totalSize((int) hubToMmuValues.size())
+            .successBit(hubToMmuValues.successBit())
             .build());
 
     // Setting the target ram bytes
