@@ -54,7 +54,6 @@ async function main() {
   console.log(`${bridgedTokenName} contract deployed at ${bridgedTokenAddress}`);
   console.log(`${tokenBridgeName} Implementation contract deployed at ${tokenBridgeImplementationAddress}`);
   console.log(`L1 ProxyAdmin deployed: address=${proxyAdminAddress}`);
-
   console.log(`Deploying UpgradeableBeacon: chainId=${chainId} bridgedTokenAddress=${bridgedTokenAddress}`);
 
   const beaconProxy = await deployContractFromArtifacts(

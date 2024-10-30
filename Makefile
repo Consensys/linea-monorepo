@@ -137,21 +137,21 @@ deploy-l1-test-erc20:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-		BLOCKCHAIN_NODE=http:\\localhost:8445/ \
+		RPC_URL=http:\\localhost:8445/ \
 		TEST_ERC20_NAME=TestERC20 \
 		TEST_ERC20_SYMBOL=TERC20 \
 		TEST_ERC20_INITIAL_SUPPLY=100000 \
-		npx hardhat deploy --no-compile --network zkevm_dev --tags TestERC20
+		npx ts-node local-deployments-artifacts/deployTestERC20.ts
 
 deploy-l2-test-erc20:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
-		BLOCKCHAIN_NODE=http:\\localhost:8545/ \
+		RPC_URL=http:\\localhost:8545/ \
 		TEST_ERC20_NAME=TestERC20 \
 		TEST_ERC20_SYMBOL=TERC20 \
 		TEST_ERC20_INITIAL_SUPPLY=100000 \
-		npx hardhat deploy --no-compile --network zkevm_dev --tags TestERC20
+		npx ts-node local-deployments-artifacts/deployTestERC20.ts
 
 upgrade-linea-rollup-on-uat:
 		cd contracts/; \
