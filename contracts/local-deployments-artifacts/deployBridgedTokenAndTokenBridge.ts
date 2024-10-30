@@ -1,6 +1,10 @@
 import { abi as ProxyAdminAbi, bytecode as ProxyAdminBytecode } from "./static-artifacts/ProxyAdmin.json";
 import { abi as BridgedTokenAbi, bytecode as BridgedTokenBytecode } from "./dynamic-artifacts/BridgedToken.json";
 import { abi as TokenBridgeAbi, bytecode as TokenBridgeBytecode } from "./dynamic-artifacts/TokenBridge.json";
+import {
+  abi as UpgradeableBeaconAbi,
+  bytecode as UpgradeableBeaconBytecode,
+} from "./static-artifacts/UpgradeableBeacon.json";
 
 import {
   abi as TransparentUpgradeableProxyAbi,
@@ -45,11 +49,22 @@ async function main() {
   const tokenBridgeImplementationAddress = await tokenBridgeImplementation.getAddress();
   const proxyAdminAddress = await proxyAdmin.getAddress();
 
+  const chainId = (await provider.getNetwork()).chainId;
+
   console.log(`${bridgedTokenName} contract deployed at ${bridgedTokenAddress}`);
   console.log(`${tokenBridgeName} Implementation contract deployed at ${tokenBridgeImplementationAddress}`);
   console.log(`L1 ProxyAdmin deployed: address=${proxyAdminAddress}`);
 
-  const chainId = (await provider.getNetwork()).chainId;
+  console.log(`Deploying UpgradeableBeacon: chainId=${chainId} bridgedTokenAddress=${bridgedTokenAddress}`);
+
+  const beaconProxy = await deployContractFromArtifacts(
+    UpgradeableBeaconAbi,
+    UpgradeableBeaconBytecode,
+    wallet,
+    bridgedTokenAddress,
+  );
+
+  const beaconProxyAddress = await beaconProxy.getAddress();
 
   let deployingChainMessageService = l2MessageServiceAddress;
   let reservedAddresses = process.env.L2_RESERVED_TOKEN_ADDRESSES
@@ -74,7 +89,7 @@ async function main() {
     {
       defaultAdmin: tokenBridgeSecurityCouncil,
       messageService: deployingChainMessageService,
-      tokenBeacon: bridgedTokenAddress,
+      tokenBeacon: beaconProxyAddress,
       sourceChainId: chainId,
       targetChainId: remoteChainId,
       reservedTokens: reservedAddresses,
@@ -100,7 +115,9 @@ async function main() {
     throw "Contract deployment transaction receipt not found.";
   }
 
-  console.log(`${tokenBridgeName} deployed: chainId=${chainId} address=${proxyContractAddress} blockNumber=${txReceipt.blockNumber}`);
+  console.log(
+    `${tokenBridgeName} deployed: chainId=${chainId} address=${proxyContractAddress} blockNumber=${txReceipt.blockNumber}`,
+  );
 }
 
 main().catch((error) => {

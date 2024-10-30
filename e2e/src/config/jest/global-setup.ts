@@ -33,7 +33,6 @@ export default async (): Promise<void> => {
   const to = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
   const calldata = "0x";
 
-
   const [dummyContract, l2DummyContract, l2TestContract] = await Promise.all([
     deployContract(new DummyContract__factory(), account, [{ nonce: l1AccountNonce }]),
     deployContract(new DummyContract__factory(), l2Account, [{ nonce: l2AccountNonce }]),
@@ -47,14 +46,8 @@ export default async (): Promise<void> => {
         nonce: l1AccountNonce + 1,
       })
     ).wait(),
-    (
-      await l1TokenBridge
-        .connect(l1SecurityCouncil)
-        .setRemoteTokenBridge(await l2TokenBridge.getAddress())
-    ).wait(),
-    (
-      await l2TokenBridge.connect(l2SecurityCouncil).setRemoteTokenBridge(await l1TokenBridge.getAddress())
-    ).wait(),
+    (await l1TokenBridge.connect(l1SecurityCouncil).setRemoteTokenBridge(await l2TokenBridge.getAddress())).wait(),
+    (await l2TokenBridge.connect(l2SecurityCouncil).setRemoteTokenBridge(await l1TokenBridge.getAddress())).wait(),
   ]);
 
   console.log(`L1 Dummy contract deployed at address: ${await dummyContract.getAddress()}`);
