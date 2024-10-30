@@ -24,28 +24,3 @@ dependencies {
   testFixturesImplementation(platform("org.junit:junit-bom:${libs.versions.junit.get()}"))
   testFixturesImplementation("io.vertx:vertx-junit5:${libs.versions.vertx.get()}")
 }
-
-sourceSets {
-  integrationTest {
-    kotlin {
-      compileClasspath += main.output
-      runtimeClasspath += main.output
-    }
-    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
-    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
-  }
-}
-
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
-
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-
-    dependsOn(":localStackComposeUp")
-}
-
-

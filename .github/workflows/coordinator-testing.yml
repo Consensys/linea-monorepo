@@ -61,7 +61,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Run integration tests
         run: |
-          ./gradlew integrationTest
+          ./gradlew coordinator:app:integrationTestAllNeeded
       - name: Run Jacoco
         run: |
           ./gradlew jacocoRootReport
