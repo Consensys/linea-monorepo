@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
 import { waitForEvents, etherToWei } from "./common/utils";
+import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
 
 const l1AccountManager = config.getL1AccountManager();
 const l2AccountManager = config.getL2AccountManager();
@@ -26,26 +27,20 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     let { maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData();
     let nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
 
-    const mintTx = await l1Token.connect(l1Account).mint(l1Account.address, bridgeAmount, {
-      nonce: nonce,
-      maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
-      maxFeePerGas: l1MaxFeePerGas,
-    });
+    console.log("Minting and approving tokens to L1 TokenBridge");
 
-    await mintTx.wait();
-
-    console.log("Approving tokens to L1 TokenBridge");
-
-    ({ maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData());
-
-    nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
-
-    const approveTx = await l1Token.connect(l1Account).approve(l1TokenBridge.getAddress(), bridgeAmount, {
-      maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
-      maxFeePerGas: l1MaxFeePerGas,
-      nonce: nonce,
-    });
-    await approveTx.wait();
+    await Promise.all([
+      (await l1Token.connect(l1Account).mint(l1Account.address, bridgeAmount, {
+        nonce: nonce,
+        maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+        maxFeePerGas: l1MaxFeePerGas,
+      })).wait(),
+      (await l1Token.connect(l1Account).approve(l1TokenBridge.getAddress(), bridgeAmount, {
+        maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+        maxFeePerGas: l1MaxFeePerGas,
+        nonce: nonce + 1,
+      })).wait(),
+    ]);
 
     const l1TokenBridgeAddress = await l1TokenBridge.getAddress();
     const l1TokenAddress = await l1Token.getAddress();
@@ -67,12 +62,10 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
         nonce: nonce,
       });
 
-    let receipt = await bridgeTokenTx.wait();
-    while (!receipt) {
-      console.log("Waiting for transaction to be mined...");
-      receipt = await bridgeTokenTx.wait();
-      console.log("receipt", receipt);
-    }
+    const bridgedTxReceipt = await bridgeTokenTx.wait();
+    
+    const sentEventLog = bridgedTxReceipt?.logs.find((log)=>log.topics[0] == MESSAGE_SENT_EVENT_SIGNATURE)
+    const messageHashFromLog = sentEventLog?.topics[3];
 
     const l1TokenBalance = await l1Token.balanceOf(l1Account.address);
     console.log("Token balance of L1 account :", l1TokenBalance.toString());
@@ -83,7 +76,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const [messageSentEvent] = await waitForEvents(
       lineaRollup,
-      lineaRollup.filters.MessageSent(),
+      lineaRollup.filters.MessageSent(undefined, undefined, undefined, undefined, undefined, undefined, messageHashFromLog),
       500,
       bridgeTokenTx.blockNumber!,
     );
@@ -138,37 +131,26 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     ]);
 
     const lineaRollup = config.getLineaRollupContract();
-    const l2MessageService = config.getL2MessageServiceContract();
     const l1TokenBridge = config.getL1TokenBridgeContract();
     const l2TokenBridge = config.getL2TokenBridgeContract();
     const l2Token = config.getL2TokenContract();
     const l2Provider = config.getL2Provider();
 
-    console.log("Minting ERC20 tokens to L2 Account");
-
     let { maxPriorityFeePerGas: l2MaxPriorityFeePerGas, maxFeePerGas: l2MaxFeePerGas } = await l2Provider.getFeeData();
     let nonce = await l2Provider.getTransactionCount(l2Account.address, "pending");
 
-    const mintTx = await l2Token.connect(l2Account).mint(l2Account.address, bridgeAmount, {
-      nonce: nonce,
-      maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
-      maxFeePerGas: l2MaxFeePerGas,
-    });
-
-    await mintTx.wait();
-
-    console.log("Approving tokens to L2 TokenBridge");
-
-    ({ maxPriorityFeePerGas: l2MaxPriorityFeePerGas, maxFeePerGas: l2MaxFeePerGas } = await l2Provider.getFeeData());
-
-    nonce = await l2Provider.getTransactionCount(l2Account.address, "pending");
-
-    const approveTx = await l2Token.connect(l2Account).approve(l2TokenBridge.getAddress(), ethers.parseEther("100"), {
-      maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
-      maxFeePerGas: l2MaxFeePerGas,
-      nonce: nonce,
-    });
-    await approveTx.wait();
+    await Promise.all([
+      (await l2Token.connect(l2Account).mint(l2Account.address, bridgeAmount, {
+        nonce: nonce,
+        maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
+        maxFeePerGas: l2MaxFeePerGas,
+      })).wait(),
+      (await l2Token.connect(l2Account).approve(l2TokenBridge.getAddress(), ethers.parseEther("100"), {
+        maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
+        maxFeePerGas: l2MaxFeePerGas,
+        nonce: nonce + 1,
+      })).wait(),
+    ]);
 
     const allowanceL2Account = await l2Token.allowance(l2Account.address, l2TokenBridge.getAddress());
     console.log("Current allowance of L2 account to L2 TokenBridge is :", allowanceL2Account.toString());
@@ -186,29 +168,16 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
         maxFeePerGas: l2MaxFeePerGas,
         nonce: nonce,
       });
-    let receipt = await bridgeTokenTx.wait();
-    while (!receipt) {
-      console.log("Waiting for transaction to be mined...");
-      receipt = await bridgeTokenTx.wait();
-      console.log("receipt", receipt);
-    }
 
-    console.log("Waiting for MessageSent event on L2...");
-
-    const [messageSentEvent] = await waitForEvents(
-      l2MessageService,
-      l2MessageService.filters.MessageSent(),
-      500,
-      receipt!.blockNumber,
-    );
-
-    console.log(`L2 message sent : ${JSON.stringify(messageSentEvent)}`);
+    const receipt = await bridgeTokenTx.wait();
+    const sentEventLog = receipt?.logs.find((log)=>log.topics[0] == MESSAGE_SENT_EVENT_SIGNATURE)
+    const messageHashFromLog = sentEventLog?.topics[3];
 
     console.log("Waiting for L1 MessageClaimed event.");
 
     const [claimedEvent] = await waitForEvents(
       lineaRollup,
-      lineaRollup.filters.MessageClaimed(messageSentEvent.args._messageHash),
+      lineaRollup.filters.MessageClaimed(messageHashFromLog),
     );
     expect(claimedEvent).not.toBeNull();
     console.log(`Message claimed on L1 : ${JSON.stringify(claimedEvent)}`);

@@ -138,8 +138,8 @@ describe("Submission and finalization test suite", () => {
       const lastFinalizedL2BlockNumberOnL1 = 0;
       console.log(`lastFinalizedL2BlockNumberOnL1=${lastFinalizedL2BlockNumberOnL1}`);
 
-      let safeL2BlockNumber = 0,
-        finalizedL2BlockNumber = 0;
+      let safeL2BlockNumber = -1,
+        finalizedL2BlockNumber = -1;
       while (
         safeL2BlockNumber < lastFinalizedL2BlockNumberOnL1 ||
         finalizedL2BlockNumber < lastFinalizedL2BlockNumberOnL1

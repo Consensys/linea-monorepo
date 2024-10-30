@@ -21,7 +21,6 @@ export default async (): Promise<void> => {
   const l2TokenBridge = config.getL2TokenBridgeContract();
   const l1SecurityCouncil = l1AccountManager.whaleAccount(3);
   const l2SecurityCouncil = l2AccountManager.whaleAccount(3);
-  console.log("l2SecurityCouncil.address", await l2SecurityCouncil.getAddress());
 
   const [l1AccountNonce, l2AccountNonce, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
     account.getNonce(),
@@ -53,12 +52,6 @@ export default async (): Promise<void> => {
   console.log(`L1 Dummy contract deployed at address: ${await dummyContract.getAddress()}`);
   console.log(`L2 Dummy contract deployed at address: ${await l2DummyContract.getAddress()}`);
   console.log(`L2 Test contract deployed at address: ${await l2TestContract.getAddress()}`);
-
-  let remoteSender = await l1TokenBridge.remoteSender();
-  console.log("L1 TokenBridge remote sender :", remoteSender);
-
-  remoteSender = await l2TokenBridge.remoteSender();
-  console.log("L2 TokenBridge remote sender :", remoteSender);
 
   console.log("Generating L2 traffic...");
   const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"));
