@@ -1961,9 +1961,21 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
         assertEq(streamer.rewardEndTime(), currentTime + 10);
     }
 
-    function testSetRewards_NonOwnerReverts() public {
+    function testSetRewards_RevertsNotAuthorized() public {
         vm.prank(alice);
         vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
         streamer.setReward(1000, 10);
+    }
+
+    function testSetRewards_RevertsBadDuration() public {
+        vm.prank(admin);
+        vm.expectRevert(RewardsStreamerMP.StakingManager__DurationCannotBeZero.selector);
+        streamer.setReward(1000, 0);
+    }
+
+    function testSetRewards_RevertsBadAmount() public {
+        vm.prank(admin);
+        vm.expectRevert(RewardsStreamerMP.StakingManager__AmountCannotBeZero.selector);
+        streamer.setReward(0, 10);
     }
 }
