@@ -94,7 +94,7 @@ sourceSets {
   }
 }
 
-task transactionExclusionApi_integrationTest(type: Test) {
+task integrationTest(type: Test) {
   test ->
     systemProperty "vertx.configurationFile", "vertx-options.json"
 
@@ -106,4 +106,19 @@ task transactionExclusionApi_integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     dependsOn(":localStackPostgresDbOnlyComposeUp")
+}
+
+task integrationTestAllNeeded {
+  description = "Runs integration tests of all dependencies of transaction-exclusion-api:app"
+  group = "verification"
+
+  def projectDependencies = configurations.implementation.getAllDependencies().withType(ProjectDependency)
+  def dependentProjects = projectDependencies.dependencyProject
+  dependentProjects.each { dependency ->
+    if (dependency.project.tasks.findByName("integrationTest")) {
+      def integrationTestTask = "${dependency.path}:integrationTest"
+      dependsOn integrationTestTask
+    }
+  }
+  dependsOn "integrationTest"
 }

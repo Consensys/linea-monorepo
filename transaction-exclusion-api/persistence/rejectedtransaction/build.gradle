@@ -30,7 +30,7 @@ sourceSets {
   }
 }
 
-task transactionExclusionApi_integrationTest(type: Test) {
+task integrationTest(type: Test) {
   test ->
     testLogging {
       events TestLogEvent.FAILED,

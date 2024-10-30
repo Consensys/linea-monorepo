@@ -37,4 +37,4 @@ jobs:
           ./gradlew transaction-exclusion-api:app:buildNeeded
       - name: Run integration tests
         run: |
-          ./gradlew transactionExclusionApi_integrationTest
+          ./gradlew transaction-exclusion-api:app:integrationTestAllNeeded
