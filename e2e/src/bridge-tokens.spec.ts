@@ -7,6 +7,8 @@ import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
 const l1AccountManager = config.getL1AccountManager();
 const l2AccountManager = config.getL2AccountManager();
 const bridgeAmount = ethers.parseEther("100");
+const messageSentEventMessageNumberIndex = 4;
+const messageSentEventMessageHashIndex = 6;
 
 describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
   it.concurrent("Bridge a token from L1 to L2", async () => {
@@ -30,16 +32,20 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     console.log("Minting and approving tokens to L1 TokenBridge");
 
     await Promise.all([
-      (await l1Token.connect(l1Account).mint(l1Account.address, bridgeAmount, {
-        nonce: nonce,
-        maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
-        maxFeePerGas: l1MaxFeePerGas,
-      })).wait(),
-      (await l1Token.connect(l1Account).approve(l1TokenBridge.getAddress(), bridgeAmount, {
-        maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
-        maxFeePerGas: l1MaxFeePerGas,
-        nonce: nonce + 1,
-      })).wait(),
+      (
+        await l1Token.connect(l1Account).mint(l1Account.address, bridgeAmount, {
+          nonce: nonce,
+          maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+          maxFeePerGas: l1MaxFeePerGas,
+        })
+      ).wait(),
+      (
+        await l1Token.connect(l1Account).approve(l1TokenBridge.getAddress(), bridgeAmount, {
+          maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+          maxFeePerGas: l1MaxFeePerGas,
+          nonce: nonce + 1,
+        })
+      ).wait(),
     ]);
 
     const l1TokenBridgeAddress = await l1TokenBridge.getAddress();
@@ -63,9 +69,14 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       });
 
     const bridgedTxReceipt = await bridgeTokenTx.wait();
-    
-    const sentEventLog = bridgedTxReceipt?.logs.find((log)=>log.topics[0] == MESSAGE_SENT_EVENT_SIGNATURE)
-    const messageHashFromLog = sentEventLog?.topics[3];
+
+    const sentEventLog = bridgedTxReceipt?.logs.find((log) => log.topics[0] == MESSAGE_SENT_EVENT_SIGNATURE);
+
+    const messageSentEvent = lineaRollup.interface.decodeEventLog(
+      "MessageSent",
+      sentEventLog!.data,
+      sentEventLog!.topics,
+    );
 
     const l1TokenBalance = await l1Token.balanceOf(l1Account.address);
     console.log("Token balance of L1 account :", l1TokenBalance.toString());
@@ -74,17 +85,10 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     console.log("Waiting for MessageSent event on L1.");
 
-    const [messageSentEvent] = await waitForEvents(
-      lineaRollup,
-      lineaRollup.filters.MessageSent(undefined, undefined, undefined, undefined, undefined, undefined, messageHashFromLog),
-      500,
-      bridgeTokenTx.blockNumber!,
-    );
-    const messageEventArgs = messageSentEvent.args;
-    const messageNumber = messageEventArgs._nonce;
-    const messageHash = messageEventArgs._messageHash;
+    const messageNumber = messageSentEvent[messageSentEventMessageNumberIndex];
+    const messageHash = messageSentEvent[messageSentEventMessageHashIndex];
 
-    console.log(`Message sent on L1 : ${JSON.stringify(messageSentEvent)}`);
+    console.log(`Message sent on L1 : messageHash=${messageHash}`);
 
     console.log("Waiting for anchoring...");
 
@@ -131,25 +135,31 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     ]);
 
     const lineaRollup = config.getLineaRollupContract();
+    const l2MessageService = config.getL2MessageServiceContract();
     const l1TokenBridge = config.getL1TokenBridgeContract();
     const l2TokenBridge = config.getL2TokenBridgeContract();
     const l2Token = config.getL2TokenContract();
     const l2Provider = config.getL2Provider();
 
-    let { maxPriorityFeePerGas: l2MaxPriorityFeePerGas, maxFeePerGas: l2MaxFeePerGas } = await l2Provider.getFeeData();
+    const { maxPriorityFeePerGas: l2MaxPriorityFeePerGas, maxFeePerGas: l2MaxFeePerGas } =
+      await l2Provider.getFeeData();
     let nonce = await l2Provider.getTransactionCount(l2Account.address, "pending");
 
     await Promise.all([
-      (await l2Token.connect(l2Account).mint(l2Account.address, bridgeAmount, {
-        nonce: nonce,
-        maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
-        maxFeePerGas: l2MaxFeePerGas,
-      })).wait(),
-      (await l2Token.connect(l2Account).approve(l2TokenBridge.getAddress(), ethers.parseEther("100"), {
-        maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
-        maxFeePerGas: l2MaxFeePerGas,
-        nonce: nonce + 1,
-      })).wait(),
+      (
+        await l2Token.connect(l2Account).mint(l2Account.address, bridgeAmount, {
+          nonce: nonce,
+          maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
+          maxFeePerGas: l2MaxFeePerGas,
+        })
+      ).wait(),
+      (
+        await l2Token.connect(l2Account).approve(l2TokenBridge.getAddress(), ethers.parseEther("100"), {
+          maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
+          maxFeePerGas: l2MaxFeePerGas,
+          nonce: nonce + 1,
+        })
+      ).wait(),
     ]);
 
     const allowanceL2Account = await l2Token.allowance(l2Account.address, l2TokenBridge.getAddress());
@@ -170,16 +180,20 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       });
 
     const receipt = await bridgeTokenTx.wait();
-    const sentEventLog = receipt?.logs.find((log)=>log.topics[0] == MESSAGE_SENT_EVENT_SIGNATURE)
-    const messageHashFromLog = sentEventLog?.topics[3];
+    const sentEventLog = receipt?.logs.find((log) => log.topics[0] == MESSAGE_SENT_EVENT_SIGNATURE);
+
+    const messageSentEvent = l2MessageService.interface.decodeEventLog(
+      "MessageSent",
+      sentEventLog!.data,
+      sentEventLog!.topics,
+    );
+    const messageHash = messageSentEvent[messageSentEventMessageHashIndex];
 
     console.log("Waiting for L1 MessageClaimed event.");
 
-    const [claimedEvent] = await waitForEvents(
-      lineaRollup,
-      lineaRollup.filters.MessageClaimed(messageHashFromLog),
-    );
+    const [claimedEvent] = await waitForEvents(lineaRollup, lineaRollup.filters.MessageClaimed(messageHash));
     expect(claimedEvent).not.toBeNull();
+
     console.log(`Message claimed on L1 : ${JSON.stringify(claimedEvent)}`);
 
     const [newTokenDeployed] = await waitForEvents(l1TokenBridge, l1TokenBridge.filters.NewTokenDeployed());
