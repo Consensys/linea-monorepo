@@ -9,7 +9,8 @@ enum class LineaMetricsCategory {
   BATCH,
   BLOB,
   AGGREGATION,
-  GAS_PRICE_CAP;
+  GAS_PRICE_CAP,
+  TX_EXCLUSION_API;
 
   override fun toString(): String {
     return this.name.replace('_', '.').lowercase()
@@ -20,6 +21,10 @@ interface Counter {
   fun increment(amount: Double)
 
   fun increment()
+}
+
+interface Histogram {
+  fun record(data: Double)
 }
 
 interface MetricsFacade {
@@ -37,4 +42,12 @@ interface MetricsFacade {
     description: String,
     tags: List<Tag> = emptyList()
   ): Counter
+
+  fun createHistogram(
+    category: LineaMetricsCategory,
+    name: String,
+    description: String,
+    tags: List<Tag> = emptyList(),
+    baseUnit: String
+  ): Histogram
 }

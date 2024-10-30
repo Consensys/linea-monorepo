@@ -18,6 +18,7 @@ import io.vertx.core.http.HttpClientOptions
 import io.vertx.core.http.HttpVersion
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import net.consensys.decodeHex
 import net.consensys.linea.async.get
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.jsonrpc.JsonRpcError
@@ -27,7 +28,6 @@ import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -81,7 +81,7 @@ class VertxHttpJsonRpcClientTest {
         JsonObject()
           .put("name", "Alice")
           .put("email", "alice@wonderland.io")
-          .put("address", Bytes.fromHexString("0xaabbccdd").toArray())
+          .put("address", "0xaabbccdd".decodeHex())
       )
     client.makeRequest(JsonRpcRequestListParams("2.0", 1, "addUser", params)).get()
 
@@ -302,9 +302,7 @@ class VertxHttpJsonRpcClientTest {
     assertThat(client.makeRequest(request).toSafeFuture())
       .failsWithin(Duration.ofSeconds(14))
       .withThrowableOfType(ExecutionException::class.java)
-      .withMessageContaining(
-        "java.net.UnknownHostException: Failed to resolve 'service-not-available'"
-      )
+      .withMessageContaining("service-not-available")
 
     verify(log).log(
       eq(Level.DEBUG),

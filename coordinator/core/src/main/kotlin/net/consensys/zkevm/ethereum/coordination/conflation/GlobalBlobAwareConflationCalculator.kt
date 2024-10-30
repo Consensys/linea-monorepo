@@ -1,11 +1,11 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
+import build.linea.domain.toBlockIntervalsString
 import net.consensys.linea.CommonDomainFunctions.blockIntervalString
 import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
-import net.consensys.zkevm.domain.toBlockIntervalsString
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture

@@ -1,12 +1,14 @@
-import { JsonRpcProvider, Wallet } from "ethers";
-import { Config } from "./types";
+import { AbstractSigner, JsonRpcProvider, Wallet } from "ethers";
+import { Config, L2Config, LocalL2Config } from "./types";
 import {
   DummyContract,
   DummyContract__factory,
   L2MessageService,
   L2MessageService__factory,
-  LineaRollup,
-  LineaRollup__factory,
+  LineaRollupV5,
+  LineaRollupV5__factory,
+  TestContract,
+  TestContract__factory,
 } from "../../typechain";
 import { AccountManager } from "./accounts/account-manager";
 
@@ -21,6 +23,20 @@ export default class TestSetup {
     return new JsonRpcProvider(this.config.L2.rpcUrl.toString());
   }
 
+  public getL2SequencerProvider(): JsonRpcProvider | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
+    return new JsonRpcProvider(this.config.L2.sequencerEndpoint.toString());
+  }
+
+  public getL2BesuNodeProvider(): JsonRpcProvider | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
+    return new JsonRpcProvider(this.config.L2.besuNodeRpcUrl.toString());
+  }
+
   public getL1ChainId(): number {
     return this.config.L1.chainId;
   }
@@ -30,19 +46,35 @@ export default class TestSetup {
   }
 
   public getShomeiEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.shomeiEndpoint;
   }
 
   public getShomeiFrontendEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.shomeiFrontendEndpoint;
   }
 
   public getSequencerEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.sequencerEndpoint;
   }
 
-  public getLineaRollupContract(signer?: Wallet): LineaRollup {
-    const lineaRollup: LineaRollup = LineaRollup__factory.connect(
+  public getTransactionExclusionEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
+    return this.config.L2.transactionExclusionEndpoint;
+  }
+
+  public getLineaRollupContract(signer?: AbstractSigner): LineaRollupV5 {
+    const lineaRollup: LineaRollupV5 = LineaRollupV5__factory.connect(
       this.config.L1.lineaRollupAddress,
       this.getL1Provider(),
     );
@@ -87,11 +119,35 @@ export default class TestSetup {
     return dummyContract;
   }
 
+  public getL2TestContract(signer?: Wallet): TestContract | undefined {
+    if (this.config.L2.l2TestContractAddress) {
+      const testContract = TestContract__factory.connect(this.config.L2.l2TestContractAddress, this.getL2Provider());
+
+      if (signer) {
+        return testContract.connect(signer);
+      }
+
+      return testContract;
+    } else {
+      return undefined;
+    }
+  }
+
   public getL1AccountManager(): AccountManager {
     return this.config.L1.accountManager;
   }
 
   public getL2AccountManager(): AccountManager {
     return this.config.L2.accountManager;
+  }
+
+  private isLocalL2Config(config: L2Config): config is LocalL2Config {
+    return (
+      (config as LocalL2Config).besuNodeRpcUrl !== undefined &&
+      (config as LocalL2Config).sequencerEndpoint !== undefined &&
+      (config as LocalL2Config).shomeiEndpoint !== undefined &&
+      (config as LocalL2Config).shomeiFrontendEndpoint !== undefined &&
+      (config as LocalL2Config).transactionExclusionEndpoint !== undefined
+    );
   }
 }

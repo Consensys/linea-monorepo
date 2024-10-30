@@ -4,6 +4,7 @@ import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.mapEither
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
+import net.consensys.encodeHex
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.errors.ErrorResponse
@@ -58,7 +59,7 @@ class TracesGeneratorJsonRpcClientV1(
         mapOf(
           "block" to mapOf(
             "blockNumber" to block.number.toString(),
-            "blockHash" to block.hash.toHexString()
+            "blockHash" to block.hash.encodeHex()
           ),
           "rawExecutionTracesVersion" to config.rawExecutionTracesVersion,
           "expectedTracesApiVersion" to config.expectedTracesApiVersion
@@ -92,7 +93,7 @@ class TracesGeneratorJsonRpcClientV1(
               "blockNumber",
               block.number.toString(),
               "blockHash",
-              block.hash.toHexString()
+              block.hash.encodeHex()
             )
           },
           "rawExecutionTracesVersion" to config.rawExecutionTracesVersion,

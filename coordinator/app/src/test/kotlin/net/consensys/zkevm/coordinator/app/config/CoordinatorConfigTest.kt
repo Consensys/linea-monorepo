@@ -248,7 +248,7 @@ class CoordinatorConfigTest {
         listOf(
           URI("http://traces-api:8080/").toURL()
         ),
-        requestLimitPerEndpoint = 20U,
+        requestLimitPerEndpoint = 2U,
         requestRetry = RequestRetryConfigTomlFriendly(
           backoffDelay = Duration.parse("PT1S"),
           failuresWarningThreshold = 2
@@ -286,7 +286,7 @@ class CoordinatorConfigTest {
       endpoints = listOf(
         URI("http://shomei:8888/").toURL()
       ),
-      requestLimitPerEndpoint = 3U,
+      requestLimitPerEndpoint = 2U,
       requestRetry = RequestRetryConfigTomlFriendly(
         backoffDelay = Duration.parse("PT2S"),
         failuresWarningThreshold = 2
@@ -833,6 +833,7 @@ class CoordinatorConfigTest {
             ),
             traces = tracesConfig.copy(
               switchToLineaBesu = true,
+              blobCompressorVersion = BlobCompressorVersion.V1_0_1,
               expectedTracesApiVersionV2 = "v0.8.0-rc3",
               conflationV2 = tracesConfig.conflation.copy(
                 endpoints = listOf(URI("http://traces-node-v2:8545/").toURL())
@@ -841,7 +842,7 @@ class CoordinatorConfigTest {
                 listOf(
                   URI("http://traces-node-v2:8545/").toURL()
                 ),
-                requestLimitPerEndpoint = 20U,
+                requestLimitPerEndpoint = 2U,
                 requestRetry = RequestRetryConfigTomlFriendly(
                   backoffDelay = Duration.parse("PT1S"),
                   failuresWarningThreshold = 2

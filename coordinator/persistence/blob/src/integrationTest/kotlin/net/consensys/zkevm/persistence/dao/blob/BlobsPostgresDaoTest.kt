@@ -1,5 +1,6 @@
 package net.consensys.zkevm.persistence.dao.blob
 
+import build.linea.domain.BlockIntervals
 import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
@@ -14,11 +15,10 @@ import net.consensys.trimToSecondPrecision
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobStatus
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.createBlobRecord
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
-import net.consensys.zkevm.persistence.test.CleanDbTestSuiteParallel
+import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -32,6 +32,10 @@ import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+  }
+
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-blobs-dao")
   private val maxBlobsToReturn = 6u
   private fun blobsContentQuery(): PreparedQuery<RowSet<Row>> =

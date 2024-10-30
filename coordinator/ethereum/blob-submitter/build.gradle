@@ -12,7 +12,6 @@ dependencies {
   implementation(project(':coordinator:ethereum:gas-pricing'))
   implementation(project(':coordinator:ethereum:test-utils'))
   implementation(project(":coordinator:persistence:blob"))
-  implementation(project(":coordinator:persistence:db"))
   implementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
   implementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
@@ -25,10 +24,11 @@ dependencies {
 
   testImplementation(project(":jvm-libs:linea:testing:l1-blob-and-proof-submission"))
   testImplementation(project(":coordinator:persistence:aggregation"))
-  testImplementation(testFixtures(project(":coordinator:persistence:db")))
+  testImplementation(project(":coordinator:persistence:db-common"))
   testImplementation(testFixtures(project(":coordinator:ethereum:gas-pricing")))
   testImplementation(testFixtures(project(":coordinator:core")))
   testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
   testImplementation("io.vertx:vertx-junit5")
   testImplementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
@@ -62,7 +62,6 @@ task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     dependsOn(":localStackComposeUp")
-    dependsOn(rootProject.tasks.compileContracts)
 
     testLogging {
       events TestLogEvent.FAILED,

@@ -1,5 +1,8 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
+import build.linea.clients.GetZkEVMStateMerkleProofResponse
+import build.linea.clients.StateManagerClientV1
+import build.linea.domain.BlockIntervals
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.michaelbull.result.Ok
@@ -8,14 +11,12 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import net.consensys.ByteArrayExt
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
-import net.consensys.zkevm.coordinator.clients.GetZkEVMStateMerkleProofResponse
-import net.consensys.zkevm.coordinator.clients.Type2StateManagerClient
 import net.consensys.zkevm.domain.Blob
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.domain.createBlobRecord
@@ -23,7 +24,7 @@ import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper
-import net.consensys.zkevm.persistence.test.CleanDbTestSuiteParallel
+import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.waitAtMost
@@ -47,6 +48,10 @@ import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+  }
+
   override val databaseName = DbHelper.generateUniqueDbName(
     "blob-compression-proof-coordinator"
   )
@@ -70,7 +75,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
   )
   private var expectedBlobCompressionProofResponse: BlobCompressionProof? = null
 
-  private val zkStateClientMock = mock<Type2StateManagerClient>()
+  private val zkStateClientMock = mock<StateManagerClientV1>()
   private val blobCompressionProverClientMock = mock<BlobCompressionProverClientV2>()
   private val blobZkStateProvider = mock<BlobZkStateProvider>()
   private lateinit var mockShnarfCalculator: BlobShnarfCalculator
@@ -91,15 +96,15 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
         connection = sqlClient,
         clock = fixedClock
       )
-    whenever(zkStateClientMock.rollupGetZkEVMStateMerkleProof(any(), any()))
+    whenever(zkStateClientMock.rollupGetStateMerkleProof(any()))
       .thenAnswer {
         SafeFuture.completedFuture(
           Ok(
             GetZkEVMStateMerkleProofResponse(
               zkStateManagerVersion = zkStateManagerVersion,
               zkStateMerkleProof = zkStateMerkleProof,
-              zkParentStateRootHash = Bytes32.random(),
-              zkEndStateRootHash = Bytes32.random()
+              zkParentStateRootHash = ByteArrayExt.random32(),
+              zkEndStateRootHash = ByteArrayExt.random32()
             )
           )
         )
@@ -379,7 +384,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       blobZkStateCount += 1
       if (blobZkStateFailures <= maxMockedBlobZkStateFailures && blobZkStateCount % 2 == 0) {
         blobZkStateFailures += 1
-        SafeFuture.failedFuture(RuntimeException("Forced mock blobZkStateProvider failure"))
+        SafeFuture.failedFuture<BlobZkState>(RuntimeException("Forced mock blobZkStateProvider failure"))
       } else {
         SafeFuture.completedFuture(
           BlobZkState(
