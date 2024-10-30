@@ -634,7 +634,7 @@ public class AnyToRamWithPadding implements MmuInstruction {
             .targetByteOffset(minTargetByteOffset)
             //  .limb(limb)
             .targetLimbIsTouchedTwice(
-                mmioInstNeedsUpdateTemporaryTargetRam(onlyMmioInstruction)
+                mmioInstTouchesTwoRamTarget(onlyMmioInstruction)
                     || dataToPaddingTransitionTakesTwoMmioInstructions)
             .build());
   }
@@ -661,8 +661,9 @@ public class AnyToRamWithPadding implements MmuInstruction {
             .sourceByteOffset(minSourceByteOffset)
             .targetLimbOffset(minTargetLimbOffset)
             .targetByteOffset(minTargetByteOffset)
-            // .limb(limb)
-            .targetLimbIsTouchedTwice(mmioInstNeedsUpdateTemporaryTargetRam(firstMmioInstruction))
+            .targetLimbIsTouchedTwice(
+                !targetLimbOffsetIncrementsAfterFirstDataTransfer
+                    || mmioInstTouchesTwoRamTarget(firstMmioInstruction))
             .build());
   }
 
@@ -684,7 +685,7 @@ public class AnyToRamWithPadding implements MmuInstruction {
             .sourceLimbOffset(sourceLimbOffset)
             .targetLimbOffset(firstMiddleNonTrivialTargetLimbOffset + rowNumber - 1)
             .targetByteOffset(middleTargetByteOffset)
-            .targetLimbIsTouchedTwice(mmioInstNeedsUpdateTemporaryTargetRam(middleMmioInstruction))
+            .targetLimbIsTouchedTwice(mmioInstTouchesTwoRamTarget(middleMmioInstruction))
             .build());
   }
 
@@ -710,7 +711,7 @@ public class AnyToRamWithPadding implements MmuInstruction {
             .targetLimbOffset(firstMiddleNonTrivialTargetLimbOffset + totInitialNonTrivial - 2)
             .targetByteOffset(middleTargetByteOffset)
             .targetLimbIsTouchedTwice(
-                mmioInstNeedsUpdateTemporaryTargetRam(lastMmioInstruction)
+                mmioInstTouchesTwoRamTarget(lastMmioInstruction)
                     || dataToPaddingTransitionTakesTwoMmioInstructions)
             .build());
   }
@@ -742,7 +743,7 @@ public class AnyToRamWithPadding implements MmuInstruction {
             .build());
   }
 
-  private boolean mmioInstNeedsUpdateTemporaryTargetRam(int mmioInstruction) {
+  private boolean mmioInstTouchesTwoRamTarget(int mmioInstruction) {
     return mmioInstruction == MMIO_INST_RAM_TO_RAM_TWO_TARGET
         || mmioInstruction == MMIO_INST_LIMB_TO_RAM_TWO_TARGET;
   }

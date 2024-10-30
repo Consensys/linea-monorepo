@@ -263,7 +263,9 @@ public class ModexpData implements MmuInstruction {
       middleMicroInstruction(mmuData, sourceLimbOffset, targetLimbOffset);
     }
 
-    lastMicroInstruction(mmuData);
+    if (initialTotalNonTrivial > 1) {
+      lastMicroInstruction(mmuData);
+    }
 
     // Right Zeroes
     for (int i = 0; i < initialTotalRightZeroes; i++) {

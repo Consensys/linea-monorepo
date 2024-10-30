@@ -104,7 +104,10 @@ public class InvalidCodePrefix implements MmuInstruction {
     final HubToMmuValues hubToMmuValues = mmuData.hubToMmuValues();
 
     mmuData.mmuToMmioConstantValues(
-        MmuToMmioConstantValues.builder().sourceContextNumber(hubToMmuValues.sourceId()).build());
+        MmuToMmioConstantValues.builder()
+            .sourceContextNumber(hubToMmuValues.sourceId())
+            .successBit(hubToMmuValues.successBit())
+            .build());
 
     // First and only micro-instruction.
     mmuData.mmuToMmioInstruction(

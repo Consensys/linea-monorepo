@@ -18,6 +18,9 @@ package net.consensys.linea.zktracer.module.mmu;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_ANY_TO_RAM_WITH_PADDING;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_BLAKE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_ZERO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +29,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
@@ -62,9 +64,9 @@ public class MmuData {
   private static final List<Integer> MMU_INST_EXO_IS_TARGET =
       List.of(
           MMU_INST_BLAKE,
-          GlobalConstants.MMU_INST_MODEXP_DATA,
-          GlobalConstants.MMU_INST_MODEXP_ZERO,
-          GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING);
+          MMU_INST_MODEXP_DATA,
+          MMU_INST_MODEXP_ZERO,
+          MMU_INST_RAM_TO_EXO_WITH_PADDING);
 
   public MmuData(final MmuCall mmuCall) {
     this(

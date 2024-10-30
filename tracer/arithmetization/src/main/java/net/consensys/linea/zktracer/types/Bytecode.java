@@ -18,12 +18,15 @@ package net.consensys.linea.zktracer.types;
 import java.util.Objects;
 import java.util.concurrent.*;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.evm.Code;
 
 @Slf4j
+@Accessors(fluent = true)
 /** This class is intended to store a bytecode and its memoized hash. */
 public final class Bytecode {
   /** initializing the executor service before creating the EMPTY bytecode. */
@@ -33,7 +36,7 @@ public final class Bytecode {
   public static Bytecode EMPTY = new Bytecode(Bytes.EMPTY);
 
   /** The bytecode. */
-  private final Bytes bytecode;
+  @Getter private final Bytes bytecode;
 
   /** The bytecode hash; precomputed & memoized asynchronously. */
   private Future<Hash> hash;
@@ -65,15 +68,6 @@ public final class Bytecode {
    */
   public int getSize() {
     return this.bytecode.size();
-  }
-
-  /**
-   * Expose the wrapped bytecode as {@link Bytes}.
-   *
-   * @return the bytecode
-   */
-  public Bytes getBytes() {
-    return this.bytecode;
   }
 
   /**

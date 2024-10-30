@@ -29,7 +29,6 @@ import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 @Accessors(fluent = true)
 public class ModexpEffectiveCall implements CountingOnlyModule {
   private final CountOnlyOperation counts = new CountOnlyOperation();
-  public static final int PROVER_MAX_INPUT_BYTE_SIZE = 4096 / 8;
 
   @Override
   public String moduleKey() {

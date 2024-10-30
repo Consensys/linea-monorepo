@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.MODEXP_COMPONENT_BYTE_SIZE;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forModexpExtractBase;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forModexpExtractBbs;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forModexpExtractEbs;
@@ -29,7 +30,6 @@ import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompil
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpXbsCase.OOB_INST_MODEXP_EBS;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpXbsCase.OOB_INST_MODEXP_MBS;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_RAM;
-import static net.consensys.linea.zktracer.module.limits.precompiles.ModexpEffectiveCall.PROVER_MAX_INPUT_BYTE_SIZE;
 
 import java.math.BigInteger;
 
@@ -60,17 +60,17 @@ public class ModexpSubsection extends PrecompileSubsection {
     if (modexpMetaData
                 .bbs()
                 .toUnsignedBigInteger()
-                .compareTo(BigInteger.valueOf(PROVER_MAX_INPUT_BYTE_SIZE))
+                .compareTo(BigInteger.valueOf(MODEXP_COMPONENT_BYTE_SIZE))
             >= 0
         || modexpMetaData
                 .mbs()
                 .toUnsignedBigInteger()
-                .compareTo(BigInteger.valueOf(PROVER_MAX_INPUT_BYTE_SIZE))
+                .compareTo(BigInteger.valueOf(MODEXP_COMPONENT_BYTE_SIZE))
             >= 0
         || modexpMetaData
                 .ebs()
                 .toUnsignedBigInteger()
-                .compareTo(BigInteger.valueOf(PROVER_MAX_INPUT_BYTE_SIZE))
+                .compareTo(BigInteger.valueOf(MODEXP_COMPONENT_BYTE_SIZE))
             >= 0) {
       hub.modexpEffectiveCall().addPrecompileLimit(Integer.MAX_VALUE);
       hub.defers().unscheduleForContextReEntry(this, hub.currentFrame());
@@ -145,7 +145,7 @@ public class ModexpSubsection extends PrecompileSubsection {
     }
 
     modexpMetaData.rawResult(returnData);
-    hub.blakeModexpData().callModexp(modexpMetaData, this.exoModuleOperationId());
+    hub.blakeModexpData().callModexp(modexpMetaData, exoModuleOperationId());
 
     fragments().add(seventhImcFragment);
     if (modexpMetaData.extractModulus()) {

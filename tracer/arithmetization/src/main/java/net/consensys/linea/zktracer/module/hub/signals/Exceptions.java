@@ -144,9 +144,9 @@ public class Exceptions {
 
   private static boolean isReturnDataCopyFault(final MessageFrame frame, final OpCode opCode) {
     if (opCode == OpCode.RETURNDATACOPY) {
-      long returnDataSize = frame.getReturnData().size();
-      long askedOffset = clampedToLong(frame.getStackItem(1));
-      long askedSize = clampedToLong(frame.getStackItem(2));
+      final long returnDataSize = frame.getReturnData().size();
+      final long askedOffset = clampedToLong(frame.getStackItem(1));
+      final long askedSize = clampedToLong(frame.getStackItem(2));
 
       return Words.clampedAdd(askedOffset, askedSize) > returnDataSize;
     }

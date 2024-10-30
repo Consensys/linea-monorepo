@@ -36,7 +36,6 @@ import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.ContextExitDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ImmediateContextEntryDefer;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
@@ -61,7 +60,7 @@ public class RomLex
 
   @Getter private List<RomOperation> sortedOperations;
   Map<ContractMetadata, Integer> cfiMetadataCorrespondance = new HashMap<>();
-  private Bytes byteCode = Bytes.EMPTY;
+  @Getter private Bytes byteCode = Bytes.EMPTY;
   private Address address = Address.ZERO;
 
   @Getter private final DeferRegistry createDefers = new DeferRegistry();
@@ -82,7 +81,7 @@ public class RomLex
       throw new RuntimeException("Chunks have not been sorted yet");
     }
 
-    Integer romOps = cfiMetadataCorrespondance.get(metadata);
+    final Integer romOps = cfiMetadataCorrespondance.get(metadata);
     if (romOps == null) {
       throw new RuntimeException(
           "RomChunk with:"
@@ -108,12 +107,16 @@ public class RomLex
         return Optional.of(c);
       }
     }
-
-    return Optional.empty();
+    throw new RuntimeException(
+        "RomChunk with:"
+            + String.format("\n\t\taddress = %s", metadata.address())
+            + String.format("\n\t\tdeployment number = %s", metadata.deploymentNumber())
+            + String.format("\n\t\tdeployment status = %s", metadata.underDeployment())
+            + "\n\tnot found");
   }
 
   public Bytes getCodeByMetadata(final ContractMetadata metadata) {
-    return getChunkByMetadata(metadata).map(RomOperation::byteCode).orElse(Bytes.EMPTY);
+    return getChunkByMetadata(metadata).map(RomOperation::byteCode).orElseThrow();
   }
 
   // TODO: it would maybe make more sense to only implement traceContextEnter
@@ -151,7 +154,7 @@ public class RomLex
   }
 
   public void callRomLex(final MessageFrame frame) {
-    switch (OpCode.of(frame.getCurrentOperation().getOpcode())) {
+    switch (getOpCode(frame)) {
       case CREATE, CREATE2 -> {
         final long offset = Words.clampedToLong(frame.getStackItem(1));
         final long length = Words.clampedToLong(frame.getStackItem(2));

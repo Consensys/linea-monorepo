@@ -24,6 +24,7 @@ import net.consensys.linea.zktracer.module.hub.defer.PostConflationDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -44,8 +45,7 @@ public class ExtCodeCopy extends MmuCall implements PostConflationDefer {
     final Address foreignCodeAddress = Words.toAddress(hub.messageFrame().getStackItem(0));
     this.contract = ContractMetadata.canonical(hub, foreignCodeAddress);
 
-    this.exoBytes(Optional.of(hub.romLex().getCodeByMetadata(contract)))
-        .targetId(hub.currentFrame().contextNumber())
+    this.targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(
             Optional.of(
                 hub.currentFrame()
@@ -58,11 +58,23 @@ public class ExtCodeCopy extends MmuCall implements PostConflationDefer {
   }
 
   @Override
+  public Optional<Bytes> exoBytes() {
+    try {
+      return Optional.of(hub.romLex().getCodeByMetadata(contract));
+    } catch (Exception ignored) {
+      // Can be empty Bytes in case the ext account is empty. In this case, no associated CFI
+      return Optional.of(Bytes.EMPTY);
+    }
+  }
+
+  @Override
   public long referenceSize() {
-    return hub.romLex()
-        .getChunkByMetadata(contract)
-        .map(chunk -> chunk.byteCode().size())
-        .orElse(0);
+    try {
+      return (hub.romLex().getCodeByMetadata(contract).size());
+    } catch (Exception ignored) {
+      // Can be 0 in case the ext account is empty. In this case, no associated CFI
+      return 0;
+    }
   }
 
   @Override
