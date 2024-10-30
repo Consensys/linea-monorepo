@@ -42,7 +42,7 @@ jar {
   }
 
   from {
-    configurations.runtimeClasspath.filter( {! (it.name =~ /log4j.*\.jar/ ) && ! (it.name =~ /vertx.*\.jar/ )} )
+    configurations.runtimeClasspath.filter( {! (it.name =~ /log4j.*\.jar/ ) && ! (it.name =~ /vertx.*\.jar/ ) && it.name != 'jc-kzg-4844-2.0.0.jar'} )
             .collect {it.isDirectory() ? it : zipTree(it) }
   }
   exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA', 'ch.qos.logback'
