@@ -70,7 +70,7 @@ abstract class AccountManager implements IAccountManager {
     );
 
     const accounts: Account[] = [];
-    const promises: TransactionResponse[] = [];
+    const transactionResponses: TransactionResponse[] = [];
 
     for (let i = 0; i < numberOfAccounts; i++) {
       const randomBytes = ethers.randomBytes(32);
@@ -91,7 +91,7 @@ abstract class AccountManager implements IAccountManager {
         console.log(
           `Transaction sent: newAccount=${newAccount.address} txHash=${transactionResponse.hash} whaleAccount=${whaleAccount.address}`,
         );
-        promises.push(transactionResponse);
+        transactionResponses.push(transactionResponse);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.error(`Failed to fund account ${newAccount.address}: ${error.message}`);
@@ -101,7 +101,7 @@ abstract class AccountManager implements IAccountManager {
       }
     }
 
-    await Promise.all(promises.map((tx) => tx.wait()));
+    await Promise.all(transactionResponses.map((tx) => tx.wait()));
 
     console.log(
       `Accounts funded: newAccounts=${accounts.map((account) => account.address).join(",")} balance=${initialBalanceWei.toString()} wei`,
