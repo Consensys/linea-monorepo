@@ -23,30 +23,28 @@ function findLayerByChainId(config: Config, chainId: number | undefined): { netw
 const findChainById = (chainId: number) => wagmiConfig.chains.find((chain) => chain.id === chainId);
 
 const useInitialiseChain = () => {
+  const token = useChainStore((state) => state.token);
+  const networkType = useChainStore((state) => state.networkType);
   const {
     setNetworkType,
     setNetworkLayer,
     setToken,
-    token,
     setTokenBridgeAddress,
     setMessageServiceAddress,
     setL1Chain,
     setL2Chain,
     setFromChain,
     setToChain,
-    networkType,
   } = useChainStore((state) => ({
     setNetworkType: state.setNetworkType,
     setNetworkLayer: state.setNetworkLayer,
     setToken: state.setToken,
-    token: state.token,
     setTokenBridgeAddress: state.setTokenBridgeAddress,
     setMessageServiceAddress: state.setMessageServiceAddress,
     setL1Chain: state.setL1Chain,
     setL2Chain: state.setL2Chain,
     setFromChain: state.setFromChain,
     setToChain: state.setToChain,
-    networkType: state.networkType,
   }));
 
   useEffect(() => {

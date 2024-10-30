@@ -1,6 +1,12 @@
 import { Button } from "../ui";
 
-export default function ReloadHistoryButton({ clearHistory }: { clearHistory: () => void }) {
+export default function RefreshHistoryButton({
+  fetchHistory,
+  isLoading,
+}: {
+  fetchHistory: () => void;
+  isLoading: boolean;
+}) {
   return (
     <div className="flex justify-end">
       <Button
@@ -8,9 +14,10 @@ export default function ReloadHistoryButton({ clearHistory }: { clearHistory: ()
         variant="link"
         size="sm"
         className="font-light normal-case text-gray-200 no-underline opacity-60 hover:text-primary hover:opacity-100"
-        onClick={clearHistory}
+        onClick={fetchHistory}
       >
         Reload history
+        {isLoading && <span className="loading loading-spinner loading-xs" />}
       </Button>
     </div>
   );

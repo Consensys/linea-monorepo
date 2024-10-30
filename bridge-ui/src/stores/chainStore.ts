@@ -1,5 +1,6 @@
 import { Address, Chain } from "viem";
-import { create } from "zustand";
+import { createWithEqualityFn } from "zustand/traditional";
+import { shallow } from "zustand/vanilla/shallow";
 import { config, NetworkLayer, NetworkType, TokenInfo, TokenType } from "@/config";
 import { defaultTokensConfig } from "./tokenStore";
 
@@ -43,38 +44,41 @@ export const defaultInitState: ChainState = {
   token: defaultTokensConfig.UNKNOWN[0],
 };
 
-export const useChainStore = create<ChainStore>()((set, get) => ({
-  ...defaultInitState,
-  setToken: (token) => set({ token }),
-  resetToken: () => {
-    const { networkLayer, networkType, token } = get();
-    const networkLayerTo = networkLayer === NetworkLayer.L1 ? NetworkLayer.L2 : NetworkLayer.L1;
-    if (networkType !== NetworkType.WRONG_NETWORK) {
-      token && !token[networkLayerTo] && set({ token: defaultTokensConfig[networkType][0] });
-    }
-  },
-  setTokenBridgeAddress: (address) => set({ tokenBridgeAddress: address }),
-  switchChain: () => {
-    const { fromChain, toChain, networkLayer, networkType, token } = get();
-    const tempFromChain = fromChain;
-    set({ fromChain: toChain, toChain: tempFromChain });
+export const useChainStore = createWithEqualityFn<ChainStore>()(
+  (set, get) => ({
+    ...defaultInitState,
+    setToken: (token) => set({ token }),
+    resetToken: () => {
+      const { networkLayer, networkType, token } = get();
+      const networkLayerTo = networkLayer === NetworkLayer.L1 ? NetworkLayer.L2 : NetworkLayer.L1;
+      if (networkType !== NetworkType.WRONG_NETWORK) {
+        token && !token[networkLayerTo] && set({ token: defaultTokensConfig[networkType][0] });
+      }
+    },
+    setTokenBridgeAddress: (address) => set({ tokenBridgeAddress: address }),
+    switchChain: () => {
+      const { fromChain, toChain, networkLayer, networkType, token } = get();
+      const tempFromChain = fromChain;
+      set({ fromChain: toChain, toChain: tempFromChain });
 
-    const newNetworkLayer = networkLayer === NetworkLayer.L1 ? NetworkLayer.L2 : NetworkLayer.L1;
-    set({ networkLayer: newNetworkLayer });
+      const newNetworkLayer = networkLayer === NetworkLayer.L1 ? NetworkLayer.L2 : NetworkLayer.L1;
+      set({ networkLayer: newNetworkLayer });
 
-    set({ messageServiceAddress: config.networks[networkType][newNetworkLayer].messageServiceAddress });
+      set({ messageServiceAddress: config.networks[networkType][newNetworkLayer].messageServiceAddress });
 
-    if (token?.type === TokenType.ERC20) {
-      set({ tokenBridgeAddress: config.networks[networkType][newNetworkLayer].tokenBridgeAddress });
-    } else if (token?.type === TokenType.USDC) {
-      set({ tokenBridgeAddress: config.networks[networkType][newNetworkLayer].usdcBridgeAddress });
-    }
-  },
-  setNetworkLayer: (layer) => set({ networkLayer: layer }),
-  setNetworkType: (type) => set({ networkType: type }),
-  setMessageServiceAddress: (address) => set({ messageServiceAddress: address }),
-  setL1Chain: (chain) => set({ l1Chain: chain }),
-  setL2Chain: (chain) => set({ l2Chain: chain }),
-  setFromChain: (chain) => set({ fromChain: chain }),
-  setToChain: (chain) => set({ toChain: chain }),
-}));
+      if (token?.type === TokenType.ERC20) {
+        set({ tokenBridgeAddress: config.networks[networkType][newNetworkLayer].tokenBridgeAddress });
+      } else if (token?.type === TokenType.USDC) {
+        set({ tokenBridgeAddress: config.networks[networkType][newNetworkLayer].usdcBridgeAddress });
+      }
+    },
+    setNetworkLayer: (layer) => set({ networkLayer: layer }),
+    setNetworkType: (type) => set({ networkType: type }),
+    setMessageServiceAddress: (address) => set({ messageServiceAddress: address }),
+    setL1Chain: (chain) => set({ l1Chain: chain }),
+    setL2Chain: (chain) => set({ l2Chain: chain }),
+    setFromChain: (chain) => set({ fromChain: chain }),
+    setToChain: (chain) => set({ toChain: chain }),
+  }),
+  shallow,
+);

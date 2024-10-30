@@ -22,11 +22,9 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
   const [watchAmount, watchAllowance, watchClaim, watchBalance] = watch(["amount", "allowance", "claim", "balance"]);
 
   // Context
-  const { token, networkLayer, toChainId } = useChainStore((state) => ({
-    token: state.token,
-    networkLayer: state.networkLayer,
-    toChainId: state.toChain?.id,
-  }));
+  const token = useChainStore((state) => state.token);
+  const networkLayer = useChainStore((state) => state.networkLayer);
+  const toChainId = useChainStore((state) => state.toChain?.id);
 
   // Wagmi
   const { bridgeEnabled } = useBridge();

@@ -30,17 +30,11 @@ import TransactionConfirmationModal from "./modals/TransactionConfirmationModal"
 const Bridge = () => {
   const [waitingTransaction, setWaitingTransaction] = useState<Transaction | undefined>();
   const { handleShow, handleClose } = useContext(ModalContext);
-  const {
-    fromChain,
-    token,
-    networkLayer,
-    switchChain: switchChainInStore,
-  } = useChainStore((state) => ({
-    fromChain: state.fromChain,
-    token: state.token,
-    networkLayer: state.networkLayer,
-    switchChain: state.switchChain,
-  }));
+
+  const fromChain = useChainStore((state) => state.fromChain);
+  const token = useChainStore((state) => state.token);
+  const networkLayer = useChainStore((state) => state.networkLayer);
+  const switchChainInStore = useChainStore((state) => state.switchChain);
 
   const { handleSubmit, watch, reset, setValue } = useFormContext<BridgeForm>();
 
