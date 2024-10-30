@@ -201,10 +201,8 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 		totalTimeGc = int64(0)
 
 		// Initial step is to compute the FFTs for all committed vectors
-		coeffs    = map[ifaces.ColID]sv.SmartVector{}
+		coeffs    = sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
 		stopTimer = profiling.LogTimer("Computing the coeffs %v pols of size %v", len(ctx.AllInvolvedColumns), ctx.DomainSize)
-		lock      = sync.Mutex{}
-		lockRun   = sync.Mutex{}
 		pool      = mempool.CreateFromSyncPool(symbolic.MaxChunkSize).Prewarm(runtime.GOMAXPROCS(0) * ctx.MaxNbExprNode)
 		largePool = mempool.CreateFromSyncPool(ctx.DomainSize).Prewarm(len(ctx.AllInvolvedColumns))
 	)
@@ -229,9 +227,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 			// gets directly a shallow copy in the map of the runtime
 			var witness sv.SmartVector
-			lockRun.Lock()
 			witness, isNatural := run.Columns.TryGet(name)
-			lockRun.Unlock()
 
 			// can happen if the column is verifier defined. In that case, no
 			// need to protect with a lock. This will not touch run.Columns.
@@ -241,9 +237,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
 
-			lock.Lock()
-			coeffs[name] = witness
-			lock.Unlock()
+			coeffs.Store(name, witness)
 		})
 
 		wg.Done()
@@ -267,9 +261,8 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
 
 			name := pol.GetColID()
-			lock.Lock()
-			coeffs[name] = witness
-			lock.Unlock()
+
+			coeffs.Store(name, witness)
 		})
 		wg.Done()
 	}()
@@ -375,7 +368,9 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 				// else it's the first value of j that sees it. so we compute the
 				// coset reevaluation.
-				reevaledRoot := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
+
+				v, _ := coeffs.Load(name)
+				reevaledRoot := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
 				computedReeval.Store(name, reevaledRoot)
 			})
 
@@ -420,11 +415,12 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 					return
 				}
 
-				if _, ok := coeffs[name]; !ok {
+				v, ok := coeffs.Load(name)
+				if !ok {
 					utils.Panic("handle %v not found in the coeffs\n", name)
 				}
 
-				res := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
+				res := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
 				computedReeval.Store(name, res)
 
 			})
