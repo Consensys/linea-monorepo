@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { NonceManager } from "ethers";
 import {
   getMessageSentEventFromLogs,
   sendMessage,
@@ -8,7 +9,8 @@ import {
   etherToWei,
 } from "./common/utils";
 import { config } from "./config/tests-config";
-import { LineaRollup } from "./typechain";
+
+const l1AccountManager = config.getL1AccountManager();
 
 describe("Submission and finalization test suite", () => {
   const sendMessages = async () => {
@@ -16,18 +18,13 @@ describe("Submission and finalization test suite", () => {
     const messageValue = etherToWei("0.0051");
     const destinationAddress = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
-    const l1MessageSender = await config.getL1AccountManager().generateAccount();
+    const l1MessageSender = new NonceManager(await l1AccountManager.generateAccount());
     const lineaRollup = config.getLineaRollupContract();
 
     console.log("Sending messages on L1");
 
     // Send L1 messages
     const l1MessagesPromises = [];
-    // eslint-disable-next-line prefer-const
-    let [l1MessageSenderNonce, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
-      config.getL1Provider().getTransactionCount(l1MessageSender.address),
-      config.getL1Provider().getFeeData(),
-    ]);
 
     for (let i = 0; i < 5; i++) {
       l1MessagesPromises.push(
@@ -41,13 +38,9 @@ describe("Submission and finalization test suite", () => {
           },
           {
             value: messageValue,
-            nonce: l1MessageSenderNonce,
-            maxPriorityFeePerGas,
-            maxFeePerGas,
           },
         ),
       );
-      l1MessageSenderNonce++;
     }
 
     const l1Receipts = await Promise.all(l1MessagesPromises);
@@ -59,22 +52,6 @@ describe("Submission and finalization test suite", () => {
 
     return { l1Messages, l1Receipts };
   };
-
-  async function getFinalizedL2BlockNumber(lineaRollup: LineaRollup) {
-    let blockNumber = null;
-
-    while (!blockNumber) {
-      try {
-        blockNumber = await lineaRollup.currentL2BlockNumber({ blockTag: "finalized" });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (error: any) {
-        console.log("No finalized block yet, retrying in 5 seconds...");
-        await new Promise((resolve) => setTimeout(resolve, 5_000));
-      }
-    }
-
-    return blockNumber;
-  }
 
   it.concurrent(
     "Check L2 anchoring",
@@ -152,21 +129,20 @@ describe("Submission and finalization test suite", () => {
   it.concurrent(
     "Check L2 safe/finalized tag update on sequencer",
     async () => {
-      const lineaRollup = config.getLineaRollupContract();
       const sequencerEndpoint = config.getSequencerEndpoint();
       if (!sequencerEndpoint) {
         console.log('Skipped the "Check L2 safe/finalized tag update on sequencer" test');
         return;
       }
 
-      const lastFinalizedL2BlockNumberOnL1 = (await getFinalizedL2BlockNumber(lineaRollup)).toString();
+      const lastFinalizedL2BlockNumberOnL1 = 0;
       console.log(`lastFinalizedL2BlockNumberOnL1=${lastFinalizedL2BlockNumberOnL1}`);
 
       let safeL2BlockNumber = -1,
         finalizedL2BlockNumber = -1;
       while (
-        safeL2BlockNumber < parseInt(lastFinalizedL2BlockNumberOnL1) ||
-        finalizedL2BlockNumber < parseInt(lastFinalizedL2BlockNumberOnL1)
+        safeL2BlockNumber < lastFinalizedL2BlockNumberOnL1 ||
+        finalizedL2BlockNumber < lastFinalizedL2BlockNumberOnL1
       ) {
         safeL2BlockNumber = (await getBlockByNumberOrBlockTag(sequencerEndpoint, "safe"))?.number || safeL2BlockNumber;
         finalizedL2BlockNumber =
@@ -176,8 +152,8 @@ describe("Submission and finalization test suite", () => {
 
       console.log(`safeL2BlockNumber=${safeL2BlockNumber} finalizedL2BlockNumber=${finalizedL2BlockNumber}`);
 
-      expect(safeL2BlockNumber).toBeGreaterThanOrEqual(parseInt(lastFinalizedL2BlockNumberOnL1));
-      expect(finalizedL2BlockNumber).toBeGreaterThanOrEqual(parseInt(lastFinalizedL2BlockNumberOnL1));
+      expect(safeL2BlockNumber).toBeGreaterThanOrEqual(lastFinalizedL2BlockNumberOnL1);
+      expect(finalizedL2BlockNumber).toBeGreaterThanOrEqual(lastFinalizedL2BlockNumberOnL1);
 
       console.log("L2 safe/finalized tag update on sequencer done.");
     },

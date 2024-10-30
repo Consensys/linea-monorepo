@@ -62,7 +62,6 @@ task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     dependsOn(":localStackComposeUp")
-    dependsOn(rootProject.tasks.compileContracts)
 
     testLogging {
       events TestLogEvent.FAILED,
