@@ -24,6 +24,9 @@ export const wagmiConfig = defaultWagmiConfig({
   multiInjectedProviderDiscovery: true,
   ssr: true,
   enableEIP6963: true,
+  batch: {
+    multicall: true,
+  },
   connectors: [
     walletConnect({
       projectId: config.walletConnectId,
@@ -35,10 +38,10 @@ export const wagmiConfig = defaultWagmiConfig({
     }),
   ],
   transports: {
-    [mainnet.id]: http(`https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`),
-    [sepolia.id]: http(`https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`),
-    [linea.id]: http(`https://linea-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`),
-    [lineaSepolia.id]: http(`https://linea-sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`),
+    [mainnet.id]: http(`https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`, { batch: true }),
+    [sepolia.id]: http(`https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`, { batch: true }),
+    [linea.id]: http(`https://linea-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`, { batch: true }),
+    [lineaSepolia.id]: http(`https://linea-sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`, { batch: true }),
   },
   storage: createStorage({
     storage: cookieStorage,

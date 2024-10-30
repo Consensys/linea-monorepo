@@ -14,8 +14,6 @@ const parseERC20Events = async (
   storedTokens: NetworkTokens,
   networkType: NetworkType,
 ) => {
-  const history: TransactionHistory[] = [];
-
   if (
     networkType !== NetworkType.MAINNET &&
     networkType !== NetworkType.SEPOLIA &&
@@ -24,47 +22,56 @@ const parseERC20Events = async (
     throw new Error("Invalid network type");
   }
 
-  for (const event of events) {
-    if (!event.args.token) {
-      log.warn("Token args not found");
-      continue;
-    }
-
-    const tokenAddress = getAddress(event.args.token);
-    let token = findTokenByAddress(tokenAddress, storedTokens, networkType);
-
-    // Token list may change, skip old tokens
-    if (!token) {
-      token = await fetchTokenInfo(tokenAddress, networkType, fromChain);
-      if (!token) {
-        log.warn("Token not found");
-        continue;
+  const history = await Promise.all(
+    events.map(async (event) => {
+      if (!event.args.token) {
+        log.warn("Token args not found");
+        return null;
       }
+
+      const tokenAddress = getAddress(event.args.token);
+      let token = findTokenByAddress(tokenAddress, storedTokens, networkType);
+
+      // Token list may change, skip old tokens
+      if (!token) {
+        token = await fetchTokenInfo(tokenAddress, networkType, fromChain);
+        if (!token) {
+          log.warn("Token not found");
+          return null;
+        }
+      }
+
+      const { timestamp } = await client.getBlock({
+        blockNumber: event.blockNumber,
+      });
+
+      const [recipient] = decodeAbiParameters([{ type: "bytes32", name: "recipient" }], event.data);
+
+      const logHistory: TransactionHistory = {
+        transactionHash: event.transactionHash,
+        fromChain,
+        toChain,
+        tokenAddress,
+        token,
+        amount: event.args.amount,
+        recipient,
+        pending: true,
+        event,
+        timestamp,
+      };
+      return logHistory;
+    }),
+  );
+
+  const newHistory: TransactionHistory[] = [];
+
+  for (const event of history) {
+    if (event) {
+      newHistory.push(event);
     }
-
-    // Get block timestamp
-    const blockInfo = await client.getBlock({
-      blockNumber: event.blockNumber,
-    });
-
-    const [recipient] = decodeAbiParameters([{ type: "bytes32", name: "recipient" }], event.data);
-
-    const logHistory: TransactionHistory = {
-      transactionHash: event.transactionHash,
-      fromChain,
-      toChain,
-      tokenAddress,
-      token,
-      amount: event.args.amount,
-      recipient,
-      pending: true,
-      event,
-      timestamp: blockInfo.timestamp,
-    };
-    history.push(logHistory);
   }
 
-  return history;
+  return newHistory;
 };
 
 const parseERC20V2Events = async (
@@ -75,8 +82,6 @@ const parseERC20V2Events = async (
   storedTokens: NetworkTokens,
   networkType: NetworkType,
 ) => {
-  const history: TransactionHistory[] = [];
-
   if (
     networkType !== NetworkType.MAINNET &&
     networkType !== NetworkType.SEPOLIA &&
@@ -85,47 +90,56 @@ const parseERC20V2Events = async (
     throw new Error("Invalid network type");
   }
 
-  for (const event of events) {
-    if (!event.args.token) {
-      log.warn("Token args not found");
-      continue;
-    }
-
-    const tokenAddress = getAddress(event.args.token);
-    let token = findTokenByAddress(tokenAddress, storedTokens, networkType);
-
-    // Token list may change, skip old tokens
-    if (!token) {
-      token = await fetchTokenInfo(tokenAddress, networkType, fromChain);
-      if (!token) {
-        log.warn("Token not found");
-        continue;
+  const history = await Promise.all(
+    events.map(async (event) => {
+      if (!event.args.token) {
+        log.warn("Token args not found");
+        return null;
       }
+
+      const tokenAddress = getAddress(event.args.token);
+      let token = findTokenByAddress(tokenAddress, storedTokens, networkType);
+
+      // Token list may change, skip old tokens
+      if (!token) {
+        token = await fetchTokenInfo(tokenAddress, networkType, fromChain);
+        if (!token) {
+          log.warn("Token not found");
+          return null;
+        }
+      }
+
+      const { timestamp } = await client.getBlock({
+        blockNumber: event.blockNumber,
+      });
+
+      const [amount] = decodeAbiParameters([{ type: "uint256", name: "amount" }], event.data);
+
+      const logHistory: TransactionHistory = {
+        transactionHash: event.transactionHash,
+        fromChain,
+        toChain,
+        tokenAddress,
+        token,
+        amount,
+        recipient: event.args.recipient,
+        pending: true,
+        event,
+        timestamp,
+      };
+      return logHistory;
+    }),
+  );
+
+  const newHistory: TransactionHistory[] = [];
+
+  for (const event of history) {
+    if (event) {
+      newHistory.push(event);
     }
-
-    // Get block timestamp
-    const blockInfo = await client.getBlock({
-      blockNumber: event.blockNumber,
-    });
-
-    const [amount] = decodeAbiParameters([{ type: "uint256", name: "amount" }], event.data);
-
-    const logHistory: TransactionHistory = {
-      transactionHash: event.transactionHash,
-      fromChain,
-      toChain,
-      tokenAddress,
-      token,
-      amount,
-      recipient: event.args.recipient,
-      pending: true,
-      event,
-      timestamp: blockInfo.timestamp,
-    };
-    history.push(logHistory);
   }
 
-  return history;
+  return newHistory;
 };
 
 export { parseERC20Events, parseERC20V2Events };
