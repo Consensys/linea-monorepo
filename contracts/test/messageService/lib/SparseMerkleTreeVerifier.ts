@@ -3,9 +3,9 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { TestSparseMerkleTreeVerifier } from "../../../typechain-types";
-import { MESSAGE_FEE, MESSAGE_VALUE_1ETH } from "../../common/constants";
+import { MAX_UINT32, MAX_UINT33, MESSAGE_FEE, MESSAGE_VALUE_1ETH } from "../../common/constants";
 import { deployFromFactory } from "../../common/deployment";
-import { expectRevertWithCustomError } from "contracts/test/common/helpers";
+import { expectRevertWithCustomError, generateRandomBytes, range } from "contracts/test/common/helpers";
 
 describe("SparseMerkleTreeVerifier", () => {
   let sparseMerkleTreeVerifier: TestSparseMerkleTreeVerifier;
@@ -179,6 +179,39 @@ describe("SparseMerkleTreeVerifier", () => {
         "LeafIndexOutOfBounds",
         [invalidLeafIndex, 2 ** proof.length - 1],
       );
+    });
+
+    it("Should revert if casting to a value higher than 32 bit uint", async () => {
+      const testValue = MAX_UINT32 + 1n;
+      await expectRevertWithCustomError(
+        sparseMerkleTreeVerifier,
+        sparseMerkleTreeVerifier.testSafeCastToUint32(testValue),
+        "SafeCastOverflowedUintDowncast",
+        [32, testValue],
+      );
+    });
+
+    it("Should revert if proof length results in casting to a value higher than 32 bit uint", async () => {
+      const proof = range(0, 32).map(() => generateRandomBytes(32));
+
+      await expectRevertWithCustomError(
+        sparseMerkleTreeVerifier,
+        sparseMerkleTreeVerifier.verifyMerkleProof(generateRandomBytes(32), proof, 25, generateRandomBytes(32)),
+        "SafeCastOverflowedUintDowncast",
+        [32, MAX_UINT33],
+      );
+    });
+
+    it("Should cast if casting to max uint 32", async () => {
+      const testValue = MAX_UINT32;
+
+      expect(await sparseMerkleTreeVerifier.testSafeCastToUint32(testValue)).to.equal(testValue);
+    });
+
+    it("Should cast if casting to lower than max uint 32", async () => {
+      const testValue = MAX_UINT32 - 1n;
+
+      expect(await sparseMerkleTreeVerifier.testSafeCastToUint32(testValue)).to.equal(testValue);
     });
   });
 });
