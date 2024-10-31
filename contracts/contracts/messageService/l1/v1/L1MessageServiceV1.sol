@@ -98,8 +98,8 @@ abstract contract L1MessageServiceV1 is
   /**
    * @notice Claims and delivers a cross-chain message.
    * @dev _feeRecipient can be set to address(0) to receive as msg.sender.
-   * @dev _messageSender is set temporarily when claiming and reset post. Used in sender().
-   * @dev _messageSender is reset to DEFAULT_SENDER_ADDRESS to be more gas efficient.
+   * @dev The original message sender address is temporarily set in transient storage,
+   * while claiming. This address is used in sender().
    * @param _from The address of the original sender.
    * @param _to The address the message is intended for.
    * @param _fee The fee being paid for the message delivery.
