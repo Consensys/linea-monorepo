@@ -50,25 +50,6 @@ contract TokenBridge is
   bytes32 public constant REMOVE_RESERVED_TOKEN_ROLE = keccak256("REMOVE_RESERVED_TOKEN_ROLE");
   bytes32 public constant SET_CUSTOM_CONTRACT_ROLE = keccak256("SET_CUSTOM_CONTRACT_ROLE");
 
-  // solhint-disable-next-line var-name-mixedcase
-  bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
-
-  /// @notice used for the token metadata
-  bytes private constant METADATA_NAME = abi.encodeCall(IERC20MetadataUpgradeable.name, ());
-  bytes private constant METADATA_SYMBOL = abi.encodeCall(IERC20MetadataUpgradeable.symbol, ());
-  bytes private constant METADATA_DECIMALS = abi.encodeCall(IERC20MetadataUpgradeable.decimals, ());
-
-  address public tokenBeacon;
-  /// @notice mapping (chainId => nativeTokenAddress => brigedTokenAddress)
-  mapping(uint256 => mapping(address => address)) public nativeToBridgedToken;
-  /// @notice mapping (brigedTokenAddress => nativeTokenAddress)
-  mapping(address => address) public bridgedToNativeToken;
-
-  /// @notice The current layer chainId from where the bridging is triggered
-  uint256 public sourceChainId;
-  /// @notice The targeted layer chainId where the bridging is received
-  uint256 public targetChainId;
-
   // Special addresses used in the mappings to mark specific states for tokens.
   /// @notice EMPTY means a token is not present in the mapping.
   address internal constant EMPTY = address(0x0);
@@ -78,6 +59,24 @@ contract TokenBridge is
   address internal constant NATIVE_STATUS = address(0x222);
   /// @notice DEPLOYED means the bridged token contract has been deployed on the remote chain.
   address internal constant DEPLOYED_STATUS = address(0x333);
+
+  // solhint-disable-next-line var-name-mixedcase
+  bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
+
+  /// @notice used for the token metadata
+  bytes private constant METADATA_NAME = abi.encodeCall(IERC20MetadataUpgradeable.name, ());
+  bytes private constant METADATA_SYMBOL = abi.encodeCall(IERC20MetadataUpgradeable.symbol, ());
+  bytes private constant METADATA_DECIMALS = abi.encodeCall(IERC20MetadataUpgradeable.decimals, ());
+
+  address public tokenBeacon;
+
+  mapping(uint256 chainId => mapping(address native => address bridged)) public nativeToBridgedToken;
+  mapping(address bridged => address native) public bridgedToNativeToken;
+
+  /// @notice The current layer chainId from where the bridging is triggered
+  uint256 public sourceChainId;
+  /// @notice The targeted layer chainId where the bridging is received
+  uint256 public targetChainId;
 
   /// @dev Keep free storage slots for future implementation updates to avoid storage collision.
   uint256[50] private __gap;

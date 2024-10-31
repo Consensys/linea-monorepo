@@ -35,7 +35,6 @@ abstract contract L1MessageService is
 
   /**
    * @notice Initialises underlying message service dependencies.
-   * @dev _messageSender is initialised to a non-zero value for gas efficiency on claiming.
    * @param _rateLimitPeriod The period to rate limit against.
    * @param _rateLimitAmount The limit allowed for withdrawing the period.
    */

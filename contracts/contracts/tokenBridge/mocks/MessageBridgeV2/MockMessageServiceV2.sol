@@ -36,9 +36,6 @@ contract MockMessageServiceV2 is L1MessageManager, IMessageService, LineaRollupP
 
     bytes32 messageHash = keccak256(abi.encode(msg.sender, _to, _fee, valueSent, messageNumber, _calldata));
 
-    // @dev Status check and revert is in the message manager
-    outboxL1L2MessageStatus[messageHash] = OUTBOX_STATUS_SENT;
-
     nextMessageNumber++;
 
     emit MessageSent(msg.sender, _to, _fee, valueSent, messageNumber, _calldata, messageHash);
