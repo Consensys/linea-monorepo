@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	frBn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/native/sw_bls12377"
@@ -59,7 +60,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	// match general PI input with that of the interconnection circuit
-	piBits := api.ToBinary(c.PublicInput, emFr{}.Modulus().BitLen())
+	piBits := api.ToBinary(c.PublicInput, frBn254.Bits)
 
 	assertSlicesEqualZEXT(api, piBits[:16*8], field.ToBitsCanonical(&c.PublicInputWitness.Public[1]))
 	assertSlicesEqualZEXT(api, piBits[16*8:], field.ToBitsCanonical(&c.PublicInputWitness.Public[0]))
