@@ -111,3 +111,17 @@ run {
 test {
   inputs.dir("$rootDir/config/coordinator/")
 }
+
+task integrationTestAllNeeded {
+  description = "Runs integration tests of all dependencies of coordinator:app"
+  group = "verification"
+
+  def projectDependencies = configurations.implementation.getAllDependencies().withType(ProjectDependency)
+  def dependentProjects = projectDependencies.dependencyProject
+  dependentProjects.each { dependency ->
+    if (dependency.project.tasks.findByName("integrationTest")) {
+      def integrationTestTask = "${dependency.path}:integrationTest"
+      dependsOn integrationTestTask
+    }
+  }
+}
