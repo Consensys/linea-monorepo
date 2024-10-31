@@ -3,34 +3,25 @@ import { useAccount } from "wagmi";
 import log from "loglevel";
 import { useChainStore } from "@/stores/chainStore";
 import { useHistoryStore } from "@/stores/historyStore";
-import { getBlockNumber } from "@wagmi/core";
 import { generateKey } from "@/contexts/storage";
-import { wagmiConfig } from "@/config";
 import useFetchBridgeTransactions from "./useFetchBridgeTransactions";
-
-const DEFAULT_FIRST_BLOCK = BigInt(1000);
+import { wagmiConfig } from "@/config";
+import { getBlockNumber } from "@wagmi/core";
 
 const useFetchHistory = () => {
   // Wagmi
   const { address } = useAccount();
 
   // Context
-  const {
-    l1Chain,
-    l2Chain,
-    networkType: currentNetworkType,
-  } = useChainStore((state) => ({
-    l1Chain: state.l1Chain,
-    l2Chain: state.l2Chain,
-    networkType: state.networkType,
-  }));
-
-  const { isLoading, setIsLoading, setTransactions, clearStorage, getTransactionsByKey } = useHistoryStore((state) => ({
-    isLoading: state.isLoading,
+  const l1Chain = useChainStore((state) => state.l1Chain);
+  const l2Chain = useChainStore((state) => state.l2Chain);
+  const currentNetworkType = useChainStore((state) => state.networkType);
+  const isLoading = useHistoryStore((state) => state.isLoading);
+  const { setIsLoading, setTransactions, getTransactionsByKey, getFromBlockNumbers } = useHistoryStore((state) => ({
     setIsLoading: state.setIsLoading,
     setTransactions: state.setTransactions,
-    clearStorage: state.clearStorage,
     getTransactionsByKey: state.getTransactionsByKey,
+    getFromBlockNumbers: state.getFromBlockNumbers,
   }));
 
   // Hooks
@@ -44,28 +35,35 @@ const useFetchHistory = () => {
     try {
       setIsLoading(true);
 
-      // ToBlock: get last onchain block
-      const l1ToBlockNumber = await getBlockNumber(wagmiConfig, {
-        chainId: l1Chain.id,
-      });
-      const l2ToBlockNumber = await getBlockNumber(wagmiConfig, {
-        chainId: l2Chain.id,
-      });
+      const [l1ToBlockNumber, l2ToBlockNumber] = await Promise.all([
+        getBlockNumber(wagmiConfig, {
+          chainId: l1Chain.id,
+        }),
+        getBlockNumber(wagmiConfig, {
+          chainId: l2Chain.id,
+        }),
+      ]);
 
-      const transactions = getTransactionsByKey(generateKey("transactions", address, currentNetworkType));
+      const key = generateKey("transactions", address, currentNetworkType);
+
+      const transactions = getTransactionsByKey(key);
+      const { l1FromBlock, l2FromBlock } = getFromBlockNumbers(key);
 
       const txs = await fetchTransactions({
         networkType: currentNetworkType,
         l1Chain,
         l2Chain,
-        l1FromBlockNumber: DEFAULT_FIRST_BLOCK,
-        l1ToBlockNumber,
-        l2FromBlockNumber: DEFAULT_FIRST_BLOCK,
-        l2ToBlockNumber,
+        l1FromBlockNumber: l1FromBlock,
+        l2FromBlockNumber: l2FromBlock,
         transactions,
       });
 
-      setTransactions(generateKey("transactions", address, currentNetworkType), txs ?? []);
+      setTransactions(
+        generateKey("transactions", address, currentNetworkType),
+        txs ?? [],
+        l1ToBlockNumber,
+        l2ToBlockNumber,
+      );
     } catch (error) {
       log.error(error);
     } finally {
@@ -74,20 +72,8 @@ const useFetchHistory = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address, currentNetworkType, l1Chain, l2Chain]);
 
-  const clearHistory = useCallback(() => {
-    // Clear local storage
-    if (address) {
-      clearStorage(generateKey("transactions", address, currentNetworkType));
-    }
-
-    // Trigger fetchHistory() to reload the transaction history faster
-    setTimeout(() => fetchHistory(), 1000);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, currentNetworkType, fetchHistory]);
-
   return {
     fetchHistory,
-    clearHistory,
     isLoading,
     transactions: address ? getTransactionsByKey(generateKey("transactions", address, currentNetworkType)) : [],
   };
