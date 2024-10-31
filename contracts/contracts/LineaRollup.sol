@@ -310,7 +310,6 @@ contract LineaRollup is
 
     bytes32 currentDataHash = keccak256(_submission.compressedData);
 
-    bytes32 currentDataHash = keccak256(_submission.compressedData);
     bytes32 dataEvaluationPoint = Utils._efficientKeccak(_submission.snarkHash, currentDataHash);
 
     bytes32 computedShnarf = _computeShnarf(
