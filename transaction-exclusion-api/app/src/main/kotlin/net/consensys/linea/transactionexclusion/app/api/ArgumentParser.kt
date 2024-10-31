@@ -13,6 +13,8 @@ import org.hyperledger.besu.ethereum.core.encoding.TransactionDecoder
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
+const val MAX_REASON_MESSAGE_STR_LEN = 512
+
 object ArgumentParser {
   fun getTransactionRLPInRawBytes(transactionRLP: String): ByteArray {
     try {
@@ -57,8 +59,10 @@ object ArgumentParser {
   }
 
   fun getReasonMessage(reasonMessage: String): String {
-    if (reasonMessage.length > 512) {
-      throw IllegalArgumentException("Reason message should not be more than 512 characters: $reasonMessage")
+    if (reasonMessage.length > MAX_REASON_MESSAGE_STR_LEN) {
+      throw IllegalArgumentException(
+        "Reason message should not be more than $MAX_REASON_MESSAGE_STR_LEN characters: $reasonMessage"
+      )
     }
     return reasonMessage
   }
