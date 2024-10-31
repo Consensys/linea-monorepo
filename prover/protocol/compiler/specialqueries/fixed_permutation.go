@@ -76,7 +76,6 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation, 
 	p.compilerColapsStep(comp)
 	p.compilerPolyZ(comp)
 
-	comp.SubProvers.AppendToInner(round, p.proverAssignS())
 	comp.SubProvers.AppendToInner(round+1, p.proverColapsStep())
 	comp.SubProvers.AppendToInner(round+1, p.proverAssignExtendedZ())
 
@@ -139,8 +138,8 @@ Run the first "collapse step" of the compiler to collapse all the splittings A t
 func (t *fixedPermutationCtx) compilerColapsStep(comp *wizard.CompiledIOP) {
 	//tracker : round or 0? as it is used by PLONK it should be the same round as PLONK
 	for i := range t.S {
-		t.S[i] = comp.InsertCommit(t.round, t.S_NAME[i], t.N)
-		t.S_id[i] = comp.InsertCommit(t.round, t.Sid_NAME[i], t.N)
+		t.S[i] = comp.InsertPrecomputed(t.S_NAME[i], t.q.S[i])
+		t.S_id[i] = comp.InsertPrecomputed(t.Sid_NAME[i], t.SidWit[i])
 	}
 
 	t.alpha = comp.InsertCoin(t.round+1, t.ALPHA, coin.Field)
@@ -193,18 +192,6 @@ func (t *fixedPermutationCtx) compilerPolyZ(comp *wizard.CompiledIOP) {
 
 	comp.InsertLocal(round_, t.QA, z.Sub(one))
 	comp.InsertGlobal(round_, t.QB, cs, true) // We forbid the boundary cancelling
-}
-
-// Prover assignes  witnesses to S,S_id
-func (t *fixedPermutationCtx) proverAssignS() wizard.ProverStep {
-	return func(run *wizard.ProverRuntime) {
-		stopTimer := profiling.LogTimer("exPermutation prover - assign s %v", t.q.ID)
-		for colID := range t.S {
-			run.AssignColumn(t.Sid_NAME[colID], t.SidWit[colID])
-			run.AssignColumn(t.S_NAME[colID], t.q.S[colID])
-		}
-		stopTimer()
-	}
 }
 
 /*
