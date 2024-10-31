@@ -47,37 +47,39 @@ func TestTinyPlonk(t *testing.T) {
 
 	var (
 		plk *TinyPlonkCS
-		a   = &FibonacciCircuit{
-			U0:  0,
-			U1:  1,
-			U50: fibo(field.Zero(), field.One(), 50),
-		}
 	)
 
 	define := func(bui *wizard.Builder) {
 		plk = DefineFromGnark(bui.CompiledIOP, &FibonacciCircuit{})
 	}
 
+	comp := wizard.Compile(
+		// our "Define" define function
+		define,
+		// A list of compiler steps to construct the proof system
+		specialqueries.RangeProof,
+		specialqueries.CompileFixedPermutations,
+		permutation.CompileGrandProduct,
+		lookup.CompileLogDerivative,
+		innerproduct.Compile,
+		cleanup.CleanUp,
+		localcs.Compile,
+		globalcs.Compile,
+		univariates.CompileLocalOpening,
+		univariates.Naturalize,
+		univariates.MultiPointToSinglePoint(64),
+		vortex.Compile(2),
+	)
+
 	prove := func(run *wizard.ProverRuntime) {
-		plk.AssignFromGnark(run, a)
+		plk.AssignFromGnark(run, &FibonacciCircuit{
+			U0:  0,
+			U1:  1,
+			U50: fibo(field.Zero(), field.One(), 50),
+		})
 	}
 
 	var (
-		comp = wizard.Compile(
-			define,
-			specialqueries.RangeProof,
-			specialqueries.CompileFixedPermutations,
-			permutation.CompileGrandProduct,
-			lookup.CompileLogDerivative,
-			innerproduct.Compile,
-			cleanup.CleanUp,
-			localcs.Compile,
-			globalcs.Compile,
-			univariates.CompileLocalOpening,
-			univariates.Naturalize,
-			univariates.MultiPointToSinglePoint(64),
-			vortex.Compile(2),
-		)
 		proof = wizard.Prove(comp, prove)
 		err   = wizard.Verify(comp, proof)
 	)
