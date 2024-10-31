@@ -35,3 +35,6 @@ jobs:
         if: ${{ !inputs.coverage }}
         run: |
           ./gradlew transaction-exclusion-api:app:buildNeeded
+      - name: Run integration tests
+        run: |
+          ./gradlew transaction-exclusion-api:app:integrationTestAllNeeded
