@@ -14,6 +14,8 @@ import { Utils } from "../../lib/Utils.sol";
 abstract contract L2MessageManager is AccessControlUpgradeable, IL2MessageManager, L2MessageManagerV1 {
   using Utils for *;
 
+  bytes32 public constant L1_L2_MESSAGE_SETTER_ROLE = keccak256("L1_L2_MESSAGE_SETTER_ROLE");
+
   uint256 public lastAnchoredL1MessageNumber;
   mapping(uint256 messageNumber => bytes32 rollingHash) public l1RollingHashes;
 
