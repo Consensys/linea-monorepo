@@ -97,7 +97,7 @@ type AggregationFPI struct {
 	ParentShnarf             [32]byte
 	NbDecompression          uint64
 	InitialStateRootHash     [32]byte
-	InitialBlockNumber       uint64
+	LastFinalizedBlockNumber uint64
 	InitialBlockTimestamp    uint64
 	InitialRollingHash       [32]byte
 	InitialRollingHashNumber uint64
@@ -117,7 +117,7 @@ type AggregationFPI struct {
 func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 	s := AggregationFPISnark{
 		AggregationFPIQSnark: AggregationFPIQSnark{
-			InitialBlockNumber:       pi.InitialBlockNumber,
+			LastFinalizedBlockNumber: pi.LastFinalizedBlockNumber,
 			InitialBlockTimestamp:    pi.InitialBlockTimestamp,
 			InitialRollingHash:       [32]frontend.Variable{},
 			InitialRollingHashNumber: pi.InitialRollingHashNumber,
@@ -150,7 +150,7 @@ type AggregationFPIQSnark struct {
 	ParentShnarf             [32]frontend.Variable
 	NbDecompression          frontend.Variable
 	InitialStateRootHash     frontend.Variable
-	InitialBlockNumber       frontend.Variable
+	LastFinalizedBlockNumber frontend.Variable
 	InitialBlockTimestamp    frontend.Variable
 	InitialRollingHash       [32]frontend.Variable
 	InitialRollingHashNumber frontend.Variable
@@ -175,7 +175,7 @@ type AggregationFPISnark struct {
 // NewAggregationFPI does NOT set all fields, only the ones covered in public_input.Aggregation
 func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 	s = &AggregationFPI{
-		InitialBlockNumber:       uint64(fpi.LastFinalizedBlockNumber),
+		LastFinalizedBlockNumber: uint64(fpi.LastFinalizedBlockNumber),
 		InitialBlockTimestamp:    uint64(fpi.ParentAggregationLastBlockTimestamp),
 		InitialRollingHashNumber: uint64(fpi.LastFinalizedL1RollingHashMessageNumber),
 		L2MsgMerkleTreeRoots:     make([][32]byte, len(fpi.L2MsgRootHashes)),
@@ -216,7 +216,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 		pi.FinalShnarf,
 		utils.ToBytes(api, pi.InitialBlockTimestamp),
 		utils.ToBytes(api, pi.FinalBlockTimestamp),
-		utils.ToBytes(api, pi.InitialBlockNumber),
+		utils.ToBytes(api, pi.LastFinalizedBlockNumber),
 		utils.ToBytes(api, pi.FinalBlockNumber),
 		pi.InitialRollingHash,
 		pi.FinalRollingHash,

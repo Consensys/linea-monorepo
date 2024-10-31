@@ -185,7 +185,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	// Execution FPI
 	executionFPI := execution.FunctionalPublicInput{
 		FinalStateRootHash:     aggregationFPI.InitialStateRootHash,
-		FinalBlockNumber:       aggregationFPI.InitialBlockNumber,
+		FinalBlockNumber:       aggregationFPI.LastFinalizedBlockNumber,
 		FinalBlockTimestamp:    aggregationFPI.InitialBlockTimestamp,
 		FinalRollingHash:       aggregationFPI.InitialRollingHash,
 		FinalRollingHashNumber: aggregationFPI.InitialRollingHashNumber,
@@ -195,7 +195,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	}
 	for i := range a.ExecutionFPIQ {
 		executionFPI.InitialRollingHash = executionFPI.FinalRollingHash
-		executionFPI.InitialBlockNumber = executionFPI.FinalBlockNumber
+		executionFPI.InitialBlockNumber = executionFPI.FinalBlockNumber + 1
 		executionFPI.InitialBlockTimestamp = executionFPI.FinalBlockTimestamp
 		executionFPI.InitialRollingHash = executionFPI.FinalRollingHash
 		executionFPI.InitialRollingHashNumber = executionFPI.FinalRollingHashNumber

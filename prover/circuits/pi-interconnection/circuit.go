@@ -115,7 +115,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	rExecution := internal.NewRange(api, nbExecution, maxNbExecution)
 
-	initBlockNum, initHashNum, initHash := c.InitialBlockNumber, c.InitialRollingHashNumber, c.InitialRollingHash
+	lastFinalizedBlockNum, initHashNum, initHash := c.LastFinalizedBlockNumber, c.InitialRollingHashNumber, c.InitialRollingHash
 	initBlockTime, initState := c.InitialBlockTimestamp, c.InitialStateRootHash
 	finalRollingHash, finalRollingHashNum := c.InitialRollingHash, c.InitialRollingHashNumber
 	var l2MessagesByByte [32][]internal.VarSlice
@@ -140,7 +140,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		newFinalRollingHashNum := api.Select(rollingHashNotUpdated, finalRollingHashNum, piq.FinalRollingHashNumber)
 
 		api.AssertIsEqual(comparator.IsLess(initBlockTime, api.Select(inRange, piq.FinalBlockTimestamp, uint64(math.MaxUint64))), 1) // don't compare if not updating
-		api.AssertIsEqual(comparator.IsLess(initBlockNum, api.Select(inRange, piq.FinalBlockNumber, uint64(math.MaxUint64))), 1)
+		api.AssertIsEqual(comparator.IsLess(lastFinalizedBlockNum, api.Select(inRange, piq.FinalBlockNumber, uint64(math.MaxUint64))), 1)
 		api.AssertIsEqual(comparator.IsLess(finalRollingHashNum, api.Add(newFinalRollingHashNum, rollingHashNotUpdated)), 1) // if the rolling hash is updated, check that it has increased
 
 		finalRollingHashNum = newFinalRollingHashNum
@@ -149,14 +149,14 @@ func (c *Circuit) Define(api frontend.API) error {
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
 			InitialStateRootHash:        initState,
-			InitialBlockNumber:          initBlockNum,
+			InitialBlockNumber:          api.Add(lastFinalizedBlockNum, 1),
 			InitialBlockTimestamp:       initBlockTime,
 			InitialRollingHash:          initHash,
 			InitialRollingHashNumber:    initHashNum,
 			ChainID:                     c.ChainID,
 			L2MessageServiceAddr:        c.L2MessageServiceAddr,
 		}
-		initBlockNum, initHashNum, initHash = pi.FinalBlockNumber, pi.FinalRollingHashNumber, pi.FinalRollingHash
+		lastFinalizedBlockNum, initHashNum, initHash = pi.FinalBlockNumber, pi.FinalRollingHashNumber, pi.FinalRollingHash
 		initBlockTime, initState = pi.FinalBlockTimestamp, pi.FinalStateRootHash
 
 		api.AssertIsEqual(c.ExecutionPublicInput[i], pi.Sum(api, hshM)) // "open" execution circuit public input
