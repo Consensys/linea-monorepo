@@ -58,3 +58,30 @@ fun loadBlobsAndAggregations(
   val blobs = loadBlobs(blobsResponsesDir, firstAggregationBlockTime)
   return blobs to aggregations
 }
+
+fun loadBlobsAndAggregationsSortedAndGrouped(
+  blobsResponsesDir: String,
+  aggregationsResponsesDir: String
+): List<AggregationAndBlobs> {
+  val (blobs, aggregations) = loadBlobsAndAggregations(blobsResponsesDir, aggregationsResponsesDir)
+  return groupBlobsToAggregations(aggregations, blobs)
+}
+
+data class AggregationAndBlobs(
+  val aggregation: Aggregation?,
+  val blobs: List<BlobRecord>
+)
+
+fun groupBlobsToAggregations(
+  aggregations: List<Aggregation>,
+  blobs: List<BlobRecord>
+): List<AggregationAndBlobs> {
+  val aggBlobs = aggregations.map { agg ->
+    AggregationAndBlobs(agg, blobs.filter { it.startBlockNumber in agg.blocksRange })
+  }.sortedBy { it.aggregation!!.startBlockNumber }
+
+  val blobsWithoutAgg = blobs.filter { blob ->
+    aggBlobs.none { it.blobs.contains(blob) }
+  }
+  return aggBlobs + listOf(AggregationAndBlobs(null, blobsWithoutAgg))
+}

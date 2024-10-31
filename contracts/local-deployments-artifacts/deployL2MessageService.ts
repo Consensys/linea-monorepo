@@ -30,7 +30,13 @@ async function main() {
 
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-  const walletNonce = await wallet.getNonce();
+  let walletNonce;
+
+  if (!process.env.L2_NONCE) {
+    walletNonce = await wallet.getNonce();
+  } else {
+    walletNonce = parseInt(process.env.L2_NONCE);
+  }
 
   const [l2MessageServiceImplementation, proxyAdmin] = await Promise.all([
     deployContractFromArtifacts(L2MessageServiceAbi, L2MessageServiceBytecode, wallet, { nonce: walletNonce }),
