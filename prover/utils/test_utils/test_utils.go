@@ -1,11 +1,14 @@
 package test_utils
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash"
+	"io"
 	"math"
 	"os"
 	"reflect"
@@ -151,4 +154,130 @@ func SlicesEqual[T any](expected, actual []T) error {
 		}
 	}
 	return nil
+}
+
+// WriterHash is a wrapper around a hash.Hash that duplicates all writes.
+type WriterHash struct {
+	h hash.Hash
+	w io.Writer
+}
+
+func (w *WriterHash) Write(p []byte) (n int, err error) {
+	if len(p) >= 65535 {
+		panic("WriterHash.Write: too large")
+	}
+	if _, err = w.w.Write([]byte{byte(len(p) / 256), byte(len(p))}); err != nil {
+		panic(err)
+	}
+	if _, err = w.w.Write(p); err != nil {
+		panic(err)
+	}
+	return w.h.Write(p)
+}
+
+func (w *WriterHash) Sum(b []byte) []byte {
+	if b != nil {
+		panic("not supported")
+	}
+	return w.h.Sum(nil)
+}
+
+func (w *WriterHash) Reset() {
+	if _, err := w.w.Write([]byte{255, 255}); err != nil {
+		panic(err)
+	}
+}
+
+func (w *WriterHash) Size() int {
+	return w.h.Size()
+}
+
+func (w *WriterHash) BlockSize() int {
+	return w.h.BlockSize()
+}
+
+func (w *WriterHash) CloseFile() {
+	if err := w.w.(*os.File).Close(); err != nil {
+		panic(err)
+	}
+}
+
+func NewWriterHashToFile(h hash.Hash, path string) *WriterHash {
+	w, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		panic(err)
+	}
+	return &WriterHash{
+		h: h,
+		w: w,
+	}
+}
+
+// ReaderHash is a wrapper around a hash.Hash that matches all writes with its input stream.
+type ReaderHash struct {
+	h hash.Hash
+	r io.Reader
+}
+
+func (r *ReaderHash) Write(p []byte) (n int, err error) {
+	if len(p) >= 65535 {
+		panic("ReaderHash.Write: too large")
+	}
+
+	var ls [2]byte
+	if _, err = r.r.Read(ls[:]); err != nil {
+		panic(err)
+	}
+
+	buf := make([]byte, int(ls[0])*256+int(ls[1]))
+	if _, err = r.r.Read(buf); err != nil {
+		panic(err)
+	}
+	if !bytes.Equal(buf, p) {
+		panic(fmt.Errorf("ReaderHash.Write: mismatch %x≠%x", buf, p))
+	}
+	return r.h.Write(p)
+}
+
+func (r *ReaderHash) Sum(b []byte) []byte {
+	if b != nil {
+		panic("not supported")
+	}
+	return r.h.Sum(nil)
+}
+
+func (r *ReaderHash) Reset() {
+	var ls [2]byte
+	if _, err := r.r.Read(ls[:]); err != nil {
+		panic(err)
+	}
+	if ls[0] != 255 || ls[1] != 255 {
+		panic(fmt.Errorf("ReaderHash.Reset: unexpected %x", ls))
+	}
+	r.h.Reset()
+}
+
+func (r *ReaderHash) Size() int {
+	return r.h.Size()
+}
+
+func (r *ReaderHash) BlockSize() int {
+	return r.h.BlockSize()
+}
+
+func NewReaderHashFromFile(h hash.Hash, path string) *ReaderHash {
+	r, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	return &ReaderHash{
+		h: h,
+		r: r,
+	}
+}
+
+func (r *ReaderHash) CloseFile() {
+	if err := r.r.(*os.File).Close(); err != nil {
+		panic(err)
+	}
 }

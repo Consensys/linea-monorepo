@@ -1,4 +1,4 @@
-import { AbiCoder, BaseContract, ContractFactory, Wallet, ethers } from "ethers";
+import { AbiCoder, AbstractSigner, BaseContract, ContractFactory, Wallet, ethers } from "ethers";
 import { ProxyAdmin__factory, TransparentUpgradeableProxy__factory, ProxyAdmin } from "../typechain";
 
 export const encodeData = (types: string[], values: unknown[], packed?: boolean) => {
@@ -21,7 +21,7 @@ export const encodeLibraryName = (libraryName: string) => {
 
 export const deployContract = async <T extends ContractFactory>(
   contractFactory: T,
-  deployer: Wallet,
+  deployer: AbstractSigner,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args?: any[],
 ): Promise<BaseContract> => {
