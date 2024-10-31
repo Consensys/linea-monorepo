@@ -108,6 +108,53 @@ deploy-l2messageservice:
 		L2MSGSERVICE_RATE_LIMIT_AMOUNT=1000000000000000000000 \
 		npx ts-node local-deployments-artifacts/deployL2MessageService.ts
 
+deploy-token-bridge-l1:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+		RPC_URL=http:\\localhost:8445/ \
+		REMOTE_CHAIN_ID=1337 \
+		TOKEN_BRIDGE_L1=true \
+		TOKEN_BRIDGE_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
+		L2_MESSAGE_SERVICE_ADDRESS=0xe537D669CA013d86EBeF1D64e40fC74CADC91987 \
+		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
+		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridge.ts
+
+deploy-token-bridge-l2:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		SAVE_ADDRESS=true \
+		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		RPC_URL=http:\\localhost:8545/ \
+		REMOTE_CHAIN_ID=31648428 \
+		TOKEN_BRIDGE_L1=false \
+		TOKEN_BRIDGE_SECURITY_COUNCIL=0xf17f52151EbEF6C7334FAD080c5704D77216b732 \
+		L2_MESSAGE_SERVICE_ADDRESS=0xe537D669CA013d86EBeF1D64e40fC74CADC91987 \
+		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
+		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridge.ts
+
+deploy-l1-test-erc20:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+		RPC_URL=http:\\localhost:8445/ \
+		TEST_ERC20_L1=true \
+		TEST_ERC20_NAME=TestERC20 \
+		TEST_ERC20_SYMBOL=TERC20 \
+		TEST_ERC20_INITIAL_SUPPLY=100000 \
+		npx ts-node local-deployments-artifacts/deployTestERC20.ts
+
+deploy-l2-test-erc20:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		RPC_URL=http:\\localhost:8545/ \
+		TEST_ERC20_L1=false \
+		TEST_ERC20_NAME=TestERC20 \
+		TEST_ERC20_SYMBOL=TERC20 \
+		TEST_ERC20_INITIAL_SUPPLY=100000 \
+		npx ts-node local-deployments-artifacts/deployTestERC20.ts
+
 upgrade-linea-rollup-on-uat:
 		cd contracts/; \
 		rm -f .openzeppelin/goerli.json; \
@@ -153,7 +200,11 @@ deploy-contracts-v4:
 	$(MAKE) -j2 deploy-linea-rollup-v4 deploy-l2messageservice
 
 deploy-contracts:
-	$(MAKE) -j2 deploy-linea-rollup-v5 deploy-l2messageservice
+	cd contracts/; \
+	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
+	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
+	cd .. && \
+	$(MAKE) -j6 deploy-linea-rollup-v5 deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20
 
 testnet-start-l2:
 		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml --profile l2 up -d

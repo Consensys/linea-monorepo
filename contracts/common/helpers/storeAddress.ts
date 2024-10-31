@@ -15,7 +15,7 @@ export const tryStoreAddress = async (
     const network = await ethers.provider.getNetwork();
 
     const ContractFactory = await ethers.getContractFactory(contractName);
-    const dirPath = path.join(__dirname, "..", "deployments", `${networkName}`);
+    const dirPath = path.join(__dirname, "..", "..", "deployments", `${networkName}`);
 
     if (!fs.existsSync(dirPath)) {
       fs.mkdirSync(dirPath, { recursive: true });
