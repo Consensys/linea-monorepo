@@ -5,6 +5,10 @@ import { get1559Fees } from "../scripts/utils";
 import { getRequiredEnvVar } from "../common/helpers/environment";
 
 async function main() {
+  const ORDERED_NONCE_POST_LINEAROLLUP = 4;
+  const ORDERED_NONCE_POST_TOKENBRIDGE = 5;
+  const ORDERED_NONCE_POST_L2MESSAGESERVICE = 3;
+
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
@@ -12,7 +16,24 @@ async function main() {
   const erc20Symbol = getRequiredEnvVar("TEST_ERC20_SYMBOL");
   const erc20Supply = getRequiredEnvVar("TEST_ERC20_INITIAL_SUPPLY");
 
-  const [walletNonce, { gasPrice }] = await Promise.all([wallet.getNonce(), get1559Fees(provider)]);
+  const { gasPrice } = await get1559Fees(provider);
+
+  let walletNonce;
+
+  if (process.env.TEST_ERC20_L1 === "true") {
+    if (!process.env.L1_NONCE) {
+      walletNonce = await wallet.getNonce();
+    } else {
+      walletNonce = parseInt(process.env.L1_NONCE) + ORDERED_NONCE_POST_LINEAROLLUP + ORDERED_NONCE_POST_TOKENBRIDGE;
+    }
+  } else {
+    if (!process.env.L2_NONCE) {
+      walletNonce = await wallet.getNonce();
+    } else {
+      walletNonce =
+        parseInt(process.env.L2_NONCE) + ORDERED_NONCE_POST_L2MESSAGESERVICE + ORDERED_NONCE_POST_TOKENBRIDGE;
+    }
+  }
 
   const testERC20 = await deployContractFromArtifacts(
     TestERC20Abi,

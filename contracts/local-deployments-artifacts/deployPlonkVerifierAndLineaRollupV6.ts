@@ -65,9 +65,18 @@ async function main() {
   const verifierArtifacts = findContractArtifacts(path.join(__dirname, "./dynamic-artifacts"), verifierName);
 
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
-  const [walletNonce, { gasPrice }] = await Promise.all([wallet.getNonce(), get1559Fees(provider)]);
+  const { gasPrice } = await get1559Fees(provider);
+
+  let walletNonce;
+
+  if (!process.env.L1_NONCE) {
+    walletNonce = await wallet.getNonce();
+  } else {
+    walletNonce = parseInt(process.env.L1_NONCE);
+  }
 
   const [verifier, lineaRollupImplementation, proxyAdmin] = await Promise.all([
     deployContractFromArtifacts(verifierArtifacts.abi, verifierArtifacts.bytecode, wallet, {

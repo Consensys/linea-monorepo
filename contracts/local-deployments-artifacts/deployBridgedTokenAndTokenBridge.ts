@@ -21,6 +21,8 @@ import { ethers } from "ethers";
 import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
 
 async function main() {
+  const ORDERED_NONCE_POST_L2MESSAGESERVICE = 3;
+  const ORDERED_NONCE_POST_LINEAROLLUP = 4;
   const bridgedTokenName = "BridgedToken";
   const tokenBridgeName = "TokenBridge";
 
@@ -37,7 +39,21 @@ async function main() {
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
-  const walletNonce = await wallet.getNonce();
+  let walletNonce;
+
+  if (process.env.TOKEN_BRIDGE_L1 === "true") {
+    if (process.env.L1_NONCE === undefined) {
+      walletNonce = await wallet.getNonce();
+    } else {
+      walletNonce = parseInt(process.env.L1_NONCE) + ORDERED_NONCE_POST_LINEAROLLUP;
+    }
+  } else {
+    if (process.env.L2_NONCE === undefined) {
+      walletNonce = await wallet.getNonce();
+    } else {
+      walletNonce = parseInt(process.env.L2_NONCE) + ORDERED_NONCE_POST_L2MESSAGESERVICE;
+    }
+  }
 
   const [bridgedToken, tokenBridgeImplementation, proxyAdmin] = await Promise.all([
     deployContractFromArtifacts(BridgedTokenAbi, BridgedTokenBytecode, wallet, { nonce: walletNonce }),
