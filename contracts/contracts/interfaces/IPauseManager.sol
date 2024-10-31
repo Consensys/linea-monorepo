@@ -91,7 +91,7 @@ interface IPauseManager {
   /**
    * @notice Check if a pause type is enabled.
    * @param _pauseType The pause type value.
-   * @return boolean True if the pause type if enabled, false otherwise.
+   * @return pauseTypeIsPaused Returns true if the pause type if paused, false otherwise.
    */
-  function isPaused(PauseType _pauseType) external view returns (bool);
+  function isPaused(PauseType _pauseType) external view returns (bool pauseTypeIsPaused);
 }

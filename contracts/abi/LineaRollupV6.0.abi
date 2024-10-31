@@ -87,6 +87,17 @@
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "shnarf",
+        "type": "bytes32"
+      }
+    ],
+    "name": "FinalBlobNotSubmitted",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "finalBlockNumber",
         "type": "uint256"
@@ -401,6 +412,22 @@
   {
     "inputs": [],
     "name": "ReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "bits",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "SafeCastOverflowedUintDowncast",
     "type": "error"
   },
   {
@@ -1873,7 +1900,7 @@
     "outputs": [
       {
         "internalType": "bool",
-        "name": "",
+        "name": "isClaimed",
         "type": "bool"
       }
     ],
@@ -1892,7 +1919,7 @@
     "outputs": [
       {
         "internalType": "bool",
-        "name": "",
+        "name": "pauseTypeIsPaused",
         "type": "bool"
       }
     ],
@@ -2176,7 +2203,7 @@
     "outputs": [
       {
         "internalType": "address",
-        "name": "addr",
+        "name": "originalSender",
         "type": "address"
       }
     ],

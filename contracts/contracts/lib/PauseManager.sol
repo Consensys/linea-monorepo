@@ -60,13 +60,12 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
     PauseTypeRole[] calldata _pauseTypeRoleAssignments,
     PauseTypeRole[] calldata _unpauseTypeRoleAssignments
   ) internal onlyInitializing {
-    uint256 arrayLength = _pauseTypeRoleAssignments.length;
-    for (uint256 i; i < arrayLength; i++) {
+    for (uint256 i; i < _pauseTypeRoleAssignments.length; i++) {
       _pauseTypeRoles[_pauseTypeRoleAssignments[i].pauseType] = _pauseTypeRoleAssignments[i].role;
       emit PauseTypeRoleSet(_pauseTypeRoleAssignments[i].pauseType, _pauseTypeRoleAssignments[i].role);
     }
-    arrayLength = _unpauseTypeRoleAssignments.length;
-    for (uint256 i; i < arrayLength; i++) {
+
+    for (uint256 i; i < _unpauseTypeRoleAssignments.length; i++) {
       _unPauseTypeRoles[_unpauseTypeRoleAssignments[i].pauseType] = _unpauseTypeRoleAssignments[i].role;
       emit UnPauseTypeRoleSet(_unpauseTypeRoleAssignments[i].pauseType, _unpauseTypeRoleAssignments[i].role);
     }
@@ -131,9 +130,9 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
   /**
    * @notice Check if a pause type is enabled.
    * @param _pauseType The pause type value.
-   * @return boolean True if the pause type if enabled, false otherwise.
+   * @return pauseTypeIsPaused Returns true if the pause type if paused, false otherwise.
    */
-  function isPaused(PauseType _pauseType) public view returns (bool) {
-    return (_pauseTypeStatusesBitMap & (1 << uint256(_pauseType))) != 0;
+  function isPaused(PauseType _pauseType) public view returns (bool pauseTypeIsPaused) {
+    pauseTypeIsPaused = (_pauseTypeStatusesBitMap & (1 << uint256(_pauseType))) != 0;
   }
 }

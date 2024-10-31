@@ -160,10 +160,10 @@ abstract contract L2MessageServiceV1 is
 
   /**
    * @dev The _messageSender address is set temporarily when claiming.
-   * @return _messageSender address.
+   * @return originalSender The original sender stored temporarily at the _messageSender address in storage.
    */
-  function sender() external view returns (address) {
-    return _messageSender;
+  function sender() external view returns (address originalSender) {
+    originalSender = _messageSender;
   }
 
   /**
