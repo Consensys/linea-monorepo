@@ -62,17 +62,6 @@ class BytesSerDeTest {
     assertThat(objectMapper.readValue<SomeObject>(jsonObj)).isEqualTo(objWithBytesFields)
   }
 
-  @Test
-  fun testBytes() {
-    val list1 = listOf("0x01aaff04", "0x01aaff05").map { it.decodeHex() }
-    val list2 = listOf("0x01aaff04", "0x01aaff05", "0x01aaff06").map { it.decodeHex() }
-    list1.zip(list2).also { println(it) }
-    println(list1.zip(list2).all { (arr1, arr2) -> arr1.contentEquals(arr2) })
-
-    println(list1 == list2)
-    println(list1 != list2)
-  }
-
   private data class SomeObject(
     // ByteArray
     val nullBytes: ByteArray?,
