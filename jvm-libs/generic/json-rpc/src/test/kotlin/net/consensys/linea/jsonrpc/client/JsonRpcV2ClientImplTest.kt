@@ -37,7 +37,6 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
 import java.net.ConnectException
 import java.net.URI
-import java.net.URL
 import java.util.concurrent.ExecutionException
 import java.util.function.Predicate
 import kotlin.time.Duration
@@ -54,7 +53,6 @@ class JsonRpcV2ClientImplTest {
   private lateinit var wiremock: WireMockServer
   private val path = "/api/v1?appKey=1234"
   private lateinit var meterRegistry: SimpleMeterRegistry
-  private lateinit var endpoint: URL
   private val defaultRetryConfig = retryConfig(maxRetries = 2u, timeout = 8.seconds, backoffDelay = 5.milliseconds)
 
   private val defaultObjectMapper = jacksonObjectMapper()
@@ -78,7 +76,6 @@ class JsonRpcV2ClientImplTest {
   )
 
   private fun createClientAndSetupWireMockServer(
-    vertx: Vertx,
     responseObjectMapper: ObjectMapper = defaultObjectMapper,
     requestObjectMapper: ObjectMapper = defaultObjectMapper,
     retryConfig: RequestRetryConfig = defaultRetryConfig,
@@ -86,11 +83,9 @@ class JsonRpcV2ClientImplTest {
   ): JsonRpcV2Client {
     wiremock = WireMockServer(WireMockConfiguration.options().dynamicPort())
     wiremock.start()
-    endpoint = URI(wiremock.baseUrl() + path).toURL()
 
-    return factory.createV2(
-      vertx = vertx,
-      endpoints = setOf(endpoint),
+    return factory.createJsonRpcV2Client(
+      endpoints = listOf(URI(wiremock.baseUrl() + path)),
       retryConfig = retryConfig,
       requestObjectMapper = requestObjectMapper,
       responseObjectMapper = responseObjectMapper,
@@ -103,7 +98,7 @@ class JsonRpcV2ClientImplTest {
     this.vertx = vertx
     this.meterRegistry = SimpleMeterRegistry()
     this.factory = VertxHttpJsonRpcClientFactory(vertx, meterRegistry)
-    this.client = createClientAndSetupWireMockServer(vertx)
+    this.client = createClientAndSetupWireMockServer()
   }
 
   @AfterEach
@@ -192,7 +187,7 @@ class JsonRpcV2ClientImplTest {
   fun `request params shall use defined objectMapper and not affect json-rpc envelope`() {
     val obj = User(name = "John", email = "email@example.com", address = "0x01ffbb".decodeHex(), value = 987UL)
 
-    createClientAndSetupWireMockServer(vertx, requestObjectMapper = defaultObjectMapper).also { client ->
+    createClientAndSetupWireMockServer(requestObjectMapper = defaultObjectMapper).also { client ->
       replyRequestWith(200, jsonRpcResultOk)
       client.makeRequest(
         method = "someMethod",
@@ -223,7 +218,7 @@ class JsonRpcV2ClientImplTest {
         }
       )
 
-    createClientAndSetupWireMockServer(vertx, requestObjectMapper = objMapperWithNumbersAsHex).also { client ->
+    createClientAndSetupWireMockServer(requestObjectMapper = objMapperWithNumbersAsHex).also { client ->
       replyRequestWith(200, jsonRpcResultOk)
       client.makeRequest(
         method = "someMethod",
@@ -456,7 +451,6 @@ class JsonRpcV2ClientImplTest {
   @Test
   fun `when it gets an error propagates to shallRetryRequestPredicate and retries while is true`() {
     createClientAndSetupWireMockServer(
-      vertx,
       retryConfig = retryConfig(maxRetries = 10u)
     ).also { client ->
       val responses = listOf(
@@ -507,7 +501,6 @@ class JsonRpcV2ClientImplTest {
   @Test
   fun `when it has connection error propagates to shallRetryRequestPredicate and retries while is true`() {
     createClientAndSetupWireMockServer(
-      vertx,
       retryConfig = retryConfig(maxRetries = 10u)
     ).also { client ->
       // stop the server to simulate connection error
@@ -543,7 +536,6 @@ class JsonRpcV2ClientImplTest {
   @Test
   fun `when it has connection error propagates to shallRetryRequestPredicate and retries until retry config elapses`() {
     createClientAndSetupWireMockServer(
-      vertx,
       retryConfig = retryConfig(maxRetries = 2u, timeout = 8.seconds, backoffDelay = 5.milliseconds)
     ).also { client ->
       // stop the server to simulate connection error
@@ -580,7 +572,6 @@ class JsonRpcV2ClientImplTest {
       (it.value as String).startsWith("retry_a")
     }
     createClientAndSetupWireMockServer(
-      vertx,
       retryConfig = RequestRetryConfig(
         maxRetries = 10u,
         timeout = 5.minutes,

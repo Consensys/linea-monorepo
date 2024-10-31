@@ -24,7 +24,7 @@ services:
     hostname: sequencer
     container_name: sequencer
     image: consensys/linea-besu:${SEQUENCER_TAG:-24.10-delivery34}
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       linea-besu-sequencer-plugin-downloader:
         condition: service_completed_successfully
@@ -49,7 +49,7 @@ services:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu \
+        /opt/besu/bin/besu-untuned \
         --config-file=/var/lib/besu/sequencer.config.toml \
         --node-private-key-file="/var/lib/besu/key" \
         --plugin-linea-l1-polling-interval="PT12S" \
@@ -90,7 +90,7 @@ services:
     hostname: l2-node
     image: consensys/linea-geth:${ZKGETH_TAG:-0588665}
     platform: linux/amd64
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -118,12 +118,12 @@ services:
     networks:
       linea:
         ipv4_address: 11.11.11.209
-  
+
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
     image: consensys/linea-besu:24.10-delivery34
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -145,7 +145,7 @@ services:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu \
+        /opt/besu/bin/besu-untuned \
         --config-file=/var/lib/besu/l2-node-besu.config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
         --plugin-linea-l1-polling-interval="PT12S" \
@@ -172,7 +172,7 @@ services:
     hostname: traces-node
     image: consensys/linea-geth:${ZKGETH_TAG:-0588665}
     platform: linux/amd64
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -308,7 +308,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-d227ddf}
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-cd58916}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -367,7 +367,7 @@ services:
     hostname: web3signer
     container_name: web3signer
     image: consensys/web3signer:23.3-jdk17
-    profiles: [ "l2", "debug" ]
+    profiles: [ "l2", "debug", "external-to-monorepo" ]
     ports:
       - "9000:9000"
     command:
@@ -396,7 +396,7 @@ services:
     image: postgres:14.5
     hostname: postgres
     container_name: postgres
-    profiles: [ "l2", "debug" ]
+    profiles: [ "l2", "debug", "external-to-monorepo" ]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -425,8 +425,8 @@ services:
   l1-el-node:
     container_name: l1-el-node
     hostname: l1-el-node
-    image: hyperledger/besu:24.6.0
-    profiles: [ "l1", "debug" ]
+    image: hyperledger/besu:24.10.0
+    profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-node-genesis-generator:
           condition: service_completed_successfully
@@ -437,7 +437,11 @@ services:
       retries: 120
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
-    command: [ "--config-file=/config/config.toml" ]
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu-untuned --config-file=/config/config.toml
     volumes:
       - ./config/l1-node/el/besu.key:/config/keys/besu.key:ro
       - ./config/l1-node/el/config.toml:/config/config.toml:ro
@@ -458,7 +462,7 @@ services:
     container_name: l1-cl-node
     hostname: l1-cl-node
     image: consensys/teku:24.2.0
-    profiles: [ "l1", "debug" ]
+    profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-el-node:
         condition: service_healthy
@@ -484,22 +488,17 @@ services:
   l1-node-genesis-generator:
     build:
       context: ./config/l1-node/
-    profiles: [ "l1", "debug" ]
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        /config/generate-genesis.sh \
-        --genesis-time ${L1_GENESIS_TIME} \
-        --l1-genesis /config/l1-genesis.json \
-        --network-config /config/network-config.yml \
-        --mnemonics /config/mnemonics.yaml \
-        --output-dir /data/l1-node-config
+    profiles: [ "l1", "debug", "external-to-monorepo" ]
+    command: 
+      --genesis-time ${L1_GENESIS_TIME}
+      --l1-genesis /config/l1-genesis.json
+      --network-config /config/network-config.yml
+      --mnemonics /config/mnemonics.yaml
+      --output-dir /data/l1-node-config
     volumes:
       - ./config/l1-node/cl/network-config.yml:/config/network-config.yml:ro
       - ./config/l1-node/cl/mnemonics.yaml:/config/mnemonics.yaml:ro
       - ./config/l1-node/el/genesis.json:/config/l1-genesis.json
-      - ./config/l1-node/generate-genesis.sh:/config/generate-genesis.sh
       - local-dev:/data
 
   l1-blockscout:
@@ -532,7 +531,7 @@ services:
     image: consensys/linea-besu:linea-delivery-27
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
-    profiles: [ "l2", "l2-bc" ]
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
       shomei-plugin-downloader:
         condition: service_completed_successfully
@@ -560,7 +559,7 @@ services:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu \
+        /opt/besu/bin/besu-untuned \
         --config-file=/var/lib/besu/zkbesu-config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
         --plugin-shomei-http-host="11.11.11.114" \
@@ -578,7 +577,7 @@ services:
     image: consensys/linea-shomei:2.2.0
     hostname: shomei
     container_name: shomei
-    profiles: [ "l2", "l2-bc" ]
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
       zkbesu-shomei:
         condition: service_started
@@ -614,7 +613,7 @@ services:
     image: consensys/linea-shomei:2.2.0
     hostname: shomei-frontend
     container_name: shomei-frontend
-    profiles: [ "l2", "l2-bc" ]
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
       zkbesu-shomei:
         condition: service_started
@@ -655,7 +654,7 @@ services:
 
   shomei-plugin-downloader:
     container_name: shomei-plugin-downloader
-    profiles: ["l2", "l2-bc"]
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     image: busybox:1.36.1
     command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/besu-shomei-plugin/releases/download/v0.3.1/besu-shomei-plugin-v0.3.1.jar",  "/shomei-plugin" ]
     volumes:

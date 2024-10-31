@@ -4,9 +4,13 @@ plugins {
 
 configurations.configureEach {
   exclude group: "org.rocksdb", module: "rocksdbjni"
-  exclude group: "it.unimi.dsi", module: "fastutil"
   exclude group: "org.hyperledger.besu", module: "bls12-381"
   exclude group: "org.hyperledger.besu", module: "secp256r1"
+}
+
+configurations {
+  runtimeClasspath.exclude group: "it.unimi.dsi", module: "fastutil"
+  runtimeClasspath.exclude group: "org.hyperledger.besu", module: "gnark"
 }
 
 dependencies {
@@ -19,11 +23,11 @@ dependencies {
   implementation project(':jvm-libs:linea:core:metrics')
   implementation project(':jvm-libs:linea:metrics:micrometer')
   implementation project(':jvm-libs:linea:core:domain-models')
+  implementation project(':jvm-libs:linea:clients:linea-state-manager')
   implementation project(':coordinator:utilities')
   implementation project(':coordinator:core')
   implementation project(':coordinator:clients:shomei-client')
   implementation project(':coordinator:clients:traces-generator-api-client')
-  implementation project(':coordinator:clients:type2-state-manager-client')
   implementation project(':coordinator:clients:prover-client:file-based-client')
   implementation project(':coordinator:clients:smart-contract-client')
   implementation project(':coordinator:ethereum:finalization-monitor')
@@ -63,6 +67,7 @@ dependencies {
   implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
   testImplementation "org.apache.logging.log4j:log4j-slf4j2-impl:${libs.versions.log4j.get()}"
   testImplementation project(':coordinator:ethereum:test-utils')
+  testImplementation project(':jvm-libs:linea:testing:teku-helper')
   testImplementation "io.vertx:vertx-junit5"
 }
 
@@ -87,6 +92,11 @@ distributions {
   }
 }
 
+tasks.distTar {
+  // we don't need the tar distribution
+  onlyIf { false }
+}
+
 run {
   workingDir = rootProject.projectDir
   jvmArgs = [
@@ -96,4 +106,22 @@ run {
     .findAll { it.key.startsWith("config") }
     .collect { "-D${it.key}=${it.value}" }
   args = ["--traces-limits", "config/common/traces-limits-v1.toml", "--smart-contract-errors", "config/common/smart-contract-errors.toml", "--gas-price-cap-time-of-day-multipliers", "config/common/gas-price-cap-time-of-day-multipliers.toml", "config/coordinator/coordinator-docker.config.toml", "config/coordinator/coordinator-local-dev.config.overrides.toml"]
+}
+
+test {
+  inputs.dir("$rootDir/config/coordinator/")
+}
+
+task integrationTestAllNeeded {
+  description = "Runs integration tests of all dependencies of coordinator:app"
+  group = "verification"
+
+  def projectDependencies = configurations.implementation.getAllDependencies().withType(ProjectDependency)
+  def dependentProjects = projectDependencies.dependencyProject
+  dependentProjects.each { dependency ->
+    if (dependency.project.tasks.findByName("integrationTest")) {
+      def integrationTestTask = "${dependency.path}:integrationTest"
+      dependsOn integrationTestTask
+    }
+  }
 }

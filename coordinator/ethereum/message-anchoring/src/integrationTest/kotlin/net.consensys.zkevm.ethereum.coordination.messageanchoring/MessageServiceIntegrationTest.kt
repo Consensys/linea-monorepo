@@ -10,6 +10,7 @@ import net.consensys.linea.contract.LineaRollup
 import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.toBigInteger
 import net.consensys.toULong
+import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.Web3jClientManager
@@ -47,7 +48,9 @@ class MessageServiceIntegrationTest {
   private lateinit var l2Contract: L2MessageService
 
   private fun deployContracts() {
-    val l1RollupDeploymentResult = ContractsManager.get().deployLineaRollup().get()
+    val l1RollupDeploymentResult = ContractsManager.get()
+      .deployLineaRollup(contractVersion = LineaContractVersion.V5)
+      .get()
     @Suppress("DEPRECATION")
     l1ContractLegacyClient = l1RollupDeploymentResult.rollupOperatorClientLegacy
     l1ContractClient = l1RollupDeploymentResult.rollupOperatorClient

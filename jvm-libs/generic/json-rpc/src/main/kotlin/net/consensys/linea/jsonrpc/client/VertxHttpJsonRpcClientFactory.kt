@@ -10,9 +10,29 @@ import io.vertx.core.http.HttpVersion
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import java.net.URI
 import java.net.URL
 import java.util.function.Predicate
 import java.util.function.Supplier
+
+interface JsonRpcClientFactory {
+  /**
+   * Creates a JSON-RPC V2 Spec client.
+   * If multiple endpoints are provided, a load balancing client will be created with round-robin strategy.
+   */
+  fun createJsonRpcV2Client(
+    endpoints: List<URI>,
+    maxInflightRequestsPerClient: UInt? = null,
+    retryConfig: RequestRetryConfig,
+    httpVersion: HttpVersion? = null,
+    requestObjectMapper: ObjectMapper = objectMapper,
+    responseObjectMapper: ObjectMapper = objectMapper,
+    shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>> = Predicate { it is Err },
+    log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
+    requestResponseLogLevel: Level = Level.TRACE,
+    failuresLogLevel: Level = Level.DEBUG
+  ): JsonRpcV2Client
+}
 
 class VertxHttpJsonRpcClientFactory(
   private val vertx: Vertx,
@@ -20,7 +40,7 @@ class VertxHttpJsonRpcClientFactory(
   private val requestResponseLogLevel: Level = Level.TRACE,
   private val failuresLogLevel: Level = Level.DEBUG,
   private val requestIdSupplier: Supplier<Any> = SequentialIdSupplier.singleton
-) {
+) : JsonRpcClientFactory {
   fun create(
     endpoint: URL,
     maxPoolSize: Int? = null,
@@ -149,24 +169,27 @@ class VertxHttpJsonRpcClientFactory(
     )
   }
 
-  fun createV2(
-    vertx: Vertx,
-    endpoints: Set<URL>,
-    maxInflightRequestsPerClient: UInt? = null,
+  override fun createJsonRpcV2Client(
+    endpoints: List<URI>,
+    maxInflightRequestsPerClient: UInt?,
     retryConfig: RequestRetryConfig,
-    httpVersion: HttpVersion? = null,
-    requestObjectMapper: ObjectMapper = objectMapper,
-    responseObjectMapper: ObjectMapper = objectMapper,
-    shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>> = Predicate { it is Err },
-    log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
-    requestResponseLogLevel: Level = this.requestResponseLogLevel,
-    failuresLogLevel: Level = this.failuresLogLevel
+    httpVersion: HttpVersion?,
+    requestObjectMapper: ObjectMapper,
+    responseObjectMapper: ObjectMapper,
+    shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>>,
+    log: Logger,
+    requestResponseLogLevel: Level,
+    failuresLogLevel: Level
   ): JsonRpcV2Client {
     assert(endpoints.isNotEmpty()) { "endpoints set is empty " }
+    assert(endpoints.size == endpoints.toSet().size) {
+      "endpoints set contains duplicates: $endpoints"
+    }
+
     // create base client
     return if (maxInflightRequestsPerClient != null || endpoints.size > 1) {
       createWithLoadBalancing(
-        endpoints = endpoints,
+        endpoints = endpoints.map { it.toURL() }.toSet(),
         maxInflightRequestsPerClient = maxInflightRequestsPerClient!!,
         httpVersion = httpVersion,
         requestObjectMapper = requestObjectMapper,
@@ -177,7 +200,7 @@ class VertxHttpJsonRpcClientFactory(
       )
     } else {
       create(
-        endpoint = endpoints.first(),
+        endpoint = endpoints.first().toURL(),
         httpVersion = httpVersion,
         requestObjectMapper = requestObjectMapper,
         responseObjectMapper = responseObjectMapper,

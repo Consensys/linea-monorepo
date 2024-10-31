@@ -19,6 +19,7 @@ dependencies {
   implementation "io.vertx:vertx-lang-kotlin"
   implementation "io.vertx:vertx-config"
   implementation "io.vertx:vertx-micrometer-metrics"
+  implementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
   implementation "info.picocli:picocli:${libs.versions.picoli.get()}"
   implementation "com.sksamuel.hoplite:hoplite-core:${libs.versions.hoplite.get()}"
   implementation "com.sksamuel.hoplite:hoplite-toml:${libs.versions.hoplite.get()}"

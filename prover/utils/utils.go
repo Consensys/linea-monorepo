@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"strconv"
 
 	"github.com/consensys/gnark/frontend"
 	"golang.org/x/exp/constraints"
@@ -20,6 +21,11 @@ import (
 // Return true if n is a power of two
 func IsPowerOfTwo[T ~int](n T) bool {
 	return n&(n-1) == 0 && n > 0
+}
+
+func Abs(a int) int {
+	mask := a >> (strconv.IntSize - 1) // made up of the sign bit
+	return (a ^ mask) - mask           // if mask is 0, then a ^ 0 - 0 = a. if mask is -1, then a ^ -1 - (-1) = -a - 1 - (-1) = -a
 }
 
 // DivCeil for int a, b

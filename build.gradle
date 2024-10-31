@@ -13,6 +13,10 @@ plugins {
 
 task compileAll
 
+// to allow to have unused vars/imports,etc for faster debugging/prototyping
+// instead of deleting and re-adding code all the time
+def allowCompilationWarnings = System.getenv('LINEA_DEV_ALLOW_WARNINGS') != null
+
 allprojects {
   repositories { mavenCentral() }
 
@@ -22,7 +26,7 @@ allprojects {
   tasks.withType(KotlinCompile).configureEach {
     compileAll.dependsOn it
     compilerOptions {
-      allWarningsAsErrors = true
+      allWarningsAsErrors = !allowCompilationWarnings
     }
   }
 
@@ -38,8 +42,12 @@ allprojects {
       '-Xlint:finally',
       '-Xlint:static',
       '-Xlint:deprecation',
-      '-Werror'
     ])
+    if (!allowCompilationWarnings) {
+      options.compilerArgs.addAll([
+        '-Werror'
+      ])
+    }
 
     if (!project.path.contains("testing-tools")) {
       // testing tools have 100+ errors because of this

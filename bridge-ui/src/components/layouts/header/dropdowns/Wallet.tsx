@@ -12,9 +12,7 @@ export function Wallet() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
 
-  const { fromChain } = useChainStore((state) => ({
-    fromChain: state.fromChain,
-  }));
+  const fromChain = useChainStore((state) => state.fromChain);
 
   const detailsRef = useRef<HTMLDetailsElement>(null);
 

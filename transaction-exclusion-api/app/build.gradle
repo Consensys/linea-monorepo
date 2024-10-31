@@ -29,11 +29,8 @@ dependencies {
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
 
-  implementation "org.hyperledger.besu:besu-datatypes:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu:evm:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}"
   implementation "org.hyperledger.besu.internal:core:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu.internal:crypto:${libs.versions.besu.get()}"
+  implementation "org.hyperledger.besu:plugin-api:${libs.versions.besu.get()}"
 
   api("io.netty:netty-transport-native-epoll:${libs.versions.netty.get()}:linux-x86_64") {
     because "It enables native transport for Linux."
@@ -108,5 +105,20 @@ task integrationTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
+    dependsOn(":localStackPostgresDbOnlyComposeUp")
+}
+
+task integrationTestAllNeeded {
+  description = "Runs integration tests of transaction-exclusion-api:app and that of all dependencies"
+  group = "verification"
+
+  def projectDependencies = configurations.implementation.getAllDependencies().withType(ProjectDependency)
+  def dependentProjects = projectDependencies.dependencyProject
+  dependentProjects.each { dependency ->
+    if (dependency.project.tasks.findByName("integrationTest")) {
+      def integrationTestTask = "${dependency.path}:integrationTest"
+      dependsOn integrationTestTask
+    }
+  }
+  dependsOn "integrationTest"
 }
