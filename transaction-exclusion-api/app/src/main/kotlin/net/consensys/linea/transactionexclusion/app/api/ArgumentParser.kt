@@ -38,7 +38,7 @@ object ArgumentParser {
       ).run {
         TransactionInfo(
           hash = this.hash.toArray(),
-          to = this.to.get().toArray(),
+          to = if (this.to.isPresent) this.to.get().toArray() else null,
           from = this.sender.toArray(),
           nonce = this.nonce.toULong()
         )
@@ -57,8 +57,8 @@ object ArgumentParser {
   }
 
   fun getReasonMessage(reasonMessage: String): String {
-    if (reasonMessage.length > 256) {
-      throw IllegalArgumentException("Reason message should not be more than 256 characters: $reasonMessage")
+    if (reasonMessage.length > 512) {
+      throw IllegalArgumentException("Reason message should not be more than 512 characters: $reasonMessage")
     }
     return reasonMessage
   }

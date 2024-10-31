@@ -217,15 +217,15 @@ class ArgumentParserTest {
   }
 
   @Test
-  fun getReasonMessage_should_throw_error_for_string_length_longer_than_256() {
-    // reason message string with more than 256 characters
+  fun getReasonMessage_should_throw_error_for_string_length_longer_than_512() {
+    // reason message string with more than 512 characters
     assertThrows<IllegalArgumentException> {
       ArgumentParser.getReasonMessage(
-        Random.Default.nextBytes(128).encodeHex(prefix = false) + "0"
+        Random.Default.nextBytes(256).encodeHex(prefix = false) + "0"
       )
     }.also { error ->
       Assertions.assertTrue(
-        error.message!!.contains("Reason message should not be more than 256 characters")
+        error.message!!.contains("Reason message should not be more than 512 characters")
       )
     }
   }
