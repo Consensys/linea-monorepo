@@ -9,20 +9,21 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.contract.Web3JLogsClient
-import net.consensys.linea.testing.submission.loadBlobsAndAggregations
+import net.consensys.linea.testing.submission.AggregationAndBlobs
+import net.consensys.linea.testing.submission.loadBlobsAndAggregationsSortedAndGrouped
+import net.consensys.linea.testing.submission.submitBlobsAndAggregations
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.Aggregation
-import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.Web3jClientManager
+import net.consensys.zkevm.ethereum.waitForTransactionExecution
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -37,8 +38,7 @@ class LineaSubmissionEventsClientIntTest {
   // We will upgrade the contract in the middle of 2nd aggregation: 12
   // shall submit blob 12, stop submission, upgrade the contract and resume with blob 13
   // val lastSubmittedBlobs = blobs.filter { it.startBlockNumber == 7UL }
-  private lateinit var aggregations: List<Aggregation>
-  private lateinit var blobs: List<BlobRecord>
+  private lateinit var aggregationsAndBlobs: List<AggregationAndBlobs>
   private lateinit var submissionEventsFetcher: LineaRollupSubmissionEventsClient
 
   private fun setupTest(
@@ -47,14 +47,10 @@ class LineaSubmissionEventsClientIntTest {
     val rollupDeploymentFuture = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6)
     // load files from FS while smc deploy
-    loadBlobsAndAggregations(
+    aggregationsAndBlobs = loadBlobsAndAggregationsSortedAndGrouped(
       blobsResponsesDir = "$testDataDir/compression/responses",
       aggregationsResponsesDir = "$testDataDir/aggregation/responses"
     )
-      .let { (blobs, aggregations) ->
-        this.blobs = blobs.sortedBy { it.startBlockNumber }
-        this.aggregations = aggregations.sortedBy { it.startBlockNumber }
-      }
     // wait smc deployment finishes
     val rollupDeploymentResult = rollupDeploymentFuture.get()
     contractClient = rollupDeploymentResult.rollupOperatorClient
@@ -103,35 +99,18 @@ class LineaSubmissionEventsClientIntTest {
     testContext: VertxTestContext
   ) {
     setupTest(vertx)
-    val aggregationsAndBlobs = groupBlobsToAggregations(aggregations, blobs)
 
-    val blobSubmissionFutures = aggregationsAndBlobs
-      .map { (_, aggBlobs) ->
-        val blobChunks = aggBlobs.chunked(6)
-        blobChunks.map { blobs -> contractClient.submitBlobs(blobs, gasPriceCaps = null) }
-      }
-
-    val finalizationFutures = aggregationsAndBlobs
-      .filter { it.aggregation != null }
-      .map { (aggregation, aggBlobs) ->
-        aggregation as Aggregation
-        val parentAgg = aggregations.find { it.endBlockNumber == aggregation.startBlockNumber - 1UL }
-        contractClient.finalizeBlocks(
-          aggregation = aggregation.aggregationProof!!,
-          aggregationLastBlob = aggBlobs.last(),
-          parentShnarf = aggBlobs.first().blobCompressionProof!!.prevShnarf,
-          parentL1RollingHash = parentAgg?.aggregationProof?.l1RollingHash ?: ByteArray(32),
-          parentL1RollingHashMessageNumber = parentAgg?.aggregationProof?.l1RollingHashMessageNumber ?: 0L,
-          gasPriceCaps = null
-        )
-      }
-    // wait for all blobs/aggregations to be submitted
-    val submissionTxHashes = SafeFuture.collectAll(
-      (blobSubmissionFutures.flatten() + finalizationFutures).stream()
-    ).get()
+    val submissionTxHashes = submitBlobsAndAggregations(
+      contractClient = contractClient,
+      aggregationsAndBlobs = aggregationsAndBlobs,
+      blobChunksSize = 6
+    )
 
     // wait for all finalizations Txs to be mined
-    waitTransactionExecution(submissionTxHashes.last(), 20.seconds)
+    Web3jClientManager.l1Client.waitForTransactionExecution(
+      submissionTxHashes.last(),
+      timeout = 20.seconds
+    )
 
     val expectedSubmissionEventsToFind: List<Pair<DataFinalizedV3, List<DataSubmittedV3>>> =
       getExpectedSubmissionEventsFromRecords(aggregationsAndBlobs)
@@ -153,16 +132,21 @@ class LineaSubmissionEventsClientIntTest {
           .isEqualTo(Pair(expectedFinalizationEvent, expectedDataSubmittedEvents))
       }
 
+    // non happy path
+    val invalidStartBlockNumber = expectedSubmissionEventsToFind.last().first.startBlockNumber + 1UL
+    assertThat(
+      submissionEventsFetcher
+        .findDataSubmittedV3EventsUtilNextFinalization(
+          l2StartBlockNumberInclusive = invalidStartBlockNumber
+        ).get()
+    )
+      .isNull()
+
     testContext.completeNow()
   }
 
-  data class BlobAggregationPair(
-    val aggregation: Aggregation?,
-    val blobs: List<BlobRecord>
-  )
-
   private fun getExpectedSubmissionEventsFromRecords(
-    aggregationsAndBlobs: List<BlobAggregationPair>
+    aggregationsAndBlobs: List<AggregationAndBlobs>
   ): List<Pair<DataFinalizedV3, List<DataSubmittedV3>>> {
     return aggregationsAndBlobs
       .filter { it.aggregation != null }
@@ -186,19 +170,5 @@ class LineaSubmissionEventsClientIntTest {
           finalStateRootHash = aggBlobs.last().blobCompressionProof!!.finalStateRootHash
         ) to expectedDataSubmittedEvents
       }
-  }
-
-  private fun groupBlobsToAggregations(
-    aggregations: List<Aggregation>,
-    blobs: List<BlobRecord>
-  ): List<BlobAggregationPair> {
-    val aggBlobs = aggregations.map { agg ->
-      BlobAggregationPair(agg, blobs.filter { it.startBlockNumber in agg.blocksRange })
-    }.sortedBy { it.aggregation!!.startBlockNumber }
-
-    val blobsWithoutAgg = blobs.filter { blob ->
-      aggBlobs.none { it.blobs.contains(blob) }
-    }
-    return aggBlobs + listOf(BlobAggregationPair(null, blobsWithoutAgg))
   }
 }
