@@ -1,6 +1,7 @@
 package public_input
 
 import (
+	"golang.org/x/crypto/sha3"
 	"hash"
 	"slices"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"golang.org/x/crypto/sha3"
 )
 
 // Aggregation collects all the field that are used to construct the public
@@ -89,7 +89,7 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 
 // GetPublicInputHex computes the public input of the finalization proof
 func (p Aggregation) GetPublicInputHex() string {
-	return utils.HexEncodeToString(p.Sum(sha3.NewLegacyKeccak256()))
+	return utils.HexEncodeToString(p.Sum(nil))
 }
 
 // AggregationFPI holds the same info as public_input.Aggregation, except in parsed form
@@ -160,8 +160,9 @@ type AggregationFPIQSnark struct {
 
 type AggregationFPISnark struct {
 	AggregationFPIQSnark
-	NbL2Messages         frontend.Variable // TODO not used in hash. delete if not necessary
-	L2MsgMerkleTreeRoots [][32]frontend.Variable
+	NbL2Messages           frontend.Variable // TODO not used in hash. delete if not necessary
+	L2MsgMerkleTreeRoots   [][32]frontend.Variable
+	NbL2MsgMerkleTreeRoots frontend.Variable
 	// FinalStateRootHash     frontend.Variable redundant: incorporated into final shnarf
 	FinalBlockNumber       frontend.Variable
 	FinalBlockTimestamp    frontend.Variable
@@ -222,7 +223,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 		utils.ToBytes(api, pi.InitialRollingHashNumber),
 		utils.ToBytes(api, pi.FinalRollingHashNumber),
 		utils.ToBytes(api, pi.L2MsgMerkleTreeDepth),
-		hash.Sum(nil, pi.L2MsgMerkleTreeRoots...),
+		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 	)
 
 	// turn the hash into a bn254 element
