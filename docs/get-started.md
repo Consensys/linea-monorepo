@@ -6,7 +6,7 @@
 - Docker v24 or higher
 - Docker Compose version v2.19+
 - Make v3.81+
-- Pnpm >=v9.1.1 (https://pnpm.io/installation)
+- Pnpm >=v9.12.2 (https://pnpm.io/installation)
 
 ### Run stack locally
 

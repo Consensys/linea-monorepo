@@ -2,15 +2,15 @@
 
 import { ToastContainer } from "react-toastify";
 import { Header } from "./header";
-import { useInitialiseChain, useInitialiseToken } from "@/hooks";
+import { useInitialiseChain } from "@/hooks";
 import Sidebar from "./Sidebar";
 import { useAccount } from "wagmi";
 import { linea, lineaSepolia, mainnet, sepolia } from "viem/chains";
 import WrongNetwork from "./WrongNetwork";
+import TermsModal from "../terms/TermsModal";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   useInitialiseChain();
-  useInitialiseToken();
 
   const { chainId } = useAccount();
 
@@ -26,6 +26,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         pauseOnFocusLoss={false}
         theme="dark"
       />
+      <TermsModal />
       <Sidebar />
       <div className="md:ml-64">
         <Header />
