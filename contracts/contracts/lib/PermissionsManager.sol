@@ -17,9 +17,7 @@ abstract contract PermissionsManager is Initializable, AccessControlUpgradeable,
    * @param _roleAddresses The list of addresses and roles to assign permissions to.
    */
   function __Permissions_init(RoleAddress[] calldata _roleAddresses) internal onlyInitializing {
-    uint256 roleAddressesLength = _roleAddresses.length;
-
-    for (uint256 i; i < roleAddressesLength; i++) {
+    for (uint256 i; i < _roleAddresses.length; i++) {
       if (_roleAddresses[i].addressWithRole == address(0)) {
         revert ZeroAddressNotAllowed();
       }

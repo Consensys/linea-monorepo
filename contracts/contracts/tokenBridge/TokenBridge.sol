@@ -143,7 +143,9 @@ contract TokenBridge is
     unchecked {
       for (uint256 i; i < _initializationData.reservedTokens.length; ) {
         if (_initializationData.reservedTokens[i] == EMPTY) revert ZeroAddressNotAllowed();
-        nativeToBridgedToken[sourceChainId][_initializationData.reservedTokens[i]] = RESERVED_STATUS;
+        nativeToBridgedToken[_initializationData.sourceChainId][
+          _initializationData.reservedTokens[i]
+        ] = RESERVED_STATUS;
         emit TokenReserved(_initializationData.reservedTokens[i]);
         ++i;
       }
@@ -366,8 +368,9 @@ contract TokenBridge is
    */
   function setDeployed(address[] calldata _nativeTokens) external onlyMessagingService onlyAuthorizedRemoteSender {
     unchecked {
+      uint256 cachedSourceChainId = sourceChainId;
       for (uint256 i; i < _nativeTokens.length; ) {
-        nativeToBridgedToken[sourceChainId][_nativeTokens[i]] = DEPLOYED_STATUS;
+        nativeToBridgedToken[cachedSourceChainId][_nativeTokens[i]] = DEPLOYED_STATUS;
         emit TokenDeployed(_nativeTokens[i]);
         ++i;
       }
@@ -481,25 +484,28 @@ contract TokenBridge is
   /**
    * @dev Provides a safe ERC20.name version which returns 'NO_NAME' as fallback string.
    * @param _token The address of the ERC-20 token contract
+   * @return tokenName Returns the string of the token name.
    */
-  function _safeName(address _token) internal view returns (string memory) {
+  function _safeName(address _token) internal view returns (string memory tokenName) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_NAME);
-    return success ? _returnDataToString(data) : "NO_NAME";
+    tokenName = success ? _returnDataToString(data) : "NO_NAME";
   }
 
   /**
    * @dev Provides a safe ERC20.symbol version which returns 'NO_SYMBOL' as fallback string
    * @param _token The address of the ERC-20 token contract
+   * @return symbol Returns the string of the symbol.
    */
-  function _safeSymbol(address _token) internal view returns (string memory) {
+  function _safeSymbol(address _token) internal view returns (string memory symbol) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_SYMBOL);
-    return success ? _returnDataToString(data) : "NO_SYMBOL";
+    symbol = success ? _returnDataToString(data) : "NO_SYMBOL";
   }
 
   /**
    * @notice Provides a safe ERC20.decimals version which reverts when decimals are unknown
    *   Note Tokens with (decimals > 255) are not supported
    * @param _token The address of the ERC-20 token contract
+   * @return Returns the token's decimals value.
    */
   function _safeDecimals(address _token) internal view returns (uint8) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_DECIMALS);
@@ -513,9 +519,10 @@ contract TokenBridge is
 
   /**
    * @dev Converts returned data to string. Returns 'NOT_VALID_ENCODING' as fallback value.
-   * @param _data returned data
+   * @param _data returned data.
+   * @return decodedString The decoded string data.
    */
-  function _returnDataToString(bytes memory _data) internal pure returns (string memory) {
+  function _returnDataToString(bytes memory _data) internal pure returns (string memory decodedString) {
     if (_data.length >= 64) {
       return abi.decode(_data, (string));
     } else if (_data.length != 32) {
@@ -542,7 +549,7 @@ contract TokenBridge is
         ++i;
       }
     }
-    return string(bytesArray);
+    decodedString = string(bytesArray);
   }
 
   /**

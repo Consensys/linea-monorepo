@@ -48,7 +48,7 @@ interface IL1MessageManager {
   /**
    * @notice Checks if the L2->L1 message is claimed or not.
    * @param _messageNumber The message number on L2.
-   * @return Bool indicating claimed or not.
+   * @return isClaimed Returns whether or not the message with _messageNumber has been claimed.
    */
-  function isMessageClaimed(uint256 _messageNumber) external view returns (bool);
+  function isMessageClaimed(uint256 _messageNumber) external view returns (bool isClaimed);
 }

@@ -29,14 +29,16 @@ library SparseMerkleTreeVerifier {
    * @param _leafIndex Index of the leaf.
    * @param _root Merkle root.
    * @dev The depth of the tree is expected to be validated elsewhere beforehand.
+   * @return proofIsValid Returns if the proof is valid or not.
    */
   function _verifyMerkleProof(
     bytes32 _leafHash,
     bytes32[] calldata _proof,
     uint32 _leafIndex,
     bytes32 _root
-  ) internal pure returns (bool) {
+  ) internal pure returns (bool proofIsValid) {
     uint32 maxAllowedIndex = safeCastToUint32((2 ** _proof.length) - 1);
+
     if (_leafIndex > maxAllowedIndex) {
       revert LeafIndexOutOfBounds(_leafIndex, maxAllowedIndex);
     }
@@ -50,7 +52,7 @@ library SparseMerkleTreeVerifier {
         node = Utils._efficientKeccak(node, _proof[height]);
       }
     }
-    return node == _root;
+    proofIsValid = node == _root;
   }
 
   /**
