@@ -7,7 +7,6 @@ import {
   DEFAULT_ADMIN_ROLE,
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
-  INITIALIZED_ERROR_MESSAGE,
   L1_L2_MESSAGE_SETTER_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
@@ -46,12 +45,11 @@ describe("L2MessageManager", () => {
   });
 
   describe("Initialization checks", () => {
-    it("Deployer has default admin role", async () => {
+    it("Deployer has DEFAULT_ADMIN_ROLE", async () => {
       expect(await l2MessageManager.hasRole(DEFAULT_ADMIN_ROLE, admin.address)).to.be.true;
     });
-
-    it("It should fail when not initializing", async () => {
-      await expectRevertWithReason(l2MessageManager.tryInitialize(admin.address), INITIALIZED_ERROR_MESSAGE);
+    it("l1l2MessageSetter has L1_L2_MESSAGE_SETTER_ROLE", async () => {
+      expect(await l2MessageManager.hasRole(L1_L2_MESSAGE_SETTER_ROLE, l1l2MessageSetter.address)).to.be.true;
     });
   });
 
