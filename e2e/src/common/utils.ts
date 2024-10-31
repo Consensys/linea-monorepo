@@ -3,7 +3,7 @@ import assert from "assert";
 import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
-import { L2MessageService, LineaRollupV5 } from "../typechain";
+import { L2MessageService, TokenBridge, LineaRollupV5 } from "../typechain";
 import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
 
@@ -147,7 +147,10 @@ export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag
   }
 }
 
-export async function getEvents<TContract extends LineaRollupV5 | L2MessageService, TEvent extends TypedContractEvent>(
+export async function getEvents<
+  TContract extends LineaRollupV5 | L2MessageService | TokenBridge,
+  TEvent extends TypedContractEvent,
+>(
   contract: TContract,
   eventFilter: TypedDeferredTopicFilter<TEvent>,
   fromBlock?: BlockTag,
@@ -168,7 +171,7 @@ export async function getEvents<TContract extends LineaRollupV5 | L2MessageServi
 }
 
 export async function waitForEvents<
-  TContract extends LineaRollupV5 | L2MessageService,
+  TContract extends LineaRollupV5 | L2MessageService | TokenBridge,
   TEvent extends TypedContractEvent,
 >(
   contract: TContract,
