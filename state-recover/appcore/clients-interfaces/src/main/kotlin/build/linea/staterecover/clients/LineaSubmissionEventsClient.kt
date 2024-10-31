@@ -58,7 +58,7 @@ data class DataSubmittedV3(
 data class DataFinalizedV3(
   override val startBlockNumber: ULong,
   override val endBlockNumber: ULong,
-  val snarf: ByteArray,
+  val shnarf: ByteArray,
   val parentStateRootHash: ByteArray,
   val finalStateRootHash: ByteArray
 ) : BlockInterval {
@@ -76,7 +76,7 @@ data class DataFinalizedV3(
         event = DataFinalizedV3(
           startBlockNumber = ethLog.topics[1].toULongFromLast8Bytes(),
           endBlockNumber = ethLog.topics[2].toULongFromLast8Bytes(),
-          snarf = ethLog.topics[3],
+          shnarf = ethLog.topics[3],
           parentStateRootHash = dataBytes.sliceOf32(sliceNumber = 0),
           finalStateRootHash = dataBytes.sliceOf32(sliceNumber = 1)
         ),
@@ -93,7 +93,7 @@ data class DataFinalizedV3(
 
     if (startBlockNumber != other.startBlockNumber) return false
     if (endBlockNumber != other.endBlockNumber) return false
-    if (!snarf.contentEquals(other.snarf)) return false
+    if (!shnarf.contentEquals(other.shnarf)) return false
     if (!parentStateRootHash.contentEquals(other.parentStateRootHash)) return false
     if (!finalStateRootHash.contentEquals(other.finalStateRootHash)) return false
 
@@ -103,7 +103,7 @@ data class DataFinalizedV3(
   override fun hashCode(): Int {
     var result = startBlockNumber.hashCode()
     result = 31 * result + endBlockNumber.hashCode()
-    result = 31 * result + snarf.contentHashCode()
+    result = 31 * result + shnarf.contentHashCode()
     result = 31 * result + parentStateRootHash.contentHashCode()
     result = 31 * result + finalStateRootHash.contentHashCode()
     return result
@@ -113,7 +113,7 @@ data class DataFinalizedV3(
     return "DataFinalizedV3(" +
       "startBlockNumber=$startBlockNumber, " +
       "endBlockNumber=$endBlockNumber, " +
-      "snarf=${snarf.encodeHex()}, " +
+      "snarf=${shnarf.encodeHex()}, " +
       "parentStateRootHash=${parentStateRootHash.encodeHex()}, " +
       "finalStateRootHash=${finalStateRootHash.encodeHex()})"
   }
@@ -126,18 +126,14 @@ data class FinalizationAndDataEventsV3(
 
 interface LineaRollupSubmissionEventsClient {
   fun findDataFinalizedEventByStartBlockNumber(
-    blockNumber: ULong
+    l2BlockNumber: ULong
   ): SafeFuture<EthLogEvent<DataFinalizedV3>?>
-
-//  fun findDataFinalizedEventByEndBlockNumber(
-//    blockNumber: ULong
-//  ): SafeFuture<EthLogEvent<DataFinalizedV3>?>
 
   fun findDataFinalizedEventContainingBlock(
-    blockNumber: ULong
+    l2BlockNumber: ULong
   ): SafeFuture<EthLogEvent<DataFinalizedV3>?>
 
-  fun findDataSubmittedV3EventsUtilNextFinalization(
+  fun findDataSubmittedV3EventsUntilNextFinalization(
     l2StartBlockNumberInclusive: ULong
   ): SafeFuture<FinalizationAndDataEventsV3?>
 }

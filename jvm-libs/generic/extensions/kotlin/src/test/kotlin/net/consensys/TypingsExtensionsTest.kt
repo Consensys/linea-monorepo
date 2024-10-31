@@ -23,7 +23,7 @@ class TypingsExtensionsTest {
   }
 
   @Test
-  fun `toHexStringPaddedToBitSize_shouldPathToDesireNumberOfBitsWhenItFits`() {
+  fun `toHexStringPaddedToBitSize_shouldPadToDesireNumberOfBitsWhenItFits`() {
     assertThat(0.toULong().toHexStringPaddedToBitSize(4)).isEqualTo("0x0")
     assertThat(0.toULong().toHexStringPaddedToBitSize(8)).isEqualTo("0x00")
     assertThat(1.toULong().toHexStringPaddedToBitSize(4)).isEqualTo("0x1")
@@ -37,21 +37,21 @@ class TypingsExtensionsTest {
   }
 
   @Test
-  fun `toHexStringPaddedToBitSize_shouldThrowErrorWhenBitSizeIsMultipleOf4`() {
+  fun `toHexStringPaddedToBitSize_shouldThrowErrorWhenBitSizeIsNotMultipleOf4`() {
     assertThatThrownBy { 2.toULong().toHexStringPaddedToBitSize(9) }
       .isInstanceOf(IllegalArgumentException::class.java)
       .hasMessage("targetBitSize=9 should be a multiple of 4")
   }
 
   @Test
-  fun `toHexStringPaddedToBitSize_shouldThrowErrorWhenNumberDoesFitWithTargetNumberOfBits`() {
+  fun `toHexStringPaddedToBitSize_shouldThrowErrorWhenNumberDoesNotFitWithTargetNumberOfBits`() {
     assertThatThrownBy { 256.toULong().toHexStringPaddedToBitSize(8) }
       .isInstanceOf(IllegalArgumentException::class.java)
       .hasMessage("Number 256 needs 3 hex digits (12 bits), targetBitSize=8")
   }
 
   @Test
-  fun `toHexStringPaddedToByteSize_shouldPathToDesireNumberOfBitsWhenItFits`() {
+  fun `toHexStringPaddedToByteSize_shouldPadToDesireNumberOfBitsWhenItFits`() {
     assertThat(0.toULong().toHexStringPaddedToByteSize(1)).isEqualTo("0x00")
     assertThat(1.toULong().toHexStringPaddedToByteSize(1)).isEqualTo("0x01")
     assertThat(2.toULong().toHexStringPaddedToByteSize(3)).isEqualTo("0x000002")
@@ -63,14 +63,14 @@ class TypingsExtensionsTest {
   }
 
   @Test
-  fun `toHexStringPaddedToByteSize_shouldThrowErrorWhenNumberDoesFitWithTargetNumber`() {
+  fun `toHexStringPaddedToByteSize_shouldThrowErrorWhenNumberDoesNotFitWithTargetNumber`() {
     assertThatThrownBy { 256.toULong().toHexStringPaddedToByteSize(1) }
       .isInstanceOf(IllegalArgumentException::class.java)
       .hasMessage("Number 256 needs 3 hex digits (12 bits), targetBitSize=8")
   }
 
   @Test
-  fun `toHexStringUInt256_shouldPathTo256Bit`() {
+  fun `toHexStringUInt256_shouldPadTo256Bit`() {
     assertThat(0.toULong().toHexStringUInt256()).isEqualTo("0x" + "0".repeat(64))
     assertThat(15.toULong().toHexStringUInt256()).isEqualTo("0x" + "0".repeat(63) + "f")
   }

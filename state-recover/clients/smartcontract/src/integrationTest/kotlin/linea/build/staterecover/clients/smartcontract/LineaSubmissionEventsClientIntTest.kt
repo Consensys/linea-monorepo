@@ -21,11 +21,9 @@ import net.consensys.zkevm.ethereum.waitForTransactionExecution
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.util.concurrent.TimeUnit
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
@@ -74,17 +72,6 @@ class LineaSubmissionEventsClientIntTest {
     )
   }
 
-  private fun waitTransactionExecution(txHash: String, timeout: Duration = 5.seconds) {
-    await()
-      .atMost(timeout.toJavaDuration())
-      .untilAsserted {
-        val receipt =
-          Web3jClientManager.l1Client
-            .ethGetTransactionReceipt(txHash).send().transactionReceipt
-        assertThat(receipt.isPresent).isTrue()
-      }
-  }
-
   @Test
   @Timeout(3, timeUnit = TimeUnit.MINUTES)
   fun `submission works with contract V6`(
@@ -119,7 +106,7 @@ class LineaSubmissionEventsClientIntTest {
       .forEach { (expectedFinalizationEvent, expectedDataSubmittedEvents) ->
         assertThat(
           submissionEventsFetcher
-            .findDataSubmittedV3EventsUtilNextFinalization(
+            .findDataSubmittedV3EventsUntilNextFinalization(
               l2StartBlockNumberInclusive = expectedFinalizationEvent.startBlockNumber
             )
         )
@@ -136,7 +123,7 @@ class LineaSubmissionEventsClientIntTest {
     val invalidStartBlockNumber = expectedSubmissionEventsToFind.last().first.startBlockNumber + 1UL
     assertThat(
       submissionEventsFetcher
-        .findDataSubmittedV3EventsUtilNextFinalization(
+        .findDataSubmittedV3EventsUntilNextFinalization(
           l2StartBlockNumberInclusive = invalidStartBlockNumber
         ).get()
     )
@@ -165,7 +152,7 @@ class LineaSubmissionEventsClientIntTest {
         DataFinalizedV3(
           startBlockNumber = aggregation.startBlockNumber,
           endBlockNumber = aggregation.endBlockNumber,
-          snarf = aggBlobs.last().expectedShnarf,
+          shnarf = aggBlobs.last().expectedShnarf,
           parentStateRootHash = aggBlobs.first().blobCompressionProof!!.parentStateRootHash,
           finalStateRootHash = aggBlobs.last().blobCompressionProof!!.finalStateRootHash
         ) to expectedDataSubmittedEvents

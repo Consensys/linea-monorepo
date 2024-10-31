@@ -24,20 +24,22 @@ class LineaSubmissionEventsClientWeb3jIpml(
   private val mostRecentBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED
 ) : LineaRollupSubmissionEventsClient {
 
-  override fun findDataFinalizedEventContainingBlock(blockNumber: ULong): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
+  override fun findDataFinalizedEventContainingBlock(l2BlockNumber: ULong): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
     TODO("Not yet implemented")
   }
 
-  override fun findDataFinalizedEventByStartBlockNumber(blockNumber: ULong): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
+  override fun findDataFinalizedEventByStartBlockNumber(
+    l2BlockNumber: ULong
+  ): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
     // TODO: be less eager on block range to search
     return findDataFinalizedV3Event(
       fromL1BlockNumber = BlockParameter.Tag.EARLIEST,
       toL1BlockNumber = mostRecentBlockTag,
-      startBlockNumber = blockNumber
+      startBlockNumber = l2BlockNumber
     )
   }
 
-  override fun findDataSubmittedV3EventsUtilNextFinalization(
+  override fun findDataSubmittedV3EventsUntilNextFinalization(
     l2StartBlockNumberInclusive: ULong
   ): SafeFuture<FinalizationAndDataEventsV3?> {
     return findDataFinalizedV3Event(
@@ -113,8 +115,8 @@ class LineaSubmissionEventsClientWeb3jIpml(
         dataSubmission == null ||
         dataSubmission.event.finalStateRootHash.contentEquals(finalizationEvent.event.parentStateRootHash)
       ) {
-        // dataSubmission == null
-        // means that DataFinalizedV3 event is the first in the chain
+        // if dataSubmission == null
+        // means there is no parent event so we are done.
         futureResult.complete(dataEvents)
       } else {
         // adding to the head of the list so client gets the events in the order of submission
@@ -130,7 +132,7 @@ class LineaSubmissionEventsClientWeb3jIpml(
     getDataSubmittedV3EventByShnarf(
       fromL1BlockParameter = BlockParameter.Tag.EARLIEST,
       tol1BlockParameter = finalizationEvent.log.blockNumber.toLong().toBlockParameter(),
-      shnarf = finalizationEvent.event.snarf
+      shnarf = finalizationEvent.event.shnarf
     ).thenPeek(::fetchParentDataSubmission)
 
     return futureResult
