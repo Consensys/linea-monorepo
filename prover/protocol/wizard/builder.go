@@ -21,12 +21,6 @@ In particular, Builder provides the utilities to
   - Declare columns
   - Declare random coins
   - Declare queries
-
-Deprecated: @alex: we should deprecate this and directly embed the "round"
-tracking capability within the [CompiledIOP] struct. The round-tracking
-mechanism does not allow for a smooth way to decompose the user's protocol into
-sub-protocols that spans on multiple rounds efficiently as a new round will be
-created everytime the user declares a new Coin.
 */
 type Builder struct {
 	*CompiledIOP
