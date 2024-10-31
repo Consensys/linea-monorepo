@@ -36,7 +36,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 50_000,
+            runs: 10_000,
           },
           evmVersion: "cancun",
         },
@@ -47,7 +47,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 50_000,
+            runs: 10_000,
           },
           evmVersion: "cancun",
         },
@@ -58,7 +58,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 50_000,
+            runs: 10_000,
           },
           evmVersion: "cancun",
         },
@@ -69,7 +69,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 50_000,
+            runs: 10_000,
           },
           evmVersion: "london",
         },
