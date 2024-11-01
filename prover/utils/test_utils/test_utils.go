@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/consensys/gnark/frontend"
+	snarkHash "github.com/consensys/gnark/std/hash"
 	"hash"
 	"io"
 	"math"
@@ -220,22 +222,10 @@ type ReaderHash struct {
 }
 
 func (r *ReaderHash) Write(p []byte) (n int, err error) {
-	if len(p) >= 65535 {
-		panic("ReaderHash.Write: too large")
+	if rd := hashReadWrite(r.r); !bytes.Equal(rd, p) {
+		panic(fmt.Errorf("ReaderHash.Write: mismatch %x≠%x", rd, p))
 	}
 
-	var ls [2]byte
-	if _, err = r.r.Read(ls[:]); err != nil {
-		panic(err)
-	}
-
-	buf := make([]byte, int(ls[0])*256+int(ls[1]))
-	if _, err = r.r.Read(buf); err != nil {
-		panic(err)
-	}
-	if !bytes.Equal(buf, p) {
-		panic(fmt.Errorf("ReaderHash.Write: mismatch %x≠%x", buf, p))
-	}
 	return r.h.Write(p)
 }
 
@@ -247,14 +237,36 @@ func (r *ReaderHash) Sum(b []byte) []byte {
 }
 
 func (r *ReaderHash) Reset() {
+	hashReadReset(r.r)
+	r.h.Reset()
+}
+
+func hashReadWrite(r io.Reader) []byte {
+
 	var ls [2]byte
-	if _, err := r.r.Read(ls[:]); err != nil {
+	if _, err := r.Read(ls[:]); err != nil {
+		panic(err)
+	}
+
+	buf := make([]byte, int(ls[0])*256+int(ls[1]))
+	if len(buf) == 65535 {
+		panic("ReaderHash.Write: Reset expected")
+	}
+	if _, err := r.Read(buf); err != nil {
+		panic(err)
+	}
+
+	return buf
+}
+
+func hashReadReset(r io.Reader) {
+	var ls [2]byte
+	if _, err := r.Read(ls[:]); err != nil {
 		panic(err)
 	}
 	if ls[0] != 255 || ls[1] != 255 {
 		panic(fmt.Errorf("ReaderHash.Reset: unexpected %x", ls))
 	}
-	r.h.Reset()
 }
 
 func (r *ReaderHash) Size() int {
@@ -277,6 +289,52 @@ func NewReaderHashFromFile(h hash.Hash, path string) *ReaderHash {
 }
 
 func (r *ReaderHash) CloseFile() {
+	if err := r.r.(*os.File).Close(); err != nil {
+		panic(err)
+	}
+}
+
+// ReaderHashSnark is a wrapper around a FieldHasher that matches all writes with its input stream.
+type ReaderHashSnark struct {
+	h   snarkHash.FieldHasher
+	r   io.Reader
+	api frontend.API
+}
+
+func NewReaderHashSnarkFromFile(api frontend.API, h snarkHash.FieldHasher, path string) snarkHash.FieldHasher {
+	r, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	return &ReaderHashSnark{
+		h:   h,
+		r:   r,
+		api: api,
+	}
+}
+
+func (r *ReaderHashSnark) Sum() frontend.Variable {
+	return r.h.Sum()
+}
+
+func (r *ReaderHashSnark) Write(data ...frontend.Variable) {
+	r.h.Write(data...)
+	for len(data) != 0 {
+		buf := hashReadWrite(r.r)
+		for len(buf) != 0 {
+			n := min(len(buf), (r.api.Compiler().FieldBitLen()+7)/8)
+			r.api.AssertIsEqual(data[0], buf[:n])
+			buf = buf[n:]
+			data = data[1:]
+		}
+	}
+}
+
+func (r *ReaderHashSnark) Reset() {
+	r.h.Reset()
+}
+
+func (r *ReaderHashSnark) CloseFile() {
 	if err := r.r.(*os.File).Close(); err != nil {
 		panic(err)
 	}

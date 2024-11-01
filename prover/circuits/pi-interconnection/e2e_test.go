@@ -3,11 +3,8 @@
 package pi_interconnection_test
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/backend/execution"
-	"github.com/stretchr/testify/require"
 	"slices"
 	"testing"
 
@@ -259,26 +256,4 @@ func decomposeLittleEndian(t *testing.T, digits []int, n, base int) {
 		n /= base
 	}
 	assert.Zero(t, n)
-}
-
-// TODO @Tabaie remove this
-func TestHollowExec(t *testing.T) {
-	var r execution.Response
-	require.NoError(t, utils.ReadFromJSON("/Users/arya/Desktop/4454961-4455038-getZkProof.json", &r))
-	r.Proof = ""
-	for i := range r.BlocksData {
-		r.BlocksData[i].FromAddresses = nil
-		r.BlocksData[i].RlpEncodedTransactions = nil
-		r.BlocksData[i].BatchReceptionIndices = nil
-	}
-	require.NoError(t, utils.WriteToJSON("/Users/arya/Desktop/4454961-4455038-getZkProof-stripped.json", &r))
-	assert.True(t, bytes.Equal(r.PublicInput[:], r.FuncInput().Sum()))
-}
-
-func TestSmallExec(t *testing.T) {
-	var r execution.Response
-	require.NoError(t, utils.ReadFromJSON("/Users/arya/Desktop/4454961-4455038-getZkProof-stripped.json", &r))
-	r.BlocksData = r.BlocksData[:1]
-	copy(r.PublicInput[:], r.FuncInput().Sum())
-	require.NoError(t, utils.WriteToJSON("/Users/arya/Desktop/4454961-4454962-getZkProof.json", &r))
 }
