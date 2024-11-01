@@ -38,7 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log(`Contract deployed at ${contract}`);
 
   // The encoding should be used through the safe.
-  // THIS IS JUST A SAMPLE AND WILL BE ADJUSTED WHEN NEEDED
+  // THIS IS JUST A SAMPLE AND WILL BE ADJUSTED WHEN NEEDED FOR GENERATING THE CALLDATA FOR THE UPGRADE CALL
   const upgradeCallWithReinitializationUsingSecurityCouncil = ethers.concat([
     "0x9623609d",
     ethers.AbiCoder.defaultAbiCoder().encode(
