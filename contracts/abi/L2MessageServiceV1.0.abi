@@ -975,7 +975,7 @@
     "outputs": [
       {
         "internalType": "bool",
-        "name": "",
+        "name": "pauseTypeIsPaused",
         "type": "bool"
       }
     ],
@@ -1242,7 +1242,7 @@
     "outputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "originalSender",
         "type": "address"
       }
     ],

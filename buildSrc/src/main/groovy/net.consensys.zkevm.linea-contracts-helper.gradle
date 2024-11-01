@@ -1,17 +1,5 @@
 import java.util.concurrent.TimeUnit
 
-if (!rootProject.tasks.getNames().contains("compileContracts")) {
-  rootProject.tasks.register("compileContracts") {
-    description = "Compiles contracts."
-    inputs.dir("$rootDir/contracts/contracts")
-    outputs.cacheIf { true }
-
-    doLast {
-      runRootMakefileCommand("compile-contracts", Map.of())
-    }
-  }
-}
-
 def runRootMakefileCommand(String command, Map<String, String> env) {
   def randomSuffix = UUID.randomUUID().toString()
   File outputFile = file("${command.replace(" ", "-")}-run-output-${randomSuffix}.txt")

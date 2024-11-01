@@ -14,6 +14,8 @@ import { Utils } from "../../lib/Utils.sol";
 abstract contract L2MessageManager is AccessControlUpgradeable, IL2MessageManager, L2MessageManagerV1 {
   using Utils for *;
 
+  bytes32 public constant L1_L2_MESSAGE_SETTER_ROLE = keccak256("L1_L2_MESSAGE_SETTER_ROLE");
+
   uint256 public lastAnchoredL1MessageNumber;
   mapping(uint256 messageNumber => bytes32 rollingHash) public l1RollingHashes;
 
@@ -38,14 +40,12 @@ abstract contract L2MessageManager is AccessControlUpgradeable, IL2MessageManage
     uint256 _finalMessageNumber,
     bytes32 _finalRollingHash
   ) external whenTypeNotPaused(PauseType.GENERAL) onlyRole(L1_L2_MESSAGE_SETTER_ROLE) {
-    uint256 messageHashesLength = _messageHashes.length;
-
-    if (messageHashesLength == 0) {
+    if (_messageHashes.length == 0) {
       revert MessageHashesListLengthIsZero();
     }
 
-    if (messageHashesLength > 100) {
-      revert MessageHashesListLengthHigherThanOneHundred(messageHashesLength);
+    if (_messageHashes.length > 100) {
+      revert MessageHashesListLengthHigherThanOneHundred(_messageHashes.length);
     }
 
     if (_finalRollingHash == 0x0) {
@@ -61,7 +61,7 @@ abstract contract L2MessageManager is AccessControlUpgradeable, IL2MessageManage
     bytes32 rollingHash = l1RollingHashes[currentL1MessageNumber];
 
     bytes32 messageHash;
-    for (uint256 i; i < messageHashesLength; ++i) {
+    for (uint256 i; i < _messageHashes.length; ++i) {
       messageHash = _messageHashes[i];
       if (inboxL1L2MessageStatus[messageHash] == INBOX_STATUS_UNKNOWN) {
         inboxL1L2MessageStatus[messageHash] = INBOX_STATUS_RECEIVED;

@@ -9,12 +9,13 @@ describe("Transaction exclusion test suite", () => {
   it.concurrent(
     "Should get the status of the rejected transaction reported from Besu RPC node",
     async () => {
-      expect(config.getTransactionExclusionEndpoint()).toBeDefined();
+      const transactionExclusionEndpoint = config.getTransactionExclusionEndpoint();
+      expect(transactionExclusionEndpoint).toBeDefined();
 
-      const transactionExclusionClient = new TransactionExclusionClient(config.getTransactionExclusionEndpoint()!!);
+      const transactionExclusionClient = new TransactionExclusionClient(transactionExclusionEndpoint!);
       const l2Account = await l2AccountManager.generateAccount();
-      const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2BesuNodeProvider()!!);
-      const testContract = config.getL2TestContract(l2AccountLocal)!!;
+      const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2BesuNodeProvider()!);
+      const testContract = config.getL2TestContract(l2AccountLocal)!;
 
       // This shall be rejected by the Besu node due to traces module limit overflow
       let rejectedTxHash;
@@ -51,13 +52,13 @@ describe("Transaction exclusion test suite", () => {
   it.skip("Should get the status of the rejected transaction reported from Besu SEQUENCER node", async () => {
     expect(config.getTransactionExclusionEndpoint()).toBeDefined();
 
-    const transactionExclusionClient = new TransactionExclusionClient(config.getTransactionExclusionEndpoint()!!);
+    const transactionExclusionClient = new TransactionExclusionClient(config.getTransactionExclusionEndpoint()!);
     const l2Account = await l2AccountManager.generateAccount();
-    const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2SequencerProvider()!!);
+    const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2SequencerProvider()!);
     const testContract = config.getL2TestContract(l2AccountLocal);
 
     // This shall be rejected by sequencer due to traces module limit overflow
-    const tx = await testContract!!.connect(l2AccountLocal).testAddmod(13000, 31);
+    const tx = await testContract!.connect(l2AccountLocal).testAddmod(13000, 31);
     const rejectedTxHash = tx.hash;
     console.log(`rejectedTxHash (SEQUENCER): ${rejectedTxHash}`);
 

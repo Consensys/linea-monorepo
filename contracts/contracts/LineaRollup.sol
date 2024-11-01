@@ -214,14 +214,26 @@ contract LineaRollup is
     bytes32 _parentShnarf,
     bytes32 _finalBlobShnarf
   ) external whenTypeAndGeneralNotPaused(PauseType.BLOB_SUBMISSION) onlyRole(OPERATOR_ROLE) {
-    uint256 blobSubmissionLength = _blobSubmissions.length;
-
-    if (blobSubmissionLength == 0) {
+    if (_blobSubmissions.length == 0) {
       revert BlobSubmissionDataIsMissing();
     }
 
-    if (blobhash(blobSubmissionLength) != EMPTY_HASH) {
-      revert BlobSubmissionDataEmpty(blobSubmissionLength);
+    if (blobhash(_blobSubmissions.length) != EMPTY_HASH) {
+      revert BlobSubmissionDataEmpty(_blobSubmissions.length);
+    }
+
+    if (blobShnarfExists[_parentShnarf] == 0) {
+      revert ParentBlobNotSubmitted(_parentShnarf);
+    }
+
+    /**
+     * @dev validate we haven't submitted the last shnarf. There is a final check at the end of the function verifying,
+     * that _finalBlobShnarf was computed correctly.
+     * Note: As only the last shnarf is stored, we don't need to validate shnarfs,
+     * computed for any previous blobs in the submission (if multiple are submitted).
+     */
+    if (blobShnarfExists[_finalBlobShnarf] != 0) {
+      revert DataAlreadySubmitted(_finalBlobShnarf);
     }
 
     bytes32 currentDataEvaluationPoint;
@@ -230,13 +242,9 @@ contract LineaRollup is
     /// @dev Assigning in memory saves a lot of gas vs. calldata reading.
     BlobSubmission memory blobSubmission;
 
-    if (blobShnarfExists[_parentShnarf] == 0) {
-      revert ParentBlobNotSubmitted(_parentShnarf);
-    }
-
     bytes32 computedShnarf = _parentShnarf;
 
-    for (uint256 i; i < blobSubmissionLength; i++) {
+    for (uint256 i; i < _blobSubmissions.length; i++) {
       blobSubmission = _blobSubmissions[i];
 
       currentDataHash = blobhash(i);
@@ -270,15 +278,6 @@ contract LineaRollup is
       revert FinalShnarfWrong(_finalBlobShnarf, computedShnarf);
     }
 
-    /**
-     * @dev validate we haven't submitted the last shnarf.
-     * Note: As only the last shnarf is stored, we don't need to validate shnarfs,
-     * computed for any previous blobs in the submission (if multiple are submitted).
-     */
-    if (blobShnarfExists[computedShnarf] != 0) {
-      revert DataAlreadySubmitted(computedShnarf);
-    }
-
     /// @dev use the last shnarf as the submission to store as technically it becomes the next parent shnarf.
     blobShnarfExists[computedShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
 
@@ -301,6 +300,14 @@ contract LineaRollup is
       revert EmptySubmissionData();
     }
 
+    if (blobShnarfExists[_expectedShnarf] != 0) {
+      revert DataAlreadySubmitted(_expectedShnarf);
+    }
+
+    if (blobShnarfExists[_parentShnarf] == 0) {
+      revert ParentBlobNotSubmitted(_parentShnarf);
+    }
+
     bytes32 currentDataHash = keccak256(_submission.compressedData);
 
     bytes32 dataEvaluationPoint = Utils._efficientKeccak(_submission.snarkHash, currentDataHash);
@@ -315,10 +322,6 @@ contract LineaRollup is
 
     if (_expectedShnarf != computedShnarf) {
       revert FinalShnarfWrong(_expectedShnarf, computedShnarf);
-    }
-
-    if (blobShnarfExists[computedShnarf] != 0) {
-      revert DataAlreadySubmitted(computedShnarf);
     }
 
     blobShnarfExists[computedShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
@@ -441,6 +444,7 @@ contract LineaRollup is
 
     /// @dev currentFinalizedShnarf is updated in _finalizeBlocks and lastFinalizedShnarf MUST be set beforehand for the transition.
     bytes32 lastFinalizedShnarf = currentFinalizedShnarf;
+
     bytes32 finalShnarf = _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber);
 
     uint256 publicInput = _computePublicInput(
@@ -502,6 +506,10 @@ contract LineaRollup is
       _finalizationData.shnarfData.dataEvaluationPoint,
       _finalizationData.shnarfData.dataEvaluationClaim
     );
+
+    if (blobShnarfExists[finalShnarf] == 0) {
+      revert FinalBlobNotSubmitted(finalShnarf);
+    }
 
     _addL2MerkleRoots(_finalizationData.l2MerkleRoots, _finalizationData.l2MerkleTreesDepth);
     _anchorL2MessagingBlocks(_finalizationData.l2MessagingBlocksOffsets, _lastFinalizedBlock);
@@ -627,8 +635,8 @@ contract LineaRollup is
    * 0x1a0   l2MerkleTreesDepth
    * 0x1c0   l2MerkleRootsLengthLocation
    * 0x1e0   l2MessagingBlocksOffsetsLengthLocation
-   * 0x200   l2MerkleRootsLength
-   * 0x220   l2MerkleRoots
+   * Dynamic l2MerkleRootsLength
+   * Dynamic l2MerkleRoots
    * Dynamic l2MessagingBlocksOffsetsLength (location depends on where l2MerkleRoots ends)
    * Dynamic l2MessagingBlocksOffsets (location depends on where l2MerkleRoots ends)
    * @param _finalizationData The full finalization data.
@@ -674,8 +682,9 @@ contract LineaRollup is
        * as we need the space left for the array hash to be stored at 0x160.
        */
       let mPtrMerkleRoot := add(mPtr, 0x180)
-      let merkleRootsLen := calldataload(add(_finalizationData, 0x200))
-      calldatacopy(mPtrMerkleRoot, add(_finalizationData, 0x220), mul(merkleRootsLen, 0x20))
+      let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x1c0)))
+      let merkleRootsLen := calldataload(merkleRootsLengthLocation)
+      calldatacopy(mPtrMerkleRoot, add(merkleRootsLengthLocation, 0x20), mul(merkleRootsLen, 0x20))
       let l2MerkleRootsHash := keccak256(mPtrMerkleRoot, mul(merkleRootsLen, 0x20))
       mstore(add(mPtr, 0x160), l2MerkleRootsHash)
 
