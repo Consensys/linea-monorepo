@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { TestL2MessageManager } from "../typechain-types";
+import { TestL2MessageManager } from "../../../../typechain-types";
 import {
   DEFAULT_ADMIN_ROLE,
   GENERAL_PAUSE_TYPE,
@@ -10,8 +10,8 @@ import {
   L1_L2_MESSAGE_SETTER_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./common/constants";
-import { deployUpgradableFromFactory } from "./common/deployment";
+} from "../../../common/constants";
+import { deployUpgradableFromFactory } from "../../../common/deployment";
 import {
   buildAccessErrorMessage,
   calculateRollingHashFromCollection,
@@ -20,7 +20,7 @@ import {
   expectRevertWithReason,
   generateKeccak256Hash,
   generateNKeccak256Hashes,
-} from "./common/helpers";
+} from "../../../common/helpers";
 
 describe("L2MessageManager", () => {
   let l2MessageManager: TestL2MessageManager;

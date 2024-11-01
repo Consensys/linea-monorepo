@@ -8,11 +8,11 @@ import {
   MINTER_ROLE,
   ONE_DAY_IN_SECONDS,
   RATE_LIMIT_SETTER_ROLE,
-} from "./common/constants";
-import { deployFromFactory } from "./common/deployment";
-import { TokenMintingRateLimiter } from "../typechain-types/contracts/token/TokenMintingRateLimiter";
-import { LineaVoyageXP } from "../typechain-types";
-import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "./common/helpers";
+} from "../common/constants";
+import { deployFromFactory } from "../common/deployment";
+import { TokenMintingRateLimiter } from "../../typechain-types/contracts/token/TokenMintingRateLimiter";
+import { LineaVoyageXP } from "../../typechain-types";
+import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
 
 describe("Token Minting Rate Limiter", () => {
   let tokenMintingRateLimiter: TokenMintingRateLimiter;

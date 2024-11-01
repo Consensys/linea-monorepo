@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { TestPauseManager } from "../typechain-types";
+import { TestPauseManager } from "../../typechain-types";
 import {
   DEFAULT_ADMIN_ROLE,
   GENERAL_PAUSE_TYPE,
@@ -24,9 +24,9 @@ import {
   FINALIZATION_PAUSE_TYPE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./common/constants";
-import { deployUpgradableFromFactory } from "./common/deployment";
-import { buildAccessErrorMessage, expectEvent } from "./common/helpers";
+} from "../common/constants";
+import { deployUpgradableFromFactory } from "../common/deployment";
+import { buildAccessErrorMessage, expectEvent } from "../common/helpers";
 
 async function deployTestPauseManagerFixture(): Promise<TestPauseManager> {
   return deployUpgradableFromFactory("TestPauseManager", [

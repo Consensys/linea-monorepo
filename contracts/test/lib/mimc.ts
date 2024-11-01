@@ -1,10 +1,10 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Mimc } from "../typechain-types";
-import mimcTestData from "./testData/mimc-test-data.json";
-import { deployFromFactory } from "./common/deployment";
-import { expectRevertWithCustomError } from "./common/helpers";
+import { Mimc } from "../../typechain-types";
+import mimcTestData from "../testData/mimc-test-data.json";
+import { deployFromFactory } from "../common/deployment";
+import { expectRevertWithCustomError } from "../common/helpers";
 
 describe("Mimc", () => {
   let mimc: Mimc;

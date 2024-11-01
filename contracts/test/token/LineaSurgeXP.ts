@@ -2,9 +2,9 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { LineaSurgeXP, TestLineaSurgeXP } from "../typechain-types";
-import { ADDRESS_ZERO, DEFAULT_ADMIN_ROLE, MINTER_ROLE, TRANSFER_ROLE } from "./common/constants";
-import { deployFromFactory } from "./common/deployment";
+import { LineaSurgeXP, TestLineaSurgeXP } from "../../typechain-types";
+import { ADDRESS_ZERO, DEFAULT_ADMIN_ROLE, MINTER_ROLE, TRANSFER_ROLE } from "../common/constants";
+import { deployFromFactory } from "../common/deployment";
 
 describe("Linea Surge XP Token Tests", () => {
   let contract: LineaSurgeXP;

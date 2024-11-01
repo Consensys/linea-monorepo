@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { RecoverFunds, TestExternalCalls } from "../typechain-types";
+import { RecoverFunds, TestExternalCalls } from "../../typechain-types";
 import {
   ADDRESS_ZERO,
   DEFAULT_ADMIN_ROLE,
@@ -10,9 +10,9 @@ import {
   FUNCTION_EXECUTOR_ROLE,
   INITIALIZED_ALREADY_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
-} from "./common/constants";
-import { deployUpgradableFromFactory } from "./common/deployment";
-import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "./common/helpers";
+} from "../common/constants";
+import { deployUpgradableFromFactory } from "../common/deployment";
+import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
 
 describe("RecoverFunds contract", () => {
   let recoverFunds: RecoverFunds;

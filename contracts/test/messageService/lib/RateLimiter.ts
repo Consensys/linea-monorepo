@@ -2,21 +2,21 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
-import { TestRateLimiter } from "../typechain-types";
+import { TestRateLimiter } from "../../../typechain-types";
 import {
   DEFAULT_ADMIN_ROLE,
   INITIALIZED_ERROR_MESSAGE,
   ONE_DAY_IN_SECONDS,
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
-} from "./common/constants";
-import { deployUpgradableFromFactory } from "./common/deployment";
+} from "../../common/constants";
+import { deployUpgradableFromFactory } from "../../common/deployment";
 import {
   buildAccessErrorMessage,
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
-} from "./common/helpers";
+} from "../../common/helpers";
 
 describe("Rate limiter", () => {
   let testRateLimiter: TestRateLimiter;
