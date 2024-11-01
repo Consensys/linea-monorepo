@@ -214,14 +214,26 @@ contract LineaRollup is
     bytes32 _parentShnarf,
     bytes32 _finalBlobShnarf
   ) external whenTypeAndGeneralNotPaused(PauseType.BLOB_SUBMISSION) onlyRole(OPERATOR_ROLE) {
-    uint256 blobSubmissionLength = _blobSubmissions.length;
-
-    if (blobSubmissionLength == 0) {
+    if (_blobSubmissions.length == 0) {
       revert BlobSubmissionDataIsMissing();
     }
 
-    if (blobhash(blobSubmissionLength) != EMPTY_HASH) {
-      revert BlobSubmissionDataEmpty(blobSubmissionLength);
+    if (blobhash(_blobSubmissions.length) != EMPTY_HASH) {
+      revert BlobSubmissionDataEmpty(_blobSubmissions.length);
+    }
+
+    if (blobShnarfExists[_parentShnarf] == 0) {
+      revert ParentBlobNotSubmitted(_parentShnarf);
+    }
+
+    /**
+     * @dev validate we haven't submitted the last shnarf. There is a final check at the end of the function verifying,
+     * that _finalBlobShnarf was computed correctly.
+     * Note: As only the last shnarf is stored, we don't need to validate shnarfs,
+     * computed for any previous blobs in the submission (if multiple are submitted).
+     */
+    if (blobShnarfExists[_finalBlobShnarf] != 0) {
+      revert DataAlreadySubmitted(_finalBlobShnarf);
     }
 
     bytes32 currentDataEvaluationPoint;
@@ -230,13 +242,9 @@ contract LineaRollup is
     /// @dev Assigning in memory saves a lot of gas vs. calldata reading.
     BlobSubmission memory blobSubmission;
 
-    if (blobShnarfExists[_parentShnarf] == 0) {
-      revert ParentBlobNotSubmitted(_parentShnarf);
-    }
-
     bytes32 computedShnarf = _parentShnarf;
 
-    for (uint256 i; i < blobSubmissionLength; i++) {
+    for (uint256 i; i < _blobSubmissions.length; i++) {
       blobSubmission = _blobSubmissions[i];
 
       currentDataHash = blobhash(i);
@@ -270,15 +278,6 @@ contract LineaRollup is
       revert FinalShnarfWrong(_finalBlobShnarf, computedShnarf);
     }
 
-    /**
-     * @dev validate we haven't submitted the last shnarf.
-     * Note: As only the last shnarf is stored, we don't need to validate shnarfs,
-     * computed for any previous blobs in the submission (if multiple are submitted).
-     */
-    if (blobShnarfExists[computedShnarf] != 0) {
-      revert DataAlreadySubmitted(computedShnarf);
-    }
-
     /// @dev use the last shnarf as the submission to store as technically it becomes the next parent shnarf.
     blobShnarfExists[computedShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
 
@@ -301,6 +300,10 @@ contract LineaRollup is
       revert EmptySubmissionData();
     }
 
+    if (blobShnarfExists[_expectedShnarf] != 0) {
+      revert DataAlreadySubmitted(_expectedShnarf);
+    }
+
     if (blobShnarfExists[_parentShnarf] == 0) {
       revert ParentBlobNotSubmitted(_parentShnarf);
     }
@@ -319,10 +322,6 @@ contract LineaRollup is
 
     if (_expectedShnarf != computedShnarf) {
       revert FinalShnarfWrong(_expectedShnarf, computedShnarf);
-    }
-
-    if (blobShnarfExists[computedShnarf] != 0) {
-      revert DataAlreadySubmitted(computedShnarf);
     }
 
     blobShnarfExists[computedShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
