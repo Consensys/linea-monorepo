@@ -2,6 +2,7 @@ package pi_interconnection
 
 import (
 	"errors"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"math"
 	"math/big"
 	"slices"
@@ -96,6 +97,8 @@ func (c *Circuit) Define(api frontend.API) error {
 			hshM = &hsh
 		}
 	}
+	// TODO remove
+	hshM2 := test_utils.NewReaderHashSnarkFromFile(api, hshM, "test-pi.bin")
 
 	batchHashes := make([]frontend.Variable, len(c.ExecutionPublicInput))
 	for i, pi := range c.ExecutionFPIQ {
@@ -129,8 +132,8 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	rExecution := internal.NewRange(api, nbExecution, maxNbExecution)
 
-	initBlockNum, initHashNum, initHash := c.LastFinalizedBlockNumber, c.InitialRollingHashNumber, c.InitialRollingHash
-	initBlockTime, initState := c.InitialBlockTimestamp, c.InitialStateRootHash
+	initBlockNum, initRHashNum, initRHash := api.Add(c.LastFinalizedBlockNumber, 1), c.InitialRollingHashNumber, c.InitialRollingHash
+	lastFinalizedBlockTime, initState := c.LastFinalizedBlockTimestamp, c.InitialStateRootHash
 	finalRollingHash, finalRollingHashNum := c.InitialRollingHash, c.InitialRollingHashNumber
 	var l2MessagesByByte [32][]internal.VarSlice
 
@@ -153,7 +156,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		newFinalRollingHashNum := api.Select(rollingHashNotUpdated, finalRollingHashNum, piq.FinalRollingHashNumber)
 
-		api.AssertIsEqual(comparator.IsLess(initBlockTime, api.Select(inRange, piq.FinalBlockTimestamp, uint64(math.MaxUint64))), 1) // don't compare if not updating
+		api.AssertIsEqual(comparator.IsLess(lastFinalizedBlockTime, api.Select(inRange, piq.FinalBlockTimestamp, uint64(math.MaxUint64))), 1) // don't compare if not updating
 		api.AssertIsEqual(comparator.IsLess(initBlockNum, api.Select(inRange, piq.FinalBlockNumber, uint64(math.MaxUint64))), 1)
 		api.AssertIsEqual(comparator.IsLess(finalRollingHashNum, api.Add(newFinalRollingHashNum, rollingHashNotUpdated)), 1) // if the rolling hash is updated, check that it has increased
 
@@ -162,18 +165,22 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
+			LastFinalizedBlockTimestamp: lastFinalizedBlockTime,
 			InitialStateRootHash:        initState,
 			InitialBlockNumber:          initBlockNum,
-			InitialBlockTimestamp:       initBlockTime,
-			InitialRollingHash:          initHash,
-			InitialRollingHashNumber:    initHashNum,
+			InitialRollingHash:          initRHash,
+			InitialRollingHashNumber:    api.Mul(initRHashNum, api.Sub(1, rollingHashNotUpdated)),
 			ChainID:                     c.ChainID,
 			L2MessageServiceAddr:        c.L2MessageServiceAddr[:],
 		}
-		initBlockNum, initHashNum, initHash = pi.FinalBlockNumber, pi.FinalRollingHashNumber, pi.FinalRollingHash
-		initBlockTime, initState = pi.FinalBlockTimestamp, pi.FinalStateRootHash
+		for j := range pi.InitialRollingHash {
+			pi.InitialRollingHash[j] = api.Mul(initRHash[j], api.Sub(1, rollingHashNotUpdated))
+		}
+		initBlockNum, initRHashNum, initRHash = api.Add(pi.FinalBlockNumber, 1), pi.FinalRollingHashNumber, pi.FinalRollingHash
+		lastFinalizedBlockTime, initState = pi.FinalBlockTimestamp, pi.FinalStateRootHash
 
-		api.AssertIsEqual(c.ExecutionPublicInput[i], pi.Sum(api, hshM)) // "open" execution circuit public input
+		// TODO @Tabaie turn this into api.AssertIsEqual
+		rExecution.AssertEqualI(i, c.ExecutionPublicInput[i], pi.Sum(api, hshM2)) // "open" execution circuit public input
 
 		if len(pi.L2MessageHashes.Values) != execMaxNbL2Msg {
 			return errors.New("number of L2 messages must be the same for all executions")
@@ -224,7 +231,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
 	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)
-	api.AssertIsEqual(c.L2MessageServiceAddr, c.AggregationFPIQSnark.L2MessageServiceAddr)
+	api.AssertIsEqual(c.L2MessageServiceAddr[:], c.AggregationFPIQSnark.L2MessageServiceAddr)
 
 	if c.MockKeccakWizard {
 		return nil
