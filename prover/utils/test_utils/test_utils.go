@@ -319,18 +319,20 @@ func (r *ReaderHashSnark) Sum() frontend.Variable {
 
 func (r *ReaderHashSnark) Write(data ...frontend.Variable) {
 	r.h.Write(data...)
-	for len(data) != 0 {
+
+	for i := 0; i < len(data); {
 		buf := hashReadWrite(r.r)
 		for len(buf) != 0 {
 			n := min(len(buf), (r.api.Compiler().FieldBitLen()+7)/8)
-			r.api.AssertIsEqual(data[0], buf[:n])
+			r.api.AssertIsEqual(data[i], buf[:n])
 			buf = buf[n:]
-			data = data[1:]
+			i++
 		}
 	}
 }
 
 func (r *ReaderHashSnark) Reset() {
+	hashReadReset(r.r)
 	r.h.Reset()
 }
 

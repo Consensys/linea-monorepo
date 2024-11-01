@@ -12,15 +12,15 @@ import (
 
 func TestPIConsistency(t *testing.T) {
 	pi := FunctionalPublicInput{
-		L2MessageHashes:          make([][32]byte, 2),
-		MaxNbL2MessageHashes:     3,
-		FinalBlockNumber:         4,
-		FinalBlockTimestamp:      5,
-		FinalRollingHashNumber:   6,
-		InitialBlockNumber:       1,
-		InitialBlockTimestamp:    2,
-		InitialRollingHashNumber: 3,
-		ChainID:                  7,
+		L2MessageHashes:             make([][32]byte, 2),
+		MaxNbL2MessageHashes:        3,
+		FinalBlockNumber:            4,
+		FinalBlockTimestamp:         5,
+		FinalRollingHashNumber:      6,
+		InitialBlockNumber:          1,
+		LastFinalizedBlockTimestamp: 2,
+		InitialRollingHashNumber:    3,
+		ChainID:                     7,
 	}
 
 	utils.FillRange(pi.DataChecksum[:], 10)

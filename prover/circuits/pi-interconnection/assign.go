@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -187,13 +188,13 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	executionFPI := execution.FunctionalPublicInput{
 		FinalStateRootHash:   aggregationFPI.InitialStateRootHash,
 		FinalBlockNumber:     aggregationFPI.LastFinalizedBlockNumber,
-		FinalBlockTimestamp:  aggregationFPI.InitialBlockTimestamp,
+		FinalBlockTimestamp:  aggregationFPI.LastFinalizedBlockTimestamp,
 		L2MessageServiceAddr: aggregationFPI.L2MessageServiceAddr,
 		ChainID:              aggregationFPI.ChainID,
 		MaxNbL2MessageHashes: config.ExecutionMaxNbMsg,
 	}
 
-	hshM := mimc.NewMiMC()
+	hshM := test_utils.NewWriterHashToFile(mimc.NewMiMC(), "test-pi.bin")
 	for i := range a.ExecutionFPIQ {
 		executionFPI.InitialRollingHash = [32]byte{}
 		executionFPI.InitialRollingHashNumber = 0
@@ -201,9 +202,9 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 		executionFPI.InitialBlockNumber = executionFPI.FinalBlockNumber + 1
 		executionFPI.InitialStateRootHash = executionFPI.FinalStateRootHash
+		executionFPI.LastFinalizedBlockTimestamp = executionFPI.FinalBlockTimestamp
 
 		if i < len(r.Executions) {
-			executionFPI.InitialBlockTimestamp = r.Executions[i].InitialBlockTimestamp
 			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHash
 			executionFPI.FinalBlockNumber = r.Executions[i].FinalBlockNumber
 			executionFPI.FinalBlockTimestamp = r.Executions[i].FinalBlockTimestamp

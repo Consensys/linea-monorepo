@@ -51,7 +51,7 @@ func checkPublicInputs(
 
 	api.AssertIsEqual(
 		wvc.GetLocalPointEvalParams(wizardFuncInp.InitialBlockTimestamp.ID).Y,
-		gnarkFuncInp.InitialBlockTimestamp,
+		gnarkFuncInp.LastFinalizedBlockTimestamp,
 	)
 
 	api.AssertIsEqual(
