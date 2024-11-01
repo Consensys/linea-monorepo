@@ -176,8 +176,11 @@ func (pi *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, erro
 	return res, err
 }
 
-func (pi *FunctionalPublicInput) Sum() []byte { // all mimc; no need to provide a keccak hasher
-	hsh := mimc.NewMiMC()
+func (pi *FunctionalPublicInput) Sum(hsh hash.Hash) []byte {
+	if hsh == nil {
+		hsh = mimc.NewMiMC()
+	}
+	hsh.Reset()
 
 	for i := range pi.L2MessageHashes {
 		hsh.Write(pi.L2MessageHashes[i][:16])
@@ -212,7 +215,7 @@ func (pi *FunctionalPublicInput) Sum() []byte { // all mimc; no need to provide 
 func (pi *FunctionalPublicInput) SumAsField() field.Element {
 
 	var (
-		sumBytes = pi.Sum()
+		sumBytes = pi.Sum(nil)
 		sum      = new(field.Element).SetBytes(sumBytes)
 	)
 

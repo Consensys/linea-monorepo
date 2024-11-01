@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -184,25 +185,25 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 	// Execution FPI
 	executionFPI := execution.FunctionalPublicInput{
-		FinalStateRootHash:     aggregationFPI.InitialStateRootHash,
-		FinalBlockNumber:       aggregationFPI.LastFinalizedBlockNumber,
-		FinalBlockTimestamp:    aggregationFPI.InitialBlockTimestamp,
-		FinalRollingHash:       aggregationFPI.InitialRollingHash,
-		FinalRollingHashNumber: aggregationFPI.InitialRollingHashNumber,
-		L2MessageServiceAddr:   aggregationFPI.L2MessageServiceAddr,
-		ChainID:                aggregationFPI.ChainID,
-		MaxNbL2MessageHashes:   config.ExecutionMaxNbMsg,
+		FinalStateRootHash:   aggregationFPI.InitialStateRootHash,
+		FinalBlockNumber:     aggregationFPI.LastFinalizedBlockNumber,
+		FinalBlockTimestamp:  aggregationFPI.InitialBlockTimestamp,
+		L2MessageServiceAddr: aggregationFPI.L2MessageServiceAddr,
+		ChainID:              aggregationFPI.ChainID,
+		MaxNbL2MessageHashes: config.ExecutionMaxNbMsg,
 	}
+
+	hshM := mimc.NewMiMC()
 	for i := range a.ExecutionFPIQ {
-		executionFPI.InitialRollingHash = executionFPI.FinalRollingHash
-		executionFPI.InitialBlockNumber = executionFPI.FinalBlockNumber + 1
-		executionFPI.InitialBlockTimestamp = executionFPI.FinalBlockTimestamp
-		executionFPI.InitialRollingHash = executionFPI.FinalRollingHash
-		executionFPI.InitialRollingHashNumber = executionFPI.FinalRollingHashNumber
-		executionFPI.InitialStateRootHash = executionFPI.FinalStateRootHash
+		executionFPI.InitialRollingHash = [32]byte{}
+		executionFPI.InitialRollingHashNumber = 0
 		executionFPI.L2MessageHashes = nil
 
+		executionFPI.InitialBlockNumber = executionFPI.FinalBlockNumber + 1
+		executionFPI.InitialStateRootHash = executionFPI.FinalStateRootHash
+
 		if i < len(r.Executions) {
+			executionFPI.InitialBlockTimestamp = r.Executions[i].InitialBlockTimestamp
 			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHash
 			executionFPI.FinalBlockNumber = r.Executions[i].FinalBlockNumber
 			executionFPI.FinalBlockTimestamp = r.Executions[i].FinalBlockTimestamp
@@ -215,13 +216,27 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 			l2MessageHashes = append(l2MessageHashes, r.Executions[i].L2MsgHashes...)
 
+			if got, want := &executionFPI.L2MessageServiceAddr, &r.Aggregation.L2MessageServiceAddr; *got != *want {
+				err = fmt.Errorf("execution #%d. expected L2 service address %x, encountered %x", i, *want, *got)
+				return
+			}
+			if got, want := executionFPI.ChainID, r.Aggregation.ChainID; got != want {
+				err = fmt.Errorf("execution #%d. expected chain ID %x, encountered %x", i, want, got)
+				return
+			}
+
 			if r.Executions[i].FinalRollingHashNumber != 0 { // if the rolling hash is being updated, record the change
+				executionFPI.InitialRollingHash = finalRollingHash
 				finalRollingHash = r.Executions[i].FinalRollingHash
+				executionFPI.InitialRollingHashNumber = finalRollingHashNum
 				finalRollingHashNum = r.Executions[i].FinalRollingHashNumber
 			}
 		}
 
-		a.ExecutionPublicInput[i] = executionFPI.Sum()
+		executionFPI.L2MessageServiceAddr = r.Aggregation.L2MessageServiceAddr
+		executionFPI.ChainID = r.Aggregation.ChainID
+
+		a.ExecutionPublicInput[i] = executionFPI.Sum(hshM)
 		if snarkFPI, _err := executionFPI.ToSnarkType(); _err != nil {
 			err = fmt.Errorf("execution #%d: %w", i, _err)
 			return

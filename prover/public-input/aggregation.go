@@ -30,6 +30,8 @@ type Aggregation struct {
 	L1RollingHashMessageNumber              uint
 	L2MsgRootHashes                         []string
 	L2MsgMerkleTreeDepth                    int
+	ChainID                                 uint64
+	L2MessageServiceAddr                    types.EthAddress
 }
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
@@ -105,13 +107,12 @@ type AggregationFPI struct {
 	L2MessageServiceAddr     types.EthAddress
 	NbL2Messages             uint64 // TODO not used in hash. delete if not necessary
 	L2MsgMerkleTreeRoots     [][32]byte
-	//FinalStateRootHash       [32]byte		redundant: incorporated into shnarf
-	FinalBlockNumber       uint64
-	FinalBlockTimestamp    uint64
-	FinalRollingHash       [32]byte
-	FinalRollingHashNumber uint64
-	FinalShnarf            [32]byte
-	L2MsgMerkleTreeDepth   int
+	FinalBlockNumber         uint64
+	FinalBlockTimestamp      uint64
+	FinalRollingHash         [32]byte
+	FinalRollingHashNumber   uint64
+	FinalShnarf              [32]byte
+	L2MsgMerkleTreeDepth     int
 }
 
 func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
@@ -154,8 +155,8 @@ type AggregationFPIQSnark struct {
 	InitialBlockTimestamp    frontend.Variable
 	InitialRollingHash       [32]frontend.Variable
 	InitialRollingHashNumber frontend.Variable
-	ChainID                  frontend.Variable // for now we're forcing all executions to have the same chain ID
-	L2MessageServiceAddr     frontend.Variable // 20 bytes
+	ChainID                  frontend.Variable // WARNING: Currently not bound in Sum
+	L2MessageServiceAddr     frontend.Variable // WARNING: Currently not bound in Sum
 }
 
 type AggregationFPISnark struct {
@@ -183,6 +184,8 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 		FinalBlockTimestamp:      uint64(fpi.FinalTimestamp),
 		FinalRollingHashNumber:   uint64(fpi.L1RollingHashMessageNumber),
 		L2MsgMerkleTreeDepth:     fpi.L2MsgMerkleTreeDepth,
+		ChainID:                  fpi.ChainID,
+		L2MessageServiceAddr:     fpi.L2MessageServiceAddr,
 	}
 
 	if err = copyFromHex(s.InitialStateRootHash[:], fpi.ParentStateRootHash); err != nil {
