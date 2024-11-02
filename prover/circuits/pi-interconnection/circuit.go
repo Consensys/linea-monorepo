@@ -156,8 +156,10 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		newFinalRollingHashNum := api.Select(rollingHashNotUpdated, finalRollingHashNum, piq.FinalRollingHashNumber)
 
+		nextExecInitBlockNum := api.Add(piq.FinalBlockNumber, 1)
+
 		api.AssertIsEqual(comparator.IsLess(lastFinalizedBlockTime, api.Select(inRange, piq.FinalBlockTimestamp, uint64(math.MaxUint64))), 1) // don't compare if not updating
-		api.AssertIsEqual(comparator.IsLess(initBlockNum, api.Select(inRange, piq.FinalBlockNumber, uint64(math.MaxUint64))), 1)
+		api.AssertIsEqual(comparator.IsLess(initBlockNum, api.Select(inRange, nextExecInitBlockNum, uint64(math.MaxUint64))), 1)
 		api.AssertIsEqual(comparator.IsLess(finalRollingHashNum, api.Add(newFinalRollingHashNum, rollingHashNotUpdated)), 1) // if the rolling hash is updated, check that it has increased
 
 		finalRollingHashNum = newFinalRollingHashNum
@@ -176,11 +178,12 @@ func (c *Circuit) Define(api frontend.API) error {
 		for j := range pi.InitialRollingHash {
 			pi.InitialRollingHash[j] = api.Mul(initRHash[j], api.Sub(1, rollingHashNotUpdated))
 		}
-		initBlockNum, initRHashNum, initRHash = api.Add(pi.FinalBlockNumber, 1), pi.FinalRollingHashNumber, pi.FinalRollingHash
+		initBlockNum, initRHashNum, initRHash = nextExecInitBlockNum, pi.FinalRollingHashNumber, pi.FinalRollingHash
 		lastFinalizedBlockTime, initState = pi.FinalBlockTimestamp, pi.FinalStateRootHash
 
 		// TODO @Tabaie turn this into api.AssertIsEqual
-		rExecution.AssertEqualI(i, c.ExecutionPublicInput[i], pi.Sum(api, hshM2)) // "open" execution circuit public input
+		api.AssertIsEqual(c.ExecutionPublicInput[i], pi.Sum(api, hshM2))
+		//rExecution.AssertEqualI(i, c.ExecutionPublicInput[i], pi.Sum(api, hshM2)) // "open" execution circuit public input
 
 		if len(pi.L2MessageHashes.Values) != execMaxNbL2Msg {
 			return errors.New("number of L2 messages must be the same for all executions")
