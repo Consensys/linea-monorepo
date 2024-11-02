@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -194,7 +193,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		MaxNbL2MessageHashes: config.ExecutionMaxNbMsg,
 	}
 
-	hshM := test_utils.NewWriterHashToFile(mimc.NewMiMC(), "test-pi.bin")
+	hshM := mimc.NewMiMC()
 	for i := range a.ExecutionFPIQ {
 		executionFPI.InitialRollingHash = [32]byte{}
 		executionFPI.InitialRollingHashNumber = 0

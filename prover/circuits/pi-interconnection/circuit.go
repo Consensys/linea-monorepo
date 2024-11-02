@@ -2,7 +2,6 @@ package pi_interconnection
 
 import (
 	"errors"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"math"
 	"math/big"
 	"slices"
@@ -97,8 +96,6 @@ func (c *Circuit) Define(api frontend.API) error {
 			hshM = &hsh
 		}
 	}
-	// TODO remove
-	hshM2 := test_utils.NewReaderHashSnarkFromFile(api, hshM, "test-pi.bin")
 
 	batchHashes := make([]frontend.Variable, len(c.ExecutionPublicInput))
 	for i, pi := range c.ExecutionFPIQ {
@@ -181,9 +178,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		initBlockNum, initRHashNum, initRHash = nextExecInitBlockNum, pi.FinalRollingHashNumber, pi.FinalRollingHash
 		lastFinalizedBlockTime, initState = pi.FinalBlockTimestamp, pi.FinalStateRootHash
 
-		// TODO @Tabaie turn this into api.AssertIsEqual
-		api.AssertIsEqual(c.ExecutionPublicInput[i], pi.Sum(api, hshM2))
-		//rExecution.AssertEqualI(i, c.ExecutionPublicInput[i], pi.Sum(api, hshM2)) // "open" execution circuit public input
+		api.AssertIsEqual(c.ExecutionPublicInput[i], pi.Sum(api, hshM)) // "open" execution circuit public input
 
 		if len(pi.L2MessageHashes.Values) != execMaxNbL2Msg {
 			return errors.New("number of L2 messages must be the same for all executions")
