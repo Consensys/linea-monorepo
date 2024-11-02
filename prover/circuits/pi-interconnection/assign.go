@@ -208,7 +208,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 				err = fmt.Errorf("execution #%d. initial block timestamp is not after the final block timestamp %d≤%d", i, initial, final)
 				return
 			}
-			if initial, final := r.Executions[i].InitialBlockTimestamp, executionFPI.FinalBlockTimestamp; initial > final {
+			if initial, final := r.Executions[i].InitialBlockTimestamp, r.Executions[i].FinalBlockTimestamp; initial > final {
 				err = fmt.Errorf("execution #%d. initial block timestamp is after the final block timestamp %d>%d", i, initial, final)
 				return
 			}
@@ -225,7 +225,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 			l2MessageHashes = append(l2MessageHashes, r.Executions[i].L2MsgHashes...)
 
-			if got, want := &executionFPI.L2MessageServiceAddr, &r.Aggregation.L2MessageServiceAddr; *got != *want {
+			if got, want := &r.Executions[i].L2MessageServiceAddr, &r.Aggregation.L2MessageServiceAddr; *got != *want {
 				err = fmt.Errorf("execution #%d. expected L2 service address %x, encountered %x", i, *want, *got)
 				return
 			}
