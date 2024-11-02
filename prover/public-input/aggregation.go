@@ -240,6 +240,12 @@ func (pi *AggregationFPIQSnark) RangeCheck(api frontend.API) {
 	for _, v := range append(slices.Clone(pi.InitialRollingHash[:]), pi.ParentShnarf[:]...) {
 		rc.Check(v, 8)
 	}
+
+	// range checking the initial "ordered" values makes sure that future comparisons are valid
+	// each comparison in turn ensures that its final value is within a reasonable, less than 100 bit range
+	rc.Check(pi.LastFinalizedBlockTimestamp, 64)
+	rc.Check(pi.LastFinalizedBlockNumber, 64)
+	rc.Check(pi.InitialRollingHashNumber, 64)
 	// not checking L2MsgServiceAddr as its range is never assumed in the pi circuit
 	// not checking NbDecompressions as the NewRange in the pi circuit range checks it; TODO do it here instead
 }
