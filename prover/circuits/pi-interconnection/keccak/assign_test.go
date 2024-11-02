@@ -143,6 +143,7 @@ func TestMockWizard(t *testing.T) {
 	}
 
 	a.H, err = hsh.Assign()
+	require.NoError(t, err)
 	utils.Copy(a.Ins[0][0][:], in)
 	utils.Copy(a.Outs[0][:], out)
 
