@@ -105,7 +105,8 @@ func (h *Hasher) Finalize(c *wizard.WizardVerifierCircuit) error {
 	lanes, isLaneActive, isFirstLaneOfNewHash := h.createColumns()
 
 	if c == nil {
-		logrus.Warn("NO WIZARD CIRCUIT PROVIDED. NOT CHECKING KECCAK HASH RESULTS. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+		logrus.Warn("NO WIZARD PROOF PROVIDED. NOT CHECKING KECCAK HASH RESULTS. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+		return nil
 	}
 
 	expectedLanes := c.GetColumn("Lane")
