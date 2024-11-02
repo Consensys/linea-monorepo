@@ -155,11 +155,11 @@ func (h *StrictHasher) Assign() (c StrictHasherCircuit, err error) {
 		return c, errors.New("fewer hashes than expected")
 	}
 	c.maxNbKeccakF = h.maxNbKeccakF
-	/*insForWizard := make([][]byte, len(h.ins))
-	for i := range h.ins {
-		insForWizard[i] = h.ins[i][:h.]
-	}*/
-	c.Wc = h.wc.Assign(h.ins)
+	if h.wc == nil {
+		logrus.Warn("NO COMPILED WIZARD SUB-PROVER GIVEN. HASH RESULTS WILL NOT BE PROVEN CORRECT. THIS SHOULD ONLY HAPPEN IN A UNIT TEST.")
+	} else {
+		c.Wc = h.wc.Assign(h.ins)
+	}
 	c.Ins = make([][][2]frontend.Variable, len(h.ins))
 	c.InLengths = make([]frontend.Variable, len(h.ins))
 	for i, in := range h.ins {
