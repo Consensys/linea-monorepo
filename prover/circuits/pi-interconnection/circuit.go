@@ -2,6 +2,7 @@ package pi_interconnection
 
 import (
 	"errors"
+	"github.com/sirupsen/logrus"
 	"math"
 	"math/big"
 	"slices"
@@ -55,9 +56,8 @@ type Circuit struct {
 	L2MessageServiceAddr types.EthAddress
 	ChainID              uint64
 
-	MaxNbCircuits    int // possibly useless TODO consider removing
-	UseGkrMimc       bool
-	MockKeccakWizard bool // for testing purposes, bypass expensive keccak verification
+	MaxNbCircuits int // possibly useless TODO consider removing
+	UseGkrMimc    bool
 }
 
 // type alias to denote a wizard-compilation suite. This is used when calling
@@ -232,11 +232,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)
 	api.AssertIsEqual(c.L2MessageServiceAddr[:], c.AggregationFPIQSnark.L2MessageServiceAddr)
 
-	if c.MockKeccakWizard {
-		return nil
-	} else {
-		return hshK.Finalize()
-	}
+	return hshK.Finalize()
 }
 
 func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
@@ -267,6 +263,10 @@ func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.Com
 		c.L2MsgMaxNbMerkle = (c.MaxNbExecution*c.ExecutionMaxNbMsg + merkleNbLeaves - 1) / merkleNbLeaves
 	}
 
+	if c.MockKeccakWizard {
+		wizardCompilationOpts = nil
+		logrus.Warn("KECCAK HASH RESULTS WILL NOT BE CHECKED. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+	}
 	sh := newKeccakCompiler(c).Compile(wizardCompilationOpts...)
 	shc, err := sh.GetCircuit()
 	if err != nil {
@@ -315,7 +315,6 @@ func allocateCircuit(c config.PublicInput) Circuit {
 		L2MessageMerkleDepth:     c.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:     c.L2MsgMaxNbMerkle,
 		MaxNbCircuits:            c.MaxNbCircuits,
-		MockKeccakWizard:         c.MockKeccakWizard,
 		L2MessageServiceAddr:     types.EthAddress(c.L2MsgServiceAddr),
 		ChainID:                  c.ChainID,
 		UseGkrMimc:               true,

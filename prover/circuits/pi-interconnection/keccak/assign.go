@@ -96,6 +96,7 @@ func (h *StrictHasherCompiler) WithStrictHashLengths(l ...int) *StrictHasherComp
 	return h
 }
 
+// For testing purposes, wizard compilation is skipped if no options are given.
 func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard.CompiledIOP)) CompiledStrictHasher {
 	nbKeccakF := 0 // Since the output size is smaller than the block size the squeezing phase is trivial TODO @Tabaie check with @azam.soleimanian that this is correct
 
@@ -106,7 +107,10 @@ func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard
 
 	logrus.Infof("Public-input interconnection requires %v keccak permutations", nbKeccakF)
 
-	wc := NewWizardVerifierSubCircuit(nbKeccakF, wizardCompilationOpts...)
+	var wc *HashWizardVerifierSubCircuit
+	if len(wizardCompilationOpts) != 0 {
+		wc = NewWizardVerifierSubCircuit(nbKeccakF, wizardCompilationOpts...)
+	}
 
 	return CompiledStrictHasher{
 		wc:           *wc,

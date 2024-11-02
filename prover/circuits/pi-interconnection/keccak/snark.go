@@ -3,6 +3,7 @@ package keccak
 import (
 	"errors"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/sirupsen/logrus"
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
@@ -102,6 +103,11 @@ func (h *Hasher) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [3
 
 func (h *Hasher) Finalize(c *wizard.WizardVerifierCircuit) error {
 	lanes, isLaneActive, isFirstLaneOfNewHash := h.createColumns()
+
+	if c == nil {
+		logrus.Warn("NO WIZARD CIRCUIT PROVIDED. NOT CHECKING KECCAK HASH RESULTS. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+	}
+
 	expectedLanes := c.GetColumn("Lane")
 	expectedActive := c.GetColumn("IsLaneActive")
 	expectedNewLane := c.GetColumn("IsFirstLaneOfNewHash")
