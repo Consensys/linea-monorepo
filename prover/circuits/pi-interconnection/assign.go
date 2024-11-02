@@ -182,6 +182,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	l2MessageHashes := make([][32]byte, 0, maxNbL2MessageHashes)
 
 	finalRollingHashNum, finalRollingHash := aggregationFPI.InitialRollingHashNumber, aggregationFPI.InitialRollingHash
+	finalBlockTimestamp := aggregationFPI.LastFinalizedBlockTimestamp
 
 	// Execution FPI
 	executionFPI := execution.FunctionalPublicInput{
@@ -199,12 +200,14 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		executionFPI.InitialRollingHashNumber = 0
 		executionFPI.L2MessageHashes = nil
 
+		// pad things correctly to make the circuit's life a bit easier
 		executionFPI.InitialBlockNumber = executionFPI.FinalBlockNumber + 1
 		executionFPI.InitialStateRootHash = executionFPI.FinalStateRootHash
-		executionFPI.InitialBlockTimestamp = executionFPI.FinalBlockTimestamp + 1 // to simplify consistency checks
+		executionFPI.InitialBlockTimestamp = executionFPI.FinalBlockTimestamp + 1
+		executionFPI.FinalBlockTimestamp = executionFPI.InitialBlockTimestamp
 
 		if i < len(r.Executions) {
-			if initial, final := r.Executions[i].InitialBlockTimestamp, executionFPI.FinalBlockTimestamp; initial <= final {
+			if initial, final := r.Executions[i].InitialBlockTimestamp, finalBlockTimestamp; initial <= final {
 				err = fmt.Errorf("execution #%d. initial block timestamp is not after the final block timestamp %d≤%d", i, initial, final)
 				return
 			}
@@ -216,6 +219,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHash
 			executionFPI.FinalBlockNumber = r.Executions[i].FinalBlockNumber
 			executionFPI.FinalBlockTimestamp = r.Executions[i].FinalBlockTimestamp
+			finalBlockTimestamp = r.Executions[i].FinalBlockTimestamp
 			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHash
 			executionFPI.FinalRollingHashNumber = r.Executions[i].FinalRollingHashNumber
 			executionFPI.FinalStateRootHash = r.Executions[i].FinalStateRootHash
@@ -254,13 +258,13 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		}
 	}
 	// consistency check
-	if executionFPI.FinalBlockTimestamp != aggregationFPI.FinalBlockTimestamp {
-		err = fmt.Errorf("final block timestamps do not match: execution=%x, aggregation=%x",
+	if finalBlockTimestamp != aggregationFPI.FinalBlockTimestamp {
+		err = fmt.Errorf("final block timestamps do not match: execution=%d, aggregation=%d",
 			executionFPI.FinalBlockTimestamp, aggregationFPI.FinalBlockTimestamp)
 		return
 	}
 	if executionFPI.FinalBlockNumber != aggregationFPI.FinalBlockNumber {
-		err = fmt.Errorf("final block numbers do not match: execution=%v, aggregation=%x",
+		err = fmt.Errorf("final block numbers do not match: execution=%d, aggregation=%d",
 			executionFPI.FinalBlockNumber, aggregationFPI.FinalBlockNumber)
 		return
 	}
