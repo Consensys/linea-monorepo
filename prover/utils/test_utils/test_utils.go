@@ -188,6 +188,7 @@ func (w *WriterHash) Reset() {
 	if _, err := w.w.Write([]byte{255, 255}); err != nil {
 		panic(err)
 	}
+	w.h.Reset()
 }
 
 func (w *WriterHash) Size() int {
@@ -340,4 +341,78 @@ func (r *ReaderHashSnark) CloseFile() {
 	if err := r.r.(*os.File).Close(); err != nil {
 		panic(err)
 	}
+}
+
+func PrettyPrintHashes(filename string) {
+	const printIndexes = false
+
+	v := make([]any, 0)
+	f, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	var (
+		length [2]byte
+		buf    []byte
+	)
+
+	var i int
+	for _, err = f.Read(length[:]); err == nil; _, err = f.Read(length[:]) {
+		l := int(length[0])*256 + int(length[1])
+		if l == 65535 { // a reset
+			v = append(v, "RESET")
+			i = 0
+			continue
+		}
+		if l > len(buf) {
+			buf = make([]byte, l)
+		}
+
+		if _, err = f.Read(buf[:l]); err != nil {
+			break
+		}
+
+		prettyBuf := spaceOutFromRight(hex.EncodeToString(buf[:l]))
+		if printIndexes {
+			v = append(v, fmt.Sprintf("%d: 0x%s", i, prettyBuf))
+		} else {
+			v = append(v, "0x"+prettyBuf)
+		}
+
+		i++
+	}
+	if err != io.EOF {
+		panic(err)
+	}
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(b))
+}
+
+func spaceOutFromRight(s string) string {
+	var bb strings.Builder
+	n := len(s) + (len(s)+15)/16 - 1
+	bb.Grow(n)
+	remainder := len(s) % 16
+	first := true
+	if remainder != 0 {
+		bb.WriteString(s[:remainder])
+		s = s[remainder:]
+		first = false
+	}
+	for len(s) > 0 {
+		if !first {
+			bb.WriteByte(' ')
+		}
+		bb.WriteString(s[:16])
+		s = s[16:]
+		first = false
+	}
+
+	if bb.Len() != n {
+		panic("incorrect size estimation")
+	}
+	return bb.String()
 }

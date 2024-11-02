@@ -5,7 +5,10 @@ package pi_interconnection_test
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"math/big"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -224,11 +227,11 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 
 	for i := 0; i < slackIterationNum; i++ {
 
-		/*decomposeLittleEndian(t, slack[:], i, len(cfg.slack))
+		decomposeLittleEndian(t, slack[:], i, len(cfg.slack))
 		for j := range slack {
 			slack[j] = cfg.slack[slack[j]]
-		}*/
-		slack[1] = 1 // TODO Tabaie remove
+		}
+		//slack[1] = 1 // TODO Tabaie remove
 
 		cfg := config.PublicInput{
 			MaxNbDecompression: len(req.Decompressions) + slack[0],
@@ -248,7 +251,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 
 			assert.NoError(t, test.IsSolved(compiled.Circuit, &a, ecc.BLS12_377.ScalarField()))
 		})
-		return // TODO Tabaie remove
+		//return // TODO Tabaie remove
 	}
 }
 
@@ -258,4 +261,38 @@ func decomposeLittleEndian(t *testing.T, digits []int, n, base int) {
 		n /= base
 	}
 	assert.Zero(t, n)
+}
+
+func TestCorrectHash(t *testing.T) {
+	toHash := []string{
+		"0x0f065584404c7686 a8ae18a460a31bac c89665da22437ee2 fd354f96a4b7799e",
+		"0x0b568f1ea5e5f3db 6524c3db4767e9be 19b38f58db2f83b5 739ff4030035335e",
+		"0x0000000000000000 0000000000000000 0000000000000000 0000000000000004",
+		"0x0000000000000005",
+		"0x0000000000000006",
+		"0x0000000000000000 0000000000000000",
+		"0x0000000000000000 0000000000000007",
+		"0x0000000000000008",
+		"0x0000000000000000 0000000000000000 0000000000000000 0000000000000001",
+		"0x0000000000000005",
+		"0x0000000000000005",
+		"0x0000000000000000 0000000000000000",
+		"0x0000000000000000 0000000000000007",
+		"0x0000000000000007",
+		"0x0000000000000000",
+		"0x00000000 0000000000000000 0000000000000000",
+	}
+
+	hsh := mimc.NewMiMC()
+	hsh.Reset()
+	for _, s := range toHash {
+		b, err := utils.HexDecodeString(strings.Replace(s, " ", "", -1))
+		assert.NoError(t, err)
+		b = append(make([]byte, 32-len(b)), b...) // make sure there is no padding issue
+		hsh.Write(b)
+	}
+	expected := hsh.Sum(nil)
+	var expectedI big.Int
+	expectedI.SetBytes(expected)
+	fmt.Println(expectedI.String())
 }
