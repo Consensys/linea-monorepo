@@ -231,7 +231,6 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 		for j := range slack {
 			slack[j] = cfg.slack[slack[j]]
 		}
-		//slack[1] = 1 // TODO Tabaie remove
 
 		cfg := config.PublicInput{
 			MaxNbDecompression: len(req.Decompressions) + slack[0],
@@ -251,7 +250,6 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 
 			assert.NoError(t, test.IsSolved(compiled.Circuit, &a, ecc.BLS12_377.ScalarField()))
 		})
-		//return // TODO Tabaie remove
 	}
 }
 
