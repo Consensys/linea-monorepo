@@ -181,16 +181,12 @@ func (pi *FunctionalPublicInput) Sum(hsh hash.Hash) []byte {
 		hsh = mimc.NewMiMC()
 	}
 
-	var l2MessagesSum []byte // TODO @Tabaie remove this line
-	{
-		hsh := mimc.NewMiMC() // TODO @Tabaie remove this line
-		hsh.Reset()
-		for i := range pi.L2MessageHashes {
-			hsh.Write(pi.L2MessageHashes[i][:16])
-			hsh.Write(pi.L2MessageHashes[i][16:])
-		}
-		l2MessagesSum = hsh.Sum(nil)
+	hsh.Reset()
+	for i := range pi.L2MessageHashes {
+		hsh.Write(pi.L2MessageHashes[i][:16])
+		hsh.Write(pi.L2MessageHashes[i][16:])
 	}
+	l2MessagesSum := hsh.Sum(nil)
 
 	hsh.Reset()
 
