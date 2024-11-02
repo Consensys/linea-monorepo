@@ -162,7 +162,8 @@ jobs:
         run: "pnpm install"
 
       - name: Verify rules
-        run: "pnpm verify"
+        run: |
+          pnpm ${{matrix.rule}}
         env:
           CERTORAKEY: ${{ secrets.CERTORAKEY }}
 

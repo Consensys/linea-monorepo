@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { ITrustedCodehashAccess } from "./interfaces/ITrustedCodehashAccess.sol";
 /**
  * @title TrustedCodehashAccess
@@ -10,7 +10,7 @@ import { ITrustedCodehashAccess } from "./interfaces/ITrustedCodehashAccess.sol"
  *         interact with the functions using the `onlyTrustedCodehash` modifier.
  */
 
-contract TrustedCodehashAccess is ITrustedCodehashAccess, Ownable {
+abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, OwnableUpgradeable {
     mapping(bytes32 codehash => bool permission) private trustedCodehashes;
 
     /**
@@ -25,7 +25,9 @@ contract TrustedCodehashAccess is ITrustedCodehashAccess, Ownable {
         _;
     }
 
-    constructor(address _owner) Ownable(_owner) { }
+    function __TrustedCodehashAccess_init(address _initialOwner) public onlyInitializing {
+        __Ownable_init(_initialOwner);
+    }
 
     /**
      * @notice Allows the owner to set or update the trust status for a contract's codehash.

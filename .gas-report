@@ -1,144 +1,177 @@
+| lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy contract |                 |       |        |       |         |
+|-------------------------------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                                                           | Deployment Size |       |        |       |         |
+| 259350                                                                                    | 1159            |       |        |       |         |
+| Function Name                                                                             | min             | avg   | median | max   | # calls |
+| MAX_LOCKUP_PERIOD                                                                         | 644             | 1426  | 644    | 5144  | 23      |
+| MAX_MULTIPLIER                                                                            | 667             | 1567  | 667    | 5167  | 30      |
+| MIN_LOCKUP_PERIOD                                                                         | 646             | 3918  | 5146   | 5146  | 11      |
+| MP_RATE_PER_YEAR                                                                          | 602             | 602   | 602    | 602   | 3       |
+| SCALE_FACTOR                                                                              | 600             | 600   | 600    | 600   | 41      |
+| STAKING_TOKEN                                                                             | 7253            | 7253  | 7253   | 7253  | 182     |
+| accountedRewards                                                                          | 722             | 1289  | 722    | 2722  | 74      |
+| emergencyModeEnabled                                                                      | 7270            | 7270  | 7270   | 7270  | 7       |
+| enableEmergencyMode                                                                       | 28422           | 45323 | 50607  | 50607 | 8       |
+| getAccount                                                                                | 2020            | 2020  | 2020   | 2020  | 71      |
+| getStakedBalance                                                                          | 7464            | 7464  | 7464   | 7464  | 1       |
+| isTrustedCodehash                                                                         | 938             | 1454  | 938    | 2938  | 182     |
+| rewardIndex                                                                               | 766             | 793   | 766    | 2766  | 74      |
+| setTrustedCodehash                                                                        | 52794           | 52794 | 52794  | 52794 | 47      |
+| totalMP                                                                                   | 723             | 723   | 723    | 723   | 77      |
+| totalMaxMP                                                                                | 722             | 722   | 722    | 722   | 77      |
+| totalStaked                                                                               | 723             | 723   | 723    | 723   | 78      |
+| updateAccountMP                                                                           | 41679           | 43917 | 44181  | 44181 | 19      |
+| updateGlobalState                                                                         | 36999           | 67243 | 56463  | 89414 | 28      |
+| upgradeToAndCall                                                                          | 29734           | 33540 | 33540  | 37346 | 2       |
+
+
 | src/RewardsStreamer.sol:RewardsStreamer contract |                 |        |        |        |         |
 |--------------------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                                  | Deployment Size |        |        |        |         |
-| 690902                                           | 3154            |        |        |        |         |
+| 677674                                           | 3080            |        |        |        |         |
 | Function Name                                    | min             | avg    | median | max    | # calls |
-| accountedRewards                                 | 351             | 601    | 351    | 2351   | 8       |
-| getUserInfo                                      | 793             | 793    | 793    | 793    | 12      |
-| rewardIndex                                      | 350             | 600    | 350    | 2350   | 8       |
-| stake                                            | 85235           | 100736 | 105135 | 111838 | 3       |
-| totalStaked                                      | 351             | 351    | 351    | 351    | 8       |
-| unstake                                          | 110100          | 110106 | 110106 | 110112 | 2       |
-| updateRewardIndex                                | 23374           | 45581  | 39585  | 73785  | 3       |
+| accountedRewards                                 | 350             | 600    | 350    | 2350   | 8       |
+| getUserInfo                                      | 789             | 789    | 789    | 789    | 12      |
+| rewardIndex                                      | 349             | 599    | 349    | 2349   | 8       |
+| stake                                            | 85202           | 100705 | 105102 | 111812 | 3       |
+| totalStaked                                      | 350             | 350    | 350    | 350    | 8       |
+| unstake                                          | 110056          | 110062 | 110062 | 110068 | 2       |
+| updateRewardIndex                                | 23372           | 45573  | 39574  | 73774  | 3       |
 
 
-| src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |       |        |       |         |
-|------------------------------------------------------|-----------------|-------|--------|-------|---------|
-| Deployment Cost                                      | Deployment Size |       |        |       |         |
-| 1425736                                              | 6528            |       |        |       |         |
-| Function Name                                        | min             | avg   | median | max   | # calls |
-| MAX_LOCKUP_PERIOD                                    | 228             | 228   | 228    | 228   | 23      |
-| MAX_MULTIPLIER                                       | 274             | 274   | 274    | 274   | 30      |
-| MIN_LOCKUP_PERIOD                                    | 275             | 275   | 275    | 275   | 11      |
-| MP_RATE_PER_YEAR                                     | 231             | 231   | 231    | 231   | 3       |
-| SCALE_FACTOR                                         | 295             | 295   | 295    | 295   | 41      |
-| STAKING_TOKEN                                        | 273             | 273   | 273    | 273   | 174     |
-| accountedRewards                                     | 351             | 906   | 351    | 2351  | 72      |
-| emergencyModeEnabled                                 | 2377            | 2377  | 2377   | 2377  | 7       |
-| enableEmergencyMode                                  | 23504           | 40411 | 45696  | 45696 | 8       |
-| getAccount                                           | 1596            | 1596  | 1596   | 1596  | 71      |
-| getStakedBalance                                     | 2579            | 2579  | 2579   | 2579  | 1       |
-| isTrustedCodehash                                    | 496             | 1013  | 496    | 2496  | 174     |
-| rewardIndex                                          | 373             | 400   | 373    | 2373  | 72      |
-| setTrustedCodehash                                   | 47926           | 47926 | 47926  | 47926 | 45      |
-| totalMP                                              | 330             | 330   | 330    | 330   | 75      |
-| totalMaxMP                                           | 351             | 351   | 351    | 351   | 75      |
-| totalStaked                                          | 330             | 330   | 330    | 330   | 76      |
-| updateAccountMP                                      | 36758           | 38996 | 39260  | 39260 | 19      |
-| updateGlobalState                                    | 32134           | 60366 | 49513  | 82460 | 28      |
+| src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |        |        |        |         |
+|------------------------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                                      | Deployment Size |        |        |        |         |
+| 2084418                                              | 9588            |        |        |        |         |
+| Function Name                                        | min             | avg    | median | max    | # calls |
+| MAX_LOCKUP_PERIOD                                    | 272             | 272    | 272    | 272    | 23      |
+| MAX_MULTIPLIER                                       | 295             | 295    | 295    | 295    | 30      |
+| MIN_LOCKUP_PERIOD                                    | 274             | 274    | 274    | 274    | 11      |
+| MP_RATE_PER_YEAR                                     | 230             | 230    | 230    | 230    | 3       |
+| SCALE_FACTOR                                         | 228             | 228    | 228    | 228    | 41      |
+| STAKING_TOKEN                                        | 2381            | 2381   | 2381   | 2381   | 182     |
+| accountedRewards                                     | 350             | 917    | 350    | 2350   | 74      |
+| emergencyModeEnabled                                 | 2398            | 2398   | 2398   | 2398   | 7       |
+| enableEmergencyMode                                  | 2482            | 19389  | 24674  | 24674  | 8       |
+| getAccount                                           | 1621            | 1621   | 1621   | 1621   | 71      |
+| getStakedBalance                                     | 2589            | 2589   | 2589   | 2589   | 1       |
+| initialize                                           | 137795          | 137795 | 137795 | 137795 | 47      |
+| isTrustedCodehash                                    | 563             | 1079   | 563    | 2563   | 182     |
+| lock                                                 | 9839            | 33584  | 14168  | 76747  | 3       |
+| proxiableUUID                                        | 297             | 297    | 297    | 297    | 1       |
+| rewardIndex                                          | 394             | 421    | 394    | 2394   | 74      |
+| setTrustedCodehash                                   | 26203           | 26203  | 26203  | 26203  | 47      |
+| stake                                                | 134612          | 171004 | 176214 | 196693 | 57      |
+| totalMP                                              | 351             | 351    | 351    | 351    | 77      |
+| totalMaxMP                                           | 350             | 350    | 350    | 350    | 77      |
+| totalStaked                                          | 351             | 351    | 351    | 351    | 78      |
+| unstake                                              | 63925           | 84721  | 63925  | 120391 | 13      |
+| updateAccountMP                                      | 15375           | 17613  | 17877  | 17877  | 19      |
+| updateGlobalState                                    | 11066           | 41310  | 30530  | 63481  | 28      |
+| upgradeToAndCall                                     | 3146            | 6955   | 6955   | 10765  | 2       |
 
 
 | src/StakeVault.sol:StakeVault contract |                 |        |        |        |         |
 |----------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                        | Deployment Size |        |        |        |         |
-| 1095864                                | 5202            |        |        |        |         |
+| 1086958                                | 5110            |        |        |        |         |
 | Function Name                          | min             | avg    | median | max    | # calls |
-| STAKING_TOKEN                          | 217             | 217    | 217    | 217    | 1       |
-| emergencyExit                          | 31410           | 43924  | 43160  | 60260  | 7       |
-| lock                                   | 38362           | 60516  | 42741  | 100445 | 3       |
-| stake                                  | 199213          | 237055 | 242906 | 263435 | 56      |
-| unstake                                | 84988           | 113999 | 103434 | 146128 | 13      |
-| withdraw                               | 37318           | 37318  | 37318  | 37318  | 1       |
+| STAKING_TOKEN                          | 216             | 216    | 216    | 216    | 1       |
+| emergencyExit                          | 36298           | 48802  | 48036  | 65136  | 7       |
+| lock                                   | 43256           | 66100  | 47633  | 107411 | 3       |
+| stake                                  | 206077          | 242480 | 247679 | 268206 | 57      |
+| unstake                                | 90514           | 120704 | 110342 | 153215 | 13      |
+| withdraw                               | 42194           | 42194  | 42194  | 42194  | 1       |
 
 
 | src/XPNFTToken.sol:XPNFTToken contract          |                 |       |        |       |         |
 |-------------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                                 | Deployment Size |       |        |       |         |
-| 737164                                          | 3407            |       |        |       |         |
+| 721357                                          | 3311            |       |        |       |         |
 | Function Name                                   | min             | avg   | median | max   | # calls |
-| approve                                         | 393             | 393   | 393    | 393   | 1       |
-| getApproved                                     | 296             | 296   | 296    | 296   | 1       |
-| isApprovedForAll                                | 510             | 510   | 510    | 510   | 1       |
-| metadataGenerator                               | 325             | 325   | 325    | 325   | 1       |
-| safeTransferFrom(address,address,uint256)       | 485             | 485   | 485    | 485   | 1       |
-| safeTransferFrom(address,address,uint256,bytes) | 677             | 677   | 677    | 677   | 1       |
-| setApprovalForAll                               | 475             | 475   | 475    | 475   | 1       |
-| setMetadataGenerator                            | 23996           | 26489 | 26489  | 28983 | 2       |
-| tokenURI                                        | 76129           | 76129 | 76129  | 76129 | 1       |
-| transferFrom                                    | 530             | 530   | 530    | 530   | 1       |
+| approve                                         | 391             | 391   | 391    | 391   | 1       |
+| getApproved                                     | 293             | 293   | 293    | 293   | 1       |
+| isApprovedForAll                                | 507             | 507   | 507    | 507   | 1       |
+| metadataGenerator                               | 324             | 324   | 324    | 324   | 1       |
+| safeTransferFrom(address,address,uint256)       | 482             | 482   | 482    | 482   | 1       |
+| safeTransferFrom(address,address,uint256,bytes) | 673             | 673   | 673    | 673   | 1       |
+| setApprovalForAll                               | 473             | 473   | 473    | 473   | 1       |
+| setMetadataGenerator                            | 23993           | 26486 | 26486  | 28980 | 2       |
+| tokenURI                                        | 71322           | 71322 | 71322  | 71322 | 1       |
+| transferFrom                                    | 527             | 527   | 527    | 527   | 1       |
 
 
 | src/XPToken.sol:XPToken contract |                 |       |        |       |         |
 |----------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                  | Deployment Size |       |        |       |         |
-| 1061807                          | 4968            |       |        |       |         |
+| 1041788                          | 4854            |       |        |       |         |
 | Function Name                    | min             | avg   | median | max   | # calls |
-| acceptOwnership                  | 28284           | 28284 | 28284  | 28284 | 1       |
-| addXPProvider                    | 23968           | 57630 | 51091  | 68191 | 44      |
-| allowance                        | 533             | 533   | 533    | 533   | 2       |
-| approve                          | 413             | 413   | 413    | 413   | 2       |
-| balanceOf                        | 3618            | 11284 | 9618   | 20618 | 6       |
-| getXPProviders                   | 1032            | 3285  | 3285   | 5538  | 4       |
-| mint                             | 24246           | 75896 | 91049  | 91061 | 14      |
-| mintAllowance                    | 5626            | 5662  | 5662   | 5699  | 2       |
-| owner                            | 374             | 1040  | 374    | 2374  | 3       |
-| removeXPProvider                 | 23688           | 28097 | 25803  | 34800 | 6       |
-| totalSupply                      | 2963            | 4963  | 2963   | 10963 | 8       |
-| transfer                         | 411             | 411   | 411    | 411   | 2       |
-| transferFrom                     | 499             | 499   | 499    | 499   | 2       |
-| transferOwnership                | 47732           | 47732 | 47732  | 47732 | 1       |
+| acceptOwnership                  | 28282           | 28282 | 28282  | 28282 | 1       |
+| addXPProvider                    | 23966           | 57627 | 51088  | 68188 | 44      |
+| allowance                        | 530             | 530   | 530    | 530   | 2       |
+| approve                          | 410             | 410   | 410    | 410   | 2       |
+| balanceOf                        | 3601            | 11267 | 9601   | 20601 | 6       |
+| getXPProviders                   | 1028            | 3281  | 3281   | 5534  | 4       |
+| mint                             | 24244           | 75876 | 91025  | 91037 | 14      |
+| mintAllowance                    | 5604            | 5641  | 5641   | 5678  | 2       |
+| owner                            | 373             | 1039  | 373    | 2373  | 3       |
+| removeXPProvider                 | 23686           | 28093 | 25801  | 34793 | 6       |
+| totalSupply                      | 2952            | 4952  | 2952   | 10952 | 8       |
+| transfer                         | 408             | 408   | 408    | 408   | 2       |
+| transferFrom                     | 495             | 495   | 495    | 495   | 2       |
+| transferOwnership                | 47730           | 47730 | 47730  | 47730 | 1       |
 
 
 | src/nft-metadata-generators/NFTMetadataGeneratorSVG.sol:NFTMetadataGeneratorSVG contract |                 |       |        |       |         |
 |------------------------------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                                                                          | Deployment Size |       |        |       |         |
-| 1196494                                                                                  | 5995            |       |        |       |         |
+| 1146955                                                                                  | 5713            |       |        |       |         |
 | Function Name                                                                            | min             | avg   | median | max   | # calls |
-| generate                                                                                 | 54832           | 54832 | 54832  | 54832 | 1       |
-| imagePrefix                                                                              | 1183            | 2183  | 2183   | 3183  | 2       |
-| imageSuffix                                                                              | 1227            | 2227  | 2227   | 3227  | 2       |
-| setImageStrings                                                                          | 25255           | 30614 | 30614  | 35974 | 2       |
+| generate                                                                                 | 51746           | 51746 | 51746  | 51746 | 1       |
+| imagePrefix                                                                              | 1074            | 2074  | 2074   | 3074  | 2       |
+| imageSuffix                                                                              | 1118            | 2118  | 2118   | 3118  | 2       |
+| setImageStrings                                                                          | 25248           | 30606 | 30606  | 35965 | 2       |
 
 
 | src/nft-metadata-generators/NFTMetadataGeneratorURL.sol:NFTMetadataGeneratorURL contract |                 |       |        |       |         |
 |------------------------------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                                                                          | Deployment Size |       |        |       |         |
-| 1165211                                                                                  | 5808            |       |        |       |         |
+| 1120404                                                                                  | 5550            |       |        |       |         |
 | Function Name                                                                            | min             | avg   | median | max   | # calls |
-| generate                                                                                 | 64528           | 64528 | 64528  | 64528 | 1       |
-| setURLStrings                                                                            | 25423           | 30782 | 30782  | 36142 | 2       |
-| urlPrefix                                                                                | 1184            | 1184  | 1184   | 1184  | 1       |
-| urlSuffix                                                                                | 1250            | 1250  | 1250   | 1250  | 1       |
+| generate                                                                                 | 61198           | 61198 | 61198  | 61198 | 1       |
+| setURLStrings                                                                            | 25416           | 30774 | 30774  | 36133 | 2       |
+| urlPrefix                                                                                | 1075            | 1075  | 1075   | 1075  | 1       |
+| urlSuffix                                                                                | 1141            | 1141  | 1141   | 1141  | 1       |
 
 
 | test/mocks/MockMetadataGenerator.sol:MockMetadataGenerator contract |                 |       |        |       |         |
 |---------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                                                     | Deployment Size |       |        |       |         |
-| 940871                                                              | 4711            |       |        |       |         |
+| 896351                                                              | 4458            |       |        |       |         |
 | Function Name                                                       | min             | avg   | median | max   | # calls |
-| generate                                                            | 60984           | 60984 | 60984  | 60984 | 1       |
+| generate                                                            | 57807           | 57807 | 57807  | 57807 | 1       |
 
 
 | test/mocks/MockToken.sol:MockToken contract |                 |       |        |       |         |
 |---------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                             | Deployment Size |       |        |       |         |
-| 639406                                      | 3369            |       |        |       |         |
+| 625454                                      | 3260            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
-| approve                                     | 46334           | 46343 | 46346  | 46346 | 222     |
-| balanceOf                                   | 561             | 1382  | 561    | 2561  | 336     |
-| mint                                        | 51284           | 58898 | 51284  | 68384 | 238     |
-| transfer                                    | 34390           | 48859 | 51490  | 51490 | 13      |
+| approve                                     | 46330           | 46339 | 46342  | 46342 | 232     |
+| balanceOf                                   | 558             | 1380  | 558    | 2558  | 338     |
+| mint                                        | 51279           | 58862 | 51279  | 68379 | 248     |
+| transfer                                    | 34384           | 48853 | 51484  | 51484 | 13      |
 
 
 | test/mocks/XPProviderMock.sol:XPProviderMock contract |                 |       |        |       |         |
 |-------------------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                                       | Deployment Size |       |        |       |         |
-| 152145                                                | 489             |       |        |       |         |
+| 149299                                                | 472             |       |        |       |         |
 | Function Name                                         | min             | avg   | median | max   | # calls |
-| getTotalXPShares                                      | 302             | 968   | 302    | 2302  | 72      |
-| getUserXPShare                                        | 504             | 1837  | 2504   | 2504  | 12      |
-| setTotalXPShares                                      | 43632           | 43632 | 43632  | 43632 | 20      |
-| setUserXPShare                                        | 44128           | 44128 | 44128  | 44128 | 4       |
+| getTotalXPShares                                      | 301             | 967   | 301    | 2301  | 72      |
+| getUserXPShare                                        | 501             | 1834  | 2501   | 2501  | 12      |
+| setTotalXPShares                                      | 43630           | 43630 | 43630  | 43630 | 20      |
+| setUserXPShare                                        | 44125           | 44125 | 44125  | 44125 | 4       |
 
 
 

@@ -38,6 +38,17 @@ definition isTrustedCodehashAccessFunction(method f) returns bool = (
   f.selector == sig:streamer.isTrustedCodehash(bytes32).selector
 );
 
+definition isInitializerFunction(method f) returns bool = (
+  f.selector == sig:streamer.initialize(address,address,address).selector
+);
+
+definition isUUPSUpgradeableFunction(method f) returns bool = (
+  f.selector == sig:streamer.proxiableUUID().selector ||
+  f.selector == sig:streamer.UPGRADE_INTERFACE_VERSION().selector ||
+  f.selector == sig:streamer.upgradeToAndCall(address, bytes).selector ||
+  f.selector == sig:streamer.__TrustedCodehashAccess_init(address).selector
+);
+
 rule accountCanOnlyLeaveInEmergencyMode(method f) {
   env e;
   calldataarg args;
@@ -49,6 +60,8 @@ rule accountCanOnlyLeaveInEmergencyMode(method f) {
 
   assert !isReverted => isViewFunction(f) ||
                         isOwnableFunction(f) ||
-                        isTrustedCodehashAccessFunction(f);
+                        isTrustedCodehashAccessFunction(f) ||
+                        isInitializerFunction(f) ||
+                        isUUPSUpgradeableFunction(f);
 }
 

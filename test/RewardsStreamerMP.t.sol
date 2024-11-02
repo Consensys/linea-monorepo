@@ -3,6 +3,8 @@ pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { MockToken } from "./mocks/MockToken.sol";
@@ -23,7 +25,12 @@ contract RewardsStreamerMPTest is Test {
     function setUp() public virtual {
         rewardToken = new MockToken("Reward Token", "RT");
         stakingToken = new MockToken("Staking Token", "ST");
-        streamer = new RewardsStreamerMP(address(this), address(stakingToken), address(rewardToken));
+
+        bytes memory initializeData =
+            abi.encodeCall(RewardsStreamerMP.initialize, (address(this), address(stakingToken), address(rewardToken)));
+        address impl = address(new RewardsStreamerMP());
+        address proxy = address(new ERC1967Proxy(impl, initializeData));
+        streamer = RewardsStreamerMP(proxy);
 
         address[4] memory accounts = [alice, bob, charlie, dave];
         for (uint256 i = 0; i < accounts.length; i++) {
@@ -1776,6 +1783,60 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
             stakingToken.balanceOf(alternateAddress),
             alternateInitialBalance + 10e18,
             "Alternate address should get staked tokens"
+        );
+    }
+}
+
+contract UpgradeTest is RewardsStreamerMPTest {
+    function _upgradeStakeManager() internal {
+        address newImpl = address(new RewardsStreamerMP());
+        bytes memory initializeData;
+        UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
+    }
+
+    function setUp() public override {
+        super.setUp();
+    }
+
+    function test_RevertWhenNotOwner() public {
+        address newImpl = address(new RewardsStreamerMP());
+        bytes memory initializeData;
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
+        UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
+    }
+
+    function test_UpgradeStakeManager() public {
+        // first, change state of existing stake manager
+        _stake(alice, 10e18, 0);
+
+        // check initial state
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 10e18,
+                totalMP: 10e18,
+                totalMaxMP: 50e18,
+                stakingBalance: 10e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        // next, upgrade the stake manager
+        _upgradeStakeManager();
+
+        // ensure state is available in upgraded contract
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 10e18,
+                totalMP: 10e18,
+                totalMaxMP: 50e18,
+                stakingBalance: 10e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
         );
     }
 }

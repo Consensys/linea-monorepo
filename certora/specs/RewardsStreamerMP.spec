@@ -41,13 +41,22 @@ function getAccountLockUntil(address account) returns uint256 {
 }
 
 invariant sumOfBalancesIsTotalStaked()
-  sumOfBalances == to_mathint(totalStaked());
+  sumOfBalances == to_mathint(totalStaked())
+  filtered {
+    f -> f.selector != sig:upgradeToAndCall(address,bytes).selector
+  }
 
 invariant accountMPLessEqualAccountMaxMP(address account)
-  to_mathint(getAccountMP(account)) <= to_mathint(getAccountMaxMP(account));
+  to_mathint(getAccountMP(account)) <= to_mathint(getAccountMaxMP(account))
+  filtered {
+    f -> f.selector != sig:upgradeToAndCall(address,bytes).selector
+  }
 
 invariant accountMPGreaterEqualAccountStakedBalance(address account)
-  to_mathint(getAccountMP(account)) >= to_mathint(getAccountStakedBalance(account));
+  to_mathint(getAccountMP(account)) >= to_mathint(getAccountStakedBalance(account))
+  filtered {
+    f -> f.selector != sig:upgradeToAndCall(address,bytes).selector
+  }
 
 rule stakingMintsMultiplierPoints1To1Ratio {
 

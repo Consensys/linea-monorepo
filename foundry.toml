@@ -5,7 +5,7 @@
   block_timestamp = 1_680_220_800 # March 31, 2023 at 00:00 GMT
   bytecode_hash = "none"
   cbor_metadata = false
-  evm_version = "paris"
+  evm_version = "cancun"
   fuzz = { runs = 1_000 }
   gas_reports = ["*"]
   libs = ["lib"]
@@ -16,7 +16,6 @@
   solc = "0.8.26"
   src = "src"
   test = "test"
-
 [profile.ci]
   fuzz = { runs = 10_000 }
   verbosity = 4

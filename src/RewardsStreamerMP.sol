@@ -2,12 +2,14 @@
 pragma solidity ^0.8.26;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { IStakeManager } from "./interfaces/IStakeManager.sol";
 import { TrustedCodehashAccess } from "./TrustedCodehashAccess.sol";
 
 // Rewards Streamer with Multiplier Points
-contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGuard {
+contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAccess, ReentrancyGuardUpgradeable {
     error StakingManager__AmountCannotBeZero();
     error StakingManager__TransferFailed();
     error StakingManager__InsufficientBalance();
@@ -17,8 +19,8 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
     error StakingManager__AlreadyLocked();
     error StakingManager__EmergencyModeEnabled();
 
-    IERC20 public immutable STAKING_TOKEN;
-    IERC20 public immutable REWARD_TOKEN;
+    IERC20 public STAKING_TOKEN;
+    IERC20 public REWARD_TOKEN;
 
     uint256 public constant SCALE_FACTOR = 1e18;
     uint256 public constant MP_RATE_PER_YEAR = 1e18;
@@ -53,10 +55,22 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
         _;
     }
 
-    constructor(address _owner, address _stakingToken, address _rewardToken) TrustedCodehashAccess(_owner) {
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address _owner, address _stakingToken, address _rewardToken) public initializer {
+        __TrustedCodehashAccess_init(_owner);
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
+
         STAKING_TOKEN = IERC20(_stakingToken);
         REWARD_TOKEN = IERC20(_rewardToken);
         lastMPUpdatedTime = block.timestamp;
+    }
+
+    function _authorizeUpgrade(address) internal view override {
+        _checkOwner();
     }
 
     function stake(uint256 amount, uint256 lockPeriod) external onlyTrustedCodehash onlyNotEmergencyMode nonReentrant {

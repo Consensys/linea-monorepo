@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeVault } from "../src/StakeVault.sol";
@@ -30,7 +31,12 @@ contract StakeVaultTest is Test {
     function setUp() public virtual {
         rewardToken = new MockToken("Reward Token", "RT");
         stakingToken = new MockToken("Staking Token", "ST");
-        streamer = new RewardsStreamerMP(address(this), address(stakingToken), address(rewardToken));
+        address impl = address(new RewardsStreamerMP());
+        bytes memory initializeData = abi.encodeWithSelector(
+            RewardsStreamerMP.initialize.selector, address(this), address(stakingToken), address(rewardToken)
+        );
+        address proxy = address(new ERC1967Proxy(impl, initializeData));
+        streamer = RewardsStreamerMP(proxy);
 
         stakingToken.mint(alice, 10_000e18);
         stakeVault = _createTestVault(alice);
