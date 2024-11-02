@@ -180,17 +180,17 @@ func (rsp *Response) FuncInput() *execution.FunctionalPublicInput {
 		firstBlock = &rsp.BlocksData[0]
 		lastBlock  = &rsp.BlocksData[len(rsp.BlocksData)-1]
 		fi         = &execution.FunctionalPublicInput{
-			L2MessageServiceAddr:        types.EthAddress(rsp.L2BridgeAddress),
-			MaxNbL2MessageHashes:        rsp.MaxNbL2MessageHashes,
-			ChainID:                     uint64(rsp.ChainID),
-			FinalBlockTimestamp:         lastBlock.TimeStamp,
-			FinalBlockNumber:            uint64(rsp.FirstBlockNumber + len(rsp.BlocksData) - 1),
-			LastFinalizedBlockTimestamp: firstBlock.TimeStamp,
-			InitialBlockNumber:          uint64(rsp.FirstBlockNumber),
-			DataChecksum:                rsp.ExecDataChecksum,
-			L2MessageHashes:             types.AsByteArrSlice(rsp.AllL2L1MessageHashes),
-			InitialStateRootHash:        types.Bytes32FromHex(rsp.ParentStateRootHash),
-			FinalStateRootHash:          lastBlock.RootHash,
+			L2MessageServiceAddr:  types.EthAddress(rsp.L2BridgeAddress),
+			MaxNbL2MessageHashes:  rsp.MaxNbL2MessageHashes,
+			ChainID:               uint64(rsp.ChainID),
+			FinalBlockTimestamp:   lastBlock.TimeStamp,
+			FinalBlockNumber:      uint64(rsp.FirstBlockNumber + len(rsp.BlocksData) - 1),
+			InitialBlockTimestamp: firstBlock.TimeStamp,
+			InitialBlockNumber:    uint64(rsp.FirstBlockNumber),
+			DataChecksum:          rsp.ExecDataChecksum,
+			L2MessageHashes:       types.AsByteArrSlice(rsp.AllL2L1MessageHashes),
+			InitialStateRootHash:  types.Bytes32FromHex(rsp.ParentStateRootHash),
+			FinalStateRootHash:    lastBlock.RootHash,
 		}
 	)
 

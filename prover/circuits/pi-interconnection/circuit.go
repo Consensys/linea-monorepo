@@ -155,7 +155,9 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		nextExecInitBlockNum := api.Add(piq.FinalBlockNumber, 1)
 
-		api.AssertIsEqual(comparator.IsLess(lastFinalizedBlockTime, api.Select(inRange, piq.FinalBlockTimestamp, uint64(math.MaxUint64))), 1) // don't compare if not updating
+		api.AssertIsEqual(comparator.IsLess(lastFinalizedBlockTime, api.Select(inRange, piq.InitialBlockTimestamp, uint64(math.MaxUint64))), 1) // don't compare if not updating
+		api.AssertIsEqual(comparator.IsLess(piq.InitialBlockTimestamp, api.Add(piq.FinalBlockTimestamp, 1)), 1)
+
 		api.AssertIsEqual(comparator.IsLess(initBlockNum, api.Select(inRange, nextExecInitBlockNum, uint64(math.MaxUint64))), 1)
 		api.AssertIsEqual(comparator.IsLess(finalRollingHashNum, api.Add(newFinalRollingHashNum, rollingHashNotUpdated)), 1) // if the rolling hash is updated, check that it has increased
 
@@ -164,7 +166,6 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
-			LastFinalizedBlockTimestamp: lastFinalizedBlockTime,
 			InitialStateRootHash:        initState,
 			InitialBlockNumber:          initBlockNum,
 			InitialRollingHash:          initRHash,

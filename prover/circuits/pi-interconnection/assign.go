@@ -201,9 +201,18 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 		executionFPI.InitialBlockNumber = executionFPI.FinalBlockNumber + 1
 		executionFPI.InitialStateRootHash = executionFPI.FinalStateRootHash
-		executionFPI.LastFinalizedBlockTimestamp = executionFPI.FinalBlockTimestamp
+		executionFPI.InitialBlockTimestamp = executionFPI.FinalBlockTimestamp + 1 // to simplify consistency checks
 
 		if i < len(r.Executions) {
+			if initial, final := r.Executions[i].InitialBlockTimestamp, executionFPI.FinalBlockTimestamp; initial <= final {
+				err = fmt.Errorf("execution #%d. initial block timestamp is not after the final block timestamp %d≤%d", i, initial, final)
+				return
+			}
+			if initial, final := r.Executions[i].InitialBlockTimestamp, executionFPI.FinalBlockTimestamp; initial > final {
+				err = fmt.Errorf("execution #%d. initial block timestamp is after the final block timestamp %d>%d", i, initial, final)
+				return
+			}
+			executionFPI.InitialBlockTimestamp = r.Executions[i].InitialBlockTimestamp
 			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHash
 			executionFPI.FinalBlockNumber = r.Executions[i].FinalBlockNumber
 			executionFPI.FinalBlockTimestamp = r.Executions[i].FinalBlockTimestamp
