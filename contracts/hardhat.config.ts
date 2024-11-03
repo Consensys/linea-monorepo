@@ -1,5 +1,6 @@
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
+import "@nomicfoundation/hardhat-foundry";
 import * as dotenv from "dotenv";
 import "hardhat-deploy";
 import "hardhat-storage-layout";
