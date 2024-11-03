@@ -4,13 +4,9 @@ pragma solidity 0.8.26;
 import "forge-std/Test.sol";
 import "../../contracts/LineaRollup.sol";
 import "../../contracts/interfaces/l1/ILineaRollup.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-
-// Import the ERC1967Proxy contract from OpenZeppelin
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-
-// Import Utils library
 import "../../contracts/lib/Utils.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract LineaRollupTestHelper is LineaRollup {
     function calculateY(bytes calldata data, bytes32 dataEvaluationPoint) external pure returns (bytes32) {

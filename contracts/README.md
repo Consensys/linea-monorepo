@@ -64,3 +64,22 @@ npx hardhat run ./scripts/deployment/deployZkEVM.ts --network zkevm_dev
 Token Bridge is a canonical brige between Ethereum and Linea networks.
 
 Documentation: [./docs/linea-token-bridge.md](./docs/linea-token-bridge.md)
+
+## Foundry Setup & Testing
+
+This project supports Foundry, in addition to Hardhat.
+
+To install Foundry, follow the [Foundry installation guide](https://book.getfoundry.sh/getting-started/installation.html).
+
+### Running Foundry Tests
+
+Foundry tests have been added to a specific directory (`contracts/test/foundry`) to coexist with Hardhat tests.
+
+To compile and run Foundry tests:
+
+```bash
+forge build
+forge test --match-path "test/foundry/*.t.sol" -vvv
+```
+
+This command builds and runs Foundry tests, ensuring compatibility with the project's bytecode and enabling further test expansion.
