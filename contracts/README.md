@@ -71,6 +71,12 @@ This project supports Foundry, in addition to Hardhat.
 
 To install Foundry, follow the [Foundry installation guide](https://book.getfoundry.sh/getting-started/installation.html).
 
+Make sure the submodules are initialized:
+
+```bash
+git submodule update --init --recursive
+```
+
 ### Running Foundry Tests
 
 Foundry tests have been added to a specific directory (`contracts/test/foundry`) to coexist with Hardhat tests.
