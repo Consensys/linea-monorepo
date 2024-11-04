@@ -16,6 +16,9 @@ import net.consensys.linea.transactionexclusion.app.DbConnectionConfig
 import net.consensys.linea.transactionexclusion.app.PersistenceRetryConfig
 import net.consensys.linea.transactionexclusion.app.TransactionExclusionApp
 import net.consensys.linea.transactionexclusion.app.api.ApiConfig
+import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
+import net.consensys.linea.transactionexclusion.test.rejectedContractDeploymentTransaction
+import net.consensys.toHexString
 import net.consensys.trimToMillisecondPrecision
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
@@ -109,7 +112,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "params": {
         "txRejectionStage": "P2P",
         "timestamp": "${Clock.System.now().trimToMillisecondPrecision()}",
-        "transactionRLP": "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8",
+        "transactionRLP": "${defaultRejectedTransaction.transactionRLP.encodeHex()}",
         "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70",
         "overflows": [
           { "module": "ADD", "count": 402, "limit": 70 },
@@ -125,7 +128,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
         """{
           "jsonrpc": "2.0",
           "id": 123,
-          "result": {"status":"SAVED","txHash":"0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"}
+          "result": {"status":"SAVED","txHash":"${defaultRejectedTransaction.transactionInfo.hash.encodeHex()}"}
         }"""
       )
   }
@@ -148,7 +151,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "params": [{
         "txRejectionStage": "SEQUENCER",
         "timestamp": "$rejectionTimeStamp",
-        "transactionRLP": "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8",
+        "transactionRLP": "${defaultRejectedTransaction.transactionRLP.encodeHex()}",
         "blockNumber": "10000",
         "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70 (from Sequencer)",
         "overflows": [
@@ -165,7 +168,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
         """{
           "jsonrpc": "2.0",
           "id": 124,
-          "result": {"status":"SAVED","txHash":"0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"}
+          "result": {"status":"SAVED","txHash":"${defaultRejectedTransaction.transactionInfo.hash.encodeHex()}"}
         }"""
       )
 
@@ -174,7 +177,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "jsonrpc": "2.0",
       "id": 125,
       "method": "linea_getTransactionExclusionStatusV1",
-      "params": ["0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"]
+      "params": ["${defaultRejectedTransaction.transactionInfo.hash.encodeHex()}"]
     }
     """.trimIndent()
 
@@ -185,13 +188,73 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
           "jsonrpc": "2.0",
           "id": 125,
           "result": {
-            "txHash": "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7",
-            "from": "0x4d144d7b9c96b26361d6ac74dd1d8267edca4fc2",
+            "txHash": "${defaultRejectedTransaction.transactionInfo.hash.encodeHex()}",
+            "from": "${defaultRejectedTransaction.transactionInfo.from.encodeHex()}",
             "nonce": "0x64",
             "txRejectionStage": "SEQUENCER",
             "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70 (from Sequencer)",
             "timestamp": "$rejectionTimeStamp",
             "blockNumber": "0x2710"
+          }
+        }"""
+      )
+  }
+
+  @Test
+  fun `Should save the rejected contract deployment tx from RPC`() {
+    // Save the rejected contract deployment tx from RPC (without block number and sender address)
+    val rejectionTimeStamp = Clock.System.now()
+      .trimToMillisecondPrecision()
+      .toString()
+
+    val saveTxJonRequest = """{
+      "jsonrpc": "2.0",
+      "id": 124,
+      "method": "linea_saveRejectedTransactionV1",
+      "params": [{
+        "txRejectionStage": "RPC",
+        "timestamp": "$rejectionTimeStamp",
+        "transactionRLP": "${rejectedContractDeploymentTransaction.transactionRLP.encodeHex()}",
+        "reasonMessage": "${rejectedContractDeploymentTransaction.reasonMessage}",
+        "overflows": []
+      }]
+    }
+    """.trimIndent()
+
+    // Check the save response and ensure the rejected txn was saved
+    assertThatJson(makeRequestJsonResponse(saveTxJonRequest))
+      .isEqualTo(
+        """{
+          "jsonrpc": "2.0",
+          "id": 124,
+          "result": {"status":"SAVED","txHash":"${
+        rejectedContractDeploymentTransaction.transactionInfo.hash.encodeHex()
+        }"}
+        }"""
+      )
+
+    // Send the get request for the rejected transaction
+    val getTxJsonRequest = """{
+      "jsonrpc": "2.0",
+      "id": 125,
+      "method": "linea_getTransactionExclusionStatusV1",
+      "params": ["${rejectedContractDeploymentTransaction.transactionInfo.hash.encodeHex()}"]
+    }
+    """.trimIndent()
+
+    // Check the get response is corresponding to the rejected txn from SEQUENCER
+    assertThatJson(makeRequestJsonResponse(getTxJsonRequest))
+      .isEqualTo(
+        """{
+          "jsonrpc": "2.0",
+          "id": 125,
+          "result": {
+            "txHash": "${rejectedContractDeploymentTransaction.transactionInfo.hash.encodeHex()}",
+            "from": "${rejectedContractDeploymentTransaction.transactionInfo.from.encodeHex()}",
+            "nonce": "${rejectedContractDeploymentTransaction.transactionInfo.nonce.toHexString()}",
+            "txRejectionStage": "RPC",
+            "reasonMessage": "${rejectedContractDeploymentTransaction.reasonMessage}",
+            "timestamp": "$rejectionTimeStamp"
           }
         }"""
       )
@@ -214,7 +277,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "params": [{
         "txRejectionStage": "SEQUENCER",
         "timestamp": "$rejectionTimeStamp",
-        "transactionRLP": "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8",
+        "transactionRLP": "${defaultRejectedTransaction.transactionRLP.encodeHex()}",
         "blockNumber": "10000",
         "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70",
         "overflows": [
@@ -231,7 +294,9 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
         """{
           "jsonrpc": "2.0",
           "id": 124,
-          "result": {"status":"DUPLICATE_ALREADY_SAVED_BEFORE","txHash":"0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"}
+          "result": {"status":"DUPLICATE_ALREADY_SAVED_BEFORE","txHash":"${
+        defaultRejectedTransaction.transactionInfo.hash.encodeHex()
+        }"}
         }"""
       )
   }
@@ -269,7 +334,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "method": "linea_saveRejectedTransactionV1",
       "params": [{
         "txRejectionStage": "SEQUENCER",
-        "transactionRLP": "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8",
+        "transactionRLP": "${defaultRejectedTransaction.transactionRLP.encodeHex()}",
         "blockNumber": "10000",
         "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70"
       }]

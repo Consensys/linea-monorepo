@@ -7,6 +7,8 @@ import net.consensys.encodeHex
 import net.consensys.linea.transactionexclusion.ModuleOverflow
 import net.consensys.linea.transactionexclusion.RejectedTransaction
 import net.consensys.linea.transactionexclusion.TransactionInfo
+import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
+import net.consensys.linea.transactionexclusion.test.rejectedContractDeploymentTransaction
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -15,9 +17,7 @@ import kotlin.random.Random
 class ArgumentParserTest {
   @Test
   fun getTransactionRLPInRawBytes_should_return_correct_byte_array() {
-    val transactionRLPInHexStr =
-      "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c4" +
-        "96d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8"
+    val transactionRLPInHexStr = defaultRejectedTransaction.transactionRLP.encodeHex()
     Assertions.assertTrue(
       ArgumentParser.getTransactionRLPInRawBytes(transactionRLPInHexStr)
         .contentEquals(transactionRLPInHexStr.decodeHex())
@@ -76,18 +76,28 @@ class ArgumentParserTest {
 
   @Test
   fun getTransactionInfoFromRLP_should_return_correct_transactionInfo() {
-    val transactionRLP =
-      (
-        "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c4" +
-          "96d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8"
-        ).decodeHex()
+    val transactionRLP = defaultRejectedTransaction.transactionRLP
     Assertions.assertEquals(
       ArgumentParser.getTransactionInfoFromRLP(transactionRLP),
       TransactionInfo(
-        hash = "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7".decodeHex(),
-        from = "0x4d144d7b9c96b26361d6ac74dd1d8267edca4fc2".decodeHex(),
-        to = "0x1195cf65f83b3a5768f3c496d3a05ad6412c64b3".decodeHex(),
-        nonce = 100UL
+        hash = defaultRejectedTransaction.transactionInfo.hash,
+        from = defaultRejectedTransaction.transactionInfo.from,
+        to = defaultRejectedTransaction.transactionInfo.to,
+        nonce = defaultRejectedTransaction.transactionInfo.nonce
+      )
+    )
+  }
+
+  @Test
+  fun getTransactionInfoFromRLP_should_return_correct_transactionInfo_for_contract_deployment_tx() {
+    val transactionRLP = rejectedContractDeploymentTransaction.transactionRLP
+    Assertions.assertEquals(
+      ArgumentParser.getTransactionInfoFromRLP(transactionRLP),
+      TransactionInfo(
+        hash = rejectedContractDeploymentTransaction.transactionInfo.hash,
+        from = rejectedContractDeploymentTransaction.transactionInfo.from,
+        to = rejectedContractDeploymentTransaction.transactionInfo.to,
+        nonce = rejectedContractDeploymentTransaction.transactionInfo.nonce
       )
     )
   }
