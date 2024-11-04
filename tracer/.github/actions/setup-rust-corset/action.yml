@@ -9,4 +9,4 @@ runs:
 
     - name: Install Corset
       shell: bash
-      run: RUSTFLAGS=-Awarnings cargo install --git ssh://git@github.com/ConsenSys/corset --tag v9.7.15 --locked --force
+      run: RUSTFLAGS=-Awarnings cargo install --git ssh://git@github.com/ConsenSys/corset --tag v9.7.16 --locked --force
