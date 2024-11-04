@@ -65,6 +65,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 
 	execReq := []public_input.Execution{{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
+		InitialBlockTimestamp:  6,
 		FinalStateRootHash:     internal.Uint64To32Bytes(4),
 		FinalBlockNumber:       5,
 		FinalBlockTimestamp:    6,
@@ -72,6 +73,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		FinalRollingHashNumber: 8,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(9)},
+		InitialBlockTimestamp:  7,
 		FinalStateRootHash:     internal.Uint64To32Bytes(10),
 		FinalBlockNumber:       11,
 		FinalBlockTimestamp:    12,
