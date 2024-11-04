@@ -24,6 +24,7 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.types.Bytecode;
+import net.consensys.linea.zktracer.types.MemorySpan;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -57,36 +58,6 @@ public final class CallStack {
   /** a "pointer" to the currentId {@link CallFrame} in <code>frames</code>. */
   private int currentId;
 
-  public void newPrecompileResult(
-      final int hubStamp,
-      final Bytes precompileResult,
-      final int returnDataOffset,
-      final Address precompileAddress) {
-
-    final CallFrame newFrame =
-        new CallFrame(
-            CallFrameType.PRECOMPILE_RETURN_DATA,
-            this.callFrames.size(),
-            hubStamp,
-            this.depth,
-            false,
-            Wei.ZERO,
-            0,
-            precompileAddress,
-            -1,
-            precompileAddress,
-            -1,
-            Bytecode.EMPTY,
-            precompileAddress,
-            -1,
-            this.currentId,
-            precompileResult,
-            returnDataOffset,
-            precompileResult.size());
-
-    this.callFrames.add(newFrame);
-  }
-
   public void newRootContext(
       int contextNumber,
       Address from,
@@ -115,7 +86,8 @@ public final class CallStack {
         callData,
         0,
         callData.size(),
-        callDataContextNumber);
+        callDataContextNumber,
+        MemorySpan.empty());
     this.currentId = this.callFrames.size() - 1;
   }
 
@@ -146,11 +118,11 @@ public final class CallStack {
         callData,
         0,
         callData.size(),
-        transactionCallDataContextNumber
+        transactionCallDataContextNumber,
         // useless
         // useless
         // useless
-        );
+        MemorySpan.empty());
     this.currentId = this.callFrames.size() - 1;
   }
 
@@ -213,7 +185,8 @@ public final class CallStack {
       Bytes inputData,
       long callDataOffset,
       long callDataSize,
-      long callDataContextNumber) {
+      long callDataContextNumber,
+      MemorySpan returnDataTargetInCaller) {
     final int callerId = this.depth == -1 ? -1 : this.currentId;
     final int newCallFrameId = this.callFrames.size();
     this.depth += 1;
@@ -241,7 +214,8 @@ public final class CallStack {
             callerId,
             callData,
             callDataOffset,
-            callDataSize);
+            callDataSize,
+            returnDataTargetInCaller);
 
     this.callFrames.add(newFrame);
     this.currentId = newCallFrameId;

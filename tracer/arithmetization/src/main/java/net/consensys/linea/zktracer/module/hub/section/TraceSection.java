@@ -157,39 +157,37 @@ public class TraceSection {
         : 0;
   }
 
-  private List<TraceFragment> makeStackFragments(final Hub hub, CallFrame f) {
-    final List<TraceFragment> r = new ArrayList<>(2);
-    Stack snapshot = f.stack().snapshot();
-    if (f.pending().lines().isEmpty()) {
-      for (int i = 0; i < (f.opCodeData().numberOfStackRows()); i++) {
-        r.add(
+  private List<TraceFragment> makeStackFragments(final Hub hub, CallFrame currentFrame) {
+    final List<TraceFragment> stackFragments = new ArrayList<>(2);
+    final Stack snapshot = currentFrame.stack().snapshot();
+    if (currentFrame.pending().lines().isEmpty()) {
+      for (int i = 0; i < (currentFrame.opCodeData().numberOfStackRows()); i++) {
+        stackFragments.add(
             StackFragment.prepare(
                 hub,
                 snapshot,
                 new StackLine().asStackItems(),
                 hub.pch().exceptions(),
                 hub.pch().abortingConditions().snapshot(),
-                Hub.GAS_PROJECTOR.of(f.frame(), f.opCode()),
-                f.isDeployment(),
-                f.willRevert(),
+                Hub.GAS_PROJECTOR.of(currentFrame.frame(), currentFrame.opCode()),
+                currentFrame.isDeployment(),
                 commonValues));
       }
     } else {
-      for (StackLine line : f.pending().lines()) {
-        r.add(
+      for (StackLine line : currentFrame.pending().lines()) {
+        stackFragments.add(
             StackFragment.prepare(
                 hub,
                 snapshot,
                 line.asStackItems(),
                 hub.pch().exceptions(),
                 hub.pch().abortingConditions().snapshot(),
-                Hub.GAS_PROJECTOR.of(f.frame(), f.opCode()),
-                f.isDeployment(),
-                f.willRevert(),
+                Hub.GAS_PROJECTOR.of(currentFrame.frame(), currentFrame.opCode()),
+                currentFrame.isDeployment(),
                 commonValues));
       }
     }
-    return r;
+    return stackFragments;
   }
 
   public void triggerHashInfo(Bytes hash) {

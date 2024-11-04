@@ -140,7 +140,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
   private int exoSum = 0;
 
   public void dontTraceMe() {
-    this.traceMe = false;
+    traceMe = false;
   }
 
   private MmuCall updateExoSum(final int exoValue) {
@@ -802,9 +802,9 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
       return trace
           .pMiscMmuFlag(true)
           .pMiscMmuInst(instruction)
-          .pMiscMmuTgtId(targetId)
-          .pMiscMmuSrcId(sourceId)
-          .pMiscMmuAuxId(auxId)
+          .pMiscMmuTgtId(targetId())
+          .pMiscMmuSrcId(sourceId())
+          .pMiscMmuAuxId(auxId())
           .pMiscMmuSrcOffsetHi(sourceOffset.hi())
           .pMiscMmuSrcOffsetLo(sourceOffset.lo())
           .pMiscMmuTgtOffsetLo(targetOffset.lo())

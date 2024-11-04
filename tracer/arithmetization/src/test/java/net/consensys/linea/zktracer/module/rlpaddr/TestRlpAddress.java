@@ -41,8 +41,6 @@ public class TestRlpAddress {
 
   @Test
   void randDeployment() {
-    // final ToyWorld.ToyWorldBuilder world = ToyWorld.builder();
-
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
@@ -52,7 +50,6 @@ public class TestRlpAddress {
             .nonce(randLong())
             .address(senderAddress)
             .build();
-    ;
 
     final Bytes initCode = BytecodeCompiler.newProgram().push(1).push(1).op(OpCode.SLT).compile();
 
@@ -66,8 +63,6 @@ public class TestRlpAddress {
             .gasPrice(Wei.of(10L))
             .payload(initCode)
             .build();
-
-    Address deploymentAddress = Address.contractAddress(senderAddress, senderAccount.getNonce());
 
     ToyExecutionEnvironmentV2.builder()
         .accounts(List.of(senderAccount))

@@ -168,7 +168,7 @@ public class CommonFragmentValues {
 
   static int computePcNew(
       final Hub hub, final int pc, boolean noStackException, boolean hubInExecPhase) {
-    OpCode opCode = hub.opCode();
+    final OpCode opCode = hub.opCode();
     if (!(noStackException && hubInExecPhase)) {
       return 0;
     }

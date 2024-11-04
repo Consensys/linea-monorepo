@@ -255,7 +255,7 @@ public class CreateSection extends TraceSection
   public void resolveAtContextReEntry(Hub hub, CallFrame frame) {
     final boolean deploymentSuccess = !frame.frame().getStackItem(0).isZero();
 
-    if (!deploymentSuccess) {
+    if (deploymentSuccess) {
       scenarioFragment.setScenario(CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WONT_REVERT);
     } else {
       scenarioFragment.setScenario(CREATE_NON_EMPTY_INIT_CODE_FAILURE_WONT_REVERT);

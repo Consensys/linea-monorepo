@@ -85,8 +85,6 @@ public final class StorageFragment implements TraceFragment {
         .pStorageValueCurrIsZero(valueCurrent.isZero())
         .pStorageValueNextIsCurr(valueNext.equals(valueCurrent))
         .pStorageValueNextIsZero(valueNext.isZero())
-        .pStorageValueNextIsOrig(valueNext.equals(valueOriginal))
-        .pStorageUnconstrainedFirst(isFirstOccurrence)
-        .pStorageUnconstrainedFinal(isFinalOccurrence);
+        .pStorageValueNextIsOrig(valueNext.equals(valueOriginal));
   }
 }

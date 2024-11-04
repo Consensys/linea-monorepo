@@ -15,7 +15,8 @@
 
 package net.consensys.linea.zktracer.runtime.stack;
 
-import com.google.common.base.Preconditions;
+import static com.google.common.base.Preconditions.checkArgument;
+
 import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.transients.StackHeightCheck;
@@ -73,7 +74,8 @@ public class Stack {
 
     pending.addLine(
         new IndexedStackOperation(1, StackItem.pop(height, val1, stackStampWithOffset(0))),
-        new IndexedStackOperation(2, StackItem.pop(height, val2, stackStampWithOffset(1))));
+        new IndexedStackOperation(
+            2, StackItem.pop((short) (height - 1), val2, stackStampWithOffset(1))));
   }
 
   private void zeroOne(MessageFrame ignoredFrame, StackContext pending) {
@@ -183,7 +185,7 @@ public class Stack {
         line2 =
             new IndexedStackOperation[] {
               new IndexedStackOperation(
-                  1, StackItem.pop((short) (height - 2), topic1, stackStampWithOffset(0))),
+                  1, StackItem.pop((short) (height - 2), topic1, stackStampWithOffset(2))),
             };
       }
       case LOG2 -> {
@@ -237,7 +239,8 @@ public class Stack {
   }
 
   private void copy(MessageFrame frame, StackContext pending) {
-    if (currentOpcodeData.stackSettings().addressTrimmingInstruction()) {
+    if (currentOpcodeData.numberOfArguments() == 4) {
+      // this is the EXTCODECOPY case
       Bytes val0 = getStack(frame, 0);
       Bytes val1 = getStack(frame, 1);
       Bytes val2 = getStack(frame, 2);
@@ -251,7 +254,9 @@ public class Stack {
           new IndexedStackOperation(
               3, StackItem.pop((short) (height - 2), val2, stackStampWithOffset(3))),
           new IndexedStackOperation(4, StackItem.pop(height, val0, stamp)));
+
     } else {
+      // this is the CALLDATACOPY, CODECOPY and RETURNDATACOPY case
       Bytes val1 = getStack(frame, 0);
       Bytes val2 = getStack(frame, 2);
       Bytes val3 = getStack(frame, 1);
@@ -317,32 +322,31 @@ public class Stack {
   }
 
   private void create(MessageFrame frame, StackContext pending) {
-    final Bytes val1 = getStack(frame, 1);
-    final Bytes val2 = getStack(frame, 2);
+    final Bytes offset = getStack(frame, 1);
+    final Bytes size = getStack(frame, 2);
+    final Bytes value = getStack(frame, 0);
 
     pending.addLine(
         new IndexedStackOperation(
-            1, StackItem.pop((short) (height - 1), val1, stackStampWithOffset(1))),
+            1, StackItem.pop((short) (height - 1), offset, stackStampWithOffset(1))),
         new IndexedStackOperation(
-            2, StackItem.pop((short) (height - 2), val2, stackStampWithOffset(2))));
-    // case CREATE2
+            2, StackItem.pop((short) (height - 2), size, stackStampWithOffset(2))));
+
     if (currentOpcodeData.stackSettings().flag2()) {
-      final Bytes val3 = getStack(frame, 3);
-      final Bytes val4 = getStack(frame, 0);
+      // case CREATE2
+      final Bytes salt = getStack(frame, 3);
 
       pending.addArmingLine(
           new IndexedStackOperation(
-              2, StackItem.pop((short) (height - 3), val3, stackStampWithOffset(3))),
-          new IndexedStackOperation(3, StackItem.pop(height, val4, stackStampWithOffset(0))),
+              2, StackItem.pop((short) (height - 3), salt, stackStampWithOffset(3))),
+          new IndexedStackOperation(3, StackItem.pop(height, value, stackStampWithOffset(0))),
           new IndexedStackOperation(
               4, StackItem.push((short) (height - 3), stackStampWithOffset(4))));
     } else
     // case CREATE
     {
-      final Bytes val4 = getStack(frame, 0);
-
       pending.addArmingLine(
-          new IndexedStackOperation(3, StackItem.pop(height, val4, stackStampWithOffset(0))),
+          new IndexedStackOperation(3, StackItem.pop(height, value, stackStampWithOffset(0))),
           new IndexedStackOperation(
               4, StackItem.push((short) (height - 2), stackStampWithOffset(4))));
     }
@@ -378,7 +382,7 @@ public class Stack {
     final short delta = (short) currentOpcodeData.stackSettings().delta();
     final short alpha = (short) currentOpcodeData.stackSettings().alpha();
 
-    Preconditions.checkArgument(heightNew == frame.stackSize());
+    checkArgument(heightNew == frame.stackSize());
     height = (short) frame.stackSize();
     heightNew -= delta;
     heightNew += alpha;
@@ -395,7 +399,7 @@ public class Stack {
         hub.transients().conflation().stackHeightChecksForStackUnderflows().add(checkForUnderflow);
     if (isNewCheckForStackUnderflow) {
       final boolean underflowDetected = hub.wcp().callLT(height, delta);
-      Preconditions.checkArgument(underflowDetected == (status == Status.UNDERFLOW));
+      checkArgument(underflowDetected == (status == Status.UNDERFLOW));
     }
 
     // stack overflow checks happen only if no stack underflow was detected
@@ -405,7 +409,7 @@ public class Stack {
           hub.transients().conflation().stackHeightChecksForStackOverflows().add(checkForOverflow);
       if (isNewCheckForStackOverflow) {
         final boolean overflowDetected = hub.wcp().callGT(heightNew, MAX_STACK_SIZE);
-        Preconditions.checkArgument(overflowDetected == (status == Status.OVERFLOW));
+        checkArgument(overflowDetected == (status == Status.OVERFLOW));
       }
     }
 

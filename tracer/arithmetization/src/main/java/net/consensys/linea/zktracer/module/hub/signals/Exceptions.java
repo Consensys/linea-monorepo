@@ -122,13 +122,13 @@ public class Exceptions {
   }
 
   private static boolean isStackUnderflow(final MessageFrame frame, OpCodeData opCodeData) {
-    return frame.stackSize() < opCodeData.stackSettings().nbRemoved();
+    return frame.stackSize() < opCodeData.stackSettings().delta();
   }
 
   private static boolean isStackOverflow(final MessageFrame frame, OpCodeData opCodeData) {
     return frame.stackSize()
-            + opCodeData.stackSettings().nbAdded()
-            - opCodeData.stackSettings().nbRemoved()
+            + opCodeData.stackSettings().alpha()
+            - opCodeData.stackSettings().delta()
         > 1024;
   }
 

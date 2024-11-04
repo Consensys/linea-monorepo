@@ -312,6 +312,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 0
       staticGas: G_BASE
+      flag1: true
   - mnemonic: CALLER
     value: 0x33
     instructionFamily: CONTEXT
@@ -407,7 +408,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 0
       staticGas: G_BASE
-      flag1: true
+      flag2: true
   - mnemonic: EXTCODESIZE
     value: 0x3b
     instructionFamily: ACCOUNT
@@ -428,7 +429,7 @@ opcodes:
       delta: 4
       nbAdded: 0
       nbRemoved: 4
-      staticGas: G_VERY_LOW
+      staticGas: G_ZERO
       flag4: true
     billing:
       byWord:
@@ -623,6 +624,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 1
       staticGas: S_HUB
+      flag1: true
   - mnemonic: SSTORE
     value: 0x55
     instructionFamily: STORAGE
@@ -634,7 +636,7 @@ opcodes:
       nbRemoved: 2
       staticGas: S_HUB
       forbiddenInStatic: true
-      flag1: true
+      flag2: true
   - mnemonic: JUMP
     value: 0x56
     instructionFamily: JUMP

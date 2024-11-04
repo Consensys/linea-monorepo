@@ -102,8 +102,10 @@ public final class BytecodeRunner {
         ToyTransaction.builder()
             .sender(senderAccount)
             .to(receiverAccount)
+            .value(Wei.ONE)
             .keyPair(keyPair)
             .gasLimit(selectedGasLimit)
+            .gasPrice(Wei.of(8))
             .build();
 
     List<ToyAccount> accounts = new ArrayList<>();
