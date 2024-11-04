@@ -216,7 +216,9 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
         "timestamp": "$rejectionTimeStamp",
         "transactionRLP": "${rejectedContractDeploymentTransaction.transactionRLP.encodeHex()}",
         "reasonMessage": "${rejectedContractDeploymentTransaction.reasonMessage}",
-        "overflows": []
+        "overflows": [
+          { "module": "HUB", "count": 2119318, "limit": 2097152 }
+        ]
       }]
     }
     """.trimIndent()

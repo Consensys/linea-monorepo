@@ -143,8 +143,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
   @Test
   fun `saveNewRejectedTransaction inserts new rejected contract deployment transaction to db`() {
-    // insert a new rejected contract deployment transaction
-    // (with "reasonMessage" longer than 256 chars and "transactionInfo.to" as null)
+    // insert a new rejected contract deployment transaction (with "transactionInfo.to" as null)
     performInsertTest(rejectedContractDeploymentTransaction)
 
     // assert that the total number of rows in the two tables are correct

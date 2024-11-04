@@ -53,10 +53,15 @@ val rejectedContractDeploymentTransaction = RejectedTransaction(
       "fdbfcc0a0500a4683db1064736f6c63430007060033c001a0a905ece7f3784afa2130063e332899fa60eb" +
       "13863d96cea29810808c7d5a18eea0685b5237be1e44ccf7d4a9da4410a48cab5a23ba51e23fe3598294c7d34108c1"
     ).decodeHex(),
-  reasonMessage = "Reverted transaction: 0x08c379a000000000000000000000000000000000000000000000000000000000000000" +
-    "200000000000000000000000000000000000000000000000000000000000000022574f574d41583a20496e73756666696369656e74206" +
-    "f757470757420616d6f756e74000000000000000000000000000000000000000000000000000000000000",
-  overflows = emptyList(),
+  reasonMessage = "Transaction 0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525 " +
+    "line count for module HUB=2119318 is above the limit 2097152",
+  overflows = listOf(
+    ModuleOverflow(
+      module = "HUB",
+      count = 2119318,
+      limit = 2097152
+    )
+  ),
   transactionInfo = TransactionInfo(
     hash = "0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525".decodeHex(),
     from = "0x0d06838d1dfba9ef0a4166cca9be16fb1d76dbfc".decodeHex(),
