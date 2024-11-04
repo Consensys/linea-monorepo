@@ -15,6 +15,7 @@ import net.consensys.linea.transactionexclusion.ModuleOverflow
 import net.consensys.linea.transactionexclusion.RejectedTransaction
 import net.consensys.linea.transactionexclusion.TransactionInfo
 import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
+import net.consensys.linea.transactionexclusion.test.rejectedContractDeploymentTransaction
 import net.consensys.trimToMillisecondPrecision
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
@@ -31,7 +32,7 @@ import kotlin.time.Duration.Companion.seconds
 @ExtendWith(VertxExtension::class)
 class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
   init {
-    target = "1"
+    target = "2"
   }
 
   override val databaseName = DbHelper.generateUniqueDbName("tx-exclusion-api-rejectedtxns-dao-tests")
@@ -110,7 +111,9 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
     assertThat(insertedRow.getString("reject_stage")).isEqualTo(
       RejectedTransactionsPostgresDao.rejectedStageToDbValue(rejectedTransaction.txRejectionStage)
     )
-    assertThat(insertedRow.getLong("block_number") == rejectedTransaction.blockNumber?.toLong()).isTrue()
+    assertThat(insertedRow.getLong("block_number")?.toULong()).isEqualTo(
+      rejectedTransaction.blockNumber
+    )
     assertThat(insertedRow.getJsonArray("overflows").encode()).isEqualTo(
       ObjectMapper().writeValueAsString(rejectedTransaction.overflows)
     )
@@ -120,7 +123,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
     assertThat(insertedRow.getBuffer("tx_from").bytes).isEqualTo(
       rejectedTransaction.transactionInfo.from
     )
-    assertThat(insertedRow.getBuffer("tx_to").bytes).isEqualTo(
+    assertThat(insertedRow.getBuffer("tx_to")?.bytes).isEqualTo(
       rejectedTransaction.transactionInfo.to
     )
     assertThat(insertedRow.getLong("tx_nonce")).isEqualTo(
@@ -132,6 +135,16 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
   fun `saveNewRejectedTransaction inserts new rejected transaction to db`() {
     // insert a new rejected transaction
     performInsertTest(createRejectedTransaction())
+
+    // assert that the total number of rows in the two tables are correct
+    assertThat(rejectedTransactionsTotalRows()).isEqualTo(1)
+    assertThat(fullTransactionsTotalRows()).isEqualTo(1)
+  }
+
+  @Test
+  fun `saveNewRejectedTransaction inserts new rejected contract deployment transaction to db`() {
+    // insert a new rejected contract deployment transaction (with "transactionInfo.to" as null)
+    performInsertTest(rejectedContractDeploymentTransaction)
 
     // assert that the total number of rows in the two tables are correct
     assertThat(rejectedTransactionsTotalRows()).isEqualTo(1)

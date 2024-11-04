@@ -41,3 +41,31 @@ val defaultRejectedTransaction = RejectedTransaction(
     nonce = 100UL
   )
 )
+
+val rejectedContractDeploymentTransaction = RejectedTransaction(
+  txRejectionStage = RejectedTransaction.Stage.RPC,
+  timestamp = Instant.parse("2024-10-31T09:18:51Z"),
+  blockNumber = null,
+  transactionRLP = (
+    "0xb8d602f8d382e708018403780fc08403780fca830118fd8080b87960566023600b82828239805160001" +
+      "a607314601657fe5b30600052607381538281f3fe73000000000000000000000000000000000000000030" +
+      "146080604052600080fdfea2646970667358221220c399228be3777f235999f42c0d0a666dc163e66f600" +
+      "fdbfcc0a0500a4683db1064736f6c63430007060033c001a0a905ece7f3784afa2130063e332899fa60eb" +
+      "13863d96cea29810808c7d5a18eea0685b5237be1e44ccf7d4a9da4410a48cab5a23ba51e23fe3598294c7d34108c1"
+    ).decodeHex(),
+  reasonMessage = "Transaction 0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525 " +
+    "line count for module HUB=2119318 is above the limit 2097152",
+  overflows = listOf(
+    ModuleOverflow(
+      module = "HUB",
+      count = 2119318,
+      limit = 2097152
+    )
+  ),
+  transactionInfo = TransactionInfo(
+    hash = "0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525".decodeHex(),
+    from = "0x0d06838d1dfba9ef0a4166cca9be16fb1d76dbfc".decodeHex(),
+    to = null,
+    nonce = 1UL
+  )
+)
