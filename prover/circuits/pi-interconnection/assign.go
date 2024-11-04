@@ -160,9 +160,8 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			a.DecompressionFPIQ[i] = fpis.FunctionalPublicInputQSnark
 		}
 		utils.Copy(a.DecompressionFPIQ[i].X[:], zero[:])
-		if a.DecompressionPublicInput[i], err = fpi.Sum(decompression.WithBatchesSum(zero[:])); err != nil { // TODO zero batches sum is probably incorrect
-			return
-		}
+
+		a.DecompressionPublicInput[i] = 0
 	}
 
 	// Aggregation FPI
@@ -206,6 +205,11 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		executionFPI.InitialBlockTimestamp = executionFPI.FinalBlockTimestamp + 1
 		executionFPI.FinalBlockTimestamp = executionFPI.InitialBlockTimestamp
 
+		executionFPI.L2MessageServiceAddr = r.Aggregation.L2MessageServiceAddr
+		executionFPI.ChainID = r.Aggregation.ChainID
+
+		a.ExecutionPublicInput[i] = 0 // unless...
+
 		if i < len(r.Executions) {
 			if initial, final := r.Executions[i].InitialBlockTimestamp, finalBlockTimestamp; initial <= final {
 				err = fmt.Errorf("execution #%d. initial block timestamp is not after the final block timestamp %d≤%d", i, initial, final)
@@ -244,12 +248,10 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 				executionFPI.InitialRollingHashNumber = finalRollingHashNum
 				finalRollingHashNum = r.Executions[i].FinalRollingHashNumber
 			}
+
+			a.ExecutionPublicInput[i] = executionFPI.Sum(hshM)
 		}
 
-		executionFPI.L2MessageServiceAddr = r.Aggregation.L2MessageServiceAddr
-		executionFPI.ChainID = r.Aggregation.ChainID
-
-		a.ExecutionPublicInput[i] = executionFPI.Sum(hshM)
 		if snarkFPI, _err := executionFPI.ToSnarkType(); _err != nil {
 			err = fmt.Errorf("execution #%d: %w", i, _err)
 			return

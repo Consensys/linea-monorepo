@@ -121,8 +121,8 @@ func (c *Circuit) Define(api frontend.API) error {
 			EvaluationClaimBytes: fr377EncodedFr381ToBytes(api, piq.Y),
 		}
 
-		rDecompression.AssertEqualI(i, c.DecompressionPublicInput[i],
-			piq.Sum(api, hshM, blobBatchHashes[i])) // "open" decompression circuit public input
+		// "open" decompression circuit public input
+		api.AssertIsEqual(c.DecompressionPublicInput[i], api.Mul(rDecompression.InRange[i], piq.Sum(api, hshM, blobBatchHashes[i])))
 	}
 
 	shnarfs := ComputeShnarfs(&hshK, c.ParentShnarf, shnarfParams)
@@ -179,7 +179,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		initBlockNum, initRHashNum, initRHash = nextExecInitBlockNum, pi.FinalRollingHashNumber, pi.FinalRollingHash
 		lastFinalizedBlockTime, initState = pi.FinalBlockTimestamp, pi.FinalStateRootHash
 
-		api.AssertIsEqual(c.ExecutionPublicInput[i], pi.Sum(api, hshM)) // "open" execution circuit public input
+		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hshM))) // "open" execution circuit public input
 
 		if len(pi.L2MessageHashes.Values) != execMaxNbL2Msg {
 			return errors.New("number of L2 messages must be the same for all executions")
