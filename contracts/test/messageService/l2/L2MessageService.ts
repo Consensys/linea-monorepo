@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
-import { TestL2MessageService, TestReceivingContract } from "../../../../typechain-types";
+import { TestL2MessageService, TestReceivingContract } from "../../../typechain-types";
 import {
   ADDRESS_ZERO,
   BLOCK_COINBASE,
@@ -26,8 +26,8 @@ import {
   UNPAUSE_ALL_ROLE,
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
-} from "../../../common/constants";
-import { deployUpgradableFromFactory } from "../../../common/deployment";
+} from "../../common/constants";
+import { deployUpgradableFromFactory } from "../../common/deployment";
 import {
   buildAccessErrorMessage,
   calculateRollingHash,
@@ -39,9 +39,9 @@ import {
   expectRevertWithReason,
   generateKeccak256,
   generateKeccak256Hash,
-} from "../../../common/helpers";
+} from "../../common/helpers";
 import { ZeroAddress } from "ethers";
-import { generateRoleAssignments } from "../../../../common/helpers";
+import { generateRoleAssignments } from "../../../common/helpers";
 import {
   L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
   L2_MESSAGE_SERVICE_ROLES,
@@ -50,7 +50,7 @@ import {
   PAUSE_L2_L1_ROLE,
   UNPAUSE_L1_L2_ROLE,
   UNPAUSE_L2_L1_ROLE,
-} from "../../../../common/constants";
+} from "../../../common/constants";
 
 describe("L2MessageService", () => {
   let l2MessageService: TestL2MessageService;
