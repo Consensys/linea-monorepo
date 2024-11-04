@@ -6,7 +6,6 @@ import net.consensys.decodeHex
 import net.consensys.encodeHex
 import net.consensys.linea.transactionexclusion.ModuleOverflow
 import net.consensys.linea.transactionexclusion.RejectedTransaction
-import net.consensys.linea.transactionexclusion.TransactionInfo
 import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
 import net.consensys.linea.transactionexclusion.test.rejectedContractDeploymentTransaction
 import org.junit.jupiter.api.Assertions
@@ -79,12 +78,7 @@ class ArgumentParserTest {
     val transactionRLP = defaultRejectedTransaction.transactionRLP
     Assertions.assertEquals(
       ArgumentParser.getTransactionInfoFromRLP(transactionRLP),
-      TransactionInfo(
-        hash = defaultRejectedTransaction.transactionInfo.hash,
-        from = defaultRejectedTransaction.transactionInfo.from,
-        to = defaultRejectedTransaction.transactionInfo.to,
-        nonce = defaultRejectedTransaction.transactionInfo.nonce
-      )
+      defaultRejectedTransaction.transactionInfo
     )
   }
 
@@ -93,12 +87,7 @@ class ArgumentParserTest {
     val transactionRLP = rejectedContractDeploymentTransaction.transactionRLP
     Assertions.assertEquals(
       ArgumentParser.getTransactionInfoFromRLP(transactionRLP),
-      TransactionInfo(
-        hash = rejectedContractDeploymentTransaction.transactionInfo.hash,
-        from = rejectedContractDeploymentTransaction.transactionInfo.from,
-        to = rejectedContractDeploymentTransaction.transactionInfo.to,
-        nonce = rejectedContractDeploymentTransaction.transactionInfo.nonce
-      )
+      rejectedContractDeploymentTransaction.transactionInfo
     )
   }
 

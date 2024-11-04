@@ -122,7 +122,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     }
     """.trimIndent()
 
-    // Check the save response and ensure the rejected txn was saved
+    // Check the save response and ensure the rejected tx was saved
     assertThatJson(makeRequestJsonResponse(saveTxJonRequest))
       .isEqualTo(
         """{
@@ -162,7 +162,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     }
     """.trimIndent()
 
-    // Check the save response and ensure the rejected txn was saved
+    // Check the save response and ensure the rejected tx was saved
     assertThatJson(makeRequestJsonResponse(saveTxJonRequest))
       .isEqualTo(
         """{
@@ -181,7 +181,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     }
     """.trimIndent()
 
-    // Check the get response is corresponding to the rejected txn from SEQUENCER
+    // Check the get response is corresponding to the rejected tx from SEQUENCER
     assertThatJson(makeRequestJsonResponse(getTxJsonRequest))
       .isEqualTo(
         """{
@@ -202,7 +202,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
 
   @Test
   fun `Should save the rejected contract deployment tx from RPC`() {
-    // Save the rejected contract deployment tx from RPC (without block number and sender address)
+    // Save the rejected contract deployment tx from RPC (without sender address)
     val rejectionTimeStamp = Clock.System.now()
       .trimToMillisecondPrecision()
       .toString()
@@ -221,7 +221,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     }
     """.trimIndent()
 
-    // Check the save response and ensure the rejected txn was saved
+    // Check the save response and ensure the rejected contract deployment tx was saved
     assertThatJson(makeRequestJsonResponse(saveTxJonRequest))
       .isEqualTo(
         """{
@@ -233,7 +233,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
         }"""
       )
 
-    // Send the get request for the rejected transaction
+    // Send the get request for the rejected contract deployment tx
     val getTxJsonRequest = """{
       "jsonrpc": "2.0",
       "id": 125,
@@ -242,7 +242,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     }
     """.trimIndent()
 
-    // Check the get response is corresponding to the rejected txn from SEQUENCER
+    // Check the get response is corresponding to the rejected contract deployment tx from RPC
     assertThatJson(makeRequestJsonResponse(getTxJsonRequest))
       .isEqualTo(
         """{
@@ -306,7 +306,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     // Save the first rejected tx from P2P without rejected block number
     saveFirstRejectedTransaction()
 
-    // Send the get request with a random txn hash
+    // Send the get request with a random tx hash
     val getTxJsonRequest = """{
       "jsonrpc": "2.0",
       "id": 124,
