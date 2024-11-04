@@ -30,8 +30,6 @@ import static net.consensys.linea.zktracer.types.Conversions.longToUnsignedBigIn
 import static net.consensys.linea.zktracer.types.Utils.bitDecomposition;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
-import static org.hyperledger.besu.crypto.Hash.keccak256;
-import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
@@ -85,49 +83,35 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
       final Address senderAddress = tx.getSender();
       final long nonce = tx.getNonce();
       final Bytes32 rawTo = getCreateRawAddress(senderAddress, nonce);
-      RlpAddrOperation chunk =
+      final RlpAddrOperation operation =
           new RlpAddrOperation(
               rawTo, OpCode.CREATE, longToUnsignedBigInteger(nonce), senderAddress);
-      operations.add(chunk);
+      operations.add(operation);
       trm.callTrimming(rawTo);
     }
   }
 
-  // TODO : this should die, make sure we trigger it in the right place
-  @Override
-  public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opcode = hub.opCode();
-    switch (opcode) {
-      case CREATE -> {
-        final Address currentAddress = frame.getRecipientAddress();
-        final Bytes32 rawCreateAddress = getCreateRawAddress(frame);
-        RlpAddrOperation chunk =
-            new RlpAddrOperation(
-                rawCreateAddress,
-                OpCode.CREATE,
-                longToUnsignedBigInteger(frame.getWorldUpdater().get(currentAddress).getNonce()),
-                currentAddress);
-        this.operations.add(chunk);
-        this.trm.callTrimming(rawCreateAddress);
-      }
-      case CREATE2 -> {
-        final Address sender = frame.getRecipientAddress();
+  public void callRlpAddrCreate() {
+    final MessageFrame frame = hub.currentFrame().frame();
+    final Address currentAddress = frame.getRecipientAddress();
+    final Bytes32 rawCreateAddress = getCreateRawAddress(frame);
+    final RlpAddrOperation operation =
+        new RlpAddrOperation(
+            rawCreateAddress,
+            OpCode.CREATE,
+            longToUnsignedBigInteger(frame.getWorldUpdater().get(currentAddress).getNonce()),
+            currentAddress);
+    operations.add(operation);
+    hub.trm().callTrimming(rawCreateAddress);
+  }
 
-        final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
-
-        final long offset = clampedToLong(frame.getStackItem(1));
-        final long length = clampedToLong(frame.getStackItem(2));
-        final Bytes initCode = frame.shadowReadMemory(offset, length);
-        final Bytes32 hash = keccak256(initCode);
-
-        final Bytes32 rawCreate2Address = getCreate2RawAddress(sender, salt, hash);
-
-        final RlpAddrOperation chunk =
-            new RlpAddrOperation(rawCreate2Address, OpCode.CREATE2, sender, salt, hash);
-        operations.add(chunk);
-        trm.callTrimming(rawCreate2Address);
-      }
-    }
+  public void callRlpAddrCreate2(MessageFrame frame, Bytes32 salt, Bytes32 hash) {
+    final Address currentAddress = frame.getRecipientAddress();
+    final Bytes32 rawCreate2Address = getCreate2RawAddress(currentAddress, salt, hash);
+    final RlpAddrOperation operation =
+        new RlpAddrOperation(rawCreate2Address, OpCode.CREATE2, currentAddress, salt, hash);
+    operations.add(operation);
+    hub.trm().callTrimming(rawCreate2Address);
   }
 
   private void traceCreate2(int stamp, RlpAddrOperation chunk, Trace trace) {

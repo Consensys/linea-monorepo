@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiFunction;
 
+import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Factories;
@@ -118,6 +119,8 @@ public class CallSection extends TraceSection
   public StpCall stpCall;
   private PrecompileSubsection precompileSubsection;
 
+  @Getter private MemorySpan callProvidedReturnDataTargetSpan;
+
   public CallSection(Hub hub) {
     super(hub, maxNumberOfLines(hub));
 
@@ -177,8 +180,8 @@ public class CallSection extends TraceSection
     currentFrame.childSpanningSection(this);
 
     final boolean callCanTransferValue = currentFrame.opCode().callCanTransferValue();
-    currentFrame.returnDataTargetInCaller(
-        returnDataMemorySpan(currentFrame.frame(), callCanTransferValue));
+    callProvidedReturnDataTargetSpan =
+        returnDataMemorySpan(currentFrame.frame(), callCanTransferValue);
 
     value =
         callCanTransferValue

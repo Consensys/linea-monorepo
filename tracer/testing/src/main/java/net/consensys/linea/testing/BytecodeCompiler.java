@@ -15,6 +15,8 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_PUSH1;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.io.BufferedReader;
@@ -275,10 +277,10 @@ public class BytecodeCompiler {
    * @return current instance
    */
   public BytecodeCompiler incompletePush(final int w, final byte[] bs) {
-    Preconditions.condition(w > 0 && w <= 32, "Invalid PUSH width");
+    Preconditions.condition(w > 0 && w <= WORD_SIZE, "Invalid PUSH width");
     Preconditions.condition(bs.length <= w, "PUSH argument must be smaller than the width");
 
-    this.op(OpCode.of(0x5f + w));
+    this.op(OpCode.of(EVM_INST_PUSH1 + w - 1));
     this.byteCode.add(Bytes.of(bs));
 
     return this;

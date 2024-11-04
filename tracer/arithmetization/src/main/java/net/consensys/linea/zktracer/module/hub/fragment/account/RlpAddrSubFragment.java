@@ -29,6 +29,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.Hash;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @RequiredArgsConstructor
 public class RlpAddrSubFragment implements TraceSubFragment {
@@ -37,18 +38,20 @@ public class RlpAddrSubFragment implements TraceSubFragment {
   private final Bytes32 salt;
   private final Bytes32 keccak;
 
-  // TODO: creating the RLPAddr sub fragment should trigger RLP_ADDR
   public static RlpAddrSubFragment makeFragment(Hub hub, Address deploymentAddress) {
     final OpCode currentOpCode = hub.opCode();
     switch (currentOpCode) {
       case CREATE2 -> {
-        final Bytes32 salt = Bytes32.leftPad(hub.currentFrame().frame().getStackItem(3));
-        final Bytes initCode = OperationAncillaries.initCode(hub.currentFrame().frame());
+        final MessageFrame frame = hub.currentFrame().frame();
+        final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
+        final Bytes initCode = OperationAncillaries.initCode(frame);
         final Bytes32 hash =
             Hash.keccak256(initCode); // TODO: could be done better, we compute the HASH two times
+        hub.rlpAddr().callRlpAddrCreate2(frame, salt, hash);
         return new RlpAddrSubFragment((short) 2, deploymentAddress, salt, hash);
       }
       case CREATE -> {
+        hub.rlpAddr().callRlpAddrCreate();
         return new RlpAddrSubFragment((short) 1, deploymentAddress, Bytes32.ZERO, Bytes32.ZERO);
       }
       default -> throw new IllegalStateException("Unexpected value: " + currentOpCode);

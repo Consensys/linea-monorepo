@@ -38,8 +38,8 @@ public class ReturnDataCopySection extends TraceSection {
     imcFragment.callOob(oobCall);
 
     this.addStack(hub);
-    this.addFragment(currentContext);
     this.addFragment(imcFragment);
+    this.addFragment(currentContext);
 
     final short exceptions = hub.pch().exceptions();
     final boolean returnDataCopyException = oobCall.isRdcx();

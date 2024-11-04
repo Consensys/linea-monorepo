@@ -65,9 +65,7 @@ public final class StackLine {
    * @return a consolidated 4-elements array of the {@link StackItem} – or no-ops
    */
   public List<StackItem> asStackItems() {
-    StackItem emptyStackItem = empty();
-    StackItem[] r =
-        new StackItem[] {emptyStackItem, emptyStackItem, emptyStackItem, emptyStackItem};
+    final StackItem[] r = new StackItem[] {empty(), empty(), empty(), empty()};
     for (IndexedStackOperation item : items) {
       r[item.i()] = item.it();
     }

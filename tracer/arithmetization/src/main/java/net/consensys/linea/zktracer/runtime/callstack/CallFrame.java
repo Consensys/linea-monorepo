@@ -15,8 +15,6 @@
 
 package net.consensys.linea.zktracer.runtime.callstack;
 
-import static com.google.common.base.Preconditions.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -48,13 +46,13 @@ public class CallFrame {
   @Setter public int universalParentReturnDataContextNumber;
 
   /** the position of this {@link CallFrame} in the {@link CallStack}. */
-  @Getter private int id;
+  @Getter private final int id;
 
   /** the context number of the frame, i.e. the hub stamp at its creation */
   @Getter private final int contextNumber;
 
   /** the depth of this CallFrame within its call hierarchy. */
-  @Getter private int depth;
+  @Getter private final int depth;
 
   /** true iff the current context was spawned by a deployment transaction or a CREATE(2) opcode */
   @Getter private boolean isDeployment;
@@ -125,18 +123,18 @@ public class CallFrame {
   }
 
   /** the ether amount given to this frame. */
-  @Getter private Wei value = Wei.fromHexString("0xBadF00d"); // Marker for debugging
+  @Getter private final Wei value;
 
   /** the gas given to this frame. */
   @Getter private long gasStipend;
 
   /** the call data given to this frame. */
-  @Getter CallDataInfo callDataInfo;
+  @Getter private final CallDataInfo callDataInfo;
 
   /** the latest child context to have been called from this frame */
   @Getter @Setter private int returnDataContextNumber = 0;
 
-  /** the data returned by the latest callee. */
+  /** the data returned by the latest child context. */
   @Getter @Setter private Bytes returnData = Bytes.EMPTY;
 
   /** returnData position within the latest callee memory space. */
@@ -149,7 +147,7 @@ public class CallFrame {
   @Getter @Setter private MemorySpan outputDataSpan;
 
   /** where this frame is expected to write its outputData within its parent's memory space. */
-  @Getter @Setter private MemorySpan returnDataTargetInCaller = MemorySpan.empty();
+  @Getter private final MemorySpan returnDataTargetInCaller;
 
   @Getter @Setter private boolean selfReverts = false;
   @Getter @Setter private boolean getsReverted = false;
@@ -183,23 +181,10 @@ public class CallFrame {
     this.contextNumber = contextNumber;
     accountAddress = origin;
     callDataInfo = new CallDataInfo(callData, 0, callData.size(), contextNumber);
-  }
-
-  // TODO: should die ?
-  /** Create a PRECOMPILE_RETURN_DATA callFrame */
-  CallFrame(
-      final int contextNumber,
-      final Bytes precompileResult,
-      final int returnDataOffset,
-      final Address precompileAddress) {
-    checkArgument(
-        returnDataOffset == 0 || precompileAddress == Address.MODEXP,
-        "ReturnDataOffset is 0 for all precompile except Modexp");
-    type = CallFrameType.PRECOMPILE_RETURN_DATA;
-    this.contextNumber = contextNumber;
-    outputData = precompileResult;
-    outputDataSpan = new MemorySpan(returnDataOffset, precompileResult.size());
-    accountAddress = precompileAddress;
+    returnDataTargetInCaller = MemorySpan.empty();
+    value = Wei.ZERO;
+    id = -1;
+    depth = -1;
   }
 
   /** Create an empty call frame. */
@@ -209,6 +194,10 @@ public class CallFrame {
     accountAddress = Address.ZERO;
     callerId = -1;
     callDataInfo = new CallDataInfo(Bytes.EMPTY, 0, 0, 0);
+    returnDataTargetInCaller = MemorySpan.empty();
+    depth = 0;
+    value = Wei.ZERO;
+    id = -1;
   }
 
   /**
@@ -251,7 +240,8 @@ public class CallFrame {
       int callerId,
       Bytes callData,
       long callDataOffset,
-      long callDataSize) {
+      long callDataSize,
+      MemorySpan returnDataTargetInCaller) {
     this.type = type;
     this.id = id;
     this.contextNumber = contextNumber;
@@ -270,7 +260,7 @@ public class CallFrame {
         new CallDataInfo(callData, callDataOffset, callDataSize, callDataContextNumber);
     this.outputDataSpan = MemorySpan.empty();
     this.returnDataSpan = MemorySpan.empty();
-    this.returnDataTargetInCaller = MemorySpan.empty();
+    this.returnDataTargetInCaller = returnDataTargetInCaller;
   }
 
   public boolean isRoot() {

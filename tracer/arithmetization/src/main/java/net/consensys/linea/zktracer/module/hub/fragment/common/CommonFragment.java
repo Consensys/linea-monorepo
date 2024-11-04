@@ -59,6 +59,10 @@ public final class CommonFragment implements TraceFragment {
     this.nonStackRowsCounter = nonStackLineCounter;
   }
 
+  private boolean isUnexceptional() {
+    return Exceptions.none(commonFragmentValues.exceptions);
+  }
+
   public boolean txReverts() {
     return commonFragmentValues.txMetadata.statusCode();
   }
@@ -97,15 +101,14 @@ public final class CommonFragment implements TraceFragment {
         .codeFragmentIndex(commonFragmentValues.codeFragmentIndex)
         .programCounter(commonFragmentValues.pc)
         .programCounterNew(commonFragmentValues.pcNew)
-        .height(
-            commonFragmentValues.hubProcessingPhase == TX_EXEC ? commonFragmentValues.height : 0)
-        .heightNew(
-            commonFragmentValues.hubProcessingPhase == TX_EXEC ? commonFragmentValues.heightNew : 0)
+        .height(isExec ? commonFragmentValues.height : 0)
+        .heightNew(isExec ? commonFragmentValues.heightNew : 0)
         // peeking flags are traced in the respective fragments
         .gasExpected(Bytes.ofUnsignedLong(commonFragmentValues.gasExpected))
         .gasActual(Bytes.ofUnsignedLong(commonFragmentValues.gasActual))
         .gasCost(gasCostToTrace())
-        .gasNext(Bytes.ofUnsignedLong(isExec ? commonFragmentValues.gasNext : 0))
+        .gasNext(
+            Bytes.ofUnsignedLong(isExec && isUnexceptional() ? commonFragmentValues.gasNext : 0))
         .refundCounter(commonFragmentValues.gasRefund)
         .refundCounterNew(commonFragmentValues.gasRefundNew)
         .twoLineInstruction(commonFragmentValues.TLI)
@@ -116,16 +119,18 @@ public final class CommonFragment implements TraceFragment {
 
   private Bytes gasCostToTrace() {
 
-    if (commonFragmentValues.hubProcessingPhase != TX_EXEC) {
+    if (commonFragmentValues.hubProcessingPhase != TX_EXEC
+        || commonFragmentValues.tracedException() == TracedException.STACK_UNDERFLOW
+        || commonFragmentValues.tracedException() == TracedException.STACK_OVERFLOW
+        || commonFragmentValues.tracedException() == TracedException.RETURN_DATA_COPY_FAULT
+        || commonFragmentValues.tracedException() == TracedException.MEMORY_EXPANSION_EXCEPTION
+        || commonFragmentValues.tracedException() == TracedException.STATIC_FAULT
+        || commonFragmentValues.tracedException() == TracedException.INVALID_CODE_PREFIX
+        || commonFragmentValues.tracedException() == TracedException.MAX_CODE_SIZE_EXCEPTION) {
       return Bytes.EMPTY;
     }
 
-    final boolean oogx =
-        commonFragmentValues.tracedException() == TracedException.OUT_OF_GAS_EXCEPTION;
-    final boolean nonOogException = Exceptions.any(commonFragmentValues.exceptions) && !oogx;
-    if (nonOogException) {
-      return Bytes.EMPTY;
-    }
+    // TODO @Olivier: special care for CALL's and CREATE's
 
     return Bytes.ofUnsignedLong(commonFragmentValues.gasCost);
   }

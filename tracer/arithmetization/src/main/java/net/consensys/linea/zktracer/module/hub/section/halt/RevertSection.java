@@ -23,6 +23,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 
 public class RevertSection extends TraceSection {
 
@@ -54,8 +55,8 @@ public class RevertSection extends TraceSection {
       return;
     }
 
-    // The XAHOY case
-    /////////////////
+    // The XAHOY = 0 case
+    /////////////////////
     checkArgument(Exceptions.none(exceptions));
 
     final boolean triggerMmu =
@@ -69,8 +70,14 @@ public class RevertSection extends TraceSection {
       imcFragment.callMmu(mmuCall);
     }
 
+    final CallFrame callFrame = hub.currentFrame();
     final ContextFragment currentContext = ContextFragment.readCurrentContextData(hub);
-    final ContextFragment parentContext = ContextFragment.executionProvidesEmptyReturnData(hub);
-    this.addFragments(currentContext, parentContext);
+    final ContextFragment updateCallerReturnData =
+        ContextFragment.executionProvidesReturnData(
+            hub,
+            hub.callStack().getById(callFrame.callerId()).contextNumber(),
+            callFrame.contextNumber());
+
+    this.addFragments(currentContext, updateCallerReturnData);
   }
 }

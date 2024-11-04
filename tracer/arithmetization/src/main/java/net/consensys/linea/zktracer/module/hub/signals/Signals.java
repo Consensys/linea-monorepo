@@ -50,9 +50,6 @@ public class Signals {
   @Getter private boolean wcp;
   @Getter private boolean shf;
 
-  @Getter private boolean gas; // TODO: should die
-  @Getter private boolean rlpAddr; // TODO: should die
-
   private final PlatformController platformController;
 
   public void reset() {
@@ -64,9 +61,6 @@ public class Signals {
     mod = false;
     wcp = false;
     shf = false;
-
-    gas = false;
-    rlpAddr = false;
   }
 
   public Signals snapshot() {
@@ -79,10 +73,6 @@ public class Signals {
     r.mod = this.mod;
     r.wcp = this.wcp;
     r.shf = this.shf;
-
-    r.gas = this.gas;
-    r.rlpAddr = this.rlpAddr;
-
     return r;
   }
 
@@ -97,11 +87,6 @@ public class Signals {
   public void prepare(MessageFrame frame, PlatformController platformController, Hub hub) {
     final OpCode opCode = hub.opCode();
     final short ex = platformController.exceptions();
-
-    // this.gas coincides with CONTEXT_MAY_CHANGE
-    this.gas =
-        Exceptions.any(ex)
-            || AUTOMATIC_GAS_MODULE_TRIGGER.contains(hub.opCodeData().instructionFamily());
 
     if (Exceptions.stackException(ex)) {
       return;

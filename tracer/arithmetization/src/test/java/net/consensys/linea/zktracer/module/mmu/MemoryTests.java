@@ -103,10 +103,10 @@ class MemoryTests {
         .push(0x20)
         .op(OpCode.MSTORE)
         //
-        .push(0x20) // size
-        .push(0x10) // offset
         .push(0xbbbbbbbb) // topic 2
         .push(0xaaaaaaaa) // topic 1
+        .push(0x20) // size
+        .push(0x10) // offset
         .op(OpCode.LOG2)
         .push("deadbeef00000000deadbeef33333333deadbeefccccccccdeadbeef11111111")
         .push(0x40)
@@ -133,10 +133,10 @@ class MemoryTests {
         .push(0x20)
         .op(OpCode.MSTORE)
         //
-        .push(0x20) // size
-        .push(0x10) // offset
         .push(0xbbbbbbbb) // topic 2
         .push(0xaaaaaaaa) // topic 1
+        .push(0x20) // size
+        .push(0x10) // offset
         .op(OpCode.LOG2)
         .push("deadbeef00000000deadbeef33333333deadbeefccccccccdeadbeef11111111")
         .push(0x40)
