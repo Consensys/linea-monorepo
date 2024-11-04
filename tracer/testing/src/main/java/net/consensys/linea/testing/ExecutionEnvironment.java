@@ -43,7 +43,7 @@ import org.hyperledger.besu.ethereum.chain.BadBlockManager;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
 import org.hyperledger.besu.ethereum.core.Difficulty;
-import org.hyperledger.besu.ethereum.core.MiningParameters;
+import org.hyperledger.besu.ethereum.core.MiningConfiguration;
 import org.hyperledger.besu.ethereum.core.PrivacyParameters;
 import org.hyperledger.besu.ethereum.mainnet.MainnetProtocolSpecFactory;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSchedule;
@@ -115,7 +115,7 @@ public class ExecutionEnvironment {
             createNodeKey(),
             false,
             EvmConfiguration.DEFAULT,
-            MiningParameters.MINING_DISABLED,
+            MiningConfiguration.MINING_DISABLED,
             badBlockManager,
             false,
             new NoOpMetricsSystem());
@@ -126,7 +126,7 @@ public class ExecutionEnvironment {
                 true,
                 OptionalLong.empty(),
                 EvmConfiguration.DEFAULT,
-                MiningParameters.MINING_DISABLED,
+                MiningConfiguration.MINING_DISABLED,
                 false,
                 new NoOpMetricsSystem())
             .londonDefinition(GENESIS_CONFIG.getConfigOptions());
