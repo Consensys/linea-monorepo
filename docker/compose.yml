@@ -10,7 +10,7 @@ networks:
     ipam:
       config:
         - subnet: 11.11.11.0/24
-  l1-network:
+  l1network:
     driver: bridge
     ipam:
       config:
@@ -66,7 +66,7 @@ services:
       - ../config/common/traces-limits-besu-v1.toml:/var/lib/besu/traces-limits.toml:ro
       - ../tmp/linea-besu-sequencer/plugins:/opt/besu/plugins/
     networks:
-      l1-network:
+      l1network:
       linea:
         ipv4_address: 11.11.11.101
 
@@ -163,7 +163,7 @@ services:
       - ../tmp/linea-besu-sequencer/plugins:/opt/besu/plugins/
       - ../tmp/local/:/data/:rw
     networks:
-      l1-network:
+      l1network:
       linea:
         ipv4_address: 11.11.11.119
 
@@ -279,7 +279,7 @@ services:
       POSTGRES_PASSWORD: "postgres"
       POSTGRES_DB: "postman_db"
     networks:
-      l1-network:
+      l1network:
         ipv4_address: 10.10.10.222
       linea:
         ipv4_address: 11.11.11.222
@@ -358,7 +358,7 @@ services:
       - ../testdata/type2state-manager/state-proof.json:/opt/consensys/linea/coordinator/testdata/type2state-manager/state-proof.json
       - local-dev:/data/
     networks:
-      l1-network:
+      l1network:
         ipv4_address: 10.10.10.106
       linea:
         ipv4_address: 11.11.11.106
@@ -393,10 +393,10 @@ services:
         ipv4_address: 11.11.11.200
 
   postgres:
-    image: postgres:14.5
+    image: postgres:16.0
     hostname: postgres
     container_name: postgres
-    profiles: [ "l2", "debug", "external-to-monorepo" ]
+    profiles: [ "l2", "debug", "external-to-monorepo", "staterecover" ]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -420,7 +420,7 @@ services:
       - ./postgres/conf/:/etc/postgresql/
     networks:
       - linea
-      - l1-network
+      - l1network
 
   l1-el-node:
     container_name: l1-el-node
@@ -429,7 +429,7 @@ services:
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-node-genesis-generator:
-          condition: service_completed_successfully
+        condition: service_completed_successfully
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
       interval: 1s
@@ -455,13 +455,14 @@ services:
       - "30303:30303"
       - "9001:9001/tcp"
     networks:
-      l1-network:
+      l1network:
         ipv4_address: 10.10.10.201
 
   l1-cl-node:
     container_name: l1-cl-node
     hostname: l1-cl-node
-    image: consensys/teku:24.2.0
+#    image: consensys/teku:24.2.0
+    image: consensys/teku:24.10.3
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-el-node:
@@ -480,16 +481,15 @@ services:
       - "9002:9000"
       - "8008:8008/tcp"
       - "4003:4000/tcp"
-      - "5051/tcp"
     networks:
-      l1-network:
+      l1network:
         ipv4_address: 10.10.10.202
 
   l1-node-genesis-generator:
     build:
       context: ./config/l1-node/
     profiles: [ "l1", "debug", "external-to-monorepo" ]
-    command: 
+    command:
       --genesis-time ${L1_GENESIS_TIME}
       --l1-genesis /config/l1-genesis.json
       --network-config /config/network-config.yml
@@ -525,7 +525,7 @@ services:
     volumes:
       - ./config/l1-node/el/genesis.json:/app/genesis.json:ro
     networks:
-      - l1-network
+      - l1network
 
   zkbesu-shomei:
     image: consensys/linea-besu:linea-delivery-27
@@ -687,7 +687,74 @@ services:
       - ./config/linea-local-dev-genesis-PoA.json:/app/genesis.json:ro
     networks:
       - linea
+  ########################
+  # Blob Scan stack, used for state recover app
+  ########################
+  blobscan-api:
+    container_name: blobscan-api
+    hostname: blobscan-api
+    image: blossomlabs/blobscan-api:1.1.0
+    platform: linux/amd64 # only linux available
+    profiles: [ "staterecover" ]
+    ports:
+      - "4001:3001"
+    env_file: "./config/blobscan/env"
+    restart: no
+#    healthcheck:
+#      test: [ "CMD", "curl", "-f", "http://localhost:4001/healthcheck" ]
+#      disable: true
+#      interval: 30s
+#      timeout: 10s
+#      retries: 20
+#      start_period: 5s
+    networks:
+      linea:
+      l1network:
+        ipv4_address: 10.10.10.203
+    depends_on:
+      postgres:
+        condition: service_healthy
 
+  blobscan-indexer:
+    container_name: blobscan-indexer
+    hostname: blobscan-indexer
+    image: blossomlabs/blobscan-indexer:0.2.1
+    platform: linux/amd64 # only linux available
+    profiles: [ "staterecover" ]
+    env_file: "./config/blobscan/env"
+    networks:
+      linea:
+      l1network:
+        ipv4_address: 10.10.10.204
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      blobscan-api:
+        condition: service_started
+
+  redis:
+    container_name: redis
+    hostname: redis
+    image: "redis:7.4.1-alpine"
+    command: redis-server /usr/local/etc/redis/redis.conf
+    profiles: [ "staterecover" ]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./misc/data:/var/lib/redis
+      - ./misc/conf:/usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_REPLICATION_MODE=master
+      - REDIS_PASSWORD=s3cr3t
+      - REDIS_USERNAME=blobscan
+    networks:
+      l1network:
+        ipv4_address: 10.10.10.205
+
+  ########################
+  # Observability stack
+  ########################
   loki:
     container_name: loki
     hostname: loki
