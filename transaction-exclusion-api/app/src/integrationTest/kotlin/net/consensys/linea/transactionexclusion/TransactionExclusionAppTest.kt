@@ -18,7 +18,6 @@ import net.consensys.linea.transactionexclusion.app.TransactionExclusionApp
 import net.consensys.linea.transactionexclusion.app.api.ApiConfig
 import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
 import net.consensys.linea.transactionexclusion.test.rejectedContractDeploymentTransaction
-import net.consensys.toHexString
 import net.consensys.trimToMillisecondPrecision
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
@@ -128,7 +127,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
         """{
           "jsonrpc": "2.0",
           "id": 123,
-          "result": {"status":"SAVED","txHash":"${defaultRejectedTransaction.transactionInfo.hash.encodeHex()}"}
+          "result": {"status":"SAVED","txHash":"0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"}
         }"""
       )
   }
@@ -142,7 +141,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     // rejected reason and a more recent rejected timestamp
     val rejectionTimeStamp = Clock.System.now()
       .trimToMillisecondPrecision()
-      .toString()
+      .toString() // e.g. 2024-11-04T13:06:26.068Z
 
     val saveTxJonRequest = """{
       "jsonrpc": "2.0",
@@ -168,7 +167,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
         """{
           "jsonrpc": "2.0",
           "id": 124,
-          "result": {"status":"SAVED","txHash":"${defaultRejectedTransaction.transactionInfo.hash.encodeHex()}"}
+          "result": {"status":"SAVED","txHash":"0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"}
         }"""
       )
 
@@ -177,7 +176,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "jsonrpc": "2.0",
       "id": 125,
       "method": "linea_getTransactionExclusionStatusV1",
-      "params": ["${defaultRejectedTransaction.transactionInfo.hash.encodeHex()}"]
+      "params": ["0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"]
     }
     """.trimIndent()
 
@@ -188,8 +187,8 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
           "jsonrpc": "2.0",
           "id": 125,
           "result": {
-            "txHash": "${defaultRejectedTransaction.transactionInfo.hash.encodeHex()}",
-            "from": "${defaultRejectedTransaction.transactionInfo.from.encodeHex()}",
+            "txHash": "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7",
+            "from": "0x4d144d7b9c96b26361d6ac74dd1d8267edca4fc2",
             "nonce": "0x64",
             "txRejectionStage": "SEQUENCER",
             "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70 (from Sequencer)",
@@ -205,7 +204,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     // Save the rejected contract deployment tx from RPC (without sender address)
     val rejectionTimeStamp = Clock.System.now()
       .trimToMillisecondPrecision()
-      .toString()
+      .toString() // e.g. 2024-11-04T13:06:26.068Z
 
     val saveTxJonRequest = """{
       "jsonrpc": "2.0",
@@ -215,7 +214,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
         "txRejectionStage": "RPC",
         "timestamp": "$rejectionTimeStamp",
         "transactionRLP": "${rejectedContractDeploymentTransaction.transactionRLP.encodeHex()}",
-        "reasonMessage": "${rejectedContractDeploymentTransaction.reasonMessage}",
+        "reasonMessage": "Transaction 0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525 line count for module HUB=2119318 is above the limit 2097152",
         "overflows": [
           { "module": "HUB", "count": 2119318, "limit": 2097152 }
         ]
@@ -229,9 +228,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
         """{
           "jsonrpc": "2.0",
           "id": 124,
-          "result": {"status":"SAVED","txHash":"${
-        rejectedContractDeploymentTransaction.transactionInfo.hash.encodeHex()
-        }"}
+          "result": {"status":"SAVED","txHash":"0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525"}
         }"""
       )
 
@@ -240,7 +237,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "jsonrpc": "2.0",
       "id": 125,
       "method": "linea_getTransactionExclusionStatusV1",
-      "params": ["${rejectedContractDeploymentTransaction.transactionInfo.hash.encodeHex()}"]
+      "params": ["0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525"]
     }
     """.trimIndent()
 
@@ -251,11 +248,11 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
           "jsonrpc": "2.0",
           "id": 125,
           "result": {
-            "txHash": "${rejectedContractDeploymentTransaction.transactionInfo.hash.encodeHex()}",
-            "from": "${rejectedContractDeploymentTransaction.transactionInfo.from.encodeHex()}",
-            "nonce": "${rejectedContractDeploymentTransaction.transactionInfo.nonce.toHexString()}",
+            "txHash": "0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525",
+            "from": "0x0d06838d1dfba9ef0a4166cca9be16fb1d76dbfc",
+            "nonce": "0x1",
             "txRejectionStage": "RPC",
-            "reasonMessage": "${rejectedContractDeploymentTransaction.reasonMessage}",
+            "reasonMessage": "Transaction 0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525 line count for module HUB=2119318 is above the limit 2097152",
             "timestamp": "$rejectionTimeStamp"
           }
         }"""
@@ -270,7 +267,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     // Save the same rejected tx from SEQUENCER with rejected block number and a more recent rejected timestamp
     val rejectionTimeStamp = Clock.System.now()
       .trimToMillisecondPrecision()
-      .toString()
+      .toString() // e.g. 2024-11-04T13:06:26.068Z
 
     val saveTxJonRequest = """{
       "jsonrpc": "2.0",
@@ -296,9 +293,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
         """{
           "jsonrpc": "2.0",
           "id": 124,
-          "result": {"status":"DUPLICATE_ALREADY_SAVED_BEFORE","txHash":"${
-        defaultRejectedTransaction.transactionInfo.hash.encodeHex()
-        }"}
+          "result": {"status":"DUPLICATE_ALREADY_SAVED_BEFORE","txHash":"0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"}
         }"""
       )
   }
