@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
 import { encodeFunctionCall, etherToWei, waitForEvents } from "./common/utils";
 import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
+import logger from "./common/logger";
 
 async function sendL1ToL2Message({
   l1Account,
@@ -36,7 +37,7 @@ async function sendL1ToL2Message({
 
   let receipt = await tx.wait();
   while (!receipt) {
-    console.log("Waiting for transaction to be mined...");
+    logger.info("Waiting for transaction to be mined...");
     receipt = await tx.wait();
   }
 
@@ -75,7 +76,7 @@ async function sendL2ToL1Message({
   let receipt = await tx.wait();
 
   while (!receipt) {
-    console.log("Waiting for transaction to be mined...");
+    logger.info("Waiting for transaction to be mined...");
     receipt = await tx.wait();
   }
 
@@ -98,16 +99,16 @@ describe("Messaging test suite", () => {
 
       const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
       const messageHash = messageSentEvent.topics[3];
-      console.log(`L1 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+      logger.info(`L1 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-      console.log("Waiting for MessageClaimed event on L2.");
+      logger.info("Waiting for MessageClaimed event on L2.");
       const l2MessageService = config.getL2MessageServiceContract();
       const [messageClaimedEvent] = await waitForEvents(
         l2MessageService,
         l2MessageService.filters.MessageClaimed(messageHash),
       );
 
-      console.log(`Message claimed on L2: ${JSON.stringify(messageClaimedEvent)}`);
+      logger.info(`Message claimed on L2: ${JSON.stringify(messageClaimedEvent)}`);
       expect(messageClaimedEvent).toBeDefined();
     },
     100_000,
@@ -125,15 +126,15 @@ describe("Messaging test suite", () => {
 
       const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
       const messageHash = messageSentEvent.topics[3];
-      console.log(`L1 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+      logger.info(`L1 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-      console.log("Waiting for MessageClaimed event on L2.");
+      logger.info("Waiting for MessageClaimed event on L2.");
       const l2MessageService = config.getL2MessageServiceContract();
       const [messageClaimedEvent] = await waitForEvents(
         l2MessageService,
         l2MessageService.filters.MessageClaimed(messageHash),
       );
-      console.log(`Message claimed on L2: ${JSON.stringify(messageClaimedEvent)}`);
+      logger.info(`Message claimed on L2: ${JSON.stringify(messageClaimedEvent)}`);
       expect(messageClaimedEvent).toBeDefined();
     },
     100_000,
@@ -152,23 +153,23 @@ describe("Messaging test suite", () => {
 
       const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
       const messageHash = messageSentEvent.topics[3];
-      console.log(`L2 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+      logger.info(`L2 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-      console.log(`Waiting for L2MessagingBlockAnchored... with blockNumber=${messageSentEvent.blockNumber}`);
+      logger.info(`Waiting for L2MessagingBlockAnchored... with blockNumber=${messageSentEvent.blockNumber}`);
       await waitForEvents(
         lineaRollup,
         lineaRollup.filters.L2MessagingBlockAnchored(messageSentEvent.blockNumber),
         1_000,
       );
 
-      console.log("Waiting for MessageClaimed event on L1.");
+      logger.info("Waiting for MessageClaimed event on L1.");
       const [messageClaimedEvent] = await waitForEvents(
         lineaRollup,
         lineaRollup.filters.MessageClaimed(messageHash),
         1_000,
       );
 
-      console.log(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);
+      logger.info(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);
       expect(messageClaimedEvent).toBeDefined();
     },
     150_000,
@@ -187,23 +188,23 @@ describe("Messaging test suite", () => {
 
       const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
       const messageHash = messageSentEvent.topics[3];
-      console.log(`L2 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+      logger.info(`L2 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-      console.log(`Waiting for L2MessagingBlockAnchored... with blockNumber=${messageSentEvent.blockNumber}`);
+      logger.info(`Waiting for L2MessagingBlockAnchored... with blockNumber=${messageSentEvent.blockNumber}`);
       await waitForEvents(
         lineaRollup,
         lineaRollup.filters.L2MessagingBlockAnchored(messageSentEvent.blockNumber),
         1_000,
       );
 
-      console.log("Waiting for MessageClaimed event on L1.");
+      logger.info("Waiting for MessageClaimed event on L1.");
       const [messageClaimedEvent] = await waitForEvents(
         lineaRollup,
         lineaRollup.filters.MessageClaimed(messageHash),
         1_000,
       );
 
-      console.log(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);
+      logger.info(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);
       expect(messageClaimedEvent).toBeDefined();
     },
     150_000,

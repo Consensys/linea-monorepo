@@ -3,6 +3,7 @@ import { config } from "../tests-config";
 import { deployContract } from "../../common/deployments";
 import { DummyContract__factory, TestContract__factory } from "../../typechain";
 import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
+import logger from "../../common/logger";
 
 declare global {
   var stopL2TrafficGeneration: () => void;
@@ -49,11 +50,11 @@ export default async (): Promise<void> => {
     (await l2TokenBridge.connect(l2SecurityCouncil).setRemoteTokenBridge(await l1TokenBridge.getAddress())).wait(),
   ]);
 
-  console.log(`L1 Dummy contract deployed at address: ${await dummyContract.getAddress()}`);
-  console.log(`L2 Dummy contract deployed at address: ${await l2DummyContract.getAddress()}`);
-  console.log(`L2 Test contract deployed at address: ${await l2TestContract.getAddress()}`);
+  logger.info(`L1 Dummy contract deployed at address: ${await dummyContract.getAddress()}`);
+  logger.info(`L2 Dummy contract deployed at address: ${await l2DummyContract.getAddress()}`);
+  logger.info(`L2 Test contract deployed at address: ${await l2TestContract.getAddress()}`);
 
-  console.log("Generating L2 traffic...");
+  logger.info("Generating L2 traffic...");
   const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"));
   const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(pollingAccount, 2_000);
 

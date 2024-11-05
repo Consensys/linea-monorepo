@@ -254,6 +254,10 @@ importers:
         version: 17.7.2
 
   e2e:
+    dependencies:
+      winston:
+        specifier: 3.13.0
+        version: 3.13.0
     devDependencies:
       '@jest/globals':
         specifier: 29.7.0
@@ -3413,6 +3417,7 @@ packages:
 
   '@web3modal/wagmi@5.1.11':
     resolution: {integrity: sha512-etV1qfBVvh41EMuBHXUpcO/W818jZVNh5/l9Z5kqRPZxlQmBaJbt5mTzw6nw/Lujoe1yYKugGQFhgjfEQK+eyA==}
+    deprecated: Web3Modal is now Reown AppKit. Please follow the upgrade guide at https://docs.reown.com/appkit/upgrade/from-w3m-to-reown
     peerDependencies:
       '@wagmi/connectors': '>=4'
       '@wagmi/core': '>=2.0.0'

@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
 import { RollupGetZkEVMBlockNumberClient, etherToWei } from "./common/utils";
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
+import logger from "./common/logger";
 
 const l2AccountManager = config.getL2AccountManager();
 
@@ -151,7 +152,7 @@ describe("Layer 2 test suite", () => {
         shomeiClient.rollupGetZkEVMBlockNumber(),
         shomeiFrontendClient.rollupGetZkEVMBlockNumber(),
       ]);
-      console.log(`shomeiBlock = ${shomeiBlock}, shomeiFrontendBlock = ${shomeiFrontendBlock}`);
+      logger.info(`shomeiBlock = ${shomeiBlock}, shomeiFrontendBlock = ${shomeiFrontendBlock}`);
 
       expect(shomeiBlock).toBeGreaterThan(shomeiFrontendBlock);
     }
