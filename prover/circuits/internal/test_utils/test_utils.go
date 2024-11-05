@@ -7,12 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -35,7 +37,7 @@ func printAsHexHint(_ *big.Int, ins, outs []*big.Int) error {
 	return nil
 }
 
-func PrintVarsAsHex(api frontend.API, v []frontend.Variable) {
+func PrintBytesAsHex(api frontend.API, v []frontend.Variable) {
 	if _, err := api.Compiler().NewHint(printAsHexHint, 1, v...); err != nil {
 		panic(err)
 	}
@@ -53,6 +55,22 @@ func PrintBlocksAsHex(api frontend.API, blocks ...[32]frontend.Variable) {
 	if _, err := api.Compiler().NewHint(printAsHexHint, 1, ins...); err != nil {
 		panic(err)
 	}
+}
+
+// PrintVarAsHex decomposes x into bytes and prints the whole thing
+func PrintVarAsHex(api frontend.API, x frontend.Variable) {
+	bits := api.ToBinary(x) // turn into bytes, inefficiently
+	slices.Reverse(bits)
+	n0 := len(bits) % 8
+	bytes := make([]frontend.Variable, 1, (len(bits)+7)/8)
+	two := big.NewInt(2)
+	bytes[0] = compress.ReadNum(api, bits[:n0], two)
+	bits = bits[n0:]
+	for len(bits) != 0 {
+		bytes = append(bytes, compress.ReadNum(api, bits[:8], two))
+		bits = bits[8:]
+	}
+	PrintBytesAsHex(api, bytes)
 }
 
 func PrintBytesAsNum(b []byte) {

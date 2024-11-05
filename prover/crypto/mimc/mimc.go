@@ -8,8 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-// NewMiMC wraps [mimc.NewMiMC], this is used to limit the number of import to
-// gnark-crypto.
+// NewMiMC wraps [mimc.NewMiMC], this is used to limit the number of gnark-crypto imports.
 func NewMiMC() hash.Hash {
 	return mimc.NewMiMC()
 }

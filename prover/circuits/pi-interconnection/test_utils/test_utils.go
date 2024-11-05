@@ -34,6 +34,7 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 
 	execReq := public_input.Execution{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(4)},
+		InitialBlockTimestamp:  7,
 		FinalStateRootHash:     finalStateRootHash,
 		FinalBlockNumber:       9,
 		FinalBlockTimestamp:    10,

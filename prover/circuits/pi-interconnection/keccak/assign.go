@@ -38,7 +38,7 @@ type StrictHasherCompiler []int
 
 // CompiledStrictHasher must be stored and reloaded
 type CompiledStrictHasher struct {
-	wc           HashWizardVerifierSubCircuit
+	wc           *HashWizardVerifierSubCircuit
 	lengths      []int // expected lengths of hashes; Strict lengths are represented as negative numbers, and the absolute value is the length. Flexible lengths are represented as positive numbers.
 	maxNbKeccakF int
 }
@@ -96,6 +96,7 @@ func (h *StrictHasherCompiler) WithStrictHashLengths(l ...int) *StrictHasherComp
 	return h
 }
 
+// For testing purposes, wizard compilation is skipped if no options are given.
 func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard.CompiledIOP)) CompiledStrictHasher {
 	nbKeccakF := 0 // Since the output size is smaller than the block size the squeezing phase is trivial TODO @Tabaie check with @azam.soleimanian that this is correct
 
@@ -106,10 +107,13 @@ func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard
 
 	logrus.Infof("Public-input interconnection requires %v keccak permutations", nbKeccakF)
 
-	wc := NewWizardVerifierSubCircuit(nbKeccakF, wizardCompilationOpts...)
+	var wc *HashWizardVerifierSubCircuit
+	if len(wizardCompilationOpts) != 0 {
+		wc = NewWizardVerifierSubCircuit(nbKeccakF, wizardCompilationOpts...)
+	}
 
 	return CompiledStrictHasher{
-		wc:           *wc,
+		wc:           wc,
 		lengths:      *h,
 		maxNbKeccakF: nbKeccakF,
 	}
@@ -127,7 +131,11 @@ func (h *CompiledStrictHasher) GetCircuit() (c StrictHasherCircuit, err error) {
 	c.Ins = allocateIns(h.lengths)
 	c.InLengths = make([]frontend.Variable, len(h.lengths))
 	c.maxNbKeccakF = h.maxNbKeccakF
-	c.Wc, err = h.wc.Compile()
+	if h.wc == nil {
+		logrus.Warn("WIZARD SUB-PROVER NOT COMPILED. KECCAK HASH RESULTS WILL NOT BE VERIFIED. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+	} else {
+		c.Wc, err = h.wc.Compile()
+	}
 	return
 }
 
@@ -135,7 +143,7 @@ func (h *CompiledStrictHasher) GetHasher() StrictHasher {
 	return StrictHasher{
 		expectedLengths: h.lengths,
 		ins:             make([][]byte, 0, len(h.lengths)),
-		wc:              &h.wc,
+		wc:              h.wc,
 		maxNbKeccakF:    h.maxNbKeccakF,
 		buffer:          bytes.Buffer{},
 		h:               sha3.NewLegacyKeccak256(),
@@ -151,11 +159,11 @@ func (h *StrictHasher) Assign() (c StrictHasherCircuit, err error) {
 		return c, errors.New("fewer hashes than expected")
 	}
 	c.maxNbKeccakF = h.maxNbKeccakF
-	/*insForWizard := make([][]byte, len(h.ins))
-	for i := range h.ins {
-		insForWizard[i] = h.ins[i][:h.]
-	}*/
-	c.Wc = h.wc.Assign(h.ins)
+	if h.wc == nil {
+		logrus.Warn("WIZARD SUB-PROOF NOT GENERATED. KECCAK HASH RESULTS WILL NOT BE CHECKED. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+	} else {
+		c.Wc = h.wc.Assign(h.ins)
+	}
 	c.Ins = make([][][2]frontend.Variable, len(h.ins))
 	c.InLengths = make([]frontend.Variable, len(h.ins))
 	for i, in := range h.ins {

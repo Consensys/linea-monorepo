@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+	"hash"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/consensys/gnark-crypto/hash"
+	gcHash "github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
@@ -125,24 +126,39 @@ func (i *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error
 	return res, nil
 }
 
-type FPISumOption func(*[]byte)
+type fpiSumSettings struct {
+	batchesSum    []byte
+	batchesSumSet bool
+	hsh           hash.Hash
+}
+
+type FPISumOption func(settings *fpiSumSettings)
 
 func WithBatchesSum(b []byte) FPISumOption {
-	return func(bp *[]byte) {
-		*bp = b
+	return func(settings *fpiSumSettings) {
+		settings.batchesSum = b
+		settings.batchesSumSet = true
+	}
+}
+
+func WithHash(h hash.Hash) FPISumOption {
+	return func(settings *fpiSumSettings) {
+		settings.hsh = h
 	}
 }
 
 func (i *FunctionalPublicInput) Sum(opts ...FPISumOption) ([]byte, error) {
 
-	hsh := hash.MIMC_BLS12_377.New()
-
-	var batchesSum []byte
+	var settings fpiSumSettings
 	for _, o := range opts {
-		o(&batchesSum)
+		o(&settings)
 	}
-	if batchesSum == nil {
-		batchesSum = internal.ChecksumSlice(i.BatchSums)
+	if !settings.batchesSumSet {
+		settings.batchesSum = internal.ChecksumSlice(i.BatchSums)
+	}
+	hsh := settings.hsh
+	if hsh == nil {
+		hsh = gcHash.MIMC_BLS12_377.New()
 	}
 
 	hsh.Reset()
@@ -152,7 +168,7 @@ func (i *FunctionalPublicInput) Sum(opts ...FPISumOption) ([]byte, error) {
 	hsh.Write(i.Y[1])
 	hsh.Write(i.SnarkHash)
 	hsh.Write(utils.Ite(i.Eip4844Enabled, []byte{1}, []byte{0}))
-	hsh.Write(batchesSum)
+	hsh.Write(settings.batchesSum)
 	return hsh.Sum(nil), nil
 }
 
@@ -319,7 +335,7 @@ func BatchesChecksumAssign(ends []int, payload []byte) [][]byte {
 	in := make([]byte, len(payload)+31)
 	copy(in, payload) // pad with 31 bytes to avoid out of range panic
 
-	hsh := hash.MIMC_BLS12_377.New()
+	hsh := gcHash.MIMC_BLS12_377.New()
 	var buf [32]byte
 
 	batchStart := 0
