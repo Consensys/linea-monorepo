@@ -19,7 +19,7 @@ data class ModuleOverflow(
 data class TransactionInfo(
   val hash: ByteArray,
   val from: ByteArray,
-  val to: ByteArray,
+  val to: ByteArray?,
   val nonce: ULong
 ) {
   override fun equals(other: Any?): Boolean {
@@ -44,7 +44,7 @@ data class TransactionInfo(
 
   override fun toString(): String {
     return "hash=${hash.encodeHex()} from=${from.encodeHex()} " +
-      "to=${to.encodeHex()} nonce=$nonce"
+      "to=${to?.encodeHex()} nonce=$nonce"
   }
 }
 

@@ -69,7 +69,7 @@ class RejectedTransactionsPostgresDao(
         transactionInfo = TransactionInfo(
           hash = record.getBuffer("tx_hash").bytes,
           from = record.getBuffer("tx_from").bytes,
-          to = record.getBuffer("tx_to").bytes,
+          to = record.getBuffer("tx_to")?.bytes,
           nonce = record.getLong("tx_nonce").toULong()
         )
       )
