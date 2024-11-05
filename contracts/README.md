@@ -26,7 +26,10 @@ The Canonical Token Bridge (TokenBridge) is a canonical ERC20 token brige betwee
 
 The TokenBridge utilises the L1MessageService and the L2MessageService for the transmission of messages between each layer's TokenBridge.
 
-Documentation: [./docs/linea-token-bridge.md](./docs/linea-token-bridge.md)
+Documentation: [Token Bridge](./docs/linea-token-bridge.md)
+
+# Audit reports
+Please see [Audits](./docs/audits.md)
 
 # Development & Testing
 
@@ -38,7 +41,7 @@ This project uses following libraries
 - [GoLang](https://go.dev/) for the compilation of code to autogenerate data for L2 data and proofs (not strictly required)
 - [Docker](https://www.docker.com/) for the local stack to run in
 
-If you already have an understanding of the tech stack, use our [Get Started](docs/get-started.md) guide.
+If you already have an understanding of the tech stack, use our [Get Started](../docs/get-started.md) guide.
 
 To run the tests:
 
