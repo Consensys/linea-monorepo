@@ -65,6 +65,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 
 	execReq := []public_input.Execution{{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
+		InitialBlockTimestamp:  6,
 		FinalStateRootHash:     internal.Uint64To32Bytes(4),
 		FinalBlockNumber:       5,
 		FinalBlockTimestamp:    6,
@@ -72,6 +73,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		FinalRollingHashNumber: 8,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(9)},
+		InitialBlockTimestamp:  7,
 		FinalStateRootHash:     internal.Uint64To32Bytes(10),
 		FinalBlockNumber:       11,
 		FinalBlockTimestamp:    12,
@@ -120,6 +122,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 
 	execReq := []public_input.Execution{{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
+		InitialBlockTimestamp:  6,
 		FinalStateRootHash:     internal.Uint64To32Bytes(4),
 		FinalBlockNumber:       5,
 		FinalBlockTimestamp:    6,
@@ -127,6 +130,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		FinalRollingHashNumber: 8,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(9)},
+		InitialBlockTimestamp:  7,
 		FinalStateRootHash:     internal.Uint64To32Bytes(10),
 		FinalBlockNumber:       11,
 		FinalBlockTimestamp:    12,
@@ -134,6 +138,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		FinalRollingHashNumber: 14,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(15)},
+		InitialBlockTimestamp:  13,
 		FinalStateRootHash:     internal.Uint64To32Bytes(16),
 		FinalBlockNumber:       17,
 		FinalBlockTimestamp:    18,
@@ -141,6 +146,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		FinalRollingHashNumber: 20,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(21)},
+		InitialBlockTimestamp:  19,
 		FinalStateRootHash:     internal.Uint64To32Bytes(22),
 		FinalBlockNumber:       23,
 		FinalBlockTimestamp:    24,
