@@ -1,4 +1,5 @@
-FROM openjdk:21-jdk-slim AS builder
+# BUILDER image
+FROM openjdk:24-ea-21-jdk-slim AS builder
 
 RUN apt-get update && apt-get install unzip -y
 
@@ -31,15 +32,12 @@ RUN jar -cf blob-compressor-0.0.4.jar -C unpacked-blob-compressor . && \
     jar -cf blob-shnarf-calculator-0.0.4.jar -C unpacked-blob-shnarf-calculator . && \
     rm -rf unpacked-blob-compressor && rm -rf unpacked-blob-shnarf-calculator
 
+# FINAL image
 FROM openjdk:21-jdk-slim
 
 WORKDIR /opt/consensys/linea/coordinator
 
-RUN apt-get update \
-    && apt-get install curl -y \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /libs/ /logs /tmp/prover/request /tmp/prover/response
+RUN mkdir -p /libs /logs /tmp/prover/request /tmp/prover/response
 
 COPY --from=builder /libs/coordinator/lib/** libs/
 
