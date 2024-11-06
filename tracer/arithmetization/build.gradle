@@ -43,11 +43,11 @@ dependencies {
   implementation "${besuArtifactGroup}:evm"
   implementation "${besuArtifactGroup}:plugin-api"
   implementation "${besuArtifactGroup}:besu-datatypes"
-  implementation "${besuArtifactGroup}.internal:api:${besuVersion}"
-  implementation "${besuArtifactGroup}.internal:clique:${besuVersion}"
-  implementation "${besuArtifactGroup}.internal:core:${besuVersion}"
-  implementation "${besuArtifactGroup}.internal:rlp:${besuVersion}"
-  implementation "${besuArtifactGroup}.internal:algorithms:${besuVersion}"
+  implementation "${besuArtifactGroup}.internal:api"
+  implementation "${besuArtifactGroup}.internal:clique"
+  implementation "${besuArtifactGroup}.internal:core"
+  implementation "${besuArtifactGroup}.internal:rlp"
+  implementation "${besuArtifactGroup}.internal:algorithms"
 
   implementation 'info.picocli:picocli'
 
@@ -67,10 +67,10 @@ dependencies {
 
   testImplementation "${besuArtifactGroup}:evm"
   testImplementation "${besuArtifactGroup}:besu-datatypes"
-  testImplementation "${besuArtifactGroup}.internal:core:${besuVersion}"
-  testImplementation "${besuArtifactGroup}.internal:rlp:${besuVersion}"
-  testImplementation "${besuArtifactGroup}.internal:core:${besuVersion}"
-  testImplementation "${besuArtifactGroup}.internal:referencetests:${besuVersion}"
+  testImplementation "${besuArtifactGroup}.internal:core"
+  testImplementation "${besuArtifactGroup}.internal:rlp"
+  testImplementation "${besuArtifactGroup}.internal:core"
+  testImplementation "${besuArtifactGroup}.internal:referencetests"
 }
 
 configurations {

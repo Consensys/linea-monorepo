@@ -103,15 +103,15 @@ tasks.register('referenceGeneralStateTests', Test) {
 dependencies {
   testImplementation "${besuArtifactGroup}:besu-datatypes"
   testImplementation "${besuArtifactGroup}:evm"
-  testImplementation "${besuArtifactGroup}.internal:config:${besuVersion}"
-  testImplementation "${besuArtifactGroup}.internal:core:${besuVersion}"
-  testImplementation "${besuArtifactGroup}.internal:algorithms:${besuVersion}"
-  testImplementation "${besuArtifactGroup}.internal:metrics-core:${besuVersion}"
-  testImplementation "${besuArtifactGroup}.internal:referencetests:${besuVersion}"
-  testImplementation "${besuArtifactGroup}.internal:rlp:${besuVersion}"
-  testImplementation "${besuArtifactGroup}.internal:testutil:${besuVersion}"
-  testImplementation "${besuArtifactGroup}.internal:trie:$besuVersion"
-  testImplementation "${besuArtifactGroup}.internal:util:${besuVersion}"
+  testImplementation "${besuArtifactGroup}.internal:config"
+  testImplementation "${besuArtifactGroup}.internal:core"
+  testImplementation "${besuArtifactGroup}.internal:algorithms"
+  testImplementation "${besuArtifactGroup}.internal:metrics-core"
+  testImplementation "${besuArtifactGroup}.internal:referencetests"
+  testImplementation "${besuArtifactGroup}.internal:rlp"
+  testImplementation "${besuArtifactGroup}.internal:testutil"
+  testImplementation "${besuArtifactGroup}.internal:trie"
+  testImplementation "${besuArtifactGroup}.internal:util"
   testImplementation "${besuArtifactGroup}:plugin-api"
 
   testImplementation 'io.tmio:tuweni-bytes'
@@ -123,5 +123,5 @@ dependencies {
   implementation project(":arithmetization")
   implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
   testImplementation project(path: ':testing')
-  implementation 'org.junit.platform:junit-platform-launcher:1.11.2'
+  implementation 'org.junit.platform:junit-platform-launcher'
 }
