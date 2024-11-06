@@ -36,6 +36,7 @@ async function waitForCoordinatorRestart() {
 const l1AccountManager = config.getL1AccountManager();
 
 describe("Coordinator restart test suite", () => {
+  process.env.TEST_NAME = "restart.spec.ts";
   it.concurrent(
     "When the coordinator restarts it should resume blob submission and finalization",
     async () => {

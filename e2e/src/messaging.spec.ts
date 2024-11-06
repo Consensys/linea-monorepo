@@ -87,6 +87,7 @@ const l1AccountManager = config.getL1AccountManager();
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Messaging test suite", () => {
+  process.env.TEST_NAME = "messaging.spec.ts";
   it.concurrent(
     "Should send a transaction with calldata to L1 message service, be successfully claimed it on L2",
     async () => {

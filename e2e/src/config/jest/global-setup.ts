@@ -9,6 +9,8 @@ declare global {
   var stopL2TrafficGeneration: () => void;
 }
 
+process.env.TEST_NAME = "global-setup.ts";
+
 export default async (): Promise<void> => {
   const l1JsonRpcProvider = config.getL1Provider();
   const l1AccountManager = config.getL1AccountManager();

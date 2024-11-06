@@ -8,6 +8,7 @@ import logger from "./common/logger";
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Layer 2 test suite", () => {
+  process.env.TEST_NAME = "l2.spec.ts";
   const l2Provider = config.getL2Provider();
 
   it.concurrent("Should revert if transaction data size is above the limit", async () => {

@@ -7,6 +7,7 @@ import logger from "./common/logger";
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Transaction exclusion test suite", () => {
+  process.env.TEST_NAME = "transaction-exclusion.spec.ts";
   it.concurrent(
     "Should get the status of the rejected transaction reported from Besu RPC node",
     async () => {

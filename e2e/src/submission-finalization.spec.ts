@@ -14,6 +14,7 @@ import logger from "./common/logger";
 const l1AccountManager = config.getL1AccountManager();
 
 describe("Submission and finalization test suite", () => {
+  process.env.TEST_NAME = "submission-finalization.spec.ts";
   const sendMessages = async () => {
     const messageFee = etherToWei("0.0001");
     const messageValue = etherToWei("0.0051");

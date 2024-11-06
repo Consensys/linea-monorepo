@@ -12,6 +12,7 @@ const messageSentEventMessageNumberIndex = 4;
 const messageSentEventMessageHashIndex = 6;
 
 describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
+  process.env.TEST_NAME = "bridge-tokens.spec.ts";
   it.concurrent("Bridge a token from L1 to L2", async () => {
     const [l1Account, l2Account] = await Promise.all([
       l1AccountManager.generateAccount(),
