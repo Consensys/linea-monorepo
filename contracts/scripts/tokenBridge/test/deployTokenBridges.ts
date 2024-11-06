@@ -9,7 +9,7 @@ import { TOKEN_BRIDGE_ROLES } from "contracts/common/constants";
 
 export async function deployTokenBridge(messageServiceAddress: string, verbose = false) {
   const [owner] = await ethers.getSigners();
-  const chainIds = [SupportedChainIds.GOERLI, SupportedChainIds.LINEA_TESTNET];
+  const chainIds = [SupportedChainIds.SEPOLIA, SupportedChainIds.LINEA_TESTNET];
 
   const roleAddresses = generateRoleAssignments(TOKEN_BRIDGE_ROLES, owner.address, []);
 
