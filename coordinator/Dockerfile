@@ -1,5 +1,5 @@
 # BUILDER image
-FROM openjdk:24-ea-21-jdk-slim AS builder
+FROM eclipse-temurin:21-jdk-noble AS builder
 
 RUN apt-get update && apt-get install unzip -y
 
@@ -33,11 +33,11 @@ RUN jar -cf blob-compressor-0.0.4.jar -C unpacked-blob-compressor . && \
     rm -rf unpacked-blob-compressor && rm -rf unpacked-blob-shnarf-calculator
 
 # FINAL image
-FROM openjdk:21-jdk-slim
+FROM eclipse-temurin:21-jre-noble
 
 WORKDIR /opt/consensys/linea/coordinator
 
-RUN mkdir -p /libs /logs /tmp/prover/request /tmp/prover/response
+RUN mkdir -p /libs/ /logs /tmp/prover/request /tmp/prover/response
 
 COPY --from=builder /libs/coordinator/lib/** libs/
 
