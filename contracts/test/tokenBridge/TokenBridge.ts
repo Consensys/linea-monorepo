@@ -31,6 +31,7 @@ import {
   expectRevertWithReason,
 } from "../common/helpers";
 import { DEFAULT_ADMIN_ROLE } from "contracts/common/constants";
+import { SupportedChainIds } from "contracts/common/supportedNetworks";
 
 const initialUserBalance = BigInt(10 ** 9);
 const mockName = "L1 DAI";
@@ -181,8 +182,8 @@ describe("TokenBridge", function () {
         defaultAdmin: PLACEHOLDER_ADDRESS,
         messageService: PLACEHOLDER_ADDRESS,
         tokenBeacon: PLACEHOLDER_ADDRESS,
-        sourceChainId: 5,
-        targetChainId: 51940,
+        sourceChainId: SupportedChainIds.SEPOLIA,
+        targetChainId: SupportedChainIds.LINEA_TESTNET,
         reservedTokens: [],
         roleAddresses: [],
         pauseTypeRoles: [],

@@ -80,7 +80,6 @@ deploy-linea-rollup-v5:
 		LINEA_ROLLUP_GENESIS_TIMESTAMP=1683325137 \
 		npx ts-node local-deployments-artifacts/deployPlonkVerifierAndLineaRollupV5.ts
 
-
 deploy-linea-rollup-v6:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
@@ -155,13 +154,6 @@ deploy-l2-test-erc20:
 		TEST_ERC20_INITIAL_SUPPLY=100000 \
 		npx ts-node local-deployments-artifacts/deployTestERC20.ts
 
-upgrade-linea-rollup-on-uat:
-		cd contracts/; \
-		rm -f .openzeppelin/goerli.json; \
-		sed "s/BLOCKCHAIN_NODE=.*/BLOCKCHAIN_NODE=https:\/\/goerli.infura.io\/v3\/${INFURA_KEY}/" .env.template.uat > .env; \
-		sed -i~ "s/PRIVATE_KEY=.*/PRIVATE_KEY=${PRIVATE_KEY}/" .env; \
-		npx hardhat run ./scripts/upgrades/upgradeZkEVM.ts --network zkevm_dev
-
 fresh-start-l2-blockchain-only:
 		make clean-environment
 		make start-l2-blockchain-only
@@ -183,10 +175,6 @@ fresh-start-all-traces-v2:
 		make clean-environment
 		make start-all-traces-v2
 
-start-all-smc-v4:
-		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment
-		make deploy-contracts-v4
-
 start-all:
 		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment
 		make deploy-contracts
@@ -194,11 +182,6 @@ start-all:
 start-all-traces-v2:
 		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2
 		make deploy-contracts
-
-deploy-contracts-v4:
-	make compile-contracts
-	$(MAKE) -j2 deploy-linea-rollup-v4 deploy-l2messageservice
-
 deploy-contracts:
 	cd contracts/; \
 	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \

@@ -33,7 +33,7 @@ To perform a dry run and verify if the corrent nodes are targetted, include the 
 
 # Ethstats
 [Mainnet](https://ethstats.linea.build/) 
-[Testnet](https://ethstats.goerli.linea.build/)  
+[Testnet](https://ethstats.sepolia.linea.build/)  
 
 # Local Development 
 It is highly recommended to read the official docs of `oclif` as it is used to generate the CLI. 

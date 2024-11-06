@@ -9,7 +9,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class BlockReader {
   private val web3jClient: Web3j = Web3j.build(
-    HttpService("https://linea-goerli.infura.io/v3/"),
+    HttpService("https://linea-sepolia.infura.io/v3/"),
     1000,
     Async.defaultExecutorService()
   )
