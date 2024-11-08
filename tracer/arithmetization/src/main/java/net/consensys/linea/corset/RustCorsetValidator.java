@@ -69,6 +69,13 @@ public class RustCorsetValidator extends AbstractExecutable {
    */
   @Getter @Setter private boolean autoConstraints = false;
 
+  /**
+   * Specifies the number of rows to show either side for a failing constraint. This can faciliate
+   * debugging, since the greater the width the more information can be seen. At the same time,
+   * however, too much information can make the report very hard to read.
+   */
+  @Getter @Setter private int reportWidth = 8;
+
   /** Indicates whether or not this validator is active (i.e. we located the corset binary). */
   @Getter private boolean active = false;
 
@@ -170,8 +177,12 @@ public class RustCorsetValidator extends AbstractExecutable {
               this.autoConstraints = true;
               break;
             default:
-              // Error
-              throw new RuntimeException("Unknown Corset configuration flag: %s".formatted(flag));
+              if (flag.startsWith("trace-span=")) {
+                this.reportWidth = Integer.parseInt(flag.substring(11));
+              } else {
+                // Error
+                throw new RuntimeException("Unknown Corset configuration flag: %s".formatted(flag));
+              }
           }
         }
       }
@@ -215,6 +226,9 @@ public class RustCorsetValidator extends AbstractExecutable {
       options.add("--auto-constraints");
       options.add("nhood,sorts");
     }
+    // Specify span width to use
+    options.add("--trace-span");
+    options.add(Integer.toString(this.reportWidth));
     // Specify number of threads to use.
     options.add("-t");
     options.add(determineNumberOfThreads());

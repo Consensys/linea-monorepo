@@ -84,13 +84,13 @@ jobs:
         run: ./gradlew :arithmetization:test --stacktrace
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: fields,expand,expand,expand
+          CORSET_FLAGS: trace-span=3,fields,expand,expand,expand
 
       - name: Run Replay tests
         run: ./gradlew :arithmetization:fastReplayTests --stacktrace
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: fields,expand,expand,expand
+          CORSET_FLAGS: trace-span=3,fields,expand,expand,expand
           REPLAY_TESTS_PARALLELISM: 2
 
       - name: Upload test report
