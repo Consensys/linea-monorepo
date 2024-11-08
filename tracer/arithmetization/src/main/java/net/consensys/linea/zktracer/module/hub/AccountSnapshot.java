@@ -57,11 +57,14 @@ public class AccountSnapshot {
    * @return
    */
   public static AccountSnapshot canonical(Hub hub, Address address) {
-    return fromArguments(
-        hub.messageFrame().getWorldUpdater(),
-        address,
-        hub.transients.conflation().deploymentInfo(),
-        isAddressWarm(hub.messageFrame(), address));
+    AccountSnapshot canonicalSnapshot =
+        fromArguments(
+            hub.messageFrame().getWorldUpdater(),
+            address,
+            hub.transients.conflation().deploymentInfo(),
+            isAddressWarm(hub.messageFrame(), address));
+
+    return canonicalSnapshot;
   }
 
   public static AccountSnapshot canonical(
@@ -76,13 +79,17 @@ public class AccountSnapshot {
       final boolean warmth) {
 
     final Account account = worldView.get(address);
+    Bytecode bytecode =
+        deploymentInfo.getDeploymentStatus(address)
+            ? new Bytecode(deploymentInfo.getInitializationCode(address))
+            : (account == null) ? new Bytecode(Bytes.EMPTY) : new Bytecode(account.getCode());
     if (account != null) {
       return new AccountSnapshot(
           account.getAddress(),
           account.getNonce(),
           account.getBalance(),
           warmth,
-          new Bytecode(account.getCode()),
+          bytecode,
           deploymentInfo.deploymentNumber(address),
           deploymentInfo.getDeploymentStatus(address));
     } else {
@@ -91,7 +98,7 @@ public class AccountSnapshot {
           0,
           Wei.ZERO,
           warmth,
-          new Bytecode(Bytes.EMPTY),
+          bytecode,
           deploymentInfo.deploymentNumber(address),
           deploymentInfo.getDeploymentStatus(address));
     }
