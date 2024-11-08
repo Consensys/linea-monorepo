@@ -77,6 +77,14 @@ public class BlockchainReferenceTestTools {
     if (NETWORKS_TO_RUN.isEmpty()) {
       PARAMS.ignoreAll();
     }
+    // ignore tests that are failing because there is an account with nonce 0 and
+    // non empty code which can't happen in Linea since we are post LONDON only.
+    PARAMS.ignore("InitCollision_d0g0v0_London[London]");
+    PARAMS.ignore("InitCollision_d1g0v0_London[London]");
+    PARAMS.ignore("InitCollision_d2g0v0_London[London]");
+    PARAMS.ignore("InitCollision_d3g0v0_London[London]");
+    PARAMS.ignore("RevertInCreateInInitCreate2_d0g0v0_London[London]");
+    PARAMS.ignore("RevertInCreateInInit_d0g0v0_London[London]");
 
     // Consumes a huge amount of memory.
     PARAMS.ignore("static_Call1MB1024Calldepth_d1g0v0_\\w+");
@@ -141,7 +149,7 @@ public class BlockchainReferenceTestTools {
             .toList());
   }
 
-  public static Collection<Object[]> generateTestParametersForConfig(
+  public static Collection<Object[]> generateTestParametersForConfigForFailedTests(
       final String[] filePath, String failedModule, String failedConstraint)
       throws ExecutionException, InterruptedException {
     Arrays.stream(filePath).forEach(f -> log.info("checking file: {}", f));
@@ -194,6 +202,9 @@ public class BlockchainReferenceTestTools {
     zkTracer.traceStartConflation(spec.getCandidateBlocks().length);
 
     for (var candidateBlock : spec.getCandidateBlocks()) {
+      Assumptions.assumeTrue(
+          candidateBlock.areAllTransactionsValid(),
+          "Skipping the test because the block is not executable");
       Assumptions.assumeTrue(
           candidateBlock.isExecutable(), "Skipping the test because the block is not executable");
       Assumptions.assumeTrue(

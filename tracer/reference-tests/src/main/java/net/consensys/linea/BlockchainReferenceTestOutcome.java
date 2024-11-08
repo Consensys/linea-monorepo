@@ -17,24 +17,31 @@ package net.consensys.linea;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
+@Setter
+@NoArgsConstructor(force = true)
 @AllArgsConstructor
 @JsonPropertyOrder({
   "failedCounter",
   "successCounter",
   "disabledCounter",
   "abortedCounter",
-  "modules"
+  "modulesToConstraintsToTests"
 })
 public class BlockchainReferenceTestOutcome {
-  private final int failedCounter;
-  private final int successCounter;
-  private final int disabledCounter;
-  private final int abortedCounter;
+  @JsonProperty private final int failedCounter;
+  @JsonProperty private final int successCounter;
+  @JsonProperty private final int disabledCounter;
+  @JsonProperty private final int abortedCounter;
+
+  @JsonProperty
   private final ConcurrentMap<String, ConcurrentMap<String, ConcurrentSkipListSet<String>>>
       modulesToConstraintsToTests;
 }

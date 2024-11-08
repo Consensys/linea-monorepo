@@ -16,7 +16,6 @@ package net.consensys.linea;
 
 import static net.consensys.linea.BlockchainReferenceTestJson.readBlockchainReferenceTestsOutput;
 import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.JSON_OUTPUT_FILENAME;
-import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.parseBlockchainReferenceTestOutcome;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
@@ -53,13 +52,13 @@ public class ReferenceTestOutcomeRecorderToolTest {
         "test1", TestState.FAILED, Map.of("Constraint", Set.of(module1, module2)));
     ReferenceTestOutcomeRecorderTool.mapAndStoreTestResult(
         "test2", TestState.FAILED, Map.of("Constraint", Set.of(module1)));
-    ReferenceTestOutcomeRecorderTool.writeToJsonFile(JSON_OUTPUT_FILENAME_TEST);
+    ReferenceTestOutcomeRecorderTool.writeToJsonFile();
 
     readBlockchainReferenceTestsOutput(JSON_OUTPUT_FILENAME_TEST)
         .thenApply(
             jsonString -> {
               BlockchainReferenceTestOutcome blockchainReferenceTestOutcome =
-                  parseBlockchainReferenceTestOutcome(jsonString);
+                  ReferenceTestOutcomeRecorderTool.parseBlockchainReferenceTestOutcome(jsonString);
 
               ConcurrentMap<String, ConcurrentMap<String, ConcurrentSkipListSet<String>>>
                   modulesToConstraints =
@@ -152,5 +151,28 @@ public class ReferenceTestOutcomeRecorderToolTest {
     assertThat(res.size()).isEqualTo(2);
     assertThat(res.get("txndata")).isEqualTo(Set.of("wcp", "rlptxrcpt", "cumulative-gas"));
     assertThat(res.get("rlptxrcpt")).isEqualTo(Set.of("phase3", "phase-transition"));
+  }
+
+  @Test
+  void parseBlockchainReferenceTestOutcome() {
+    BlockchainReferenceTestOutcome outcome =
+        ReferenceTestOutcomeRecorderTool.parseBlockchainReferenceTestOutcome(
+            """
+            {
+              "abortedCounter": 20,
+              "disabledCounter": 0,
+              "failedCounter": 4,
+              "modulesToConstraintsToTests": {
+                "ASSERTION_FAILED": {
+                  "expected: true but was: fals": [
+                    "InitCollision_d0g0v0_London[London]",
+                    "sstore_combinations_initial21_d9g0v0_London[London]"
+                    ]
+                 }
+              },
+              "successCounter": 0
+            }""");
+    assertThat(outcome.getAbortedCounter()).isEqualTo(20);
+    assertThat(outcome.getModulesToConstraintsToTests().size()).isEqualTo(1);
   }
 }

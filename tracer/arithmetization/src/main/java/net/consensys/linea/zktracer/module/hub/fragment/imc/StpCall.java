@@ -79,7 +79,7 @@ public class StpCall implements TraceSubFragment {
 
     final boolean callCanTransferValue = opCode.callCanTransferValue();
     final Address to = Words.toAddress(frame.getStackItem(1));
-    final Account toAccount = frame.getWorldUpdater().getAccount(to);
+    final Account toAccount = frame.getWorldUpdater().get(to);
     this.gas = EWord.of(frame.getStackItem(0));
     this.value = (callCanTransferValue) ? EWord.of(frame.getStackItem(2)) : ZERO;
     this.exists =

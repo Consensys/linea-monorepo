@@ -57,6 +57,7 @@ tasks.register("generateGeneralStateReferenceTests", RefTestGenerationTask) {
 tasks.register('referenceBlockchainTests', Test) {
   description = 'Runs ETH reference blockchain tests.'
   dependsOn generateBlockchainReferenceTests
+  environment.put("REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "BlockchainReferenceTestOutcome.json")
 
   boolean isCiServer = System.getenv().containsKey("CI")
   minHeapSize = isCiServer ? "8g" :"4g"

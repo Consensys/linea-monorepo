@@ -63,7 +63,9 @@ public class TxSkippedSection extends TraceSection implements PostTransactionDef
         AccountSnapshot.canonical(hub, world, coinbaseAddress, isPrecompile(coinbaseAddress));
 
     // arithmetization restriction
-    checkArgument(!isPrecompile(recipientAddress));
+    checkArgument(
+        !isPrecompile(recipientAddress),
+        "Arithmetization restriction: recipient address is a precompile.");
 
     // sanity check + EIP-3607
     checkArgument(world.get(senderAddress) != null);
