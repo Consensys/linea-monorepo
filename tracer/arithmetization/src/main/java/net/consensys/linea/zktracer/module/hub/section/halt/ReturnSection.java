@@ -41,10 +41,12 @@ import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import net.consensys.linea.zktracer.types.Bytecode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Getter
@@ -209,6 +211,9 @@ public class ReturnSection extends TraceSection
 
       // Empty deployments
       if (!nonemptyByteCode) {
+        if (hub.messageFrame().getDepth() == 0) {
+          this.addDeploymentAccountFragmentIfRoot(hub, mxpCall);
+        }
         return;
       }
 
@@ -232,6 +237,10 @@ public class ReturnSection extends TraceSection
       secondImcFragment.callMmu(nonemptyDeploymentMmuCall);
 
       triggerHashInfo(nonemptyDeploymentMmuCall.hashResult());
+
+      if (hub.messageFrame().getDepth() == 0) {
+        this.addDeploymentAccountFragmentIfRoot(hub, mxpCall);
+      }
     }
   }
 
@@ -300,6 +309,28 @@ public class ReturnSection extends TraceSection
 
     checkArgument(returnFromDeployment);
     this.addFragment(squashParentContextReturnData);
+  }
+
+  private void addDeploymentAccountFragmentIfRoot(Hub hub, MxpCall mxpCall) {
+    // in case of zero depth we don't have a ContextReEntry step so we have to add the
+    // deployment account fragment manually
+    postDeploymentAccountSnapshot = AccountSnapshot.canonical(hub, deploymentAddress);
+    postDeploymentAccountSnapshot.code(
+        new Bytecode(
+            hub.messageFrame()
+                .shadowReadMemory(
+                    Words.clampedToLong(mxpCall.offset1), Words.clampedToLong(mxpCall.size1))));
+    postDeploymentAccountSnapshot.deploymentStatus(false);
+
+    final AccountFragment deploymentAccountFragment =
+        hub.factories()
+            .accountFragment()
+            .make(
+                preDeploymentAccountSnapshot,
+                postDeploymentAccountSnapshot,
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+
+    this.addFragment(deploymentAccountFragment);
   }
 
   private static short maxNumberOfRows(Hub hub) {

@@ -26,8 +26,7 @@ import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateSc
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_NON_EMPTY_INIT_CODE_FAILURE_WONT_REVERT;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WILL_REVERT;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WONT_REVERT;
-import static net.consensys.linea.zktracer.opcode.OpCode.CREATE;
-import static net.consensys.linea.zktracer.opcode.OpCode.CREATE2;
+import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
 
 import java.util.Optional;
@@ -53,8 +52,10 @@ import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -85,6 +86,9 @@ public class CreateSection extends TraceSection
   final CreateScenarioFragment scenarioFragment;
   // row i+?
   private ContextFragment finalContextFragment;
+
+  private boolean requiresRomLex;
+  private Wei value;
 
   // TODO: according to our preliminary conclusion in issue #866
   //  CREATE's that raise a failure condition _do spawn a child context_.
@@ -177,13 +181,14 @@ public class CreateSection extends TraceSection
     final boolean failedCreate = createdAddressHasNonZeroNonce || createdAddressHasNonEmptyCode;
     final boolean emptyInitCode = hub.transients().op().initCodeSegment().isEmpty();
 
+    final long offset = Words.clampedToLong(hub.messageFrame().getStackItem(1));
+    final long size = Words.clampedToLong(hub.messageFrame().getStackItem(2));
+
     // Trigger MMU & SHAKIRA to hash the (non-empty) InitCode of CREATE2 - even for failed CREATE2
     if (hub.opCode() == CREATE2 && !emptyInitCode) {
       final MmuCall mmuCall = MmuCall.create2(hub, failedCreate);
       imcFragment.callMmu(mmuCall);
 
-      final long offset = Words.clampedToLong(hub.messageFrame().getStackItem(1));
-      final long size = Words.clampedToLong(hub.messageFrame().getStackItem(2));
       final Bytes create2InitCode = messageFrame.shadowReadMemory(offset, size);
       final ShakiraDataOperation shakiraDataOperation =
           new ShakiraDataOperation(hub.stamp(), create2InitCode);
@@ -191,6 +196,8 @@ public class CreateSection extends TraceSection
 
       triggerHashInfo(shakiraDataOperation.result());
     }
+
+    value = failedCreate ? Wei.ZERO : Wei.of(UInt256.fromBytes(hub.messageFrame().getStackItem(0)));
 
     if (failedCreate || emptyInitCode) {
       finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
@@ -215,8 +222,13 @@ public class CreateSection extends TraceSection
         .scheduleForContextReEntry(
             this, hub.currentFrame()); // To get the success bit of the CREATE(2)
 
+    requiresRomLex = true;
     hub.romLex().callRomLex(messageFrame);
-    hub.transients().conflation().deploymentInfo().newDeploymentWithExecutionAt(createeAddress);
+    hub.transients()
+        .conflation()
+        .deploymentInfo()
+        .newDeploymentWithExecutionAt(
+            createeAddress, hub.messageFrame().shadowReadMemory(offset, size));
 
     // Note: the case CREATE2 has been set before, we need to do it even in the failure case
     if (hub.opCode() == CREATE) {
@@ -229,8 +241,14 @@ public class CreateSection extends TraceSection
 
   @Override
   public void resolveUponContextEntry(Hub hub) {
-    childEntryCreatorSnapshot = AccountSnapshot.canonical(hub, preOpcodeCreatorSnapshot.address());
-    childEntryCreateeSnapshot = AccountSnapshot.canonical(hub, preOpcodeCreateeSnapshot.address());
+    childEntryCreatorSnapshot =
+        AccountSnapshot.canonical(hub, preOpcodeCreatorSnapshot.address())
+            // .raiseNonceByOne() // the nonce was already raised
+            .decrementBalanceBy(value);
+    childEntryCreateeSnapshot =
+        AccountSnapshot.canonical(hub, preOpcodeCreateeSnapshot.address())
+            .raiseNonceByOne()
+            .incrementBalanceBy(value);
 
     final AccountFragment.AccountFragmentFactory accountFragmentFactory =
         hub.factories().accountFragment();
@@ -243,10 +261,13 @@ public class CreateSection extends TraceSection
     creatorAccountFragment.rlpAddrSubFragment(rlpAddrSubFragment);
 
     final AccountFragment createeAccountFragment =
-        accountFragmentFactory.make(
+        accountFragmentFactory.makeWithTrm(
             preOpcodeCreateeSnapshot,
             childEntryCreateeSnapshot,
+            preOpcodeCreateeSnapshot.address().trimLeadingZeros(),
             DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
+
+    createeAccountFragment.requiresRomlex(requiresRomLex);
 
     this.addFragments(creatorAccountFragment, createeAccountFragment);
   }

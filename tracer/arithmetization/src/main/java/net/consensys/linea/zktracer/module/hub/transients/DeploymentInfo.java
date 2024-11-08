@@ -18,12 +18,14 @@ package net.consensys.linea.zktracer.module.hub.transients;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 
 /** Stores information relative to contract deployment. */
 public class DeploymentInfo {
   private final Map<Address, Integer> deploymentNumber = new HashMap<>();
   private final Map<Address, Boolean> deploymentStatus = new HashMap<>();
+  private final Map<Address, Bytes> initializationCodes = new HashMap<>();
 
   /**
    * Returns the deployment number of the given address; sets it to zero if it is the first
@@ -36,19 +38,22 @@ public class DeploymentInfo {
     return this.getDeploymentNumber(address);
   }
 
-  public void newDeploymentWithExecutionAt(Address address) {
+  public void newDeploymentWithExecutionAt(Address address, Bytes bytecode) {
     this.incrementDeploymentNumber(address);
     this.markAsUnderDeployment(address);
+    this.setInitializationCode(address, bytecode);
   }
 
   public void newDeploymentSansExecutionAt(Address address) {
     this.incrementDeploymentNumber(address);
     this.markAsNotUnderDeployment(address);
+    this.setInitializationCode(address, Bytes.EMPTY);
   }
 
   public void freshDeploymentNumberFinishingSelfdestruct(Address address) {
     this.incrementDeploymentNumber(address);
     this.markAsNotUnderDeployment(address);
+    this.setInitializationCode(address, Bytes.EMPTY);
   }
 
   private int getDeploymentNumber(Address address) {
@@ -57,6 +62,10 @@ public class DeploymentInfo {
 
   public final boolean getDeploymentStatus(Address address) {
     return this.deploymentStatus.getOrDefault(address, false);
+  }
+
+  public final Bytes getInitializationCode(Address address) {
+    return this.initializationCodes.get(address);
   }
 
   private void incrementDeploymentNumber(Address address) {
@@ -70,5 +79,9 @@ public class DeploymentInfo {
 
   public final void markAsNotUnderDeployment(Address address) {
     this.deploymentStatus.put(address, false);
+  }
+
+  public void setInitializationCode(Address address, Bytes bytecode) {
+    this.initializationCodes.put(address, bytecode);
   }
 }

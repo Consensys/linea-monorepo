@@ -207,7 +207,7 @@ public class MxpTest {
         ToyAccount.builder().balance(Wei.fromEth(100)).nonce(1).address(userAddress).build();
 
     // A
-    ToyAccount contractAAccount =
+    ToyAccount contractAccountA =
         ToyAccount.builder()
             .balance(Wei.fromEth(100))
             .nonce(2)
@@ -218,7 +218,7 @@ public class MxpTest {
             .build();
 
     // B
-    ToyAccount contractBAccount =
+    ToyAccount contractAccountB =
         ToyAccount.builder()
             .balance(Wei.fromEth(100))
             .nonce(3)
@@ -229,7 +229,7 @@ public class MxpTest {
             .build();
 
     // C
-    ToyAccount contractCAccount =
+    ToyAccount contractAccountC =
         ToyAccount.builder()
             .balance(Wei.fromEth(100))
             .nonce(4)
@@ -240,7 +240,7 @@ public class MxpTest {
             .build();
 
     // D
-    ToyAccount contractDAccount =
+    ToyAccount contractAccountD =
         ToyAccount.builder()
             .balance(Wei.fromEth(100))
             .nonce(5)
@@ -251,7 +251,7 @@ public class MxpTest {
             .build();
 
     // MO1
-    ToyAccount contractMO1Account =
+    ToyAccount contractAccountMO1 =
         ToyAccount.builder()
             .balance(Wei.fromEth(100))
             .nonce(6)
@@ -262,7 +262,7 @@ public class MxpTest {
             .build();
 
     // MO2
-    ToyAccount contractMO2Account =
+    ToyAccount contractAccountMO2 =
         ToyAccount.builder()
             .balance(Wei.fromEth(100))
             .nonce(6)
@@ -275,7 +275,7 @@ public class MxpTest {
     Transaction tx =
         ToyTransaction.builder()
             .sender(userAccount)
-            .to(contractAAccount)
+            .to(contractAccountA)
             .payload(
                 Bytes.fromHexString(
                     "0x1b4d679d0000000000000000000000003328358128832a260c76a4141e19e2a943cd4b6d0000000000000000000000005e17b14add6c386305a32928f985b29bba34eff5000000000000000000000000e2899bddfd890e320e643044c6b95b9b0b84157a000000000000000000000000d4fc541236927e2eaf8f27606bd7309c1fc2cbee0000000000000000000000005fd6eb55d12e759a21c09ef703fe0cba1dc9d88d"))
@@ -287,12 +287,12 @@ public class MxpTest {
     List<ToyAccount> accounts =
         List.of(
             userAccount,
-            contractAAccount,
-            contractBAccount,
-            contractCAccount,
-            contractDAccount,
-            contractMO1Account,
-            contractMO2Account);
+            contractAccountA,
+            contractAccountB,
+            contractAccountC,
+            contractAccountD,
+            contractAccountMO1,
+            contractAccountMO2);
 
     ToyExecutionEnvironmentV2.builder()
         .accounts(accounts)

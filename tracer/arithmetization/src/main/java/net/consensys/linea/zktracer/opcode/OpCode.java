@@ -213,6 +213,11 @@ public enum OpCode {
     return UnsignedByte.of(byteValue());
   }
 
+  /** Returns true for PUSH-type instructions */
+  public boolean isPush() {
+    return getData().isPush();
+  }
+
   /** Returns true for JUMP-type instructions */
   public boolean isJump() {
     return getData().isJump();
