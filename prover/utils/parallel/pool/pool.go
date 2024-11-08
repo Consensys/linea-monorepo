@@ -32,6 +32,7 @@ func ExecutePoolChunky(nbIterations int, work func(k int)) {
 		queue <- func() {
 			work(k)
 			wg.Done()
+			available <- struct{}{}
 		}
 	}
 
@@ -50,9 +51,6 @@ func scheduler() {
 	for {
 		<-available
 		task := <-queue
-		go func() {
-			task()
-			available <- struct{}{}
-		}()
+		go task()
 	}
 }
