@@ -12,14 +12,14 @@ DATABASE_URL=postgresql://postgres:postgres@postgres:5432/blobscan
 BLOBSCAN_WEB_TAG=next
 BLOBSCAN_API_TAG=next
 INDEXER_TAG=master
-
+DENCUN_FORK_SLOT=0
 
 
 ############################
 #### rest api server APP
 ############################
-BLOBSCAN_API_PORT=3001
-EXTERNAL_API_PORT=3001
+BLOBSCAN_API_PORT=4001
+EXTERNAL_API_PORT=4001
 CHAIN_ID=31648428
 LOG_LEVEL=debug
 NETWORK_NAME=devnet
@@ -29,10 +29,10 @@ NETWORK_NAME=devnet
 #### blobscan indexer APP
 ############################
 SECRET_KEY=supersecret
-BLOBSCAN_API_ENDPOINT=http://blobscan-api:3001
+BLOBSCAN_API_ENDPOINT=http://blobscan-api:4001
 BEACON_NODE_ENDPOINT=http://l1-cl-node:4000
 EXECUTION_NODE_ENDPOINT=http://l1-el-node:8545
-RUST_LOG=blob-indexer=INFO
+RUST_LOG=blob_indexer=info
 
 LOGGER=default
 
@@ -60,8 +60,8 @@ EXTERNAL_WEB_PORT=3000
 
 # BEE_ENDPOINT=
 
-CHAIN_ID=1
-NETWORK_NAME=mainnet
+CHAIN_ID=31648428
+NETWORK_NAME=devnet
 
 # GOOGLE_STORAGE_BUCKET_NAME=blobscan-test-bucket
 # GOOGLE_STORAGE_PROJECT_ID=blobscan-test-project

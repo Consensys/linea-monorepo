@@ -697,7 +697,7 @@ services:
     platform: linux/amd64 # only linux available
     profiles: [ "staterecover" ]
     ports:
-      - "4001:3001"
+      - "4001:4001"
     env_file: "./config/blobscan/env"
     restart: no
 #    healthcheck:
