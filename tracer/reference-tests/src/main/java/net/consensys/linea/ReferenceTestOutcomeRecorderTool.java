@@ -38,12 +38,10 @@ public class ReferenceTestOutcomeRecorderTool {
 
   public static final String JSON_INPUT_FILENAME =
       System.getenv()
-          .getOrDefault(
-              "REFERENCE_TEST_OUTCOME_INPUT_FILE", "failedBlockchainReferenceTests-input.json");
+          .getOrDefault("REFERENCE_TEST_OUTCOME_INPUT_FILE", "failedReferenceTests-input.json");
   public static final String JSON_OUTPUT_FILENAME =
       System.getenv()
-          .getOrDefault(
-              "REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "failedBlockchainReferenceTests.json");
+          .getOrDefault("REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "failedReferenceTests.json");
   public static JsonConverter jsonConverter = JsonConverter.builder().build();
   private static volatile AtomicInteger failedCounter = new AtomicInteger(0);
   private static volatile AtomicInteger successCounter = new AtomicInteger(0);
@@ -177,11 +175,11 @@ public class ReferenceTestOutcomeRecorderTool {
   }
 
   @Synchronized
-  public static void writeToJsonFile(String name) {
+  public static void writeToJsonFile() {
     try {
       String directory = setFileDirectory();
       log.info("Reference test will be written to file {} \\ {}", directory, JSON_OUTPUT_FILENAME);
-      writeToJsonFileInternal(name).get();
+      writeToJsonFileInternal(JSON_OUTPUT_FILENAME).get();
       log.info("Reference test results written to file {}", JSON_OUTPUT_FILENAME);
       log.info(
           "Path exists: {}, file exist: {}",
