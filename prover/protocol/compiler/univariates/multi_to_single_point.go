@@ -2,6 +2,7 @@ package univariates
 
 import (
 	"fmt"
+	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 	"math/big"
 	"reflect"
 	"runtime"
@@ -243,7 +244,7 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 		mainWg    = &sync.WaitGroup{}
 	)
 
-	mainWg.Add(runtime.NumCPU())
+	mainWg.Add(runtime.GOMAXPROCS(0))
 
 	parallel.ExecuteFromChan(len(ctx.polys), func(wg *sync.WaitGroup, index *parallel.AtomicCounter) {
 
@@ -383,17 +384,10 @@ func (ctx mptsCtx) claimEvaluation(run *wizard.ProverRuntime) {
 	polys := append(ctx.polys, ctx.Quotients...)
 
 	ys := make([]field.Element, len(polys))
-	parallel.Execute(len(polys), func(start, stop int) {
 
-		maxSize := 0
-		for i := start; i < stop; i++ {
-			maxSize = utils.Max(maxSize, polys[i].Size())
-		}
-
-		for i := start; i < stop; i++ {
-			witness := polys[i].GetColAssignment(run)
-			ys[i] = sv.Interpolate(witness, x)
-		}
+	ppool.ExecutePoolChunky(len(polys), func(i int) {
+		witness := polys[i].GetColAssignment(run)
+		ys[i] = sv.Interpolate(witness, x)
 	})
 
 	run.AssignUnivariate(ctx.EvaluationQuery, x, ys...)
@@ -608,9 +602,9 @@ func (ctx mptsCtx) gnarkVerify(api frontend.API, c *wizard.WizardVerifierCircuit
 
 // collect all the alleged opening values in a map, so that we can utilize them later.
 func (ctx mptsCtx) getYsHs(
-// func that can be used to return the parameters of a given query
+	// func that can be used to return the parameters of a given query
 	getParam func(ifaces.QueryID) query.UnivariateEvalParams,
-// func that can be used to return the query's metadata given its name
+	// func that can be used to return the query's metadata given its name
 	getQuery func(ifaces.QueryID) query.UnivariateEval,
 
 ) (
