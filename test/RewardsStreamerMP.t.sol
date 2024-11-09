@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Test } from "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -14,7 +13,6 @@ import { MockToken } from "./mocks/MockToken.sol";
 import { StackOverflowStakeManager } from "./mocks/StackOverflowStakeManager.sol";
 
 contract RewardsStreamerMPTest is Test {
-    MockToken rewardToken;
     MockToken stakingToken;
     RewardsStreamerMP public streamer;
 
@@ -27,11 +25,9 @@ contract RewardsStreamerMPTest is Test {
     mapping(address owner => address vault) public vaults;
 
     function setUp() public virtual {
-        rewardToken = new MockToken("Reward Token", "RT");
         stakingToken = new MockToken("Staking Token", "ST");
 
-        bytes memory initializeData =
-            abi.encodeCall(RewardsStreamerMP.initialize, (address(this), address(stakingToken), address(rewardToken)));
+        bytes memory initializeData = abi.encodeCall(RewardsStreamerMP.initialize, (admin, address(stakingToken)));
         address impl = address(new RewardsStreamerMP());
         address proxy = address(new StakeManagerProxy(impl, initializeData));
         streamer = RewardsStreamerMP(proxy);
@@ -48,10 +44,6 @@ contract RewardsStreamerMPTest is Test {
             vm.prank(accounts[i]);
             stakingToken.approve(address(vault), 10_000e18);
         }
-
-        rewardToken.mint(admin, 10_000e18);
-        vm.prank(admin);
-        rewardToken.approve(address(streamer), 10_000e18);
     }
 
     struct CheckStreamerParams {
@@ -87,7 +79,7 @@ contract RewardsStreamerMPTest is Test {
         RewardsStreamerMP.Account memory accountInfo = streamer.getAccount(p.account);
 
         assertEq(accountInfo.stakedBalance, p.stakedBalance, "wrong account staked balance");
-        assertEq(stakingToken.balanceOf(p.account), p.stakedBalance, "wrong staking balance");
+        assertEq(stakingToken.balanceOf(p.account), p.vaultBalance, "wrong vault balance");
         // assertEq(accountInfo.accountRewardIndex, p.rewardIndex, "wrong account reward index");
         assertEq(accountInfo.accountMP, p.accountMP, "wrong account MP");
         assertEq(accountInfo.maxMP, p.maxMP, "wrong account max MP");
@@ -125,12 +117,6 @@ contract RewardsStreamerMPTest is Test {
         StakeVault vault = StakeVault(vaults[account]);
         vm.prank(account);
         vault.leave(account);
-    }
-
-    function _addReward(uint256 amount) public {
-        vm.prank(admin);
-        rewardToken.transfer(address(streamer), amount);
-        streamer.updateGlobalState();
     }
 
     function _calculateBonusMP(uint256 amount, uint256 lockupTime) public view returns (uint256) {
@@ -238,7 +224,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
 
         // T3
         vm.prank(admin);
-        rewardToken.transfer(address(streamer), 1000e18);
+        // rewardToken.transfer(address(streamer), 1000e18);
         streamer.updateGlobalState();
 
         checkStreamer(
@@ -384,7 +370,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
 
         // T6
         vm.prank(admin);
-        rewardToken.transfer(address(streamer), 1000e18);
+        // rewardToken.transfer(address(streamer), 1000e18);
         streamer.updateGlobalState();
 
         checkStreamer(
@@ -551,9 +537,6 @@ contract StakeTest is RewardsStreamerMPTest {
                 maxMP: 50e18
             })
         );
-
-        // 1000 rewards generated
-        _addReward(1000e18);
 
         checkStreamer(
             CheckStreamerParams({
@@ -873,8 +856,6 @@ contract StakeTest is RewardsStreamerMPTest {
                 maxMP: 150e18
             })
         );
-        // 1000 rewards generated
-        _addReward(1000e18);
 
         checkStreamer(
             CheckStreamerParams({
@@ -1474,6 +1455,10 @@ contract UnstakeTest is StakeTest {
 }
 
 contract LockTest is RewardsStreamerMPTest {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
     function _lock(address account, uint256 lockPeriod) internal {
         StakeVault vault = StakeVault(vaults[account]);
         vm.prank(account);
@@ -1553,8 +1538,11 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
     }
 
     function test_CannotEnableEmergencyModeTwice() public {
+        vm.prank(admin);
         streamer.enableEmergencyMode();
+
         vm.expectRevert(RewardsStreamerMP.StakingManager__EmergencyModeEnabled.selector);
+        vm.prank(admin);
         streamer.enableEmergencyMode();
     }
 
@@ -1563,6 +1551,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
 
         _stake(alice, 10e18, 0);
 
+        vm.prank(admin);
         streamer.enableEmergencyMode();
 
         _emergencyExit(alice);
@@ -1597,13 +1586,10 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
 
     function test_EmergencyExitWithRewards() public {
         uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
-        uint256 aliceInitialRewardBalance = rewardToken.balanceOf(vaults[alice]);
 
         _stake(alice, 10e18, 0);
 
-        // Add some rewards
-        _addReward(1000e18);
-
+        vm.prank(admin);
         streamer.enableEmergencyMode();
 
         _emergencyExit(alice);
@@ -1621,7 +1607,6 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
 
         // Check Alice staked tokens but no rewards
         assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice should get staked tokens back");
-        assertEq(rewardToken.balanceOf(vaults[alice]), aliceInitialRewardBalance, "Alice should not get rewards");
         assertEq(stakingToken.balanceOf(address(vaults[alice])), 0, "Vault should be empty");
     }
 
@@ -1630,6 +1615,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
 
         _stake(alice, 10e18, 90 days);
 
+        vm.prank(admin);
         streamer.enableEmergencyMode();
 
         _emergencyExit(alice);
@@ -1642,14 +1628,12 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
     function test_EmergencyExitMultipleUsers() public {
         uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
         uint256 bobInitialBalance = stakingToken.balanceOf(bob);
-        uint256 aliceInitialRewardBalance = rewardToken.balanceOf(vaults[alice]);
-        uint256 bobInitialRewardBalance = rewardToken.balanceOf(vaults[bob]);
 
         // Setup multiple stakers
         _stake(alice, 10e18, 0);
         _stake(bob, 30e18, 0);
-        _addReward(1000e18);
 
+        vm.prank(admin);
         streamer.enableEmergencyMode();
 
         // Alice exits first
@@ -1685,7 +1669,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
         checkAccount(
             CheckAccountParams({
                 account: vaults[alice],
-                rewardBalance: aliceInitialRewardBalance,
+                rewardBalance: 0,
                 stakedBalance: 10e18,
                 vaultBalance: 0,
                 rewardIndex: 0,
@@ -1697,7 +1681,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
         checkAccount(
             CheckAccountParams({
                 account: vaults[bob],
-                rewardBalance: bobInitialRewardBalance,
+                rewardBalance: 0,
                 stakedBalance: 30e18,
                 vaultBalance: 0,
                 rewardIndex: 0,
@@ -1715,11 +1699,11 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
 
     function test_EmergencyExitToAlternateAddress() public {
         _stake(alice, 10e18, 0);
-        _addReward(1000e18);
 
         address alternateAddress = makeAddr("alternate");
         uint256 alternateInitialBalance = stakingToken.balanceOf(alternateAddress);
 
+        vm.prank(admin);
         streamer.enableEmergencyMode();
 
         // Alice exits to alternate address
@@ -1752,6 +1736,7 @@ contract UpgradeTest is RewardsStreamerMPTest {
     function _upgradeStakeManager() internal {
         address newImpl = address(new RewardsStreamerMP());
         bytes memory initializeData;
+        vm.prank(admin);
         UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
     }
 
@@ -1779,8 +1764,7 @@ contract UpgradeTest is RewardsStreamerMPTest {
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1795,8 +1779,7 @@ contract UpgradeTest is RewardsStreamerMPTest {
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
     }
@@ -1806,6 +1789,7 @@ contract LeaveTest is RewardsStreamerMPTest {
     function _upgradeStakeManager() internal {
         address newImpl = address(new RewardsStreamerMP());
         bytes memory initializeData;
+        vm.prank(admin);
         UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
     }
 
@@ -1833,8 +1817,7 @@ contract LeaveTest is RewardsStreamerMPTest {
                 totalMaxMP: 500e18,
                 stakingBalance: 100e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1849,8 +1832,7 @@ contract LeaveTest is RewardsStreamerMPTest {
                 totalMaxMP: 0,
                 stakingBalance: 0,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
@@ -1906,6 +1888,7 @@ contract MaliciousUpgradeTest is RewardsStreamerMPTest {
     function _upgradeStakeManager() internal {
         address newImpl = address(new RewardsStreamerMP());
         bytes memory initializeData;
+        vm.prank(admin);
         UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
     }
 
@@ -1925,14 +1908,14 @@ contract MaliciousUpgradeTest is RewardsStreamerMPTest {
                 totalMaxMP: 500e18,
                 stakingBalance: 100e18,
                 rewardBalance: 0,
-                rewardIndex: 0,
-                accountedRewards: 0
+                rewardIndex: 0
             })
         );
 
         // upgrade the manager to a malicious one
         address newImpl = address(new StackOverflowStakeManager());
         bytes memory initializeData;
+        vm.prank(admin);
         UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
 
         // alice leaves system and is able to get funds out, despite malicious manager
@@ -1948,17 +1931,21 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
     }
 
     function testSetRewards() public {
-        assertEq(streamer.rewardsPerSecond(), 0);
-        assertEq(streamer.lastRewardTime(), 0);
+        assertEq(streamer.rewardStartTime(), 0);
         assertEq(streamer.rewardEndTime(), 0);
+        assertEq(streamer.lastRewardTime(), 0);
 
         uint256 currentTime = vm.getBlockTimestamp();
+        // just to be sure that currentTime is not 0
+        // since we are testing that it is used for rewardStartTime
+        currentTime += 1 days;
+        vm.warp(currentTime);
         vm.prank(admin);
         streamer.setReward(1000, 10);
 
-        assertEq(streamer.rewardsPerSecond(), 100);
-        assertEq(streamer.lastRewardTime(), currentTime);
+        assertEq(streamer.rewardStartTime(), currentTime);
         assertEq(streamer.rewardEndTime(), currentTime + 10);
+        assertEq(streamer.lastRewardTime(), currentTime);
     }
 
     function testSetRewards_RevertsNotAuthorized() public {
@@ -1977,5 +1964,81 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
         vm.prank(admin);
         vm.expectRevert(RewardsStreamerMP.StakingManager__AmountCannotBeZero.selector);
         streamer.setReward(0, 10);
+    }
+
+    function testTotalRewardsSupply() public {
+        _stake(alice, 100e18, 0);
+        assertEq(streamer.totalRewardsSupply(), 0);
+
+        uint256 initialTime = vm.getBlockTimestamp();
+
+        vm.prank(admin);
+        streamer.setReward(1000e18, 10 days);
+        assertEq(streamer.totalRewardsSupply(), 0);
+
+        for (uint256 i = 0; i <= 10; i++) {
+            vm.warp(initialTime + i * 1 days);
+            assertEq(streamer.totalRewardsSupply(), 100e18 * i);
+        }
+
+        // after the end of the reward period, the total rewards supply does not increase
+        vm.warp(initialTime + 11 days);
+        assertEq(streamer.totalRewardsSupply(), 1000e18);
+        assertEq(streamer.totalRewardsAccrued(), 0);
+
+        uint256 secondRewardTime = initialTime + 20 days;
+        vm.warp(secondRewardTime);
+
+        // still the same rewards supply after 20 days
+        assertEq(streamer.totalRewardsSupply(), 1000e18);
+        assertEq(streamer.totalRewardsAccrued(), 0);
+
+        // set other 2000 rewards for other 10 days
+        vm.prank(admin);
+        streamer.setReward(2000e18, 10 days);
+        // accrued is 1000 from the previous reward and still 0 for the new one
+        assertEq(streamer.totalRewardsSupply(), 1000e18, "totalRewardsSupply should be 1000");
+        assertEq(streamer.totalRewardsAccrued(), 1000e18);
+
+        uint256 previousSupply = 1000e18;
+        for (uint256 i = 0; i <= 10; i++) {
+            vm.warp(secondRewardTime + i * 1 days);
+            assertEq(streamer.totalRewardsSupply(), previousSupply + 200e18 * i);
+        }
+    }
+
+    function testRewardsBalanceOf() public {
+        assertEq(streamer.totalRewardsSupply(), 0);
+
+        vm.warp(0);
+
+        uint256 initialTime = vm.getBlockTimestamp();
+
+        _stake(alice, 100e18, 0);
+        assertEq(streamer.rewardsBalanceOf(vaults[alice]), 0);
+
+        vm.prank(admin);
+        streamer.setReward(1000e18, 10 days);
+        assertEq(streamer.rewardsBalanceOf(vaults[alice]), 0);
+
+        vm.warp(initialTime + 1 days);
+
+        // FIXME: this is needed to update the global state and account MP
+        // Later we should update the functions to use "real-time" values.
+        streamer.updateGlobalState();
+        streamer.updateAccountMP(vaults[alice]);
+
+        uint256 tolerance = 300; // 300 wei
+
+        assertEq(streamer.totalRewardsSupply(), 100e18, "Total rewards supply mismatch");
+        assertApproxEqAbs(streamer.rewardsBalanceOf(vaults[alice]), 100e18, tolerance);
+
+        vm.warp(initialTime + 10 days);
+
+        streamer.updateGlobalState();
+        streamer.updateAccountMP(vaults[alice]);
+
+        assertEq(streamer.totalRewardsSupply(), 1000e18, "Total rewards supply mismatch");
+        assertApproxEqAbs(streamer.rewardsBalanceOf(vaults[alice]), 1000e18, tolerance);
     }
 }

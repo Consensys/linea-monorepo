@@ -14,7 +14,6 @@ contract StackOverflowStakeManager is
     ReentrancyGuardUpgradeable
 {
     IERC20 public STAKING_TOKEN;
-    IERC20 public REWARD_TOKEN;
 
     uint256 public constant SCALE_FACTOR = 1e18;
     uint256 public constant MP_RATE_PER_YEAR = 1e18;

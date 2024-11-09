@@ -21,7 +21,6 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
     error StakingManager__DurationCannotBeZero();
 
     IERC20 public STAKING_TOKEN;
-    IERC20 public REWARD_TOKEN;
 
     uint256 public constant SCALE_FACTOR = 1e18;
     uint256 public constant MP_RATE_PER_YEAR = 1e18;
@@ -37,8 +36,10 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
     uint256 public lastMPUpdatedTime;
     bool public emergencyModeEnabled;
 
-    uint256 public rewardsPerSecond;
+    uint256 public totalRewardsAccrued;
+    uint256 public rewardAmount;
     uint256 public lastRewardTime;
+    uint256 public rewardStartTime;
     uint256 public rewardEndTime;
 
     struct Account {
@@ -63,13 +64,12 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
         _disableInitializers();
     }
 
-    function initialize(address _owner, address _stakingToken, address _rewardToken) public initializer {
+    function initialize(address _owner, address _stakingToken) public initializer {
         __TrustedCodehashAccess_init(_owner);
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
         STAKING_TOKEN = IERC20(_stakingToken);
-        REWARD_TOKEN = IERC20(_rewardToken);
         lastMPUpdatedTime = block.timestamp;
     }
 
@@ -92,11 +92,6 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
         Account storage account = accounts[msg.sender];
         if (account.lockUntil != 0 && account.lockUntil > block.timestamp) {
             revert StakingManager__CannotRestakeWithLockedFunds();
-        }
-
-        uint256 accountRewards = calculateAccountRewards(msg.sender);
-        if (accountRewards > 0) {
-            distributeRewards(msg.sender, accountRewards);
         }
 
         account.stakedBalance += amount;
@@ -175,11 +170,6 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
         _updateGlobalState();
         _updateAccountMP(accountAddress);
 
-        uint256 accountRewards = calculateAccountRewards(accountAddress);
-        if (accountRewards > 0) {
-            distributeRewards(accountAddress, accountRewards);
-        }
-
         uint256 previousStakedBalance = account.stakedBalance;
 
         uint256 mpToReduce = (account.accountMP * amount * SCALE_FACTOR) / (previousStakedBalance * SCALE_FACTOR);
@@ -241,6 +231,7 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
         // Adjust rewardIndex before updating totalMP
         uint256 previousTotalWeight = totalStaked + totalMP;
         totalMP += accruedMP;
+
         uint256 newTotalWeight = totalStaked + totalMP;
 
         if (previousTotalWeight != 0 && newTotalWeight != previousTotalWeight) {
@@ -259,12 +250,40 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
             revert StakingManager__AmountCannotBeZero();
         }
 
+        // this will call _updateRewardIndex and update the totalRewardsAccrued
         _updateGlobalState();
 
-        rewardsPerSecond = amount / duration;
-
-        rewardEndTime = block.timestamp + duration;
+        // in case _updateRewardIndex returns earlier,
+        // we still update the lastRewardTime
         lastRewardTime = block.timestamp;
+        rewardAmount = amount;
+        rewardStartTime = block.timestamp;
+        rewardEndTime = block.timestamp + duration;
+    }
+
+    function _calculateAccruedRewards() internal view returns (uint256) {
+        if (rewardEndTime <= rewardStartTime) {
+            // No active reward period
+            return 0;
+        }
+
+        uint256 currentTime = block.timestamp < rewardEndTime ? block.timestamp : rewardEndTime;
+
+        if (currentTime <= lastRewardTime) {
+            // No new rewards have accrued since lastRewardTime
+            return 0;
+        }
+
+        uint256 timeElapsed = currentTime - lastRewardTime;
+        uint256 duration = rewardEndTime - rewardStartTime;
+
+        if (duration == 0) {
+            // Prevent division by zero
+            return 0;
+        }
+
+        uint256 accruedRewards = (timeElapsed * rewardAmount) / duration;
+        return accruedRewards;
     }
 
     function updateRewardIndex() internal {
@@ -281,13 +300,14 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
             return;
         }
 
-        uint256 newRewards = rewardsPerSecond * elapsedTime;
-
-        if (newRewards > 0) {
-            rewardIndex += (newRewards * SCALE_FACTOR) / totalWeight;
+        uint256 newRewards = _calculateAccruedRewards();
+        if (newRewards == 0) {
+            return;
         }
 
-        lastRewardTime = applicableTime;
+        totalRewardsAccrued += newRewards;
+        rewardIndex += (newRewards * SCALE_FACTOR) / totalWeight;
+        lastRewardTime = block.timestamp < rewardEndTime ? block.timestamp : rewardEndTime;
     }
 
     function _calculateBonusMP(uint256 amount, uint256 lockPeriod) internal view returns (uint256) {
@@ -324,22 +344,11 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
 
     function calculateAccountRewards(address accountAddress) public view returns (uint256) {
         Account storage account = accounts[accountAddress];
+
         uint256 accountWeight = account.stakedBalance + account.accountMP;
         uint256 deltaRewardIndex = rewardIndex - account.accountRewardIndex;
+
         return (accountWeight * deltaRewardIndex) / SCALE_FACTOR;
-    }
-
-    function distributeRewards(address to, uint256 amount) internal {
-        uint256 rewardBalance = REWARD_TOKEN.balanceOf(address(this));
-        // If amount is higher than the contract's balance (for rounding error), transfer the balance.
-        if (amount > rewardBalance) {
-            amount = rewardBalance;
-        }
-
-        bool success = REWARD_TOKEN.transfer(to, amount);
-        if (!success) {
-            revert StakingManager__TransferFailed();
-        }
     }
 
     function enableEmergencyMode() external onlyOwner {
@@ -353,11 +362,15 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
         return accounts[accountAddress].stakedBalance;
     }
 
-    function getPendingRewards(address accountAddress) external view returns (uint256) {
-        return calculateAccountRewards(accountAddress);
-    }
-
     function getAccount(address accountAddress) external view returns (Account memory) {
         return accounts[accountAddress];
+    }
+
+    function totalRewardsSupply() public view returns (uint256) {
+        return totalRewardsAccrued + _calculateAccruedRewards();
+    }
+
+    function rewardsBalanceOf(address accountAddress) external view returns (uint256) {
+        return calculateAccountRewards(accountAddress);
     }
 }
