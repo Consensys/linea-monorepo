@@ -9,20 +9,8 @@ var queue chan func() = make(chan func())
 var available chan struct{} = make(chan struct{}, runtime.GOMAXPROCS(0))
 var once sync.Once
 
-func ExecutePool(task func()) {
-	once.Do(run)
-
-	ch := make(chan struct{}, 1)
-	queue <- func() {
-		task()
-		close(ch)
-	}
-
-	<-ch
-}
-
 func ExecutePoolChunky(nbIterations int, work func(k int)) {
-	once.Do(run)
+	once.Do(initialize)
 
 	wg := sync.WaitGroup{}
 	wg.Add(nbIterations)
@@ -39,7 +27,7 @@ func ExecutePoolChunky(nbIterations int, work func(k int)) {
 	wg.Wait()
 }
 
-func run() {
+func initialize() {
 	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
 		available <- struct{}{}
 	}
