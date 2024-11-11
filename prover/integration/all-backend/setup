@@ -1,0 +1,26 @@
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
+
+echo $SCRIPT_PATH
+
+# Define the ancestor folder you are looking for
+ANCESTOR_FOLDER="linea-monorepo/prover"
+
+# Extract the path up to the ancestor folder
+PROVER_PATH="${SCRIPT_PATH%%$ANCESTOR_FOLDER/*}$ANCESTOR_FOLDER"
+
+# Print the truncated path
+echo "The path up to the ancestor folder '$ANCESTOR_FOLDER' is: $PROVER_PATH"
+
+cd "$PROVER_PATH"
+
+# slight modifications to the makefile
+
+mkdir -p bin
+	rm -f bin/prover
+	go build -o bin/prover ./cmd/prover
+
+
+TEST_RELATIVE_DIR=./integration/all-backend
+
+bin/prover setup --config $TEST_RELATIVE_DIR/config-integration-light.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir $TEST_RELATIVE_DIR/assets

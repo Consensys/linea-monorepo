@@ -7,8 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/consensys/gnark/frontend"
-	snarkHash "github.com/consensys/gnark/std/hash"
 	"hash"
 	"io"
 	"math"
@@ -16,7 +14,9 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"testing"
+
+	"github.com/consensys/gnark/frontend"
+	snarkHash "github.com/consensys/gnark/std/hash"
 
 	"github.com/stretchr/testify/require"
 )
@@ -60,7 +60,7 @@ func (e *BytesEqualError) Error() string {
 	return e.error
 }
 
-func LoadJson(t *testing.T, path string, v any) {
+func LoadJson(t require.TestingT, path string, v any) {
 	in, err := os.Open(path)
 	require.NoError(t, err)
 	require.NoError(t, json.NewDecoder(in).Decode(v))

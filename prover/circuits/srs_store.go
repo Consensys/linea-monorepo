@@ -122,6 +122,8 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 		return nil, nil, fmt.Errorf("could not find canonical SRS for curve %s and size %d", curveID, sizeCanonical)
 	}
 
+	logrus.Info("canonical loaded. attempting to load lagrange")
+
 	// find the lagrange srs
 	var lagrangeSRS kzg.SRS
 	for _, entry := range store.entries[curveID] {
@@ -138,6 +140,8 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 		}
 	}
 
+	logrus.Info("lagrange not found. attempting to generate lagrange")
+
 	if lagrangeSRS == nil {
 		// we can compute it from the canonical one.
 		if sizeCanonical < sizeLagrange {
@@ -150,6 +154,8 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 			return nil, nil, err
 		}
 	}
+
+	logrus.Info("lagrange loaded/generated")
 
 	return canonicalSRS, lagrangeSRS, nil
 }
