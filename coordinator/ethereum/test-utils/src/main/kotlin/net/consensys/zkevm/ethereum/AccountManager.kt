@@ -13,6 +13,7 @@ import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.Response
+import org.web3j.protocol.core.methods.response.TransactionReceipt
 import org.web3j.tx.response.PollingTransactionReceiptProcessor
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.io.File
@@ -127,15 +128,16 @@ private open class WhaleBasedAccountManager(
     )
 
     val result = synchronized(whaleTxManager) {
-      (1..numberOfAccounts).map {
+      (1..numberOfAccounts).map { _ ->
         val randomPrivKey = Bytes.random(32).toHexString().replace("0x", "")
         val newAccount = Account(randomPrivKey, Credentials.create(randomPrivKey).address)
         val transferResult = sendWithRetry(whaleTxManager, newAccount.address, initialBalanceWei)
-        newAccount to transferResult
+        Pair(newAccount, transferResult)
       }
     }
 
-    result.forEach { (account, transferTx) ->
+    result.forEach { pair ->
+      val (account, transferTx) = pair
       log.debug(
         "Waiting for account funding: newAccount={} txHash={} whaleAccount={}",
         account.address,
