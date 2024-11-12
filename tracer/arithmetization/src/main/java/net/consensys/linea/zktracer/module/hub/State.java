@@ -119,11 +119,13 @@ public class State implements StackedContainer {
     } else {
       state.push(this.current().spinOff());
     }
+    lineCounter.enter();
   }
 
   @Override
   public void pop() {
     state.pop();
+    lineCounter.pop();
   }
 
   /** Describes the Hub state during a given transaction. */

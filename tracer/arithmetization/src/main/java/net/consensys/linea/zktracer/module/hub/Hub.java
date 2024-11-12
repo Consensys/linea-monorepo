@@ -436,6 +436,8 @@ public class Hub implements Module {
 
   @Override
   public void enterTransaction() {
+    // Note: txStack.enter(); happens at traceStartTransaction as it requires world, etc
+    state.enter();
     transients.conflation().stackHeightChecksForStackUnderflows().enter();
     transients.conflation().stackHeightChecksForStackOverflows().enter();
     for (Module m : modules) {
@@ -492,7 +494,6 @@ public class Hub implements Module {
 
   public void traceStartTransaction(final WorldView world, final Transaction tx) {
     pch.reset();
-    state.enter();
     txStack.enterTransaction(world, tx, transients.block());
 
     final TransactionProcessingMetadata transactionProcessingMetadata = txStack.current();
