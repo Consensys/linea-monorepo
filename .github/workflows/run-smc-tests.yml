@@ -22,10 +22,8 @@ jobs:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Run smart contracts tests
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.head_ref }}
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Install Go
         uses: actions/setup-go@v4
@@ -71,10 +69,8 @@ jobs:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Solidity format check
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.head_ref }}
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
