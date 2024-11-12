@@ -79,7 +79,7 @@ func main() {
 	var wg sync.WaitGroup
 	createSRS := func(settings srsSpec) {
 		logrus.Infof("checking for %s srs", settings.id.String())
-		canonicalSize, _ := plonk.SRSSize(&settings)
+		canonicalSize, lagrangeSize := plonk.SRSSize(&settings)
 
 		// check if it exists
 		_, _, err = store.GetSRS(context.TODO(), &srsSpec{
@@ -101,7 +101,7 @@ func main() {
 		require.NoError(t, canonical.WriteDump(f))
 		f.Close()
 
-		f, err = os.OpenFile(filepath.Join(cfg.PathForSRS(), fmt.Sprintf("kzg_srs_lagrange_%d_%s_aleo.memdump", canonicalSize, strings.Replace(settings.id.String(), "_", "", 1))), os.O_WRONLY|os.O_CREATE, 0600) // not actually coming from Aleo
+		f, err = os.OpenFile(filepath.Join(cfg.PathForSRS(), fmt.Sprintf("kzg_srs_lagrange_%d_%s_aleo.memdump", lagrangeSize, strings.Replace(settings.id.String(), "_", "", 1))), os.O_WRONLY|os.O_CREATE, 0600) // not actually coming from Aleo
 		require.NoError(t, err)
 		require.NoError(t, lagrange.WriteDump(f))
 		f.Close()
