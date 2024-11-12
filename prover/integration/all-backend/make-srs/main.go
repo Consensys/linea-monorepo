@@ -94,11 +94,16 @@ func main() {
 		logrus.Infof("could not load %s SRS. Creating instead.", settings.id.String())
 
 		// it doesn't exist. create it.
-		canonical, _, err := unsafekzg.NewSRS(&settings /*, unsafekzg.WithFSCache()*/)
+		canonical, lagrange, err := unsafekzg.NewSRS(&settings /*, unsafekzg.WithFSCache()*/)
 		require.NoError(t, err)
 		f, err := os.OpenFile(filepath.Join(cfg.PathForSRS(), fmt.Sprintf("kzg_srs_canonical_%d_%s_aleo.memdump", canonicalSize, strings.Replace(settings.id.String(), "_", "", 1))), os.O_WRONLY|os.O_CREATE, 0600) // not actually coming from Aleo
 		require.NoError(t, err)
-		require.NoError(t, canonical.WriteDump(f, settings.maxSize))
+		require.NoError(t, canonical.WriteDump(f))
+		f.Close()
+
+		f, err = os.OpenFile(filepath.Join(cfg.PathForSRS(), fmt.Sprintf("kzg_srs_lagrange_%d_%s_aleo.memdump", canonicalSize, strings.Replace(settings.id.String(), "_", "", 1))), os.O_WRONLY|os.O_CREATE, 0600) // not actually coming from Aleo
+		require.NoError(t, err)
+		require.NoError(t, lagrange.WriteDump(f))
 		f.Close()
 
 		wg.Done()
@@ -106,7 +111,6 @@ func main() {
 
 	if len(flagLagrange) == 0 {
 		logrus.Info("no lagrange parameter. Setting up canonical SRS")
-		createSRS(srsSpec{ecc.BLS12_377, 1 << 27}) // TODO @Tabaie remove
 
 		wg.Add(3)
 		go createSRS(srsSpec{ecc.BLS12_377, 1 << 27})
