@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var fConfigFile string
+var FConfigFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -26,7 +26,7 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&fConfigFile, "config", "", "config file")
+	rootCmd.PersistentFlags().StringVar(&FConfigFile, "config", "", "config file")
 
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04:05", NoColor: true}
 	l := zerolog.New(output).With().Timestamp().Logger()

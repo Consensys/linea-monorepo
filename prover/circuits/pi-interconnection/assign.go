@@ -5,8 +5,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"hash"
+
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"

@@ -34,8 +34,8 @@ import (
 
 var (
 	fForce     bool
-	fCircuits  string
-	fDictPath  string
+	FCircuits  string
+	FDictPath  string
 	fAssetsDir string
 )
 
@@ -60,24 +60,28 @@ var allCircuits = []string{
 func init() {
 	rootCmd.AddCommand(setupCmd)
 	setupCmd.Flags().BoolVar(&fForce, "force", false, "overwrites existing files")
-	setupCmd.Flags().StringVar(&fCircuits, "circuits", strings.Join(allCircuits, ","), "comma separated list of circuits to setup")
-	setupCmd.Flags().StringVar(&fDictPath, "dict", "", "path to the dictionary file used in blob (de)compression")
+	setupCmd.Flags().StringVar(&FCircuits, "circuits", strings.Join(allCircuits, ","), "comma separated list of circuits to setup")
+	setupCmd.Flags().StringVar(&FDictPath, "dict", "", "path to the dictionary file used in blob (de)compression")
 	setupCmd.Flags().StringVar(&fAssetsDir, "assets-dir", "", "path to the directory where the assets are stored (override conf)")
 
 	viper.BindPFlag("assets_dir", setupCmd.Flags().Lookup("assets-dir"))
 }
 
 func cmdSetup(cmd *cobra.Command, args []string) error {
+	return CmdSetup(cmd.Name(), cmd.Context(), args)
+}
+func CmdSetup(cmdName string, cmdContext context.Context, args []string) error {
+
 	// read config
-	cfg, err := config.NewConfigFromFile(fConfigFile)
+	cfg, err := config.NewConfigFromFile(FConfigFile)
 	if err != nil {
-		return fmt.Errorf("%s failed to read config file: %w", cmd.Name(), err)
+		return fmt.Errorf("%s failed to read config file: %w", cmdName, err)
 	}
 
-	if fDictPath != "" {
+	if FDictPath != "" {
 		// fail early if the dictionary file is not found but was specified.
-		if _, err := os.Stat(fDictPath); err != nil {
-			return fmt.Errorf("%s dictionary file not found: %w", cmd.Name(), err)
+		if _, err := os.Stat(FDictPath); err != nil {
+			return fmt.Errorf("%s dictionary file not found: %w", cmdName, err)
 		}
 	}
 
@@ -86,10 +90,10 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	for _, c := range allCircuits {
 		inCircuits[circuits.CircuitID(c)] = false
 	}
-	_inCircuits := strings.Split(fCircuits, ",")
+	_inCircuits := strings.Split(FCircuits, ",")
 	for _, c := range _inCircuits {
 		if _, ok := inCircuits[circuits.CircuitID(c)]; !ok {
-			return fmt.Errorf("%s unknown circuit: %s", cmd.Name(), c)
+			return fmt.Errorf("%s unknown circuit: %s", cmdName, c)
 		}
 		inCircuits[circuits.CircuitID(c)] = true
 	}
@@ -101,7 +105,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	var srsProvider circuits.SRSProvider
 	srsProvider, err = circuits.NewSRSStore(cfg.PathForSRS())
 	if err != nil {
-		return fmt.Errorf("%s failed to create SRS provider: %w", cmd.Name(), err)
+		return fmt.Errorf("%s failed to create SRS provider: %w", cmdName, err)
 	}
 
 	// for each circuit, we start by compiling the circuit
@@ -128,9 +132,9 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 			zkEvm := zkevm.FullZkEvm(&limits)
 			builder = execution.NewBuilder(zkEvm)
 		case circuits.BlobDecompressionV0CircuitID, circuits.BlobDecompressionV1CircuitID:
-			dict, err = os.ReadFile(fDictPath)
+			dict, err = os.ReadFile(FDictPath)
 			if err != nil {
-				return fmt.Errorf("%s failed to read dictionary file: %w", cmd.Name(), err)
+				return fmt.Errorf("%s failed to read dictionary file: %w", cmdName, err)
 			}
 
 			if c == circuits.BlobDecompressionV0CircuitID {
@@ -151,14 +155,14 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 			continue // dummy, aggregation, emulation or public input circuits are handled later
 		}
 
-		if err := updateSetup(cmd.Context(), cfg, srsProvider, c, builder, extraFlags); err != nil {
+		if err := updateSetup(cmdContext, cfg, srsProvider, c, builder, extraFlags); err != nil {
 			return err
 		}
 		if dict != nil {
 			// we save the dictionary to disk
 			dictPath := filepath.Join(cfg.PathForSetup(string(c)), config.DictionaryFileName)
 			if err := os.WriteFile(dictPath, dict, 0600); err != nil {
-				return fmt.Errorf("%s failed to write dictionary file: %w", cmd.Name(), err)
+				return fmt.Errorf("%s failed to write dictionary file: %w", cmdName, err)
 			}
 		}
 
@@ -172,7 +176,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	// get verifying key for public-input circuit
 	piSetup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
 	if err != nil {
-		return fmt.Errorf("%s failed to load public input interconnection setup: %w", cmd.Name(), err)
+		return fmt.Errorf("%s failed to load public input interconnection setup: %w", cmdName, err)
 	}
 
 	// first, we need to collect the verifying keys
@@ -196,7 +200,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("unknown dummy circuit: %s", allowedInput)
 			}
 
-			vk, err := getDummyCircuitVK(cmd.Context(), cfg, srsProvider, circuits.CircuitID(allowedInput), dummy.NewBuilder(mockID, curveID.ScalarField()))
+			vk, err := getDummyCircuitVK(cmdContext, cfg, srsProvider, circuits.CircuitID(allowedInput), dummy.NewBuilder(mockID, curveID.ScalarField()))
 			if err != nil {
 				return err
 			}
@@ -209,7 +213,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 		vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
 		vk := plonk.NewVerifyingKey(ecc.BLS12_377)
 		if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
-			return fmt.Errorf("%s failed to read verifying key for circuit %s: %w", cmd.Name(), allowedInput, err)
+			return fmt.Errorf("%s failed to read verifying key for circuit %s: %w", cmdName, allowedInput, err)
 		}
 
 		allowedVkForAggregation = append(allowedVkForAggregation, vk)
@@ -229,7 +233,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 		logrus.Infof("setting up %s (numProofs=%d)", c, numProofs)
 
 		builder := aggregation.NewBuilder(numProofs, cfg.Aggregation.AllowedInputs, piSetup, allowedVkForAggregation)
-		if err := updateSetup(cmd.Context(), cfg, srsProvider, c, builder, extraFlagsForAggregationCircuit); err != nil {
+		if err := updateSetup(cmdContext, cfg, srsProvider, c, builder, extraFlagsForAggregationCircuit); err != nil {
 			return err
 		}
 
@@ -238,7 +242,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 		vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
 		vk := plonk.NewVerifyingKey(ecc.BW6_761)
 		if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
-			return fmt.Errorf("%s failed to read verifying key for circuit %s: %w", cmd.Name(), c, err)
+			return fmt.Errorf("%s failed to read verifying key for circuit %s: %w", cmdName, c, err)
 		}
 
 		allowedVkForEmulation = append(allowedVkForEmulation, vk)
@@ -248,7 +252,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	c := circuits.EmulationCircuitID
 	logrus.Infof("setting up %s", c)
 	builder := emulation.NewBuilder(allowedVkForEmulation)
-	return updateSetup(cmd.Context(), cfg, srsProvider, c, builder, nil)
+	return updateSetup(cmdContext, cfg, srsProvider, c, builder, nil)
 
 }
 

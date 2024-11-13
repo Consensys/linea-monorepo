@@ -2,10 +2,11 @@ package pi_interconnection
 
 import (
 	"errors"
-	"github.com/sirupsen/logrus"
 	"math"
 	"math/big"
 	"slices"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
@@ -345,6 +346,7 @@ type builder struct {
 }
 
 func NewBuilder(c config.PublicInput) circuits.Builder {
+	c.MockKeccakWizard = true // TODO @Tabaie remove
 	return builder{&c}
 }
 

@@ -20,7 +20,7 @@ mkdir -p bin
 	rm -f bin/prover
 	go build -o bin/prover ./cmd/prover
 
-
 TEST_RELATIVE_DIR=./integration/all-backend
 
-bin/prover setup --config $TEST_RELATIVE_DIR/config-integration-light.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir $TEST_RELATIVE_DIR/assets
+# bin/prover setup --config $TEST_RELATIVE_DIR/config-integration-light.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir $TEST_RELATIVE_DIR/assets
+bin/prover setup --config $TEST_RELATIVE_DIR/config-integration-light.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir $TEST_RELATIVE_DIR/assets --circuits aggregation

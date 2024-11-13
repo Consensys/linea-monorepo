@@ -17,7 +17,7 @@ import (
 	"github.com/consensys/gnark/test/unsafekzg"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
+	allbackend "github.com/consensys/linea-monorepo/prover/integration/all-backend"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 
 	"github.com/sirupsen/logrus"
@@ -61,11 +61,7 @@ func main() {
 
 	flag.Parse()
 
-	rootDir, err := blob.GetRepoRootPath()
-	require.NoError(t, err)
-	rootDir = filepath.Join(rootDir, "prover")
-	logrus.Infof("switching working directory to '%s'", rootDir)
-	require.NoError(t, os.Chdir(rootDir))
+	allbackend.CdProver(t)
 
 	cfg, err := config.NewConfigFromFile(flagConfig)
 	require.NoError(t, err, "could not load config")

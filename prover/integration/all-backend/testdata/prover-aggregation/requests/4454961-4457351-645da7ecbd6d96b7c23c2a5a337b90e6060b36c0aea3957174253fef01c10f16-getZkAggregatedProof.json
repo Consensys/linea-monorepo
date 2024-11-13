@@ -1,0 +1,41 @@
+{
+    "executionProofs": [
+        "4454961-4455038-getZkProof.json",
+        "4455039-4455116-getZkProof.json",
+        "4455117-4455194-getZkProof.json",
+        "4455195-4455272-getZkProof.json",
+        "4455273-4455350-getZkProof.json",
+        "4455351-4455428-getZkProof.json",
+        "4455429-4455506-getZkProof.json",
+        "4455507-4455584-getZkProof.json",
+        "4455585-4455662-getZkProof.json",
+        "4455663-4455740-getZkProof.json",
+        "4455741-4455818-getZkProof.json",
+        "4455819-4455896-getZkProof.json",
+        "4455897-4455974-getZkProof.json",
+        "4455975-4456052-getZkProof.json",
+        "4456053-4456130-getZkProof.json",
+        "4456131-4456208-getZkProof.json",
+        "4456209-4456286-getZkProof.json",
+        "4456287-4456364-getZkProof.json",
+        "4456365-4456442-getZkProof.json",
+        "4456443-4456520-getZkProof.json",
+        "4456521-4456598-getZkProof.json",
+        "4456599-4456676-getZkProof.json",
+        "4456677-4456754-getZkProof.json",
+        "4456755-4456832-getZkProof.json",
+        "4456833-4456910-getZkProof.json",
+        "4456911-4456988-getZkProof.json",
+        "4456989-4457066-getZkProof.json",
+        "4457067-4457144-getZkProof.json",
+        "4457145-4457222-getZkProof.json",
+        "4457223-4457300-getZkProof.json",
+        "4457301-4457351-getZkProof.json"
+    ],
+    "compressionProofs": [
+        "4454961-4457351-e1e96ae51f742703127930ac10b1271bba431670cb58df245d447fec45b5abb0-getZkBlobCompressionProof.json"
+    ],
+    "parentAggregationLastBlockTimestamp": 1728840417,
+    "parentAggregationLastL1RollingHashMessageNumber": 4280,
+    "parentAggregationLastL1RollingHash": "0x9c9c0e628efe71b06cbe234e077cc8288d3b65023fd6f22d1a2980faa44769cd"
+}

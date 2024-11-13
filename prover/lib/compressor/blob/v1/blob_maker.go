@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/sirupsen/logrus"
@@ -25,8 +26,8 @@ const (
 	NbElemsEncodingBytes = 2
 
 	// These also impact the circuit constraints (compile / setup time)
-	MaxUncompressedBytes = 740 * 1024 // defines the max size we can handle for a blob (uncompressed) input
-	MaxUsableBytes       = 32 * 4096  // defines the number of bytes available in a blob
+	MaxUncompressedBytes = 740 * 1024 / 2 // defines the max size we can handle for a blob (uncompressed) input
+	MaxUsableBytes       = 32 * 4096      // defines the number of bytes available in a blob
 )
 
 // BlobMaker is a bm for RLP encoded blocks (see EIP-4844).

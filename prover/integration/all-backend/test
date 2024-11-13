@@ -1,0 +1,50 @@
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
+
+echo $SCRIPT_PATH
+
+# Define the ancestor folder you are looking for
+ANCESTOR_FOLDER="linea-monorepo/prover"
+
+# Extract the path up to the ancestor folder
+PROVER_PATH="${SCRIPT_PATH%%$ANCESTOR_FOLDER/*}$ANCESTOR_FOLDER"
+
+# Print the truncated path
+echo "The path up to '$ANCESTOR_FOLDER' is: $PROVER_PATH"
+
+cd "$PROVER_PATH"
+
+make bin/prover
+
+TEST_PATH="./integration/all-backend"
+EXEC_PATH="$TEST_PATH/prover-v2/prover-execution"
+DECOMP_PATH="$TEST_PATH/prover-v2/prover-compression"
+AGGR_PATH="$TEST_PATH/prover-v2/prover-aggregation"
+
+N=37
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $DECOMP_PATH/requests/$N-$N-bcv1.0.0-ccv1.0.0-getZkBlobCompressionProof.json  --out $DECOMP_PATH/responses/$N-$N-getZkBlobCompressionProof.json &
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $EXEC_PATH/requests/$N-$N-etv0.2.0-stv2.1.1-getZkProof.json  --out $EXEC_PATH/responses/$N-$N-getZkProof.json &
+
+
+N=38
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $DECOMP_PATH/requests/$N-$N-bcv1.0.0-ccv1.0.0-getZkBlobCompressionProof.json  --out $DECOMP_PATH/responses/$N-$N-getZkBlobCompressionProof.json &
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $EXEC_PATH/requests/$N-$N-etv0.2.0-stv2.1.1-getZkProof.json  --out $EXEC_PATH/responses/$N-$N-getZkProof.json &
+
+
+N=39
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $DECOMP_PATH/requests/$N-$N-bcv1.0.0-ccv1.0.0-getZkBlobCompressionProof.json  --out $DECOMP_PATH/responses/$N-$N-getZkBlobCompressionProof.json &
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $EXEC_PATH/requests/$N-$N-etv0.2.0-stv2.1.1-getZkProof.json  --out $EXEC_PATH/responses/$N-$N-getZkProof.json &
+
+N=40
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $DECOMP_PATH/requests/$N-$N-bcv1.0.0-ccv1.0.0-getZkBlobCompressionProof.json  --out $DECOMP_PATH/responses/$N-$N-getZkBlobCompressionProof.json &
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $EXEC_PATH/requests/$N-$N-etv0.2.0-stv2.1.1-getZkProof.json  --out $EXEC_PATH/responses/$N-$N-getZkProof.json &
+
+N=41
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $DECOMP_PATH/requests/$N-$N-bcv1.0.0-ccv1.0.0-getZkBlobCompressionProof.json  --out $DECOMP_PATH/responses/$N-$N-getZkBlobCompressionProof.json &
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $EXEC_PATH/requests/$N-$N-etv0.2.0-stv2.1.1-getZkProof.json  --out $EXEC_PATH/responses/$N-$N-getZkProof.json &
+
+wait
+echo "execution and decompression (dummy) proofs generated. running aggregation/pi-interconnection"
+
+STATEMENT="37-41-cb0679b6ddcdfa3599fd50da4db67d3b9cd6e482759801c0aa150ae7f9bef443-getZkAggregatedProof.json"
+bin/prover prove --config $TEST_PATH/config-integration-light.toml --in $AGGR_PATH/requests/$STATEMENT  --out $AGGR_PATH/responses/$STATEMENT
