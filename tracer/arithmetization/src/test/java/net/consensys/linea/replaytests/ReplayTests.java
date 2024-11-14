@@ -123,8 +123,6 @@ public class ReplayTests {
 
   // TODO: should be replaced by a unit test triggering AnyToRamWithPadding (mixed case) MMU
   // instruction
-
-  // @Disabled
   @Test
   void negativeNumberOfMmioInstruction() {
     replay(LINEA_MAINNET, "6029454-6029459.json.gz");

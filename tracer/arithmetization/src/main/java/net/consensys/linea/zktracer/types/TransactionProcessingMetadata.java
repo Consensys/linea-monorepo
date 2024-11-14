@@ -36,6 +36,7 @@ import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruc
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import net.consensys.linea.zktracer.module.hub.transients.Block;
 import net.consensys.linea.zktracer.module.hub.transients.StorageInitialValues;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
@@ -327,5 +328,9 @@ public class TransactionProcessingMetadata {
         hub.deploymentNumberOf(effectiveRecipient);
     updatedRecipientAddressDeploymentStatusAtTransactionStart =
         hub.deploymentStatusOf(effectiveRecipient);
+  }
+
+  public Bytes getTransactionCallData() {
+    return besuTransaction.getData().orElse(Bytes.EMPTY);
   }
 }

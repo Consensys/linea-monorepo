@@ -16,28 +16,16 @@
 package net.consensys.linea.zktracer.module.hub.section;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 import static net.consensys.linea.zktracer.module.hub.fragment.ContextFragment.readCurrentContextData;
-import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.extractContiguousLimbsFromMemory;
-import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
-
-import java.util.Arrays;
-import java.util.Optional;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.CallDataLoad;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.CallDataLoadOobCall;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
-import net.consensys.linea.zktracer.runtime.callstack.CallFrameType;
-import net.consensys.linea.zktracer.types.EWord;
-import net.consensys.linea.zktracer.types.MemorySpan;
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.internal.Words;
 
 public class CallDataLoadSection extends TraceSection {
 
@@ -55,39 +43,8 @@ public class CallDataLoadSection extends TraceSection {
 
     if (Exceptions.none(exception)) {
       if (!oobCall.isCdlOutOfBounds()) {
-        final long callDataSize = hub.currentFrame().callDataInfo().memorySpan().length();
-        final long callDataOffset = hub.currentFrame().callDataInfo().memorySpan().offset();
-        final EWord sourceOffset = EWord.of(hub.currentFrame().frame().getStackItem(0));
-        final long callDataCN = hub.currentFrame().callDataInfo().callDataContextNumber();
-
-        final EWord read =
-            EWord.of(
-                Bytes.wrap(
-                    Arrays.copyOfRange(
-                        hub.currentFrame().callDataInfo().data().toArray(),
-                        Words.clampedToInt(sourceOffset),
-                        Words.clampedToInt(sourceOffset) + WORD_SIZE)));
-
-        final CallFrame callDataCallFrame = hub.callStack().getByContextNumber(callDataCN);
-
-        final MmuCall call =
-            new MmuCall(hub, MMU_INST_RIGHT_PADDED_WORD_EXTRACTION)
-                .sourceId((int) callDataCN)
-                .sourceRamBytes(
-                    Optional.of(
-                        callDataCallFrame.type() == CallFrameType.TRANSACTION_CALL_DATA_HOLDER
-                            ? callDataCallFrame.callDataInfo().data()
-                            : extractContiguousLimbsFromMemory(
-                                callDataCallFrame.frame(),
-                                MemorySpan.fromStartLength(
-                                    clampedToLong(sourceOffset) + callDataOffset, WORD_SIZE))))
-                .sourceOffset(sourceOffset)
-                .referenceOffset(callDataOffset)
-                .referenceSize(callDataSize)
-                .limb1(read.hi())
-                .limb2(read.lo());
-
-        imcFragment.callMmu(call);
+        final CallDataLoad mmuCall = (CallDataLoad) MmuCall.callDataLoad(hub);
+        imcFragment.callMmu(mmuCall);
       }
     } else {
       // Sanity check

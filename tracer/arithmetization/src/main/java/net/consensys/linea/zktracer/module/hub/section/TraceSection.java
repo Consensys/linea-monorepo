@@ -224,7 +224,12 @@ public class TraceSection {
 
       specificFragment.trace(hubTrace);
       final CommonFragment commonFragment =
-          new CommonFragment(commonValues, stackLineCounter, nonStackLineCounter);
+          new CommonFragment(
+              commonValues,
+              stackLineCounter,
+              nonStackLineCounter,
+              hub.state.stamps().mmu(),
+              hub.state.stamps().mxp());
       commonFragment.trace(hubTrace);
       hubTrace.fillAndValidateRow();
     }

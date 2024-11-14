@@ -96,6 +96,8 @@ public class PrecompileSubsection
     this.callSection = callSection;
     fragments = new ArrayList<>(maxNumberOfLines());
 
+    final MessageFrame messageFrame = hub.messageFrame();
+
     hub.defers().scheduleForImmediateContextEntry(this); // gas & input data, ...
     hub.defers().scheduleForContextExit(this, hub.callStack().futureId());
     hub.defers().scheduleForContextReEntry(this, hub.currentFrame()); // success bit & return data
@@ -114,16 +116,15 @@ public class PrecompileSubsection
     final long offset =
         Words.clampedToLong(
             opCode.callCanTransferValue()
-                ? hub.messageFrame().getStackItem(3)
-                : hub.messageFrame().getStackItem(2));
+                ? messageFrame.getStackItem(3)
+                : messageFrame.getStackItem(2));
     final long length =
         Words.clampedToLong(
             opCode.callCanTransferValue()
-                ? hub.messageFrame().getStackItem(4)
-                : hub.messageFrame().getStackItem(3));
+                ? messageFrame.getStackItem(4)
+                : messageFrame.getStackItem(3));
     callDataMemorySpan = new MemorySpan(offset, length);
-    callerMemorySnapshot =
-        extractContiguousLimbsFromMemory(hub.currentFrame().frame(), callDataMemorySpan);
+    callerMemorySnapshot = extractContiguousLimbsFromMemory(messageFrame, callDataMemorySpan);
     final int lengthToExtract =
         (int) Math.min(length, Math.max(callerMemorySnapshot.size() - offset, 0));
     callData = rightPadTo(callerMemorySnapshot.slice((int) offset, lengthToExtract), (int) length);
@@ -150,10 +151,13 @@ public class PrecompileSubsection
 
   @Override
   public void resolveAtContextReEntry(Hub hub, CallFrame frame) {
-    callSuccess = bytesToBoolean(hub.messageFrame().getStackItem(0));
+    callSuccess = bytesToBoolean(frame.frame().getStackItem(0));
     returnData = frame.frame().getReturnData();
 
-    frame.returnDataContextNumber(exoModuleOperationId());
+    final int returnerCn = exoModuleOperationId();
+    final CallFrame returnerFrame = hub.callStack().getByContextNumber(returnerCn);
+    returnerFrame.returnData(returnData);
+    frame.returnDataContextNumber(returnerCn);
     frame.returnDataSpan(new MemorySpan(0, returnData.size()));
 
     if (callSuccess) {

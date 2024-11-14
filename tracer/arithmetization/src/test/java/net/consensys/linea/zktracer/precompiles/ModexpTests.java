@@ -26,6 +26,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 
 public class ModexpTests {
@@ -174,7 +175,7 @@ public class ModexpTests {
         .push(Bytes.fromHexString("0100")) // r@o
         .push(callDataSize) // cds
         .push(Bytes.fromHexString("")) // cdo
-        .push(0x04) // address (here: MODEXP)
+        .push(Address.MODEXP) // address (here: MODEXP)
         .push(Bytes.fromHexString("ffff")) // gas
         .op(OpCode.DELEGATECALL)
         .op(OpCode.POP);

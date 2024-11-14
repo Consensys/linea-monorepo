@@ -47,7 +47,7 @@ public class CommonFragmentValues {
   public final HubProcessingPhase hubProcessingPhase;
   public final int hubStamp;
   public final CallStack callStack;
-  public final State.TxState.Stamps stamps; // for MMU and MXP stamps
+  public final State.TxState.Stamps stamps;
   @Setter public int logStamp = -1;
   @Getter final CallFrame callFrame;
   public final short exceptions;
