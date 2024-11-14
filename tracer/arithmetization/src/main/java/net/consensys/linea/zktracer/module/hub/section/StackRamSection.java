@@ -30,6 +30,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.MemorySpan;
 import org.apache.tuweni.bytes.Bytes;
@@ -62,47 +63,45 @@ public class StackRamSection extends TraceSection {
     // the unexceptional case
     checkArgument(Exceptions.none(exceptions));
 
-    final EWord offset = EWord.of(hub.currentFrame().frame().getStackItem(0));
+    final CallFrame currentFrame = hub.currentFrame();
+    final EWord offset = EWord.of(currentFrame.frame().getStackItem(0));
     final long longOffset = Words.clampedToLong(offset);
     final Bytes currentRam =
         extractContiguousLimbsFromMemory(
-            hub.currentFrame().frame(), new MemorySpan(longOffset, WORD_SIZE));
-    final int currentContextNumber = hub.currentFrame().contextNumber();
+            currentFrame.frame(), new MemorySpan(longOffset, WORD_SIZE));
+    final int currentContextNumber = currentFrame.contextNumber();
     final EWord value =
         instruction.equals(OpCode.MLOAD)
-            ? EWord.of(hub.messageFrame().shadowReadMemory(Words.clampedToLong(offset), WORD_SIZE))
-            : EWord.of(hub.currentFrame().frame().getStackItem(1));
+            ? EWord.of(currentFrame.frame().shadowReadMemory(longOffset, WORD_SIZE))
+            : EWord.of(currentFrame.frame().getStackItem(1));
 
     MmuCall mmuCall;
 
     switch (instruction) {
-      case MSTORE -> {
-        mmuCall =
-            new MmuCall(hub, MMU_INST_MSTORE)
-                .targetId(currentContextNumber)
-                .targetOffset(offset)
-                .limb1(value.hi())
-                .limb2(value.lo())
-                .targetRamBytes(Optional.of(currentRam));
-      }
-      case MSTORE8 -> {
-        mmuCall =
-            new MmuCall(hub, MMU_INST_MSTORE8)
-                .targetId(currentContextNumber)
-                .targetOffset(offset)
-                .limb1(value.hi())
-                .limb2(value.lo())
-                .targetRamBytes(Optional.of(currentRam));
-      }
-      case MLOAD -> {
-        mmuCall =
-            new MmuCall(hub, MMU_INST_MLOAD)
-                .sourceId(currentContextNumber)
-                .sourceOffset(offset)
-                .limb1(value.hi())
-                .limb2(value.lo())
-                .sourceRamBytes(Optional.of(currentRam));
-      }
+      case MSTORE -> mmuCall =
+          new MmuCall(hub, MMU_INST_MSTORE)
+              .targetId(currentContextNumber)
+              .targetOffset(offset)
+              .limb1(value.hi())
+              .limb2(value.lo())
+              .targetRamBytes(Optional.of(currentRam));
+
+      case MSTORE8 -> mmuCall =
+          new MmuCall(hub, MMU_INST_MSTORE8)
+              .targetId(currentContextNumber)
+              .targetOffset(offset)
+              .limb1(value.hi())
+              .limb2(value.lo())
+              .targetRamBytes(Optional.of(currentRam));
+
+      case MLOAD -> mmuCall =
+          new MmuCall(hub, MMU_INST_MLOAD)
+              .sourceId(currentContextNumber)
+              .sourceOffset(offset)
+              .limb1(value.hi())
+              .limb2(value.lo())
+              .sourceRamBytes(Optional.of(currentRam));
+
       default -> throw new IllegalStateException("Not a STACK_RAM instruction");
     }
 

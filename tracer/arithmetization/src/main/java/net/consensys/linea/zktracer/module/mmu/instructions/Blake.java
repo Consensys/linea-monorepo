@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.mmu.instructions;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.module.mmu.Trace.NB_PP_ROWS_BLAKE;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
 import java.util.ArrayList;
@@ -39,8 +40,8 @@ import org.apache.tuweni.bytes.Bytes;
 public class Blake implements MmuInstruction {
   private final Euc euc;
   private final Wcp wcp;
-  private List<MmuEucCallRecord> eucCallRecords;
-  private List<MmuWcpCallRecord> wcpCallRecords;
+  private final List<MmuEucCallRecord> eucCallRecords;
+  private final List<MmuWcpCallRecord> wcpCallRecords;
   private long sourceLimbOffsetR;
   private short sourceByteOffsetR;
   private long sourceLimbOffsetF;
@@ -50,8 +51,8 @@ public class Blake implements MmuInstruction {
   public Blake(Euc euc, Wcp wcp) {
     this.euc = euc;
     this.wcp = wcp;
-    this.eucCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_BLAKE);
-    this.wcpCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_BLAKE);
+    this.eucCallRecords = new ArrayList<>(NB_PP_ROWS_BLAKE);
+    this.wcpCallRecords = new ArrayList<>(NB_PP_ROWS_BLAKE);
   }
 
   @Override
@@ -60,7 +61,7 @@ public class Blake implements MmuInstruction {
 
     // Preprocessing row n°1
     final long dividendRow1 = hubToMmuValues.sourceOffsetLo().longValueExact();
-    EucOperation eucOpRow1 = euc.callEUC(longToBytes(dividendRow1), Bytes.of(LLARGE));
+    final EucOperation eucOpRow1 = euc.callEUC(longToBytes(dividendRow1), Bytes.of(LLARGE));
     sourceLimbOffsetR = eucOpRow1.quotient().toLong();
     sourceByteOffsetR = (short) eucOpRow1.remainder().toInt();
     eucCallRecords.add(
@@ -83,7 +84,7 @@ public class Blake implements MmuInstruction {
 
     // Preprocessing row n°2
     final long dividendRow2 = hubToMmuValues.sourceOffsetLo().longValueExact() + 213 - 1;
-    EucOperation eucOpRow2 = euc.callEUC(longToBytes(dividendRow2), Bytes.of(LLARGE));
+    final EucOperation eucOpRow2 = euc.callEUC(longToBytes(dividendRow2), Bytes.of(LLARGE));
     sourceLimbOffsetF = eucOpRow2.quotient().toLong();
     sourceByteOffsetF = (short) eucOpRow2.remainder().toInt();
     eucCallRecords.add(

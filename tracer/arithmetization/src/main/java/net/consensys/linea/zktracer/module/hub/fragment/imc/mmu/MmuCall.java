@@ -18,45 +18,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.mmu;
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.Util.slice;
 import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.MODEXP_COMPONENT_BYTE_SIZE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EMPTY_RIPEMD_HI;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EMPTY_RIPEMD_LO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EMPTY_SHA2_HI;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EMPTY_SHA2_LO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_BLAKEMODEXP;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_ECDATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_KEC;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_LOG;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_RIPSHA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_ROM;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_TXCD;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_ANY_TO_RAM_WITH_PADDING;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_BLAKE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_INVALID_CODE_PREFIX;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MLOAD;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_ZERO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_RAM_SANS_PADDING;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_PARAMS;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECADD_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECADD_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECMUL_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECMUL_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECPAIRING_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECPAIRING_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECRECOVER_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECRECOVER_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_BASE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_EXPONENT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_MODULUS;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
 import static net.consensys.linea.zktracer.module.hub.Hub.newIdentifierFromStamp;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_RIPEMD_160;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_SHA2_256;
@@ -64,9 +26,9 @@ import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.EBS_MIN_OFFSET;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.MBS_MIN_OFFSET;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.extractContiguousLimbsFromMemory;
+import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
-import static org.apache.tuweni.bytes.Bytes.minimalBytes;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.util.Optional;
@@ -80,11 +42,7 @@ import net.consensys.linea.zktracer.module.hub.State;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.CodeCopy;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.Create;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.Create2;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.ExtCodeCopy;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.ReturnFromDeploymentMmuCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.*;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.EllipticCurvePrecompileSubsection;
@@ -201,22 +159,26 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
   }
 
   public static MmuCall callDataCopy(final Hub hub) {
-    final CallDataInfo callDataInfo = hub.currentFrame().callDataInfo();
+    final CallFrame currentFrame = hub.currentFrame();
+    final CallDataInfo callDataInfo = currentFrame.callDataInfo();
+    final Bytes sourceBytes = hub.callStack().getFullMemoryOfCaller(hub);
 
     return new MmuCall(hub, MMU_INST_ANY_TO_RAM_WITH_PADDING)
         .sourceId((int) callDataInfo.callDataContextNumber())
-        .sourceRamBytes(Optional.ofNullable(callDataInfo.data()))
-        .targetId(hub.currentFrame().contextNumber())
+        .sourceRamBytes(Optional.of(sourceBytes))
+        .targetId(currentFrame.contextNumber())
         .targetRamBytes(
             Optional.of(
-                hub.currentFrame()
-                    .frame()
-                    .shadowReadMemory(0, hub.currentFrame().frame().memoryByteSize())))
-        .sourceOffset(EWord.of(hub.messageFrame().getStackItem(1)))
-        .targetOffset(EWord.of(hub.messageFrame().getStackItem(0)))
-        .size(clampedToLong(hub.messageFrame().getStackItem(2)))
+                currentFrame.frame().shadowReadMemory(0, currentFrame.frame().memoryByteSize())))
+        .sourceOffset(EWord.of(currentFrame.frame().getStackItem(1)))
+        .targetOffset(EWord.of(currentFrame.frame().getStackItem(0)))
+        .size(clampedToLong(currentFrame.frame().getStackItem(2)))
         .referenceOffset(callDataInfo.memorySpan().offset())
         .referenceSize(callDataInfo.memorySpan().length());
+  }
+
+  public static MmuCall callDataLoad(final Hub hub) {
+    return new CallDataLoad(hub);
   }
 
   public static MmuCall LogX(final Hub hub, final LogData logData) {
@@ -255,13 +217,15 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
 
     return new MmuCall(hub, MMU_INST_ANY_TO_RAM_WITH_PADDING)
         .sourceId(returnerFrame.contextNumber())
-        .sourceRamBytes(Optional.of(currentFrame.frame().getReturnData().copy()))
+        .sourceRamBytes(
+            Optional.of(
+                isPrecompile(returnerFrame.accountAddress())
+                    ? returnerFrame.returnData()
+                    : extractContiguousLimbsFromMemory(returnerFrame.frame(), returnDataSegment)))
         .targetId(currentFrame.contextNumber())
         .targetRamBytes(
             Optional.of(
-                currentFrame
-                    .frame()
-                    .shadowReadMemory(0, hub.currentFrame().frame().memoryByteSize())))
+                currentFrame.frame().shadowReadMemory(0, currentFrame.frame().memoryByteSize())))
         .sourceOffset(EWord.of(currentFrame.frame().getStackItem(1)))
         .targetOffset(EWord.of(currentFrame.frame().getStackItem(0)))
         .size(clampedToLong(currentFrame.frame().getStackItem(2)))
@@ -281,8 +245,9 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
     return MmuCall.revert(hub);
   }
 
-  public static MmuCall create2(final Hub hub, boolean failureCondition) {
-    return new Create2(hub, failureCondition);
+  public static MmuCall create2(
+      final Hub hub, final Bytes create2initCode, final boolean failureCondition) {
+    return new Create2(hub, create2initCode, failureCondition);
   }
 
   public static MmuCall invalidCodePrefix(final Hub hub) {
@@ -412,12 +377,15 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
       return new MmuCall(hub, MMU_INST_MSTORE)
           .targetId(precompileSubsection.exoModuleOperationId())
           .targetOffset(EWord.ZERO)
-          .limb1(isShaTwo ? bigIntegerToBytes(EMPTY_SHA2_HI) : minimalBytes(EMPTY_RIPEMD_HI))
+          .limb1(
+              isShaTwo
+                  ? bigIntegerToBytes(EMPTY_SHA2_HI)
+                  : Bytes.fromHexString("0x9c1185a5")) // EMPTY_RIPEMD_LO
           .limb2(isShaTwo ? bigIntegerToBytes(EMPTY_SHA2_LO) : bigIntegerToBytes(EMPTY_RIPEMD_LO));
     } else {
       return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
           .sourceId(precompileSubsection.exoModuleOperationId())
-          .exoBytes(Optional.of(precompileSubsection.returnData))
+          .exoBytes(Optional.of(leftPadTo(precompileSubsection.returnData, WORD_SIZE)))
           .targetId(precompileSubsection.returnDataContextNumber())
           .targetRamBytes(Optional.of(Bytes.EMPTY))
           .size(WORD_SIZE)
@@ -437,7 +405,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
 
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(precompileSubsection.returnDataContextNumber())
-        .sourceRamBytes(Optional.of(precompileSubsection.returnData))
+        .sourceRamBytes(Optional.of(leftPadTo(precompileSubsection.returnData, WORD_SIZE)))
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(precompileSubsection.callerMemorySnapshot))
         .sourceOffset(EWord.ZERO)
@@ -492,7 +460,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
       final Hub hub, PrecompileSubsection subsection, boolean successBit) {
     return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
         .sourceId(subsection.exoModuleOperationId())
-        .exoBytes(Optional.of(subsection.returnData()))
+        .exoBytes(Optional.of(leftPadTo(subsection.returnData(), 2 * WORD_SIZE)))
         .targetId(subsection.exoModuleOperationId())
         .targetRamBytes(Optional.of(Bytes.EMPTY))
         .size(64)
@@ -505,10 +473,10 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
       final Hub hub, PrecompileSubsection subsection) {
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(subsection.exoModuleOperationId())
-        .sourceRamBytes(Optional.of(subsection.returnData()))
+        .sourceRamBytes(Optional.of(leftPadTo(subsection.returnData(), 2 * WORD_SIZE)))
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(subsection.callerMemorySnapshot()))
-        .targetOffset(EWord.of(subsection.parentReturnDataTarget.offset()))
+        .referenceOffset(subsection.parentReturnDataTarget.offset())
         .size(subsection.parentReturnDataTarget.length())
         .referenceSize(64);
   }
@@ -532,7 +500,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
       final Hub hub, final PrecompileSubsection subsection, boolean successBit) {
     return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
         .sourceId(subsection.exoModuleOperationId())
-        .exoBytes(Optional.of(subsection.returnData()))
+        .exoBytes(Optional.of(leftPadTo(subsection.returnData(), 2 * WORD_SIZE)))
         .targetId(subsection.exoModuleOperationId())
         .targetRamBytes(Optional.of(Bytes.EMPTY))
         .size(64)
@@ -545,10 +513,10 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
       final Hub hub, final PrecompileSubsection subsection) {
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(subsection.exoModuleOperationId())
-        .sourceRamBytes(Optional.of(subsection.returnData()))
+        .sourceRamBytes(Optional.of(leftPadTo(subsection.returnData(), 2 * WORD_SIZE)))
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(subsection.callerMemorySnapshot()))
-        .targetOffset(EWord.of(subsection.parentReturnDataTarget().offset()))
+        .referenceOffset(subsection.parentReturnDataTarget().offset())
         .size(subsection.parentReturnDataTarget().length())
         .referenceSize(64);
   }
@@ -581,7 +549,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
     } else {
       return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
           .sourceId(precompileContextNumber)
-          .exoBytes(Optional.of(subsection.returnData()))
+          .exoBytes(Optional.of(leftPadTo(subsection.returnData(), WORD_SIZE)))
           .targetId(precompileContextNumber)
           .targetRamBytes(Optional.of(Bytes.EMPTY))
           .size(WORD_SIZE)
@@ -596,12 +564,12 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
     final int precompileContextNumber = subsection.exoModuleOperationId();
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(precompileContextNumber)
-        .sourceRamBytes(Optional.of(subsection.returnData()))
+        .sourceRamBytes(Optional.of(leftPadTo(subsection.returnData(), WORD_SIZE)))
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(subsection.callerMemorySnapshot()))
-        .targetOffset(EWord.of(subsection.parentReturnDataTarget.offset()))
+        .referenceOffset(subsection.parentReturnDataTarget.offset())
         .size(subsection.parentReturnDataTarget.length())
-        .referenceSize(32);
+        .referenceSize(WORD_SIZE);
   }
 
   public static MmuCall parameterExtractionForBlake(
@@ -642,7 +610,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
     final int precompileContextNumber = subsection.exoModuleOperationId();
     return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
         .sourceId(precompileContextNumber)
-        .exoBytes(Optional.of(subsection.returnData()))
+        .exoBytes(Optional.of(leftPadTo(subsection.returnData(), WORD_SIZE)))
         .targetId(precompileContextNumber)
         .targetRamBytes(Optional.of(Bytes.EMPTY))
         .size(64)
@@ -655,7 +623,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
     final int precompileContextNumber = subsection.exoModuleOperationId();
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(precompileContextNumber)
-        .sourceRamBytes(Optional.of(subsection.returnData()))
+        .sourceRamBytes(Optional.of(leftPadTo(subsection.returnData(), WORD_SIZE)))
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(subsection.callerMemorySnapshot()))
         .size(64)
@@ -786,8 +754,9 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
       final Hub hub, final ModexpSubsection modexpSubsection, final ModexpMetadata modExpMetadata) {
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(modexpSubsection.exoModuleOperationId())
-        .sourceRamBytes(Optional.of(modexpSubsection.returnData()))
-        .targetId(modexpSubsection.callSection.hubStamp())
+        .sourceRamBytes(
+            Optional.of(leftPadTo(modexpSubsection.returnData, MODEXP_COMPONENT_BYTE_SIZE)))
+        .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(modexpSubsection.callerMemorySnapshot))
         .sourceOffset(EWord.of(MODEXP_COMPONENT_BYTE_SIZE - modExpMetadata.mbs().toInt()))
         .size(modExpMetadata.mbs().toInt())
@@ -797,28 +766,24 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
 
   @Override
   public Trace trace(Trace trace, State.TxState.Stamps stamps) {
-    if (traceMe) {
-      stamps.incrementMmuStamp();
-      return trace
-          .pMiscMmuFlag(true)
-          .pMiscMmuInst(instruction)
-          .pMiscMmuTgtId(targetId())
-          .pMiscMmuSrcId(sourceId())
-          .pMiscMmuAuxId(auxId())
-          .pMiscMmuSrcOffsetHi(sourceOffset.hi())
-          .pMiscMmuSrcOffsetLo(sourceOffset.lo())
-          .pMiscMmuTgtOffsetLo(targetOffset.lo())
-          .pMiscMmuSize(size)
-          .pMiscMmuRefOffset(referenceOffset)
-          .pMiscMmuRefSize(referenceSize)
-          .pMiscMmuSuccessBit(successBit)
-          .pMiscMmuLimb1(limb1)
-          .pMiscMmuLimb2(limb2)
-          .pMiscMmuExoSum(exoSum)
-          .pMiscMmuPhase(phase);
-    } else {
-      return trace;
-    }
+    stamps.incrementMmuStamp();
+    return trace
+        .pMiscMmuFlag(true)
+        .pMiscMmuInst(instruction)
+        .pMiscMmuTgtId(targetId())
+        .pMiscMmuSrcId(sourceId())
+        .pMiscMmuAuxId(auxId())
+        .pMiscMmuSrcOffsetHi(sourceOffset.hi())
+        .pMiscMmuSrcOffsetLo(sourceOffset.lo())
+        .pMiscMmuTgtOffsetLo(targetOffset.lo())
+        .pMiscMmuSize(size)
+        .pMiscMmuRefOffset(referenceOffset)
+        .pMiscMmuRefSize(referenceSize)
+        .pMiscMmuSuccessBit(successBit)
+        .pMiscMmuLimb1(limb1)
+        .pMiscMmuLimb2(limb2)
+        .pMiscMmuExoSum(exoSum)
+        .pMiscMmuPhase(phase);
   }
 
   @Override

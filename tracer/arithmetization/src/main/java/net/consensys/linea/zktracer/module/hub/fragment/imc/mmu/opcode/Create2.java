@@ -39,7 +39,7 @@ public class Create2 extends MmuCall implements RomLexDefer {
   private final Hub hub;
   private ContractMetadata contract;
 
-  public Create2(final Hub hub, final boolean failedCreate) {
+  public Create2(final Hub hub, final Bytes create2initCode, final boolean failedCreate) {
     super(hub, MMU_INST_RAM_TO_EXO_WITH_PADDING);
     this.hub = hub;
     this.hub.romLex().createDefers().register(this);
@@ -55,6 +55,7 @@ public class Create2 extends MmuCall implements RomLexDefer {
                     currentFrame.frame(),
                     MemorySpan.fromStartLength(clampedToLong(sourceOffset), size))))
         .auxId(newIdentifierFromStamp(hub.stamp()))
+        .exoBytes(Optional.of(create2initCode))
         .sourceOffset(sourceOffset)
         .size(size)
         .referenceSize(size)
@@ -68,11 +69,6 @@ public class Create2 extends MmuCall implements RomLexDefer {
   @Override
   public int targetId() {
     return exoIsRom ? hub.romLex().getCodeFragmentIndexByMetadata(contract) : 0;
-  }
-
-  @Override
-  public Optional<Bytes> exoBytes() {
-    return exoIsRom ? Optional.of(hub.romLex().getCodeByMetadata(contract)) : Optional.empty();
   }
 
   @Override

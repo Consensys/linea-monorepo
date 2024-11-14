@@ -29,6 +29,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.Code;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /**
  * This class represents the call hierarchy of a transaction.
@@ -257,15 +258,6 @@ public final class CallStack {
   }
 
   /**
-   * Get the {@link CallFrame} representing the caller of the current frame
-   *
-   * @return the caller of the current frame
-   */
-  public CallFrame caller() {
-    return this.callFrames.get(this.currentCallFrame().callerId());
-  }
-
-  /**
    * Returns the ith {@link CallFrame} in this call stack.
    *
    * @param i ID of the call frame to fetch
@@ -321,5 +313,12 @@ public final class CallStack {
    */
   public int getParentContextNumberById(int id) {
     return this.getParentCallFrameById(id).contextNumber();
+  }
+
+  public Bytes getFullMemoryOfCaller(Hub hub) {
+    final MessageFrame parentFrame = parent().frame();
+    return currentCallFrame().depth() == 0
+        ? hub.txStack().current().getTransactionCallData()
+        : parentFrame.shadowReadMemory(0, parentFrame.memoryByteSize());
   }
 }

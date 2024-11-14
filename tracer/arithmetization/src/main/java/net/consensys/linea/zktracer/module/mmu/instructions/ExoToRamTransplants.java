@@ -34,9 +34,9 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
 import org.apache.tuweni.bytes.Bytes;
 
 public class ExoToRamTransplants implements MmuInstruction {
-  private Euc euc;
-  private List<MmuEucCallRecord> eucCallRecords;
-  private List<MmuWcpCallRecord> wcpCallRecords;
+  private final Euc euc;
+  private final List<MmuEucCallRecord> eucCallRecords;
+  private final List<MmuWcpCallRecord> wcpCallRecords;
 
   public ExoToRamTransplants(Euc euc) {
     this.euc = euc;
@@ -73,7 +73,7 @@ public class ExoToRamTransplants implements MmuInstruction {
 
   @Override
   public MmuData setMicroInstructions(MmuData mmuData) {
-    HubToMmuValues hubToMmuValues = mmuData.hubToMmuValues();
+    final HubToMmuValues hubToMmuValues = mmuData.hubToMmuValues();
 
     // Setting MMIO constant values
     mmuData.mmuToMmioConstantValues(

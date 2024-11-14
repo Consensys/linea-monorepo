@@ -41,8 +41,8 @@ import org.apache.tuweni.bytes.Bytes;
 public class RamToRamSansPadding implements MmuInstruction {
   private final Euc euc;
   private final Wcp wcp;
-  private List<MmuEucCallRecord> eucCallRecords;
-  private List<MmuWcpCallRecord> wcpCallRecords;
+  private final List<MmuEucCallRecord> eucCallRecords;
+  private final List<MmuWcpCallRecord> wcpCallRecords;
   private short lastLimbByteSize;
   private short middleSourceByteOffset;
   private boolean lastLimbSingleSource;
@@ -103,7 +103,7 @@ public class RamToRamSansPadding implements MmuInstruction {
   private void row1(final HubToMmuValues hubToMmuValues) {
     // row n°1
     final Bytes dividend = bigIntegerToBytes(hubToMmuValues.sourceOffsetLo());
-    EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
+    final EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
 
     initialSourceLimbOffset = eucOp.quotient().toLong();
     initialSourceByteOffset = (short) eucOp.remainder().toInt();
@@ -129,7 +129,7 @@ public class RamToRamSansPadding implements MmuInstruction {
   private void row2(final HubToMmuValues hubToMmuValues) {
     // row n°2
     final Bytes dividend = longToBytes(hubToMmuValues.referenceOffset());
-    EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
+    final EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
 
     initialTargetLimbOffset = eucOp.quotient().toLong();
     initialTargetByteOffset = (short) eucOp.remainder().toInt();
@@ -153,7 +153,7 @@ public class RamToRamSansPadding implements MmuInstruction {
   private void row3(final HubToMmuValues hubToMmuValues) {
     // row n°3
     final Bytes dividend = longToBytes(hubToMmuValues.referenceOffset() + realSize - 1);
-    EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
+    final EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
 
     finalTargetLimbOffset = eucOp.quotient().toLong();
 
@@ -206,7 +206,7 @@ public class RamToRamSansPadding implements MmuInstruction {
     }
 
     final Bytes dividend = longToBytes(middleSourceByteOffset + lastLimbByteSize - 1);
-    EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
+    final EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
     eucCallRecords.add(
         MmuEucCallRecord.builder()
             .dividend(dividend.toLong())
@@ -229,7 +229,7 @@ public class RamToRamSansPadding implements MmuInstruction {
         MmuWcpCallRecord.instIsZeroBuilder().arg1Lo(wcpArg1).result(wcpResult).build());
 
     final Bytes dividend = longToBytes(lastLimbByteSize);
-    EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
+    final EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));
     eucCallRecords.add(
         MmuEucCallRecord.builder()
             .dividend(dividend.toLong())

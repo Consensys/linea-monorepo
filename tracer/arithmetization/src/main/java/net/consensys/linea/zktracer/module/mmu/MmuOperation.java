@@ -66,8 +66,11 @@ public class MmuOperation extends ModuleOperation {
     return mmuData.mmuCall().traceMe();
   }
 
-  private final List<Integer> vanishingLimbMmioInstructions =
+  private static final List<Integer> vanishingLimbMmioInstructions =
       List.of(MMIO_INST_RAM_VANISHES, MMIO_INST_LIMB_VANISHES, MMIO_INST_RAM_EXCISION);
+
+  private static final List<Integer> limbAlreadyKnownMmuInstructions =
+      List.of(MMU_INST_INVALID_CODE_PREFIX, MMU_INST_BLAKE, MMU_INST_RIGHT_PADDED_WORD_EXTRACTION);
 
   @Override
   protected int computeLineCount() {
@@ -129,13 +132,9 @@ public class MmuOperation extends ModuleOperation {
 
   public void fillLimb() {
     final int mmuInstruction = mmuData.hubToMmuValues().mmuInstruction();
-    // Job already done in the preprocessing only for INVALID_CODE_PREFIX
-    if (mmuInstruction == MMU_INST_INVALID_CODE_PREFIX) {
-      return;
-    }
-
-    // the limb for BLAKE is given by the HUB
-    if (mmuInstruction == MMU_INST_BLAKE) {
+    // Limb is already known, either given by MmuCall, or computed in preprocessing
+    // (INVALID_CODE_PREFIX)
+    if (limbAlreadyKnownMmuInstructions.contains(mmuInstruction)) {
       return;
     }
 
@@ -158,7 +157,6 @@ public class MmuOperation extends ModuleOperation {
             final int exoByteOffset = mmioInst.targetByteOffset();
             final Bytes16 exoLimb =
                 readBytes(mmuData.exoBytes(), offset, sizeToExtract, exoByteOffset);
-            ;
             mmioInst.limb(exoLimb);
           }
         }

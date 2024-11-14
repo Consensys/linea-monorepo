@@ -181,15 +181,16 @@ public class CreateSection extends TraceSection
     final boolean failedCreate = createdAddressHasNonZeroNonce || createdAddressHasNonEmptyCode;
     final boolean emptyInitCode = hub.transients().op().initCodeSegment().isEmpty();
 
-    final long offset = Words.clampedToLong(hub.messageFrame().getStackItem(1));
-    final long size = Words.clampedToLong(hub.messageFrame().getStackItem(2));
+    final long offset = Words.clampedToLong(messageFrame.getStackItem(1));
+    final long size = Words.clampedToLong(messageFrame.getStackItem(2));
 
     // Trigger MMU & SHAKIRA to hash the (non-empty) InitCode of CREATE2 - even for failed CREATE2
     if (hub.opCode() == CREATE2 && !emptyInitCode) {
-      final MmuCall mmuCall = MmuCall.create2(hub, failedCreate);
+      final Bytes create2InitCode = messageFrame.shadowReadMemory(offset, size);
+
+      final MmuCall mmuCall = MmuCall.create2(hub, create2InitCode, failedCreate);
       imcFragment.callMmu(mmuCall);
 
-      final Bytes create2InitCode = messageFrame.shadowReadMemory(offset, size);
       final ShakiraDataOperation shakiraDataOperation =
           new ShakiraDataOperation(hub.stamp(), create2InitCode);
       hub.shakiraData().call(shakiraDataOperation);
@@ -197,7 +198,7 @@ public class CreateSection extends TraceSection
       triggerHashInfo(shakiraDataOperation.result());
     }
 
-    value = failedCreate ? Wei.ZERO : Wei.of(UInt256.fromBytes(hub.messageFrame().getStackItem(0)));
+    value = failedCreate ? Wei.ZERO : Wei.of(UInt256.fromBytes(messageFrame.getStackItem(0)));
 
     if (failedCreate || emptyInitCode) {
       finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
@@ -219,16 +220,14 @@ public class CreateSection extends TraceSection
 
     // Finally, non-exceptional, non-aborting, non-failing, non-emptyInitCode create
     hub.defers()
-        .scheduleForContextReEntry(
-            this, hub.currentFrame()); // To get the success bit of the CREATE(2)
+        .scheduleForContextReEntry(this, callFrame); // To get the success bit of the CREATE(2)
 
     requiresRomLex = true;
     hub.romLex().callRomLex(messageFrame);
     hub.transients()
         .conflation()
         .deploymentInfo()
-        .newDeploymentWithExecutionAt(
-            createeAddress, hub.messageFrame().shadowReadMemory(offset, size));
+        .newDeploymentWithExecutionAt(createeAddress, messageFrame.shadowReadMemory(offset, size));
 
     // Note: the case CREATE2 has been set before, we need to do it even in the failure case
     if (hub.opCode() == CREATE) {
