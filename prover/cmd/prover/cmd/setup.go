@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	v0 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0"
@@ -26,30 +27,17 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
-	"github.com/consensys/gnark/backend/plonk"
 )
 
-type setupArgsT struct {
-	force      bool
-	circuits   string
-	dictPath   string
-	assetsDir  string
-	configFile string
+type SetupArgs struct {
+	Force      bool
+	Circuits   string
+	DictPath   string
+	AssetsDir  string
+	ConfigFile string
 }
 
-var setupArgs setupArgsT
-
-// setupCmd represents the setup command
-var setupCmd = &cobra.Command{
-	Use:   "setup",
-	Short: "pre compute assets for Linea circuits",
-	RunE:  cmdSetup,
-}
-
-var allCircuits = []string{
+var AllCircuits = []string{
 	string(circuits.ExecutionCircuitID),
 	string(circuits.ExecutionLargeCircuitID),
 	string(circuits.BlobDecompressionV0CircuitID),
@@ -60,41 +48,26 @@ var allCircuits = []string{
 	string(circuits.EmulationDummyCircuitID), // we want to generate Verifier.sol for this one
 }
 
-func init() {
-	rootCmd.AddCommand(setupCmd)
-	setupCmd.Flags().BoolVar(&setupArgs.force, "force", false, "overwrites existing files")
-	setupCmd.Flags().StringVar(&setupArgs.circuits, "circuits", strings.Join(allCircuits, ","), "comma separated list of circuits to setup")
-	setupCmd.Flags().StringVar(&setupArgs.dictPath, "dict", "", "path to the dictionary file used in blob (de)compression")
-	setupCmd.Flags().StringVar(&setupArgs.assetsDir, "assets-dir", "", "path to the directory where the assets are stored (override conf)")
-
-	viper.BindPFlag("assets_dir", setupCmd.Flags().Lookup("assets-dir"))
-}
-
-func cmdSetup(cmd *cobra.Command, args []string) error {
-	setupArgs.configFile = fConfigFile
-	return Setup(cmd.Name(), cmd.Context(), setupArgs)
-}
-
-func Setup(cmdName string, context context.Context, args setupArgsT) error {
+func Setup(cmdName string, context context.Context, args SetupArgs) error {
 	// read config
-	cfg, err := config.NewConfigFromFile(args.configFile)
+	cfg, err := config.NewConfigFromFile(args.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("%s failed to read config file: %w", cmdName, err)
 	}
 
-	if args.dictPath != "" {
+	if args.DictPath != "" {
 		// fail early if the dictionary file is not found but was specified.
-		if _, err := os.Stat(args.dictPath); err != nil {
+		if _, err := os.Stat(args.DictPath); err != nil {
 			return fmt.Errorf("%s dictionary file not found: %w", cmdName, err)
 		}
 	}
 
 	// parse inCircuits
 	inCircuits := make(map[circuits.CircuitID]bool)
-	for _, c := range allCircuits {
+	for _, c := range AllCircuits {
 		inCircuits[circuits.CircuitID(c)] = false
 	}
-	_inCircuits := strings.Split(args.circuits, ",")
+	_inCircuits := strings.Split(args.Circuits, ",")
 	for _, c := range _inCircuits {
 		if _, ok := inCircuits[circuits.CircuitID(c)]; !ok {
 			return fmt.Errorf("%s unknown circuit: %s", cmdName, c)
@@ -136,7 +109,7 @@ func Setup(cmdName string, context context.Context, args setupArgsT) error {
 			zkEvm := zkevm.FullZkEvm(&limits)
 			builder = execution.NewBuilder(zkEvm)
 		case circuits.BlobDecompressionV0CircuitID, circuits.BlobDecompressionV1CircuitID:
-			dict, err = os.ReadFile(args.dictPath)
+			dict, err = os.ReadFile(args.DictPath)
 			if err != nil {
 				return fmt.Errorf("%s failed to read dictionary file: %w", cmdName, err)
 			}
@@ -159,7 +132,7 @@ func Setup(cmdName string, context context.Context, args setupArgsT) error {
 			continue // dummy, aggregation, emulation or public input circuits are handled later
 		}
 
-		if err := updateSetup(context, cfg, args.force, srsProvider, c, builder, extraFlags); err != nil {
+		if err := updateSetup(context, cfg, args.Force, srsProvider, c, builder, extraFlags); err != nil {
 			return err
 		}
 		if dict != nil {
@@ -237,7 +210,7 @@ func Setup(cmdName string, context context.Context, args setupArgsT) error {
 		logrus.Infof("setting up %s (numProofs=%d)", c, numProofs)
 
 		builder := aggregation.NewBuilder(numProofs, cfg.Aggregation.AllowedInputs, piSetup, allowedVkForAggregation)
-		if err := updateSetup(context, cfg, args.force, srsProvider, c, builder, extraFlagsForAggregationCircuit); err != nil {
+		if err := updateSetup(context, cfg, args.Force, srsProvider, c, builder, extraFlagsForAggregationCircuit); err != nil {
 			return err
 		}
 
@@ -256,7 +229,7 @@ func Setup(cmdName string, context context.Context, args setupArgsT) error {
 	c := circuits.EmulationCircuitID
 	logrus.Infof("setting up %s", c)
 	builder := emulation.NewBuilder(allowedVkForEmulation)
-	return updateSetup(context, cfg, args.force, srsProvider, c, builder, nil)
+	return updateSetup(context, cfg, args.Force, srsProvider, c, builder, nil)
 
 }
 
