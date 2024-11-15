@@ -26,6 +26,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 
@@ -235,5 +236,40 @@ public class ModexpTests {
         .push(Bytes.fromHexString("ffff")) // gas
         .op(OpCode.STATICCALL)
         .op(OpCode.POP);
+  }
+
+  @Test
+  // We trigger a ModexpData MMU Call where the sourceOffset = referenceSize for the MmuCall
+  void referenceSizeEqualsSourceOffset() {
+    final Bytes bytecode =
+        BytecodeCompiler.newProgram()
+            // bbs = 2
+            .push(Bytes32.leftPad(Bytes.of(2)))
+            .push(0) // offset
+            .op(OpCode.MSTORE)
+            // ebs = 3
+            .push(Bytes32.leftPad(Bytes.of(3)))
+            .push(32) // offset
+            .op(OpCode.MSTORE)
+            // mbs = 4
+            .push(Bytes32.leftPad(Bytes.of(4)))
+            .push(64) // offset
+            .op(OpCode.MSTORE)
+            // MSTORE ebm
+            .push(Bytes32.rightPad(Bytes.fromHexString("0xba7e000ec70000080d")))
+            .push(96)
+            .op(OpCode.MSTORE)
+            // Call Modexp
+            .push(0) // returnSize
+            .push(0) // returnOffset
+            .push(98) // cds = 96 + bbs => trigger a MMU Call where the sourceOffset = referenceSize
+            .push(0) // cdo
+            .push(0) // value
+            .push(Address.MODEXP) // address
+            .push(0xffff) // gas
+            .op(OpCode.CALL)
+            .op(OpCode.POP)
+            .compile();
+    BytecodeRunner.of(bytecode).run();
   }
 }
