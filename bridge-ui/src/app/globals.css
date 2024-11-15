@@ -9,7 +9,7 @@
 }
 
 body {
-  background: #121212;
+  background: #F8F7F2;
 }
 
 @layer components {
@@ -17,7 +17,7 @@ body {
   input:-webkit-autofill:hover, 
   input:-webkit-autofill:focus, 
   input:-webkit-autofill:active{
-    -webkit-box-shadow: 0 0 0 30px #2D2D2D inset !important;
+    -webkit-box-shadow: 0 0 0 30px #F8F7F2 inset !important;
   }
 
   .container {
@@ -42,24 +42,25 @@ body {
   }
 
   .tooltip-top::after {
-    border-color: #505050 transparent transparent transparent;
+    border-color: #FFF068 transparent transparent transparent;
   }
   
   .tooltip-right::after {
-    border-color: transparent #505050 transparent transparent;
+    border-color: transparent #FFF068 transparent transparent;
   }
   
   .tooltip-bottom::after {
-    border-color: transparent transparent #505050 transparent;
+    border-color: transparent transparent #FFF068 transparent;
   }
   
   .tooltip-left::after {
-    border-color: transparent transparent transparent #505050;
+    border-color: transparent transparent transparent #FFF068;
   }
 
   .tooltip:before {
-    border: 1px solid #505050;
-    background-color: #2d2d2d;
+    border: 1px solid #FFF068;
+    background-color: #FFF068;
+    color: #525252;
     border-radius: 8px;
     padding: 8px;
   }

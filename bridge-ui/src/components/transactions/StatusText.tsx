@@ -5,15 +5,15 @@ type StatusTextProps = {
   status: OnChainMessageStatus;
 };
 
-const useFormattedStatus = (status: OnChainMessageStatus): JSX.Element => {
+const getLabel = (status: OnChainMessageStatus): string => {
   return useMemo(() => {
     switch (status) {
       case OnChainMessageStatus.CLAIMABLE:
-        return <span className="text-secondary">Ready to claim</span>;
+        return "Ready to claim";
       case OnChainMessageStatus.UNKNOWN:
-        return <span className="text-primary">Pending</span>;
+        return "Pending";
       case OnChainMessageStatus.CLAIMED:
-        return <span className="text-success">Completed</span>;
+        return "Completed";
       default:
         throw new Error(`Incorrect transaction status: ${status}`);
     }
@@ -21,5 +21,7 @@ const useFormattedStatus = (status: OnChainMessageStatus): JSX.Element => {
 };
 
 export default function StatusText({ status }: StatusTextProps) {
-  return useFormattedStatus(status);
+  return (
+    <span>{getLabel(status)}</span>
+  )
 }
