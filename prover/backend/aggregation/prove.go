@@ -2,6 +2,7 @@ package aggregation
 
 import (
 	"fmt"
+	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"math"
 	"path/filepath"
 
@@ -108,7 +109,12 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		return nil, nil, fmt.Errorf("could not extract interconnection circuit public witness: %w", err)
 	}
 
-	proof, err := circuits.ProveCheck(&setup, &assignment)
+	opts := []any{
+		emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field()),
+		emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field()),
+	}
+
+	proof, err := circuits.ProveCheck(&setup, &assignment, opts...)
 
 	return proof, w, err
 }
