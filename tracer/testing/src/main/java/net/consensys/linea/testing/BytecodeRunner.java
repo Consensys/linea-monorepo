@@ -68,6 +68,11 @@ public final class BytecodeRunner {
     this.run(senderBalance, (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, List.of());
   }
 
+  // Ad-hoc gasLimit
+  public void run(Long gasLimit) {
+    this.run(Wei.fromEth(1), gasLimit, List.of());
+  }
+
   // Ad-hoc senderBalance and gasLimit
   public void run(Wei senderBalance, Long gasLimit) {
     this.run(senderBalance, gasLimit, List.of());

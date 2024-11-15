@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.oob;
 
+import static net.consensys.linea.zktracer.module.hub.signals.TracedException.RETURN_DATA_COPY_FAULT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -114,6 +115,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -126,6 +130,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -138,6 +145,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   // offset just greater cases
@@ -152,6 +162,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -165,6 +178,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -177,6 +193,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -189,6 +208,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   // offset big left cases
@@ -202,6 +224,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -214,6 +239,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -226,6 +254,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -238,6 +269,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   // offset big right cases
@@ -251,6 +285,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -263,6 +300,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -275,6 +315,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -287,6 +330,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   // Same cases but using identity precompile
@@ -411,6 +457,9 @@ public class OobRdcTest {
     System.out.println(bytecodeRunner.getHub().currentFrame().frame().getReturnData());
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -422,7 +471,7 @@ public class OobRdcTest {
 
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetSmallerAndSizeBigLeft() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetSmallerAndSizeBigLeft() {
     // maxPos = offset + size = 10 + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(BigInteger.valueOf(10), TWO_POW_128_LEFT);
@@ -432,6 +481,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -443,7 +495,7 @@ public class OobRdcTest {
 
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetSmallerAndSizeBigRight() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetSmallerAndSizeBigRight() {
     // maxPos = offset + size = 10 + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(BigInteger.valueOf(10), TWO_POW_128_RIGHT);
@@ -453,6 +505,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -465,7 +520,7 @@ public class OobRdcTest {
   // offset just greater cases
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeZero() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeZero() {
     // maxPos = offset + size = 33 + 0 > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(
@@ -476,6 +531,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -487,7 +545,7 @@ public class OobRdcTest {
 
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeSmall() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeSmall() {
     // maxPos = offset + size = 33 + 23 > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(
@@ -498,6 +556,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -509,7 +570,7 @@ public class OobRdcTest {
 
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeBigLeft() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeBigLeft() {
     // maxPos = offset + size = 33 + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(BigInteger.valueOf(33), TWO_POW_128_LEFT);
@@ -519,6 +580,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -530,7 +594,7 @@ public class OobRdcTest {
 
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeBigRight() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeBigRight() {
     // maxPos = offset + size = 33 + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(BigInteger.valueOf(33), TWO_POW_128_RIGHT);
@@ -540,6 +604,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -561,6 +628,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -581,6 +651,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -592,7 +665,7 @@ public class OobRdcTest {
 
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeBigLeft() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeBigLeft() {
     // maxPos = offset + size = TWO_POW_128_LEFT + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_LEFT, TWO_POW_128_LEFT);
@@ -602,6 +675,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -613,7 +689,7 @@ public class OobRdcTest {
 
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeBigRight() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeBigRight() {
     // maxPos = offset + size = TWO_POW_128_LEFT + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_LEFT, TWO_POW_128_RIGHT);
@@ -623,6 +699,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -644,6 +723,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -655,7 +737,7 @@ public class OobRdcTest {
 
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigRightAndSizeSmall() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigRightAndSizeSmall() {
     // maxPos = offset + size = TWO_POW_128_RIGHT + 23 > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_RIGHT, BigInteger.valueOf(23));
@@ -665,6 +747,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -676,7 +761,7 @@ public class OobRdcTest {
 
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigRightAndSizeBigLeft() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigRightAndSizeBigLeft() {
     // maxPos = offset + size = TWO_POW_128_Right + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_RIGHT, TWO_POW_128_LEFT);
@@ -686,6 +771,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1
@@ -697,7 +785,7 @@ public class OobRdcTest {
 
   @Test
   void
-      TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigRightAndSizeBigRight() {
+      testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigRightAndSizeBigRight() {
     // maxPos = offset + size = TWO_POW_128_RIGHT + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_RIGHT, TWO_POW_128_RIGHT);
@@ -707,6 +795,9 @@ public class OobRdcTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
+    assertEquals(
+        RETURN_DATA_COPY_FAULT,
+        bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
 
     // Chunk with index 1 is the one corresponding to IDENTITY precompile
     // precompileCost = (5 + ceil) * 3 where ceil = 1

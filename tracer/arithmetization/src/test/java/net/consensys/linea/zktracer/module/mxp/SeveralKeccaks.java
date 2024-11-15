@@ -20,6 +20,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
 
 public class SeveralKeccaks {
+
   @Test
   public void testMul() {
     BytecodeRunner.of(BytecodeCompiler.newProgram().push(32).push(7).op(OpCode.MUL).compile())
@@ -98,6 +99,10 @@ public class SeveralKeccaks {
                 .op(OpCode.POP)
                 .push(32)
                 .push(32)
+                .op(OpCode.SHA3)
+                .op(OpCode.POP)
+                .push(11)
+                .push(75)
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
