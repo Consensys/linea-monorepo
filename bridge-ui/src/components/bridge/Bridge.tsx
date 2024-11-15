@@ -154,7 +154,7 @@ const Bridge = () => {
 
             <div className="divider my-6 flex justify-center">
               <button
-                className="btn btn-circle border-none shadow-none bg-transparent hover:border-none hover:shadow-none hover:bg-transparent w-fit transition-transform duration-200"
+                className="btn btn-circle w-fit border-none bg-transparent shadow-none transition-transform duration-200 hover:border-none hover:bg-transparent hover:shadow-none"
                 onClick={(e) => {
                   e.preventDefault();
                   e.currentTarget.classList.toggle("rotate-180");

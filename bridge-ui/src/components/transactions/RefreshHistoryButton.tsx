@@ -13,7 +13,7 @@ export default function RefreshHistoryButton({
         id="reload-history-btn"
         variant="link"
         size="sm"
-        className="font-normal normal-case no-underline opacity-60 text-secondary hover:text-secondary hover:opacity-100"
+        className="font-normal normal-case text-secondary no-underline opacity-60 hover:text-secondary hover:opacity-100"
         onClick={fetchHistory}
       >
         Reload history

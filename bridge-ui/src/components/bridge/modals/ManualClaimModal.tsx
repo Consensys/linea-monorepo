@@ -29,7 +29,7 @@ const ManualClaimModal: React.FC<ManualClaimModalProps> = ({ handleNoClose, hand
             className="hover:border-b-1 border-b-1 btn btn-ghost btn-sm rounded-none border-b-primary p-0 font-normal hover:border-b-primary hover:bg-transparent"
           >
             More Info
-            <MdCallMade  />
+            <MdCallMade />
           </Link>
         </div>
       </div>

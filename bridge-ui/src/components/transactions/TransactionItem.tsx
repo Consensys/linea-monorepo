@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useMemo } from "react";
+import { useContext } from "react";
 import { formatUnits } from "viem";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { ModalContext } from "@/contexts/modal.context";
@@ -58,11 +58,14 @@ export default function TransactionItem({ transaction, message }: TransactionIte
 
   return (
     <div
-      className={cn(`grid grid-cols-1 items-center gap-0 rounded-lg p-4 hover:cursor-pointer sm:grid-cols-1 md:grid-cols-6 md:gap-4`, {
-        "bg-orange-light hover:opacity-80": message.status === OnChainMessageStatus.UNKNOWN,
-        "bg-primary-light hover:opacity-80": message.status === OnChainMessageStatus.CLAIMABLE,
-        "bg-secondary-light hover:opacity-80": message.status === OnChainMessageStatus.CLAIMED,
-      })}
+      className={cn(
+        `grid grid-cols-1 items-center gap-0 rounded-lg p-4 hover:cursor-pointer sm:grid-cols-1 md:grid-cols-6 md:gap-4`,
+        {
+          "bg-orange-light hover:opacity-80": message.status === OnChainMessageStatus.UNKNOWN,
+          "bg-primary-light hover:opacity-80": message.status === OnChainMessageStatus.CLAIMABLE,
+          "bg-secondary-light hover:opacity-80": message.status === OnChainMessageStatus.CLAIMED,
+        },
+      )}
       onClick={() => {
         handleShow(<TransactionDetailsModal transaction={transaction} message={message} handleClose={handleClose} />, {
           showCloseButton: true,

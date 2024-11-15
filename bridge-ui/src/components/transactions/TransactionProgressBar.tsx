@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { fromUnixTime } from "date-fns";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { NetworkLayer } from "@/config";
@@ -102,7 +101,6 @@ export default function TransactionProgressBar({
   transactionTimestamp,
   fromChain,
 }: TransactionProgressBarProps) {
-
   return (
     <>
       <div className="flex items-center gap-2">

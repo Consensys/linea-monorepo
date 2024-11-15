@@ -22,7 +22,7 @@ export default function TokenList() {
           id="token-select-btn"
           type="button"
           variant="outline"
-          className="px-2 py-1 font-normal border-none bg-cardBg hover:bg-cardBg hover:text-card"
+          className="border-none bg-cardBg px-2 py-1 font-normal hover:bg-cardBg hover:text-card"
           disabled={!isConnected}
           onClick={() =>
             handleShow(<TokenModal setValue={setValue} clearErrors={clearErrors} />, {
