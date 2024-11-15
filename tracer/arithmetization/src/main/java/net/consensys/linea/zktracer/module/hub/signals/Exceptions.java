@@ -127,8 +127,8 @@ public class Exceptions {
 
   private static boolean isStackOverflow(final MessageFrame frame, OpCodeData opCodeData) {
     return frame.stackSize()
-            + opCodeData.stackSettings().alpha()
             - opCodeData.stackSettings().delta()
+            + opCodeData.stackSettings().alpha()
         > 1024;
   }
 

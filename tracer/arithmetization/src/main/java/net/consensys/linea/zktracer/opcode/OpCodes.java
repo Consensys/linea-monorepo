@@ -32,8 +32,8 @@ import net.consensys.linea.zktracer.json.JsonConverter;
 public class OpCodes {
   private static final JsonConverter YAML_CONVERTER = JsonConverter.builder().enableYaml().build();
 
-  private static Map<Integer, OpCodeData> valueToOpCodeDataMap;
-  private static Map<OpCode, OpCodeData> opCodeToOpCodeDataMap;
+  static Map<Integer, OpCodeData> valueToOpCodeDataMap;
+  public static Map<OpCode, OpCodeData> opCodeToOpCodeDataMap;
 
   static {
     init();

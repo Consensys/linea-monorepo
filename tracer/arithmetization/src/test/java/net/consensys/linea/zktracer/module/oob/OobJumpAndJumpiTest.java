@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.oob;
 
+import static net.consensys.linea.zktracer.module.hub.signals.TracedException.JUMP_FAULT;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -122,6 +124,8 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
+    assertEquals(
+        JUMP_FAULT, bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -149,6 +153,8 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
+    assertEquals(
+        JUMP_FAULT, bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -328,6 +334,8 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
+    assertEquals(
+        JUMP_FAULT, bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
@@ -356,6 +364,8 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
+    assertEquals(
+        JUMP_FAULT, bytecodeRunner.getHub().currentTraceSection().commonValues.tracedException());
   }
 
   @Test
