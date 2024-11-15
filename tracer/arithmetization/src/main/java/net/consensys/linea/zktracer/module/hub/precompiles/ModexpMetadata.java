@@ -122,7 +122,7 @@ public class ModexpMetadata {
   }
 
   public boolean extractModulus() {
-    return (callData.size() > MBS_MIN_OFFSET + bbsInt() + ebsInt()) && !mbs().isZero();
+    return (callData.size() > BASE_MIN_OFFSET + bbsInt() + ebsInt()) && !mbs().isZero();
   }
 
   public boolean extractBase() {

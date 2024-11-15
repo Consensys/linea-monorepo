@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.module.mmu.Trace.NB_MICRO_ROWS_TOT_MODEXP_DATA;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
 import java.util.ArrayList;
@@ -138,10 +139,10 @@ public class ModexpData implements MmuInstruction {
     wcpCallRecords.add(
         MmuWcpCallRecord.instLtBuilder().arg1Lo(wcpArg1).arg2Lo(wcpArg2).result(wcpResult).build());
 
-    EucOperation eucOp = euc.callEUC(longToBytes(numberRightPaddingBytes), Bytes.of(LLARGE));
+    final EucOperation eucOp = euc.callEUC(longToBytes(numberRightPaddingBytes), Bytes.of(LLARGE));
     initialTotalRightZeroes = eucOp.quotient().toInt();
     initialTotalNonTrivial =
-        Trace.NB_MICRO_ROWS_TOT_MODEXP_DATA - initialTotalLeftZeroes - initialTotalRightZeroes;
+        NB_MICRO_ROWS_TOT_MODEXP_DATA - initialTotalLeftZeroes - initialTotalRightZeroes;
     rightPaddingRemainder = eucOp.remainder().toInt();
     eucCallRecords.add(
         MmuEucCallRecord.builder()
@@ -156,9 +157,13 @@ public class ModexpData implements MmuInstruction {
     // row n°3
     final Bytes wcpArg1 = longToBytes(initialTotalNonTrivial);
     final Bytes wcpArg2 = Bytes.of(1);
-    final boolean wcpResult = wcp.callEQ(wcpArg1, wcpArg2);
+    final boolean singleNonTrivialMmioOperation = wcp.callEQ(wcpArg1, wcpArg2);
     wcpCallRecords.add(
-        MmuWcpCallRecord.instEqBuilder().arg1Lo(wcpArg1).arg2Lo(wcpArg2).result(wcpResult).build());
+        MmuWcpCallRecord.instEqBuilder()
+            .arg1Lo(wcpArg1)
+            .arg2Lo(wcpArg2)
+            .result(singleNonTrivialMmioOperation)
+            .build());
 
     final long dividend = parameterOffset;
     final EucOperation eucOp = euc.callEUC(longToBytes(dividend), Bytes.of(LLARGE));
@@ -171,7 +176,7 @@ public class ModexpData implements MmuInstruction {
             .quotient(eucOp.quotient().toLong())
             .remainder((short) eucOp.remainder().toInt())
             .build());
-    if (wcpResult) {
+    if (singleNonTrivialMmioOperation) {
       firstLimbByteSize = (short) (dataRunsOut ? leftoverDataSize : parameterByteSize);
     } else {
       firstLimbByteSize = (short) (LLARGE - initialTargetByteOffset);
