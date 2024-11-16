@@ -42,7 +42,7 @@ tasks.register("hub", TraceFilesTask) {
 tasks.register('instdecoder', TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
-
+    className = "Trace"
     moduleDir = "tables/instructionDecoder"
     module = "instructionDecoder"
     files = ["reftables/inst_decoder.lisp"]
@@ -51,7 +51,7 @@ tasks.register('instdecoder', TraceFilesTask) {
 tasks.register('shfreftable', TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
-
+    className = "Trace"
     moduleDir = "tables/shf"
     module = "ShfRt"
     files = ["reftables/shf_reftable.lisp"]
@@ -59,7 +59,7 @@ tasks.register('shfreftable', TraceFilesTask) {
 tasks.register('binreftable', TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
-
+    className = "Trace"
     moduleDir = "tables/bin"
     module = "BinRt"
     files = ["reftables/bin_reftable.lisp"]

@@ -64,8 +64,6 @@ public final class InstructionDecoder implements Module {
     trace
         .alpha(UnsignedByte.of(op.stackSettings().alpha()))
         .delta(UnsignedByte.of(op.stackSettings().delta()))
-        .nbAdded(UnsignedByte.of(op.stackSettings().nbAdded()))
-        .nbRemoved(UnsignedByte.of(op.stackSettings().nbRemoved()))
         .staticGas(op.stackSettings().staticGas().cost())
         .twoLineInstruction(op.stackSettings().twoLineInstruction())
         .staticFlag(op.stackSettings().forbiddenInStatic())
