@@ -17,8 +17,6 @@ package net.consensys.linea.zktracer.module.hub.fragment.scenario;
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.*;
 
-import java.util.List;
-
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -30,10 +28,6 @@ public class CallScenarioFragment implements TraceFragment {
 
   public CallScenarioFragment() {
     scenario = UNDEFINED;
-  }
-
-  public CallScenarioFragment(final CallScenario callScenario) {
-    scenario = callScenario;
   }
 
   public enum CallScenario {
@@ -62,13 +56,14 @@ public class CallScenarioFragment implements TraceFragment {
           || this == CALL_PRC_SUCCESS_WONT_REVERT;
     }
 
+    public boolean isAbortingScenario() {
+      return this == CALL_ABORT_WILL_REVERT || this == CALL_ABORT_WONT_REVERT;
+    }
+
     public boolean noLongerUndefined() {
       return this != UNDEFINED && this != CALL_PRC_UNDEFINED && this != CALL_SMC_UNDEFINED;
     }
   }
-
-  private static final List<CallScenario> illegalTracingScenario =
-      List.of(UNDEFINED, CALL_SMC_UNDEFINED, CALL_PRC_UNDEFINED);
 
   public Trace trace(Trace trace) {
     checkArgument(scenario.noLongerUndefined(), "Final Scenario hasn't been set");

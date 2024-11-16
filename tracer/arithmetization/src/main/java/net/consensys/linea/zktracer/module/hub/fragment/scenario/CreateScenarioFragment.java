@@ -41,8 +41,8 @@ public class CreateScenarioFragment implements TraceFragment {
     this.scenario = CreateScenario.UNDEFINED;
   }
 
-  public CreateScenarioFragment(CreateScenario scenario) {
-    this.scenario = scenario;
+  public boolean isAbortedCreate() {
+    return scenario == CreateScenario.CREATE_ABORT;
   }
 
   @Override

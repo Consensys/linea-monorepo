@@ -75,7 +75,7 @@ public class RevertSection extends TraceSection {
     final ContextFragment updateCallerReturnData =
         ContextFragment.executionProvidesReturnData(
             hub,
-            hub.callStack().getById(callFrame.callerId()).contextNumber(),
+            hub.callStack().getById(callFrame.parentId()).contextNumber(),
             callFrame.contextNumber());
 
     this.addFragments(currentContext, updateCallerReturnData);

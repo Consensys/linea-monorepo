@@ -502,7 +502,7 @@ public class Hub implements Module {
 
     if (!transactionProcessingMetadata.requiresEvmExecution()) {
       state.setProcessingPhase(TX_SKIP);
-      new TxSkippedSection(this, world, transactionProcessingMetadata, transients);
+      new TxSkipSection(this, world, transactionProcessingMetadata, transients);
     } else {
       if (transactionProcessingMetadata.requiresPrewarming()) {
         state.setProcessingPhase(TX_WARM);
@@ -634,7 +634,7 @@ public class Hub implements Module {
 
       final long callDataContextNumber = callStack.currentCallFrame().contextNumber();
 
-      currentFrame().rememberGasNextBeforePausing();
+      currentFrame().rememberGasNextBeforePausing(this);
       currentFrame().pauseCurrentFrame();
 
       MemorySpan returnDataTargetInCaller =
@@ -690,16 +690,17 @@ public class Hub implements Module {
               coinbaseIsWarm,
               txStack.getAccumulativeGasUsedInBlockBeforeTxStart());
 
-      if (state.getProcessingPhase() != TX_SKIP) {
-        state.setProcessingPhase(TX_FINL);
-        new TxFinalizationSection(this, frame.getWorldUpdater());
+      if (state.getProcessingPhase() != TX_SKIP
+          && frame.getState() == MessageFrame.State.COMPLETED_SUCCESS) {
+        this.state.setProcessingPhase(TX_FINL);
+        new TxFinalizationSection(this, frame.getWorldUpdater(), false);
       }
     }
 
     defers.resolveUponContextExit(this, this.currentFrame());
     // TODO: verify me please @Olivier
     if (this.currentFrame().opCode() == REVERT || Exceptions.any(pch.exceptions())) {
-      defers.resolvePostRollback(this, frame, this.currentFrame());
+      defers.resolveUponRollback(this, frame, this.currentFrame());
     }
 
     if (frame.getDepth() > 0) {
@@ -740,7 +741,7 @@ public class Hub implements Module {
      */
     if (isExceptional()) {
       this.currentTraceSection()
-          .addFragments(ContextFragment.executionProvidesEmptyReturnData(this));
+          .exceptionalContextFragment(ContextFragment.executionProvidesEmptyReturnData(this));
       this.squashCurrentFrameOutputData();
       this.squashParentFrameReturnData();
     }
@@ -749,6 +750,11 @@ public class Hub implements Module {
 
     if (!this.currentFrame().opCode().isCall() && !this.currentFrame().opCode().isCreate()) {
       this.unlatchStack(frame, currentSection);
+    }
+
+    if (frame.getDepth() == 0 && (isExceptional() || opCode() == REVERT)) {
+      this.state.setProcessingPhase(TX_FINL);
+      new TxFinalizationSection(this, frame.getWorldUpdater(), true);
     }
   }
 
@@ -771,6 +777,7 @@ public class Hub implements Module {
         currentSection.commonValues.gasCostExcluduingDeploymentCost();
 
     if (operationResult.getHaltReason() != null) {
+
       return;
     }
 
@@ -799,11 +806,6 @@ public class Hub implements Module {
 
   public boolean isExceptional() {
     return !isUnexceptional();
-  }
-
-  public boolean raisesOogxOrIsUnexceptional() {
-    return currentTraceSection().commonValues.tracedException() == OUT_OF_GAS_EXCEPTION
-        || isUnexceptional();
   }
 
   /**
@@ -1101,7 +1103,8 @@ public class Hub implements Module {
 
       case CREATE -> new CreateSection(this);
 
-      case CALL -> new CallSection(this);
+      case CALL -> new CallSection(this, frame);
+
       case INVALID -> new EarlyExceptionSection(this);
     }
   }

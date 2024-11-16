@@ -104,7 +104,7 @@ public class SloadSection extends TraceSection implements PostRollbackDefer {
   }
 
   @Override
-  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
+  public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
 
     if (!this.undoingRequired()) {
       return;

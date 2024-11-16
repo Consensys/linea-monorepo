@@ -74,7 +74,7 @@ public class Gas implements OperationSetModule<GasOperation>, PostOpcodeDefer {
   public void resolvePostExecution(
       Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
     gasParameters.gasActual(BigInteger.valueOf(commonValues.gasActual));
-    gasParameters.gasCost(BigInteger.valueOf(commonValues.gasCost()));
+    gasParameters.gasCost(BigInteger.valueOf(commonValues.gasCostToTrace()));
     gasParameters.xahoy(Exceptions.any(commonValues.exceptions));
     gasParameters.oogx(commonValues.tracedException() == TracedException.OUT_OF_GAS_EXCEPTION);
     this.operations.add(new GasOperation(gasParameters, wcp));

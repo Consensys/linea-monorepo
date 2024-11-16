@@ -178,7 +178,7 @@ public class PrecompileSubsection
   }
 
   @Override
-  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
+  public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
 
     // only successful PRC calls should enter here
     checkArgument(precompileScenarioFragment.scenario() == PRC_SUCCESS_WONT_REVERT);

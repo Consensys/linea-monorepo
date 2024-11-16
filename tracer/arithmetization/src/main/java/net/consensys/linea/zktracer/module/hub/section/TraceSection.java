@@ -31,7 +31,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
 import net.consensys.linea.zktracer.module.hub.Trace;
-import net.consensys.linea.zktracer.module.hub.TxTrace;
+import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.StackFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragment;
@@ -48,11 +48,11 @@ public class TraceSection {
   private final Hub hub;
   public final CommonFragmentValues commonValues;
   @Getter List<TraceFragment> fragments;
-  @Getter @Setter private TxTrace parentTrace;
   /* A link to the previous section */
   @Setter public TraceSection previousSection = null;
   /* A link to the next section */
   @Setter public TraceSection nextSection = null;
+  @Setter public ContextFragment exceptionalContextFragment = null;
 
   /** Default creator specifying the max number of rows the section can contain. */
   public TraceSection(final Hub hub, final short maxNumberOfLines) {
@@ -190,10 +190,9 @@ public class TraceSection {
     return stackFragments;
   }
 
-  public void triggerHashInfo(Bytes hash) {
+  public void writeHashInfoResult(Bytes hash) {
     for (TraceFragment fragment : this.fragments()) {
       if (fragment instanceof StackFragment) {
-        ((StackFragment) fragment).hashInfoFlag = true;
         ((StackFragment) fragment).hash = hash;
       }
     }

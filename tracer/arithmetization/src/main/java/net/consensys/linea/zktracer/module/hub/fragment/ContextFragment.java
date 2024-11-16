@@ -93,7 +93,7 @@ public class ContextFragment implements TraceFragment {
 
   public static ContextFragment executionProvidesEmptyReturnData(final Hub hub, int contextNumber) {
     CallStack callStack = hub.callStack();
-    int parentId = callStack.getByContextNumber(contextNumber).callerId();
+    int parentId = callStack.getByContextNumber(contextNumber).parentId();
     return new ContextFragment(
         hub, callStack, Either.left(parentId), contextNumber, MemorySpan.empty(), true);
   }

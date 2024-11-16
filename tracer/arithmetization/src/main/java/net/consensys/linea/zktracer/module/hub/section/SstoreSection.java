@@ -129,7 +129,7 @@ public class SstoreSection extends TraceSection implements PostRollbackDefer {
   }
 
   @Override
-  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
+  public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
     final DomSubStampsSubFragment undoingDomSubStamps =
         DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
             this.hubStamp(), hub.callStack().currentCallFrame().revertStamp(), 0);

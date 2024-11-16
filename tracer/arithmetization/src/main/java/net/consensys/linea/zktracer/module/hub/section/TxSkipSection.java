@@ -35,14 +35,14 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  * later, through a {@link PostTransactionDefer}, to generate the trace chunks required for the
  * proving of a pure transaction.
  */
-public class TxSkippedSection extends TraceSection implements PostTransactionDefer {
+public class TxSkipSection extends TraceSection implements PostTransactionDefer {
 
   final TransactionProcessingMetadata txMetadata;
   final AccountSnapshot senderAccountSnapshotBefore;
   final AccountSnapshot recipientAccountSnapshotBefore;
   final AccountSnapshot coinbaseAccountSnapshotBefore;
 
-  public TxSkippedSection(
+  public TxSkipSection(
       Hub hub,
       WorldView world,
       TransactionProcessingMetadata transactionProcessingMetadata,
@@ -124,27 +124,30 @@ public class TxSkippedSection extends TraceSection implements PostTransactionDef
     final AccountFragment senderAccountFragment =
         hub.factories()
             .accountFragment()
-            .make(
+            .makeWithTrm(
                 senderAccountSnapshotBefore,
                 senderAccountSnapshotAfter,
+                senderAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
 
     // recipient account fragment
     final AccountFragment recipientAccountFragment =
         hub.factories()
             .accountFragment()
-            .make(
+            .makeWithTrm(
                 recipientAccountSnapshotBefore,
                 recipientAccountSnapshotAfter,
+                recipientAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
 
     // coinbase account fragment
     final AccountFragment coinbaseAccountFragment =
         hub.factories()
             .accountFragment()
-            .make(
+            .makeWithTrm(
                 coinbaseAccountSnapshotBefore,
                 coinbaseAccountSnapshotAfter,
+                coinbaseAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2));
 
     // transaction fragment

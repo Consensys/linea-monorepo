@@ -68,7 +68,7 @@ public class KeccakSection extends TraceSection implements PostOpcodeDefer {
     final Bytes32 hashResult = Bytes32.leftPad(frame.getStackItem(0));
 
     // retroactively set HASH_INFO_FLAG and HASH_INFO_KECCAK_HI, HASH_INFO_KECCAK_LO
-    this.triggerHashInfo(hashResult);
+    this.writeHashInfoResult(hashResult);
 
     if (triggerMmu) {
       final ShakiraDataOperation shakiraDataOperation =

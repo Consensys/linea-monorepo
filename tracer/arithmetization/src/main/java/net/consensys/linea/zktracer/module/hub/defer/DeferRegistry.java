@@ -169,14 +169,14 @@ public class DeferRegistry
    * for the rollback.
    */
   @Override
-  public void resolvePostRollback(
+  public void resolveUponRollback(
       final Hub hub, final MessageFrame messageFrame, CallFrame currentCallFrame) {
 
     Optional.ofNullable(hub.defers().rollbackDefers.get(currentCallFrame))
         .ifPresent(
             defers -> {
               defers.forEach(
-                  defer -> defer.resolvePostRollback(hub, messageFrame, currentCallFrame));
+                  defer -> defer.resolveUponRollback(hub, messageFrame, currentCallFrame));
               defers.clear();
             });
 
@@ -184,7 +184,7 @@ public class DeferRegistry
     final CallStack callStack = hub.callStack();
     currentCallFrame.childFramesId().stream()
         .map(callStack::getById)
-        .forEach(childCallFrame -> resolvePostRollback(hub, messageFrame, childCallFrame));
+        .forEach(childCallFrame -> resolveUponRollback(hub, messageFrame, childCallFrame));
   }
 
   @Override

@@ -25,5 +25,5 @@ public interface PostRollbackDefer {
    * @param messageFrame access point to world state & accrued state
    * @param callFrame reference to call frame whose actions are to be undone
    */
-  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame);
+  public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame);
 }
