@@ -110,7 +110,7 @@ public class StopSection extends TraceSection implements PostRollbackDefer, Post
    * @param callFrame reference to call frame whose actions are to be undone
    */
   @Override
-  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
+  public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
 
     if (!this.deploymentStatus) {
       return;

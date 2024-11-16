@@ -33,10 +33,7 @@ import java.util.Optional;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.defer.ContextReEntryDefer;
-import net.consensys.linea.zktracer.module.hub.defer.ImmediateContextEntryDefer;
-import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
-import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
+import net.consensys.linea.zktracer.module.hub.defer.*;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
@@ -60,10 +57,12 @@ import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
+import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class CreateSection extends TraceSection
-    implements ImmediateContextEntryDefer,
+    implements PostOpcodeDefer,
+        ImmediateContextEntryDefer,
         PostRollbackDefer,
         ContextReEntryDefer,
         PostTransactionDefer {
@@ -159,7 +158,8 @@ public class CreateSection extends TraceSection
 
     if (aborts.any()) {
       scenarioFragment.setScenario(CREATE_ABORT);
-      this.finishAbortCreate(hub);
+      this.finishAbort(hub);
+      hub.defers().scheduleForPostExecution(this);
       return;
     }
 
@@ -195,30 +195,33 @@ public class CreateSection extends TraceSection
           new ShakiraDataOperation(hub.stamp(), create2InitCode);
       hub.shakiraData().call(shakiraDataOperation);
 
-      triggerHashInfo(shakiraDataOperation.result());
+      writeHashInfoResult(shakiraDataOperation.result());
     }
 
     value = failedCreate ? Wei.ZERO : Wei.of(UInt256.fromBytes(messageFrame.getStackItem(0)));
 
-    if (failedCreate || emptyInitCode) {
+    if (failedCreate) {
       finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
+      scenarioFragment.setScenario(CREATE_FAILURE_CONDITION_WONT_REVERT);
+      hub.failureConditionForCreates = true;
+      return;
+    }
 
-      if (failedCreate) {
-        scenarioFragment.setScenario(CREATE_FAILURE_CONDITION_WONT_REVERT);
-        hub.failureConditionForCreates = true;
-        return;
-      }
-
-      // this "if" is redundant and could be removed
-      // --- please don't, for now at least
-      if (emptyInitCode) {
-        scenarioFragment.setScenario(CREATE_EMPTY_INIT_CODE_WONT_REVERT);
-        hub.transients().conflation().deploymentInfo().newDeploymentSansExecutionAt(createeAddress);
-        return;
-      }
+    if (emptyInitCode) {
+      finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
+      scenarioFragment.setScenario(CREATE_EMPTY_INIT_CODE_WONT_REVERT);
+      hub.transients().conflation().deploymentInfo().newDeploymentSansExecutionAt(createeAddress);
+      return;
     }
 
     // Finally, non-exceptional, non-aborting, non-failing, non-emptyInitCode create
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // we capture revert information about the child context: CCSR and CCRS
+    hub.defers().scheduleForContextReEntry(imcFragment, hub.currentFrame());
+
+    // The current execution context pays (63/64)ths of it current gas to the child context
+    commonValues.payGasPaidOutOfPocket(hub);
     hub.defers()
         .scheduleForContextReEntry(this, callFrame); // To get the success bit of the CREATE(2)
 
@@ -307,7 +310,7 @@ public class CreateSection extends TraceSection
   }
 
   @Override
-  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
+  public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
     scenarioFragment.setScenario(switchToRevert(scenarioFragment.getScenario()));
 
     final AccountFragment.AccountFragmentFactory accountFragmentFactory =
@@ -350,7 +353,7 @@ public class CreateSection extends TraceSection
     return 11; // Note: could be lower for unreverted successful CREATE(s)
   }
 
-  private void finishAbortCreate(final Hub hub) {
+  private void finishAbort(final Hub hub) {
     final AccountFragment.AccountFragmentFactory accountFragmentFactory =
         hub.factories().accountFragment();
     final AccountFragment creatorAccountFragment =
@@ -374,5 +377,18 @@ public class CreateSection extends TraceSection
       case CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WONT_REVERT -> CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WILL_REVERT;
       default -> throw new IllegalArgumentException("unexpected Create scenario");
     };
+  }
+
+  public boolean isAbortedCreate() {
+    return scenarioFragment.isAbortedCreate();
+  }
+
+  // we unlatched the stack after a CREATE if and only if we don't "contextEnter" the CREATE.
+  // "failure condition CREATE's" do enter the CREATE context.
+  @Override
+  public void resolvePostExecution(
+      Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
+    checkState(isAbortedCreate());
+    hub.unlatchStack(frame, this);
   }
 }

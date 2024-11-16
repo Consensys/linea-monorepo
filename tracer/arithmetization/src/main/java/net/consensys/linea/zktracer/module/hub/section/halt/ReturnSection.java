@@ -177,7 +177,7 @@ public class ReturnSection extends TraceSection
       final ContextFragment updateCallerReturnData =
           ContextFragment.executionProvidesReturnData(
               hub,
-              hub.callStack().getById(callFrame.callerId()).contextNumber(),
+              hub.callStack().getById(callFrame.parentId()).contextNumber(),
               callFrame.contextNumber());
       this.addFragment(updateCallerReturnData);
 
@@ -236,7 +236,7 @@ public class ReturnSection extends TraceSection
           MmuCall.returnFromDeployment(hub);
       secondImcFragment.callMmu(nonemptyDeploymentMmuCall);
 
-      triggerHashInfo(nonemptyDeploymentMmuCall.hashResult());
+      writeHashInfoResult(nonemptyDeploymentMmuCall.hashResult());
 
       if (hub.messageFrame().getDepth() == 0) {
         this.addDeploymentAccountFragmentIfRoot(hub, mxpCall);
@@ -278,7 +278,7 @@ public class ReturnSection extends TraceSection
   }
 
   @Override
-  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
+  public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
 
     checkArgument(returnFromDeployment);
     returnScenarioFragment.setScenario(

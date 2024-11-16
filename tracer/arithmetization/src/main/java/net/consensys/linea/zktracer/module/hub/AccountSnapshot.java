@@ -67,6 +67,14 @@ public class AccountSnapshot {
     return canonicalSnapshot;
   }
 
+  public static AccountSnapshot canonical(Hub hub, WorldView world, Address address) {
+    return fromArguments(
+        world,
+        address,
+        hub.transients.conflation().deploymentInfo(),
+        isAddressWarm(hub.messageFrame(), address));
+  }
+
   public static AccountSnapshot canonical(
       Hub hub, WorldView world, Address address, boolean warmth) {
     return fromArguments(world, address, hub.transients.conflation().deploymentInfo(), warmth);
@@ -234,13 +242,17 @@ public class AccountSnapshot {
    * @return {@code this} with nonce++
    */
   public AccountSnapshot raiseNonceByOne() {
-    nonce(nonce + 1);
+    this.nonce(nonce + 1);
     return this;
   }
 
+  public AccountSnapshot setDeploymentInfo(Hub hub) {
+    return this.setDeploymentInfo(hub.transients.conflation().deploymentInfo());
+  }
+
   public AccountSnapshot setDeploymentInfo(DeploymentInfo deploymentInfo) {
-    deploymentNumber(deploymentInfo.deploymentNumber(address));
-    deploymentStatus(deploymentInfo.getDeploymentStatus(address));
+    this.deploymentNumber(deploymentInfo.deploymentNumber(address));
+    this.deploymentStatus(deploymentInfo.getDeploymentStatus(address));
     return this;
   }
 

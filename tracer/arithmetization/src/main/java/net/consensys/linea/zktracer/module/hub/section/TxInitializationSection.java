@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.section;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 
 import com.google.common.base.Preconditions;
+import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
@@ -35,8 +36,14 @@ import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class TxInitializationSection extends TraceSection {
+
+  @Getter private final AccountSnapshot senderAfterPayingForTransaction;
+  @Getter private final AccountSnapshot recipientAfterValueTransfer;
+
   public TxInitializationSection(Hub hub, WorldView world) {
     super(hub, (short) 5);
+
+    hub.txStack().setInitializationSection(this);
 
     final TransactionProcessingMetadata tx = hub.txStack().current();
     final boolean isDeployment = tx.isDeployment();
@@ -59,8 +66,7 @@ public class TxInitializationSection extends TraceSection {
     final Wei valueAndGasCost =
         transactionGasPrice.multiply(tx.getBesuTransaction().getGasLimit()).add(value);
 
-    final AccountSnapshot senderAfterPayingForTransaction =
-        senderBeforePayingForTransaction.deepCopy();
+    senderAfterPayingForTransaction = senderBeforePayingForTransaction.deepCopy();
     senderAfterPayingForTransaction
         .decrementBalanceBy(valueAndGasCost)
         .turnOnWarmth()
@@ -94,7 +100,7 @@ public class TxInitializationSection extends TraceSection {
 
     final Bytecode initCode = new Bytecode(tx.getBesuTransaction().getInit().orElse(Bytes.EMPTY));
 
-    final AccountSnapshot recipientAfterValueTransfer = recipientBeforeValueTransfer.deepCopy();
+    recipientAfterValueTransfer = recipientBeforeValueTransfer.deepCopy();
     if (isDeployment) {
       Preconditions.checkState(
           !recipientBeforeValueTransfer.deploymentStatus()

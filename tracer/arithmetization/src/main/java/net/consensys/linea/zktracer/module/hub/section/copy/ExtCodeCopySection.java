@@ -134,7 +134,7 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
   }
 
   @Override
-  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
+  public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
 
     final AccountSnapshot accountPostRollback = AccountSnapshot.canonical(hub, address);
 

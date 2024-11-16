@@ -80,7 +80,13 @@ public class TxPreWarmingMacroSection {
 
                   final DomSubStampsSubFragment domSubStampsSubFragment =
                       new DomSubStampsSubFragment(
-                          DomSubStampsSubFragment.DomSubType.STANDARD, hub.stamp(), 0, 0, 0, 0, 0);
+                          DomSubStampsSubFragment.DomSubType.STANDARD,
+                          hub.stamp() + 1,
+                          0,
+                          0,
+                          0,
+                          0,
+                          0);
 
                   new TxPrewarmingSection(
                       hub,
@@ -117,7 +123,7 @@ public class TxPreWarmingMacroSection {
                             value,
                             seenKeys.computeIfAbsent(address, x -> new HashSet<>()).contains(key),
                             true,
-                            DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0),
+                            DomSubStampsSubFragment.standardDomSubStamps(hub.stamp() + 1, 0),
                             hub.state.firstAndLastStorageSlotOccurrences.size(),
                             PRE_WARMING);
 

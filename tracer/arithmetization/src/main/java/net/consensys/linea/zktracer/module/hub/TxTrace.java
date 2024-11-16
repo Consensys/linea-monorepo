@@ -81,7 +81,6 @@ public class TxTrace {
    * @param section the section to append
    */
   public void add(TraceSection section) {
-    section.parentTrace(this);
     // Link the current section with the previous and next one
     final TraceSection previousSection = this.trace.isEmpty() ? null : this.trace.getLast();
     if (previousSection != null) {
@@ -112,6 +111,7 @@ public class TxTrace {
   public int lineCount() {
     int lineCount = 0;
     for (TraceSection s : trace) {
+      if (s.exceptionalContextFragment != null) s.fragments().add(s.exceptionalContextFragment);
       lineCount += s.fragments().size();
     }
     return lineCount;

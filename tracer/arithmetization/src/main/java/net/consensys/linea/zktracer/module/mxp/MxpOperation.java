@@ -241,7 +241,7 @@ public class MxpOperation extends ModuleOperation {
   private void setMtntop() {
     final boolean mxpx = mxpCall.isMxpx();
     mxpCall.setMayTriggerNontrivialMmuOperation(
-        typeMxp == MxpType.TYPE_4 && !mxpx && mxpCall.getSize1().loBigInt().signum() != 0);
+        typeMxp == MxpType.TYPE_4 && !mxpx && mxpCall.getSize1().loBigInt().signum() > 0);
   }
 
   /** set max offsets 1 and 2. */

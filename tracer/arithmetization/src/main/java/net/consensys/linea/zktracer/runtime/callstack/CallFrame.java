@@ -62,7 +62,7 @@ public class CallFrame {
   }
 
   /** the ID of this {@link CallFrame} parent in the {@link CallStack}. */
-  @Getter private int callerId;
+  @Getter private int parentId;
 
   /** all the {@link CallFrame} that have been called by this frame. */
   @Getter private final List<Integer> childFramesId = new ArrayList<>();
@@ -118,8 +118,8 @@ public class CallFrame {
     executionPaused = false;
   }
 
-  public void rememberGasNextBeforePausing() {
-    lastValidGasNext = frame.getRemainingGas();
+  public void rememberGasNextBeforePausing(Hub hub) {
+    lastValidGasNext = hub.state.current().txTrace().currentSection().commonValues.gasNext();
   }
 
   /** the ether amount given to this frame. */
@@ -192,7 +192,7 @@ public class CallFrame {
     type = CallFrameType.EMPTY;
     contextNumber = 0;
     accountAddress = Address.ZERO;
-    callerId = -1;
+    parentId = -1;
     callDataInfo = new CallDataInfo(Bytes.EMPTY, 0, 0, 0);
     returnDataTargetInCaller = MemorySpan.empty();
     depth = 0;
@@ -217,7 +217,7 @@ public class CallFrame {
    * @param byteCode byteCode that executes in the present context
    * @param callerAddress either account address of the caller/creator context
    * @param callDataContextNumber CN of the RAM segment wherein the call data lives
-   * @param callerId ID of the caller frame in the {@link CallStack}
+   * @param parentId ID of the caller frame in the {@link CallStack}
    * @param callData {@link Bytes} containing this frame's call data
    * @param callDataOffset offset of call data in the caller's RAM (if applicable)
    * @param callDataSize size (in bytes) of the call data
@@ -237,7 +237,7 @@ public class CallFrame {
       Bytecode byteCode,
       Address callerAddress,
       long callDataContextNumber,
-      int callerId,
+      int parentId,
       Bytes callData,
       long callDataOffset,
       long callDataSize,
@@ -255,7 +255,7 @@ public class CallFrame {
     this.byteCodeDeploymentNumber = byteCodeDeploymentNumber;
     this.code = byteCode;
     this.callerAddress = callerAddress;
-    this.callerId = callerId;
+    this.parentId = parentId;
     this.callDataInfo =
         new CallDataInfo(callData, callDataOffset, callDataSize, callDataContextNumber);
     this.outputDataSpan = MemorySpan.empty();

@@ -202,7 +202,7 @@ public class SelfdestructSection extends TraceSection
   }
 
   @Override
-  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
+  public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
     // Undo the modifications we applied to selfdestructorFirstAccountFragment and
     // recipientFirstAccountFragment
     final AccountFragment selfDestroyerUndoingAccountFragment =

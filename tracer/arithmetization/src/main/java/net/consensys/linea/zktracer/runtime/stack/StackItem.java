@@ -30,7 +30,7 @@ import org.apache.tuweni.bytes.Bytes;
  */
 @Accessors(fluent = true)
 public final class StackItem {
-  private static final Bytes MARKER = Bytes.fromHexString("0xDEADBEEF");
+  private static final Bytes MARKER = Bytes.fromHexString("0x1337deadbeef");
 
   /**
    * The relative height of the element with regard to the stack height just before executing the

@@ -20,6 +20,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -64,5 +65,20 @@ public class JumpTest {
     In order to run a specific test case (for example, the first one) use the following:
     .filter(arguments -> "jumpOntoValidJumpDestination".equals(arguments.get()[0]));
       */
+  }
+
+  @Test
+  void simplestJumpiTest() {
+    final Bytes bytecode =
+        BytecodeCompiler.newProgram()
+            .push(1) // pc = 0, 1
+            .push(8) // pc = 2, 3
+            .op(OpCode.JUMPI) // pc = 4
+            .op(OpCode.INVALID) // pc = 5
+            .op(OpCode.JUMPDEST) // pc = 6, 6 ≡ true JUMPDEST
+            .push(OpCode.JUMPDEST.byteValue()) // pc = 7, 8,  8 ≡ false JUMPDEST
+            .compile();
+    System.out.println(bytecode.toHexString());
+    BytecodeRunner.of(bytecode).run();
   }
 }

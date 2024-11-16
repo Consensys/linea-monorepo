@@ -37,6 +37,8 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
 
   Bytes rawTargetAddress;
   Address targetAddress;
+  AccountSnapshot accountSnapshotBefore;
+  AccountSnapshot accountSnapshotAfter;
 
   public AccountSection(Hub hub) {
     super(hub, maxNumberOfRows(hub));
@@ -70,11 +72,11 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
           default -> throw new RuntimeException("Not an ACCOUNT instruction");
         };
 
-    final AccountSnapshot accountSnapshotBefore = AccountSnapshot.canonical(hub, targetAddress);
-    final AccountSnapshot accountSnapshotAfter = accountSnapshotBefore.deepCopy();
+    accountSnapshotBefore = AccountSnapshot.canonical(hub, targetAddress);
+    accountSnapshotAfter = accountSnapshotBefore.deepCopy();
 
     if (Exceptions.none(exceptions)) {
-      accountSnapshotAfter.turnOnWarmth(); // TODO: use canonical instead at postExecDefers ?
+      accountSnapshotAfter.turnOnWarmth();
     }
 
     final DomSubStampsSubFragment doingDomSubStamps =
@@ -94,25 +96,15 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
     this.addFragment(doingAccountFragment);
   }
 
-  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
-
-    final AccountSnapshot postRollBackAccountSnapshot =
-        AccountSnapshot.canonical(hub, targetAddress);
-
-    final DomSubStampsSubFragment undoingDomSubStamps =
-        DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-            this.hubStamp(), hub.currentFrame().revertStamp(), 0);
+  public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
 
     final AccountSnapshot preRollBackAccountSnapshot =
-        postRollBackAccountSnapshot.deepCopy().turnOnWarmth();
-
-    // sanity check
-    final int deploymentNumberAtRollback =
-        hub.transients().conflation().deploymentInfo().deploymentNumber(targetAddress);
-    final boolean deploymentStatusAtRollback =
-        hub.transients().conflation().deploymentInfo().getDeploymentStatus(targetAddress);
-    checkArgument(deploymentNumberAtRollback == postRollBackAccountSnapshot.deploymentNumber());
-    checkArgument(deploymentStatusAtRollback == postRollBackAccountSnapshot.deploymentStatus());
+        accountSnapshotAfter.deepCopy().setDeploymentInfo(hub);
+    final AccountSnapshot postRollBackAccountSnapshot =
+        accountSnapshotBefore.deepCopy().setDeploymentInfo(hub);
+    final DomSubStampsSubFragment undoingDomSubStamps =
+        DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
+            this.hubStamp(), hub.currentFrame().revertStamp(), 1);
 
     this.addFragment(
         hub.factories()
