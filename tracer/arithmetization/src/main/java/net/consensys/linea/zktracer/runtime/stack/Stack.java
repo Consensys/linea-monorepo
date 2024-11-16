@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.runtime.stack;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.zktracer.opcode.OpCode.EXTCODECOPY;
 
 import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -238,9 +239,8 @@ public class Stack {
     pending.addLine(line2);
   }
 
-  private void copy(MessageFrame frame, StackContext pending) {
-    if (currentOpcodeData.numberOfArguments() == 4) {
-      // this is the EXTCODECOPY case
+  private void copy(MessageFrame frame, StackContext pending, OpCode mnemonic) {
+    if (mnemonic == EXTCODECOPY) {
       Bytes val0 = getStack(frame, 0);
       Bytes val1 = getStack(frame, 1);
       Bytes val2 = getStack(frame, 2);
@@ -433,7 +433,7 @@ public class Stack {
       case DUP -> this.dup(frame, callFrame.pending());
       case SWAP -> this.swap(frame, callFrame.pending());
       case LOG -> this.log(frame, callFrame.pending());
-      case COPY -> this.copy(frame, callFrame.pending());
+      case COPY -> this.copy(frame, callFrame.pending(), currentOpcodeData.mnemonic());
       case CALL -> this.call(frame, callFrame.pending());
       case CREATE -> this.create(frame, callFrame.pending());
     }

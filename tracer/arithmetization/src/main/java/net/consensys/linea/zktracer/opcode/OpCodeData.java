@@ -42,19 +42,6 @@ public record OpCodeData(
     RamSettings ramSettings,
     Billing billing) {
 
-  /**
-   * Returns the number of arguments supported by the given opcode.
-   *
-   * @return number of arguments supported by the given opcode.
-   */
-  public int numberOfArguments() {
-    return stackSettings.nbRemoved();
-  }
-
-  public RamSettings ramSettings() {
-    return Objects.requireNonNullElse(ramSettings, RamSettings.DEFAULT);
-  }
-
   public Billing billing() {
     return Objects.requireNonNullElse(billing, Billing.DEFAULT);
   }

@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 import net.consensys.linea.testing.DynamicTests;
 import net.consensys.linea.testing.OpcodeCall;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.DynamicTest;
@@ -51,7 +52,7 @@ public class MxpTracerTest {
         (arguments, opCode) -> {
           for (int i = 0; i < TEST_REPETITIONS; i++) {
             final List<Bytes32> args = new ArrayList<>(12);
-            for (int j = 0; j < opCode.getData().numberOfArguments(); j++) {
+            for (int j = 0; j < (opCode.equals(OpCode.EXTCODECOPY) ? 4 : 3); j++) {
               args.add(UInt256.valueOf(j));
             }
             arguments.add(new OpcodeCall(opCode, args));

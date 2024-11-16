@@ -142,8 +142,6 @@ public class Trace {
   private final MappedByteBuffer mxpSize2Lo;
   private final MappedByteBuffer mxpStamp;
   private final MappedByteBuffer mxpWords;
-  private final MappedByteBuffer nbAdded;
-  private final MappedByteBuffer nbRemoved;
   private final MappedByteBuffer nonStackRows;
   private final MappedByteBuffer nonce;
   private final MappedByteBuffer nonceNewXorStpGasPaidOutOfPocketXorGasInitiallyAvailable;
@@ -455,8 +453,6 @@ public class Trace {
     headers.add(new ColumnHeader("hub.MXP_SIZE_2_LO", 16, length));
     headers.add(new ColumnHeader("hub.MXP_STAMP", 4, length));
     headers.add(new ColumnHeader("hub.MXP_WORDS", 16, length));
-    headers.add(new ColumnHeader("hub.NB_ADDED", 1, length));
-    headers.add(new ColumnHeader("hub.NB_REMOVED", 1, length));
     headers.add(new ColumnHeader("hub.NON_STACK_ROWS", 1, length));
     headers.add(new ColumnHeader("hub.NONCE", 8, length));
     headers.add(
@@ -706,99 +702,97 @@ public class Trace {
     this.mxpSize2Lo = buffers.get(73);
     this.mxpStamp = buffers.get(74);
     this.mxpWords = buffers.get(75);
-    this.nbAdded = buffers.get(76);
-    this.nbRemoved = buffers.get(77);
-    this.nonStackRows = buffers.get(78);
-    this.nonce = buffers.get(79);
-    this.nonceNewXorStpGasPaidOutOfPocketXorGasInitiallyAvailable = buffers.get(80);
-    this.nonceXorStpGasMxpXorBasefee = buffers.get(81);
-    this.oobData1 = buffers.get(82);
-    this.oobData2 = buffers.get(83);
-    this.oobData3 = buffers.get(84);
-    this.oobData4 = buffers.get(85);
-    this.oobData5 = buffers.get(86);
-    this.oobData6 = buffers.get(87);
-    this.oobData7 = buffers.get(88);
-    this.oobData8 = buffers.get(89);
-    this.oobData9 = buffers.get(90);
-    this.peekAtAccount = buffers.get(91);
-    this.peekAtContext = buffers.get(92);
-    this.peekAtMiscellaneous = buffers.get(93);
-    this.peekAtScenario = buffers.get(94);
-    this.peekAtStack = buffers.get(95);
-    this.peekAtStorage = buffers.get(96);
-    this.peekAtTransaction = buffers.get(97);
-    this.prcEcmulXorMachineStateFlag = buffers.get(98);
-    this.prcEcpairingXorMaxcsx = buffers.get(99);
-    this.prcEcrecoverXorModFlag = buffers.get(100);
-    this.prcFailureKnownToHubXorMulFlag = buffers.get(101);
-    this.prcFailureKnownToRamXorMxpx = buffers.get(102);
-    this.prcIdentityXorMxpFlag = buffers.get(103);
-    this.prcModexpXorOogx = buffers.get(104);
-    this.prcRipemd160XorOpcx = buffers.get(105);
-    this.prcSha2256XorPushpopFlag = buffers.get(106);
-    this.prcSuccessCallerWillRevertXorRdcx = buffers.get(107);
-    this.prcSuccessCallerWontRevertXorShfFlag = buffers.get(108);
-    this.priorityFeePerGas = buffers.get(109);
-    this.programCounter = buffers.get(110);
-    this.programCounterNew = buffers.get(111);
-    this.refundCounter = buffers.get(112);
-    this.refundCounterInfinity = buffers.get(113);
-    this.refundCounterNew = buffers.get(114);
-    this.refundEffective = buffers.get(115);
-    this.relativeBlockNumber = buffers.get(116);
-    this.returnAtCapacityXorMxpInst = buffers.get(117);
-    this.returnAtOffsetXorOobInst = buffers.get(118);
-    this.returnDataContextNumberXorStpGasStipend = buffers.get(119);
-    this.returnDataOffsetXorStpInstruction = buffers.get(120);
-    this.returnDataSize = buffers.get(121);
-    this.returnExceptionXorSox = buffers.get(122);
-    this.returnFromDeploymentEmptyCodeWillRevertXorSstorex = buffers.get(123);
-    this.returnFromDeploymentEmptyCodeWontRevertXorStackramFlag = buffers.get(124);
-    this.returnFromDeploymentNonemptyCodeWillRevertXorStackItemPop1 = buffers.get(125);
-    this.returnFromDeploymentNonemptyCodeWontRevertXorStackItemPop2 = buffers.get(126);
-    this.returnFromMessageCallWillTouchRamXorStackItemPop3 = buffers.get(127);
-    this.returnFromMessageCallWontTouchRamXorStackItemPop4 = buffers.get(128);
-    this.rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize = buffers.get(129);
-    this.rlpaddrDepAddrLoXorMmuSrcOffsetHiXorStackItemValueHi4XorValueOrigHi = buffers.get(130);
+    this.nonStackRows = buffers.get(76);
+    this.nonce = buffers.get(77);
+    this.nonceNewXorStpGasPaidOutOfPocketXorGasInitiallyAvailable = buffers.get(78);
+    this.nonceXorStpGasMxpXorBasefee = buffers.get(79);
+    this.oobData1 = buffers.get(80);
+    this.oobData2 = buffers.get(81);
+    this.oobData3 = buffers.get(82);
+    this.oobData4 = buffers.get(83);
+    this.oobData5 = buffers.get(84);
+    this.oobData6 = buffers.get(85);
+    this.oobData7 = buffers.get(86);
+    this.oobData8 = buffers.get(87);
+    this.oobData9 = buffers.get(88);
+    this.peekAtAccount = buffers.get(89);
+    this.peekAtContext = buffers.get(90);
+    this.peekAtMiscellaneous = buffers.get(91);
+    this.peekAtScenario = buffers.get(92);
+    this.peekAtStack = buffers.get(93);
+    this.peekAtStorage = buffers.get(94);
+    this.peekAtTransaction = buffers.get(95);
+    this.prcEcmulXorMachineStateFlag = buffers.get(96);
+    this.prcEcpairingXorMaxcsx = buffers.get(97);
+    this.prcEcrecoverXorModFlag = buffers.get(98);
+    this.prcFailureKnownToHubXorMulFlag = buffers.get(99);
+    this.prcFailureKnownToRamXorMxpx = buffers.get(100);
+    this.prcIdentityXorMxpFlag = buffers.get(101);
+    this.prcModexpXorOogx = buffers.get(102);
+    this.prcRipemd160XorOpcx = buffers.get(103);
+    this.prcSha2256XorPushpopFlag = buffers.get(104);
+    this.prcSuccessCallerWillRevertXorRdcx = buffers.get(105);
+    this.prcSuccessCallerWontRevertXorShfFlag = buffers.get(106);
+    this.priorityFeePerGas = buffers.get(107);
+    this.programCounter = buffers.get(108);
+    this.programCounterNew = buffers.get(109);
+    this.refundCounter = buffers.get(110);
+    this.refundCounterInfinity = buffers.get(111);
+    this.refundCounterNew = buffers.get(112);
+    this.refundEffective = buffers.get(113);
+    this.relativeBlockNumber = buffers.get(114);
+    this.returnAtCapacityXorMxpInst = buffers.get(115);
+    this.returnAtOffsetXorOobInst = buffers.get(116);
+    this.returnDataContextNumberXorStpGasStipend = buffers.get(117);
+    this.returnDataOffsetXorStpInstruction = buffers.get(118);
+    this.returnDataSize = buffers.get(119);
+    this.returnExceptionXorSox = buffers.get(120);
+    this.returnFromDeploymentEmptyCodeWillRevertXorSstorex = buffers.get(121);
+    this.returnFromDeploymentEmptyCodeWontRevertXorStackramFlag = buffers.get(122);
+    this.returnFromDeploymentNonemptyCodeWillRevertXorStackItemPop1 = buffers.get(123);
+    this.returnFromDeploymentNonemptyCodeWontRevertXorStackItemPop2 = buffers.get(124);
+    this.returnFromMessageCallWillTouchRamXorStackItemPop3 = buffers.get(125);
+    this.returnFromMessageCallWontTouchRamXorStackItemPop4 = buffers.get(126);
+    this.rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize = buffers.get(127);
+    this.rlpaddrDepAddrLoXorMmuSrcOffsetHiXorStackItemValueHi4XorValueOrigHi = buffers.get(128);
     this.rlpaddrFlagXorCreateNonemptyInitCodeFailureWontRevertXorJumpDestinationVettingRequired =
-        buffers.get(131);
-    this.rlpaddrKecHiXorMmuSrcOffsetLoXorStackItemValueLo1XorValueOrigLo = buffers.get(132);
-    this.rlpaddrKecLoXorMmuTgtOffsetLoXorStackItemValueLo2 = buffers.get(133);
-    this.rlpaddrRecipe = buffers.get(134);
-    this.rlpaddrSaltHiXorMxpGasMxpXorStackItemValueLo3 = buffers.get(135);
-    this.rlpaddrSaltLoXorMxpOffset1HiXorStackItemValueLo4 = buffers.get(136);
-    this.romlexFlagXorCreateNonemptyInitCodeSuccessWillRevertXorJumpFlag = buffers.get(137);
-    this.selfdestructExceptionXorStaticx = buffers.get(138);
-    this.selfdestructWillRevertXorStaticFlag = buffers.get(139);
-    this.selfdestructWontRevertAlreadyMarkedXorStoFlag = buffers.get(140);
-    this.selfdestructWontRevertNotYetMarkedXorSux = buffers.get(141);
-    this.stackItemHeight2 = buffers.get(142);
-    this.stackItemHeight3 = buffers.get(143);
-    this.stackItemHeight4 = buffers.get(144);
-    this.stackItemStamp1 = buffers.get(145);
-    this.stackItemStamp2 = buffers.get(146);
-    this.stackItemStamp3 = buffers.get(147);
-    this.stackItemStamp4 = buffers.get(148);
-    this.stpGasHi = buffers.get(149);
-    this.stpGasLo = buffers.get(150);
-    this.stpGasUpfrontGasCostXorGasLeftover = buffers.get(151);
-    this.stpValueHi = buffers.get(152);
-    this.stpValueLo = buffers.get(153);
-    this.subStamp = buffers.get(154);
-    this.swapFlag = buffers.get(155);
-    this.trmFlagXorCreateNonemptyInitCodeSuccessWontRevertXorKecFlag = buffers.get(156);
-    this.trmRawAddressHiXorMxpOffset1Lo = buffers.get(157);
-    this.twoLineInstruction = buffers.get(158);
-    this.txExec = buffers.get(159);
-    this.txFinl = buffers.get(160);
-    this.txInit = buffers.get(161);
-    this.txSkip = buffers.get(162);
-    this.txWarm = buffers.get(163);
-    this.txnFlag = buffers.get(164);
-    this.warmthNewXorPrcEcaddXorLogInfoFlag = buffers.get(165);
-    this.warmthXorPrcBlake2FXorLogFlag = buffers.get(166);
-    this.wcpFlag = buffers.get(167);
+        buffers.get(129);
+    this.rlpaddrKecHiXorMmuSrcOffsetLoXorStackItemValueLo1XorValueOrigLo = buffers.get(130);
+    this.rlpaddrKecLoXorMmuTgtOffsetLoXorStackItemValueLo2 = buffers.get(131);
+    this.rlpaddrRecipe = buffers.get(132);
+    this.rlpaddrSaltHiXorMxpGasMxpXorStackItemValueLo3 = buffers.get(133);
+    this.rlpaddrSaltLoXorMxpOffset1HiXorStackItemValueLo4 = buffers.get(134);
+    this.romlexFlagXorCreateNonemptyInitCodeSuccessWillRevertXorJumpFlag = buffers.get(135);
+    this.selfdestructExceptionXorStaticx = buffers.get(136);
+    this.selfdestructWillRevertXorStaticFlag = buffers.get(137);
+    this.selfdestructWontRevertAlreadyMarkedXorStoFlag = buffers.get(138);
+    this.selfdestructWontRevertNotYetMarkedXorSux = buffers.get(139);
+    this.stackItemHeight2 = buffers.get(140);
+    this.stackItemHeight3 = buffers.get(141);
+    this.stackItemHeight4 = buffers.get(142);
+    this.stackItemStamp1 = buffers.get(143);
+    this.stackItemStamp2 = buffers.get(144);
+    this.stackItemStamp3 = buffers.get(145);
+    this.stackItemStamp4 = buffers.get(146);
+    this.stpGasHi = buffers.get(147);
+    this.stpGasLo = buffers.get(148);
+    this.stpGasUpfrontGasCostXorGasLeftover = buffers.get(149);
+    this.stpValueHi = buffers.get(150);
+    this.stpValueLo = buffers.get(151);
+    this.subStamp = buffers.get(152);
+    this.swapFlag = buffers.get(153);
+    this.trmFlagXorCreateNonemptyInitCodeSuccessWontRevertXorKecFlag = buffers.get(154);
+    this.trmRawAddressHiXorMxpOffset1Lo = buffers.get(155);
+    this.twoLineInstruction = buffers.get(156);
+    this.txExec = buffers.get(157);
+    this.txFinl = buffers.get(158);
+    this.txInit = buffers.get(159);
+    this.txSkip = buffers.get(160);
+    this.txWarm = buffers.get(161);
+    this.txnFlag = buffers.get(162);
+    this.warmthNewXorPrcEcaddXorLogInfoFlag = buffers.get(163);
+    this.warmthXorPrcBlake2FXorLogFlag = buffers.get(164);
+    this.wcpFlag = buffers.get(165);
   }
 
   public int size() {
@@ -817,7 +811,8 @@ public class Trace {
     }
 
     if (b >= 65536L) {
-      throw new IllegalArgumentException("absoluteTransactionNumber has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.ABSOLUTE_TRANSACTION_NUMBER has invalid value (" + b + ")");
     }
     absoluteTransactionNumber.put((byte) (b >> 8));
     absoluteTransactionNumber.put((byte) b);
@@ -833,7 +828,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("callerContextNumber has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.CALLER_CONTEXT_NUMBER has invalid value (" + b + ")");
     }
     callerContextNumber.put((byte) (b >> 24));
     callerContextNumber.put((byte) (b >> 16));
@@ -851,7 +846,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("codeFragmentIndex has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.CODE_FRAGMENT_INDEX has invalid value (" + b + ")");
     }
     codeFragmentIndex.put((byte) (b >> 24));
     codeFragmentIndex.put((byte) (b >> 16));
@@ -893,7 +888,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("contextNumber has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.CONTEXT_NUMBER has invalid value (" + b + ")");
     }
     contextNumber.put((byte) (b >> 24));
     contextNumber.put((byte) (b >> 16));
@@ -911,7 +906,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("contextNumberNew has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.CONTEXT_NUMBER_NEW has invalid value (" + b + ")");
     }
     contextNumberNew.put((byte) (b >> 24));
     contextNumberNew.put((byte) (b >> 16));
@@ -929,7 +924,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("contextRevertStamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.CONTEXT_REVERT_STAMP has invalid value (" + b + ")");
     }
     contextRevertStamp.put((byte) (b >> 24));
     contextRevertStamp.put((byte) (b >> 16));
@@ -971,7 +966,7 @@ public class Trace {
     }
 
     if (b >= 256L) {
-      throw new IllegalArgumentException("counterNsr has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.COUNTER_NSR has invalid value (" + b + ")");
     }
     counterNsr.put((byte) b);
 
@@ -998,7 +993,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("domStamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.DOM_STAMP has invalid value (" + b + ")");
     }
     domStamp.put((byte) (b >> 24));
     domStamp.put((byte) (b >> 16));
@@ -1032,7 +1027,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "gasActual has invalid width (" + bs.bitLength() + "bits)");
+          "hub.GAS_ACTUAL has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -1057,7 +1052,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("gasCost has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.GAS_COST has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -1083,7 +1079,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "gasExpected has invalid width (" + bs.bitLength() + "bits)");
+          "hub.GAS_EXPECTED has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -1108,7 +1104,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("gasNext has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.GAS_NEXT has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -1130,7 +1127,7 @@ public class Trace {
     }
 
     if (b >= 2048L) {
-      throw new IllegalArgumentException("height has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.HEIGHT has invalid value (" + b + ")");
     }
     height.put((byte) (b >> 8));
     height.put((byte) b);
@@ -1146,7 +1143,7 @@ public class Trace {
     }
 
     if (b >= 2048L) {
-      throw new IllegalArgumentException("heightNew has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.HEIGHT_NEW has invalid value (" + b + ")");
     }
     heightNew.put((byte) (b >> 8));
     heightNew.put((byte) b);
@@ -1162,7 +1159,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("hubStamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.HUB_STAMP has invalid value (" + b + ")");
     }
     hubStamp.put((byte) (b >> 24));
     hubStamp.put((byte) (b >> 16));
@@ -1180,7 +1177,8 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("hubStampTransactionEnd has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.HUB_STAMP_TRANSACTION_END has invalid value (" + b + ")");
     }
     hubStampTransactionEnd.put((byte) (b >> 24));
     hubStampTransactionEnd.put((byte) (b >> 16));
@@ -1198,7 +1196,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("logInfoStamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.LOG_INFO_STAMP has invalid value (" + b + ")");
     }
     logInfoStamp.put((byte) (b >> 24));
     logInfoStamp.put((byte) (b >> 16));
@@ -1216,7 +1214,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmuStamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.MMU_STAMP has invalid value (" + b + ")");
     }
     mmuStamp.put((byte) (b >> 24));
     mmuStamp.put((byte) (b >> 16));
@@ -1234,7 +1232,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mxpStamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.MXP_STAMP has invalid value (" + b + ")");
     }
     mxpStamp.put((byte) (b >> 24));
     mxpStamp.put((byte) (b >> 16));
@@ -1252,7 +1250,7 @@ public class Trace {
     }
 
     if (b >= 256L) {
-      throw new IllegalArgumentException("nonStackRows has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.NON_STACK_ROWS has invalid value (" + b + ")");
     }
     nonStackRows.put((byte) b);
 
@@ -1260,17 +1258,14 @@ public class Trace {
   }
 
   public Trace pAccountAddressHi(final long b) {
-    if (filled.get(105)) {
+    if (filled.get(103)) {
       throw new IllegalStateException("hub.account/ADDRESS_HI already set");
     } else {
-      filled.set(105);
+      filled.set(103);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.account/ADDRESS_HI has invalid value (" + b + ")");
     }
     addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize
         .put((byte) (b >> 24));
@@ -1285,10 +1280,10 @@ public class Trace {
   }
 
   public Trace pAccountAddressLo(final Bytes b) {
-    if (filled.get(134)) {
+    if (filled.get(132)) {
       throw new IllegalStateException("hub.account/ADDRESS_LO already set");
     } else {
-      filled.set(134);
+      filled.set(132);
     }
 
     // Trim array to size
@@ -1296,9 +1291,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "addressLoXorAccountAddressLoXorExpData1XorHashInfoKeccakHiXorAddressLoXorCoinbaseAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1354,10 +1347,10 @@ public class Trace {
   }
 
   public Trace pAccountBalance(final Bytes b) {
-    if (filled.get(135)) {
+    if (filled.get(133)) {
       throw new IllegalStateException("hub.account/BALANCE already set");
     } else {
-      filled.set(135);
+      filled.set(133);
     }
 
     // Trim array to size
@@ -1365,9 +1358,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceXorByteCodeAddressLoXorExpData2XorHashInfoKeccakLoXorStorageKeyHiXorFromAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/BALANCE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1384,10 +1375,10 @@ public class Trace {
   }
 
   public Trace pAccountBalanceNew(final Bytes b) {
-    if (filled.get(136)) {
+    if (filled.get(134)) {
       throw new IllegalStateException("hub.account/BALANCE_NEW already set");
     } else {
-      filled.set(136);
+      filled.set(134);
     }
 
     // Trim array to size
@@ -1395,9 +1386,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceNewXorCallerAddressLoXorExpData3XorPushValueHiXorStorageKeyLoXorInitialBalance has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/BALANCE_NEW has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1414,17 +1403,15 @@ public class Trace {
   }
 
   public Trace pAccountCodeFragmentIndex(final long b) {
-    if (filled.get(106)) {
+    if (filled.get(104)) {
       throw new IllegalStateException("hub.account/CODE_FRAGMENT_INDEX already set");
     } else {
-      filled.set(106);
+      filled.set(104);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.account/CODE_FRAGMENT_INDEX has invalid value (" + b + ")");
     }
     codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi
         .put((byte) (b >> 24));
@@ -1439,10 +1426,10 @@ public class Trace {
   }
 
   public Trace pAccountCodeHashHi(final Bytes b) {
-    if (filled.get(137)) {
+    if (filled.get(135)) {
       throw new IllegalStateException("hub.account/CODE_HASH_HI already set");
     } else {
-      filled.set(137);
+      filled.set(135);
     }
 
     // Trim array to size
@@ -1450,9 +1437,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiXorCallValueXorExpData4XorPushValueLoXorValueCurrHiXorToAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/CODE_HASH_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1467,10 +1452,10 @@ public class Trace {
   }
 
   public Trace pAccountCodeHashHiNew(final Bytes b) {
-    if (filled.get(138)) {
+    if (filled.get(136)) {
       throw new IllegalStateException("hub.account/CODE_HASH_HI_NEW already set");
     } else {
-      filled.set(138);
+      filled.set(136);
     }
 
     // Trim array to size
@@ -1478,9 +1463,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiNewXorExpData5XorStackItemValueHi1XorValueCurrLoXorValue has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/CODE_HASH_HI_NEW has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1495,10 +1478,10 @@ public class Trace {
   }
 
   public Trace pAccountCodeHashLo(final Bytes b) {
-    if (filled.get(139)) {
+    if (filled.get(137)) {
       throw new IllegalStateException("hub.account/CODE_HASH_LO already set");
     } else {
-      filled.set(139);
+      filled.set(137);
     }
 
     // Trim array to size
@@ -1506,9 +1489,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashLoXorMmuLimb1XorStackItemValueHi2XorValueNextHi has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/CODE_HASH_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1523,10 +1504,10 @@ public class Trace {
   }
 
   public Trace pAccountCodeHashLoNew(final Bytes b) {
-    if (filled.get(140)) {
+    if (filled.get(138)) {
       throw new IllegalStateException("hub.account/CODE_HASH_LO_NEW already set");
     } else {
-      filled.set(140);
+      filled.set(138);
     }
 
     // Trim array to size
@@ -1534,9 +1515,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashLoNewXorMmuLimb2XorStackItemValueHi3XorValueNextLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/CODE_HASH_LO_NEW has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1551,17 +1530,14 @@ public class Trace {
   }
 
   public Trace pAccountCodeSize(final long b) {
-    if (filled.get(107)) {
+    if (filled.get(105)) {
       throw new IllegalStateException("hub.account/CODE_SIZE already set");
     } else {
-      filled.set(107);
+      filled.set(105);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.account/CODE_SIZE has invalid value (" + b + ")");
     }
     codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi.put(
         (byte) (b >> 24));
@@ -1576,17 +1552,14 @@ public class Trace {
   }
 
   public Trace pAccountCodeSizeNew(final long b) {
-    if (filled.get(108)) {
+    if (filled.get(106)) {
       throw new IllegalStateException("hub.account/CODE_SIZE_NEW already set");
     } else {
-      filled.set(108);
+      filled.set(106);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.account/CODE_SIZE_NEW has invalid value (" + b + ")");
     }
     codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize.put(
         (byte) (b >> 24));
@@ -1600,17 +1573,15 @@ public class Trace {
   }
 
   public Trace pAccountDeploymentNumber(final long b) {
-    if (filled.get(109)) {
+    if (filled.get(107)) {
       throw new IllegalStateException("hub.account/DEPLOYMENT_NUMBER already set");
     } else {
-      filled.set(109);
+      filled.set(107);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.account/DEPLOYMENT_NUMBER has invalid value (" + b + ")");
     }
     deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi.put(
         (byte) (b >> 24));
@@ -1624,17 +1595,15 @@ public class Trace {
   }
 
   public Trace pAccountDeploymentNumberFinalInBlock(final long b) {
-    if (filled.get(103)) {
+    if (filled.get(101)) {
       throw new IllegalStateException("hub.account/DEPLOYMENT_NUMBER_FINAL_IN_BLOCK already set");
     } else {
-      filled.set(103);
+      filled.set(101);
     }
 
     if (b >= 65536L) {
       throw new IllegalArgumentException(
-          "deploymentNumberFinalInBlockXorDeploymentNumberFinalInBlock has invalid value ("
-              + b
-              + ")");
+          "hub.account/DEPLOYMENT_NUMBER_FINAL_IN_BLOCK has invalid value (" + b + ")");
     }
     deploymentNumberFinalInBlockXorDeploymentNumberFinalInBlock.put((byte) (b >> 8));
     deploymentNumberFinalInBlockXorDeploymentNumberFinalInBlock.put((byte) b);
@@ -1643,17 +1612,15 @@ public class Trace {
   }
 
   public Trace pAccountDeploymentNumberFirstInBlock(final long b) {
-    if (filled.get(104)) {
+    if (filled.get(102)) {
       throw new IllegalStateException("hub.account/DEPLOYMENT_NUMBER_FIRST_IN_BLOCK already set");
     } else {
-      filled.set(104);
+      filled.set(102);
     }
 
     if (b >= 65536L) {
       throw new IllegalArgumentException(
-          "deploymentNumberFirstInBlockXorDeploymentNumberFirstInBlock has invalid value ("
-              + b
-              + ")");
+          "hub.account/DEPLOYMENT_NUMBER_FIRST_IN_BLOCK has invalid value (" + b + ")");
     }
     deploymentNumberFirstInBlockXorDeploymentNumberFirstInBlock.put((byte) (b >> 8));
     deploymentNumberFirstInBlockXorDeploymentNumberFirstInBlock.put((byte) b);
@@ -1662,17 +1629,15 @@ public class Trace {
   }
 
   public Trace pAccountDeploymentNumberInfty(final long b) {
-    if (filled.get(110)) {
+    if (filled.get(108)) {
       throw new IllegalStateException("hub.account/DEPLOYMENT_NUMBER_INFTY already set");
     } else {
-      filled.set(110);
+      filled.set(108);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao has invalid value ("
-              + b
-              + ")");
+          "hub.account/DEPLOYMENT_NUMBER_INFTY has invalid value (" + b + ")");
     }
     deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao.put((byte) (b >> 24));
     deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao.put((byte) (b >> 16));
@@ -1683,17 +1648,15 @@ public class Trace {
   }
 
   public Trace pAccountDeploymentNumberNew(final long b) {
-    if (filled.get(111)) {
+    if (filled.get(109)) {
       throw new IllegalStateException("hub.account/DEPLOYMENT_NUMBER_NEW already set");
     } else {
-      filled.set(111);
+      filled.set(109);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas has invalid value ("
-              + b
-              + ")");
+          "hub.account/DEPLOYMENT_NUMBER_NEW has invalid value (" + b + ")");
     }
     deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas.put((byte) (b >> 24));
     deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas.put((byte) (b >> 16));
@@ -1908,10 +1871,10 @@ public class Trace {
   }
 
   public Trace pAccountNonce(final Bytes b) {
-    if (filled.get(125)) {
+    if (filled.get(123)) {
       throw new IllegalStateException("hub.account/NONCE already set");
     } else {
-      filled.set(125);
+      filled.set(123);
     }
 
     // Trim array to size
@@ -1919,7 +1882,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "nonceXorStpGasMxpXorBasefee has invalid width (" + bs.bitLength() + "bits)");
+          "hub.account/NONCE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -1934,10 +1897,10 @@ public class Trace {
   }
 
   public Trace pAccountNonceNew(final Bytes b) {
-    if (filled.get(126)) {
+    if (filled.get(124)) {
       throw new IllegalStateException("hub.account/NONCE_NEW already set");
     } else {
-      filled.set(126);
+      filled.set(124);
     }
 
     // Trim array to size
@@ -1945,9 +1908,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "nonceNewXorStpGasPaidOutOfPocketXorGasInitiallyAvailable has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/NONCE_NEW has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -1962,15 +1923,15 @@ public class Trace {
   }
 
   public Trace pAccountRlpaddrDepAddrHi(final long b) {
-    if (filled.get(112)) {
+    if (filled.get(110)) {
       throw new IllegalStateException("hub.account/RLPADDR_DEP_ADDR_HI already set");
     } else {
-      filled.set(112);
+      filled.set(110);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize has invalid value (" + b + ")");
+          "hub.account/RLPADDR_DEP_ADDR_HI has invalid value (" + b + ")");
     }
     rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize.put((byte) (b >> 24));
     rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize.put((byte) (b >> 16));
@@ -1981,10 +1942,10 @@ public class Trace {
   }
 
   public Trace pAccountRlpaddrDepAddrLo(final Bytes b) {
-    if (filled.get(141)) {
+    if (filled.get(139)) {
       throw new IllegalStateException("hub.account/RLPADDR_DEP_ADDR_LO already set");
     } else {
-      filled.set(141);
+      filled.set(139);
     }
 
     // Trim array to size
@@ -1992,9 +1953,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrDepAddrLoXorMmuSrcOffsetHiXorStackItemValueHi4XorValueOrigHi has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/RLPADDR_DEP_ADDR_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2022,10 +1981,10 @@ public class Trace {
   }
 
   public Trace pAccountRlpaddrKecHi(final Bytes b) {
-    if (filled.get(142)) {
+    if (filled.get(140)) {
       throw new IllegalStateException("hub.account/RLPADDR_KEC_HI already set");
     } else {
-      filled.set(142);
+      filled.set(140);
     }
 
     // Trim array to size
@@ -2033,9 +1992,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrKecHiXorMmuSrcOffsetLoXorStackItemValueLo1XorValueOrigLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/RLPADDR_KEC_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2050,10 +2007,10 @@ public class Trace {
   }
 
   public Trace pAccountRlpaddrKecLo(final Bytes b) {
-    if (filled.get(143)) {
+    if (filled.get(141)) {
       throw new IllegalStateException("hub.account/RLPADDR_KEC_LO already set");
     } else {
-      filled.set(143);
+      filled.set(141);
     }
 
     // Trim array to size
@@ -2061,9 +2018,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrKecLoXorMmuTgtOffsetLoXorStackItemValueLo2 has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/RLPADDR_KEC_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2078,14 +2033,15 @@ public class Trace {
   }
 
   public Trace pAccountRlpaddrRecipe(final long b) {
-    if (filled.get(98)) {
+    if (filled.get(96)) {
       throw new IllegalStateException("hub.account/RLPADDR_RECIPE already set");
     } else {
-      filled.set(98);
+      filled.set(96);
     }
 
     if (b >= 256L) {
-      throw new IllegalArgumentException("rlpaddrRecipe has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.account/RLPADDR_RECIPE has invalid value (" + b + ")");
     }
     rlpaddrRecipe.put((byte) b);
 
@@ -2093,10 +2049,10 @@ public class Trace {
   }
 
   public Trace pAccountRlpaddrSaltHi(final Bytes b) {
-    if (filled.get(144)) {
+    if (filled.get(142)) {
       throw new IllegalStateException("hub.account/RLPADDR_SALT_HI already set");
     } else {
-      filled.set(144);
+      filled.set(142);
     }
 
     // Trim array to size
@@ -2104,9 +2060,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrSaltHiXorMxpGasMxpXorStackItemValueLo3 has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/RLPADDR_SALT_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2121,10 +2075,10 @@ public class Trace {
   }
 
   public Trace pAccountRlpaddrSaltLo(final Bytes b) {
-    if (filled.get(145)) {
+    if (filled.get(143)) {
       throw new IllegalStateException("hub.account/RLPADDR_SALT_LO already set");
     } else {
-      filled.set(145);
+      filled.set(143);
     }
 
     // Trim array to size
@@ -2132,9 +2086,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrSaltLoXorMxpOffset1HiXorStackItemValueLo4 has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.account/RLPADDR_SALT_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2173,10 +2125,10 @@ public class Trace {
   }
 
   public Trace pAccountTrmRawAddressHi(final Bytes b) {
-    if (filled.get(146)) {
+    if (filled.get(144)) {
       throw new IllegalStateException("hub.account/TRM_RAW_ADDRESS_HI already set");
     } else {
-      filled.set(146);
+      filled.set(144);
     }
 
     // Trim array to size
@@ -2184,7 +2136,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "trmRawAddressHiXorMxpOffset1Lo has invalid width (" + bs.bitLength() + "bits)");
+          "hub.account/TRM_RAW_ADDRESS_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2223,17 +2175,15 @@ public class Trace {
   }
 
   public Trace pContextAccountAddressHi(final long b) {
-    if (filled.get(105)) {
+    if (filled.get(103)) {
       throw new IllegalStateException("hub.context/ACCOUNT_ADDRESS_HI already set");
     } else {
-      filled.set(105);
+      filled.set(103);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize has invalid value ("
-              + b
-              + ")");
+          "hub.context/ACCOUNT_ADDRESS_HI has invalid value (" + b + ")");
     }
     addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize
         .put((byte) (b >> 24));
@@ -2248,10 +2198,10 @@ public class Trace {
   }
 
   public Trace pContextAccountAddressLo(final Bytes b) {
-    if (filled.get(134)) {
+    if (filled.get(132)) {
       throw new IllegalStateException("hub.context/ACCOUNT_ADDRESS_LO already set");
     } else {
-      filled.set(134);
+      filled.set(132);
     }
 
     // Trim array to size
@@ -2259,9 +2209,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "addressLoXorAccountAddressLoXorExpData1XorHashInfoKeccakHiXorAddressLoXorCoinbaseAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.context/ACCOUNT_ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2278,17 +2226,15 @@ public class Trace {
   }
 
   public Trace pContextAccountDeploymentNumber(final long b) {
-    if (filled.get(106)) {
+    if (filled.get(104)) {
       throw new IllegalStateException("hub.context/ACCOUNT_DEPLOYMENT_NUMBER already set");
     } else {
-      filled.set(106);
+      filled.set(104);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.context/ACCOUNT_DEPLOYMENT_NUMBER has invalid value (" + b + ")");
     }
     codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi
         .put((byte) (b >> 24));
@@ -2303,17 +2249,15 @@ public class Trace {
   }
 
   public Trace pContextByteCodeAddressHi(final long b) {
-    if (filled.get(107)) {
+    if (filled.get(105)) {
       throw new IllegalStateException("hub.context/BYTE_CODE_ADDRESS_HI already set");
     } else {
-      filled.set(107);
+      filled.set(105);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.context/BYTE_CODE_ADDRESS_HI has invalid value (" + b + ")");
     }
     codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi.put(
         (byte) (b >> 24));
@@ -2328,10 +2272,10 @@ public class Trace {
   }
 
   public Trace pContextByteCodeAddressLo(final Bytes b) {
-    if (filled.get(135)) {
+    if (filled.get(133)) {
       throw new IllegalStateException("hub.context/BYTE_CODE_ADDRESS_LO already set");
     } else {
-      filled.set(135);
+      filled.set(133);
     }
 
     // Trim array to size
@@ -2339,9 +2283,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceXorByteCodeAddressLoXorExpData2XorHashInfoKeccakLoXorStorageKeyHiXorFromAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.context/BYTE_CODE_ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2358,17 +2300,15 @@ public class Trace {
   }
 
   public Trace pContextByteCodeCodeFragmentIndex(final long b) {
-    if (filled.get(108)) {
+    if (filled.get(106)) {
       throw new IllegalStateException("hub.context/BYTE_CODE_CODE_FRAGMENT_INDEX already set");
     } else {
-      filled.set(108);
+      filled.set(106);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize has invalid value ("
-              + b
-              + ")");
+          "hub.context/BYTE_CODE_CODE_FRAGMENT_INDEX has invalid value (" + b + ")");
     }
     codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize.put(
         (byte) (b >> 24));
@@ -2382,17 +2322,15 @@ public class Trace {
   }
 
   public Trace pContextByteCodeDeploymentNumber(final long b) {
-    if (filled.get(109)) {
+    if (filled.get(107)) {
       throw new IllegalStateException("hub.context/BYTE_CODE_DEPLOYMENT_NUMBER already set");
     } else {
-      filled.set(109);
+      filled.set(107);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.context/BYTE_CODE_DEPLOYMENT_NUMBER has invalid value (" + b + ")");
     }
     deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi.put(
         (byte) (b >> 24));
@@ -2406,17 +2344,15 @@ public class Trace {
   }
 
   public Trace pContextByteCodeDeploymentStatus(final long b) {
-    if (filled.get(110)) {
+    if (filled.get(108)) {
       throw new IllegalStateException("hub.context/BYTE_CODE_DEPLOYMENT_STATUS already set");
     } else {
-      filled.set(110);
+      filled.set(108);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao has invalid value ("
-              + b
-              + ")");
+          "hub.context/BYTE_CODE_DEPLOYMENT_STATUS has invalid value (" + b + ")");
     }
     deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao.put((byte) (b >> 24));
     deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao.put((byte) (b >> 16));
@@ -2427,15 +2363,15 @@ public class Trace {
   }
 
   public Trace pContextCallDataContextNumber(final long b) {
-    if (filled.get(112)) {
+    if (filled.get(110)) {
       throw new IllegalStateException("hub.context/CALL_DATA_CONTEXT_NUMBER already set");
     } else {
-      filled.set(112);
+      filled.set(110);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize has invalid value (" + b + ")");
+          "hub.context/CALL_DATA_CONTEXT_NUMBER has invalid value (" + b + ")");
     }
     rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize.put((byte) (b >> 24));
     rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize.put((byte) (b >> 16));
@@ -2446,14 +2382,15 @@ public class Trace {
   }
 
   public Trace pContextCallDataOffset(final long b) {
-    if (filled.get(113)) {
+    if (filled.get(111)) {
       throw new IllegalStateException("hub.context/CALL_DATA_OFFSET already set");
     } else {
-      filled.set(113);
+      filled.set(111);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("callDataOffsetXorMmuSize has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.context/CALL_DATA_OFFSET has invalid value (" + b + ")");
     }
     callDataOffsetXorMmuSize.put((byte) (b >> 24));
     callDataOffsetXorMmuSize.put((byte) (b >> 16));
@@ -2464,14 +2401,15 @@ public class Trace {
   }
 
   public Trace pContextCallDataSize(final long b) {
-    if (filled.get(114)) {
+    if (filled.get(112)) {
       throw new IllegalStateException("hub.context/CALL_DATA_SIZE already set");
     } else {
-      filled.set(114);
+      filled.set(112);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("callDataSizeXorMmuSrcId has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.context/CALL_DATA_SIZE has invalid value (" + b + ")");
     }
     callDataSizeXorMmuSrcId.put((byte) (b >> 24));
     callDataSizeXorMmuSrcId.put((byte) (b >> 16));
@@ -2482,15 +2420,15 @@ public class Trace {
   }
 
   public Trace pContextCallStackDepth(final long b) {
-    if (filled.get(99)) {
+    if (filled.get(97)) {
       throw new IllegalStateException("hub.context/CALL_STACK_DEPTH already set");
     } else {
-      filled.set(99);
+      filled.set(97);
     }
 
     if (b >= 2048L) {
       throw new IllegalArgumentException(
-          "callStackDepthXorStackItemHeight1 has invalid value (" + b + ")");
+          "hub.context/CALL_STACK_DEPTH has invalid value (" + b + ")");
     }
     callStackDepthXorStackItemHeight1.put((byte) (b >> 8));
     callStackDepthXorStackItemHeight1.put((byte) b);
@@ -2499,10 +2437,10 @@ public class Trace {
   }
 
   public Trace pContextCallValue(final Bytes b) {
-    if (filled.get(137)) {
+    if (filled.get(135)) {
       throw new IllegalStateException("hub.context/CALL_VALUE already set");
     } else {
-      filled.set(137);
+      filled.set(135);
     }
 
     // Trim array to size
@@ -2510,9 +2448,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiXorCallValueXorExpData4XorPushValueLoXorValueCurrHiXorToAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.context/CALL_VALUE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2527,17 +2463,15 @@ public class Trace {
   }
 
   public Trace pContextCallerAddressHi(final long b) {
-    if (filled.get(111)) {
+    if (filled.get(109)) {
       throw new IllegalStateException("hub.context/CALLER_ADDRESS_HI already set");
     } else {
-      filled.set(111);
+      filled.set(109);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas has invalid value ("
-              + b
-              + ")");
+          "hub.context/CALLER_ADDRESS_HI has invalid value (" + b + ")");
     }
     deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas.put((byte) (b >> 24));
     deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas.put((byte) (b >> 16));
@@ -2548,10 +2482,10 @@ public class Trace {
   }
 
   public Trace pContextCallerAddressLo(final Bytes b) {
-    if (filled.get(136)) {
+    if (filled.get(134)) {
       throw new IllegalStateException("hub.context/CALLER_ADDRESS_LO already set");
     } else {
-      filled.set(136);
+      filled.set(134);
     }
 
     // Trim array to size
@@ -2559,9 +2493,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceNewXorCallerAddressLoXorExpData3XorPushValueHiXorStorageKeyLoXorInitialBalance has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.context/CALLER_ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2578,14 +2510,15 @@ public class Trace {
   }
 
   public Trace pContextContextNumber(final long b) {
-    if (filled.get(115)) {
+    if (filled.get(113)) {
       throw new IllegalStateException("hub.context/CONTEXT_NUMBER already set");
     } else {
-      filled.set(115);
+      filled.set(113);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("contextNumberXorMmuTgtId has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.context/CONTEXT_NUMBER has invalid value (" + b + ")");
     }
     contextNumberXorMmuTgtId.put((byte) (b >> 24));
     contextNumberXorMmuTgtId.put((byte) (b >> 16));
@@ -2622,15 +2555,15 @@ public class Trace {
   }
 
   public Trace pContextReturnAtCapacity(final long b) {
-    if (filled.get(116)) {
+    if (filled.get(114)) {
       throw new IllegalStateException("hub.context/RETURN_AT_CAPACITY already set");
     } else {
-      filled.set(116);
+      filled.set(114);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "returnAtCapacityXorMxpInst has invalid value (" + b + ")");
+          "hub.context/RETURN_AT_CAPACITY has invalid value (" + b + ")");
     }
     returnAtCapacityXorMxpInst.put((byte) (b >> 24));
     returnAtCapacityXorMxpInst.put((byte) (b >> 16));
@@ -2641,14 +2574,15 @@ public class Trace {
   }
 
   public Trace pContextReturnAtOffset(final long b) {
-    if (filled.get(117)) {
+    if (filled.get(115)) {
       throw new IllegalStateException("hub.context/RETURN_AT_OFFSET already set");
     } else {
-      filled.set(117);
+      filled.set(115);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("returnAtOffsetXorOobInst has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.context/RETURN_AT_OFFSET has invalid value (" + b + ")");
     }
     returnAtOffsetXorOobInst.put((byte) (b >> 24));
     returnAtOffsetXorOobInst.put((byte) (b >> 16));
@@ -2659,15 +2593,15 @@ public class Trace {
   }
 
   public Trace pContextReturnDataContextNumber(final long b) {
-    if (filled.get(118)) {
+    if (filled.get(116)) {
       throw new IllegalStateException("hub.context/RETURN_DATA_CONTEXT_NUMBER already set");
     } else {
-      filled.set(118);
+      filled.set(116);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "returnDataContextNumberXorStpGasStipend has invalid value (" + b + ")");
+          "hub.context/RETURN_DATA_CONTEXT_NUMBER has invalid value (" + b + ")");
     }
     returnDataContextNumberXorStpGasStipend.put((byte) (b >> 24));
     returnDataContextNumberXorStpGasStipend.put((byte) (b >> 16));
@@ -2678,15 +2612,15 @@ public class Trace {
   }
 
   public Trace pContextReturnDataOffset(final long b) {
-    if (filled.get(119)) {
+    if (filled.get(117)) {
       throw new IllegalStateException("hub.context/RETURN_DATA_OFFSET already set");
     } else {
-      filled.set(119);
+      filled.set(117);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "returnDataOffsetXorStpInstruction has invalid value (" + b + ")");
+          "hub.context/RETURN_DATA_OFFSET has invalid value (" + b + ")");
     }
     returnDataOffsetXorStpInstruction.put((byte) (b >> 24));
     returnDataOffsetXorStpInstruction.put((byte) (b >> 16));
@@ -2697,14 +2631,15 @@ public class Trace {
   }
 
   public Trace pContextReturnDataSize(final long b) {
-    if (filled.get(120)) {
+    if (filled.get(118)) {
       throw new IllegalStateException("hub.context/RETURN_DATA_SIZE already set");
     } else {
-      filled.set(120);
+      filled.set(118);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("returnDataSize has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.context/RETURN_DATA_SIZE has invalid value (" + b + ")");
     }
     returnDataSize.put((byte) (b >> 24));
     returnDataSize.put((byte) (b >> 16));
@@ -2728,17 +2663,14 @@ public class Trace {
   }
 
   public Trace pMiscCcrsStamp(final long b) {
-    if (filled.get(105)) {
+    if (filled.get(103)) {
       throw new IllegalStateException("hub.misc/CCRS_STAMP already set");
     } else {
-      filled.set(105);
+      filled.set(103);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.misc/CCRS_STAMP has invalid value (" + b + ")");
     }
     addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize
         .put((byte) (b >> 24));
@@ -2766,10 +2698,10 @@ public class Trace {
   }
 
   public Trace pMiscExpData1(final Bytes b) {
-    if (filled.get(134)) {
+    if (filled.get(132)) {
       throw new IllegalStateException("hub.misc/EXP_DATA_1 already set");
     } else {
-      filled.set(134);
+      filled.set(132);
     }
 
     // Trim array to size
@@ -2777,9 +2709,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "addressLoXorAccountAddressLoXorExpData1XorHashInfoKeccakHiXorAddressLoXorCoinbaseAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/EXP_DATA_1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2796,10 +2726,10 @@ public class Trace {
   }
 
   public Trace pMiscExpData2(final Bytes b) {
-    if (filled.get(135)) {
+    if (filled.get(133)) {
       throw new IllegalStateException("hub.misc/EXP_DATA_2 already set");
     } else {
-      filled.set(135);
+      filled.set(133);
     }
 
     // Trim array to size
@@ -2807,9 +2737,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceXorByteCodeAddressLoXorExpData2XorHashInfoKeccakLoXorStorageKeyHiXorFromAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/EXP_DATA_2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2826,10 +2754,10 @@ public class Trace {
   }
 
   public Trace pMiscExpData3(final Bytes b) {
-    if (filled.get(136)) {
+    if (filled.get(134)) {
       throw new IllegalStateException("hub.misc/EXP_DATA_3 already set");
     } else {
-      filled.set(136);
+      filled.set(134);
     }
 
     // Trim array to size
@@ -2837,9 +2765,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceNewXorCallerAddressLoXorExpData3XorPushValueHiXorStorageKeyLoXorInitialBalance has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/EXP_DATA_3 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2856,10 +2782,10 @@ public class Trace {
   }
 
   public Trace pMiscExpData4(final Bytes b) {
-    if (filled.get(137)) {
+    if (filled.get(135)) {
       throw new IllegalStateException("hub.misc/EXP_DATA_4 already set");
     } else {
-      filled.set(137);
+      filled.set(135);
     }
 
     // Trim array to size
@@ -2867,9 +2793,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiXorCallValueXorExpData4XorPushValueLoXorValueCurrHiXorToAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/EXP_DATA_4 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2884,10 +2808,10 @@ public class Trace {
   }
 
   public Trace pMiscExpData5(final Bytes b) {
-    if (filled.get(138)) {
+    if (filled.get(136)) {
       throw new IllegalStateException("hub.misc/EXP_DATA_5 already set");
     } else {
-      filled.set(138);
+      filled.set(136);
     }
 
     // Trim array to size
@@ -2895,9 +2819,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiNewXorExpData5XorStackItemValueHi1XorValueCurrLoXorValue has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/EXP_DATA_5 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -2925,17 +2847,14 @@ public class Trace {
   }
 
   public Trace pMiscExpInst(final long b) {
-    if (filled.get(106)) {
+    if (filled.get(104)) {
       throw new IllegalStateException("hub.misc/EXP_INST already set");
     } else {
-      filled.set(106);
+      filled.set(104);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.misc/EXP_INST has invalid value (" + b + ")");
     }
     codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi
         .put((byte) (b >> 24));
@@ -2950,17 +2869,14 @@ public class Trace {
   }
 
   public Trace pMiscMmuAuxId(final long b) {
-    if (filled.get(107)) {
+    if (filled.get(105)) {
       throw new IllegalStateException("hub.misc/MMU_AUX_ID already set");
     } else {
-      filled.set(107);
+      filled.set(105);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.misc/MMU_AUX_ID has invalid value (" + b + ")");
     }
     codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi.put(
         (byte) (b >> 24));
@@ -2975,17 +2891,14 @@ public class Trace {
   }
 
   public Trace pMiscMmuExoSum(final long b) {
-    if (filled.get(108)) {
+    if (filled.get(106)) {
       throw new IllegalStateException("hub.misc/MMU_EXO_SUM already set");
     } else {
-      filled.set(108);
+      filled.set(106);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.misc/MMU_EXO_SUM has invalid value (" + b + ")");
     }
     codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize.put(
         (byte) (b >> 24));
@@ -3012,17 +2925,14 @@ public class Trace {
   }
 
   public Trace pMiscMmuInst(final long b) {
-    if (filled.get(109)) {
+    if (filled.get(107)) {
       throw new IllegalStateException("hub.misc/MMU_INST already set");
     } else {
-      filled.set(109);
+      filled.set(107);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.misc/MMU_INST has invalid value (" + b + ")");
     }
     deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi.put(
         (byte) (b >> 24));
@@ -3036,10 +2946,10 @@ public class Trace {
   }
 
   public Trace pMiscMmuLimb1(final Bytes b) {
-    if (filled.get(139)) {
+    if (filled.get(137)) {
       throw new IllegalStateException("hub.misc/MMU_LIMB_1 already set");
     } else {
-      filled.set(139);
+      filled.set(137);
     }
 
     // Trim array to size
@@ -3047,9 +2957,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashLoXorMmuLimb1XorStackItemValueHi2XorValueNextHi has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/MMU_LIMB_1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3064,10 +2972,10 @@ public class Trace {
   }
 
   public Trace pMiscMmuLimb2(final Bytes b) {
-    if (filled.get(140)) {
+    if (filled.get(138)) {
       throw new IllegalStateException("hub.misc/MMU_LIMB_2 already set");
     } else {
-      filled.set(140);
+      filled.set(138);
     }
 
     // Trim array to size
@@ -3075,9 +2983,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashLoNewXorMmuLimb2XorStackItemValueHi3XorValueNextLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/MMU_LIMB_2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3092,17 +2998,14 @@ public class Trace {
   }
 
   public Trace pMiscMmuPhase(final long b) {
-    if (filled.get(110)) {
+    if (filled.get(108)) {
       throw new IllegalStateException("hub.misc/MMU_PHASE already set");
     } else {
-      filled.set(110);
+      filled.set(108);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.misc/MMU_PHASE has invalid value (" + b + ")");
     }
     deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao.put((byte) (b >> 24));
     deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao.put((byte) (b >> 16));
@@ -3113,17 +3016,14 @@ public class Trace {
   }
 
   public Trace pMiscMmuRefOffset(final long b) {
-    if (filled.get(111)) {
+    if (filled.get(109)) {
       throw new IllegalStateException("hub.misc/MMU_REF_OFFSET already set");
     } else {
-      filled.set(111);
+      filled.set(109);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.misc/MMU_REF_OFFSET has invalid value (" + b + ")");
     }
     deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas.put((byte) (b >> 24));
     deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas.put((byte) (b >> 16));
@@ -3134,15 +3034,14 @@ public class Trace {
   }
 
   public Trace pMiscMmuRefSize(final long b) {
-    if (filled.get(112)) {
+    if (filled.get(110)) {
       throw new IllegalStateException("hub.misc/MMU_REF_SIZE already set");
     } else {
-      filled.set(112);
+      filled.set(110);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.misc/MMU_REF_SIZE has invalid value (" + b + ")");
     }
     rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize.put((byte) (b >> 24));
     rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize.put((byte) (b >> 16));
@@ -3153,14 +3052,14 @@ public class Trace {
   }
 
   public Trace pMiscMmuSize(final long b) {
-    if (filled.get(113)) {
+    if (filled.get(111)) {
       throw new IllegalStateException("hub.misc/MMU_SIZE already set");
     } else {
-      filled.set(113);
+      filled.set(111);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("callDataOffsetXorMmuSize has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.misc/MMU_SIZE has invalid value (" + b + ")");
     }
     callDataOffsetXorMmuSize.put((byte) (b >> 24));
     callDataOffsetXorMmuSize.put((byte) (b >> 16));
@@ -3171,14 +3070,14 @@ public class Trace {
   }
 
   public Trace pMiscMmuSrcId(final long b) {
-    if (filled.get(114)) {
+    if (filled.get(112)) {
       throw new IllegalStateException("hub.misc/MMU_SRC_ID already set");
     } else {
-      filled.set(114);
+      filled.set(112);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("callDataSizeXorMmuSrcId has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.misc/MMU_SRC_ID has invalid value (" + b + ")");
     }
     callDataSizeXorMmuSrcId.put((byte) (b >> 24));
     callDataSizeXorMmuSrcId.put((byte) (b >> 16));
@@ -3189,10 +3088,10 @@ public class Trace {
   }
 
   public Trace pMiscMmuSrcOffsetHi(final Bytes b) {
-    if (filled.get(141)) {
+    if (filled.get(139)) {
       throw new IllegalStateException("hub.misc/MMU_SRC_OFFSET_HI already set");
     } else {
-      filled.set(141);
+      filled.set(139);
     }
 
     // Trim array to size
@@ -3200,9 +3099,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrDepAddrLoXorMmuSrcOffsetHiXorStackItemValueHi4XorValueOrigHi has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/MMU_SRC_OFFSET_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3217,10 +3114,10 @@ public class Trace {
   }
 
   public Trace pMiscMmuSrcOffsetLo(final Bytes b) {
-    if (filled.get(142)) {
+    if (filled.get(140)) {
       throw new IllegalStateException("hub.misc/MMU_SRC_OFFSET_LO already set");
     } else {
-      filled.set(142);
+      filled.set(140);
     }
 
     // Trim array to size
@@ -3228,9 +3125,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrKecHiXorMmuSrcOffsetLoXorStackItemValueLo1XorValueOrigLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/MMU_SRC_OFFSET_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3258,14 +3153,14 @@ public class Trace {
   }
 
   public Trace pMiscMmuTgtId(final long b) {
-    if (filled.get(115)) {
+    if (filled.get(113)) {
       throw new IllegalStateException("hub.misc/MMU_TGT_ID already set");
     } else {
-      filled.set(115);
+      filled.set(113);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("contextNumberXorMmuTgtId has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.misc/MMU_TGT_ID has invalid value (" + b + ")");
     }
     contextNumberXorMmuTgtId.put((byte) (b >> 24));
     contextNumberXorMmuTgtId.put((byte) (b >> 16));
@@ -3276,10 +3171,10 @@ public class Trace {
   }
 
   public Trace pMiscMmuTgtOffsetLo(final Bytes b) {
-    if (filled.get(143)) {
+    if (filled.get(141)) {
       throw new IllegalStateException("hub.misc/MMU_TGT_OFFSET_LO already set");
     } else {
-      filled.set(143);
+      filled.set(141);
     }
 
     // Trim array to size
@@ -3287,9 +3182,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrKecLoXorMmuTgtOffsetLoXorStackItemValueLo2 has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/MMU_TGT_OFFSET_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3329,10 +3222,10 @@ public class Trace {
   }
 
   public Trace pMiscMxpGasMxp(final Bytes b) {
-    if (filled.get(144)) {
+    if (filled.get(142)) {
       throw new IllegalStateException("hub.misc/MXP_GAS_MXP already set");
     } else {
-      filled.set(144);
+      filled.set(142);
     }
 
     // Trim array to size
@@ -3340,9 +3233,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrSaltHiXorMxpGasMxpXorStackItemValueLo3 has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/MXP_GAS_MXP has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3357,15 +3248,14 @@ public class Trace {
   }
 
   public Trace pMiscMxpInst(final long b) {
-    if (filled.get(116)) {
+    if (filled.get(114)) {
       throw new IllegalStateException("hub.misc/MXP_INST already set");
     } else {
-      filled.set(116);
+      filled.set(114);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "returnAtCapacityXorMxpInst has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.misc/MXP_INST has invalid value (" + b + ")");
     }
     returnAtCapacityXorMxpInst.put((byte) (b >> 24));
     returnAtCapacityXorMxpInst.put((byte) (b >> 16));
@@ -3402,10 +3292,10 @@ public class Trace {
   }
 
   public Trace pMiscMxpOffset1Hi(final Bytes b) {
-    if (filled.get(145)) {
+    if (filled.get(143)) {
       throw new IllegalStateException("hub.misc/MXP_OFFSET_1_HI already set");
     } else {
-      filled.set(145);
+      filled.set(143);
     }
 
     // Trim array to size
@@ -3413,9 +3303,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrSaltLoXorMxpOffset1HiXorStackItemValueLo4 has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/MXP_OFFSET_1_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3430,10 +3318,10 @@ public class Trace {
   }
 
   public Trace pMiscMxpOffset1Lo(final Bytes b) {
-    if (filled.get(146)) {
+    if (filled.get(144)) {
       throw new IllegalStateException("hub.misc/MXP_OFFSET_1_LO already set");
     } else {
-      filled.set(146);
+      filled.set(144);
     }
 
     // Trim array to size
@@ -3441,7 +3329,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "trmRawAddressHiXorMxpOffset1Lo has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/MXP_OFFSET_1_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3456,10 +3344,10 @@ public class Trace {
   }
 
   public Trace pMiscMxpOffset2Hi(final Bytes b) {
-    if (filled.get(147)) {
+    if (filled.get(145)) {
       throw new IllegalStateException("hub.misc/MXP_OFFSET_2_HI already set");
     } else {
-      filled.set(147);
+      filled.set(145);
     }
 
     // Trim array to size
@@ -3467,7 +3355,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "mxpOffset2Hi has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/MXP_OFFSET_2_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3482,10 +3370,10 @@ public class Trace {
   }
 
   public Trace pMiscMxpOffset2Lo(final Bytes b) {
-    if (filled.get(148)) {
+    if (filled.get(146)) {
       throw new IllegalStateException("hub.misc/MXP_OFFSET_2_LO already set");
     } else {
-      filled.set(148);
+      filled.set(146);
     }
 
     // Trim array to size
@@ -3493,7 +3381,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "mxpOffset2Lo has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/MXP_OFFSET_2_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3508,10 +3396,10 @@ public class Trace {
   }
 
   public Trace pMiscMxpSize1Hi(final Bytes b) {
-    if (filled.get(149)) {
+    if (filled.get(147)) {
       throw new IllegalStateException("hub.misc/MXP_SIZE_1_HI already set");
     } else {
-      filled.set(149);
+      filled.set(147);
     }
 
     // Trim array to size
@@ -3519,7 +3407,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "mxpSize1Hi has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/MXP_SIZE_1_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3534,10 +3422,10 @@ public class Trace {
   }
 
   public Trace pMiscMxpSize1Lo(final Bytes b) {
-    if (filled.get(150)) {
+    if (filled.get(148)) {
       throw new IllegalStateException("hub.misc/MXP_SIZE_1_LO already set");
     } else {
-      filled.set(150);
+      filled.set(148);
     }
 
     // Trim array to size
@@ -3545,7 +3433,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "mxpSize1Lo has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/MXP_SIZE_1_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3573,10 +3461,10 @@ public class Trace {
   }
 
   public Trace pMiscMxpSize2Hi(final Bytes b) {
-    if (filled.get(151)) {
+    if (filled.get(149)) {
       throw new IllegalStateException("hub.misc/MXP_SIZE_2_HI already set");
     } else {
-      filled.set(151);
+      filled.set(149);
     }
 
     // Trim array to size
@@ -3584,7 +3472,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "mxpSize2Hi has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/MXP_SIZE_2_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3599,10 +3487,10 @@ public class Trace {
   }
 
   public Trace pMiscMxpSize2Lo(final Bytes b) {
-    if (filled.get(152)) {
+    if (filled.get(150)) {
       throw new IllegalStateException("hub.misc/MXP_SIZE_2_LO already set");
     } else {
-      filled.set(152);
+      filled.set(150);
     }
 
     // Trim array to size
@@ -3610,7 +3498,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "mxpSize2Lo has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/MXP_SIZE_2_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3638,17 +3526,18 @@ public class Trace {
   }
 
   public Trace pMiscMxpWords(final Bytes b) {
-    if (filled.get(153)) {
+    if (filled.get(151)) {
       throw new IllegalStateException("hub.misc/MXP_WORDS already set");
     } else {
-      filled.set(153);
+      filled.set(151);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("mxpWords has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/MXP_WORDS has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3663,17 +3552,18 @@ public class Trace {
   }
 
   public Trace pMiscOobData1(final Bytes b) {
-    if (filled.get(154)) {
+    if (filled.get(152)) {
       throw new IllegalStateException("hub.misc/OOB_DATA_1 already set");
     } else {
-      filled.set(154);
+      filled.set(152);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("oobData1 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/OOB_DATA_1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3688,17 +3578,18 @@ public class Trace {
   }
 
   public Trace pMiscOobData2(final Bytes b) {
-    if (filled.get(155)) {
+    if (filled.get(153)) {
       throw new IllegalStateException("hub.misc/OOB_DATA_2 already set");
     } else {
-      filled.set(155);
+      filled.set(153);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("oobData2 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/OOB_DATA_2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3713,17 +3604,18 @@ public class Trace {
   }
 
   public Trace pMiscOobData3(final Bytes b) {
-    if (filled.get(156)) {
+    if (filled.get(154)) {
       throw new IllegalStateException("hub.misc/OOB_DATA_3 already set");
     } else {
-      filled.set(156);
+      filled.set(154);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("oobData3 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/OOB_DATA_3 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3738,17 +3630,18 @@ public class Trace {
   }
 
   public Trace pMiscOobData4(final Bytes b) {
-    if (filled.get(157)) {
+    if (filled.get(155)) {
       throw new IllegalStateException("hub.misc/OOB_DATA_4 already set");
     } else {
-      filled.set(157);
+      filled.set(155);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("oobData4 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/OOB_DATA_4 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3763,17 +3656,18 @@ public class Trace {
   }
 
   public Trace pMiscOobData5(final Bytes b) {
-    if (filled.get(158)) {
+    if (filled.get(156)) {
       throw new IllegalStateException("hub.misc/OOB_DATA_5 already set");
     } else {
-      filled.set(158);
+      filled.set(156);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("oobData5 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/OOB_DATA_5 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3788,17 +3682,18 @@ public class Trace {
   }
 
   public Trace pMiscOobData6(final Bytes b) {
-    if (filled.get(159)) {
+    if (filled.get(157)) {
       throw new IllegalStateException("hub.misc/OOB_DATA_6 already set");
     } else {
-      filled.set(159);
+      filled.set(157);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("oobData6 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/OOB_DATA_6 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3813,17 +3708,18 @@ public class Trace {
   }
 
   public Trace pMiscOobData7(final Bytes b) {
-    if (filled.get(160)) {
+    if (filled.get(158)) {
       throw new IllegalStateException("hub.misc/OOB_DATA_7 already set");
     } else {
-      filled.set(160);
+      filled.set(158);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("oobData7 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/OOB_DATA_7 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3838,17 +3734,18 @@ public class Trace {
   }
 
   public Trace pMiscOobData8(final Bytes b) {
-    if (filled.get(161)) {
+    if (filled.get(159)) {
       throw new IllegalStateException("hub.misc/OOB_DATA_8 already set");
     } else {
-      filled.set(161);
+      filled.set(159);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("oobData8 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/OOB_DATA_8 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3863,17 +3760,18 @@ public class Trace {
   }
 
   public Trace pMiscOobData9(final Bytes b) {
-    if (filled.get(162)) {
+    if (filled.get(160)) {
       throw new IllegalStateException("hub.misc/OOB_DATA_9 already set");
     } else {
-      filled.set(162);
+      filled.set(160);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("oobData9 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/OOB_DATA_9 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3901,14 +3799,14 @@ public class Trace {
   }
 
   public Trace pMiscOobInst(final long b) {
-    if (filled.get(117)) {
+    if (filled.get(115)) {
       throw new IllegalStateException("hub.misc/OOB_INST already set");
     } else {
-      filled.set(117);
+      filled.set(115);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("returnAtOffsetXorOobInst has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.misc/OOB_INST has invalid value (" + b + ")");
     }
     returnAtOffsetXorOobInst.put((byte) (b >> 24));
     returnAtOffsetXorOobInst.put((byte) (b >> 16));
@@ -3944,17 +3842,18 @@ public class Trace {
   }
 
   public Trace pMiscStpGasHi(final Bytes b) {
-    if (filled.get(163)) {
+    if (filled.get(161)) {
       throw new IllegalStateException("hub.misc/STP_GAS_HI already set");
     } else {
-      filled.set(163);
+      filled.set(161);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("stpGasHi has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/STP_GAS_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3969,17 +3868,18 @@ public class Trace {
   }
 
   public Trace pMiscStpGasLo(final Bytes b) {
-    if (filled.get(164)) {
+    if (filled.get(162)) {
       throw new IllegalStateException("hub.misc/STP_GAS_LO already set");
     } else {
-      filled.set(164);
+      filled.set(162);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("stpGasLo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.misc/STP_GAS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -3994,10 +3894,10 @@ public class Trace {
   }
 
   public Trace pMiscStpGasMxp(final Bytes b) {
-    if (filled.get(125)) {
+    if (filled.get(123)) {
       throw new IllegalStateException("hub.misc/STP_GAS_MXP already set");
     } else {
-      filled.set(125);
+      filled.set(123);
     }
 
     // Trim array to size
@@ -4005,7 +3905,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "nonceXorStpGasMxpXorBasefee has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/STP_GAS_MXP has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -4020,10 +3920,10 @@ public class Trace {
   }
 
   public Trace pMiscStpGasPaidOutOfPocket(final Bytes b) {
-    if (filled.get(126)) {
+    if (filled.get(124)) {
       throw new IllegalStateException("hub.misc/STP_GAS_PAID_OUT_OF_POCKET already set");
     } else {
-      filled.set(126);
+      filled.set(124);
     }
 
     // Trim array to size
@@ -4031,9 +3931,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "nonceNewXorStpGasPaidOutOfPocketXorGasInitiallyAvailable has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.misc/STP_GAS_PAID_OUT_OF_POCKET has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -4048,15 +3946,14 @@ public class Trace {
   }
 
   public Trace pMiscStpGasStipend(final long b) {
-    if (filled.get(118)) {
+    if (filled.get(116)) {
       throw new IllegalStateException("hub.misc/STP_GAS_STIPEND already set");
     } else {
-      filled.set(118);
+      filled.set(116);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "returnDataContextNumberXorStpGasStipend has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.misc/STP_GAS_STIPEND has invalid value (" + b + ")");
     }
     returnDataContextNumberXorStpGasStipend.put((byte) (b >> 24));
     returnDataContextNumberXorStpGasStipend.put((byte) (b >> 16));
@@ -4067,10 +3964,10 @@ public class Trace {
   }
 
   public Trace pMiscStpGasUpfrontGasCost(final Bytes b) {
-    if (filled.get(127)) {
+    if (filled.get(125)) {
       throw new IllegalStateException("hub.misc/STP_GAS_UPFRONT_GAS_COST already set");
     } else {
-      filled.set(127);
+      filled.set(125);
     }
 
     // Trim array to size
@@ -4078,7 +3975,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "stpGasUpfrontGasCostXorGasLeftover has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/STP_GAS_UPFRONT_GAS_COST has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -4093,15 +3990,14 @@ public class Trace {
   }
 
   public Trace pMiscStpInstruction(final long b) {
-    if (filled.get(119)) {
+    if (filled.get(117)) {
       throw new IllegalStateException("hub.misc/STP_INSTRUCTION already set");
     } else {
-      filled.set(119);
+      filled.set(117);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "returnDataOffsetXorStpInstruction has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.misc/STP_INSTRUCTION has invalid value (" + b + ")");
     }
     returnDataOffsetXorStpInstruction.put((byte) (b >> 24));
     returnDataOffsetXorStpInstruction.put((byte) (b >> 16));
@@ -4125,10 +4021,10 @@ public class Trace {
   }
 
   public Trace pMiscStpValueHi(final Bytes b) {
-    if (filled.get(165)) {
+    if (filled.get(163)) {
       throw new IllegalStateException("hub.misc/STP_VALUE_HI already set");
     } else {
-      filled.set(165);
+      filled.set(163);
     }
 
     // Trim array to size
@@ -4136,7 +4032,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "stpValueHi has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/STP_VALUE_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -4151,10 +4047,10 @@ public class Trace {
   }
 
   public Trace pMiscStpValueLo(final Bytes b) {
-    if (filled.get(166)) {
+    if (filled.get(164)) {
       throw new IllegalStateException("hub.misc/STP_VALUE_LO already set");
     } else {
-      filled.set(166);
+      filled.set(164);
     }
 
     // Trim array to size
@@ -4162,7 +4058,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "stpValueLo has invalid width (" + bs.bitLength() + "bits)");
+          "hub.misc/STP_VALUE_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -4498,17 +4394,15 @@ public class Trace {
   }
 
   public Trace pScenarioPrcCalleeGas(final long b) {
-    if (filled.get(105)) {
+    if (filled.get(103)) {
       throw new IllegalStateException("hub.scenario/PRC_CALLEE_GAS already set");
     } else {
-      filled.set(105);
+      filled.set(103);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize has invalid value ("
-              + b
-              + ")");
+          "hub.scenario/PRC_CALLEE_GAS has invalid value (" + b + ")");
     }
     addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize
         .put((byte) (b >> 24));
@@ -4523,17 +4417,15 @@ public class Trace {
   }
 
   public Trace pScenarioPrcCallerGas(final long b) {
-    if (filled.get(106)) {
+    if (filled.get(104)) {
       throw new IllegalStateException("hub.scenario/PRC_CALLER_GAS already set");
     } else {
-      filled.set(106);
+      filled.set(104);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.scenario/PRC_CALLER_GAS has invalid value (" + b + ")");
     }
     codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi
         .put((byte) (b >> 24));
@@ -4548,17 +4440,14 @@ public class Trace {
   }
 
   public Trace pScenarioPrcCdo(final long b) {
-    if (filled.get(107)) {
+    if (filled.get(105)) {
       throw new IllegalStateException("hub.scenario/PRC_CDO already set");
     } else {
-      filled.set(107);
+      filled.set(105);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.scenario/PRC_CDO has invalid value (" + b + ")");
     }
     codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi.put(
         (byte) (b >> 24));
@@ -4573,17 +4462,14 @@ public class Trace {
   }
 
   public Trace pScenarioPrcCds(final long b) {
-    if (filled.get(108)) {
+    if (filled.get(106)) {
       throw new IllegalStateException("hub.scenario/PRC_CDS already set");
     } else {
-      filled.set(108);
+      filled.set(106);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.scenario/PRC_CDS has invalid value (" + b + ")");
     }
     codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize.put(
         (byte) (b >> 24));
@@ -4693,17 +4579,14 @@ public class Trace {
   }
 
   public Trace pScenarioPrcRac(final long b) {
-    if (filled.get(109)) {
+    if (filled.get(107)) {
       throw new IllegalStateException("hub.scenario/PRC_RAC already set");
     } else {
-      filled.set(109);
+      filled.set(107);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.scenario/PRC_RAC has invalid value (" + b + ")");
     }
     deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi.put(
         (byte) (b >> 24));
@@ -4717,17 +4600,14 @@ public class Trace {
   }
 
   public Trace pScenarioPrcRao(final long b) {
-    if (filled.get(110)) {
+    if (filled.get(108)) {
       throw new IllegalStateException("hub.scenario/PRC_RAO already set");
     } else {
-      filled.set(110);
+      filled.set(108);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.scenario/PRC_RAO has invalid value (" + b + ")");
     }
     deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao.put((byte) (b >> 24));
     deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao.put((byte) (b >> 16));
@@ -4738,17 +4618,15 @@ public class Trace {
   }
 
   public Trace pScenarioPrcReturnGas(final long b) {
-    if (filled.get(111)) {
+    if (filled.get(109)) {
       throw new IllegalStateException("hub.scenario/PRC_RETURN_GAS already set");
     } else {
-      filled.set(111);
+      filled.set(109);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas has invalid value ("
-              + b
-              + ")");
+          "hub.scenario/PRC_RETURN_GAS has invalid value (" + b + ")");
     }
     deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas.put((byte) (b >> 24));
     deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas.put((byte) (b >> 16));
@@ -5176,10 +5054,10 @@ public class Trace {
   }
 
   public Trace pStackHashInfoKeccakHi(final Bytes b) {
-    if (filled.get(134)) {
+    if (filled.get(132)) {
       throw new IllegalStateException("hub.stack/HASH_INFO_KECCAK_HI already set");
     } else {
-      filled.set(134);
+      filled.set(132);
     }
 
     // Trim array to size
@@ -5187,9 +5065,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "addressLoXorAccountAddressLoXorExpData1XorHashInfoKeccakHiXorAddressLoXorCoinbaseAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/HASH_INFO_KECCAK_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5206,10 +5082,10 @@ public class Trace {
   }
 
   public Trace pStackHashInfoKeccakLo(final Bytes b) {
-    if (filled.get(135)) {
+    if (filled.get(133)) {
       throw new IllegalStateException("hub.stack/HASH_INFO_KECCAK_LO already set");
     } else {
-      filled.set(135);
+      filled.set(133);
     }
 
     // Trim array to size
@@ -5217,9 +5093,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceXorByteCodeAddressLoXorExpData2XorHashInfoKeccakLoXorStorageKeyHiXorFromAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/HASH_INFO_KECCAK_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5248,10 +5122,10 @@ public class Trace {
   }
 
   public Trace pStackInstruction(final Bytes b) {
-    if (filled.get(167)) {
+    if (filled.get(165)) {
       throw new IllegalStateException("hub.stack/INSTRUCTION already set");
     } else {
-      filled.set(167);
+      filled.set(165);
     }
 
     // Trim array to size
@@ -5259,7 +5133,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 256) {
       throw new IllegalArgumentException(
-          "instruction has invalid width (" + bs.bitLength() + "bits)");
+          "hub.stack/INSTRUCTION has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 32; i++) {
@@ -5432,30 +5306,6 @@ public class Trace {
     return this;
   }
 
-  public Trace pStackNbAdded(final UnsignedByte b) {
-    if (filled.get(96)) {
-      throw new IllegalStateException("hub.stack/NB_ADDED already set");
-    } else {
-      filled.set(96);
-    }
-
-    nbAdded.put(b.toByte());
-
-    return this;
-  }
-
-  public Trace pStackNbRemoved(final UnsignedByte b) {
-    if (filled.get(97)) {
-      throw new IllegalStateException("hub.stack/NB_REMOVED already set");
-    } else {
-      filled.set(97);
-    }
-
-    nbRemoved.put(b.toByte());
-
-    return this;
-  }
-
   public Trace pStackOogx(final Boolean b) {
     if (filled.get(75)) {
       throw new IllegalStateException("hub.stack/OOGX already set");
@@ -5481,10 +5331,10 @@ public class Trace {
   }
 
   public Trace pStackPushValueHi(final Bytes b) {
-    if (filled.get(136)) {
+    if (filled.get(134)) {
       throw new IllegalStateException("hub.stack/PUSH_VALUE_HI already set");
     } else {
-      filled.set(136);
+      filled.set(134);
     }
 
     // Trim array to size
@@ -5492,9 +5342,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceNewXorCallerAddressLoXorExpData3XorPushValueHiXorStorageKeyLoXorInitialBalance has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/PUSH_VALUE_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5511,10 +5359,10 @@ public class Trace {
   }
 
   public Trace pStackPushValueLo(final Bytes b) {
-    if (filled.get(137)) {
+    if (filled.get(135)) {
       throw new IllegalStateException("hub.stack/PUSH_VALUE_LO already set");
     } else {
-      filled.set(137);
+      filled.set(135);
     }
 
     // Trim array to size
@@ -5522,9 +5370,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiXorCallValueXorExpData4XorPushValueLoXorValueCurrHiXorToAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/PUSH_VALUE_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5599,15 +5445,15 @@ public class Trace {
   }
 
   public Trace pStackStackItemHeight1(final long b) {
-    if (filled.get(99)) {
+    if (filled.get(97)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_HEIGHT_1 already set");
     } else {
-      filled.set(99);
+      filled.set(97);
     }
 
     if (b >= 2048L) {
       throw new IllegalArgumentException(
-          "callStackDepthXorStackItemHeight1 has invalid value (" + b + ")");
+          "hub.stack/STACK_ITEM_HEIGHT_1 has invalid value (" + b + ")");
     }
     callStackDepthXorStackItemHeight1.put((byte) (b >> 8));
     callStackDepthXorStackItemHeight1.put((byte) b);
@@ -5616,14 +5462,15 @@ public class Trace {
   }
 
   public Trace pStackStackItemHeight2(final long b) {
-    if (filled.get(100)) {
+    if (filled.get(98)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_HEIGHT_2 already set");
     } else {
-      filled.set(100);
+      filled.set(98);
     }
 
     if (b >= 2048L) {
-      throw new IllegalArgumentException("stackItemHeight2 has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.stack/STACK_ITEM_HEIGHT_2 has invalid value (" + b + ")");
     }
     stackItemHeight2.put((byte) (b >> 8));
     stackItemHeight2.put((byte) b);
@@ -5632,14 +5479,15 @@ public class Trace {
   }
 
   public Trace pStackStackItemHeight3(final long b) {
-    if (filled.get(101)) {
+    if (filled.get(99)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_HEIGHT_3 already set");
     } else {
-      filled.set(101);
+      filled.set(99);
     }
 
     if (b >= 2048L) {
-      throw new IllegalArgumentException("stackItemHeight3 has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.stack/STACK_ITEM_HEIGHT_3 has invalid value (" + b + ")");
     }
     stackItemHeight3.put((byte) (b >> 8));
     stackItemHeight3.put((byte) b);
@@ -5648,14 +5496,15 @@ public class Trace {
   }
 
   public Trace pStackStackItemHeight4(final long b) {
-    if (filled.get(102)) {
+    if (filled.get(100)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_HEIGHT_4 already set");
     } else {
-      filled.set(102);
+      filled.set(100);
     }
 
     if (b >= 2048L) {
-      throw new IllegalArgumentException("stackItemHeight4 has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.stack/STACK_ITEM_HEIGHT_4 has invalid value (" + b + ")");
     }
     stackItemHeight4.put((byte) (b >> 8));
     stackItemHeight4.put((byte) b);
@@ -5712,14 +5561,15 @@ public class Trace {
   }
 
   public Trace pStackStackItemStamp1(final long b) {
-    if (filled.get(121)) {
+    if (filled.get(119)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_STAMP_1 already set");
     } else {
-      filled.set(121);
+      filled.set(119);
     }
 
     if (b >= 68719476736L) {
-      throw new IllegalArgumentException("stackItemStamp1 has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.stack/STACK_ITEM_STAMP_1 has invalid value (" + b + ")");
     }
     stackItemStamp1.put((byte) (b >> 32));
     stackItemStamp1.put((byte) (b >> 24));
@@ -5731,14 +5581,15 @@ public class Trace {
   }
 
   public Trace pStackStackItemStamp2(final long b) {
-    if (filled.get(122)) {
+    if (filled.get(120)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_STAMP_2 already set");
     } else {
-      filled.set(122);
+      filled.set(120);
     }
 
     if (b >= 68719476736L) {
-      throw new IllegalArgumentException("stackItemStamp2 has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.stack/STACK_ITEM_STAMP_2 has invalid value (" + b + ")");
     }
     stackItemStamp2.put((byte) (b >> 32));
     stackItemStamp2.put((byte) (b >> 24));
@@ -5750,14 +5601,15 @@ public class Trace {
   }
 
   public Trace pStackStackItemStamp3(final long b) {
-    if (filled.get(123)) {
+    if (filled.get(121)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_STAMP_3 already set");
     } else {
-      filled.set(123);
+      filled.set(121);
     }
 
     if (b >= 68719476736L) {
-      throw new IllegalArgumentException("stackItemStamp3 has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.stack/STACK_ITEM_STAMP_3 has invalid value (" + b + ")");
     }
     stackItemStamp3.put((byte) (b >> 32));
     stackItemStamp3.put((byte) (b >> 24));
@@ -5769,14 +5621,15 @@ public class Trace {
   }
 
   public Trace pStackStackItemStamp4(final long b) {
-    if (filled.get(124)) {
+    if (filled.get(122)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_STAMP_4 already set");
     } else {
-      filled.set(124);
+      filled.set(122);
     }
 
     if (b >= 68719476736L) {
-      throw new IllegalArgumentException("stackItemStamp4 has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "hub.stack/STACK_ITEM_STAMP_4 has invalid value (" + b + ")");
     }
     stackItemStamp4.put((byte) (b >> 32));
     stackItemStamp4.put((byte) (b >> 24));
@@ -5788,10 +5641,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueHi1(final Bytes b) {
-    if (filled.get(138)) {
+    if (filled.get(136)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_HI_1 already set");
     } else {
-      filled.set(138);
+      filled.set(136);
     }
 
     // Trim array to size
@@ -5799,9 +5652,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiNewXorExpData5XorStackItemValueHi1XorValueCurrLoXorValue has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/STACK_ITEM_VALUE_HI_1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5816,10 +5667,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueHi2(final Bytes b) {
-    if (filled.get(139)) {
+    if (filled.get(137)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_HI_2 already set");
     } else {
-      filled.set(139);
+      filled.set(137);
     }
 
     // Trim array to size
@@ -5827,9 +5678,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashLoXorMmuLimb1XorStackItemValueHi2XorValueNextHi has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/STACK_ITEM_VALUE_HI_2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5844,10 +5693,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueHi3(final Bytes b) {
-    if (filled.get(140)) {
+    if (filled.get(138)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_HI_3 already set");
     } else {
-      filled.set(140);
+      filled.set(138);
     }
 
     // Trim array to size
@@ -5855,9 +5704,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashLoNewXorMmuLimb2XorStackItemValueHi3XorValueNextLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/STACK_ITEM_VALUE_HI_3 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5872,10 +5719,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueHi4(final Bytes b) {
-    if (filled.get(141)) {
+    if (filled.get(139)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_HI_4 already set");
     } else {
-      filled.set(141);
+      filled.set(139);
     }
 
     // Trim array to size
@@ -5883,9 +5730,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrDepAddrLoXorMmuSrcOffsetHiXorStackItemValueHi4XorValueOrigHi has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/STACK_ITEM_VALUE_HI_4 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5900,10 +5745,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueLo1(final Bytes b) {
-    if (filled.get(142)) {
+    if (filled.get(140)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_LO_1 already set");
     } else {
-      filled.set(142);
+      filled.set(140);
     }
 
     // Trim array to size
@@ -5911,9 +5756,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrKecHiXorMmuSrcOffsetLoXorStackItemValueLo1XorValueOrigLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/STACK_ITEM_VALUE_LO_1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5928,10 +5771,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueLo2(final Bytes b) {
-    if (filled.get(143)) {
+    if (filled.get(141)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_LO_2 already set");
     } else {
-      filled.set(143);
+      filled.set(141);
     }
 
     // Trim array to size
@@ -5939,9 +5782,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrKecLoXorMmuTgtOffsetLoXorStackItemValueLo2 has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/STACK_ITEM_VALUE_LO_2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5956,10 +5797,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueLo3(final Bytes b) {
-    if (filled.get(144)) {
+    if (filled.get(142)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_LO_3 already set");
     } else {
-      filled.set(144);
+      filled.set(142);
     }
 
     // Trim array to size
@@ -5967,9 +5808,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrSaltHiXorMxpGasMxpXorStackItemValueLo3 has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/STACK_ITEM_VALUE_LO_3 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -5984,10 +5823,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueLo4(final Bytes b) {
-    if (filled.get(145)) {
+    if (filled.get(143)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_LO_4 already set");
     } else {
-      filled.set(145);
+      filled.set(143);
     }
 
     // Trim array to size
@@ -5995,9 +5834,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrSaltLoXorMxpOffset1HiXorStackItemValueLo4 has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.stack/STACK_ITEM_VALUE_LO_4 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6036,17 +5873,14 @@ public class Trace {
   }
 
   public Trace pStackStaticGas(final long b) {
-    if (filled.get(105)) {
+    if (filled.get(103)) {
       throw new IllegalStateException("hub.stack/STATIC_GAS already set");
     } else {
-      filled.set(105);
+      filled.set(103);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.stack/STATIC_GAS has invalid value (" + b + ")");
     }
     addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize
         .put((byte) (b >> 24));
@@ -6133,17 +5967,14 @@ public class Trace {
   }
 
   public Trace pStorageAddressHi(final long b) {
-    if (filled.get(105)) {
+    if (filled.get(103)) {
       throw new IllegalStateException("hub.storage/ADDRESS_HI already set");
     } else {
-      filled.set(105);
+      filled.set(103);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException(
-          "addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize has invalid value ("
-              + b
-              + ")");
+      throw new IllegalArgumentException("hub.storage/ADDRESS_HI has invalid value (" + b + ")");
     }
     addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize
         .put((byte) (b >> 24));
@@ -6158,10 +5989,10 @@ public class Trace {
   }
 
   public Trace pStorageAddressLo(final Bytes b) {
-    if (filled.get(134)) {
+    if (filled.get(132)) {
       throw new IllegalStateException("hub.storage/ADDRESS_LO already set");
     } else {
-      filled.set(134);
+      filled.set(132);
     }
 
     // Trim array to size
@@ -6169,9 +6000,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "addressLoXorAccountAddressLoXorExpData1XorHashInfoKeccakHiXorAddressLoXorCoinbaseAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.storage/ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6227,17 +6056,15 @@ public class Trace {
   }
 
   public Trace pStorageDeploymentNumber(final long b) {
-    if (filled.get(106)) {
+    if (filled.get(104)) {
       throw new IllegalStateException("hub.storage/DEPLOYMENT_NUMBER already set");
     } else {
-      filled.set(106);
+      filled.set(104);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.storage/DEPLOYMENT_NUMBER has invalid value (" + b + ")");
     }
     codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi
         .put((byte) (b >> 24));
@@ -6252,17 +6079,15 @@ public class Trace {
   }
 
   public Trace pStorageDeploymentNumberFinalInBlock(final long b) {
-    if (filled.get(103)) {
+    if (filled.get(101)) {
       throw new IllegalStateException("hub.storage/DEPLOYMENT_NUMBER_FINAL_IN_BLOCK already set");
     } else {
-      filled.set(103);
+      filled.set(101);
     }
 
     if (b >= 65536L) {
       throw new IllegalArgumentException(
-          "deploymentNumberFinalInBlockXorDeploymentNumberFinalInBlock has invalid value ("
-              + b
-              + ")");
+          "hub.storage/DEPLOYMENT_NUMBER_FINAL_IN_BLOCK has invalid value (" + b + ")");
     }
     deploymentNumberFinalInBlockXorDeploymentNumberFinalInBlock.put((byte) (b >> 8));
     deploymentNumberFinalInBlockXorDeploymentNumberFinalInBlock.put((byte) b);
@@ -6271,17 +6096,15 @@ public class Trace {
   }
 
   public Trace pStorageDeploymentNumberFirstInBlock(final long b) {
-    if (filled.get(104)) {
+    if (filled.get(102)) {
       throw new IllegalStateException("hub.storage/DEPLOYMENT_NUMBER_FIRST_IN_BLOCK already set");
     } else {
-      filled.set(104);
+      filled.set(102);
     }
 
     if (b >= 65536L) {
       throw new IllegalArgumentException(
-          "deploymentNumberFirstInBlockXorDeploymentNumberFirstInBlock has invalid value ("
-              + b
-              + ")");
+          "hub.storage/DEPLOYMENT_NUMBER_FIRST_IN_BLOCK has invalid value (" + b + ")");
     }
     deploymentNumberFirstInBlockXorDeploymentNumberFirstInBlock.put((byte) (b >> 8));
     deploymentNumberFirstInBlockXorDeploymentNumberFirstInBlock.put((byte) b);
@@ -6290,17 +6113,15 @@ public class Trace {
   }
 
   public Trace pStorageDeploymentNumberInfty(final long b) {
-    if (filled.get(107)) {
+    if (filled.get(105)) {
       throw new IllegalStateException("hub.storage/DEPLOYMENT_NUMBER_INFTY already set");
     } else {
-      filled.set(107);
+      filled.set(105);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.storage/DEPLOYMENT_NUMBER_INFTY has invalid value (" + b + ")");
     }
     codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi.put(
         (byte) (b >> 24));
@@ -6392,10 +6213,10 @@ public class Trace {
   }
 
   public Trace pStorageStorageKeyHi(final Bytes b) {
-    if (filled.get(135)) {
+    if (filled.get(133)) {
       throw new IllegalStateException("hub.storage/STORAGE_KEY_HI already set");
     } else {
-      filled.set(135);
+      filled.set(133);
     }
 
     // Trim array to size
@@ -6403,9 +6224,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceXorByteCodeAddressLoXorExpData2XorHashInfoKeccakLoXorStorageKeyHiXorFromAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.storage/STORAGE_KEY_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6422,10 +6241,10 @@ public class Trace {
   }
 
   public Trace pStorageStorageKeyLo(final Bytes b) {
-    if (filled.get(136)) {
+    if (filled.get(134)) {
       throw new IllegalStateException("hub.storage/STORAGE_KEY_LO already set");
     } else {
-      filled.set(136);
+      filled.set(134);
     }
 
     // Trim array to size
@@ -6433,9 +6252,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceNewXorCallerAddressLoXorExpData3XorPushValueHiXorStorageKeyLoXorInitialBalance has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.storage/STORAGE_KEY_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6465,10 +6282,10 @@ public class Trace {
   }
 
   public Trace pStorageValueCurrHi(final Bytes b) {
-    if (filled.get(137)) {
+    if (filled.get(135)) {
       throw new IllegalStateException("hub.storage/VALUE_CURR_HI already set");
     } else {
-      filled.set(137);
+      filled.set(135);
     }
 
     // Trim array to size
@@ -6476,9 +6293,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiXorCallValueXorExpData4XorPushValueLoXorValueCurrHiXorToAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.storage/VALUE_CURR_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6519,10 +6334,10 @@ public class Trace {
   }
 
   public Trace pStorageValueCurrLo(final Bytes b) {
-    if (filled.get(138)) {
+    if (filled.get(136)) {
       throw new IllegalStateException("hub.storage/VALUE_CURR_LO already set");
     } else {
-      filled.set(138);
+      filled.set(136);
     }
 
     // Trim array to size
@@ -6530,9 +6345,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiNewXorExpData5XorStackItemValueHi1XorValueCurrLoXorValue has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.storage/VALUE_CURR_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6547,10 +6360,10 @@ public class Trace {
   }
 
   public Trace pStorageValueNextHi(final Bytes b) {
-    if (filled.get(139)) {
+    if (filled.get(137)) {
       throw new IllegalStateException("hub.storage/VALUE_NEXT_HI already set");
     } else {
-      filled.set(139);
+      filled.set(137);
     }
 
     // Trim array to size
@@ -6558,9 +6371,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashLoXorMmuLimb1XorStackItemValueHi2XorValueNextHi has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.storage/VALUE_NEXT_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6613,10 +6424,10 @@ public class Trace {
   }
 
   public Trace pStorageValueNextLo(final Bytes b) {
-    if (filled.get(140)) {
+    if (filled.get(138)) {
       throw new IllegalStateException("hub.storage/VALUE_NEXT_LO already set");
     } else {
-      filled.set(140);
+      filled.set(138);
     }
 
     // Trim array to size
@@ -6624,9 +6435,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashLoNewXorMmuLimb2XorStackItemValueHi3XorValueNextLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.storage/VALUE_NEXT_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6641,10 +6450,10 @@ public class Trace {
   }
 
   public Trace pStorageValueOrigHi(final Bytes b) {
-    if (filled.get(141)) {
+    if (filled.get(139)) {
       throw new IllegalStateException("hub.storage/VALUE_ORIG_HI already set");
     } else {
-      filled.set(141);
+      filled.set(139);
     }
 
     // Trim array to size
@@ -6652,9 +6461,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrDepAddrLoXorMmuSrcOffsetHiXorStackItemValueHi4XorValueOrigHi has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.storage/VALUE_ORIG_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6681,10 +6488,10 @@ public class Trace {
   }
 
   public Trace pStorageValueOrigLo(final Bytes b) {
-    if (filled.get(142)) {
+    if (filled.get(140)) {
       throw new IllegalStateException("hub.storage/VALUE_ORIG_LO already set");
     } else {
-      filled.set(142);
+      filled.set(140);
     }
 
     // Trim array to size
@@ -6692,9 +6499,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "rlpaddrKecHiXorMmuSrcOffsetLoXorStackItemValueLo1XorValueOrigLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.storage/VALUE_ORIG_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6734,10 +6539,10 @@ public class Trace {
   }
 
   public Trace pTransactionBasefee(final Bytes b) {
-    if (filled.get(125)) {
+    if (filled.get(123)) {
       throw new IllegalStateException("hub.transaction/BASEFEE already set");
     } else {
-      filled.set(125);
+      filled.set(123);
     }
 
     // Trim array to size
@@ -6745,7 +6550,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "nonceXorStpGasMxpXorBasefee has invalid width (" + bs.bitLength() + "bits)");
+          "hub.transaction/BASEFEE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -6760,17 +6565,15 @@ public class Trace {
   }
 
   public Trace pTransactionCallDataSize(final long b) {
-    if (filled.get(105)) {
+    if (filled.get(103)) {
       throw new IllegalStateException("hub.transaction/CALL_DATA_SIZE already set");
     } else {
-      filled.set(105);
+      filled.set(103);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize has invalid value ("
-              + b
-              + ")");
+          "hub.transaction/CALL_DATA_SIZE has invalid value (" + b + ")");
     }
     addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize
         .put((byte) (b >> 24));
@@ -6785,17 +6588,15 @@ public class Trace {
   }
 
   public Trace pTransactionCoinbaseAddressHi(final long b) {
-    if (filled.get(106)) {
+    if (filled.get(104)) {
       throw new IllegalStateException("hub.transaction/COINBASE_ADDRESS_HI already set");
     } else {
-      filled.set(106);
+      filled.set(104);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.transaction/COINBASE_ADDRESS_HI has invalid value (" + b + ")");
     }
     codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi
         .put((byte) (b >> 24));
@@ -6810,10 +6611,10 @@ public class Trace {
   }
 
   public Trace pTransactionCoinbaseAddressLo(final Bytes b) {
-    if (filled.get(134)) {
+    if (filled.get(132)) {
       throw new IllegalStateException("hub.transaction/COINBASE_ADDRESS_LO already set");
     } else {
-      filled.set(134);
+      filled.set(132);
     }
 
     // Trim array to size
@@ -6821,9 +6622,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "addressLoXorAccountAddressLoXorExpData1XorHashInfoKeccakHiXorAddressLoXorCoinbaseAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.transaction/COINBASE_ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6853,17 +6652,15 @@ public class Trace {
   }
 
   public Trace pTransactionFromAddressHi(final long b) {
-    if (filled.get(107)) {
+    if (filled.get(105)) {
       throw new IllegalStateException("hub.transaction/FROM_ADDRESS_HI already set");
     } else {
-      filled.set(107);
+      filled.set(105);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.transaction/FROM_ADDRESS_HI has invalid value (" + b + ")");
     }
     codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi.put(
         (byte) (b >> 24));
@@ -6878,10 +6675,10 @@ public class Trace {
   }
 
   public Trace pTransactionFromAddressLo(final Bytes b) {
-    if (filled.get(135)) {
+    if (filled.get(133)) {
       throw new IllegalStateException("hub.transaction/FROM_ADDRESS_LO already set");
     } else {
-      filled.set(135);
+      filled.set(133);
     }
 
     // Trim array to size
@@ -6889,9 +6686,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceXorByteCodeAddressLoXorExpData2XorHashInfoKeccakLoXorStorageKeyHiXorFromAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.transaction/FROM_ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -6908,10 +6703,10 @@ public class Trace {
   }
 
   public Trace pTransactionGasInitiallyAvailable(final Bytes b) {
-    if (filled.get(126)) {
+    if (filled.get(124)) {
       throw new IllegalStateException("hub.transaction/GAS_INITIALLY_AVAILABLE already set");
     } else {
-      filled.set(126);
+      filled.set(124);
     }
 
     // Trim array to size
@@ -6919,9 +6714,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "nonceNewXorStpGasPaidOutOfPocketXorGasInitiallyAvailable has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.transaction/GAS_INITIALLY_AVAILABLE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -6936,10 +6729,10 @@ public class Trace {
   }
 
   public Trace pTransactionGasLeftover(final Bytes b) {
-    if (filled.get(127)) {
+    if (filled.get(125)) {
       throw new IllegalStateException("hub.transaction/GAS_LEFTOVER already set");
     } else {
-      filled.set(127);
+      filled.set(125);
     }
 
     // Trim array to size
@@ -6947,7 +6740,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "stpGasUpfrontGasCostXorGasLeftover has invalid width (" + bs.bitLength() + "bits)");
+          "hub.transaction/GAS_LEFTOVER has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -6962,17 +6755,18 @@ public class Trace {
   }
 
   public Trace pTransactionGasLimit(final Bytes b) {
-    if (filled.get(128)) {
+    if (filled.get(126)) {
       throw new IllegalStateException("hub.transaction/GAS_LIMIT already set");
     } else {
-      filled.set(128);
+      filled.set(126);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("gasLimit has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.transaction/GAS_LIMIT has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -6987,17 +6781,18 @@ public class Trace {
   }
 
   public Trace pTransactionGasPrice(final Bytes b) {
-    if (filled.get(129)) {
+    if (filled.get(127)) {
       throw new IllegalStateException("hub.transaction/GAS_PRICE already set");
     } else {
-      filled.set(129);
+      filled.set(127);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("gasPrice has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.transaction/GAS_PRICE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -7012,17 +6807,15 @@ public class Trace {
   }
 
   public Trace pTransactionInitCodeSize(final long b) {
-    if (filled.get(108)) {
+    if (filled.get(106)) {
       throw new IllegalStateException("hub.transaction/INIT_CODE_SIZE already set");
     } else {
-      filled.set(108);
+      filled.set(106);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize has invalid value ("
-              + b
-              + ")");
+          "hub.transaction/INIT_CODE_SIZE has invalid value (" + b + ")");
     }
     codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize.put(
         (byte) (b >> 24));
@@ -7036,10 +6829,10 @@ public class Trace {
   }
 
   public Trace pTransactionInitialBalance(final Bytes b) {
-    if (filled.get(136)) {
+    if (filled.get(134)) {
       throw new IllegalStateException("hub.transaction/INITIAL_BALANCE already set");
     } else {
-      filled.set(136);
+      filled.set(134);
     }
 
     // Trim array to size
@@ -7047,9 +6840,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "balanceNewXorCallerAddressLoXorExpData3XorPushValueHiXorStorageKeyLoXorInitialBalance has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.transaction/INITIAL_BALANCE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -7092,17 +6883,18 @@ public class Trace {
   }
 
   public Trace pTransactionNonce(final Bytes b) {
-    if (filled.get(130)) {
+    if (filled.get(128)) {
       throw new IllegalStateException("hub.transaction/NONCE already set");
     } else {
-      filled.set(130);
+      filled.set(128);
     }
 
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("nonce has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "hub.transaction/NONCE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -7117,10 +6909,10 @@ public class Trace {
   }
 
   public Trace pTransactionPriorityFeePerGas(final Bytes b) {
-    if (filled.get(131)) {
+    if (filled.get(129)) {
       throw new IllegalStateException("hub.transaction/PRIORITY_FEE_PER_GAS already set");
     } else {
-      filled.set(131);
+      filled.set(129);
     }
 
     // Trim array to size
@@ -7128,7 +6920,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "priorityFeePerGas has invalid width (" + bs.bitLength() + "bits)");
+          "hub.transaction/PRIORITY_FEE_PER_GAS has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -7143,10 +6935,10 @@ public class Trace {
   }
 
   public Trace pTransactionRefundCounterInfinity(final Bytes b) {
-    if (filled.get(132)) {
+    if (filled.get(130)) {
       throw new IllegalStateException("hub.transaction/REFUND_COUNTER_INFINITY already set");
     } else {
-      filled.set(132);
+      filled.set(130);
     }
 
     // Trim array to size
@@ -7154,7 +6946,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "refundCounterInfinity has invalid width (" + bs.bitLength() + "bits)");
+          "hub.transaction/REFUND_COUNTER_INFINITY has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -7169,10 +6961,10 @@ public class Trace {
   }
 
   public Trace pTransactionRefundEffective(final Bytes b) {
-    if (filled.get(133)) {
+    if (filled.get(131)) {
       throw new IllegalStateException("hub.transaction/REFUND_EFFECTIVE already set");
     } else {
-      filled.set(133);
+      filled.set(131);
     }
 
     // Trim array to size
@@ -7180,7 +6972,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "refundEffective has invalid width (" + bs.bitLength() + "bits)");
+          "hub.transaction/REFUND_EFFECTIVE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -7221,17 +7013,15 @@ public class Trace {
   }
 
   public Trace pTransactionToAddressHi(final long b) {
-    if (filled.get(109)) {
+    if (filled.get(107)) {
       throw new IllegalStateException("hub.transaction/TO_ADDRESS_HI already set");
     } else {
-      filled.set(109);
+      filled.set(107);
     }
 
     if (b >= 4294967296L) {
       throw new IllegalArgumentException(
-          "deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi has invalid value ("
-              + b
-              + ")");
+          "hub.transaction/TO_ADDRESS_HI has invalid value (" + b + ")");
     }
     deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi.put(
         (byte) (b >> 24));
@@ -7245,10 +7035,10 @@ public class Trace {
   }
 
   public Trace pTransactionToAddressLo(final Bytes b) {
-    if (filled.get(137)) {
+    if (filled.get(135)) {
       throw new IllegalStateException("hub.transaction/TO_ADDRESS_LO already set");
     } else {
-      filled.set(137);
+      filled.set(135);
     }
 
     // Trim array to size
@@ -7256,9 +7046,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiXorCallValueXorExpData4XorPushValueLoXorValueCurrHiXorToAddressLo has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.transaction/TO_ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -7273,10 +7061,10 @@ public class Trace {
   }
 
   public Trace pTransactionValue(final Bytes b) {
-    if (filled.get(138)) {
+    if (filled.get(136)) {
       throw new IllegalStateException("hub.transaction/VALUE already set");
     } else {
-      filled.set(138);
+      filled.set(136);
     }
 
     // Trim array to size
@@ -7284,9 +7072,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHiNewXorExpData5XorStackItemValueHi1XorValueCurrLoXorValue has invalid width ("
-              + bs.bitLength()
-              + "bits)");
+          "hub.transaction/VALUE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -7392,7 +7178,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("programCounter has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.PROGRAM_COUNTER has invalid value (" + b + ")");
     }
     programCounter.put((byte) (b >> 24));
     programCounter.put((byte) (b >> 16));
@@ -7410,7 +7196,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("programCounterNew has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.PROGRAM_COUNTER_NEW has invalid value (" + b + ")");
     }
     programCounterNew.put((byte) (b >> 24));
     programCounterNew.put((byte) (b >> 16));
@@ -7428,7 +7214,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("refundCounter has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.REFUND_COUNTER has invalid value (" + b + ")");
     }
     refundCounter.put((byte) (b >> 24));
     refundCounter.put((byte) (b >> 16));
@@ -7446,7 +7232,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("refundCounterNew has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.REFUND_COUNTER_NEW has invalid value (" + b + ")");
     }
     refundCounterNew.put((byte) (b >> 24));
     refundCounterNew.put((byte) (b >> 16));
@@ -7464,7 +7250,7 @@ public class Trace {
     }
 
     if (b >= 65536L) {
-      throw new IllegalArgumentException("relativeBlockNumber has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.RELATIVE_BLOCK_NUMBER has invalid value (" + b + ")");
     }
     relativeBlockNumber.put((byte) (b >> 8));
     relativeBlockNumber.put((byte) b);
@@ -7480,7 +7266,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("subStamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub.SUB_STAMP has invalid value (" + b + ")");
     }
     subStamp.put((byte) (b >> 24));
     subStamp.put((byte) (b >> 16));
@@ -7567,12 +7353,12 @@ public class Trace {
       throw new IllegalStateException("hub.ABSOLUTE_TRANSACTION_NUMBER has not been filled");
     }
 
-    if (!filled.get(105)) {
+    if (!filled.get(103)) {
       throw new IllegalStateException(
           "hub.ADDRESS_HI_xor_ACCOUNT_ADDRESS_HI_xor_CCRS_STAMP_xor_PRC_CALLEE_GAS_xor_STATIC_GAS_xor_ADDRESS_HI_xor_CALL_DATA_SIZE has not been filled");
     }
 
-    if (!filled.get(134)) {
+    if (!filled.get(132)) {
       throw new IllegalStateException(
           "hub.ADDRESS_LO_xor_ACCOUNT_ADDRESS_LO_xor_EXP_DATA_1_xor_HASH_INFO_KECCAK_HI_xor_ADDRESS_LO_xor_COINBASE_ADDRESS_LO has not been filled");
     }
@@ -7596,25 +7382,25 @@ public class Trace {
       throw new IllegalStateException("hub.ALPHA has not been filled");
     }
 
-    if (!filled.get(136)) {
+    if (!filled.get(134)) {
       throw new IllegalStateException(
           "hub.BALANCE_NEW_xor_CALLER_ADDRESS_LO_xor_EXP_DATA_3_xor_PUSH_VALUE_HI_xor_STORAGE_KEY_LO_xor_INITIAL_BALANCE has not been filled");
     }
 
-    if (!filled.get(135)) {
+    if (!filled.get(133)) {
       throw new IllegalStateException(
           "hub.BALANCE_xor_BYTE_CODE_ADDRESS_LO_xor_EXP_DATA_2_xor_HASH_INFO_KECCAK_LO_xor_STORAGE_KEY_HI_xor_FROM_ADDRESS_LO has not been filled");
     }
 
-    if (!filled.get(113)) {
+    if (!filled.get(111)) {
       throw new IllegalStateException("hub.CALL_DATA_OFFSET_xor_MMU_SIZE has not been filled");
     }
 
-    if (!filled.get(114)) {
+    if (!filled.get(112)) {
       throw new IllegalStateException("hub.CALL_DATA_SIZE_xor_MMU_SRC_ID has not been filled");
     }
 
-    if (!filled.get(99)) {
+    if (!filled.get(97)) {
       throw new IllegalStateException(
           "hub.CALL_STACK_DEPTH_xor_STACK_ITEM_HEIGHT_1 has not been filled");
     }
@@ -7627,37 +7413,37 @@ public class Trace {
       throw new IllegalStateException("hub.CODE_FRAGMENT_INDEX has not been filled");
     }
 
-    if (!filled.get(106)) {
+    if (!filled.get(104)) {
       throw new IllegalStateException(
           "hub.CODE_FRAGMENT_INDEX_xor_ACCOUNT_DEPLOYMENT_NUMBER_xor_EXP_INST_xor_PRC_CALLER_GAS_xor_DEPLOYMENT_NUMBER_xor_COINBASE_ADDRESS_HI has not been filled");
     }
 
-    if (!filled.get(138)) {
+    if (!filled.get(136)) {
       throw new IllegalStateException(
           "hub.CODE_HASH_HI_NEW_xor_EXP_DATA_5_xor_STACK_ITEM_VALUE_HI_1_xor_VALUE_CURR_LO_xor_VALUE has not been filled");
     }
 
-    if (!filled.get(137)) {
+    if (!filled.get(135)) {
       throw new IllegalStateException(
           "hub.CODE_HASH_HI_xor_CALL_VALUE_xor_EXP_DATA_4_xor_PUSH_VALUE_LO_xor_VALUE_CURR_HI_xor_TO_ADDRESS_LO has not been filled");
     }
 
-    if (!filled.get(140)) {
+    if (!filled.get(138)) {
       throw new IllegalStateException(
           "hub.CODE_HASH_LO_NEW_xor_MMU_LIMB_2_xor_STACK_ITEM_VALUE_HI_3_xor_VALUE_NEXT_LO has not been filled");
     }
 
-    if (!filled.get(139)) {
+    if (!filled.get(137)) {
       throw new IllegalStateException(
           "hub.CODE_HASH_LO_xor_MMU_LIMB_1_xor_STACK_ITEM_VALUE_HI_2_xor_VALUE_NEXT_HI has not been filled");
     }
 
-    if (!filled.get(108)) {
+    if (!filled.get(106)) {
       throw new IllegalStateException(
           "hub.CODE_SIZE_NEW_xor_BYTE_CODE_CODE_FRAGMENT_INDEX_xor_MMU_EXO_SUM_xor_PRC_CDS_xor_INIT_CODE_SIZE has not been filled");
     }
 
-    if (!filled.get(107)) {
+    if (!filled.get(105)) {
       throw new IllegalStateException(
           "hub.CODE_SIZE_xor_BYTE_CODE_ADDRESS_HI_xor_MMU_AUX_ID_xor_PRC_CDO_xor_DEPLOYMENT_NUMBER_INFTY_xor_FROM_ADDRESS_HI has not been filled");
     }
@@ -7678,7 +7464,7 @@ public class Trace {
       throw new IllegalStateException("hub.CONTEXT_NUMBER_NEW has not been filled");
     }
 
-    if (!filled.get(115)) {
+    if (!filled.get(113)) {
       throw new IllegalStateException("hub.CONTEXT_NUMBER_xor_MMU_TGT_ID has not been filled");
     }
 
@@ -7706,27 +7492,27 @@ public class Trace {
       throw new IllegalStateException("hub.DELTA has not been filled");
     }
 
-    if (!filled.get(103)) {
+    if (!filled.get(101)) {
       throw new IllegalStateException(
           "hub.DEPLOYMENT_NUMBER_FINAL_IN_BLOCK_xor_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK has not been filled");
     }
 
-    if (!filled.get(104)) {
+    if (!filled.get(102)) {
       throw new IllegalStateException(
           "hub.DEPLOYMENT_NUMBER_FIRST_IN_BLOCK_xor_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK has not been filled");
     }
 
-    if (!filled.get(110)) {
+    if (!filled.get(108)) {
       throw new IllegalStateException(
           "hub.DEPLOYMENT_NUMBER_INFTY_xor_BYTE_CODE_DEPLOYMENT_STATUS_xor_MMU_PHASE_xor_PRC_RAO has not been filled");
     }
 
-    if (!filled.get(111)) {
+    if (!filled.get(109)) {
       throw new IllegalStateException(
           "hub.DEPLOYMENT_NUMBER_NEW_xor_CALLER_ADDRESS_HI_xor_MMU_REF_OFFSET_xor_PRC_RETURN_GAS has not been filled");
     }
 
-    if (!filled.get(109)) {
+    if (!filled.get(107)) {
       throw new IllegalStateException(
           "hub.DEPLOYMENT_NUMBER_xor_BYTE_CODE_DEPLOYMENT_NUMBER_xor_MMU_INST_xor_PRC_RAC_xor_TO_ADDRESS_HI has not been filled");
     }
@@ -7806,7 +7592,7 @@ public class Trace {
       throw new IllegalStateException("hub.GAS_EXPECTED has not been filled");
     }
 
-    if (!filled.get(128)) {
+    if (!filled.get(126)) {
       throw new IllegalStateException("hub.GAS_LIMIT has not been filled");
     }
 
@@ -7814,7 +7600,7 @@ public class Trace {
       throw new IllegalStateException("hub.GAS_NEXT has not been filled");
     }
 
-    if (!filled.get(129)) {
+    if (!filled.get(127)) {
       throw new IllegalStateException("hub.GAS_PRICE has not been filled");
     }
 
@@ -7844,7 +7630,7 @@ public class Trace {
       throw new IllegalStateException("hub.HUB_STAMP_TRANSACTION_END has not been filled");
     }
 
-    if (!filled.get(167)) {
+    if (!filled.get(165)) {
       throw new IllegalStateException("hub.INSTRUCTION has not been filled");
     }
 
@@ -7871,27 +7657,27 @@ public class Trace {
       throw new IllegalStateException("hub.MMU_STAMP has not been filled");
     }
 
-    if (!filled.get(147)) {
+    if (!filled.get(145)) {
       throw new IllegalStateException("hub.MXP_OFFSET_2_HI has not been filled");
     }
 
-    if (!filled.get(148)) {
+    if (!filled.get(146)) {
       throw new IllegalStateException("hub.MXP_OFFSET_2_LO has not been filled");
     }
 
-    if (!filled.get(149)) {
+    if (!filled.get(147)) {
       throw new IllegalStateException("hub.MXP_SIZE_1_HI has not been filled");
     }
 
-    if (!filled.get(150)) {
+    if (!filled.get(148)) {
       throw new IllegalStateException("hub.MXP_SIZE_1_LO has not been filled");
     }
 
-    if (!filled.get(151)) {
+    if (!filled.get(149)) {
       throw new IllegalStateException("hub.MXP_SIZE_2_HI has not been filled");
     }
 
-    if (!filled.get(152)) {
+    if (!filled.get(150)) {
       throw new IllegalStateException("hub.MXP_SIZE_2_LO has not been filled");
     }
 
@@ -7899,68 +7685,60 @@ public class Trace {
       throw new IllegalStateException("hub.MXP_STAMP has not been filled");
     }
 
-    if (!filled.get(153)) {
+    if (!filled.get(151)) {
       throw new IllegalStateException("hub.MXP_WORDS has not been filled");
-    }
-
-    if (!filled.get(96)) {
-      throw new IllegalStateException("hub.NB_ADDED has not been filled");
-    }
-
-    if (!filled.get(97)) {
-      throw new IllegalStateException("hub.NB_REMOVED has not been filled");
     }
 
     if (!filled.get(25)) {
       throw new IllegalStateException("hub.NON_STACK_ROWS has not been filled");
     }
 
-    if (!filled.get(130)) {
+    if (!filled.get(128)) {
       throw new IllegalStateException("hub.NONCE has not been filled");
     }
 
-    if (!filled.get(126)) {
+    if (!filled.get(124)) {
       throw new IllegalStateException(
           "hub.NONCE_NEW_xor_STP_GAS_PAID_OUT_OF_POCKET_xor_GAS_INITIALLY_AVAILABLE has not been filled");
     }
 
-    if (!filled.get(125)) {
+    if (!filled.get(123)) {
       throw new IllegalStateException("hub.NONCE_xor_STP_GAS_MXP_xor_BASEFEE has not been filled");
     }
 
-    if (!filled.get(154)) {
+    if (!filled.get(152)) {
       throw new IllegalStateException("hub.OOB_DATA_1 has not been filled");
     }
 
-    if (!filled.get(155)) {
+    if (!filled.get(153)) {
       throw new IllegalStateException("hub.OOB_DATA_2 has not been filled");
     }
 
-    if (!filled.get(156)) {
+    if (!filled.get(154)) {
       throw new IllegalStateException("hub.OOB_DATA_3 has not been filled");
     }
 
-    if (!filled.get(157)) {
+    if (!filled.get(155)) {
       throw new IllegalStateException("hub.OOB_DATA_4 has not been filled");
     }
 
-    if (!filled.get(158)) {
+    if (!filled.get(156)) {
       throw new IllegalStateException("hub.OOB_DATA_5 has not been filled");
     }
 
-    if (!filled.get(159)) {
+    if (!filled.get(157)) {
       throw new IllegalStateException("hub.OOB_DATA_6 has not been filled");
     }
 
-    if (!filled.get(160)) {
+    if (!filled.get(158)) {
       throw new IllegalStateException("hub.OOB_DATA_7 has not been filled");
     }
 
-    if (!filled.get(161)) {
+    if (!filled.get(159)) {
       throw new IllegalStateException("hub.OOB_DATA_8 has not been filled");
     }
 
-    if (!filled.get(162)) {
+    if (!filled.get(160)) {
       throw new IllegalStateException("hub.OOB_DATA_9 has not been filled");
     }
 
@@ -8039,7 +7817,7 @@ public class Trace {
           "hub.PRC_SUCCESS_CALLER_WONT_REVERT_xor_SHF_FLAG has not been filled");
     }
 
-    if (!filled.get(131)) {
+    if (!filled.get(129)) {
       throw new IllegalStateException("hub.PRIORITY_FEE_PER_GAS has not been filled");
     }
 
@@ -8055,7 +7833,7 @@ public class Trace {
       throw new IllegalStateException("hub.REFUND_COUNTER has not been filled");
     }
 
-    if (!filled.get(132)) {
+    if (!filled.get(130)) {
       throw new IllegalStateException("hub.REFUND_COUNTER_INFINITY has not been filled");
     }
 
@@ -8063,7 +7841,7 @@ public class Trace {
       throw new IllegalStateException("hub.REFUND_COUNTER_NEW has not been filled");
     }
 
-    if (!filled.get(133)) {
+    if (!filled.get(131)) {
       throw new IllegalStateException("hub.REFUND_EFFECTIVE has not been filled");
     }
 
@@ -8071,25 +7849,25 @@ public class Trace {
       throw new IllegalStateException("hub.RELATIVE_BLOCK_NUMBER has not been filled");
     }
 
-    if (!filled.get(116)) {
+    if (!filled.get(114)) {
       throw new IllegalStateException("hub.RETURN_AT_CAPACITY_xor_MXP_INST has not been filled");
     }
 
-    if (!filled.get(117)) {
+    if (!filled.get(115)) {
       throw new IllegalStateException("hub.RETURN_AT_OFFSET_xor_OOB_INST has not been filled");
     }
 
-    if (!filled.get(118)) {
+    if (!filled.get(116)) {
       throw new IllegalStateException(
           "hub.RETURN_DATA_CONTEXT_NUMBER_xor_STP_GAS_STIPEND has not been filled");
     }
 
-    if (!filled.get(119)) {
+    if (!filled.get(117)) {
       throw new IllegalStateException(
           "hub.RETURN_DATA_OFFSET_xor_STP_INSTRUCTION has not been filled");
     }
 
-    if (!filled.get(120)) {
+    if (!filled.get(118)) {
       throw new IllegalStateException("hub.RETURN_DATA_SIZE has not been filled");
     }
 
@@ -8127,12 +7905,12 @@ public class Trace {
           "hub.RETURN_FROM_MESSAGE_CALL_WONT_TOUCH_RAM_xor_STACK_ITEM_POP_4 has not been filled");
     }
 
-    if (!filled.get(112)) {
+    if (!filled.get(110)) {
       throw new IllegalStateException(
           "hub.RLPADDR_DEP_ADDR_HI_xor_CALL_DATA_CONTEXT_NUMBER_xor_MMU_REF_SIZE has not been filled");
     }
 
-    if (!filled.get(141)) {
+    if (!filled.get(139)) {
       throw new IllegalStateException(
           "hub.RLPADDR_DEP_ADDR_LO_xor_MMU_SRC_OFFSET_HI_xor_STACK_ITEM_VALUE_HI_4_xor_VALUE_ORIG_HI has not been filled");
     }
@@ -8142,26 +7920,26 @@ public class Trace {
           "hub.RLPADDR_FLAG_xor_CREATE_NONEMPTY_INIT_CODE_FAILURE_WONT_REVERT_xor_JUMP_DESTINATION_VETTING_REQUIRED has not been filled");
     }
 
-    if (!filled.get(142)) {
+    if (!filled.get(140)) {
       throw new IllegalStateException(
           "hub.RLPADDR_KEC_HI_xor_MMU_SRC_OFFSET_LO_xor_STACK_ITEM_VALUE_LO_1_xor_VALUE_ORIG_LO has not been filled");
     }
 
-    if (!filled.get(143)) {
+    if (!filled.get(141)) {
       throw new IllegalStateException(
           "hub.RLPADDR_KEC_LO_xor_MMU_TGT_OFFSET_LO_xor_STACK_ITEM_VALUE_LO_2 has not been filled");
     }
 
-    if (!filled.get(98)) {
+    if (!filled.get(96)) {
       throw new IllegalStateException("hub.RLPADDR_RECIPE has not been filled");
     }
 
-    if (!filled.get(144)) {
+    if (!filled.get(142)) {
       throw new IllegalStateException(
           "hub.RLPADDR_SALT_HI_xor_MXP_GAS_MXP_xor_STACK_ITEM_VALUE_LO_3 has not been filled");
     }
 
-    if (!filled.get(145)) {
+    if (!filled.get(143)) {
       throw new IllegalStateException(
           "hub.RLPADDR_SALT_LO_xor_MXP_OFFSET_1_HI_xor_STACK_ITEM_VALUE_LO_4 has not been filled");
     }
@@ -8190,52 +7968,52 @@ public class Trace {
           "hub.SELFDESTRUCT_WONT_REVERT_NOT_YET_MARKED_xor_SUX has not been filled");
     }
 
-    if (!filled.get(100)) {
+    if (!filled.get(98)) {
       throw new IllegalStateException("hub.STACK_ITEM_HEIGHT_2 has not been filled");
     }
 
-    if (!filled.get(101)) {
+    if (!filled.get(99)) {
       throw new IllegalStateException("hub.STACK_ITEM_HEIGHT_3 has not been filled");
     }
 
-    if (!filled.get(102)) {
+    if (!filled.get(100)) {
       throw new IllegalStateException("hub.STACK_ITEM_HEIGHT_4 has not been filled");
     }
 
-    if (!filled.get(121)) {
+    if (!filled.get(119)) {
       throw new IllegalStateException("hub.STACK_ITEM_STAMP_1 has not been filled");
     }
 
-    if (!filled.get(122)) {
+    if (!filled.get(120)) {
       throw new IllegalStateException("hub.STACK_ITEM_STAMP_2 has not been filled");
     }
 
-    if (!filled.get(123)) {
+    if (!filled.get(121)) {
       throw new IllegalStateException("hub.STACK_ITEM_STAMP_3 has not been filled");
     }
 
-    if (!filled.get(124)) {
+    if (!filled.get(122)) {
       throw new IllegalStateException("hub.STACK_ITEM_STAMP_4 has not been filled");
     }
 
-    if (!filled.get(163)) {
+    if (!filled.get(161)) {
       throw new IllegalStateException("hub.STP_GAS_HI has not been filled");
     }
 
-    if (!filled.get(164)) {
+    if (!filled.get(162)) {
       throw new IllegalStateException("hub.STP_GAS_LO has not been filled");
     }
 
-    if (!filled.get(127)) {
+    if (!filled.get(125)) {
       throw new IllegalStateException(
           "hub.STP_GAS_UPFRONT_GAS_COST_xor_GAS_LEFTOVER has not been filled");
     }
 
-    if (!filled.get(165)) {
+    if (!filled.get(163)) {
       throw new IllegalStateException("hub.STP_VALUE_HI has not been filled");
     }
 
-    if (!filled.get(166)) {
+    if (!filled.get(164)) {
       throw new IllegalStateException("hub.STP_VALUE_LO has not been filled");
     }
 
@@ -8252,7 +8030,7 @@ public class Trace {
           "hub.TRM_FLAG_xor_CREATE_NONEMPTY_INIT_CODE_SUCCESS_WONT_REVERT_xor_KEC_FLAG has not been filled");
     }
 
-    if (!filled.get(146)) {
+    if (!filled.get(144)) {
       throw new IllegalStateException(
           "hub.TRM_RAW_ADDRESS_HI_xor_MXP_OFFSET_1_LO has not been filled");
     }
@@ -8310,7 +8088,7 @@ public class Trace {
       absoluteTransactionNumber.position(absoluteTransactionNumber.position() + 2);
     }
 
-    if (!filled.get(105)) {
+    if (!filled.get(103)) {
       addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize
           .position(
               addressHiXorAccountAddressHiXorCcrsStampXorPrcCalleeGasXorStaticGasXorAddressHiXorCallDataSize
@@ -8318,7 +8096,7 @@ public class Trace {
                   + 4);
     }
 
-    if (!filled.get(134)) {
+    if (!filled.get(132)) {
       addressLoXorAccountAddressLoXorExpData1XorHashInfoKeccakHiXorAddressLoXorCoinbaseAddressLo
           .position(
               addressLoXorAccountAddressLoXorExpData1XorHashInfoKeccakHiXorAddressLoXorCoinbaseAddressLo
@@ -8354,7 +8132,7 @@ public class Trace {
       alpha.position(alpha.position() + 1);
     }
 
-    if (!filled.get(136)) {
+    if (!filled.get(134)) {
       balanceNewXorCallerAddressLoXorExpData3XorPushValueHiXorStorageKeyLoXorInitialBalance
           .position(
               balanceNewXorCallerAddressLoXorExpData3XorPushValueHiXorStorageKeyLoXorInitialBalance
@@ -8362,7 +8140,7 @@ public class Trace {
                   + 16);
     }
 
-    if (!filled.get(135)) {
+    if (!filled.get(133)) {
       balanceXorByteCodeAddressLoXorExpData2XorHashInfoKeccakLoXorStorageKeyHiXorFromAddressLo
           .position(
               balanceXorByteCodeAddressLoXorExpData2XorHashInfoKeccakLoXorStorageKeyHiXorFromAddressLo
@@ -8370,15 +8148,15 @@ public class Trace {
                   + 16);
     }
 
-    if (!filled.get(113)) {
+    if (!filled.get(111)) {
       callDataOffsetXorMmuSize.position(callDataOffsetXorMmuSize.position() + 4);
     }
 
-    if (!filled.get(114)) {
+    if (!filled.get(112)) {
       callDataSizeXorMmuSrcId.position(callDataSizeXorMmuSrcId.position() + 4);
     }
 
-    if (!filled.get(99)) {
+    if (!filled.get(97)) {
       callStackDepthXorStackItemHeight1.position(callStackDepthXorStackItemHeight1.position() + 2);
     }
 
@@ -8390,7 +8168,7 @@ public class Trace {
       codeFragmentIndex.position(codeFragmentIndex.position() + 4);
     }
 
-    if (!filled.get(106)) {
+    if (!filled.get(104)) {
       codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi
           .position(
               codeFragmentIndexXorAccountDeploymentNumberXorExpInstXorPrcCallerGasXorDeploymentNumberXorCoinbaseAddressHi
@@ -8398,34 +8176,34 @@ public class Trace {
                   + 4);
     }
 
-    if (!filled.get(138)) {
+    if (!filled.get(136)) {
       codeHashHiNewXorExpData5XorStackItemValueHi1XorValueCurrLoXorValue.position(
           codeHashHiNewXorExpData5XorStackItemValueHi1XorValueCurrLoXorValue.position() + 16);
     }
 
-    if (!filled.get(137)) {
+    if (!filled.get(135)) {
       codeHashHiXorCallValueXorExpData4XorPushValueLoXorValueCurrHiXorToAddressLo.position(
           codeHashHiXorCallValueXorExpData4XorPushValueLoXorValueCurrHiXorToAddressLo.position()
               + 16);
     }
 
-    if (!filled.get(140)) {
+    if (!filled.get(138)) {
       codeHashLoNewXorMmuLimb2XorStackItemValueHi3XorValueNextLo.position(
           codeHashLoNewXorMmuLimb2XorStackItemValueHi3XorValueNextLo.position() + 16);
     }
 
-    if (!filled.get(139)) {
+    if (!filled.get(137)) {
       codeHashLoXorMmuLimb1XorStackItemValueHi2XorValueNextHi.position(
           codeHashLoXorMmuLimb1XorStackItemValueHi2XorValueNextHi.position() + 16);
     }
 
-    if (!filled.get(108)) {
+    if (!filled.get(106)) {
       codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize.position(
           codeSizeNewXorByteCodeCodeFragmentIndexXorMmuExoSumXorPrcCdsXorInitCodeSize.position()
               + 4);
     }
 
-    if (!filled.get(107)) {
+    if (!filled.get(105)) {
       codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi
           .position(
               codeSizeXorByteCodeAddressHiXorMmuAuxIdXorPrcCdoXorDeploymentNumberInftyXorFromAddressHi
@@ -8449,7 +8227,7 @@ public class Trace {
       contextNumberNew.position(contextNumberNew.position() + 4);
     }
 
-    if (!filled.get(115)) {
+    if (!filled.get(113)) {
       contextNumberXorMmuTgtId.position(contextNumberXorMmuTgtId.position() + 4);
     }
 
@@ -8477,27 +8255,27 @@ public class Trace {
       delta.position(delta.position() + 1);
     }
 
-    if (!filled.get(103)) {
+    if (!filled.get(101)) {
       deploymentNumberFinalInBlockXorDeploymentNumberFinalInBlock.position(
           deploymentNumberFinalInBlockXorDeploymentNumberFinalInBlock.position() + 2);
     }
 
-    if (!filled.get(104)) {
+    if (!filled.get(102)) {
       deploymentNumberFirstInBlockXorDeploymentNumberFirstInBlock.position(
           deploymentNumberFirstInBlockXorDeploymentNumberFirstInBlock.position() + 2);
     }
 
-    if (!filled.get(110)) {
+    if (!filled.get(108)) {
       deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao.position(
           deploymentNumberInftyXorByteCodeDeploymentStatusXorMmuPhaseXorPrcRao.position() + 4);
     }
 
-    if (!filled.get(111)) {
+    if (!filled.get(109)) {
       deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas.position(
           deploymentNumberNewXorCallerAddressHiXorMmuRefOffsetXorPrcReturnGas.position() + 4);
     }
 
-    if (!filled.get(109)) {
+    if (!filled.get(107)) {
       deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi.position(
           deploymentNumberXorByteCodeDeploymentNumberXorMmuInstXorPrcRacXorToAddressHi.position()
               + 4);
@@ -8598,7 +8376,7 @@ public class Trace {
       gasExpected.position(gasExpected.position() + 8);
     }
 
-    if (!filled.get(128)) {
+    if (!filled.get(126)) {
       gasLimit.position(gasLimit.position() + 8);
     }
 
@@ -8606,7 +8384,7 @@ public class Trace {
       gasNext.position(gasNext.position() + 8);
     }
 
-    if (!filled.get(129)) {
+    if (!filled.get(127)) {
       gasPrice.position(gasPrice.position() + 8);
     }
 
@@ -8638,7 +8416,7 @@ public class Trace {
       hubStampTransactionEnd.position(hubStampTransactionEnd.position() + 4);
     }
 
-    if (!filled.get(167)) {
+    if (!filled.get(165)) {
       instruction.position(instruction.position() + 32);
     }
 
@@ -8668,27 +8446,27 @@ public class Trace {
       mmuStamp.position(mmuStamp.position() + 4);
     }
 
-    if (!filled.get(147)) {
+    if (!filled.get(145)) {
       mxpOffset2Hi.position(mxpOffset2Hi.position() + 16);
     }
 
-    if (!filled.get(148)) {
+    if (!filled.get(146)) {
       mxpOffset2Lo.position(mxpOffset2Lo.position() + 16);
     }
 
-    if (!filled.get(149)) {
+    if (!filled.get(147)) {
       mxpSize1Hi.position(mxpSize1Hi.position() + 16);
     }
 
-    if (!filled.get(150)) {
+    if (!filled.get(148)) {
       mxpSize1Lo.position(mxpSize1Lo.position() + 16);
     }
 
-    if (!filled.get(151)) {
+    if (!filled.get(149)) {
       mxpSize2Hi.position(mxpSize2Hi.position() + 16);
     }
 
-    if (!filled.get(152)) {
+    if (!filled.get(150)) {
       mxpSize2Lo.position(mxpSize2Lo.position() + 16);
     }
 
@@ -8696,68 +8474,60 @@ public class Trace {
       mxpStamp.position(mxpStamp.position() + 4);
     }
 
-    if (!filled.get(153)) {
+    if (!filled.get(151)) {
       mxpWords.position(mxpWords.position() + 16);
-    }
-
-    if (!filled.get(96)) {
-      nbAdded.position(nbAdded.position() + 1);
-    }
-
-    if (!filled.get(97)) {
-      nbRemoved.position(nbRemoved.position() + 1);
     }
 
     if (!filled.get(25)) {
       nonStackRows.position(nonStackRows.position() + 1);
     }
 
-    if (!filled.get(130)) {
+    if (!filled.get(128)) {
       nonce.position(nonce.position() + 8);
     }
 
-    if (!filled.get(126)) {
+    if (!filled.get(124)) {
       nonceNewXorStpGasPaidOutOfPocketXorGasInitiallyAvailable.position(
           nonceNewXorStpGasPaidOutOfPocketXorGasInitiallyAvailable.position() + 8);
     }
 
-    if (!filled.get(125)) {
+    if (!filled.get(123)) {
       nonceXorStpGasMxpXorBasefee.position(nonceXorStpGasMxpXorBasefee.position() + 8);
     }
 
-    if (!filled.get(154)) {
+    if (!filled.get(152)) {
       oobData1.position(oobData1.position() + 16);
     }
 
-    if (!filled.get(155)) {
+    if (!filled.get(153)) {
       oobData2.position(oobData2.position() + 16);
     }
 
-    if (!filled.get(156)) {
+    if (!filled.get(154)) {
       oobData3.position(oobData3.position() + 16);
     }
 
-    if (!filled.get(157)) {
+    if (!filled.get(155)) {
       oobData4.position(oobData4.position() + 16);
     }
 
-    if (!filled.get(158)) {
+    if (!filled.get(156)) {
       oobData5.position(oobData5.position() + 16);
     }
 
-    if (!filled.get(159)) {
+    if (!filled.get(157)) {
       oobData6.position(oobData6.position() + 16);
     }
 
-    if (!filled.get(160)) {
+    if (!filled.get(158)) {
       oobData7.position(oobData7.position() + 16);
     }
 
-    if (!filled.get(161)) {
+    if (!filled.get(159)) {
       oobData8.position(oobData8.position() + 16);
     }
 
-    if (!filled.get(162)) {
+    if (!filled.get(160)) {
       oobData9.position(oobData9.position() + 16);
     }
 
@@ -8834,7 +8604,7 @@ public class Trace {
           prcSuccessCallerWontRevertXorShfFlag.position() + 1);
     }
 
-    if (!filled.get(131)) {
+    if (!filled.get(129)) {
       priorityFeePerGas.position(priorityFeePerGas.position() + 8);
     }
 
@@ -8850,7 +8620,7 @@ public class Trace {
       refundCounter.position(refundCounter.position() + 4);
     }
 
-    if (!filled.get(132)) {
+    if (!filled.get(130)) {
       refundCounterInfinity.position(refundCounterInfinity.position() + 8);
     }
 
@@ -8858,7 +8628,7 @@ public class Trace {
       refundCounterNew.position(refundCounterNew.position() + 4);
     }
 
-    if (!filled.get(133)) {
+    if (!filled.get(131)) {
       refundEffective.position(refundEffective.position() + 8);
     }
 
@@ -8866,24 +8636,24 @@ public class Trace {
       relativeBlockNumber.position(relativeBlockNumber.position() + 2);
     }
 
-    if (!filled.get(116)) {
+    if (!filled.get(114)) {
       returnAtCapacityXorMxpInst.position(returnAtCapacityXorMxpInst.position() + 4);
     }
 
-    if (!filled.get(117)) {
+    if (!filled.get(115)) {
       returnAtOffsetXorOobInst.position(returnAtOffsetXorOobInst.position() + 4);
     }
 
-    if (!filled.get(118)) {
+    if (!filled.get(116)) {
       returnDataContextNumberXorStpGasStipend.position(
           returnDataContextNumberXorStpGasStipend.position() + 4);
     }
 
-    if (!filled.get(119)) {
+    if (!filled.get(117)) {
       returnDataOffsetXorStpInstruction.position(returnDataOffsetXorStpInstruction.position() + 4);
     }
 
-    if (!filled.get(120)) {
+    if (!filled.get(118)) {
       returnDataSize.position(returnDataSize.position() + 4);
     }
 
@@ -8921,12 +8691,12 @@ public class Trace {
           returnFromMessageCallWontTouchRamXorStackItemPop4.position() + 1);
     }
 
-    if (!filled.get(112)) {
+    if (!filled.get(110)) {
       rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize.position(
           rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize.position() + 4);
     }
 
-    if (!filled.get(141)) {
+    if (!filled.get(139)) {
       rlpaddrDepAddrLoXorMmuSrcOffsetHiXorStackItemValueHi4XorValueOrigHi.position(
           rlpaddrDepAddrLoXorMmuSrcOffsetHiXorStackItemValueHi4XorValueOrigHi.position() + 16);
     }
@@ -8939,26 +8709,26 @@ public class Trace {
                   + 1);
     }
 
-    if (!filled.get(142)) {
+    if (!filled.get(140)) {
       rlpaddrKecHiXorMmuSrcOffsetLoXorStackItemValueLo1XorValueOrigLo.position(
           rlpaddrKecHiXorMmuSrcOffsetLoXorStackItemValueLo1XorValueOrigLo.position() + 16);
     }
 
-    if (!filled.get(143)) {
+    if (!filled.get(141)) {
       rlpaddrKecLoXorMmuTgtOffsetLoXorStackItemValueLo2.position(
           rlpaddrKecLoXorMmuTgtOffsetLoXorStackItemValueLo2.position() + 16);
     }
 
-    if (!filled.get(98)) {
+    if (!filled.get(96)) {
       rlpaddrRecipe.position(rlpaddrRecipe.position() + 1);
     }
 
-    if (!filled.get(144)) {
+    if (!filled.get(142)) {
       rlpaddrSaltHiXorMxpGasMxpXorStackItemValueLo3.position(
           rlpaddrSaltHiXorMxpGasMxpXorStackItemValueLo3.position() + 16);
     }
 
-    if (!filled.get(145)) {
+    if (!filled.get(143)) {
       rlpaddrSaltLoXorMxpOffset1HiXorStackItemValueLo4.position(
           rlpaddrSaltLoXorMxpOffset1HiXorStackItemValueLo4.position() + 16);
     }
@@ -8987,52 +8757,52 @@ public class Trace {
           selfdestructWontRevertNotYetMarkedXorSux.position() + 1);
     }
 
-    if (!filled.get(100)) {
+    if (!filled.get(98)) {
       stackItemHeight2.position(stackItemHeight2.position() + 2);
     }
 
-    if (!filled.get(101)) {
+    if (!filled.get(99)) {
       stackItemHeight3.position(stackItemHeight3.position() + 2);
     }
 
-    if (!filled.get(102)) {
+    if (!filled.get(100)) {
       stackItemHeight4.position(stackItemHeight4.position() + 2);
     }
 
-    if (!filled.get(121)) {
+    if (!filled.get(119)) {
       stackItemStamp1.position(stackItemStamp1.position() + 5);
     }
 
-    if (!filled.get(122)) {
+    if (!filled.get(120)) {
       stackItemStamp2.position(stackItemStamp2.position() + 5);
     }
 
-    if (!filled.get(123)) {
+    if (!filled.get(121)) {
       stackItemStamp3.position(stackItemStamp3.position() + 5);
     }
 
-    if (!filled.get(124)) {
+    if (!filled.get(122)) {
       stackItemStamp4.position(stackItemStamp4.position() + 5);
     }
 
-    if (!filled.get(163)) {
+    if (!filled.get(161)) {
       stpGasHi.position(stpGasHi.position() + 16);
     }
 
-    if (!filled.get(164)) {
+    if (!filled.get(162)) {
       stpGasLo.position(stpGasLo.position() + 16);
     }
 
-    if (!filled.get(127)) {
+    if (!filled.get(125)) {
       stpGasUpfrontGasCostXorGasLeftover.position(
           stpGasUpfrontGasCostXorGasLeftover.position() + 8);
     }
 
-    if (!filled.get(165)) {
+    if (!filled.get(163)) {
       stpValueHi.position(stpValueHi.position() + 16);
     }
 
-    if (!filled.get(166)) {
+    if (!filled.get(164)) {
       stpValueLo.position(stpValueLo.position() + 16);
     }
 
@@ -9049,7 +8819,7 @@ public class Trace {
           trmFlagXorCreateNonemptyInitCodeSuccessWontRevertXorKecFlag.position() + 1);
     }
 
-    if (!filled.get(146)) {
+    if (!filled.get(144)) {
       trmRawAddressHiXorMxpOffset1Lo.position(trmRawAddressHiXorMxpOffset1Lo.position() + 16);
     }
 
