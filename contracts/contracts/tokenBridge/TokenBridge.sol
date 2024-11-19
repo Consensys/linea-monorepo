@@ -70,6 +70,7 @@ contract TokenBridge is
   address internal constant DEPLOYED_STATUS = address(0x333);
 
   // solhint-disable-next-line var-name-mixedcase
+  /// @dev The permit selector to be used when decoding the permit.
   bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
 
   /// @notice These 3 variables are used for the token metadata.

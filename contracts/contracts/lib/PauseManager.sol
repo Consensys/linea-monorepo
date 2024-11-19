@@ -20,6 +20,7 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
   // @dev DEPRECATED. USE _pauseTypeStatusesBitMap INSTEAD
   mapping(bytes32 pauseType => bool pauseStatus) public pauseTypeStatuses;
 
+  /// @dev The bitmap containing the pause statuses mapped by type.
   uint256 private _pauseTypeStatusesBitMap;
 
   /// @dev This maps the pause type to the role that is allowed to pause it.

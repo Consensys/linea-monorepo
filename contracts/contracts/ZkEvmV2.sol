@@ -21,7 +21,7 @@ abstract contract ZkEvmV2 is Initializable, AccessControlUpgradeable, L1MessageS
   /// @notice The most recent finalized L2 block number.
   uint256 public currentL2BlockNumber;
 
-  /// @notice The most recent L2 stateroot hash mapped by block number.
+  /// @notice The most recent L2 state root hash mapped by block number.
   mapping(uint256 blockNumber => bytes32 stateRootHash) public stateRootHashes;
 
   /// @notice The verifier address to use for a proof type when proving.
