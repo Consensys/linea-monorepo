@@ -254,6 +254,10 @@ importers:
         version: 17.7.2
 
   e2e:
+    dependencies:
+      winston:
+        specifier: 3.13.0
+        version: 3.13.0
     devDependencies:
       '@jest/globals':
         specifier: 29.7.0

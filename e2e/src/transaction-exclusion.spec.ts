@@ -2,10 +2,12 @@ import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
 import { etherToWei, getTransactionHash, getWallet, TransactionExclusionClient, wait } from "./common/utils";
 import { TransactionRequest } from "ethers";
+import logger from "./common/logger";
 
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Transaction exclusion test suite", () => {
+  process.env.TEST_NAME = "transaction-exclusion.spec.ts";
   it.concurrent(
     "Should get the status of the rejected transaction reported from Besu RPC node",
     async () => {
@@ -30,11 +32,11 @@ describe("Transaction exclusion test suite", () => {
         await l2AccountLocal.sendTransaction(txRequest);
       } catch (err) {
         // This shall return error with traces limit overflow
-        console.debug(`sendTransaction expected err: ${JSON.stringify(err)}`);
+        logger.debug(`sendTransaction expected err: ${JSON.stringify(err)}`);
       }
 
       expect(rejectedTxHash).toBeDefined();
-      console.log(`rejectedTxHash (RPC): ${rejectedTxHash}`);
+      logger.info(`rejectedTxHash (RPC): ${rejectedTxHash}`);
 
       let getResponse;
       do {
@@ -60,7 +62,7 @@ describe("Transaction exclusion test suite", () => {
     // This shall be rejected by sequencer due to traces module limit overflow
     const tx = await testContract!.connect(l2AccountLocal).testAddmod(13000, 31);
     const rejectedTxHash = tx.hash;
-    console.log(`rejectedTxHash (SEQUENCER): ${rejectedTxHash}`);
+    logger.info(`rejectedTxHash (SEQUENCER): ${rejectedTxHash}`);
 
     let getResponse;
     do {

@@ -2,6 +2,7 @@ import { ethers, NonceManager, Provider, TransactionResponse, Wallet } from "eth
 import { Mutex } from "async-mutex";
 import Account from "./account";
 import { etherToWei } from "../../../common/utils";
+import logger from "../../../common/logger";
 
 interface IAccountManager {
   whaleAccount(accIndex?: number): NonceManager;
@@ -65,7 +66,7 @@ abstract class AccountManager implements IAccountManager {
   async generateAccounts(numberOfAccounts: number, initialBalanceWei = etherToWei("10")): Promise<Wallet[]> {
     const { account: whaleAccount, accountWallet: whaleAccountWallet } = this.selectWhaleAccount();
 
-    console.log(
+    logger.info(
       `Generating accounts: chainId=${this.chainId} numberOfAccounts=${numberOfAccounts} whaleAccount=${whaleAccount.address}`,
     );
 
@@ -88,13 +89,13 @@ abstract class AccountManager implements IAccountManager {
       const release = await this.whaleAccountMutex.acquire();
       try {
         const transactionResponse = await whaleAccountWallet.sendTransaction(tx);
-        console.log(
+        logger.info(
           `Transaction sent: newAccount=${newAccount.address} txHash=${transactionResponse.hash} whaleAccount=${whaleAccount.address}`,
         );
         transactionResponses.push(transactionResponse);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
-        console.error(`Failed to fund account ${newAccount.address}: ${error.message}`);
+        logger.error(`Failed to fund account ${newAccount.address}: ${error.message}`);
         whaleAccountWallet.reset();
       } finally {
         release();
@@ -103,7 +104,7 @@ abstract class AccountManager implements IAccountManager {
 
     await Promise.all(transactionResponses.map((tx) => tx.wait()));
 
-    console.log(
+    logger.info(
       `Accounts funded: newAccounts=${accounts.map((account) => account.address).join(",")} balance=${initialBalanceWei.toString()} wei`,
     );
 

@@ -29,5 +29,8 @@
     "jest": "29.7.0",
     "ts-jest": "29.2.5",
     "typechain": "8.3.2"
+  },
+  "dependencies": {
+    "winston": "3.13.0"
   }
 }
