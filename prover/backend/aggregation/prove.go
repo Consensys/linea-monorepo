@@ -79,6 +79,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		close(setupErr)
 	}()
 
+	cfg.PublicInputInterconnection.MockKeccakWizard = true
 	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, pi_interconnection.WizardCompilationParameters()...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create the public-input circuit: %w", err)
@@ -114,12 +115,12 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		return nil, nil, fmt.Errorf("could not extract interconnection circuit public witness: %w", err)
 	}
 
-	proverOpts := emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
-	verifierOpts := emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
-
 	if err = <-setupErr; err != nil { // wait for setup to load and check for errors
 		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
 	}
+
+	proverOpts := emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
+	verifierOpts := emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
 
 	proof, err := circuits.ProveCheck(&setup, &assignment, proverOpts, verifierOpts, circuits.WithCachedProof(".tmp/pi.pf"))
 

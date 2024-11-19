@@ -31,9 +31,6 @@ func main() {
 		aggregationPath   = testPath + "/testdata/prover-aggregation"
 	)
 
-	cmd.FConfigFile = "/home/ubuntu/linea-monorepo/prover/integration/all-backend/config-integration-light.toml"
-	cmd.FDictPath = "./lib/compressor/compressor_dict.bin"
-
 	runAllJsonInFolder := func(dirPath string) {
 		inFolder := filepath.Join(dirPath, "requests")
 		outFolder := filepath.Join(dirPath, "responses")
@@ -44,9 +41,13 @@ func main() {
 				logrus.Warn("skipping ", entry.Name())
 				continue
 			}
-			cmd.FInput = filepath.Join(inFolder, entry.Name())
-			cmd.FOutput = filepath.Join(outFolder, entry.Name())
-			assert.NoError(t, cmd.CmdProve("prove", []string{}))
+
+			assert.NoError(t, cmd.Prove(cmd.ProverArgs{
+				Input:      filepath.Join(inFolder, entry.Name()),
+				Output:     filepath.Join(outFolder, entry.Name()),
+				Large:      false,
+				ConfigFile: "integration/all-backend/config-integration-light.toml",
+			}))
 		}
 	}
 

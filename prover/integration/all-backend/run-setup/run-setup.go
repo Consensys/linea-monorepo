@@ -14,14 +14,17 @@ import (
 func main() {
 	var t test_utils.FakeTestingT
 	allbackend.CdProver(t)
-
-	cmd.FConfigFile = "/home/ubuntu/linea-monorepo/prover/integration/all-backend/config-integration-light.toml"
-	cmd.FDictPath = "./lib/compressor/compressor_dict.bin"
-
-	cmd.FCircuits = "aggregation"
-	if len(os.Args) > 1 {
-		cmd.FCircuits = strings.Join(os.Args[1:], ",")
+	args := cmd.SetupArgs{
+		Force:      true,
+		Circuits:   "aggregation",
+		DictPath:   "./lib/compressor/compressor_dict.bin",
+		AssetsDir:  "",
+		ConfigFile: "./integration/all-backend/config-integration-light.toml",
 	}
 
-	assert.NoError(t, cmd.CmdSetup("setup", context.TODO(), []string{}))
+	if len(os.Args) > 1 {
+		args.Circuits = strings.Join(os.Args[1:], ",")
+	}
+
+	assert.NoError(t, cmd.Setup(context.TODO(), args))
 }
