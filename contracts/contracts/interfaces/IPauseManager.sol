@@ -60,7 +60,7 @@ interface IPauseManager {
   /**
    * @notice Emitted when an unpause type and its associated role are set in the `_unPauseTypeRoles` mapping.
    * @param unPauseType The indexed type of unpause.
-   * @param role Theindexed role associated with the unpause type.
+   * @param role The indexed role associated with the unpause type.
    */
   event UnPauseTypeRoleSet(PauseType indexed unPauseType, bytes32 indexed role);
 
