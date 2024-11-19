@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
+
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
@@ -120,6 +122,9 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 
 	const cachedProofPath = ".pi.pf"
 
+	proverOpt := emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
+	verifierOpt := emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
+
 	// proof caching TODO @Tabaie delete
 	proof := func() plonk.Proof {
 		logrus.Info("attempting to read cached proof")
@@ -137,7 +142,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		}
 
 		// check if the proof passes
-		if err = plonk.Verify(proof, setup.VerifyingKey, w); err != nil {
+		if err = plonk.Verify(proof, setup.VerifyingKey, w, verifierOpt); err != nil {
 			logrus.Error(err)
 			return nil
 		}
@@ -149,7 +154,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 
 	if proof == nil {
 		logrus.Info("failed to load PI proof. Creating a new one")
-		proof, err = circuits.ProveCheck(&setup, &assignment)
+		proof, err = circuits.ProveCheck(&setup, &assignment, proverOpt, verifierOpt)
 		if err != nil {
 			return nil, nil, err
 		}
