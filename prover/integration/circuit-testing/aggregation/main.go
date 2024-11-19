@@ -40,17 +40,10 @@ func main() {
 	}
 
 	// This collects the verifying keys from the public parameters
-	var vkeys []plonk.VerifyingKey
-	for _, setup := range innerSetups {
-		vkeys = append(vkeys, setup.VerifyingKey)
+	vkeys := make([]plonk.VerifyingKey, len(innerSetups))
+	for i := range innerSetups {
+		vkeys[i] = innerSetups[i].VerifyingKey
 	}
-
-	// At this step, we will collect several proofs for the BW6 circuit and
-	// several verification keys.
-	var (
-		bw6Vkeys  []plonk.VerifyingKey
-		bw6Proofs []plonk.Proof
-	)
 
 	ncs := []int{1, 5, 10, 20}
 
@@ -79,7 +72,13 @@ func main() {
 	piSetup, err := circuits.MakeSetup(context.TODO(), circuits.PublicInputInterconnectionCircuitID, piCs, srsProvider, nil)
 	assert.NoError(t, err)
 
-	for _, nc := range ncs {
+	// At this step, we will collect several proofs for the BW6 circuit and
+	// several verification keys.
+
+	bw6Vkeys := make([]plonk.VerifyingKey, len(ncs))
+	bw6Proofs := make([]plonk.Proof, len(ncs))
+
+	for i, nc := range ncs {
 		// Compile PI Interconnection sub-circuit
 
 		// Building aggregation circuit for max `nc` proofs
@@ -100,13 +99,13 @@ func main() {
 		logrus.Infof("Generating a witness, %v dummy-proofs to aggregates", nProofs)
 		innerProofClaims := make([]aggregation.ProofClaimAssignment, nProofs)
 		innerPI := make([]frBls.Element, nc)
-		for i := range innerProofClaims {
+		for j := range innerProofClaims {
 
 			// Assign the dummy circuit for a random value
-			circID := i % nCircuits
-			_, err = innerPI[i].SetRandom()
+			circID := j % nCircuits
+			_, err = innerPI[j].SetRandom()
 			assert.NoError(t, err)
-			a := dummy.Assign(circuits.MockCircuitID(circID), innerPI[i])
+			a := dummy.Assign(circuits.MockCircuitID(circID), innerPI[j])
 
 			// Stores the inner-proofs for later
 			proof, err := circuits.ProveCheck(
@@ -116,18 +115,18 @@ func main() {
 			)
 			assert.NoError(t, err)
 
-			innerProofClaims[i] = aggregation.ProofClaimAssignment{
+			innerProofClaims[j] = aggregation.ProofClaimAssignment{
 				CircuitID:   circID,
 				Proof:       proof,
-				PublicInput: innerPI[i],
+				PublicInput: innerPI[j],
 			}
 		}
 
 		logrus.Info("generating witness for the interconnection circuit")
 		// assign public input circuit
 		circuitTypes := make([]pi_interconnection.InnerCircuitType, nc)
-		for i := range circuitTypes {
-			circuitTypes[i] = pi_interconnection.InnerCircuitType(test_utils.RandIntN(2)) // #nosec G115 -- value already constrained
+		for j := range circuitTypes {
+			circuitTypes[j] = pi_interconnection.InnerCircuitType(test_utils.RandIntN(2)) // #nosec G115 -- value already constrained
 		}
 
 		innerPiPartition := utils.RightPad(utils.Partition(innerPI, circuitTypes), 2)
@@ -167,8 +166,8 @@ func main() {
 		bw6Proof, err := aggregation.MakeProof(&ppBw6, nc, innerProofClaims, piInfo, aggregationPI)
 		assert.NoError(t, err)
 
-		bw6Proofs = append(bw6Proofs, bw6Proof)
-		bw6Vkeys = append(bw6Vkeys, ppBw6.VerifyingKey)
+		bw6Proofs[i] = bw6Proof
+		bw6Vkeys[i] = ppBw6.VerifyingKey
 	}
 
 	// Then create the BN254 circuit

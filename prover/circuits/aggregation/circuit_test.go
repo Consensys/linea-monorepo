@@ -96,9 +96,9 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 	}
 
 	// This collects the verifying keys from the public parameters
-	var vkeys []plonk.VerifyingKey
-	for _, setup := range innerSetups {
-		vkeys = append(vkeys, setup.VerifyingKey)
+	vkeys := make([]plonk.VerifyingKey, len(innerSetups))
+	for i := range innerSetups {
+		vkeys[i] = innerSetups[i].VerifyingKey
 	}
 
 	aggregationPIBytes := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}

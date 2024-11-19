@@ -35,37 +35,31 @@ func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEc
 func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []generic.GenericByteModule) *KeccakZkEVM {
 
 	// create the list of  [generic.GenDataModule] and [generic.GenInfoModule]
-	var (
-		gdm []generic.GenDataModule
-		gim []generic.GenInfoModule
-	)
 
-	for i := range providers {
-		gdm = append(gdm, providers[i].Data)
-		gim = append(gim, providers[i].Info)
+	inpAcc := gen_acc.GenericAccumulatorInputs{
+		MaxNumKeccakF: settings.MaxNumKeccakf,
+		ProvidersData: make([]generic.GenDataModule, len(providers)),
+		ProvidersInfo: make([]generic.GenInfoModule, len(providers)),
 	}
 
-	var (
-		inpAcc = gen_acc.GenericAccumulatorInputs{
-			MaxNumKeccakF: settings.MaxNumKeccakf,
-			ProvidersData: gdm,
-			ProvidersInfo: gim,
-		}
+	for i := range providers {
+		inpAcc.ProvidersData[i] = providers[i].Data
+		inpAcc.ProvidersInfo[i] = providers[i].Info
+	}
 
-		// unify the data from different providers in a single provider
-		accData = gen_acc.NewGenericDataAccumulator(comp, inpAcc)
-		// unify the info from different providers in a single provider
-		accInfo = gen_acc.NewGenericInfoAccumulator(comp, inpAcc)
+	// unify the data from different providers in a single provider
+	accData := gen_acc.NewGenericDataAccumulator(comp, inpAcc)
+	// unify the info from different providers in a single provider
+	accInfo := gen_acc.NewGenericInfoAccumulator(comp, inpAcc)
 
-		keccakInp = KeccakSingleProviderInput{
-			Provider: generic.GenericByteModule{
-				Data: accData.Provider,
-				Info: accInfo.Provider,
-			},
-			MaxNumKeccakF: settings.MaxNumKeccakf,
-		}
-		keccak = NewKeccakSingleProvider(comp, keccakInp)
-	)
+	keccakInp := KeccakSingleProviderInput{
+		Provider: generic.GenericByteModule{
+			Data: accData.Provider,
+			Info: accInfo.Provider,
+		},
+		MaxNumKeccakF: settings.MaxNumKeccakf,
+	}
+	keccak := NewKeccakSingleProvider(comp, keccakInp)
 
 	res := &KeccakZkEVM{
 		pa_accData: accData,
