@@ -747,7 +747,7 @@ func (stitcher *Stitcher) AddFrame(frame StateAccessLog) {
 // this is necessary because we need to list the keys in the columns in a sorted manner. and in order to use the sort function we need a slice
 func MapKeysToSlice[K comparable, V any](accountSet map[K]V) []K {
 	// obtain the slice of key values from a map
-	var accounts []K
+	accounts := make([]K, 0, len(accountSet))
 	for addressIterator := range accountSet {
 		accounts = append(accounts, addressIterator)
 	}
