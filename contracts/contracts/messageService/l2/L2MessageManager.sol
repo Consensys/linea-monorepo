@@ -16,7 +16,10 @@ abstract contract L2MessageManager is AccessControlUpgradeable, IL2MessageManage
 
   bytes32 public constant L1_L2_MESSAGE_SETTER_ROLE = keccak256("L1_L2_MESSAGE_SETTER_ROLE");
 
+  /// @notice Contains the last L1 message number anchored on L2.
   uint256 public lastAnchoredL1MessageNumber;
+
+  /// @notice Contains the L1 to L2 messaging rolling hashes mapped to message number computed on L2.
   mapping(uint256 messageNumber => bytes32 rollingHash) public l1RollingHashes;
 
   /// @dev Total contract storage is 52 slots including the gap below.

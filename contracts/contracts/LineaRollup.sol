@@ -24,11 +24,16 @@ contract LineaRollup is
 {
   using Utils for *;
 
-  /// @dev This is the ABI version and not the reinitialize version.
+  /// @notice This is the ABI version and not the reinitialize version.
   string public constant CONTRACT_VERSION = "6.0";
 
+  /// @notice The role required to set/add  proof verifiers by type.
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
+
+  /// @notice The role required to set/remove  proof verifiers by type.
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
+
+  /// @notice The default genesis shnarf using empty/default hashes and a default state.
   bytes32 public constant GENESIS_SHNARF =
     keccak256(
       abi.encode(
@@ -40,14 +45,26 @@ contract LineaRollup is
       )
     );
 
+  /// @dev Value indicating a shnarf exists.
   uint256 internal constant SHNARF_EXISTS_DEFAULT_VALUE = 1;
+
+  /// @dev The default hash value.
   bytes32 internal constant EMPTY_HASH = 0x0;
+
+  /// @dev The BLS Curve modulus value used.
   uint256 internal constant BLS_CURVE_MODULUS =
     52435875175126190479447740508185965837690552500527637822603658699938581184513;
+
+  /// @dev The well-known precompile address for point evaluation.
   address internal constant POINT_EVALUATION_PRECOMPILE_ADDRESS = address(0x0a);
+
+  /// @dev The expected point evaluation return data length.
   uint256 internal constant POINT_EVALUATION_RETURN_DATA_LENGTH = 64;
+
+  /// @dev The expected point evaluation field element length returned.
   uint256 internal constant POINT_EVALUATION_FIELD_ELEMENTS_LENGTH = 4096;
 
+  /// @dev In practice, when used, this is expected to be a close approximation to 6 months, and is intentional.
   uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
@@ -66,6 +83,7 @@ contract LineaRollup is
   /// @dev DEPRECATED in favor of currentFinalizedState hash.
   bytes32 public currentL2StoredL1RollingHash;
 
+  /// @notice Contains the most recent finalized shnarf.
   bytes32 public currentFinalizedShnarf;
 
   /**
@@ -74,10 +92,10 @@ contract LineaRollup is
    */
   mapping(bytes32 shnarf => uint256 exists) public blobShnarfExists;
 
-  /// @dev Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
+  /// @notice Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
   bytes32 public currentFinalizedState;
 
-  /// @dev The address of the fallback operator.
+  /// @notice The address of the fallback operator.
   /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
   address public fallbackOperator;
 

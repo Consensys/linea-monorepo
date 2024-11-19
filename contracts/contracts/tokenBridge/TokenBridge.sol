@@ -44,10 +44,19 @@ contract TokenBridge is
   /// @dev This is the ABI version and not the reinitialize version.
   string public constant CONTRACT_VERSION = "1.0";
 
+  /// @notice Role used for setting the message service address.
   bytes32 public constant SET_MESSAGE_SERVICE_ROLE = keccak256("SET_MESSAGE_SERVICE_ROLE");
+
+  /// @notice Role used for setting the remote token bridge address.
   bytes32 public constant SET_REMOTE_TOKENBRIDGE_ROLE = keccak256("SET_REMOTE_TOKENBRIDGE_ROLE");
+
+  /// @notice Role used for setting a reserved token address.
   bytes32 public constant SET_RESERVED_TOKEN_ROLE = keccak256("SET_RESERVED_TOKEN_ROLE");
+
+  /// @notice Role used for removing a reserved token address.
   bytes32 public constant REMOVE_RESERVED_TOKEN_ROLE = keccak256("REMOVE_RESERVED_TOKEN_ROLE");
+
+  /// @notice Role used for setting a custom token contract address.
   bytes32 public constant SET_CUSTOM_CONTRACT_ROLE = keccak256("SET_CUSTOM_CONTRACT_ROLE");
 
   // Special addresses used in the mappings to mark specific states for tokens.
@@ -63,19 +72,24 @@ contract TokenBridge is
   // solhint-disable-next-line var-name-mixedcase
   bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
 
-  /// @notice used for the token metadata
+  /// @notice These 3 variables are used for the token metadata.
   bytes private constant METADATA_NAME = abi.encodeCall(IERC20MetadataUpgradeable.name, ());
   bytes private constant METADATA_SYMBOL = abi.encodeCall(IERC20MetadataUpgradeable.symbol, ());
   bytes private constant METADATA_DECIMALS = abi.encodeCall(IERC20MetadataUpgradeable.decimals, ());
 
+  /// @notice The token beacon for deployed tokens.
   address public tokenBeacon;
 
+  /// @notice The chainId mapped to a native token address which is then mapped to the bridged token address.
   mapping(uint256 chainId => mapping(address native => address bridged)) public nativeToBridgedToken;
+
+  /// @notice The bridged token address mapped to the native token address.
   mapping(address bridged => address native) public bridgedToNativeToken;
 
-  /// @notice The current layer chainId from where the bridging is triggered
+  /// @notice The current layer's chainId from where the bridging is triggered.
   uint256 public sourceChainId;
-  /// @notice The targeted layer chainId where the bridging is received
+
+  /// @notice The targeted layer's chainId where the bridging is received.
   uint256 public targetChainId;
 
   /// @dev Keep free storage slots for future implementation updates to avoid storage collision.
