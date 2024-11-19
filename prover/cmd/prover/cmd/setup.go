@@ -48,7 +48,8 @@ var AllCircuits = []string{
 	string(circuits.EmulationDummyCircuitID), // we want to generate Verifier.sol for this one
 }
 
-func Setup(cmdName string, context context.Context, args SetupArgs) error {
+func Setup(context context.Context, args SetupArgs) error {
+	const cmdName = "setup"
 	// read config
 	cfg, err := config.NewConfigFromFile(args.ConfigFile)
 	if err != nil {

@@ -21,7 +21,8 @@ type ProverArgs struct {
 	ConfigFile string
 }
 
-func Prove(cmdName string, args ProverArgs) error {
+func Prove(args ProverArgs) error {
+	const cmdName = "prove"
 	// TODO @gbotrel with a specific flag, we could compile the circuit and compare with the checksum of the
 	// asset we deserialize, to make sure we are using the circuit associated with the compiled binary and the setup.
 

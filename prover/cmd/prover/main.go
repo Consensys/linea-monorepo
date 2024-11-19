@@ -66,12 +66,12 @@ func init() {
 	proveCmd.Flags().BoolVar(&proverArgs.Large, "large", false, "run the large execution circuit")
 }
 
-func cmdSetup(_cmd *cobra.Command, args []string) error {
+func cmdSetup(_cmd *cobra.Command, _ []string) error {
 	setupArgs.ConfigFile = fConfigFile
-	return cmd.Setup(_cmd.Name(), _cmd.Context(), setupArgs)
+	return cmd.Setup(_cmd.Context(), setupArgs)
 }
 
-func cmdProve(_cmd *cobra.Command, args []string) error {
+func cmdProve(*cobra.Command, []string) error {
 	proverArgs.ConfigFile = fConfigFile
-	return cmd.Prove(_cmd.Name(), proverArgs)
+	return cmd.Prove(proverArgs)
 }
