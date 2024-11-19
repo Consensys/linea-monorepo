@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -173,6 +174,7 @@ func CmdSetup(cmdName string, cmdContext context.Context, args []string) error {
 		return nil
 	}
 
+	logrus.Info("loading the PI circuit setup")
 	// get verifying key for public-input circuit
 	piSetup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
 	if err != nil {
@@ -222,6 +224,7 @@ func CmdSetup(cmdName string, cmdContext context.Context, args []string) error {
 	// we need to compute the digest of the verifying keys & store them in the manifest
 	// for the aggregation circuits to be able to check compatibility at run time with the proofs
 	allowedVkForAggregationDigests := listOfCheckum(allowedVkForAggregation)
+	logrus.Info("allowedVkForAggrefationDigests after setup", allowedVkForAggregationDigests)
 	extraFlagsForAggregationCircuit := map[string]any{
 		"allowedVkForAggregationDigests": allowedVkForAggregationDigests,
 	}
@@ -277,6 +280,8 @@ func getDummyCircuitVK(ctx context.Context, cfg *config.Config, srsProvider circ
 		return nil, fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
 	}
 
+	logrus.Infof("circuit ID %s VK %s CS %s", circuit, setup.VerifyingKeyDigest(), test_utils.Sha256Sum(test_utils.FakeTestingT{}, setup.Circuit))
+
 	return setup.VerifyingKey, nil
 }
 
@@ -325,7 +330,10 @@ func updateSetup(ctx context.Context, cfg *config.Config, srsProvider circuits.S
 		return fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
 	}
 
+	logrus.Infof("checksums for: cs %s vk %s", test_utils.Sha256Sum(test_utils.FakeTestingT{}, setup.Circuit), setup.VerifyingKeyDigest())
+
 	logrus.Infof("writing assets for %s", circuit)
+
 	return setup.WriteTo(setupPath)
 }
 

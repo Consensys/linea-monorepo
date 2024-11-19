@@ -3,6 +3,7 @@ package aggregation
 import (
 	"fmt"
 	"math"
+	"os"
 	"path/filepath"
 
 	"github.com/consensys/gnark/backend/witness"
@@ -68,6 +69,15 @@ func makeProof(
 
 func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.Witness, error) {
 
+	var setup circuits.Setup
+	loadSetupErr := make(chan error, 1)
+	go func() {
+		var err error
+		setup, err = circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
+		loadSetupErr <- err
+		close(loadSetupErr)
+	}()
+
 	cfg.PublicInputInterconnection.MockKeccakWizard = true
 	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, pi_interconnection.WizardCompilationParameters()...)
 	if err != nil {
@@ -99,17 +109,59 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		return nil, nil, fmt.Errorf("could not assign the public input circuit: %w", err)
 	}
 
-	setup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
-	}
-
 	w, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField(), frontend.PublicOnly()) // TODO @Tabaie make ProveCheck return witness instead of extracting this twice
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not extract interconnection circuit public witness: %w", err)
 	}
 
-	proof, err := circuits.ProveCheck(&setup, &assignment)
+	if err := <-loadSetupErr; err != nil {
+		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
+	}
+
+	const cachedProofPath = ".pi.pf"
+
+	// proof caching TODO @Tabaie delete
+	proof := func() plonk.Proof {
+		logrus.Info("attempting to read cached proof")
+		f, err := os.Open(cachedProofPath)
+		if err != nil {
+			logrus.Error(err)
+			return nil
+		}
+		defer f.Close()
+		proof := plonk.NewProof(ecc.BLS12_377)
+
+		if _, err = proof.ReadFrom(f); err != nil {
+			logrus.Error(err)
+			return nil
+		}
+
+		// check if the proof passes
+		if err = plonk.Verify(proof, setup.VerifyingKey, w); err != nil {
+			logrus.Error(err)
+			return nil
+		}
+
+		logrus.Info("PI proof successfully loaded")
+
+		return proof
+	}()
+
+	if proof == nil {
+		logrus.Info("failed to load PI proof. Creating a new one")
+		proof, err = circuits.ProveCheck(&setup, &assignment)
+		if err != nil {
+			return nil, nil, err
+		}
+		f, err := os.OpenFile(cachedProofPath, os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer f.Close()
+		if _, err = proof.WriteTo(f); err != nil {
+			return nil, nil, err
+		}
+	}
 
 	return proof, w, err
 }
@@ -293,6 +345,7 @@ func doesBw6CircuitSupportVKeys(supportedVkeys []string, proofClaims []aggregati
 			found = found || (suppBytes32[i] == requiredVKey)
 		}
 		if !found {
+			logrus.Warnf("vk %x for proof #%d not supported", requiredVKey, k)
 			return false
 		}
 	}
