@@ -126,6 +126,19 @@ describe("L2MessageService", () => {
       expect(await l2MessageService.limitInWei()).to.be.equal(INITIAL_WITHDRAW_LIMIT);
     });
 
+    it("Should fail to deploy if default admin is address zero", async () => {
+      const deployCall = deployUpgradableFromFactory("TestL2MessageService", [
+        ONE_DAY_IN_SECONDS,
+        MESSAGE_VALUE_1ETH + MESSAGE_VALUE_1ETH,
+        ADDRESS_ZERO,
+        roleAddresses,
+        L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+        L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
+      ]);
+
+      await expectRevertWithCustomError(l2MessageService, deployCall, "ZeroAddressNotAllowed");
+    });
+
     it("Should fail to deploy missing limit amount", async () => {
       const deployCall = deployUpgradableFromFactory("TestL2MessageService", [
         ONE_DAY_IN_SECONDS,
