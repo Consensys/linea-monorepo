@@ -68,6 +68,10 @@ contract TokenBridge is
   bytes private constant METADATA_SYMBOL = abi.encodeCall(IERC20MetadataUpgradeable.symbol, ());
   bytes private constant METADATA_DECIMALS = abi.encodeCall(IERC20MetadataUpgradeable.decimals, ());
 
+  uint256 private constant VALID_DECIMALS_ENCODING_LENGTH = 32;
+  uint256 private constant SHORT_STRING_ENCODING_LENGTH = 32;
+  uint256 private constant MINIMUM_STRING_ABI_DECODE_LENGTH = 64;
+
   address public tokenBeacon;
 
   mapping(uint256 chainId => mapping(address native => address bridged)) public nativeToBridgedToken;
@@ -510,7 +514,7 @@ contract TokenBridge is
   function _safeDecimals(address _token) internal view returns (uint8) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_DECIMALS);
 
-    if (success && data.length == 32) {
+    if (success && data.length == VALID_DECIMALS_ENCODING_LENGTH) {
       return abi.decode(data, (uint8));
     }
 
@@ -523,16 +527,16 @@ contract TokenBridge is
    * @return decodedString The decoded string data.
    */
   function _returnDataToString(bytes memory _data) internal pure returns (string memory decodedString) {
-    if (_data.length >= 64) {
+    if (_data.length >= MINIMUM_STRING_ABI_DECODE_LENGTH) {
       return abi.decode(_data, (string));
-    } else if (_data.length != 32) {
+    } else if (_data.length != SHORT_STRING_ENCODING_LENGTH) {
       return "NOT_VALID_ENCODING";
     }
 
     // Since the strings on bytes32 are encoded left-right, check the first zero in the data
     uint256 nonZeroBytes;
     unchecked {
-      while (nonZeroBytes < 32 && _data[nonZeroBytes] != 0) {
+      while (nonZeroBytes < SHORT_STRING_ENCODING_LENGTH && _data[nonZeroBytes] != 0) {
         nonZeroBytes++;
       }
     }
