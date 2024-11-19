@@ -64,6 +64,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	assertSlicesEqualZEXT(api, piBits[:16*8], field.ToBitsCanonical(&c.PublicInputWitness.Public[1]))
 	assertSlicesEqualZEXT(api, piBits[16*8:], field.ToBitsCanonical(&c.PublicInputWitness.Public[0]))
+	api.AssertIsDifferent(c.PublicInput, 0) // making sure at least one element of the PI circuit's public input is nonzero to justify using incomplete arithmetic
 
 	vks := append(slices.Clone(c.verifyingKeys), c.publicInputVerifyingKey)
 	piVkIndex := len(vks) - 1
@@ -194,8 +195,8 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 	}
 
 	// The PI proof cannot be batched with the rest because it has more than one public input
-	// TODO @Tabaie determine is complete arithmetic is necessary: probably not
-	if err = verifier.AssertProof(vks[len(cvks)], proofs[lastProofI], witnesses[lastProofI], emPlonk.WithCompleteArithmetic()); err != nil {
+	// complete arithmetic is not necessary here because the circuit is nontrivial and at least one element of the public input is nonzero
+	if err = verifier.AssertProof(vks[len(cvks)], proofs[lastProofI], witnesses[lastProofI]); err != nil {
 		return fmt.Errorf("AssertProof returned an error: %w", err)
 	}
 
