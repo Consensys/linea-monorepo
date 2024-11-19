@@ -103,14 +103,12 @@ func (td *txnData) assignTxnDataFromPK(
 	rlpTxnHashes [][32]byte,
 	nbRowsPerTxInTxnData int,
 ) {
-
-	// compute the hash of public keys
 	var (
-		pkHash  [][]byte
 		hasher  = sha3.NewLegacyKeccak256()
 		maxNbTx = ac.Inputs.settings.MaxNbTx
 	)
-
+	// compute the hash of public keys
+	pkHash := make([][]byte, 0, len(rlpTxnHashes))
 	for i := range rlpTxnHashes {
 		pk, _, _, _, err := generateDeterministicSignature(rlpTxnHashes[i][:])
 		if err != nil {
