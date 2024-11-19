@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -217,9 +218,18 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 
 	// we need to compute the digest of the verifying keys & store them in the manifest
 	// for the aggregation circuits to be able to check compatibility at run time with the proofs
-	allowedVkForAggregationDigests := listOfCheckum(allowedVkForAggregation)
+	allowedVkForAggregationSerialized := make([]string, len(allowedVkForAggregation))
+	var sb strings.Builder
+	b64Enc := base64.NewEncoder(base64.StdEncoding, &sb)
+	for i, vk := range allowedVkForAggregation {
+		if _, err = vk.WriteTo(b64Enc); err != nil {
+			return fmt.Errorf("failed to serialize verifying key: %w", err)
+		}
+		allowedVkForAggregationSerialized[i] = sb.String()
+		sb.Reset()
+	}
 	extraFlagsForAggregationCircuit := map[string]any{
-		"allowedVkForAggregationDigests": allowedVkForAggregationDigests,
+		"allowedVkForAggregation": allowedVkForAggregationSerialized,
 	}
 
 	// now for each aggregation circuit, we update the setup if needed, and collect the verifying keys

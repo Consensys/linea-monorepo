@@ -1,6 +1,9 @@
 package aggregation
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"math"
 	"path/filepath"
@@ -152,11 +155,12 @@ func makeBw6Proof(
 	// take the smallest circuit that has enough capacity.
 
 	var (
-		numProofClaims              = len(cf.ProofClaims)
-		biggestAvailable            = 0
-		bestSize                    = math.MaxInt
-		bestSetupPos                = -1
-		bestAllowedVkForAggregation []string
+		numProofClaims                     = len(cf.ProofClaims)
+		biggestAvailable                   = 0
+		bestSize                           = math.MaxInt
+		bestSetupPos                       = -1
+		bestAllowedVkForAggregationDigests []string
+		bestAllowedVksForAggregation       []plonk.VerifyingKey
 	)
 
 	// first we discover available setups
@@ -176,20 +180,41 @@ func makeBw6Proof(
 		if err != nil {
 			return nil, 0, fmt.Errorf("could not read the manifest for circuit %v: %w", circuitID, err)
 		}
-		allowedVkForAggregation, err := manifest.GetStringArray("allowedVkForAggregationDigests")
+		allowedVkForAggregationSerialized, err := manifest.GetStringArray("allowedVkForAggregation")
 		if err != nil {
-			return nil, 0, fmt.Errorf("could not read the allowedVkForAggregationDigests: %w", err)
+			return nil, 0, fmt.Errorf("could not read the allowedVkForAggregation: %w", err)
+		}
+
+		allowedVkForAggregationDigests := make([]string, len(allowedVkForAggregationSerialized))
+		allowedVkForAggregation := make([]plonk.VerifyingKey, len(allowedVkForAggregationSerialized))
+		hsh := sha256.New()
+		for i, vk := range allowedVkForAggregationSerialized {
+			vkAsBytes, err := base64.StdEncoding.DecodeString(vk)
+			if err != nil {
+				return nil, 0, fmt.Errorf("could not decode the verifying key: %w", err)
+			}
+			// compute digest
+			hsh.Reset()
+			hsh.Write(vkAsBytes)
+			allowedVkForAggregationDigests[i] = utils.HexEncodeToString(hsh.Sum(nil))
+
+			// deserialize verifying key
+			allowedVkForAggregation[i] = plonk.NewVerifyingKey(ecc.BLS12_377)
+			if _, err = allowedVkForAggregation[i].ReadFrom(bytes.NewReader(vkAsBytes)); err != nil {
+				return nil, 0, fmt.Errorf("could not deserialize the verifying key: %w", err)
+			}
 		}
 
 		// This reject condition may take longer
-		if !doesBw6CircuitSupportVKeys(allowedVkForAggregation, cf.ProofClaims) {
+		if !doesBw6CircuitSupportVKeys(allowedVkForAggregationDigests, cf.ProofClaims) {
 			logrus.Infof("skipping setup with %v proofs because it does not support the required verifying keys", maxNbProofs)
 			continue
 		}
 
 		if maxNbProofs <= bestSize {
 			bestSize = maxNbProofs
-			bestAllowedVkForAggregation = allowedVkForAggregation
+			bestAllowedVkForAggregationDigests = allowedVkForAggregationDigests
+			bestAllowedVksForAggregation = allowedVkForAggregation
 		}
 	}
 
@@ -212,7 +237,7 @@ func makeBw6Proof(
 	// not do it before because the "ordering" of the verifying keys can be
 	// circuit dependent. So, we needed to pick the circuit first.
 
-	assignCircuitIDToProofClaims(bestAllowedVkForAggregation, cf.ProofClaims)
+	assignCircuitIDToProofClaims(bestAllowedVkForAggregationDigests, cf.ProofClaims)
 
 	// Although the public input is restrained to fit on the BN254 scalar field,
 	// the BW6 field is larger. This allows us to represent the public input as a
@@ -233,7 +258,7 @@ func makeBw6Proof(
 	}
 
 	logrus.Infof("running the BW6 prover")
-	proofBW6, err := aggregation.MakeProof(&setup, bestSize, cf.ProofClaims, piInfo, piBW6)
+	proofBW6, err := aggregation.MakeProof(&setup, bestAllowedVksForAggregation, bestSize, cf.ProofClaims, piInfo, piBW6)
 	if err != nil {
 		return nil, 0, fmt.Errorf("could not create BW6 proof: %w", err)
 	}

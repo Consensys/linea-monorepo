@@ -16,6 +16,7 @@ import (
 // corresponding proof.
 func MakeProof(
 	setup *circuits.Setup,
+	allowedVks []plonk.VerifyingKey, // optional parameter for debugging; safe to supply nil
 	maxNbProof int,
 	proofClaims []ProofClaimAssignment,
 	piInfo PiInfo,
@@ -32,6 +33,14 @@ func MakeProof(
 		piInfo,
 		publicInput,
 	)
+
+	assignment.verifyingKeys = make([]emVkey, len(allowedVks))
+	for i := range allowedVks {
+		var err error
+		if assignment.verifyingKeys[i], err = emPlonk.ValueOfVerifyingKey[emFr, emG1, emG2](allowedVks[i]); err != nil {
+			return nil, fmt.Errorf("while converting the verifying key #%v: %w", i, err)
+		}
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("while generating the aggregation circuit assignment: %w", err)
