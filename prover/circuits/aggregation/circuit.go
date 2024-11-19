@@ -195,7 +195,7 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 
 	// The PI proof cannot be batched with the rest because it has more than one public input
 	// TODO @Tabaie determine is complete arithmetic is necessary: probably not
-	if err = verifier.AssertProof(vks[len(cvks)], proofs[lastProofI], witnesses[lastProofI]); err != nil {
+	if err = verifier.AssertProof(vks[len(cvks)], proofs[lastProofI], witnesses[lastProofI], emPlonk.WithCompleteArithmetic()); err != nil {
 		return fmt.Errorf("AssertProof returned an error: %w", err)
 	}
 
