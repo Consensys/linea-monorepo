@@ -36,8 +36,8 @@ func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []gen
 
 	// create the list of  [generic.GenDataModule] and [generic.GenInfoModule]
 	var (
-		gdm []generic.GenDataModule
-		gim []generic.GenInfoModule
+		gdm = make([]generic.GenDataModule, 0, len(providers))
+		gim = make([]generic.GenInfoModule, 0, len(providers))
 	)
 
 	for i := range providers {
