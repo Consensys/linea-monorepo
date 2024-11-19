@@ -152,7 +152,7 @@ func tryReadCachedProof(setup Setup, cachedProofPath string, verifierOpts []back
 		return nil
 	}
 
-	logrus.Info("PI proof successfully loaded")
+	logrus.Info("proof successfully loaded")
 
 	return proof
 }
