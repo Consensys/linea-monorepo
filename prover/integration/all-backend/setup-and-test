@@ -1,0 +1,2 @@
+cd run-setup
+go run -v . && cd ../run-test && go run -v .
