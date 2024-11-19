@@ -5,10 +5,9 @@ import (
 	"math"
 	"path/filepath"
 
-	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
-
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
+	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
@@ -71,15 +70,15 @@ func makeProof(
 func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.Witness, error) {
 
 	var setup circuits.Setup
-	loadSetupErr := make(chan error, 1)
+	setupErr := make(chan error, 1)
+
 	go func() {
 		var err error
 		setup, err = circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
-		loadSetupErr <- err
-		close(loadSetupErr)
+		setupErr <- err
+		close(setupErr)
 	}()
 
-	cfg.PublicInputInterconnection.MockKeccakWizard = true
 	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, pi_interconnection.WizardCompilationParameters()...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create the public-input circuit: %w", err)
@@ -115,14 +114,14 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		return nil, nil, fmt.Errorf("could not extract interconnection circuit public witness: %w", err)
 	}
 
-	if err := <-loadSetupErr; err != nil {
+	proverOpts := emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
+	verifierOpts := emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
+
+	if err = <-setupErr; err != nil { // wait for setup to load and check for errors
 		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
 	}
 
-	proverOpt := emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
-	verifierOpt := emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
-
-	proof, err := circuits.ProveCheck(&setup, &assignment, proverOpt, verifierOpt, circuits.WithCachedProof(".tmp/pi.pf"))
+	proof, err := circuits.ProveCheck(&setup, &assignment, proverOpts, verifierOpts, circuits.WithCachedProof(".tmp/pi.pf"))
 
 	return proof, w, err
 }

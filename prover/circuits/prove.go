@@ -3,8 +3,9 @@ package circuits
 import (
 	"bytes"
 	"fmt"
-	"github.com/consensys/gnark/backend/witness"
 	"os"
+
+	"github.com/consensys/gnark/backend/witness"
 
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/plonk"
@@ -152,7 +153,7 @@ func tryReadCachedProof(setup Setup, cachedProofPath string, verifierOpts []back
 		return nil
 	}
 
-	logrus.Info("PI proof successfully loaded")
+	logrus.Info("proof successfully loaded")
 
 	return proof
 }
