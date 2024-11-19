@@ -215,7 +215,7 @@ interface ITokenBridge {
   error DecimalsAreUnknown(address token);
 
   /**
-   * @dev Token list is empty.
+   * @dev Thrown when the token list is empty.
    */
   error TokenListEmpty();
 
