@@ -13,7 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var flagAggregationOnly = flag.Bool("aggregation-only", true, "whether to only run aggregation")
+var flagNoExecution = flag.Bool("no-execution", true, "don't create new execution proofs")
+var flagNoDecompression = flag.Bool("no-decompression", false, "don't create new decompression proofs")
 
 func main() {
 
@@ -49,8 +50,10 @@ func main() {
 		}
 	}
 
-	if !*flagAggregationOnly {
+	if !*flagNoDecompression {
 		runAllJsonInFolder(decompressionPath)
+	}
+	if !*flagNoExecution {
 		runAllJsonInFolder(executionPath)
 	}
 	runAllJsonInFolder(aggregationPath)

@@ -11,6 +11,7 @@ import (
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark/frontend"
@@ -54,7 +55,10 @@ func MakeUnsafeSetup(srsProvider circuits.SRSProvider, circID circuits.MockCircu
 	if err != nil {
 		return circuits.Setup{}, err
 	}
-	return circuits.MakeSetup(context.TODO(), "TODO", scs, srsProvider, nil)
+
+	setup, err := circuits.MakeSetup(context.TODO(), "TODO", scs, srsProvider, nil)
+	logrus.Infof("dummy circuit ID %d VK %s CS %s", circID, setup.VerifyingKeyDigest(), test_utils.Sha256Sum(test_utils.FakeTestingT{}, setup.Circuit))
+	return setup, err
 }
 
 // Generates an assignment for the circuit.

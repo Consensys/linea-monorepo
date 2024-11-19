@@ -33,7 +33,7 @@
         "4457301-4457351-getZkProof.json"
     ],
     "compressionProofs": [
-        "4454961-4457351-e1e96ae51f742703127930ac10b1271bba431670cb58df245d447fec45b5abb0-getZkBlobCompressionProof.json"
+        "4454961-4457351-bcv0.0-ccv0.0-e1e96ae51f742703127930ac10b1271bba431670cb58df245d447fec45b5abb0-getZkBlobCompressionProof.json"
     ],
     "parentAggregationLastBlockTimestamp": 1728840417,
     "parentAggregationLastL1RollingHashMessageNumber": 4280,

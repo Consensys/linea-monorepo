@@ -3,6 +3,7 @@ package test_utils
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	snarkHash "github.com/consensys/gnark/std/hash"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/stretchr/testify/require"
 )
@@ -415,4 +417,11 @@ func spaceOutFromRight(s string) string {
 		panic("incorrect size estimation")
 	}
 	return bb.String()
+}
+
+func Sha256Sum(t require.TestingT, object io.WriterTo) string {
+	h := sha256.New()
+	_, err := object.WriteTo(h)
+	require.NoError(t, err, "could not create checksum")
+	return utils.HexEncodeToString(h.Sum(nil))
 }

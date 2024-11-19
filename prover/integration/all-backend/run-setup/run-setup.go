@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"os"
+	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/cmd/prover/cmd"
 	allbackend "github.com/consensys/linea-monorepo/prover/integration/all-backend"
@@ -16,6 +18,9 @@ func main() {
 	cmd.FConfigFile = "/home/ubuntu/linea-monorepo/prover/integration/all-backend/config-integration-light.toml"
 
 	cmd.FCircuits = "aggregation"
+	if len(os.Args) > 1 {
+		cmd.FCircuits = strings.Join(os.Args[1:], ",")
+	}
 
 	assert.NoError(t, cmd.CmdSetup("setup", context.TODO(), []string{}))
 }
