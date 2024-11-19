@@ -68,6 +68,7 @@ contract TokenBridge is
   bytes private constant METADATA_SYMBOL = abi.encodeCall(IERC20MetadataUpgradeable.symbol, ());
   bytes private constant METADATA_DECIMALS = abi.encodeCall(IERC20MetadataUpgradeable.decimals, ());
 
+  /// @dev These 3 values are used when checking for token decimals and string values.
   uint256 private constant VALID_DECIMALS_ENCODING_LENGTH = 32;
   uint256 private constant SHORT_STRING_ENCODING_LENGTH = 32;
   uint256 private constant MINIMUM_STRING_ABI_DECODE_LENGTH = 64;
