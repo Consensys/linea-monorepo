@@ -176,7 +176,7 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 		switches[i] = claims[i].CircuitID
 		witnesses[i] = claims[i].PublicInput
 	}
-	
+
 	err = verifier.AssertDifferentProofs(bvk, cvks, switches, proofs, witnesses, emPlonk.WithCompleteArithmetic())
 	if err != nil {
 		return fmt.Errorf("AssertDifferentProofs returned an error: %w", err)
