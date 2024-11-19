@@ -36,15 +36,7 @@ services:
       - "5005:5005"
     volumes:
       - ../tmp/local/:/data/
-
-  sequencer:
-    environment:
-      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
-
-  zkbesu-shomei:
-    environment:
-      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
-
-  l1-el-node:
+  
+  l2-node-besu:
     environment:
       JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC

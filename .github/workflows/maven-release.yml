@@ -7,10 +7,10 @@ on:
         type: choice
         description: 'Library to release, e.g :jvm-libs:blob-compressor'
         options:
-          - ':jvm-libs:blob-compressor'
-          - ':jvm-libs:blob-shnarf-calculator'
-          - ':jvm-libs:linea-contracts:l1-rollup'
-          - ':jvm-libs:linea-contracts:l2-message-service'
+          - ':jvm-libs:linea:blob-compressor'
+          - ':jvm-libs:linea:blob-shnarf-calculator'
+          - ':jvm-libs:linea:linea-contracts:l1-rollup'
+          - ':jvm-libs:linea:linea-contracts:l2-message-service'
       version:
         required: true
         type: string
@@ -18,7 +18,7 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
       # Configure Gradle for optimal use in GiHub Actions, including caching of downloaded dependencies.
       # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Clean
         # ./gradlew clean is necessary because the build is cached

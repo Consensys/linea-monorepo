@@ -1,10 +1,10 @@
 package net.consensys.zkevm.coordination.blob
 
+import build.linea.domain.BlockIntervals
 import net.consensys.decodeHex
 import net.consensys.encodeHex
 import net.consensys.linea.blob.CalculateShnarfResult
 import net.consensys.linea.blob.GoNativeBlobShnarfCalculator
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blob.ShnarfResult
 import org.apache.tuweni.bytes.Bytes32

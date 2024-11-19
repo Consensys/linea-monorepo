@@ -63,7 +63,7 @@ abstract contract L2MessageServiceV1 is
    * @param _calldata The calldata to pass to the recipient.
    */
   function sendMessage(address _to, uint256 _fee, bytes calldata _calldata) external payable {
-    _requireTypeAndGeneralNotPaused(L2_L1_PAUSE_TYPE);
+    _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
 
     if (_to == address(0)) {
       revert ZeroAddressNotAllowed();
@@ -121,7 +121,7 @@ abstract contract L2MessageServiceV1 is
     bytes calldata _calldata,
     uint256 _nonce
   ) external nonReentrant distributeFees(_fee, _to, _calldata, _feeRecipient) {
-    _requireTypeAndGeneralNotPaused(L1_L2_PAUSE_TYPE);
+    _requireTypeAndGeneralNotPaused(PauseType.L1_L2);
 
     bytes32 messageHash = MessageHashing._hashMessage(_from, _to, _fee, _value, _nonce, _calldata);
 
@@ -148,6 +148,7 @@ abstract contract L2MessageServiceV1 is
 
   /**
    * @notice The Fee Manager sets a minimum fee to address DOS protection.
+   * @dev MINIMUM_FEE_SETTER_ROLE is required to set the minimum fee.
    * @param _feeInWei New minimum fee in Wei.
    */
   function setMinimumFee(uint256 _feeInWei) external onlyRole(MINIMUM_FEE_SETTER_ROLE) {
@@ -159,10 +160,10 @@ abstract contract L2MessageServiceV1 is
 
   /**
    * @dev The _messageSender address is set temporarily when claiming.
-   * @return _messageSender address.
+   * @return originalSender The original sender stored temporarily at the _messageSender address in storage.
    */
-  function sender() external view returns (address) {
-    return _messageSender;
+  function sender() external view returns (address originalSender) {
+    originalSender = _messageSender;
   }
 
   /**

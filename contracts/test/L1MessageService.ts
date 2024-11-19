@@ -37,8 +37,8 @@ import {
   PAUSE_L1_L2_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "./utils/constants";
-import { deployFromFactory, deployUpgradableFromFactory } from "./utils/deployment";
+} from "./common/constants";
+import { deployFromFactory, deployUpgradableFromFactory } from "./common/deployment";
 import {
   buildAccessErrorMessage,
   calculateRollingHash,
@@ -47,7 +47,7 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256Hash,
-} from "./utils/helpers";
+} from "./common/helpers";
 
 describe("L1MessageService", () => {
   let l1MessageService: TestL1MessageService;
@@ -84,6 +84,7 @@ describe("L1MessageService", () => {
 
   before(async () => {
     [admin, pauser, limitSetter, notAuthorizedAccount, postmanAddress, l2Sender] = await ethers.getSigners();
+    // TODO adjust the tests to dynamically use whatever nonce is set for the merkle proof
     await setNonce(admin.address, 1);
   });
 
@@ -1115,7 +1116,7 @@ describe("L1MessageService", () => {
       await expectRevertWithCustomError(l1MessageServiceMerkleProof, claimMessageCall, "MessageAlreadyClaimed", [1]);
     });
 
-    it("Should fail when l2 merkle root does not exist on L1", async () => {
+    it("Should fail when l2 Merkle root does not exist on L1", async () => {
       const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
         proof: VALID_MERKLE_PROOF.proof,
         messageNumber: 1,

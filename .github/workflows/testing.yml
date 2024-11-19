@@ -18,6 +18,9 @@ on:
       traces_api_facade_changed:
         required: true
         type: string
+      transaction_exclusion_api_changed:
+        required: true
+        type: string
       coordinator_image_tagged:
         required: true
         type: string
@@ -27,11 +30,9 @@ on:
       traces_api_facade_image_tagged:
         required: true
         type: string
-    secrets:
-      DOCKERHUB_USERNAME:
+      transaction_exclusion_api_image_tagged:
         required: true
-      DOCKERHUB_TOKEN:
-        required: true
+        type: string
 
 jobs:
   coordinator:
@@ -54,4 +55,7 @@ jobs:
   traces-api-facade:
     uses: ./.github/workflows/traces-api-facade-testing.yml
     if: ${{ always() && (inputs.traces_api_facade_changed == 'true' || inputs.traces_api_facade_image_tagged != 'true') }}
-    secrets: inherit
+
+  transaction-exclusion-api:
+    uses: ./.github/workflows/transaction-exclusion-api-testing.yml
+    if: ${{ always() && (inputs.transaction_exclusion_api_changed == 'true' || inputs.transaction_exclusion_api_image_tagged != 'true') }}

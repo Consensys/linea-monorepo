@@ -6,10 +6,6 @@ on:
         description: 'The commit tag to use'
         required: true
         type: string
-      untested_tag_suffix:
-        description: 'The untested tag suffix to use'
-        required: true
-        type: string
       tracing-engine:
         description: Variable option for running tests against [besu] or [geth] stack
         required: true
@@ -32,9 +28,6 @@ on:
   workflow_call:
     inputs:
       commit_tag:
-        required: true
-        type: string
-      untested_tag_suffix:
         required: true
         type: string
       tracing-engine:
@@ -61,35 +54,37 @@ on:
         value: ${{ jobs.run-e2e-tests.outputs.tests_outcome }}
     secrets:
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
-        required: true
+        required: false
 
 jobs:
   run-e2e-tests:
     env:
-      COORDINATOR_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
-      POSTMAN_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
-      PROVER_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
-      TRACES_API_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
+      COORDINATOR_TAG: ${{ inputs.commit_tag }}
+      POSTMAN_TAG: ${{ inputs.commit_tag }}
+      PROVER_TAG: ${{ inputs.commit_tag }}
+      TRACES_API_TAG: ${{ inputs.commit_tag }}
+      TRANSACTION_EXCLUSION_API_TAG: ${{ inputs.commit_tag }}
       GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
-    runs-on: ubuntu-22.04
-    environment: docker-build-and-e2e
+    runs-on: [self-hosted, ubuntu-22.04, X64, large]
     steps:
       - name: Setup upterm session
         if: ${{ inputs.e2e-tests-with-ssh }}
         uses: lhotari/action-upterm@v1
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
-          pnpm-install-options: '--frozen-lockfile --prefer-offline'
+          pnpm-install-options: '-F contracts -F e2e --frozen-lockfile --prefer-offline'
       - name: Login to Docker Hub
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v1
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -113,7 +108,17 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make pull-all-images
+            make pull-images-external-to-monorepo
+      - name: Download local docker image artifacts
+        uses: actions/download-artifact@v4
+      - name: Load Docker images
+        run: |
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-coordinator/linea-coordinator-docker-image.tar.gz | docker load &&
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-postman/linea-postman-docker-image.tar.gz | docker load &&
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-prover/linea-prover-docker-image.tar.gz | docker load &&
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-traces-api-facade/linea-traces-api-facade-docker-image.tar.gz | docker load &&
+          gunzip -c /runner/_work/linea-monorepo/linea-monorepo/linea-transaction-exclusion-api/linea-transaction-exclusion-api-docker-image.tar.gz | docker load
+        shell: bash
       - name: Spin up fresh environment with geth tracing with retry
         if: ${{ inputs.tracing-engine == 'geth' }}
         uses: nick-fields/retry@v2
@@ -146,6 +151,7 @@ jobs:
           docker container ls -a
       - name: Run e2e tests
         id: run_e2e_tests
+        timeout-minutes: 4
         run: |
           pnpm run -F e2e test:e2e:local
       - name: Show e2e tests result
@@ -157,15 +163,17 @@ jobs:
         run: |
           mkdir -p docker_logs
           docker ps -a >> docker_logs/docker_ps.txt
+          docker logs coordinator --since 1h &>> docker_logs/coordinator.txt
           docker logs prover --since 1h &>> docker_logs/prover.txt
           docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt;
-          docker logs coordinator --since 1h &>> docker_logs/coordinator.txt
           docker logs shomei --since 1h &>> docker_logs/shomei.txt
           docker logs zkbesu-shomei --since 1h &>> docker_logs/zkbesu-shomei.txt
           docker logs shomei-frontend --since 1h &>> docker_logs/shomei-frontend.txt
           docker logs postman --since 1h &>> docker_logs/postman.txt
           docker logs traces-node --since 1h &>> docker_logs/traces-node.txt
           docker logs traces-node-v2 --since 1h &>> docker_logs/traces-node-v2.txt;
+          docker logs l2-node-besu --since 1h &>> docker_logs/l2-node-besu.txt;
+          docker logs transaction-exclusion-api --since 1h &>> docker_logs/transaction-exclusion-api.txt
           docker logs sequencer --since 1h &>> docker_logs/sequencer.txt
       - name: Archive debug logs
         uses: actions/upload-artifact@v4

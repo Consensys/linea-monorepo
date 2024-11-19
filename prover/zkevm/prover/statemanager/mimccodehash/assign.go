@@ -91,109 +91,115 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		builder.codeSize = append(builder.codeSize, codeSize[i])
 	}
 
-	// Initialize the first row of the remaining columns
-	builder.isNewHash = append(builder.isNewHash, field.One())
+	// The content of this statement is constructing isNewHash and isHashEnd
+	// prevState and newState. However, it is only needed when there is any
+	// codehash to hash in the first place.
+	if len(builder.cfi) > 0 {
 
-	// Detect if it is a one limb segment (at the begining) and assign IsHashEnd accordingly
-	if builder.cfi[1] != builder.cfi[0] {
-		builder.isHashEnd = append(builder.isHashEnd, field.One())
-	} else {
-		builder.isHashEnd = append(builder.isHashEnd, field.Zero())
-	}
+		// Initialize the first row of the remaining columns
+		builder.isNewHash = append(builder.isNewHash, field.One())
 
-	builder.prevState = append(builder.prevState, field.Zero())
-	builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[0], builder.limb[0]))
-
-	// Assign other rows of the remaining columns
-	for i := 1; i < len(builder.cfi); i++ {
-
-		// We do not need to continue if we are in the inactive area
-		if builder.isActive[i].IsZero() {
-			break
-		}
-
-		var (
-			cfiPrev          = builder.cfi[i-1]
-			cfiCurr          = builder.cfi[i]
-			cfiNext          = builder.cfi[i+1]
-			isSegmentBegin   = false
-			isSegmentMiddle  = false
-			isSegmentEnd     = false
-			isOneLimbSegment = false
-		)
-
-		if cfiPrev.Equal(&cfiCurr) && cfiCurr.Equal(&cfiNext) {
-			isSegmentMiddle = true
-		}
-
-		if !cfiPrev.Equal(&cfiCurr) && cfiCurr.Equal(&cfiNext) {
-			isSegmentBegin = true
-		}
-
-		if cfiPrev.Equal(&cfiCurr) && !cfiCurr.Equal((&cfiNext)) {
-			isSegmentEnd = true
-		}
-
-		if !cfiPrev.Equal(&cfiCurr) && !cfiCurr.Equal((&cfiNext)) {
-			isOneLimbSegment = true
-		}
-
-		// Assign for begining of a segment
-		if isSegmentBegin {
-			builder.isNewHash = append(builder.isNewHash, field.One())
-			builder.isHashEnd = append(builder.isHashEnd, field.Zero())
-			builder.prevState = append(builder.prevState, field.Zero())
-			builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
-			continue
-		}
-
-		// Assign for middle of a segment
-		if isSegmentMiddle {
-			builder.isNewHash = append(builder.isNewHash, field.Zero())
-			builder.isHashEnd = append(builder.isHashEnd, field.Zero())
-			builder.prevState = append(builder.prevState, builder.newState[i-1])
-			builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
-			continue
-		}
-
-		// Assign for end of a segment
-		if isSegmentEnd {
-			builder.isNewHash = append(builder.isNewHash, field.Zero())
+		// Detect if it is a one limb segment (at the begining) and assign IsHashEnd accordingly
+		if builder.cfi[1] != builder.cfi[0] {
 			builder.isHashEnd = append(builder.isHashEnd, field.One())
-			builder.prevState = append(builder.prevState, builder.newState[i-1])
-			builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
-			continue
+		} else {
+			builder.isHashEnd = append(builder.isHashEnd, field.Zero())
 		}
 
-		// Assign for a one limb segment
-		if isOneLimbSegment {
-			builder.isNewHash = append(builder.isNewHash, field.One())
-			builder.isHashEnd = append(builder.isHashEnd, field.One())
-			builder.prevState = append(builder.prevState, field.Zero())
-			builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
-			continue
-		}
-	}
+		builder.prevState = append(builder.prevState, field.Zero())
+		builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[0], builder.limb[0]))
 
-	// Assign codehash from the romLex input
-	for i := 0; i < len(builder.cfi); i++ {
+		// Assign other rows of the remaining columns
+		for i := 1; i < len(builder.cfi); i++ {
 
-		// We do not need to continue if we are in the inactive area
-		if builder.isActive[i].IsZero() {
-			break
-		}
-
-		currCFI := builder.cfi[i]
-
-		// For each currCFI, we look over all the CFIs in the Romlex input,
-		// and append only that codehash for which the cfi matches with currCFI
-		for j := 0; j < len(cfiRomLex); j++ {
-			if currCFI == cfiRomLex[j] {
-				builder.codeHashHi = append(builder.codeHashHi, codeHashHi[j])
-				builder.codeHashLo = append(builder.codeHashLo, codeHashLo[j])
+			// We do not need to continue if we are in the inactive area
+			if builder.isActive[i].IsZero() {
 				break
 			}
-			continue
+
+			var (
+				cfiPrev          = builder.cfi[i-1]
+				cfiCurr          = builder.cfi[i]
+				cfiNext          = builder.cfi[i+1]
+				isSegmentBegin   = false
+				isSegmentMiddle  = false
+				isSegmentEnd     = false
+				isOneLimbSegment = false
+			)
+
+			if cfiPrev.Equal(&cfiCurr) && cfiCurr.Equal(&cfiNext) {
+				isSegmentMiddle = true
+			}
+
+			if !cfiPrev.Equal(&cfiCurr) && cfiCurr.Equal(&cfiNext) {
+				isSegmentBegin = true
+			}
+
+			if cfiPrev.Equal(&cfiCurr) && !cfiCurr.Equal((&cfiNext)) {
+				isSegmentEnd = true
+			}
+
+			if !cfiPrev.Equal(&cfiCurr) && !cfiCurr.Equal((&cfiNext)) {
+				isOneLimbSegment = true
+			}
+
+			// Assign for begining of a segment
+			if isSegmentBegin {
+				builder.isNewHash = append(builder.isNewHash, field.One())
+				builder.isHashEnd = append(builder.isHashEnd, field.Zero())
+				builder.prevState = append(builder.prevState, field.Zero())
+				builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
+				continue
+			}
+
+			// Assign for middle of a segment
+			if isSegmentMiddle {
+				builder.isNewHash = append(builder.isNewHash, field.Zero())
+				builder.isHashEnd = append(builder.isHashEnd, field.Zero())
+				builder.prevState = append(builder.prevState, builder.newState[i-1])
+				builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
+				continue
+			}
+
+			// Assign for end of a segment
+			if isSegmentEnd {
+				builder.isNewHash = append(builder.isNewHash, field.Zero())
+				builder.isHashEnd = append(builder.isHashEnd, field.One())
+				builder.prevState = append(builder.prevState, builder.newState[i-1])
+				builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
+				continue
+			}
+
+			// Assign for a one limb segment
+			if isOneLimbSegment {
+				builder.isNewHash = append(builder.isNewHash, field.One())
+				builder.isHashEnd = append(builder.isHashEnd, field.One())
+				builder.prevState = append(builder.prevState, field.Zero())
+				builder.newState = append(builder.newState, mimc.BlockCompression(builder.prevState[i], builder.limb[i]))
+				continue
+			}
+		}
+
+		// Assign codehash from the romLex input
+		for i := 0; i < len(builder.cfi); i++ {
+
+			// We do not need to continue if we are in the inactive area
+			if builder.isActive[i].IsZero() {
+				break
+			}
+
+			currCFI := builder.cfi[i]
+
+			// For each currCFI, we look over all the CFIs in the Romlex input,
+			// and append only that codehash for which the cfi matches with currCFI
+			for j := 0; j < len(cfiRomLex); j++ {
+				if currCFI == cfiRomLex[j] {
+					builder.codeHashHi = append(builder.codeHashHi, codeHashHi[j])
+					builder.codeHashLo = append(builder.codeHashLo, codeHashLo[j])
+					break
+				}
+				continue
+			}
 		}
 	}
 

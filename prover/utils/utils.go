@@ -3,11 +3,14 @@ package utils
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
 	"math/big"
+	"os"
 	"reflect"
+	"strconv"
 
 	"github.com/consensys/gnark/frontend"
 	"golang.org/x/exp/constraints"
@@ -20,6 +23,11 @@ import (
 // Return true if n is a power of two
 func IsPowerOfTwo[T ~int](n T) bool {
 	return n&(n-1) == 0 && n > 0
+}
+
+func Abs(a int) int {
+	mask := a >> (strconv.IntSize - 1) // made up of the sign bit
+	return (a ^ mask) - mask           // if mask is 0, then a ^ 0 - 0 = a. if mask is -1, then a ^ -1 - (-1) = -a - 1 - (-1) = -a
 }
 
 // DivCeil for int a, b
@@ -290,4 +298,22 @@ func FillRange[T constraints.Integer](dst []T, start T) {
 	for l := range dst {
 		dst[l] = T(l) + start
 	}
+}
+
+func ReadFromJSON(path string, v interface{}) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return json.NewDecoder(f).Decode(v)
+}
+
+func WriteToJSON(path string, v interface{}) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return json.NewEncoder(f).Encode(v)
 }

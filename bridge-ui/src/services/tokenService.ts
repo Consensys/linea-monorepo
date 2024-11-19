@@ -1,10 +1,10 @@
-import axios, { AxiosResponse } from "axios";
 import log from "loglevel";
 import { Address } from "viem";
 import { GetTokenReturnType, getToken } from "@wagmi/core";
 import { sepolia, linea, mainnet, lineaSepolia, Chain } from "viem/chains";
-import { NetworkType, TokenInfo, TokenType, wagmiConfig } from "@/config";
+import { NetworkTokens, NetworkType, TokenInfo, TokenType, wagmiConfig } from "@/config";
 import { Token } from "@/models/token";
+import { defaultTokensConfig } from "@/stores/tokenStore";
 
 interface CoinGeckoToken {
   id: string;
@@ -32,27 +32,35 @@ export async function fetchERC20Image(name: string) {
       throw new Error("Name is required");
     }
 
-    const coinsResponse: AxiosResponse<CoinGeckoToken[]> = await axios.get(
-      "https://api.coingecko.com/api/v3/coins/list",
-    );
-    const coin = coinsResponse.data.find((coin: CoinGeckoToken) => coin.name === name);
+    const coinsResponse = await fetch("https://api.coingecko.com/api/v3/coins/list");
+
+    if (!coinsResponse.ok) {
+      throw new Error("Error in fetchERC20Image to get coins list");
+    }
+
+    const coinsData: CoinGeckoToken[] = await coinsResponse.json();
+    const coin = coinsData.find((coin: CoinGeckoToken) => coin.name === name);
 
     if (!coin) {
       throw new Error("Coin not found");
     }
 
     const coinId = coin.id;
-    const coinDataResponse: AxiosResponse<CoinGeckoTokenDetail> = await axios.get(
-      `https://api.coingecko.com/api/v3/coins/${coinId}`,
-    );
+    const coinDataResponse = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}`);
 
-    if (!coinDataResponse.data.image.small) {
+    if (!coinDataResponse.ok) {
+      throw new Error("Error in fetchERC20Image to get coin data");
+    }
+
+    const coinData: CoinGeckoTokenDetail = await coinDataResponse.json();
+
+    if (!coinData.image.small) {
       throw new Error("Image not found");
     }
 
-    const imageUrl = coinDataResponse.data.image.small.split("?")[0];
+    const imageUrl = coinData.image.small.split("?")[0];
     // Test image URL
-    const response = await axios.get(imageUrl, { timeout: 5000 });
+    const response = await fetch(imageUrl);
 
     if (response.status !== 200) {
       return "/images/logo/noTokenLogo.svg";
@@ -162,4 +170,52 @@ export async function fetchTokenPrices(
 
   const data = await response.json();
   return data;
+}
+
+export async function validateTokenURI(url: string): Promise<string> {
+  try {
+    await fetch(url);
+    return url;
+  } catch (error) {
+    return "/images/logo/noTokenLogo.svg";
+  }
+}
+
+export async function formatToken(token: Token): Promise<TokenInfo> {
+  const tokenType = token.symbol === USDC_TYPE ? TokenType.USDC : TokenType.ERC20;
+
+  const logoURI = await validateTokenURI(token.logoURI);
+
+  return {
+    name: token.name,
+    symbol: token.symbol,
+    decimals: token.decimals,
+    type: tokenType,
+    L1: token?.extension?.rootAddress ?? null,
+    L2: token.address,
+    UNKNOWN: null,
+    image: logoURI,
+    isDefault: true,
+  };
+}
+
+export async function getTokenConfig(): Promise<NetworkTokens> {
+  const [mainnetTokens, sepoliaTokens] = await Promise.all([
+    getTokens(NetworkTypes.MAINNET),
+    getTokens(NetworkTypes.SEPOLIA),
+  ]);
+
+  const updatedTokensConfig = { ...defaultTokensConfig };
+
+  updatedTokensConfig.MAINNET = [
+    ...defaultTokensConfig.MAINNET,
+    ...(await Promise.all(mainnetTokens.map(async (token: Token): Promise<TokenInfo> => formatToken(token)))),
+  ];
+
+  updatedTokensConfig.SEPOLIA = [
+    ...defaultTokensConfig.SEPOLIA,
+    ...(await Promise.all(sepoliaTokens.map((token: Token): Promise<TokenInfo> => formatToken(token)))),
+  ];
+
+  return updatedTokensConfig;
 }

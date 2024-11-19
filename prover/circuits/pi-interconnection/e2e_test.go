@@ -15,7 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
+	circuittesting "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	pitesting "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -30,15 +30,14 @@ import (
 
 // some of the execution data are faked
 func TestSingleBlockBlob(t *testing.T) {
-	testPI(t, 103, pitesting.AssignSingleBlockBlob(t), withSlack(0, 1, 2))
+	testPI(t, pitesting.AssignSingleBlockBlob(t), withSlack(0, 2))
 }
 
-func TestSingleBlobBlobE2E(t *testing.T) {
+func TestSingleBlockBlobE2E(t *testing.T) {
 	req := pitesting.AssignSingleBlockBlob(t)
 	cfg := config.PublicInput{
 		MaxNbDecompression: len(req.Decompressions),
 		MaxNbExecution:     len(req.Executions),
-		MaxNbKeccakF:       100,
 		ExecutionMaxNbMsg:  1,
 		L2MsgMerkleDepth:   5,
 		L2MsgMaxNbMerkle:   1,
@@ -49,34 +48,24 @@ func TestSingleBlobBlobE2E(t *testing.T) {
 	a, err := compiled.Assign(req)
 	assert.NoError(t, err)
 
-	for _, gkrMimc := range []struct {
-		use  bool
-		prep string
-	}{{false, "without"}, {true, "with"}} {
-		t.Run(gkrMimc.prep+" gkrmimc", func(t *testing.T) {
-			c := *compiled.Circuit
-			c.UseGkrMimc = gkrMimc.use
+	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, compiled.Circuit, frontend.WithCapacity(3_000_000))
+	assert.NoError(t, err)
 
-			cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &c, frontend.WithCapacity(3_000_000))
-			assert.NoError(t, err)
+	w, err := frontend.NewWitness(&a, ecc.BLS12_377.ScalarField())
+	assert.NoError(t, err)
 
-			w, err := frontend.NewWitness(&a, ecc.BLS12_377.ScalarField())
-			assert.NoError(t, err)
+	assert.NoError(t, cs.IsSolved(w))
 
-			assert.NoError(t, cs.IsSolved(w))
-		})
-	}
 }
 
 // some of the execution data are faked
 func TestTinyTwoBatchBlob(t *testing.T) {
 
-	t.Skipf("this test flaky as it will attempt for keccakf permutation than what is set in the parameters")
-
 	blob := blobtesting.TinyTwoBatchBlob(t)
 
 	execReq := []public_input.Execution{{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
+		InitialBlockTimestamp:  6,
 		FinalStateRootHash:     internal.Uint64To32Bytes(4),
 		FinalBlockNumber:       5,
 		FinalBlockTimestamp:    6,
@@ -84,6 +73,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		FinalRollingHashNumber: 8,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(9)},
+		InitialBlockTimestamp:  7,
 		FinalStateRootHash:     internal.Uint64To32Bytes(10),
 		FinalBlockNumber:       11,
 		FinalBlockTimestamp:    12,
@@ -102,7 +92,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	blobResp, err := blobsubmission.CraftResponse(&blobReq)
 	assert.NoError(t, err)
 
-	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes))
+	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes))
 
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp},
@@ -111,28 +101,28 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			FinalShnarf:                             blobResp.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,
 			ParentStateRootHash:                     blobReq.ParentStateRootHash,
-			ParentAggregationLastBlockTimestamp:     6,
+			ParentAggregationLastBlockTimestamp:     5,
 			FinalTimestamp:                          uint(execReq[1].FinalBlockTimestamp),
-			LastFinalizedBlockNumber:                5,
+			LastFinalizedBlockNumber:                4,
 			FinalBlockNumber:                        uint(execReq[1].FinalBlockNumber),
 			LastFinalizedL1RollingHash:              utils.FmtIntHex32Bytes(7),
 			L1RollingHash:                           utils.HexEncodeToString(execReq[1].FinalRollingHash[:]),
-			LastFinalizedL1RollingHashMessageNumber: 8,
+			LastFinalizedL1RollingHashMessageNumber: 7,
 			L1RollingHashMessageNumber:              uint(execReq[1].FinalRollingHashNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
 		},
 	}
 
-	testPI(t, 100, req, withSlack(0, 1, 2))
+	testPI(t, req, withSlack(0, 2))
 }
 
 func TestTwoTwoBatchBlobs(t *testing.T) {
-	t.Skipf("Flacky test due to the number of keccakf outgoing the limit specified for the test")
 	blobs := blobtesting.ConsecutiveBlobs(t, 2, 2)
 
 	execReq := []public_input.Execution{{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
+		InitialBlockTimestamp:  6,
 		FinalStateRootHash:     internal.Uint64To32Bytes(4),
 		FinalBlockNumber:       5,
 		FinalBlockTimestamp:    6,
@@ -140,6 +130,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		FinalRollingHashNumber: 8,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(9)},
+		InitialBlockTimestamp:  7,
 		FinalStateRootHash:     internal.Uint64To32Bytes(10),
 		FinalBlockNumber:       11,
 		FinalBlockTimestamp:    12,
@@ -147,6 +138,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		FinalRollingHashNumber: 14,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(15)},
+		InitialBlockTimestamp:  13,
 		FinalStateRootHash:     internal.Uint64To32Bytes(16),
 		FinalBlockNumber:       17,
 		FinalBlockTimestamp:    18,
@@ -154,6 +146,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		FinalRollingHashNumber: 20,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(21)},
+		InitialBlockTimestamp:  19,
 		FinalStateRootHash:     internal.Uint64To32Bytes(22),
 		FinalBlockNumber:       23,
 		FinalBlockTimestamp:    24,
@@ -183,7 +176,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	blobResp1, err := blobsubmission.CraftResponse(&blobReq1)
 	assert.NoError(t, err)
 
-	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes, execReq[2].L2MsgHashes, execReq[3].L2MsgHashes))
+	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes, execReq[2].L2MsgHashes, execReq[3].L2MsgHashes))
 
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp0, *blobResp1},
@@ -192,42 +185,20 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			FinalShnarf:                             blobResp1.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq0.PrevShnarf,
 			ParentStateRootHash:                     blobReq0.ParentStateRootHash,
-			ParentAggregationLastBlockTimestamp:     6,
+			ParentAggregationLastBlockTimestamp:     5,
 			FinalTimestamp:                          uint(execReq[3].FinalBlockTimestamp),
-			LastFinalizedBlockNumber:                5,
+			LastFinalizedBlockNumber:                4,
 			FinalBlockNumber:                        uint(execReq[3].FinalBlockNumber),
 			LastFinalizedL1RollingHash:              utils.FmtIntHex32Bytes(7),
 			L1RollingHash:                           utils.HexEncodeToString(execReq[3].FinalRollingHash[:]),
-			LastFinalizedL1RollingHashMessageNumber: 8,
+			LastFinalizedL1RollingHashMessageNumber: 7,
 			L1RollingHashMessageNumber:              uint(execReq[3].FinalRollingHashNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
 		},
 	}
 
-	testPI(t, 101, req, withSlack(0, 1, 2))
-}
-
-func TestEmpty(t *testing.T) {
-	const hexZeroBlock = "0x0000000000000000000000000000000000000000000000000000000000000000"
-
-	testPI(t, 50, pi_interconnection.Request{
-		Aggregation: public_input.Aggregation{
-			FinalShnarf:                             hexZeroBlock,
-			ParentAggregationFinalShnarf:            hexZeroBlock,
-			ParentStateRootHash:                     hexZeroBlock,
-			ParentAggregationLastBlockTimestamp:     0,
-			FinalTimestamp:                          0,
-			LastFinalizedBlockNumber:                0,
-			FinalBlockNumber:                        0,
-			LastFinalizedL1RollingHash:              hexZeroBlock,
-			L1RollingHash:                           hexZeroBlock,
-			LastFinalizedL1RollingHashMessageNumber: 0,
-			L1RollingHashMessageNumber:              0,
-			L2MsgRootHashes:                         []string{},
-			L2MsgMerkleTreeDepth:                    1,
-		},
-	})
+	testPI(t, req, withSlack(0, 2))
 }
 
 type testPIConfig struct {
@@ -242,7 +213,7 @@ func withSlack(slack ...int) testPIOption {
 	}
 }
 
-func testPI(t *testing.T, maxNbKeccakF int, req pi_interconnection.Request, options ...testPIOption) {
+func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOption) {
 	var cfg testPIConfig
 	for _, o := range options {
 		o(&cfg)
@@ -267,10 +238,10 @@ func testPI(t *testing.T, maxNbKeccakF int, req pi_interconnection.Request, opti
 		cfg := config.PublicInput{
 			MaxNbDecompression: len(req.Decompressions) + slack[0],
 			MaxNbExecution:     len(req.Executions) + slack[1],
-			MaxNbKeccakF:       maxNbKeccakF,
 			ExecutionMaxNbMsg:  1 + slack[2],
 			L2MsgMerkleDepth:   5,
 			L2MsgMaxNbMerkle:   1 + slack[3],
+			MockKeccakWizard:   true,
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {

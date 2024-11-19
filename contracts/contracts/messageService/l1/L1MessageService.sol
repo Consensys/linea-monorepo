@@ -35,7 +35,6 @@ abstract contract L1MessageService is
 
   /**
    * @notice Initialises underlying message service dependencies.
-   * @dev _messageSender is initialised to a non-zero value for gas efficiency on claiming.
    * @param _rateLimitPeriod The period to rate limit against.
    * @param _rateLimitAmount The limit allowed for withdrawing the period.
    */
@@ -60,7 +59,7 @@ abstract contract L1MessageService is
     address _to,
     uint256 _fee,
     bytes calldata _calldata
-  ) external payable whenTypeAndGeneralNotPaused(L1_L2_PAUSE_TYPE) {
+  ) external payable whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
     if (_to == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -80,15 +79,15 @@ abstract contract L1MessageService is
   }
 
   /**
-   * @notice Claims and delivers a cross-chain message using merkle proof.
-   * @dev if merkle depth is empty, it will revert with L2MerkleRootDoesNotExist.
-   * @dev if merkle depth is different than proof size, it will revert with ProofLengthDifferentThanMerkleDepth.
+   * @notice Claims and delivers a cross-chain message using a Merkle proof.
+   * @dev if tree depth is empty, it will revert with L2MerkleRootDoesNotExist.
+   * @dev if tree depth is different than proof size, it will revert with ProofLengthDifferentThanMerkleDepth.
    * @param _params Collection of claim data with proof and supporting data.
    */
   function claimMessageWithProof(
     ClaimMessageWithProofParams calldata _params
   ) external nonReentrant distributeFees(_params.fee, _params.to, _params.data, _params.feeRecipient) {
-    _requireTypeAndGeneralNotPaused(L2_L1_PAUSE_TYPE);
+    _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
 
     uint256 merkleDepth = l2MerkleRootsDepths[_params.merkleRoot];
 
@@ -145,9 +144,9 @@ abstract contract L1MessageService is
   /**
    * @notice Claims and delivers a cross-chain message.
    * @dev The message sender address is set temporarily in the transient storage when claiming.
-   * @return addr The message sender address that is stored temporarily in the transient storage when claiming.
+   * @return originalSender The message sender address that is stored temporarily in the transient storage when claiming.
    */
-  function sender() external view returns (address addr) {
-    return TransientStorageHelpers.tloadAddress(MESSAGE_SENDER_TRANSIENT_KEY);
+  function sender() external view returns (address originalSender) {
+    originalSender = TransientStorageHelpers.tloadAddress(MESSAGE_SENDER_TRANSIENT_KEY);
   }
 }

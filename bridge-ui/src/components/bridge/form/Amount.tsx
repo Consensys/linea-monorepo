@@ -12,12 +12,11 @@ const AMOUNT_REGEX = "^[0-9]*[.,]?[0-9]*$";
 const MAX_AMOUNT_CHAR = 20;
 
 export function Amount() {
-  const { token, fromChain, tokenAddress, networkType } = useChainStore((state) => ({
-    token: state.token,
-    fromChain: state.fromChain,
-    tokenAddress: state.token?.[state.networkLayer] || zeroAddress,
-    networkType: state.networkType,
-  }));
+  const token = useChainStore((state) => state.token);
+  const fromChain = useChainStore((state) => state.fromChain);
+  const tokenAddress = useChainStore((state) => state.token?.[state.networkLayer] || zeroAddress);
+  const networkType = useChainStore((state) => state.networkType);
+
   const { address } = useAccount();
 
   const { setValue, getValues, setError, clearErrors, trigger, watch } = useFormContext();
@@ -122,14 +121,20 @@ export function Amount() {
       />
       {networkType === NetworkType.MAINNET && (
         <span className="label-text flex items-center justify-end">
-          <PiApproximateEqualsBold />
-          {amount && tokenPrices?.[tokenAddress]?.usd
-            ? `${(Number(amount) * tokenPrices?.[tokenAddress]?.usd).toLocaleString("en-US", {
+          {amount &&
+          tokenPrices?.[tokenAddress.toLowerCase()]?.usd &&
+          tokenPrices?.[tokenAddress.toLowerCase()]?.usd > 0 ? (
+            <>
+              <PiApproximateEqualsBold />
+              {(Number(amount) * tokenPrices?.[tokenAddress.toLowerCase()]?.usd).toLocaleString("en-US", {
                 style: "currency",
                 currency: "USD",
                 maximumFractionDigits: 4,
-              })}`
-            : "$0.00"}
+              })}
+            </>
+          ) : (
+            ""
+          )}
         </span>
       )}
     </>

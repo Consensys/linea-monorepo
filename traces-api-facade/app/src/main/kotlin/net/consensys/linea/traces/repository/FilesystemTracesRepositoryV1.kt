@@ -16,6 +16,7 @@ import net.consensys.linea.traces.TracesFileNameSupplier
 import net.consensys.linea.traces.TracesFiles
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
 
@@ -40,7 +41,7 @@ class FilesystemTracesRepositoryV1(
   private fun findTracesFile(block: TracesFileIndex): Result<String, TracesError> {
     val tracesFileName = fileNameSupplier(
       block.number,
-      block.hash,
+      Bytes32.wrap(block.hash),
       block.version,
       config.tracesFileExtension
     )

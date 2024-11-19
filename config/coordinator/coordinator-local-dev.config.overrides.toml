@@ -38,15 +38,12 @@ non-canonical-raw-traces-directory = "tmp/local/traces/raw-non-canonical"
 [state-manager]
 endpoints=["http://127.0.0.1:8998/"]
 
-[dynamic-gas-price-service]
-geth-gas-price-update-recipients=[
-  "http://127.0.0.1:8645",
-  "http://127.0.0.1:8845"
-]
-besu-gas-price-update-recipients=[
-  "http://127.0.0.1:8545/"
-]
-extra-data-update-recipient="http://127.0.0.1:8545/"
+[l2-network-gas-pricing.extra-data-pricing-propagation]
+extra-data-update-recipient = "http://127.0.0.1:8545/"
+
+[l2-network-gas-pricing.json-rpc-pricing-propagation]
+geth-gas-price-update-recipients = ["http://127.0.0.1:8845"]
+besu-gas-price-update-recipients = []
 
 [l1]
 rpc-endpoint="http://127.0.0.1:8445"

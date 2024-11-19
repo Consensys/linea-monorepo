@@ -28,7 +28,7 @@
 "b1504a5f" = "BlobSubmissionDataIsMissing"
 "c0e41e1d" = "EmptyBlobDataAtIndex"
 "fb4cd6ef" = "FinalBlockDoesNotMatchShnarfFinalBlock"
-"2526F108 " = "ShnarfAndFinalBlockNumberLengthsMismatched"
+"2526F108" = "ShnarfAndFinalBlockNumberLengthsMismatched"
 "d3664fb3" = "FinalShnarfWrong"
 "4e686675" = "L2MerkleRootDoesNotExist"
 "e5d14425" = "L2MerkleRootAlreadyAnchored"
@@ -41,6 +41,8 @@
 "b015579f" = "IsNotPaused"
 "3b174434" = "MessageHashesListLengthHigherThanOneHundred"
 "ca389c44" = "InvalidProofOrProofVerificationRanOutOfGas"
+"42ab979d" = "ParentBlobNotSubmitted"
+"edeae83c" = "FinalBlobNotSubmitted"
 # L2 Message Service
 "6446cc9c" = "MessageHashesListLengthIsZero"
 "d39e75f9" = "L1MessageNumberSynchronizationWrong"

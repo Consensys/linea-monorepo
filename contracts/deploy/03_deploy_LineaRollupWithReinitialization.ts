@@ -1,24 +1,26 @@
 import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { requireEnv } from "../scripts/hardhat/utils";
 import { LineaRollupInit__factory } from "../typechain-types";
-import { validateDeployBranchAndTags } from "../utils/auditedDeployVerifier";
-import { getDeployedContractAddress } from "../utils/storeAddress";
-import { tryVerifyContract } from "../utils/verifyContract";
+import {
+  tryVerifyContract,
+  getDeployedContractAddress,
+  validateDeployBranchAndTags,
+  getRequiredEnvVar,
+} from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
   validateDeployBranchAndTags(hre.network.name);
 
-  const contractName = "LineaRollupInit";
+  const contractName = "LineaRollupV6";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
-  const proxyAddress = requireEnv("LINEA_ROLLUP_ADDRESS");
+  const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
   const initialL2BlockNumber = "3";
   const initialStateRootHash = "0x3450000000000000000000000000000000000000000000000000000000000000";
 
-  const factory = await ethers.getContractFactory("LineaRollupInit");
+  const factory = await ethers.getContractFactory("LineaRollupV6");
 
   if (existingContractAddress === undefined) {
     console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
@@ -36,6 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log(`Contract deployed at ${contract}`);
 
   // The encoding should be used through the safe.
+  // THIS IS JUST A SAMPLE AND WILL BE ADJUSTED WHEN NEEDED FOR GENERATING THE CALLDATA FOR THE UPGRADE CALL
   const upgradeCallWithReinitializationUsingSecurityCouncil = ethers.concat([
     "0x9623609d",
     ethers.AbiCoder.defaultAbiCoder().encode(

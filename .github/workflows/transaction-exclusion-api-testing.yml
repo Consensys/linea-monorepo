@@ -1,0 +1,40 @@
+name: transaction-exclusion-api-testing
+
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      coverage:
+        description: To generate test report
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: transaction-exclusion-api-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  run-tests:
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    name: Transaction exclusion api tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Run tests with coverage
+        if: ${{ inputs.coverage }}
+        run: |
+          ./gradlew transaction-exclusion-api:app:buildNeeded jacocoRootReport
+      - name: Run tests without coverage
+        if: ${{ !inputs.coverage }}
+        run: |
+          ./gradlew transaction-exclusion-api:app:buildNeeded
+      - name: Run integration tests
+        run: |
+          ./gradlew transaction-exclusion-api:app:integrationTestAllNeeded

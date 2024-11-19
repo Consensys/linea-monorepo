@@ -23,8 +23,8 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu:${SEQUENCER_TAG:-24.9-delivery32}
-    profiles: [ "l2", "l2-bc", "debug" ]
+    image: consensys/linea-besu:${SEQUENCER_TAG:-24.10-delivery34}
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       linea-besu-sequencer-plugin-downloader:
         condition: service_completed_successfully
@@ -54,7 +54,9 @@ services:
         --node-private-key-file="/var/lib/besu/key" \
         --plugin-linea-l1-polling-interval="PT12S" \
         --plugin-linea-l1-smart-contract-address="0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9" \
-        --plugin-linea-l1-rpc-endpoint="http://l1-el-node:8545"
+        --plugin-linea-l1-rpc-endpoint="http://l1-el-node:8545" \
+        --plugin-linea-rejected-tx-endpoint="http://transaction-exclusion-api:8080" \
+        --plugin-linea-node-type="SEQUENCER"
     volumes:
       - ./config/linea-besu-sequencer/sequencer.config.toml:/var/lib/besu/sequencer.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
@@ -71,7 +73,7 @@ services:
   linea-besu-sequencer-plugin-downloader:
     image: busybox:1.36.1
     # profiles: ["l2", "l2-bc"] this works locally but breakes on CI, maybe Docker compose version issue
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.1.4-test33/besu-sequencer-plugins-v0.1.4-test33.jar",  "/linea-besu-sequencer" ]
+    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.1.4-test35/besu-sequencer-plugins-v0.1.4-test35.jar",  "/linea-besu-sequencer" ]
     volumes:
       - ./scripts/file-downloader.sh:/file-downloader.sh:ro
       - ../tmp/linea-besu-sequencer/plugins:/linea-besu-sequencer/
@@ -88,7 +90,7 @@ services:
     hostname: l2-node
     image: consensys/linea-geth:${ZKGETH_TAG:-0588665}
     platform: linux/amd64
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -117,12 +119,61 @@ services:
       linea:
         ipv4_address: 11.11.11.209
 
+  l2-node-besu:
+    hostname: l2-node-besu
+    container_name: l2-node-besu
+    image: consensys/linea-besu:24.10-delivery34
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    ports:
+      - "9045:8545"
+      - "9046:8546"
+      - "9050:8550"
+      - "9051:8548"
+      - "30309:30303"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx1536m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu \
+        --config-file=/var/lib/besu/l2-node-besu.config.toml \
+        --genesis-file=/var/lib/besu/genesis.json \
+        --plugin-linea-l1-polling-interval="PT12S" \
+        --plugin-linea-l1-smart-contract-address="0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9" \
+        --plugin-linea-l1-rpc-endpoint="http://l1-el-node:8545" \
+        --plugin-linea-rejected-tx-endpoint="http://transaction-exclusion-api:8080" \
+        --plugin-linea-node-type="RPC" \
+        --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+    volumes:
+      - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
+      - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
+      - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+      - ../config/common/traces-limits-besu-v1.toml:/var/lib/besu/traces-limits.toml:ro
+      - ../tmp/linea-besu-sequencer/plugins:/opt/besu/plugins/
+      - ../tmp/local/:/data/:rw
+    networks:
+      l1-network:
+      linea:
+        ipv4_address: 11.11.11.119
+
   traces-node:
     container_name: traces-node
     hostname: traces-node
     image: consensys/linea-geth:${ZKGETH_TAG:-0588665}
     platform: linux/amd64
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -182,6 +233,7 @@ services:
     image: consensys/linea-postman:${POSTMAN_TAG:-5a6fdf3}
     profiles: [ "l2", "debug" ]
     platform: linux/amd64
+    restart: on-failure
     depends_on:
       sequencer:
         condition: service_healthy
@@ -254,10 +306,31 @@ services:
       linea:
         ipv4_address: 11.11.11.105
 
+  transaction-exclusion-api:
+    hostname: transaction-exclusion-api
+    container_name: transaction-exclusion-api
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-cd58916}
+    profiles: [ "l2", "debug" ]
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8082:8080"
+    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/transaction-exclusion-api.jar', 'config/transaction-exclusion-app-docker.config.toml', ]
+    volumes:
+      - ../config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml:/opt/consensys/linea/transaction-exclusion-api/config/transaction-exclusion-app-docker.config.toml:ro
+      - ../config/transaction-exclusion-api/vertx-options.json:/opt/consensys/linea/transaction-exclusion-api/config/vertx-options.json:ro
+      - ../config/transaction-exclusion-api/log4j2-dev.xml:/opt/consensys/linea/transaction-exclusion-api/config/log4j2-dev.xml:ro
+      - local-dev:/data/
+    networks:
+      linea:
+        ipv4_address: 11.11.11.110
+
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-8a5690e}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-2ee4363}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     depends_on:
@@ -295,7 +368,7 @@ services:
     hostname: web3signer
     container_name: web3signer
     image: consensys/web3signer:23.3-jdk17
-    profiles: [ "l2", "debug" ]
+    profiles: [ "l2", "debug", "external-to-monorepo" ]
     ports:
       - "9000:9000"
     command:
@@ -324,12 +397,11 @@ services:
     image: postgres:14.5
     hostname: postgres
     container_name: postgres
-    profiles: [ "l2", "debug" ]
+    profiles: [ "l2", "debug", "external-to-monorepo" ]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       PGDATA: /data/postgres
-      POSTGRES_DB: ${POSTGRES_DB:-coordinator}
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     # uncomment command below if you need to log and debug queries to PG
     #    command:
@@ -354,8 +426,8 @@ services:
   l1-el-node:
     container_name: l1-el-node
     hostname: l1-el-node
-    image: hyperledger/besu:24.6.0
-    profiles: [ "l1", "debug" ]
+    image: hyperledger/besu:24.10.0
+    profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-node-genesis-generator:
           condition: service_completed_successfully
@@ -366,7 +438,12 @@ services:
       retries: 120
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
-    command: [ "--config-file=/config/config.toml" ]
+      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu --config-file=/config/config.toml
     volumes:
       - ./config/l1-node/el/besu.key:/config/keys/besu.key:ro
       - ./config/l1-node/el/config.toml:/config/config.toml:ro
@@ -387,7 +464,7 @@ services:
     container_name: l1-cl-node
     hostname: l1-cl-node
     image: consensys/teku:24.2.0
-    profiles: [ "l1", "debug" ]
+    profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-el-node:
         condition: service_healthy
@@ -413,22 +490,17 @@ services:
   l1-node-genesis-generator:
     build:
       context: ./config/l1-node/
-    profiles: [ "l1", "debug" ]
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        /config/generate-genesis.sh \
-        --genesis-time ${L1_GENESIS_TIME} \
-        --l1-genesis /config/l1-genesis.json \
-        --network-config /config/network-config.yml \
-        --mnemonics /config/mnemonics.yaml \
-        --output-dir /data/l1-node-config
+    profiles: [ "l1", "debug", "external-to-monorepo" ]
+    command: 
+      --genesis-time ${L1_GENESIS_TIME}
+      --l1-genesis /config/l1-genesis.json
+      --network-config /config/network-config.yml
+      --mnemonics /config/mnemonics.yaml
+      --output-dir /data/l1-node-config
     volumes:
       - ./config/l1-node/cl/network-config.yml:/config/network-config.yml:ro
       - ./config/l1-node/cl/mnemonics.yaml:/config/mnemonics.yaml:ro
       - ./config/l1-node/el/genesis.json:/config/l1-genesis.json
-      - ./config/l1-node/generate-genesis.sh:/config/generate-genesis.sh
       - local-dev:/data
 
   l1-blockscout:
@@ -461,13 +533,14 @@ services:
     image: consensys/linea-besu:linea-delivery-27
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
-    profiles: [ "l2", "l2-bc" ]
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
       shomei-plugin-downloader:
         condition: service_completed_successfully
       sequencer:
         condition: service_healthy
     privileged: true
+    restart: always
     user: root
     ports:
       - "8945:8545" # http
@@ -484,6 +557,7 @@ services:
         ipv4_address: 11.11.11.113
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
     entrypoint:
       - /bin/bash
       - -c
@@ -498,7 +572,6 @@ services:
 
     volumes:
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
-      - ./config/zkbesu-shomei/key:/var/lib/besu/key:ro
       - ./config/zkbesu-shomei/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ../tmp/zkbesu-shomei/plugins:/opt/besu/plugins/
@@ -507,7 +580,7 @@ services:
     image: consensys/linea-shomei:2.2.0
     hostname: shomei
     container_name: shomei
-    profiles: [ "l2", "l2-bc" ]
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
       zkbesu-shomei:
         condition: service_started
@@ -543,7 +616,7 @@ services:
     image: consensys/linea-shomei:2.2.0
     hostname: shomei-frontend
     container_name: shomei-frontend
-    profiles: [ "l2", "l2-bc" ]
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
       zkbesu-shomei:
         condition: service_started
@@ -584,7 +657,7 @@ services:
 
   shomei-plugin-downloader:
     container_name: shomei-plugin-downloader
-    profiles: ["l2", "l2-bc"]
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     image: busybox:1.36.1
     command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/besu-shomei-plugin/releases/download/v0.3.1/besu-shomei-plugin-v0.3.1.jar",  "/shomei-plugin" ]
     volumes:

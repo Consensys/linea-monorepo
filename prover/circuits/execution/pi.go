@@ -2,6 +2,7 @@ package execution
 
 import (
 	"encoding/binary"
+	"fmt"
 	"hash"
 	"slices"
 
@@ -20,6 +21,7 @@ import (
 type FunctionalPublicInputQSnark struct {
 	DataChecksum           frontend.Variable
 	L2MessageHashes        L2MessageHashes
+	InitialBlockTimestamp  frontend.Variable
 	FinalStateRootHash     frontend.Variable
 	FinalBlockNumber       frontend.Variable
 	FinalBlockTimestamp    frontend.Variable
@@ -91,7 +93,6 @@ type FunctionalPublicInputSnark struct {
 	FunctionalPublicInputQSnark
 	InitialStateRootHash     frontend.Variable
 	InitialBlockNumber       frontend.Variable
-	InitialBlockTimestamp    frontend.Variable
 	InitialRollingHash       [32]frontend.Variable
 	InitialRollingHashNumber frontend.Variable
 	ChainID                  frontend.Variable
@@ -147,11 +148,12 @@ func (pi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldH
 	return hsh.Sum()
 }
 
-func (pi *FunctionalPublicInput) ToSnarkType() FunctionalPublicInputSnark {
+func (pi *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error) {
 	res := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 			DataChecksum:           slices.Clone(pi.DataChecksum[:]),
 			L2MessageHashes:        L2MessageHashes(internal.NewSliceOf32Array(pi.L2MessageHashes, pi.MaxNbL2MessageHashes)),
+			InitialBlockTimestamp:  pi.InitialBlockTimestamp,
 			FinalStateRootHash:     slices.Clone(pi.FinalStateRootHash[:]),
 			FinalBlockNumber:       pi.FinalBlockNumber,
 			FinalBlockTimestamp:    pi.FinalBlockTimestamp,
@@ -159,7 +161,6 @@ func (pi *FunctionalPublicInput) ToSnarkType() FunctionalPublicInputSnark {
 		},
 		InitialStateRootHash:     slices.Clone(pi.InitialStateRootHash[:]),
 		InitialBlockNumber:       pi.InitialBlockNumber,
-		InitialBlockTimestamp:    pi.InitialBlockTimestamp,
 		InitialRollingHashNumber: pi.InitialRollingHashNumber,
 		ChainID:                  pi.ChainID,
 		L2MessageServiceAddr:     slices.Clone(pi.L2MessageServiceAddr[:]),
@@ -167,12 +168,20 @@ func (pi *FunctionalPublicInput) ToSnarkType() FunctionalPublicInputSnark {
 	utils.Copy(res.FinalRollingHash[:], pi.FinalRollingHash[:])
 	utils.Copy(res.InitialRollingHash[:], pi.InitialRollingHash[:])
 
-	return res
+	var err error
+	if nbMsg := len(pi.L2MessageHashes); nbMsg > pi.MaxNbL2MessageHashes {
+		err = fmt.Errorf("has %d L2 message hashes but a maximum of %d is allowed", nbMsg, pi.MaxNbL2MessageHashes)
+	}
+
+	return res, err
 }
 
-func (pi *FunctionalPublicInput) Sum() []byte { // all mimc; no need to provide a keccak hasher
-	hsh := mimc.NewMiMC()
+func (pi *FunctionalPublicInput) Sum(hsh hash.Hash) []byte {
+	if hsh == nil {
+		hsh = mimc.NewMiMC()
+	}
 
+	hsh.Reset()
 	for i := range pi.L2MessageHashes {
 		hsh.Write(pi.L2MessageHashes[i][:16])
 		hsh.Write(pi.L2MessageHashes[i][16:])
@@ -206,7 +215,7 @@ func (pi *FunctionalPublicInput) Sum() []byte { // all mimc; no need to provide 
 func (pi *FunctionalPublicInput) SumAsField() field.Element {
 
 	var (
-		sumBytes = pi.Sum()
+		sumBytes = pi.Sum(nil)
 		sum      = new(field.Element).SetBytes(sumBytes)
 	)
 

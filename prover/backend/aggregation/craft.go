@@ -21,6 +21,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -39,9 +40,9 @@ const (
 func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 	var (
-		l2MessageHashes   []string
-		l2MsgBlockOffsets []bool
-		cf                = &CollectedFields{
+		allL2MessageHashes []string
+		l2MsgBlockOffsets  []bool
+		cf                 = &CollectedFields{
 			L2MsgTreeDepth:                          l2MsgMerkleTreeDepth,
 			ParentAggregationLastBlockTimestamp:     uint(req.ParentAggregationLastBlockTimestamp),
 			LastFinalizedL1RollingHash:              req.ParentAggregationLastL1RollingHash,
@@ -52,12 +53,16 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
 	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs))
 
+	hshM := mimc.NewMiMC()
+
 	for i, execReqFPath := range req.ExecutionProofs {
 
 		var (
-			po    = &execution.Response{}
-			fpath = path.Join(cfg.Execution.DirTo(), execReqFPath)
-			f     = files.MustRead(fpath)
+			po                    = &execution.Response{}
+			l2MessageHashes       []string
+			fpath                 = path.Join(cfg.Execution.DirTo(), execReqFPath)
+			f                     = files.MustRead(fpath)
+			initialBlockTimestamp uint64
 		)
 
 		if err := json.NewDecoder(f).Decode(po); err != nil {
@@ -81,7 +86,10 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		// keep the final value.
 		cf.FinalBlockNumber = uint(po.FirstBlockNumber + len(po.BlocksData) - 1)
 
-		for _, blockdata := range po.BlocksData {
+		for i, blockdata := range po.BlocksData {
+			if i == 0 {
+				initialBlockTimestamp = blockdata.TimeStamp
+			}
 
 			for i := range blockdata.L2ToL1MsgHashes {
 				l2MessageHashes = append(l2MessageHashes, blockdata.L2ToL1MsgHashes[i].Hex())
@@ -111,18 +119,36 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			// TODO make sure this belongs in the if
 			finalBlock := &po.BlocksData[len(po.BlocksData)-1]
 			piq, err := public_input.ExecutionSerializable{
+				InitialBlockTimestamp:  initialBlockTimestamp,
 				L2MsgHashes:            l2MessageHashes,
-				FinalStateRootHash:     po.PublicInput.Hex(), // TODO @tabaie make sure this is the right value
+				FinalStateRootHash:     finalBlock.RootHash.Hex(),
 				FinalBlockNumber:       uint64(cf.FinalBlockNumber),
 				FinalBlockTimestamp:    finalBlock.TimeStamp,
 				FinalRollingHash:       cf.L1RollingHash,
 				FinalRollingHashNumber: uint64(cf.L1RollingHashMessageNumber),
+				L2MessageServiceAddr:   po.L2BridgeAddress,
+				ChainID:                uint64(po.ChainID),
 			}.Decode()
 			if err != nil {
 				return nil, err
 			}
+
+			if piq.L2MessageServiceAddr != types.EthAddress(cfg.Layer2.MsgSvcContract) {
+				return nil, fmt.Errorf("execution #%d: expected L2 msg service addr %x, encountered %x", i, cfg.Layer2.MsgSvcContract, piq.L2MessageServiceAddr)
+			}
+			if po.ChainID != cfg.Layer2.ChainID {
+				return nil, fmt.Errorf("execution #%d: expected chain ID %x, encountered %x", i, cfg.Layer2.ChainID, po.ChainID)
+			}
+
+			// make sure public input and collected values match
+			if pi := po.FuncInput().Sum(hshM); !bytes.Equal(pi, po.PublicInput[:]) {
+				return nil, fmt.Errorf("execution #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, pi)
+			}
+
 			cf.ExecutionPI = append(cf.ExecutionPI, piq)
 		}
+
+		allL2MessageHashes = append(allL2MessageHashes, l2MessageHashes...)
 	}
 
 	cf.DecompressionPI = make([]blobsubmission.Response, 0, len(req.DecompressionProofs))
@@ -166,7 +192,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	}
 
 	cf.L2MessagingBlocksOffsets = utils.HexEncodeToString(PackOffsets(l2MsgBlockOffsets))
-	cf.L2MsgRootHashes = PackInMiniTrees(l2MessageHashes)
+	cf.L2MsgRootHashes = PackInMiniTrees(allL2MessageHashes)
 
 	return cf, nil
 

@@ -1,6 +1,7 @@
 package execution
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/consensys/gnark/frontend"
@@ -35,8 +36,9 @@ func TestPIConsistency(t *testing.T) {
 	pi.InitialStateRootHash[0] &= 0x0f
 	pi.FinalStateRootHash[0] &= 0x0f
 
-	snarkPi := pi.ToSnarkType()
-	piSum := pi.Sum()
+	snarkPi, err := pi.ToSnarkType()
+	require.NoError(t, err)
+	piSum := pi.Sum(nil)
 
 	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		hsh, err := mimc.NewMiMC(api)

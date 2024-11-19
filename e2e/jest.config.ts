@@ -3,12 +3,16 @@ import type { Config } from "jest";
 const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
-  rootDir: ".",
-  testRegex: "(spec|test).ts$",
+  rootDir: "src",
+  testRegex: ".spec.ts$",
   verbose: true,
-  globalSetup: "./env-setup/global-setup.ts",
-  setupFilesAfterEnv: ["./env-setup/setup.ts"],
-  globalTeardown: "./env-setup/global-teardown.ts",
+  globalSetup: "./config/jest/global-setup.ts",
+  globalTeardown: "./config/jest/global-teardown.ts",
+  testTimeout: 3 * 60 * 1000,
+  maxConcurrency: 7,
+  maxWorkers: "75%",
+  workerThreads: true,
+  forceExit: true,
 };
 
 export default config;

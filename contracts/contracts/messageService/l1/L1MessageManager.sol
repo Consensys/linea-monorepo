@@ -49,11 +49,11 @@ abstract contract L1MessageManager is L1MessageManagerV1, IL1MessageManager {
   }
 
   /**
-   * @notice Add the L2 merkle roots to the storage.
+   * @notice Add the L2 Merkle roots to the storage.
    * @dev This function is called during block finalization.
    * @dev The _treeDepth does not need to be checked to be non-zero as it is,
    * already enforced to be non-zero in the circuit, and used in the proof's public input.
-   * @param _newRoots New L2 merkle roots.
+   * @param _newRoots New L2 Merkle roots.
    */
   function _addL2MerkleRoots(bytes32[] calldata _newRoots, uint256 _treeDepth) internal {
     for (uint256 i; i < _newRoots.length; ++i) {
@@ -92,10 +92,11 @@ abstract contract L1MessageManager is L1MessageManagerV1, IL1MessageManager {
   }
 
   /**
-   * @notice Check if the L2->L1 message is claimed or not.
+   * @notice Checks if the L2->L1 message is claimed or not.
    * @param _messageNumber The message number on L2.
+   * @return isClaimed Returns whether or not the message with _messageNumber has been claimed.
    */
-  function isMessageClaimed(uint256 _messageNumber) external view returns (bool) {
-    return _messageClaimedBitMap.get(_messageNumber);
+  function isMessageClaimed(uint256 _messageNumber) external view returns (bool isClaimed) {
+    isClaimed = _messageClaimedBitMap.get(_messageNumber);
   }
 }

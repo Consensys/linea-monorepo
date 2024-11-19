@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { PauseManager } from "../../../lib/PauseManager.sol";
+import { LineaRollupPauseManager } from "../../../lib/LineaRollupPauseManager.sol";
 import { RateLimiter } from "../../lib/RateLimiter.sol";
 import { L1MessageManagerV1 } from "./L1MessageManagerV1.sol";
 import { TransientStorageReentrancyGuardUpgradeable } from "../TransientStorageReentrancyGuardUpgradeable.sol";
@@ -20,7 +20,7 @@ abstract contract L1MessageServiceV1 is
   RateLimiter,
   L1MessageManagerV1,
   TransientStorageReentrancyGuardUpgradeable,
-  PauseManager,
+  LineaRollupPauseManager,
   IMessageService
 {
   using MessageHashing for *;
@@ -98,8 +98,8 @@ abstract contract L1MessageServiceV1 is
   /**
    * @notice Claims and delivers a cross-chain message.
    * @dev _feeRecipient can be set to address(0) to receive as msg.sender.
-   * @dev _messageSender is set temporarily when claiming and reset post. Used in sender().
-   * @dev _messageSender is reset to DEFAULT_SENDER_ADDRESS to be more gas efficient.
+   * @dev The original message sender address is temporarily set in transient storage,
+   * while claiming. This address is used in sender().
    * @param _from The address of the original sender.
    * @param _to The address the message is intended for.
    * @param _fee The fee being paid for the message delivery.
@@ -117,7 +117,7 @@ abstract contract L1MessageServiceV1 is
     bytes calldata _calldata,
     uint256 _nonce
   ) external nonReentrant distributeFees(_fee, _to, _calldata, _feeRecipient) {
-    _requireTypeAndGeneralNotPaused(L2_L1_PAUSE_TYPE);
+    _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
 
     /// @dev This is placed earlier to fix the stack issue by using these two earlier on.
     TransientStorageHelpers.tstoreAddress(MESSAGE_SENDER_TRANSIENT_KEY, _from);
