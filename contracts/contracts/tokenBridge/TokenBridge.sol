@@ -576,6 +576,9 @@ contract TokenBridge is
     );
     if (owner != msg.sender) revert PermitNotFromSender(owner);
     if (spender != address(this)) revert PermitNotAllowingBridge(spender);
-    IERC20PermitUpgradeable(_token).permit(msg.sender, address(this), amount, deadline, v, r, s);
+
+    if (IERC20Upgradeable(_token).allowance(owner, spender) < amount) {
+      IERC20PermitUpgradeable(_token).permit(msg.sender, address(this), amount, deadline, v, r, s);
+    }
   }
 }
