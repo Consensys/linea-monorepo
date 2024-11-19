@@ -16,6 +16,7 @@ func main() {
 	allbackend.CdProver(t)
 
 	cmd.FConfigFile = "/home/ubuntu/linea-monorepo/prover/integration/all-backend/config-integration-light.toml"
+	cmd.FDictPath = "./lib/compressor/compressor_dict.bin"
 
 	cmd.FCircuits = "aggregation"
 	if len(os.Args) > 1 {

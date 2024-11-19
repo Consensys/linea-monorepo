@@ -150,6 +150,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		opts := []any{
 			emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
 			emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+			circuits.WithCachedProof(".tmp/decomp.pf"),
 		}
 
 		// This actually runs the compression prover

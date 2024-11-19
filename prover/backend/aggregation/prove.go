@@ -3,7 +3,6 @@ package aggregation
 import (
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
@@ -120,53 +119,10 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
 	}
 
-	const cachedProofPath = ".pi.pf"
-
 	proverOpt := emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
 	verifierOpt := emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
 
-	// proof caching TODO @Tabaie delete
-	proof := func() plonk.Proof {
-		logrus.Info("attempting to read cached proof")
-		f, err := os.Open(cachedProofPath)
-		if err != nil {
-			logrus.Error(err)
-			return nil
-		}
-		defer f.Close()
-		proof := plonk.NewProof(ecc.BLS12_377)
-
-		if _, err = proof.ReadFrom(f); err != nil {
-			logrus.Error(err)
-			return nil
-		}
-
-		// check if the proof passes
-		if err = plonk.Verify(proof, setup.VerifyingKey, w, verifierOpt); err != nil {
-			logrus.Error(err)
-			return nil
-		}
-
-		logrus.Info("PI proof successfully loaded")
-
-		return proof
-	}()
-
-	if proof == nil {
-		logrus.Info("failed to load PI proof. Creating a new one")
-		proof, err = circuits.ProveCheck(&setup, &assignment, proverOpt, verifierOpt)
-		if err != nil {
-			return nil, nil, err
-		}
-		f, err := os.OpenFile(cachedProofPath, os.O_WRONLY|os.O_CREATE, 0600)
-		if err != nil {
-			return nil, nil, err
-		}
-		defer f.Close()
-		if _, err = proof.WriteTo(f); err != nil {
-			return nil, nil, err
-		}
-	}
+	proof, err := circuits.ProveCheck(&setup, &assignment, proverOpt, verifierOpt, circuits.WithCachedProof(".tmp/pi.pf"))
 
 	return proof, w, err
 }

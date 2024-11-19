@@ -51,6 +51,7 @@ func main() {
 	}
 
 	if !*flagNoDecompression {
+		logrus.Info("processing decompression requests")
 		runAllJsonInFolder(decompressionPath)
 	}
 	if !*flagNoExecution {

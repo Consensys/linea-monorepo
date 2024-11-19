@@ -11,6 +11,7 @@ import (
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/stretchr/testify/require"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -221,6 +222,21 @@ func CmdSetup(cmdName string, cmdContext context.Context, args []string) error {
 		allowedVkForAggregation = append(allowedVkForAggregation, vk)
 	}
 
+	var t test_utils.FakeTestingT
+	f, err := os.OpenFile(".tmp/aggregation-allowed-vks.bin", os.O_WRONLY|os.O_CREATE, 0600)
+	require.NoError(t, err)
+
+	_, err = f.Write([]byte{byte(len(allowedVkForAggregation))})
+	require.NoError(t, err)
+
+	for i := range allowedVkForAggregation {
+		_, err = allowedVkForAggregation[i].WriteTo(f)
+		require.NoError(t, err)
+	}
+	_, err = piSetup.VerifyingKey.WriteTo(f)
+	require.NoError(t, err)
+
+	require.NoError(t, f.Close())
 	// we need to compute the digest of the verifying keys & store them in the manifest
 	// for the aggregation circuits to be able to check compatibility at run time with the proofs
 	allowedVkForAggregationDigests := listOfCheckum(allowedVkForAggregation)
