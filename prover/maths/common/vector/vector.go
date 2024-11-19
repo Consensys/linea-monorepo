@@ -34,11 +34,7 @@ func ScalarMul(res, vec []field.Element, scalar field.Element) {
 // if a and b do not have the same size. If they have both empty vectors, the
 // function returns 0.
 func ScalarProd(a, b []field.Element) field.Element {
-
-	if len(b) != len(a) {
-		utils.Panic("The inputs should have the same length %v %v", len(a), len(b))
-	}
-
+	// The length checks is done by gnark-crypto already
 	a_ := fr.Vector(a)
 	res := a_.InnerProduct(fr.Vector(b))
 	return res
@@ -60,11 +56,7 @@ func Rand(n int) []field.Element {
 // MulElementWise multiplies two vectors element wise and write the result in
 // res. res = a is a valid assignment.
 func MulElementWise(res, a, b []field.Element) {
-
-	if len(res) != len(a) || len(b) != len(a) {
-		utils.Panic("The inputs should have the same length %v %v %v", len(res), len(a), len(b))
-	}
-
+	// The length checks is done by gnark-crypto already
 	res_ := fr.Vector(res)
 	res_.Mul(fr.Vector(a), fr.Vector(b))
 }
