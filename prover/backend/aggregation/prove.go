@@ -2,13 +2,12 @@ package aggregation
 
 import (
 	"fmt"
-	"math"
-	"path/filepath"
-
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"math"
+	"path/filepath"
 
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
@@ -68,6 +67,16 @@ func makeProof(
 
 func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.Witness, error) {
 
+	var setup circuits.Setup
+	setupErr := make(chan error, 1)
+
+	go func() {
+		var err error
+		setup, err = circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
+		setupErr <- err
+		close(setupErr)
+	}()
+
 	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, pi_interconnection.WizardCompilationParameters()...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create the public-input circuit: %w", err)
@@ -98,14 +107,13 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		return nil, nil, fmt.Errorf("could not assign the public input circuit: %w", err)
 	}
 
-	setup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
-	}
-
 	w, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField(), frontend.PublicOnly()) // TODO @Tabaie make ProveCheck return witness instead of extracting this twice
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not extract interconnection circuit public witness: %w", err)
+	}
+
+	if err = <-setupErr; err != nil { // wait for setup to load and check for errors
+		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
 	}
 
 	proof, err := circuits.ProveCheck(&setup, &assignment)
