@@ -113,7 +113,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 	}
 
 	if err = <-setupErr; err != nil { // wait for setup to load and check for errors
-		return nil, nil, fmt.Errorf("could not load the setup: %w", setupErr)
+		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
 	}
 
 	proof, err := circuits.ProveCheck(&setup, &assignment)
