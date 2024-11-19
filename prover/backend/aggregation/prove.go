@@ -2,12 +2,14 @@ package aggregation
 
 import (
 	"fmt"
-	"github.com/consensys/gnark/backend/witness"
-	"github.com/consensys/gnark/frontend"
-	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
-	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"math"
 	"path/filepath"
+
+	"github.com/consensys/gnark/backend/witness"
+	"github.com/consensys/gnark/frontend"
+	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
+	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
@@ -112,11 +114,14 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		return nil, nil, fmt.Errorf("could not extract interconnection circuit public witness: %w", err)
 	}
 
+	proverOpts := emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
+	verifierOpts := emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
+
 	if err = <-setupErr; err != nil { // wait for setup to load and check for errors
 		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
 	}
 
-	proof, err := circuits.ProveCheck(&setup, &assignment)
+	proof, err := circuits.ProveCheck(&setup, &assignment, proverOpts, verifierOpts)
 
 	return proof, w, err
 }
