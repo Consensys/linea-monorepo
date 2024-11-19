@@ -22,6 +22,7 @@ import java.util.List;
 
 import linea.plugin.acc.test.LineaPluginTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
+import linea.plugin.acc.test.tests.web3j.generated.RevertExample;
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
@@ -46,7 +47,7 @@ public class EthSendRawTransactionSimulationCheckTest extends LineaPluginTestBas
     return new TestCommandLineOptionsBuilder()
         .set(
             "--plugin-linea-module-limit-file-path=",
-            getResourcePath("/txOverflowModuleLimits.toml"))
+            getResourcePath("/moduleLimits_sendRawTx.toml"))
         .set("--plugin-linea-tx-pool-simulation-check-api-enabled=", "true")
         .build();
   }
@@ -100,5 +101,37 @@ public class EthSendRawTransactionSimulationCheckTest extends LineaPluginTestBas
     expectedConfirmedTxs.stream()
         .map(Hash::toHexString)
         .forEach(hash -> minerNode.verify(eth.expectSuccessfulTransactionReceipt(hash)));
+  }
+
+  @Test
+  public void transactionsThatRevertAreAccepted() throws Exception {
+    final RevertExample revertExample = deployRevertExample();
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final String contractAddress = revertExample.getContractAddress();
+    final String txData = revertExample.setValue(BigInteger.ZERO).encodeFunctionCall();
+
+    // this tx reverts but nevertheless it is accepted in the pool
+    final RawTransaction txThatReverts =
+        RawTransaction.createTransaction(
+            CHAIN_ID,
+            BigInteger.ZERO,
+            GAS_LIMIT.divide(BigInteger.TEN),
+            contractAddress,
+            VALUE,
+            txData,
+            GAS_PRICE,
+            GAS_PRICE.multiply(BigInteger.TEN).add(BigInteger.ONE));
+    final byte[] signedTxContractInteraction =
+        TransactionEncoder.signMessage(
+            txThatReverts, Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY));
+
+    final EthSendTransaction signedTxContractInteractionResp =
+        web3j.ethSendRawTransaction(Numeric.toHexString(signedTxContractInteraction)).send();
+
+    assertThat(signedTxContractInteractionResp.hasError()).isFalse();
+
+    final var expectedConfirmedTxHash = signedTxContractInteractionResp.getTransactionHash();
+
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(expectedConfirmedTxHash));
   }
 }

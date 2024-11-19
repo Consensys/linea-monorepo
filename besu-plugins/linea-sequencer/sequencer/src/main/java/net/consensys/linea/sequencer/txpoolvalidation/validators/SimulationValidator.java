@@ -114,17 +114,6 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
           reportRejectedTransaction(transaction, errMsg);
           return Optional.of(errMsg);
         }
-        if (!simulationResult.isSuccessful()) {
-          final String errMsg =
-              "Reverted transaction"
-                  + simulationResult
-                      .getRevertReason()
-                      .map(rr -> ": " + rr.toHexString())
-                      .orElse("");
-          log.debug(errMsg);
-          reportRejectedTransaction(transaction, errMsg);
-          return Optional.of(errMsg);
-        }
       }
     } else {
       log.atTrace()
