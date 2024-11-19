@@ -5,9 +5,7 @@ package test_cases_test
 import (
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
@@ -22,7 +20,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
 )
 
 /*
@@ -147,48 +144,6 @@ func checkSolved(
 			// expected a failure
 			return
 		}
-		t.Fatalf(err.Error())
-	}
-
-	/*
-		Allocate the circuit
-	*/
-	circ := SimpleTestGnarkCircuit{}
-	{
-		c, err := wizard.AllocateWizardCircuit(compiled)
-		if err != nil {
-			// The only error case acknowledged here is that the returned circuit
-			// is empty. In that case, there is simply no point to run the verification.
-			return
-		}
-
-		circ.C = *c
-	}
-
-	scs, err := frontend.Compile(
-		ecc.BLS12_377.ScalarField(),
-		scs.NewBuilder,
-		&circ,
-		frontend.IgnoreUnconstrainedInputs(),
-	)
-
-	if err != nil {
-		// When the error string is too large `require.NoError` does not print
-		// the error.
-		t.Logf("circuit construction failed : %v\n", err)
-		t.FailNow()
-	}
-
-	assignment := GetAssignment(compiled, proof)
-	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
-	require.NoError(t, err)
-
-	err = scs.IsSolved(witness)
-
-	if err != nil {
-		// When the error string is too large `require.NoError` does not print
-		// the error.
-		t.Logf("circuit solving failed : %v\n", err)
-		t.FailNow()
+		t.Fatal(err.Error())
 	}
 }
