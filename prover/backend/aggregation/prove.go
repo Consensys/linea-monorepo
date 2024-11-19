@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"sync"
 
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
@@ -68,6 +69,17 @@ func makeProof(
 
 func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.Witness, error) {
 
+	var (
+		setup     circuits.Setup
+		setupErr  error
+		setupLock sync.WaitGroup
+	)
+	setupLock.Add(1)
+	go func() {
+		setup, setupErr = circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
+		setupLock.Done()
+	}()
+
 	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, pi_interconnection.WizardCompilationParameters()...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create the public-input circuit: %w", err)
@@ -98,14 +110,13 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		return nil, nil, fmt.Errorf("could not assign the public input circuit: %w", err)
 	}
 
-	setup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
-	}
-
 	w, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField(), frontend.PublicOnly()) // TODO @Tabaie make ProveCheck return witness instead of extracting this twice
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not extract interconnection circuit public witness: %w", err)
+	}
+
+	if setupLock.Wait(); setupErr != nil { // wait for setup to load and check for errors
+		return nil, nil, fmt.Errorf("could not load the setup: %w", setupErr)
 	}
 
 	proof, err := circuits.ProveCheck(&setup, &assignment)
