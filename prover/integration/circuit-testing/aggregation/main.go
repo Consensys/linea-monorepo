@@ -164,7 +164,7 @@ func main() {
 		// Assigning the BW6 circuit
 		logrus.Infof("Generating the aggregation proof for arity %v", nc)
 
-		bw6Proof, err := aggregation.MakeProof(&ppBw6, nc, innerProofClaims, piInfo, aggregationPI)
+		bw6Proof, err := aggregation.MakeProof(&ppBw6, nil, nc, innerProofClaims, piInfo, aggregationPI)
 		assert.NoError(t, err)
 
 		bw6Proofs = append(bw6Proofs, bw6Proof)
