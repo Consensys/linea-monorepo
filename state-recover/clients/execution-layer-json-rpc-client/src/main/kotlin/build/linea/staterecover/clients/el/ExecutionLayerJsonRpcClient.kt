@@ -3,6 +3,7 @@ package build.linea.staterecover.clients.el
 import build.linea.s11n.jackson.ethApiObjectMapper
 import build.linea.staterecover.BlockL1RecoveredData
 import build.linea.staterecover.clients.ExecutionLayerClient
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.JsonNode
 import net.consensys.decodeHex
 import net.consensys.encodeHex
@@ -65,6 +66,8 @@ class ExecutionLayerJsonRpcClient internal constructor(
           endpoints = listOf(endpoint),
           retryConfig = requestRetryConfig,
           requestObjectMapper = ethApiObjectMapper
+            .copy()
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
         )
       )
     }

@@ -131,6 +131,7 @@ class ExecutionLayerJsonRpcClientTest {
         TransactionL1RecoveredData(
           type = 0x01u,
           nonce = 0xb010u,
+          gasPrice = null,
           maxPriorityFeePerGas = "b010011".toBigInteger(16),
           maxFeePerGas = "b0100ff".toBigInteger(16),
           gasLimit = 0xb0100aau,
@@ -144,6 +145,19 @@ class ExecutionLayerJsonRpcClientTest {
               storageKeys = listOf("0xb015".decodeHex(), "0xb015".decodeHex())
             )
           )
+        ),
+        TransactionL1RecoveredData(
+          type = 0x0u,
+          nonce = 0xb020u,
+          gasPrice = "b0100ff".toBigInteger(16),
+          maxPriorityFeePerGas = null,
+          maxFeePerGas = null,
+          gasLimit = 0xb0100aau,
+          from = "0xb011".decodeHex(),
+          to = "0xb012".decodeHex(),
+          value = 123.toBigInteger(),
+          data = null,
+          accessList = null
         )
       )
     )
@@ -186,6 +200,14 @@ class ExecutionLayerJsonRpcClientTest {
                     ]
                 }
             ]
+        }, {
+            "type": "0x00",
+            "nonce": "0xb020",
+            "gasPrice": "0xb0100ff",
+            "gasLimit": "0xb0100aa",
+            "from": "0xb011",
+            "to": "0xb012",
+            "value": "0x7b"
         }]
       }]
       }"""
