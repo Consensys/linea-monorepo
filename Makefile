@@ -182,6 +182,7 @@ start-all:
 start-all-traces-v2:
 		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2
 		make deploy-contracts
+		
 deploy-contracts:
 	cd contracts/; \
 	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \

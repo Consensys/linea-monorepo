@@ -2,7 +2,7 @@ Readme.md
 
 # Smart Contracts
 
-Contains Ethereum smart contract code for Consensys Rollups.
+Contains Ethereum smart contract code for the Linea Rollup and Message Service.
 
 ## LineaRollup (L1MessageService)
 The Linea Rollup, which contains the L1MessageService, is the smart contract that is responsible for:
@@ -10,15 +10,15 @@ The Linea Rollup, which contains the L1MessageService, is the smart contract tha
 - Submitting messages to be sent to Linea (L2) for later claiming.
 - Anchoring of L2 message Merkle roots to allow later claiming.
 - Claiming of messages sent from L2 to Ethereum mainnet (L1).
-- Submission of L2 compressed data using EIP-4844 blobs.
+- Submission of L2 compressed data using EIP-4844 blobs or via calldata.
 - Finalization of L2 state on L1 using a Zero Knowledge Proof.
 
 ## L2MessageService
 The L2MessageService is the L2 smart contract that is responsible for:
 
 - Submitting messages to be sent to L1 for later claiming.
+- Anchoring of L1 to L2 Message hashes for later claiming.
 - Claiming of messages sent from L1 to L2.
-- Anchoring of L1 to L2 Message hashes.
 
 ## Linea Canonical Token Bridge
 
@@ -76,7 +76,7 @@ Please read the MakeFile: [MakeFile](../Makefile)
 ```
 # This will deploy all the relevant services and smart contracts
 
-make fresh-start-all
+make fresh-start-all-traces-v2
 ```
 
 ### To deploy all the contracts
@@ -92,11 +92,14 @@ Note: The addresses change per deployment due to nonce increments, so be sure to
 # This will deploy the Linea Rollup that is currently deployed on Mainnet - the current version is the LineaRollupV5.
 # Some end to end tests will test future upgrades to validate the stack remains functional.
 
-# Note: By default a test/placeholder verifier contract is used `IntegrationTestTrueVerifier`
+# Note: By default a test/placeholder verifier contract is used `IntegrationTestTrueVerifier` if you wish to use a proper verifier, adjust the
+# PLONKVERIFIER_NAME=IntegrationTestTrueVerifier in the make command to be something like PLONKVERIFIER_NAME=PlonkVerifierForDataAggregation .
+
+# Be sure to check the parameter values in the Makefile before executing the command.
 
 make deploy-linea-rollup
 
-#PLACEHOLDER FOR THE TOKENBRIDGE DEPLOYMENTS
+make deploy-token-bridge-l1
 ```
 
 **Deploying the L2 contracts**
@@ -106,14 +109,19 @@ make deploy-linea-rollup
 
 make deploy-l2messageservice
 
-#PLACEHOLDER FOR THE TOKENBRIDGE DEPLOYMENTS
+make deploy-token-bridge-l2
 ```
 
 **Deploying L1 and L2 together**
 ```
 make deploy-contracts
 
-##  This will trigger the following commands:
-##	make compile-contracts - In a future update, this will no longer apply due to cached ABI and bytecode.
-##	$(MAKE) -j2 deploy-linea-rollup deploy-l2messageservice
+# This will trigger the following:
+# Note: the deploy-l1-test-erc20 and deploy-l1-test-erc20 commands are executed for use in the end to end tests.
+
+cd contracts/; \
+	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
+	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
+	cd .. && \
+	$(MAKE) -j6 deploy-linea-rollup-v5 deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20
 ```
