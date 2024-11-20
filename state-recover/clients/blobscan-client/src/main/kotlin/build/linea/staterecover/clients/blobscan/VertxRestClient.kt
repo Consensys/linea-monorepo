@@ -8,6 +8,8 @@ import io.vertx.ext.web.client.WebClient
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
+import org.apache.logging.log4j.Level
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 // TODO: move to a common module
@@ -33,7 +35,10 @@ class VertxRestClient<Response>(
     timeout = requestRetryConfig.timeout,
     vertx = vertx
   ),
-  private val requestHeaders: Map<String, String> = mapOf("Accept" to "application/json")
+  private val requestHeaders: Map<String, String> = mapOf("Accept" to "application/json"),
+  private val log: Logger = org.apache.logging.log4j.LogManager.getLogger(VertxRestClient::class.java),
+  private val requestResponseLogLevel: Level = Level.TRACE,
+  private val failuresLogLevel: Level = Level.DEBUG
 ) : RestClient<Response> {
   private fun makeRequestWithRetry(
     request: HttpRequest<Buffer>
@@ -44,7 +49,10 @@ class VertxRestClient<Response>(
           response.statusCode() !in retryableErrorCodes
         }
       ) {
+        logRequest(request)
         request.send().toSafeFuture()
+          .thenPeek { response -> logResponse(request, response) }
+          .whenException { error -> logResponse(request = request, failureCause = error) }
       }
   }
 
@@ -58,6 +66,38 @@ class VertxRestClient<Response>(
         val parsedResponse = response.body()?.let(responseParser)
         RestResponse(response.statusCode(), parsedResponse)
       }
+  }
+
+  private fun logRequest(request: HttpRequest<Buffer>, level: Level = requestResponseLogLevel) {
+    log.log(level, "--> {} {}", request.method(), request.uri())
+  }
+
+  private fun logResponse(
+    request: HttpRequest<Buffer>,
+    response: HttpResponse<Buffer>? = null,
+    failureCause: Throwable? = null
+  ) {
+    val isError = response?.statusCode()?.let(::isNotSuccessStatusCode) ?: true
+    val logLevel = if (isError) failuresLogLevel else requestResponseLogLevel
+    if (isError && log.level != requestResponseLogLevel) {
+      // in case of error, log the request that originated the error
+      // to help replicate and debug later
+      logRequest(request, logLevel)
+    }
+
+    log.log(
+      logLevel,
+      "<-- {} {} {} {} {}",
+      request.method(),
+      request.uri(),
+      response?.statusCode(),
+      response?.bodyAsString(),
+      failureCause?.message ?: ""
+    )
+  }
+
+  private fun isNotSuccessStatusCode(statusCode: Int): Boolean {
+    return statusCode !in 200..299
   }
 
   companion object {
