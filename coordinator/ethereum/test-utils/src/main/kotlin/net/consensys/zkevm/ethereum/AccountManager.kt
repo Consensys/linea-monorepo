@@ -13,6 +13,7 @@ import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.Response
+import org.web3j.protocol.core.methods.response.TransactionReceipt
 import org.web3j.tx.response.PollingTransactionReceiptProcessor
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.io.File
@@ -107,12 +108,6 @@ private open class WhaleBasedAccountManager(
     val accountIndex = testWorkerId % whaleAccounts.size
     val whaleAccount = whaleAccounts[accountIndex.toInt()]
     val whaleTxManager = txManagers[accountIndex.toInt()]
-    // for faster feedback loop troubleshooting account selection
-    // throw RuntimeException(
-    //   "pid=${ProcessHandle.current().pid()}, " +
-    //     "threadName=${Thread.currentThread().name} threadId=${Thread.currentThread().id} workerId=$testWorkerId " +
-    //     "accIndex=$accountIndex/${whaleAccounts.size} whaleAccount=${whaleAccount.privateKey.takeLast(4)}"
-    // )
     return Pair(whaleAccount, whaleTxManager)
   }
 
@@ -133,30 +128,16 @@ private open class WhaleBasedAccountManager(
     )
 
     val result = synchronized(whaleTxManager) {
-      (0..numberOfAccounts).map {
+      (1..numberOfAccounts).map { _ ->
         val randomPrivKey = Bytes.random(32).toHexString().replace("0x", "")
         val newAccount = Account(randomPrivKey, Credentials.create(randomPrivKey).address)
-        val transferResult = whaleTxManager.sendTransaction(
-          /*gasPrice*/ 300000000.toBigInteger(),
-          /*gasLimit*/ 21000.toBigInteger(),
-          newAccount.address,
-          "",
-          initialBalanceWei
-        )
-        if (transferResult.hasError()) {
-          val accountBalance =
-            web3jClient.ethGetBalance(whaleAccount.address, DefaultBlockParameterName.LATEST).send().result
-          throw RuntimeException(
-            "Failed to send funds from accAddress=${whaleAccount.address}, " +
-              "accBalance=$accountBalance, " +
-              "accPrivKey=0x...${whaleAccount.privateKey.takeLast(8)}, " +
-              "error: ${transferResult.error.asString()}"
-          )
-        }
-        newAccount to transferResult
+        val transferResult = sendWithRetry(whaleTxManager, newAccount.address, initialBalanceWei)
+        Pair(newAccount, transferResult)
       }
     }
-    result.forEach { (account, transferTx) ->
+
+    result.forEach { pair ->
+      val (account, transferTx) = pair
       log.debug(
         "Waiting for account funding: newAccount={} txHash={} whaleAccount={}",
         account.address,
@@ -171,13 +152,74 @@ private open class WhaleBasedAccountManager(
       )
       if (log.isDebugEnabled) {
         log.debug(
-          "Account funded: newAccount={} balance={}wei",
+          "Account funded: newAccount={} balance={} wei",
           account.address,
           web3jClient.ethGetBalance(account.address, DefaultBlockParameterName.LATEST).send().balance
         )
       }
     }
     return result.map { it.first }
+  }
+
+  private fun sendWithRetry(
+    txManager: AsyncFriendlyTransactionManager,
+    toAddress: String,
+    amountWei: BigInteger,
+    maxRetries: Int = 5,
+    initialGasPrice: BigInteger = BigInteger("300000000")
+  ): TransactionReceipt {
+    var attempt = 0
+    var gasPrice = initialGasPrice
+    var lastError: Response.Error? = null
+
+    while (attempt < maxRetries) {
+      try {
+        val transferResult = txManager.sendTransaction(
+          gasPrice,
+          BigInteger.valueOf(21000),
+          toAddress,
+          "",
+          amountWei
+        )
+        if (transferResult.hasError()) {
+          val error = transferResult.error
+          if (isRecoverableError(error)) {
+            log.warn(
+              "Transfer attempt {} failed with error: {}. Retrying with higher gas price...",
+              attempt + 1,
+              error.asString()
+            )
+            lastError = error
+            attempt++
+            gasPrice = gasPrice.add(BigInteger("100000000"))
+            continue
+          } else {
+            throw RuntimeException("Failed to send funds due to unrecoverable error: ${error.asString()}")
+          }
+        }
+        return transferResult
+      } catch (e: Exception) {
+        log.warn(
+          "Exception during transfer attempt {}: {}. Retrying...",
+          attempt + 1,
+          e.message
+        )
+        attempt++
+        gasPrice = gasPrice.add(BigInteger("100000000"))
+      }
+    }
+    throw RuntimeException("Failed to send funds after $maxRetries attempts. Last error: ${lastError?.asString()}")
+  }
+
+  private fun isRecoverableError(error: Response.Error): Boolean {
+    val recoverableErrors = listOf(
+      "Nonce too low",
+      "Replacement transaction underpriced",
+      "Transaction nonce is too low",
+      "Transaction with the same hash was already imported",
+      "Known transaction"
+    )
+    return recoverableErrors.any { error.message.contains(it, ignoreCase = true) }
   }
 
   fun Response.Error.asString(): String {
@@ -215,7 +257,6 @@ private open class WhaleBasedAccountManager(
         )
       }
     }
-
     return futureResult
   }
 }
