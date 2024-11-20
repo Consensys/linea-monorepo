@@ -12,11 +12,11 @@ RUN unzip /src/coordinator.zip -d /libs
 WORKDIR /libs/coordinator/lib/
 
 RUN mkdir -p unpacked-blob-compressor unpacked-blob-shnarf-calculator
-RUN cd unpacked-blob-compressor/ && jar -xf ../blob-compressor-0.0.4.jar
-RUN cd unpacked-blob-shnarf-calculator/ && jar -xf ../blob-shnarf-calculator-0.0.4.jar
-
-RUN rm -rf unpacked-blob-compressor/darwin-** && \
-    rm -rf unpacked-blob-shnarf-calculator/darwin-** && \
+RUN bcJar=$(set -- blob-compressor-[0-9].[0-9].[0-9].jar; echo $1) && \
+    bscJar=$(set -- blob-shnarf-calculator-[0-9].[0-9].[0-9].jar; echo $1) && \
+    cd unpacked-blob-compressor/ && jar -xf ../$bcJar && cd .. && \
+    cd unpacked-blob-shnarf-calculator/ && jar -xf ../$bscJar && cd .. && \
+    rm -rf unpacked-blob-compressor/darwin-** unpacked-blob-shnarf-calculator/darwin-** && \
     case $(uname -m) in \
     x86_64) \
       rm -rf unpacked-blob-compressor/linux-aarch64/; \
@@ -26,11 +26,10 @@ RUN rm -rf unpacked-blob-compressor/darwin-** && \
       rm -rf unpacked-blob-compressor/linux-x86-64/; \
       rm -rf unpacked-blob-shnarf-calculator/linux-x86-64/; \
     ;; \
-  esac
-
-RUN jar -cf blob-compressor-0.0.4.jar -C unpacked-blob-compressor . && \
-    jar -cf blob-shnarf-calculator-0.0.4.jar -C unpacked-blob-shnarf-calculator . && \
-    rm -rf unpacked-blob-compressor && rm -rf unpacked-blob-shnarf-calculator
+    esac && \
+    jar -cf $bcJar -C unpacked-blob-compressor . && \
+    jar -cf $bscJar -C unpacked-blob-shnarf-calculator .
+RUN rm -rf unpacked-blob-compressor unpacked-blob-shnarf-calculator
 
 # FINAL image
 FROM eclipse-temurin:21-jre-noble
