@@ -1,14 +1,21 @@
 package fullrecursion_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/fullrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/sticker"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -35,21 +42,59 @@ func TestLookup(t *testing.T) {
 		run.AssignColumn("B", smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8))
 	}
 
-	comp := wizard.Compile(
-		define,
-		lookup.CompileLogDerivative,
-		localcs.Compile,
-		globalcs.Compile,
-		univariates.CompileLocalOpening,
-		univariates.Naturalize,
-		univariates.MultiPointToSinglePoint(8),
-		vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams)),
-		fullrecursion.FullRecursion(true),
-	)
+	suites := [][]func(*wizard.CompiledIOP){
+		{
+			lookup.CompileLogDerivative,
+			localcs.Compile,
+			globalcs.Compile,
+			univariates.CompileLocalOpening,
+			univariates.Naturalize,
+			univariates.MultiPointToSinglePoint(8),
+			vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams)),
+			fullrecursion.FullRecursion(true),
+		},
+		{
+			lookup.CompileLogDerivative,
+			localcs.Compile,
+			globalcs.Compile,
+			univariates.CompileLocalOpening,
+			univariates.Naturalize,
+			univariates.MultiPointToSinglePoint(8),
+			vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams)),
+			fullrecursion.FullRecursion(true),
+			mimc.CompileMiMC,
+			specialqueries.RangeProof,
+			lookup.CompileLogDerivative,
+			specialqueries.CompileFixedPermutations,
+			permutation.CompileGrandProduct,
+			innerproduct.Compile,
+			sticker.Sticker(1<<8, 1<<16),
+			splitter.SplitColumns(1 << 16),
+			localcs.Compile,
+			globalcs.Compile,
+			univariates.CompileLocalOpening,
+			univariates.Naturalize,
+			univariates.MultiPointToSinglePoint(1 << 16),
+			vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams)),
+			fullrecursion.FullRecursion(true),
+		},
+	}
 
-	proof := wizard.Prove(comp, prove)
+	for i, s := range suites {
 
-	if err := wizard.Verify(comp, proof); err != nil {
-		t.Fatalf("verifier failed: %v", err)
+		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
+
+			comp := wizard.Compile(
+				define,
+				s...,
+			)
+
+			proof := wizard.Prove(comp, prove)
+
+			if err := wizard.Verify(comp, proof); err != nil {
+				t.Fatalf("verifier failed: %v", err)
+			}
+		})
+
 	}
 }
