@@ -292,7 +292,6 @@ public class MxpOperation extends ModuleOperation {
       maxOffset = max(maxOffset1, maxOffset2);
       mxpCall.setMxpx(maxOffset.compareTo(TWO_POW_32) >= 0);
     }
-    System.out.println("");
   }
 
   public void setExpands() {
