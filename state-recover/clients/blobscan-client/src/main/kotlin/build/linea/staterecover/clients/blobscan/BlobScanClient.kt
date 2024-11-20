@@ -41,14 +41,16 @@ class BlobScanClient(
     fun create(
       vertx: Vertx,
       endpoint: URI,
-      requestRetryConfig: RequestRetryConfig
+      requestRetryConfig: RequestRetryConfig,
+      logger: Logger = LogManager.getLogger(BlobScanClient::class.java)
     ): BlobScanClient {
       val restClient = VertxRestClient(
         vertx = vertx,
         webClient = WebClient.create(vertx, WebClientOptions().setDefaultsFrom(endpoint)),
         responseParser = { it.toJsonObject() },
         retryableErrorCodes = setOf(429, 503, 504),
-        requestRetryConfig = requestRetryConfig
+        requestRetryConfig = requestRetryConfig,
+        log = logger
       )
       return BlobScanClient(restClient)
     }
