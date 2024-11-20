@@ -16,7 +16,7 @@ func main() {
 	allbackend.CdProver(t)
 	args := cmd.SetupArgs{
 		Force:      true,
-		Circuits:   "public-input-interconnection",
+		Circuits:   "aggregation",
 		DictPath:   "./lib/compressor/compressor_dict.bin",
 		AssetsDir:  "",
 		ConfigFile: "./integration/all-backend/config-integration-light.toml",
