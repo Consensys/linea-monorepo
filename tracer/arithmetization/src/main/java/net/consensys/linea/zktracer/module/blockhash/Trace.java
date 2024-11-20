@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.blockhash;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -80,51 +81,52 @@ public class Trace {
   private final MappedByteBuffer upperBoundCheck;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("blockhash.ABS_BLOCK", 6, length),
-        new ColumnHeader("blockhash.BLOCK_HASH_HI", 16, length),
-        new ColumnHeader("blockhash.BLOCK_HASH_LO", 16, length),
-        new ColumnHeader("blockhash.BLOCK_NUMBER_HI", 16, length),
-        new ColumnHeader("blockhash.BLOCK_NUMBER_LO", 16, length),
-        new ColumnHeader("blockhash.BYTE_HI_0", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_1", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_10", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_11", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_12", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_13", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_14", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_15", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_2", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_3", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_4", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_5", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_6", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_7", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_8", 1, length),
-        new ColumnHeader("blockhash.BYTE_HI_9", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_0", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_1", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_10", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_11", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_12", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_13", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_14", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_15", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_2", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_3", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_4", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_5", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_6", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_7", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_8", 1, length),
-        new ColumnHeader("blockhash.BYTE_LO_9", 1, length),
-        new ColumnHeader("blockhash.IN_RANGE", 1, length),
-        new ColumnHeader("blockhash.IOMF", 1, length),
-        new ColumnHeader("blockhash.LOWER_BOUND_CHECK", 1, length),
-        new ColumnHeader("blockhash.REL_BLOCK", 1, length),
-        new ColumnHeader("blockhash.RES_HI", 16, length),
-        new ColumnHeader("blockhash.RES_LO", 16, length),
-        new ColumnHeader("blockhash.UPPER_BOUND_CHECK", 1, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("blockhash.ABS_BLOCK", 6, length));
+    headers.add(new ColumnHeader("blockhash.BLOCK_HASH_HI", 16, length));
+    headers.add(new ColumnHeader("blockhash.BLOCK_HASH_LO", 16, length));
+    headers.add(new ColumnHeader("blockhash.BLOCK_NUMBER_HI", 16, length));
+    headers.add(new ColumnHeader("blockhash.BLOCK_NUMBER_LO", 16, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_0", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_1", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_10", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_11", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_12", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_13", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_14", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_15", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_2", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_3", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_4", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_5", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_6", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_7", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_8", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_HI_9", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_0", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_1", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_10", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_11", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_12", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_13", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_14", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_15", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_2", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_3", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_4", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_5", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_6", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_7", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_8", 1, length));
+    headers.add(new ColumnHeader("blockhash.BYTE_LO_9", 1, length));
+    headers.add(new ColumnHeader("blockhash.IN_RANGE", 1, length));
+    headers.add(new ColumnHeader("blockhash.IOMF", 1, length));
+    headers.add(new ColumnHeader("blockhash.LOWER_BOUND_CHECK", 1, length));
+    headers.add(new ColumnHeader("blockhash.REL_BLOCK", 1, length));
+    headers.add(new ColumnHeader("blockhash.RES_HI", 16, length));
+    headers.add(new ColumnHeader("blockhash.RES_LO", 16, length));
+    headers.add(new ColumnHeader("blockhash.UPPER_BOUND_CHECK", 1, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -190,7 +192,7 @@ public class Trace {
     }
 
     if (b >= 281474976710656L) {
-      throw new IllegalArgumentException("absBlock has invalid value (" + b + ")");
+      throw new IllegalArgumentException("blockhash.ABS_BLOCK has invalid value (" + b + ")");
     }
     absBlock.put((byte) (b >> 40));
     absBlock.put((byte) (b >> 32));
@@ -214,7 +216,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "blockHashHi has invalid width (" + bs.bitLength() + "bits)");
+          "blockhash.BLOCK_HASH_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -240,7 +242,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "blockHashLo has invalid width (" + bs.bitLength() + "bits)");
+          "blockhash.BLOCK_HASH_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -266,7 +268,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "blockNumberHi has invalid width (" + bs.bitLength() + "bits)");
+          "blockhash.BLOCK_NUMBER_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -292,7 +294,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "blockNumberLo has invalid width (" + bs.bitLength() + "bits)");
+          "blockhash.BLOCK_NUMBER_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -734,7 +736,7 @@ public class Trace {
     }
 
     if (b >= 256L) {
-      throw new IllegalArgumentException("relBlock has invalid value (" + b + ")");
+      throw new IllegalArgumentException("blockhash.REL_BLOCK has invalid value (" + b + ")");
     }
     relBlock.put((byte) b);
 
@@ -752,7 +754,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("resHi has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "blockhash.RES_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -777,7 +780,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("resLo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "blockhash.RES_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {

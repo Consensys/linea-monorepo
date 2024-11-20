@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.ecdata;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -122,61 +123,63 @@ public class Trace {
   private final MappedByteBuffer wcpRes;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("ecdata.ACC_PAIRINGS", 2, length),
-        new ColumnHeader("ecdata.ACCEPTABLE_PAIR_OF_POINTS_FOR_PAIRING_CIRCUIT", 1, length),
-        new ColumnHeader("ecdata.BYTE_DELTA", 1, length),
-        new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECADD", 1, length),
-        new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECMUL", 1, length),
-        new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECPAIRING", 1, length),
-        new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECRECOVER", 1, length),
-        new ColumnHeader("ecdata.CIRCUIT_SELECTOR_G2_MEMBERSHIP", 1, length),
-        new ColumnHeader("ecdata.CT", 1, length),
-        new ColumnHeader("ecdata.CT_MAX", 1, length),
-        new ColumnHeader("ecdata.EXT_ARG1_HI", 16, length),
-        new ColumnHeader("ecdata.EXT_ARG1_LO", 16, length),
-        new ColumnHeader("ecdata.EXT_ARG2_HI", 16, length),
-        new ColumnHeader("ecdata.EXT_ARG2_LO", 16, length),
-        new ColumnHeader("ecdata.EXT_ARG3_HI", 16, length),
-        new ColumnHeader("ecdata.EXT_ARG3_LO", 16, length),
-        new ColumnHeader("ecdata.EXT_FLAG", 1, length),
-        new ColumnHeader("ecdata.EXT_INST", 1, length),
-        new ColumnHeader("ecdata.EXT_RES_HI", 16, length),
-        new ColumnHeader("ecdata.EXT_RES_LO", 16, length),
-        new ColumnHeader("ecdata.G2_MEMBERSHIP_TEST_REQUIRED", 1, length),
-        new ColumnHeader("ecdata.HURDLE", 1, length),
-        new ColumnHeader("ecdata.ID", 4, length),
-        new ColumnHeader("ecdata.INDEX", 2, length),
-        new ColumnHeader("ecdata.INDEX_MAX", 2, length),
-        new ColumnHeader("ecdata.INTERNAL_CHECKS_PASSED", 1, length),
-        new ColumnHeader("ecdata.IS_ECADD_DATA", 1, length),
-        new ColumnHeader("ecdata.IS_ECADD_RESULT", 1, length),
-        new ColumnHeader("ecdata.IS_ECMUL_DATA", 1, length),
-        new ColumnHeader("ecdata.IS_ECMUL_RESULT", 1, length),
-        new ColumnHeader("ecdata.IS_ECPAIRING_DATA", 1, length),
-        new ColumnHeader("ecdata.IS_ECPAIRING_RESULT", 1, length),
-        new ColumnHeader("ecdata.IS_ECRECOVER_DATA", 1, length),
-        new ColumnHeader("ecdata.IS_ECRECOVER_RESULT", 1, length),
-        new ColumnHeader("ecdata.IS_INFINITY", 1, length),
-        new ColumnHeader("ecdata.IS_LARGE_POINT", 1, length),
-        new ColumnHeader("ecdata.IS_SMALL_POINT", 1, length),
-        new ColumnHeader("ecdata.LIMB", 16, length),
-        new ColumnHeader("ecdata.NOT_ON_G2", 1, length),
-        new ColumnHeader("ecdata.NOT_ON_G2_ACC", 1, length),
-        new ColumnHeader("ecdata.NOT_ON_G2_ACC_MAX", 1, length),
-        new ColumnHeader("ecdata.OVERALL_TRIVIAL_PAIRING", 1, length),
-        new ColumnHeader("ecdata.PHASE", 2, length),
-        new ColumnHeader("ecdata.STAMP", 4, length),
-        new ColumnHeader("ecdata.SUCCESS_BIT", 1, length),
-        new ColumnHeader("ecdata.TOTAL_PAIRINGS", 2, length),
-        new ColumnHeader("ecdata.TOTAL_SIZE", 2, length),
-        new ColumnHeader("ecdata.WCP_ARG1_HI", 16, length),
-        new ColumnHeader("ecdata.WCP_ARG1_LO", 16, length),
-        new ColumnHeader("ecdata.WCP_ARG2_HI", 16, length),
-        new ColumnHeader("ecdata.WCP_ARG2_LO", 16, length),
-        new ColumnHeader("ecdata.WCP_FLAG", 1, length),
-        new ColumnHeader("ecdata.WCP_INST", 1, length),
-        new ColumnHeader("ecdata.WCP_RES", 1, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("ecdata.ACC_PAIRINGS", 2, length));
+    headers.add(
+        new ColumnHeader("ecdata.ACCEPTABLE_PAIR_OF_POINTS_FOR_PAIRING_CIRCUIT", 1, length));
+    headers.add(new ColumnHeader("ecdata.BYTE_DELTA", 1, length));
+    headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECADD", 1, length));
+    headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECMUL", 1, length));
+    headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECPAIRING", 1, length));
+    headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECRECOVER", 1, length));
+    headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_G2_MEMBERSHIP", 1, length));
+    headers.add(new ColumnHeader("ecdata.CT", 1, length));
+    headers.add(new ColumnHeader("ecdata.CT_MAX", 1, length));
+    headers.add(new ColumnHeader("ecdata.EXT_ARG1_HI", 16, length));
+    headers.add(new ColumnHeader("ecdata.EXT_ARG1_LO", 16, length));
+    headers.add(new ColumnHeader("ecdata.EXT_ARG2_HI", 16, length));
+    headers.add(new ColumnHeader("ecdata.EXT_ARG2_LO", 16, length));
+    headers.add(new ColumnHeader("ecdata.EXT_ARG3_HI", 16, length));
+    headers.add(new ColumnHeader("ecdata.EXT_ARG3_LO", 16, length));
+    headers.add(new ColumnHeader("ecdata.EXT_FLAG", 1, length));
+    headers.add(new ColumnHeader("ecdata.EXT_INST", 1, length));
+    headers.add(new ColumnHeader("ecdata.EXT_RES_HI", 16, length));
+    headers.add(new ColumnHeader("ecdata.EXT_RES_LO", 16, length));
+    headers.add(new ColumnHeader("ecdata.G2_MEMBERSHIP_TEST_REQUIRED", 1, length));
+    headers.add(new ColumnHeader("ecdata.HURDLE", 1, length));
+    headers.add(new ColumnHeader("ecdata.ID", 4, length));
+    headers.add(new ColumnHeader("ecdata.INDEX", 2, length));
+    headers.add(new ColumnHeader("ecdata.INDEX_MAX", 2, length));
+    headers.add(new ColumnHeader("ecdata.INTERNAL_CHECKS_PASSED", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_ECADD_DATA", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_ECADD_RESULT", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_ECMUL_DATA", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_ECMUL_RESULT", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_ECPAIRING_DATA", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_ECPAIRING_RESULT", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_ECRECOVER_DATA", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_ECRECOVER_RESULT", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_INFINITY", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_LARGE_POINT", 1, length));
+    headers.add(new ColumnHeader("ecdata.IS_SMALL_POINT", 1, length));
+    headers.add(new ColumnHeader("ecdata.LIMB", 16, length));
+    headers.add(new ColumnHeader("ecdata.NOT_ON_G2", 1, length));
+    headers.add(new ColumnHeader("ecdata.NOT_ON_G2_ACC", 1, length));
+    headers.add(new ColumnHeader("ecdata.NOT_ON_G2_ACC_MAX", 1, length));
+    headers.add(new ColumnHeader("ecdata.OVERALL_TRIVIAL_PAIRING", 1, length));
+    headers.add(new ColumnHeader("ecdata.PHASE", 2, length));
+    headers.add(new ColumnHeader("ecdata.STAMP", 4, length));
+    headers.add(new ColumnHeader("ecdata.SUCCESS_BIT", 1, length));
+    headers.add(new ColumnHeader("ecdata.TOTAL_PAIRINGS", 2, length));
+    headers.add(new ColumnHeader("ecdata.TOTAL_SIZE", 2, length));
+    headers.add(new ColumnHeader("ecdata.WCP_ARG1_HI", 16, length));
+    headers.add(new ColumnHeader("ecdata.WCP_ARG1_LO", 16, length));
+    headers.add(new ColumnHeader("ecdata.WCP_ARG2_HI", 16, length));
+    headers.add(new ColumnHeader("ecdata.WCP_ARG2_LO", 16, length));
+    headers.add(new ColumnHeader("ecdata.WCP_FLAG", 1, length));
+    headers.add(new ColumnHeader("ecdata.WCP_INST", 1, length));
+    headers.add(new ColumnHeader("ecdata.WCP_RES", 1, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -252,7 +255,7 @@ public class Trace {
     }
 
     if (b >= 65536L) {
-      throw new IllegalArgumentException("accPairings has invalid value (" + b + ")");
+      throw new IllegalArgumentException("ecdata.ACC_PAIRINGS has invalid value (" + b + ")");
     }
     accPairings.put((byte) (b >> 8));
     accPairings.put((byte) b);
@@ -353,7 +356,7 @@ public class Trace {
     }
 
     if (b >= 8L) {
-      throw new IllegalArgumentException("ct has invalid value (" + b + ")");
+      throw new IllegalArgumentException("ecdata.CT has invalid value (" + b + ")");
     }
     ct.put((byte) b);
 
@@ -368,7 +371,7 @@ public class Trace {
     }
 
     if (b >= 8L) {
-      throw new IllegalArgumentException("ctMax has invalid value (" + b + ")");
+      throw new IllegalArgumentException("ecdata.CT_MAX has invalid value (" + b + ")");
     }
     ctMax.put((byte) b);
 
@@ -387,7 +390,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "extArg1Hi has invalid width (" + bs.bitLength() + "bits)");
+          "ecdata.EXT_ARG1_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -413,7 +416,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "extArg1Lo has invalid width (" + bs.bitLength() + "bits)");
+          "ecdata.EXT_ARG1_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -439,7 +442,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "extArg2Hi has invalid width (" + bs.bitLength() + "bits)");
+          "ecdata.EXT_ARG2_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -465,7 +468,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "extArg2Lo has invalid width (" + bs.bitLength() + "bits)");
+          "ecdata.EXT_ARG2_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -491,7 +494,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "extArg3Hi has invalid width (" + bs.bitLength() + "bits)");
+          "ecdata.EXT_ARG3_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -517,7 +520,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "extArg3Lo has invalid width (" + bs.bitLength() + "bits)");
+          "ecdata.EXT_ARG3_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -566,7 +569,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("extResHi has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "ecdata.EXT_RES_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -591,7 +595,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("extResLo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "ecdata.EXT_RES_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -637,7 +642,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("id has invalid value (" + b + ")");
+      throw new IllegalArgumentException("ecdata.ID has invalid value (" + b + ")");
     }
     id.put((byte) (b >> 24));
     id.put((byte) (b >> 16));
@@ -655,7 +660,7 @@ public class Trace {
     }
 
     if (b >= 65536L) {
-      throw new IllegalArgumentException("index has invalid value (" + b + ")");
+      throw new IllegalArgumentException("ecdata.INDEX has invalid value (" + b + ")");
     }
     index.put((byte) (b >> 8));
     index.put((byte) b);
@@ -671,7 +676,7 @@ public class Trace {
     }
 
     if (b >= 65536L) {
-      throw new IllegalArgumentException("indexMax has invalid value (" + b + ")");
+      throw new IllegalArgumentException("ecdata.INDEX_MAX has invalid value (" + b + ")");
     }
     indexMax.put((byte) (b >> 8));
     indexMax.put((byte) b);
@@ -834,7 +839,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("limb has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "ecdata.LIMB has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -904,7 +910,7 @@ public class Trace {
     }
 
     if (b >= 65536L) {
-      throw new IllegalArgumentException("phase has invalid value (" + b + ")");
+      throw new IllegalArgumentException("ecdata.PHASE has invalid value (" + b + ")");
     }
     phase.put((byte) (b >> 8));
     phase.put((byte) b);
@@ -920,7 +926,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("stamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("ecdata.STAMP has invalid value (" + b + ")");
     }
     stamp.put((byte) (b >> 24));
     stamp.put((byte) (b >> 16));
@@ -950,7 +956,7 @@ public class Trace {
     }
 
     if (b >= 65536L) {
-      throw new IllegalArgumentException("totalPairings has invalid value (" + b + ")");
+      throw new IllegalArgumentException("ecdata.TOTAL_PAIRINGS has invalid value (" + b + ")");
     }
     totalPairings.put((byte) (b >> 8));
     totalPairings.put((byte) b);
@@ -966,7 +972,7 @@ public class Trace {
     }
 
     if (b >= 65536L) {
-      throw new IllegalArgumentException("totalSize has invalid value (" + b + ")");
+      throw new IllegalArgumentException("ecdata.TOTAL_SIZE has invalid value (" + b + ")");
     }
     totalSize.put((byte) (b >> 8));
     totalSize.put((byte) b);
@@ -986,7 +992,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "wcpArg1Hi has invalid width (" + bs.bitLength() + "bits)");
+          "ecdata.WCP_ARG1_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1012,7 +1018,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "wcpArg1Lo has invalid width (" + bs.bitLength() + "bits)");
+          "ecdata.WCP_ARG1_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1038,7 +1044,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "wcpArg2Hi has invalid width (" + bs.bitLength() + "bits)");
+          "ecdata.WCP_ARG2_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1064,7 +1070,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "wcpArg2Lo has invalid width (" + bs.bitLength() + "bits)");
+          "ecdata.WCP_ARG2_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {

@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.romlex;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -46,18 +47,19 @@ public class Trace {
   private final MappedByteBuffer readFromState;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("romlex.ADDRESS_HI", 4, length),
-        new ColumnHeader("romlex.ADDRESS_LO", 16, length),
-        new ColumnHeader("romlex.CODE_FRAGMENT_INDEX", 4, length),
-        new ColumnHeader("romlex.CODE_FRAGMENT_INDEX_INFTY", 4, length),
-        new ColumnHeader("romlex.CODE_HASH_HI", 16, length),
-        new ColumnHeader("romlex.CODE_HASH_LO", 16, length),
-        new ColumnHeader("romlex.CODE_SIZE", 4, length),
-        new ColumnHeader("romlex.COMMIT_TO_STATE", 1, length),
-        new ColumnHeader("romlex.DEPLOYMENT_NUMBER", 2, length),
-        new ColumnHeader("romlex.DEPLOYMENT_STATUS", 1, length),
-        new ColumnHeader("romlex.READ_FROM_STATE", 1, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("romlex.ADDRESS_HI", 4, length));
+    headers.add(new ColumnHeader("romlex.ADDRESS_LO", 16, length));
+    headers.add(new ColumnHeader("romlex.CODE_FRAGMENT_INDEX", 4, length));
+    headers.add(new ColumnHeader("romlex.CODE_FRAGMENT_INDEX_INFTY", 4, length));
+    headers.add(new ColumnHeader("romlex.CODE_HASH_HI", 16, length));
+    headers.add(new ColumnHeader("romlex.CODE_HASH_LO", 16, length));
+    headers.add(new ColumnHeader("romlex.CODE_SIZE", 4, length));
+    headers.add(new ColumnHeader("romlex.COMMIT_TO_STATE", 1, length));
+    headers.add(new ColumnHeader("romlex.DEPLOYMENT_NUMBER", 2, length));
+    headers.add(new ColumnHeader("romlex.DEPLOYMENT_STATUS", 1, length));
+    headers.add(new ColumnHeader("romlex.READ_FROM_STATE", 1, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -90,7 +92,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("addressHi has invalid value (" + b + ")");
+      throw new IllegalArgumentException("romlex.ADDRESS_HI has invalid value (" + b + ")");
     }
     addressHi.put((byte) (b >> 24));
     addressHi.put((byte) (b >> 16));
@@ -112,7 +114,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "addressLo has invalid width (" + bs.bitLength() + "bits)");
+          "romlex.ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -134,7 +136,8 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("codeFragmentIndex has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "romlex.CODE_FRAGMENT_INDEX has invalid value (" + b + ")");
     }
     codeFragmentIndex.put((byte) (b >> 24));
     codeFragmentIndex.put((byte) (b >> 16));
@@ -152,7 +155,8 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("codeFragmentIndexInfty has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "romlex.CODE_FRAGMENT_INDEX_INFTY has invalid value (" + b + ")");
     }
     codeFragmentIndexInfty.put((byte) (b >> 24));
     codeFragmentIndexInfty.put((byte) (b >> 16));
@@ -174,7 +178,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashHi has invalid width (" + bs.bitLength() + "bits)");
+          "romlex.CODE_HASH_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -200,7 +204,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "codeHashLo has invalid width (" + bs.bitLength() + "bits)");
+          "romlex.CODE_HASH_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -222,7 +226,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("codeSize has invalid value (" + b + ")");
+      throw new IllegalArgumentException("romlex.CODE_SIZE has invalid value (" + b + ")");
     }
     codeSize.put((byte) (b >> 24));
     codeSize.put((byte) (b >> 16));
@@ -252,7 +256,7 @@ public class Trace {
     }
 
     if (b >= 65536L) {
-      throw new IllegalArgumentException("deploymentNumber has invalid value (" + b + ")");
+      throw new IllegalArgumentException("romlex.DEPLOYMENT_NUMBER has invalid value (" + b + ")");
     }
     deploymentNumber.put((byte) (b >> 8));
     deploymentNumber.put((byte) b);

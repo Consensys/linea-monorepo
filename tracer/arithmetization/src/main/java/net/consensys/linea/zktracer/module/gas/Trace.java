@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.gas;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -48,19 +49,20 @@ public class Trace {
   private final MappedByteBuffer wcpRes;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("gas.CT", 1, length),
-        new ColumnHeader("gas.CT_MAX", 1, length),
-        new ColumnHeader("gas.EXCEPTIONS_AHOY", 1, length),
-        new ColumnHeader("gas.FIRST", 1, length),
-        new ColumnHeader("gas.GAS_ACTUAL", 8, length),
-        new ColumnHeader("gas.GAS_COST", 8, length),
-        new ColumnHeader("gas.INPUTS_AND_OUTPUTS_ARE_MEANINGFUL", 1, length),
-        new ColumnHeader("gas.OUT_OF_GAS_EXCEPTION", 1, length),
-        new ColumnHeader("gas.WCP_ARG1_LO", 16, length),
-        new ColumnHeader("gas.WCP_ARG2_LO", 16, length),
-        new ColumnHeader("gas.WCP_INST", 1, length),
-        new ColumnHeader("gas.WCP_RES", 1, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("gas.CT", 1, length));
+    headers.add(new ColumnHeader("gas.CT_MAX", 1, length));
+    headers.add(new ColumnHeader("gas.EXCEPTIONS_AHOY", 1, length));
+    headers.add(new ColumnHeader("gas.FIRST", 1, length));
+    headers.add(new ColumnHeader("gas.GAS_ACTUAL", 8, length));
+    headers.add(new ColumnHeader("gas.GAS_COST", 8, length));
+    headers.add(new ColumnHeader("gas.INPUTS_AND_OUTPUTS_ARE_MEANINGFUL", 1, length));
+    headers.add(new ColumnHeader("gas.OUT_OF_GAS_EXCEPTION", 1, length));
+    headers.add(new ColumnHeader("gas.WCP_ARG1_LO", 16, length));
+    headers.add(new ColumnHeader("gas.WCP_ARG2_LO", 16, length));
+    headers.add(new ColumnHeader("gas.WCP_INST", 1, length));
+    headers.add(new ColumnHeader("gas.WCP_RES", 1, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -94,7 +96,7 @@ public class Trace {
     }
 
     if (b >= 8L) {
-      throw new IllegalArgumentException("ct has invalid value (" + b + ")");
+      throw new IllegalArgumentException("gas.CT has invalid value (" + b + ")");
     }
     ct.put((byte) b);
 
@@ -109,7 +111,7 @@ public class Trace {
     }
 
     if (b >= 8L) {
-      throw new IllegalArgumentException("ctMax has invalid value (" + b + ")");
+      throw new IllegalArgumentException("gas.CT_MAX has invalid value (" + b + ")");
     }
     ctMax.put((byte) b);
 
@@ -152,7 +154,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "gasActual has invalid width (" + bs.bitLength() + "bits)");
+          "gas.GAS_ACTUAL has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -177,7 +179,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("gasCost has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "gas.GAS_COST has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -227,7 +230,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "wcpArg1Lo has invalid width (" + bs.bitLength() + "bits)");
+          "gas.WCP_ARG1_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -253,7 +256,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "wcpArg2Lo has invalid width (" + bs.bitLength() + "bits)");
+          "gas.WCP_ARG2_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
