@@ -17,7 +17,7 @@ func TestLookupsBaseAToBaseB(t *testing.T) {
 	for i := 0; i < BaseAPow4; i++ {
 		// baseADirty is equal to i
 		dirtyA := baseADirty.Get(i)
-		assert.Equal(t, i, dirtyA.Uint64(), baseADirty, "base A dirty")
+		assert.Equal(t, uint64(i), dirtyA.Uint64(), "base A dirty")
 
 		// cleanB is consistent with the declaration that dirty
 		cleanB := baseBClean.Get(i)
@@ -36,7 +36,7 @@ func TestLookupsBaseBToBaseA(t *testing.T) {
 	for i := 0; i < BaseBPow4; i++ {
 		// baseBDirty is equal to i
 		dirtyB := baseBDirty.Get(i)
-		assert.Equal(t, i, dirtyB.Uint64(), "base B dirty")
+		assert.Equal(t, uint64(i), dirtyB.Uint64(), "base B dirty")
 
 		// cleanA is consistent with the declaration that dirty
 		cleanA := baseAClean.Get(i)
