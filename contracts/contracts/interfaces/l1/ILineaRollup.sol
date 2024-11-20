@@ -284,7 +284,7 @@ interface ILineaRollup {
   error FinalBlobNotSubmitted(bytes32 shnarf);
 
   /**
-   * @dev Thrown when a the fallback operator tries to renounce their operator role.
+   * @dev Thrown when the fallback operator tries to renounce their operator role.
    */
   error OnlyNonFallbackOperator();
 
