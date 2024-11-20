@@ -3,10 +3,7 @@
 // we are developping by exposing all the underlying functions.
 package keccak
 
-import (
-	"bytes"
-	"github.com/consensys/linea-monorepo/prover/crypto/keccak/subtle"
-)
+import "bytes"
 
 const (
 	//rate in byte
@@ -23,9 +20,7 @@ const (
 // https://keccak.team/keccak_specs_summary.html
 //
 // Namely, State[X][Y] gives the S[X, Y] in the spec.
-//type State [5][5]uint64
-
-type State [25]uint64
+type State [5][5]uint64
 
 // Block represents a keccak block
 type Block = [Rate / 8]uint64
@@ -158,12 +153,29 @@ func (state *State) XorIn(block *Block, traces *PermTraces) {
 		traces.Blocks = append(traces.Blocks, *block)
 	}
 
-	subtle.XorIn((*[25]uint64)(state), *block)
+	// Apply the block over the state
+	state[0][0] ^= block[0]
+	state[1][0] ^= block[1]
+	state[2][0] ^= block[2]
+	state[3][0] ^= block[3]
+	state[4][0] ^= block[4]
+	state[0][1] ^= block[5]
+	state[1][1] ^= block[6]
+	state[2][1] ^= block[7]
+	state[3][1] ^= block[8]
+	state[4][1] ^= block[9]
+	state[0][2] ^= block[10]
+	state[1][2] ^= block[11]
+	state[2][2] ^= block[12]
+	state[3][2] ^= block[13]
+	state[4][2] ^= block[14]
+	state[0][3] ^= block[15]
+	state[1][3] ^= block[16]
 }
 
 // ExtractDigest returns the digest
 func (state *State) ExtractDigest() Digest {
-	return castDigest(state[0], state[1], state[2], state[3])
+	return castDigest(state[0][0], state[1][0], state[2][0], state[3][0])
 }
 
 // it generates [PermTraces] from the given stream.

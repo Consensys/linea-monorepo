@@ -171,7 +171,7 @@ func TestTheta(t *testing.T) {
 					recomposed := BaseRecompose(slice[:], &base2Pow4)
 
 					// And cast it back to a u64
-					reconstructed[x+y*keccak.Dim] = BaseXToU64(recomposed, &base2)
+					reconstructed[x][y] = BaseXToU64(recomposed, &base2)
 				}
 			}
 

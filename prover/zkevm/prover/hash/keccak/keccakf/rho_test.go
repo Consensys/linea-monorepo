@@ -87,7 +87,7 @@ func rhoTestingModule(
 					// Convert the state in sliced from in base 2
 					for x := 0; x < 5; x++ {
 						for y := 0; y < 5; y++ {
-							z := state[x+y*keccak.Dim]
+							z := state[x][y]
 							zF := U64ToBaseX(z, &BaseBFr)
 
 							// Slice decomposition
@@ -190,7 +190,7 @@ func TestRho(t *testing.T) {
 						permId*keccak.NumRound,
 					)
 					// And cast it back to a u64
-					reconstructed[x+y*keccak.Dim] = BaseXToU64(recomposed, &base2)
+					reconstructed[x][y] = BaseXToU64(recomposed, &base2)
 				}
 			}
 
