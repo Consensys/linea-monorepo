@@ -195,7 +195,7 @@ func (mod *Module) assignStateAndBlocks(
 				// Assign the state to the input columns
 				for x := 0; x < 5; x++ {
 					for y := 0; y < 5; y++ {
-						inputsVal[x][y][currRow] = U64ToBaseX(currInp[x+y*keccak.Dim], &BaseAFr)
+						inputsVal[x][y][currRow] = U64ToBaseX(currInp[x][y], &BaseAFr)
 					}
 				}
 
