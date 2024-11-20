@@ -177,18 +177,9 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 		witnesses[i] = claims[i].PublicInput
 	}
 
-	lastProofI := len(proofs) - 1
-
-	//err = verifier.AssertDifferentProofs(bvk, cvks, switches, proofs, witnesses, emPlonk.WithCompleteArithmetic())
-	err = verifier.AssertDifferentProofs(bvk, cvks[:len(cvks)-1], switches[:lastProofI], proofs[:lastProofI], witnesses[:lastProofI], emPlonk.WithCompleteArithmetic())
+	err = verifier.AssertDifferentProofs(bvk, cvks, switches, proofs, witnesses, emPlonk.WithCompleteArithmetic())
 	if err != nil {
 		return fmt.Errorf("AssertDifferentProofs returned an error: %w", err)
-	}
-
-	// TODO-Perf @Tabaie add to batch above
-	// TODO @Tabaie make sure the WithCompleteArithmetic option is not necessary here
-	if err = verifier.AssertProof(vks[len(vks)-1], proofs[lastProofI], witnesses[lastProofI]); err != nil {
-		return fmt.Errorf("AssertProof returned an error: %w", err)
 	}
 
 	return nil
