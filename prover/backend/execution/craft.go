@@ -91,7 +91,7 @@ func CraftProverOutput(
 
 	// Set the public input as part of the response immediately so that we can
 	// easily debug issues during the proving.
-	rsp.PublicInput = types.Bytes32(rsp.FuncInput().Sum())
+	rsp.PublicInput = types.Bytes32(rsp.FuncInput().Sum(nil))
 
 	return rsp
 }

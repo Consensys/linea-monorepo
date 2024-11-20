@@ -68,7 +68,7 @@ func assign(
 	return CircuitExecution{
 		WizardVerifier: *wizardVerifier,
 		FuncInputs:     fpiSnark,
-		PublicInput:    new(big.Int).SetBytes(funcInputs.Sum()),
+		PublicInput:    new(big.Int).SetBytes(funcInputs.Sum(nil)),
 	}
 }
 

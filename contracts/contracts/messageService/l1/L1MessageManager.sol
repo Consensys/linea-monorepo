@@ -94,8 +94,9 @@ abstract contract L1MessageManager is L1MessageManagerV1, IL1MessageManager {
   /**
    * @notice Checks if the L2->L1 message is claimed or not.
    * @param _messageNumber The message number on L2.
+   * @return isClaimed Returns whether or not the message with _messageNumber has been claimed.
    */
-  function isMessageClaimed(uint256 _messageNumber) external view returns (bool) {
-    return _messageClaimedBitMap.get(_messageNumber);
+  function isMessageClaimed(uint256 _messageNumber) external view returns (bool isClaimed) {
+    isClaimed = _messageClaimedBitMap.get(_messageNumber);
   }
 }

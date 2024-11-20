@@ -49,7 +49,7 @@ services:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu-untuned \
+        /opt/besu/bin/besu \
         --config-file=/var/lib/besu/sequencer.config.toml \
         --node-private-key-file="/var/lib/besu/key" \
         --plugin-linea-l1-polling-interval="PT12S" \
@@ -141,11 +141,12 @@ services:
     restart: "no"
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx1536m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
     entrypoint:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu-untuned \
+        /opt/besu/bin/besu \
         --config-file=/var/lib/besu/l2-node-besu.config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
         --plugin-linea-l1-polling-interval="PT12S" \
@@ -437,11 +438,12 @@ services:
       retries: 120
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
     entrypoint:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu-untuned --config-file=/config/config.toml
+        /opt/besu/bin/besu --config-file=/config/config.toml
     volumes:
       - ./config/l1-node/el/besu.key:/config/keys/besu.key:ro
       - ./config/l1-node/el/config.toml:/config/config.toml:ro
@@ -555,11 +557,12 @@ services:
         ipv4_address: 11.11.11.113
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
     entrypoint:
       - /bin/bash
       - -c
       - |
-        /opt/besu/bin/besu-untuned \
+        /opt/besu/bin/besu \
         --config-file=/var/lib/besu/zkbesu-config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
         --plugin-shomei-http-host="11.11.11.114" \

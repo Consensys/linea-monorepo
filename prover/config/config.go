@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"text/template"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -69,6 +70,10 @@ func NewConfigFromFile(path string) (*Config, error) {
 	if _, err := os.Stat(srsDir); os.IsNotExist(err) {
 		return nil, fmt.Errorf("kzgsrs directory (%s) does not exist: %w", srsDir, err)
 	}
+
+	// duplicate L2 hardcoded values for PI
+	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
+	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
 
 	return &cfg, nil
 }
@@ -212,6 +217,14 @@ type BlobDecompression struct {
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev full"`
+
+	// DictPath is an optional parameters allowing the user to specificy explicitly
+	// where to look for the compression dictionary. If the input is not provided
+	// then the dictionary will be fetched in <assets_dir>/<version>/<circuitID>/compression_dict.bin.
+	//
+	// We stress that the feature should not be used in production and should
+	// only be used in E2E testing context.
+	DictPath string `mapstructure:"dict_path"`
 }
 
 type Aggregation struct {
@@ -225,7 +238,7 @@ type Aggregation struct {
 
 	// AllowedInputs determines the "inner" plonk circuits the "outer" aggregation circuit can aggregate.
 	// Order matters.
-	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large blob-decompression-dummy blob-decompression-v0 blob-decompression-v1"`
+	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large blob-decompression-dummy blob-decompression-v0 blob-decompression-v1 emulation-dummy aggregation emulation public-input-interconnection"`
 
 	// note @gbotrel keeping that around in case we need to support two emulation contract
 	// during a migration.
@@ -252,11 +265,30 @@ func (cfg *WithRequestDir) DirDone() string {
 }
 
 type PublicInput struct {
-	MaxNbDecompression int  `mapstructure:"max_nb_decompression" validate:"gte=0"`
-	MaxNbExecution     int  `mapstructure:"max_nb_execution" validate:"gte=0"`
-	MaxNbCircuits      int  `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDecompression + MaxNbExecution
-	ExecutionMaxNbMsg  int  `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
-	L2MsgMerkleDepth   int  `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
-	L2MsgMaxNbMerkle   int  `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
-	MockKeccakWizard   bool // for testing purposes only
+	MaxNbDecompression int `mapstructure:"max_nb_decompression" validate:"gte=0"`
+	MaxNbExecution     int `mapstructure:"max_nb_execution" validate:"gte=0"`
+	MaxNbCircuits      int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDecompression + MaxNbExecution
+	ExecutionMaxNbMsg  int `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
+	L2MsgMerkleDepth   int `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
+	L2MsgMaxNbMerkle   int `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
+
+	// not serialized
+
+	MockKeccakWizard bool           // for testing purposes only
+	ChainID          uint64         // duplicate from Config
+	L2MsgServiceAddr common.Address // duplicate from Config
+
+}
+
+// BlobDecompressionDictPath returns the filepath where to look for the blob
+// decompression dictionary file. If provided in the config, the function returns
+// in priority the provided [BlobDecompression.DictPath] or it returns a
+// prover assets path depending on the provided circuitID.
+func (cfg *Config) BlobDecompressionDictPath(circuitID string) string {
+
+	if len(cfg.BlobDecompression.DictPath) > 0 {
+		return cfg.BlobDecompression.DictPath
+	}
+
+	return filepath.Join(cfg.PathForSetup(string(circuitID)), DefaultDictionaryFileName)
 }

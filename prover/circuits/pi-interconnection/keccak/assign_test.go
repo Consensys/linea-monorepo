@@ -26,10 +26,6 @@ func TestAssignFlexible(t *testing.T) {
 	testAssign(t, []int{32, 32, 64}, []int{32, 0, 32})
 }
 
-func TestAssignMixed(t *testing.T) {
-
-}
-
 // maxSize = -1 means strict
 func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 	assert.Equal(t, len(maxSizes), len(actualSizes))
@@ -119,4 +115,37 @@ type testAssignCircuit struct {
 	NbIns      []frontend.Variable
 	strictSize []bool
 	Outs       [][32]frontend.Variable
+}
+
+func TestMockWizard(t *testing.T) {
+	compiler := NewStrictHasherCompiler(1)
+	compiled := compiler.WithStrictHashLengths(32).Compile()
+	hsh := compiled.GetHasher()
+	in := make([]byte, 32)
+	_, err := hsh.Write(in)
+	require.NoError(t, err)
+	out := hsh.Sum(nil)
+
+	c := testAssignCircuit{
+		Ins:        [][][32]frontend.Variable{{{}}},
+		NbIns:      []frontend.Variable{nil},
+		strictSize: []bool{true},
+		Outs:       [][32]frontend.Variable{{}},
+	}
+
+	c.H, err = compiled.GetCircuit()
+	require.NoError(t, err)
+
+	a := testAssignCircuit{
+		Ins:   [][][32]frontend.Variable{{{}}},
+		NbIns: []frontend.Variable{2343},
+		Outs:  [][32]frontend.Variable{{}},
+	}
+
+	a.H, err = hsh.Assign()
+	require.NoError(t, err)
+	utils.Copy(a.Ins[0][0][:], in)
+	utils.Copy(a.Outs[0][:], out)
+
+	assert.NoError(t, test.IsSolved(&c, &a, ecc.BLS12_377.ScalarField()))
 }
