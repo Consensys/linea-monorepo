@@ -220,7 +220,10 @@ type BlobDecompression struct {
 
 	// DictPath is an optional parameters allowing the user to specificy explicitly
 	// where to look for the compression dictionary. If the input is not provided
-	// then the dictionary will be fetched in <assets_dir>/<version>/<>
+	// then the dictionary will be fetched in <assets_dir>/<version>/<circuitID>/compression_dict.bin.
+	//
+	// We stress that the feature should not be used in production and should
+	// only be used in E2E testing context.
 	DictPath string `mapstructure:"dict_path"`
 }
 
