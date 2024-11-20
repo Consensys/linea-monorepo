@@ -12,11 +12,6 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: |
-            ${{ secrets.CONSTRAINTS_SSH_KEY }}
-
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -49,10 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: |
-            ${{ secrets.CONSTRAINTS_SSH_KEY }}
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
