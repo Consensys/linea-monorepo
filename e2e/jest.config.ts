@@ -10,7 +10,7 @@ const config: Config = {
   globalTeardown: "./config/jest/global-teardown.ts",
   testTimeout: 3 * 60 * 1000,
   maxConcurrency: 7,
-  maxWorkers: "75%",
+  maxWorkers: "66%",
   workerThreads: true,
   forceExit: true,
 };

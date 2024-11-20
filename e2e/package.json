@@ -9,7 +9,6 @@
     "prettier": "prettier -c '**/*.{js,ts}'",
     "prettier:fix": "prettier -w '**/*.{js,ts}'",
     "test:e2e:local": "TEST_ENV=local npx jest",
-    "test:e2e:local:ci": "TEST_ENV=local npx jest --ci",
     "test:e2e:dev": "TEST_ENV=dev npx jest --config ./jest.testnet.config.ts --bail --runInBand --testPathIgnorePatterns=restart.spec.ts",
     "test:e2e:sepolia": "TEST_ENV=sepolia npx jest --config ./jest.testnet.config.ts --bail --runInBand --testPathIgnorePatterns=restart.spec.ts",
     "postinstall": "typechain --target ethers-v6 --out-dir ./src/typechain '../contracts/local-deployments-artifacts/**/*.json'",
