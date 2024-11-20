@@ -346,7 +346,6 @@ type builder struct {
 }
 
 func NewBuilder(c config.PublicInput) circuits.Builder {
-	c.MockKeccakWizard = true // TODO @Tabaie remove
 	return builder{&c}
 }
 
