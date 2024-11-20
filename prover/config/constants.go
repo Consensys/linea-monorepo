@@ -1,11 +1,11 @@
 package config
 
 const (
-	VerifyingKeyFileName     = "verifying_key.bin"
-	CircuitFileName          = "circuit.bin"
-	VerifierContractFileName = "Verifier.sol"
-	ManifestFileName         = "manifest.json"
-	DictionaryFileName       = "compressor_dict.bin"
+	VerifyingKeyFileName      = "verifying_key.bin"
+	CircuitFileName           = "circuit.bin"
+	VerifierContractFileName  = "Verifier.sol"
+	ManifestFileName          = "manifest.json"
+	DefaultDictionaryFileName = "compressor_dict.bin"
 
 	RequestsFromSubDir = "requests"
 	RequestsToSubDir   = "responses"

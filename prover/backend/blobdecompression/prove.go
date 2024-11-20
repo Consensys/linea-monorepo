@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -69,7 +68,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("unsupported blob version: %v", version)
 	}
 
-	dictPath := filepath.Join(cfg.PathForSetup(string(circuitID)), config.DictionaryFileName)
+	dictPath := cfg.BlobDecompressionDictPath(string(circuitID))
 
 	logrus.Infof("reading the dictionary at %v", dictPath)
 
