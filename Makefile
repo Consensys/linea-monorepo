@@ -163,10 +163,6 @@ restart-shomei:
 		rm -rf tmp/local/shomei/*
 		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml up zkbesu-shomei shomei -d
 
-fresh-start-all-smc-v4:
-		make clean-environment
-		make start-all-smc-v4
-
 fresh-start-all:
 		make clean-environment
 		make start-all

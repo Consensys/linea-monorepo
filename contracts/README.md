@@ -1,5 +1,3 @@
-Readme.md
-
 # Smart Contracts
 
 Contains Ethereum smart contract code for the Linea Rollup and Message Service.
@@ -28,10 +26,15 @@ The TokenBridge utilises the L1MessageService and the L2MessageService for the t
 
 Documentation: [Token Bridge](./docs/linea-token-bridge.md)
 
+# Style Guide
+Please see the [Smart Contract Style Guide](./docs/contract-style-guide.md) for in depth smart contract layout and styling.
+
 # Audit reports
-Please see [Audits](./docs/audits.md)
+Please see [Audits](./docs/audits.md) for a historical list of all the smart contract audits.
 
 # Development & Testing
+
+Please see [Testing guidelines](./test/README.md) for in depth testing layout and styling.
 
 This project uses following libraries
 - [PNPM](https://pnpm.io/) as the Package Manager
