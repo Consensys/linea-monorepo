@@ -1,12 +1,12 @@
 package net.consensys.zkevm.persistence.dao.aggregation
 
+import build.linea.domain.BlockIntervals
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import kotlinx.datetime.Instant
 import net.consensys.FakeFixedClock
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.blobCounters
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createProofToFinalize

@@ -9,10 +9,8 @@ import ManualClaimModal from "../modals/ManualClaimModal";
 
 export function ClaimingType() {
   const { handleShow, handleClose } = useContext(ModalContext);
-  const { token, networkLayer } = useChainStore((state) => ({
-    token: state.token,
-    networkLayer: state.networkLayer,
-  }));
+  const token = useChainStore((state) => state.token);
+  const networkLayer = useChainStore((state) => state.networkLayer);
 
   const { isConnected } = useAccount();
   const { setValue, register, watch } = useFormContext();

@@ -8,13 +8,7 @@ on:
       last_commit_tag:
         required: true
         type: string
-      common_ancestor_tag:
-        required: true
-        type: string
       develop_tag:
-        required: true
-        type: string
-      untested_tag_suffix:
         required: true
         type: string
       coordinator_changed:
@@ -45,9 +39,9 @@ on:
         value: ${{ jobs.image_tag_push.outputs.image_tagged_transaction_exclusion_api }}
     secrets:
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
-        required: true
+        required: false
 
 concurrency:
   group: check-images-tags-and-push-${{ github.workflow }}-${{ github.ref }}
@@ -78,10 +72,7 @@ jobs:
         id: check_image_tags_exist_coordinator
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           image_name: consensys/linea-coordinator
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Check image tags exist for postman
         uses: ./.github/actions/check-image-tags-exist
@@ -89,10 +80,7 @@ jobs:
         id: check_image_tags_exist_postman
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           image_name: consensys/linea-postman
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Check image tags exist for prover
         uses: ./.github/actions/check-image-tags-exist
@@ -100,10 +88,7 @@ jobs:
         id: check_image_tags_exist_prover
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           image_name: consensys/linea-prover
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Check image tags exist for traces-api-facade
         uses: ./.github/actions/check-image-tags-exist
@@ -111,10 +96,7 @@ jobs:
         id: check_image_tags_exist_traces_api_facade
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           image_name: consensys/linea-traces-api-facade
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: Check image tags exist for transaction-exclusion-api
         uses: ./.github/actions/check-image-tags-exist
@@ -122,13 +104,11 @@ jobs:
         id: check_image_tags_exist_transaction_exclusion_api
         with:
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           image_name: consensys/linea-transaction-exclusion-api
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   image_tag_push:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    if: ${{ github.ref == 'refs/heads/main' }}
     name: Tag and push images
     needs: [ check_image_tags_exist ]
     outputs:
@@ -148,12 +128,9 @@ jobs:
         with:
           commit_tag: ${{ inputs.commit_tag }}
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           develop_tag: ${{ inputs.develop_tag }}
-          untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
           image_name: consensys/linea-coordinator
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_coordinator }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_coordinator }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -164,12 +141,9 @@ jobs:
         with:
           commit_tag: ${{ inputs.commit_tag }}
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           develop_tag: ${{ inputs.develop_tag }}
-          untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
           image_name: consensys/linea-postman
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_postman }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_postman }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -180,12 +154,9 @@ jobs:
         with:
           commit_tag: ${{ inputs.commit_tag }}
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           develop_tag: ${{ inputs.develop_tag }}
-          untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
           image_name: consensys/linea-prover
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_prover }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_prover }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -196,12 +167,9 @@ jobs:
         with:
           commit_tag: ${{ inputs.commit_tag }}
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           develop_tag: ${{ inputs.develop_tag }}
-          untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
           image_name: consensys/linea-traces-api-facade
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_traces_api_facade }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_traces_api_facade }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -212,11 +180,8 @@ jobs:
         with:
           commit_tag: ${{ inputs.commit_tag }}
           last_commit_tag: ${{ inputs.last_commit_tag }}
-          common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
           develop_tag: ${{ inputs.develop_tag }}
-          untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
           image_name: consensys/linea-transaction-exclusion-api
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_transaction_exclusion_api }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_transaction_exclusion_api }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}

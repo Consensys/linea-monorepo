@@ -50,25 +50,6 @@ contract TokenBridge is
   bytes32 public constant REMOVE_RESERVED_TOKEN_ROLE = keccak256("REMOVE_RESERVED_TOKEN_ROLE");
   bytes32 public constant SET_CUSTOM_CONTRACT_ROLE = keccak256("SET_CUSTOM_CONTRACT_ROLE");
 
-  // solhint-disable-next-line var-name-mixedcase
-  bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
-
-  /// @notice used for the token metadata
-  bytes private constant METADATA_NAME = abi.encodeCall(IERC20MetadataUpgradeable.name, ());
-  bytes private constant METADATA_SYMBOL = abi.encodeCall(IERC20MetadataUpgradeable.symbol, ());
-  bytes private constant METADATA_DECIMALS = abi.encodeCall(IERC20MetadataUpgradeable.decimals, ());
-
-  address public tokenBeacon;
-  /// @notice mapping (chainId => nativeTokenAddress => brigedTokenAddress)
-  mapping(uint256 => mapping(address => address)) public nativeToBridgedToken;
-  /// @notice mapping (brigedTokenAddress => nativeTokenAddress)
-  mapping(address => address) public bridgedToNativeToken;
-
-  /// @notice The current layer chainId from where the bridging is triggered
-  uint256 public sourceChainId;
-  /// @notice The targeted layer chainId where the bridging is received
-  uint256 public targetChainId;
-
   // Special addresses used in the mappings to mark specific states for tokens.
   /// @notice EMPTY means a token is not present in the mapping.
   address internal constant EMPTY = address(0x0);
@@ -78,6 +59,24 @@ contract TokenBridge is
   address internal constant NATIVE_STATUS = address(0x222);
   /// @notice DEPLOYED means the bridged token contract has been deployed on the remote chain.
   address internal constant DEPLOYED_STATUS = address(0x333);
+
+  // solhint-disable-next-line var-name-mixedcase
+  bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
+
+  /// @notice used for the token metadata
+  bytes private constant METADATA_NAME = abi.encodeCall(IERC20MetadataUpgradeable.name, ());
+  bytes private constant METADATA_SYMBOL = abi.encodeCall(IERC20MetadataUpgradeable.symbol, ());
+  bytes private constant METADATA_DECIMALS = abi.encodeCall(IERC20MetadataUpgradeable.decimals, ());
+
+  address public tokenBeacon;
+
+  mapping(uint256 chainId => mapping(address native => address bridged)) public nativeToBridgedToken;
+  mapping(address bridged => address native) public bridgedToNativeToken;
+
+  /// @notice The current layer chainId from where the bridging is triggered
+  uint256 public sourceChainId;
+  /// @notice The targeted layer chainId where the bridging is received
+  uint256 public targetChainId;
 
   /// @dev Keep free storage slots for future implementation updates to avoid storage collision.
   uint256[50] private __gap;
@@ -144,7 +143,9 @@ contract TokenBridge is
     unchecked {
       for (uint256 i; i < _initializationData.reservedTokens.length; ) {
         if (_initializationData.reservedTokens[i] == EMPTY) revert ZeroAddressNotAllowed();
-        nativeToBridgedToken[sourceChainId][_initializationData.reservedTokens[i]] = RESERVED_STATUS;
+        nativeToBridgedToken[_initializationData.sourceChainId][
+          _initializationData.reservedTokens[i]
+        ] = RESERVED_STATUS;
         emit TokenReserved(_initializationData.reservedTokens[i]);
         ++i;
       }
@@ -367,8 +368,9 @@ contract TokenBridge is
    */
   function setDeployed(address[] calldata _nativeTokens) external onlyMessagingService onlyAuthorizedRemoteSender {
     unchecked {
+      uint256 cachedSourceChainId = sourceChainId;
       for (uint256 i; i < _nativeTokens.length; ) {
-        nativeToBridgedToken[sourceChainId][_nativeTokens[i]] = DEPLOYED_STATUS;
+        nativeToBridgedToken[cachedSourceChainId][_nativeTokens[i]] = DEPLOYED_STATUS;
         emit TokenDeployed(_nativeTokens[i]);
         ++i;
       }
@@ -482,25 +484,28 @@ contract TokenBridge is
   /**
    * @dev Provides a safe ERC20.name version which returns 'NO_NAME' as fallback string.
    * @param _token The address of the ERC-20 token contract
+   * @return tokenName Returns the string of the token name.
    */
-  function _safeName(address _token) internal view returns (string memory) {
+  function _safeName(address _token) internal view returns (string memory tokenName) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_NAME);
-    return success ? _returnDataToString(data) : "NO_NAME";
+    tokenName = success ? _returnDataToString(data) : "NO_NAME";
   }
 
   /**
    * @dev Provides a safe ERC20.symbol version which returns 'NO_SYMBOL' as fallback string
    * @param _token The address of the ERC-20 token contract
+   * @return symbol Returns the string of the symbol.
    */
-  function _safeSymbol(address _token) internal view returns (string memory) {
+  function _safeSymbol(address _token) internal view returns (string memory symbol) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_SYMBOL);
-    return success ? _returnDataToString(data) : "NO_SYMBOL";
+    symbol = success ? _returnDataToString(data) : "NO_SYMBOL";
   }
 
   /**
    * @notice Provides a safe ERC20.decimals version which reverts when decimals are unknown
    *   Note Tokens with (decimals > 255) are not supported
    * @param _token The address of the ERC-20 token contract
+   * @return Returns the token's decimals value.
    */
   function _safeDecimals(address _token) internal view returns (uint8) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_DECIMALS);
@@ -514,9 +519,10 @@ contract TokenBridge is
 
   /**
    * @dev Converts returned data to string. Returns 'NOT_VALID_ENCODING' as fallback value.
-   * @param _data returned data
+   * @param _data returned data.
+   * @return decodedString The decoded string data.
    */
-  function _returnDataToString(bytes memory _data) internal pure returns (string memory) {
+  function _returnDataToString(bytes memory _data) internal pure returns (string memory decodedString) {
     if (_data.length >= 64) {
       return abi.decode(_data, (string));
     } else if (_data.length != 32) {
@@ -543,7 +549,7 @@ contract TokenBridge is
         ++i;
       }
     }
-    return string(bytesArray);
+    decodedString = string(bytesArray);
   }
 
   /**

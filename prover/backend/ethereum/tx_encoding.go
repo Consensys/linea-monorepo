@@ -97,25 +97,25 @@ const (
 // than the transaction then the remaining bytes are discarded and only the
 // first bytes are used to decode the transaction. The function returns the
 // transactions and the number of bytes read.
-func DecodeTxFromBytes(b *bytes.Reader, tx *types.Transaction) (err error) {
+func DecodeTxFromBytes(b *bytes.Reader) (tx types.TxData, err error) {
 
 	var (
 		firstByte byte
 	)
 
 	if b.Len() == 0 {
-		return fmt.Errorf("empty buffer")
+		return nil, fmt.Errorf("empty buffer")
 	}
 
 	if firstByte, err = b.ReadByte(); err != nil {
-		return fmt.Errorf("could not read the first byte: %w", err)
+		return nil, fmt.Errorf("could not read the first byte: %w", err)
 	}
 
 	switch {
 	case firstByte == types.DynamicFeeTxType:
-		return decodeDynamicFeeTx(b, tx)
+		return decodeDynamicFeeTx(b)
 	case firstByte == types.AccessListTxType:
-		return decodeAccessListTx(b, tx)
+		return decodeAccessListTx(b)
 	// According to the RLP rule, `0xc0 + x` or `0xf7` indicates that the current
 	// item is a list and this is what's used to identify that the transaction is
 	// a legacy transaction or a EIP-155 transaction.
@@ -125,69 +125,69 @@ func DecodeTxFromBytes(b *bytes.Reader, tx *types.Transaction) (err error) {
 		// Set the byte-reader backward so that we can apply the rlp-decoder
 		// over it.
 		b.UnreadByte()
-		return decodeLegacyTx(b, tx)
+		return decodeLegacyTx(b)
+	default:
+		return nil, fmt.Errorf("unexpected first byte: %x", firstByte)
 	}
-
-	return fmt.Errorf("unexpected first byte: %x", firstByte)
 }
 
 // decodeDynamicFeeTx encodes a [types.DynamicFeeTx] into a [bytes.Reader] and
 // returns an error if it did not pass.
-func decodeDynamicFeeTx(b *bytes.Reader, tx *types.Transaction) (err error) {
+func decodeDynamicFeeTx(b *bytes.Reader) (parsedTx *types.DynamicFeeTx, err error) {
 	decTx := []any{}
 
-	if err := rlp.Decode(b, &decTx); err != nil {
-		return fmt.Errorf("could not rlp decode transaction: %w", err)
+	if err = rlp.Decode(b, &decTx); err != nil {
+		return nil, fmt.Errorf("could not rlp decode transaction: %w", err)
 	}
 
 	if len(decTx) != dynFeeNumField {
-		return fmt.Errorf("invalid number of field for a dynamic transaction")
+		return nil, fmt.Errorf("invalid number of field for a dynamic transaction")
 	}
 
-	parsedTx := types.DynamicFeeTx{}
+	parsedTx = new(types.DynamicFeeTx)
+
 	err = errors.Join(
-		tryCast(&parsedTx.ChainID, decTx[0], "chainID"),
-		tryCast(&parsedTx.Nonce, decTx[1], "nonce"),
-		tryCast(&parsedTx.GasTipCap, decTx[2], "gas-tip-cap"),
-		tryCast(&parsedTx.GasFeeCap, decTx[3], "gas-fee-cap"),
-		tryCast(&parsedTx.Gas, decTx[4], "gas"),
-		tryCast(&parsedTx.To, decTx[5], "to"),
-		tryCast(&parsedTx.Value, decTx[6], "value"),
-		tryCast(&parsedTx.Data, decTx[7], "data"),
-		tryCast(&parsedTx.AccessList, decTx[8], "access-list"),
+		TryCast(&parsedTx.ChainID, decTx[0], "chainID"),
+		TryCast(&parsedTx.Nonce, decTx[1], "nonce"),
+		TryCast(&parsedTx.GasTipCap, decTx[2], "gas-tip-cap"),
+		TryCast(&parsedTx.GasFeeCap, decTx[3], "gas-fee-cap"),
+		TryCast(&parsedTx.Gas, decTx[4], "gas"),
+		TryCast(&parsedTx.To, decTx[5], "to"),
+		TryCast(&parsedTx.Value, decTx[6], "value"),
+		TryCast(&parsedTx.Data, decTx[7], "data"),
+		TryCast(&parsedTx.AccessList, decTx[8], "access-list"),
 	)
-	*tx = *types.NewTx(&parsedTx)
-	return err
+
+	return
 }
 
-// decodeAccessListTx decodes an [types.AccessListTx] from a [bytes.Reader]
+// decodeAccessListTx decodes a [types.AccessListTx] from a [bytes.Reader]
 // and returns an error if it did not pass.
-func decodeAccessListTx(b *bytes.Reader, tx *types.Transaction) (err error) {
+func decodeAccessListTx(b *bytes.Reader) (parsedTx *types.AccessListTx, err error) {
 
 	decTx := []any{}
 
 	if err := rlp.Decode(b, &decTx); err != nil {
-		return fmt.Errorf("could not rlp decode transaction: %w", err)
+		return nil, fmt.Errorf("could not rlp decode transaction: %w", err)
 	}
 
 	if len(decTx) != accessListTxNumField {
-		return fmt.Errorf("invalid number of field for a dynamic transaction")
+		return nil, fmt.Errorf("invalid number of field for a dynamic transaction")
 	}
 
-	parsedTx := types.AccessListTx{}
+	parsedTx = new(types.AccessListTx)
 	err = errors.Join(
-		tryCast(&parsedTx.ChainID, decTx[0], "chainID"),
-		tryCast(&parsedTx.Nonce, decTx[1], "nonce"),
-		tryCast(&parsedTx.GasPrice, decTx[2], "gas-price"),
-		tryCast(&parsedTx.Gas, decTx[3], "gas"),
-		tryCast(&parsedTx.To, decTx[4], "to"),
-		tryCast(&parsedTx.Value, decTx[5], "value"),
-		tryCast(&parsedTx.Data, decTx[6], "data"),
-		tryCast(&parsedTx.AccessList, decTx[7], "access-list"),
+		TryCast(&parsedTx.ChainID, decTx[0], "chainID"),
+		TryCast(&parsedTx.Nonce, decTx[1], "nonce"),
+		TryCast(&parsedTx.GasPrice, decTx[2], "gas-price"),
+		TryCast(&parsedTx.Gas, decTx[3], "gas"),
+		TryCast(&parsedTx.To, decTx[4], "to"),
+		TryCast(&parsedTx.Value, decTx[5], "value"),
+		TryCast(&parsedTx.Data, decTx[6], "data"),
+		TryCast(&parsedTx.AccessList, decTx[7], "access-list"),
 	)
 
-	*tx = *types.NewTx(&parsedTx)
-	return err
+	return
 }
 
 // decodeLegacyTx decodes a [types.LegacyTx] from a [bytes.Reader] and returns
@@ -197,36 +197,35 @@ func decodeAccessListTx(b *bytes.Reader, tx *types.Transaction) (err error) {
 // not decoded although it could. The reason is that it is complicated to set
 // it in the returned element as it "included" in the signature and we don't
 // encode the signature.
-func decodeLegacyTx(b *bytes.Reader, tx *types.Transaction) (err error) {
+func decodeLegacyTx(b *bytes.Reader) (parsedTx *types.LegacyTx, err error) {
 
 	decTx := []any{}
 
-	if err := rlp.Decode(b, &decTx); err != nil {
-		return fmt.Errorf("could not rlp decode transaction: %w", err)
+	if err = rlp.Decode(b, &decTx); err != nil {
+		return nil, fmt.Errorf("could not rlp decode transaction: %w", err)
 	}
 
 	if len(decTx) != legacyTxNumField && len(decTx) != unprotectedTxNumField {
-		return fmt.Errorf("unexpected number of field")
+		return nil, fmt.Errorf("unexpected number of field")
 	}
 
-	parsedTx := types.LegacyTx{}
+	parsedTx = new(types.LegacyTx)
 	err = errors.Join(
-		tryCast(&parsedTx.Nonce, decTx[0], "nonce"),
-		tryCast(&parsedTx.GasPrice, decTx[1], "gas-price"),
-		tryCast(&parsedTx.Gas, decTx[2], "gas"),
-		tryCast(&parsedTx.To, decTx[3], "to"),
-		tryCast(&parsedTx.Value, decTx[4], "value"),
-		tryCast(&parsedTx.Data, decTx[5], "data"),
+		TryCast(&parsedTx.Nonce, decTx[0], "nonce"),
+		TryCast(&parsedTx.GasPrice, decTx[1], "gas-price"),
+		TryCast(&parsedTx.Gas, decTx[2], "gas"),
+		TryCast(&parsedTx.To, decTx[3], "to"),
+		TryCast(&parsedTx.Value, decTx[4], "value"),
+		TryCast(&parsedTx.Data, decTx[5], "data"),
 	)
 
-	*tx = *types.NewTx(&parsedTx)
-	return err
+	return
 }
 
-// tryCast will attempt to set t with the underlying value of `from` will return
+// TryCast will attempt to set t with the underlying value of `from` will return
 // an error if the type does not match. The explainer string is used to generate
 // the error if any.
-func tryCast[T any](into *T, from any, explainer string) error {
+func TryCast[T any](into *T, from any, explainer string) error {
 
 	if into == nil || from == nil {
 		return fmt.Errorf("from or into is/are nil")
@@ -234,7 +233,7 @@ func tryCast[T any](into *T, from any, explainer string) error {
 
 	// The rlp encoding is not "type-aware", if the underlying field is an
 	// access-list, it will decode into []interface{} (and we recursively parse
-	// it) otherwise, it always decode to `[]byte`
+	// it) otherwise, it always decodes to `[]byte`
 	if list, ok := (from).([]interface{}); ok {
 
 		var (
@@ -249,7 +248,7 @@ func tryCast[T any](into *T, from any, explainer string) error {
 			for i := range accessList {
 				err = errors.Join(
 					err,
-					tryCast(&accessList[i], list[i], fmt.Sprintf("%v[%v]", explainer, i)),
+					TryCast(&accessList[i], list[i], fmt.Sprintf("%v[%v]", explainer, i)),
 				)
 			}
 			*into = (any(accessList)).(T)
@@ -258,8 +257,8 @@ func tryCast[T any](into *T, from any, explainer string) error {
 		case types.AccessTuple:
 			tuple := types.AccessTuple{}
 			err = errors.Join(
-				tryCast(&tuple.Address, list[0], fmt.Sprintf("%v.%v", explainer, "address")),
-				tryCast(&tuple.StorageKeys, list[1], fmt.Sprintf("%v.%v", explainer, "storage-key")),
+				TryCast(&tuple.Address, list[0], fmt.Sprintf("%v.%v", explainer, "address")),
+				TryCast(&tuple.StorageKeys, list[1], fmt.Sprintf("%v.%v", explainer, "storage-key")),
 			)
 			*into = (any(tuple)).(T)
 			return err
@@ -267,7 +266,7 @@ func tryCast[T any](into *T, from any, explainer string) error {
 		case []common.Hash:
 			hashes := make([]common.Hash, length)
 			for i := range hashes {
-				tryCast(&hashes[i], list[i], fmt.Sprintf("%v[%v]", explainer, i))
+				TryCast(&hashes[i], list[i], fmt.Sprintf("%v[%v]", explainer, i))
 			}
 			*into = (any(hashes)).(T)
 			return err
@@ -285,7 +284,7 @@ func tryCast[T any](into *T, from any, explainer string) error {
 	switch intoAny.(type) {
 	case *common.Address:
 		// Parse the bytes as an UTF8 string (= direct casting in go).
-		// Then, the string as an hexstring encoded address.
+		// Then, the string as a hex string encoded address.
 		address := common.BytesToAddress(fromBytes)
 		*into = any(&address).(T)
 	case common.Address:
@@ -295,7 +294,7 @@ func tryCast[T any](into *T, from any, explainer string) error {
 		*into = any(address).(T)
 	case common.Hash:
 		// Parse the bytes as an UTF8 string (= direct casting in go).
-		// Then, the string as an hexstring encoded address.
+		// Then, the string as a hexstring encoded address.
 		hash := common.BytesToHash(fromBytes)
 		*into = any(hash).(T)
 	case *big.Int:

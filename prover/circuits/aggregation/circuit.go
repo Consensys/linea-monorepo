@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	frBn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/native/sw_bls12377"
@@ -59,7 +60,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	// match general PI input with that of the interconnection circuit
-	piBits := api.ToBinary(c.PublicInput, emFr{}.Modulus().BitLen())
+	piBits := api.ToBinary(c.PublicInput, frBn254.Bits)
 
 	assertSlicesEqualZEXT(api, piBits[:16*8], field.ToBitsCanonical(&c.PublicInputWitness.Public[1]))
 	assertSlicesEqualZEXT(api, piBits[16*8:], field.ToBitsCanonical(&c.PublicInputWitness.Public[0]))
@@ -176,18 +177,9 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 		witnesses[i] = claims[i].PublicInput
 	}
 
-	lastProofI := len(proofs) - 1
-
-	//err = verifier.AssertDifferentProofs(bvk, cvks, switches, proofs, witnesses, emPlonk.WithCompleteArithmetic())
-	err = verifier.AssertDifferentProofs(bvk, cvks[:len(cvks)-1], switches[:lastProofI], proofs[:lastProofI], witnesses[:lastProofI], emPlonk.WithCompleteArithmetic())
+	err = verifier.AssertDifferentProofs(bvk, cvks, switches, proofs, witnesses, emPlonk.WithCompleteArithmetic())
 	if err != nil {
 		return fmt.Errorf("AssertDifferentProofs returned an error: %w", err)
-	}
-
-	// TODO-Perf @Tabaie add to batch above
-	// TODO @Tabaie make sure the WithCompleteArithmetic option is not necessary here
-	if err = verifier.AssertProof(vks[len(vks)-1], proofs[lastProofI], witnesses[lastProofI]); err != nil {
-		return fmt.Errorf("AssertProof returned an error: %w", err)
 	}
 
 	return nil

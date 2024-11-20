@@ -1,6 +1,7 @@
 package public_input
 
 import (
+	"golang.org/x/crypto/sha3"
 	"hash"
 	"slices"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"golang.org/x/crypto/sha3"
 )
 
 // Aggregation collects all the field that are used to construct the public
@@ -30,6 +30,8 @@ type Aggregation struct {
 	L1RollingHashMessageNumber              uint
 	L2MsgRootHashes                         []string
 	L2MsgMerkleTreeDepth                    int
+	ChainID                                 uint64
+	L2MessageServiceAddr                    types.EthAddress
 }
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
@@ -89,39 +91,38 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 
 // GetPublicInputHex computes the public input of the finalization proof
 func (p Aggregation) GetPublicInputHex() string {
-	return utils.HexEncodeToString(p.Sum(sha3.NewLegacyKeccak256()))
+	return utils.HexEncodeToString(p.Sum(nil))
 }
 
 // AggregationFPI holds the same info as public_input.Aggregation, except in parsed form
 type AggregationFPI struct {
-	ParentShnarf             [32]byte
-	NbDecompression          uint64
-	InitialStateRootHash     [32]byte
-	InitialBlockNumber       uint64
-	InitialBlockTimestamp    uint64
-	InitialRollingHash       [32]byte
-	InitialRollingHashNumber uint64
-	ChainID                  uint64 // for now we're forcing all executions to have the same chain ID
-	L2MessageServiceAddr     types.EthAddress
-	NbL2Messages             uint64 // TODO not used in hash. delete if not necessary
-	L2MsgMerkleTreeRoots     [][32]byte
-	//FinalStateRootHash       [32]byte		redundant: incorporated into shnarf
-	FinalBlockNumber       uint64
-	FinalBlockTimestamp    uint64
-	FinalRollingHash       [32]byte
-	FinalRollingHashNumber uint64
-	FinalShnarf            [32]byte
-	L2MsgMerkleTreeDepth   int
+	ParentShnarf                [32]byte
+	NbDecompression             uint64
+	InitialStateRootHash        [32]byte
+	LastFinalizedBlockNumber    uint64
+	LastFinalizedBlockTimestamp uint64
+	InitialRollingHash          [32]byte
+	InitialRollingHashNumber    uint64
+	ChainID                     uint64 // for now we're forcing all executions to have the same chain ID
+	L2MessageServiceAddr        types.EthAddress
+	NbL2Messages                uint64 // TODO not used in hash. delete if not necessary
+	L2MsgMerkleTreeRoots        [][32]byte
+	FinalBlockNumber            uint64
+	FinalBlockTimestamp         uint64
+	FinalRollingHash            [32]byte
+	FinalRollingHashNumber      uint64
+	FinalShnarf                 [32]byte
+	L2MsgMerkleTreeDepth        int
 }
 
 func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 	s := AggregationFPISnark{
 		AggregationFPIQSnark: AggregationFPIQSnark{
-			InitialBlockNumber:       pi.InitialBlockNumber,
-			InitialBlockTimestamp:    pi.InitialBlockTimestamp,
-			InitialRollingHash:       [32]frontend.Variable{},
-			InitialRollingHashNumber: pi.InitialRollingHashNumber,
-			InitialStateRootHash:     pi.InitialStateRootHash[:],
+			LastFinalizedBlockNumber:    pi.LastFinalizedBlockNumber,
+			LastFinalizedBlockTimestamp: pi.LastFinalizedBlockTimestamp,
+			InitialRollingHash:          [32]frontend.Variable{},
+			InitialRollingHashNumber:    pi.InitialRollingHashNumber,
+			InitialStateRootHash:        pi.InitialStateRootHash[:],
 
 			NbDecompression:      pi.NbDecompression,
 			ChainID:              pi.ChainID,
@@ -147,21 +148,22 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 }
 
 type AggregationFPIQSnark struct {
-	ParentShnarf             [32]frontend.Variable
-	NbDecompression          frontend.Variable
-	InitialStateRootHash     frontend.Variable
-	InitialBlockNumber       frontend.Variable
-	InitialBlockTimestamp    frontend.Variable
-	InitialRollingHash       [32]frontend.Variable
-	InitialRollingHashNumber frontend.Variable
-	ChainID                  frontend.Variable // for now we're forcing all executions to have the same chain ID
-	L2MessageServiceAddr     frontend.Variable // 20 bytes
+	ParentShnarf                [32]frontend.Variable
+	NbDecompression             frontend.Variable
+	InitialStateRootHash        frontend.Variable
+	LastFinalizedBlockNumber    frontend.Variable
+	LastFinalizedBlockTimestamp frontend.Variable
+	InitialRollingHash          [32]frontend.Variable
+	InitialRollingHashNumber    frontend.Variable
+	ChainID                     frontend.Variable // WARNING: Currently not bound in Sum
+	L2MessageServiceAddr        frontend.Variable // WARNING: Currently not bound in Sum
 }
 
 type AggregationFPISnark struct {
 	AggregationFPIQSnark
-	NbL2Messages         frontend.Variable // TODO not used in hash. delete if not necessary
-	L2MsgMerkleTreeRoots [][32]frontend.Variable
+	NbL2Messages           frontend.Variable // TODO not used in hash. delete if not necessary
+	L2MsgMerkleTreeRoots   [][32]frontend.Variable
+	NbL2MsgMerkleTreeRoots frontend.Variable
 	// FinalStateRootHash     frontend.Variable redundant: incorporated into final shnarf
 	FinalBlockNumber       frontend.Variable
 	FinalBlockTimestamp    frontend.Variable
@@ -174,14 +176,16 @@ type AggregationFPISnark struct {
 // NewAggregationFPI does NOT set all fields, only the ones covered in public_input.Aggregation
 func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 	s = &AggregationFPI{
-		InitialBlockNumber:       uint64(fpi.LastFinalizedBlockNumber),
-		InitialBlockTimestamp:    uint64(fpi.ParentAggregationLastBlockTimestamp),
-		InitialRollingHashNumber: uint64(fpi.LastFinalizedL1RollingHashMessageNumber),
-		L2MsgMerkleTreeRoots:     make([][32]byte, len(fpi.L2MsgRootHashes)),
-		FinalBlockNumber:         uint64(fpi.FinalBlockNumber),
-		FinalBlockTimestamp:      uint64(fpi.FinalTimestamp),
-		FinalRollingHashNumber:   uint64(fpi.L1RollingHashMessageNumber),
-		L2MsgMerkleTreeDepth:     fpi.L2MsgMerkleTreeDepth,
+		LastFinalizedBlockNumber:    uint64(fpi.LastFinalizedBlockNumber),
+		LastFinalizedBlockTimestamp: uint64(fpi.ParentAggregationLastBlockTimestamp),
+		InitialRollingHashNumber:    uint64(fpi.LastFinalizedL1RollingHashMessageNumber),
+		L2MsgMerkleTreeRoots:        make([][32]byte, len(fpi.L2MsgRootHashes)),
+		FinalBlockNumber:            uint64(fpi.FinalBlockNumber),
+		FinalBlockTimestamp:         uint64(fpi.FinalTimestamp),
+		FinalRollingHashNumber:      uint64(fpi.L1RollingHashMessageNumber),
+		L2MsgMerkleTreeDepth:        fpi.L2MsgMerkleTreeDepth,
+		ChainID:                     fpi.ChainID,
+		L2MessageServiceAddr:        fpi.L2MessageServiceAddr,
 	}
 
 	if err = copyFromHex(s.InitialStateRootHash[:], fpi.ParentStateRootHash); err != nil {
@@ -213,16 +217,16 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,
 		pi.FinalShnarf,
-		utils.ToBytes(api, pi.InitialBlockTimestamp),
+		utils.ToBytes(api, pi.LastFinalizedBlockTimestamp),
 		utils.ToBytes(api, pi.FinalBlockTimestamp),
-		utils.ToBytes(api, pi.InitialBlockNumber),
+		utils.ToBytes(api, pi.LastFinalizedBlockNumber),
 		utils.ToBytes(api, pi.FinalBlockNumber),
 		pi.InitialRollingHash,
 		pi.FinalRollingHash,
 		utils.ToBytes(api, pi.InitialRollingHashNumber),
 		utils.ToBytes(api, pi.FinalRollingHashNumber),
 		utils.ToBytes(api, pi.L2MsgMerkleTreeDepth),
-		hash.Sum(nil, pi.L2MsgMerkleTreeRoots...),
+		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 	)
 
 	// turn the hash into a bn254 element
@@ -236,6 +240,12 @@ func (pi *AggregationFPIQSnark) RangeCheck(api frontend.API) {
 	for _, v := range append(slices.Clone(pi.InitialRollingHash[:]), pi.ParentShnarf[:]...) {
 		rc.Check(v, 8)
 	}
+
+	// range checking the initial "ordered" values makes sure that future comparisons are valid
+	// each comparison in turn ensures that its final value is within a reasonable, less than 100 bit range
+	rc.Check(pi.LastFinalizedBlockTimestamp, 64)
+	rc.Check(pi.LastFinalizedBlockNumber, 64)
+	rc.Check(pi.InitialRollingHashNumber, 64)
 	// not checking L2MsgServiceAddr as its range is never assumed in the pi circuit
 	// not checking NbDecompressions as the NewRange in the pi circuit range checks it; TODO do it here instead
 }

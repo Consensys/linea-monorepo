@@ -4,9 +4,11 @@ import net.consensys.linea.async.AsyncFilter
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.function.Consumer
 
 class L1ShnarfBasedAlreadySubmittedBlobsFilter(
-  private val lineaRollup: LineaRollupSmartContractClient
+  private val lineaRollup: LineaRollupSmartContractClient,
+  private val acceptedBlobEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { }
 ) : AsyncFilter<BlobRecord> {
 
   /**
@@ -17,10 +19,18 @@ class L1ShnarfBasedAlreadySubmittedBlobsFilter(
    * if blobRecords=[b1, b2, b3, b4, b5, b6] the result will be [b4, b5, b6]
    */
   override fun invoke(
-    blobRecords: List<BlobRecord>
+    items: List<BlobRecord>
   ): SafeFuture<List<BlobRecord>> {
-    val blockByShnarfQueryFutures = blobRecords.map { blobRecord ->
-      lineaRollup.findBlobFinalBlockNumberByShnarf(shnarf = blobRecord.expectedShnarf)
+    val blockByShnarfQueryFutures = items.map { blobRecord ->
+      lineaRollup
+        .isBlobShnarfPresent(shnarf = blobRecord.expectedShnarf)
+        .thenApply { isShnarfPresent ->
+          if (isShnarfPresent) {
+            blobRecord.endBlockNumber
+          } else {
+            null
+          }
+        }
     }
 
     return SafeFuture.collectAll(blockByShnarfQueryFutures.stream())
@@ -30,9 +40,9 @@ class L1ShnarfBasedAlreadySubmittedBlobsFilter(
           .maxOfOrNull { it }
       }
       .thenApply { highestBlobEndBlockNumberFoundInL1 ->
-        highestBlobEndBlockNumberFoundInL1
-          ?.let { blockNumber -> blobRecords.filter { it.startBlockNumber > blockNumber } }
-          ?: blobRecords
+        highestBlobEndBlockNumberFoundInL1?.also(acceptedBlobEndBlockNumberConsumer::accept)
+          ?.let { blockNumber -> items.filter { it.startBlockNumber > blockNumber } }
+          ?: items
       }
   }
 }

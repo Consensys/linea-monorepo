@@ -27,27 +27,6 @@ contract TestL1MessageManager is L1MessageManager {
     _updateL2L1MessageStatusToClaimed(_messageHash);
   }
 
-  function addL1L2MessageHash(bytes32 _messageHash) external {
-    outboxL1L2MessageStatus[_messageHash] = OUTBOX_STATUS_SENT;
-  }
-
-  function updateL1L2MessageStatusToReceived(bytes32[] calldata _messageHashes) external {
-    uint256 messageHashArrayLength = _messageHashes.length;
-
-    for (uint256 i; i < messageHashArrayLength; ++i) {
-      bytes32 messageHash = _messageHashes[i];
-      uint256 existingStatus = outboxL1L2MessageStatus[messageHash];
-
-      if (existingStatus == OUTBOX_STATUS_UNKNOWN) {
-        revert L1L2MessageNotSent(messageHash);
-      }
-
-      if (existingStatus != OUTBOX_STATUS_RECEIVED) {
-        outboxL1L2MessageStatus[messageHash] = OUTBOX_STATUS_RECEIVED;
-      }
-    }
-  }
-
   ///@dev V2
   function setL2L1MessageToClaimed(uint256 _messageNumber) external {
     _setL2L1MessageToClaimed(_messageNumber);
