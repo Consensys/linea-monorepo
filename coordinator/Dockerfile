@@ -12,8 +12,8 @@ RUN unzip /src/coordinator.zip -d /libs
 WORKDIR /libs/coordinator/lib/
 
 RUN mkdir -p unpacked-blob-compressor unpacked-blob-shnarf-calculator
-RUN bcJar=$(set -- blob-compressor-[0-9].[0-9].[0-9].jar; echo $1) && \
-    bscJar=$(set -- blob-shnarf-calculator-[0-9].[0-9].[0-9].jar; echo $1) && \
+RUN bcJar=$(set -- blob-compressor*.jar; echo $1) && \
+    bscJar=$(set -- blob-shnarf-calculator*.jar; echo $1) && \
     cd unpacked-blob-compressor/ && jar -xf ../$bcJar && cd .. && \
     cd unpacked-blob-shnarf-calculator/ && jar -xf ../$bscJar && cd .. && \
     rm -rf unpacked-blob-compressor/darwin-** unpacked-blob-shnarf-calculator/darwin-** && \
