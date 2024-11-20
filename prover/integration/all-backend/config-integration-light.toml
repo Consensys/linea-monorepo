@@ -11,13 +11,13 @@ prover_mode = "dev"
 requests_root_dir = "./integration/all-backend/testdata/prover-execution"
 
 [blob_decompression]
-prover_mode = "dev"
+prover_mode = "full"
 requests_root_dir = "./integration/all-backend/testdata/prover-compression"
 
 [aggregation]
 prover_mode = "full"
 num_proofs = [50]
-allowed_inputs = ["execution-dummy", "blob-decompression-dummy"]
+allowed_inputs = ["execution-dummy", "blob-decompression-v1"]
 verifier_id = 1
 
 [public_input_interconnection]
