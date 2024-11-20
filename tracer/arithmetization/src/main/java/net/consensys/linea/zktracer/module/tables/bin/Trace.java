@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.tables.bin;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -39,11 +40,12 @@ public class Trace {
   private final MappedByteBuffer resultByte;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("binreftable.INPUT_BYTE_1", 1, length),
-        new ColumnHeader("binreftable.INPUT_BYTE_2", 1, length),
-        new ColumnHeader("binreftable.INST", 1, length),
-        new ColumnHeader("binreftable.RESULT_BYTE", 1, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("binreftable.INPUT_BYTE_1", 1, length));
+    headers.add(new ColumnHeader("binreftable.INPUT_BYTE_2", 1, length));
+    headers.add(new ColumnHeader("binreftable.INST", 1, length));
+    headers.add(new ColumnHeader("binreftable.RESULT_BYTE", 1, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {

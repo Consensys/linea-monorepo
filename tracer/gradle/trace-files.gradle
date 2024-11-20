@@ -18,7 +18,6 @@
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
-        className = "Trace"
         module = moduleName
         files = ["alu/${moduleName}/columns.lisp"]
     }
@@ -30,7 +29,6 @@
 tasks.register("hub", TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
-    className = "Trace"
     module = 'hub'
     files = ['hub/constants.lisp', 'hub/columns/account.lisp', 'hub/columns/context.lisp', 'hub/columns/shared.lisp', 'hub/columns/stack.lisp',
              'hub/columns/storage.lisp', 'hub/columns/transaction.lisp', 'hub/columns/scenario.lisp', 'hub/columns/miscellaneous.lisp']
@@ -42,7 +40,6 @@ tasks.register("hub", TraceFilesTask) {
 tasks.register('instdecoder', TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
-    className = "Trace"
     moduleDir = "tables/instructionDecoder"
     module = "instructionDecoder"
     files = ["reftables/inst_decoder.lisp"]
@@ -51,7 +48,6 @@ tasks.register('instdecoder', TraceFilesTask) {
 tasks.register('shfreftable', TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
-    className = "Trace"
     moduleDir = "tables/shf"
     module = "ShfRt"
     files = ["reftables/shf_reftable.lisp"]
@@ -59,7 +55,6 @@ tasks.register('shfreftable', TraceFilesTask) {
 tasks.register('binreftable', TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
-    className = "Trace"
     moduleDir = "tables/bin"
     module = "BinRt"
     files = ["reftables/bin_reftable.lisp"]
@@ -72,7 +67,6 @@ tasks.register('binreftable', TraceFilesTask) {
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
-className = "Trace"
         module = moduleName
         files = ["${moduleName}/columns.lisp"]
     }
@@ -85,7 +79,6 @@ className = "Trace"
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
-        className = "Trace"
         module = moduleName
         files = ["${moduleName}/columns.lisp", "${moduleName}/constants.lisp"]
     }
@@ -99,7 +92,6 @@ className = "Trace"
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
          dependsOn corsetExists
-        className = "Trace"
         module = moduleName
         files = ["${moduleName}/columns.lisp", "constants/constants.lisp", "${moduleName}/constants.lisp"]
     }
@@ -112,7 +104,6 @@ className = "Trace"
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
-
 	className = "GlobalConstants"
         module = moduleName
         files = [ "${moduleName}/constants.lisp"]

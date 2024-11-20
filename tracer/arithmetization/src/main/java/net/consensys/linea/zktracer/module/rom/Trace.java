@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.rom;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -59,30 +60,31 @@ public class Trace {
   private final MappedByteBuffer pushValueLo;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("rom.ACC", 16, length),
-        new ColumnHeader("rom.CODE_FRAGMENT_INDEX", 4, length),
-        new ColumnHeader("rom.CODE_FRAGMENT_INDEX_INFTY", 4, length),
-        new ColumnHeader("rom.CODE_SIZE", 4, length),
-        new ColumnHeader("rom.CODESIZE_REACHED", 1, length),
-        new ColumnHeader("rom.COUNTER", 1, length),
-        new ColumnHeader("rom.COUNTER_MAX", 1, length),
-        new ColumnHeader("rom.COUNTER_PUSH", 1, length),
-        new ColumnHeader("rom.INDEX", 4, length),
-        new ColumnHeader("rom.IS_JUMPDEST", 1, length),
-        new ColumnHeader("rom.IS_PUSH", 1, length),
-        new ColumnHeader("rom.IS_PUSH_DATA", 1, length),
-        new ColumnHeader("rom.LIMB", 16, length),
-        new ColumnHeader("rom.nBYTES", 1, length),
-        new ColumnHeader("rom.nBYTES_ACC", 1, length),
-        new ColumnHeader("rom.OPCODE", 1, length),
-        new ColumnHeader("rom.PADDED_BYTECODE_BYTE", 1, length),
-        new ColumnHeader("rom.PROGRAM_COUNTER", 4, length),
-        new ColumnHeader("rom.PUSH_FUNNEL_BIT", 1, length),
-        new ColumnHeader("rom.PUSH_PARAMETER", 1, length),
-        new ColumnHeader("rom.PUSH_VALUE_ACC", 16, length),
-        new ColumnHeader("rom.PUSH_VALUE_HI", 16, length),
-        new ColumnHeader("rom.PUSH_VALUE_LO", 16, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("rom.ACC", 16, length));
+    headers.add(new ColumnHeader("rom.CODE_FRAGMENT_INDEX", 4, length));
+    headers.add(new ColumnHeader("rom.CODE_FRAGMENT_INDEX_INFTY", 4, length));
+    headers.add(new ColumnHeader("rom.CODE_SIZE", 4, length));
+    headers.add(new ColumnHeader("rom.CODESIZE_REACHED", 1, length));
+    headers.add(new ColumnHeader("rom.COUNTER", 1, length));
+    headers.add(new ColumnHeader("rom.COUNTER_MAX", 1, length));
+    headers.add(new ColumnHeader("rom.COUNTER_PUSH", 1, length));
+    headers.add(new ColumnHeader("rom.INDEX", 4, length));
+    headers.add(new ColumnHeader("rom.IS_JUMPDEST", 1, length));
+    headers.add(new ColumnHeader("rom.IS_PUSH", 1, length));
+    headers.add(new ColumnHeader("rom.IS_PUSH_DATA", 1, length));
+    headers.add(new ColumnHeader("rom.LIMB", 16, length));
+    headers.add(new ColumnHeader("rom.nBYTES", 1, length));
+    headers.add(new ColumnHeader("rom.nBYTES_ACC", 1, length));
+    headers.add(new ColumnHeader("rom.OPCODE", 1, length));
+    headers.add(new ColumnHeader("rom.PADDED_BYTECODE_BYTE", 1, length));
+    headers.add(new ColumnHeader("rom.PROGRAM_COUNTER", 4, length));
+    headers.add(new ColumnHeader("rom.PUSH_FUNNEL_BIT", 1, length));
+    headers.add(new ColumnHeader("rom.PUSH_PARAMETER", 1, length));
+    headers.add(new ColumnHeader("rom.PUSH_VALUE_ACC", 16, length));
+    headers.add(new ColumnHeader("rom.PUSH_VALUE_HI", 16, length));
+    headers.add(new ColumnHeader("rom.PUSH_VALUE_LO", 16, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -130,7 +132,7 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("acc has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException("rom.ACC has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -152,7 +154,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("codeFragmentIndex has invalid value (" + b + ")");
+      throw new IllegalArgumentException("rom.CODE_FRAGMENT_INDEX has invalid value (" + b + ")");
     }
     codeFragmentIndex.put((byte) (b >> 24));
     codeFragmentIndex.put((byte) (b >> 16));
@@ -170,7 +172,8 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("codeFragmentIndexInfty has invalid value (" + b + ")");
+      throw new IllegalArgumentException(
+          "rom.CODE_FRAGMENT_INDEX_INFTY has invalid value (" + b + ")");
     }
     codeFragmentIndexInfty.put((byte) (b >> 24));
     codeFragmentIndexInfty.put((byte) (b >> 16));
@@ -188,7 +191,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("codeSize has invalid value (" + b + ")");
+      throw new IllegalArgumentException("rom.CODE_SIZE has invalid value (" + b + ")");
     }
     codeSize.put((byte) (b >> 24));
     codeSize.put((byte) (b >> 16));
@@ -254,7 +257,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("index has invalid value (" + b + ")");
+      throw new IllegalArgumentException("rom.INDEX has invalid value (" + b + ")");
     }
     index.put((byte) (b >> 24));
     index.put((byte) (b >> 16));
@@ -311,7 +314,7 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("limb has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException("rom.LIMB has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -381,7 +384,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("programCounter has invalid value (" + b + ")");
+      throw new IllegalArgumentException("rom.PROGRAM_COUNTER has invalid value (" + b + ")");
     }
     programCounter.put((byte) (b >> 24));
     programCounter.put((byte) (b >> 16));
@@ -427,7 +430,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "pushValueAcc has invalid width (" + bs.bitLength() + "bits)");
+          "rom.PUSH_VALUE_ACC has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -453,7 +456,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "pushValueHi has invalid width (" + bs.bitLength() + "bits)");
+          "rom.PUSH_VALUE_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -479,7 +482,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "pushValueLo has invalid width (" + bs.bitLength() + "bits)");
+          "rom.PUSH_VALUE_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {

@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.logdata;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -43,15 +44,16 @@ public class Trace {
   private final MappedByteBuffer sizeTotal;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("logdata.ABS_LOG_NUM", 3, length),
-        new ColumnHeader("logdata.ABS_LOG_NUM_MAX", 3, length),
-        new ColumnHeader("logdata.INDEX", 3, length),
-        new ColumnHeader("logdata.LIMB", 16, length),
-        new ColumnHeader("logdata.LOGS_DATA", 1, length),
-        new ColumnHeader("logdata.SIZE_ACC", 4, length),
-        new ColumnHeader("logdata.SIZE_LIMB", 1, length),
-        new ColumnHeader("logdata.SIZE_TOTAL", 4, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("logdata.ABS_LOG_NUM", 3, length));
+    headers.add(new ColumnHeader("logdata.ABS_LOG_NUM_MAX", 3, length));
+    headers.add(new ColumnHeader("logdata.INDEX", 3, length));
+    headers.add(new ColumnHeader("logdata.LIMB", 16, length));
+    headers.add(new ColumnHeader("logdata.LOGS_DATA", 1, length));
+    headers.add(new ColumnHeader("logdata.SIZE_ACC", 4, length));
+    headers.add(new ColumnHeader("logdata.SIZE_LIMB", 1, length));
+    headers.add(new ColumnHeader("logdata.SIZE_TOTAL", 4, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -81,7 +83,7 @@ public class Trace {
     }
 
     if (b >= 16777216L) {
-      throw new IllegalArgumentException("absLogNum has invalid value (" + b + ")");
+      throw new IllegalArgumentException("logdata.ABS_LOG_NUM has invalid value (" + b + ")");
     }
     absLogNum.put((byte) (b >> 16));
     absLogNum.put((byte) (b >> 8));
@@ -98,7 +100,7 @@ public class Trace {
     }
 
     if (b >= 16777216L) {
-      throw new IllegalArgumentException("absLogNumMax has invalid value (" + b + ")");
+      throw new IllegalArgumentException("logdata.ABS_LOG_NUM_MAX has invalid value (" + b + ")");
     }
     absLogNumMax.put((byte) (b >> 16));
     absLogNumMax.put((byte) (b >> 8));
@@ -115,7 +117,7 @@ public class Trace {
     }
 
     if (b >= 16777216L) {
-      throw new IllegalArgumentException("index has invalid value (" + b + ")");
+      throw new IllegalArgumentException("logdata.INDEX has invalid value (" + b + ")");
     }
     index.put((byte) (b >> 16));
     index.put((byte) (b >> 8));
@@ -135,7 +137,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("limb has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "logdata.LIMB has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -169,7 +172,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("sizeAcc has invalid value (" + b + ")");
+      throw new IllegalArgumentException("logdata.SIZE_ACC has invalid value (" + b + ")");
     }
     sizeAcc.put((byte) (b >> 24));
     sizeAcc.put((byte) (b >> 16));
@@ -187,7 +190,7 @@ public class Trace {
     }
 
     if (b >= 32L) {
-      throw new IllegalArgumentException("sizeLimb has invalid value (" + b + ")");
+      throw new IllegalArgumentException("logdata.SIZE_LIMB has invalid value (" + b + ")");
     }
     sizeLimb.put((byte) b);
 
@@ -202,7 +205,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("sizeTotal has invalid value (" + b + ")");
+      throw new IllegalArgumentException("logdata.SIZE_TOTAL has invalid value (" + b + ")");
     }
     sizeTotal.put((byte) (b >> 24));
     sizeTotal.put((byte) (b >> 16));

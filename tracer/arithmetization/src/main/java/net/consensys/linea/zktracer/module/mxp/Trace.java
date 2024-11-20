@@ -229,7 +229,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 136) {
-      throw new IllegalArgumentException("acc1 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.ACC_1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 17; i++) {
@@ -254,7 +255,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 136) {
-      throw new IllegalArgumentException("acc2 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.ACC_2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 17; i++) {
@@ -279,7 +281,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 136) {
-      throw new IllegalArgumentException("acc3 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.ACC_3 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 17; i++) {
@@ -304,7 +307,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 136) {
-      throw new IllegalArgumentException("acc4 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.ACC_4 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 17; i++) {
@@ -329,7 +333,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 136) {
-      throw new IllegalArgumentException("accA has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.ACC_A has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 17; i++) {
@@ -354,7 +359,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 136) {
-      throw new IllegalArgumentException("accQ has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.ACC_Q has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 17; i++) {
@@ -379,7 +385,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 136) {
-      throw new IllegalArgumentException("accW has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.ACC_W has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 17; i++) {
@@ -512,7 +519,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("cMem has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.C_MEM has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -537,7 +545,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("cMemNew has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.C_MEM_NEW has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -562,7 +571,7 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("cn has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException("mxp.CN has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -596,7 +605,7 @@ public class Trace {
     }
 
     if (b >= 32L) {
-      throw new IllegalArgumentException("ct has invalid value (" + b + ")");
+      throw new IllegalArgumentException("mxp.CT has invalid value (" + b + ")");
     }
     ct.put((byte) b);
 
@@ -638,7 +647,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("gasMxp has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.GAS_MXP has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -663,7 +673,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("gbyte has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.GBYTE has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -688,7 +699,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("gword has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.GWORD has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -725,7 +737,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("linCost has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.LIN_COST has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -751,7 +764,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "maxOffset has invalid width (" + bs.bitLength() + "bits)");
+          "mxp.MAX_OFFSET has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -777,7 +790,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "maxOffset1 has invalid width (" + bs.bitLength() + "bits)");
+          "mxp.MAX_OFFSET_1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -803,7 +816,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "maxOffset2 has invalid width (" + bs.bitLength() + "bits)");
+          "mxp.MAX_OFFSET_2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -925,7 +938,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "offset1Hi has invalid width (" + bs.bitLength() + "bits)");
+          "mxp.OFFSET_1_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -951,7 +964,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "offset1Lo has invalid width (" + bs.bitLength() + "bits)");
+          "mxp.OFFSET_1_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -977,7 +990,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "offset2Hi has invalid width (" + bs.bitLength() + "bits)");
+          "mxp.OFFSET_2_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1003,7 +1016,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "offset2Lo has invalid width (" + bs.bitLength() + "bits)");
+          "mxp.OFFSET_2_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1028,7 +1041,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("quadCost has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.QUAD_COST has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -1065,7 +1079,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("size1Hi has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.SIZE_1_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1090,7 +1105,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("size1Lo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.SIZE_1_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1127,7 +1143,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("size2Hi has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.SIZE_2_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1152,7 +1169,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("size2Lo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.SIZE_2_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -1186,7 +1204,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("stamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("mxp.STAMP has invalid value (" + b + ")");
     }
     stamp.put((byte) (b >> 24));
     stamp.put((byte) (b >> 16));
@@ -1207,7 +1225,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("words has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.WORDS has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -1232,7 +1251,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("wordsNew has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "mxp.WORDS_NEW has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {

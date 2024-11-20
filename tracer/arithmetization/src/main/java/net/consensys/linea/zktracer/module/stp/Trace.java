@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.stp;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -65,36 +66,37 @@ public class Trace {
   private final MappedByteBuffer wcpFlag;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("stp.ARG_1_HI", 16, length),
-        new ColumnHeader("stp.ARG_1_LO", 16, length),
-        new ColumnHeader("stp.ARG_2_LO", 16, length),
-        new ColumnHeader("stp.CT", 1, length),
-        new ColumnHeader("stp.CT_MAX", 1, length),
-        new ColumnHeader("stp.EXISTS", 1, length),
-        new ColumnHeader("stp.EXOGENOUS_MODULE_INSTRUCTION", 1, length),
-        new ColumnHeader("stp.GAS_ACTUAL", 8, length),
-        new ColumnHeader("stp.GAS_HI", 16, length),
-        new ColumnHeader("stp.GAS_LO", 16, length),
-        new ColumnHeader("stp.GAS_MXP", 8, length),
-        new ColumnHeader("stp.GAS_OUT_OF_POCKET", 8, length),
-        new ColumnHeader("stp.GAS_STIPEND", 8, length),
-        new ColumnHeader("stp.GAS_UPFRONT", 8, length),
-        new ColumnHeader("stp.INSTRUCTION", 1, length),
-        new ColumnHeader("stp.IS_CALL", 1, length),
-        new ColumnHeader("stp.IS_CALLCODE", 1, length),
-        new ColumnHeader("stp.IS_CREATE", 1, length),
-        new ColumnHeader("stp.IS_CREATE2", 1, length),
-        new ColumnHeader("stp.IS_DELEGATECALL", 1, length),
-        new ColumnHeader("stp.IS_STATICCALL", 1, length),
-        new ColumnHeader("stp.MOD_FLAG", 1, length),
-        new ColumnHeader("stp.OUT_OF_GAS_EXCEPTION", 1, length),
-        new ColumnHeader("stp.RES_LO", 16, length),
-        new ColumnHeader("stp.STAMP", 3, length),
-        new ColumnHeader("stp.VAL_HI", 16, length),
-        new ColumnHeader("stp.VAL_LO", 16, length),
-        new ColumnHeader("stp.WARM", 1, length),
-        new ColumnHeader("stp.WCP_FLAG", 1, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("stp.ARG_1_HI", 16, length));
+    headers.add(new ColumnHeader("stp.ARG_1_LO", 16, length));
+    headers.add(new ColumnHeader("stp.ARG_2_LO", 16, length));
+    headers.add(new ColumnHeader("stp.CT", 1, length));
+    headers.add(new ColumnHeader("stp.CT_MAX", 1, length));
+    headers.add(new ColumnHeader("stp.EXISTS", 1, length));
+    headers.add(new ColumnHeader("stp.EXOGENOUS_MODULE_INSTRUCTION", 1, length));
+    headers.add(new ColumnHeader("stp.GAS_ACTUAL", 8, length));
+    headers.add(new ColumnHeader("stp.GAS_HI", 16, length));
+    headers.add(new ColumnHeader("stp.GAS_LO", 16, length));
+    headers.add(new ColumnHeader("stp.GAS_MXP", 8, length));
+    headers.add(new ColumnHeader("stp.GAS_OUT_OF_POCKET", 8, length));
+    headers.add(new ColumnHeader("stp.GAS_STIPEND", 8, length));
+    headers.add(new ColumnHeader("stp.GAS_UPFRONT", 8, length));
+    headers.add(new ColumnHeader("stp.INSTRUCTION", 1, length));
+    headers.add(new ColumnHeader("stp.IS_CALL", 1, length));
+    headers.add(new ColumnHeader("stp.IS_CALLCODE", 1, length));
+    headers.add(new ColumnHeader("stp.IS_CREATE", 1, length));
+    headers.add(new ColumnHeader("stp.IS_CREATE2", 1, length));
+    headers.add(new ColumnHeader("stp.IS_DELEGATECALL", 1, length));
+    headers.add(new ColumnHeader("stp.IS_STATICCALL", 1, length));
+    headers.add(new ColumnHeader("stp.MOD_FLAG", 1, length));
+    headers.add(new ColumnHeader("stp.OUT_OF_GAS_EXCEPTION", 1, length));
+    headers.add(new ColumnHeader("stp.RES_LO", 16, length));
+    headers.add(new ColumnHeader("stp.STAMP", 3, length));
+    headers.add(new ColumnHeader("stp.VAL_HI", 16, length));
+    headers.add(new ColumnHeader("stp.VAL_LO", 16, length));
+    headers.add(new ColumnHeader("stp.WARM", 1, length));
+    headers.add(new ColumnHeader("stp.WCP_FLAG", 1, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -148,7 +150,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("arg1Hi has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "stp.ARG_1_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -173,7 +176,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("arg1Lo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "stp.ARG_1_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -198,7 +202,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("arg2Lo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "stp.ARG_2_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -272,7 +277,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "gasActual has invalid width (" + bs.bitLength() + "bits)");
+          "stp.GAS_ACTUAL has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -297,7 +302,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("gasHi has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "stp.GAS_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -322,7 +328,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("gasLo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "stp.GAS_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -347,7 +354,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("gasMxp has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "stp.GAS_MXP has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -373,7 +381,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "gasOutOfPocket has invalid width (" + bs.bitLength() + "bits)");
+          "stp.GAS_OUT_OF_POCKET has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -399,7 +407,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "gasStipend has invalid width (" + bs.bitLength() + "bits)");
+          "stp.GAS_STIPEND has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -425,7 +433,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 64) {
       throw new IllegalArgumentException(
-          "gasUpfront has invalid width (" + bs.bitLength() + "bits)");
+          "stp.GAS_UPFRONT has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 8; i++) {
@@ -558,7 +566,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("resLo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "stp.RES_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -580,7 +589,7 @@ public class Trace {
     }
 
     if (b >= 16777216L) {
-      throw new IllegalArgumentException("stamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("stp.STAMP has invalid value (" + b + ")");
     }
     stamp.put((byte) (b >> 16));
     stamp.put((byte) (b >> 8));
@@ -600,7 +609,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("valHi has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "stp.VAL_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -625,7 +635,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("valLo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "stp.VAL_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {

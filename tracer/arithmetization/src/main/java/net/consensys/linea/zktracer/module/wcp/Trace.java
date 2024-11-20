@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.wcp;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -74,45 +75,46 @@ public class Trace {
   private final MappedByteBuffer wordComparisonStamp;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("wcp.ACC_1", 16, length),
-        new ColumnHeader("wcp.ACC_2", 16, length),
-        new ColumnHeader("wcp.ACC_3", 16, length),
-        new ColumnHeader("wcp.ACC_4", 16, length),
-        new ColumnHeader("wcp.ACC_5", 16, length),
-        new ColumnHeader("wcp.ACC_6", 16, length),
-        new ColumnHeader("wcp.ARGUMENT_1_HI", 16, length),
-        new ColumnHeader("wcp.ARGUMENT_1_LO", 16, length),
-        new ColumnHeader("wcp.ARGUMENT_2_HI", 16, length),
-        new ColumnHeader("wcp.ARGUMENT_2_LO", 16, length),
-        new ColumnHeader("wcp.BIT_1", 1, length),
-        new ColumnHeader("wcp.BIT_2", 1, length),
-        new ColumnHeader("wcp.BIT_3", 1, length),
-        new ColumnHeader("wcp.BIT_4", 1, length),
-        new ColumnHeader("wcp.BITS", 1, length),
-        new ColumnHeader("wcp.BYTE_1", 1, length),
-        new ColumnHeader("wcp.BYTE_2", 1, length),
-        new ColumnHeader("wcp.BYTE_3", 1, length),
-        new ColumnHeader("wcp.BYTE_4", 1, length),
-        new ColumnHeader("wcp.BYTE_5", 1, length),
-        new ColumnHeader("wcp.BYTE_6", 1, length),
-        new ColumnHeader("wcp.COUNTER", 1, length),
-        new ColumnHeader("wcp.CT_MAX", 1, length),
-        new ColumnHeader("wcp.INST", 1, length),
-        new ColumnHeader("wcp.IS_EQ", 1, length),
-        new ColumnHeader("wcp.IS_GEQ", 1, length),
-        new ColumnHeader("wcp.IS_GT", 1, length),
-        new ColumnHeader("wcp.IS_ISZERO", 1, length),
-        new ColumnHeader("wcp.IS_LEQ", 1, length),
-        new ColumnHeader("wcp.IS_LT", 1, length),
-        new ColumnHeader("wcp.IS_SGT", 1, length),
-        new ColumnHeader("wcp.IS_SLT", 1, length),
-        new ColumnHeader("wcp.NEG_1", 1, length),
-        new ColumnHeader("wcp.NEG_2", 1, length),
-        new ColumnHeader("wcp.ONE_LINE_INSTRUCTION", 1, length),
-        new ColumnHeader("wcp.RESULT", 1, length),
-        new ColumnHeader("wcp.VARIABLE_LENGTH_INSTRUCTION", 1, length),
-        new ColumnHeader("wcp.WORD_COMPARISON_STAMP", 4, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("wcp.ACC_1", 16, length));
+    headers.add(new ColumnHeader("wcp.ACC_2", 16, length));
+    headers.add(new ColumnHeader("wcp.ACC_3", 16, length));
+    headers.add(new ColumnHeader("wcp.ACC_4", 16, length));
+    headers.add(new ColumnHeader("wcp.ACC_5", 16, length));
+    headers.add(new ColumnHeader("wcp.ACC_6", 16, length));
+    headers.add(new ColumnHeader("wcp.ARGUMENT_1_HI", 16, length));
+    headers.add(new ColumnHeader("wcp.ARGUMENT_1_LO", 16, length));
+    headers.add(new ColumnHeader("wcp.ARGUMENT_2_HI", 16, length));
+    headers.add(new ColumnHeader("wcp.ARGUMENT_2_LO", 16, length));
+    headers.add(new ColumnHeader("wcp.BIT_1", 1, length));
+    headers.add(new ColumnHeader("wcp.BIT_2", 1, length));
+    headers.add(new ColumnHeader("wcp.BIT_3", 1, length));
+    headers.add(new ColumnHeader("wcp.BIT_4", 1, length));
+    headers.add(new ColumnHeader("wcp.BITS", 1, length));
+    headers.add(new ColumnHeader("wcp.BYTE_1", 1, length));
+    headers.add(new ColumnHeader("wcp.BYTE_2", 1, length));
+    headers.add(new ColumnHeader("wcp.BYTE_3", 1, length));
+    headers.add(new ColumnHeader("wcp.BYTE_4", 1, length));
+    headers.add(new ColumnHeader("wcp.BYTE_5", 1, length));
+    headers.add(new ColumnHeader("wcp.BYTE_6", 1, length));
+    headers.add(new ColumnHeader("wcp.COUNTER", 1, length));
+    headers.add(new ColumnHeader("wcp.CT_MAX", 1, length));
+    headers.add(new ColumnHeader("wcp.INST", 1, length));
+    headers.add(new ColumnHeader("wcp.IS_EQ", 1, length));
+    headers.add(new ColumnHeader("wcp.IS_GEQ", 1, length));
+    headers.add(new ColumnHeader("wcp.IS_GT", 1, length));
+    headers.add(new ColumnHeader("wcp.IS_ISZERO", 1, length));
+    headers.add(new ColumnHeader("wcp.IS_LEQ", 1, length));
+    headers.add(new ColumnHeader("wcp.IS_LT", 1, length));
+    headers.add(new ColumnHeader("wcp.IS_SGT", 1, length));
+    headers.add(new ColumnHeader("wcp.IS_SLT", 1, length));
+    headers.add(new ColumnHeader("wcp.NEG_1", 1, length));
+    headers.add(new ColumnHeader("wcp.NEG_2", 1, length));
+    headers.add(new ColumnHeader("wcp.ONE_LINE_INSTRUCTION", 1, length));
+    headers.add(new ColumnHeader("wcp.RESULT", 1, length));
+    headers.add(new ColumnHeader("wcp.VARIABLE_LENGTH_INSTRUCTION", 1, length));
+    headers.add(new ColumnHeader("wcp.WORD_COMPARISON_STAMP", 4, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -175,7 +177,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("acc1 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "wcp.ACC_1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -200,7 +203,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("acc2 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "wcp.ACC_2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -225,7 +229,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("acc3 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "wcp.ACC_3 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -250,7 +255,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("acc4 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "wcp.ACC_4 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -275,7 +281,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("acc5 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "wcp.ACC_5 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -300,7 +307,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("acc6 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "wcp.ACC_6 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -326,7 +334,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "argument1Hi has invalid width (" + bs.bitLength() + "bits)");
+          "wcp.ARGUMENT_1_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -352,7 +360,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "argument1Lo has invalid width (" + bs.bitLength() + "bits)");
+          "wcp.ARGUMENT_1_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -378,7 +386,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "argument2Hi has invalid width (" + bs.bitLength() + "bits)");
+          "wcp.ARGUMENT_2_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -404,7 +412,7 @@ public class Trace {
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
       throw new IllegalArgumentException(
-          "argument2Lo has invalid width (" + bs.bitLength() + "bits)");
+          "wcp.ARGUMENT_2_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -750,7 +758,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("wordComparisonStamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("wcp.WORD_COMPARISON_STAMP has invalid value (" + b + ")");
     }
     wordComparisonStamp.put((byte) (b >> 24));
     wordComparisonStamp.put((byte) (b >> 16));

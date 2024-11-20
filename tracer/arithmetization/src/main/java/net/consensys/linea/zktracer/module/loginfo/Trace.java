@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.loginfo;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -63,34 +64,35 @@ public class Trace {
   private final MappedByteBuffer txnEmitsLogs;
 
   static List<ColumnHeader> headers(int length) {
-    return List.of(
-        new ColumnHeader("loginfo.ABS_LOG_NUM", 3, length),
-        new ColumnHeader("loginfo.ABS_LOG_NUM_MAX", 3, length),
-        new ColumnHeader("loginfo.ABS_TXN_NUM", 3, length),
-        new ColumnHeader("loginfo.ABS_TXN_NUM_MAX", 3, length),
-        new ColumnHeader("loginfo.ADDR_HI", 4, length),
-        new ColumnHeader("loginfo.ADDR_LO", 16, length),
-        new ColumnHeader("loginfo.CT", 1, length),
-        new ColumnHeader("loginfo.CT_MAX", 1, length),
-        new ColumnHeader("loginfo.DATA_HI", 16, length),
-        new ColumnHeader("loginfo.DATA_LO", 16, length),
-        new ColumnHeader("loginfo.DATA_SIZE", 4, length),
-        new ColumnHeader("loginfo.INST", 1, length),
-        new ColumnHeader("loginfo.IS_LOG_X_0", 1, length),
-        new ColumnHeader("loginfo.IS_LOG_X_1", 1, length),
-        new ColumnHeader("loginfo.IS_LOG_X_2", 1, length),
-        new ColumnHeader("loginfo.IS_LOG_X_3", 1, length),
-        new ColumnHeader("loginfo.IS_LOG_X_4", 1, length),
-        new ColumnHeader("loginfo.PHASE", 2, length),
-        new ColumnHeader("loginfo.TOPIC_HI_1", 32, length),
-        new ColumnHeader("loginfo.TOPIC_HI_2", 32, length),
-        new ColumnHeader("loginfo.TOPIC_HI_3", 32, length),
-        new ColumnHeader("loginfo.TOPIC_HI_4", 32, length),
-        new ColumnHeader("loginfo.TOPIC_LO_1", 32, length),
-        new ColumnHeader("loginfo.TOPIC_LO_2", 32, length),
-        new ColumnHeader("loginfo.TOPIC_LO_3", 32, length),
-        new ColumnHeader("loginfo.TOPIC_LO_4", 32, length),
-        new ColumnHeader("loginfo.TXN_EMITS_LOGS", 1, length));
+    List<ColumnHeader> headers = new ArrayList<>();
+    headers.add(new ColumnHeader("loginfo.ABS_LOG_NUM", 3, length));
+    headers.add(new ColumnHeader("loginfo.ABS_LOG_NUM_MAX", 3, length));
+    headers.add(new ColumnHeader("loginfo.ABS_TXN_NUM", 3, length));
+    headers.add(new ColumnHeader("loginfo.ABS_TXN_NUM_MAX", 3, length));
+    headers.add(new ColumnHeader("loginfo.ADDR_HI", 4, length));
+    headers.add(new ColumnHeader("loginfo.ADDR_LO", 16, length));
+    headers.add(new ColumnHeader("loginfo.CT", 1, length));
+    headers.add(new ColumnHeader("loginfo.CT_MAX", 1, length));
+    headers.add(new ColumnHeader("loginfo.DATA_HI", 16, length));
+    headers.add(new ColumnHeader("loginfo.DATA_LO", 16, length));
+    headers.add(new ColumnHeader("loginfo.DATA_SIZE", 4, length));
+    headers.add(new ColumnHeader("loginfo.INST", 1, length));
+    headers.add(new ColumnHeader("loginfo.IS_LOG_X_0", 1, length));
+    headers.add(new ColumnHeader("loginfo.IS_LOG_X_1", 1, length));
+    headers.add(new ColumnHeader("loginfo.IS_LOG_X_2", 1, length));
+    headers.add(new ColumnHeader("loginfo.IS_LOG_X_3", 1, length));
+    headers.add(new ColumnHeader("loginfo.IS_LOG_X_4", 1, length));
+    headers.add(new ColumnHeader("loginfo.PHASE", 2, length));
+    headers.add(new ColumnHeader("loginfo.TOPIC_HI_1", 32, length));
+    headers.add(new ColumnHeader("loginfo.TOPIC_HI_2", 32, length));
+    headers.add(new ColumnHeader("loginfo.TOPIC_HI_3", 32, length));
+    headers.add(new ColumnHeader("loginfo.TOPIC_HI_4", 32, length));
+    headers.add(new ColumnHeader("loginfo.TOPIC_LO_1", 32, length));
+    headers.add(new ColumnHeader("loginfo.TOPIC_LO_2", 32, length));
+    headers.add(new ColumnHeader("loginfo.TOPIC_LO_3", 32, length));
+    headers.add(new ColumnHeader("loginfo.TOPIC_LO_4", 32, length));
+    headers.add(new ColumnHeader("loginfo.TXN_EMITS_LOGS", 1, length));
+    return headers;
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -139,7 +141,7 @@ public class Trace {
     }
 
     if (b >= 16777216L) {
-      throw new IllegalArgumentException("absLogNum has invalid value (" + b + ")");
+      throw new IllegalArgumentException("loginfo.ABS_LOG_NUM has invalid value (" + b + ")");
     }
     absLogNum.put((byte) (b >> 16));
     absLogNum.put((byte) (b >> 8));
@@ -156,7 +158,7 @@ public class Trace {
     }
 
     if (b >= 16777216L) {
-      throw new IllegalArgumentException("absLogNumMax has invalid value (" + b + ")");
+      throw new IllegalArgumentException("loginfo.ABS_LOG_NUM_MAX has invalid value (" + b + ")");
     }
     absLogNumMax.put((byte) (b >> 16));
     absLogNumMax.put((byte) (b >> 8));
@@ -173,7 +175,7 @@ public class Trace {
     }
 
     if (b >= 16777216L) {
-      throw new IllegalArgumentException("absTxnNum has invalid value (" + b + ")");
+      throw new IllegalArgumentException("loginfo.ABS_TXN_NUM has invalid value (" + b + ")");
     }
     absTxnNum.put((byte) (b >> 16));
     absTxnNum.put((byte) (b >> 8));
@@ -190,7 +192,7 @@ public class Trace {
     }
 
     if (b >= 16777216L) {
-      throw new IllegalArgumentException("absTxnNumMax has invalid value (" + b + ")");
+      throw new IllegalArgumentException("loginfo.ABS_TXN_NUM_MAX has invalid value (" + b + ")");
     }
     absTxnNumMax.put((byte) (b >> 16));
     absTxnNumMax.put((byte) (b >> 8));
@@ -207,7 +209,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("addrHi has invalid value (" + b + ")");
+      throw new IllegalArgumentException("loginfo.ADDR_HI has invalid value (" + b + ")");
     }
     addrHi.put((byte) (b >> 24));
     addrHi.put((byte) (b >> 16));
@@ -228,7 +230,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("addrLo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.ADDR_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -277,7 +280,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("dataHi has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.DATA_HI has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -302,7 +306,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException("dataLo has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.DATA_LO has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 16; i++) {
@@ -324,7 +329,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("dataSize has invalid value (" + b + ")");
+      throw new IllegalArgumentException("loginfo.DATA_SIZE has invalid value (" + b + ")");
     }
     dataSize.put((byte) (b >> 24));
     dataSize.put((byte) (b >> 16));
@@ -414,7 +419,7 @@ public class Trace {
     }
 
     if (b >= 65536L) {
-      throw new IllegalArgumentException("phase has invalid value (" + b + ")");
+      throw new IllegalArgumentException("loginfo.PHASE has invalid value (" + b + ")");
     }
     phase.put((byte) (b >> 8));
     phase.put((byte) b);
@@ -433,7 +438,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException("topicHi1 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.TOPIC_HI_1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 32; i++) {
@@ -458,7 +464,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException("topicHi2 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.TOPIC_HI_2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 32; i++) {
@@ -483,7 +490,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException("topicHi3 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.TOPIC_HI_3 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 32; i++) {
@@ -508,7 +516,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException("topicHi4 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.TOPIC_HI_4 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 32; i++) {
@@ -533,7 +542,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException("topicLo1 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.TOPIC_LO_1 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 32; i++) {
@@ -558,7 +568,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException("topicLo2 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.TOPIC_LO_2 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 32; i++) {
@@ -583,7 +594,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException("topicLo3 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.TOPIC_LO_3 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 32; i++) {
@@ -608,7 +620,8 @@ public class Trace {
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
     if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException("topicLo4 has invalid width (" + bs.bitLength() + "bits)");
+      throw new IllegalArgumentException(
+          "loginfo.TOPIC_LO_4 has invalid width (" + bs.bitLength() + "bits)");
     }
     // Write padding (if necessary)
     for (int i = bs.size(); i < 32; i++) {
