@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"text/template"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -216,6 +217,14 @@ type BlobDecompression struct {
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev full"`
+
+	// DictPath is an optional parameters allowing the user to specificy explicitly
+	// where to look for the compression dictionary. If the input is not provided
+	// then the dictionary will be fetched in <assets_dir>/<version>/<circuitID>/compression_dict.bin.
+	//
+	// We stress that the feature should not be used in production and should
+	// only be used in E2E testing context.
+	DictPath string `mapstructure:"dict_path"`
 }
 
 type Aggregation struct {
@@ -269,4 +278,17 @@ type PublicInput struct {
 	ChainID          uint64         // duplicate from Config
 	L2MsgServiceAddr common.Address // duplicate from Config
 
+}
+
+// BlobDecompressionDictPath returns the filepath where to look for the blob
+// decompression dictionary file. If provided in the config, the function returns
+// in priority the provided [BlobDecompression.DictPath] or it returns a
+// prover assets path depending on the provided circuitID.
+func (cfg *Config) BlobDecompressionDictPath(circuitID string) string {
+
+	if len(cfg.BlobDecompression.DictPath) > 0 {
+		return cfg.BlobDecompression.DictPath
+	}
+
+	return filepath.Join(cfg.PathForSetup(string(circuitID)), DefaultDictionaryFileName)
 }
