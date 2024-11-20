@@ -279,8 +279,8 @@ type PublicInput struct {
 
 // BlobDecompressionDictPath returns the filepath where to look for the blob
 // decompression dictionary file. If provided in the config, the function returns
-// in priority the provided [BlobDecompression.DictPath] or it returns a path
-// prover assets depending on the provided circuitID.
+// in priority the provided [BlobDecompression.DictPath] or it returns a
+// prover assets path depending on the provided circuitID.
 func (cfg *Config) BlobDecompressionDictPath(circuitID string) string {
 
 	if len(cfg.BlobDecompression.DictPath) > 0 {
