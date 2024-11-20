@@ -140,7 +140,7 @@ func Setup(context context.Context, args SetupArgs) error {
 		}
 		if dict != nil {
 			// we save the dictionary to disk
-			dictPath := filepath.Join(cfg.PathForSetup(string(c)), config.DictionaryFileName)
+			dictPath := cfg.BlobDecompressionDictPath(string(c))
 			if err := os.WriteFile(dictPath, dict, 0600); err != nil {
 				return fmt.Errorf("%s failed to write dictionary file: %w", cmdName, err)
 			}
