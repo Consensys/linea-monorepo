@@ -67,3 +67,19 @@ Before contributing, ensure you're familiar with:
 - [Support](https://support.linea.build)
 - [Discord](https://discord.gg/linea)
 - [Twitter](https://twitter.com/LineaBuild)
+
+### Update reference tests
+
+To update the reference tests, run the following commands:
+
+```shell
+cd reference-tests/src/test/resources/ethereum-tests
+git fetch
+git checkout <branch or commit>
+# update LegacyTests submodule of new commit
+git submodule update --init --recursive
+# go back to project root
+cd ../../../../..
+git add reference-tests/src/test/resources/ethereum-tests/
+git commit -m "<commit message>"
+```
