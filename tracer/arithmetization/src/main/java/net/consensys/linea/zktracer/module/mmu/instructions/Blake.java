@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.mmu.instructions;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.module.mmu.Trace.NB_MICRO_ROWS_TOT_BLAKE;
 import static net.consensys.linea.zktracer.module.mmu.Trace.NB_PP_ROWS_BLAKE;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
@@ -27,7 +28,6 @@ import java.util.List;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.Trace;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
@@ -105,7 +105,7 @@ public class Blake implements MmuInstruction {
 
     // setting the number of micro instruction rows
     mmuData.totalLeftZeroesInitials(0);
-    mmuData.totalNonTrivialInitials(Trace.NB_MICRO_ROWS_TOT_INVALID_CODE_PREFIX);
+    mmuData.totalNonTrivialInitials(NB_MICRO_ROWS_TOT_BLAKE);
     mmuData.totalRightZeroesInitials(0);
 
     return mmuData;
@@ -137,6 +137,7 @@ public class Blake implements MmuInstruction {
             .sourceLimbOffset(sourceLimbOffsetR)
             .sourceByteOffset(sourceByteOffsetR)
             .targetByteOffset((short) (LLARGE - 4))
+            .targetLimbOffset(0)
             .limb(hubToMmuValues.limb1())
             .build());
 
@@ -148,6 +149,7 @@ public class Blake implements MmuInstruction {
             .sourceLimbOffset(sourceLimbOffsetF)
             .sourceByteOffset(sourceByteOffsetF)
             .targetByteOffset((short) (LLARGE - 1))
+            .targetLimbOffset(1)
             .limb(hubToMmuValues.limb2())
             .build());
 

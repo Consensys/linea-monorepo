@@ -15,6 +15,13 @@
 
 package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.BLAKE2f_HASH_INPUT_OFFSET;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.BLAKE2f_HASH_INPUT_SIZE;
+
 import org.apache.tuweni.bytes.Bytes;
 
-public record BlakeComponents(Bytes data, Bytes r, Bytes f, Bytes result) {}
+public record BlakeComponents(Bytes callData, Bytes r, Bytes f, Bytes result) {
+  public Bytes getHashInput() {
+    return callData.slice(BLAKE2f_HASH_INPUT_OFFSET, BLAKE2f_HASH_INPUT_SIZE);
+  }
+}
