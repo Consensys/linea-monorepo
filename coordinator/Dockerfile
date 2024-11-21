@@ -1,15 +1,9 @@
 # BUILDER image
 FROM eclipse-temurin:21-jdk-noble AS builder
 
-RUN apt-get update && apt-get install unzip -y
-
-RUN mkdir -p /src /libs
-
-COPY --from=zip ./coordinator.zip /src
-
-RUN unzip /src/coordinator.zip -d /libs
-
-WORKDIR /libs/coordinator/lib/
+RUN mkdir -p /libs
+COPY --from=libs ./** /libs
+WORKDIR /libs
 
 RUN mkdir -p unpacked-blob-compressor unpacked-blob-shnarf-calculator
 RUN bcJar=$(set -- blob-compressor*.jar; echo $1) && \
@@ -38,7 +32,7 @@ WORKDIR /opt/consensys/linea/coordinator
 
 RUN mkdir -p /libs /logs /tmp/prover/request /tmp/prover/response
 
-COPY --from=builder /libs/coordinator/lib/** libs/
+COPY --from=builder /libs/** libs/
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
