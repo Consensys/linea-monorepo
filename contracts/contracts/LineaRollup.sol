@@ -70,7 +70,7 @@ contract LineaRollup is
 
   /**
    * @dev NB: THIS IS THE ONLY MAPPING BEING USED FOR DATA SUBMISSION TRACKING.
-   * @dev NB: NB: This was shnarfFinalBlockNumbers and is replaced to indicate only that a shnarf exists with a value of 1.
+   * @dev NB: This was shnarfFinalBlockNumbers and is replaced to indicate only that a shnarf exists with a value of 1.
    */
   mapping(bytes32 shnarf => uint256 exists) public blobShnarfExists;
 
