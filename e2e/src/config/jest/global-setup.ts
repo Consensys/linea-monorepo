@@ -10,6 +10,8 @@ declare global {
 
 export default async (): Promise<void> => {
   const l1JsonRpcProvider = config.getL1Provider();
+  const l2JsonRpcProvider = config.getL2Provider();
+
   const l1AccountManager = config.getL1AccountManager();
   const l2AccountManager = config.getL2AccountManager();
 
@@ -22,10 +24,16 @@ export default async (): Promise<void> => {
   const l1SecurityCouncil = l1AccountManager.whaleAccount(3);
   const l2SecurityCouncil = l2AccountManager.whaleAccount(3);
 
-  const [l1AccountNonce, l2AccountNonce, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
+  const [
+    l1AccountNonce,
+    l2AccountNonce,
+    { maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas },
+    { maxPriorityFeePerGas: l2MaxPriorityFeePerGas, maxFeePerGas: l2MaxFeePerGas },
+  ] = await Promise.all([
     account.getNonce(),
     l2Account.getNonce(),
     l1JsonRpcProvider.getFeeData(),
+    l2JsonRpcProvider.getFeeData(),
   ]);
 
   const fee = etherToWei("3");
@@ -40,13 +48,23 @@ export default async (): Promise<void> => {
     (
       await lineaRollup.sendMessage(to, fee, calldata, {
         value: etherToWei("500"),
-        maxPriorityFeePerGas,
-        maxFeePerGas,
+        maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+        maxFeePerGas: l1MaxFeePerGas,
         nonce: l1AccountNonce + 1,
       })
     ).wait(),
-    (await l1TokenBridge.connect(l1SecurityCouncil).setRemoteTokenBridge(await l2TokenBridge.getAddress())).wait(),
-    (await l2TokenBridge.connect(l2SecurityCouncil).setRemoteTokenBridge(await l1TokenBridge.getAddress())).wait(),
+    (
+      await l1TokenBridge.connect(l1SecurityCouncil).setRemoteTokenBridge(await l2TokenBridge.getAddress(), {
+        maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+        maxFeePerGas: l1MaxFeePerGas,
+      })
+    ).wait(),
+    (
+      await l2TokenBridge.connect(l2SecurityCouncil).setRemoteTokenBridge(await l1TokenBridge.getAddress(), {
+        maxPriorityFeePerGas: l2MaxPriorityFeePerGas,
+        maxFeePerGas: l2MaxFeePerGas,
+      })
+    ).wait(),
   ]);
 
   console.log(`L1 Dummy contract deployed at address: ${await dummyContract.getAddress()}`);
