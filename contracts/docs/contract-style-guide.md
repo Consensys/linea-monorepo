@@ -59,7 +59,7 @@ import { ImportType } from "../ImportType.sol";
  * @author Author here.
  * @custom:security-contact security-report@linea.build
  */
-contract ISampleContract {
+interface ISampleContract {
 	// All items have NatSpec
 	// 1. Structs
 	// 2. Enums
@@ -78,13 +78,16 @@ pragma solidity >=0.8.19 <=0.8.26;
 
 // imports here
 import { ImportType } from "../ImportType.sol";
+library SampleLibrary {
 	// All items have NatSpec
 	// 1. CONSTANTS (Public, internal and then private)
 	// 2. Structs
 	// 3. Enums
 	// 4. Events with NatSpec (including parameters)
 	// 5. Errors with NatSpec explaining when thrown
-	// 6. Functions (Public, external, internal and then private)
+	// 6. Modifiers
+	// 7. Functions (Public, external, internal and then private)
+}
 ```
 
 ### Contract Structure
@@ -94,13 +97,14 @@ All contracts should be laid out in the following format from top to bottom:
 ```
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity >=0.8.19 <=0.8.26; 
-
-// imports here
-import { ImportType } from "../ImportType.sol";
+contract SampleContract {
 	// All items have NatSpec
-	// 1. Structs
-	// 2. Enums
-	// 3. Events with NatSpec (including parameters)
-	// 4. Errors with NatSpec explaining when thrown
-	// 6. Functions (Public, external, internal and then private)
+	// 1. CONSTANTS (Public, internal and then private)
+	// 2. Structs
+	// 3. Enums
+	// 4. Events with NatSpec (including parameters)
+	// 5. Errors with NatSpec explaining when thrown
+	// 6. Modifiers
+	// 7. Functions (Public, external, internal and then private)
+}
 ```

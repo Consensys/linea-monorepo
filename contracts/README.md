@@ -36,7 +36,7 @@ Please see [Audits](./docs/audits.md) for a historical list of all the smart con
 
 Please see [Testing guidelines](./test/README.md) for in depth testing layout and styling.
 
-This project uses following libraries
+This project uses the following libraries
 - [PNPM](https://pnpm.io/) as the Package Manager
 - [Ethers](https://github.com/ethers-io/ethers.js/) as Ethereum library
 - [Hardhat](https://hardhat.org/getting-started/) as development environment
@@ -100,7 +100,11 @@ Note: The addresses change per deployment due to nonce increments, so be sure to
 
 # Be sure to check the parameter values in the Makefile before executing the command.
 
-make deploy-linea-rollup
+# Deploy v5
+make deploy-linea-rollup-v5 
+
+# Or deploy v6
+make deploy-linea-rollup-v6
 
 make deploy-token-bridge-l1
 ```
@@ -118,13 +122,15 @@ make deploy-token-bridge-l2
 **Deploying L1 and L2 together**
 ```
 make deploy-contracts
-
-# This will trigger the following:
-# Note: the deploy-l1-test-erc20 and deploy-l1-test-erc20 commands are executed for use in the end to end tests.
-
-cd contracts/; \
-	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
-	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
-	cd .. && \
-	$(MAKE) -j6 deploy-linea-rollup-v5 deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20
 ```
+
+The above command will trigger the following commands to deploy:
+
+- deploy-linea-rollup-v5 
+- deploy-token-bridge-l1 
+- deploy-l1-test-erc20 
+- deploy-l2messageservice 
+- deploy-token-bridge-l2 
+- deploy-l2-test-erc20
+
+Note: the deploy-l1-test-erc20 and deploy-l1-test-erc20 commands are executed for use in the end to end tests.
