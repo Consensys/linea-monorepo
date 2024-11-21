@@ -52,17 +52,17 @@ interface IPauseManager {
 
   /**
    * @notice Emitted when a pause type and its associated role are set in the `_pauseTypeRoles` mapping.
-   * @param pauseType The type of pause.
-   * @param role The role associated with the pause type.
+   * @param pauseType The indexed type of pause.
+   * @param role The indexed role associated with the pause type.
    */
-  event PauseTypeRoleSet(PauseType pauseType, bytes32 role);
+  event PauseTypeRoleSet(PauseType indexed pauseType, bytes32 indexed role);
 
   /**
    * @notice Emitted when an unpause type and its associated role are set in the `_unPauseTypeRoles` mapping.
-   * @param unPauseType The type of unpause.
-   * @param role The role associated with the unpause type.
+   * @param unPauseType The indexed type of unpause.
+   * @param role The indexed role associated with the unpause type.
    */
-  event UnPauseTypeRoleSet(PauseType unPauseType, bytes32 role);
+  event UnPauseTypeRoleSet(PauseType indexed unPauseType, bytes32 indexed role);
 
   /**
    * @dev Thrown when a specific pause type is paused.
