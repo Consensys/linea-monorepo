@@ -11,7 +11,10 @@ import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
  * @custom:security-contact security-report@linea.build
  */
 abstract contract MessageServiceBase is Initializable, IGenericErrors {
+  /// @notice The message service address on the current chain.
   IMessageService public messageService;
+
+  /// @notice The token bridge on the alternate/remote chain.
   address public remoteSender;
 
   /// @dev Total contract storage is 12 slots with the gap below.

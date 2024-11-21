@@ -18,9 +18,13 @@ abstract contract ZkEvmV2 is Initializable, AccessControlUpgradeable, L1MessageS
   /// @dev DEPRECATED in favor of currentFinalizedState hash.
   uint256 public currentTimestamp;
 
+  /// @notice The most recent finalized L2 block number.
   uint256 public currentL2BlockNumber;
 
+  /// @notice The most recent L2 state root hash mapped by block number.
   mapping(uint256 blockNumber => bytes32 stateRootHash) public stateRootHashes;
+
+  /// @notice The verifier address to use for a proof type when proving.
   mapping(uint256 proofType => address verifierAddress) public verifiers;
 
   /// @dev Total contract storage is 54 slots with the gap below.
