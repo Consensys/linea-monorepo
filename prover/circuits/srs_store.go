@@ -1,7 +1,6 @@
 package circuits
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/kzg"
@@ -24,12 +24,14 @@ import (
 
 type SRSStore struct {
 	entries map[ecc.ID][]fsEntry
+	rootDir string
 }
 
 type fsEntry struct {
 	isCanonical bool
 	size        int
 	path        string
+	org         string
 }
 
 // NewSRSStore creates a new SRSStore
@@ -45,6 +47,7 @@ func NewSRSStore(rootDir string) (*SRSStore, error) {
 
 	srsStore := &SRSStore{
 		entries: make(map[ecc.ID][]fsEntry),
+		rootDir: rootDir,
 	}
 	srsStore.entries[ecc.BLS12_377] = []fsEntry{}
 	srsStore.entries[ecc.BN254] = []fsEntry{}
@@ -84,6 +87,7 @@ func NewSRSStore(rootDir string) (*SRSStore, error) {
 			isCanonical: isCanonical,
 			size:        size,
 			path:        filepath.Join(rootDir, fileName),
+			org:         matches[5],
 		})
 
 	}
@@ -102,18 +106,52 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 	sizeCanonical, sizeLagrange := plonk.SRSSize(ccs)
 	curveID := fieldToCurve(ccs.Field())
 
+	var lagrangeSRS kzg.SRS
+	loadLagrangeErr := make(chan error, 2)
+	go func() { // attempt to find lagrange SRS
+		var (
+			err error
+			f   *os.File
+		)
+		for _, entry := range store.entries[curveID] {
+			if !entry.isCanonical && entry.size == sizeLagrange {
+				lagrangeSRS = kzg.NewSRS(curveID)
+				if f, err = os.Open(entry.path); err == nil {
+					err = errors.Join(lagrangeSRS.ReadDump(f), f.Close())
+				}
+				break
+			}
+		}
+
+		if err != nil {
+			logrus.WithError(err).Warn("failed to load lagrange SRS")
+		} else if lagrangeSRS == nil {
+			logrus.Warn("lagrange SRS not found")
+		}
+		loadLagrangeErr <- err
+		close(loadLagrangeErr)
+	}()
+
 	// find the canonical srs
-	var canonicalSRS kzg.SRS
+	var (
+		canonicalSRS kzg.SRS
+		canonicalOrg string
+	)
 	for _, entry := range store.entries[curveID] {
 		if entry.isCanonical && entry.size >= sizeCanonical {
 			canonicalSRS = kzg.NewSRS(curveID)
-			data, err := os.ReadFile(entry.path)
+			f, err := os.Open(entry.path)
 			if err != nil {
 				return nil, nil, err
 			}
-			if err := canonicalSRS.ReadDump(bytes.NewReader(data), sizeCanonical); err != nil {
+			err = errors.Join(
+				canonicalSRS.ReadDump(f, sizeCanonical),
+				f.Close(),
+			)
+			if err != nil {
 				return nil, nil, err
 			}
+			canonicalOrg = entry.org
 			break
 		}
 	}
@@ -122,32 +160,26 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 		return nil, nil, fmt.Errorf("could not find canonical SRS for curve %s and size %d", curveID, sizeCanonical)
 	}
 
-	// find the lagrange srs
-	var lagrangeSRS kzg.SRS
-	for _, entry := range store.entries[curveID] {
-		if !entry.isCanonical && entry.size == sizeLagrange {
-			lagrangeSRS = kzg.NewSRS(curveID)
-			data, err := os.ReadFile(entry.path)
-			if err != nil {
-				return nil, nil, err
-			}
-			if err := lagrangeSRS.ReadDump(bytes.NewReader(data)); err != nil {
-				return nil, nil, err
-			}
-			break
-		}
-	}
-
-	if lagrangeSRS == nil {
+	// wait for lagrange SRS to be loaded
+	if loadLagrangeErr := <-loadLagrangeErr; lagrangeSRS == nil || loadLagrangeErr != nil {
 		// we can compute it from the canonical one.
 		if sizeCanonical < sizeLagrange {
 			panic("canonical SRS is smaller than lagrange SRS")
 		}
 		logrus.Debugf("computing lagrange SRS from canonical SRS %d -> %d\n", sizeCanonical, sizeLagrange)
 		var err error
-		lagrangeSRS, err = toLagrange(canonicalSRS, sizeLagrange)
-		if err != nil {
+		if lagrangeSRS, err = toLagrange(canonicalSRS, sizeLagrange); err != nil {
 			return nil, nil, err
+		}
+		// save the lagrange SRS to disk
+		// as it is obtained deterministically from the canonical SRS, we can ascribe it to the same organization
+		// we won't crash if this fails
+		f, err := os.Create(filepath.Join(store.rootDir, fmt.Sprintf("kzg_srs_lagrange_%d_%s_%s.memdump", sizeLagrange, strings.Replace(curveID.String(), "_", "", 1), canonicalOrg)))
+		if err == nil {
+			err = errors.Join(lagrangeSRS.WriteDump(f), f.Close())
+		}
+		if err != nil {
+			logrus.WithError(err).Warn("failed to save lagrange SRS")
 		}
 	}
 
