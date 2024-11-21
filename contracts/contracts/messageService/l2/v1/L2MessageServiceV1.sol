@@ -138,7 +138,7 @@ abstract contract L2MessageServiceV1 is
       if (returnData.length > 0) {
         assembly {
           let data_size := mload(returnData)
-          revert(add(32, returnData), data_size)
+          revert(add(0x20, returnData), data_size)
         }
       } else {
         revert MessageSendingFailed(_to);
