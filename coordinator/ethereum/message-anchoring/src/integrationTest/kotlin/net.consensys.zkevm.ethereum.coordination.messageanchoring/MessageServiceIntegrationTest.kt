@@ -6,7 +6,6 @@ import io.vertx.junit5.VertxExtension
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.L2MessageService
-import net.consensys.linea.contract.LineaRollup
 import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.toBigInteger
 import net.consensys.toULong
