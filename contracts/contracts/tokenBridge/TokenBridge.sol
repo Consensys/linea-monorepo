@@ -344,7 +344,7 @@ contract TokenBridge is
    */
   function setMessageService(
     address _messageService
-  ) public nonZeroAddress(_messageService) onlyRole(SET_MESSAGE_SERVICE_ROLE) {
+  ) external nonZeroAddress(_messageService) onlyRole(SET_MESSAGE_SERVICE_ROLE) {
     address oldMessageService = address(messageService);
     messageService = IMessageService(_messageService);
     emit MessageServiceUpdated(_messageService, oldMessageService, msg.sender);
@@ -443,7 +443,7 @@ contract TokenBridge is
    */
   function setReserved(
     address _token
-  ) public nonZeroAddress(_token) isNewToken(_token) onlyRole(SET_RESERVED_TOKEN_ROLE) {
+  ) external nonZeroAddress(_token) isNewToken(_token) onlyRole(SET_RESERVED_TOKEN_ROLE) {
     nativeToBridgedToken[sourceChainId][_token] = RESERVED_STATUS;
     emit TokenReserved(_token);
   }
