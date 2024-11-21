@@ -1,7 +1,7 @@
 package net.consensys.zkevm.coordinator.app
 
+import build.linea.contract.LineaRollupV5
 import io.vertx.core.Vertx
-import net.consensys.linea.contract.LineaRollup
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -14,7 +14,7 @@ import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.milliseconds
 
 class L1BasedLastFinalizedBlockProviderTest {
-  private lateinit var lineaRollupSmartContractWeb3jClient: LineaRollup
+  private lateinit var lineaRollupSmartContractWeb3jClient: LineaRollupV5
 
   @BeforeEach
   fun beforeEach() {
