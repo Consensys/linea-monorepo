@@ -1,4 +1,5 @@
 /* eslint-disable no-var */
+import { ethers } from "ethers";
 import { config } from "../tests-config";
 import { deployContract } from "../../common/deployments";
 import { DummyContract__factory, TestContract__factory } from "../../typechain";
@@ -9,7 +10,6 @@ declare global {
 }
 
 export default async (): Promise<void> => {
-  const l1JsonRpcProvider = config.getL1Provider();
   const l1AccountManager = config.getL1AccountManager();
   const l2AccountManager = config.getL2AccountManager();
 
@@ -22,11 +22,7 @@ export default async (): Promise<void> => {
   const l1SecurityCouncil = l1AccountManager.whaleAccount(3);
   const l2SecurityCouncil = l2AccountManager.whaleAccount(3);
 
-  const [l1AccountNonce, l2AccountNonce, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
-    account.getNonce(),
-    l2Account.getNonce(),
-    l1JsonRpcProvider.getFeeData(),
-  ]);
+  const [l1AccountNonce, l2AccountNonce] = await Promise.all([account.getNonce(), l2Account.getNonce()]);
 
   const fee = etherToWei("3");
   const to = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
@@ -40,13 +36,20 @@ export default async (): Promise<void> => {
     (
       await lineaRollup.sendMessage(to, fee, calldata, {
         value: etherToWei("500"),
-        maxPriorityFeePerGas,
-        maxFeePerGas,
+        gasPrice: ethers.parseUnits("300", "gwei"),
         nonce: l1AccountNonce + 1,
       })
     ).wait(),
-    (await l1TokenBridge.connect(l1SecurityCouncil).setRemoteTokenBridge(await l2TokenBridge.getAddress())).wait(),
-    (await l2TokenBridge.connect(l2SecurityCouncil).setRemoteTokenBridge(await l1TokenBridge.getAddress())).wait(),
+    (
+      await l1TokenBridge.connect(l1SecurityCouncil).setRemoteTokenBridge(await l2TokenBridge.getAddress(), {
+        gasPrice: ethers.parseUnits("300", "gwei"),
+      })
+    ).wait(),
+    (
+      await l2TokenBridge.connect(l2SecurityCouncil).setRemoteTokenBridge(await l1TokenBridge.getAddress(), {
+        gasPrice: ethers.parseUnits("300", "gwei"),
+      })
+    ).wait(),
   ]);
 
   console.log(`L1 Dummy contract deployed at address: ${await dummyContract.getAddress()}`);
