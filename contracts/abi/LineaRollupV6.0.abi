@@ -331,6 +331,11 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "OnlyNonFallbackOperator",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -724,13 +729,13 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "enum IPauseManager.PauseType",
         "name": "pauseType",
         "type": "uint8"
       },
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "bytes32",
         "name": "role",
         "type": "bytes32"
@@ -887,13 +892,13 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "enum IPauseManager.PauseType",
         "name": "unPauseType",
         "type": "uint8"
       },
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "bytes32",
         "name": "role",
         "type": "bytes32"
@@ -2103,12 +2108,12 @@
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "role",
+        "name": "_role",
         "type": "bytes32"
       },
       {
         "internalType": "address",
-        "name": "account",
+        "name": "_account",
         "type": "address"
       }
     ],

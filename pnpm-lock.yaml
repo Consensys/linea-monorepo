@@ -167,6 +167,10 @@ importers:
         version: 3.4.13(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))
 
   contracts:
+    dependencies:
+      solidity-docgen:
+        specifier: 0.6.0-beta.36
+        version: 0.6.0-beta.36(hardhat@2.22.11(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
     devDependencies:
       '@ethereumjs/util':
         specifier: 9.0.3
@@ -252,6 +256,8 @@ importers:
       yargs:
         specifier: 17.7.2
         version: 17.7.2
+
+  contracts/lib/forge-std: {}
 
   e2e:
     devDependencies:
@@ -8341,6 +8347,11 @@ packages:
     hasBin: true
     peerDependencies:
       hardhat: ^2.11.0
+
+  solidity-docgen@0.6.0-beta.36:
+    resolution: {integrity: sha512-f/I5G2iJgU1h0XrrjRD0hHMr7C10u276vYvm//rw1TzFcYQ4xTOyAoi9oNAHRU0JU4mY9eTuxdVc2zahdMuhaQ==}
+    peerDependencies:
+      hardhat: ^2.8.0
 
   sonic-boom@2.8.0:
     resolution: {integrity: sha512-kuonw1YOYYNOve5iHdSahXPOK49GqwA+LZhI6Wz/l0rP57iKyXXIHaRagOBHAPmGwJC6od2Z9zgvZ5loSgMlVg==}
@@ -20096,6 +20107,12 @@ snapshots:
       semver: 7.6.3
       shelljs: 0.8.5
       web3-utils: 1.10.4
+
+  solidity-docgen@0.6.0-beta.36(hardhat@2.22.11(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10)):
+    dependencies:
+      handlebars: 4.7.8
+      hardhat: 2.22.11(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10)
+      solidity-ast: 0.4.59
 
   sonic-boom@2.8.0:
     dependencies:
