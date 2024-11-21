@@ -49,6 +49,10 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
     __ReentrancyGuard_init();
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
+    if (_defaultAdmin == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     /**
      * @dev DEFAULT_ADMIN_ROLE is set for the security council explicitly,
      * as the permissions init purposefully does not allow DEFAULT_ADMIN_ROLE to be set.

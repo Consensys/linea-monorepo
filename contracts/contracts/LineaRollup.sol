@@ -143,6 +143,10 @@ contract LineaRollup is
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
+    if (_fallbackOperator == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     fallbackOperator = _fallbackOperator;
     emit FallbackOperatorAddressSet(msg.sender, _fallbackOperator);
 

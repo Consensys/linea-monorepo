@@ -2219,6 +2219,28 @@ describe("Linea Rollup contract", () => {
       lineaRollup = await loadFixture(deployLineaRollupFixture);
     });
 
+    it("Should revert if fallback operator has address zero", async () => {
+      expect(await lineaRollup.currentL2BlockNumber()).to.equal(0);
+
+      // Deploy new implementation
+      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+        unsafeAllowRenames: true,
+      });
+      const upgradedContract = await newLineaRollup.waitForDeployment();
+
+      expectRevertWithCustomError(
+        upgradedContract,
+        upgradedContract.reinitializeLineaRollupV6(
+          newRoleAddresses,
+          LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+          LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+          ADDRESS_ZERO,
+        ),
+        "ZeroAddressNotAllowed",
+      );
+    });
+
     it("Should deploy and upgrade the LineaRollup contract expecting LineaRollupVersionChanged", async () => {
       expect(await lineaRollup.currentL2BlockNumber()).to.equal(0);
 

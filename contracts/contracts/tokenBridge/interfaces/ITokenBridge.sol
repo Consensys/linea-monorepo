@@ -215,6 +215,11 @@ interface ITokenBridge {
   error DecimalsAreUnknown(address token);
 
   /**
+   * @dev Thrown when the token list is empty.
+   */
+  error TokenListEmpty();
+
+  /**
    * @notice Similar to `bridgeToken` function but allows to pass additional
    *   permit data to do the ERC20 approval in a single transaction.
    * @param _token The address of the token to be bridged.

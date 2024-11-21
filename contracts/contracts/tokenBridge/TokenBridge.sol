@@ -341,8 +341,13 @@ contract TokenBridge is
    * @param _tokens Array of bridged tokens that have been deployed.
    */
   function confirmDeployment(address[] memory _tokens) external payable {
+    uint256 tokensLength = _tokens.length;
+    if (tokensLength == 0) {
+      revert TokenListEmpty();
+    }
+
     // Check that the tokens have actually been deployed
-    for (uint256 i; i < _tokens.length; i++) {
+    for (uint256 i; i < tokensLength; i++) {
       address nativeToken = bridgedToNativeToken[_tokens[i]];
       if (nativeToken == EMPTY) {
         revert TokenNotDeployed(_tokens[i]);
