@@ -2035,6 +2035,31 @@ describe("Linea Rollup contract", () => {
 
       expect(await lineaRollup.hasRole(OPERATOR_ROLE, multiCallAddress)).to.be.true;
     });
+
+    it("Should revert if trying to renounce role as fallback operator", async () => {
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
+
+      await expectEvent(
+        lineaRollup,
+        lineaRollup.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "FallbackOperatorRoleGranted",
+        [admin.address, multiCallAddress],
+      );
+
+      expect(await lineaRollup.hasRole(OPERATOR_ROLE, multiCallAddress)).to.be.true;
+
+      const renounceCall = lineaRollup.renounceRole(OPERATOR_ROLE, multiCallAddress);
+
+      expectRevertWithCustomError(lineaRollup, renounceCall, "OnlyNonFallbackOperator");
+    });
+
+    it("Should renounce role if not fallback operator", async () => {
+      expect(await lineaRollup.hasRole(OPERATOR_ROLE, operator.address)).to.be.true;
+
+      const renounceCall = lineaRollup.connect(operator).renounceRole(OPERATOR_ROLE, operator.address);
+      const args = [OPERATOR_ROLE, operator.address, operator.address];
+      expectEvent(lineaRollup, renounceCall, "RoleRevoked", args);
+    });
   });
 
   async function sendBlobTransaction(startIndex: number, finalIndex: number, isMultiple: boolean = false) {

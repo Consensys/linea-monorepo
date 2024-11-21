@@ -284,6 +284,11 @@ interface ILineaRollup {
   error FinalBlobNotSubmitted(bytes32 shnarf);
 
   /**
+   * @dev Thrown when the fallback operator tries to renounce their operator role.
+   */
+  error OnlyNonFallbackOperator();
+
+  /**
    * @notice Adds or updates the verifier contract address for a proof type.
    * @dev VERIFIER_SETTER_ROLE is required to execute.
    * @param _newVerifierAddress The address for the verifier contract.
