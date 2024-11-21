@@ -31,15 +31,10 @@ dependencies {
   api(project(':state-recover:appcore:clients-interfaces'))
   api(project(':state-recover:appcore:domain-models'))
 
-  //  implementation("io.tmio:tuweni-bytes:${libs.versions.tuweni.get()}")
-  // FIXME: temporary workaround until besu delivers final version
-  implementation 'org.hyperledger.besu.internal:rlp:24.10.0'
-  implementation "org.hyperledger.besu.internal:core:${wipBesuVersion}"
-  implementation "org.hyperledger.besu.internal:algorithms:${wipBesuVersion}"
-//  implementation "org.hyperledger.besu:besu-datatypes:${wipBesuVersion}"
-  implementation "org.hyperledger.besu:plugin-api:${wipBesuVersion}"
-  implementation "org.hyperledger.besu:evm:${wipBesuVersion}"
-  // </FIXME>: temporary workaround until besu delivers final version
+  implementation project(':jvm-libs:linea:besu-libs')
+  implementation("org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}") {
+    transitive = false
+  }
 
   testImplementation(project(':state-recover:clients:smartcontract'))
   testImplementation(project(':state-recover:clients:eth-api'))
@@ -56,9 +51,10 @@ dependencies {
 
 configurations.all {
   resolutionStrategy {
+    force "org.hyperledger.besu.internal:rlp:${wipBesuVersion}"
     force "org.hyperledger.besu.internal:core:${wipBesuVersion}"
     force "org.hyperledger.besu.internal:algorithms:${wipBesuVersion}"
-//    force "org.hyperledger.besu:besu-datatypes:${wipBesuVersion}"
+    force "org.hyperledger.besu:besu-datatypes:${wipBesuVersion}"
     force "org.hyperledger.besu:plugin-api:${wipBesuVersion}"
     force "org.hyperledger.besu:evm:${wipBesuVersion}"
   }
