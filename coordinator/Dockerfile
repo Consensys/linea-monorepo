@@ -30,7 +30,7 @@ FROM eclipse-temurin:21-jre-noble
 
 WORKDIR /opt/consensys/linea/coordinator
 
-RUN mkdir -p /libs /logs /tmp/prover/request /tmp/prover/response
+RUN mkdir -p logs /tmp/prover/request /tmp/prover/response
 
 COPY --from=builder /libs/** libs/
 
