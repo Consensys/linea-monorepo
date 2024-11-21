@@ -91,7 +91,7 @@ ______________________________________________________________________
 NOTE
 
 > Please be aware if the reference test code generation tasks `blockchainReferenceTests` and
-> `generalStateReferenceTests` do not generate any java code, than probably you are missing the Ethereum tests
+> `generalStateReferenceTests` do not generate any Java code, then probably you are missing the Ethereum tests
 > submodule which you can clone via `git submodule update --init --recursive`.
 
 ______________________________________________________________________
