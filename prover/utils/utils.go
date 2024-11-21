@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -423,4 +424,22 @@ type BytesEqualError struct {
 
 func (e *BytesEqualError) Error() string {
 	return e.error
+}
+
+func ReadFromFile(path string, to io.ReaderFrom) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	_, err = to.ReadFrom(f)
+	return errors.Join(err, f.Close())
+}
+
+func WriteToFile(path string, from io.WriterTo) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600) // TODO @Tabaie option for permissions?
+	if err != nil {
+		return err
+	}
+	_, err = from.WriteTo(f)
+	return errors.Join(err, f.Close())
 }
