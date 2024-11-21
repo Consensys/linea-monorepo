@@ -9,9 +9,11 @@ import { IL1MessageManagerV1 } from "../../../interfaces/l1/IL1MessageManagerV1.
  * @custom:security-contact security-report@linea.build
  */
 abstract contract L1MessageManagerV1 is IL1MessageManagerV1 {
+  /// @notice The 2 legacy status constants for message statuses.
   uint8 public constant INBOX_STATUS_UNKNOWN = 0;
   uint8 public constant INBOX_STATUS_RECEIVED = 1;
 
+  /// @notice The 3 legacy status constants for message statuses.
   uint8 public constant OUTBOX_STATUS_UNKNOWN = 0;
   uint8 public constant OUTBOX_STATUS_SENT = 1;
   uint8 public constant OUTBOX_STATUS_RECEIVED = 2;
