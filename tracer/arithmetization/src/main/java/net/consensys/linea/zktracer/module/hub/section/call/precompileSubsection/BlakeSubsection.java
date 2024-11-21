@@ -52,6 +52,7 @@ public class BlakeSubsection extends PrecompileSubsection {
 
     final boolean wellFormedF = blakeF.get(0) == 0 || blakeF.get(0) == 1;
     final long rounds = blakeR.toLong();
+    final long calleeGas = callSection.stpCall.effectiveChildContextGasAllowance();
     final boolean sufficientGas = calleeGas >= rounds;
     blakeSuccess = wellFormedF && sufficientGas;
 
@@ -66,7 +67,6 @@ public class BlakeSubsection extends PrecompileSubsection {
     secondImcFragment = ImcFragment.empty(hub);
     fragments.add(secondImcFragment);
 
-    final long calleeGas = callSection.stpCall.effectiveChildContextGasAllowance();
     blake2fParamsOobCall = new Blake2fParamsOobCall(calleeGas);
     secondImcFragment.callOob(blake2fParamsOobCall);
 
