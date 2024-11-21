@@ -637,6 +637,12 @@ describe("E2E tests", function () {
       // @TODO: check metadata are not sent for new L1DAI tx
     });
 
+    it("Should revert confirm deployment if token list is empty", async function () {
+      const { l2TokenBridge } = await loadFixture(deployContractsFixture);
+
+      await expectRevertWithCustomError(l2TokenBridge, l2TokenBridge.confirmDeployment([]), "TokenListEmpty");
+    });
+
     it("Should revert when trying to change the status of a token that has not been deployed yet", async function () {
       const {
         user,
