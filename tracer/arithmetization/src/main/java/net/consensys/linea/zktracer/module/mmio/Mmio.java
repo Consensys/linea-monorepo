@@ -111,7 +111,7 @@ public class Mmio implements Module {
   void trace(Trace trace, MmioData mmioData, final int stamp) {
 
     final boolean isFast = isFastOperation(mmioData.instruction());
-    final boolean requiresExoFlag = mmioData.operationRequiresOperation();
+    final boolean requiresExoFlag = mmioData.operationRequiresExoFlag();
 
     final boolean effectiveExoIsTxcd = requiresExoFlag && mmioData.exoIsTxcd();
     final boolean effectiveExoIsRom = requiresExoFlag && mmioData.exoIsRom();

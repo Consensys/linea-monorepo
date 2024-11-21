@@ -317,8 +317,9 @@ public class MmioData {
     pow2562 = antiPower(bit2);
   }
 
-  public boolean operationRequiresOperation() {
+  public boolean operationRequiresExoFlag() {
     return List.of(
+            MMIO_INST_LIMB_VANISHES,
             MMIO_INST_LIMB_TO_RAM_TRANSPLANT,
             MMIO_INST_LIMB_TO_RAM_ONE_TARGET,
             MMIO_INST_LIMB_TO_RAM_TWO_TARGET,
