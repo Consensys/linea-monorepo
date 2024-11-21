@@ -1,7 +1,7 @@
 package net.consensys.linea.contract.l1
 
-import net.consensys.linea.contract.LineaRollup
-import net.consensys.linea.contract.LineaRollup.BlobSubmissionData
+import build.linea.contract.LineaRollupV5
+import build.linea.contract.LineaRollupV5.BlobSubmissionData
 import net.consensys.toBigInteger
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ProofToFinalize
@@ -20,7 +20,7 @@ internal fun buildSubmitBlobsFunction(
 ): Function {
   val blobsSubmissionData = blobs.map { blob ->
     val blobCompressionProof = blob.blobCompressionProof!!
-    val supportingSubmissionData = LineaRollup.SupportingSubmissionDataV2(
+    val supportingSubmissionData = LineaRollupV5.SupportingSubmissionDataV2(
       /*finalStateRootHash*/ blobCompressionProof.finalStateRootHash,
       /*firstBlockInData*/ blob.startBlockNumber.toBigInteger(),
       /*finalBlockInData*/ blob.endBlockNumber.toBigInteger(),
@@ -43,7 +43,7 @@ internal fun buildSubmitBlobsFunction(
    *   ) external;
    */
   return Function(
-    LineaRollup.FUNC_SUBMITBLOBS,
+    LineaRollupV5.FUNC_SUBMITBLOBS,
     Arrays.asList<Type<*>>(
       DynamicArray(BlobSubmissionData::class.java, blobsSubmissionData),
       Bytes32(blobs.first().blobCompressionProof!!.prevShnarf),
@@ -60,7 +60,7 @@ internal fun buildFinalizeBlobsFunction(
   parentL1RollingHash: ByteArray,
   parentL1RollingHashMessageNumber: Long
 ): Function {
-  val aggregationEndBlobInfo = LineaRollup.ShnarfData(
+  val aggregationEndBlobInfo = LineaRollupV5.ShnarfData(
     /*parentShnarf*/ aggregationLastBlob.blobCompressionProof!!.prevShnarf,
     /*snarkHash*/ aggregationLastBlob.blobCompressionProof!!.snarkHash,
     /*finalStateRootHash*/ aggregationLastBlob.blobCompressionProof!!.finalStateRootHash,
@@ -68,7 +68,7 @@ internal fun buildFinalizeBlobsFunction(
     /*dataEvaluationClaim*/ aggregationLastBlob.blobCompressionProof!!.expectedY
   )
 
-  val finalizationData = LineaRollup.FinalizationDataV2(
+  val finalizationData = LineaRollupV5.FinalizationDataV2(
     /*parentStateRootHash*/ aggregationProof.parentStateRootHash,
     /*lastFinalizedShnarf*/ parentShnarf,
     /*finalBlockInData*/ aggregationProof.finalBlockNumber.toBigInteger(),
@@ -92,7 +92,7 @@ internal fun buildFinalizeBlobsFunction(
    *   ) external;
    */
   val function = Function(
-    LineaRollup.FUNC_FINALIZEBLOCKSWITHPROOF,
+    LineaRollupV5.FUNC_FINALIZEBLOCKSWITHPROOF,
     Arrays.asList<Type<*>>(
       DynamicBytes(aggregationProof.aggregatedProof),
       Uint256(aggregationProof.aggregatedVerifierIndex.toLong()),

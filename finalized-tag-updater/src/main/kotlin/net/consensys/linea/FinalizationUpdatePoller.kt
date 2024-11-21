@@ -1,8 +1,8 @@
 package net.consensys.zkevm.ethereum.finalization
 
+import build.linea.contract.LineaRollupV5
 import io.vertx.core.Vertx
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.linea.contract.LineaRollup
 import net.consensys.toULong
 import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
@@ -34,7 +34,7 @@ data class FinalizationUpdatePollerConfig(
 class FinalizationUpdatePoller(
   vertx: Vertx,
   config: FinalizationUpdatePollerConfig,
-  private val lineaRollup: LineaRollup,
+  private val lineaRollup: LineaRollupV5,
   private val finalizationHandler: (ULong) -> CompletableFuture<*>,
   private val log: Logger = LogManager.getLogger(FinalizationUpdatePoller::class.java)
 ) : PeriodicPollingService(

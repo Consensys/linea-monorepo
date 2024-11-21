@@ -1,7 +1,7 @@
 package net.consensys.linea.contract.l1
 
+import build.linea.contract.LineaRollupV5
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
-import net.consensys.linea.contract.LineaRollup
 import net.consensys.linea.contract.Web3JContractAsyncHelper
 import org.web3j.abi.datatypes.Function
 import org.web3j.protocol.Web3j
@@ -16,7 +16,7 @@ internal class LineaRollupEnhancedWrapper(
   asyncTransactionManager: AsyncFriendlyTransactionManager,
   contractGasProvider: ContractGasProvider,
   val helper: Web3JContractAsyncHelper
-) : LineaRollup(
+) : LineaRollupV5(
   contractAddress,
   web3j,
   asyncTransactionManager,
