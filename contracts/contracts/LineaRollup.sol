@@ -448,7 +448,7 @@ contract LineaRollup is
     uint256 fieldElements;
     uint256 blsCurveModulus;
     assembly {
-      fieldElements := mload(add(returnData, 32))
+      fieldElements := mload(add(returnData, 0x20))
       blsCurveModulus := mload(add(returnData, POINT_EVALUATION_RETURN_DATA_LENGTH))
     }
     if (fieldElements != POINT_EVALUATION_FIELD_ELEMENTS_LENGTH || blsCurveModulus != BLS_CURVE_MODULUS) {
