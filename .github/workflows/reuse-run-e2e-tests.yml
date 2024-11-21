@@ -71,7 +71,7 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
-    runs-on: [self-hosted, ubuntu-22.04, X64, large]
+    runs-on: [self-hosted, ubuntu-20.04, X64, large]
     steps:
       - name: Setup upterm session
         if: ${{ inputs.e2e-tests-with-ssh }}
@@ -101,7 +101,7 @@ jobs:
           restore-keys: |
             cached-
       - name: Pull all images with retry
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           max_attempts: 10
           retry_on: error
@@ -121,7 +121,7 @@ jobs:
         shell: bash
       - name: Spin up fresh environment with geth tracing with retry
         if: ${{ inputs.tracing-engine == 'geth' }}
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           max_attempts: 10
           retry_on: error
@@ -133,7 +133,7 @@ jobs:
             make clean-environment
       - name: Spin up fresh environment with besu tracing with retry
         if: ${{ inputs.tracing-engine == 'besu' }}
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           max_attempts: 10
           retry_on: error
