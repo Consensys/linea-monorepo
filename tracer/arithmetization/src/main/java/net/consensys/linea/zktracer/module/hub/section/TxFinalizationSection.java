@@ -104,9 +104,9 @@ public class TxFinalizationSection extends TraceSection implements PostTransacti
 
   private void successFinalization(Hub hub) {
 
-    if (!senderIsCoinbase()) {
+    if (!txMetadata.senderIsCoinbase()) {
 
-      AccountFragment senderAccountFragment =
+      final AccountFragment senderAccountFragment =
           hub.factories()
               .accountFragment()
               .make(
@@ -114,7 +114,7 @@ public class TxFinalizationSection extends TraceSection implements PostTransacti
                   senderSnapshotAfterTxFinalization,
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
 
-      AccountFragment coinbaseAccountFragment =
+      final AccountFragment coinbaseAccountFragment =
           hub.factories()
               .accountFragment()
               .make(
@@ -122,42 +122,39 @@ public class TxFinalizationSection extends TraceSection implements PostTransacti
                   coinbaseSnapshotAfterFinalization,
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
 
-      TransactionFragment currentTransactionFragment =
-          TransactionFragment.prepare(hub.txStack().current());
+      this.addFragments(senderAccountFragment, coinbaseAccountFragment);
+    } else {
+      // TODO: verify it works
+      final AccountFragment senderAccountFragment =
+          hub.factories()
+              .accountFragment()
+              .make(
+                  senderSnapshotBeforeFinalization,
+                  senderSnapshotBeforeFinalization
+                      .deepCopy()
+                      .incrementBalanceBy(txMetadata.getGasRefundInWei()),
+                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
 
-      this.addFragments(senderAccountFragment, coinbaseAccountFragment, currentTransactionFragment);
-      return;
+      final AccountFragment coinbaseAccountFragment =
+          hub.factories()
+              .accountFragment()
+              .make(
+                  senderSnapshotBeforeFinalization,
+                  coinbaseSnapshotAfterFinalization,
+                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
+
+      this.addFragments(senderAccountFragment, coinbaseAccountFragment);
     }
 
-    // TODO: verify it works
-    AccountFragment senderAccountFragment =
-        hub.factories()
-            .accountFragment()
-            .make(
-                senderSnapshotBeforeFinalization,
-                senderSnapshotBeforeFinalization
-                    .deepCopy()
-                    .incrementBalanceBy(txMetadata.getGasRefundInWei()),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
-
-    AccountFragment coinbaseAccountFragment =
-        hub.factories()
-            .accountFragment()
-            .make(
-                senderSnapshotBeforeFinalization,
-                coinbaseSnapshotAfterFinalization,
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
-
-    TransactionFragment currentTransactionFragment =
+    final TransactionFragment currentTransactionFragment =
         TransactionFragment.prepare(hub.txStack().current());
-
-    this.addFragments(senderAccountFragment, coinbaseAccountFragment, currentTransactionFragment);
+    this.addFragment(currentTransactionFragment);
   }
 
   private void failureFinalization(Hub hub) {
-    if (noAddressCollisions()) {
+    if (txMetadata.noAddressCollisions()) {
 
-      AccountFragment senderAccountFragment =
+      final AccountFragment senderAccountFragment =
           hub.factories()
               .accountFragment()
               .make(
@@ -165,7 +162,7 @@ public class TxFinalizationSection extends TraceSection implements PostTransacti
                   senderSnapshotAfterTxFinalization,
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
 
-      AccountFragment recipientAccountFragment =
+      final AccountFragment recipientAccountFragment =
           hub.factories()
               .accountFragment()
               .make(
@@ -173,7 +170,7 @@ public class TxFinalizationSection extends TraceSection implements PostTransacti
                   recipientSnapshotAfterTxFinalization,
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
 
-      AccountFragment coinbaseAccountFragment =
+      final AccountFragment coinbaseAccountFragment =
           hub.factories()
               .accountFragment()
               .make(
@@ -181,28 +178,20 @@ public class TxFinalizationSection extends TraceSection implements PostTransacti
                   coinbaseSnapshotAfterFinalization,
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2));
 
-      TransactionFragment currentTransactionFragment =
-          TransactionFragment.prepare(hub.txStack().current());
-
-      this.addFragments(
-          senderAccountFragment,
-          recipientAccountFragment,
-          coinbaseAccountFragment,
-          currentTransactionFragment);
+      this.addFragments(senderAccountFragment, recipientAccountFragment, coinbaseAccountFragment);
 
     } else {
 
-      Wei transactionValue = (Wei) txMetadata.getBesuTransaction().getValue();
+      final Wei transactionValue = (Wei) txMetadata.getBesuTransaction().getValue();
 
       // FIRST ROW
-      ////////////
-      AccountSnapshot senderSnapshotAfterValueAndGasRefunds =
+      final AccountSnapshot senderSnapshotAfterValueAndGasRefunds =
           senderSnapshotBeforeFinalization
               .deepCopy()
               .incrementBalanceBy(transactionValue)
               .incrementBalanceBy(txMetadata.getGasRefundInWei());
 
-      AccountFragment senderAccountFragment =
+      final AccountFragment senderAccountFragment =
           hub.factories()
               .accountFragment()
               .make(
@@ -211,16 +200,15 @@ public class TxFinalizationSection extends TraceSection implements PostTransacti
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
 
       // SECOND ROW
-      /////////////
-      AccountSnapshot recipientSnapshotBeforeSecondRow =
-          (senderIsRecipient())
+      final AccountSnapshot recipientSnapshotBeforeSecondRow =
+          (txMetadata.senderIsRecipient())
               ? senderSnapshotAfterValueAndGasRefunds
               : recipientSnapshotBeforeFinalization;
 
-      AccountSnapshot recipientSnapshotAfterSecondRow =
+      final AccountSnapshot recipientSnapshotAfterSecondRow =
           recipientSnapshotBeforeSecondRow.deepCopy().decrementBalanceBy(transactionValue);
 
-      AccountFragment recipientAccountFragment =
+      final AccountFragment recipientAccountFragment =
           hub.factories()
               .accountFragment()
               .make(
@@ -229,13 +217,12 @@ public class TxFinalizationSection extends TraceSection implements PostTransacti
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
 
       // THIRD ROW
-      ////////////
-      AccountSnapshot coinbaseSnapshotBefore =
+      final AccountSnapshot coinbaseSnapshotBefore =
           coinbaseSnapshotAfterFinalization
               .deepCopy()
               .decrementBalanceBy(txMetadata.getCoinbaseReward());
 
-      AccountFragment coinbaseAccountFragment =
+      final AccountFragment coinbaseAccountFragment =
           hub.factories()
               .accountFragment()
               .make(
@@ -243,40 +230,11 @@ public class TxFinalizationSection extends TraceSection implements PostTransacti
                   coinbaseSnapshotAfterFinalization,
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2));
 
-      TransactionFragment currentTransactionFragment =
-          TransactionFragment.prepare(hub.txStack().current());
-
-      this.addFragments(
-          senderAccountFragment,
-          recipientAccountFragment,
-          coinbaseAccountFragment,
-          currentTransactionFragment);
+      this.addFragments(senderAccountFragment, recipientAccountFragment, coinbaseAccountFragment);
     }
-  }
+    final TransactionFragment currentTransactionFragment =
+        TransactionFragment.prepare(hub.txStack().current());
 
-  private boolean senderIsCoinbase() {
-    return this.senderSnapshotBeforeFinalization
-        .address()
-        .equals(coinbaseSnapshotBeforeTxFinalization.address());
-  }
-
-  private boolean senderIsRecipient() {
-    return this.senderSnapshotBeforeFinalization
-        .address()
-        .equals(recipientSnapshotBeforeFinalization.address());
-  }
-
-  private boolean recipientIsCoinbase() {
-    return this.recipientSnapshotBeforeFinalization
-        .address()
-        .equals(coinbaseSnapshotBeforeTxFinalization.address());
-  }
-
-  private boolean addressCollision() {
-    return senderIsCoinbase() || senderIsRecipient() || recipientIsCoinbase();
-  }
-
-  private boolean noAddressCollisions() {
-    return !addressCollision();
+    this.addFragment(currentTransactionFragment);
   }
 }

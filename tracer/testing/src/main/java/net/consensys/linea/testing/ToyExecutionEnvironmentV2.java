@@ -46,6 +46,7 @@ public class ToyExecutionEnvironmentV2 {
       Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
 
   @Builder.Default private final List<ToyAccount> accounts = Collections.emptyList();
+  @Builder.Default private final Address coinbase = DEFAULT_COINBASE_ADDRESS;
 
   @Singular private final List<Transaction> transactions;
 
@@ -94,7 +95,7 @@ public class ToyExecutionEnvironmentV2 {
     BlockHeader blockHeader =
         ExecutionEnvironment.getLineaBlockHeaderBuilder(Optional.empty())
             .number(DEFAULT_BLOCK_NUMBER)
-            .coinbase(DEFAULT_COINBASE_ADDRESS)
+            .coinbase(coinbase)
             .timestamp(DEFAULT_TIME_STAMP)
             .parentHash(DEFAULT_HASH)
             .buildBlockHeader();
