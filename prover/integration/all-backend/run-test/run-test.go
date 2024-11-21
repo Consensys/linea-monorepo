@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var flagNoExecution = flag.Bool("no-execution", false, "don't create new execution proofs")
-var flagNoDecompression = flag.Bool("no-decompression", false, "don't create new decompression proofs")
+var flagNoExecution = flag.Bool("no-execution", true, "don't create new execution proofs")
+var flagNoDecompression = flag.Bool("no-decompression", true, "don't create new decompression proofs")
 
 func main() {
 

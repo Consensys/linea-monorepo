@@ -7,7 +7,7 @@ log_level = 4                                  # TODO @gbotrel will be refactore
 retry_delays = [0, 1]
 
 [execution]
-prover_mode = "dev"
+prover_mode = "full"
 requests_root_dir = "./integration/all-backend/testdata/prover-execution"
 
 [blob_decompression]
@@ -17,7 +17,7 @@ requests_root_dir = "./integration/all-backend/testdata/prover-compression"
 [aggregation]
 prover_mode = "full"
 num_proofs = [50]
-allowed_inputs = ["execution-dummy", "blob-decompression-v1"]
+allowed_inputs = ["execution", "execution-large", "blob-decompression-v1"]
 verifier_id = 1
 
 [public_input_interconnection]

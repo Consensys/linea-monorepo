@@ -1,2 +1,2 @@
 cd run-setup
-go run -v . public-input-interconnection aggregation && cd ../run-test && go run -v .
+go run -v . blob-decompression-v1 aggregation && cd ../run-test && go run -v .

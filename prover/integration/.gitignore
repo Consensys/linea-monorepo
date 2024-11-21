@@ -1,4 +1,6 @@
 assets/
 all-backend/testdata/prover-compression/responses/
 all-backend/testdata/prover-execution/responses/
+all-backend/testdata/prover-execution/responses-old/
 all-backend/testdata/prover-aggregation/responses/
+all-backend/testdata/prover-execution/responses.zip
