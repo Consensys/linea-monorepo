@@ -1,10 +1,10 @@
 # Smart Contract Style Guide
 
-The following document serves as the expected style guide for the Linea smart contracts.
+The following document serves as the expected style guide for the Linea smart contracts:
 
 ## Licenses
-- All interfaces will use // SPDX-License-Identifier: Apache-2.0 for others to potentially consume
-- All contracts other than specific ones will use // SPDX-License-Identifier: AGPL-3.0
+- All interfaces will use `// SPDX-License-Identifier: Apache-2.0` for others to potentially consume
+- All contracts other than specific ones will use `// SPDX-License-Identifier: AGPL-3.0`
 
 ## Imports
 All imports should be in the format of:

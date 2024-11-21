@@ -69,7 +69,9 @@ Prerequisites:
 - Be sure Docker is running.
 
 Some caveats:
-- The L2 chain will not produce empty blocks if there are no transactions, so it would be useful to execute a script to keep the chain "moving". [PlaceHolder]()
+- The L2 chain will not produce empty blocks if there are no transactions, so it would be useful to execute a script to keep the chain "moving". 
+  - The following script can be run with the expectation the local stack is running: [generateL2Traffic.ts](../e2e/src/common/generateL2Traffic.ts)
+  - To execute it run the following from the `e2e` folder: `npx ts-node src/common/generateL2Traffic.ts`
 - For blob submission and finalization, there needs to be sufficient blocks to trigger it. Keeping the chain moving on L2 is vital for this to take place.
 
 From the root of the repository:
