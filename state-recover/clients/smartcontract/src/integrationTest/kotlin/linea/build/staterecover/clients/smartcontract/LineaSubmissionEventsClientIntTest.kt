@@ -17,7 +17,7 @@ import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartCon
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.Web3jClientManager
-import net.consensys.zkevm.ethereum.waitForTransactionExecution
+import net.consensys.zkevm.ethereum.waitForTxReceipt
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -94,8 +94,8 @@ class LineaSubmissionEventsClientIntTest {
     )
 
     // wait for all finalizations Txs to be mined
-    Web3jClientManager.l1Client.waitForTransactionExecution(
-      submissionTxHashes.last(),
+    Web3jClientManager.l1Client.waitForTxReceipt(
+      txHash = submissionTxHashes.aggregationTxHashes.last(),
       timeout = 20.seconds
     )
 

@@ -28,7 +28,7 @@ clean-testnet-folders:
 		rm -rf tmp/testnet/*
 
 clean-environment:
-		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 --profile debug down || true
+		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 --profile debug --profile staterecover down || true
 		make clean-local-folders
 		docker network prune -f
 		docker volume rm linea-local-dev linea-logs || true # ignore failure if volumes do not exist already
