@@ -151,6 +151,20 @@ contract LineaRollup is
   }
 
   /**
+   * @notice Revokes `role` from the calling account.
+   * @dev Fallback operator cannot renounce role. Reverts with OnlyNonFallbackOperator.
+   * @param _role The role to renounce.
+   * @param _account The account to renounce - can only be the _msgSender().
+   */
+  function renounceRole(bytes32 _role, address _account) public override {
+    if (_account == fallbackOperator) {
+      revert OnlyNonFallbackOperator();
+    }
+
+    super.renounceRole(_role, _account);
+  }
+
+  /**
    * @notice Adds or updates the verifier contract address for a proof type.
    * @dev VERIFIER_SETTER_ROLE is required to execute.
    * @param _newVerifierAddress The address for the verifier contract.
