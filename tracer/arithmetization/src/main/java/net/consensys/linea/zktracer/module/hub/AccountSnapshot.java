@@ -146,7 +146,6 @@ public class AccountSnapshot {
         .orElseGet(() -> AccountSnapshot.empty(isWarm, deploymentNumber, deploymentStatus));
   }
 
-  // TODO: confirm with @Tsvetan that this indeed creates a deep copy
   /**
    * Creates deep copy of {@code this} {@link AccountSnapshot}.
    *

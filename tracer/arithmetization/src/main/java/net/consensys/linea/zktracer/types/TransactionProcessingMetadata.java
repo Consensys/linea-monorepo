@@ -333,4 +333,37 @@ public class TransactionProcessingMetadata {
   public Bytes getTransactionCallData() {
     return besuTransaction.getData().orElse(Bytes.EMPTY);
   }
+
+  public boolean senderIsRecipient() {
+    return besuTransaction.getTo().isPresent()
+        && besuTransaction.getTo().get().equals(besuTransaction.getSender());
+  }
+
+  public boolean senderIsCoinbase() {
+    return besuTransaction.getSender().equals(coinbase);
+  }
+
+  public boolean recipientIsCoinbase() {
+    return besuTransaction.getTo().isPresent() && besuTransaction.getTo().get().equals(coinbase);
+  }
+
+  public boolean senderAddressCollision() {
+    return senderIsRecipient() || senderIsCoinbase();
+  }
+
+  public boolean recipientAddressCollision() {
+    return senderIsRecipient() || recipientIsCoinbase();
+  }
+
+  public boolean coinbaseAddressCollision() {
+    return senderIsCoinbase() || recipientIsCoinbase();
+  }
+
+  public boolean addressCollision() {
+    return senderIsRecipient() || senderIsCoinbase() || recipientIsCoinbase();
+  }
+
+  public boolean noAddressCollisions() {
+    return !addressCollision();
+  }
 }
