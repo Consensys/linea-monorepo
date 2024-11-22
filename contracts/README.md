@@ -92,6 +92,22 @@ Note: The addresses change per deployment due to nonce increments, so be sure to
 
 **NB:** The end to end tests run against a fresh stack and deploy with predetermined addresses.
 
+If there is a need to get predetermined addresses for contract deployments, the following script can be used [precomputeDeployedAddresses.ts](./scripts/operational/precomputeDeployedAddress.ts).
+
+This can be used by altering the values in the script file and running the script (from the `/contracts` folder) with: `npx ts-node scripts/operational/precomputeDeployedAddress.ts`
+
+*Note the following nonce values for a fresh stack deploy:*
+
+The LineaRollup deploy uses nonce 3 as the following are deployed beforehand:
+- The verifier contract
+- The implementation LineaRollup.sol contract
+- The proxy admin contract
+
+The L2MessageService deploy uses nonce 2 as the following are deployed beforehand:
+- The implementation L2MessageService.sol contract
+- The proxy admin contract
+
+
 **Deploying the L1 contracts**
 ```
 # This will deploy the Linea Rollup that is currently deployed on Mainnet - the current version is the LineaRollupV5.
