@@ -2,48 +2,37 @@ import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { tryVerifyContract, getDeployedContractAddress, getRequiredEnvVar } from "../common/helpers";
-import { LineaRollup__factory } from "contracts/typechain-types";
+import { TokenBridge__factory } from "contracts/typechain-types";
 import {
-  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+  L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+  L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
   PAUSE_ALL_ROLE,
-  PAUSE_BLOB_SUBMISSION_ROLE,
-  PAUSE_FINALIZATION_ROLE,
   PAUSE_L1_L2_ROLE,
   PAUSE_L2_L1_ROLE,
   UNPAUSE_ALL_ROLE,
-  UNPAUSE_BLOB_SUBMISSION_ROLE,
-  UNPAUSE_FINALIZATION_ROLE,
   UNPAUSE_L1_L2_ROLE,
   UNPAUSE_L2_L1_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
-  VERIFIER_UNSETTER_ROLE,
 } from "contracts/common/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
   const securityCouncilAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
   const newRoleAddresses = [
+    { addressWithRole: securityCouncilAddress, role: USED_RATE_LIMIT_RESETTER_ROLE },
     { addressWithRole: securityCouncilAddress, role: PAUSE_ALL_ROLE },
     { addressWithRole: securityCouncilAddress, role: PAUSE_L1_L2_ROLE },
     { addressWithRole: securityCouncilAddress, role: PAUSE_L2_L1_ROLE },
     { addressWithRole: securityCouncilAddress, role: UNPAUSE_ALL_ROLE },
     { addressWithRole: securityCouncilAddress, role: UNPAUSE_L1_L2_ROLE },
     { addressWithRole: securityCouncilAddress, role: UNPAUSE_L2_L1_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_BLOB_SUBMISSION_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_BLOB_SUBMISSION_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_FINALIZATION_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_FINALIZATION_ROLE },
-    { addressWithRole: securityCouncilAddress, role: USED_RATE_LIMIT_RESETTER_ROLE },
-    { addressWithRole: securityCouncilAddress, role: VERIFIER_UNSETTER_ROLE },
   ];
 
   const { deployments } = hre;
-  const contractName = "LineaRollup";
+  const contractName = "L2MessageService";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
-  const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
+  const proxyAddress = getRequiredEnvVar("L2_MESSAGE_SERVICE_ADDRESS");
 
   const factory = await ethers.getContractFactory(contractName);
 
@@ -72,11 +61,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       [
         proxyAddress,
         newContract,
-        LineaRollup__factory.createInterface().encodeFunctionData("reinitializeLineaRollupV6", [
+        TokenBridge__factory.createInterface().encodeFunctionData("reinitializePauseTypesAndPermissions", [
+          securityCouncilAddress,
           newRoleAddresses,
-          LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-          LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-          multiCallAddress,
+          L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+          L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
         ]),
       ],
     ),
@@ -93,4 +82,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ["LineaRollupWithReinitialization"];
+func.tags = ["TokenBridgeWithReinitialization"];
