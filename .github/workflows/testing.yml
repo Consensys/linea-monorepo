@@ -21,23 +21,11 @@ on:
       transaction_exclusion_api_changed:
         required: true
         type: string
-      coordinator_image_tagged:
-        required: true
-        type: string
-      postman_image_tagged:
-        required: true
-        type: string
-      traces_api_facade_image_tagged:
-        required: true
-        type: string
-      transaction_exclusion_api_image_tagged:
-        required: true
-        type: string
 
 jobs:
   coordinator:
     uses: ./.github/workflows/coordinator-testing.yml
-    if: ${{ always() && (inputs.coordinator_changed == 'true' || inputs.coordinator_image_tagged != 'true') }}
+    if: ${{ always() && inputs.coordinator_changed == 'true' }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
@@ -49,13 +37,13 @@ jobs:
 
   postman:
     uses: ./.github/workflows/postman-testing.yml
-    if: ${{ always() && (inputs.postman_changed == 'true' || inputs.postman_image_tagged != 'true') }}
+    if: ${{ always() && inputs.postman_changed == 'true' }}
     secrets: inherit
 
   traces-api-facade:
     uses: ./.github/workflows/traces-api-facade-testing.yml
-    if: ${{ always() && (inputs.traces_api_facade_changed == 'true' || inputs.traces_api_facade_image_tagged != 'true') }}
+    if: ${{ always() && inputs.traces_api_facade_changed == 'true' }}
 
   transaction-exclusion-api:
     uses: ./.github/workflows/transaction-exclusion-api-testing.yml
-    if: ${{ always() && (inputs.transaction_exclusion_api_changed == 'true' || inputs.transaction_exclusion_api_image_tagged != 'true') }}
+    if: ${{ always() && inputs.transaction_exclusion_api_changed == 'true' }}
