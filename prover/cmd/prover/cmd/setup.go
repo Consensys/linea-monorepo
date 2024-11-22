@@ -77,7 +77,9 @@ func Setup(context context.Context, args SetupArgs) error {
 	}
 
 	// create assets dir if needed (example; efs://prover-assets/v0.1.0/)
-	os.MkdirAll(filepath.Join(cfg.AssetsDir, cfg.Version), 0755)
+	if err = os.MkdirAll(filepath.Join(cfg.AssetsDir, cfg.Version), 0755); err != nil {
+		return fmt.Errorf("%s failed to create assets directory: %w", cmdName, err)
+	}
 
 	// srs provider
 	var srsProvider circuits.SRSProvider
@@ -162,9 +164,15 @@ func Setup(context context.Context, args SetupArgs) error {
 	for _, allowedInput := range cfg.Aggregation.AllowedInputs {
 		// first if it's a dummy circuit, we just run the setup here, we don't need to persist it.
 		if isDummyCircuit(allowedInput) {
+			var builder circuits.Builder
 			var curveID ecc.ID
 			var mockID circuits.MockCircuitID
 			switch allowedInput {
+			case string(circuits.PublicInputInterconnectionDummyCircuitID):
+				// the dummy PI is treated differently due to its different number of public inputs
+				piCfg := cfg.PublicInputInterconnection
+				piCfg.ProverMode = "dev"
+				builder = pi_interconnection.NewBuilder(piCfg)
 			case string(circuits.ExecutionDummyCircuitID):
 				curveID = ecc.BLS12_377
 				mockID = circuits.MockCircuitIDExecution
@@ -178,7 +186,11 @@ func Setup(context context.Context, args SetupArgs) error {
 				return fmt.Errorf("unknown dummy circuit: %s", allowedInput)
 			}
 
-			vk, err := getDummyCircuitVK(context, cfg, srsProvider, circuits.CircuitID(allowedInput), dummy.NewBuilder(mockID, curveID.ScalarField()))
+			if builder == nil {
+				builder = dummy.NewBuilder(mockID, curveID.ScalarField())
+			}
+
+			vk, err := getDummyCircuitVK(context, cfg, srsProvider, circuits.CircuitID(allowedInput), builder)
 			if err != nil {
 				return err
 			}

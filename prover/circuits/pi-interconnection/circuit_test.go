@@ -121,7 +121,7 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 				ExecutionMaxNbMsg:  2,
 				L2MsgMerkleDepth:   5,
 				L2MsgMaxNbMerkle:   2,
-				MockKeccakWizard:   true,
+				ProverMode:         "light",
 			}
 
 			c, err := pi_interconnection.Compile(cfg)

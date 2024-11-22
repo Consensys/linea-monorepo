@@ -1,7 +1,9 @@
 package aggregation
 
 import (
+	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"math"
 	"path/filepath"
 
@@ -67,7 +69,31 @@ func makeProof(
 	return circuits.SerializeProofSolidityBn254(proofBn254), nil
 }
 
+func cfToAggregationRequest(cfg *config.Config, cf *CollectedFields) public_input.Aggregation {
+	return 		public_input.Aggregation{
+		FinalShnarf:                             cf.FinalShnarf,
+		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
+		ParentStateRootHash:                     cf.ParentStateRootHash,
+		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
+		FinalTimestamp:                          cf.FinalTimestamp,
+		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
+		FinalBlockNumber:                        cf.FinalBlockNumber,
+		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
+		L1RollingHash:                           cf.L1RollingHash,
+		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
+		L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
+		L2MsgRootHashes:                         cf.L2MsgRootHashes,
+		L2MsgMerkleTreeDepth:                    utils.ToInt(cf.L2MsgTreeDepth),
+		ChainID:                                 uint64(cfg.Layer2.ChainID),
+		L2MessageServiceAddr:                    types.EthAddress(cfg.Layer2.MsgSvcContract),
+	},
+}
+
 func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.Witness, error) {
+
+	if cfg.Aggregation.ProverMode == config.ProverModeDev {
+		return makeDummyPiProof(cfg, cf)
+	}
 
 	var setup circuits.Setup
 	setupErr := make(chan error, 1)
@@ -87,23 +113,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 	assignment, err := c.Assign(pi_interconnection.Request{
 		Decompressions: cf.DecompressionPI,
 		Executions:     cf.ExecutionPI,
-		Aggregation: public_input.Aggregation{
-			FinalShnarf:                             cf.FinalShnarf,
-			ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
-			ParentStateRootHash:                     cf.ParentStateRootHash,
-			ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
-			FinalTimestamp:                          cf.FinalTimestamp,
-			LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
-			FinalBlockNumber:                        cf.FinalBlockNumber,
-			LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
-			L1RollingHash:                           cf.L1RollingHash,
-			LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
-			L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
-			L2MsgRootHashes:                         cf.L2MsgRootHashes,
-			L2MsgMerkleTreeDepth:                    utils.ToInt(cf.L2MsgTreeDepth),
-			ChainID:                                 uint64(cfg.Layer2.ChainID),
-			L2MessageServiceAddr:                    types.EthAddress(cfg.Layer2.MsgSvcContract),
-		},
+		Aggregation: 	cfToAggregationRequest(cfg, cf),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not assign the public input circuit: %w", err)
@@ -124,6 +134,68 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 	proof, err := circuits.ProveCheck(&setup, &assignment, proverOpts, verifierOpts)
 
 	return proof, w, err
+}
+
+func makeDummyPiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.Witness, error) {
+	srsStore, err := circuits.NewSRSStore(cfg.PathForSRS())
+	if err != nil {
+		return nil, nil, fmt.Errorf("dummy PI circuit setup: could not create the SRS store: %w", err)
+	}
+	cs, err := pi_interconnection.NewBuilder(cfg.PublicInputInterconnection).Compile()
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not compile the dummy public-input circuit: %w", err)
+	}
+	setup, err := circuits.MakeSetup(context.TODO(), circuits.PublicInputInterconnectionDummyCircuitID, cs, srsStore, map[string]any{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create the dummy public-input circuit setup: %w", err)
+	}
+
+	assignment := pi_interconnection.DummyCircuit{
+		ExecutionPublicInput:     make([]frontend.Variable, 0, cfg.PublicInputInterconnection.MaxNbExecution),
+		DecompressionPublicInput: make([]frontend.Variable, 0, cfg.PublicInputInterconnection.MaxNbDecompression),
+	}
+	if len(cf.DecompressionPI) > len(assignment.DecompressionPublicInput) {
+		return nil, nil, fmt.Errorf("dummy PI circuit: %d decompressions needed, %d allowed by config", len(cf.DecompressionPI), len(assignment.DecompressionPublicInput))
+	}
+	if len(cf.ExecutionPI) > len(assignment.ExecutionPublicInput) {
+		return nil, nil, fmt.Errorf("dummy PI circuit: %d executions needed, %d allowed by config", len(cf.ExecutionPI), len(assignment.ExecutionPublicInput))
+	}
+
+	for i, pc := range cf.ProofClaims {
+		if pc.PublicInput.IsZero() {
+			for j := i + 1; j < len(cf.ProofClaims); j++ {
+				if !cf.ProofClaims[j].PublicInput.IsZero() {
+					return nil, nil, fmt.Errorf("dummy PI circuit: non-trailing 0 PI: proof claim #%d has no public input, but #%d does", i, j)
+				}
+			}
+			break
+		}
+		switch cf.InnerCircuitTypes[i] {
+		case pi_interconnection.Execution:
+			assignment.ExecutionPublicInput = append(assignment.ExecutionPublicInput, pc.PublicInput)
+		case pi_interconnection.Decompression:
+			assignment.DecompressionPublicInput = append(assignment.DecompressionPublicInput, pc.PublicInput)
+		default:
+			return nil, nil, fmt.Errorf("dummy PI circuit: unknown inner circuit type %d", cf.InnerCircuitTypes[i])
+		}
+	}
+	if len(assignment.ExecutionPublicInput) != len(cf.ExecutionPI) {
+		return nil, nil, fmt.Errorf("dummy PI circuit: %d non-zero public inputs marked as execution needed, %d provided", len(cf.ExecutionPI), len(assignment.ExecutionPublicInput))
+	}
+	if len(assignment.DecompressionPublicInput) != len(cf.DecompressionPI) {
+		return nil, nil, fmt.Errorf("dummy PI circuit: %d non-zero public inputs marked as decompression needed, %d provided", len(cf.DecompressionPI), len(assignment.DecompressionPublicInput))
+	}
+
+	aggregationPI := cfToAggregationRequest(cfg, cf).Sum(nil)
+	assignment.AggregationPublicInput[0] = aggregationPI[:16]
+	assignment.AggregationPublicInput[1] = aggregationPI[16:]
+
+	w, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField(), frontend.PublicOnly())
+	if err != nil {
+		return nil, nil, fmt.Errorf("dummy PI circuit: could not create the public witness: %w", err)
+	}
+	proof, err := circuits.ProveCheck(&setup, &assignment, emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field()), emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field()))
+	return proof, w, errors.Wrap(err, "dummy PI circuit: could not create the proof")
 }
 
 // Generates a fake proof. The public input is given in hex string format.
