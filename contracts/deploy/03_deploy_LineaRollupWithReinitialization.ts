@@ -1,7 +1,12 @@
 import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { tryVerifyContract, getDeployedContractAddress, getRequiredEnvVar } from "../common/helpers";
+import {
+  tryVerifyContract,
+  getDeployedContractAddress,
+  getRequiredEnvVar,
+  generateRoleAssignments,
+} from "../common/helpers";
 import { LineaRollup__factory } from "contracts/typechain-types";
 import {
   LINEA_ROLLUP_PAUSE_TYPES_ROLES,
@@ -22,22 +27,24 @@ import {
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
-  const securityCouncilAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+  const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
 
-  const newRoleAddresses = [
-    { addressWithRole: securityCouncilAddress, role: PAUSE_ALL_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_L1_L2_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_L2_L1_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_ALL_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_L1_L2_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_L2_L1_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_BLOB_SUBMISSION_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_BLOB_SUBMISSION_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_FINALIZATION_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_FINALIZATION_ROLE },
-    { addressWithRole: securityCouncilAddress, role: USED_RATE_LIMIT_RESETTER_ROLE },
-    { addressWithRole: securityCouncilAddress, role: VERIFIER_UNSETTER_ROLE },
+  const newRoles = [
+    PAUSE_ALL_ROLE,
+    PAUSE_L1_L2_ROLE,
+    PAUSE_L2_L1_ROLE,
+    UNPAUSE_ALL_ROLE,
+    UNPAUSE_L1_L2_ROLE,
+    UNPAUSE_L2_L1_ROLE,
+    PAUSE_BLOB_SUBMISSION_ROLE,
+    UNPAUSE_BLOB_SUBMISSION_ROLE,
+    PAUSE_FINALIZATION_ROLE,
+    UNPAUSE_FINALIZATION_ROLE,
+    USED_RATE_LIMIT_RESETTER_ROLE,
+    VERIFIER_UNSETTER_ROLE,
   ];
+
+  const newRoleAddresses = generateRoleAssignments(newRoles, securityCouncilAddress, []);
 
   const { deployments } = hre;
   const contractName = "LineaRollup";

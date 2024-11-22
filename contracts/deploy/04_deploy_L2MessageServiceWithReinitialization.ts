@@ -1,7 +1,12 @@
 import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { tryVerifyContract, getDeployedContractAddress, getRequiredEnvVar } from "../common/helpers";
+import {
+  tryVerifyContract,
+  getDeployedContractAddress,
+  getRequiredEnvVar,
+  generateRoleAssignments,
+} from "../common/helpers";
 import { L2MessageService__factory } from "contracts/typechain-types";
 import {
   L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
@@ -16,17 +21,19 @@ import {
 } from "contracts/common/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const securityCouncilAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+  const securityCouncilAddress = getRequiredEnvVar("L2MSGSERVICE_SECURITY_COUNCIL");
 
-  const newRoleAddresses = [
-    { addressWithRole: securityCouncilAddress, role: USED_RATE_LIMIT_RESETTER_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_ALL_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_L1_L2_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_L2_L1_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_ALL_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_L1_L2_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_L2_L1_ROLE },
+  const newRoles = [
+    USED_RATE_LIMIT_RESETTER_ROLE,
+    PAUSE_ALL_ROLE,
+    PAUSE_L1_L2_ROLE,
+    PAUSE_L2_L1_ROLE,
+    UNPAUSE_ALL_ROLE,
+    UNPAUSE_L1_L2_ROLE,
+    UNPAUSE_L2_L1_ROLE,
   ];
+
+  const newRoleAddresses = generateRoleAssignments(newRoles, securityCouncilAddress, []);
 
   const { deployments } = hre;
   const contractName = "L2MessageService";

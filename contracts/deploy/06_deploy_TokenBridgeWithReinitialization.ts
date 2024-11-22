@@ -1,35 +1,40 @@
 import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { tryVerifyContract, getDeployedContractAddress, getRequiredEnvVar } from "../common/helpers";
+import {
+  tryVerifyContract,
+  getDeployedContractAddress,
+  getRequiredEnvVar,
+  generateRoleAssignments,
+} from "../common/helpers";
 import { TokenBridge__factory } from "contracts/typechain-types";
 import {
-  L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
-  L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
   PAUSE_ALL_ROLE,
-  PAUSE_L1_L2_ROLE,
-  PAUSE_L2_L1_ROLE,
+  PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
+  PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
+  TOKEN_BRIDGE_PAUSE_TYPES_ROLES,
+  TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES,
   UNPAUSE_ALL_ROLE,
-  UNPAUSE_L1_L2_ROLE,
-  UNPAUSE_L2_L1_ROLE,
-  USED_RATE_LIMIT_RESETTER_ROLE,
+  UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
+  UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
 } from "contracts/common/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const securityCouncilAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+  const securityCouncilAddress = getRequiredEnvVar("TOKENBRIDGE_SECURITY_COUNCIL");
 
-  const newRoleAddresses = [
-    { addressWithRole: securityCouncilAddress, role: USED_RATE_LIMIT_RESETTER_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_ALL_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_L1_L2_ROLE },
-    { addressWithRole: securityCouncilAddress, role: PAUSE_L2_L1_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_ALL_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_L1_L2_ROLE },
-    { addressWithRole: securityCouncilAddress, role: UNPAUSE_L2_L1_ROLE },
+  const newRoles = [
+    PAUSE_ALL_ROLE,
+    UNPAUSE_ALL_ROLE,
+    PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
+    UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
+    PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
+    UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
   ];
 
+  const newRoleAddresses = generateRoleAssignments(newRoles, securityCouncilAddress, []);
+
   const { deployments } = hre;
-  const contractName = "L2MessageService";
+  const contractName = "TokenBridge";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
   const proxyAddress = getRequiredEnvVar("L2_MESSAGE_SERVICE_ADDRESS");
@@ -64,8 +69,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         TokenBridge__factory.createInterface().encodeFunctionData("reinitializePauseTypesAndPermissions", [
           securityCouncilAddress,
           newRoleAddresses,
-          L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
-          L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
+          TOKEN_BRIDGE_PAUSE_TYPES_ROLES,
+          TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES,
         ]),
       ],
     ),
