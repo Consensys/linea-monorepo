@@ -239,11 +239,13 @@ func (addr *Addresses) assignMainColumns(
 	split := splitAt(nbEcRecover)
 	n := nbRowsPerEcRec
 
-	var (
-		hashHi, hashLo, isHash, trimmedHi []field.Element
-	)
-
 	permTrace := keccak.GenerateTrace(pkModule.Data.ScanStreams(run))
+
+	hashHi := make([]field.Element, 0, len(permTrace.HashOutPut))
+	hashLo := make([]field.Element, 0, len(permTrace.HashOutPut))
+	isHash := make([]field.Element, 0, len(permTrace.HashOutPut))
+	trimmedHi := make([]field.Element, 0, len(permTrace.HashOutPut))
+
 	var v, w, u field.Element
 	for _, digest := range permTrace.HashOutPut {
 
