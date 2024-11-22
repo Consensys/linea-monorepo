@@ -2,33 +2,31 @@ package aggregation_test
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-	"testing"
-
 	"github.com/consensys/gnark-crypto/ecc"
-	frBls "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	frBw6 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
+	fr2 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
+	plonk2 "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+	"path/filepath"
+	"testing"
+
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	snarkTestUtils "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
-
-	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPublicInput(t *testing.T) {
@@ -84,19 +82,25 @@ func TestAggregationFewDifferentInners(t *testing.T) {
 	testAggregation(t, 3, 2, 6, 10)
 }
 
-func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
+// TestAggregationLarge replaces the previous integration test since it ran quickly enough for a regular test.
+func TestAggregationLarge(t *testing.T) {
+	testAggregation(t, 10, 1, 5, 10, 20)
+}
 
-	wd, err := os.Getwd()
+// testAggregation tests aggregation with dummy inner circuits and a dummy PI circuit
+// if srsProvider is nil, the SRS in the prover-assets folder will be used
+// TODO @Tabaie try and use backend methods for assignment
+func testAggregation(t require.TestingT, nCircuits int, ncs ...int) {
+
+	root, err := utils.GetRepoRootPath()
 	require.NoError(t, err)
-
-	_, err = circuits.NewSRSStore(filepath.Join(wd, "../../prover-assets"))
+	srsProvider, err := circuits.NewSRSStore(filepath.Join(root, "prover", "prover-assets", "kzgsrs"))
 	require.NoError(t, err)
 
 	// Mock circuits to aggregate
 	var innerSetups []circuits.Setup
 	logrus.Infof("Initializing many inner-circuits of %v\n", nCircuits)
 
-	srsProvider := circuits.NewUnsafeSRSProvider() // This is a dummy SRS provider, not to use in prod.
 	for i := 0; i < nCircuits; i++ {
 		logrus.Infof("\t%d/%d\n", i+1, nCircuits)
 		pp, _ := dummy.MakeUnsafeSetup(srsProvider, circuits.MockCircuitID(i), ecc.BLS12_377.ScalarField())
@@ -110,7 +114,7 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 	}
 
 	aggregationPIBytes := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
-	var aggregationPI frBw6.Element
+	var aggregationPI fr.Element
 	aggregationPI.SetBytes(aggregationPIBytes)
 
 	logrus.Infof("Compiling interconnection circuit")
@@ -143,7 +147,7 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 		nProofs := utils.Ite(nc == 0, 0, utils.Max(nc-3, 1))
 		logrus.Infof("Generating a witness, %v dummy-proofs to aggregates", nProofs)
 		innerProofClaims := make([]aggregation.ProofClaimAssignment, nProofs)
-		innerPI := make([]frBls.Element, nc)
+		innerPI := make([]fr2.Element, nc)
 		for i := range innerProofClaims {
 
 			// Assign the dummy circuit for a random value
@@ -155,8 +159,8 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 			// Stores the inner-proofs for later
 			proof, err := circuits.ProveCheck(
 				&innerSetups[circID], a,
-				emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
-				emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+				plonk2.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+				plonk2.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
 			)
 			assert.NoError(t, err)
 
@@ -189,8 +193,8 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 		assert.NoError(t, err)
 		piProof, err := circuits.ProveCheck(
 			&piSetup, &piAssignment,
-			emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
-			emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+			plonk2.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+			plonk2.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
 		)
 		assert.NoError(t, err)
 		piInfo := aggregation.PiInfo{
