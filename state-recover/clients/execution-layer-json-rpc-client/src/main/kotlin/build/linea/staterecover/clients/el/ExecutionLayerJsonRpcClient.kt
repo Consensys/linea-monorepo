@@ -13,6 +13,8 @@ import net.consensys.linea.BlockParameter
 import net.consensys.linea.jsonrpc.client.JsonRpcClientFactory
 import net.consensys.linea.jsonrpc.client.JsonRpcV2Client
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.net.URI
 
@@ -59,7 +61,8 @@ class ExecutionLayerJsonRpcClient internal constructor(
     fun create(
       rpcClientFactory: JsonRpcClientFactory,
       endpoint: URI,
-      requestRetryConfig: RequestRetryConfig
+      requestRetryConfig: RequestRetryConfig,
+      logger: Logger = LogManager.getLogger(ExecutionLayerJsonRpcClient::class.java)
     ): ExecutionLayerClient {
       return ExecutionLayerJsonRpcClient(
         rpcClient = rpcClientFactory.createJsonRpcV2Client(
@@ -67,7 +70,8 @@ class ExecutionLayerJsonRpcClient internal constructor(
           retryConfig = requestRetryConfig,
           requestObjectMapper = ethApiObjectMapper
             .copy()
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL),
+          log = logger
         )
       )
     }
