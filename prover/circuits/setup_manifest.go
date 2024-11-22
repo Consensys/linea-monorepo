@@ -59,12 +59,8 @@ func (m *SetupManifest) GetInt(key string) (int, error) {
 			return i, nil
 		}
 	}
-	i, ok := v.(int)
-	if !ok {
-		return 0, fmt.Errorf("flag `%s` is not an int", key)
-	}
 
-	return i, nil
+	return 0, fmt.Errorf("flag `%s` is not an int", key)
 }
 
 func (m *SetupManifest) GetString(key string) (string, error) {
