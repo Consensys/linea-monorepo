@@ -135,9 +135,9 @@ export async function fetchTokenInfo(
 export async function getTokens(networkTypes: NetworkTypes): Promise<Token[]> {
   try {
     // Fetch the JSON data from the URL.
-    let url = process.env.NEXT_PUBLIC_MAINNET_TOKEN_LIST ? (process.env.NEXT_PUBLIC_MAINNET_TOKEN_LIST as string) : "";
+    let url = process.env.MAINNET_TOKEN_LIST ? (process.env.MAINNET_TOKEN_LIST as string) : "";
     if (networkTypes === NetworkTypes.SEPOLIA) {
-      url = process.env.NEXT_PUBLIC_SEPOLIA_TOKEN_LIST ? (process.env.NEXT_PUBLIC_SEPOLIA_TOKEN_LIST as string) : "";
+      url = process.env.SEPOLIA_TOKEN_LIST ? (process.env.SEPOLIA_TOKEN_LIST as string) : "";
     }
 
     const response = await fetch(url);
