@@ -2,8 +2,6 @@ package aggregation_test
 
 import (
 	"context"
-	"fmt"
-	"github.com/consensys/gnark/test/unsafekzg"
 	"os"
 	"path/filepath"
 	"testing"
@@ -77,12 +75,10 @@ func TestPublicInput(t *testing.T) {
 }
 
 func TestAggregationOneInner(t *testing.T) {
-	t.Skipf("Skipped. DEBT: See TestFewDifferentOnes.")
 	testAggregation(t, 2, 1)
 }
 
 func TestAggregationFewDifferentInners(t *testing.T) {
-	t.Skipf("Skipped. CRITICAL TODO: this test is failing due to non-matching SRS for circuits of different sizes (most notably the PI circuit). Must come up with a solution: probably using circuits.NewSRSStore instead of circuits.NewUnsafeSRSProvider, but doing that correctly also requires a dummy public input circuit.")
 	testAggregation(t, 1, 5)
 	testAggregation(t, 2, 5)
 	testAggregation(t, 3, 2, 6, 10)
@@ -90,33 +86,11 @@ func TestAggregationFewDifferentInners(t *testing.T) {
 
 func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 
-	dir := t.TempDir()
-	// make an SRS large enough for all the circuits
-	{
-		maxNc := utils.Max(ncs...)
-		piCfg := config.PublicInput{
-			ProverMode:         "dev",
-			MaxNbDecompression: maxNc,
-			MaxNbExecution:     maxNc,
-		}
-		maxCs, err := pi_interconnection.NewBuilder(piCfg).Compile()
-		require.NoError(t, err)
+	wd, err := os.Getwd()
+	require.NoError(t, err)
 
-		maxDummyCs, err := dummy.MakeCS(circuits.MockCircuitID(nCircuits), ecc.BLS12_377.ScalarField())
-		require.NoError(t, err)
-
-
-		maxCanonicalSize, _ := plonk.SRSSize(maxCs)
-		if cSize2, _ := plonk.SRSSize(maxDummyCs); cSize2 > maxCanonicalSize {
-			maxCs = maxDummyCs
-			maxCanonicalSize = cSize2
-		}
-		canonical, _, err := unsafekzg.NewSRS(maxCs)
-		srsDir := filepath.Join(dir, "kzgsrs")
-		require.NoError(t, os.Mkdir(srsDir, 0700))
-		f, err := os.OpenFile(filepath.Join(srsDir, fmt.Sprintf("kzg_srs_bls12377_%d")"srs"), os.O_CREATE|os.O_WRONLY, 0600)
-
-	}
+	_, err = circuits.NewSRSStore(filepath.Join(wd, "../../prover-assets"))
+	require.NoError(t, err)
 
 	// Mock circuits to aggregate
 	var innerSetups []circuits.Setup
@@ -125,7 +99,6 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 	srsProvider := circuits.NewUnsafeSRSProvider() // This is a dummy SRS provider, not to use in prod.
 	for i := 0; i < nCircuits; i++ {
 		logrus.Infof("\t%d/%d\n", i+1, nCircuits)
-		dummy.
 		pp, _ := dummy.MakeUnsafeSetup(srsProvider, circuits.MockCircuitID(i), ecc.BLS12_377.ScalarField())
 		innerSetups = append(innerSetups, pp)
 	}
@@ -156,7 +129,7 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 	piCs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &piCircuit)
 	assert.NoError(t, err)
 
-	piSetup, err := circuits.MakeSetup(context.TODO(), circuits.PublicInputInterconnectionCircuitID, piCs, srsProvider, nil)
+	piSetup, err := circuits.MakeSetup(context.TODO(), circuits.PublicInputInterconnectionDummyCircuitID, piCs, srsProvider, nil)
 	assert.NoError(t, err)
 
 	for _, nc := range ncs {
