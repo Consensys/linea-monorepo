@@ -30,12 +30,16 @@ fun submitBlobs(
  *
  * returns list of tx hashes of aggregations submissions only, does not wait for txs to be mined
  */
+data class SubmissionTxHashes(
+  val blobTxHashes: List<String>,
+  val aggregationTxHashes: List<String>
+)
 fun submitBlobsAndAggregations(
   contractClient: LineaRollupSmartContractClient,
   aggregationsAndBlobs: List<AggregationAndBlobs>,
   blobChunksSize: Int = 6
-): List<String> {
-  submitBlobs(contractClient, aggregationsAndBlobs, blobChunksSize)
+): SubmissionTxHashes {
+  val blobSubmissionTxHashes = submitBlobs(contractClient, aggregationsAndBlobs, blobChunksSize)
 
   return aggregationsAndBlobs
     .filter { it.aggregation != null }
@@ -52,4 +56,5 @@ fun submitBlobsAndAggregations(
       )
     }
     .let { SafeFuture.collectAll(it.stream()).get() }
+    .let { SubmissionTxHashes(blobSubmissionTxHashes, it) }
 }
