@@ -32,7 +32,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 @Slf4j
 class ShfRtTracerTest {
-  private static final Random RAND = new Random();
   private static final int TEST_REPETITIONS = 4;
 
   @ParameterizedTest(name = "{0}")
@@ -83,6 +82,7 @@ class ShfRtTracerTest {
 
   private static Stream<Arguments> provideRandomSarArguments() {
     final Arguments[] arguments = new Arguments[TEST_REPETITIONS];
+    final Random RAND = new Random();
 
     for (int i = 0; i < TEST_REPETITIONS; i++) {
       final boolean signBit = RAND.nextInt(2) == 1;

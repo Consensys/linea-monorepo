@@ -21,9 +21,13 @@ import java.util.Random;
 import org.apache.tuweni.bytes.Bytes;
 
 public class RlpRandEdgeCase {
-  private static final Random RAND = new Random(666);
+  /**
+   * NOTE: Do not make this static as it will introduce non-deterministic behaviour into the testing
+   * process.
+   */
+  private final Random RAND = new Random(666);
 
-  public static BigInteger randBigInt(boolean onlyFourteenByte) {
+  public BigInteger randBigInt(boolean onlyFourteenByte) {
     final int selectorBound = onlyFourteenByte ? 4 : 5;
     int selector = RAND.nextInt(0, selectorBound);
 
@@ -37,7 +41,7 @@ public class RlpRandEdgeCase {
     };
   }
 
-  public static Bytes randData(boolean nonEmpty) {
+  public Bytes randData(boolean nonEmpty) {
     final int maxDataSize = 1000;
     int selectorOrigin = 0;
     if (nonEmpty) {
@@ -55,7 +59,7 @@ public class RlpRandEdgeCase {
     };
   }
 
-  public static Long randLong() {
+  public Long randLong() {
     int selector = RAND.nextInt(0, 4);
     return switch (selector) {
       case 0 -> 0L;
