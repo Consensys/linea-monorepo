@@ -120,7 +120,7 @@ jobs:
         if: ${{ env.PUSH_IMAGE == 'true' || github.event_name == 'workflow_dispatch' }}
         with:
           context: .
-          build-contexts: zip=./transaction-exclusion-api/app/build/distributions/
+          build-contexts: libs=./transaction-exclusion-api/app/build/install/transaction-exclusion-api/lib
           file: ./transaction-exclusion-api/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true

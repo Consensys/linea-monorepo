@@ -120,7 +120,7 @@ jobs:
         if: ${{ env.PUSH_IMAGE == 'true' || github.event_name == 'workflow_dispatch' }}
         with:
           context: .
-          build-contexts: zip=./coordinator/app/build/distributions/
+          build-contexts: libs=./coordinator/app/build/install/coordinator/lib
           file: ./coordinator/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
