@@ -32,7 +32,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 
 public class MxpTestUtils {
-  public static final Random RAND = new Random(123456789123456L);
   public static final EWord TWO_POW_128 = EWord.of(EWord.ONE.shiftLeft(128));
   public static final EWord TWO_POW_32 = EWord.of(EWord.ONE.shiftLeft(32));
   public static final int MAX_BYTE_SIZE =
@@ -64,7 +63,40 @@ public class MxpTestUtils {
   public static final OpCode[] opCodesType5 =
       new OpCode[] {OpCode.CALL, OpCode.CALLCODE, OpCode.DELEGATECALL, OpCode.STATICCALL};
 
-  public static void triggerNonTrivialButMxpxOrRoobForOpCode(
+  /**
+   * NOTE: Do not make this static as it will introduce non-deterministic behaviour into the testing
+   * process.
+   */
+  private final Random RAND = new Random(123456789123456L);
+
+  /**
+   * Get the next integer between 0 (inclusive) and n (exclusive) from the random number generator.
+   *
+   * @return
+   */
+  public int nextRandomInt(int n) {
+    return RAND.nextInt(n);
+  }
+
+  /**
+   * Get the next integer between n (inclusive) and m (exclusive) from the random number generator.
+   *
+   * @return
+   */
+  public int nextRandomInt(int n, int m) {
+    return RAND.nextInt(n, m);
+  }
+
+  /**
+   * Get the next float between 0 (inclusive) and 1.0 (exclusive) from the random number generator.
+   *
+   * @return
+   */
+  public float nextRandomFloat() {
+    return RAND.nextFloat();
+  }
+
+  public void triggerNonTrivialButMxpxOrRoobForOpCode(
       BytecodeCompiler program, boolean triggerRoob, OpCode opCode) {
     MxpType mxpType = opCode.getData().billing().type();
 
@@ -209,7 +241,7 @@ public class MxpTestUtils {
 
   // Generates a BigInteger that requires a random number of bytes to be represented in [minBytes,
   // maxBytes)
-  public static EWord getRandomBigIntegerByBytesSize(int minBytes, int maxBytes) {
+  public EWord getRandomBigIntegerByBytesSize(int minBytes, int maxBytes) {
     if (minBytes < 0 || maxBytes > 32 || minBytes > maxBytes) {
       throw new IllegalArgumentException("Invalid input values");
     }
@@ -219,7 +251,7 @@ public class MxpTestUtils {
     return EWord.of(new BigInteger(numBits == 0 ? 1 : numBits, RAND));
   }
 
-  public static List<EWord> getRandomUpTo32BytesBigIntegers(int n) {
+  public List<EWord> getRandomUpTo32BytesBigIntegers(int n) {
     List<EWord> randomBigIntegers = new ArrayList<>();
     for (int i = 0; i < n; i++) {
       randomBigIntegers.add(EWord.of(getRandomBigIntegerByBytesSize(0, 32)));

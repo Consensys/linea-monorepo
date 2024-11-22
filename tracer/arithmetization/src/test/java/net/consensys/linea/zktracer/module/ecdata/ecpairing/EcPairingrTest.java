@@ -17,10 +17,6 @@ package net.consensys.linea.zktracer.module.ecdata.ecpairing;
 
 import static net.consensys.linea.zktracer.module.ecdata.ecpairing.EcPairingTestSupport.argumentsListToPairingsAsString;
 import static net.consensys.linea.zktracer.module.ecdata.ecpairing.EcPairingTestSupport.csvToArgumentsList;
-import static net.consensys.linea.zktracer.module.ecdata.ecpairing.EcPairingTestSupport.generatePairings;
-import static net.consensys.linea.zktracer.module.ecdata.ecpairing.EcPairingTestSupport.generatePairingsLargePointsMixed;
-import static net.consensys.linea.zktracer.module.ecdata.ecpairing.EcPairingTestSupport.generatePairingsMixed;
-import static net.consensys.linea.zktracer.module.ecdata.ecpairing.EcPairingTestSupport.generatePairingsSmallPointsMixed;
 import static net.consensys.linea.zktracer.module.ecdata.ecpairing.EcPairingTestSupport.info;
 import static net.consensys.linea.zktracer.module.ecdata.ecpairing.EcPairingTestSupport.pair;
 import static net.consensys.linea.zktracer.module.ecdata.ecpairing.EcPairingTestSupport.pairingsAsStringToArgumentsList;
@@ -328,6 +324,7 @@ public class EcPairingrTest {
   // Method source of testEcPairingGenericForScenarioUsingMethodSource
   private static Stream<Arguments> ecPairingGenericSource() {
     List<Arguments> allPairings = new ArrayList<>();
+    EcPairingTestSupport util = new EcPairingTestSupport();
 
     final int REPETITIONS = 3;
     for (int r = 1; r <= REPETITIONS; r++) {
@@ -335,18 +332,19 @@ public class EcPairingrTest {
         // PRECOMPILE_ECPAIRING_MILLER_LOOPS = 64
         // This test has totalPairings fixed to 64
         allPairings.add(
-            generatePairings("maxGenericPairings" + info(64, r), 64, smallPoints, largePoints));
+            util.generatePairings(
+                "maxGenericPairings" + info(64, r), 64, smallPoints, largePoints));
 
         // Focus on small points scenarios
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "smallPointsOutOfRange" + info(totalPairings, r),
                 totalPairings,
                 smallPointsOutOfRange,
                 largePoints));
 
         allPairings.add(
-            generatePairingsSmallPointsMixed(
+            util.generatePairingsSmallPointsMixed(
                 "smallPointsOutOfRangeMixed" + info(totalPairings, r),
                 totalPairings,
                 smallPointsOutOfRange,
@@ -354,14 +352,14 @@ public class EcPairingrTest {
                 largePoints));
 
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "smallPointsNotOnC1" + info(totalPairings, r),
                 totalPairings,
                 smallPointsNotOnC1,
                 largePoints));
 
         allPairings.add(
-            generatePairingsSmallPointsMixed(
+            util.generatePairingsSmallPointsMixed(
                 "smallPointsNotOnC1Mixed" + info(totalPairings, r),
                 totalPairings,
                 smallPointsNotOnC1,
@@ -369,14 +367,14 @@ public class EcPairingrTest {
                 largePoints));
 
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "smallPointsOnC1" + info(totalPairings, r),
                 totalPairings,
                 smallPointsOnC1,
                 largePoints));
 
         allPairings.add(
-            generatePairingsSmallPointsMixed(
+            util.generatePairingsSmallPointsMixed(
                 "smallPointsOnC1Mixed" + info(totalPairings, r),
                 totalPairings,
                 smallPointsOnC1,
@@ -384,14 +382,14 @@ public class EcPairingrTest {
                 largePoints));
 
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "smallPointInfinity" + info(totalPairings, r),
                 totalPairings,
                 List.of(smallPointInfinity),
                 largePoints));
 
         allPairings.add(
-            generatePairingsSmallPointsMixed(
+            util.generatePairingsSmallPointsMixed(
                 "smallPointInfinityMixed" + info(totalPairings, r),
                 totalPairings,
                 List.of(smallPointInfinity),
@@ -400,14 +398,14 @@ public class EcPairingrTest {
 
         // Focus on large points scenarios
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "largePointsOutOfRange" + info(totalPairings, r),
                 totalPairings,
                 smallPoints,
                 largePointsOutOfRange));
 
         allPairings.add(
-            generatePairingsLargePointsMixed(
+            util.generatePairingsLargePointsMixed(
                 "largePointsOutOfRangeMixed" + info(totalPairings, r),
                 totalPairings,
                 smallPoints,
@@ -415,14 +413,14 @@ public class EcPairingrTest {
                 largePoints));
 
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "largePointsNotOnC2" + info(totalPairings, r),
                 totalPairings,
                 smallPoints,
                 largePointsNotOnC2));
 
         allPairings.add(
-            generatePairingsLargePointsMixed(
+            util.generatePairingsLargePointsMixed(
                 "largePointsNotOnC2Mixed" + info(totalPairings, r),
                 totalPairings,
                 smallPoints,
@@ -430,14 +428,14 @@ public class EcPairingrTest {
                 largePoints));
 
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "largePointsNotOnG2" + info(totalPairings, r),
                 totalPairings,
                 smallPoints,
                 largePointsNotOnG2));
 
         allPairings.add(
-            generatePairingsLargePointsMixed(
+            util.generatePairingsLargePointsMixed(
                 "largePointsNotOnG2Mixed" + info(totalPairings, r),
                 totalPairings,
                 smallPoints,
@@ -445,14 +443,14 @@ public class EcPairingrTest {
                 largePoints));
 
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "largePointsOnG2" + info(totalPairings, r),
                 totalPairings,
                 smallPoints,
                 largePointsOnG2));
 
         allPairings.add(
-            generatePairingsLargePointsMixed(
+            util.generatePairingsLargePointsMixed(
                 "largePointsOnG2Mixed" + info(totalPairings, r),
                 totalPairings,
                 smallPoints,
@@ -460,14 +458,14 @@ public class EcPairingrTest {
                 largePoints));
 
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "largePointInfinity" + info(totalPairings, r),
                 totalPairings,
                 smallPoints,
                 List.of(largePointInfinity)));
 
         allPairings.add(
-            generatePairingsLargePointsMixed(
+            util.generatePairingsLargePointsMixed(
                 "largePointInfinityMixed" + info(totalPairings, r),
                 totalPairings,
                 smallPoints,
@@ -476,7 +474,7 @@ public class EcPairingrTest {
 
         // Focus on combinations of small and large points scenarios
         allPairings.add(
-            generatePairingsLargePointsMixed(
+            util.generatePairingsLargePointsMixed(
                 "largePointNotOnG2Exists" + info(totalPairings, r),
                 totalPairings,
                 smallPointsOnC1,
@@ -484,14 +482,14 @@ public class EcPairingrTest {
                 largePoints));
 
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "trivialPairingAllSmallPointsOnC1" + info(totalPairings, r),
                 totalPairings,
                 smallPointsOnC1,
                 List.of(largePointInfinity)));
 
         allPairings.add(
-            generatePairingsSmallPointsMixed(
+            util.generatePairingsSmallPointsMixed(
                 "trivialPairingSmallPointsOnC1AndInfinity" + info(totalPairings, r),
                 totalPairings,
                 smallPointsOnC1,
@@ -499,14 +497,14 @@ public class EcPairingrTest {
                 List.of(largePointInfinity)));
 
         allPairings.add(
-            generatePairings(
+            util.generatePairings(
                 "nonTrivialPairingExcludingInfinity" + info(totalPairings, r),
                 totalPairings,
                 smallPointsOnC1,
                 largePointsOnG2));
 
         allPairings.add(
-            generatePairingsMixed(
+            util.generatePairingsMixed(
                 "nonTrivialPairingIncludingInfinity" + info(totalPairings, r),
                 totalPairings,
                 smallPointsOnC1,

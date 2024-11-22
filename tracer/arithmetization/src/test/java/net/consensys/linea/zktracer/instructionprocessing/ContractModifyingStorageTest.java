@@ -15,7 +15,6 @@
 package net.consensys.linea.zktracer.instructionprocessing;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randData;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +23,7 @@ import java.util.Random;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
+import net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase;
 import net.consensys.linea.zktracer.types.AddressUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -160,7 +160,7 @@ public class ContractModifyingStorageTest {
     SECPPublicKey pk5 = keyPair5.getPublicKey();
     ToyAccount account5 = buildAnAccount(Address.extract(Hash.hash(pk5.getEncodedBytes())), 7);
 
-    Bytes initCode = randData(true);
+    Bytes initCode = new RlpRandEdgeCase().randData(true);
 
     // TODO: deployment transaction fails in our ToyWorld
     /*
