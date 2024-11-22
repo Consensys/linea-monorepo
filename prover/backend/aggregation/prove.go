@@ -121,7 +121,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 	proverOpts := emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
 	verifierOpts := emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
 
-	proof, err := circuits.ProveCheck(&setup, &assignment, proverOpts, verifierOpts)
+	proof, err := circuits.ProveCheck(&setup, &assignment, proverOpts, verifierOpts, circuits.WithCachedProof(".tmp/pi.pf"))
 
 	return proof, w, err
 }
@@ -305,6 +305,7 @@ func doesBw6CircuitSupportVKeys(supportedVkeys []string, proofClaims []aggregati
 			found = found || (suppBytes32[i] == requiredVKey)
 		}
 		if !found {
+			logrus.Warnf("vk %x for proof #%d not supported", requiredVKey, k)
 			return false
 		}
 	}

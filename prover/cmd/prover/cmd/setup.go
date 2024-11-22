@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/stretchr/testify/require"
 
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -151,6 +153,7 @@ func Setup(context context.Context, args SetupArgs) error {
 		return nil
 	}
 
+	logrus.Info("loading the PI circuit setup")
 	// get verifying key for public-input circuit
 	piSetup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
 	if err != nil {
@@ -197,6 +200,21 @@ func Setup(context context.Context, args SetupArgs) error {
 		allowedVkForAggregation = append(allowedVkForAggregation, vk)
 	}
 
+	var t test_utils.FakeTestingT
+	f, err := os.OpenFile(".tmp/aggregation-allowed-vks.bin", os.O_WRONLY|os.O_CREATE, 0600)
+	require.NoError(t, err)
+
+	_, err = f.Write([]byte{byte(len(allowedVkForAggregation))})
+	require.NoError(t, err)
+
+	for i := range allowedVkForAggregation {
+		_, err = allowedVkForAggregation[i].WriteTo(f)
+		require.NoError(t, err)
+	}
+	_, err = piSetup.VerifyingKey.WriteTo(f)
+	require.NoError(t, err)
+
+	require.NoError(t, f.Close())
 	// we need to compute the digest of the verifying keys & store them in the manifest
 	// for the aggregation circuits to be able to check compatibility at run time with the proofs
 	allowedVkForAggregationDigests := listOfChecksums(allowedVkForAggregation)
@@ -255,6 +273,8 @@ func getDummyCircuitVK(ctx context.Context, cfg *config.Config, srsProvider circ
 		return nil, fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
 	}
 
+	logrus.Infof("circuit ID %s VK %s CS %s", circuit, setup.VerifyingKeyDigest(), test_utils.Sha256Sum(test_utils.FakeTestingT{}, setup.Circuit))
+
 	return setup.VerifyingKey, nil
 }
 
@@ -303,7 +323,10 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool, srsProvide
 		return fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
 	}
 
+	logrus.Infof("checksums for: cs %s vk %s", test_utils.Sha256Sum(test_utils.FakeTestingT{}, setup.Circuit), setup.VerifyingKeyDigest())
+
 	logrus.Infof("writing assets for %s", circuit)
+
 	return setup.WriteTo(setupPath)
 }
 

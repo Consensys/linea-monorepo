@@ -2,10 +2,11 @@ package pi_interconnection
 
 import (
 	"errors"
-	"github.com/sirupsen/logrus"
 	"math"
 	"math/big"
 	"slices"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"

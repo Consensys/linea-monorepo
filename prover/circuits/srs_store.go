@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/kzg"
@@ -122,6 +123,8 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 		return nil, nil, fmt.Errorf("could not find canonical SRS for curve %s and size %d", curveID, sizeCanonical)
 	}
 
+	logrus.Infof("canonical loaded. attempting to load lagrange for size %d", sizeLagrange)
+
 	// find the lagrange srs
 	var lagrangeSRS kzg.SRS
 	for _, entry := range store.entries[curveID] {
@@ -134,11 +137,15 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 			if err := lagrangeSRS.ReadDump(bytes.NewReader(data)); err != nil {
 				return nil, nil, err
 			}
+
+			// TODO check if they are the same
+
 			break
 		}
 	}
 
 	if lagrangeSRS == nil {
+		logrus.Infof("lagrange not found for size %d. attempting to generate lagrange", sizeLagrange)
 		// we can compute it from the canonical one.
 		if sizeCanonical < sizeLagrange {
 			panic("canonical SRS is smaller than lagrange SRS")
@@ -149,7 +156,22 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 		if err != nil {
 			return nil, nil, err
 		}
+		outfilename := fmt.Sprintf("/home/ubuntu/linea-monorepo/prover/integration/all-backend/assets/kzgsrs/kzg_srs_lagrange_%d_%s_aleo.memdump", sizeLagrange, strings.ReplaceAll(fieldToCurve(ccs.Field()).String(), "_", ""))
+		logrus.Debugf("saving lagrange to %s", outfilename)
+		f, err := os.OpenFile(outfilename, os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			f.Close()
+			return nil, nil, err
+		}
+		if err = lagrangeSRS.WriteDump(f); err != nil {
+			return nil, nil, err
+		}
+		if err = f.Close(); err != nil {
+			return nil, nil, err
+		}
 	}
+
+	logrus.Info("lagrange loaded/generated")
 
 	return canonicalSRS, lagrangeSRS, nil
 }
