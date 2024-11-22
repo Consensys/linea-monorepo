@@ -185,7 +185,7 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 		}
 
 		logrus.Infof("Generating PI proof")
-		piW, err := frontend.NewWitness(&piAssignment, ecc.BLS12_377.ScalarField())
+		piW, err := frontend.NewWitness(&piAssignment, ecc.BLS12_377.ScalarField(), frontend.PublicOnly())
 		assert.NoError(t, err)
 		piProof, err := circuits.ProveCheck(
 			&piSetup, &piAssignment,
@@ -193,11 +193,9 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 			emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
 		)
 		assert.NoError(t, err)
-		piPubW, err := piW.Public()
-		assert.NoError(t, err)
 		piInfo := aggregation.PiInfo{
 			Proof:         piProof,
-			PublicWitness: piPubW,
+			PublicWitness: piW,
 			ActualIndexes: pi_interconnection.InnerCircuitTypesToIndexes(&piConfig, circuitTypes),
 		}
 

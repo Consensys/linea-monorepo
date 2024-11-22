@@ -5,8 +5,6 @@ package aggregation
 import (
 	"errors"
 	"fmt"
-	"slices"
-
 	frBn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
@@ -66,13 +64,6 @@ func (c *Circuit) Define(api frontend.API) error {
 	assertSlicesEqualZEXT(api, piBits[16*8:], field.ToBitsCanonical(&c.PublicInputWitness.Public[0]))
 	api.AssertIsDifferent(c.PublicInput, 0) // making sure at least one element of the PI circuit's public input is nonzero to justify using incomplete arithmetic
 
-	vks := append(slices.Clone(c.verifyingKeys), c.publicInputVerifyingKey)
-	piVkIndex := len(vks) - 1
-
-	for i := range c.ProofClaims {
-		api.AssertIsDifferent(c.ProofClaims[i].CircuitID, piVkIndex) // TODO @Tabaie is this necessary? can't think of an attack if this is removed
-	}
-
 	// create a lookup table of actual public inputs
 	actualPI := make([]*logderivlookup.Table, (emFr{}).NbLimbs())
 	for i := range actualPI {
@@ -101,15 +92,14 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	claims := append(slices.Clone(c.ProofClaims), proofClaim{
-		CircuitID:   piVkIndex,
-		Proof:       c.PublicInputProof,
-		PublicInput: c.PublicInputWitness,
-	})
-
 	// Verify the constraints the execution proofs
-	if err = verifyClaimBatch(api, vks, claims); err != nil {
+	if err = verifyClaimBatch(api, c.verifyingKeys, c.ProofClaims); err != nil {
 		return fmt.Errorf("processing execution proofs: %w", err)
+	}
+
+	// Verify the constraints of the public input interconnection proof
+	if err = verifySingleProof(api, c.publicInputVerifyingKey, c.PublicInputProof, c.PublicInputWitness); err != nil {
+		return fmt.Errorf("processing the public input interconnection proof: %w", err)
 	}
 
 	return nil
@@ -154,6 +144,19 @@ func AllocateCircuit(nbProofs int, pi circuits.Setup, verifyingKeys []plonk.Veri
 
 }
 
+func verifySingleProof(api frontend.API, vk emVkey, proof emProof, witness emWitness) error {
+	verifier, err := emPlonk.NewVerifier[emFr, emG1, emG2, emGT](api)
+	if err != nil {
+		return fmt.Errorf("while instantiating the verifier: %w", err)
+	}
+
+	if err = verifier.AssertProof(vk, proof, witness, emPlonk.WithCompleteArithmetic()); err != nil {
+		return fmt.Errorf("AssertProof returned an error: %w", err)
+	}
+
+	return nil
+}
+
 func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error {
 	verifier, err := emPlonk.NewVerifier[emFr, emG1, emG2, emGT](api)
 	if err != nil {
@@ -162,7 +165,7 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 
 	var (
 		bvk       = vks[0].BaseVerifyingKey
-		cvks      = make([]emCircVKey, len(vks)-1)
+		cvks      = make([]emCircVKey, len(vks))
 		switches  = make([]frontend.Variable, len(claims))
 		proofs    = make([]emProof, len(claims))
 		witnesses = make([]emWitness, len(claims))
@@ -172,8 +175,8 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 		cvks[i] = vks[i].CircuitVerifyingKey
 	}
 
-	for i := 1; i < len(vks)-1; i++ { // TODO @Tabaie make sure these don't generate any constraints
-		fmt.Printf("checking base vk #%d/%d\n", i+1, len(vks)-1)
+	for i := 1; i < len(vks); i++ { // TODO @Tabaie make sure these don't generate any constraints
+		fmt.Printf("checking base vk #%d/%d\n", i+1, len(vks))
 		assertBaseKeyEquals(api, bvk, vks[i].BaseVerifyingKey)
 	}
 
@@ -183,23 +186,9 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 		witnesses[i] = claims[i].PublicInput
 	}
 
-	lastProofI := len(proofs) - 1
-	if err = verifier.AssertDifferentProofs(
-		bvk, cvks,
-		switches[:lastProofI],
-		proofs[:lastProofI],
-		witnesses[:lastProofI],
-		emPlonk.WithCompleteArithmetic(),
-	); err != nil {
+	if err = verifier.AssertDifferentProofs(bvk, cvks, switches, proofs, witnesses, emPlonk.WithCompleteArithmetic()); err != nil {
 		return fmt.Errorf("AssertDifferentProofs returned an error: %w", err)
 	}
-
-	// The PI proof cannot be batched with the rest because it has more than one public input
-	// complete arithmetic is not necessary here because the circuit is nontrivial and at least one element of the public input is nonzero
-	if err = verifier.AssertProof(vks[len(cvks)], proofs[lastProofI], witnesses[lastProofI]); err != nil {
-		return fmt.Errorf("AssertProof returned an error: %w", err)
-	}
-
 	return nil
 }
 
