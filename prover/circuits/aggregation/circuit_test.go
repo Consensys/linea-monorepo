@@ -2,6 +2,10 @@ package aggregation_test
 
 import (
 	"context"
+	"fmt"
+	"github.com/consensys/gnark/test/unsafekzg"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -86,6 +90,34 @@ func TestAggregationFewDifferentInners(t *testing.T) {
 
 func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 
+	dir := t.TempDir()
+	// make an SRS large enough for all the circuits
+	{
+		maxNc := utils.Max(ncs...)
+		piCfg := config.PublicInput{
+			ProverMode:         "dev",
+			MaxNbDecompression: maxNc,
+			MaxNbExecution:     maxNc,
+		}
+		maxCs, err := pi_interconnection.NewBuilder(piCfg).Compile()
+		require.NoError(t, err)
+
+		maxDummyCs, err := dummy.MakeCS(circuits.MockCircuitID(nCircuits), ecc.BLS12_377.ScalarField())
+		require.NoError(t, err)
+
+
+		maxCanonicalSize, _ := plonk.SRSSize(maxCs)
+		if cSize2, _ := plonk.SRSSize(maxDummyCs); cSize2 > maxCanonicalSize {
+			maxCs = maxDummyCs
+			maxCanonicalSize = cSize2
+		}
+		canonical, _, err := unsafekzg.NewSRS(maxCs)
+		srsDir := filepath.Join(dir, "kzgsrs")
+		require.NoError(t, os.Mkdir(srsDir, 0700))
+		f, err := os.OpenFile(filepath.Join(srsDir, fmt.Sprintf("kzg_srs_bls12377_%d")"srs"), os.O_CREATE|os.O_WRONLY, 0600)
+
+	}
+
 	// Mock circuits to aggregate
 	var innerSetups []circuits.Setup
 	logrus.Infof("Initializing many inner-circuits of %v\n", nCircuits)
@@ -93,6 +125,7 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 	srsProvider := circuits.NewUnsafeSRSProvider() // This is a dummy SRS provider, not to use in prod.
 	for i := 0; i < nCircuits; i++ {
 		logrus.Infof("\t%d/%d\n", i+1, nCircuits)
+		dummy.
 		pp, _ := dummy.MakeUnsafeSetup(srsProvider, circuits.MockCircuitID(i), ecc.BLS12_377.ScalarField())
 		innerSetups = append(innerSetups, pp)
 	}
@@ -117,9 +150,7 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 
 	piCircuit := pi_interconnection.DummyCircuit{
 		ExecutionPublicInput:     make([]frontend.Variable, piConfig.MaxNbExecution),
-		ExecutionFPI:             make([]frontend.Variable, piConfig.MaxNbExecution),
 		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDecompression),
-		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDecompression),
 	}
 
 	piCs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &piCircuit)
@@ -178,10 +209,6 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 			AggregationPublicInput:   [2]frontend.Variable{aggregationPIBytes[:16], aggregationPIBytes[16:]},
 			ExecutionPublicInput:     utils.ToVariableSlice(execPI),
 			DecompressionPublicInput: utils.ToVariableSlice(decompPI),
-			DecompressionFPI:         utils.ToVariableSlice(pow5(decompPI)),
-			ExecutionFPI:             utils.ToVariableSlice(pow5(execPI)),
-			NbExecution:              len(innerPiPartition[typeExec]),
-			NbDecompression:          len(innerPiPartition[typeDecomp]),
 		}
 
 		logrus.Infof("Generating PI proof")
@@ -216,15 +243,3 @@ const (
 	typeExec   = pi_interconnection.Execution
 	typeDecomp = pi_interconnection.Decompression
 )
-
-func pow5(s []frBls.Element) []frBls.Element {
-	res := make([]frBls.Element, len(s))
-	for i := range s {
-		res[i].
-			Mul(&s[i], &s[i]).
-			Mul(&res[i], &res[i]).
-			Mul(&res[i], &s[i])
-
-	}
-	return res
-}

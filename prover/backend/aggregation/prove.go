@@ -70,7 +70,7 @@ func makeProof(
 }
 
 func cfToAggregationRequest(cfg *config.Config, cf *CollectedFields) public_input.Aggregation {
-	return 		public_input.Aggregation{
+	return public_input.Aggregation{
 		FinalShnarf:                             cf.FinalShnarf,
 		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
 		ParentStateRootHash:                     cf.ParentStateRootHash,
@@ -86,7 +86,7 @@ func cfToAggregationRequest(cfg *config.Config, cf *CollectedFields) public_inpu
 		L2MsgMerkleTreeDepth:                    utils.ToInt(cf.L2MsgTreeDepth),
 		ChainID:                                 uint64(cfg.Layer2.ChainID),
 		L2MessageServiceAddr:                    types.EthAddress(cfg.Layer2.MsgSvcContract),
-	},
+	}
 }
 
 func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.Witness, error) {
@@ -113,7 +113,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 	assignment, err := c.Assign(pi_interconnection.Request{
 		Decompressions: cf.DecompressionPI,
 		Executions:     cf.ExecutionPI,
-		Aggregation: 	cfToAggregationRequest(cfg, cf),
+		Aggregation:    cfToAggregationRequest(cfg, cf),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not assign the public input circuit: %w", err)

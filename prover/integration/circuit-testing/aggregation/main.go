@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TODO @Tabaie rewrite this using backend methods whenever possible
 func main() {
 
 	var t test_utils.FakeTestingT
@@ -64,13 +65,12 @@ func main() {
 	piConfig := config.PublicInput{
 		MaxNbDecompression: maxNC,
 		MaxNbExecution:     maxNC,
+		ProverMode:         config.ProverModeDev,
 	}
 
 	piCircuit := pi_interconnection.DummyCircuit{
 		ExecutionPublicInput:     make([]frontend.Variable, piConfig.MaxNbExecution),
-		ExecutionFPI:             make([]frontend.Variable, piConfig.MaxNbExecution),
 		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDecompression),
-		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDecompression),
 	}
 
 	piCs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &piCircuit)
@@ -138,10 +138,6 @@ func main() {
 			AggregationPublicInput:   [2]frontend.Variable{aggregationPIBytes[:16], aggregationPIBytes[16:]},
 			ExecutionPublicInput:     utils.ToVariableSlice(execPI),
 			DecompressionPublicInput: utils.ToVariableSlice(decompPI),
-			DecompressionFPI:         utils.ToVariableSlice(pow5(decompPI)),
-			ExecutionFPI:             utils.ToVariableSlice(pow5(execPI)),
-			NbExecution:              len(innerPiPartition[typeExec]),
-			NbDecompression:          len(innerPiPartition[typeDecomp]),
 		}
 
 		logrus.Infof("Generating PI proof")
