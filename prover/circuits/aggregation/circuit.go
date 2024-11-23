@@ -150,7 +150,7 @@ func verifySingleProof(api frontend.API, vk emVkey, proof emProof, witness emWit
 		return fmt.Errorf("while instantiating the verifier: %w", err)
 	}
 
-	if err = verifier.AssertProof(vk, proof, witness, emPlonk.WithCompleteArithmetic()); err != nil {
+	if err = verifier.AssertProof(vk, proof, witness); err != nil {
 		return fmt.Errorf("AssertProof returned an error: %w", err)
 	}
 

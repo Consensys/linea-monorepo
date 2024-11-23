@@ -15,6 +15,9 @@ func (c *DummyCircuit) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	api.AssertIsDifferent(commitment, 0)
+	// defining constraints to make sure none of the Plonk selector columns are zero
+	// this is needed for the incomplete arithmetic formulas in the emulated Plonk verifier to work
+	x := api.Add(toCommit[0], commitment, 1) // Ql, Qr, Qo, Qc ≠ 0
+	api.AssertIsDifferent(x, 0)              // Qm ≠ 0
 	return nil
 }
