@@ -77,24 +77,15 @@ public class StpCall implements TraceSubFragment {
   private void stpCallForCalls(Hub hub) {
     final MessageFrame frame = hub.messageFrame();
 
-    final boolean callCanTransferValue = opCode.callCanTransferValue();
+    final boolean callHasValueArgument = opCode.callHasValueArgument();
     final Address to = Words.toAddress(frame.getStackItem(1));
     final Account toAccount = frame.getWorldUpdater().get(to);
     this.gas = EWord.of(frame.getStackItem(0));
-    this.value = (callCanTransferValue) ? EWord.of(frame.getStackItem(2)) : ZERO;
+    this.value = (callHasValueArgument) ? EWord.of(frame.getStackItem(2)) : ZERO;
     this.exists =
         switch (hub.opCode()) {
-          case CALL, STATICCALL -> toAccount != null
-              ? !toAccount.isEmpty()
-              : false; // the address that matters here is that of the callee
-          case CALLCODE,
-              DELEGATECALL -> true; // the address that matters here is that of the caller --- who
-            // always exists
-            // TODO: @Olivier or @François:
-            //  replace this with the same logic above with the
-            //  current account (frame.getRecipientAddress() ?)
-            //  also add arg check verifying existence == true
-            //  in that case.
+          case CALL -> toAccount != null ? !toAccount.isEmpty() : false;
+          case CALLCODE, DELEGATECALL, STATICCALL -> false;
           default -> throw new IllegalArgumentException(
               "STP module triggered for a non CALL-type instruction");
         };

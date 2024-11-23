@@ -48,10 +48,7 @@ import org.hyperledger.besu.evm.internal.Words;
 @Getter
 @Accessors(fluent = true)
 public class PrecompileSubsection
-    implements ImmediateContextEntryDefer,
-        ContextExitDefer,
-        ContextReEntryDefer,
-        PostRollbackDefer {
+    implements ContextEntryDefer, ContextExitDefer, ContextReEntryDefer, PostRollbackDefer {
 
   public final CallSection callSection;
 
@@ -98,7 +95,7 @@ public class PrecompileSubsection
 
     final MessageFrame messageFrame = hub.messageFrame();
 
-    hub.defers().scheduleForImmediateContextEntry(this); // gas & input data, ...
+    hub.defers().scheduleForContextEntry(this); // gas & input data, ...
     hub.defers().scheduleForContextExit(this, hub.callStack().futureId());
     hub.defers().scheduleForContextReEntry(this, hub.currentFrame()); // success bit & return data
 
@@ -115,12 +112,12 @@ public class PrecompileSubsection
     final OpCode opCode = hub.opCode();
     final long offset =
         Words.clampedToLong(
-            opCode.callCanTransferValue()
+            opCode.callHasValueArgument()
                 ? messageFrame.getStackItem(3)
                 : messageFrame.getStackItem(2));
     final long length =
         Words.clampedToLong(
-            opCode.callCanTransferValue()
+            opCode.callHasValueArgument()
                 ? messageFrame.getStackItem(4)
                 : messageFrame.getStackItem(3));
     callDataMemorySpan = new MemorySpan(offset, length);

@@ -12,11 +12,19 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+package net.consensys.linea.zktracer.instructionprocessing.ContextFamilyTests;
 
-package net.consensys.linea.zktracer.module.hub.defer;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.MultiOpCodeSmcs.allContextOpCodes;
 
-import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.testing.BytecodeRunner;
+import org.junit.jupiter.api.Test;
 
-public interface ImmediateContextEntryDefer {
-  void resolveUponContextEntry(Hub hub);
+public class RootOfMessageCallTests {
+
+  @Test
+  public void messageCallTest() {
+    BytecodeCompiler program = allContextOpCodes();
+    BytecodeRunner.of(program).run();
+  }
 }

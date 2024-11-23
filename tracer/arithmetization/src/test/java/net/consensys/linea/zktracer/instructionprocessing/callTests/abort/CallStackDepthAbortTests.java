@@ -14,53 +14,43 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.callTests.abort;
 
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendRecursiveSelfCall;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendRevert;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
-import org.apache.tuweni.bytes.Bytes;
-import org.junit.jupiter.api.Test;
+import net.consensys.linea.zktracer.opcode.OpCode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Attempt to trigger the maximum call stack depth abort. We put everything to 0 to avoid memory
  * expansion costs. We will want to revert so we transfer value to see the effect of reverting.
  */
 public class CallStackDepthAbortTests {
-  @Test
-  void attemptAtCallStackDepthAbortWillRevert() {
+  @ParameterizedTest
+  @EnumSource(
+      value = OpCode.class,
+      names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
+  void attemptAtCallStackDepthAbortWillRevert(OpCode callOpCode) {
 
-    Bytes bytecode =
-        BytecodeCompiler.newProgram()
-            .push(0)
-            .push(0)
-            .push(0)
-            .push(0) //
-            .push(5) // value
-            .op(ADDRESS) // current address
-            .op(GAS) // providing all available gas
-            .op(CALL) // self-call
-            .push(6)
-            .push(7)
-            .op(REVERT)
-            .compile();
+    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    appendRecursiveSelfCall(program, callOpCode);
+    appendRevert(program, 6, 7);
 
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(program).run();
   }
 
-  @Test
-  void attemptAtCallStackDepthAbortWontRevert() {
+  @ParameterizedTest
+  @EnumSource(
+      value = OpCode.class,
+      names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
+  void attemptAtCallStackDepthAbort(OpCode callOpCode) {
 
-    Bytes bytecode =
-        BytecodeCompiler.newProgram()
-            .push(0)
-            .push(0)
-            .push(0)
-            .push(0)
-            .op(ADDRESS)
-            .op(GAS) // providing as much gas as possible
-            .op(STATICCALL) // self-call
-            .compile();
+    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    appendRecursiveSelfCall(program, callOpCode);
 
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(program).run();
   }
 }

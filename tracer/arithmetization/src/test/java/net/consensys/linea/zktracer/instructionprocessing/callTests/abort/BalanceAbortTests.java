@@ -14,15 +14,15 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.callTests.abort;
 
-import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.appendInsufficientBalanceCall;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
-import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
-import org.apache.tuweni.bytes.Bytes;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * The arithmetization has a two aborting scenarios for CALL's
@@ -36,49 +36,52 @@ public class BalanceAbortTests {
 
   final String eoaAddress = "abcdef0123456789";
 
-  @Test
-  void insufficientBalanceAbortWarmsUpTarget() {
+  /**
+   * This test has different behaviour for <b>CALL</b> and <b>CALLCODE</b> vs the other CALL-type
+   * instructions. The point being: these two can transfer value, the others can't. As such they are
+   * the only instructions that can trigger the desired <b>INSUFFICIENT_BALANCE_ABORT</b>.
+   *
+   * <p>This test should trigger <b>scenario/CALL_ABORT_WONT_REVERT</b> for both <b>CALL</b> and
+   * <b>CALLCODE</b>.
+   *
+   * @param callOpCode
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = OpCode.class,
+      names = {"CALL", "CALLCODE"})
+  void insufficientBalanceAbortWarmsUpTarget(OpCode callOpCode) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    appendInsufficientBalanceCall(
+        program, callOpCode, 1000, Address.fromHexString(eoaAddress), 4, 3, 2, 1);
+    program
+        .op(POP)
+        .push(eoaAddress) // address
+        .op(EXTCODESIZE) // discounted pricing since warm
+        .compile();
 
-    Bytes bytecode =
-        BytecodeCompiler.newProgram()
-            .push(1)
-            .push(2)
-            .push(3)
-            .push(4)
-            .op(SELFBALANCE)
-            .push(1)
-            .op(ADD) // our balance + 1
-            .push(eoaAddress) // address
-            .push(0) // gas
-            .op(CALL) // CALL_ABORT_WONT_REVERT
-            .op(POP)
-            .push(eoaAddress) // address
-            .op(EXTCODESIZE) // discounted pricing
-            .compile();
-
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(program).run();
   }
 
-  /** scenario/CALL_ABORT_WILL_REVERT; reverts the warmth; */
-  @Test
-  void insufficientBalanceAbortWillRevert() {
+  /**
+   * The same comments apply as for {@link #insufficientBalanceAbortWarmsUpTarget(OpCode)}. In this
+   * test we further impose a REVERT which will affect the warmth of the target address.
+   *
+   * <p>This test should trigger <b>scenario/CALL_ABORT_WILL_REVERT</b> for both <b>CALL</b> and
+   * <b>CALLCODE</b>.
+   *
+   * @param callOpCode
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = OpCode.class,
+      names = {"CALL", "CALLCODE"})
+  void insufficientBalanceAbortWillRevert(OpCode callOpCode) {
 
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     appendInsufficientBalanceCall(
-        program, CALL, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
+        program, callOpCode, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);
-    Bytes bytecode = program.compile();
-    BytecodeRunner.of(bytecode).run();
-  }
-
-  /** scenario/CALL_ABORT_WONT_REVERT */
-  @Test
-  void insufficientBalanceAbortWontRevert() {
-
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
-    appendInsufficientBalanceCall(
-        program, CALL, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
-    Bytes bytecode = program.compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(program).run();
   }
 }

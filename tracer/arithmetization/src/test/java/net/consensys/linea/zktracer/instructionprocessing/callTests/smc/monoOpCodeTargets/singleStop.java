@@ -14,8 +14,8 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.callTests.smc.monoOpCodeTargets;
 
-import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.simpleCall;
-import static net.consensys.linea.zktracer.instructionprocessing.callTests.smc.Utilities.*;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendCall;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.testing.*;
@@ -32,7 +32,7 @@ public class singleStop {
   void zeroValueTransferToContractThatStops() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
-    simpleCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 0, 0, 0, 0, 0);
+    appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 0, 0, 0, 0, 0);
 
     BytecodeRunner.of(program.compile()).run(accounts);
   }
@@ -42,7 +42,7 @@ public class singleStop {
   void nonZeroValueTransferToContractThatStops() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
-    simpleCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 1, 0, 0, 0, 0);
+    appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 1, 0, 0, 0, 0);
 
     BytecodeRunner.of(program.compile()).run(accounts);
   }
@@ -52,7 +52,7 @@ public class singleStop {
   void nonZeroValueTransferToContractThatStopsRevertingTransaction() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
-    simpleCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 1, 0, 0, 0, 0);
+    appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 1, 0, 0, 0, 0);
 
     // we use the 1 on the stack after this successful CALL as the revert message size
     program.push(0).op(REVERT);

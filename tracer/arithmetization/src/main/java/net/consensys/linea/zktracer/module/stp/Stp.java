@@ -61,7 +61,7 @@ public class Stp implements OperationSetModule<StpOperation> {
 
     if (stpCall.opCode().isCall()) {
       wcp.callLT(longToBytes32(stpCall.gasActual()), Bytes32.ZERO);
-      if (stpCall.opCode().callCanTransferValue()) {
+      if (stpCall.opCode().callHasValueArgument()) {
         wcp.callISZERO(Bytes32.leftPad(stpCall.value()));
       }
       wcp.callLT(longToBytes32(stpCall.gasActual()), longToBytes32(stpCall.upfrontGasCost()));

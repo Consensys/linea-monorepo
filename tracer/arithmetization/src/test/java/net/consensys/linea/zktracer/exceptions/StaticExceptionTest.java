@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.exceptions;
 
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.STATIC_FAULT;
+import static net.consensys.linea.zktracer.opcode.OpCode.GAS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
@@ -42,7 +43,7 @@ public class StaticExceptionTest {
         .push(0) // call data size
         .push(0) // call data offset
         .push("ca11ee") // address
-        .push(1000) // gas
+        .op(GAS)
         .op(OpCode.STATICCALL);
 
     BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
@@ -52,8 +53,8 @@ public class StaticExceptionTest {
         .push(0) // call data size
         .push(0) // call data offset
         .push(value) // value
-        .push("ca11ee") // address
-        .push(1000) // gas
+        .push(Address.ZERO) // address
+        .op(GAS)
         .op(OpCode.CALL);
 
     final ToyAccount calleeAccount =
@@ -64,7 +65,7 @@ public class StaticExceptionTest {
             .code(calleeProgram.compile())
             .build();
 
-    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
 
     bytecodeRunner.run(List.of(calleeAccount));
 

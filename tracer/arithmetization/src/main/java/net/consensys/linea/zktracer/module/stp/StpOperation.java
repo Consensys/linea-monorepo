@@ -180,7 +180,7 @@ public final class StpOperation extends ModuleOperation {
             .arg2Lo(Bytes.EMPTY)
             .exogenousModuleInstruction(UnsignedByte.of(OpCode.ISZERO.byteValue()))
             .resLo(Bytes.of(stpCall.value().isZero() ? 1 : 0))
-            .wcpFlag(stpCall.opCode().callCanTransferValue())
+            .wcpFlag(stpCall.opCode().callHasValueArgument())
             .modFlag(false)
             .fillAndValidateRow();
         case 2 -> trace

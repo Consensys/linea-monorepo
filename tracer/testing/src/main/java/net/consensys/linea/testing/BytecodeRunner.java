@@ -52,6 +52,10 @@ public final class BytecodeRunner {
     this.byteCode = byteCode;
   }
 
+  public static BytecodeRunner of(BytecodeCompiler program) {
+    return new BytecodeRunner(program.compile());
+  }
+
   public static BytecodeRunner of(Bytes byteCode) {
     return new BytecodeRunner(byteCode);
   }

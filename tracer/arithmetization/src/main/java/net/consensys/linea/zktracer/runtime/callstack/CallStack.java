@@ -84,10 +84,7 @@ public final class CallStack {
         codeDeploymentNumber,
         toCode == null ? Bytecode.EMPTY : toCode,
         from,
-        callData,
-        0,
-        callData.size(),
-        callDataContextNumber,
+        new CallDataInfo(callData, 0, callData.size(), callDataContextNumber),
         MemorySpan.empty());
     this.currentId = this.callFrames.size() - 1;
   }
@@ -113,16 +110,7 @@ public final class CallStack {
         0,
         Bytecode.EMPTY,
         Address.ZERO, // useless
-        // useless
-        // useless
-        // useless
-        callData,
-        0,
-        callData.size(),
-        transactionCallDataContextNumber,
-        // useless
-        // useless
-        // useless
+        CallDataInfo.empty(),
         MemorySpan.empty());
     this.currentId = this.callFrames.size() - 1;
   }
@@ -169,7 +157,6 @@ public final class CallStack {
    * @param accountDeploymentNumber
    * @param byteCodeDeploymentNumber
    * @param byteCode the {@link Code} being executed
-   * @param inputData the call data sent to this call frame
    */
   public void enter(
       CallFrameType type,
@@ -183,19 +170,12 @@ public final class CallStack {
       int byteCodeDeploymentNumber,
       Bytecode byteCode,
       Address callerAddress,
-      Bytes inputData,
-      long callDataOffset,
-      long callDataSize,
-      long callDataContextNumber,
+      CallDataInfo callDataInfo,
       MemorySpan returnDataTargetInCaller) {
     final int callerId = this.depth == -1 ? -1 : this.currentId;
     final int newCallFrameId = this.callFrames.size();
     this.depth += 1;
 
-    Bytes callData = Bytes.EMPTY;
-    if (type != CallFrameType.INIT_CODE) {
-      callData = inputData;
-    }
     final CallFrame newFrame =
         new CallFrame(
             type,
@@ -211,11 +191,8 @@ public final class CallStack {
             byteCodeDeploymentNumber,
             byteCode,
             callerAddress,
-            callDataContextNumber,
             callerId,
-            callData,
-            callDataOffset,
-            callDataSize,
+            callDataInfo,
             returnDataTargetInCaller);
 
     this.callFrames.add(newFrame);

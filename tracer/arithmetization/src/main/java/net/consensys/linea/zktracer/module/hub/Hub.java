@@ -99,7 +99,7 @@ import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.stp.Stp;
 import net.consensys.linea.zktracer.module.tables.bin.BinRt;
-import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
+import net.consensys.linea.zktracer.module.tables.instructionDecoder.*;
 import net.consensys.linea.zktracer.module.tables.shf.ShfRt;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
@@ -107,6 +107,7 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjector;
+import net.consensys.linea.zktracer.runtime.callstack.CallDataInfo;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrameType;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
@@ -121,7 +122,6 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.log.LogTopic;
 import org.hyperledger.besu.evm.operation.Operation;
@@ -606,41 +606,29 @@ public class Hub implements Module {
     // internal transaction (CALL) or internal deployment (CREATE)
     if (frame.getDepth() > 0) {
       final OpCode currentOpCode = callStack.currentCallFrame().opCode();
+      final boolean isDeployment = frame.getType() == CONTRACT_CREATION;
+
       checkState(currentOpCode.isCall() || currentOpCode.isCreate());
       checkState(
           currentTraceSection() instanceof CallSection
               || currentTraceSection() instanceof CreateSection);
-      final boolean isDeployment = frame.getType() == CONTRACT_CREATION;
+      checkState(currentTraceSection() instanceof CreateSection == isDeployment);
+
       final CallFrameType frameType =
           frame.isStatic() ? CallFrameType.STATIC : CallFrameType.STANDARD;
 
-      final long callDataOffset =
+      final CallDataInfo callDataInfo =
           isDeployment
-              ? 0
-              : Words.clampedToLong(
-                  callStack
-                      .currentCallFrame()
-                      .frame()
-                      .getStackItem(currentOpCode.callMayNotTransferValue() ? 2 : 3));
-
-      final long callDataSize =
-          isDeployment
-              ? 0
-              : Words.clampedToLong(
-                  callStack
-                      .currentCallFrame()
-                      .frame()
-                      .getStackItem(currentOpCode.callMayNotTransferValue() ? 3 : 4));
-
-      final long callDataContextNumber = callStack.currentCallFrame().contextNumber();
+              ? CallDataInfo.empty()
+              : ((CallSection) currentTraceSection()).getCallDataInfo();
 
       currentFrame().rememberGasNextBeforePausing(this);
       currentFrame().pauseCurrentFrame();
 
       MemorySpan returnDataTargetInCaller =
-          (currentTraceSection() instanceof CallSection)
-              ? ((CallSection) currentTraceSection()).getCallProvidedReturnDataTargetSpan()
-              : MemorySpan.empty();
+          isDeployment
+              ? MemorySpan.empty()
+              : ((CallSection) currentTraceSection()).getReturnAtMemorySpan();
 
       callStack.enter(
           frameType,
@@ -654,10 +642,7 @@ public class Hub implements Module {
           this.deploymentNumberOf(frame.getContractAddress()),
           new Bytecode(frame.getCode().getBytes()),
           frame.getSenderAddress(),
-          frame.getInputData(),
-          callDataOffset,
-          callDataSize,
-          callDataContextNumber,
+          callDataInfo,
           returnDataTargetInCaller);
 
       this.currentFrame().initializeFrame(frame);
@@ -724,6 +709,16 @@ public class Hub implements Module {
     this.processStateExec(frame);
   }
 
+  /**
+   * A comment on {@link #unlatchStack(MessageFrame, TraceSection)}: Any instruction that writes
+   * onto the stack gets immediately unlatched if it raises an exception. If unexceptional it also
+   * gets immediately unlatched, except CALL's and CREATE's. The value written on the stack
+   * (<b>successBit</b> or <b>successBit ∙ [child address]</b> respectively) is only written after
+   * the child context has been executed.
+   *
+   * <p><b>Question:</b> Does this work well with CALL's to EOA's ? to PRC's ? trivial deployments
+   * (i.e. empty initialization code) ?
+   */
   public void tracePostExecution(MessageFrame frame, Operation.OperationResult operationResult) {
     checkArgument(
         this.state().processingPhase == TX_EXEC,
@@ -748,7 +743,7 @@ public class Hub implements Module {
 
     defers.resolvePostExecution(this, frame, operationResult);
 
-    if (!this.currentFrame().opCode().isCall() && !this.currentFrame().opCode().isCreate()) {
+    if (isExceptional() || !opCode().isCallOrCreate()) {
       this.unlatchStack(frame, currentSection);
     }
 
@@ -1062,7 +1057,7 @@ public class Hub implements Module {
           case RETURN -> new ReturnSection(this);
           case REVERT -> new RevertSection(this);
           case STOP -> new StopSection(this);
-          case SELFDESTRUCT -> new SelfdestructSection(this);
+          case SELFDESTRUCT -> new SelfdestructSection(this, frame);
         }
       }
 
@@ -1101,7 +1096,7 @@ public class Hub implements Module {
 
       case JUMP -> new JumpSection(this);
 
-      case CREATE -> new CreateSection(this);
+      case CREATE -> new CreateSection(this, frame);
 
       case CALL -> new CallSection(this, frame);
 
