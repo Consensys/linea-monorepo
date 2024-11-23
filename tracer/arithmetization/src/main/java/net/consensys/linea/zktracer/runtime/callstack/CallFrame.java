@@ -216,11 +216,8 @@ public class CallFrame {
    * @param byteCodeDeploymentNumber DN of this call frame in the {@link Hub}
    * @param byteCode byteCode that executes in the present context
    * @param callerAddress either account address of the caller/creator context
-   * @param callDataContextNumber CN of the RAM segment wherein the call data lives
    * @param parentId ID of the caller frame in the {@link CallStack}
-   * @param callData {@link Bytes} containing this frame's call data
-   * @param callDataOffset offset of call data in the caller's RAM (if applicable)
-   * @param callDataSize size (in bytes) of the call data
+   * @param callDataInfo call data of the current frame
    */
   CallFrame(
       CallFrameType type,
@@ -236,11 +233,8 @@ public class CallFrame {
       int byteCodeDeploymentNumber,
       Bytecode byteCode,
       Address callerAddress,
-      long callDataContextNumber,
       int parentId,
-      Bytes callData,
-      long callDataOffset,
-      long callDataSize,
+      CallDataInfo callDataInfo,
       MemorySpan returnDataTargetInCaller) {
     this.type = type;
     this.id = id;
@@ -256,8 +250,7 @@ public class CallFrame {
     this.code = byteCode;
     this.callerAddress = callerAddress;
     this.parentId = parentId;
-    this.callDataInfo =
-        new CallDataInfo(callData, callDataOffset, callDataSize, callDataContextNumber);
+    this.callDataInfo = callDataInfo;
     this.outputDataSpan = MemorySpan.empty();
     this.returnDataSpan = MemorySpan.empty();
     this.returnDataTargetInCaller = returnDataTargetInCaller;

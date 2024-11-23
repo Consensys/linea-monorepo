@@ -12,36 +12,44 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.instructionprocessing.callTests.eoa;
+package net.consensys.linea.zktracer.instructionprocessing.utilities;
 
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.testing.BytecodeCompiler;
-import net.consensys.linea.testing.BytecodeRunner;
+import net.consensys.linea.testing.ToyAccount;
 import org.hyperledger.besu.datatypes.Address;
-import org.junit.jupiter.api.Test;
+import org.hyperledger.besu.datatypes.Wei;
 
-/**
- * Transferring nonzero value provides a gas stipend to the callee. This stipend will immediately be
- * restituted to the caller in case of an EOA call.
- */
-public class gasStipendTests {
+public class MultiOpCodeSmcs {
 
-  @Test
-  void zeroValueEoaCallTest() {
+  /**
+   * Produces a program that triggers all opcodes from the CONTEXT instruction family.
+   *
+   * @return
+   */
+  public static BytecodeCompiler allContextOpCodes() {
+
     BytecodeCompiler program = BytecodeCompiler.newProgram();
-    appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 0, 0, 0, 0);
+    program
+        .op(ADDRESS)
+        .op(CALLDATASIZE)
+        .op(RETURNDATASIZE) // will return 0, but will be tested in the caller
+        .op(CALLER)
+        .op(CALLVALUE);
 
-    BytecodeRunner.of(program.compile()).run();
+    // producing some gibberish return data
+    appendGibberishReturn(program);
+
+    return program;
   }
 
-  // The caller should recover and extra G_stipend = 2300 gas.
-  @Test
-  void nonzeroValueEoaCallTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
-    appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
-
-    BytecodeRunner.of(program.compile()).run();
-  }
+  public static ToyAccount allContextOpCodesSmc =
+      ToyAccount.builder()
+          .balance(Wei.fromEth(9))
+          .nonce(13)
+          .address(Address.fromHexString("c0de"))
+          .code(allContextOpCodes().compile())
+          .build();
 }

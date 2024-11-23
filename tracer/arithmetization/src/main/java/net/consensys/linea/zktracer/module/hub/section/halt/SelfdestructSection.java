@@ -62,10 +62,11 @@ public class SelfdestructSection extends TraceSection
   AccountSnapshot recipientAccountBefore;
   AccountSnapshot recipientAccountAfter;
 
-  final boolean selfdestructTargetsItself;
   @Getter boolean selfDestructWasReverted = false;
 
-  public SelfdestructSection(Hub hub) {
+  ContextFragment finalUnexceptionalContextFragment;
+
+  public SelfdestructSection(Hub hub, MessageFrame frame) {
     // up to 8 = 1 + 7 rows
     super(hub, (short) 8);
 
@@ -75,29 +76,28 @@ public class SelfdestructSection extends TraceSection
     hubStamp = hub.stamp();
     exceptions = hub.pch().exceptions();
 
-    final MessageFrame frame = hub.messageFrame();
-
     // Account
     addressWhichMaySelfDestruct = frame.getRecipientAddress();
-    selfdestructorAccountBefore = AccountSnapshot.canonical(hub, addressWhichMaySelfDestruct);
+    selfdestructorAccountBefore =
+        AccountSnapshot.canonical(hub, frame.getWorldUpdater(), addressWhichMaySelfDestruct);
 
     // Recipient
     recipientAddressUntrimmed = frame.getStackItem(0);
     recipientAddress = Address.extract(Bytes32.leftPad(recipientAddressUntrimmed));
 
-    selfdestructTargetsItself = addressWhichMaySelfDestruct.equals(recipientAddress);
-
-    selfdestructScenarioFragment = new SelfdestructScenarioFragment();
     // SCN fragment
-    this.addFragment(selfdestructScenarioFragment);
+    selfdestructScenarioFragment = new SelfdestructScenarioFragment();
     if (Exceptions.any(exceptions)) {
       selfdestructScenarioFragment.setScenario(
           SelfdestructScenarioFragment.SelfdestructScenario.SELFDESTRUCT_EXCEPTION);
     }
 
     // CON fragment (1)
-    final ContextFragment contextFragment = ContextFragment.readCurrentContextData(hub);
-    this.addFragment(contextFragment);
+    final ContextFragment readCurrentContext = ContextFragment.readCurrentContextData(hub);
+
+    this.addStack(hub); // stack fragments
+    this.addFragment(selfdestructScenarioFragment); // scenario fragment
+    this.addFragment(readCurrentContext);
 
     // STATICX case
     if (Exceptions.staticFault(exceptions)) {
@@ -109,9 +109,9 @@ public class SelfdestructSection extends TraceSection
       checkArgument(exceptions == OUT_OF_GAS_EXCEPTION);
 
       recipientAccountBefore =
-          selfdestructTargetsItself
+          selfdestructTargetsItself()
               ? selfdestructorAccountBefore
-              : AccountSnapshot.canonical(hub, recipientAddress);
+              : AccountSnapshot.canonical(hub, frame.getWorldUpdater(), recipientAddress);
 
       selfdestructorFirstAccountFragment =
           hub.factories()
@@ -136,6 +136,10 @@ public class SelfdestructSection extends TraceSection
     }
 
     // Unexceptional case
+    finalUnexceptionalContextFragment =
+        ContextFragment.executionProvidesEmptyReturnData(
+            hub, hub.callStack().currentCallFrame().contextNumber());
+
     final Map<EphemeralAccount, List<AttemptedSelfDestruct>> unexceptionalSelfDestructMap =
         hub.txStack().current().getUnexceptionalSelfDestructMap();
 
@@ -168,11 +172,12 @@ public class SelfdestructSection extends TraceSection
 
     selfdestructorAccountAfter = selfdestructorAccountBefore.deepCopy().setBalanceToZero();
 
-    if (selfdestructTargetsItself) {
+    if (selfdestructTargetsItself()) {
       recipientAccountBefore = selfdestructorAccountAfter.deepCopy();
       recipientAccountAfter = recipientAccountBefore.deepCopy();
     } else {
-      recipientAccountBefore = AccountSnapshot.canonical(hub, recipientAddress);
+      recipientAccountBefore =
+          AccountSnapshot.canonical(hub, frame.getWorldUpdater(), recipientAddress);
       recipientAccountAfter =
           recipientAccountBefore
               .deepCopy()
@@ -187,7 +192,7 @@ public class SelfdestructSection extends TraceSection
             .make(
                 selfdestructorAccountBefore,
                 selfdestructorAccountAfter,
-                DomSubStampsSubFragment.selfdestructDomSubStamps(hub));
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
     recipientFirstAccountFragment =
         hub.factories()
             .accountFragment()
@@ -195,7 +200,7 @@ public class SelfdestructSection extends TraceSection
                 recipientAccountBefore,
                 recipientAccountAfter,
                 recipientAddressUntrimmed,
-                DomSubStampsSubFragment.selfdestructDomSubStamps(hub));
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
 
     this.addFragment(selfdestructorFirstAccountFragment);
     this.addFragment(recipientFirstAccountFragment);
@@ -239,10 +244,13 @@ public class SelfdestructSection extends TraceSection
   @Override
   public void resolvePostTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
+
     if (selfDestructWasReverted) {
+      this.addFragment(finalUnexceptionalContextFragment);
       return;
     }
 
+    // beyond this point the self destruct was not reverted
     final Map<EphemeralAccount, Integer> effectiveSelfDestructMap =
         transactionProcessingMetadata.getEffectiveSelfDestructMap();
     final EphemeralAccount ephemeralAccount =
@@ -252,10 +260,10 @@ public class SelfdestructSection extends TraceSection
     checkArgument(effectiveSelfDestructMap.containsKey(ephemeralAccount));
 
     // We modify the account fragment to reflect the self-destruct time
+    final int hubStampOfTheSelfDestructThatSealedTheDeal =
+        effectiveSelfDestructMap.get(ephemeralAccount);
 
-    final int selfDestructTime = effectiveSelfDestructMap.get(ephemeralAccount);
-
-    checkArgument(hubStamp >= selfDestructTime);
+    checkArgument(hubStamp >= hubStampOfTheSelfDestructThatSealedTheDeal);
 
     final AccountSnapshot accountBeforeSelfDestruct =
         transactionProcessingMetadata.getDestructedAccountsSnapshot().stream()
@@ -264,7 +272,7 @@ public class SelfdestructSection extends TraceSection
             .findFirst()
             .orElseThrow(() -> new IllegalStateException("Account not found"));
 
-    if (hubStamp == selfDestructTime) {
+    if (hubStamp == hubStampOfTheSelfDestructThatSealedTheDeal) {
       selfdestructScenarioFragment.setScenario(
           SelfdestructScenarioFragment.SelfdestructScenario
               .SELFDESTRUCT_WONT_REVERT_NOT_YET_MARKED);
@@ -287,5 +295,11 @@ public class SelfdestructSection extends TraceSection
           SelfdestructScenarioFragment.SelfdestructScenario
               .SELFDESTRUCT_WONT_REVERT_ALREADY_MARKED);
     }
+
+    this.addFragment(finalUnexceptionalContextFragment);
+  }
+
+  private boolean selfdestructTargetsItself() {
+    return addressWhichMaySelfDestruct.equals(recipientAddress);
   }
 }

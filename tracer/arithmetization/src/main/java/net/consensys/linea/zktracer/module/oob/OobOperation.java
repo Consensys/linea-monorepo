@@ -256,7 +256,7 @@ public class OobOperation extends ModuleOperation {
 
         // DELEGATECALL, STATICCALL can't trasfer value,
         // CALL, CALLCODE may transfer value
-        EWord value = opCode.callCanTransferValue() ? EWord.of(frame.getStackItem(2)) : EWord.ZERO;
+        EWord value = opCode.callHasValueArgument() ? EWord.of(frame.getStackItem(2)) : EWord.ZERO;
         CallOobCall callOobCall = (CallOobCall) oobCall;
         callOobCall.setValue(value);
         callOobCall.setBalance(callerAccount.getBalance().toUnsignedBigInteger());
@@ -302,11 +302,11 @@ public class OobOperation extends ModuleOperation {
     final OpCode opCode = getOpCode(frame);
     final long argsOffset =
         Words.clampedToLong(
-            opCode.callCanTransferValue()
+            opCode.callHasValueArgument()
                 ? hub.messageFrame().getStackItem(3)
                 : hub.messageFrame().getStackItem(2));
-    final int cdsIndex = opCode.callCanTransferValue() ? 4 : 3;
-    final int returnAtCapacityIndex = opCode.callCanTransferValue() ? 6 : 5;
+    final int cdsIndex = opCode.callHasValueArgument() ? 4 : 3;
+    final int returnAtCapacityIndex = opCode.callHasValueArgument() ? 6 : 5;
 
     BigInteger calleeGas = BigInteger.ZERO;
     if (oobCall instanceof PrecompileCommonOobCall) {

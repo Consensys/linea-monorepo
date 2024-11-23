@@ -18,9 +18,9 @@ package net.consensys.linea.zktracer.module.hub.section.call;
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.*;
+import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
-import static net.consensys.linea.zktracer.types.Conversions.bytesToInt;
 import static org.hyperledger.besu.datatypes.Address.*;
 
 import java.util.Map;
@@ -32,9 +32,9 @@ import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Factories;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.defer.ContextEntryDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ContextExitDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ContextReEntryDefer;
-import net.consensys.linea.zktracer.module.hub.defer.ImmediateContextEntryDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostOpcodeDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
@@ -50,6 +50,8 @@ import net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFra
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.*;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
+import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.runtime.callstack.CallDataInfo;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.MemorySpan;
@@ -58,13 +60,29 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
+/**
+ * A {@link CallSection} first detects exceptional CALL-type instructions. Exceptional CALL's are
+ * easily dealt with and require no post-processing.
+ *
+ * <p>Unexceptional CALL-type instructions, including aborted ones, <b>always</b> require some
+ * degree of post-processing. For one, they are <b>all</b> rollback sensitive as it pertains to
+ * value transfers and warmth. As such everything gets scheduled for post rollback.
+ *
+ * <p>We also need to schedule unexceptional {@link CallSection}'s for post-transaction resolution.
+ * Indeed, the following must always be performed, in that order, at transaction end:
+ *
+ * <p>- append the precompile subsection (if applicable)
+ *
+ * <p>- append the final context fragment
+ */
 public class CallSection extends TraceSection
     implements PostOpcodeDefer,
-        ImmediateContextEntryDefer,
+        ContextEntryDefer,
         ContextExitDefer,
         ContextReEntryDefer,
         PostRollbackDefer,
@@ -95,7 +113,10 @@ public class CallSection extends TraceSection
   // last row
   @Setter private ContextFragment finalContextFragment;
 
+  private Address callerAddress;
+  private Address calleeAddress;
   private Bytes rawCalleeAddress;
+  final ImcFragment firstImcFragment;
 
   // Just before the CALL Opcode
   private AccountSnapshot preOpcodeCallerSnapshot;
@@ -113,8 +134,7 @@ public class CallSection extends TraceSection
   private AccountSnapshot reEntryCallerSnapshot;
   private AccountSnapshot reEntryCalleeSnapshot;
 
-  private boolean selfCallWithNonzeroValueTransfer;
-
+  private final OpCode opCode;
   private Wei value;
 
   private AccountSnapshot postRollbackCalleeSnapshot;
@@ -123,17 +143,20 @@ public class CallSection extends TraceSection
   public StpCall stpCall;
   private PrecompileSubsection precompileSubsection;
 
-  @Getter private MemorySpan callProvidedReturnDataTargetSpan;
+  @Getter private MemorySpan returnAtMemorySpan;
+  @Getter private CallDataInfo callDataInfo;
 
   public CallSection(Hub hub, MessageFrame frame) {
     super(hub, maxNumberOfLines(hub));
+
+    opCode = hub.opCode();
 
     final short exceptions = hub.pch().exceptions();
 
     // row i + 1
     final ContextFragment currentContextFragment = ContextFragment.readCurrentContextData(hub);
     // row i + 2
-    final ImcFragment firstImcFragment = ImcFragment.empty(hub);
+    firstImcFragment = ImcFragment.empty(hub);
 
     this.addStackAndFragments(hub, scenarioFragment, currentContextFragment, firstImcFragment);
 
@@ -166,11 +189,11 @@ public class CallSection extends TraceSection
             hubStamp()));
 
     final CallFrame currentFrame = hub.currentFrame();
-    final Address callerAddress = currentFrame.frame().getRecipientAddress();
-    preOpcodeCallerSnapshot = canonical(hub, callerAddress);
+    callerAddress = frame.getRecipientAddress();
+    rawCalleeAddress = frame.getStackItem(1);
+    calleeAddress = Address.extract(EWord.of(rawCalleeAddress));
 
-    rawCalleeAddress = currentFrame.frame().getStackItem(1);
-    final Address calleeAddress = Address.extract(EWord.of(rawCalleeAddress)); // TODO check this
+    preOpcodeCallerSnapshot = canonical(hub, callerAddress);
     preOpcodeCalleeSnapshot = canonical(hub, calleeAddress);
 
     // OOGX case
@@ -183,12 +206,16 @@ public class CallSection extends TraceSection
     checkArgument(Exceptions.none(exceptions));
     currentFrame.childSpanningSection(this);
 
-    final boolean callCanTransferValue = currentFrame.opCode().callCanTransferValue();
-    callProvidedReturnDataTargetSpan =
-        returnDataMemorySpan(currentFrame.frame(), callCanTransferValue);
+    final boolean callHasValueArgument = currentFrame.opCode().callHasValueArgument();
+
+    // the call data span and ``return at'' spans are only required once the CALL is unexceptional
+    returnAtMemorySpan = returnAtMemorySpan(frame, callHasValueArgument);
+    callDataInfo =
+        new CallDataInfo(
+            frame, callDataSpan(frame, callHasValueArgument), currentFrame.contextNumber());
 
     value =
-        callCanTransferValue
+        callHasValueArgument
             ? Wei.of(currentFrame.frame().getStackItem(2).toUnsignedBigInteger())
             : Wei.ZERO;
 
@@ -201,52 +228,15 @@ public class CallSection extends TraceSection
     hub.defers().scheduleForPostRollback(this, currentFrame);
     hub.defers().scheduleForPostTransaction(this);
 
-    if (aborts) {
-      this.abortingCall(hub);
-      return;
-    }
-
     // The CALL is now unexceptional and un-aborted
-    hub.defers().scheduleForImmediateContextEntry(this);
-    hub.defers().scheduleForContextReEntry(this, currentFrame);
-    final WorldUpdater world = currentFrame.frame().getWorldUpdater();
-
-    if (isPrecompile(calleeAddress)) {
-      precompileAddress = Optional.of(calleeAddress);
-      scenarioFragment.setScenario(CALL_PRC_UNDEFINED);
-      // Account rows for precompile are traced at contextReEntry
-
-      precompileSubsection =
-          ADDRESS_TO_PRECOMPILE.get(preOpcodeCalleeSnapshot.address()).apply(hub, this);
-    } else {
-      Optional.ofNullable(world.get(calleeAddress))
-          .ifPresentOrElse(
-              account -> {
-                scenarioFragment.setScenario(
-                    account.hasCode() ? CALL_SMC_UNDEFINED : CALL_EOA_SUCCESS_WONT_REVERT);
-              },
-              () -> {
-                scenarioFragment.setScenario(CALL_EOA_SUCCESS_WONT_REVERT);
-              });
-
-      // TODO is world == worldUpdater & what happen if get doesn't work ?
-      //  doesn't work ?
-      // TODO: write a test where the recipient of the call does not exist in the state
-    }
-
-    if (scenarioFragment.getScenario() == CALL_SMC_UNDEFINED) {
-      this.commonValues.payGasPaidOutOfPocket(hub);
-      hub.defers().scheduleForContextReEntry(firstImcFragment, currentFrame);
-      finalContextFragment = ContextFragment.initializeNewExecutionContext(hub);
-      final boolean isSelfCall = callerAddress.equals(calleeAddress);
-      selfCallWithNonzeroValueTransfer = isSelfCall && !value.isZero();
-      hub.romLex().callRomLex(currentFrame.frame());
-      hub.defers().scheduleForContextExit(this, hub.callStack().futureId());
-    }
-
-    if (scenarioFragment.getScenario() == CALL_EOA_SUCCESS_WONT_REVERT) {
-      this.commonValues.collectChildStipend(hub);
-      finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
+    refineUndefinedScenario(hub);
+    CallScenarioFragment.CallScenario scenario = scenarioFragment.getScenario();
+    switch (scenario) {
+      case CALL_ABORT_WONT_REVERT -> abortingCall(hub);
+      case CALL_EOA_UNDEFINED -> eoaProcessing(hub);
+      case CALL_PRC_UNDEFINED -> prcProcessing(hub);
+      case CALL_SMC_UNDEFINED -> smcProcessing(hub, frame);
+      default -> throw new RuntimeException("Illegal CALL scenario");
     }
   }
 
@@ -285,7 +275,7 @@ public class CallSection extends TraceSection
   }
 
   private void abortingCall(Hub hub) {
-    scenarioFragment.setScenario(CALL_ABORT_WONT_REVERT);
+
     postOpcodeCallerSnapshot = preOpcodeCallerSnapshot.deepCopy();
     postOpcodeCalleeSnapshot = preOpcodeCalleeSnapshot.deepCopy().turnOnWarmth();
     final Factories factories = hub.factories();
@@ -312,6 +302,74 @@ public class CallSection extends TraceSection
     commonValues.collectChildStipend(hub);
   }
 
+  /**
+   * Sets the scenario to the relevant undefined variant, i.e. either
+   *
+   * <p>- {@link
+   * net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario#CALL_PRC_UNDEFINED}
+   *
+   * <p>- {@link
+   * net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario#CALL_SMC_UNDEFINED}
+   *
+   * <p>- {@link
+   * net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario#CALL_EOA_UNDEFINED}
+   *
+   * <p>depending on the address.
+   *
+   * @param hub
+   */
+  private void refineUndefinedScenario(Hub hub) {
+
+    final boolean aborts = hub.pch().abortingConditions().any();
+    if (aborts) {
+      scenarioFragment.setScenario(CALL_ABORT_WONT_REVERT);
+      return;
+    }
+
+    final WorldUpdater world = hub.currentFrame().frame().getWorldUpdater();
+    if (isPrecompile(calleeAddress)) {
+      precompileAddress = Optional.of(calleeAddress);
+      scenarioFragment.setScenario(CALL_PRC_UNDEFINED);
+
+      precompileSubsection =
+          ADDRESS_TO_PRECOMPILE.get(preOpcodeCalleeSnapshot.address()).apply(hub, this);
+    } else {
+      Optional.ofNullable(world.get(calleeAddress))
+          .ifPresentOrElse(
+              account -> {
+                scenarioFragment.setScenario(
+                    account.hasCode() ? CALL_SMC_UNDEFINED : CALL_EOA_UNDEFINED);
+              },
+              () -> {
+                scenarioFragment.setScenario(CALL_EOA_UNDEFINED);
+              });
+    }
+  }
+
+  private void eoaProcessing(Hub hub) {
+    hub.defers().scheduleForContextReEntry(this, hub.currentFrame());
+    commonValues.collectChildStipend(hub);
+    finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
+  }
+
+  private void smcProcessing(Hub hub, MessageFrame frame) {
+    final CallFrame currentFrame = hub.currentFrame();
+    hub.defers().scheduleForContextEntry(this);
+    hub.defers().scheduleForContextExit(this, hub.callStack().futureId());
+    hub.defers().scheduleForContextReEntry(this, currentFrame);
+
+    hub.defers().scheduleForContextReEntry(firstImcFragment, currentFrame);
+
+    this.commonValues.payGasPaidOutOfPocket(hub);
+    finalContextFragment = ContextFragment.initializeNewExecutionContext(hub);
+    hub.romLex().callRomLex(frame);
+  }
+
+  private void prcProcessing(Hub hub) {
+    hub.defers().scheduleForContextEntry(this);
+    hub.defers().scheduleForContextReEntry(this, hub.currentFrame());
+  }
+
   @Override
   public void resolvePostExecution(
       Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
@@ -321,53 +379,50 @@ public class CallSection extends TraceSection
 
   @Override
   public void resolveUponContextEntry(Hub hub) {
-    postOpcodeCallerSnapshot = preOpcodeCallerSnapshot.deepCopy().decrementBalanceBy(value);
-    postOpcodeCalleeSnapshot =
-        preOpcodeCalleeSnapshot.deepCopy().incrementBalanceBy(value).turnOnWarmth();
 
-    switch (scenarioFragment.getScenario()) {
-      case CALL_SMC_UNDEFINED -> {
-        if (selfCallWithNonzeroValueTransfer) {
-          // In case of a self-call that transfers value, the balance of the caller
-          // is decremented by the value transferred. This becomes the initial state
-          // of the callee, which is then credited by that value. This can happen
-          // only for the SMC case.
-          preOpcodeCalleeSnapshot = postOpcodeCallerSnapshot;
-          postOpcodeCalleeSnapshot = preOpcodeCallerSnapshot;
-        }
+    CallScenarioFragment.CallScenario scenario = scenarioFragment.getScenario();
+    checkState(scenario == CALL_SMC_UNDEFINED | scenario == CALL_PRC_UNDEFINED);
 
-        final Factories factories = hub.factories();
-        final AccountFragment firstCallerAccountFragment =
-            factories
-                .accountFragment()
-                .make(
-                    preOpcodeCallerSnapshot,
-                    postOpcodeCallerSnapshot,
-                    DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+    postOpcodeCallerSnapshot = preOpcodeCallerSnapshot.deepCopy();
+    postOpcodeCalleeSnapshot = preOpcodeCalleeSnapshot.deepCopy().turnOnWarmth();
 
-        final AccountFragment firstCalleeAccountFragment =
-            factories
-                .accountFragment()
-                .makeWithTrm(
-                    preOpcodeCalleeSnapshot,
-                    postOpcodeCalleeSnapshot,
-                    rawCalleeAddress,
-                    DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
-
-        firstCalleeAccountFragment.requiresRomlex(true);
-
-        this.addFragments(firstCallerAccountFragment, firstCalleeAccountFragment);
-      }
-
-      case CALL_PRC_UNDEFINED -> {}
-
-      case CALL_EOA_SUCCESS_WONT_REVERT -> {
-        // Account rows for EOA calls are traced at contextReEntry
-        return;
-      }
-
-      default -> throw new IllegalArgumentException("Should be in one of the three scenario above");
+    if (opCode == CALL) {
+      postOpcodeCallerSnapshot.decrementBalanceBy(value);
+      postOpcodeCalleeSnapshot.incrementBalanceBy(value);
     }
+
+    // we may be doing more stuff here later
+    if (scenarioFragment.getScenario() == CALL_PRC_UNDEFINED) {
+      return;
+    }
+
+    if (isNonzeroValueSelfCall()) {
+      checkState(scenarioFragment.getScenario() == CALL_SMC_UNDEFINED);
+      preOpcodeCalleeSnapshot = postOpcodeCallerSnapshot;
+      postOpcodeCalleeSnapshot = preOpcodeCallerSnapshot;
+    }
+
+    final Factories factories = hub.factories();
+    final AccountFragment firstCallerAccountFragment =
+        factories
+            .accountFragment()
+            .make(
+                preOpcodeCallerSnapshot,
+                postOpcodeCallerSnapshot,
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+
+    final AccountFragment firstCalleeAccountFragment =
+        factories
+            .accountFragment()
+            .makeWithTrm(
+                preOpcodeCalleeSnapshot,
+                postOpcodeCalleeSnapshot,
+                rawCalleeAddress,
+                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
+
+    firstCalleeAccountFragment.requiresRomlex(true);
+
+    this.addFragments(firstCallerAccountFragment, firstCalleeAccountFragment);
   }
 
   /** Resolution happens as the child context is about to terminate. */
@@ -388,11 +443,13 @@ public class CallSection extends TraceSection
     // if the call is acted upon i.e. if the call is un-exceptional and un-aborted
     final boolean successBit = bytesToBoolean(hub.messageFrame().getStackItem(0));
 
-    reEntryCallerSnapshot = canonical(hub, preOpcodeCallerSnapshot.address());
-    reEntryCalleeSnapshot = canonical(hub, preOpcodeCalleeSnapshot.address());
+    reEntryCallerSnapshot = canonical(hub, callerAddress);
+    reEntryCalleeSnapshot = canonical(hub, calleeAddress);
 
     switch (scenarioFragment.getScenario()) {
-      case CALL_EOA_SUCCESS_WONT_REVERT -> {
+      case CALL_EOA_UNDEFINED -> {
+        checkState(successBit);
+        scenarioFragment.setScenario(CALL_EOA_SUCCESS_WONT_REVERT);
         emptyCodeFirstCoupleOfAccountFragments(hub);
       }
 
@@ -403,6 +460,11 @@ public class CallSection extends TraceSection
           scenarioFragment.setScenario(CALL_PRC_FAILURE);
         }
         emptyCodeFirstCoupleOfAccountFragments(hub);
+
+        CallFrame prcFrame = hub.callStack().getById(frame.childFramesId().getLast());
+        finalContextFragment =
+            ContextFragment.updateReturnData(
+                hub, prcFrame.contextNumber(), prcFrame.outputDataSpan());
       }
 
       case CALL_SMC_UNDEFINED -> {
@@ -413,10 +475,19 @@ public class CallSection extends TraceSection
           return;
         }
 
+        AccountSnapshot beforeFailureCallerSnapshot =
+            postOpcodeCallerSnapshot.deepCopy().setDeploymentInfo(hub);
+        AccountSnapshot afterFailureCallerSnapshot =
+            preOpcodeCallerSnapshot.deepCopy().setDeploymentInfo(hub);
+        AccountSnapshot beforeFailureCalleeSnapshot =
+            postOpcodeCalleeSnapshot.deepCopy().setDeploymentInfo(hub);
+        AccountSnapshot afterFailureCalleeSnapshot =
+            preOpcodeCalleeSnapshot.deepCopy().setDeploymentInfo(hub).turnOnWarmth();
+
         // CALL_SMC_FAILURE_XXX case
         scenarioFragment.setScenario(CALL_SMC_FAILURE_WONT_REVERT);
 
-        if (selfCallWithNonzeroValueTransfer) {
+        if (isNonzeroValueSelfCall()) {
           childContextExitCallerSnapshot.decrementBalanceBy(value);
           reEntryCalleeSnapshot.decrementBalanceBy(value);
         }
@@ -429,8 +500,8 @@ public class CallSection extends TraceSection
             hub.factories()
                 .accountFragment()
                 .make(
-                    childContextExitCallerSnapshot,
-                    reEntryCallerSnapshot,
+                    beforeFailureCallerSnapshot,
+                    afterFailureCallerSnapshot,
                     DomSubStampsSubFragment.revertsWithChildDomSubStamps(
                         this.hubStamp(), childContextRevertStamp, 2));
 
@@ -438,8 +509,8 @@ public class CallSection extends TraceSection
             hub.factories()
                 .accountFragment()
                 .make(
-                    childContextExitCalleeSnapshot,
-                    reEntryCalleeSnapshot,
+                    beforeFailureCalleeSnapshot,
+                    afterFailureCalleeSnapshot,
                     DomSubStampsSubFragment.revertsWithChildDomSubStamps(
                         this.hubStamp(), childContextRevertStamp, 3));
 
@@ -453,11 +524,8 @@ public class CallSection extends TraceSection
   @Override
   public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
     final Factories factory = hub.factories();
-    postRollbackCalleeSnapshot = canonical(hub, preOpcodeCalleeSnapshot.address());
-    postRollbackCallerSnapshot = canonical(hub, preOpcodeCallerSnapshot.address());
-
-    final boolean selfCall =
-        postOpcodeCalleeSnapshot.address().equals(postOpcodeCallerSnapshot.address());
+    postRollbackCalleeSnapshot = canonical(hub, calleeAddress);
+    postRollbackCallerSnapshot = canonical(hub, callerAddress);
 
     final CallScenarioFragment.CallScenario callScenario = scenarioFragment.getScenario();
     switch (callScenario) {
@@ -488,7 +556,7 @@ public class CallSection extends TraceSection
             "Call scenario = %s, HUB_STAMP = %s, successBit = %s",
             scenarioFragment.getScenario(), this.hubStamp(), isSuccessful));
 
-    if (scenario.isPrecompileScenario()) {
+    if (scenario.isPrcCallScenario()) {
       this.addFragments(precompileSubsection.fragments());
     }
 
@@ -516,12 +584,12 @@ public class CallSection extends TraceSection
     scenarioFragment.setScenario(CALL_EOA_SUCCESS_WILL_REVERT);
 
     final AccountSnapshot callerRightBeforeRollBack =
-        postOpcodeCallerSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCallerSnapshot);
+        reEntryCallerSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCallerSnapshot);
     final AccountSnapshot callerRightAfterRollBack =
         preOpcodeCallerSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCallerSnapshot);
 
     final AccountSnapshot calleeRightBeforeRollBack =
-        postOpcodeCalleeSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCalleeSnapshot);
+        reEntryCalleeSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCalleeSnapshot);
     final AccountSnapshot calleeRightAfterRollBack =
         preOpcodeCalleeSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCalleeSnapshot);
 
@@ -623,15 +691,56 @@ public class CallSection extends TraceSection
     this.addFragments(firstCallerAccountFragment, firstCalleeAccountFragment);
   }
 
-  private MemorySpan returnDataMemorySpan(MessageFrame currentFrame, boolean callCanTransferValue) {
-    final int returnDataOffset =
-        callCanTransferValue
-            ? bytesToInt(currentFrame.getStackItem(5))
-            : bytesToInt(currentFrame.getStackItem(4));
-    final int returnDataLength =
-        callCanTransferValue
-            ? bytesToInt(currentFrame.getStackItem(6))
-            : bytesToInt(currentFrame.getStackItem(5));
-    return MemorySpan.fromStartLength(returnDataOffset, returnDataLength);
+  private MemorySpan callDataSpan(MessageFrame frame, boolean callHasValueArgument) {
+    final long callDataSize =
+        callHasValueArgument
+            ? Words.clampedToLong(frame.getStackItem(4))
+            : Words.clampedToLong(frame.getStackItem(3));
+
+    if (callDataSize == 0) {
+      return MemorySpan.empty();
+    }
+
+    final long returnAtOffset =
+        callHasValueArgument
+            ? Words.clampedToLong(frame.getStackItem(3))
+            : Words.clampedToLong(frame.getStackItem(2));
+    return MemorySpan.fromStartLength(returnAtOffset, callDataSize);
+  }
+
+  /**
+   * The {@link #returnAtMemorySpan(MessageFrame, boolean)} method implements the spec logic for
+   * defining the ``returnAtMemorySpan`` of a CALL. The main point being: if its capacity is zero we
+   * require that {@link MemorySpan} to be {@link MemorySpan#empty()}.
+   *
+   * @param frame
+   * @param callHasValueArgument
+   * @return
+   */
+  private MemorySpan returnAtMemorySpan(MessageFrame frame, boolean callHasValueArgument) {
+    final long returnAtCapacity =
+        callHasValueArgument
+            ? Words.clampedToLong(frame.getStackItem(6))
+            : Words.clampedToLong(frame.getStackItem(5));
+
+    if (returnAtCapacity == 0) {
+      return MemorySpan.empty();
+    }
+
+    final long returnAtOffset =
+        callHasValueArgument
+            ? Words.clampedToLong(frame.getStackItem(5))
+            : Words.clampedToLong(frame.getStackItem(4));
+    return MemorySpan.fromStartLength(returnAtOffset, returnAtCapacity);
+  }
+
+  private boolean isSelfCall() {
+    checkState(scenarioFragment.getScenario().isIndefiniteSmcCallScenario());
+    return calleeAddress.equals(callerAddress);
+  }
+
+  private boolean isNonzeroValueSelfCall() {
+    checkState(scenarioFragment.getScenario().isIndefiniteSmcCallScenario());
+    return isSelfCall() && !value.isZero();
   }
 }

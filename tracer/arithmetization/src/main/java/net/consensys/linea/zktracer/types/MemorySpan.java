@@ -22,8 +22,11 @@ package net.consensys.linea.zktracer.types;
  * @param length the region length
  */
 public record MemorySpan(long offset, long length) {
+
+  private static final MemorySpan EMPTY = new MemorySpan(0, 0);
+
   public static MemorySpan empty() {
-    return new MemorySpan(0, 0);
+    return EMPTY;
   }
 
   /**

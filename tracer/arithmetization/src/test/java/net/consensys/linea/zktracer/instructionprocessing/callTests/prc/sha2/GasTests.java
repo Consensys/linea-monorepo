@@ -12,10 +12,11 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.instructionprocessing.callTests;
+package net.consensys.linea.zktracer.instructionprocessing.callTests.prc.sha2;
 
-import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
-import static net.consensys.linea.zktracer.opcode.OpCode.*;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendCall;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendRevert;
+import static net.consensys.linea.zktracer.opcode.OpCode.RETURNDATASIZE;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
@@ -24,17 +25,25 @@ import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-public class DoubleCall {
+/**
+ * All of the tests below have in common that they attempt to hash 0x00...00 ∈ B_321 with SHA256.
+ * The test vectors vary accoring to
+ *
+ * <p>- the kind of CALL instruction used
+ *
+ * <p>- whether the operation is reverted or not (they all transfer value)
+ */
+public class GasTests {
 
-  /** Same selfDestructorAddress */
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void doubleCallToSameAddressWontRevert(OpCode callOpCode) {
+  void sha2ProvidedWithLittleToNoneGasTest(OpCode callOpCode) {
+
     BytecodeCompiler program = BytecodeCompiler.newProgram();
-    appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
-    appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress), 2, 0, 0, 0, 0);
+    appendCall(program, callOpCode, 0, Address.SHA256, 1_000_000, 0, 32 * 10 + 1, 7, 32);
+    program.op(RETURNDATASIZE); // should return 0
 
     BytecodeRunner.of(program).run();
   }
@@ -43,24 +52,12 @@ public class DoubleCall {
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void doubleCallToSameAddressWillRevert(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
-    appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
-    appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress), 2, 0, 0, 0, 0);
-    program.op(REVERT); // N.B. The stack contains the two success bits
+  void sha2ProvidedWithLittleToNoneGasWillRevertTest(OpCode callOpCode) {
 
-    BytecodeRunner.of(program).run();
-  }
-
-  /** Different selfDestructorAddress */
-  @ParameterizedTest
-  @EnumSource(
-      value = OpCode.class,
-      names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void doubleCallTodifferentAddressesWontRevert(OpCode callOpCode) {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
-    appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
-    appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress2), 2, 0, 0, 0, 0);
+    appendCall(program, callOpCode, 0, Address.SHA256, 1_000_000, 0, 32 * 10, 7, 32);
+    program.op(RETURNDATASIZE); // should return 0
+    appendRevert(program, 1, 34);
 
     BytecodeRunner.of(program).run();
   }
@@ -69,12 +66,24 @@ public class DoubleCall {
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
-  void doubleCallTodifferentAddressesWillRevert(OpCode callOpCode) {
+  void sha2ProvidedWithPlentifulGasTest(OpCode callOpCode) {
+
     BytecodeCompiler program = BytecodeCompiler.newProgram();
-    appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
-    appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress2), 2, 0, 0, 0, 0);
-    program.push(13).push(71); // the stack already contains two items but why not ...
-    program.op(REVERT);
+    appendCall(program, callOpCode, 1_000_000, Address.SHA256, 1_000_000, 0, 32 * 10, 7, 32);
+    program.op(RETURNDATASIZE); // should return 32
+    BytecodeRunner.of(program).run();
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = OpCode.class,
+      names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
+  void sha2ProvidedWithPlentifulGasWillRevertTest(OpCode callOpCode) {
+
+    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    appendCall(program, callOpCode, 1_000_000, Address.SHA256, 1_000_000, 0, 32 * 10, 7, 32);
+    program.op(RETURNDATASIZE); // should return 32
+    appendRevert(program, 1, 34);
 
     BytecodeRunner.of(program).run();
   }

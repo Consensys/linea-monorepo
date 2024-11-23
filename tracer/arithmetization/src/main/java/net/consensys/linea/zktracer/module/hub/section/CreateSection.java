@@ -62,10 +62,14 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class CreateSection extends TraceSection
     implements PostOpcodeDefer,
-        ImmediateContextEntryDefer,
+        ContextEntryDefer,
         PostRollbackDefer,
         ContextReEntryDefer,
         PostTransactionDefer {
+
+  private Address creatorAddress;
+  private Address createeAddress;
+  final ImcFragment imcFragment;
 
   // Just before create
   private AccountSnapshot preOpcodeCreatorSnapshot;
@@ -91,7 +95,7 @@ public class CreateSection extends TraceSection
 
   // TODO: according to our preliminary conclusion in issue #866
   //  CREATE's that raise a failure condition _do spawn a child context_.
-  public CreateSection(Hub hub) {
+  public CreateSection(Hub hub, MessageFrame frame) {
     super(hub, maxNumberOfLines(hub.pch().exceptions(), hub.pch().abortingConditions()));
     final short exceptions = hub.pch().exceptions();
 
@@ -106,7 +110,7 @@ public class CreateSection extends TraceSection
     this.addFragment(currentContextFragment);
 
     // row: i + 2
-    final ImcFragment imcFragment = ImcFragment.empty(hub);
+    imcFragment = ImcFragment.empty(hub);
     this.addFragment(imcFragment);
 
     // STATICX case
@@ -148,12 +152,11 @@ public class CreateSection extends TraceSection
     checkArgument(oobCall.isAbortingCondition() == aborts.any());
 
     final CallFrame callFrame = hub.currentFrame();
-    final MessageFrame messageFrame = hub.messageFrame();
 
-    final Address creatorAddress = callFrame.accountAddress();
+    creatorAddress = frame.getRecipientAddress();
     preOpcodeCreatorSnapshot = AccountSnapshot.canonical(hub, creatorAddress);
 
-    final Address createeAddress = getDeploymentAddress(messageFrame);
+    createeAddress = getDeploymentAddress(frame);
     preOpcodeCreateeSnapshot = AccountSnapshot.canonical(hub, createeAddress);
 
     if (aborts.any()) {
@@ -165,14 +168,14 @@ public class CreateSection extends TraceSection
 
     // The CREATE(2) is now unexceptional and unaborted
     checkArgument(aborts.none());
-    hub.defers().scheduleForImmediateContextEntry(this); // when we add the two account fragments
+    hub.defers().scheduleForContextEntry(this); // when we add the two account fragments
     hub.defers().scheduleForPostRollback(this, hub.currentFrame()); // in case of Rollback
     hub.defers().scheduleForPostTransaction(this); // when we add the last context row
 
     rlpAddrSubFragment = RlpAddrSubFragment.makeFragment(hub, createeAddress);
 
     final Optional<Account> deploymentAccount =
-        Optional.ofNullable(messageFrame.getWorldUpdater().get(createeAddress));
+        Optional.ofNullable(frame.getWorldUpdater().get(createeAddress));
     final boolean createdAddressHasNonZeroNonce =
         deploymentAccount.map(a -> a.getNonce() != 0).orElse(false);
     final boolean createdAddressHasNonEmptyCode =
@@ -181,12 +184,12 @@ public class CreateSection extends TraceSection
     final boolean failedCreate = createdAddressHasNonZeroNonce || createdAddressHasNonEmptyCode;
     final boolean emptyInitCode = hub.transients().op().initCodeSegment().isEmpty();
 
-    final long offset = Words.clampedToLong(messageFrame.getStackItem(1));
-    final long size = Words.clampedToLong(messageFrame.getStackItem(2));
+    final long offset = Words.clampedToLong(frame.getStackItem(1));
+    final long size = Words.clampedToLong(frame.getStackItem(2));
 
     // Trigger MMU & SHAKIRA to hash the (non-empty) InitCode of CREATE2 - even for failed CREATE2
     if (hub.opCode() == CREATE2 && !emptyInitCode) {
-      final Bytes create2InitCode = messageFrame.shadowReadMemory(offset, size);
+      final Bytes create2InitCode = frame.shadowReadMemory(offset, size);
 
       final MmuCall mmuCall = MmuCall.create2(hub, create2InitCode, failedCreate);
       imcFragment.callMmu(mmuCall);
@@ -198,7 +201,7 @@ public class CreateSection extends TraceSection
       writeHashInfoResult(shakiraDataOperation.result());
     }
 
-    value = failedCreate ? Wei.ZERO : Wei.of(UInt256.fromBytes(messageFrame.getStackItem(0)));
+    value = failedCreate ? Wei.ZERO : Wei.of(UInt256.fromBytes(frame.getStackItem(0)));
 
     if (failedCreate) {
       finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
@@ -226,11 +229,11 @@ public class CreateSection extends TraceSection
         .scheduleForContextReEntry(this, callFrame); // To get the success bit of the CREATE(2)
 
     requiresRomLex = true;
-    hub.romLex().callRomLex(messageFrame);
+    hub.romLex().callRomLex(frame);
     hub.transients()
         .conflation()
         .deploymentInfo()
-        .newDeploymentWithExecutionAt(createeAddress, messageFrame.shadowReadMemory(offset, size));
+        .newDeploymentWithExecutionAt(createeAddress, frame.shadowReadMemory(offset, size));
 
     // Note: the case CREATE2 has been set before, we need to do it even in the failure case
     if (hub.opCode() == CREATE) {

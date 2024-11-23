@@ -36,6 +36,7 @@ public class CallScenarioFragment implements TraceFragment {
     CALL_ABORT_WILL_REVERT,
     CALL_ABORT_WONT_REVERT,
     // Externally owned account call scenarios
+    CALL_EOA_UNDEFINED,
     CALL_EOA_SUCCESS_WILL_REVERT,
     CALL_EOA_SUCCESS_WONT_REVERT,
     // Smart contract call scenarios:
@@ -50,10 +51,33 @@ public class CallScenarioFragment implements TraceFragment {
     CALL_PRC_SUCCESS_WILL_REVERT,
     CALL_PRC_SUCCESS_WONT_REVERT;
 
-    public boolean isPrecompileScenario() {
+    public boolean isIndefinitePrcCallScenario() {
+      return this == CALL_PRC_UNDEFINED || isPrcCallScenario();
+    }
+
+    public boolean isPrcCallScenario() {
       return this == CALL_PRC_FAILURE
           || this == CALL_PRC_SUCCESS_WILL_REVERT
           || this == CALL_PRC_SUCCESS_WONT_REVERT;
+    }
+
+    public boolean isIndefiniteSmcCallScenario() {
+      return this == CALL_SMC_UNDEFINED || isSmcCallScenario();
+    }
+
+    public boolean isSmcCallScenario() {
+      return this == CALL_SMC_FAILURE_WILL_REVERT
+          || this == CALL_SMC_FAILURE_WONT_REVERT
+          || this == CALL_SMC_SUCCESS_WILL_REVERT
+          || this == CALL_SMC_SUCCESS_WONT_REVERT;
+    }
+
+    public boolean isIndefiniteEoaCallScenario() {
+      return this == CALL_EOA_UNDEFINED || isEoaCallScenario();
+    }
+
+    public boolean isEoaCallScenario() {
+      return this == CALL_EOA_SUCCESS_WILL_REVERT || this == CALL_EOA_SUCCESS_WONT_REVERT;
     }
 
     public boolean isAbortingScenario() {
@@ -61,7 +85,10 @@ public class CallScenarioFragment implements TraceFragment {
     }
 
     public boolean noLongerUndefined() {
-      return this != UNDEFINED && this != CALL_PRC_UNDEFINED && this != CALL_SMC_UNDEFINED;
+      return this != UNDEFINED
+          && this != CALL_PRC_UNDEFINED
+          && this != CALL_SMC_UNDEFINED
+          && this != CALL_EOA_UNDEFINED;
     }
   }
 

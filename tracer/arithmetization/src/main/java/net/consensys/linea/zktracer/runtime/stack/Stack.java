@@ -278,7 +278,7 @@ public class Stack {
     Bytes val5 = getStack(frame, 4);
     Bytes val6 = getStack(frame, 5);
 
-    boolean callCanTransferValue = currentOpcodeData.mnemonic().callCanTransferValue();
+    boolean callCanTransferValue = currentOpcodeData.mnemonic().callHasValueArgument();
 
     if (callCanTransferValue) {
       Bytes val7 = getStack(frame, 6);

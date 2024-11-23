@@ -15,14 +15,23 @@
 
 package net.consensys.linea.zktracer.runtime.callstack;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.types.MemorySpan;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Accessors(fluent = true)
 @Getter
 public class CallDataInfo {
+  private static final CallDataInfo EMPTY = new CallDataInfo(Bytes.EMPTY, 0, 0, 0);
+
+  public static CallDataInfo empty() {
+    return EMPTY;
+  }
+
   private final Bytes data;
   private final MemorySpan memorySpan;
   private final long callDataContextNumber;
@@ -32,8 +41,18 @@ public class CallDataInfo {
       final long callDataOffset,
       final long callDataSize,
       final long callDataContextNumber) {
+
+    checkArgument(data.size() == callDataSize);
     this.data = data;
     this.memorySpan = new MemorySpan(callDataOffset, callDataSize);
     this.callDataContextNumber = callDataContextNumber;
+  }
+
+  public CallDataInfo(
+      final MessageFrame frame, final MemorySpan span, final int callDataContextNumber) {
+    this.callDataContextNumber = callDataContextNumber;
+    this.memorySpan = span;
+    this.data =
+        (span.isEmpty()) ? Bytes.EMPTY : frame.shadowReadMemory(span.offset(), span.length());
   }
 }

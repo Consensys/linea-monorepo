@@ -14,8 +14,8 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.callTests.smc.monoOpCodeTargets;
 
-import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.simpleCall;
-import static net.consensys.linea.zktracer.instructionprocessing.callTests.smc.Utilities.*;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendCall;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
 import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
 
@@ -29,7 +29,7 @@ public class ImmediateInvalid {
   void zeroValueTransferToInvalid() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
-    simpleCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 0, 0, 0, 0, 0);
+    appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 0, 0, 0, 0, 0);
 
     BytecodeRunner.of(program.compile()).run(accounts);
   }
@@ -38,7 +38,7 @@ public class ImmediateInvalid {
   void nonZeroValueTransferToInvalidContract() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
-    simpleCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 1, 0, 0, 0, 0);
+    appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 1, 0, 0, 0, 0);
 
     BytecodeRunner.of(program.compile()).run(accounts);
   }
@@ -47,7 +47,7 @@ public class ImmediateInvalid {
   void nonZeroValueTransferToInvalidContractRevertingTransaction() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
-    simpleCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 1, 0, 0, 0, 0);
+    appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 1, 0, 0, 0, 0);
 
     // we use the 1 on the stack after this successful CALL as the revert message size
     program.push(0).op(REVERT);
