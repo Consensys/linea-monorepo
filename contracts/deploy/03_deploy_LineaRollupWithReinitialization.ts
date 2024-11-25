@@ -26,7 +26,7 @@ import {
 } from "contracts/common/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const fallbackOperatorAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+  const fallbackOperatorAddress = getRequiredEnvVar("LINEA_ROLLUP_FALLBACK_OPERATOR");
   const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
 
   const newRoles = [
