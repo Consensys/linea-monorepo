@@ -397,7 +397,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
     }
   }
 
-  public static MmuCall partialReturnDataCopyForShaTwoAndRipemd(
+  public static MmuCall partialCopyOfReturnDataForShaTwoAndRipemd(
       final Hub hub, PrecompileSubsection subsection) {
 
     final PrecompileScenarioFragment.PrecompileFlag flag =
@@ -417,7 +417,8 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
         .referenceSize(subsection.returnAtCapacity());
   }
 
-  public static MmuCall forIdentityExtractCallData(final Hub hub, PrecompileSubsection subsection) {
+  public static MmuCall callDataExtractionForIdentity(
+      final Hub hub, PrecompileSubsection subsection) {
 
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(hub.currentFrame().contextNumber()) // called at ContextReEntry
@@ -429,8 +430,11 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
         .referenceSize(subsection.callDataSize());
   }
 
-  public static MmuCall forIdentityReturnData(
+  public static MmuCall partialCopyOfReturnDataForIdentity(
       final Hub hub, final PrecompileSubsection subsection) {
+
+    checkState(subsection.callDataSize() == subsection.returnDataSize());
+    checkState(subsection.returnDataOffset() == 0);
 
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(subsection.exoModuleOperationId())
@@ -438,8 +442,8 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(subsection.rawCallerMemory()))
         .sourceOffset(EWord.ZERO)
+        .size(subsection.returnDataSize())
         .referenceOffset(subsection.returnAtOffset())
-        .size(subsection.returnAtCapacity())
         .referenceSize(subsection.returnAtCapacity());
   }
 
@@ -458,7 +462,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
         .phase(PHASE_ECADD_DATA);
   }
 
-  public static MmuCall fullReturnDataTransferForEcadd(
+  public static MmuCall fullTransferOfReturnDataForEcadd(
       final Hub hub, PrecompileSubsection subsection, boolean successBit) {
     return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
         .sourceId(subsection.exoModuleOperationId())
