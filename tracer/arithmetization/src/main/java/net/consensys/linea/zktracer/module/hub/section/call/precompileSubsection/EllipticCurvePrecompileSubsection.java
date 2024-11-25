@@ -138,7 +138,7 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
         }
         case PRC_ECADD -> {
           if (nonemptyCallData) {
-            secondMmuCall = MmuCall.fullReturnDataTransferForEcadd(hub, this, successBitMmuCall);
+            secondMmuCall = MmuCall.fullTransferOfReturnDataForEcadd(hub, this, successBitMmuCall);
           }
           if (callerMayReceiveReturnData) {
             thirdMmuCall = MmuCall.partialCopyOfReturnDataForEcadd(hub, this);

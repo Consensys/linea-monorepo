@@ -92,7 +92,7 @@ public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
     // provided a nonempty return data target
     if (!getReturnAtRange().isEmpty()) {
       final MmuCall partialReturnDataCopy =
-          MmuCall.partialReturnDataCopyForShaTwoAndRipemd(hub, this);
+          MmuCall.partialCopyOfReturnDataForShaTwoAndRipemd(hub, this);
       thirdImcFragment.callMmu(partialReturnDataCopy);
     }
   }

@@ -16,8 +16,8 @@
 package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forIdentityExtractCallData;
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forIdentityReturnData;
+import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.callDataExtractionForIdentity;
+import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.partialCopyOfReturnDataForIdentity;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.OOB_INST_IDENTITY;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_HUB;
 
@@ -57,14 +57,14 @@ public class IdentitySubsection extends PrecompileSubsection {
 
     final boolean extractCallData = callSuccess && !getCallDataRange().isEmpty();
     if (extractCallData) {
-      final MmuCall mmuCall = forIdentityExtractCallData(hub, this);
+      final MmuCall mmuCall = callDataExtractionForIdentity(hub, this);
       firstImcFragment.callMmu(mmuCall);
     }
 
     final ImcFragment secondImcFragment = ImcFragment.empty(hub);
     fragments().add(secondImcFragment);
     if (extractCallData && !getReturnAtRange().isEmpty()) {
-      final MmuCall mmuCall = forIdentityReturnData(hub, this);
+      final MmuCall mmuCall = partialCopyOfReturnDataForIdentity(hub, this);
       secondImcFragment.callMmu(mmuCall);
     }
   }

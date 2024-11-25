@@ -200,6 +200,14 @@ public class PrecompileSubsection
     return getReturnAtRange().size();
   }
 
+  public long returnDataOffset() {
+    return returnDataRange().offset();
+  }
+
+  public long returnDataSize() {
+    return returnDataRange().size();
+  }
+
   public Bytes rawCallerMemory() {
     return callSection.getCallDataRange().getRawData();
   }
