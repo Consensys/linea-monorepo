@@ -65,12 +65,12 @@ public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
     }
 
     // NOTE: we trigger the SHAKIRA module for nonempty call data only
-    if (!callData.isEmpty()) {
+    if (!getCallDataRange().isEmpty()) {
       final ShakiraDataOperation shakiraCall =
           new ShakiraDataOperation(
               callSection.hubStamp(),
               this.flag() == PRC_SHA2_256 ? SHA256 : RIPEMD,
-              callData(),
+              extractCallData(),
               callFrame.frame().getReturnData());
       hub.shakiraData().call(shakiraCall);
 
@@ -90,7 +90,7 @@ public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
 
     // the partial copy of return data happens only if the caller context
     // provided a nonempty return data target
-    if (!parentReturnDataTarget.isEmpty()) {
+    if (!getReturnAtRange().isEmpty()) {
       final MmuCall partialReturnDataCopy =
           MmuCall.partialReturnDataCopyForShaTwoAndRipemd(hub, this);
       thirdImcFragment.callMmu(partialReturnDataCopy);

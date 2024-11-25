@@ -15,16 +15,16 @@
 
 package net.consensys.linea.zktracer.module.hub.precompiles;
 
-import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.Util.rightPaddedSlice;
 import static net.consensys.linea.zktracer.module.txndata.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.types.Conversions.safeLongToInt;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.Util;
-import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.types.EWord;
+import net.consensys.linea.zktracer.types.MemoryRange;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -36,43 +36,43 @@ public class ModexpMetadata {
   public static final int MBS_MIN_OFFSET = 0x40;
   public static final int BASE_MIN_OFFSET = 0x60;
 
-  private final Bytes callData;
-  private final EWord rawLeadingWord;
+  private final MemoryRange callDataRange;
   @Setter private Bytes rawResult;
 
-  public ModexpMetadata(final Hub hub, final Bytes callData) {
-    this.callData = callData;
-    int exponentOffsetInCallData = BASE_MIN_OFFSET + bbsInt();
-    this.rawLeadingWord =
-        EWord.of(hub.messageFrame().shadowReadMemory(exponentOffsetInCallData, WORD_SIZE));
+  public ModexpMetadata(MemoryRange callDataRange) {
+    this.callDataRange = callDataRange;
+  }
+
+  public Bytes callData() {
+    return callDataRange.extract();
   }
 
   public boolean extractBbs() {
-    return callData.size() > BBS_MIN_OFFSET;
+    return callData().size() > BBS_MIN_OFFSET;
   }
 
   public boolean extractEbs() {
-    return callData.size() > EBS_MIN_OFFSET;
+    return callData().size() > EBS_MIN_OFFSET;
   }
 
   public boolean extractMbs() {
-    return callData.size() > MBS_MIN_OFFSET;
+    return callData().size() > MBS_MIN_OFFSET;
   }
 
   public Bytes rawBbs() {
-    return Util.slice(callData, BBS_MIN_OFFSET, WORD_SIZE);
+    return rightPaddedSlice(callData(), BBS_MIN_OFFSET, WORD_SIZE);
   }
 
   public Bytes rawEbs() {
-    return Util.slice(callData, EBS_MIN_OFFSET, WORD_SIZE);
+    return rightPaddedSlice(callData(), EBS_MIN_OFFSET, WORD_SIZE);
   }
 
   public Bytes rawMbs() {
-    return Util.slice(callData, MBS_MIN_OFFSET, WORD_SIZE);
+    return rightPaddedSlice(callData(), MBS_MIN_OFFSET, WORD_SIZE);
   }
 
   private int bbsShift() {
-    return EBS_MIN_OFFSET - Math.min(EBS_MIN_OFFSET, callData.size());
+    return EBS_MIN_OFFSET - Math.min(EBS_MIN_OFFSET, callData().size());
   }
 
   public EWord bbs() {
@@ -81,7 +81,7 @@ public class ModexpMetadata {
 
   private int ebsShift() {
     return extractEbs()
-        ? EBS_MIN_OFFSET - Math.min(EBS_MIN_OFFSET, callData.size() - EBS_MIN_OFFSET)
+        ? EBS_MIN_OFFSET - Math.min(EBS_MIN_OFFSET, callData().size() - EBS_MIN_OFFSET)
         : 0;
   }
 
@@ -91,7 +91,7 @@ public class ModexpMetadata {
 
   private int mbsShift() {
     return extractMbs()
-        ? EBS_MIN_OFFSET - Math.min(EBS_MIN_OFFSET, callData.size() - MBS_MIN_OFFSET)
+        ? EBS_MIN_OFFSET - Math.min(EBS_MIN_OFFSET, callData().size() - MBS_MIN_OFFSET)
         : 0;
   }
 
@@ -112,17 +112,11 @@ public class ModexpMetadata {
   }
 
   public boolean loadRawLeadingWord() {
-    return callData.size() > BASE_MIN_OFFSET + bbsInt() && !ebs().isZero();
-  }
-
-  public EWord rawLeadingWord() {
-    // TODO: is this precaution useless / dangerous ?
-    checkArgument(loadRawLeadingWord());
-    return this.rawLeadingWord;
+    return callData().size() > BASE_MIN_OFFSET + bbsInt() && !ebs().isZero();
   }
 
   public boolean extractModulus() {
-    return (callData.size() > BASE_MIN_OFFSET + bbsInt() + ebsInt()) && !mbs().isZero();
+    return (callData().size() > BASE_MIN_OFFSET + bbsInt() + ebsInt()) && !mbs().isZero();
   }
 
   public boolean extractBase() {
@@ -136,9 +130,9 @@ public class ModexpMetadata {
   public Bytes base() {
     Bytes unpadded = Bytes.EMPTY;
     final int firstOffset = BASE_MIN_OFFSET;
-    if (callData.size() > firstOffset) {
-      final int sizeToExtract = Math.min(bbsInt(), callData.size() - firstOffset);
-      unpadded = callData.slice(BASE_MIN_OFFSET, sizeToExtract);
+    if (callData().size() > firstOffset) {
+      final int sizeToExtract = Math.min(bbsInt(), callData().size() - firstOffset);
+      unpadded = callData().slice(BASE_MIN_OFFSET, sizeToExtract);
     }
     return rightPadTo(unpadded, bbsInt());
   }
@@ -146,9 +140,9 @@ public class ModexpMetadata {
   public Bytes exp() {
     Bytes unpadded = Bytes.EMPTY;
     final int firstOffset = BASE_MIN_OFFSET + bbsInt();
-    if (callData.size() > firstOffset) {
-      final int sizeToExtract = Math.min(ebsInt(), callData.size() - firstOffset);
-      unpadded = callData.slice(BASE_MIN_OFFSET + bbsInt(), sizeToExtract);
+    if (callData().size() > firstOffset) {
+      final int sizeToExtract = Math.min(ebsInt(), callData().size() - firstOffset);
+      unpadded = callData().slice(BASE_MIN_OFFSET + bbsInt(), sizeToExtract);
     }
     return rightPadTo(unpadded, ebsInt());
   }
@@ -156,14 +150,22 @@ public class ModexpMetadata {
   public Bytes mod() {
     Bytes unpadded = Bytes.EMPTY;
     final int firstOffset = BASE_MIN_OFFSET + bbsInt() + ebsInt();
-    if (callData.size() > firstOffset) {
-      final int sizeToExtract = Math.min(mbsInt(), callData.size() - firstOffset);
-      unpadded = callData.slice(firstOffset, sizeToExtract);
+    if (callData().size() > firstOffset) {
+      final int sizeToExtract = Math.min(mbsInt(), callData().size() - firstOffset);
+      unpadded = callData().slice(firstOffset, sizeToExtract);
     }
     return rightPadTo(unpadded, (int) Words.clampedToLong(mbs()));
   }
 
   public boolean mbsNonZero() {
     return !mbs().isZero();
+  }
+
+  public EWord rawLeadingWord() {
+    return EWord.of(
+        rightPaddedSlice(
+            callDataRange.getRawData(),
+            safeLongToInt(callDataRange.offset()) + BASE_MIN_OFFSET + bbsInt(),
+            WORD_SIZE));
   }
 }

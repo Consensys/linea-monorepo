@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.scenario;
 
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.*;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.*;
+
 import java.util.Map;
 
 import lombok.AllArgsConstructor;
@@ -144,8 +147,7 @@ public class PrecompileScenarioFragment implements TraceFragment {
   }
 
   public boolean isPrcFailure() {
-    return scenario == PrecompileScenario.PRC_FAILURE_KNOWN_TO_HUB
-        || scenario == PrecompileScenario.PRC_FAILURE_KNOWN_TO_RAM;
+    return scenario == PRC_FAILURE_KNOWN_TO_HUB || scenario == PRC_FAILURE_KNOWN_TO_RAM;
   }
 
   @Override
@@ -154,25 +156,25 @@ public class PrecompileScenarioFragment implements TraceFragment {
         .peekAtScenario(true)
         // // Precompile scenarios
         ////////////////////
-        .pScenarioPrcEcrecover(flag == PrecompileFlag.PRC_ECRECOVER)
-        .pScenarioPrcSha2256(flag == PrecompileFlag.PRC_SHA2_256)
-        .pScenarioPrcRipemd160(flag == PrecompileFlag.PRC_RIPEMD_160)
-        .pScenarioPrcIdentity(flag == PrecompileFlag.PRC_IDENTITY)
-        .pScenarioPrcModexp(flag == PrecompileFlag.PRC_MODEXP)
-        .pScenarioPrcEcadd(flag == PrecompileFlag.PRC_ECADD)
-        .pScenarioPrcEcmul(flag == PrecompileFlag.PRC_ECMUL)
-        .pScenarioPrcEcpairing(flag == PrecompileFlag.PRC_ECPAIRING)
-        .pScenarioPrcBlake2F(flag == PrecompileFlag.PRC_BLAKE2F)
-        .pScenarioPrcSuccessCallerWillRevert(scenario == PrecompileScenario.PRC_SUCCESS_WILL_REVERT)
-        .pScenarioPrcSuccessCallerWontRevert(scenario == PrecompileScenario.PRC_SUCCESS_WONT_REVERT)
-        .pScenarioPrcFailureKnownToHub(scenario == PrecompileScenario.PRC_FAILURE_KNOWN_TO_HUB)
-        .pScenarioPrcFailureKnownToRam(scenario == PrecompileScenario.PRC_FAILURE_KNOWN_TO_RAM)
+        .pScenarioPrcEcrecover(flag == PRC_ECRECOVER)
+        .pScenarioPrcSha2256(flag == PRC_SHA2_256)
+        .pScenarioPrcRipemd160(flag == PRC_RIPEMD_160)
+        .pScenarioPrcIdentity(flag == PRC_IDENTITY)
+        .pScenarioPrcModexp(flag == PRC_MODEXP)
+        .pScenarioPrcEcadd(flag == PRC_ECADD)
+        .pScenarioPrcEcmul(flag == PRC_ECMUL)
+        .pScenarioPrcEcpairing(flag == PRC_ECPAIRING)
+        .pScenarioPrcBlake2F(flag == PRC_BLAKE2F)
+        .pScenarioPrcSuccessCallerWillRevert(scenario == PRC_SUCCESS_WILL_REVERT)
+        .pScenarioPrcSuccessCallerWontRevert(scenario == PRC_SUCCESS_WONT_REVERT)
+        .pScenarioPrcFailureKnownToHub(scenario == PRC_FAILURE_KNOWN_TO_HUB)
+        .pScenarioPrcFailureKnownToRam(scenario == PRC_FAILURE_KNOWN_TO_RAM)
         .pScenarioPrcCallerGas(precompileSubSection.callerGas())
         .pScenarioPrcCalleeGas(precompileSubSection.calleeGas())
         .pScenarioPrcReturnGas(precompileSubSection.returnGas())
-        .pScenarioPrcCdo(precompileSubSection.callDataMemorySpan().offset())
-        .pScenarioPrcCds(precompileSubSection.callDataMemorySpan().length())
-        .pScenarioPrcRao(precompileSubSection.parentReturnDataTarget().offset())
-        .pScenarioPrcRac(precompileSubSection.parentReturnDataTarget().length());
+        .pScenarioPrcCdo(precompileSubSection.callDataOffset())
+        .pScenarioPrcCds(precompileSubSection.callDataSize())
+        .pScenarioPrcRao(precompileSubSection.returnAtOffset())
+        .pScenarioPrcRac(precompileSubSection.returnAtCapacity());
   }
 }

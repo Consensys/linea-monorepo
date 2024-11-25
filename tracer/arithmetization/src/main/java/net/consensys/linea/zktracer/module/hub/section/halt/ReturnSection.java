@@ -42,6 +42,8 @@ import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.Bytecode;
+import net.consensys.linea.zktracer.types.MemoryRange;
+import net.consensys.linea.zktracer.types.Range;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -68,11 +70,10 @@ public class ReturnSection extends TraceSection
   boolean successfulMessageCallExpected = false; // for sanity check
   boolean successfulDeploymentExpected = false; // for sanity check
 
-  public ReturnSection(Hub hub) {
+  public ReturnSection(Hub hub, MessageFrame messageFrame) {
     super(hub, maxNumberOfRows(hub));
 
     final CallFrame callFrame = hub.currentFrame();
-    final MessageFrame messageFrame = callFrame.frame();
 
     returnFromMessageCall = callFrame.isMessageCall();
     returnFromDeployment = callFrame.isDeployment();
@@ -162,12 +163,18 @@ public class ReturnSection extends TraceSection
       final boolean messageCallReturnTouchesRam =
           !callFrame.isRoot()
               && nontrivialMmuOperation // [size ≠ 0] ∧ ¬MXPX
-              && !callFrame.returnDataTargetInCaller().isEmpty(); // [r@c ≠ 0]
+              && !callFrame.returnAtRange().isEmpty(); // [r@c ≠ 0]
 
       returnScenarioFragment.setScenario(
           messageCallReturnTouchesRam
               ? RETURN_FROM_MESSAGE_CALL_WILL_TOUCH_RAM
               : RETURN_FROM_MESSAGE_CALL_WONT_TOUCH_RAM);
+
+      final Bytes offset = messageFrame.getStackItem(0);
+      final Bytes size = messageFrame.getStackItem(1);
+      callFrame.outputDataRange(
+          new MemoryRange(
+              callFrame.contextNumber(), Range.fromOffsetAndSize(offset, size), messageFrame));
 
       if (messageCallReturnTouchesRam) {
         final MmuCall returnFromMessageCall = MmuCall.returnFromMessageCall(hub);
@@ -175,10 +182,7 @@ public class ReturnSection extends TraceSection
       }
 
       final ContextFragment updateCallerReturnData =
-          ContextFragment.executionProvidesReturnData(
-              hub,
-              hub.callStack().getById(callFrame.parentId()).contextNumber(),
-              callFrame.contextNumber());
+          ContextFragment.executionProvidesReturnData(hub);
       this.addFragment(updateCallerReturnData);
 
       return;
@@ -193,7 +197,7 @@ public class ReturnSection extends TraceSection
       //  end for stuff that happens after the root returns ...
       hub.defers()
           .scheduleForContextReEntry(
-              this, hub.callStack().parent()); // post deployment account snapshot
+              this, hub.callStack().parentCallFrame()); // post deployment account snapshot
       hub.defers().scheduleForPostRollback(this, callFrame); // undo deployment
       hub.defers().scheduleForPostTransaction(this); // inserting the final context row;
 

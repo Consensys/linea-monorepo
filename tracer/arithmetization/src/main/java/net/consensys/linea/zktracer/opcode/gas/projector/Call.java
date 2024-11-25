@@ -19,7 +19,7 @@ import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
-import net.consensys.linea.zktracer.types.MemorySpan;
+import net.consensys.linea.zktracer.types.Range;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
@@ -30,14 +30,14 @@ import org.hyperledger.besu.evm.internal.Words;
 public class Call extends GasProjection {
   private final MessageFrame frame;
   private final long stipend;
-  private final MemorySpan inputData;
-  private final MemorySpan returnData;
+  private final Range inputData;
+  private final Range returnData;
   private final Wei value;
   private final Account recipient;
   private final Address to;
 
   public static Call invalid() {
-    return new Call(null, 0, MemorySpan.empty(), MemorySpan.empty(), Wei.ZERO, null, null);
+    return new Call(null, 0, Range.empty(), Range.empty(), Wei.ZERO, null, null);
   }
 
   boolean isInvalid() {
@@ -51,8 +51,8 @@ public class Call extends GasProjection {
     }
 
     return Math.max(
-        gc.memoryExpansionGasCost(frame, inputData.offset(), inputData.length()),
-        gc.memoryExpansionGasCost(frame, returnData.offset(), returnData.length()));
+        gc.memoryExpansionGasCost(frame, inputData.offset(), inputData.size()),
+        gc.memoryExpansionGasCost(frame, returnData.offset(), returnData.size()));
   }
 
   @Override
@@ -62,8 +62,8 @@ public class Call extends GasProjection {
     }
 
     return Math.max(
-        inputData.isEmpty() ? 0 : Words.clampedAdd(inputData.offset(), inputData.length()),
-        returnData.isEmpty() ? 0 : Words.clampedAdd(returnData.offset(), returnData.length()));
+        inputData.isEmpty() ? 0 : Words.clampedAdd(inputData.offset(), inputData.size()),
+        returnData.isEmpty() ? 0 : Words.clampedAdd(returnData.offset(), returnData.size()));
   }
 
   @Override

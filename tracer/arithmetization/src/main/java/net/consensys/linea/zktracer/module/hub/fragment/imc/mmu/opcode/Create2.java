@@ -28,7 +28,7 @@ import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
 import net.consensys.linea.zktracer.module.romlex.RomLexDefer;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
-import net.consensys.linea.zktracer.types.MemorySpan;
+import net.consensys.linea.zktracer.types.Range;
 import org.apache.tuweni.bytes.Bytes;
 
 /**
@@ -45,20 +45,19 @@ public class Create2 extends MmuCall implements RomLexDefer {
     this.hub.romLex().createDefers().register(this);
 
     final CallFrame currentFrame = hub.currentFrame();
-    final EWord sourceOffset = EWord.of(currentFrame.frame().getStackItem(1));
-    final long size = clampedToLong(currentFrame.frame().getStackItem(2));
+    final Bytes sourceOffset = currentFrame.frame().getStackItem(1);
+    final Bytes size = currentFrame.frame().getStackItem(2);
 
     this.sourceId(currentFrame.contextNumber())
         .sourceRamBytes(
             Optional.of(
                 extractContiguousLimbsFromMemory(
-                    currentFrame.frame(),
-                    MemorySpan.fromStartLength(clampedToLong(sourceOffset), size))))
+                    currentFrame.frame(), Range.fromOffsetAndSize(sourceOffset, size))))
         .auxId(newIdentifierFromStamp(hub.stamp()))
         .exoBytes(Optional.of(create2initCode))
-        .sourceOffset(sourceOffset)
-        .size(size)
-        .referenceSize(size)
+        .sourceOffset(EWord.of(sourceOffset))
+        .size(clampedToLong(size))
+        .referenceSize(clampedToLong(size))
         .setKec();
 
     if (!failedCreate) {

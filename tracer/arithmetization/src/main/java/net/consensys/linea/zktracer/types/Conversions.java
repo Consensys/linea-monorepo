@@ -187,4 +187,18 @@ public class Conversions {
   public static int bytesToInt(Bytes bytes) {
     return bytes.trimLeadingZeros().toInt();
   }
+
+  /**
+   * This method expects a "small-ish" long value and returns the corresponding int value.
+   *
+   * @param value
+   * @return
+   * @throws ArithmeticException
+   */
+  public static int safeLongToInt(long value) throws ArithmeticException {
+    if (value < 0 || value > Integer.MAX_VALUE) {
+      throw new ArithmeticException(value + " cannot be cast to int without changing its value.");
+    }
+    return (int) value;
+  }
 }

@@ -241,7 +241,7 @@ public class CreateSection extends TraceSection
       imcFragment.callMmu(mmuCall);
     }
 
-    finalContextFragment = ContextFragment.initializeNewExecutionContext(hub);
+    finalContextFragment = ContextFragment.initializeExecutionContext(hub);
   }
 
   @Override

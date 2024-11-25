@@ -136,9 +136,7 @@ public class SelfdestructSection extends TraceSection
     }
 
     // Unexceptional case
-    finalUnexceptionalContextFragment =
-        ContextFragment.executionProvidesEmptyReturnData(
-            hub, hub.callStack().currentCallFrame().contextNumber());
+    finalUnexceptionalContextFragment = ContextFragment.executionProvidesEmptyReturnData(hub);
 
     final Map<EphemeralAccount, List<AttemptedSelfDestruct>> unexceptionalSelfDestructMap =
         hub.txStack().current().getUnexceptionalSelfDestructMap();
@@ -231,8 +229,7 @@ public class SelfdestructSection extends TraceSection
     this.addFragment(recipientUndoingAccountFragment);
 
     ContextFragment squashParentContextReturnData =
-        ContextFragment.executionProvidesEmptyReturnData(
-            hub, hub.callStack().getParentContextNumberById(id));
+        ContextFragment.executionProvidesEmptyReturnData(hub);
     this.addFragment(squashParentContextReturnData);
 
     selfDestructWasReverted = true;

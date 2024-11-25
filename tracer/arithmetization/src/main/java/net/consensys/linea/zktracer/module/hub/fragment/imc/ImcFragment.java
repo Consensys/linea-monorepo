@@ -150,7 +150,7 @@ public class ImcFragment implements TraceFragment, ContextReEntryDefer {
   // TODO: The most natural thing would be to implement resolveAtContextEntry instead.
   @Override
   public void resolveAtContextReEntry(Hub hub, CallFrame frame) {
-    childFrame = hub.callStack().getById(frame.childFramesId().getLast());
+    childFrame = hub.callStack().getById(frame.childFrameIds().getLast());
   }
 
   /**
