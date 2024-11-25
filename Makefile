@@ -160,9 +160,11 @@ restart-shomei:
 		rm -rf tmp/local/shomei/*
 		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml up zkbesu-shomei shomei -d
 
+fresh-start-all: COMPOSE_PROFILES:="l1,l2"
+fresh-start-all: L1_CONTRACT_VERSION:=5
 fresh-start-all:
 		make clean-environment
-		make start-all
+		make start-all L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
 fresh-start-all-traces-v2: COMPOSE_PROFILES:="l1,l2"
 fresh-start-all-traces-v2: L1_CONTRACT_VERSION:=5
