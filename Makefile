@@ -172,7 +172,8 @@ fresh-start-all-traces-v2:
 		make clean-environment
 		$(MAKE) start-all-traces-v2 L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
-start-all: L1_CONTRACT_VERSION:=5 COMPOSE_PROFILES:=l1,l2
+start-all: COMPOSE_PROFILES:=l1,l2
+start-all: L1_CONTRACT_VERSION:=5
 start-all:
 		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 		make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
