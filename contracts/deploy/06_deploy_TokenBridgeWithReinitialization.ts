@@ -32,6 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   ];
 
   const newRoleAddresses = generateRoleAssignments(newRoles, securityCouncilAddress, []);
+  console.log("New role addresses", newRoleAddresses);
 
   const { deployments } = hre;
   const contractName = "TokenBridge";

@@ -26,7 +26,7 @@ import {
 } from "contracts/common/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+  const fallbackOperatorAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
   const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
 
   const newRoles = [
@@ -45,6 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   ];
 
   const newRoleAddresses = generateRoleAssignments(newRoles, securityCouncilAddress, []);
+  console.log("New role addresses", newRoleAddresses);
 
   const { deployments } = hre;
   const contractName = "LineaRollup";
@@ -83,7 +84,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           newRoleAddresses,
           LINEA_ROLLUP_PAUSE_TYPES_ROLES,
           LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-          multiCallAddress,
+          fallbackOperatorAddress,
         ]),
       ],
     ),
