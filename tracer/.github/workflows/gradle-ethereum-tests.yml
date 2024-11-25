@@ -94,3 +94,13 @@ jobs:
           path: | 
             reference-tests/build/reports/tests/**/*
             tmp/local/*
+
+      - name: Failure Notification
+        if: ${{ failure() || cancelled() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
+          payload: |
+             name: "Daily Reference Tests"
+             status: "${{ job.status }}"
