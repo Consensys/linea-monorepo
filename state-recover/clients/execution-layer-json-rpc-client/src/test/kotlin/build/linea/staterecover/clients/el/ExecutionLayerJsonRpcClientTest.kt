@@ -3,6 +3,7 @@ package build.linea.staterecover.clients.el
 import build.linea.staterecover.BlockL1RecoveredData
 import build.linea.staterecover.TransactionL1RecoveredData
 import build.linea.staterecover.clients.ExecutionLayerClient
+import build.linea.staterecover.clients.StateRecoveryStatus
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.containing
 import com.github.tomakehurst.wiremock.client.WireMock.post
@@ -107,7 +108,7 @@ class ExecutionLayerJsonRpcClientTest {
   }
 
   @Test
-  fun `lineaEngineImportBlocksFromBlob`() {
+  fun `lineaImportBlocksFromBlob`() {
     replyRequestWith(
       200,
       """
@@ -118,8 +119,7 @@ class ExecutionLayerJsonRpcClientTest {
       }
       """.trimIndent()
     )
-    println(Instant.parse("2024-07-01T11:22:33Z").epochSeconds)
-    println(Instant.parse("2024-07-01T11:22:33Z").epochSeconds.toString(16))
+
     val block1 = BlockL1RecoveredData(
       blockNumber = 0xa001u,
       blockHash = "0xa011".decodeHex(),
@@ -207,6 +207,87 @@ class ExecutionLayerJsonRpcClientTest {
             "value": "0x7b"
         }]
       }]
+      }"""
+      )
+  }
+
+  @Test
+  fun `lineaGetStateRecoveryStatus_enabledStatus`() {
+    replyRequestWith(
+      200,
+      """{"jsonrpc": "2.0", "id": 1, "result": { "recoveryStartBlockNumber": "0x5",  "headBlockNumber": "0xa"}}"""
+    )
+
+    assertThat(client.lineaGetStateRecoveryStatus().get())
+      .isEqualTo(
+        StateRecoveryStatus(
+          headBlockNumber = 0xa.toULong(),
+          stateRecoverStartBlockNumber = 0x5.toULong()
+        )
+      )
+
+    val requestJson = wiremock.serveEvents.serveEvents.first().request.bodyAsString
+    assertThatJson(requestJson)
+      .isEqualTo(
+        """{
+        "jsonrpc":"2.0",
+        "id":"${'$'}{json-unit.any-number}",
+        "method":"linea_getStateRecoveryStatus",
+        "params":[]
+      }"""
+      )
+  }
+
+  @Test
+  fun `lineaGetStateRecoveryStatus_disabledStatus`() {
+    replyRequestWith(
+      200,
+      """{"jsonrpc": "2.0", "id": 1, "result": { "recoveryStartBlockNumber": null,  "headBlockNumber": "0xa"}}"""
+    )
+
+    assertThat(client.lineaGetStateRecoveryStatus().get())
+      .isEqualTo(
+        StateRecoveryStatus(
+          headBlockNumber = 0xa.toULong(),
+          stateRecoverStartBlockNumber = null
+        )
+      )
+
+    val requestJson = wiremock.serveEvents.serveEvents.first().request.bodyAsString
+    assertThatJson(requestJson)
+      .isEqualTo(
+        """{
+        "jsonrpc":"2.0",
+        "id":"${'$'}{json-unit.any-number}",
+        "method":"linea_getStateRecoveryStatus",
+        "params":[]
+      }"""
+      )
+  }
+
+  @Test
+  fun `lineaEnableStateRecoveryStatus`() {
+    replyRequestWith(
+      200,
+      """{"jsonrpc": "2.0", "id": 1, "result": { "recoveryStartBlockNumber": "0xff",  "headBlockNumber": "0xa"}}"""
+    )
+
+    assertThat(client.lineaEnableStateRecovery(stateRecoverStartBlockNumber = 5UL).get())
+      .isEqualTo(
+        StateRecoveryStatus(
+          headBlockNumber = 0xa.toULong(),
+          stateRecoverStartBlockNumber = 0xff.toULong()
+        )
+      )
+
+    val requestJson = wiremock.serveEvents.serveEvents.first().request.bodyAsString
+    assertThatJson(requestJson)
+      .isEqualTo(
+        """{
+        "jsonrpc":"2.0",
+        "id":"${'$'}{json-unit.any-number}",
+        "method":"linea_enableStateRecovery",
+        "params":["0x5"]
       }"""
       )
   }

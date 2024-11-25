@@ -5,6 +5,7 @@ import build.linea.s11n.jackson.InstantAsHexNumberSerializer
 import build.linea.s11n.jackson.ethApiObjectMapper
 import build.linea.staterecover.BlockL1RecoveredData
 import build.linea.staterecover.clients.ExecutionLayerClient
+import build.linea.staterecover.clients.StateRecoveryStatus
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
@@ -61,7 +62,35 @@ class ExecutionLayerJsonRpcClient internal constructor(
       )
   }
 
+  override fun lineaGetStateRecoveryStatus(): SafeFuture<StateRecoveryStatus> {
+    return rpcClient
+      .makeRequest(
+        method = "linea_getStateRecoveryStatus",
+        params = emptyList<Unit>(),
+        resultMapper = ::stateRecoveryStatusFromJsonNode
+      )
+  }
+
+  override fun lineaEnableStateRecovery(stateRecoverStartBlockNumber: ULong): SafeFuture<StateRecoveryStatus> {
+    return rpcClient
+      .makeRequest(
+        method = "linea_enableStateRecovery",
+        params = listOf(stateRecoverStartBlockNumber),
+        resultMapper = ::stateRecoveryStatusFromJsonNode
+      )
+  }
+
   companion object {
+    fun stateRecoveryStatusFromJsonNode(result: Any?): StateRecoveryStatus {
+      @Suppress("UNCHECKED_CAST")
+      result as JsonNode
+      return StateRecoveryStatus(
+        headBlockNumber = ULong.fromHexString(result.get("headBlockNumber").asText()),
+        stateRecoverStartBlockNumber = result.get("recoveryStartBlockNumber")
+          ?.let { if (it.isNull) null else ULong.fromHexString(it.asText()) }
+      )
+    }
+
     fun create(
       rpcClientFactory: JsonRpcClientFactory,
       endpoint: URI,
