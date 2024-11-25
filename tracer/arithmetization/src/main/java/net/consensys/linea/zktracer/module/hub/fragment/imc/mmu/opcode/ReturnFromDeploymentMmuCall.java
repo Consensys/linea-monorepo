@@ -30,7 +30,7 @@ import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
-import net.consensys.linea.zktracer.types.MemorySpan;
+import net.consensys.linea.zktracer.types.Range;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
@@ -61,19 +61,18 @@ public class ReturnFromDeploymentMmuCall extends MmuCall {
 
     hashResult = shakiraDataOperation.result();
 
-    final EWord sourceOffset = EWord.of(currentFrame.frame().getStackItem(0));
-    final long size = clampedToLong(currentFrame.frame().getStackItem(1));
+    final Bytes sourceOffset = currentFrame.frame().getStackItem(0);
+    final Bytes size = currentFrame.frame().getStackItem(1);
 
     this.sourceId(currentFrame.contextNumber())
         .sourceRamBytes(
             Optional.of(
                 extractContiguousLimbsFromMemory(
-                    currentFrame.frame(),
-                    MemorySpan.fromStartLength(clampedToLong(sourceOffset), size))))
+                    currentFrame.frame(), Range.fromOffsetAndSize(sourceOffset, size))))
         .auxId(newIdentifierFromStamp(hub.stamp()))
-        .sourceOffset(sourceOffset)
-        .size(size)
-        .referenceSize(size)
+        .sourceOffset(EWord.of(sourceOffset))
+        .size(clampedToLong(size))
+        .referenceSize(clampedToLong(size))
         .setKec()
         .setRom();
   }

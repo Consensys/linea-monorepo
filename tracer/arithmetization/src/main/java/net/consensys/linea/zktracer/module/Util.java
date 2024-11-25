@@ -168,25 +168,31 @@ public class Util {
   }
 
   /**
-   * Return the
+   * Extracts {@code size} many bytes from {@code data} starting at {@code offset}. If {@code data}
+   * ``runs out'' it substitutes the missing bytes with 0's.
    *
    * @param size Bytes of
    * @param data, right-padded with 0's if needed, starting from
-   * @param positionStart
+   * @param offset
    */
-  public static Bytes slice(Bytes data, int positionStart, int size) {
+  public static Bytes rightPaddedSlice(Bytes data, int offset, int size) {
+
+    checkArgument(offset >= 0, "Offset must be non-negative");
+    checkArgument(size >= 0, "Size must be non-negative");
 
     final int dataSize = data.size();
-    Bytes output = Bytes.repeat((byte) 0x0, size);
 
-    if (dataSize >= positionStart) {
-      if (dataSize >= (positionStart + size)) {
-        output = data.slice(positionStart, size);
-      } else {
-        final int nbPresentBytes = dataSize - positionStart;
-        output = rightPadTo(data.slice(positionStart, nbPresentBytes), size);
-      }
+    // pure padding
+    if (offset >= dataSize) {
+      return Bytes.repeat((byte) 0x0, size);
     }
-    return output;
+
+    // pure data
+    if ((offset + size) <= dataSize) {
+      return data.slice(offset, size);
+    }
+
+    // data followed by padding
+    return rightPadTo(data.slice(offset, dataSize - offset), size);
   }
 }

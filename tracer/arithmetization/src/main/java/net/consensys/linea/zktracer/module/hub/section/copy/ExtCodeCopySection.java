@@ -45,8 +45,11 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
   final boolean incomingDeploymentStatus;
   final boolean incomingWarmth;
 
-  AccountSnapshot accountBefore;
-  AccountSnapshot accountAfter;
+  AccountSnapshot doingAccountSnapshotBefore;
+  AccountSnapshot doingAccountSnapshotAfter;
+
+  AccountSnapshot undoingAccountSnapshotBefore;
+  AccountSnapshot undoingAccountSnapshotAfter;
 
   public ExtCodeCopySection(Hub hub) {
     // 4 = 1 + 3
@@ -80,7 +83,7 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
 
     final Account foreignAccount = frame.getWorldUpdater().get(address);
 
-    accountBefore =
+    doingAccountSnapshotBefore =
         foreignAccount != null
             ? AccountSnapshot.canonical(hub, address)
             : AccountSnapshot.fromAddress(
@@ -95,7 +98,11 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
       final AccountFragment accountReadingFragment =
           hub.factories()
               .accountFragment()
-              .makeWithTrm(accountBefore, accountBefore, rawAddress, doingDomSubStamps);
+              .makeWithTrm(
+                  doingAccountSnapshotBefore,
+                  doingAccountSnapshotBefore,
+                  rawAddress,
+                  doingDomSubStamps);
 
       this.addFragment(accountReadingFragment);
       return;
@@ -113,17 +120,21 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     // TODO: make sure that hasCode returns false during deployments
     //  in particular: write tests for that scenario
     final boolean foreignAccountHasCode = foreignAccount != null && foreignAccount.hasCode();
-    final boolean triggerCfi = triggerMmu && foreignAccountHasCode;
+    final boolean triggerRomLex = triggerMmu && foreignAccountHasCode;
 
-    accountAfter = accountBefore.deepCopy();
-    accountAfter.turnOnWarmth();
+    doingAccountSnapshotAfter = doingAccountSnapshotBefore.deepCopy();
+    doingAccountSnapshotAfter.turnOnWarmth();
 
     final AccountFragment accountDoingFragment =
         hub.factories()
             .accountFragment()
-            .makeWithTrm(accountBefore, accountAfter, rawAddress, doingDomSubStamps);
-    accountDoingFragment.requiresRomlex(triggerCfi);
-    if (triggerCfi) {
+            .makeWithTrm(
+                doingAccountSnapshotBefore,
+                doingAccountSnapshotAfter,
+                rawAddress,
+                doingDomSubStamps);
+    accountDoingFragment.requiresRomlex(triggerRomLex);
+    if (triggerRomLex) {
       hub.romLex().callRomLex(hub.messageFrame());
     }
     this.addFragment(accountDoingFragment);
@@ -136,7 +147,8 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
   @Override
   public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
 
-    final AccountSnapshot accountPostRollback = AccountSnapshot.canonical(hub, address);
+    undoingAccountSnapshotBefore = doingAccountSnapshotAfter.deepCopy().setDeploymentInfo(hub);
+    undoingAccountSnapshotAfter = doingAccountSnapshotBefore.deepCopy().setDeploymentInfo(hub);
 
     final DomSubStampsSubFragment undoingDomSubStamps =
         DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
@@ -145,7 +157,7 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     final AccountFragment undoingAccountFragment =
         hub.factories()
             .accountFragment()
-            .make(accountAfter, accountPostRollback, undoingDomSubStamps);
+            .make(undoingAccountSnapshotBefore, undoingAccountSnapshotAfter, undoingDomSubStamps);
 
     this.addFragment(undoingAccountFragment);
   }

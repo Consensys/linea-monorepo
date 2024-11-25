@@ -59,6 +59,8 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
   public void resolveAtContextReEntry(Hub hub, CallFrame callFrame) {
     super.resolveAtContextReEntry(hub, callFrame);
 
+    final Bytes returnData = extractReturnData();
+
     // sanity checks
     switch (flag()) {
       case PRC_ECRECOVER -> {
@@ -68,9 +70,10 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
                 ? (returnData == Bytes.EMPTY || returnData.size() == WORD_SIZE)
                 : returnData == Bytes.EMPTY);
       }
-      case PRC_ECPAIRING -> checkArgument(returnData.size() == (callSuccess ? WORD_SIZE : 0));
+      case PRC_ECPAIRING -> checkArgument(
+          returnDataRange.extract().size() == (callSuccess ? WORD_SIZE : 0));
       case PRC_ECADD, PRC_ECMUL -> checkArgument(
-          returnData.size() == (callSuccess ? 2 * WORD_SIZE : 0));
+          returnDataRange.extract().size() == (callSuccess ? 2 * WORD_SIZE : 0));
       default -> throw new IllegalArgumentException("Not an elliptic curve precompile");
     }
 
@@ -89,7 +92,7 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
     }
 
     final MmuCall firstMmuCall;
-    final boolean nonemptyCallData = !callData.isEmpty();
+    final boolean nonemptyCallData = !getCallDataRange().isEmpty();
 
     final boolean successBitMmuCall = flag() == PRC_ECRECOVER ? !returnData.isEmpty() : callSuccess;
 
@@ -110,8 +113,8 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
       hub.ecData.callEcData(
           exoModuleOperationId(),
           flag(),
-          callData(),
-          returnData()); // TODO @Lorenzo @Olivier : verify it's at the right position
+          extractCallData(),
+          returnData); // TODO @Lorenzo @Olivier : verify it's at the right position
     }
 
     final ImcFragment secondImcFragment = ImcFragment.empty(hub);
@@ -123,7 +126,7 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
     MmuCall secondMmuCall = null;
     MmuCall thirdMmuCall = null;
     final boolean producesNonemptyReturnData = !returnData.isEmpty();
-    final boolean callerMayReceiveReturnData = !parentReturnDataTarget.isEmpty();
+    final boolean callerMayReceiveReturnData = !getReturnAtRange().isEmpty();
 
     if (producesNonemptyReturnData) {
       switch (flag()) {

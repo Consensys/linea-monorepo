@@ -51,16 +51,15 @@ import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.*;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.runtime.callstack.CallDataInfo;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
-import net.consensys.linea.zktracer.types.MemorySpan;
+import net.consensys.linea.zktracer.types.MemoryRange;
+import net.consensys.linea.zktracer.types.Range;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -143,8 +142,8 @@ public class CallSection extends TraceSection
   public StpCall stpCall;
   private PrecompileSubsection precompileSubsection;
 
-  @Getter private MemorySpan returnAtMemorySpan;
-  @Getter private CallDataInfo callDataInfo;
+  @Getter private MemoryRange callDataRange;
+  @Getter private MemoryRange returnAtRange;
 
   public CallSection(Hub hub, MessageFrame frame) {
     super(hub, maxNumberOfLines(hub));
@@ -206,16 +205,12 @@ public class CallSection extends TraceSection
     checkArgument(Exceptions.none(exceptions));
     currentFrame.childSpanningSection(this);
 
-    final boolean callHasValueArgument = currentFrame.opCode().callHasValueArgument();
-
     // the call data span and ``return at'' spans are only required once the CALL is unexceptional
-    returnAtMemorySpan = returnAtMemorySpan(frame, callHasValueArgument);
-    callDataInfo =
-        new CallDataInfo(
-            frame, callDataSpan(frame, callHasValueArgument), currentFrame.contextNumber());
+    callDataRange = new MemoryRange(currentFrame.contextNumber(), callDataRange(frame), frame);
+    returnAtRange = new MemoryRange(currentFrame.contextNumber(), returnAtRange(frame), frame);
 
     value =
-        callHasValueArgument
+        opCode.callHasValueArgument()
             ? Wei.of(currentFrame.frame().getStackItem(2).toUnsignedBigInteger())
             : Wei.ZERO;
 
@@ -361,7 +356,7 @@ public class CallSection extends TraceSection
     hub.defers().scheduleForContextReEntry(firstImcFragment, currentFrame);
 
     this.commonValues.payGasPaidOutOfPocket(hub);
-    finalContextFragment = ContextFragment.initializeNewExecutionContext(hub);
+    finalContextFragment = ContextFragment.initializeExecutionContext(hub);
     hub.romLex().callRomLex(frame);
   }
 
@@ -461,10 +456,9 @@ public class CallSection extends TraceSection
         }
         emptyCodeFirstCoupleOfAccountFragments(hub);
 
-        CallFrame prcFrame = hub.callStack().getById(frame.childFramesId().getLast());
         finalContextFragment =
             ContextFragment.updateReturnData(
-                hub, prcFrame.contextNumber(), prcFrame.outputDataSpan());
+                hub, hub.currentFrame(), precompileSubsection.returnDataRange);
       }
 
       case CALL_SMC_UNDEFINED -> {
@@ -492,7 +486,7 @@ public class CallSection extends TraceSection
           reEntryCalleeSnapshot.decrementBalanceBy(value);
         }
 
-        int childId = hub.currentFrame().childFramesId().getLast();
+        int childId = hub.currentFrame().childFrameIds().getLast();
         CallFrame childFrame = hub.callStack().getById(childId);
         int childContextRevertStamp = childFrame.revertStamp();
 
@@ -691,47 +685,22 @@ public class CallSection extends TraceSection
     this.addFragments(firstCallerAccountFragment, firstCalleeAccountFragment);
   }
 
-  private MemorySpan callDataSpan(MessageFrame frame, boolean callHasValueArgument) {
-    final long callDataSize =
-        callHasValueArgument
-            ? Words.clampedToLong(frame.getStackItem(4))
-            : Words.clampedToLong(frame.getStackItem(3));
+  private Range callDataRange(MessageFrame frame) {
+    final Bytes callDataSize =
+        opCode.callHasValueArgument() ? frame.getStackItem(4) : frame.getStackItem(3);
+    final Bytes callDataOffset =
+        opCode.callHasValueArgument() ? frame.getStackItem(3) : frame.getStackItem(2);
 
-    if (callDataSize == 0) {
-      return MemorySpan.empty();
-    }
-
-    final long returnAtOffset =
-        callHasValueArgument
-            ? Words.clampedToLong(frame.getStackItem(3))
-            : Words.clampedToLong(frame.getStackItem(2));
-    return MemorySpan.fromStartLength(returnAtOffset, callDataSize);
+    return Range.fromOffsetAndSize(callDataOffset, callDataSize);
   }
 
-  /**
-   * The {@link #returnAtMemorySpan(MessageFrame, boolean)} method implements the spec logic for
-   * defining the ``returnAtMemorySpan`` of a CALL. The main point being: if its capacity is zero we
-   * require that {@link MemorySpan} to be {@link MemorySpan#empty()}.
-   *
-   * @param frame
-   * @param callHasValueArgument
-   * @return
-   */
-  private MemorySpan returnAtMemorySpan(MessageFrame frame, boolean callHasValueArgument) {
-    final long returnAtCapacity =
-        callHasValueArgument
-            ? Words.clampedToLong(frame.getStackItem(6))
-            : Words.clampedToLong(frame.getStackItem(5));
+  private Range returnAtRange(MessageFrame frame) {
+    final Bytes returnAtCapacity =
+        opCode.callHasValueArgument() ? frame.getStackItem(6) : frame.getStackItem(5);
+    final Bytes returnAtOffset =
+        opCode.callHasValueArgument() ? frame.getStackItem(5) : frame.getStackItem(4);
 
-    if (returnAtCapacity == 0) {
-      return MemorySpan.empty();
-    }
-
-    final long returnAtOffset =
-        callHasValueArgument
-            ? Words.clampedToLong(frame.getStackItem(5))
-            : Words.clampedToLong(frame.getStackItem(4));
-    return MemorySpan.fromStartLength(returnAtOffset, returnAtCapacity);
+    return Range.fromOffsetAndSize(returnAtOffset, returnAtCapacity);
   }
 
   private boolean isSelfCall() {

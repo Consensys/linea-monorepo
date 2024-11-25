@@ -139,7 +139,7 @@ public class TxInitializationSection extends TraceSection {
                 recipientDomSubStamps)
             .requiresRomlex(true));
     this.addFragments(
-        ImcFragment.forTxInit(hub), ContextFragment.initializeNewExecutionContext(hub), txFragment);
+        ImcFragment.forTxInit(hub), ContextFragment.initializeExecutionContext(hub), txFragment);
 
     hub.state.setProcessingPhase(TX_EXEC);
   }

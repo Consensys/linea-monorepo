@@ -24,13 +24,17 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import net.consensys.linea.zktracer.types.MemoryRange;
+import net.consensys.linea.zktracer.types.Range;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class RevertSection extends TraceSection {
 
   final ImcFragment imcFragment;
   MmuCall mmuCall;
 
-  public RevertSection(Hub hub) {
+  public RevertSection(Hub hub, MessageFrame frame) {
     // up to 4 = 1 + 3 rows
     super(hub, (short) 4);
 
@@ -59,24 +63,25 @@ public class RevertSection extends TraceSection {
     /////////////////////
     checkArgument(Exceptions.none(exceptions));
 
+    final CallFrame callFrame = hub.currentFrame();
+    final Bytes offset = frame.getStackItem(0);
+    final Bytes size = frame.getStackItem(1);
+    callFrame.outputDataRange(
+        new MemoryRange(callFrame.contextNumber(), Range.fromOffsetAndSize(offset, size), frame));
+
     final boolean triggerMmu =
         (Exceptions.none(exceptions))
             && !hub.currentFrame().isRoot()
             && mxpCall.mayTriggerNontrivialMmuOperation // i.e. size ≠ 0 ∧ ¬MXPX
-            && !hub.currentFrame().returnDataTargetInCaller().isEmpty();
+            && !hub.currentFrame().returnAtRange().isEmpty();
 
     if (triggerMmu) {
       mmuCall = MmuCall.revert(hub);
       imcFragment.callMmu(mmuCall);
     }
 
-    final CallFrame callFrame = hub.currentFrame();
     final ContextFragment currentContext = ContextFragment.readCurrentContextData(hub);
-    final ContextFragment updateCallerReturnData =
-        ContextFragment.executionProvidesReturnData(
-            hub,
-            hub.callStack().getById(callFrame.parentId()).contextNumber(),
-            callFrame.contextNumber());
+    final ContextFragment updateCallerReturnData = ContextFragment.executionProvidesReturnData(hub);
 
     this.addFragments(currentContext, updateCallerReturnData);
   }
