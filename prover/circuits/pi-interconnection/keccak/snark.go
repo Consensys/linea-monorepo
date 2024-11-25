@@ -2,6 +2,8 @@ package keccak
 
 import (
 	"errors"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/sirupsen/logrus"
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
@@ -101,6 +103,12 @@ func (h *Hasher) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [3
 
 func (h *Hasher) Finalize(c *wizard.WizardVerifierCircuit) error {
 	lanes, isLaneActive, isFirstLaneOfNewHash := h.createColumns()
+
+	if c == nil {
+		logrus.Warn("NO WIZARD PROOF PROVIDED. NOT CHECKING KECCAK HASH RESULTS. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+		return nil
+	}
+
 	expectedLanes := c.GetColumn("Lane")
 	expectedActive := c.GetColumn("IsLaneActive")
 	expectedNewLane := c.GetColumn("IsFirstLaneOfNewHash")
@@ -264,15 +272,9 @@ func pad(api frontend.API, inputLanes []frontend.Variable, length frontend.Varia
 	}
 
 	//inInputRange := frontend.Variable(1)
+	inputRange := internal.NewRange(api, length, len(lanes))
 	for i := range lanes {
-
-		iEqualsLen := api.IsZero(api.Sub(length, i))
-
-		/*inInputRange = api.Sub(inInputRange, iEqualsLen)
-
-		lanes[i] = api.Mul(inInputRange, lanes[i]) // technically unnecessary if we say input must be zero-padded */
-
-		lanes[i] = api.Add(lanes[i], api.Mul(dstLane, iEqualsLen)) // first padding byte contribution
+		lanes[i] = api.Add(api.Mul(lanes[i], inputRange.InRange[i]), api.Mul(dstLane, inputRange.IsFirstBeyond[i])) // first padding byte contribution
 
 		if i%lanesPerBlock == lanesPerBlock-1 { // if it's the last byte of ANY block
 			isLastBlock := api.IsZero(api.Sub(i+1, api.Mul(nbBlocks, lanesPerBlock))) // TODO check the slice to IsZero involves one constraint only

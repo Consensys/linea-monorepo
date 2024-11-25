@@ -87,6 +87,17 @@
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "shnarf",
+        "type": "bytes32"
+      }
+    ],
+    "name": "FinalBlobNotSubmitted",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "finalBlockNumber",
         "type": "uint256"
@@ -320,6 +331,11 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "OnlyNonFallbackOperator",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -401,6 +417,22 @@
   {
     "inputs": [],
     "name": "ReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "bits",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "SafeCastOverflowedUintDowncast",
     "type": "error"
   },
   {
@@ -697,13 +729,13 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "enum IPauseManager.PauseType",
         "name": "pauseType",
         "type": "uint8"
       },
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "bytes32",
         "name": "role",
         "type": "bytes32"
@@ -860,13 +892,13 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "enum IPauseManager.PauseType",
         "name": "unPauseType",
         "type": "uint8"
       },
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "bytes32",
         "name": "role",
         "type": "bytes32"
@@ -1873,7 +1905,7 @@
     "outputs": [
       {
         "internalType": "bool",
-        "name": "",
+        "name": "isClaimed",
         "type": "bool"
       }
     ],
@@ -1892,7 +1924,7 @@
     "outputs": [
       {
         "internalType": "bool",
-        "name": "",
+        "name": "pauseTypeIsPaused",
         "type": "bool"
       }
     ],
@@ -2076,12 +2108,12 @@
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "role",
+        "name": "_role",
         "type": "bytes32"
       },
       {
         "internalType": "address",
-        "name": "account",
+        "name": "_account",
         "type": "address"
       }
     ],
@@ -2176,7 +2208,7 @@
     "outputs": [
       {
         "internalType": "address",
-        "name": "addr",
+        "name": "originalSender",
         "type": "address"
       }
     ],

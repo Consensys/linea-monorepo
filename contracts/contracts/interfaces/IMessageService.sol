@@ -89,7 +89,7 @@ interface IMessageService {
 
   /**
    * @notice Returns the original sender of the message on the origin layer.
-   * @return The original sender of the message on the origin layer.
+   * @return originalSender The original sender of the message on the origin layer.
    */
-  function sender() external view returns (address);
+  function sender() external view returns (address originalSender);
 }

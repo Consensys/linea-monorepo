@@ -1,12 +1,11 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { TestL1MessageManager } from "../../../typechain-types";
-import { INBOX_STATUS_UNKNOWN, OUTBOX_STATUS_RECEIVED, OUTBOX_STATUS_SENT } from "../../common/constants";
+import { INBOX_STATUS_UNKNOWN } from "../../common/constants";
 import { deployFromFactory } from "../../common/deployment";
 import {
   generateKeccak256Hash,
   generateL2MessagingBlocksOffsets,
-  generateNKeccak256Hashes,
   generateRandomBytes,
   range,
 } from "../../common/helpers";
@@ -42,53 +41,6 @@ describe("L1MessageManager", () => {
       await l1MessageManager.updateL2L1MessageStatusToClaimed(messageHash);
 
       expect(await l1MessageManager.inboxL2L1MessageStatus(messageHash)).to.equal(INBOX_STATUS_UNKNOWN);
-    });
-  });
-
-  describe("Add L1->L2 message hash in 'outboxL1L2MessageStatus' mapping", () => {
-    it("Should succeed if the message hash does not exists in 'outboxL1L2MessageStatus' mapping", async () => {
-      const messageHash = generateKeccak256Hash("message1");
-      await l1MessageManager.addL1L2MessageHash(messageHash);
-      expect(await l1MessageManager.outboxL1L2MessageStatus(messageHash)).to.equal(OUTBOX_STATUS_SENT);
-    });
-  });
-
-  describe("Update L1->L2 message hashes in 'outboxL1L2MessageStatus' mapping to 'received'", () => {
-    it("Should revert if one of the message hashes has the status 'unknown'", async () => {
-      const messageHashes = generateNKeccak256Hashes("message", 2);
-
-      await expect(l1MessageManager.updateL1L2MessageStatusToReceived(messageHashes))
-        .to.be.revertedWithCustomError(l1MessageManager, "L1L2MessageNotSent")
-        .withArgs(messageHashes[0]);
-    });
-
-    it("Should succeed if the message hash exists in 'outboxL1L2MessageStatus' mapping and has the status 'sent'", async () => {
-      const messageHashes = generateNKeccak256Hashes("message", 100);
-      for (const messageHash of messageHashes) {
-        await l1MessageManager.addL1L2MessageHash(messageHash);
-      }
-
-      await l1MessageManager.updateL1L2MessageStatusToReceived(messageHashes);
-      for (const messageHash of messageHashes) {
-        expect(await l1MessageManager.outboxL1L2MessageStatus(messageHash)).to.equal(OUTBOX_STATUS_RECEIVED);
-      }
-    });
-
-    it("Should succeed duplicate submit if the message hash exists in 'outboxL1L2MessageStatus' mapping and has the status 'sent'", async () => {
-      const messageHashes = generateNKeccak256Hashes("message", 100);
-      for (const messageHash of messageHashes) {
-        await l1MessageManager.addL1L2MessageHash(messageHash);
-      }
-
-      await l1MessageManager.updateL1L2MessageStatusToReceived(messageHashes);
-      for (const messageHash of messageHashes) {
-        expect(await l1MessageManager.outboxL1L2MessageStatus(messageHash)).to.equal(OUTBOX_STATUS_RECEIVED);
-      }
-
-      await expect(l1MessageManager.updateL1L2MessageStatusToReceived(messageHashes)).to.not.be.reverted;
-      for (const messageHash of messageHashes) {
-        expect(await l1MessageManager.outboxL1L2MessageStatus(messageHash)).to.equal(OUTBOX_STATUS_RECEIVED);
-      }
     });
   });
 

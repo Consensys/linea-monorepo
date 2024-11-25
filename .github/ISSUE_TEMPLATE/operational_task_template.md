@@ -13,7 +13,6 @@ assignees: ''
 - Network scope: Select those that apply, or select All
 - [ ] All
 - [ ] Mainnet
-- [ ] Testnet - Goerli
 - [ ] Testnet - Sepolia
 - [ ] Devnet
 
