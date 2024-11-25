@@ -1,6 +1,5 @@
 package build.linea.staterecover.clients.el
 
-import build.linea.staterecover.BlockExtraData
 import build.linea.staterecover.BlockL1RecoveredData
 import build.linea.staterecover.TransactionL1RecoveredData
 import build.linea.staterecover.clients.ExecutionLayerClient
@@ -119,14 +118,15 @@ class ExecutionLayerJsonRpcClientTest {
       }
       """.trimIndent()
     )
+    println(Instant.parse("2024-07-01T11:22:33Z").epochSeconds)
+    println(Instant.parse("2024-07-01T11:22:33Z").epochSeconds.toString(16))
     val block1 = BlockL1RecoveredData(
       blockNumber = 0xa001u,
       blockHash = "0xa011".decodeHex(),
-      coinbase = "0xa022".decodeHex(),
-      blockTimestamp = Instant.parse("2024-07-01T11:22:33Z"),
+      coinbase = "0x6265617665726275696c642e6f7267".decodeHex(),
+      blockTimestamp = Instant.fromEpochSeconds(1719828000), // 2024-07-01T11:00:00Z UTC
       gasLimit = 0x1c9c380u,
       difficulty = 0u,
-      extraData = BlockExtraData(beneficiary = "0x6265617665726275696c642e6f7267".decodeHex()),
       transactions = listOf(
         TransactionL1RecoveredData(
           type = 0x01u,
@@ -170,17 +170,14 @@ class ExecutionLayerJsonRpcClientTest {
         """{
         "jsonrpc":"2.0",
         "id":"${'$'}{json-unit.any-number}",
-        "method":"linea_engine_importBlocksFromBlob",
+        "method":"linea_importBlocksFromBlob",
         "params":[{
           "blockNumber": "0xa001",
           "blockHash": "0xa011",
-          "coinbase": "0xa022",
-          "blockTimestamp": "2024-07-01T11:22:33Z",
+          "coinbase": "0x6265617665726275696c642e6f7267",
+          "blockTimestamp": "0x66827e20",
           "gasLimit": "0x1c9c380",
           "difficulty": "0x0",
-          "extraData": {
-            "beneficiary": "0x6265617665726275696c642e6f7267"
-          },
           "transactions": [{
             "type": "0x01",
             "nonce": "0xb010",

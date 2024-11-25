@@ -1,10 +1,14 @@
 package build.linea.staterecover.clients.el
 
+import build.linea.s11n.jackson.InstantAsHexNumberDeserializer
+import build.linea.s11n.jackson.InstantAsHexNumberSerializer
 import build.linea.s11n.jackson.ethApiObjectMapper
 import build.linea.staterecover.BlockL1RecoveredData
 import build.linea.staterecover.clients.ExecutionLayerClient
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.module.SimpleModule
+import kotlinx.datetime.Instant
 import net.consensys.decodeHex
 import net.consensys.encodeHex
 import net.consensys.fromHexString
@@ -39,7 +43,7 @@ class ExecutionLayerJsonRpcClient internal constructor(
   override fun lineaEngineImportBlocksFromBlob(blocks: List<BlockL1RecoveredData>): SafeFuture<Unit> {
     return rpcClient
       .makeRequest(
-        method = "linea_engine_importBlocksFromBlob",
+        method = "linea_importBlocksFromBlob",
         params = blocks,
         resultMapper = { Unit }
       )
@@ -51,7 +55,7 @@ class ExecutionLayerJsonRpcClient internal constructor(
   ): SafeFuture<Unit> {
     return rpcClient
       .makeRequest(
-        method = "linea_engine_importForkChoiceUpdated",
+        method = "linea_importForkChoiceUpdated",
         params = listOf(headBlockHash, finalizedBlockHash).map { it.encodeHex() },
         resultMapper = { Unit }
       )
@@ -70,6 +74,12 @@ class ExecutionLayerJsonRpcClient internal constructor(
           retryConfig = requestRetryConfig,
           requestObjectMapper = ethApiObjectMapper
             .copy()
+            .registerModules(
+              SimpleModule().apply {
+                this.addSerializer(Instant::class.java, InstantAsHexNumberSerializer)
+                this.addDeserializer(Instant::class.java, InstantAsHexNumberDeserializer)
+              }
+            )
             .setSerializationInclusion(JsonInclude.Include.NON_NULL),
           log = logger
         )
