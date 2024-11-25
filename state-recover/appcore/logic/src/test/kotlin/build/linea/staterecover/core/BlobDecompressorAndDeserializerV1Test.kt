@@ -94,7 +94,6 @@ class BlobDecompressorAndDeserializerV1Test {
     assertThat(uncompressed.blockTimestamp).isEqualTo(Instant.fromEpochSeconds(original.header.timestamp))
     assertThat(uncompressed.gasLimit).isEqualTo(blockStaticFields.gasLimit)
     assertThat(uncompressed.difficulty).isEqualTo(0UL)
-    assertThat(uncompressed.extraData.beneficiary).isEqualTo(blockStaticFields.coinbase)
     uncompressed.transactions.zip(original.body.transactions) { a, b ->
       assertTransactionData(a, b)
     }

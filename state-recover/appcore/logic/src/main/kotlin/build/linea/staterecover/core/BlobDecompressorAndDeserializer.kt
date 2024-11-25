@@ -1,9 +1,9 @@
 package build.linea.staterecover.core
 
-import build.linea.staterecover.BlockExtraData
 import build.linea.staterecover.BlockL1RecoveredData
 import build.linea.staterecover.TransactionL1RecoveredData
 import kotlinx.datetime.Instant
+import net.consensys.decodeHex
 import net.consensys.linea.blob.BlobDecompressor
 import net.consensys.toULong
 import org.apache.tuweni.bytes.Bytes
@@ -30,13 +30,13 @@ data class BlockHeaderStaticFields(
 ) {
   companion object {
     val mainnet = BlockHeaderStaticFields(
-      coinbase = "8F81e2E3F8b46467523463835F965fFE476E1c9E".toByteArray()
+      coinbase = "0x8F81e2E3F8b46467523463835F965fFE476E1c9E".decodeHex()
     )
     val sepolia = BlockHeaderStaticFields(
-      coinbase = "4D517Aef039A48b3B6bF921e210b7551C8E37107".toByteArray()
+      coinbase = "0x4D517Aef039A48b3B6bF921e210b7551C8E37107".decodeHex()
     )
     val localDev = BlockHeaderStaticFields(
-      coinbase = "6d976c9b8ceee705d4fe8699b44e5eb58242f484".toByteArray()
+      coinbase = "0x6d976c9b8ceee705d4fe8699b44e5eb58242f484".decodeHex()
     )
   }
 }
@@ -67,13 +67,10 @@ class BlobDecompressorToDomainV1(
         val blockRecovered = BlockL1RecoveredData(
           blockNumber = blockNumber++,
           blockHash = block.header.parentHash.toArray(),
-          coinbase = block.header.coinbase.toArray(),
+          coinbase = staticFields.coinbase,
           blockTimestamp = Instant.fromEpochSeconds(block.header.timestamp),
           gasLimit = this.staticFields.gasLimit,
           difficulty = block.header.difficulty.asBigInteger.toULong(),
-          extraData = BlockExtraData(
-            beneficiary = staticFields.coinbase
-          ),
           transactions = block.body.transactions.map { transaction ->
             TransactionL1RecoveredData(
               type = transaction.type.serializedType.toUByte(),
