@@ -136,7 +136,7 @@ jobs:
           GOCORSET_FLAGS: -b1024 -wd --ansi-escapes=false --report --air
 
       - name: Upload test report
-        if: always()
+        if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
           name: go-corset-tests-report

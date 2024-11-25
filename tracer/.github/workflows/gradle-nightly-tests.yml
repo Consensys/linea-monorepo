@@ -34,8 +34,18 @@ jobs:
           GOCORSET_FLAGS: -wd --ansi-escapes=false --report --air
 
       - name: Upload test report
-        if: always()
+        if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
           name: nightly-tests-report
           path: build/reports/tests/**/*
+          
+      - name: Failure Notification
+        if: ${{ failure() || cancelled() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
+          payload: |
+             name: "Nightly"
+             status: "${{ job.status }}"
