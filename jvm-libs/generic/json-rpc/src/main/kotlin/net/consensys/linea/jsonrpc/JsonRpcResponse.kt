@@ -112,4 +112,6 @@ class JsonRpcErrorResponseException(
   val rpcErrorCode: Int,
   val rpcErrorMessage: String,
   val rpcErrorData: Any? = null
-) : RuntimeException("code=$rpcErrorCode message=$rpcErrorMessage errorData=$rpcErrorData")
+) : RuntimeException("code=$rpcErrorCode message=$rpcErrorMessage errorData=$rpcErrorData") {
+  fun asJsonRpcError(): JsonRpcError = JsonRpcError(rpcErrorCode, rpcErrorMessage, rpcErrorData)
+}
