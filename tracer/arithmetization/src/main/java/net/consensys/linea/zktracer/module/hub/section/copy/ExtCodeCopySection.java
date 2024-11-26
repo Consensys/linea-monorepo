@@ -51,11 +51,10 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
   AccountSnapshot undoingAccountSnapshotBefore;
   AccountSnapshot undoingAccountSnapshotAfter;
 
-  public ExtCodeCopySection(Hub hub) {
+  public ExtCodeCopySection(Hub hub, MessageFrame frame) {
     // 4 = 1 + 3
     super(hub, maxNumberOfRows(hub));
 
-    final MessageFrame frame = hub.messageFrame();
     rawAddress = frame.getStackItem(0);
     address = Address.extract(Bytes32.leftPad(rawAddress));
     incomingDeploymentNumber = hub.deploymentNumberOf(address);
@@ -66,10 +65,6 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     this.addStack(hub);
     this.addFragment(imcFragment);
 
-    // triggerExp = false
-    // triggerOob = false
-    // triggerStp = false
-    // triggerMxp = true
     final MxpCall mxpCall = new MxpCall(hub);
     imcFragment.callMxp(mxpCall);
 
@@ -122,8 +117,7 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     final boolean foreignAccountHasCode = foreignAccount != null && foreignAccount.hasCode();
     final boolean triggerRomLex = triggerMmu && foreignAccountHasCode;
 
-    doingAccountSnapshotAfter = doingAccountSnapshotBefore.deepCopy();
-    doingAccountSnapshotAfter.turnOnWarmth();
+    doingAccountSnapshotAfter = doingAccountSnapshotBefore.deepCopy().turnOnWarmth();
 
     final AccountFragment accountDoingFragment =
         hub.factories()
@@ -135,7 +129,7 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
                 doingDomSubStamps);
     accountDoingFragment.requiresRomlex(triggerRomLex);
     if (triggerRomLex) {
-      hub.romLex().callRomLex(hub.messageFrame());
+      hub.romLex().callRomLex(frame);
     }
     this.addFragment(accountDoingFragment);
 

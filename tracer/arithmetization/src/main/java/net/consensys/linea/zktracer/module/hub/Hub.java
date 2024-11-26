@@ -1052,7 +1052,7 @@ public class Hub implements Module {
           case OpCode.CALLDATACOPY -> new CallDataCopySection(this);
           case OpCode.RETURNDATACOPY -> new ReturnDataCopySection(this);
           case OpCode.CODECOPY -> new CodeCopySection(this);
-          case OpCode.EXTCODECOPY -> new ExtCodeCopySection(this);
+          case OpCode.EXTCODECOPY -> new ExtCodeCopySection(this, frame);
           default -> throw new RuntimeException(
               "Invalid instruction: " + this.opCode().toString() + " not in the COPY family");
         }
