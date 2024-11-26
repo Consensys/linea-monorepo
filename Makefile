@@ -200,10 +200,11 @@ deploy-contracts-minimal:
 	cd .. && \
 	$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-l2messageservice
 
-start-all-staterecover: L1_CONTRACT_VERSION:=6
-start-all-staterecover: COMPOSE_PROFILES:=l1,l2,staterecover
-start-all-staterecover:
-		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment COMPOSE_PROFILES=$(COMPOSE_PROFILES)
+fresh-start-all-staterecover: L1_CONTRACT_VERSION:=6
+fresh-start-all-staterecover: COMPOSE_PROFILES:=l1,l2,staterecover
+fresh-start-all-staterecover:
+		make clean-environment
+		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 		make deploy-contracts-minimal L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
 testnet-start-l2:
