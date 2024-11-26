@@ -39,7 +39,7 @@ jobs:
         with:
           name: nightly-tests-report
           path: build/reports/tests/**/*
-          
+
       - name: Failure Notification
         if: ${{ failure() || cancelled() }}
         uses: slackapi/slack-github-action@v2.0.0

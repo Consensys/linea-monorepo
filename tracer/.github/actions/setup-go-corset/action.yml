@@ -8,8 +8,8 @@ runs:
       uses: ./.github/actions/setup-rust-corset
 
     - name: Install Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5.1.0
 
     - name: Install Go Corset
       shell: bash
-      run: go install github.com/consensys/go-corset/cmd/go-corset@latest
+      run: go install github.com/consensys/go-corset/cmd/go-corset@5cb0c28
