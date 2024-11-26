@@ -31,7 +31,7 @@ public final class SStore extends GasProjection {
     this.frame = frame;
     if (frame.stackSize() > 1) {
       this.key = UInt256.fromBytes(frame.getStackItem(0));
-      final Account account = frame.getWorldUpdater().getAccount(frame.getRecipientAddress());
+      final Account account = frame.getWorldUpdater().get(frame.getRecipientAddress());
       if (account == null) {
         return;
       }

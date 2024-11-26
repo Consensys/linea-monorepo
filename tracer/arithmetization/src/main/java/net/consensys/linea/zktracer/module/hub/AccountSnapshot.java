@@ -47,7 +47,7 @@ public class AccountSnapshot {
   private boolean deploymentStatus;
 
   // TODO: is there a "canonical" way to take a snapshot fo an account
-  //  where getWorldUpdater().getAccount(address) return null ?
+  //  where getWorldUpdater().get(address) return null ?
 
   /**
    * Canonical way of creating an account snapshot.
