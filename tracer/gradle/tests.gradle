@@ -118,7 +118,13 @@ tasks.withType(Test).configureEach {
 }
 
 tasks.test.configure {
-  maxParallelForks = Runtime.getRuntime().availableProcessors()
+  if (System.getenv().containsKey("UNIT_TESTS_PARALLELISM")) {
+    // Only set this if parallelism is explicitly requested.
+    // Specifically, because this option is not compatible with
+    // go-corset.
+    maxParallelForks = System.getenv().get("UNIT_TESTS_PARALLELISM").toInteger()
+    println "Enabled parallel forks."
+  }
   useJUnitPlatform {
     excludeTags("nightly")
     excludeTags("replay")

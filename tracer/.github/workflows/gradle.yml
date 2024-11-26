@@ -1,4 +1,4 @@
-name: gradle
+name: "Unit & Fast Replay Tests"
 
 on:
   push:
@@ -80,6 +80,7 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: trace-span=3,fields,expand,expand,expand
+          UNIT_TESTS_PARALLELISM: 2
 
       - name: Run Replay tests
         run: ./gradlew :arithmetization:fastReplayTests --stacktrace

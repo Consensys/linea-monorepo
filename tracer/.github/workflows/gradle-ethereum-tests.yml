@@ -81,7 +81,6 @@ jobs:
       - name: Run General State Reference Tests
         run: GOMEMLIMIT=196GiB ./gradlew referenceGeneralStateTests
         env:
-          REFERENCE_TESTS_PARALLELISM: 10
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -wd --ansi-escapes=false --report --air
@@ -91,7 +90,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ethereum-tests-go-corset-report
-          path: | 
+          path: |
             reference-tests/build/reports/tests/**/*
             tmp/local/*
 
