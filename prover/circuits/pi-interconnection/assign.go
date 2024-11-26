@@ -23,6 +23,9 @@ type Request struct {
 	Decompressions []blobsubmission.Response
 	Executions     []public_input.Execution
 	Aggregation    public_input.Aggregation
+	// Path to the compression dictionary. Used to extract the execution data
+	// for each execution.
+	DictPath string
 }
 
 func (c *Compiled) Assign(r Request) (a Circuit, err error) {
@@ -52,9 +55,9 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		return
 	}
 
-	dict, err := blob.GetDict() // TODO look up dict based on checksum
+	dict, err := blob.GetDict(r.DictPath) // TODO look up dict based on checksum
 	if err != nil {
-		return
+		return Circuit{}, fmt.Errorf("could not find the dictionnary: path=%v err=%v", r.DictPath, err)
 	}
 
 	// For Shnarfs and Merkle Roots

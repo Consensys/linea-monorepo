@@ -105,6 +105,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 	}
 
 	assignment, err := c.Assign(pi_interconnection.Request{
+		DictPath:       cfg.BlobDecompression.DictPath,
 		Decompressions: cf.DecompressionPI,
 		Executions:     cf.ExecutionPI,
 		Aggregation:    cf.AggregationPublicInput(cfg),

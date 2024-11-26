@@ -156,6 +156,9 @@ func (c *Circuit) Define(api frontend.API) error {
 	for i, piq := range c.ExecutionFPIQ {
 		piq.RangeCheck(api) // CHECK_MSG_LIMIT
 
+		// inRange is a binary value indicating that the current execution
+		// being looked at in the current iteration is an actual execution and
+		// not some padding.
 		inRange := rExecution.InRange[i]
 
 		pi := execution.FunctionalPublicInputSnark{
