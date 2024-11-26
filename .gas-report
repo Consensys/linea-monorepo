@@ -22,17 +22,18 @@
 | MIN_LOCKUP_PERIOD                                    | 275             | 275   | 275    | 275   | 11      |
 | MP_RATE_PER_YEAR                                     | 231             | 231   | 231    | 231   | 3       |
 | SCALE_FACTOR                                         | 295             | 295   | 295    | 295   | 41      |
-| STAKING_TOKEN                                        | 273             | 273   | 273    | 273   | 172     |
+| STAKING_TOKEN                                        | 273             | 273   | 273    | 273   | 174     |
 | accountedRewards                                     | 351             | 906   | 351    | 2351  | 72      |
 | emergencyModeEnabled                                 | 2377            | 2377  | 2377   | 2377  | 7       |
 | enableEmergencyMode                                  | 23504           | 40411 | 45696  | 45696 | 8       |
 | getAccount                                           | 1596            | 1596  | 1596   | 1596  | 71      |
-| isTrustedCodehash                                    | 496             | 996   | 496    | 2496  | 172     |
+| getStakedBalance                                     | 2579            | 2579  | 2579   | 2579  | 1       |
+| isTrustedCodehash                                    | 496             | 1013  | 496    | 2496  | 174     |
 | rewardIndex                                          | 373             | 400   | 373    | 2373  | 72      |
-| setTrustedCodehash                                   | 47926           | 47926 | 47926  | 47926 | 43      |
+| setTrustedCodehash                                   | 47926           | 47926 | 47926  | 47926 | 45      |
 | totalMP                                              | 330             | 330   | 330    | 330   | 75      |
 | totalMaxMP                                           | 351             | 351   | 351    | 351   | 75      |
-| totalStaked                                          | 330             | 330   | 330    | 330   | 75      |
+| totalStaked                                          | 330             | 330   | 330    | 330   | 76      |
 | updateAccountMP                                      | 36758           | 38996 | 39260  | 39260 | 19      |
 | updateGlobalState                                    | 32134           | 60366 | 49513  | 82460 | 28      |
 
@@ -42,10 +43,12 @@
 | Deployment Cost                        | Deployment Size |        |        |        |         |
 | 1095864                                | 5202            |        |        |        |         |
 | Function Name                          | min             | avg    | median | max    | # calls |
+| STAKING_TOKEN                          | 217             | 217    | 217    | 217    | 1       |
 | emergencyExit                          | 31410           | 43924  | 43160  | 60260  | 7       |
 | lock                                   | 38362           | 60516  | 42741  | 100445 | 3       |
-| stake                                  | 199213          | 236948 | 242906 | 263435 | 55      |
+| stake                                  | 199213          | 237055 | 242906 | 263435 | 56      |
 | unstake                                | 84988           | 113999 | 103434 | 146128 | 13      |
+| withdraw                               | 37318           | 37318  | 37318  | 37318  | 1       |
 
 
 | src/XPNFTToken.sol:XPNFTToken contract          |                 |       |        |       |         |
@@ -121,9 +124,9 @@
 | Deployment Cost                             | Deployment Size |       |        |       |         |
 | 639406                                      | 3369            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
-| approve                                     | 46334           | 46343 | 46346  | 46346 | 220     |
-| balanceOf                                   | 561             | 1381  | 561    | 2561  | 334     |
-| mint                                        | 51284           | 58817 | 51284  | 68384 | 236     |
+| approve                                     | 46334           | 46343 | 46346  | 46346 | 222     |
+| balanceOf                                   | 561             | 1382  | 561    | 2561  | 336     |
+| mint                                        | 51284           | 58898 | 51284  | 68384 | 238     |
 | transfer                                    | 34390           | 48859 | 51490  | 51490 | 13      |
 
 

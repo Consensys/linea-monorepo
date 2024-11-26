@@ -49,3 +49,23 @@ contract StakingTokenTest is StakeVaultTest {
         assertEq(address(stakeVault.STAKING_TOKEN()), address(stakingToken));
     }
 }
+
+contract WithdrawTest is StakeVaultTest {
+    function setUp() public override {
+        StakeVaultTest.setUp();
+    }
+
+    function test_CannotWithdrawStakedFunds() public {
+        // first, stake some funds
+        vm.prank(alice);
+        stakeVault.stake(10e18, 0);
+
+        assertEq(stakingToken.balanceOf(address(stakeVault)), 10e18);
+        assertEq(streamer.totalStaked(), 10e18);
+
+        // try withdrawing funds without unstaking
+        vm.prank(alice);
+        vm.expectRevert(StakeVault.StakeVault__NotEnoughAvailableBalance.selector);
+        stakeVault.withdraw(stakingToken, 10e18);
+    }
+}

@@ -13,7 +13,7 @@ import { IStakeManager } from "./interfaces/IStakeManager.sol";
  * @dev This contract is owned by the user and allows staking, unstaking, and withdrawing tokens.
  */
 contract StakeVault is Ownable {
-    error StakeVault__NoEnoughAvailableBalance();
+    error StakeVault__NotEnoughAvailableBalance();
     error StakeVault__InvalidDestinationAddress();
     error StakeVault__UpdateNotAvailable();
     error StakeVault__StakingFailed();
@@ -156,7 +156,7 @@ contract StakeVault is Ownable {
 
     function _withdraw(IERC20 _token, uint256 _amount, address _destination) internal {
         if (_token == STAKING_TOKEN && STAKING_TOKEN.balanceOf(address(this)) - amountStaked() < _amount) {
-            revert StakeVault__NoEnoughAvailableBalance();
+            revert StakeVault__NotEnoughAvailableBalance();
         }
         _token.transfer(_destination, _amount);
     }
