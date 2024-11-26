@@ -23,9 +23,11 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.PostConflationDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
@@ -42,23 +44,27 @@ public class ExtCodeCopy extends MmuCall implements PostConflationDefer {
     this.hub = hub;
     hub.defers().scheduleForPostConflation(this);
 
-    final Address foreignCodeAddress = Words.toAddress(hub.messageFrame().getStackItem(0));
+    final CallFrame callFrame = hub.currentFrame();
+    final MessageFrame frame = callFrame.frame();
+
+    final Address foreignCodeAddress = Words.toAddress(frame.getStackItem(0));
     this.contract = ContractMetadata.canonical(hub, foreignCodeAddress);
 
-    this.targetId(hub.currentFrame().contextNumber())
-        .targetRamBytes(
-            Optional.of(
-                hub.currentFrame()
-                    .frame()
-                    .shadowReadMemory(0, hub.currentFrame().frame().memoryByteSize())))
-        .sourceOffset(EWord.of(hub.messageFrame().getStackItem(2)))
-        .targetOffset(EWord.of(hub.messageFrame().getStackItem(1)))
-        .size(Words.clampedToLong(hub.messageFrame().getStackItem(3)))
+    this.targetId(callFrame.contextNumber())
+        .targetRamBytes(Optional.of(frame.shadowReadMemory(0, frame.memoryByteSize())))
+        .sourceOffset(EWord.of(frame.getStackItem(2)))
+        .targetOffset(EWord.of(frame.getStackItem(1)))
+        .size(Words.clampedToLong(frame.getStackItem(3)))
         .setRom();
   }
 
   @Override
   public Optional<Bytes> exoBytes() {
+    // If the EXT address is underDeployment, we set the ref size at 0, so we don't require exoBytes
+    // (which would be the init code)
+    if (contract.underDeployment()) {
+      return Optional.of(Bytes.EMPTY);
+    }
     try {
       return Optional.of(hub.romLex().getCodeByMetadata(contract));
     } catch (Exception ignored) {
@@ -70,7 +76,7 @@ public class ExtCodeCopy extends MmuCall implements PostConflationDefer {
   @Override
   public long referenceSize() {
     try {
-      return (hub.romLex().getCodeByMetadata(contract).size());
+      return contract.underDeployment() ? 0 : (hub.romLex().getCodeByMetadata(contract).size());
     } catch (Exception ignored) {
       // Can be 0 in case the ext account is empty. In this case, no associated CFI
       return 0;
