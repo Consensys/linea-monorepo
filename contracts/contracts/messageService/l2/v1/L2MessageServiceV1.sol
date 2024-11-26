@@ -33,19 +33,22 @@ abstract contract L2MessageServiceV1 is
    */
   uint256[50] private __gap_L2MessageService;
 
+  /// @notice The role required to set the minimum DDOS fee.
   bytes32 public constant MINIMUM_FEE_SETTER_ROLE = keccak256("MINIMUM_FEE_SETTER_ROLE");
 
+  /// @dev The temporary message sender set when claiming a message.
   address internal _messageSender;
 
-  // @dev initialize to save user cost with existing slot.
+  // @notice initialize to save user cost with existing slot.
   uint256 public nextMessageNumber;
 
-  // @dev initialize minimumFeeInWei variable.
+  // @notice initialize minimumFeeInWei variable.
   uint256 public minimumFeeInWei;
 
   // @dev adding these should not affect storage as they are constants and are stored in bytecode.
   uint256 internal constant REFUND_OVERHEAD_IN_GAS = 44596;
 
+  /// @dev The default message sender address reset after claiming a message.
   address internal constant DEFAULT_SENDER_ADDRESS = address(123456789);
 
   /// @dev Total contract storage is 53 slots including the gap above. NB: Above!
@@ -135,7 +138,7 @@ abstract contract L2MessageServiceV1 is
       if (returnData.length > 0) {
         assembly {
           let data_size := mload(returnData)
-          revert(add(32, returnData), data_size)
+          revert(add(0x20, returnData), data_size)
         }
       } else {
         revert MessageSendingFailed(_to);

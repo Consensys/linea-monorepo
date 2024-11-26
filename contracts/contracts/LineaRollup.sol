@@ -24,11 +24,16 @@ contract LineaRollup is
 {
   using Utils for *;
 
-  /// @dev This is the ABI version and not the reinitialize version.
+  /// @notice This is the ABI version and not the reinitialize version.
   string public constant CONTRACT_VERSION = "6.0";
 
+  /// @notice The role required to set/add  proof verifiers by type.
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
+
+  /// @notice The role required to set/remove  proof verifiers by type.
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
+
+  /// @notice The default genesis shnarf using empty/default hashes and a default state.
   bytes32 public constant GENESIS_SHNARF =
     keccak256(
       abi.encode(
@@ -40,14 +45,26 @@ contract LineaRollup is
       )
     );
 
+  /// @dev Value indicating a shnarf exists.
   uint256 internal constant SHNARF_EXISTS_DEFAULT_VALUE = 1;
+
+  /// @dev The default hash value.
   bytes32 internal constant EMPTY_HASH = 0x0;
+
+  /// @dev The BLS Curve modulus value used.
   uint256 internal constant BLS_CURVE_MODULUS =
     52435875175126190479447740508185965837690552500527637822603658699938581184513;
+
+  /// @dev The well-known precompile address for point evaluation.
   address internal constant POINT_EVALUATION_PRECOMPILE_ADDRESS = address(0x0a);
+
+  /// @dev The expected point evaluation return data length.
   uint256 internal constant POINT_EVALUATION_RETURN_DATA_LENGTH = 64;
+
+  /// @dev The expected point evaluation field element length returned.
   uint256 internal constant POINT_EVALUATION_FIELD_ELEMENTS_LENGTH = 4096;
 
+  /// @dev In practice, when used, this is expected to be a close approximation to 6 months, and is intentional.
   uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
@@ -66,18 +83,19 @@ contract LineaRollup is
   /// @dev DEPRECATED in favor of currentFinalizedState hash.
   bytes32 public currentL2StoredL1RollingHash;
 
+  /// @notice Contains the most recent finalized shnarf.
   bytes32 public currentFinalizedShnarf;
 
   /**
    * @dev NB: THIS IS THE ONLY MAPPING BEING USED FOR DATA SUBMISSION TRACKING.
-   * @dev NB: NB: This was shnarfFinalBlockNumbers and is replaced to indicate only that a shnarf exists with a value of 1.
+   * @dev NB: This was shnarfFinalBlockNumbers and is replaced to indicate only that a shnarf exists with a value of 1.
    */
   mapping(bytes32 shnarf => uint256 exists) public blobShnarfExists;
 
-  /// @dev Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
+  /// @notice Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
   bytes32 public currentFinalizedState;
 
-  /// @dev The address of the fallback operator.
+  /// @notice The address of the fallback operator.
   /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
   address public fallbackOperator;
 
@@ -143,11 +161,29 @@ contract LineaRollup is
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
+    if (_fallbackOperator == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     fallbackOperator = _fallbackOperator;
     emit FallbackOperatorAddressSet(msg.sender, _fallbackOperator);
 
     /// @dev using the constants requires string memory and more complex code.
     emit LineaRollupVersionChanged(bytes8("5.0"), bytes8("6.0"));
+  }
+
+  /**
+   * @notice Revokes `role` from the calling account.
+   * @dev Fallback operator cannot renounce role. Reverts with OnlyNonFallbackOperator.
+   * @param _role The role to renounce.
+   * @param _account The account to renounce - can only be the _msgSender().
+   */
+  function renounceRole(bytes32 _role, address _account) public override {
+    if (_account == fallbackOperator) {
+      revert OnlyNonFallbackOperator();
+    }
+
+    super.renounceRole(_role, _account);
   }
 
   /**
@@ -412,7 +448,7 @@ contract LineaRollup is
     uint256 fieldElements;
     uint256 blsCurveModulus;
     assembly {
-      fieldElements := mload(add(returnData, 32))
+      fieldElements := mload(add(returnData, 0x20))
       blsCurveModulus := mload(add(returnData, POINT_EVALUATION_RETURN_DATA_LENGTH))
     }
     if (fieldElements != POINT_EVALUATION_FIELD_ELEMENTS_LENGTH || blsCurveModulus != BLS_CURVE_MODULUS) {
