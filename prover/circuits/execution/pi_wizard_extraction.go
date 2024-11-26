@@ -113,12 +113,22 @@ func checkPublicInputs(
 		)
 	)
 
+	// In principle, we should enforce a strict equality between the purported
+	// chainID and the one extracted from the traces. But in case, the executed
+	// block has only legacy transactions (e.g. transactions without a specified
+	// chainID) then the traces will return a chainID of zero.
 	api.AssertIsEqual(
-		api.Div(
+		api.Mul(
 			wvc.GetLocalPointEvalParams(wizardFuncInp.ChainID.ID).Y,
-			twoPow112,
+			api.Sub(
+				api.Div(
+					wvc.GetLocalPointEvalParams(wizardFuncInp.ChainID.ID).Y,
+					twoPow112,
+				),
+				gnarkFuncInp.ChainID,
+			),
 		),
-		gnarkFuncInp.ChainID,
+		0,
 	)
 
 	api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)

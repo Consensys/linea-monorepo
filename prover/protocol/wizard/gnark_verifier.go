@@ -1,6 +1,8 @@
 package wizard
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
@@ -179,39 +181,42 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(_ frontend.API) {
 			toBeConsumed := c.Spec.Coins.AllKeysAt(currRound - 1)
 			c.Coins.Exists(toBeConsumed...)
 
-			// Make sure that all messages have been written and use them
-			// to update the FS state. Note that we do not need to update
-			// FS using the last round of the prover because he is always
-			// the last one to "talk" in the protocol.
-			toUpdateFS := c.Spec.Columns.AllKeysProofAt(currRound - 1)
-			for _, msg := range toUpdateFS {
+			if !c.Spec.DummyCompiled {
 
-				msgID := c.columnsIDs.MustGet(msg)
-				msgContent := c.Columns[msgID]
+				// Make sure that all messages have been written and use them
+				// to update the FS state. Note that we do not need to update
+				// FS using the last round of the prover because he is always
+				// the last one to "talk" in the protocol.
+				toUpdateFS := c.Spec.Columns.AllKeysProofAt(currRound - 1)
+				for _, msg := range toUpdateFS {
 
-				logrus.Tracef("VERIFIER CIRCUIT : Updating the FS oracle with a message - %v", msg)
-				c.FS.UpdateVec(msgContent)
-			}
+					msgID := c.columnsIDs.MustGet(msg)
+					msgContent := c.Columns[msgID]
 
-			toUpdateFS = c.Spec.Columns.AllKeysPublicInputAt(currRound - 1)
-			for _, msg := range toUpdateFS {
+					logrus.Tracef("VERIFIER CIRCUIT : Updating the FS oracle with a message - %v", msg)
+					c.FS.UpdateVec(msgContent)
+				}
 
-				msgID := c.columnsIDs.MustGet(msg)
-				msgContent := c.Columns[msgID]
+				toUpdateFS = c.Spec.Columns.AllKeysPublicInputAt(currRound - 1)
+				for _, msg := range toUpdateFS {
 
-				logrus.Tracef("VERIFIER CIRCUIT : Updating the FS oracle with public input - %v", msg)
-				c.FS.UpdateVec(msgContent)
-			}
+					msgID := c.columnsIDs.MustGet(msg)
+					msgContent := c.Columns[msgID]
 
-			/*
-				Also include the prover's allegations for all evaluations
-			*/
-			queries := c.Spec.QueriesParams.AllKeysAt(currRound - 1)
-			for _, qName := range queries {
-				// Implicitly, this will panic whenever we start supporting
-				// a new type of query params
-				params := c.GetParams(qName)
-				params.UpdateFS(c.FS)
+					logrus.Tracef("VERIFIER CIRCUIT : Updating the FS oracle with public input - %v", msg)
+					c.FS.UpdateVec(msgContent)
+				}
+
+				/*
+					Also include the prover's allegations for all evaluations
+				*/
+				queries := c.Spec.QueriesParams.AllKeysAt(currRound - 1)
+				for _, qName := range queries {
+					// Implicitly, this will panic whenever we start supporting
+					// a new type of query params
+					params := c.GetParams(qName)
+					params.UpdateFS(c.FS)
+				}
 			}
 		}
 
@@ -416,6 +421,7 @@ func GetWizardVerifierCircuitAssignment(comp *CompiledIOP, proof Proof) *WizardV
 			res.InnerProductParams = append(res.InnerProductParams, params.GnarkAssign())
 
 		case query.LocalOpeningParams:
+			fmt.Printf("assign local opening: name=%v y=%v", qName, params.Y.String())
 			res.localOpeningIDs.InsertNew(qName, len(res.LocalOpeningParams))
 			res.LocalOpeningParams = append(res.LocalOpeningParams, params.GnarkAssign())
 
