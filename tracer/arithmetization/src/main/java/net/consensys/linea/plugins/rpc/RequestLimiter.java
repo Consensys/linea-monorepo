@@ -23,10 +23,12 @@ import lombok.Builder;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
+import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
 
 public class RequestLimiter {
 
   private final Semaphore semaphore;
+  private final RpcMethodError UNAVAILABLE_EXCEPTION = new UnavailableException();
 
   @Builder
   public RequestLimiter(int concurrentRequestsCount) {
@@ -36,7 +38,7 @@ public class RequestLimiter {
   public <T extends PluginRpcRequest, R> R execute(T request, Function<T, R> processingFunc) {
     if (!semaphore.tryAcquire()) {
       throw new PluginRpcEndpointException(
-          RpcErrorType.INVALID_REQUEST,
+          UNAVAILABLE_EXCEPTION,
           "Request still in progress, wait until available permits are available.");
     }
 
