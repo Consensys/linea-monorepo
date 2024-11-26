@@ -135,7 +135,7 @@ public class ToyWorld implements WorldUpdater {
     if (addressAccountMap.containsKey(address)) {
       return addressAccountMap.get(address);
     } else if (parent != null) {
-      Account parentAccount = parent.getAccount(address);
+      Account parentAccount = parent.get(address);
       if (parentAccount == null) {
         return null;
       } else {
