@@ -7,7 +7,6 @@ import io.vertx.sqlclient.RowSet
 import kotlinx.datetime.Clock
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createBatch
 import net.consensys.zkevm.domain.createBlobRecordFromBatches
@@ -82,10 +81,10 @@ class RecordsCleanupFinalizationHandlerTest : CleanDbTestSuiteParallel() {
   private fun aggregationsContentQuery(): PreparedQuery<RowSet<Row>> =
     sqlClient.preparedQuery("select * from ${PostgresAggregationsDao.aggregationsTable}")
 
-  val batch1 = createBatch(startBlockNumber = 1L, endBlockNumber = 10L, status = Batch.Status.Finalized)
-  val batch2 = createBatch(startBlockNumber = 11L, endBlockNumber = 15L, status = Batch.Status.Finalized)
-  val batch3 = createBatch(startBlockNumber = 16L, endBlockNumber = 20L, status = Batch.Status.Finalized)
-  val batch4 = createBatch(startBlockNumber = 21L, endBlockNumber = 21L, status = Batch.Status.Finalized)
+  val batch1 = createBatch(startBlockNumber = 1L, endBlockNumber = 10L)
+  val batch2 = createBatch(startBlockNumber = 11L, endBlockNumber = 15L)
+  val batch3 = createBatch(startBlockNumber = 16L, endBlockNumber = 20L)
+  val batch4 = createBatch(startBlockNumber = 21L, endBlockNumber = 21L)
 
   val batches = listOf(batch1, batch2, batch3, batch4)
 

@@ -2,7 +2,6 @@ package net.consensys.zkevm.persistence.dao.batch.persistence
 
 import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.persistence.BatchesRepository
-import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 /**
@@ -20,8 +19,6 @@ fun batchStatusToDbValue(status: Batch.Status): Int {
 class PostgresBatchesRepository(
   private val batchesDao: BatchesDao
 ) : BatchesRepository {
-  private val log = LogManager.getLogger(this.javaClass.name)
-
   override fun saveNewBatch(batch: Batch): SafeFuture<Unit> {
     return batchesDao.saveNewBatch(batch)
   }
@@ -30,18 +27,6 @@ class PostgresBatchesRepository(
     startingBlockNumberInclusive: Long
   ): SafeFuture<Long?> {
     return batchesDao.findHighestConsecutiveEndBlockNumberFromBlockNumber(startingBlockNumberInclusive)
-  }
-
-  override fun setBatchStatusUpToEndBlockNumber(
-    endBlockNumberInclusive: Long,
-    currentStatus: Batch.Status,
-    newStatus: Batch.Status
-  ): SafeFuture<Int> {
-    return batchesDao.setBatchStatusUpToEndBlockNumber(
-      endBlockNumberInclusive,
-      currentStatus,
-      newStatus
-    )
   }
 
   override fun deleteBatchesUpToEndBlockNumber(

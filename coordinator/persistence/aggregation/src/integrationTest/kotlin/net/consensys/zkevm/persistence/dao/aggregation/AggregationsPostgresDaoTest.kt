@@ -9,13 +9,11 @@ import kotlinx.datetime.Instant
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.trimToSecondPrecision
-import net.consensys.zkevm.coordinator.clients.prover.serialization.ProofToFinalizeJsonResponse
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.BlobStatus
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createBatch
@@ -91,7 +89,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation1 = Aggregation(
       startBlockNumber = 1UL,
       endBlockNumber = 10UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = sampleResponse
     )
@@ -102,7 +99,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation2 = Aggregation(
       startBlockNumber = 11UL,
       endBlockNumber = 12UL,
-      status = Aggregation.Status.Proven,
       batchCount = 51UL,
       aggregationProof = sampleResponse
     )
@@ -116,7 +112,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation = Aggregation(
       startBlockNumber = 1UL,
       endBlockNumber = 10UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = sampleResponse
     )
@@ -135,44 +130,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
             "batchCount=${aggregation.batchCount} is already persisted!"
         )
     }
-  }
-
-  @Test
-  fun `updateAggregationAsProven updates proven records`() {
-    val aggregation = Aggregation(
-      startBlockNumber = 1UL,
-      endBlockNumber = 10UL,
-      status = Aggregation.Status.Proving,
-      batchCount = 5UL,
-      aggregationProof = null
-    )
-
-    val dbContent1 = performInsertTest(aggregation)
-    assertThat(dbContent1).size().isEqualTo(1)
-
-    val updatedAggregation = Aggregation(
-      startBlockNumber = aggregation.startBlockNumber,
-      endBlockNumber = aggregation.endBlockNumber,
-      status = Aggregation.Status.Proven,
-      batchCount = aggregation.batchCount,
-      aggregationProof = sampleResponse
-    )
-
-    val dbContent2 = performUpdateTest(updatedAggregation)
-    assertThat(dbContent2).size().isEqualTo(1)
-  }
-
-  @Test
-  fun `updateAggregationAsProven doesn't update proven records`() {
-    val aggregation = Aggregation(
-      startBlockNumber = 1UL,
-      endBlockNumber = 10UL,
-      status = Aggregation.Status.Proven,
-      batchCount = 5UL,
-      aggregationProof = sampleResponse
-    )
-    val rowsUpdated = aggregationsPostgresDaoImpl.updateAggregationAsProven(aggregation).get()
-    assertThat(rowsUpdated).isZero()
   }
 
   private fun getBlobAndBatchCounters(batches: List<Batch>, blob: BlobRecord): BlobAndBatchCounters {
@@ -226,29 +183,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   @Test
-  fun getCandidatesForAggregation_unproven_batch_in_the_middle() {
-    val batch1 = createBatch(1L, 10L)
-    val batch2 = createBatch(11L, 20L)
-    val batch3 = createBatch(21L, 30L, status = Batch.Status.Finalized)
-    val batch4 = createBatch(31L, 40L)
-    val batches = listOf(batch1, batch2, batch3, batch4)
-
-    val blob1 = createBlobRecordFromBatches(listOf(batch1, batch2))
-    val blob2 = createBlobRecordFromBatches(listOf(batch3, batch4))
-    val blobs = listOf(blob1, blob2)
-
-    SafeFuture.allOf(
-      SafeFuture.collectAll(batches.map { insertBatch(it) }.stream()),
-      SafeFuture.collectAll(blobs.map { insertBlob(it) }.stream())
-    ).get()
-
-    aggregationsPostgresDaoImpl.findConsecutiveProvenBlobs(fromBlockNumber = 1).get()
-      .also { blobCounters ->
-        assertThat(blobCounters).hasSameElementsAs(listOf(getBlobAndBatchCounters(listOf(batch1, batch2), blob1)))
-      }
-  }
-
-  @Test
   fun getCandidatesForAggregation_unproven_blob_in_the_middle() {
     val batch1 = createBatch(1L, 10L)
     val batch2 = createBatch(11L, 20L)
@@ -256,13 +190,13 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val batch4 = createBatch(31L, 40L)
     val batch5 = createBatch(41L, 50L)
     val batch6 = createBatch(51L, 60L)
-    val batches = listOf(batch1, batch2, batch3, batch4, batch5)
+    val batches = listOf(batch1, batch2, batch3, batch4, batch5, batch6)
 
+    // blob3 is missing
     val blob1 = createBlobRecordFromBatches(listOf(batch1, batch2))
     val blob2 = createBlobRecordFromBatches(listOf(batch3, batch4))
-    val blob3 = createBlobRecordFromBatches(listOf(batch5), status = BlobStatus.COMPRESSION_PROVING)
     val blob4 = createBlobRecordFromBatches(listOf(batch6))
-    val blobs = listOf(blob1, blob2, blob3, blob4)
+    val blobs = listOf(blob1, blob2, blob4)
 
     SafeFuture.allOf(
       SafeFuture.collectAll(batches.map { insertBatch(it) }.stream()),
@@ -278,31 +212,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
           )
         )
       }
-  }
-
-  @Test
-  fun getCandidatesForAggregation_first_blob_unproven_shall_return_no_results() {
-    // conflation v1
-    // blob1, {batch1 (4-10)} -- UNPROVEN
-    // blob2  { batch2 (11-20), batch3 (21-30) }
-
-    val batch1v1 = createBatch(4L, 10L, status = Batch.Status.Finalized)
-    val batch2v1 = createBatch(11L, 20L)
-    val batch3v1 = createBatch(21L, 30L)
-    val blob1v1 = createBlobRecordFromBatches(listOf(batch1v1))
-    val blob2v1 = createBlobRecordFromBatches(listOf(batch2v1, batch3v1))
-
-    val batches = listOf(batch1v1, batch2v1, batch3v1)
-    val blobs = listOf(blob1v1, blob2v1)
-
-    SafeFuture.allOf(
-      SafeFuture.collectAll(batches.map { insertBatch(it) }.stream()),
-      SafeFuture.collectAll(blobs.map { insertBlob(it) }.stream())
-    ).get()
-
-    aggregationsPostgresDaoImpl.findConsecutiveProvenBlobs(4).get().also { blobCounters ->
-      assertThat(blobCounters).hasSameElementsAs(emptyList())
-    }
   }
 
   @Test
@@ -336,38 +245,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
   fun findConsecutiveProvenBlobsWhenDbIsEmpty() {
     aggregationsPostgresDaoImpl.findConsecutiveProvenBlobs(1).get().also { blobCounters ->
       assertThat(blobCounters).isEmpty()
-    }
-  }
-
-  @Test
-  fun findConsecutiveProvenBlobsUnprovenBlobAndBatchAtDifferentIntervals() {
-    // batch2 proof is missing
-    val batch1 = createBatch(1L, 10L)
-    val batch2 = createBatch(11L, 20L, status = Batch.Status.Finalized)
-    val batch3 = createBatch(21L, 30L)
-    val batch4 = createBatch(31L, 40L)
-
-    // blob3 proof is missing
-    val blob1 = createBlobRecordFromBatches(listOf(batch1))
-    val blob2 = createBlobRecordFromBatches(listOf(batch2))
-    val blob3 = createBlobRecordFromBatches(listOf(batch3), status = BlobStatus.COMPRESSION_PROVING)
-    val blob4 = createBlobRecordFromBatches(listOf(batch4))
-
-    val batches = listOf(batch1, batch2, batch3, batch4)
-    val blobs = listOf(blob1, blob2, blob3, blob4)
-
-    SafeFuture.allOf(
-      SafeFuture.collectAll(batches.map { insertBatch(it) }.stream()),
-      SafeFuture.collectAll(blobs.map { insertBlob(it) }.stream())
-    ).get()
-
-    // Should only return blob1 for consecutive proven blobs
-    aggregationsPostgresDaoImpl.findConsecutiveProvenBlobs(1).get().also { blobCounters ->
-      assertThat(blobCounters).hasSameElementsAs(
-        listOf(
-          getBlobAndBatchCounters(listOf(batch1), blob1)
-        )
-      )
     }
   }
 
@@ -416,7 +293,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation1 = Aggregation(
       startBlockNumber = 1UL,
       endBlockNumber = 10UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof1
     )
@@ -433,7 +309,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation2 = Aggregation(
       startBlockNumber = 11UL,
       endBlockNumber = 20UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof2
     )
@@ -441,7 +316,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     aggregationsPostgresDaoImpl.getProofsToFinalize(
       1L,
-      Aggregation.Status.Proven,
       aggregationProof1.finalTimestamp,
       1
     ).get().also { aggregation ->
@@ -450,7 +324,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     }
     aggregationsPostgresDaoImpl.getProofsToFinalize(
       11L,
-      Aggregation.Status.Proven,
       aggregationProof2.finalTimestamp,
       1
     ).get().also { aggregation ->
@@ -459,7 +332,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     }
     aggregationsPostgresDaoImpl.getProofsToFinalize(
       1L,
-      Aggregation.Status.Proven,
       aggregationProof1.finalTimestamp,
       2
     ).get().also { aggregation ->
@@ -481,7 +353,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation1 = Aggregation(
       startBlockNumber = 1UL,
       endBlockNumber = 10UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof1
     )
@@ -498,7 +369,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation2 = Aggregation(
       startBlockNumber = 11UL,
       endBlockNumber = 20UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof2
     )
@@ -515,7 +385,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation3 = Aggregation(
       startBlockNumber = 31UL,
       endBlockNumber = 39UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof3
     )
@@ -532,7 +401,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation4 = Aggregation(
       startBlockNumber = 40UL,
       endBlockNumber = 50UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof4
     )
@@ -540,7 +408,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     aggregationsPostgresDaoImpl.getProofsToFinalize(
       1L,
-      Aggregation.Status.Proven,
       aggregationProof4.finalTimestamp,
       5
     ).get().also { aggregation ->
@@ -550,7 +417,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     aggregationsPostgresDaoImpl.getProofsToFinalize(
       31L,
-      Aggregation.Status.Proven,
       aggregationProof4.finalTimestamp,
       5
     ).get().also { aggregation ->
@@ -572,7 +438,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation1 = Aggregation(
       startBlockNumber = 11UL,
       endBlockNumber = 20UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof1
     )
@@ -589,7 +454,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation2 = Aggregation(
       startBlockNumber = 21UL,
       endBlockNumber = 30UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof2
     )
@@ -597,72 +461,7 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     aggregationsPostgresDaoImpl.getProofsToFinalize(
       1L,
-      Aggregation.Status.Proven,
       aggregationProof2.finalTimestamp,
-      3
-    ).get().also { aggregation ->
-      assertThat(aggregation).isNotNull
-      assertThat(aggregation).isEqualTo(emptyList<ProofToFinalize>())
-    }
-  }
-
-  @Test
-  fun `getProofsToFinalize gets nothing is first aggregation is still proving`() {
-    val aggregationProof1 = createProofToFinalize(
-      firstBlockNumber = 1,
-      finalBlockNumber = 10,
-      parentAggregationLastBlockTimestamp = Instant.fromEpochSeconds(0),
-      startBlockTime = Instant.fromEpochSeconds(0),
-      finalTimestamp = Instant.parse("2024-04-28T15:00:00Z")
-    )
-
-    val aggregation1 = Aggregation(
-      startBlockNumber = 1UL,
-      endBlockNumber = 10UL,
-      status = Aggregation.Status.Proving,
-      batchCount = 5UL,
-      aggregationProof = aggregationProof1
-    )
-    performInsertTest(aggregation1)
-
-    val aggregationProof2 = createProofToFinalize(
-      firstBlockNumber = 11,
-      finalBlockNumber = 20,
-      parentAggregationLastBlockTimestamp = Instant.parse("2024-04-28T15:00:00Z"),
-      startBlockTime = Instant.fromEpochSeconds(0),
-      finalTimestamp = Instant.parse("2024-04-28T15:01:00Z")
-    )
-
-    val aggregation2 = Aggregation(
-      startBlockNumber = 11UL,
-      endBlockNumber = 20UL,
-      status = Aggregation.Status.Proven,
-      batchCount = 5UL,
-      aggregationProof = aggregationProof2
-    )
-    performInsertTest(aggregation2)
-
-    val aggregationProof3 = createProofToFinalize(
-      firstBlockNumber = 21,
-      finalBlockNumber = 30,
-      parentAggregationLastBlockTimestamp = Instant.parse("2024-04-28T15:01:00Z"),
-      startBlockTime = Instant.fromEpochSeconds(0),
-      finalTimestamp = Instant.parse("2024-04-28T15:02:00Z")
-    )
-
-    val aggregation3 = Aggregation(
-      startBlockNumber = 21UL,
-      endBlockNumber = 30UL,
-      status = Aggregation.Status.Proven,
-      batchCount = 5UL,
-      aggregationProof = aggregationProof3
-    )
-    performInsertTest(aggregation3)
-
-    aggregationsPostgresDaoImpl.getProofsToFinalize(
-      1L,
-      Aggregation.Status.Proven,
-      aggregationProof3.finalTimestamp,
       3
     ).get().also { aggregation ->
       assertThat(aggregation).isNotNull
@@ -683,7 +482,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation1 = Aggregation(
       startBlockNumber = 1UL,
       endBlockNumber = 10UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof1
     )
@@ -700,7 +498,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation2 = Aggregation(
       startBlockNumber = 11UL,
       endBlockNumber = 20UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof2
     )
@@ -717,7 +514,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation3 = Aggregation(
       startBlockNumber = 21UL,
       endBlockNumber = 30UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof3
     )
@@ -746,7 +542,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation1 = Aggregation(
       startBlockNumber = 1UL,
       endBlockNumber = 10UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof1
     )
@@ -763,7 +558,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation2 = Aggregation(
       startBlockNumber = 11UL,
       endBlockNumber = 20UL,
-      status = Aggregation.Status.Proven,
       batchCount = 5UL,
       aggregationProof = aggregationProof2
     )
@@ -780,7 +574,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val aggregation3 = Aggregation(
       startBlockNumber = 21UL,
       endBlockNumber = 30UL,
-      status = Aggregation.Status.Proving,
       batchCount = 5UL,
       aggregationProof = aggregationProof3
     )
@@ -867,33 +660,9 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     assertThat(newlyInsertedRow.getLong("end_block_number"))
       .isEqualTo(aggregation.endBlockNumber.toLong())
     assertThat(newlyInsertedRow.getInteger("status"))
-      .isEqualTo(PostgresAggregationsDao.aggregationStatusToDbValue(aggregation.status))
+      .isEqualTo(PostgresAggregationsDao.aggregationStatusToDbValue(Aggregation.Status.Proven))
     assertThat(newlyInsertedRow.getLong("batch_count"))
       .isEqualTo(aggregation.batchCount.toLong())
-    return dbContent
-  }
-
-  private fun performUpdateTest(
-    aggregation: Aggregation
-  ): RowSet<Row>? {
-    val rowsUpdated = aggregationsPostgresDaoImpl.updateAggregationAsProven(aggregation).get()
-    assertThat(rowsUpdated).isEqualTo(1)
-    val dbContent = DbQueries.getTableContent(sqlClient, DbQueries.aggregationsTable).execute().get()
-    val updatedRow =
-      dbContent.find {
-        it.getLong("start_block_number") == aggregation.startBlockNumber.toLong()
-      }
-    assertThat(updatedRow).isNotNull
-
-    assertThat(updatedRow!!.getLong("start_block_number"))
-      .isEqualTo(aggregation.startBlockNumber.toLong())
-    assertThat(updatedRow.getLong("end_block_number"))
-      .isEqualTo(aggregation.endBlockNumber.toLong())
-    assertThat(updatedRow.getInteger("status"))
-      .isEqualTo(PostgresAggregationsDao.aggregationStatusToDbValue(Aggregation.Status.Proven))
-    assertThat(ProofToFinalizeJsonResponse.fromJsonString(updatedRow.getJsonObject("aggregation_proof").encode()))
-      .isEqualTo(ProofToFinalizeJsonResponse.fromDomainObject(aggregation.aggregationProof!!))
-
     return dbContent
   }
 

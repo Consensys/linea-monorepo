@@ -51,13 +51,6 @@ class BatchesPostgresDao(
     """
       .trimIndent()
 
-  private val setStatusSql =
-    """
-        update ${BatchesDao.batchesDaoTableName} set status = $1
-        where end_block_number <= $2 and status = $3
-    """
-      .trimIndent()
-
   private val deleteUptoSql =
     """
         delete from ${BatchesDao.batchesDaoTableName}
@@ -76,7 +69,6 @@ class BatchesPostgresDao(
     findHighestConsecutiveEndBlockNumberSql
   )
   private val insertQuery = connection.preparedQuery(insertSql)
-  private val setStatusQuery = connection.preparedQuery(setStatusSql)
   private val deleteUptoQuery = connection.preparedQuery(deleteUptoSql)
   private val deleteAfterQuery = connection.preparedQuery(deleteAfterSql)
 
@@ -88,7 +80,7 @@ class BatchesPostgresDao(
         clock.now().toEpochMilliseconds(),
         startBlockNumber,
         endBlockNumber,
-        batchStatusToDbValue(batch.status)
+        batchStatusToDbValue(Batch.Status.Proven)
       )
     queryLog.log(Level.TRACE, insertSql, params)
     return insertQuery.execute(Tuple.tuple(params))
@@ -124,23 +116,6 @@ class BatchesPostgresDao(
           null
         }
       }
-  }
-
-  override fun setBatchStatusUpToEndBlockNumber(
-    endBlockNumberInclusive: Long,
-    currentStatus: Batch.Status,
-    newStatus: Batch.Status
-  ): SafeFuture<Int> {
-    return setStatusQuery
-      .execute(
-        Tuple.of(
-          batchStatusToDbValue(newStatus),
-          endBlockNumberInclusive,
-          batchStatusToDbValue(currentStatus)
-        )
-      )
-      .map { rowSet -> rowSet.rowCount() }
-      .toSafeFuture()
   }
 
   override fun deleteBatchesUpToEndBlockNumber(
