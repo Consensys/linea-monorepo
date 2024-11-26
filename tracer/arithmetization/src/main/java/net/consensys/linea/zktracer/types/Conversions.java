@@ -201,4 +201,8 @@ public class Conversions {
     }
     return (int) value;
   }
+
+  public static Bytes unsignedIntToBytes(int value) {
+    return bigIntegerToBytes(BigInteger.valueOf(Integer.toUnsignedLong(value)));
+  }
 }

@@ -28,10 +28,10 @@ import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.MBS_MIN_OFFSET;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.extractContiguousLimbsFromMemory;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.unsignedIntToBytes;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
-import java.math.BigInteger;
 import java.util.Optional;
 
 import lombok.Getter;
@@ -308,7 +308,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
         .exoBytes(Optional.of(subsection.extractCallData()))
         .sourceOffset(EWord.of(subsection.callDataOffset()))
         .size(subsection.callDataSize())
-        .referenceSize(128)
+        .referenceSize(TOTAL_SIZE_ECRECOVER_DATA)
         .successBit(successfulRecovery)
         .phase(PHASE_ECRECOVER_DATA)
         .setEcData();
@@ -380,10 +380,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
       return new MmuCall(hub, MMU_INST_MSTORE)
           .targetId(subsection.exoModuleOperationId())
           .targetOffset(EWord.ZERO)
-          .limb1(
-              isShaTwo
-                  ? bigIntegerToBytes(EMPTY_SHA2_HI)
-                  : bigIntegerToBytes(BigInteger.valueOf(Integer.toUnsignedLong(EMPTY_RIPEMD_HI))))
+          .limb1(isShaTwo ? bigIntegerToBytes(EMPTY_SHA2_HI) : unsignedIntToBytes(EMPTY_RIPEMD_HI))
           .limb2(isShaTwo ? bigIntegerToBytes(EMPTY_SHA2_LO) : bigIntegerToBytes(EMPTY_RIPEMD_LO));
     } else {
       return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
