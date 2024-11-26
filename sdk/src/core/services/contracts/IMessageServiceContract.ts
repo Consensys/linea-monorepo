@@ -1,6 +1,6 @@
 import { OnChainMessageStatus } from "../../../core/enums/MessageEnums";
 import { MessageProps } from "../../entities/Message";
-import { MessageSent } from "../../types/Events";
+import { MessageSent } from "../../types/events";
 
 export interface IMessageServiceContract<
   Overrides,
