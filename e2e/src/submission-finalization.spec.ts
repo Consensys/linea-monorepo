@@ -8,6 +8,7 @@ import {
   getBlockByNumberOrBlockTag,
   etherToWei,
   generateRoleAssignments,
+  convertStringToPaddedHexBytes,
 } from "./common/utils";
 import { config } from "./config/tests-config";
 import { deployContract } from "./common/deployments";
@@ -173,6 +174,8 @@ describe("Submission and finalization test suite", () => {
   });
 
   describe("LineaRollup v6 upgrade", () => {
+    const fallbackoperatorAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
     beforeAll(async () => {
       const l1DeployerAccount = l1AccountManager.whaleAccount(0);
       const l1SecurityCouncil = l1AccountManager.whaleAccount(3);
@@ -188,13 +191,13 @@ describe("Submission and finalization test suite", () => {
 
       console.log("Upgrading LineaRollup contract to V6...");
       const newRoleAddresses = generateRoleAssignments(LINEA_ROLLUP_V6_ROLES, await l1SecurityCouncil.getAddress(), []);
-      const fallbackoperatorAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
       const initializerData = getInitializerData(
         LineaRollupV6__factory.createInterface(),
         "reinitializeLineaRollupV6",
         [newRoleAddresses, LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES, fallbackoperatorAddress],
       );
+
       await upgradeContractAndCall(
         l1DeployerAccount,
         await proxyAdmin.getAddress(),
@@ -204,11 +207,32 @@ describe("Submission and finalization test suite", () => {
       );
     });
 
+    it("Check LineaRollupVersionChanged and FallbackOperatorAddressSet events are emitted", async () => {
+      const lineaRollupAddress = await config.getLineaRollupContract().getAddress();
+      const lineaRollupV6 = LineaRollupV6__factory.connect(lineaRollupAddress, config.getL1Provider());
+
+      console.log("Waiting for FallbackOperatorAddressSet event...");
+      await waitForEvents(
+        lineaRollupV6,
+        lineaRollupV6.filters.FallbackOperatorAddressSet(undefined, fallbackoperatorAddress),
+        1_000,
+      );
+
+      console.log("Waiting for LineaRollupVersionChanged event...");
+      const expectedVersion5Bytes8 = convertStringToPaddedHexBytes("5.0", 8);
+      const expectedVersion6Bytes8 = convertStringToPaddedHexBytes("6.0", 8);
+      await waitForEvents(
+        lineaRollupV6,
+        lineaRollupV6.filters.LineaRollupVersionChanged(expectedVersion5Bytes8, expectedVersion6Bytes8),
+        1_000,
+      );
+    });
+
     it("Check L1 data submission and finalization", async () => {
       const lineaRollupAddress = await config.getLineaRollupContract().getAddress();
       const lineaRollupV6 = LineaRollupV6__factory.connect(lineaRollupAddress, config.getL1Provider());
 
-      const startingRootHash = await lineaRollupV6.stateRootHashes(await lineaRollupV6.currentL2BlockNumber());
+      const currentL2BlockNumber = await lineaRollupV6.currentL2BlockNumber();
 
       console.log("Waiting for DataSubmittedV3 used to finalize with proof...");
       await waitForEvents(lineaRollupV6, lineaRollupV6.filters.DataSubmittedV3(), 1_000);
@@ -216,7 +240,7 @@ describe("Submission and finalization test suite", () => {
       console.log("Waiting for the first DataFinalizedV3 event with proof...");
       const [dataFinalizedEvent] = await waitForEvents(
         lineaRollupV6,
-        lineaRollupV6.filters.DataFinalizedV3(undefined, startingRootHash),
+        lineaRollupV6.filters.DataFinalizedV3(currentL2BlockNumber + 1n),
         1_000,
       );
 
