@@ -38,8 +38,8 @@ public final class Bytecode {
   /** The bytecode. */
   @Getter private final Bytes bytecode;
 
-  /** The bytecode hash; precomputed & memoized asynchronously. */
-  private Future<Hash> hash;
+  /** The bytecode hash; is null by default and computed & memoized on the fly when required. */
+  private Hash hash;
 
   /**
    * Create an instance from {@link Bytes}.
@@ -48,7 +48,6 @@ public final class Bytecode {
    */
   public Bytecode(Bytes bytes) {
     this.bytecode = Objects.requireNonNullElse(bytes, Bytes.EMPTY);
-    hash = executorService.submit(() -> computeCodeHash());
   }
 
   /**
@@ -58,7 +57,7 @@ public final class Bytecode {
    */
   public Bytecode(Code code) {
     this.bytecode = code.getBytes();
-    this.hash = CompletableFuture.completedFuture(code.getCodeHash());
+    this.hash = code.getCodeHash();
   }
 
   /**
@@ -85,21 +84,13 @@ public final class Bytecode {
    * @return the bytecode hash
    */
   public Hash getCodeHash() {
-    try {
-      return hash.get();
-    } catch (Exception e) {
-      log.error("Error while precomputing code hash", e);
-      Hash computedHash = computeCodeHash();
-      hash = CompletableFuture.completedFuture(computedHash);
-      return computedHash;
+    if (this.hash == null) {
+      if (this.bytecode.isEmpty()) {
+        this.hash = Hash.EMPTY;
+      } else {
+        this.hash = Hash.hash(this.bytecode);
+      }
     }
-  }
-
-  private Hash computeCodeHash() {
-    if (this.bytecode.isEmpty()) {
-      return Hash.EMPTY;
-    } else {
-      return Hash.hash(this.bytecode);
-    }
+    return this.hash;
   }
 }
