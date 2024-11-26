@@ -72,7 +72,9 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
       .isEqualTo(blobRecord.startBlockNumber.toLong())
     assertThat(newlyInsertedRow.getLong("end_block_number"))
       .isEqualTo(blobRecord.endBlockNumber.toLong())
-    assertThat(newlyInsertedRow.getInteger("status")).isEqualTo(BlobsPostgresDao.blobStatusToDbValue(BlobStatus.COMPRESSION_PROVEN))
+    assertThat(newlyInsertedRow.getInteger("status")).isEqualTo(
+      BlobsPostgresDao.blobStatusToDbValue(BlobStatus.COMPRESSION_PROVEN)
+    )
 
     return dbContent
   }
@@ -82,7 +84,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val blobRecord1 = createBlobRecord(
       startBlockNumber = expectedStartBlock,
       endBlockNumber = expectedEndBlock,
-      startBlockTime = expectedStartBlockTime,
+      startBlockTime = expectedStartBlockTime
     )
     fakeClock.setTimeTo(Clock.System.now())
 
@@ -92,7 +94,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val blobRecord2 = createBlobRecord(
       startBlockNumber = expectedEndBlock + 1UL,
       endBlockNumber = expectedEndBlock + 100UL,
-      startBlockTime = expectedStartBlockTime,
+      startBlockTime = expectedStartBlockTime
     )
     fakeClock.advanceBy(1.seconds)
 
@@ -105,7 +107,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val blobRecord1 = createBlobRecord(
       startBlockNumber = expectedStartBlock,
       endBlockNumber = expectedEndBlock,
-      startBlockTime = expectedStartBlockTime,
+      startBlockTime = expectedStartBlockTime
     )
 
     val dbContent1 =
@@ -364,7 +366,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val blobRecord7 = createBlobRecord(
       startBlockNumber = 157UL,
       endBlockNumber = 189UL,
-      startBlockTime = expectedStartBlockTime,
+      startBlockTime = expectedStartBlockTime
     )
     val deletedBlobs = listOf(
       blobRecord4,

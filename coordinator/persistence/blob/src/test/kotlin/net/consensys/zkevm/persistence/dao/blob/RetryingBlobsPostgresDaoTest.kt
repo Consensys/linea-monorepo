@@ -32,7 +32,7 @@ class RetryingBlobsPostgresDaoTest {
   private val blobRecord = createBlobRecord(
     startBlockNumber = 0U,
     endBlockNumber = 10U,
-    startBlockTime = now,
+    startBlockTime = now
   )
   private val blobCompressionProof = BlobCompressionProof(
     compressedData = Random.nextBytes(32).setFirstByteToZero(),
