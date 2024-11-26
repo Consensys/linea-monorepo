@@ -34,6 +34,8 @@ func NewConfigFromFile(path string) (*Config, error) {
 		return nil, err
 	}
 
+	cfg.PublicInputInterconnection.MockKeccakWizard = true
+
 	// Validate the config
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	if err = validate.RegisterValidation("power_of_2", validateIsPowerOfTwo); err != nil {
