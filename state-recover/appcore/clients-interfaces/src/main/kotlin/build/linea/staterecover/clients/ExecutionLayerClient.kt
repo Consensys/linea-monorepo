@@ -12,7 +12,6 @@ data class StateRecoveryStatus(
 interface ExecutionLayerClient {
   fun getBlockNumberAndHash(blockParameter: BlockParameter): SafeFuture<BlockNumberAndHash>
   fun lineaEngineImportBlocksFromBlob(blocks: List<BlockL1RecoveredData>): SafeFuture<Unit>
-  fun lineaEngineForkChoiceUpdated(headBlockHash: ByteArray, finalizedBlockHash: ByteArray): SafeFuture<Unit>
   fun lineaGetStateRecoveryStatus(): SafeFuture<StateRecoveryStatus>
   fun lineaEnableStateRecovery(stateRecoverStartBlockNumber: ULong): SafeFuture<StateRecoveryStatus>
 }

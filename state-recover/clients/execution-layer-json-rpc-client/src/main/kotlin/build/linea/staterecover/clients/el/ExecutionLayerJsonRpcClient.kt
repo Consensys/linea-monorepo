@@ -11,7 +11,6 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
 import kotlinx.datetime.Instant
 import net.consensys.decodeHex
-import net.consensys.encodeHex
 import net.consensys.fromHexString
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.BlockParameter
@@ -46,18 +45,6 @@ class ExecutionLayerJsonRpcClient internal constructor(
       .makeRequest(
         method = "linea_importBlocksFromBlob",
         params = blocks,
-        resultMapper = { Unit }
-      )
-  }
-
-  override fun lineaEngineForkChoiceUpdated(
-    headBlockHash: ByteArray,
-    finalizedBlockHash: ByteArray
-  ): SafeFuture<Unit> {
-    return rpcClient
-      .makeRequest(
-        method = "linea_importForkChoiceUpdated",
-        params = listOf(headBlockHash, finalizedBlockHash).map { it.encodeHex() },
         resultMapper = { Unit }
       )
   }
