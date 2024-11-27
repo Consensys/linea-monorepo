@@ -14,7 +14,6 @@ import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
 import net.consensys.zkevm.persistence.AggregationsRepository
 import net.consensys.zkevm.persistence.BatchesRepository
 import net.consensys.zkevm.persistence.BlobsRepository
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesDao
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
 import net.consensys.zkevm.persistence.dao.batch.persistence.PostgresBatchesRepository
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
@@ -73,7 +72,7 @@ class RecordsCleanupFinalizationHandlerTest : CleanDbTestSuiteParallel() {
   }
 
   private fun batchesContentQuery(): PreparedQuery<RowSet<Row>> =
-    sqlClient.preparedQuery("select * from ${BatchesDao.batchesDaoTableName}")
+    sqlClient.preparedQuery("select * from ${BatchesPostgresDao.batchesDaoTableName}")
 
   private fun blobsContentQuery(): PreparedQuery<RowSet<Row>> =
     sqlClient.preparedQuery("select * from ${BlobsPostgresDao.TableName}")

@@ -19,9 +19,27 @@ class BatchesPostgresDao(
 ) : BatchesDao {
   private val log = LogManager.getLogger(this.javaClass.name)
   private val queryLog = SQLQueryLogger(log)
+
+  companion object {
+    /**
+     * WARNING: Existing mappings should not change. Otherwise, can break production, new one can be added
+     * though.
+     */
+    fun batchStatusToDbValue(status: Batch.Status): Int {
+      // using manual mapping to catch errors at compile time instead of runtime
+      return when (status) {
+        Batch.Status.Finalized -> 1
+        Batch.Status.Proven -> 2
+      }
+    }
+
+    @JvmStatic
+    val batchesDaoTableName = "batches"
+  }
+
   private val insertSql =
     """
-      insert into ${BatchesDao.batchesDaoTableName}
+      insert into $batchesDaoTableName
       (created_epoch_milli, start_block_number, end_block_number, status)
       VALUES ($1, $2, $3, $4)
     """
@@ -31,7 +49,7 @@ class BatchesPostgresDao(
     """
       with ranked_versions as (select *,
               dense_rank() over (partition by start_block_number order by end_block_number asc) version_rank
-              from ${BatchesDao.batchesDaoTableName}
+              from $batchesDaoTableName
               order by start_block_number asc),
           previous_ends as (select *,
               lag(end_block_number, 1) over (order by end_block_number asc) as previous_end_block_number
@@ -43,7 +61,7 @@ class BatchesPostgresDao(
               limit 1)
       select end_block_number
       from previous_ends
-      where EXISTS (select 1 from ${BatchesDao.batchesDaoTableName} where start_block_number = $1)
+      where EXISTS (select 1 from $batchesDaoTableName where start_block_number = $1)
         and (previous_ends.previous_end_block_number = previous_ends.start_block_number - 1 or previous_ends.start_block_number = $1)
         and ((select count(1) from first_gapped_batch) = 0 or previous_ends.start_block_number < (select * from first_gapped_batch))
       order by start_block_number desc
@@ -53,14 +71,14 @@ class BatchesPostgresDao(
 
   private val deleteUptoSql =
     """
-        delete from ${BatchesDao.batchesDaoTableName}
+        delete from $batchesDaoTableName
         where end_block_number <= $1
     """
       .trimIndent()
 
   private val deleteAfterSql =
     """
-        delete from ${BatchesDao.batchesDaoTableName}
+        delete from $batchesDaoTableName
         where start_block_number >= $1
     """
       .trimIndent()

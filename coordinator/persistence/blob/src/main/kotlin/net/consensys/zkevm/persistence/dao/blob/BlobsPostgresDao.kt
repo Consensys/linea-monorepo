@@ -62,17 +62,6 @@ class BlobsPostgresDao(
       }
     }
 
-    fun dbValueToBlobStatus(value: Int): BlobStatus {
-      return when (value) {
-        1 -> BlobStatus.COMPRESSION_PROVEN
-        2 -> BlobStatus.COMPRESSION_PROVING
-        else ->
-          throw IllegalStateException(
-            "Value '$value' does not map to any ${BlobStatus::class.simpleName}"
-          )
-      }
-    }
-
     private fun BlobCompressionProof?.toJsonString(): String? {
       return this?.let { BlobCompressionProofJsonResponse.fromDomainObject(it).toJsonString() }
     }
@@ -181,14 +170,13 @@ class BlobsPostgresDao(
   }
 
   private fun getConsecutiveBlobsFromBlockNumber(
-    startingBlockNumberInclusive: ULong,
-    status: BlobStatus = BlobStatus.COMPRESSION_PROVEN
+    startingBlockNumberInclusive: ULong
   ): SafeFuture<List<BlobRecord>> {
     return selectQuery
       .execute(
         Tuple.of(
           startingBlockNumberInclusive.toLong(),
-          blobStatusToDbValue(status)
+          blobStatusToDbValue(BlobStatus.COMPRESSION_PROVEN)
         )
       )
       .toSafeFuture()

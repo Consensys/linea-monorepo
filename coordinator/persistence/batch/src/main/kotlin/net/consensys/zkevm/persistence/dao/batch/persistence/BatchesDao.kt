@@ -4,11 +4,6 @@ import net.consensys.zkevm.domain.Batch
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface BatchesDao {
-  companion object {
-    @JvmStatic
-    val batchesDaoTableName = "batches"
-  }
-
   fun saveNewBatch(batch: Batch): SafeFuture<Unit>
 
   fun findHighestConsecutiveEndBlockNumberFromBlockNumber(

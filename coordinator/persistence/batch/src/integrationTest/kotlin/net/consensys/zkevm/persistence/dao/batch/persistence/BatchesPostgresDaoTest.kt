@@ -9,7 +9,6 @@ import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.createBatch
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesDao.Companion.batchesDaoTableName
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
@@ -34,7 +33,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
   private var fakeClockTime = Instant.parse("2023-12-11T00:00:00.000Z")
   private var fakeClock = FakeFixedClock(fakeClockTime)
   private fun batchesContentQuery(): PreparedQuery<RowSet<Row>> =
-    sqlClient.preparedQuery("select * from $batchesDaoTableName")
+    sqlClient.preparedQuery("select * from ${BatchesPostgresDao.batchesDaoTableName}")
 
   private lateinit var batchesDao: BatchesDao
 
@@ -91,7 +90,8 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
     assertThat(newlyInsertedRow!!.getLong("start_block_number"))
       .isEqualTo(batch.startBlockNumber.toLong())
     assertThat(newlyInsertedRow.getLong("end_block_number")).isEqualTo(batch.endBlockNumber.toLong())
-    assertThat(newlyInsertedRow.getInteger("status")).isEqualTo(batchStatusToDbValue(Batch.Status.Proven))
+    assertThat(newlyInsertedRow.getInteger("status"))
+      .isEqualTo(BatchesPostgresDao.batchStatusToDbValue(Batch.Status.Proven))
     return dbContent
   }
 
