@@ -175,6 +175,7 @@ describe("Submission and finalization test suite", () => {
   });
 
   describe("LineaRollup v6 upgrade", () => {
+    // note: we cannot move the chain forward by 6 months, so in theory, this could be any address for e2e test purposes
     const fallbackoperatorAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
     beforeAll(async () => {
