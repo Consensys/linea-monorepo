@@ -224,4 +224,8 @@ public class DeferRegistry
   public void unscheduleForContextReEntry(ContextReEntryDefer defer, CallFrame callFrame) {
     contextReEntryDefers.get(callFrame).remove(defer);
   }
+
+  public void unscheduleForPostTransaction(PostTransactionDefer defer) {
+    postTransactionDefers.remove(defer);
+  }
 }
