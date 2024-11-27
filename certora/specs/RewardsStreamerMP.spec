@@ -12,6 +12,7 @@ methods {
     function updateGlobalState() external;
     function updateAccountMP(address accountAddress) external;
     function emergencyModeEnabled() external returns (bool) envfree;
+    function leave() external;
 }
 
 ghost mathint sumOfBalances {

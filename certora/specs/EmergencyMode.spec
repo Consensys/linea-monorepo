@@ -58,7 +58,8 @@ rule accountCanOnlyLeaveInEmergencyMode(method f) {
   f@withrevert(e, args);
   bool isReverted = lastReverted;
 
-  assert !isReverted => isViewFunction(f) ||
+  assert !isReverted => f.selector == sig:streamer.leave().selector ||
+                        isViewFunction(f) ||
                         isOwnableFunction(f) ||
                         isTrustedCodehashAccessFunction(f) ||
                         isInitializerFunction(f) ||

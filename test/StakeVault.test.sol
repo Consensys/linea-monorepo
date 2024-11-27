@@ -4,6 +4,8 @@ pragma solidity ^0.8.26;
 import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
+import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
+import { StakeManagerProxy } from "../src/StakeManagerProxy.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { MockToken } from "./mocks/MockToken.sol";
@@ -21,7 +23,7 @@ contract StakeVaultTest is Test {
 
     function _createTestVault(address owner) internal returns (StakeVault vault) {
         vm.prank(owner);
-        vault = new StakeVault(owner, streamer);
+        vault = new StakeVault(owner, IStakeManagerProxy(address(streamer)));
 
         if (!streamer.isTrustedCodehash(address(vault).codehash)) {
             streamer.setTrustedCodehash(address(vault).codehash, true);
@@ -35,7 +37,7 @@ contract StakeVaultTest is Test {
         bytes memory initializeData = abi.encodeWithSelector(
             RewardsStreamerMP.initialize.selector, address(this), address(stakingToken), address(rewardToken)
         );
-        address proxy = address(new ERC1967Proxy(impl, initializeData));
+        address proxy = address(new StakeManagerProxy(impl, initializeData));
         streamer = RewardsStreamerMP(proxy);
 
         stakingToken.mint(alice, 10_000e18);
@@ -48,7 +50,7 @@ contract StakeVaultTest is Test {
 
 contract StakingTokenTest is StakeVaultTest {
     function setUp() public override {
-        StakeVaultTest.setUp();
+        super.setUp();
     }
 
     function testStakeToken() public view {
@@ -58,7 +60,7 @@ contract StakingTokenTest is StakeVaultTest {
 
 contract WithdrawTest is StakeVaultTest {
     function setUp() public override {
-        StakeVaultTest.setUp();
+        super.setUp();
     }
 
     function test_CannotWithdrawStakedFunds() public {

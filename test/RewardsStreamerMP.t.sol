@@ -7,6 +7,8 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeVault } from "../src/StakeVault.sol";
+import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
+import { StakeManagerProxy } from "../src/StakeManagerProxy.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 
 contract RewardsStreamerMPTest is Test {
@@ -29,7 +31,7 @@ contract RewardsStreamerMPTest is Test {
         bytes memory initializeData =
             abi.encodeCall(RewardsStreamerMP.initialize, (address(this), address(stakingToken), address(rewardToken)));
         address impl = address(new RewardsStreamerMP());
-        address proxy = address(new ERC1967Proxy(impl, initializeData));
+        address proxy = address(new StakeManagerProxy(impl, initializeData));
         streamer = RewardsStreamerMP(proxy);
 
         address[4] memory accounts = [alice, bob, charlie, dave];
@@ -93,7 +95,7 @@ contract RewardsStreamerMPTest is Test {
 
     function _createTestVault(address owner) internal returns (StakeVault vault) {
         vm.prank(owner);
-        vault = new StakeVault(owner, streamer);
+        vault = new StakeVault(owner, IStakeManagerProxy(address(streamer)));
 
         if (!streamer.isTrustedCodehash(address(vault).codehash)) {
             streamer.setTrustedCodehash(address(vault).codehash, true);
@@ -116,6 +118,12 @@ contract RewardsStreamerMPTest is Test {
         StakeVault vault = StakeVault(vaults[account]);
         vm.prank(account);
         vault.emergencyExit(account);
+    }
+
+    function _leave(address account) public {
+        StakeVault vault = StakeVault(vaults[account]);
+        vm.prank(account);
+        vault.leave(account);
     }
 
     function _addReward(uint256 amount) public {
@@ -1838,5 +1846,105 @@ contract UpgradeTest is RewardsStreamerMPTest {
                 accountedRewards: 0
             })
         );
+    }
+}
+
+contract LeaveTest is RewardsStreamerMPTest {
+    function _upgradeStakeManager() internal {
+        address newImpl = address(new RewardsStreamerMP());
+        bytes memory initializeData;
+        UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
+    }
+
+    function setUp() public override {
+        super.setUp();
+    }
+
+    function test_RevertWhenStakeManagerIsTrusted() public {
+        _stake(alice, 10e18, 0);
+        vm.expectRevert(StakeVault.StakeVault__NotAllowedToLeave.selector);
+        _leave(alice);
+    }
+
+    function test_LeaveShouldProperlyUpdateAccounting() public {
+        uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
+
+        _stake(alice, 100e18, 0);
+
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance - 100e18, "Alice should have staked tokens");
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 100e18,
+                totalMP: 100e18,
+                totalMaxMP: 500e18,
+                stakingBalance: 100e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        _upgradeStakeManager();
+        _leave(alice);
+
+        // stake manager properly updates accounting
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 0,
+                totalMP: 0,
+                totalMaxMP: 0,
+                stakingBalance: 0,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        // vault should be empty as funds have been moved out
+        checkAccount(
+            CheckAccountParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: 0,
+                vaultBalance: 0,
+                rewardIndex: 0,
+                accountMP: 0,
+                maxMP: 0
+            })
+        );
+
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice has all her funds back");
+    }
+
+    function test_TrustNewStakeManager() public {
+        // first, upgrade to new stake manager, marking it as not trusted
+        _upgradeStakeManager();
+
+        // ensure vault functions revert if stake manager is not trusted
+        vm.expectRevert(StakeVault.StakeVault__StakeManagerImplementationNotTrusted.selector);
+        _stake(alice, 100e18, 0);
+
+        // ensure vault functions revert if stake manager is not trusted
+        StakeVault vault = StakeVault(vaults[alice]);
+        vm.prank(alice);
+        vm.expectRevert(StakeVault.StakeVault__StakeManagerImplementationNotTrusted.selector);
+        vault.lock(365 days);
+
+        // ensure vault functions revert if stake manager is not trusted
+        vm.expectRevert(StakeVault.StakeVault__StakeManagerImplementationNotTrusted.selector);
+        _unstake(alice, 100e18);
+
+        // now, trust the new stake manager
+        address newStakeManagerImpl = IStakeManagerProxy(address(streamer)).implementation();
+        vm.prank(alice);
+        vault.trustStakeManager(newStakeManagerImpl);
+
+        // stake manager is now trusted, so functions are enabeled again
+        _stake(alice, 100e18, 0);
+
+        // however, a trusted manager cannot be left
+        vm.expectRevert(StakeVault.StakeVault__NotAllowedToLeave.selector);
+        _leave(alice);
     }
 }

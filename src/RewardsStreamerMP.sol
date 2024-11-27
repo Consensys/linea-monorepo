@@ -164,13 +164,16 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
         if (block.timestamp < account.lockUntil) {
             revert StakingManager__TokensAreLocked();
         }
+        _unstake(amount, account, msg.sender);
+    }
 
+    function _unstake(uint256 amount, Account storage account, address accountAddress) internal {
         _updateGlobalState();
-        _updateAccountMP(msg.sender);
+        _updateAccountMP(accountAddress);
 
-        uint256 accountRewards = calculateAccountRewards(msg.sender);
+        uint256 accountRewards = calculateAccountRewards(accountAddress);
         if (accountRewards > 0) {
-            distributeRewards(msg.sender, accountRewards);
+            distributeRewards(accountAddress, accountRewards);
         }
 
         uint256 previousStakedBalance = account.stakedBalance;
@@ -181,11 +184,28 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
         account.stakedBalance -= amount;
         account.accountMP -= mpToReduce;
         account.maxMP -= maxMPToReduce;
+        account.accountRewardIndex = rewardIndex;
         totalMP -= mpToReduce;
         totalMaxMP -= maxMPToReduce;
         totalStaked -= amount;
+    }
 
-        account.accountRewardIndex = rewardIndex;
+    // @notice Allows an account to leave the system. This can happen when a
+    //         user doesn't agree with an upgrade of the stake manager.
+    // @dev This function is protected by whitelisting the codehash of the caller.
+    //      This ensures `StakeVault`s will call this function only if they don't
+    //      trust the `StakeManager` (e.g. in case of an upgrade).
+    function leave() external onlyTrustedCodehash nonReentrant {
+        Account storage account = accounts[msg.sender];
+
+        if (account.stakedBalance > 0) {
+            // calling `_unstake` to update accounting accordingly
+            _unstake(account.stakedBalance, account, msg.sender);
+
+            // further cleanup that isn't done in `_unstake`
+            account.accountRewardIndex = 0;
+            account.lockUntil = 0;
+        }
     }
 
     function _updateGlobalState() internal {
