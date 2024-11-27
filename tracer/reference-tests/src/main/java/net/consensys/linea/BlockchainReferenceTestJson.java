@@ -14,7 +14,7 @@
  */
 package net.consensys.linea;
 
-import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.setFileDirectory;
+import static net.consensys.linea.reporting.TestOutcomeWriterTool.getFileDirectory;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -31,7 +31,7 @@ public class BlockchainReferenceTestJson {
 
   @Synchronized
   public static CompletableFuture<String> readBlockchainReferenceTestsOutput(String fileName) {
-    String fileDirectory = setFileDirectory();
+    String fileDirectory = getFileDirectory();
     return CompletableFuture.supplyAsync(
         () -> {
           Path directoryPath = Paths.get(fileDirectory);

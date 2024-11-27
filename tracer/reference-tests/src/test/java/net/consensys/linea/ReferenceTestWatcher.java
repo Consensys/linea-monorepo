@@ -14,7 +14,7 @@
  */
 package net.consensys.linea;
 
-import static net.consensys.linea.TestState.*;
+import static net.consensys.linea.reporting.TestState.*;
 import static net.consensys.linea.testing.ExecutionEnvironment.CORSET_VALIDATION_RESULT;
 
 import java.util.HashMap;

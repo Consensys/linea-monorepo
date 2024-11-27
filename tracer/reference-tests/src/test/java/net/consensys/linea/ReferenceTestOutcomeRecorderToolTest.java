@@ -25,6 +25,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
+import net.consensys.linea.reporting.TestOutcome;
+import net.consensys.linea.reporting.TestOutcomeWriterTool;
+import net.consensys.linea.reporting.TestState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -52,13 +55,13 @@ public class ReferenceTestOutcomeRecorderToolTest {
         "test1", TestState.FAILED, Map.of("Constraint", Set.of(module1, module2)));
     ReferenceTestOutcomeRecorderTool.mapAndStoreTestResult(
         "test2", TestState.FAILED, Map.of("Constraint", Set.of(module1)));
-    ReferenceTestOutcomeRecorderTool.writeToJsonFile();
+    TestOutcomeWriterTool.writeToJsonFile(JSON_OUTPUT_FILENAME_TEST);
 
     readBlockchainReferenceTestsOutput(JSON_OUTPUT_FILENAME_TEST)
         .thenApply(
             jsonString -> {
-              BlockchainReferenceTestOutcome blockchainReferenceTestOutcome =
-                  ReferenceTestOutcomeRecorderTool.parseBlockchainReferenceTestOutcome(jsonString);
+              TestOutcome blockchainReferenceTestOutcome =
+                  TestOutcomeWriterTool.parseTestOutcome(jsonString);
 
               ConcurrentMap<String, ConcurrentMap<String, ConcurrentSkipListSet<String>>>
                   modulesToConstraints =
@@ -155,8 +158,8 @@ public class ReferenceTestOutcomeRecorderToolTest {
 
   @Test
   void parseBlockchainReferenceTestOutcome() {
-    BlockchainReferenceTestOutcome outcome =
-        ReferenceTestOutcomeRecorderTool.parseBlockchainReferenceTestOutcome(
+    TestOutcome outcome =
+        TestOutcomeWriterTool.parseTestOutcome(
             """
             {
               "abortedCounter": 20,

@@ -123,6 +123,6 @@ dependencies {
 
   implementation project(":arithmetization")
   implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-  testImplementation project(path: ':testing')
+  implementation project(path: ':testing')
   implementation 'org.junit.platform:junit-platform-launcher'
 }
