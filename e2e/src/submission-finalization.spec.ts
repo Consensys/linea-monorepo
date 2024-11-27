@@ -9,6 +9,7 @@ import {
   etherToWei,
   generateRoleAssignments,
   convertStringToPaddedHexBytes,
+  getEvents,
 } from "./common/utils";
 import { config } from "./config/tests-config";
 import { deployContract } from "./common/deployments";
@@ -226,6 +227,26 @@ describe("Submission and finalization test suite", () => {
         lineaRollupV6.filters.LineaRollupVersionChanged(expectedVersion5Bytes8, expectedVersion6Bytes8),
         1_000,
       );
+    });
+
+    it("Check all new roles have been granted and pauseTypes/unpauseTypes are assigned to specific roles", async () => {
+      const lineaRollupAddress = await config.getLineaRollupContract().getAddress();
+      const l1SecurityCouncilAddress = await l1AccountManager.whaleAccount(3).getAddress();
+
+      const lineaRollupV6 = LineaRollupV6__factory.connect(lineaRollupAddress, config.getL1Provider());
+
+      for (const role of LINEA_ROLLUP_V6_ROLES) {
+        const hasRole = await lineaRollupV6.hasRole(role, l1SecurityCouncilAddress);
+        expect(hasRole).toBeTruthy();
+      }
+
+      const [pauseTypeRoleSetEvents, unPauseTypeRoleSetEvents] = await Promise.all([
+        getEvents(lineaRollupV6, lineaRollupV6.filters.PauseTypeRoleSet()),
+        getEvents(lineaRollupV6, lineaRollupV6.filters.UnPauseTypeRoleSet()),
+      ]);
+
+      expect(pauseTypeRoleSetEvents.length).toEqual(LINEA_ROLLUP_PAUSE_TYPES_ROLES.length);
+      expect(unPauseTypeRoleSetEvents.length).toEqual(LINEA_ROLLUP_UNPAUSE_TYPES_ROLES.length);
     });
 
     it("Check L1 data submission and finalization", async () => {
