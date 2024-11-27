@@ -2,6 +2,8 @@ package pi_interconnection
 
 import (
 	"errors"
+	"fmt"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/sirupsen/logrus"
 	"math/big"
 	"slices"
@@ -141,6 +143,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
+	hshExec := test_utils.NewReaderHashSnarkFromFile(api, hshM, "exec-pi")
 	// we can "allow non-deterministic behavior" because all compared values have been range-checked
 	comparator := cmp.NewBoundedComparator(api, new(big.Int).Lsh(big.NewInt(1), 65), true)
 	// TODO try using lookups or crumb decomposition to make comparisons more efficient
@@ -171,7 +174,8 @@ func (c *Circuit) Define(api frontend.API) error {
 		finalBlockNum = pi.FinalBlockNumber
 		finalState = pi.FinalStateRootHash
 
-		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hshM))) // "open" execution circuit public input
+		fmt.Println(i)
+		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hshExec))) // "open" execution circuit public input
 
 		if len(pi.L2MessageHashes.Values) != execMaxNbL2Msg {
 			return errors.New("number of L2 messages must be the same for all executions")

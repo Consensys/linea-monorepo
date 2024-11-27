@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -183,6 +184,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	lastFinBlockNum, lastFinBlockTs := aggregationFPI.LastFinalizedBlockNumber, aggregationFPI.LastFinalizedBlockTimestamp
 
 	hshM := mimc.NewMiMC()
+	hshExec := test_utils.NewWriterHashToFile(hshM, "exec-pi")
 	for i := range a.ExecutionFPIQ {
 
 		// padding
@@ -199,7 +201,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		if i < len(r.Executions) {
 			executionFPI = r.Executions[i]
 			// compute the public input
-			a.ExecutionPublicInput[i] = executionFPI.Sum(hshM)
+			a.ExecutionPublicInput[i] = executionFPI.Sum(hshExec)
 		}
 
 		l2MessageHashes = append(l2MessageHashes, r.Executions[i].L2MsgHashes...)
@@ -328,6 +330,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	logrus.Infof("generating wizard proof for %d hashes from %d permutations", hshK.NbHashes(), hshK.MaxNbKeccakF())
 	a.Keccak, err = hshK.Assign()
 
+	hshExec.CloseFile()
 	return
 }
 

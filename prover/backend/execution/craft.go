@@ -181,7 +181,6 @@ func (rsp *Response) FuncInput() *public_input.Execution {
 		lastBlock  = &rsp.BlocksData[len(rsp.BlocksData)-1]
 		fi         = &public_input.Execution{
 			L2MessageServiceAddr:  types.EthAddress(rsp.L2BridgeAddress),
-			MaxNbL2MessageHashes:  rsp.MaxNbL2MessageHashes,
 			ChainID:               uint64(rsp.ChainID),
 			FinalBlockTimestamp:   lastBlock.TimeStamp,
 			FinalBlockNumber:      uint64(rsp.FirstBlockNumber + len(rsp.BlocksData) - 1),
