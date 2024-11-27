@@ -169,3 +169,8 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 16
+      matrix:
+        rule:
+          - verify:rewards_streamer_mp
+          - verify:emergency_mode
+          - verify:xp_token

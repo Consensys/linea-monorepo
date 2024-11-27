@@ -15,6 +15,7 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
     error StakingManager__CannotRestakeWithLockedFunds();
     error StakingManager__TokensAreLocked();
     error StakingManager__AlreadyLocked();
+    error StakingManager__EmergencyModeEnabled();
 
     IERC20 public immutable STAKING_TOKEN;
     IERC20 public immutable REWARD_TOKEN;
@@ -32,6 +33,7 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
     uint256 public rewardIndex;
     uint256 public accountedRewards;
     uint256 public lastMPUpdatedTime;
+    bool public emergencyModeEnabled;
 
     struct Account {
         uint256 stakedBalance;
@@ -44,13 +46,20 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
 
     mapping(address account => Account data) public accounts;
 
+    modifier onlyNotEmergencyMode() {
+        if (emergencyModeEnabled) {
+            revert StakingManager__EmergencyModeEnabled();
+        }
+        _;
+    }
+
     constructor(address _owner, address _stakingToken, address _rewardToken) TrustedCodehashAccess(_owner) {
         STAKING_TOKEN = IERC20(_stakingToken);
         REWARD_TOKEN = IERC20(_rewardToken);
         lastMPUpdatedTime = block.timestamp;
     }
 
-    function stake(uint256 amount, uint256 lockPeriod) external onlyTrustedCodehash nonReentrant {
+    function stake(uint256 amount, uint256 lockPeriod) external onlyTrustedCodehash onlyNotEmergencyMode nonReentrant {
         if (amount == 0) {
             revert StakingManager__AmountCannotBeZero();
         }
@@ -99,7 +108,7 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
         account.lastMPUpdateTime = block.timestamp;
     }
 
-    function lock(uint256 lockPeriod) external onlyTrustedCodehash nonReentrant {
+    function lock(uint256 lockPeriod) external onlyTrustedCodehash onlyNotEmergencyMode nonReentrant {
         if (lockPeriod < MIN_LOCKUP_PERIOD || lockPeriod > MAX_LOCKUP_PERIOD) {
             revert StakingManager__InvalidLockingPeriod();
         }
@@ -132,7 +141,7 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
         account.lastMPUpdateTime = block.timestamp;
     }
 
-    function unstake(uint256 amount) external onlyTrustedCodehash nonReentrant {
+    function unstake(uint256 amount) external onlyTrustedCodehash onlyNotEmergencyMode nonReentrant {
         Account storage account = accounts[msg.sender];
         if (amount > account.stakedBalance) {
             revert StakingManager__InsufficientBalance();
@@ -170,7 +179,7 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
         updateRewardIndex();
     }
 
-    function updateGlobalState() external {
+    function updateGlobalState() external onlyNotEmergencyMode {
         _updateGlobalState();
     }
 
@@ -246,7 +255,7 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
         account.lastMPUpdateTime = block.timestamp;
     }
 
-    function updateAccountMP(address accountAddress) external {
+    function updateAccountMP(address accountAddress) external onlyNotEmergencyMode {
         _updateAccountMP(accountAddress);
     }
 
@@ -272,7 +281,14 @@ contract RewardsStreamerMP is IStakeManager, TrustedCodehashAccess, ReentrancyGu
         }
     }
 
-    function getStakedBalance(address accountAddress) external view returns (uint256) {
+    function enableEmergencyMode() external onlyOwner {
+        if (emergencyModeEnabled) {
+            revert StakingManager__EmergencyModeEnabled();
+        }
+        emergencyModeEnabled = true;
+    }
+
+    function getStakedBalance(address accountAddress) public view returns (uint256) {
         return accounts[accountAddress].stakedBalance;
     }
 

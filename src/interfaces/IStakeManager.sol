@@ -14,6 +14,7 @@ interface IStakeManager is ITrustedCodehashAccess {
     function lock(uint256 _seconds) external;
     function unstake(uint256 _amount) external;
 
+    function emergencyModeEnabled() external view returns (bool);
     function totalStaked() external view returns (uint256);
     function totalMP() external view returns (uint256);
     function totalMaxMP() external view returns (uint256);

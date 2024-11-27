@@ -11,6 +11,7 @@ methods {
     function lastMPUpdatedTime() external returns (uint256) envfree;
     function updateGlobalState() external;
     function updateAccountMP(address accountAddress) external;
+    function emergencyModeEnabled() external returns (bool) envfree;
 }
 
 ghost mathint sumOfBalances {

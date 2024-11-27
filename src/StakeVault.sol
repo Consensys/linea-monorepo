@@ -18,6 +18,7 @@ contract StakeVault is Ownable {
     error StakeVault__UpdateNotAvailable();
     error StakeVault__StakingFailed();
     error StakeVault__UnstakingFailed();
+    error StakeVault__NotAllowedToExit();
 
     //STAKING_TOKEN must be kept as an immutable, otherwise, StakeManager would accept StakeVaults with any token
     //if is needed that STAKING_TOKEN to be a variable, StakeManager should be changed to check codehash and
@@ -162,5 +163,25 @@ contract StakeVault is Ownable {
 
     function amountStaked() public view returns (uint256) {
         return stakeManager.getStakedBalance(address(this));
+    }
+
+    /**
+     * @notice Allows vaults to exit the system in case of emergency or the system is rigged.
+     * @param _destination The address to receive the funds.
+     * @dev This function tries to read `IStakeManager.emergencyModeEnabeled()` to check if an
+     *      emergency mode is enabled. If the call fails, it will still transfer the funds to the
+     *      destination address.
+     * @dev This function is only callable by the owner.
+     * @dev Reverts when `emergencyModeEnabled()` returns false.
+     */
+    function emergencyExit(address _destination) external onlyOwner validDestination(_destination) {
+        try stakeManager.emergencyModeEnabled() returns (bool enabled) {
+            if (!enabled) {
+                revert StakeVault__NotAllowedToExit();
+            }
+            STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+        } catch {
+            STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+        }
     }
 }

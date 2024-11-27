@@ -15,34 +15,37 @@
 | src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |       |        |       |         |
 |------------------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                                      | Deployment Size |       |        |       |         |
-| 1327847                                              | 6066            |       |        |       |         |
+| 1425736                                              | 6528            |       |        |       |         |
 | Function Name                                        | min             | avg   | median | max   | # calls |
 | MAX_LOCKUP_PERIOD                                    | 228             | 228   | 228    | 228   | 23      |
 | MAX_MULTIPLIER                                       | 274             | 274   | 274    | 274   | 30      |
 | MIN_LOCKUP_PERIOD                                    | 275             | 275   | 275    | 275   | 11      |
 | MP_RATE_PER_YEAR                                     | 231             | 231   | 231    | 231   | 3       |
 | SCALE_FACTOR                                         | 295             | 295   | 295    | 295   | 41      |
-| STAKING_TOKEN                                        | 273             | 273   | 273    | 273   | 140     |
-| accountedRewards                                     | 373             | 931   | 373    | 2373  | 68      |
-| getAccount                                           | 1596            | 1596  | 1596   | 1596  | 67      |
-| isTrustedCodehash                                    | 496             | 996   | 496    | 2496  | 140     |
-| rewardIndex                                          | 351             | 380   | 351    | 2351  | 68      |
-| setTrustedCodehash                                   | 47926           | 47926 | 47926  | 47926 | 35      |
-| totalMP                                              | 330             | 330   | 330    | 330   | 71      |
-| totalMaxMP                                           | 373             | 373   | 373    | 373   | 71      |
-| totalStaked                                          | 352             | 352   | 352    | 352   | 71      |
-| updateAccountMP                                      | 34632           | 36870 | 37134  | 37134 | 19      |
-| updateGlobalState                                    | 30008           | 55588 | 47387  | 80334 | 25      |
+| STAKING_TOKEN                                        | 273             | 273   | 273    | 273   | 172     |
+| accountedRewards                                     | 351             | 906   | 351    | 2351  | 72      |
+| emergencyModeEnabled                                 | 2377            | 2377  | 2377   | 2377  | 7       |
+| enableEmergencyMode                                  | 23504           | 40411 | 45696  | 45696 | 8       |
+| getAccount                                           | 1596            | 1596  | 1596   | 1596  | 71      |
+| isTrustedCodehash                                    | 496             | 996   | 496    | 2496  | 172     |
+| rewardIndex                                          | 373             | 400   | 373    | 2373  | 72      |
+| setTrustedCodehash                                   | 47926           | 47926 | 47926  | 47926 | 43      |
+| totalMP                                              | 330             | 330   | 330    | 330   | 75      |
+| totalMaxMP                                           | 351             | 351   | 351    | 351   | 75      |
+| totalStaked                                          | 330             | 330   | 330    | 330   | 75      |
+| updateAccountMP                                      | 36758           | 38996 | 39260  | 39260 | 19      |
+| updateGlobalState                                    | 32134           | 60366 | 49513  | 82460 | 28      |
 
 
 | src/StakeVault.sol:StakeVault contract |                 |        |        |        |         |
 |----------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                        | Deployment Size |        |        |        |         |
-| 894174                                 | 4243            |        |        |        |         |
+| 1095864                                | 5202            |        |        |        |         |
 | Function Name                          | min             | avg    | median | max    | # calls |
-| lock                                   | 36236           | 58390  | 40615  | 98319  | 3       |
-| stake                                  | 196956          | 234305 | 240649 | 261178 | 48      |
-| unstake                                | 83287           | 111971 | 101308 | 144002 | 13      |
+| emergencyExit                          | 31410           | 43924  | 43160  | 60260  | 7       |
+| lock                                   | 38362           | 60516  | 42741  | 100445 | 3       |
+| stake                                  | 199213          | 236948 | 242906 | 263435 | 55      |
+| unstake                                | 84988           | 113999 | 103434 | 146128 | 13      |
 
 
 | src/XPNFTToken.sol:XPNFTToken contract          |                 |       |        |       |         |
@@ -118,10 +121,10 @@
 | Deployment Cost                             | Deployment Size |       |        |       |         |
 | 639406                                      | 3369            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
-| approve                                     | 46334           | 46343 | 46346  | 46346 | 180     |
-| balanceOf                                   | 561             | 1351  | 561    | 2561  | 291     |
-| mint                                        | 51284           | 58959 | 51284  | 68384 | 196     |
-| transfer                                    | 34390           | 48070 | 51490  | 51490 | 10      |
+| approve                                     | 46334           | 46343 | 46346  | 46346 | 220     |
+| balanceOf                                   | 561             | 1381  | 561    | 2561  | 334     |
+| mint                                        | 51284           | 58817 | 51284  | 68384 | 236     |
+| transfer                                    | 34390           | 48859 | 51490  | 51490 | 13      |
 
 
 | test/mocks/XPProviderMock.sol:XPProviderMock contract |                 |       |        |       |         |

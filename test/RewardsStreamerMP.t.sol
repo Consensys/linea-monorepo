@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { MockToken } from "./mocks/MockToken.sol";
@@ -65,6 +66,7 @@ contract RewardsStreamerMPTest is Test {
         address account;
         uint256 rewardBalance;
         uint256 stakedBalance;
+        uint256 vaultBalance;
         uint256 rewardIndex;
         uint256 accountMP;
         uint256 maxMP;
@@ -76,7 +78,7 @@ contract RewardsStreamerMPTest is Test {
         RewardsStreamerMP.Account memory accountInfo = streamer.getAccount(p.account);
 
         assertEq(accountInfo.stakedBalance, p.stakedBalance, "wrong account staked balance");
-        assertEq(stakingToken.balanceOf(p.account), p.stakedBalance, "wrong staking balance");
+        assertEq(stakingToken.balanceOf(p.account), p.vaultBalance, "wrong vault balance");
         assertEq(accountInfo.accountRewardIndex, p.rewardIndex, "wrong account reward index");
         assertEq(accountInfo.accountMP, p.accountMP, "wrong account MP");
         assertEq(accountInfo.maxMP, p.maxMP, "wrong account max MP");
@@ -101,6 +103,12 @@ contract RewardsStreamerMPTest is Test {
         StakeVault vault = StakeVault(vaults[account]);
         vm.prank(account);
         vault.unstake(amount);
+    }
+
+    function _emergencyExit(address account) public {
+        StakeVault vault = StakeVault(vaults[account]);
+        vm.prank(account);
+        vault.emergencyExit(account);
     }
 
     function _addReward(uint256 amount) public {
@@ -169,6 +177,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: 10e18,
+                vaultBalance: 10e18,
                 rewardIndex: 0,
                 accountMP: 10e18,
                 maxMP: 50e18
@@ -195,6 +204,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: 10e18,
+                vaultBalance: 10e18,
                 rewardIndex: 0,
                 accountMP: 10e18,
                 maxMP: 50e18
@@ -206,6 +216,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: 30e18,
+                vaultBalance: 30e18,
                 rewardIndex: 0,
                 accountMP: 30e18,
                 maxMP: 150e18
@@ -234,6 +245,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: 10e18,
+                vaultBalance: 10e18,
                 rewardIndex: 0,
                 accountMP: 10e18,
                 maxMP: 50e18
@@ -245,6 +257,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: 30e18,
+                vaultBalance: 30e18,
                 rewardIndex: 0,
                 accountMP: 30e18,
                 maxMP: 150e18
@@ -290,6 +303,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
+                vaultBalance: 0e18,
                 rewardIndex: 10e18,
                 accountMP: 0e18,
                 maxMP: 0e18
@@ -301,6 +315,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: 30e18,
+                vaultBalance: 30e18,
                 rewardIndex: 0,
                 accountMP: 30e18,
                 maxMP: 150e18
@@ -327,6 +342,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
+                vaultBalance: 0e18,
                 rewardIndex: 10e18,
                 accountMP: 0e18,
                 maxMP: 0e18
@@ -338,6 +354,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: 30e18,
+                vaultBalance: 30e18,
                 rewardIndex: 0,
                 accountMP: 30e18,
                 maxMP: 150e18
@@ -349,6 +366,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[charlie],
                 rewardBalance: 0,
                 stakedBalance: 30e18,
+                vaultBalance: 30e18,
                 rewardIndex: 10e18,
                 accountMP: 30e18,
                 maxMP: 150e18
@@ -377,6 +395,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
+                vaultBalance: 0e18,
                 rewardIndex: 10e18,
                 accountMP: 0e18,
                 maxMP: 0e18
@@ -388,6 +407,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: 30e18,
+                vaultBalance: 30e18,
                 rewardIndex: 0,
                 accountMP: 30e18,
                 maxMP: 150e18
@@ -399,6 +419,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[charlie],
                 rewardBalance: 0,
                 stakedBalance: 30e18,
+                vaultBalance: 30e18,
                 rewardIndex: 10e18,
                 accountMP: 30e18,
                 maxMP: 150e18
@@ -426,6 +447,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
+                vaultBalance: 0e18,
                 rewardIndex: 10e18,
                 accountMP: 0,
                 maxMP: 0
@@ -444,6 +466,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 // bobs total rewards = 555.55 + 750 of the first bucket = 1305.55
                 rewardBalance: 1_305_555_555_555_555_555_525,
                 stakedBalance: 0e18,
+                vaultBalance: 0e18,
                 rewardIndex: 17_407_407_407_407_407_407,
                 accountMP: 0,
                 maxMP: 0
@@ -455,6 +478,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 account: vaults[charlie],
                 rewardBalance: 0,
                 stakedBalance: 30e18,
+                vaultBalance: 30e18,
                 rewardIndex: 10e18,
                 accountMP: 30e18,
                 maxMP: 150e18
@@ -488,6 +512,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: 10e18,
+                vaultBalance: 10e18,
                 rewardIndex: 0,
                 accountMP: 10e18,
                 maxMP: 50e18
@@ -515,6 +540,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: 10e18,
+                vaultBalance: 10e18,
                 rewardIndex: 0,
                 accountMP: 10e18,
                 maxMP: 50e18
@@ -645,6 +671,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
                 rewardIndex: 0,
                 accountMP: totalMP, // accountMP == totalMP because only one account is staking
                 maxMP: totalMaxMP
@@ -677,6 +704,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
                 rewardIndex: 0,
                 accountMP: totalMP, // accountMP == totalMP because only one account is staking
                 maxMP: totalMaxMP
@@ -708,6 +736,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
                 rewardIndex: 0,
                 accountMP: totalMP, // accountMP == totalMP because only one account is staking
                 maxMP: totalMaxMP // maxMP == totalMaxMP because only one account is staking
@@ -738,6 +767,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
                 rewardIndex: 0,
                 accountMP: totalMaxMP,
                 maxMP: totalMaxMP
@@ -788,6 +818,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: 10e18,
+                vaultBalance: 10e18,
                 rewardIndex: 0,
                 accountMP: 10e18,
                 maxMP: 50e18
@@ -799,6 +830,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: 30e18,
+                vaultBalance: 30e18,
                 rewardIndex: 0,
                 accountMP: 30e18,
                 maxMP: 150e18
@@ -830,6 +862,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: 10e18,
+                vaultBalance: 10e18,
                 rewardIndex: 0,
                 accountMP: 10e18,
                 maxMP: 50e18
@@ -841,6 +874,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: 30e18,
+                vaultBalance: 30e18,
                 rewardIndex: 0,
                 accountMP: 30e18,
                 maxMP: 150e18
@@ -957,6 +991,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: aliceStakeAmount,
+                vaultBalance: aliceStakeAmount,
                 rewardIndex: 0,
                 accountMP: aliceMP,
                 maxMP: aliceMaxMP
@@ -967,6 +1002,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: bobStakeAmount,
+                vaultBalance: bobStakeAmount,
                 rewardIndex: 0,
                 accountMP: bobMP,
                 maxMP: bobMaxMP
@@ -1005,6 +1041,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: aliceStakeAmount,
+                vaultBalance: aliceStakeAmount,
                 rewardIndex: 0,
                 accountMP: aliceMP,
                 maxMP: aliceMaxMP
@@ -1015,6 +1052,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: bobStakeAmount,
+                vaultBalance: bobStakeAmount,
                 rewardIndex: 0,
                 accountMP: bobMP,
                 maxMP: bobMaxMP
@@ -1053,6 +1091,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: aliceStakeAmount,
+                vaultBalance: aliceStakeAmount,
                 rewardIndex: 0,
                 accountMP: aliceMP,
                 maxMP: aliceMaxMP
@@ -1063,6 +1102,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: bobStakeAmount,
+                vaultBalance: bobStakeAmount,
                 rewardIndex: 0,
                 accountMP: bobMP,
                 maxMP: bobMaxMP
@@ -1098,6 +1138,7 @@ contract UnstakeTest is StakeTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: 2e18,
+                vaultBalance: 2e18,
                 rewardIndex: 0,
                 accountMP: 2e18,
                 maxMP: 10e18
@@ -1224,6 +1265,7 @@ contract UnstakeTest is StakeTest {
                 account: vaults[alice],
                 rewardBalance: 1000e18,
                 stakedBalance: 2e18,
+                vaultBalance: 2e18,
                 rewardIndex: 50e18, // alice reward index has been updated
                 accountMP: 2e18,
                 maxMP: 10e18
@@ -1351,6 +1393,7 @@ contract UnstakeTest is StakeTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: 0,
+                vaultBalance: 0,
                 rewardIndex: 0,
                 accountMP: 0,
                 maxMP: 0
@@ -1362,6 +1405,7 @@ contract UnstakeTest is StakeTest {
                 account: vaults[bob],
                 rewardBalance: 0,
                 stakedBalance: 20e18,
+                vaultBalance: 20e18,
                 rewardIndex: 0,
                 accountMP: 20e18,
                 maxMP: 100e18
@@ -1392,6 +1436,7 @@ contract UnstakeTest is StakeTest {
                 account: vaults[alice],
                 rewardBalance: 250e18,
                 stakedBalance: 0,
+                vaultBalance: 0,
                 rewardIndex: 125e17,
                 accountMP: 0,
                 maxMP: 0
@@ -1417,6 +1462,7 @@ contract UnstakeTest is StakeTest {
                 account: vaults[bob],
                 rewardBalance: 750e18,
                 stakedBalance: 20e18,
+                vaultBalance: 20e18,
                 rewardIndex: 125e17,
                 accountMP: 20e18,
                 maxMP: 100e18
@@ -1442,6 +1488,7 @@ contract UnstakeTest is StakeTest {
                 account: vaults[bob],
                 rewardBalance: 750e18,
                 stakedBalance: 0,
+                vaultBalance: 0,
                 rewardIndex: 125e17,
                 accountMP: 0,
                 maxMP: 0
@@ -1475,6 +1522,7 @@ contract LockTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
                 rewardIndex: 0,
                 accountMP: initialAccountMP,
                 maxMP: initialMaxMP
@@ -1493,6 +1541,7 @@ contract LockTest is RewardsStreamerMPTest {
                 account: vaults[alice],
                 rewardBalance: 0,
                 stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
                 rewardIndex: 0,
                 accountMP: initialAccountMP + expectedBonusMP,
                 maxMP: initialMaxMP + expectedBonusMP
@@ -1511,5 +1560,222 @@ contract LockTest is RewardsStreamerMPTest {
         // Test with period = 0
         vm.expectRevert(RewardsStreamerMP.StakingManager__InvalidLockingPeriod.selector);
         _lock(alice, 0);
+    }
+}
+
+contract EmergencyExitTest is RewardsStreamerMPTest {
+    function setUp() public override {
+        super.setUp();
+    }
+
+    function test_CannotLeaveBeforeEmergencyMode() public {
+        _stake(alice, 10e18, 0);
+        vm.expectRevert(StakeVault.StakeVault__NotAllowedToExit.selector);
+        _emergencyExit(alice);
+    }
+
+    function test_OnlyOwnerCanEnableEmergencyMode() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
+        streamer.enableEmergencyMode();
+    }
+
+    function test_CannotEnableEmergencyModeTwice() public {
+        streamer.enableEmergencyMode();
+        vm.expectRevert(RewardsStreamerMP.StakingManager__EmergencyModeEnabled.selector);
+        streamer.enableEmergencyMode();
+    }
+
+    function test_EmergencyExitBasic() public {
+        uint256 aliceBalance = stakingToken.balanceOf(alice);
+
+        _stake(alice, 10e18, 0);
+
+        streamer.enableEmergencyMode();
+
+        _emergencyExit(alice);
+
+        // emergency exit will not perform any internal accounting
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 10e18,
+                totalMP: 10e18,
+                totalMaxMP: 50e18,
+                stakingBalance: 0,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkAccount(
+            CheckAccountParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: 10e18,
+                vaultBalance: 0,
+                rewardIndex: 0,
+                accountMP: 10e18,
+                maxMP: 50e18
+            })
+        );
+
+        assertEq(stakingToken.balanceOf(alice), aliceBalance, "Alice should get tokens back");
+        assertEq(stakingToken.balanceOf(vaults[alice]), 0, "Vault should be empty");
+    }
+
+    function test_EmergencyExitWithRewards() public {
+        uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
+        uint256 aliceInitialRewardBalance = rewardToken.balanceOf(vaults[alice]);
+
+        _stake(alice, 10e18, 0);
+
+        // Add some rewards
+        _addReward(1000e18);
+
+        streamer.enableEmergencyMode();
+
+        _emergencyExit(alice);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 10e18,
+                totalMP: 10e18,
+                totalMaxMP: 50e18,
+                stakingBalance: 10e18,
+                rewardBalance: 1000e18,
+                rewardIndex: 50e18,
+                accountedRewards: 1000e18
+            })
+        );
+
+        // Check Alice staked tokens but no rewards
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice should get staked tokens back");
+        assertEq(rewardToken.balanceOf(vaults[alice]), aliceInitialRewardBalance, "Alice should not get rewards");
+        assertEq(stakingToken.balanceOf(address(vaults[alice])), 0, "Vault should be empty");
+    }
+
+    function test_EmergencyExitWithLock() public {
+        uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
+
+        _stake(alice, 10e18, 90 days);
+
+        streamer.enableEmergencyMode();
+
+        _emergencyExit(alice);
+
+        // Check Alice got tokens back despite lock
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice should get tokens back despite lock");
+        assertEq(stakingToken.balanceOf(address(vaults[alice])), 0, "Vault should be empty");
+    }
+
+    function test_EmergencyExitMultipleUsers() public {
+        uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
+        uint256 bobInitialBalance = stakingToken.balanceOf(bob);
+        uint256 aliceInitialRewardBalance = rewardToken.balanceOf(vaults[alice]);
+        uint256 bobInitialRewardBalance = rewardToken.balanceOf(vaults[bob]);
+
+        // Setup multiple stakers
+        _stake(alice, 10e18, 0);
+        _stake(bob, 30e18, 0);
+        _addReward(1000e18);
+
+        streamer.enableEmergencyMode();
+
+        // Alice exits first
+        _emergencyExit(alice);
+
+        // Check intermediate state
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 40e18,
+                totalMP: 40e18,
+                totalMaxMP: 200e18,
+                stakingBalance: 40e18,
+                rewardBalance: 1000e18,
+                rewardIndex: 125e17,
+                accountedRewards: 1000e18
+            })
+        );
+
+        // Bob exits
+        _emergencyExit(bob);
+
+        // Check final state
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 40e18,
+                totalMP: 40e18,
+                totalMaxMP: 200e18,
+                stakingBalance: 40e18,
+                rewardBalance: 1000e18,
+                rewardIndex: 125e17,
+                accountedRewards: 1000e18
+            })
+        );
+
+        checkAccount(
+            CheckAccountParams({
+                account: vaults[alice],
+                rewardBalance: aliceInitialRewardBalance,
+                stakedBalance: 10e18,
+                vaultBalance: 0,
+                rewardIndex: 0,
+                accountMP: 10e18,
+                maxMP: 50e18
+            })
+        );
+
+        checkAccount(
+            CheckAccountParams({
+                account: vaults[bob],
+                rewardBalance: bobInitialRewardBalance,
+                stakedBalance: 30e18,
+                vaultBalance: 0,
+                rewardIndex: 0,
+                accountMP: 30e18,
+                maxMP: 150e18
+            })
+        );
+
+        // Verify both users got their tokens back
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice should get staked tokens back");
+        assertEq(stakingToken.balanceOf(bob), bobInitialBalance, "Bob should get staked tokens back");
+        assertEq(stakingToken.balanceOf(vaults[alice]), 0, "Alice vault should have 0 staked tokens");
+        assertEq(stakingToken.balanceOf(vaults[bob]), 0, "Bob vault should have 0 staked tokens");
+    }
+
+    function test_EmergencyExitToAlternateAddress() public {
+        _stake(alice, 10e18, 0);
+        _addReward(1000e18);
+
+        address alternateAddress = makeAddr("alternate");
+        uint256 alternateInitialBalance = stakingToken.balanceOf(alternateAddress);
+
+        streamer.enableEmergencyMode();
+
+        // Alice exits to alternate address
+        vm.prank(alice);
+        StakeVault aliceVault = StakeVault(vaults[alice]);
+        aliceVault.emergencyExit(alternateAddress);
+
+        checkAccount(
+            CheckAccountParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: 10e18,
+                vaultBalance: 0,
+                rewardIndex: 0,
+                accountMP: 10e18,
+                maxMP: 50e18
+            })
+        );
+
+        // Check alternate address received everything
+        assertEq(
+            stakingToken.balanceOf(alternateAddress),
+            alternateInitialBalance + 10e18,
+            "Alternate address should get staked tokens"
+        );
     }
 }
