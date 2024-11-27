@@ -140,8 +140,6 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 			}
 		}
 
-		postUpdateFsState := w.FS.State()
-
 		for _, info := range ctx.Coins[currRound] {
 			switch info.Type {
 			case coin.Field:
@@ -201,7 +199,10 @@ func AssignGnarkCircuit(ctx *fullRecursionCtx, comp *wizard.CompiledIOP, run *wi
 		WizardVerifier: wizardVerifier,
 		Pubs:           make([]frontend.Variable, len(comp.PublicInputs)),
 		Commitments:    make([]frontend.Variable, len(ctx.NonEmptyMerkleRootPositions)),
-		InitialFsState: run.FiatShamirHistory[ctx.FirstRound+1][0][0],
+		// It is important we start from the begining because of the case where
+		// we stack several FullRecursion. In that case, the FsHooks are going
+		// to automatically set the FsState to the correct value at first round.
+		InitialFsState: run.FiatShamirHistory[1][0][0],
 		FinalFsState:   run.FiatShamirHistory[ctx.LastRound][1][0],
 	}
 

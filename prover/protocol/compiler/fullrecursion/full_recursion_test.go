@@ -1,3 +1,5 @@
+//go:build !fuzzlight
+
 package fullrecursion_test
 
 import (
@@ -6,6 +8,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/fullrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
@@ -52,6 +55,7 @@ func TestLookup(t *testing.T) {
 			univariates.MultiPointToSinglePoint(8),
 			vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams)),
 			fullrecursion.FullRecursion(true),
+			dummy.CompileAtProverLvl,
 		},
 		{
 			lookup.CompileLogDerivative,
@@ -77,6 +81,7 @@ func TestLookup(t *testing.T) {
 			univariates.MultiPointToSinglePoint(1 << 16),
 			vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams)),
 			fullrecursion.FullRecursion(true),
+			dummy.CompileAtProverLvl,
 		},
 	}
 
