@@ -82,7 +82,7 @@ export class PostmanServiceClient {
       l2RpcUrlOrProvider: config.l2Config.rpcUrl,
       l1SignerPrivateKeyOrWallet: config.l1Config.claiming.signerPrivateKey,
       l2SignerPrivateKeyOrWallet: config.l2Config.claiming.signerPrivateKey,
-      network: "linea-sepolia",
+      network: "custom",
       mode: "read-write",
       feeEstimatorOptions: {
         gasFeeEstimationPercentile: config.l1Config.claiming.gasEstimationPercentile,
@@ -90,8 +90,12 @@ export class PostmanServiceClient {
       },
     });
 
-    const lineaRollupClient = lineaSdk.getL1Contract();
-    const l2MessageServiceClient = lineaSdk.getL2Contract();
+    const lineaRollupClient = lineaSdk.getL1Contract(
+      config.l1Config.messageServiceContractAddress,
+      config.l2Config.messageServiceContractAddress,
+    );
+
+    const l2MessageServiceClient = lineaSdk.getL2Contract(config.l2Config.messageServiceContractAddress);
 
     const lineaRollupLogClient = new EthersLineaRollupLogClient(
       l1Provider,

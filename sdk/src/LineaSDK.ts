@@ -54,7 +54,6 @@ export class LineaSDK {
 
     if (isString(options.l1RpcUrlOrProvider)) {
       this.l1Provider = new Provider(options.l1RpcUrlOrProvider);
-      console.log(JSON.stringify(this.l1Provider));
     } else {
       this.l1Provider = new BrowserProvider(options.l1RpcUrlOrProvider);
     }

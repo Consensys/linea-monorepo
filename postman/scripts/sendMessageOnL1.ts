@@ -1,17 +1,10 @@
 import { BytesLike, ContractTransactionReceipt, Overrides, Wallet, JsonRpcProvider } from "ethers";
 import { config } from "dotenv";
+import { L2MessageService, L2MessageService__factory, LineaRollup, LineaRollup__factory } from "@consensys/linea-sdk";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { SendMessageArgs } from "./types";
 import { sanitizeAddress, sanitizePrivKey } from "./cli";
-import {
-  L2MessageService,
-  L2MessageService__factory,
-  ZkEvmV2__factory,
-  ZkEvmV2,
-  LineaRollup,
-  LineaRollup__factory,
-} from "../src/clients/blockchain/typechain";
 import { encodeSendMessage } from "./helpers";
 
 config();
@@ -86,7 +79,7 @@ const argv = yargs(hideBin(process.argv))
   .parseSync();
 
 const sendMessage = async (
-  contract: ZkEvmV2,
+  contract: LineaRollup,
   args: SendMessageArgs,
   overrides: Overrides = {},
 ): Promise<ContractTransactionReceipt | null> => {
@@ -95,7 +88,7 @@ const sendMessage = async (
 };
 
 const sendMessages = async (
-  contract: ZkEvmV2,
+  contract: LineaRollup,
   signer: Wallet,
   numberOfMessages: number,
   args: SendMessageArgs,
@@ -118,7 +111,7 @@ const sendMessages = async (
 };
 
 const getMessageCounter = async (contractAddress: string, signer: Wallet) => {
-  const lineaRollup = ZkEvmV2__factory.connect(contractAddress, signer) as ZkEvmV2;
+  const lineaRollup = LineaRollup__factory.connect(contractAddress, signer) as LineaRollup;
   return lineaRollup.nextMessageNumber();
 };
 
@@ -158,11 +151,17 @@ const main = async (args: typeof argv) => {
     calldata: args.calldata,
   };
 
-  const zkEvmV2 = ZkEvmV2__factory.connect(args.l1ContractAddress, l1Signer) as ZkEvmV2;
-
-  await sendMessages(zkEvmV2, l1Signer, args.numberOfMessage, functionArgs, { value: BigInt(args.value.toString()) });
+  const lineaRollup = LineaRollup__factory.connect(args.l1ContractAddress, l1Signer) as LineaRollup;
+  const { maxPriorityFeePerGas, maxFeePerGas } = await l1Provider.getFeeData();
+  await sendMessages(lineaRollup, l1Signer, args.numberOfMessage, functionArgs, {
+    value: BigInt(args.value.toString()),
+    maxPriorityFeePerGas,
+    maxFeePerGas,
+  });
 
   // Anchor messages hash on L2
+  if (!args.autoAnchoring) return;
+
   const nextMessageCounter = await getMessageCounter(args.l1ContractAddress, l1Signer);
   const startCounter = nextMessageCounter - BigInt(args.numberOfMessage);
 
@@ -180,10 +179,7 @@ const main = async (args: typeof argv) => {
     messageHashesToAnchor.push(messageHash);
   }
 
-  if (!args.autoAnchoring) return;
-
   const l2Signer = new Wallet(args.l2PrivKey!, l2Provider);
-  const lineaRollup = LineaRollup__factory.connect(args.l1ContractAddress, l1Signer) as LineaRollup;
   const l2MessageService = L2MessageService__factory.connect(args.l2ContractAddress, l2Signer) as L2MessageService;
   const startingMessageNumber = startCounter;
   await anchorMessageHashesOnL2(lineaRollup, l2MessageService, messageHashesToAnchor, startingMessageNumber);
