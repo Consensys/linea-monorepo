@@ -71,6 +71,7 @@ dependencies {
   testImplementation "${besuArtifactGroup}.internal:rlp"
   testImplementation "${besuArtifactGroup}.internal:core"
   testImplementation "${besuArtifactGroup}.internal:referencetests"
+  testImplementation 'org.junit.platform:junit-platform-launcher'
 }
 
 configurations {

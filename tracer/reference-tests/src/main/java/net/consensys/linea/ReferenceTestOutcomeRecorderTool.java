@@ -14,24 +14,16 @@
  */
 package net.consensys.linea;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import static net.consensys.linea.reporting.TestOutcomeWriterTool.addFailure;
+
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.json.JsonConverter;
+import net.consensys.linea.reporting.TestOutcomeWriterTool;
+import net.consensys.linea.reporting.TestState;
 
 @Slf4j
 public class ReferenceTestOutcomeRecorderTool {
@@ -42,51 +34,23 @@ public class ReferenceTestOutcomeRecorderTool {
   public static final String JSON_OUTPUT_FILENAME =
       System.getenv()
           .getOrDefault("REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "failedReferenceTests.json");
-  public static JsonConverter jsonConverter = JsonConverter.builder().build();
-  private static volatile AtomicInteger failedCounter = new AtomicInteger(0);
-  private static volatile AtomicInteger successCounter = new AtomicInteger(0);
-  private static volatile AtomicInteger disabledCounter = new AtomicInteger(0);
-  private static volatile AtomicInteger abortedCounter = new AtomicInteger(0);
-  private static volatile ConcurrentMap<
-          String, ConcurrentMap<String, ConcurrentSkipListSet<String>>>
-      modulesToConstraintsToTests = new ConcurrentHashMap<>();
 
   public static void mapAndStoreTestResult(
       String testName, TestState success, Map<String, Set<String>> failedConstraints) {
     switch (success) {
       case FAILED -> {
-        failedCounter.incrementAndGet();
+        TestOutcomeWriterTool.addFailed();
         for (Map.Entry<String, Set<String>> failedConstraint : failedConstraints.entrySet()) {
           String moduleName = failedConstraint.getKey();
           for (String constraint : failedConstraint.getValue()) {
-            ConcurrentMap<String, ConcurrentSkipListSet<String>> constraintsToTests =
-                modulesToConstraintsToTests.computeIfAbsent(
-                    moduleName, m -> new ConcurrentHashMap<>());
-            ConcurrentSkipListSet<String> failingTests =
-                constraintsToTests.computeIfAbsent(constraint, m -> new ConcurrentSkipListSet<>());
-            int size = failingTests.size();
-            failingTests.add(testName);
-            if (failingTests.size() == size) {
-              log.warn("Duplicate name found... {}", failedConstraint);
-            }
+            addFailure(moduleName, constraint, testName);
           }
         }
       }
-      case SUCCESS -> successCounter.incrementAndGet();
-      case ABORTED -> abortedCounter.incrementAndGet();
-      case DISABLED -> disabledCounter.incrementAndGet();
+      case SUCCESS -> TestOutcomeWriterTool.addSuccess();
+      case ABORTED -> TestOutcomeWriterTool.addAborted();
+      case DISABLED -> TestOutcomeWriterTool.addSkipped();
     }
-  }
-
-  @Synchronized
-  public static BlockchainReferenceTestOutcome parseBlockchainReferenceTestOutcome(
-      String jsonString) {
-    if (!jsonString.isEmpty()) {
-      BlockchainReferenceTestOutcome blockchainReferenceTestOutcome =
-          jsonConverter.fromJson(jsonString, BlockchainReferenceTestOutcome.class);
-      return blockchainReferenceTestOutcome;
-    }
-    throw new RuntimeException("invalid JSON");
   }
 
   public static Map<String, Set<String>> extractConstraints(String message) {
@@ -174,57 +138,5 @@ public class ReferenceTestOutcomeRecorderTool {
     pairs.computeIfAbsent(pair[0].trim(), p -> new HashSet<>()).add(pair[1].trim());
   }
 
-  @Synchronized
-  public static void writeToJsonFile() {
-    try {
-      String directory = setFileDirectory();
-      log.info("Reference test will be written to file {} \\ {}", directory, JSON_OUTPUT_FILENAME);
-      writeToJsonFileInternal(JSON_OUTPUT_FILENAME).get();
-      log.info("Reference test results written to file {}", JSON_OUTPUT_FILENAME);
-      log.info(
-          "Path exists: {}, file exist: {}",
-          Paths.get(directory).toFile().exists(),
-          Paths.get(directory).resolve(JSON_OUTPUT_FILENAME).toFile().exists());
-    } catch (Exception e) {
-      log.error("Error while writing results");
-      throw new RuntimeException("Error while writing results", e);
-    }
-  }
-
   static ObjectMapper objectMapper = new ObjectMapper();
-
-  @Synchronized
-  private static CompletableFuture<Void> writeToJsonFileInternal(String name) {
-    String fileDirectory = setFileDirectory();
-    log.info("writing results summary to {}", fileDirectory + "/" + name);
-    try {
-      Files.createDirectories(Path.of(fileDirectory));
-    } catch (IOException e) {
-      log.error("Error - Failed to create test directory output: %s".formatted(e.getMessage()));
-      throw new RuntimeException(e);
-    }
-    return CompletableFuture.runAsync(
-        () -> {
-          try (FileWriter file = new FileWriter(Path.of(fileDirectory, name).toString())) {
-            objectMapper.writeValue(
-                file,
-                new BlockchainReferenceTestOutcome(
-                    failedCounter.get(),
-                    successCounter.get(),
-                    disabledCounter.get(),
-                    abortedCounter.get(),
-                    modulesToConstraintsToTests));
-          } catch (Exception e) {
-            log.error("Error - Failed to write test output: %s".formatted(e.getMessage()));
-          }
-        });
-  }
-
-  static String setFileDirectory() {
-    String jsonDirectory = System.getenv("FAILED_TEST_JSON_DIRECTORY");
-    if (jsonDirectory == null || jsonDirectory.isEmpty()) {
-      return "../tmp/local/";
-    }
-    return jsonDirectory;
-  }
 }

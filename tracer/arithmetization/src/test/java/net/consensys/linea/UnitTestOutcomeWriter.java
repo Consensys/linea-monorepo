@@ -14,9 +14,17 @@
  */
 package net.consensys.linea;
 
-public enum TestState {
-  DISABLED,
-  SUCCESS,
-  FAILED,
-  ABORTED;
+import static net.consensys.linea.reporting.TestOutcomeWriterTool.writeToJsonFile;
+
+import org.junit.platform.launcher.LauncherSession;
+import org.junit.platform.launcher.LauncherSessionListener;
+
+public class UnitTestOutcomeWriter implements LauncherSessionListener {
+
+  public static final String FILE_NAME = "UnitTestsResults.json";
+
+  @Override
+  public void launcherSessionClosed(LauncherSession session) {
+    writeToJsonFile(FILE_NAME);
+  }
 }

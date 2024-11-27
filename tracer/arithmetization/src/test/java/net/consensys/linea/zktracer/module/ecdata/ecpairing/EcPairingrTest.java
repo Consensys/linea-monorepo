@@ -46,6 +46,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 // A TestWatcher is used to log the results of testEcPairingSingleForScenario
 // into a csv file (one for successful and one for failing cases)
 // that can be used to run the same test cases with @CsvFileSource
+
 @ExtendWith(EcPairingTestWatcher.class)
 public class EcPairingrTest {
   // https://github.com/Consensys/linea-arithmetization/issues/822

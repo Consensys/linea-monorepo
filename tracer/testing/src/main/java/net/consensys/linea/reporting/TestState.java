@@ -12,20 +12,11 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea;
+package net.consensys.linea.reporting;
 
-import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.*;
-
-import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.reporting.TestOutcomeWriterTool;
-import org.junit.platform.launcher.LauncherSession;
-import org.junit.platform.launcher.LauncherSessionListener;
-
-@Slf4j
-public class ReferenceTestOutcomeWriter implements LauncherSessionListener {
-
-  @Override
-  public void launcherSessionClosed(LauncherSession session) {
-    TestOutcomeWriterTool.writeToJsonFile(JSON_OUTPUT_FILENAME);
-  }
+public enum TestState {
+  DISABLED,
+  SUCCESS,
+  FAILED,
+  ABORTED;
 }

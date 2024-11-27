@@ -51,7 +51,6 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 // https://github.com/Consensys/linea-besu-plugin/issues/197
-
 @Execution(ExecutionMode.SAME_THREAD)
 public class MxpTest {
 
