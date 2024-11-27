@@ -220,12 +220,12 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 				return
 			}
 			executionFPI.InitialBlockTimestamp = r.Executions[i].InitialBlockTimestamp
-			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHash
+			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHashUpdate
 			executionFPI.FinalBlockNumber = r.Executions[i].FinalBlockNumber
 			executionFPI.FinalBlockTimestamp = r.Executions[i].FinalBlockTimestamp
 			finalBlockTimestamp = r.Executions[i].FinalBlockTimestamp
-			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHash
-			executionFPI.FinalRollingHashNumber = r.Executions[i].FinalRollingHashNumber
+			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHashUpdate
+			executionFPI.FinalRollingHashNumber = r.Executions[i].FinalRollingHashMsgNumber
 			executionFPI.FinalStateRootHash = r.Executions[i].FinalStateRootHash
 
 			copy(executionFPI.DataChecksum[:], execDataChecksums[i])
@@ -242,11 +242,11 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 				return
 			}
 
-			if r.Executions[i].FinalRollingHashNumber != 0 { // if the rolling hash is being updated, record the change
+			if r.Executions[i].FinalRollingHashMsgNumber != 0 { // if the rolling hash is being updated, record the change
 				executionFPI.InitialRollingHash = finalRollingHash
-				finalRollingHash = r.Executions[i].FinalRollingHash
+				finalRollingHash = r.Executions[i].FinalRollingHashUpdate
 				executionFPI.InitialRollingHashNumber = finalRollingHashNum
-				finalRollingHashNum = r.Executions[i].FinalRollingHashNumber
+				finalRollingHashNum = r.Executions[i].FinalRollingHashMsgNumber
 			}
 
 			a.ExecutionPublicInput[i] = executionFPI.Sum(hshM)
