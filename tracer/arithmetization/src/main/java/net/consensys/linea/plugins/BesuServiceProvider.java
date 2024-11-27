@@ -15,7 +15,7 @@
 
 package net.consensys.linea.plugins;
 
-import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BesuService;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
@@ -31,7 +31,7 @@ public class BesuServiceProvider {
    * @return the initialized {@link BesuService}.
    */
   public static <T extends BesuService> T getBesuService(
-      final BesuContext context, final Class<T> clazz) {
+      final ServiceManager context, final Class<T> clazz) {
     return context
         .getService(clazz)
         .orElseThrow(
@@ -41,23 +41,23 @@ public class BesuServiceProvider {
                         .formatted(clazz.getName())));
   }
 
-  public static TraceService getTraceService(final BesuContext context) {
+  public static TraceService getTraceService(final ServiceManager context) {
     return getBesuService(context, TraceService.class);
   }
 
-  public static PicoCLIOptions getPicoCLIOptionsService(final BesuContext context) {
+  public static PicoCLIOptions getPicoCLIOptionsService(final ServiceManager context) {
     return getBesuService(context, PicoCLIOptions.class);
   }
 
-  public static RpcEndpointService getRpcEndpointService(final BesuContext context) {
+  public static RpcEndpointService getRpcEndpointService(final ServiceManager context) {
     return getBesuService(context, RpcEndpointService.class);
   }
 
-  public static SynchronizationService getSynchronizationService(final BesuContext context) {
+  public static SynchronizationService getSynchronizationService(final ServiceManager context) {
     return getBesuService(context, SynchronizationService.class);
   }
 
-  public static BesuEvents getBesuEventsService(final BesuContext context) {
+  public static BesuEvents getBesuEventsService(final ServiceManager context) {
     return getBesuService(context, BesuEvents.class);
   }
 }

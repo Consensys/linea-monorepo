@@ -22,8 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.AbstractLineaRequiredPlugin;
 import net.consensys.linea.plugins.BesuServiceProvider;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
 /**
@@ -42,7 +42,7 @@ public class CaptureEndpointServicePlugin extends AbstractLineaRequiredPlugin {
    * @param context the BesuContext to be used.
    */
   @Override
-  public void doRegister(final BesuContext context) {
+  public void doRegister(final ServiceManager context) {
     CaptureToFile method = new CaptureToFile(context);
 
     RpcEndpointService service = BesuServiceProvider.getRpcEndpointService(context);

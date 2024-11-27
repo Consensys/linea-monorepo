@@ -30,8 +30,8 @@ import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import net.consensys.linea.plugins.exception.TraceOutputException;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.RequestLimiterDispatcher;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
 /**
@@ -43,7 +43,7 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
 @Slf4j
 @AutoService(BesuPlugin.class)
 public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlugin {
-  private BesuContext besuContext;
+  private ServiceManager besuContext;
   private RpcEndpointService rpcEndpointService;
 
   @Override
@@ -59,7 +59,7 @@ public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlug
    * @param context the BesuContext to be used.
    */
   @Override
-  public void register(final BesuContext context) {
+  public void register(final ServiceManager context) {
     super.register(context);
     besuContext = context;
     rpcEndpointService = BesuServiceProvider.getRpcEndpointService(context);

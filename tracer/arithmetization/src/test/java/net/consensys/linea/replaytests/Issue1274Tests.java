@@ -27,6 +27,6 @@ public class Issue1274Tests {
 
   @Test
   void issue_1274_mainnet_block_7734306() {
-    replay(LINEA_MAINNET, "7734306.json.gz");
+    replay(LINEA_MAINNET, "7734306.mainnet.json.gz");
   }
 }

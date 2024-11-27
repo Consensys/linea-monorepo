@@ -27,11 +27,11 @@ public class Issue1124Tests {
 
   @Test
   void issue_1124_range_4323962_4324012() {
-    replay(LINEA_MAINNET, "4323962-4324012.json.gz");
+    replay(LINEA_MAINNET, "4323962-4324012.mainnet.json.gz");
   }
 
   @Test
   void issue_1124_range_4343434_4343473() {
-    replay(LINEA_MAINNET, "4343434-4343473.json.gz");
+    replay(LINEA_MAINNET, "4343434-4343473.mainnet.json.gz");
   }
 }

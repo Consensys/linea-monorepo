@@ -19,8 +19,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 
 /**
@@ -41,7 +41,7 @@ public abstract class AbstractLineaOptionsPlugin implements BesuPlugin {
   }
 
   @Override
-  public synchronized void register(final BesuContext context) {
+  public synchronized void register(final ServiceManager context) {
     final PicoCLIOptions cmdlineOptions = BesuServiceProvider.getPicoCLIOptionsService(context);
 
     getLineaPluginConfigMap()

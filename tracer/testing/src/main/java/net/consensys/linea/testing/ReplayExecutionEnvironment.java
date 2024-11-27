@@ -176,7 +176,7 @@ public class ReplayExecutionEnvironment {
         this.transactionProcessingResultValidator);
     //
     if (debugBlockCapturer) {
-      writeCaptureToFile(conflation, capturer);
+      writeCaptureToFile(chainId, conflation, capturer);
     }
   }
 
@@ -302,7 +302,8 @@ public class ReplayExecutionEnvironment {
 
   // Write the captured replay for a given conflation snapshot to a file.  This is used to debug the
   // BlockCapturer by making sure, for example, that captured replays still execute correctly.
-  private static void writeCaptureToFile(ConflationSnapshot conflation, BlockCapturer capturer) {
+  private static void writeCaptureToFile(
+      BigInteger chainId, ConflationSnapshot conflation, BlockCapturer capturer) {
     // Extract capture name
     String json = capturer.toJson();
     // Determine suitable filename
@@ -313,8 +314,14 @@ public class ReplayExecutionEnvironment {
       startBlock = Math.min(startBlock, blk.header().number());
       endBlock = Math.max(endBlock, blk.header().number());
     }
-    //
-    String filename = String.format("capture-%d-%d.json", startBlock, endBlock);
+    // Convert ChainID to something useful
+    String chain = getChainName(chainId);
+    // Construct suitable filename for captured conflation.
+    String filename =
+        startBlock == endBlock
+            ? String.format("capture-%d.%s.json", startBlock, chain)
+            : String.format("capture-%d-%d.%s.json", startBlock, endBlock, chain);
+    // Write the conflation.
     try {
       File file = new File(filename);
       log.info("Writing capture to " + file.getCanonicalPath());
@@ -322,6 +329,22 @@ public class ReplayExecutionEnvironment {
     } catch (IOException e) {
       // Problem writing capture
       throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Convert a chainID into a human-readable string.
+   *
+   * @param chainId
+   * @return
+   */
+  private static String getChainName(BigInteger chainId) {
+    if (chainId.equals(LINEA_MAINNET)) {
+      return "mainnet";
+    } else if (chainId.equals(LINEA_SEPOLIA)) {
+      return "sepolia";
+    } else {
+      return String.format("chain%s", chainId.toString());
     }
   }
 }

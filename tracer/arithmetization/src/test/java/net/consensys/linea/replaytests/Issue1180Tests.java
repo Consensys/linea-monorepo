@@ -30,7 +30,7 @@ public class Issue1180Tests {
 
   @Test
   void split_range_2321470_2321479() {
-    replay(LINEA_MAINNET, "2321470-2321479.json.gz");
+    replay(LINEA_MAINNET, "2321470-2321479.mainnet.json.gz");
   }
 
   @Test

@@ -27,7 +27,7 @@ import net.consensys.linea.plugins.rpc.Validator;
 import net.consensys.linea.plugins.rpc.tracegeneration.TraceRequestParams;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.json.JsonConverter;
-import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -41,11 +41,11 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 public class ConflatedCountTracesV2 {
   private static final JsonConverter CONVERTER = JsonConverter.builder().build();
   private final RequestLimiter requestLimiter;
-  private final BesuContext besuContext;
+  private final ServiceManager besuContext;
   private TraceService traceService;
 
   public ConflatedCountTracesV2(
-      final BesuContext besuContext, final RequestLimiter requestLimiter) {
+      final ServiceManager besuContext, final RequestLimiter requestLimiter) {
     this.besuContext = besuContext;
     this.requestLimiter = requestLimiter;
   }
