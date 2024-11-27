@@ -36,7 +36,7 @@ public class ReplayTests {
 
   @Test
   void fatMxp() {
-    replay(LINEA_MAINNET, "2492975-2492977.json.gz");
+    replay(LINEA_MAINNET, "2492975-2492977.mainnet.json.gz");
   }
 
   /**
@@ -54,44 +54,44 @@ public class ReplayTests {
   // @Disabled
   @Test
   void failingMmuModexp() {
-    replay(LINEA_MAINNET, "5995162.json.gz");
+    replay(LINEA_MAINNET, "5995162.mainnet.json.gz");
   }
 
   // @Disabled
   @Test
   void failRlpAddress() {
-    replay(LINEA_MAINNET, "5995097.json.gz");
+    replay(LINEA_MAINNET, "5995097.mainnet.json.gz");
   }
 
   // @Disabled
   @Test
   void rlprcptManyTopicsWoLogData() {
-    replay(LINEA_MAINNET, "6569423.json.gz");
+    replay(LINEA_MAINNET, "6569423.mainnet.json.gz");
   }
 
   // @Disabled
   @Test
   void multipleFailingCallToEcrecover() {
-    replay(LINEA_MAINNET, "5000544.json.gz");
+    replay(LINEA_MAINNET, "5000544.mainnet.json.gz");
   }
 
   // @Disabled
   @Test
   @Tag("nightly")
   void incident777zkGethMainnet() {
-    replay(LINEA_MAINNET, "7461019-7461030.json.gz");
+    replay(LINEA_MAINNET, "7461019-7461030.mainnet.json.gz");
   }
 
   // @Disabled
   @Test
   void issue1006() {
-    replay(LINEA_MAINNET, "6032696-6032699.json.gz");
+    replay(LINEA_MAINNET, "6032696-6032699.mainnet.json.gz");
   }
 
   // @Disabled
   @Test
   void issue1004() {
-    replay(LINEA_MAINNET, "6020023-6020029.json.gz");
+    replay(LINEA_MAINNET, "6020023-6020029.mainnet.json.gz");
   }
 
   // @Disabled
@@ -100,49 +100,49 @@ public class ReplayTests {
     // The purpose of this test is to check the mechanism for spotting divergence between the replay
     // tests and mainnet.  Specifically, this replay has transaction result information embedded
     // within it.
-    replay(LINEA_MAINNET, "6110045.json.gz");
+    replay(LINEA_MAINNET, "6110045.mainnet.json.gz");
   }
 
   // @Disabled
   @Test
   void failingCreate2() {
-    replay(LINEA_MAINNET, "2250197-2250197.json.gz");
+    replay(LINEA_MAINNET, "2250197.mainnet.json.gz");
   }
 
   // @Disabled
   @Test
   void blockHash1() {
-    replay(LINEA_MAINNET, "8718090.json.gz");
+    replay(LINEA_MAINNET, "8718090.mainnet.json.gz");
   }
 
   // @Disabled
   @Test
   void blockHash2() {
-    replay(LINEA_MAINNET, "8718330.json.gz");
+    replay(LINEA_MAINNET, "8718330.mainnet.json.gz");
   }
 
   // TODO: should be replaced by a unit test triggering AnyToRamWithPadding (mixed case) MMU
   // instruction
   @Test
   void negativeNumberOfMmioInstruction() {
-    replay(LINEA_MAINNET, "6029454-6029459.json.gz");
+    replay(LINEA_MAINNET, "6029454-6029459.mainnet.json.gz");
   }
 
   @Test
   void simpleSelfDestruct() {
-    replay(LINEA_MAINNET, "50020-50029.json.gz");
+    replay(LINEA_MAINNET, "50020-50029.mainnet.json.gz");
   }
 
   // TODO: should be replaced by a unit test triggering a failed CREATE2
   @Test
   void failedCreate2() {
-    replay(LINEA_MAINNET, "41640-41649.json.gz");
+    replay(LINEA_MAINNET, "41640-41649.mainnet.json.gz");
   }
 
   @Disabled() // Unknown Problem
   @Test
   void largeInitCode() {
-    replay(LINEA_SEPOLIA, "3318494.sepolia.json.gz");
+    replay(LINEA_SEPOLIA, "3318494.sepolia.mainnet.json.gz");
   }
 
   /**
@@ -151,14 +151,14 @@ public class ReplayTests {
    */
   @Test
   void hotOrColdPrecompile() {
-    replay(LINEA_MAINNET, "2019510-2019519.json.gz");
+    replay(LINEA_MAINNET, "2019510-2019519.mainnet.json.gz");
   }
 
   // TODO: should be replace by a unit test triggering a CALLDATACOPY in a ROOT context of a
   // deployment transaction
   @Test
   void callDataCopyCnNotFound() {
-    replay(LINEA_MAINNET, "67050-67059.json.gz");
+    replay(LINEA_MAINNET, "67050-67059.mainnet.json.gz");
   }
 
   /**
@@ -167,13 +167,13 @@ public class ReplayTests {
    */
   @Test
   void returnOogxForCodeDepositCost() {
-    replay(LINEA_MAINNET, "1002387.json.gz");
+    replay(LINEA_MAINNET, "1002387.mainnet.json.gz");
   }
 
   @Test
   @Tag("nightly")
   void modexpTriggeringNonAlignedFirstLimbSingleSourceMmuModexp() {
-    replay(LINEA_MAINNET, "3108622-3108633.json.gz");
+    replay(LINEA_MAINNET, "3108622-3108633.mainnet.json.gz");
   }
 
   /**
@@ -182,7 +182,7 @@ public class ReplayTests {
    */
   @Test
   void mainnet1339346ContextRevertTwice() {
-    replay(LINEA_MAINNET, "1339346.json.gz");
+    replay(LINEA_MAINNET, "1339346.mainnet.json.gz");
   }
 
   @Test
@@ -192,7 +192,7 @@ public class ReplayTests {
 
   @Test
   void incorrectCreationCapture() {
-    replay(LINEA_MAINNET, "4323985.json.gz");
+    replay(LINEA_MAINNET, "4323985.mainnet.json.gz");
   }
 
   @Disabled
@@ -200,7 +200,8 @@ public class ReplayTests {
   @MethodSource("replayBlockTestSource")
   void replayBlockTest(int blockNumber) {
     File file =
-        new File("../arithmetization/src/test/resources/replays/" + blockNumber + ".json.gz");
+        new File(
+            "../arithmetization/src/test/resources/replays/" + blockNumber + ".mainnet.json.gz");
     if (!file.exists()) {
       String[] cmd = {"./scripts/capture.pl", "--start", String.valueOf(blockNumber)};
       try {
@@ -212,7 +213,7 @@ public class ReplayTests {
         e.printStackTrace();
       }
     }
-    replay(LINEA_MAINNET, blockNumber + ".json.gz");
+    replay(LINEA_MAINNET, blockNumber + ".mainnet.json.gz");
   }
 
   static Stream<Arguments> replayBlockTestSource() {

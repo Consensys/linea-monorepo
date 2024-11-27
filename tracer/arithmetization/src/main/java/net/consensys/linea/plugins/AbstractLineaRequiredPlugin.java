@@ -16,8 +16,8 @@
 package net.consensys.linea.plugins;
 
 import lombok.extern.slf4j.Slf4j;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 
 @Slf4j
 public abstract class AbstractLineaRequiredPlugin extends AbstractLineaSharedOptionsPlugin {
@@ -31,7 +31,7 @@ public abstract class AbstractLineaRequiredPlugin extends AbstractLineaSharedOpt
    * @param context
    */
   @Override
-  public void register(final BesuContext context) {
+  public void register(final ServiceManager context) {
     super.register(context);
     try {
       log.info("Registering Linea plugin " + this.getClass().getName());
@@ -51,5 +51,5 @@ public abstract class AbstractLineaRequiredPlugin extends AbstractLineaSharedOpt
    *
    * @param context
    */
-  public abstract void doRegister(final BesuContext context);
+  public abstract void doRegister(final ServiceManager context);
 }

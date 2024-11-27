@@ -27,16 +27,16 @@ public class Issue1123Tests {
 
   @Test
   void issue_1123_mainnet_block_8043758() {
-    replay(LINEA_MAINNET, "8043758-8043758.json.gz");
+    replay(LINEA_MAINNET, "8043758.mainnet.json.gz");
   }
 
   @Test
   void issue_1123_mainnet_block_8019521() {
-    replay(LINEA_MAINNET, "8019521-8019521.json.gz");
+    replay(LINEA_MAINNET, "8019521.mainnet.json.gz");
   }
 
   @Test
   void issue_1123_mainnet_block_8005327() {
-    replay(LINEA_MAINNET, "8005327-8005327.json.gz");
+    replay(LINEA_MAINNET, "8005327.mainnet.json.gz");
   }
 }

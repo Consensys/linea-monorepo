@@ -23,8 +23,8 @@ import net.consensys.linea.plugins.rpc.RequestLimiterDispatcher;
 import net.consensys.linea.plugins.rpc.RpcCliOptions;
 import net.consensys.linea.plugins.rpc.RpcConfiguration;
 import net.consensys.linea.plugins.rpc.linecounts.GenerateLineCountsV2;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
 /**
@@ -36,7 +36,7 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
  */
 @AutoService(BesuPlugin.class)
 public class ConflatedLineCountsEndpointServicePlugin extends AbstractLineaSharedOptionsPlugin {
-  private BesuContext besuContext;
+  private ServiceManager besuContext;
   private RpcEndpointService rpcEndpointService;
 
   /**
@@ -45,7 +45,7 @@ public class ConflatedLineCountsEndpointServicePlugin extends AbstractLineaShare
    * @param context the BesuContext to be used.
    */
   @Override
-  public void register(final BesuContext context) {
+  public void register(final ServiceManager context) {
     super.register(context);
     besuContext = context;
     rpcEndpointService = BesuServiceProvider.getRpcEndpointService(context);

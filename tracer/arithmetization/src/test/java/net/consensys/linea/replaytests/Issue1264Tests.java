@@ -25,6 +25,6 @@ import org.junit.jupiter.api.Test;
 public class Issue1264Tests {
   @Test
   void issue_1216_mainnet_2321460_2321556() {
-    replay(LINEA_MAINNET, "2321460-2321556.json.gz");
+    replay(LINEA_MAINNET, "2321460-2321556.mainnet.json.gz");
   }
 }

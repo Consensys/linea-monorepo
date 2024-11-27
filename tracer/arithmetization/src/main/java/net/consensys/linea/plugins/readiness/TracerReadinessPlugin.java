@@ -31,8 +31,8 @@ import net.consensys.linea.plugins.BesuServiceProvider;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.RequestLimiterDispatcher;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.sync.SynchronizationService;
 
 @Slf4j
@@ -44,7 +44,7 @@ public class TracerReadinessPlugin extends AbstractLineaOptionsPlugin {
 
   private SynchronizationService synchronizationService;
   private HttpServer server;
-  private BesuContext besuContext;
+  private ServiceManager besuContext;
   private TracerReadinessConfiguration configuration;
 
   /**
@@ -53,7 +53,7 @@ public class TracerReadinessPlugin extends AbstractLineaOptionsPlugin {
    * @param context the BesuContext to be used.
    */
   @Override
-  public void register(final BesuContext context) {
+  public void register(final ServiceManager context) {
     super.register(context);
     this.besuContext = context;
   }

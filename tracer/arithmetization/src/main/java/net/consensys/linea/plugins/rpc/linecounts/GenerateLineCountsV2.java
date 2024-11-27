@@ -27,7 +27,7 @@ import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.Validator;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.json.JsonConverter;
-import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -41,10 +41,10 @@ public class GenerateLineCountsV2 {
 
   private final RequestLimiter requestLimiter;
 
-  private final BesuContext besuContext;
+  private final ServiceManager besuContext;
   private TraceService traceService;
 
-  public GenerateLineCountsV2(final BesuContext context, final RequestLimiter requestLimiter) {
+  public GenerateLineCountsV2(final ServiceManager context, final RequestLimiter requestLimiter) {
     this.besuContext = context;
     this.requestLimiter = requestLimiter;
   }

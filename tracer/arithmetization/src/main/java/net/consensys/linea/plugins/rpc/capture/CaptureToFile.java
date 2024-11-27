@@ -18,7 +18,7 @@ package net.consensys.linea.plugins.rpc.capture;
 import com.google.common.base.Stopwatch;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.blockcapture.BlockCapturer;
-import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -30,10 +30,10 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
  */
 @Slf4j
 public class CaptureToFile {
-  private final BesuContext besuContext;
+  private final ServiceManager besuContext;
   private TraceService traceService;
 
-  public CaptureToFile(final BesuContext besuContext) {
+  public CaptureToFile(final ServiceManager besuContext) {
     this.besuContext = besuContext;
   }
 

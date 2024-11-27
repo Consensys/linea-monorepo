@@ -96,7 +96,7 @@ public class ReplayTestTools {
    * @param filename Name of replay file
    */
   public static void replay(BigInteger chainId, String filename) {
-    replay(chainId, filename, false);
+    replay(chainId, filename, true);
   }
 
   /**
