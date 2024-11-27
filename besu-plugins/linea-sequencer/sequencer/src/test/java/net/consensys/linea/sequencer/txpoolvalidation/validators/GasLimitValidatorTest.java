@@ -38,8 +38,7 @@ public class GasLimitValidatorTest {
         new GasLimitValidator(
             LineaTransactionPoolValidatorCliOptions.create().toDomainObject().toBuilder()
                 .maxTxGasLimit(MAX_TX_GAS_LIMIT)
-                .build(),
-            Optional.empty());
+                .build());
   }
 
   @Test

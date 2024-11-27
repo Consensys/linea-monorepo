@@ -14,15 +14,11 @@
  */
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.jsonrpc.JsonRpcManager;
-import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
@@ -48,15 +44,11 @@ public class AllowedAddressValidator implements PluginTransactionPoolValidator {
           Address.fromHexString("0x000000000000000000000000000000000000000a"));
 
   private final Set<Address> denied;
-  private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
 
   @Override
   public Optional<String> validateTransaction(
       final Transaction transaction, final boolean isLocal, final boolean hasPriority) {
-    final Optional<String> errMsg =
-        validateSender(transaction).or(() -> validateRecipient(transaction));
-    errMsg.ifPresent(reason -> reportRejectedTransaction(transaction, reason));
-    return errMsg;
+    return validateSender(transaction).or(() -> validateRecipient(transaction));
   }
 
   private Optional<String> validateRecipient(final Transaction transaction) {
@@ -89,20 +81,5 @@ public class AllowedAddressValidator implements PluginTransactionPoolValidator {
       return Optional.of(errMsg);
     }
     return Optional.empty();
-  }
-
-  private void reportRejectedTransaction(final Transaction transaction, final String reason) {
-    rejectedTxJsonRpcManager.ifPresent(
-        jsonRpcManager -> {
-          final String jsonRpcCall =
-              JsonRpcRequestBuilder.generateSaveRejectedTxJsonRpc(
-                  jsonRpcManager.getNodeType(),
-                  transaction,
-                  Instant.now(),
-                  Optional.empty(), // block number is not available
-                  reason,
-                  List.of());
-          jsonRpcManager.submitNewJsonRpcCallAsync(jsonRpcCall);
-        });
   }
 }

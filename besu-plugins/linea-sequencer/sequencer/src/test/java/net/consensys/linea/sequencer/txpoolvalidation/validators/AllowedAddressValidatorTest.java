@@ -40,7 +40,7 @@ public class AllowedAddressValidatorTest {
   @BeforeEach
   public void initialize() {
     Set<Address> denied = Set.of(DENIED);
-    allowedAddressValidator = new AllowedAddressValidator(denied, Optional.empty());
+    allowedAddressValidator = new AllowedAddressValidator(denied);
   }
 
   @Test

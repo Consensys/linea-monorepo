@@ -87,8 +87,7 @@ public class ProfitabilityValidatorTest {
             profitabilityConfBuilder
                 .txPoolCheckP2pEnabled(true)
                 .txPoolCheckApiEnabled(true)
-                .build(),
-            Optional.empty());
+                .build());
 
     profitabilityValidatorNever =
         new ProfitabilityValidator(
@@ -97,8 +96,7 @@ public class ProfitabilityValidatorTest {
             profitabilityConfBuilder
                 .txPoolCheckP2pEnabled(false)
                 .txPoolCheckApiEnabled(false)
-                .build(),
-            Optional.empty());
+                .build());
 
     profitabilityValidatorOnlyApi =
         new ProfitabilityValidator(
@@ -107,8 +105,7 @@ public class ProfitabilityValidatorTest {
             profitabilityConfBuilder
                 .txPoolCheckP2pEnabled(false)
                 .txPoolCheckApiEnabled(true)
-                .build(),
-            Optional.empty());
+                .build());
 
     profitabilityValidatorOnlyP2p =
         new ProfitabilityValidator(
@@ -117,8 +114,7 @@ public class ProfitabilityValidatorTest {
             profitabilityConfBuilder
                 .txPoolCheckP2pEnabled(true)
                 .txPoolCheckApiEnabled(false)
-                .build(),
-            Optional.empty());
+                .build());
   }
 
   @Test

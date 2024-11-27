@@ -14,15 +14,11 @@
  */
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
-import net.consensys.linea.jsonrpc.JsonRpcManager;
-import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import org.apache.tuweni.units.bigints.UInt256s;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
@@ -41,18 +37,15 @@ public class ProfitabilityValidator implements PluginTransactionPoolValidator {
   final BlockchainService blockchainService;
   final LineaProfitabilityConfiguration profitabilityConf;
   final TransactionProfitabilityCalculator profitabilityCalculator;
-  final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
 
   public ProfitabilityValidator(
       final BesuConfiguration besuConfiguration,
       final BlockchainService blockchainService,
-      final LineaProfitabilityConfiguration profitabilityConf,
-      final Optional<JsonRpcManager> rejectedTxJsonRpcManager) {
+      final LineaProfitabilityConfiguration profitabilityConf) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
     this.profitabilityConf = profitabilityConf;
     this.profitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
-    this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
   }
 
   @Override
@@ -68,19 +61,16 @@ public class ProfitabilityValidator implements PluginTransactionPoolValidator {
               .getNextBlockBaseFee()
               .orElseThrow(() -> new RuntimeException("We only support a base fee market"));
 
-      final Optional<String> errMsg =
-          profitabilityCalculator.isProfitable(
-                  "Txpool",
-                  transaction,
-                  profitabilityConf.txPoolMinMargin(),
-                  baseFee,
-                  calculateUpfrontGasPrice(transaction, baseFee),
-                  transaction.getGasLimit(),
-                  besuConfiguration.getMinGasPrice())
-              ? Optional.empty()
-              : Optional.of("Gas price too low");
-      errMsg.ifPresent(s -> reportRejectedTransaction(transaction, s));
-      return errMsg;
+      return profitabilityCalculator.isProfitable(
+              "Txpool",
+              transaction,
+              profitabilityConf.txPoolMinMargin(),
+              baseFee,
+              calculateUpfrontGasPrice(transaction, baseFee),
+              transaction.getGasLimit(),
+              besuConfiguration.getMinGasPrice())
+          ? Optional.empty()
+          : Optional.of("Gas price too low");
     }
 
     return Optional.empty();
@@ -97,20 +87,5 @@ public class ProfitabilityValidator implements PluginTransactionPoolValidator {
                     maxFee,
                     baseFee.add(Wei.fromQuantity(transaction.getMaxPriorityFeePerGas().get()))))
         .orElseGet(() -> Wei.fromQuantity(transaction.getGasPrice().get()));
-  }
-
-  private void reportRejectedTransaction(final Transaction transaction, final String reason) {
-    rejectedTxJsonRpcManager.ifPresent(
-        jsonRpcManager -> {
-          final String jsonRpcCall =
-              JsonRpcRequestBuilder.generateSaveRejectedTxJsonRpc(
-                  jsonRpcManager.getNodeType(),
-                  transaction,
-                  Instant.now(),
-                  Optional.empty(), // block number is not available
-                  reason,
-                  List.of());
-          jsonRpcManager.submitNewJsonRpcCallAsync(jsonRpcCall);
-        });
   }
 }

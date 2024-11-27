@@ -38,8 +38,7 @@ public class CalldataValidatorTest {
         new CalldataValidator(
             LineaTransactionPoolValidatorCliOptions.create().toDomainObject().toBuilder()
                 .maxTxCalldataSize(MAX_TX_CALLDATA_SIZE)
-                .build(),
-            Optional.empty());
+                .build());
   }
 
   @Test
