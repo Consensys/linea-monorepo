@@ -12,7 +12,6 @@ import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
 import net.consensys.linea.nativecompressor.CompressorTestData
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.ethereum.core.Block
 import org.hyperledger.besu.ethereum.core.Transaction
@@ -22,7 +21,6 @@ import org.hyperledger.besu.ethereum.rlp.BytesValueRLPInput
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.security.Security
 import kotlin.jvm.optionals.getOrNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -35,12 +33,6 @@ class BlobDecompressorAndDeserializerV1Test {
   )
 
   private lateinit var decompressorToDomain: BlobDecompressorAndDeserializer
-
-  companion object {
-    init {
-      Security.addProvider(BouncyCastleProvider())
-    }
-  }
 
   @BeforeEach
   fun setUp() {
