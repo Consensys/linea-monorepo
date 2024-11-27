@@ -1,6 +1,7 @@
 package execution
 
 import (
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/stretchr/testify/require"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 )
 
 func TestPIConsistency(t *testing.T) {
-	pi := FunctionalPublicInput{
+	pi := public_input.Execution{
 		L2MessageHashes:             make([][32]byte, 2),
 		MaxNbL2MessageHashes:        3,
 		FinalBlockNumber:            4,
@@ -36,7 +37,7 @@ func TestPIConsistency(t *testing.T) {
 	pi.InitialStateRootHash[0] &= 0x0f
 	pi.FinalStateRootHash[0] &= 0x0f
 
-	snarkPi, err := pi.ToSnarkType()
+	snarkPi, err := NewFunctionalPublicInputSnark(&pi)
 	require.NoError(t, err)
 	piSum := pi.Sum(nil)
 

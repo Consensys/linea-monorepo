@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"hash"
 
@@ -35,21 +34,21 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	// TODO there is data duplication in the request. Check consistency
 
 	// infer config
-	config, err := c.getConfig()
+	cfg, err := c.getConfig()
 	if err != nil {
 		return
 	}
-	a = allocateCircuit(config)
+	a = allocateCircuit(cfg)
 
-	if len(r.Decompressions) > config.MaxNbDecompression {
+	if len(r.Decompressions) > cfg.MaxNbDecompression {
 		err = errors.New("number of decompression proofs exceeds maximum")
 		return
 	}
-	if len(r.Executions) > config.MaxNbExecution {
+	if len(r.Executions) > cfg.MaxNbExecution {
 		err = errors.New("number of execution proofs exceeds maximum")
 		return
 	}
-	if len(r.Decompressions)+len(r.Executions) > config.MaxNbCircuits && config.MaxNbCircuits > 0 {
+	if len(r.Decompressions)+len(r.Executions) > cfg.MaxNbCircuits && cfg.MaxNbCircuits > 0 {
 		err = errors.New("total number of circuits exceeds maximum")
 		return
 	}
@@ -69,7 +68,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	utils.Copy(a.ParentShnarf[:], prevShnarf)
 
 	execDataChecksums := make([][]byte, 0, len(r.Executions))
-	shnarfs := make([][]byte, config.MaxNbDecompression)
+	shnarfs := make([][]byte, cfg.MaxNbDecompression)
 	// Decompression FPI
 	for i, p := range r.Decompressions {
 		var blobData [1024 * 128]byte
@@ -176,8 +175,8 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	aggregationFPI.NbDecompression = uint64(len(r.Decompressions))
 	a.AggregationFPIQSnark = aggregationFPI.ToSnarkType().AggregationFPIQSnark
 
-	merkleNbLeaves := 1 << config.L2MsgMerkleDepth
-	maxNbL2MessageHashes := config.L2MsgMaxNbMerkle * merkleNbLeaves
+	merkleNbLeaves := 1 << cfg.L2MsgMerkleDepth
+	maxNbL2MessageHashes := cfg.L2MsgMaxNbMerkle * merkleNbLeaves
 	l2MessageHashes := make([][32]byte, 0, maxNbL2MessageHashes)
 
 	lastRollingHashUpdate, lastRollingHashMsg := aggregationFPI.LastFinalizedRollingHash, aggregationFPI.LastFinalizedRollingHashMsgNumber
@@ -195,28 +194,19 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		}
 		executionFPI.FinalBlockNumber = executionFPI.InitialBlockNumber
 		executionFPI.FinalBlockTimestamp = executionFPI.InitialBlockTimestamp
+		a.ExecutionPublicInput[i] = 0 // the aggregation circuit dictates that padded executions must have public input 0
 
 		if i < len(r.Executions) {
 			executionFPI = r.Executions[i]
+			// compute the public input
+			a.ExecutionPublicInput[i] = executionFPI.Sum(hshM)
 		}
 
 		l2MessageHashes = append(l2MessageHashes, r.Executions[i].L2MsgHashes...)
 
 		// consistency checks
-		if initial := r.Executions[i].InitialBlockTimestamp; initial <= lastFinBlockTs {
-			err = fmt.Errorf("execution #%d. initial block timestamp is not after the final block timestamp %d≤%d", i, initial, lastFinBlockTs)
-			return
-		}
 		if initial := r.Executions[i].InitialBlockNumber; initial != lastFinBlockNum+1 {
-			err = fmt.Errorf("execution #%d. initial block number is not right after to the last finalized one %d≠%d", i, initial, lastFinBlockNum+1)
-			return
-		}
-		if first, last := executionFPI.InitialBlockNumber, executionFPI.FinalBlockNumber; first > last {
-			err = fmt.Errorf("execution #%d. initial block number is greater than the final block number %d>%d", i, first, last)
-			return
-		}
-		if first, last := executionFPI.InitialBlockTimestamp, executionFPI.FinalBlockTimestamp; first > last {
-			err = fmt.Errorf("execution #%d. initial block timestamp is greater than the final block timestamp %d>%d", i, first, last)
+			err = fmt.Errorf("execution #%d. initial block number is not right after to the last finalized one %d≠%d", i, initial, lastFinBlockNum)
 			return
 		}
 		if got, want := &executionFPI.L2MessageServiceAddr, &r.Aggregation.L2MessageServiceAddr; *got != *want {
@@ -227,15 +217,28 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			err = fmt.Errorf("execution #%d. expected chain ID %x, encountered %x", i, want, got)
 			return
 		}
+		if initial := r.Executions[i].InitialBlockTimestamp; initial <= lastFinBlockTs {
+			err = fmt.Errorf("execution #%d. initial block timestamp is not after the final block timestamp %d≤%d", i, initial, lastFinBlockTs)
+			return
+		}
+		if first, last := executionFPI.InitialBlockNumber, executionFPI.FinalBlockNumber; first > last {
+			err = fmt.Errorf("execution #%d. initial block number is greater than the final block number %d>%d", i, first, last)
+			return
+		}
+		if first, last := executionFPI.InitialBlockTimestamp, executionFPI.FinalBlockTimestamp; first > last {
+			err = fmt.Errorf("execution #%d. initial block timestamp is greater than the final block timestamp %d>%d", i, first, last)
+			return
+		}
 		if executionFPI.InitialRollingHashMsgNumber < executionFPI.FinalRollingHashMsgNumber {
 			err = fmt.Errorf("execution #%d. initial rolling hash message number %d is less than the final one %d", i, executionFPI.InitialRollingHashMsgNumber, executionFPI.FinalRollingHashMsgNumber)
 			return
 		}
+		// TODO @Tabaie check that if the initial and final rolling hash msg nums were equal then so should the hashes, or decide not to
 
 		// consistency check and record keeping
 		if executionFPI.InitialRollingHashMsgNumber != 0 { // there is an update
 			if executionFPI.InitialRollingHashMsgNumber != lastRollingHashMsg+1 {
-				err = fmt.Errorf("execution #%d. initial rolling hash message number %d is not right after the last finalized one %d", i, executionFPI.InitialRollingHashMsgNumber, lastRollingHashMsg+1)
+				err = fmt.Errorf("execution #%d. initial rolling hash message number %d is not right after the last finalized one %d", i, executionFPI.InitialRollingHashMsgNumber, lastRollingHashMsg)
 				return
 			}
 			lastRollingHashMsg = executionFPI.FinalRollingHashMsgNumber
@@ -244,15 +247,10 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 		lastFinBlockNum, lastFinBlockTs = executionFPI.FinalBlockNumber, executionFPI.FinalBlockTimestamp
 
-		// compute the public input
-		a.ExecutionPublicInput[i] = executionFPI.Sum(hshM)
-
 		// convert to snark type
-		if snarkFPI, _err := execution.NewFunctionalPublicInputSnark(&executionFPI); _err != nil {
-			err = fmt.Errorf("execution #%d: %w", i, _err)
+		if err = a.ExecutionFPIQ[i].Assign(&executionFPI); err != nil {
+			err = fmt.Errorf("execution #%d: %w", i, err)
 			return
-		} else {
-			a.ExecutionFPIQ[i] = snarkFPI.FunctionalPublicInputQSnark
 		}
 	}
 	// consistency check
@@ -298,7 +296,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	}
 
 	// padding merkle root hashes
-	emptyTree := make([][]byte, config.L2MsgMerkleDepth+1)
+	emptyTree := make([][]byte, cfg.L2MsgMerkleDepth+1)
 	emptyTree[0] = make([]byte, 64)
 	hsh := sha3.NewLegacyKeccak256()
 	for i := 1; i < len(emptyTree); i++ {
@@ -309,15 +307,15 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	}
 
 	// pad the merkle roots
-	if len(r.Aggregation.L2MsgRootHashes) > config.L2MsgMaxNbMerkle {
+	if len(r.Aggregation.L2MsgRootHashes) > cfg.L2MsgMaxNbMerkle {
 		err = errors.New("more merkle trees than there is capacity")
 		return
 	}
 
-	for i := len(r.Aggregation.L2MsgRootHashes); i < config.L2MsgMaxNbMerkle; i++ {
-		for depth := config.L2MsgMerkleDepth; depth > 0; depth-- {
+	for i := len(r.Aggregation.L2MsgRootHashes); i < cfg.L2MsgMaxNbMerkle; i++ {
+		for depth := cfg.L2MsgMerkleDepth; depth > 0; depth-- {
 			for j := 0; j < 1<<(depth-1); j++ {
-				hshK.Skip(emptyTree[config.L2MsgMerkleDepth-depth])
+				hshK.Skip(emptyTree[cfg.L2MsgMerkleDepth-depth])
 			}
 		}
 	}

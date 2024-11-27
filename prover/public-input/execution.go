@@ -25,7 +25,6 @@ type Execution struct {
 	InitialRollingHashMsgNumber uint64
 	DataChecksum                [32]byte
 	L2MessageHashes             [][32]byte
-	MaxNbL2MessageHashes        int
 	InitialStateRootHash        [32]byte
 	InitialBlockNumber          uint64
 }

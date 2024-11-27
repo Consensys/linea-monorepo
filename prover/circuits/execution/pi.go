@@ -32,9 +32,19 @@ type FunctionalPublicInputQSnark struct {
 // specific way.
 type L2MessageHashes internal.Var32Slice
 
-// NewL2MessageHashes constructs a new var slice
-func NewL2MessageHashes(v [][32]frontend.Variable, max int) L2MessageHashes {
-	return L2MessageHashes(internal.NewSliceOf32Array(v, max))
+func (s *L2MessageHashes) Assign(values [][32]frontend.Variable) error {
+	if len(values) > len(s.Values) {
+		return fmt.Errorf("%d values cannot fit in %d-long slice", len(values), len(s.Values))
+	}
+	for i := range values {
+		utils.Copy(s.Values[i][:], values[i][:])
+	}
+	var zeros [32]byte
+	for i := len(values); i < len(s.Values); i++ {
+		utils.Copy(s.Values[i][:], zeros[:])
+	}
+	s.Length = len(values)
+	return nil
 }
 
 // CheckSum returns the hash of the [L2MessageHashes]. The encoding is done as
@@ -106,6 +116,12 @@ func (pi *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 	for i := range pi.FinalRollingHashUpdate {
 		rc.Check(pi.FinalRollingHashUpdate[i], 8)
 	}
+	rc.Check(pi.FinalBlockNumber, 64)
+	rc.Check(pi.FinalBlockTimestamp, 64)
+	rc.Check(pi.InitialBlockTimestamp, 64)
+	rc.Check(pi.InitialRollingHashMsgNumber, 64)
+	rc.Check(pi.FinalRollingHashMsgNumber, 64)
+
 }
 
 func (pi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) frontend.Variable {
@@ -125,32 +141,43 @@ func (pi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldH
 	return hsh.Sum()
 }
 
-func NewFunctionalPublicInputSnark(pi *public_input.Execution) (FunctionalPublicInputSnark, error) {
-	res := FunctionalPublicInputSnark{
-		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-			DataChecksum:                pi.DataChecksum,
-			L2MessageHashes:             L2MessageHashes(internal.NewSliceOf32Array(pi.L2MessageHashes, pi.MaxNbL2MessageHashes)),
-			InitialBlockTimestamp:       pi.InitialBlockTimestamp,
-			FinalStateRootHash:          pi.FinalStateRootHash,
-			FinalBlockNumber:            pi.FinalBlockNumber,
-			FinalBlockTimestamp:         pi.FinalBlockTimestamp,
-			InitialRollingHashMsgNumber: pi.InitialRollingHashMsgNumber,
-			FinalRollingHashMsgNumber:   pi.FinalRollingHashMsgNumber,
-		},
-		InitialStateRootHash: pi.InitialStateRootHash,
-		InitialBlockNumber:   pi.InitialBlockNumber,
-		ChainID:              pi.ChainID,
-		L2MessageServiceAddr: pi.L2MessageServiceAddr,
-	}
+func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error {
 
-	utils.Copy(res.FinalRollingHashUpdate[:], pi.FinalRollingHashUpdate[:])
-	utils.Copy(res.InitialRollingHashUpdate[:], pi.InitialRollingHashUpdate[:])
+	spi.FunctionalPublicInputQSnark.Assign(pi)
+
+	spi.InitialStateRootHash = pi.InitialStateRootHash
+	spi.InitialBlockNumber = pi.InitialBlockNumber
+	spi.ChainID = pi.ChainID
+	spi.L2MessageServiceAddr = pi.L2MessageServiceAddr
+
+	utils.Copy(spi.FinalRollingHashUpdate[:], pi.FinalRollingHashUpdate[:])
+	utils.Copy(spi.InitialRollingHashUpdate[:], pi.InitialRollingHashUpdate[:])
 
 	var err error
 	if nbMsg := len(pi.L2MessageHashes); nbMsg > pi.MaxNbL2MessageHashes {
 		err = fmt.Errorf("has %d L2 message hashes but a maximum of %d is allowed", nbMsg, pi.MaxNbL2MessageHashes)
 	}
 
-	return res, err
+	return err
 
+}
+
+func (spiq *FunctionalPublicInputQSnark) Assign(pi *public_input.Execution) error {
+
+	spiq.DataChecksum = pi.DataChecksum
+	spiq.InitialBlockTimestamp = pi.InitialBlockTimestamp
+	spiq.FinalStateRootHash = pi.FinalStateRootHash
+	spiq.FinalBlockNumber = pi.FinalBlockNumber
+	spiq.FinalBlockTimestamp = pi.FinalBlockTimestamp
+	spiq.InitialRollingHashMsgNumber = pi.InitialRollingHashMsgNumber
+	spiq.FinalRollingHashMsgNumber = pi.FinalRollingHashMsgNumber
+
+	utils.Copy(spiq.FinalRollingHashUpdate[:], pi.FinalRollingHashUpdate[:])
+	utils.Copy(spiq.InitialRollingHashUpdate[:], pi.InitialRollingHashUpdate[:])
+
+	if len(pi.L2MessageHashes) > len(spiq.L2MessageHashes.Values) {
+
+	}
+
+	return internal.Var32Slice(spiq.L2MessageHashes).Assign(pi.L2MessageHashes)
 }

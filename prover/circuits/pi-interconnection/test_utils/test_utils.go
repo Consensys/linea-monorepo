@@ -33,13 +33,15 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 	assert.NoError(t, err)
 
 	execReq := public_input.Execution{
-		L2MsgHashes:               [][32]byte{internal.Uint64To32Bytes(4)},
-		InitialBlockTimestamp:     7,
-		FinalStateRootHash:        finalStateRootHash,
-		FinalBlockNumber:          9,
-		FinalBlockTimestamp:       10,
-		FinalRollingHashUpdate:    internal.Uint64To32Bytes(11),
-		FinalRollingHashMsgNumber: 12,
+		L2MsgHashes:                 [][32]byte{internal.Uint64To32Bytes(4)},
+		InitialBlockTimestamp:       7,
+		FinalStateRootHash:          finalStateRootHash,
+		FinalBlockNumber:            9,
+		FinalBlockTimestamp:         10,
+		FinalRollingHashUpdate:      internal.Uint64To32Bytes(11),
+		FinalRollingHashMsgNumber:   9,
+		InitialRollingHashMsgNumber: 9,
+		InitialBlockNumber:          6,
 	}
 
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq.L2MsgHashes))

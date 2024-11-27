@@ -3,7 +3,6 @@ package pi_interconnection
 import (
 	"errors"
 	"github.com/sirupsen/logrus"
-	"math"
 	"math/big"
 	"slices"
 
@@ -129,9 +128,8 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	rExecution := internal.NewRange(api, nbExecution, maxNbExecution)
 
-	initBlockNum, initRHashNum, initRHash := api.Add(c.LastFinalizedBlockNumber, 1), c.InitialRollingHashNumber, c.InitialRollingHash
-	lastFinalizedBlockTime, initState := c.LastFinalizedBlockTimestamp, c.InitialStateRootHash
-	finalRollingHash, finalRollingHashNum := c.InitialRollingHash, c.InitialRollingHashNumber
+	finalBlockNum, finalRollingHashMsgNum, finalRollingHash := c.LastFinalizedBlockNumber, c.LastFinalizedRollingHashNumber, c.LastFinalizedRollingHash
+	finalBlockTime, finalState := c.LastFinalizedBlockTimestamp, c.InitialStateRootHash
 	var l2MessagesByByte [32][]internal.VarSlice
 
 	execMaxNbL2Msg := len(c.ExecutionFPIQ[0].L2MessageHashes.Values)
@@ -143,41 +141,35 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	comparator := cmp.NewBoundedComparator(api, new(big.Int).Lsh(big.NewInt(1), 64), false) // TODO does the "false" mean that the deltas are range checked?
+	// we can "allow non-deterministic behavior" because all compared values have been range-checked
+	comparator := cmp.NewBoundedComparator(api, new(big.Int).Lsh(big.NewInt(1), 65), true)
 	// TODO try using lookups or crumb decomposition to make comparisons more efficient
 	for i, piq := range c.ExecutionFPIQ {
 		piq.RangeCheck(api)
-
-		inRange := rExecution.InRange[i]
-		rollingHashNotUpdated := api.Select(inRange, api.IsZero(piq.FinalRollingHashMsgNumber), 1) // padded input past nbExecutions is not required to be 0. So we multiply by inRange
-
-		newFinalRollingHashNum := api.Select(rollingHashNotUpdated, finalRollingHashNum, piq.FinalRollingHashMsgNumber)
-
-		nextExecInitBlockNum := api.Add(piq.FinalBlockNumber, 1)
-
-		api.AssertIsEqual(comparator.IsLess(lastFinalizedBlockTime, api.Select(inRange, piq.InitialBlockTimestamp, uint64(math.MaxUint64))), 1) // don't compare if not updating
-		api.AssertIsEqual(comparator.IsLess(piq.InitialBlockTimestamp, api.Add(piq.FinalBlockTimestamp, 1)), 1)
-
-		api.AssertIsEqual(comparator.IsLess(initBlockNum, api.Select(inRange, nextExecInitBlockNum, uint64(math.MaxUint64))), 1)
-		api.AssertIsEqual(comparator.IsLess(finalRollingHashNum, api.Add(newFinalRollingHashNum, rollingHashNotUpdated)), 1) // if the rolling hash is updated, check that it has increased
-
-		finalRollingHashNum = newFinalRollingHashNum
-		copy(finalRollingHash[:], internal.SelectMany(api, rollingHashNotUpdated, finalRollingHash[:], piq.FinalRollingHashUpdate[:]))
-
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
-			InitialStateRootHash:        initState,
-			InitialBlockNumber:          initBlockNum,
-			InitialRollingHash:          initRHash,
-			InitialRollingHashNumber:    api.Mul(initRHashNum, api.Sub(1, rollingHashNotUpdated)),
+			InitialStateRootHash:        finalState,
+			InitialBlockNumber:          api.Add(finalBlockNum, 1),
 			ChainID:                     c.ChainID,
 			L2MessageServiceAddr:        c.L2MessageServiceAddr[:],
 		}
-		for j := range pi.InitialRollingHashUpdate {
-			pi.InitialRollingHashUpdate[j] = api.Mul(initRHash[j], api.Sub(1, rollingHashNotUpdated))
-		}
-		initBlockNum, initRHashNum, initRHash = nextExecInitBlockNum, pi.FinalRollingHashMsgNumber, pi.FinalRollingHashUpdate
-		lastFinalizedBlockTime, initState = pi.FinalBlockTimestamp, pi.FinalStateRootHash
+
+		inRange := rExecution.InRange[i]
+
+		comparator.AssertIsLessEq(pi.InitialBlockTimestamp, pi.FinalBlockTimestamp)
+		comparator.AssertIsLessEq(pi.InitialBlockNumber, pi.FinalBlockNumber)
+		comparator.AssertIsLess(finalBlockTime, pi.InitialBlockTimestamp)
+		comparator.AssertIsLessEq(pi.InitialRollingHashMsgNumber, pi.FinalRollingHashMsgNumber)
+
+		rollingHashUpdated := api.Mul(inRange, api.Sub(1, api.IsZero(piq.FinalRollingHashMsgNumber)))
+
+		internal.AssertEqualIf(api, rollingHashUpdated, pi.InitialRollingHashMsgNumber, api.Add(finalRollingHashMsgNum, 1))
+		finalRollingHashMsgNum = api.Select(rollingHashUpdated, pi.FinalRollingHashMsgNumber, finalRollingHashMsgNum)
+		copy(finalRollingHash[:], internal.SelectMany(api, rollingHashUpdated, pi.FinalRollingHashUpdate[:], finalRollingHash[:]))
+
+		finalBlockTime = pi.FinalBlockTimestamp
+		finalBlockNum = pi.FinalBlockNumber
+		finalState = pi.FinalStateRootHash
 
 		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hshM))) // "open" execution circuit public input
 
@@ -211,7 +203,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
 		FinalShnarf:            rDecompression.LastArray32(shnarfs),
 		FinalRollingHash:       finalRollingHash,
-		FinalRollingHashNumber: finalRollingHashNum,
+		FinalRollingHashNumber: finalRollingHashMsgNum,
 		L2MsgMerkleTreeDepth:   c.L2MessageMerkleDepth,
 	}
 
@@ -275,9 +267,6 @@ func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.Com
 
 	circuit := allocateCircuit(c)
 	circuit.Keccak = shc
-	for i := range circuit.ExecutionFPIQ {
-		circuit.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]frontend.Variable, c.ExecutionMaxNbMsg)
-	}
 
 	return &Compiled{
 		Circuit: &circuit,
@@ -306,19 +295,25 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 	}, nil
 }
 
-func allocateCircuit(c config.PublicInput) Circuit {
-	return Circuit{
-		DecompressionPublicInput: make([]frontend.Variable, c.MaxNbDecompression),
-		ExecutionPublicInput:     make([]frontend.Variable, c.MaxNbExecution),
-		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, c.MaxNbDecompression),
-		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, c.MaxNbExecution),
-		L2MessageMerkleDepth:     c.L2MsgMerkleDepth,
-		L2MessageMaxNbMerkle:     c.L2MsgMaxNbMerkle,
-		MaxNbCircuits:            c.MaxNbCircuits,
-		L2MessageServiceAddr:     types.EthAddress(c.L2MsgServiceAddr),
-		ChainID:                  c.ChainID,
+func allocateCircuit(cfg config.PublicInput) Circuit {
+	res := Circuit{
+		DecompressionPublicInput: make([]frontend.Variable, cfg.MaxNbDecompression),
+		ExecutionPublicInput:     make([]frontend.Variable, cfg.MaxNbExecution),
+		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, cfg.MaxNbDecompression),
+		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
+		L2MessageMerkleDepth:     cfg.L2MsgMerkleDepth,
+		L2MessageMaxNbMerkle:     cfg.L2MsgMaxNbMerkle,
+		MaxNbCircuits:            cfg.MaxNbCircuits,
+		L2MessageServiceAddr:     types.EthAddress(cfg.L2MsgServiceAddr),
+		ChainID:                  cfg.ChainID,
 		UseGkrMimc:               true,
 	}
+
+	for i := range res.ExecutionFPIQ {
+		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]frontend.Variable, cfg.ExecutionMaxNbMsg)
+	}
+
+	return res
 }
 
 func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
