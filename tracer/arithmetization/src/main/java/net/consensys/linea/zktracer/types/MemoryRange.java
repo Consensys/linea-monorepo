@@ -73,21 +73,21 @@ public class MemoryRange {
   public MemoryRange(final long contextNumber, final Range range, final Bytes rawData) {
     this.contextNumber = contextNumber;
     this.range = range;
-    this.rawData = rawData;
+    this.rawData = range.isEmpty() ? Bytes.EMPTY : rawData;
   }
 
   public MemoryRange(
       final long contextNumber, final long offset, final long size, final Bytes rawData) {
     this.contextNumber = contextNumber;
     this.range = Range.fromOffsetAndSize(offset, size);
-    this.rawData = rawData;
+    this.rawData = isEmpty() ? Bytes.EMPTY : rawData;
   }
 
   public MemoryRange(final long contextNumber, final Range range, final MessageFrame frame) {
     this.contextNumber = contextNumber;
     this.range = range;
     this.rawData =
-        (range.isEmpty()) ? Bytes.EMPTY : frame.shadowReadMemory(0, frame.memoryByteSize());
+        range.isEmpty() ? Bytes.EMPTY : frame.shadowReadMemory(0, frame.memoryByteSize());
   }
 
   public long offset() {
@@ -103,7 +103,7 @@ public class MemoryRange {
   }
 
   public Bytes extract() {
-    return range.isEmpty()
+    return isEmpty()
         ? Bytes.EMPTY
         : rightPaddedSlice(rawData, safeLongToInt(range.offset()), safeLongToInt(range.size()));
   }
@@ -113,6 +113,6 @@ public class MemoryRange {
   }
 
   public MemoryRange snapshot() {
-    return new MemoryRange(this.contextNumber, this.range.snapshot(), this.rawData);
+    return new MemoryRange(contextNumber, range.snapshot(), rawData.copy());
   }
 }

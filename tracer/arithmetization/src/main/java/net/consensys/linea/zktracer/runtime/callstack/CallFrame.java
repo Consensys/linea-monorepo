@@ -71,7 +71,6 @@ public class CallFrame {
   @Getter private int byteCodeDeploymentNumber;
   private EWord eCodeAddress = null; // memoization
   @Getter private Bytecode code = Bytecode.EMPTY;
-  @Getter private int codeFragmentIndex = -1;
 
   // caller related information
   @Getter private Address callerAddress = Address.ZERO;

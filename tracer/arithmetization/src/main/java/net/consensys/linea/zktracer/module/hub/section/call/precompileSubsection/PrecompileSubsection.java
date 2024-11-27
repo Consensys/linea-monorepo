@@ -209,7 +209,9 @@ public class PrecompileSubsection
   }
 
   public Bytes rawCallerMemory() {
-    return callSection.getCallDataRange().getRawData();
+    return getCallDataRange().isEmpty()
+        ? getReturnAtRange().getRawData()
+        : getCallDataRange().getRawData();
   }
 
   public Bytes extractCallData() {
