@@ -149,9 +149,9 @@ func (c *Circuit) Define(api frontend.API) error {
 		piq.RangeCheck(api)
 
 		inRange := rExecution.InRange[i]
-		rollingHashNotUpdated := api.Select(inRange, api.IsZero(piq.FinalRollingHashNumber), 1) // padded input past nbExecutions is not required to be 0. So we multiply by inRange
+		rollingHashNotUpdated := api.Select(inRange, api.IsZero(piq.FinalRollingHashMsgNumber), 1) // padded input past nbExecutions is not required to be 0. So we multiply by inRange
 
-		newFinalRollingHashNum := api.Select(rollingHashNotUpdated, finalRollingHashNum, piq.FinalRollingHashNumber)
+		newFinalRollingHashNum := api.Select(rollingHashNotUpdated, finalRollingHashNum, piq.FinalRollingHashMsgNumber)
 
 		nextExecInitBlockNum := api.Add(piq.FinalBlockNumber, 1)
 
@@ -162,7 +162,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		api.AssertIsEqual(comparator.IsLess(finalRollingHashNum, api.Add(newFinalRollingHashNum, rollingHashNotUpdated)), 1) // if the rolling hash is updated, check that it has increased
 
 		finalRollingHashNum = newFinalRollingHashNum
-		copy(finalRollingHash[:], internal.SelectMany(api, rollingHashNotUpdated, finalRollingHash[:], piq.FinalRollingHash[:]))
+		copy(finalRollingHash[:], internal.SelectMany(api, rollingHashNotUpdated, finalRollingHash[:], piq.FinalRollingHashUpdate[:]))
 
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
@@ -173,10 +173,10 @@ func (c *Circuit) Define(api frontend.API) error {
 			ChainID:                     c.ChainID,
 			L2MessageServiceAddr:        c.L2MessageServiceAddr[:],
 		}
-		for j := range pi.InitialRollingHash {
-			pi.InitialRollingHash[j] = api.Mul(initRHash[j], api.Sub(1, rollingHashNotUpdated))
+		for j := range pi.InitialRollingHashUpdate {
+			pi.InitialRollingHashUpdate[j] = api.Mul(initRHash[j], api.Sub(1, rollingHashNotUpdated))
 		}
-		initBlockNum, initRHashNum, initRHash = nextExecInitBlockNum, pi.FinalRollingHashNumber, pi.FinalRollingHash
+		initBlockNum, initRHashNum, initRHash = nextExecInitBlockNum, pi.FinalRollingHashMsgNumber, pi.FinalRollingHashUpdate
 		lastFinalizedBlockTime, initState = pi.FinalBlockTimestamp, pi.FinalStateRootHash
 
 		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hshM))) // "open" execution circuit public input

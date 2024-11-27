@@ -19,19 +19,21 @@ import (
 // FunctionalPublicInputQSnark the information on this execution that cannot be
 // extracted from other input in the same aggregation batch
 type FunctionalPublicInputQSnark struct {
-	DataChecksum           frontend.Variable
-	L2MessageHashes        L2MessageHashes
-	InitialBlockTimestamp  frontend.Variable
-	FinalStateRootHash     frontend.Variable
-	FinalBlockNumber       frontend.Variable
-	FinalBlockTimestamp    frontend.Variable
-	FinalRollingHash       [32]frontend.Variable
-	FinalRollingHashNumber frontend.Variable
+	DataChecksum                frontend.Variable
+	L2MessageHashes             L2MessageHashes
+	InitialBlockTimestamp       frontend.Variable
+	FinalStateRootHash          frontend.Variable
+	FinalBlockNumber            frontend.Variable
+	FinalBlockTimestamp         frontend.Variable
+	InitialRollingHashUpdate    [32]frontend.Variable
+	InitialRollingHashMsgNumber frontend.Variable
+	FinalRollingHashUpdate      [32]frontend.Variable
+	FinalRollingHashMsgNumber   frontend.Variable
 }
 
 // L2MessageHashes is a wrapper for [Var32Slice] it is use to instantiate the
 // sequence of L2MessageHash that we extract from the arithmetization. The
-// reason we need a wrapper here is because we hash the L2MessageHashes in a
+// reason we need a wrapper here is that we hash the L2MessageHashes in a
 // specific way.
 type L2MessageHashes internal.Var32Slice
 
@@ -91,30 +93,28 @@ func (l *L2MessageHashes) CheckSumMiMC(api frontend.API) frontend.Variable {
 
 type FunctionalPublicInputSnark struct {
 	FunctionalPublicInputQSnark
-	InitialStateRootHash     frontend.Variable
-	InitialBlockNumber       frontend.Variable
-	InitialRollingHash       [32]frontend.Variable
-	InitialRollingHashNumber frontend.Variable
-	ChainID                  frontend.Variable
-	L2MessageServiceAddr     frontend.Variable
+	InitialStateRootHash frontend.Variable
+	InitialBlockNumber   frontend.Variable
+	ChainID              frontend.Variable
+	L2MessageServiceAddr frontend.Variable
 }
 
 type FunctionalPublicInput struct {
-	DataChecksum             [32]byte
-	L2MessageHashes          [][32]byte
-	MaxNbL2MessageHashes     int
-	FinalStateRootHash       [32]byte
-	FinalBlockNumber         uint64
-	FinalBlockTimestamp      uint64
-	FinalRollingHash         [32]byte
-	FinalRollingHashNumber   uint64
-	InitialStateRootHash     [32]byte
-	InitialBlockNumber       uint64
-	InitialBlockTimestamp    uint64
-	InitialRollingHash       [32]byte
-	InitialRollingHashNumber uint64
-	ChainID                  uint64
-	L2MessageServiceAddr     types.EthAddress
+	DataChecksum                [32]byte
+	L2MessageHashes             [][32]byte
+	MaxNbL2MessageHashes        int
+	FinalStateRootHash          [32]byte
+	FinalBlockNumber            uint64
+	FinalBlockTimestamp         uint64
+	FinalRollingHashUpdate      [32]byte
+	FinalRollingHashMsgNumber   uint64
+	InitialStateRootHash        [32]byte
+	InitialBlockNumber          uint64
+	InitialBlockTimestamp       uint64
+	InitialRollingHashUpdate    [32]byte
+	InitialRollingHashMsgNumber uint64
+	ChainID                     uint64
+	L2MessageServiceAddr        types.EthAddress
 }
 
 // RangeCheck checks that values are within range
@@ -126,23 +126,23 @@ func (pi *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 			rc.Check(v[i], 8)
 		}
 	}
-	for i := range pi.FinalRollingHash {
-		rc.Check(pi.FinalRollingHash[i], 8)
+	for i := range pi.FinalRollingHashUpdate {
+		rc.Check(pi.FinalRollingHashUpdate[i], 8)
 	}
 }
 
 func (pi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) frontend.Variable {
 
 	var (
-		finalRollingHash   = internal.CombineBytesIntoElements(api, pi.FinalRollingHash)
-		initialRollingHash = internal.CombineBytesIntoElements(api, pi.InitialRollingHash)
+		finalRollingHash   = internal.CombineBytesIntoElements(api, pi.FinalRollingHashUpdate)
+		initialRollingHash = internal.CombineBytesIntoElements(api, pi.InitialRollingHashUpdate)
 		l2MessagesSum      = pi.L2MessageHashes.CheckSumMiMC(api)
 	)
 
 	hsh.Reset()
 	hsh.Write(pi.DataChecksum, l2MessagesSum,
-		pi.FinalStateRootHash, pi.FinalBlockNumber, pi.FinalBlockTimestamp, finalRollingHash[0], finalRollingHash[1], pi.FinalRollingHashNumber,
-		pi.InitialStateRootHash, pi.InitialBlockNumber, pi.InitialBlockTimestamp, initialRollingHash[0], initialRollingHash[1], pi.InitialRollingHashNumber,
+		pi.FinalStateRootHash, pi.FinalBlockNumber, pi.FinalBlockTimestamp, finalRollingHash[0], finalRollingHash[1], pi.FinalRollingHashMsgNumber,
+		pi.InitialStateRootHash, pi.InitialBlockNumber, pi.InitialBlockTimestamp, initialRollingHash[0], initialRollingHash[1], pi.InitialRollingHashMsgNumber,
 		pi.ChainID, pi.L2MessageServiceAddr)
 
 	return hsh.Sum()
@@ -151,22 +151,22 @@ func (pi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldH
 func (pi *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error) {
 	res := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-			DataChecksum:           slices.Clone(pi.DataChecksum[:]),
-			L2MessageHashes:        L2MessageHashes(internal.NewSliceOf32Array(pi.L2MessageHashes, pi.MaxNbL2MessageHashes)),
-			InitialBlockTimestamp:  pi.InitialBlockTimestamp,
-			FinalStateRootHash:     slices.Clone(pi.FinalStateRootHash[:]),
-			FinalBlockNumber:       pi.FinalBlockNumber,
-			FinalBlockTimestamp:    pi.FinalBlockTimestamp,
-			FinalRollingHashNumber: pi.FinalRollingHashNumber,
+			DataChecksum:                slices.Clone(pi.DataChecksum[:]),
+			L2MessageHashes:             L2MessageHashes(internal.NewSliceOf32Array(pi.L2MessageHashes, pi.MaxNbL2MessageHashes)),
+			InitialBlockTimestamp:       pi.InitialBlockTimestamp,
+			FinalStateRootHash:          slices.Clone(pi.FinalStateRootHash[:]),
+			FinalBlockNumber:            pi.FinalBlockNumber,
+			FinalBlockTimestamp:         pi.FinalBlockTimestamp,
+			InitialRollingHashMsgNumber: pi.InitialRollingHashMsgNumber,
+			FinalRollingHashMsgNumber:   pi.FinalRollingHashMsgNumber,
 		},
-		InitialStateRootHash:     slices.Clone(pi.InitialStateRootHash[:]),
-		InitialBlockNumber:       pi.InitialBlockNumber,
-		InitialRollingHashNumber: pi.InitialRollingHashNumber,
-		ChainID:                  pi.ChainID,
-		L2MessageServiceAddr:     slices.Clone(pi.L2MessageServiceAddr[:]),
+		InitialStateRootHash: slices.Clone(pi.InitialStateRootHash[:]),
+		InitialBlockNumber:   pi.InitialBlockNumber,
+		ChainID:              pi.ChainID,
+		L2MessageServiceAddr: slices.Clone(pi.L2MessageServiceAddr[:]),
 	}
-	utils.Copy(res.FinalRollingHash[:], pi.FinalRollingHash[:])
-	utils.Copy(res.InitialRollingHash[:], pi.InitialRollingHash[:])
+	utils.Copy(res.FinalRollingHashUpdate[:], pi.FinalRollingHashUpdate[:])
+	utils.Copy(res.InitialRollingHashUpdate[:], pi.InitialRollingHashUpdate[:])
 
 	var err error
 	if nbMsg := len(pi.L2MessageHashes); nbMsg > pi.MaxNbL2MessageHashes {
@@ -196,15 +196,15 @@ func (pi *FunctionalPublicInput) Sum(hsh hash.Hash) []byte {
 
 	writeNum(hsh, pi.FinalBlockNumber)
 	writeNum(hsh, pi.FinalBlockTimestamp)
-	hsh.Write(pi.FinalRollingHash[:16])
-	hsh.Write(pi.FinalRollingHash[16:])
-	writeNum(hsh, pi.FinalRollingHashNumber)
+	hsh.Write(pi.FinalRollingHashUpdate[:16])
+	hsh.Write(pi.FinalRollingHashUpdate[16:])
+	writeNum(hsh, pi.FinalRollingHashMsgNumber)
 	hsh.Write(pi.InitialStateRootHash[:])
 	writeNum(hsh, pi.InitialBlockNumber)
 	writeNum(hsh, pi.InitialBlockTimestamp)
-	hsh.Write(pi.InitialRollingHash[:16])
-	hsh.Write(pi.InitialRollingHash[16:])
-	writeNum(hsh, pi.InitialRollingHashNumber)
+	hsh.Write(pi.InitialRollingHashUpdate[:16])
+	hsh.Write(pi.InitialRollingHashUpdate[16:])
+	writeNum(hsh, pi.InitialRollingHashMsgNumber)
 	writeNum(hsh, pi.ChainID)
 	hsh.Write(pi.L2MessageServiceAddr[:])
 

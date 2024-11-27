@@ -200,10 +200,10 @@ func (rsp *Response) FuncInput() *execution.FunctionalPublicInput {
 			lastRHEvent  = rsp.AllRollingHashEvent[len(rsp.AllRollingHashEvent)-1]
 		)
 
-		fi.InitialRollingHash = firstRHEvent.RollingHash
-		fi.FinalRollingHash = lastRHEvent.RollingHash
-		fi.InitialRollingHashNumber = uint64(firstRHEvent.MessageNumber)
-		fi.FinalRollingHashNumber = uint64(lastRHEvent.MessageNumber)
+		fi.InitialRollingHashUpdate = firstRHEvent.RollingHash
+		fi.FinalRollingHashUpdate = lastRHEvent.RollingHash
+		fi.InitialRollingHashMsgNumber = uint64(firstRHEvent.MessageNumber)
+		fi.FinalRollingHashMsgNumber = uint64(lastRHEvent.MessageNumber)
 	}
 
 	return fi

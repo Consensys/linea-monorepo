@@ -12,24 +12,24 @@ import (
 
 func TestPIConsistency(t *testing.T) {
 	pi := FunctionalPublicInput{
-		L2MessageHashes:          make([][32]byte, 2),
-		MaxNbL2MessageHashes:     3,
-		FinalBlockNumber:         4,
-		FinalBlockTimestamp:      5,
-		FinalRollingHashNumber:   6,
-		InitialBlockNumber:       1,
-		InitialBlockTimestamp:    2,
-		InitialRollingHashNumber: 3,
-		ChainID:                  7,
+		L2MessageHashes:             make([][32]byte, 2),
+		MaxNbL2MessageHashes:        3,
+		FinalBlockNumber:            4,
+		FinalBlockTimestamp:         5,
+		FinalRollingHashMsgNumber:   6,
+		InitialBlockNumber:          1,
+		InitialBlockTimestamp:       2,
+		InitialRollingHashMsgNumber: 3,
+		ChainID:                     7,
 	}
 
 	utils.FillRange(pi.DataChecksum[:], 10)
 	utils.FillRange(pi.L2MessageHashes[0][:], 50)
 	utils.FillRange(pi.L2MessageHashes[1][:], 90)
 	utils.FillRange(pi.InitialStateRootHash[:], 130)
-	utils.FillRange(pi.InitialRollingHash[:], 170)
+	utils.FillRange(pi.InitialRollingHashUpdate[:], 170)
 	utils.FillRange(pi.FinalStateRootHash[:], 210)
-	utils.FillRange(pi.FinalRollingHash[:], 250)
+	utils.FillRange(pi.FinalRollingHashUpdate[:], 250)
 	utils.FillRange(pi.L2MessageServiceAddr[:], 40)
 
 	// state root hashes are field elements

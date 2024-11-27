@@ -195,8 +195,8 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 	hshM := mimc.NewMiMC()
 	for i := range a.ExecutionFPIQ {
-		executionFPI.InitialRollingHash = [32]byte{}
-		executionFPI.InitialRollingHashNumber = 0
+		executionFPI.InitialRollingHashUpdate = [32]byte{}
+		executionFPI.InitialRollingHashMsgNumber = 0
 		executionFPI.L2MessageHashes = nil
 
 		// pad things correctly to make the circuit's life a bit easier
@@ -220,12 +220,12 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 				return
 			}
 			executionFPI.InitialBlockTimestamp = r.Executions[i].InitialBlockTimestamp
-			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHashUpdate
+			executionFPI.FinalRollingHashUpdate = r.Executions[i].FinalRollingHashUpdate
 			executionFPI.FinalBlockNumber = r.Executions[i].FinalBlockNumber
 			executionFPI.FinalBlockTimestamp = r.Executions[i].FinalBlockTimestamp
 			finalBlockTimestamp = r.Executions[i].FinalBlockTimestamp
-			executionFPI.FinalRollingHash = r.Executions[i].FinalRollingHashUpdate
-			executionFPI.FinalRollingHashNumber = r.Executions[i].FinalRollingHashMsgNumber
+			executionFPI.FinalRollingHashUpdate = r.Executions[i].FinalRollingHashUpdate
+			executionFPI.FinalRollingHashMsgNumber = r.Executions[i].FinalRollingHashMsgNumber
 			executionFPI.FinalStateRootHash = r.Executions[i].FinalStateRootHash
 
 			copy(executionFPI.DataChecksum[:], execDataChecksums[i])
@@ -243,9 +243,9 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			}
 
 			if r.Executions[i].FinalRollingHashMsgNumber != 0 { // if the rolling hash is being updated, record the change
-				executionFPI.InitialRollingHash = finalRollingHash
+				executionFPI.InitialRollingHashUpdate = finalRollingHash
 				finalRollingHash = r.Executions[i].FinalRollingHashUpdate
-				executionFPI.InitialRollingHashNumber = finalRollingHashNum
+				executionFPI.InitialRollingHashMsgNumber = finalRollingHashNum
 				finalRollingHashNum = r.Executions[i].FinalRollingHashMsgNumber
 			}
 
@@ -273,13 +273,13 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 	if finalRollingHash != aggregationFPI.FinalRollingHash {
 		err = fmt.Errorf("final rolling hashes do not match: execution=%x, aggregation=%x",
-			executionFPI.FinalRollingHash, aggregationFPI.FinalRollingHash)
+			executionFPI.FinalRollingHashUpdate, aggregationFPI.FinalRollingHash)
 		return
 	}
 
 	if finalRollingHashNum != aggregationFPI.FinalRollingHashNumber {
 		err = fmt.Errorf("final rolling hash numbers do not match: execution=%v, aggregation=%v",
-			executionFPI.FinalRollingHashNumber, aggregationFPI.FinalRollingHashNumber)
+			executionFPI.FinalRollingHashMsgNumber, aggregationFPI.FinalRollingHashNumber)
 		return
 	}
 
