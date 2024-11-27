@@ -1,7 +1,11 @@
 package public_input
 
 import (
+	"encoding/binary"
 	"errors"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"hash"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -19,6 +23,11 @@ type Execution struct {
 	FinalRollingHashMsgNumber   uint64
 	InitialRollingHashUpdate    [32]byte
 	InitialRollingHashMsgNumber uint64
+	DataChecksum                [32]byte
+	L2MessageHashes             [][32]byte
+	MaxNbL2MessageHashes        int
+	InitialStateRootHash        [32]byte
+	InitialBlockNumber          uint64
 }
 
 type ExecutionSerializable struct {
@@ -78,4 +87,56 @@ func (e ExecutionSerializable) Decode() (decoded Execution, err error) {
 
 	fillWithHex(decoded.FinalRollingHashUpdate[:], e.FinalRollingHashUpdate)
 	return
+}
+
+func (pi *Execution) Sum(hsh hash.Hash) []byte {
+	if hsh == nil {
+		hsh = mimc.NewMiMC()
+	}
+
+	hsh.Reset()
+	for i := range pi.L2MessageHashes {
+		hsh.Write(pi.L2MessageHashes[i][:16])
+		hsh.Write(pi.L2MessageHashes[i][16:])
+	}
+	l2MessagesSum := hsh.Sum(nil)
+
+	hsh.Reset()
+
+	hsh.Write(pi.DataChecksum[:])
+	hsh.Write(l2MessagesSum)
+	hsh.Write(pi.FinalStateRootHash[:])
+
+	writeNum(hsh, pi.FinalBlockNumber)
+	writeNum(hsh, pi.FinalBlockTimestamp)
+	hsh.Write(pi.FinalRollingHashUpdate[:16])
+	hsh.Write(pi.FinalRollingHashUpdate[16:])
+	writeNum(hsh, pi.FinalRollingHashMsgNumber)
+	hsh.Write(pi.InitialStateRootHash[:])
+	writeNum(hsh, pi.InitialBlockNumber)
+	writeNum(hsh, pi.InitialBlockTimestamp)
+	hsh.Write(pi.InitialRollingHashUpdate[:16])
+	hsh.Write(pi.InitialRollingHashUpdate[16:])
+	writeNum(hsh, pi.InitialRollingHashMsgNumber)
+	writeNum(hsh, pi.ChainID)
+	hsh.Write(pi.L2MessageServiceAddr[:])
+
+	return hsh.Sum(nil)
+
+}
+
+func (pi *Execution) SumAsField() field.Element {
+
+	var (
+		sumBytes = pi.Sum(nil)
+		sum      = new(field.Element).SetBytes(sumBytes)
+	)
+
+	return *sum
+}
+
+func writeNum(hsh hash.Hash, n uint64) {
+	var b [8]byte
+	binary.BigEndian.PutUint64(b[:], n)
+	hsh.Write(b[:])
 }

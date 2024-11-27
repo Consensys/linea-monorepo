@@ -1,19 +1,14 @@
 package execution
 
 import (
-	"encoding/binary"
 	"fmt"
-	"hash"
-	"slices"
-
 	"github.com/consensys/gnark/frontend"
 	gnarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // FunctionalPublicInputQSnark the information on this execution that cannot be
@@ -99,24 +94,6 @@ type FunctionalPublicInputSnark struct {
 	L2MessageServiceAddr frontend.Variable
 }
 
-type FunctionalPublicInput struct {
-	DataChecksum                [32]byte
-	L2MessageHashes             [][32]byte
-	MaxNbL2MessageHashes        int
-	FinalStateRootHash          [32]byte
-	FinalBlockNumber            uint64
-	FinalBlockTimestamp         uint64
-	FinalRollingHashUpdate      [32]byte
-	FinalRollingHashMsgNumber   uint64
-	InitialStateRootHash        [32]byte
-	InitialBlockNumber          uint64
-	InitialBlockTimestamp       uint64
-	InitialRollingHashUpdate    [32]byte
-	InitialRollingHashMsgNumber uint64
-	ChainID                     uint64
-	L2MessageServiceAddr        types.EthAddress
-}
-
 // RangeCheck checks that values are within range
 func (pi *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 	// the length of the l2msg slice is range checked in Concat; no need to do it here; TODO do it here instead
@@ -148,23 +125,24 @@ func (pi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldH
 	return hsh.Sum()
 }
 
-func (pi *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error) {
+func NewFunctionalPublicInputSnark(pi *public_input.Execution) (FunctionalPublicInputSnark, error) {
 	res := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-			DataChecksum:                slices.Clone(pi.DataChecksum[:]),
+			DataChecksum:                pi.DataChecksum,
 			L2MessageHashes:             L2MessageHashes(internal.NewSliceOf32Array(pi.L2MessageHashes, pi.MaxNbL2MessageHashes)),
 			InitialBlockTimestamp:       pi.InitialBlockTimestamp,
-			FinalStateRootHash:          slices.Clone(pi.FinalStateRootHash[:]),
+			FinalStateRootHash:          pi.FinalStateRootHash,
 			FinalBlockNumber:            pi.FinalBlockNumber,
 			FinalBlockTimestamp:         pi.FinalBlockTimestamp,
 			InitialRollingHashMsgNumber: pi.InitialRollingHashMsgNumber,
 			FinalRollingHashMsgNumber:   pi.FinalRollingHashMsgNumber,
 		},
-		InitialStateRootHash: slices.Clone(pi.InitialStateRootHash[:]),
+		InitialStateRootHash: pi.InitialStateRootHash,
 		InitialBlockNumber:   pi.InitialBlockNumber,
 		ChainID:              pi.ChainID,
-		L2MessageServiceAddr: slices.Clone(pi.L2MessageServiceAddr[:]),
+		L2MessageServiceAddr: pi.L2MessageServiceAddr,
 	}
+
 	utils.Copy(res.FinalRollingHashUpdate[:], pi.FinalRollingHashUpdate[:])
 	utils.Copy(res.InitialRollingHashUpdate[:], pi.InitialRollingHashUpdate[:])
 
@@ -174,56 +152,5 @@ func (pi *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, erro
 	}
 
 	return res, err
-}
 
-func (pi *FunctionalPublicInput) Sum(hsh hash.Hash) []byte {
-	if hsh == nil {
-		hsh = mimc.NewMiMC()
-	}
-
-	hsh.Reset()
-	for i := range pi.L2MessageHashes {
-		hsh.Write(pi.L2MessageHashes[i][:16])
-		hsh.Write(pi.L2MessageHashes[i][16:])
-	}
-	l2MessagesSum := hsh.Sum(nil)
-
-	hsh.Reset()
-
-	hsh.Write(pi.DataChecksum[:])
-	hsh.Write(l2MessagesSum)
-	hsh.Write(pi.FinalStateRootHash[:])
-
-	writeNum(hsh, pi.FinalBlockNumber)
-	writeNum(hsh, pi.FinalBlockTimestamp)
-	hsh.Write(pi.FinalRollingHashUpdate[:16])
-	hsh.Write(pi.FinalRollingHashUpdate[16:])
-	writeNum(hsh, pi.FinalRollingHashMsgNumber)
-	hsh.Write(pi.InitialStateRootHash[:])
-	writeNum(hsh, pi.InitialBlockNumber)
-	writeNum(hsh, pi.InitialBlockTimestamp)
-	hsh.Write(pi.InitialRollingHashUpdate[:16])
-	hsh.Write(pi.InitialRollingHashUpdate[16:])
-	writeNum(hsh, pi.InitialRollingHashMsgNumber)
-	writeNum(hsh, pi.ChainID)
-	hsh.Write(pi.L2MessageServiceAddr[:])
-
-	return hsh.Sum(nil)
-
-}
-
-func (pi *FunctionalPublicInput) SumAsField() field.Element {
-
-	var (
-		sumBytes = pi.Sum(nil)
-		sum      = new(field.Element).SetBytes(sumBytes)
-	)
-
-	return *sum
-}
-
-func writeNum(hsh hash.Hash, n uint64) {
-	var b [8]byte
-	binary.BigEndian.PutUint64(b[:], n)
-	hsh.Write(b[:])
 }
