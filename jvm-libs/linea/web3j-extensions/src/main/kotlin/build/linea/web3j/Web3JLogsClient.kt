@@ -1,4 +1,4 @@
-package net.consensys.linea.contract
+package build.linea.web3j
 
 import io.vertx.core.Vertx
 import net.consensys.linea.async.AsyncRetryer

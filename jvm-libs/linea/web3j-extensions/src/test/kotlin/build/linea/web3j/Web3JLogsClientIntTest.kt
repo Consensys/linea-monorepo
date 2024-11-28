@@ -1,4 +1,4 @@
-package net.consensys.linea.contract
+package build.linea.web3j
 
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
