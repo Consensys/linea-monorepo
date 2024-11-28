@@ -10,7 +10,6 @@ import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import java.lang.Void
 
 class HttpJsonRpcServer(
   private val port: UInt,
@@ -20,6 +19,13 @@ class HttpJsonRpcServer(
 ) : AbstractVerticle() {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private lateinit var httpServer: HttpServer
+  val bindedPort: Int
+    get() = if (this::httpServer.isInitialized) {
+      httpServer.actualPort()
+    } else {
+      throw IllegalStateException("Http server not started")
+    }
+
   val bindedPort: Int
     get() = if (this::httpServer.isInitialized) {
       httpServer.actualPort()
