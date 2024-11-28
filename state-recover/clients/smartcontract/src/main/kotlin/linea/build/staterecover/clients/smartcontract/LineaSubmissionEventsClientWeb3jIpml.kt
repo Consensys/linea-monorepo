@@ -25,7 +25,7 @@ class LineaSubmissionEventsClientWeb3jIpml(
 ) : LineaRollupSubmissionEventsClient {
 
   override fun findDataFinalizedEventContainingBlock(l2BlockNumber: ULong): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
-    TODO("Not yet implemented")
+    TODO("findDataFinalizedEventContainingBlock(l2BlockNumber=$l2BlockNumber) not yet implemented: ")
   }
 
   override fun findDataFinalizedEventByStartBlockNumber(
