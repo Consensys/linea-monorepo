@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -68,6 +67,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	}
 	utils.Copy(a.ParentShnarf[:], prevShnarf)
 
+	hshM := mimc.NewMiMC()
 	execDataChecksums := make([][]byte, 0, len(r.Executions))
 	shnarfs := make([][]byte, cfg.MaxNbDecompression)
 	// Decompression FPI
@@ -109,7 +109,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			return
 		}
 		a.DecompressionFPIQ[i] = sfpi.FunctionalPublicInputQSnark
-		if a.DecompressionPublicInput[i], err = fpi.Sum(); err != nil {
+		if a.DecompressionPublicInput[i], err = fpi.Sum(decompression.WithHash(hshM)); err != nil {
 			return
 		}
 
@@ -182,15 +182,16 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 	lastRollingHashUpdate, lastRollingHashMsg := aggregationFPI.LastFinalizedRollingHash, aggregationFPI.LastFinalizedRollingHashMsgNumber
 	lastFinBlockNum, lastFinBlockTs := aggregationFPI.LastFinalizedBlockNumber, aggregationFPI.LastFinalizedBlockTimestamp
+	lastFinalizedStateRootHash := aggregationFPI.InitialStateRootHash
 
-	hshM := mimc.NewMiMC()
-	hshExec := test_utils.NewWriterHashToFile(hshM, "exec-pi")
 	for i := range a.ExecutionFPIQ {
 
 		// padding
 		executionFPI := public_input.Execution{
 			InitialBlockTimestamp: lastFinBlockTs + 1,
 			InitialBlockNumber:    lastFinBlockNum + 1,
+			InitialStateRootHash:  lastFinalizedStateRootHash,
+			FinalStateRootHash:    lastFinalizedStateRootHash,
 			L2MessageServiceAddr:  r.Aggregation.L2MessageServiceAddr,
 			ChainID:               r.Aggregation.ChainID,
 		}
@@ -200,39 +201,54 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 		if i < len(r.Executions) {
 			executionFPI = r.Executions[i]
+			copy(executionFPI.DataChecksum[:], execDataChecksums[i])
 			// compute the public input
-			a.ExecutionPublicInput[i] = executionFPI.Sum(hshExec)
+			a.ExecutionPublicInput[i] = executionFPI.Sum(hshM)
 		}
 
-		l2MessageHashes = append(l2MessageHashes, r.Executions[i].L2MsgHashes...)
+		if l := len(executionFPI.L2MessageHashes); l > cfg.ExecutionMaxNbMsg {
+			err = fmt.Errorf("execution #%d has %d messages. more than the %d allowed by config", i, l, cfg.ExecutionMaxNbMsg)
+		}
+		l2MessageHashes = append(l2MessageHashes, executionFPI.L2MessageHashes...)
 
 		// consistency checks
-		if initial := r.Executions[i].InitialBlockNumber; initial != lastFinBlockNum+1 {
-			err = fmt.Errorf("execution #%d. initial block number is not right after to the last finalized one %d≠%d", i, initial, lastFinBlockNum)
+		if initial := executionFPI.InitialStateRootHash; initial != lastFinalizedStateRootHash {
+			err = fmt.Errorf("execution #%d fails CHECK_STATE_CONSEC:\n\tinitial state root hash does not match the last finalized\n\t%x≠%x", i, initial, lastFinalizedStateRootHash)
+			return
+		}
+		if initial := executionFPI.InitialBlockNumber; initial != lastFinBlockNum+1 {
+			err = fmt.Errorf("execution #%d fails CHECK_BLOCKNUM_CONSEC:\n\tinitial block number %d is not right after to the last finalized %d", i, initial, lastFinBlockNum)
 			return
 		}
 		if got, want := &executionFPI.L2MessageServiceAddr, &r.Aggregation.L2MessageServiceAddr; *got != *want {
-			err = fmt.Errorf("execution #%d. expected L2 service address %x, encountered %x", i, *want, *got)
+			err = fmt.Errorf("execution #%d: expected L2 service address %x, encountered %x", i, *want, *got)
 			return
 		}
 		if got, want := executionFPI.ChainID, r.Aggregation.ChainID; got != want {
-			err = fmt.Errorf("execution #%d. expected chain ID %x, encountered %x", i, want, got)
+			err = fmt.Errorf("execution #%d: expected chain ID %x, encountered %x", i, want, got)
 			return
 		}
-		if initial := r.Executions[i].InitialBlockTimestamp; initial <= lastFinBlockTs {
-			err = fmt.Errorf("execution #%d. initial block timestamp is not after the final block timestamp %d≤%d", i, initial, lastFinBlockTs)
+		if initial := executionFPI.InitialBlockTimestamp; initial <= lastFinBlockTs {
+			err = fmt.Errorf("execution #%d: initial block timestamp is not after the final block timestamp %d≤%d", i, initial, lastFinBlockTs)
 			return
 		}
 		if first, last := executionFPI.InitialBlockNumber, executionFPI.FinalBlockNumber; first > last {
-			err = fmt.Errorf("execution #%d. initial block number is greater than the final block number %d>%d", i, first, last)
+			err = fmt.Errorf("execution #%d: initial block number is greater than the final block number %d>%d", i, first, last)
 			return
 		}
 		if first, last := executionFPI.InitialBlockTimestamp, executionFPI.FinalBlockTimestamp; first > last {
-			err = fmt.Errorf("execution #%d. initial block timestamp is greater than the final block timestamp %d>%d", i, first, last)
+			err = fmt.Errorf("execution #%d: initial block timestamp is greater than the final block timestamp %d>%d", i, first, last)
 			return
 		}
-		if executionFPI.InitialRollingHashMsgNumber < executionFPI.FinalRollingHashMsgNumber {
-			err = fmt.Errorf("execution #%d. initial rolling hash message number %d is less than the final one %d", i, executionFPI.InitialRollingHashMsgNumber, executionFPI.FinalRollingHashMsgNumber)
+
+		// if there is a first, there shall be a last, no lesser than the first
+		if executionFPI.FinalRollingHashMsgNumber < executionFPI.InitialRollingHashMsgNumber {
+			err = fmt.Errorf("execution #%d fails CHECK_RHASH_NODECREASE:\n\tfinal rolling hash message number %d is less than the initial %d", i, executionFPI.FinalRollingHashMsgNumber, executionFPI.InitialRollingHashMsgNumber)
+			return
+		}
+
+		if (executionFPI.InitialRollingHashMsgNumber == 0) != (executionFPI.FinalRollingHashMsgNumber == 0) {
+			err = fmt.Errorf("execution #%d fails CHECK_RHASH_FIRSTLAST:\n\tif there is a rolling hash update there must be both a first and a last.\n\tfirst update msg num = %d, last update msg num = %d", i, executionFPI.InitialRollingHashMsgNumber, executionFPI.FinalRollingHashMsgNumber)
 			return
 		}
 		// TODO @Tabaie check that if the initial and final rolling hash msg nums were equal then so should the hashes, or decide not to
@@ -240,7 +256,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		// consistency check and record keeping
 		if executionFPI.InitialRollingHashMsgNumber != 0 { // there is an update
 			if executionFPI.InitialRollingHashMsgNumber != lastRollingHashMsg+1 {
-				err = fmt.Errorf("execution #%d. initial rolling hash message number %d is not right after the last finalized one %d", i, executionFPI.InitialRollingHashMsgNumber, lastRollingHashMsg)
+				err = fmt.Errorf("execution #%d fails CHECK_RHASH_CONSEC:\n\tinitial rolling hash message number %d is not right after the last finalized one %d", i, executionFPI.InitialRollingHashMsgNumber, lastRollingHashMsg)
 				return
 			}
 			lastRollingHashMsg = executionFPI.FinalRollingHashMsgNumber
@@ -248,6 +264,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		}
 
 		lastFinBlockNum, lastFinBlockTs = executionFPI.FinalBlockNumber, executionFPI.FinalBlockTimestamp
+		lastFinalizedStateRootHash = executionFPI.FinalStateRootHash
 
 		// convert to snark type
 		if err = a.ExecutionFPIQ[i].Assign(&executionFPI); err != nil {
@@ -255,13 +272,15 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			return
 		}
 	}
-	// consistency check
-	if lastFinBlockTs != aggregationFPI.FinalBlockTimestamp {
-		err = fmt.Errorf("final block timestamps do not match: execution=%d, aggregation=%d", lastFinBlockTs, aggregationFPI.FinalBlockTimestamp)
+	// consistency checks
+	lastExec := &r.Executions[len(r.Executions)-1]
+
+	if lastExec.FinalBlockTimestamp != aggregationFPI.FinalBlockTimestamp {
+		err = fmt.Errorf("final block timestamps do not match: execution=%d, aggregation=%d", lastExec.FinalBlockTimestamp, aggregationFPI.FinalBlockTimestamp)
 		return
 	}
-	if lastFinBlockNum != aggregationFPI.FinalBlockNumber {
-		err = fmt.Errorf("final block numbers do not match: execution=%d, aggregation=%d", lastFinBlockNum, aggregationFPI.FinalBlockNumber)
+	if lastExec.FinalBlockNumber != aggregationFPI.FinalBlockNumber {
+		err = fmt.Errorf("final block numbers do not match: execution=%d, aggregation=%d", lastExec.FinalBlockNumber, aggregationFPI.FinalBlockNumber)
 		return
 	}
 
@@ -330,7 +349,6 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	logrus.Infof("generating wizard proof for %d hashes from %d permutations", hshK.NbHashes(), hshK.MaxNbKeccakF())
 	a.Keccak, err = hshK.Assign()
 
-	hshExec.CloseFile()
 	return
 }
 

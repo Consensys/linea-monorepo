@@ -12,7 +12,6 @@ import (
 )
 
 type Execution struct {
-	L2MsgHashes                 [][32]byte
 	L2MessageServiceAddr        types.EthAddress
 	ChainID                     uint64
 	InitialBlockTimestamp       uint64
@@ -46,7 +45,7 @@ type ExecutionSerializable struct {
 func (e ExecutionSerializable) Decode() (decoded Execution, err error) {
 	decoded = Execution{
 		InitialBlockTimestamp:       e.InitialBlockTimestamp,
-		L2MsgHashes:                 make([][32]byte, len(e.L2MsgHashes)),
+		L2MessageHashes:             make([][32]byte, len(e.L2MsgHashes)),
 		FinalBlockNumber:            e.FinalBlockNumber,
 		FinalBlockTimestamp:         e.FinalBlockTimestamp,
 		FinalRollingHashMsgNumber:   e.FinalRollingHashMsgNumber,
@@ -72,7 +71,7 @@ func (e ExecutionSerializable) Decode() (decoded Execution, err error) {
 	}
 
 	for i, hex := range e.L2MsgHashes {
-		if fillWithHex(decoded.L2MsgHashes[i][:], hex); err != nil {
+		if fillWithHex(decoded.L2MessageHashes[i][:], hex); err != nil {
 			return
 		}
 	}

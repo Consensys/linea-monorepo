@@ -47,7 +47,7 @@ func (s *L2MessageHashes) Assign(values [][32]byte) error {
 	return nil
 }
 
-// CheckSum returns the hash of the [L2MessageHashes]. The encoding is done as
+// CheckSumMiMC returns the hash of the [L2MessageHashes]. The encoding is done as
 // follows:
 //
 //   - each L2 hash is decomposed in a hi and lo part: each over 16 bytes
@@ -63,19 +63,19 @@ func (s *L2MessageHashes) Assign(values [][32]byte) error {
 // @alex: it would be nice to make that function compatible with the GKR hasher
 // factory though in practice this function will only create 32 calls to the
 // MiMC permutation which makes it a non-issue.
-func (l *L2MessageHashes) CheckSumMiMC(api frontend.API) frontend.Variable {
+func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) frontend.Variable {
 
 	var (
 		// sumIsUsed is used to count the number of non-zero hashes that we
-		// found in l. It is to be tested against l.Length.
+		// found in s. It is to be tested against s.Length.
 		sumIsUsed = frontend.Variable(0)
 		res       = frontend.Variable(0)
 	)
 
-	for i := range l.Values {
+	for i := range s.Values {
 		var (
-			hi     = internal.Pack(api, l.Values[i][:16], 128, 8)[0]
-			lo     = internal.Pack(api, l.Values[i][16:], 128, 8)[0]
+			hi     = internal.Pack(api, s.Values[i][:16], 128, 8)[0]
+			lo     = internal.Pack(api, s.Values[i][16:], 128, 8)[0]
 			isUsed = api.Sub(
 				1,
 				api.Mul(
@@ -92,7 +92,7 @@ func (l *L2MessageHashes) CheckSumMiMC(api frontend.API) frontend.Variable {
 		sumIsUsed = api.Add(sumIsUsed, isUsed)
 	}
 
-	api.AssertIsEqual(sumIsUsed, l.Length)
+	api.AssertIsEqual(sumIsUsed, s.Length)
 	return res
 }
 
@@ -105,38 +105,38 @@ type FunctionalPublicInputSnark struct {
 }
 
 // RangeCheck checks that values are within range
-func (pi *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
+func (spiq *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 	// the length of the l2msg slice is range checked in Concat; no need to do it here; TODO do it here instead
 	rc := rangecheck.New(api)
-	for _, v := range pi.L2MessageHashes.Values {
+	for _, v := range spiq.L2MessageHashes.Values {
 		for i := range v {
 			rc.Check(v[i], 8)
 		}
 	}
-	for i := range pi.FinalRollingHashUpdate {
-		rc.Check(pi.FinalRollingHashUpdate[i], 8)
+	for i := range spiq.FinalRollingHashUpdate {
+		rc.Check(spiq.FinalRollingHashUpdate[i], 8)
 	}
-	rc.Check(pi.FinalBlockNumber, 64)
-	rc.Check(pi.FinalBlockTimestamp, 64)
-	rc.Check(pi.InitialBlockTimestamp, 64)
-	rc.Check(pi.InitialRollingHashMsgNumber, 64)
-	rc.Check(pi.FinalRollingHashMsgNumber, 64)
+	rc.Check(spiq.FinalBlockNumber, 64)
+	rc.Check(spiq.FinalBlockTimestamp, 64)
+	rc.Check(spiq.InitialBlockTimestamp, 64)
+	rc.Check(spiq.InitialRollingHashMsgNumber, 64)
+	rc.Check(spiq.FinalRollingHashMsgNumber, 64)
 
 }
 
-func (pi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) frontend.Variable {
+func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) frontend.Variable {
 
 	var (
-		finalRollingHash   = internal.CombineBytesIntoElements(api, pi.FinalRollingHashUpdate)
-		initialRollingHash = internal.CombineBytesIntoElements(api, pi.InitialRollingHashUpdate)
-		l2MessagesSum      = pi.L2MessageHashes.CheckSumMiMC(api)
+		finalRollingHash   = internal.CombineBytesIntoElements(api, spi.FinalRollingHashUpdate)
+		initialRollingHash = internal.CombineBytesIntoElements(api, spi.InitialRollingHashUpdate)
+		l2MessagesSum      = spi.L2MessageHashes.CheckSumMiMC(api)
 	)
 
 	hsh.Reset()
-	hsh.Write(pi.DataChecksum, l2MessagesSum,
-		pi.FinalStateRootHash, pi.FinalBlockNumber, pi.FinalBlockTimestamp, finalRollingHash[0], finalRollingHash[1], pi.FinalRollingHashMsgNumber,
-		pi.InitialStateRootHash, pi.InitialBlockNumber, pi.InitialBlockTimestamp, initialRollingHash[0], initialRollingHash[1], pi.InitialRollingHashMsgNumber,
-		pi.ChainID, pi.L2MessageServiceAddr)
+	hsh.Write(spi.DataChecksum, l2MessagesSum,
+		spi.FinalStateRootHash, spi.FinalBlockNumber, spi.FinalBlockTimestamp, finalRollingHash[0], finalRollingHash[1], spi.FinalRollingHashMsgNumber,
+		spi.InitialStateRootHash, spi.InitialBlockNumber, spi.InitialBlockTimestamp, initialRollingHash[0], initialRollingHash[1], spi.InitialRollingHashMsgNumber,
+		spi.ChainID, spi.L2MessageServiceAddr)
 
 	return hsh.Sum()
 }
@@ -163,10 +163,6 @@ func (spiq *FunctionalPublicInputQSnark) Assign(pi *public_input.Execution) erro
 
 	utils.Copy(spiq.FinalRollingHashUpdate[:], pi.FinalRollingHashUpdate[:])
 	utils.Copy(spiq.InitialRollingHashUpdate[:], pi.InitialRollingHashUpdate[:])
-
-	if len(pi.L2MessageHashes) > len(spiq.L2MessageHashes.Values) {
-
-	}
 
 	return spiq.L2MessageHashes.Assign(pi.L2MessageHashes)
 }
