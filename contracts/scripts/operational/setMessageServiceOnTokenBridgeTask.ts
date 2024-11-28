@@ -25,21 +25,12 @@ task("setMessageServiceOnTokenBridge", "Sets The Message Service On A TokenBridg
     const ethers = hre.ethers;
 
     const messageServiceAddress = getTaskCliOrEnvValue(taskArgs, "messageServiceAddress", "MESSAGE_SERVICE_ADDRESS");
-
-    if (messageServiceAddress === undefined) {
+    if (!messageServiceAddress) {
       throw "messageServiceAddress is undefined";
     }
 
     let tokenBridgeAddress = getTaskCliOrEnvValue(taskArgs, "tokenBridgeAddress", "TOKEN_BRIDGE_ADDRESS");
-
-    if (tokenBridgeAddress === undefined) {
-      tokenBridgeAddress = await getDeployedContractOnNetwork(hre.network.name, "TokenBridge");
-      if (tokenBridgeAddress === undefined) {
-        throw "tokenBridgeAddress is undefined";
-      }
-    }
-
-    if (tokenBridgeAddress === undefined) {
+    if (!tokenBridgeAddress) {
       tokenBridgeAddress = await getDeployedContractOnNetwork(hre.network.name, "TokenBridge");
       if (tokenBridgeAddress === undefined) {
         throw "tokenBridgeAddress is undefined";
