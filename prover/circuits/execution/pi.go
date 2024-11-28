@@ -143,10 +143,10 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.Field
 
 func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error {
 
-	spi.InitialStateRootHash = pi.InitialStateRootHash
+	spi.InitialStateRootHash = pi.InitialStateRootHash[:]
 	spi.InitialBlockNumber = pi.InitialBlockNumber
 	spi.ChainID = pi.ChainID
-	spi.L2MessageServiceAddr = pi.L2MessageServiceAddr
+	spi.L2MessageServiceAddr = pi.L2MessageServiceAddr[:]
 
 	return spi.FunctionalPublicInputQSnark.Assign(pi)
 }

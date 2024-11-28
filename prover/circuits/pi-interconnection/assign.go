@@ -213,6 +213,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 		if l := len(executionFPI.L2MessageHashes); l > cfg.ExecutionMaxNbMsg {
 			err = fmt.Errorf("execution #%d fails CHECK_MSG_LIMIT:\n\thas %d messages. only %d allowed by config", i, l, cfg.ExecutionMaxNbMsg)
+			return
 		}
 		l2MessageHashes = append(l2MessageHashes, executionFPI.L2MessageHashes...)
 

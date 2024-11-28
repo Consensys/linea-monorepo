@@ -14,7 +14,6 @@ import (
 func TestPIConsistency(t *testing.T) {
 	pi := public_input.Execution{
 		L2MessageHashes:             make([][32]byte, 2),
-		MaxNbL2MessageHashes:        3,
 		FinalBlockNumber:            4,
 		FinalBlockTimestamp:         5,
 		FinalRollingHashMsgNumber:   6,
@@ -37,8 +36,12 @@ func TestPIConsistency(t *testing.T) {
 	pi.InitialStateRootHash[0] &= 0x0f
 	pi.FinalStateRootHash[0] &= 0x0f
 
-	snarkPi, err := NewFunctionalPublicInputSnark(&pi)
-	require.NoError(t, err)
+	snarkPi := FunctionalPublicInputSnark{
+		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
+			L2MessageHashes: L2MessageHashes{Values: make([][32]frontend.Variable, 3)},
+		},
+	}
+	require.NoError(t, snarkPi.Assign(&pi))
 	piSum := pi.Sum(nil)
 
 	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
