@@ -15,7 +15,8 @@ import java.lang.Void
 class HttpJsonRpcServer(
   private val port: UInt,
   private val path: String,
-  private val requestHandler: Handler<RoutingContext>
+  private val requestHandler: Handler<RoutingContext>,
+  val serverName: String = ""
 ) : AbstractVerticle() {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private lateinit var httpServer: HttpServer
@@ -28,15 +29,19 @@ class HttpJsonRpcServer(
 
   override fun start(startPromise: Promise<Void>) {
     val options = HttpServerOptions().setPort(port.toInt()).setReusePort(true)
-    log.debug("Creating Http server on port {}", port)
+    log.debug("creating {} Http server on port {}", port)
     httpServer = vertx.createHttpServer(options)
     httpServer.requestHandler(buildRouter())
     httpServer.listen { res: AsyncResult<HttpServer> ->
       if (res.succeeded()) {
-        log.info("Http server started and listening on port {}", res.result().actualPort())
+        log.info(
+          "{} http server started and listening on port {}",
+          serverName,
+          res.result().actualPort()
+        )
         startPromise.complete()
       } else {
-        log.error("Creating Http server: {}", res.cause())
+        log.error("error creating {} http server: {}", serverName, res.cause())
         startPromise.fail(res.cause())
       }
     }

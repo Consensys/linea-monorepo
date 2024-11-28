@@ -65,10 +65,11 @@ class DynamicRoutingHandler(
   }
 }
 
-class FakeJsonRpcServer(
+open class FakeJsonRpcServer(
   port: Int = 0,
   apiPath: String = "/",
   recordRequestsResponses: Boolean = false,
+  serverName: String = "FakeJsonRpcServer",
   val vertx: Vertx = Vertx.vertx()
 ) {
   val meterRegistry = SimpleMeterRegistry()
@@ -77,7 +78,8 @@ class FakeJsonRpcServer(
   val httpServer: HttpJsonRpcServer = HttpJsonRpcServer(
     port = port.toUInt(),
     path = apiPath,
-    HttpRequestHandler(messageHandler)
+    requestHandler = HttpRequestHandler(messageHandler),
+    serverName = serverName
   )
   val bindedPort: Int
     get() = httpServer.bindedPort
