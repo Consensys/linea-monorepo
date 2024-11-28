@@ -9,7 +9,6 @@ import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.web3j.protocol.core.RemoteFunctionCall
-import tech.pegasys.teku.ethereum.executionclient.events.ExecutionClientEventsChannel
 import java.math.BigInteger
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.milliseconds

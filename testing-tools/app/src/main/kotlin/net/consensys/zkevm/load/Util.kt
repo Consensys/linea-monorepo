@@ -9,7 +9,3 @@ object Util {
     return Numeric.toHexString(bytes.toArray())
   }
 }
-
-fun main (){
-  Util.generateRandomPayloadOfSize(10)
-}
