@@ -4,12 +4,12 @@ import build.linea.contract.l1.LineaContractVersion
 import build.linea.staterecover.clients.DataFinalizedV3
 import build.linea.staterecover.clients.DataSubmittedV3
 import build.linea.staterecover.clients.LineaRollupSubmissionEventsClient
+import build.linea.web3j.Web3JLogsClient
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import net.consensys.linea.BlockParameter
-import net.consensys.linea.contract.Web3JLogsClient
 import net.consensys.linea.testing.submission.AggregationAndBlobs
 import net.consensys.linea.testing.submission.loadBlobsAndAggregationsSortedAndGrouped
 import net.consensys.linea.testing.submission.submitBlobsAndAggregations
