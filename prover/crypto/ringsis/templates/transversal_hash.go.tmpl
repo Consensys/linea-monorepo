@@ -53,85 +53,85 @@ func TransversalHash(
 	)
 
 	ppool.ExecutePoolChunky(numJobs, func(i int) {
-      // We process the columns per segment of `numColumnPerJob`
-			var (
-				localResult = make([]field.Element, numColumnPerJob*{{.ModulusDegree}})
-				limbs       = make([]field.Element, {{.ModulusDegree}})
+		// We process the columns per segment of `numColumnPerJob`
+		var (
+			localResult = make([]field.Element, numColumnPerJob*{{.ModulusDegree}})
+			limbs       = make([]field.Element, {{.ModulusDegree}})
 
-				// Each segment is processed by packet of `numFieldPerPoly={{$fieldPerPoly}}` rows
-				startFromCol = i * numColumnPerJob
-				stopAtCol    = (i + 1) * numColumnPerJob
+			// Each segment is processed by packet of `numFieldPerPoly={{$fieldPerPoly}}` rows
+			startFromCol = i * numColumnPerJob
+			stopAtCol    = (i + 1) * numColumnPerJob
+		)
+
+		for row := 0; row < len(pols); row += {{$fieldPerPoly}} {
+
+			var (
+				chunksFull = make([][]field.Element, {{$fieldPerPoly}})
+				mask       = 0
 			)
 
-			for row := 0; row < len(pols); row += {{$fieldPerPoly}} {
-
-				var (
-					chunksFull = make([][]field.Element, {{$fieldPerPoly}})
-					mask       = 0
-				)
-
-				for j := 0; j < {{$fieldPerPoly}}; j++ {
-					if row+j >= len(pols) {
-						continue
-					}
-
-					pReg, pIsReg := pols[row+j].(*smartvectors.Regular)
-					if pIsReg {
-						chunksFull[j] = (*pReg)[startFromCol:stopAtCol]
-						mask |= (1 << j)
-						continue
-					}
-
-					pPool, pIsPool := pols[row+j].(*smartvectors.Pooled)
-					if pIsPool {
-						chunksFull[j] = pPool.Regular[startFromCol:stopAtCol]
-						mask |= (1 << j)
-						continue
-					}
+			for j := 0; j < {{$fieldPerPoly}}; j++ {
+				if row+j >= len(pols) {
+					continue
 				}
 
-				if mask > 0 {
-					for col := 0; col < (stopAtCol - startFromCol); col++ {
-						colChunk := [{{$fieldPerPoly}}]field.Element{}
-						for j := 0; j < {{$fieldPerPoly}}; j++ {
-							if chunksFull[j] != nil {
-								colChunk[j] = chunksFull[j][col]
-							}
-						}
-
-						limbDecompose(limbs, colChunk[:])
-						partialFFT[mask](limbs, twiddleCosets)
-						mulModAcc(localResult[col*{{.ModulusDegree}}:(col+1)*{{$.ModulusDegree}}], limbs, ag[row/{{$fieldPerPoly}}])
-					}
+				pReg, pIsReg := pols[row+j].(*smartvectors.Regular)
+				if pIsReg {
+					chunksFull[j] = (*pReg)[startFromCol:stopAtCol]
+					mask |= (1 << j)
+					continue
 				}
 
-				if i == 0 {
-
-					var (
-						cMask      = ((1 << {{$fieldPerPoly}}) - 1) ^ mask
-						chunkConst = make([]field.Element, {{$fieldPerPoly}})
-					)
-
-					if cMask > 0 {
-						for j := 0; j < {{$fieldPerPoly}}; j++ {
-							if row+j >= len(pols) {
-								continue
-							}
-
-							if (cMask>>j)&1 == 1 {
-								chunkConst[j] = pols[row+j].(*smartvectors.Constant).Get(0)
-							}
-						}
-
-						limbDecompose(limbs, chunkConst)
-						partialFFT[cMask](limbs, twiddleCosets)
-						mulModAcc(constResults, limbs, ag[row/{{$fieldPerPoly}}])
-					}
+				pPool, pIsPool := pols[row+j].(*smartvectors.Pooled)
+				if pIsPool {
+					chunksFull[j] = pPool.Regular[startFromCol:stopAtCol]
+					mask |= (1 << j)
+					continue
 				}
 			}
 
-			// copy the segment into the main result at the end
-			copy(mainResults[startFromCol*{{.ModulusDegree}}:stopAtCol*{{.ModulusDegree}}], localResult)
+			if mask > 0 {
+				for col := 0; col < (stopAtCol - startFromCol); col++ {
+					colChunk := [{{$fieldPerPoly}}]field.Element{}
+					for j := 0; j < {{$fieldPerPoly}}; j++ {
+						if chunksFull[j] != nil {
+							colChunk[j] = chunksFull[j][col]
+						}
+					}
+
+					limbDecompose(limbs, colChunk[:])
+					partialFFT[mask](limbs, twiddleCosets)
+					mulModAcc(localResult[col*{{.ModulusDegree}}:(col+1)*{{$.ModulusDegree}}], limbs, ag[row/{{$fieldPerPoly}}])
+				}
+			}
+
+			if i == 0 {
+
+				var (
+					cMask      = ((1 << {{$fieldPerPoly}}) - 1) ^ mask
+					chunkConst = make([]field.Element, {{$fieldPerPoly}})
+				)
+
+				if cMask > 0 {
+					for j := 0; j < {{$fieldPerPoly}}; j++ {
+						if row+j >= len(pols) {
+							continue
+						}
+
+						if (cMask>>j)&1 == 1 {
+							chunkConst[j] = pols[row+j].(*smartvectors.Constant).Get(0)
+						}
+					}
+
+					limbDecompose(limbs, chunkConst)
+					partialFFT[cMask](limbs, twiddleCosets)
+					mulModAcc(constResults, limbs, ag[row/{{$fieldPerPoly}}])
+				}
+			}
+		}
+
+		// copy the segment into the main result at the end
+		copy(mainResults[startFromCol*{{.ModulusDegree}}:stopAtCol*{{.ModulusDegree}}], localResult)
 	})
 
 	// Now, we need to reconciliate the results of the buffer with

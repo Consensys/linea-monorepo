@@ -50,7 +50,7 @@ func TransversalHash(
 	)
 
 	ppool.ExecutePoolChunky(numJobs, func(i int) {
-
+		// We process the columns per segment of `numColumnPerJob`
 		var (
 			localResult = make([]field.Element, numColumnPerJob*64)
 			limbs       = make([]field.Element, 64)
