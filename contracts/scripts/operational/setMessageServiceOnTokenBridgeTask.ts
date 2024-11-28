@@ -32,7 +32,7 @@ task("setMessageServiceOnTokenBridge", "Sets The Message Service On A TokenBridg
     let tokenBridgeAddress = getTaskCliOrEnvValue(taskArgs, "tokenBridgeAddress", "TOKEN_BRIDGE_ADDRESS");
     if (!tokenBridgeAddress) {
       tokenBridgeAddress = await getDeployedContractOnNetwork(hre.network.name, "TokenBridge");
-      if (tokenBridgeAddress === undefined) {
+      if (!tokenBridgeAddress) {
         throw "tokenBridgeAddress is undefined";
       }
     }
