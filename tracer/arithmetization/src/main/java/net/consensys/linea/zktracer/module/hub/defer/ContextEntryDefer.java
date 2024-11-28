@@ -16,7 +16,8 @@
 package net.consensys.linea.zktracer.module.hub.defer;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public interface ContextEntryDefer {
-  void resolveUponContextEntry(Hub hub);
+  void resolveUponContextEntry(Hub hub, MessageFrame frame);
 }

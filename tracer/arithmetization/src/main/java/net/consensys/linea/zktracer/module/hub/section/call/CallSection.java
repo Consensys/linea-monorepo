@@ -375,7 +375,7 @@ public class CallSection extends TraceSection
   }
 
   @Override
-  public void resolveUponContextEntry(Hub hub) {
+  public void resolveUponContextEntry(Hub hub, MessageFrame frame) {
 
     final CallScenarioFragment.CallScenario scenario = scenarioFragment.getScenario();
     checkState(scenario == CALL_SMC_UNDEFINED | scenario == CALL_PRC_UNDEFINED);
@@ -448,6 +448,9 @@ public class CallSection extends TraceSection
         checkState(successBit);
         scenarioFragment.setScenario(CALL_EOA_SUCCESS_WONT_REVERT);
         emptyCodeFirstCoupleOfAccountFragments(hub);
+        final long gasAfterCall = frame.frame().getRemainingGas();
+        commonValues.gasNext(gasAfterCall);
+        hub.currentFrame().lastValidGasNext(gasAfterCall);
       }
 
       case CALL_PRC_UNDEFINED -> {
@@ -457,6 +460,9 @@ public class CallSection extends TraceSection
           scenarioFragment.setScenario(CALL_PRC_FAILURE);
         }
         emptyCodeFirstCoupleOfAccountFragments(hub);
+        long gasAfterCall = frame.frame().getRemainingGas();
+        commonValues.gasNext(gasAfterCall);
+        hub.currentFrame().lastValidGasNext(gasAfterCall);
 
         finalContextFragment =
             ContextFragment.updateReturnData(

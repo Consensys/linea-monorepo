@@ -245,7 +245,7 @@ public class CreateSection extends TraceSection
   }
 
   @Override
-  public void resolveUponContextEntry(Hub hub) {
+  public void resolveUponContextEntry(Hub hub, MessageFrame frame) {
     childEntryCreatorSnapshot =
         AccountSnapshot.canonical(hub, preOpcodeCreatorSnapshot.address())
             // .raiseNonceByOne() // the nonce was already raised
