@@ -93,7 +93,7 @@ public class CallFrame {
   @Getter @Setter private MemoryRange outputDataRange = MemoryRange.EMPTY; // set at exit time
 
   @Getter private boolean executionPaused = false;
-  @Getter private long lastValidGasNext = 0;
+  @Getter @Setter private long lastValidGasNext = 0;
 
   public void pauseCurrentFrame() {
     Preconditions.checkState(!executionPaused);

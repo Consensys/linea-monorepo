@@ -245,8 +245,8 @@ public class RomLex
   }
 
   @Override
-  public void resolveUponContextEntry(Hub hub) {
-    checkArgument(hub.messageFrame().getType() == MessageFrame.Type.CONTRACT_CREATION);
+  public void resolveUponContextEntry(Hub hub, MessageFrame frame) {
+    checkArgument(frame.getType() == MessageFrame.Type.CONTRACT_CREATION);
     checkArgument(
         hub.deploymentStatusOf(address), "After a CREATE the deployment status should be true");
 
