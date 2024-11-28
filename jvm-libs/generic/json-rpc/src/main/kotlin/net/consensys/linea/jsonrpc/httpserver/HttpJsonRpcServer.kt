@@ -26,13 +26,6 @@ class HttpJsonRpcServer(
       throw IllegalStateException("Http server not started")
     }
 
-  val bindedPort: Int
-    get() = if (this::httpServer.isInitialized) {
-      httpServer.actualPort()
-    } else {
-      throw IllegalStateException("Http server not started")
-    }
-
   override fun start(startPromise: Promise<Void>) {
     val options = HttpServerOptions().setPort(port.toInt()).setReusePort(true)
     log.debug("creating {} Http server on port {}", port)
