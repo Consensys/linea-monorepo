@@ -723,7 +723,7 @@ There are 3 aspects of gas pricing on Linea:
 * Ensure Sequencer's inclusion logic is aligned to L1 fee market. This is to avoid exploiting Linea to execute
 transactions for unsustainably low fees
 * Ensure the best user experience for users who use Linea nodes with extended capabilities. Unlike vanilla Ethereum
-protocol, gas price on Linea and other rollups is not 2-dimentional (base fee, priority fee). There's at least L1 fees
+protocol, gas price on Linea and other rollups is not 2-dimensional (base fee, priority fee). There's at least L1 fees
 (execution fees and blob fees), infrastructural cost (mostly proving, but not only), potential priority fee
 (only when there's a high congestion and there's competition for L2 block space). This is an issue for interoperability,
 because vanilla Ethreum API isn't tailored for this. That's why there's a Besu plugin addressing this issue and
