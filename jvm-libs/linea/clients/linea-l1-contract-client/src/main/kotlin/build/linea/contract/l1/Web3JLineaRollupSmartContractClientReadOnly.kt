@@ -1,14 +1,12 @@
-package net.consensys.linea.contract.l1
+package build.linea.contract.l1
 
+import build.linea.contract.LineaRollupV5
 import build.linea.contract.LineaRollupV6
 import net.consensys.encodeHex
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.linea.contract.LineaRollup
 import net.consensys.toBigInteger
 import net.consensys.toULong
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.crypto.Credentials
@@ -36,8 +34,8 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
   private val log: Logger = LogManager.getLogger(Web3JLineaRollupSmartContractClientReadOnly::class.java)
 ) : LineaRollupSmartContractClientReadOnly {
 
-  protected fun contractClientAtBlock(blockParameter: BlockParameter): LineaRollup {
-    return contractClientAtBlock(blockParameter, LineaRollup::class.java)
+  protected fun contractClientAtBlock(blockParameter: BlockParameter): LineaRollupV5 {
+    return contractClientAtBlock(blockParameter, LineaRollupV5::class.java)
   }
 
   protected fun <T : Contract> contractClientAtBlock(blockParameter: BlockParameter, contract: Class<T>): T {
@@ -52,7 +50,7 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
         this.setDefaultBlockParameter(blockParameter.toWeb3j())
       }
 
-      LineaRollup::class.java.isAssignableFrom(contract) -> LineaRollup.load(
+      LineaRollupV5::class.java.isAssignableFrom(contract) -> LineaRollupV5.load(
         contractAddress,
         web3j,
         fakeCredentials,
@@ -136,7 +134,7 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
     return getVersion()
       .thenCompose { version ->
         if (version == LineaContractVersion.V5) {
-          contractClientAtBlock(blockParameter, LineaRollup::class.java).shnarfFinalBlockNumbers(shnarf)
+          contractClientAtBlock(blockParameter, LineaRollupV5::class.java).shnarfFinalBlockNumbers(shnarf)
         } else {
           contractClientAtBlock(blockParameter, LineaRollupV6::class.java).blobShnarfExists(shnarf)
         }

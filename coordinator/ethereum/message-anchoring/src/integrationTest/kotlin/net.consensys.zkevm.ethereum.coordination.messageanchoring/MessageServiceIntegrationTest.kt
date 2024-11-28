@@ -1,16 +1,16 @@
 package net.consensys.zkevm.ethereum.coordination.messageanchoring
 
+import build.linea.contract.LineaRollupV5
+import build.linea.contract.l1.LineaContractVersion
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.L2MessageService
-import net.consensys.linea.contract.LineaRollup
 import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.toBigInteger
 import net.consensys.toULong
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.Web3jClientManager
@@ -202,10 +202,10 @@ class MessageServiceIntegrationTest {
         .toSafeFuture()
         .thenApply { transactionReceipt ->
           log.debug("Message has been sent in block {}", transactionReceipt.blockNumber)
-          val eventValues = LineaRollup.staticExtractEventParameters(
-            LineaRollup.MESSAGESENT_EVENT,
+          val eventValues = LineaRollupV5.staticExtractEventParameters(
+            LineaRollupV5.MESSAGESENT_EVENT,
             transactionReceipt.logs.first { log ->
-              log.topics.contains(EventEncoder.encode(LineaRollup.MESSAGESENT_EVENT))
+              log.topics.contains(EventEncoder.encode(LineaRollupV5.MESSAGESENT_EVENT))
             }
           )
           MessageSentResult(
