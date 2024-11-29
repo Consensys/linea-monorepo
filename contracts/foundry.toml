@@ -7,12 +7,12 @@ cache_path  = 'cache_forge'
 
 # Default solc compiler settings
 evm_version = "cancun"
-via_ir = true
 optimizer = true
 optimizer_runs = 10_000
 
 additional_compiler_profiles = [ { name = "london", evm_version = "london" } ]
 
 compilation_restrictions = [
-    { paths = "./**/*.london.sol", evm_version = "london" },
+    { paths = "./**/L2MessageService.sol", evm_version = "london" },
+    { paths = "./**/TokenBridge.sol", evm_version = "london" },
 ]
