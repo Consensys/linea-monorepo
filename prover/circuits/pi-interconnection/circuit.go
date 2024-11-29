@@ -71,14 +71,15 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	c.AggregationFPIQSnark.RangeCheck(api)
 
+	// implicit: CHECK_DECOMP_LIMIT
 	rDecompression := internal.NewRange(api, c.NbDecompression, len(c.DecompressionPublicInput))
 	hshK := c.Keccak.NewHasher(api)
 
 	// equivalently, nbBatchesSums[i] is the index of the first execution circuit associated with the i+1-st decompression circuit
 	nbBatchesSums := rDecompression.PartialSumsF(func(i int) frontend.Variable { return c.DecompressionFPIQ[i].NbBatches })
-	nbExecution := nbBatchesSums[len(nbBatchesSums)-1]
+	nbExecution := nbBatchesSums[len(nbBatchesSums)-1] // implicit: CHECK_NB_EXEC
 
-	if c.MaxNbCircuits > 0 {
+	if c.MaxNbCircuits > 0 { // CHECK_CIRCUIT_LIMIT
 		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDecompression), c.MaxNbCircuits)
 	}
 
@@ -125,7 +126,11 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	shnarfs := ComputeShnarfs(&hshK, c.ParentShnarf, shnarfParams)
+	// The circuit only has the last shnarf as input, therefore we do not perform
+	// CHECK_SHNARF. However, since they are chained, the passing of CHECK_FINAL_SHNARF
+	// implies that all shnarfs are correct.
 
+	// implicit: CHECK_EXEC_LIMIT
 	rExecution := internal.NewRange(api, nbExecution, maxNbExecution)
 
 	finalBlockNum, finalRollingHashMsgNum, finalRollingHash := c.LastFinalizedBlockNumber, c.LastFinalizedRollingHashNumber, c.LastFinalizedRollingHash
@@ -145,25 +150,28 @@ func (c *Circuit) Define(api frontend.API) error {
 	comparator := cmp.NewBoundedComparator(api, new(big.Int).Lsh(big.NewInt(1), 65), true)
 	// TODO try using lookups or crumb decomposition to make comparisons more efficient
 	for i, piq := range c.ExecutionFPIQ {
-		piq.RangeCheck(api)
+		piq.RangeCheck(api) // CHECK_MSG_LIMIT
 
 		inRange := rExecution.InRange[i]
 
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
-			InitialStateRootHash:        finalState,
-			InitialBlockNumber:          api.Add(finalBlockNum, 1),
-			ChainID:                     c.ChainID,
-			L2MessageServiceAddr:        c.L2MessageServiceAddr[:],
+			InitialStateRootHash:        finalState,                // implicit CHECK_STATE_CONSEC
+			InitialBlockNumber:          api.Add(finalBlockNum, 1), // implicit CHECK_NUM_CONSEC
+			ChainID:                     c.ChainID,                 // implicit CHECK_CHAIN_ID
+			L2MessageServiceAddr:        c.L2MessageServiceAddr[:], // implicit CHECK_SVC_ADDR
 		}
 
-		comparator.AssertIsLessEq(pi.InitialBlockTimestamp, pi.FinalBlockTimestamp)
-		comparator.AssertIsLessEq(pi.InitialBlockNumber, pi.FinalBlockNumber)
-		comparator.AssertIsLess(finalBlockTime, pi.InitialBlockTimestamp)
-		comparator.AssertIsLessEq(pi.InitialRollingHashMsgNumber, pi.FinalRollingHashMsgNumber)
+		comparator.AssertIsLessEq(pi.InitialBlockTimestamp, pi.FinalBlockTimestamp)             // CHECK_TIME_NODECREASE
+		comparator.AssertIsLessEq(pi.InitialBlockNumber, pi.FinalBlockNumber)                   // CHECK_NUM_NODECREASE
+		comparator.AssertIsLess(finalBlockTime, pi.InitialBlockTimestamp)                       // CHECK_TIME_INCREASE
+		comparator.AssertIsLessEq(pi.InitialRollingHashMsgNumber, pi.FinalRollingHashMsgNumber) // CHECK_RHASH_NODECREASE
 
-		rollingHashUpdated := api.Mul(inRange, api.Sub(1, api.IsZero(piq.FinalRollingHashMsgNumber)))
+		finalRhMsgNumZero := api.IsZero(piq.FinalRollingHashMsgNumber)
+		api.AssertIsEqual(finalRhMsgNumZero, api.IsZero(piq.InitialRollingHashMsgNumber)) // CHECK_RHASH_FIRSTLAST
+		rollingHashUpdated := api.Mul(inRange, api.Sub(1, finalRhMsgNumZero))
 
+		// CHECK_RHASH_CONSEC
 		internal.AssertEqualIf(api, rollingHashUpdated, pi.InitialRollingHashMsgNumber, api.Add(finalRollingHashMsgNum, 1))
 		finalRollingHashMsgNum = api.Select(rollingHashUpdated, pi.FinalRollingHashMsgNumber, finalRollingHashMsgNum)
 		copy(finalRollingHash[:], internal.SelectMany(api, rollingHashUpdated, pi.FinalRollingHashUpdate[:], finalRollingHash[:]))
@@ -197,20 +205,23 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	pi := public_input.AggregationFPISnark{
-		AggregationFPIQSnark:   c.AggregationFPIQSnark,
-		NbL2Messages:           merkleLeavesConcat.Length,
-		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, c.L2MessageMaxNbMerkle),
-		FinalBlockNumber:       rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
+		AggregationFPIQSnark: c.AggregationFPIQSnark,
+		NbL2Messages:         merkleLeavesConcat.Length,
+		L2MsgMerkleTreeRoots: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle), // implicit CHECK_MERKLE_CAP1
+		// implicit CHECK_FINAL_NUM
+		FinalBlockNumber: rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
+		// implicit CHECK_FINAL_TIME
 		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
-		FinalShnarf:            rDecompression.LastArray32(shnarfs),
-		FinalRollingHash:       finalRollingHash,
-		FinalRollingHashNumber: finalRollingHashMsgNum,
+		FinalShnarf:            rDecompression.LastArray32(shnarfs), // implicit CHECK_FINAL_SHNARF
+		FinalRollingHash:       finalRollingHash,                    // implicit CHECK_FINAL_RHASH
+		FinalRollingHashNumber: finalRollingHashMsgNum,              // implicit CHECK_FINAL_RHASH_NUM
 		L2MsgMerkleTreeDepth:   c.L2MessageMerkleDepth,
 	}
 
 	quotient, remainder := internal.DivEuclidean(api, merkleLeavesConcat.Length, merkleNbLeaves)
 	pi.NbL2MsgMerkleTreeRoots = api.Add(quotient, api.Sub(1, api.IsZero(remainder)))
-
+	comparator.AssertIsLessEq(pi.NbL2MsgMerkleTreeRoots, c.L2MessageMaxNbMerkle) // CHECK_MERKLE_CAP0
+	// implicit CHECK_MERKLE
 	for i := range pi.L2MsgMerkleTreeRoots {
 		pi.L2MsgMerkleTreeRoots[i] = MerkleRootSnark(&hshK, merkleLeavesConcat.Values[i*merkleNbLeaves:(i+1)*merkleNbLeaves])
 	}

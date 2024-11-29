@@ -171,11 +171,11 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 	// TODO @Tabaie combine the following two checks
 	if len(r.Decompressions) != 0 && !bytes.Equal(shnarfs[len(r.Decompressions)-1], aggregationFPI.FinalShnarf[:]) { // first condition is an edge case for tests
-		err = fmt.Errorf("aggregation fails FINAL_SHNARF: computed %x, given %x", shnarfs[len(r.Decompressions)-1], aggregationFPI.FinalShnarf)
+		err = fmt.Errorf("aggregation fails CHECK_FINAL_SHNARF:\n\tcomputed %x, given %x", shnarfs[len(r.Decompressions)-1], aggregationFPI.FinalShnarf)
 		return
 	}
 	if len(r.Decompressions) == 0 && !bytes.Equal(aggregationFPI.ParentShnarf[:], aggregationFPI.FinalShnarf[:]) {
-		err = fmt.Errorf("aggregation fails FINAL_SHNARF: computed %x, given %x", aggregationFPI.ParentShnarf, aggregationFPI.FinalShnarf)
+		err = fmt.Errorf("aggregation fails CHECK_FINAL_SHNARF:\n\tcomputed %x, given %x", aggregationFPI.ParentShnarf, aggregationFPI.FinalShnarf)
 		return
 	}
 	aggregationFPI.NbDecompression = uint64(len(r.Decompressions))
@@ -223,7 +223,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			return
 		}
 		if initial := executionFPI.InitialBlockNumber; initial != lastFinBlockNum+1 {
-			err = fmt.Errorf("execution #%d fails CHECK_BLOCKNUM_CONSEC:\n\tinitial block number %d is not right after to the last finalized %d", i, initial, lastFinBlockNum)
+			err = fmt.Errorf("execution #%d fails CHECK_NUM_CONSEC:\n\tinitial block number %d is not right after to the last finalized %d", i, initial, lastFinBlockNum)
 			return
 		}
 		if got, want := &executionFPI.L2MessageServiceAddr, &r.Aggregation.L2MessageServiceAddr; *got != *want {
@@ -301,12 +301,12 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	}
 
 	if len(l2MessageHashes) > maxNbL2MessageHashes {
-		err = fmt.Errorf("failing MAX_NB_MSG: total of %d L2 messages, more than the %d allowed by config", len(l2MessageHashes), maxNbL2MessageHashes)
+		err = fmt.Errorf("failing CHECK_MSG_TOTAL_LIMIT:\n\ttotal of %d L2 messages, more than the %d allowed by config", len(l2MessageHashes), maxNbL2MessageHashes)
 		return
 	}
 
 	if minNbRoots := (len(l2MessageHashes) + merkleNbLeaves - 1) / merkleNbLeaves; len(r.Aggregation.L2MsgRootHashes) < minNbRoots {
-		err = fmt.Errorf("failing MERKLE_CAP0: the %d merkle roots provided are too few to accommodate all %d execution messages. A minimum of %d is needed", len(r.Aggregation.L2MsgRootHashes), len(l2MessageHashes), minNbRoots)
+		err = fmt.Errorf("failing CHECK_MERKLE_CAP0:\n\tthe %d merkle roots provided are too few to accommodate all %d execution messages. A minimum of %d is needed", len(r.Aggregation.L2MsgRootHashes), len(l2MessageHashes), minNbRoots)
 		return
 	}
 
@@ -317,7 +317,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		}
 		computedRoot := MerkleRoot(&hshK, merkleNbLeaves, l2MessageHashes[i*merkleNbLeaves:min((i+1)*merkleNbLeaves, len(l2MessageHashes))])
 		if !bytes.Equal(expectedRoot[:], computedRoot[:]) {
-			err = fmt.Errorf("failing MERKLE: computed merkle root %x, expected %x", computedRoot, expectedRoot)
+			err = fmt.Errorf("failing CHECK_MERKLE:\n\tcomputed merkle root %x, expected %x", computedRoot, expectedRoot)
 			return
 		}
 	}
@@ -335,7 +335,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 	// pad the merkle roots
 	if len(r.Aggregation.L2MsgRootHashes) > cfg.L2MsgMaxNbMerkle {
-		err = fmt.Errorf("failing MERKLE_CAP1: given %d merkle roots, more than the %d allowed by config", len(r.Aggregation.L2MsgRootHashes), cfg.L2MsgMaxNbMerkle)
+		err = fmt.Errorf("failing CHECK_MERKLE_CAP1:\n\tgiven %d merkle roots, more than the %d allowed by config", len(r.Aggregation.L2MsgRootHashes), cfg.L2MsgMaxNbMerkle)
 		return
 	}
 

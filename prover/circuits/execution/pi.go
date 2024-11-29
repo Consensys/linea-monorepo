@@ -47,6 +47,10 @@ func (s *L2MessageHashes) Assign(values [][32]byte) error {
 	return nil
 }
 
+func (s *L2MessageHashes) RangeCheck(api frontend.API) {
+	api.AssertIsLessOrEqual(s.Length, uint64(len(s.Values)))
+}
+
 // CheckSumMiMC returns the hash of the [L2MessageHashes]. The encoding is done as
 // follows:
 //
@@ -122,6 +126,7 @@ func (spiq *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 	rc.Check(spiq.InitialRollingHashMsgNumber, 64)
 	rc.Check(spiq.FinalRollingHashMsgNumber, 64)
 
+	spiq.L2MessageHashes.RangeCheck(api)
 }
 
 func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) frontend.Variable {
