@@ -2,12 +2,11 @@ package public_input
 
 import (
 	"encoding/binary"
-	"errors"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"hash"
 
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -26,65 +25,6 @@ type Execution struct {
 	L2MessageHashes             [][32]byte
 	InitialStateRootHash        [32]byte
 	InitialBlockNumber          uint64
-}
-
-type ExecutionSerializable struct {
-	ChainID                     uint64           `json:"chainID"`
-	L2MessageServiceAddr        types.EthAddress `json:"l2MessageServiceAddr"`
-	InitialBlockTimestamp       uint64           `json:"initialBlockTimestamp"`
-	L2MsgHashes                 []string         `json:"l2MsgHashes"`
-	FinalStateRootHash          string           `json:"finalStateRootHash"`
-	FinalBlockNumber            uint64           `json:"finalBlockNumber"`
-	FinalBlockTimestamp         uint64           `json:"finalBlockTimestamp"`
-	InitialRollingHashUpdate    string           `json:"initialRollingHash"`
-	InitialRollingHashMsgNumber uint64           `json:"initialRollingHashNumber"`
-	FinalRollingHashUpdate      string           `json:"finalRollingHash"`
-	FinalRollingHashMsgNumber   uint64           `json:"finalRollingHashNumber"`
-}
-
-func (e ExecutionSerializable) Decode() (decoded Execution, err error) {
-	decoded = Execution{
-		InitialBlockTimestamp:       e.InitialBlockTimestamp,
-		L2MessageHashes:             make([][32]byte, len(e.L2MsgHashes)),
-		FinalBlockNumber:            e.FinalBlockNumber,
-		FinalBlockTimestamp:         e.FinalBlockTimestamp,
-		FinalRollingHashMsgNumber:   e.FinalRollingHashMsgNumber,
-		InitialRollingHashMsgNumber: e.InitialRollingHashMsgNumber,
-		L2MessageServiceAddr:        e.L2MessageServiceAddr,
-		ChainID:                     uint64(e.ChainID),
-	}
-
-	fillWithHex := func(dst []byte, src string) {
-		var d []byte
-		if d, err = utils.HexDecodeString(src); err != nil {
-			return
-		}
-		if len(d) > len(dst) {
-			err = errors.New("decoded bytes too long")
-		}
-		n := len(dst) - len(d)
-		copy(dst[n:], d)
-		for n > 0 {
-			n--
-			dst[n] = 0
-		}
-	}
-
-	for i, hex := range e.L2MsgHashes {
-		if fillWithHex(decoded.L2MessageHashes[i][:], hex); err != nil {
-			return
-		}
-	}
-	if fillWithHex(decoded.FinalStateRootHash[:], e.FinalStateRootHash); err != nil {
-		return
-	}
-
-	if fillWithHex(decoded.InitialRollingHashUpdate[:], e.InitialRollingHashUpdate); err != nil {
-		return
-	}
-
-	fillWithHex(decoded.FinalRollingHashUpdate[:], e.FinalRollingHashUpdate)
-	return
 }
 
 func (pi *Execution) Sum(hsh hash.Hash) []byte {

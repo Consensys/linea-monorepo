@@ -8,8 +8,10 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
+	"github.com/consensys/gnark/test"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/stretchr/testify/require"
 
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
@@ -18,6 +20,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/emulation"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/sirupsen/logrus"
@@ -113,6 +116,8 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not extract interconnection circuit public witness: %w", err)
 	}
+
+	require.NoError(test_utils.FakeTestingT{}, test.IsSolved(&assignment, &assignment, ecc.BLS12_377.ScalarField()))
 
 	if err = <-setupErr; err != nil { // wait for setup to load and check for errors
 		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
