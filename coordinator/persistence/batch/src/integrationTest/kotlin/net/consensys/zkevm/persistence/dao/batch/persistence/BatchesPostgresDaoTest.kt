@@ -33,7 +33,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
   private var fakeClockTime = Instant.parse("2023-12-11T00:00:00.000Z")
   private var fakeClock = FakeFixedClock(fakeClockTime)
   private fun batchesContentQuery(): PreparedQuery<RowSet<Row>> =
-    sqlClient.preparedQuery("select * from ${BatchesPostgresDao.batchesDaoTableName}")
+    sqlClient.preparedQuery("select * from ${BatchesPostgresDao.batchesTableName}")
 
   private lateinit var batchesDao: BatchesDao
 

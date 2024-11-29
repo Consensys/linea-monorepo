@@ -72,7 +72,7 @@ class RecordsCleanupFinalizationHandlerTest : CleanDbTestSuiteParallel() {
   }
 
   private fun batchesContentQuery(): PreparedQuery<RowSet<Row>> =
-    sqlClient.preparedQuery("select * from ${BatchesPostgresDao.batchesDaoTableName}")
+    sqlClient.preparedQuery("select * from ${BatchesPostgresDao.batchesTableName}")
 
   private fun blobsContentQuery(): PreparedQuery<RowSet<Row>> =
     sqlClient.preparedQuery("select * from ${BlobsPostgresDao.TableName}")

@@ -34,12 +34,12 @@ class BatchesPostgresDao(
     }
 
     @JvmStatic
-    val batchesDaoTableName = "batches"
+    val batchesTableName = "batches"
   }
 
   private val insertSql =
     """
-      insert into $batchesDaoTableName
+      insert into $batchesTableName
       (created_epoch_milli, start_block_number, end_block_number, status)
       VALUES ($1, $2, $3, $4)
     """
@@ -49,7 +49,7 @@ class BatchesPostgresDao(
     """
       with ranked_versions as (select *,
               dense_rank() over (partition by start_block_number order by end_block_number asc) version_rank
-              from $batchesDaoTableName
+              from $batchesTableName
               order by start_block_number asc),
           previous_ends as (select *,
               lag(end_block_number, 1) over (order by end_block_number asc) as previous_end_block_number
@@ -61,7 +61,7 @@ class BatchesPostgresDao(
               limit 1)
       select end_block_number
       from previous_ends
-      where EXISTS (select 1 from $batchesDaoTableName where start_block_number = $1)
+      where EXISTS (select 1 from $batchesTableName where start_block_number = $1)
         and (previous_ends.previous_end_block_number = previous_ends.start_block_number - 1 or previous_ends.start_block_number = $1)
         and ((select count(1) from first_gapped_batch) = 0 or previous_ends.start_block_number < (select * from first_gapped_batch))
       order by start_block_number desc
@@ -71,14 +71,14 @@ class BatchesPostgresDao(
 
   private val deleteUptoSql =
     """
-        delete from $batchesDaoTableName
+        delete from $batchesTableName
         where end_block_number <= $1
     """
       .trimIndent()
 
   private val deleteAfterSql =
     """
-        delete from $batchesDaoTableName
+        delete from $batchesTableName
         where start_block_number >= $1
     """
       .trimIndent()
