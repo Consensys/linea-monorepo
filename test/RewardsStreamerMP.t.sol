@@ -10,6 +10,7 @@ import { StakeVault } from "../src/StakeVault.sol";
 import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
 import { StakeManagerProxy } from "../src/StakeManagerProxy.sol";
 import { MockToken } from "./mocks/MockToken.sol";
+import { StackOverflowStakeManager } from "./mocks/StackOverflowStakeManager.sol";
 
 contract RewardsStreamerMPTest is Test {
     MockToken rewardToken;
@@ -1946,5 +1947,45 @@ contract LeaveTest is RewardsStreamerMPTest {
         // however, a trusted manager cannot be left
         vm.expectRevert(StakeVault.StakeVault__NotAllowedToLeave.selector);
         _leave(alice);
+    }
+}
+
+contract MaliciousUpgradeTest is RewardsStreamerMPTest {
+    function _upgradeStakeManager() internal {
+        address newImpl = address(new RewardsStreamerMP());
+        bytes memory initializeData;
+        UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
+    }
+
+    function setUp() public override {
+        super.setUp();
+    }
+
+    function test_UpgradeStackOverflowStakeManager() public {
+        uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
+
+        // first change the existing manager's state
+        _stake(alice, 100e18, 0);
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 100e18,
+                totalMP: 100e18,
+                totalMaxMP: 500e18,
+                stakingBalance: 100e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        // upgrade the manager to a malicious one
+        address newImpl = address(new StackOverflowStakeManager());
+        bytes memory initializeData;
+        UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
+
+        // alice leaves system and is able to get funds out, despite malicious manager
+        _leave(alice);
+
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice should get her tokens back");
     }
 }
