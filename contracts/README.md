@@ -151,7 +151,7 @@ The above command will trigger the following commands to deploy:
 - deploy-token-bridge-l2 
 - deploy-l2-test-erc20
 
-Note: the deploy-l1-test-erc20 and deploy-l1-test-erc20 commands are executed for use in the end to end tests.
+Note: the deploy-l1-test-erc20 and deploy-l2-test-erc20 commands are executed for use in the end to end tests.
 
 ## Installation and testing
 
