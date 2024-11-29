@@ -11,31 +11,25 @@
     "lint:ts:fix": "npx eslint --fix '**/*.ts'",
     "prettier": "prettier -c '**/*.ts'",
     "prettier:fix": "prettier -w '**/*.ts'",
+    "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix",
     "clean": "rimraf dist src/typechain node_modules coverage tsconfig.build.tsbuildinfo",
     "build:pre": "pnpm run typechain",
     "build": "pnpm run build:pre && tsc -p tsconfig.build.json",
-    "build:runSdk": "tsc ./scripts/runSdk.ts",
     "typechain": "typechain --target ethers-v6 --out-dir ./src/clients/typechain './src/clients/abis/*.json'",
-    "test": "npx jest --bail --detectOpenHandles --forceExit",
-    "test:run": "ts-node ./scripts/runSdk.ts",
-    "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix"
+    "test": "npx jest --bail --detectOpenHandles --forceExit"
   },
   "dependencies": {
-    "dotenv": "16.4.5",
-    "ethers": "6.12.0",
-    "lru-cache": "10.2.2"
+    "ethers": "6.13.4",
+    "lru-cache": "11.0.2"
   },
   "devDependencies": {
     "@jest/globals": "29.7.0",
     "@typechain/ethers-v6": "0.5.1",
-    "@types/jest": "29.5.12",
-    "@types/yargs": "17.0.32",
+    "@types/jest": "29.5.14",
     "jest": "29.7.0",
     "jest-mock-extended": "3.0.5",
-    "ts-jest": "29.1.2",
-    "tsup": "8.3.5",
-    "typechain": "8.3.2",
-    "yargs": "17.7.2"
+    "ts-jest": "29.2.5",
+    "typechain": "8.3.2"
   },
   "files": [
     "dist"
