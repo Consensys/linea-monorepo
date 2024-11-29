@@ -13,22 +13,59 @@ import net.consensys.linea.async.get
 import net.consensys.linea.jsonrpc.HttpRequestHandler
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponseException
-import net.consensys.linea.jsonrpc.JsonRpcMessageHandler
 import net.consensys.linea.jsonrpc.JsonRpcMessageProcessor
 import net.consensys.linea.jsonrpc.JsonRpcRequest
-import net.consensys.linea.jsonrpc.JsonRpcRequestHandler
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import net.consensys.linea.jsonrpc.httpserver.HttpJsonRpcServer
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import java.util.concurrent.ConcurrentHashMap
 
-class DynamicRoutingHandler(
-  val recordRequestsResponses: Boolean
-) : JsonRpcRequestHandler {
-  val handlers: MutableMap<String, (JsonRpcRequest) -> Any?> = ConcurrentHashMap()
-  var requests: MutableList<Pair<JsonRpcRequest, Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>>> =
-    mutableListOf()
+open class FakeJsonRpcServer(
+  port: Int = 0,
+  apiPath: String = "/",
+  val recordRequestsResponses: Boolean = false,
+  serverName: String = "FakeJsonRpcServer",
+  loggerName: String = serverName,
+  val vertx: Vertx = Vertx.vertx()
+) {
+  val log: Logger = LogManager.getLogger(loggerName)
+  val httpServer: HttpJsonRpcServer = HttpJsonRpcServer(
+    port = port.toUInt(),
+    path = apiPath,
+    requestHandler = HttpRequestHandler(
+      JsonRpcMessageProcessor(
+        requestsHandler = this::handleRequest,
+        meterRegistry = SimpleMeterRegistry(),
+        log = log
+      )
+    ),
+    serverName = serverName
+  )
+  val bindedPort: Int
+    get() = httpServer.bindedPort
+  private var verticleId: String? = null
 
-  override fun invoke(
+  private val handlers: MutableMap<String, (JsonRpcRequest) -> Any?> = ConcurrentHashMap()
+  private var requests: MutableList<
+    Pair<JsonRpcRequest, Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>>
+    > = mutableListOf()
+
+  init {
+    vertx
+      .deployVerticle(httpServer, DeploymentOptions().setInstances(1))
+      .onSuccess { verticleId: String ->
+        this.verticleId = verticleId
+      }
+      .get()
+  }
+
+  fun stop(): Future<Void> {
+    return vertx.undeploy(verticleId)
+  }
+
+  @Suppress("UNUSED_PARAMETER")
+  private fun handleRequest(
     user: User?,
     jsonRpcRequest: JsonRpcRequest,
     requestJson: JsonObject
@@ -38,12 +75,12 @@ class DynamicRoutingHandler(
       handlers[jsonRpcRequest.method]
         ?.let { handler ->
           try {
+            val result = handler(jsonRpcRequest)
             Future.succeededFuture(
               Ok(
                 JsonRpcSuccessResponse(
-                  jsonrpc = "2.0",
-                  id = jsonRpcRequest.id,
-                  result = handler(jsonRpcRequest)
+                  request = jsonRpcRequest,
+                  result = result
                 )
               )
             )
@@ -63,40 +100,6 @@ class DynamicRoutingHandler(
         }
       }
   }
-}
-
-open class FakeJsonRpcServer(
-  port: Int = 0,
-  apiPath: String = "/",
-  recordRequestsResponses: Boolean = false,
-  serverName: String = "FakeJsonRpcServer",
-  val vertx: Vertx = Vertx.vertx()
-) {
-  val meterRegistry = SimpleMeterRegistry()
-  val jsonRpcRequestHandler = DynamicRoutingHandler(recordRequestsResponses)
-  val messageHandler: JsonRpcMessageHandler = JsonRpcMessageProcessor(jsonRpcRequestHandler, meterRegistry)
-  val httpServer: HttpJsonRpcServer = HttpJsonRpcServer(
-    port = port.toUInt(),
-    path = apiPath,
-    requestHandler = HttpRequestHandler(messageHandler),
-    serverName = serverName
-  )
-  val bindedPort: Int
-    get() = httpServer.bindedPort
-  private var verticleId: String? = null
-
-  init {
-    vertx
-      .deployVerticle(httpServer, DeploymentOptions().setInstances(1))
-      .onSuccess { verticleId: String ->
-        this.verticleId = verticleId
-      }
-      .get()
-  }
-
-  fun stop(): Future<Void> {
-    return vertx.undeploy(verticleId)
-  }
 
   /**
    * Handler shall return response result or throw [JsonRpcErrorResponseException] if error
@@ -105,14 +108,18 @@ open class FakeJsonRpcServer(
     method: String,
     methodHandler: (jsonRpcRequest: JsonRpcRequest) -> Any?
   ) {
-    jsonRpcRequestHandler.handlers[method] = methodHandler
+    handlers[method] = methodHandler
   }
 
   fun recordedRequests(): List<Pair<JsonRpcRequest, Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>>> {
-    return jsonRpcRequestHandler.requests.toList()
+    return requests.toList()
   }
 
   fun cleanRecordedRequests() {
-    jsonRpcRequestHandler.requests.clear()
+    requests.clear()
+  }
+
+  fun callCountByMethod(method: String): Int {
+    return requests.count { it.first.method == method }
   }
 }
