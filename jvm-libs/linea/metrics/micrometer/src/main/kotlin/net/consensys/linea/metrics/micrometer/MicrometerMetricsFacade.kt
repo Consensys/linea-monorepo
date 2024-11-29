@@ -39,6 +39,12 @@ class MicrometerMetricsFacade(
     if (metricsPrefix != null) requireValidMicrometerName(metricsPrefix)
   }
 
+  private fun metricHandle(category: LineaMetricsCategory?, metricName: String): String {
+    val prefixName = if (metricsPrefix == null) "" else "$metricsPrefix."
+    val categoryName = if (category == null) "" else "$category."
+    return "$prefixName$categoryName$metricName"
+  }
+
   override fun createGauge(
     category: LineaMetricsCategory?,
     name: String,
@@ -101,12 +107,6 @@ class MicrometerMetricsFacade(
     distributionSummaryBuilder.description(description)
     distributionSummaryBuilder.baseUnit(baseUnit)
     return MicrometerHistogramAdapter(distributionSummaryBuilder.register(registry))
-  }
-
-  private fun metricHandle(category: LineaMetricsCategory?, metricName: String): String {
-    val prefixName = if (metricsPrefix == null) "" else "$metricsPrefix."
-    val categoryName = if (category == null) "" else "$category."
-    return "$prefixName$categoryName$metricName"
   }
 
   override fun <T> createSimpleTimer(
