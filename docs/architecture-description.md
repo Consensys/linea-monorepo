@@ -728,7 +728,7 @@ protocol, gas price on Linea and other rollups is not 2-dimensional (base fee, p
 (only when there's a high congestion and there's competition for L2 block space). This is an issue for interoperability,
 because vanilla Ethreum API isn't tailored for this. That's why there's a Besu plugin addressing this issue and
 providing gas price depending on input transaction
-* Linea remains compatible with users runing vanilla nodes. Namely, `eth_gasPrice` returns fees guaranteeing that
+* Linea remains compatible with users running vanilla nodes. Namely, `eth_gasPrice` returns fees guaranteeing that
 99.9% of transactions are includable on Linea.
 
 This is how these challenges were solved technically:
