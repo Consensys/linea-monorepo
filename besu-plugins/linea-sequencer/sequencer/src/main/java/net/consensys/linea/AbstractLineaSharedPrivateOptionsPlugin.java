@@ -33,7 +33,6 @@ import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
-import net.consensys.linea.metrics.LineaMetricCategory;
 import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import org.hyperledger.besu.plugin.ServiceManager;
@@ -59,6 +58,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     extends AbstractLineaSharedOptionsPlugin {
   protected static BlockchainService blockchainService;
   protected static MetricsSystem metricsSystem;
+  protected static MetricCategoryRegistry metricCategoryRegistry;
 
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
@@ -143,13 +143,13 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
                     new RuntimeException(
                         "Failed to obtain BlockchainService from the ServiceManager."));
 
-    serviceManager
-        .getService(MetricCategoryRegistry.class)
-        .orElseThrow(
-            () ->
-                new RuntimeException(
-                    "Failed to obtain MetricCategoryRegistry from the ServiceManager."))
-        .addMetricCategory(LineaMetricCategory.PROFITABILITY);
+    metricCategoryRegistry =
+        serviceManager
+            .getService(MetricCategoryRegistry.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain MetricCategoryRegistry from the ServiceManager."));
   }
 
   @Override

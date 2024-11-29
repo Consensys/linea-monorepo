@@ -28,6 +28,7 @@ import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
+import net.consensys.linea.metrics.HistogramMetrics;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.bouncycastle.crypto.digests.KeccakDigest;
@@ -73,7 +74,7 @@ public class ProfitableTransactionSelectorTest {
     final var blockchainService = mock(BlockchainService.class);
     when(blockchainService.getNextBlockBaseFee()).thenReturn(Optional.of(BASE_FEE));
     return new TestableProfitableTransactionSelector(
-        blockchainService, txSelectorConf, profitabilityConf);
+        blockchainService, txSelectorConf, profitabilityConf, Optional.empty());
   }
 
   @Test
@@ -410,8 +411,9 @@ public class ProfitableTransactionSelectorTest {
     TestableProfitableTransactionSelector(
         final BlockchainService blockchainService,
         final LineaTransactionSelectorConfiguration txSelectorConf,
-        final LineaProfitabilityConfiguration profitabilityConf) {
-      super(blockchainService, txSelectorConf, profitabilityConf);
+        final LineaProfitabilityConfiguration profitabilityConf,
+        final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
+      super(blockchainService, txSelectorConf, profitabilityConf, maybeProfitabilityMetrics);
     }
 
     boolean isUnprofitableTxCached(final Hash txHash) {

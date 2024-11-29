@@ -14,19 +14,25 @@
  */
 package net.consensys.linea.metrics;
 
+import java.util.Locale;
 import java.util.Optional;
 
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory;
 
 public enum LineaMetricCategory implements MetricCategory {
-  /** Profitability metric category */
-  PROFITABILITY("profitability");
+  /** Sequencer profitability metric category */
+  SEQUENCER_PROFITABILITY,
+  /** Tx pool profitability metric category */
+  TX_POOL_PROFITABILITY,
+  /** Runtime pricing configuration */
+  PRICING_CONF;
 
   private static final Optional<String> APPLICATION_PREFIX = Optional.of("linea_");
+
   private final String name;
 
-  LineaMetricCategory(final String name) {
-    this.name = name;
+  LineaMetricCategory() {
+    this.name = name().toLowerCase(Locale.ROOT);
   }
 
   @Override

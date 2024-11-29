@@ -19,7 +19,11 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE_UPFRONT;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
+import java.util.EnumMap;
 import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -27,6 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
+import net.consensys.linea.metrics.HistogramMetrics;
+import net.consensys.linea.metrics.HistogramMetrics.LabelValue;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -48,11 +54,34 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  */
 @Slf4j
 public class ProfitableTransactionSelector implements PluginTransactionSelector {
+  public enum Phase implements LabelValue {
+    PRE_PROCESSING,
+    POST_PROCESSING;
+
+    final String value;
+
+    Phase() {
+      this.value = name().toLowerCase(Locale.ROOT);
+    }
+
+    @Override
+    public String value() {
+      return value;
+    }
+  }
+
   @VisibleForTesting protected static Set<Hash> unprofitableCache = new LinkedHashSet<>();
+  protected static Map<Phase, Double> lastBlockMinRatios = new EnumMap<>(Phase.class);
+  protected static Map<Phase, Double> lastBlockMaxRatios = new EnumMap<>(Phase.class);
+
+  static {
+    resetMinMaxRatios();
+  }
 
   private final LineaTransactionSelectorConfiguration txSelectorConf;
   private final LineaProfitabilityConfiguration profitabilityConf;
   private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
+  private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final Wei baseFee;
 
   private int unprofitableRetries;
@@ -60,11 +89,34 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
   public ProfitableTransactionSelector(
       final BlockchainService blockchainService,
       final LineaTransactionSelectorConfiguration txSelectorConf,
-      final LineaProfitabilityConfiguration profitabilityConf) {
+      final LineaProfitabilityConfiguration profitabilityConf,
+      final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
     this.txSelectorConf = txSelectorConf;
     this.profitabilityConf = profitabilityConf;
     this.transactionProfitabilityCalculator =
         new TransactionProfitabilityCalculator(profitabilityConf);
+    this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
+    maybeProfitabilityMetrics.ifPresent(
+        histogramMetrics -> {
+          // temporary solution to update min and max metrics
+          // we should do this just after the block is created, but we do not have any API for that
+          // so we postponed the update asap the next block creation starts.
+          histogramMetrics.setMinMax(
+              lastBlockMinRatios.get(Phase.PRE_PROCESSING),
+              lastBlockMaxRatios.get(Phase.PRE_PROCESSING),
+              Phase.PRE_PROCESSING.value());
+          histogramMetrics.setMinMax(
+              lastBlockMinRatios.get(Phase.POST_PROCESSING),
+              lastBlockMaxRatios.get(Phase.POST_PROCESSING),
+              Phase.POST_PROCESSING.value());
+          log.atTrace()
+              .setMessage("Setting profitability ratio metrics for last block to min={}, max={}")
+              .addArgument(lastBlockMinRatios)
+              .addArgument(lastBlockMaxRatios)
+              .log();
+          resetMinMaxRatios();
+        });
+
     this.baseFee =
         blockchainService
             .getNextBlockBaseFee()
@@ -94,9 +146,17 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
       final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
       final long gasLimit = transaction.getGasLimit();
 
+      final var profitablePriorityFeePerGas =
+          transactionProfitabilityCalculator.profitablePriorityFeePerGas(
+              transaction, profitabilityConf.minMargin(), gasLimit, minGasPrice);
+
+      updateMetric(
+          Phase.PRE_PROCESSING, evaluationContext, transaction, profitablePriorityFeePerGas);
+
       // check the upfront profitability using the gas limit of the tx
       if (!transactionProfitabilityCalculator.isProfitable(
           "PreProcessing",
+          profitablePriorityFeePerGas,
           transaction,
           profitabilityConf.minMargin(),
           baseFee,
@@ -145,8 +205,19 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
       final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
       final long gasUsed = processingResult.getEstimateGasUsedByTransaction();
 
+      final var profitablePriorityFeePerGas =
+          transactionProfitabilityCalculator.profitablePriorityFeePerGas(
+              transaction,
+              profitabilityConf.minMargin(),
+              gasUsed,
+              evaluationContext.getMinGasPrice());
+
+      updateMetric(
+          Phase.POST_PROCESSING, evaluationContext, transaction, profitablePriorityFeePerGas);
+
       if (!transactionProfitabilityCalculator.isProfitable(
           "PostProcessing",
+          profitablePriorityFeePerGas,
           transaction,
           profitabilityConf.minMargin(),
           baseFee,
@@ -185,9 +256,9 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
   public void onTransactionNotSelected(
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
       final TransactionSelectionResult transactionSelectionResult) {
+    final var txHash = evaluationContext.getPendingTransaction().getTransaction().getHash();
     if (transactionSelectionResult.discard()) {
-      unprofitableCache.remove(
-          evaluationContext.getPendingTransaction().getTransaction().getHash());
+      unprofitableCache.remove(txHash);
     }
   }
 
@@ -201,5 +272,49 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     }
     unprofitableCache.add(transaction.getHash());
     log.atTrace().setMessage("unprofitableCache={}").addArgument(unprofitableCache::size).log();
+  }
+
+  private void updateMetric(
+      final Phase label,
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
+      final Transaction tx,
+      final Wei profitablePriorityFeePerGas) {
+
+    maybeProfitabilityMetrics.ifPresent(
+        histogramMetrics -> {
+          final var effectivePriorityFee =
+              evaluationContext.getTransactionGasPrice().subtract(baseFee);
+          final var ratio =
+              effectivePriorityFee.getValue().doubleValue()
+                  / profitablePriorityFeePerGas.getValue().doubleValue();
+
+          histogramMetrics.track(ratio, label.value());
+
+          if (ratio < lastBlockMinRatios.get(label)) {
+            lastBlockMinRatios.put(label, ratio);
+          }
+          if (ratio > lastBlockMaxRatios.get(label)) {
+            lastBlockMaxRatios.put(label, ratio);
+          }
+
+          log.atTrace()
+              .setMessage(
+                  "POST_PROCESSING: block[{}] tx {} , baseFee {}, effectiveGasPrice {}, ratio (effectivePayingPriorityFee {} / calculatedProfitablePriorityFee {}) {}")
+              .addArgument(evaluationContext.getPendingBlockHeader().getNumber())
+              .addArgument(tx.getHash())
+              .addArgument(baseFee::toHumanReadableString)
+              .addArgument(evaluationContext.getTransactionGasPrice()::toHumanReadableString)
+              .addArgument(effectivePriorityFee::toHumanReadableString)
+              .addArgument(profitablePriorityFeePerGas::toHumanReadableString)
+              .addArgument(ratio)
+              .log();
+        });
+  }
+
+  private static void resetMinMaxRatios() {
+    lastBlockMinRatios.put(Phase.PRE_PROCESSING, Double.POSITIVE_INFINITY);
+    lastBlockMinRatios.put(Phase.POST_PROCESSING, Double.POSITIVE_INFINITY);
+    lastBlockMaxRatios.put(Phase.PRE_PROCESSING, Double.NEGATIVE_INFINITY);
+    lastBlockMaxRatios.put(Phase.POST_PROCESSING, Double.NEGATIVE_INFINITY);
   }
 }

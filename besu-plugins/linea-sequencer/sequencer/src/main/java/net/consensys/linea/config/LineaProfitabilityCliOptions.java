@@ -57,6 +57,12 @@ public class LineaProfitabilityCliOptions implements LineaCliOptions {
       "--plugin-linea-extra-data-set-min-gas-price-enabled";
   public static final boolean DEFAULT_EXTRA_DATA_SET_MIN_GAS_PRICE_ENABLED = true;
 
+  public static final String PROFITABILITY_METRICS_BUCKETS =
+      "--plugin-linea-profitability-metrics-buckets";
+  public static final double[] DEFAULT_PROFITABILITY_METRICS_BUCKETS = {
+    0.1, 0.3, 0.5, 0.7, 0.9, 1.0, 1.1, 1.2, 1.5, 2.0, 5.0, 10.0
+  };
+
   @Positive
   @CommandLine.Option(
       names = {FIXED_GAS_COST_WEI},
@@ -135,6 +141,17 @@ public class LineaProfitabilityCliOptions implements LineaCliOptions {
           "Enable setting min gas price runtime value via extra data field (default: ${DEFAULT-VALUE})")
   private boolean extraDataSetMinGasPriceEnabled = DEFAULT_EXTRA_DATA_SET_MIN_GAS_PRICE_ENABLED;
 
+  @CommandLine.Option(
+      names = {PROFITABILITY_METRICS_BUCKETS},
+      arity = "1..*",
+      split = ",",
+      hidden = true,
+      paramLabel = "<FLOAT[]>",
+      description =
+          "List of buckets to use to create the histogram for ratio between the effective priority fee "
+              + "and the calculate profitable priority of the tx (default: ${DEFAULT-VALUE})")
+  private double[] profitabilityMetricsBuckets = DEFAULT_PROFITABILITY_METRICS_BUCKETS;
+
   private LineaProfitabilityCliOptions() {}
 
   /**
@@ -164,6 +181,7 @@ public class LineaProfitabilityCliOptions implements LineaCliOptions {
     options.txPoolCheckP2pEnabled = config.txPoolCheckP2pEnabled();
     options.extraDataPricingEnabled = config.extraDataPricingEnabled();
     options.extraDataSetMinGasPriceEnabled = config.extraDataSetMinGasPriceEnabled();
+    options.profitabilityMetricsBuckets = config.profitabilityMetricsBuckets();
     return options;
   }
 
@@ -184,6 +202,7 @@ public class LineaProfitabilityCliOptions implements LineaCliOptions {
         .txPoolCheckP2pEnabled(txPoolCheckP2pEnabled)
         .extraDataPricingEnabled(extraDataPricingEnabled)
         .extraDataSetMinGasPriceEnabled(extraDataSetMinGasPriceEnabled)
+        .profitabilityMetricsBuckets(profitabilityMetricsBuckets)
         .build();
   }
 
@@ -199,6 +218,7 @@ public class LineaProfitabilityCliOptions implements LineaCliOptions {
         .add(TX_POOL_ENABLE_CHECK_P2P, txPoolCheckP2pEnabled)
         .add(EXTRA_DATA_PRICING_ENABLED, extraDataPricingEnabled)
         .add(EXTRA_DATA_SET_MIN_GAS_PRICE_ENABLED, extraDataSetMinGasPriceEnabled)
+        .add(PROFITABILITY_METRICS_BUCKETS, profitabilityMetricsBuckets)
         .toString();
   }
 }

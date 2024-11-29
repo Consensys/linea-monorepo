@@ -30,6 +30,7 @@ import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
+import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -55,7 +56,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
       final Map<String, Integer> limitsMap,
-      final Optional<JsonRpcManager> rejectedTxJsonRpcManager) {
+      final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
+      final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
 
     // only report rejected transaction selection result from TraceLineLimitTransactionSelector
@@ -71,7 +73,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             l1L2BridgeConfiguration,
             profitabilityConfiguration,
             tracerConfiguration,
-            limitsMap);
+            limitsMap,
+            maybeProfitabilityMetrics);
   }
 
   /**
@@ -81,6 +84,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @param txSelectorConfiguration The configuration to use.
    * @param profitabilityConfiguration The profitability configuration.
    * @param limitsMap The limits map.
+   * @param maybeProfitabilityMetrics The optional profitability metrics
    * @return A list of selectors.
    */
   private List<PluginTransactionSelector> createTransactionSelectors(
@@ -89,7 +93,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
-      final Map<String, Integer> limitsMap) {
+      final Map<String, Integer> limitsMap,
+      final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
@@ -103,7 +108,10 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
         new MaxBlockCallDataTransactionSelector(txSelectorConfiguration.maxBlockCallDataSize()),
         new MaxBlockGasTransactionSelector(txSelectorConfiguration.maxGasPerBlock()),
         new ProfitableTransactionSelector(
-            blockchainService, txSelectorConfiguration, profitabilityConfiguration),
+            blockchainService,
+            txSelectorConfiguration,
+            profitabilityConfiguration,
+            maybeProfitabilityMetrics),
         traceLineLimitTransactionSelector);
   }
 

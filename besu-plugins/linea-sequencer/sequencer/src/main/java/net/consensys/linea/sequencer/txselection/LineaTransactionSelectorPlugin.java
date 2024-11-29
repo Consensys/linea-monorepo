@@ -15,6 +15,7 @@
 
 package net.consensys.linea.sequencer.txselection;
 
+import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITABILITY;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.createLimitModules;
 
 import java.util.Optional;
@@ -25,6 +26,8 @@ import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
+import net.consensys.linea.metrics.HistogramMetrics;
+import net.consensys.linea.sequencer.txselection.selectors.ProfitableTransactionSelector;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
@@ -38,12 +41,15 @@ import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 @Slf4j
 @AutoService(BesuPlugin.class)
 public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin {
+  public static final String NAME = "linea";
+  private ServiceManager serviceManager;
   private TransactionSelectionService transactionSelectionService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
   private BesuConfiguration besuConfiguration;
 
   @Override
   public void doRegister(final ServiceManager serviceManager) {
+    this.serviceManager = serviceManager;
     transactionSelectionService =
         serviceManager
             .getService(TransactionSelectionService.class)
@@ -59,6 +65,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
                 () ->
                     new RuntimeException(
                         "Failed to obtain BesuConfiguration from the ServiceManager."));
+    metricCategoryRegistry.addMetricCategory(SEQUENCER_PROFITABILITY);
   }
 
   @Override
@@ -78,6 +85,19 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
                             besuConfiguration.getDataPath(),
                             lineaRejectedTxReportingConfiguration)
                         .start());
+
+    final Optional<HistogramMetrics> maybeProfitabilityMetrics =
+        metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_PROFITABILITY)
+            ? Optional.of(
+                new HistogramMetrics(
+                    metricsSystem,
+                    SEQUENCER_PROFITABILITY,
+                    "ratio",
+                    "sequencer profitability ratio",
+                    profitabilityConfiguration().profitabilityMetricsBuckets(),
+                    ProfitableTransactionSelector.Phase.class))
+            : Optional.empty();
+
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
             blockchainService,
@@ -86,7 +106,8 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             profitabilityConfiguration(),
             tracerConfiguration(),
             createLimitModules(tracerConfiguration()),
-            rejectedTxJsonRpcManager));
+            rejectedTxJsonRpcManager,
+            maybeProfitabilityMetrics));
   }
 
   @Override

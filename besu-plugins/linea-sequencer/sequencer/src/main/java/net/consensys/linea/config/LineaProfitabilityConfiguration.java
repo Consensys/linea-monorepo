@@ -33,6 +33,7 @@ public class LineaProfitabilityConfiguration implements LineaOptionsConfiguratio
   /** It is safe to keep this as long, since it will store value <= max_int * 1000 */
   private long variableCostWei;
 
+  /** It is safe to keep this as long, since it will store value <= max_int * 1000 */
   private long ethGasPriceWei;
 
   private double minMargin;
@@ -42,6 +43,7 @@ public class LineaProfitabilityConfiguration implements LineaOptionsConfiguratio
   private boolean txPoolCheckP2pEnabled;
   private boolean extraDataPricingEnabled;
   private boolean extraDataSetMinGasPriceEnabled;
+  private double[] profitabilityMetricsBuckets;
 
   /**
    * These 2 parameters must be atomically updated

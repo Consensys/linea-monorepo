@@ -15,6 +15,7 @@
 package linea.plugin.acc.test.extradata;
 
 import static java.util.Map.entry;
+import static net.consensys.linea.metrics.LineaMetricCategory.PRICING_CONF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -23,7 +24,6 @@ import java.util.List;
 
 import linea.plugin.acc.test.LineaPluginTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
-import net.consensys.linea.metrics.LineaMetricCategory;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
@@ -125,24 +125,17 @@ public class ExtraDataPricingTest extends LineaPluginTestBase {
     assertThat(getTxPoolContent()).isEmpty();
 
     final var fixedCostMetric =
-        getMetricValue(
-            LineaMetricCategory.PROFITABILITY, "conf", List.of(entry("field", "fixed_cost_wei")));
+        getMetricValue(PRICING_CONF, "values", List.of(entry("field", "fixed_cost_wei")));
 
     assertThat(fixedCostMetric).isEqualTo(MIN_GAS_PRICE.multiply(2).getValue().doubleValue());
 
     final var variableCostMetric =
-        getMetricValue(
-            LineaMetricCategory.PROFITABILITY,
-            "conf",
-            List.of(entry("field", "variable_cost_wei")));
+        getMetricValue(PRICING_CONF, "values", List.of(entry("field", "variable_cost_wei")));
 
     assertThat(variableCostMetric).isEqualTo(MIN_GAS_PRICE.getValue().doubleValue());
 
     final var ethGasPriceMetric =
-        getMetricValue(
-            LineaMetricCategory.PROFITABILITY,
-            "conf",
-            List.of(entry("field", "eth_gas_price_wei")));
+        getMetricValue(PRICING_CONF, "values", List.of(entry("field", "eth_gas_price_wei")));
 
     assertThat(ethGasPriceMetric).isEqualTo(MIN_GAS_PRICE.getValue().doubleValue());
   }
