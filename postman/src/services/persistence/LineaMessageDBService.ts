@@ -1,11 +1,11 @@
 import {
   Block,
   ContractTransactionResponse,
-  JsonRpcProvider,
   TransactionReceipt,
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
+import { LineaProvider } from "@consensys/linea-sdk";
 import { Message } from "../../core/entities/Message";
 import { Direction, MessageStatus } from "../../core/enums/MessageEnums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
@@ -19,7 +19,7 @@ export class LineaMessageDBService extends MessageDBService implements IMessageD
   /**
    * Creates an instance of `LineaMessageDBService`.
    *
-   * @param {ILineaProvider} provider - The chain querier for interacting with the blockchain.
+   * @param {ILineaProvider} provider - The provider for interacting with the blockchain.
    * @param {IMessageRepository} messageRepository - The message repository for interacting with the message database.
    */
   constructor(
@@ -28,7 +28,7 @@ export class LineaMessageDBService extends MessageDBService implements IMessageD
       Block,
       TransactionRequest,
       TransactionResponse,
-      JsonRpcProvider
+      LineaProvider
     >,
     messageRepository: IMessageRepository<ContractTransactionResponse>,
   ) {

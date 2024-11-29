@@ -10,7 +10,7 @@ import {
   EthersL2MessageServiceLogClient,
   L2MessageServiceMessageRetriever,
 } from "./clients/linea";
-import { DefaultGasProvider, LineaGasProvider } from "./clients/gas";
+import { DefaultGasProvider, GasProvider } from "./clients/gas";
 import { Provider, LineaProvider, BrowserProvider, LineaBrowserProvider } from "./clients/providers";
 import { Wallet } from "./clients/wallet";
 import {
@@ -24,6 +24,7 @@ import { BaseError } from "./core/errors";
 import { LineaSDKOptions, Network, SDKMode } from "./core/types";
 import { NETWORKS } from "./core/constants";
 import { isString } from "./core/utils";
+import { Direction } from "./core/enums";
 
 export class LineaSDK {
   private network: Network;
@@ -156,16 +157,13 @@ export class LineaSDK {
         ? Wallet.getWallet(this.l2SignerPrivateKeyOrWallet).connect(this.l2Provider)
         : undefined;
 
-    const gasProvider = this.enabledLineaEstimateGas
-      ? new LineaGasProvider(this.l2Provider, {
-          maxFeePerGas: this.maxFeePerGas,
-          enforceMaxGasFee: this.enforceMaxGasFee,
-        })
-      : new DefaultGasProvider(this.l2Provider, {
-          maxFeePerGas: this.maxFeePerGas,
-          gasEstimationPercentile: this.gasFeeEstimationPercentile,
-          enforceMaxGasFee: this.enforceMaxGasFee,
-        });
+    const gasProvider = new GasProvider(this.l2Provider, {
+      maxFeePerGas: this.maxFeePerGas,
+      enforceMaxGasFee: this.enforceMaxGasFee,
+      gasEstimationPercentile: this.gasFeeEstimationPercentile,
+      direction: Direction.L1_TO_L2,
+      enableLineaEstimateGas: this.enabledLineaEstimateGas,
+    });
 
     const l2MessageServiceContract = new L2MessageServiceClient(
       this.l2Provider,

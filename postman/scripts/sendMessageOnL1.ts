@@ -152,11 +152,9 @@ const main = async (args: typeof argv) => {
   };
 
   const lineaRollup = LineaRollup__factory.connect(args.l1ContractAddress, l1Signer) as LineaRollup;
-  const { maxPriorityFeePerGas, maxFeePerGas } = await l1Provider.getFeeData();
+
   await sendMessages(lineaRollup, l1Signer, args.numberOfMessage, functionArgs, {
     value: BigInt(args.value.toString()),
-    maxPriorityFeePerGas,
-    maxFeePerGas,
   });
 
   // Anchor messages hash on L2

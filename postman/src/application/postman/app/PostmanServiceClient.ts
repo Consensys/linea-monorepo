@@ -25,7 +25,6 @@ import { MessageClaimingPersister } from "../../../services/processors/MessageCl
 import { MessagePersistingPoller } from "../../../services/pollers/MessagePersistingPoller";
 import { MessageSentEventProcessor } from "../../../services/processors/MessageSentEventProcessor";
 import { DatabaseCleaningPoller } from "../../../services/pollers/DatabaseCleaningPoller";
-import { BaseError } from "../../../core/errors/Base";
 import { LineaMessageDBService } from "../../../services/persistence/LineaMessageDBService";
 import { EthereumMessageDBService } from "../../../services/persistence/EthereumMessageDBService";
 import { L2ClaimMessageTransactionSizePoller } from "../../../services/pollers/L2ClaimMessageTransactionSizePoller";
@@ -34,7 +33,6 @@ import { L2ClaimTransactionSizeCalculator } from "../../../services/L2ClaimTrans
 import { LineaTransactionValidationService } from "../../../services/LineaTransactionValidationService";
 import { EthereumTransactionValidationService } from "../../../services/EthereumTransactionValidationService";
 import { getConfig } from "./config/utils";
-import { JsonRpcProvider } from "ethers";
 
 export class PostmanServiceClient {
   // L1 -> L2 flow
@@ -74,8 +72,8 @@ export class PostmanServiceClient {
     const l1Provider = new Provider(config.l1Config.rpcUrl);
     const l2Provider = new LineaProvider(config.l2Config.rpcUrl);
 
-    const l1Signer = this.getSigner(config.l1Config.claiming.signerPrivateKey, l1Provider);
-    const l2Signer = this.getSigner(config.l2Config.claiming.signerPrivateKey, l2Provider);
+    const l1Signer = new Wallet(config.l1Config.claiming.signerPrivateKey, l1Provider);
+    const l2Signer = new Wallet(config.l2Config.claiming.signerPrivateKey, l2Provider);
 
     const lineaSdk = new LineaSDK({
       l1RpcUrlOrProvider: config.l1Config.rpcUrl,
@@ -87,6 +85,8 @@ export class PostmanServiceClient {
       feeEstimatorOptions: {
         gasFeeEstimationPercentile: config.l1Config.claiming.gasEstimationPercentile,
         maxFeePerGas: config.l1Config.claiming.maxFeePerGas,
+        enforceMaxGasFee: config.l1Config.claiming.isMaxGasFeeEnforced,
+        enableLineaEstimateGas: config.l2Config.enableLineaEstimateGas,
       },
     });
 
@@ -362,23 +362,6 @@ export class PostmanServiceClient {
         cleaningInterval: config.databaseCleanerConfig.cleaningInterval,
       },
     );
-  }
-
-  /**
-   * Creates a Wallet instance as a signer using the provided private key and JSON RPC provider.
-   *
-   * @param {string} privateKey - The private key to use for the signer.
-   * @param {JsonRpcProvider} provider - The JSON RPC provider associated with the network.
-   * @returns {Wallet} A Wallet instance configured with the provided private key and provider.
-   */
-  private getSigner(privateKey: string, provider: JsonRpcProvider): Wallet<JsonRpcProvider> {
-    try {
-      return new Wallet(privateKey, provider);
-    } catch (e) {
-      throw new BaseError(
-        "Something went wrong when trying to generate Wallet. Please check your private key and the provider url.",
-      );
-    }
   }
 
   /**
