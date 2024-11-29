@@ -355,6 +355,13 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	logrus.Infof("generating wizard proof for %d hashes from %d permutations", hshK.NbHashes(), hshK.MaxNbKeccakF())
 	a.Keccak, err = hshK.Assign()
 
+	// These values are currently hard-coded in the circuit
+	// This assignment is then redundant, but it helps with debugging in the test engine
+	// TODO @Tabaie when we remove the hard-coding, this will still run correctly
+	// but would be doubly redundant. We can remove it then.
+	a.ChainID = r.Aggregation.ChainID
+	a.L2MessageServiceAddr = r.Aggregation.L2MessageServiceAddr
+
 	return
 }
 

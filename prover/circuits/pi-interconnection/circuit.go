@@ -64,6 +64,10 @@ type Circuit struct {
 type compilationSuite = []func(*wizard.CompiledIOP)
 
 func (c *Circuit) Define(api frontend.API) error {
+	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
+	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)
+	api.AssertIsEqual(c.L2MessageServiceAddr[:], c.AggregationFPIQSnark.L2MessageServiceAddr)
+
 	maxNbDecompression, maxNbExecution := len(c.DecompressionPublicInput), len(c.ExecutionPublicInput)
 	if len(c.DecompressionFPIQ) != maxNbDecompression || len(c.ExecutionFPIQ) != maxNbExecution {
 		return errors.New("public / functional public input length mismatch")
@@ -231,10 +235,6 @@ func (c *Circuit) Define(api frontend.API) error {
 	aggregationPIBytes := pi.Sum(api, &hshK)
 	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
 	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
-
-	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
-	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)
-	api.AssertIsEqual(c.L2MessageServiceAddr[:], c.AggregationFPIQSnark.L2MessageServiceAddr)
 
 	return hshK.Finalize()
 }
