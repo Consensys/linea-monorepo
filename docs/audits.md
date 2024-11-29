@@ -3,6 +3,7 @@
 ## Prover, Gnark-Crypto, and Verifier Audits
 **2024**
 * [ZKSecurity.xyz - May 2024 - gnark standard library](audits/2024-05%20-%20zksecurity%20-%20gnark%20std.pdf)
+* [ZKSecurity.xyz - June 2024 - Wizard's crypto & math](https://www.zksecurity.xyz/reports/consensys-wizard-crypto-math)
 * [OpenZeppelin - June 2024 - gnark PLONK prover and verifier](https://blog.openzeppelin.com/linea-prover-audit)
 * [LeastAuthority - September 2024 - gnark general and GKR](audits/2024-09%20-%20Least%20Authority%20-%20arithm%20and%20GKR.pdf)
 ---
