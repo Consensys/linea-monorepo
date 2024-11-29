@@ -58,14 +58,13 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	for i, execReqFPath := range req.ExecutionProofs {
 
 		var (
-			po                    = &execution.Response{}
-			l2MessageHashes       []string
-			fpath                 = path.Join(cfg.Execution.DirTo(), execReqFPath)
-			f                     = files.MustRead(fpath)
-			initialBlockTimestamp uint64
+			po              execution.Response
+			l2MessageHashes []string
+			fpath           = path.Join(cfg.Execution.DirTo(), execReqFPath)
+			f               = files.MustRead(fpath)
 		)
 
-		if err := json.NewDecoder(f).Decode(po); err != nil {
+		if err := json.NewDecoder(f).Decode(&po); err != nil {
 			return nil, fmt.Errorf("fields collection, decoding %s, %w", execReqFPath, err)
 		}
 
@@ -87,10 +86,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		cf.FinalBlockNumber = uint(po.FirstBlockNumber + len(po.BlocksData) - 1)
 		rollingHashUpdateEvents := po.AllRollingHashEvent // check redundant data for discrepancy
 
-		for j, blockdata := range po.BlocksData {
-			if j == 0 {
-				initialBlockTimestamp = blockdata.TimeStamp
-			}
+		for _, blockdata := range po.BlocksData {
 
 			for i := range blockdata.L2ToL1MsgHashes {
 				l2MessageHashes = append(l2MessageHashes, blockdata.L2ToL1MsgHashes[i].Hex())
@@ -134,32 +130,11 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
 			}
 			cf.ProofClaims = append(cf.ProofClaims, *pClaim)
-			// TODO make sure this belongs in the if
-			finalBlock := &po.BlocksData[len(po.BlocksData)-1]
 
-			piq, err := public_input.ExecutionSerializable{
-				InitialBlockTimestamp: initialBlockTimestamp,
-				L2MsgHashes:           l2MessageHashes,
-				FinalStateRootHash:    finalBlock.RootHash.Hex(),
-				FinalBlockNumber:      uint64(cf.FinalBlockNumber),
-				FinalBlockTimestamp:   finalBlock.TimeStamp,
-				L2MessageServiceAddr:  po.L2BridgeAddress,
-				ChainID:               uint64(po.ChainID),
-			}.Decode()
-			if err != nil {
-				return nil, err
-			}
+			pi := po.FuncInput()
 
-			if len(po.AllRollingHashEvent) != 0 {
-				first, last := po.AllRollingHashEvent[0], po.AllRollingHashEvent[len(po.AllRollingHashEvent)-1]
-				piq.InitialRollingHashUpdate = first.RollingHash
-				piq.InitialRollingHashMsgNumber = uint64(first.MessageNumber)
-				piq.FinalRollingHashUpdate = last.RollingHash
-				piq.FinalRollingHashMsgNumber = uint64(last.MessageNumber)
-			}
-
-			if piq.L2MessageServiceAddr != types.EthAddress(cfg.Layer2.MsgSvcContract) {
-				return nil, fmt.Errorf("execution #%d: expected L2 msg service addr %x, encountered %x", i, cfg.Layer2.MsgSvcContract, piq.L2MessageServiceAddr)
+			if pi.L2MessageServiceAddr != types.EthAddress(cfg.Layer2.MsgSvcContract) {
+				return nil, fmt.Errorf("execution #%d: expected L2 msg service addr %x, encountered %x", i, cfg.Layer2.MsgSvcContract, pi.L2MessageServiceAddr)
 			}
 			if po.ChainID != cfg.Layer2.ChainID {
 				return nil, fmt.Errorf("execution #%d: expected chain ID %x, encountered %x", i, cfg.Layer2.ChainID, po.ChainID)
@@ -170,7 +145,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 				return nil, fmt.Errorf("execution #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, pi)
 			}
 
-			cf.ExecutionPI = append(cf.ExecutionPI, piq)
+			cf.ExecutionPI = append(cf.ExecutionPI, *pi)
 		}
 
 		allL2MessageHashes = append(allL2MessageHashes, l2MessageHashes...)

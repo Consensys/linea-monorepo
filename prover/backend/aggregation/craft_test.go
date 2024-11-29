@@ -1,6 +1,12 @@
 package aggregation
 
 import (
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/test"
+	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -151,4 +157,64 @@ func TestL1OffsetBlocks(t *testing.T) {
 		assert.Equal(t, c.Outs, oHex, "for case %v", i)
 	}
 
+}
+
+func TestCollectFields(t *testing.T) {
+	reqDir := config.WithRequestDir{
+		RequestsRootDir: "testdata",
+	}
+	cfg := config.Config{ // TODO fill relevant fields (for collectFields)
+		Environment: "",
+		Version:     "",
+		LogLevel:    0,
+		AssetsDir:   "",
+		Controller:  config.Controller{},
+		Execution: config.Execution{
+			WithRequestDir:     reqDir,
+			ProverMode:         "",
+			CanRunFullLarge:    false,
+			ConflatedTracesDir: "",
+		},
+		BlobDecompression: config.BlobDecompression{
+			WithRequestDir: reqDir,
+		},
+		Aggregation: config.Aggregation{},
+		PublicInputInterconnection: config.PublicInput{
+			MockKeccakWizard: true,
+			ChainID:          0,
+			L2MsgServiceAddr: common.Address{},
+		},
+		Debug: struct {
+			Profiling bool `mapstructure:"profiling"`
+			Tracing   bool `mapstructure:"tracing"`
+		}{},
+		Layer2: struct {
+			ChainID           uint           `mapstructure:"chain_id" validate:"required"`
+			MsgSvcContractStr string         `mapstructure:"message_service_contract" validate:"required,eth_addr"`
+			MsgSvcContract    common.Address `mapstructure:"-"`
+		}{},
+		TracesLimits:      config.TracesLimits{},
+		TracesLimitsLarge: config.TracesLimits{},
+	}
+
+	cfg.Layer2.MsgSvcContract = common.HexToAddress("971e727e956690b9957be6d51ec16e73acac83a7")
+	cfg.Layer2.ChainID = 0xe705
+
+	var req Request
+	require.NoError(t, utils.ReadFromJSON("testdata/4461000-4461233-getZkAggregatedProof.json", &req))
+	cf, err := collectFields(&cfg, &req)
+	require.NoError(t, err)
+
+	piC, err := pi_interconnection.Compile(cfg.PublicInputInterconnection)
+	require.NoError(t, err)
+
+	assignment, err := piC.Assign(pi_interconnection.Request{
+		Decompressions: cf.DecompressionPI,
+		Executions:     cf.ExecutionPI,
+		Aggregation:    cf.AggregationPublicInput(&cfg),
+	})
+
+	require.NoError(t, err)
+
+	require.NoError(t, test.IsSolved(piC.Circuit, &assignment, ecc.BLS12_377.ScalarField()))
 }
