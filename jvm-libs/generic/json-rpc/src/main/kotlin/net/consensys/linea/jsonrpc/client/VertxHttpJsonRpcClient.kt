@@ -85,14 +85,16 @@ class VertxHttpJsonRpcClient(
           }
         }
 
-      metricsFacade.createSimpleTimer<Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>>(
-        name = "jsonrpc.request",
-        description = "Time of Upstream API JsonRpc Requests",
-        tags = listOf(
-          Tag("endpoint", endpoint.host),
-          Tag("method", request.method)
-        )
-      ).captureTime { requestFuture }
+      Future.fromCompletionStage(
+        metricsFacade.createSimpleTimer<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>(
+          name = "jsonrpc.request",
+          description = "Time of Upstream API JsonRpc Requests",
+          tags = listOf(
+            Tag("endpoint", endpoint.host),
+            Tag("method", request.method)
+          )
+        ).captureTime(requestFuture.toCompletionStage().toCompletableFuture())
+      )
     }
       .onFailure { th -> logRequestFailure(json, th) }
   }

@@ -80,16 +80,14 @@ class TracesApiFacadeApp(config: AppConfig) {
     val semVerValidator = TracesSemanticVersionValidator(
       TracesSemanticVersionValidator.SemanticVersion.fromString(config.tracesApiVersion)
     )
-    val micrometerMetricsFacade = MicrometerMetricsFacade(meterRegistry, "linea")
     this.api =
       Api(
-        config.api,
-        vertx,
-        micrometerMetricsFacade,
-        meterRegistry,
-        semVerValidator,
-        tracesCounterService,
-        tracesConflationService
+        configs = config.api,
+        vertx = vertx,
+        metricsFacade = MicrometerMetricsFacade(meterRegistry),
+        semVerValidator = semVerValidator,
+        tracesCountingService = tracesCounterService,
+        tracesConflationService = tracesConflationService
       )
   }
 

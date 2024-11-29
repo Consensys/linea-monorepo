@@ -129,8 +129,7 @@ class TransactionExclusionApp(config: AppConfig) {
       Api(
         configs = config.api,
         vertx = vertx,
-        meterRegistry = meterRegistry,
-        metricsFacade = micrometerMetricsFacade,
+        metricsFacade = MicrometerMetricsFacade(meterRegistry),
         transactionExclusionService = transactionExclusionService
       )
   }

@@ -4,6 +4,7 @@ import net.consensys.encodeHex
 import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.blob.GoNativeBlobCompressor
 import net.consensys.linea.blob.GoNativeBlobCompressorFactory
+import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.TimerCapture
 import org.apache.logging.log4j.LogManager
@@ -74,12 +75,14 @@ class GoBackedBlobCompressor private constructor(
   }
 
   private val canAppendBlockTimer: TimerCapture<Boolean> = metricsFacade.createSimpleTimer(
-    name = "go.backed.blob.compressor.can.append.block",
-    description = "Time taken to run CanWrite method"
+    category = LineaMetricsCategory.BLOB,
+    name = "compressor.canappendblock",
+    description = "Time taken to check if block fits in current blob"
   )
-  private val appendBlockTimer: TimerCapture<BlobCompressor.AppendResult> = metricsFacade.createSimpleTimer(
-    name = "go.backed.blob.compressor.append.block",
-    description = "Time taken to run AppendResult method"
+  private val appendBlockTimer: TimerCapture<Boolean> = metricsFacade.createSimpleTimer(
+    category = LineaMetricsCategory.BLOB,
+    name = "compressor.appendblock",
+    description = "Time taken to compress block into current blob"
   )
 
   private val log = LogManager.getLogger(GoBackedBlobCompressor::class.java)
@@ -92,7 +95,9 @@ class GoBackedBlobCompressor private constructor(
 
   override fun appendBlock(blockRLPEncoded: ByteArray): BlobCompressor.AppendResult {
     val compressionSizeBefore = goNativeBlobCompressor.Len()
-    val appended = goNativeBlobCompressor.Write(blockRLPEncoded, blockRLPEncoded.size)
+    val appended = appendBlockTimer.captureTime {
+      goNativeBlobCompressor.Write(blockRLPEncoded, blockRLPEncoded.size)
+    }
     val compressedSizeAfter = goNativeBlobCompressor.Len()
     val compressionRatio = 1.0 - ((compressedSizeAfter - compressionSizeBefore).toDouble() / blockRLPEncoded.size)
     log.trace(
@@ -107,9 +112,7 @@ class GoBackedBlobCompressor private constructor(
       log.error("Failure while writing the following RLP encoded block: {}", blockRLPEncoded.encodeHex())
       throw BlobCompressionException(error)
     }
-    return appendBlockTimer.captureTime {
-      BlobCompressor.AppendResult(appended, compressionSizeBefore, compressedSizeAfter)
-    }
+    return BlobCompressor.AppendResult(appended, compressionSizeBefore, compressedSizeAfter)
   }
 
   override fun startNewBatch() {

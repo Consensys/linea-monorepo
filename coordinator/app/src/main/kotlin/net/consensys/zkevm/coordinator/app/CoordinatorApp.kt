@@ -49,8 +49,8 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
   private val meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow()
   private val micrometerMetricsFacade = MicrometerMetricsFacade(meterRegistry, "linea")
   private val httpJsonRpcClientFactory = VertxHttpJsonRpcClientFactory(
-    vertx,
-    micrometerMetricsFacade,
+    vertx = vertx,
+    metricsFacade = MicrometerMetricsFacade(meterRegistry),
     requestResponseLogLevel = Level.TRACE,
     failuresLogLevel = Level.WARN
   )

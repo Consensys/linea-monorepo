@@ -42,10 +42,10 @@ class SimpleTimerCapture<T> : AbstractTimerCapture<T>, TimerCapture<T> {
     return f
   }
 
-  override fun captureTime(f: Callable<T>): T {
+  override fun captureTime(action: Callable<T>): T {
     val timer = timerBuilder.register(meterRegistry)
     val timerSample = Timer.start(clock)
-    val result = f.call()
+    val result = action.call()
     timerSample.stop(timer)
     return result
   }

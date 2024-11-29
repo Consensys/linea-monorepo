@@ -1,6 +1,5 @@
 package net.consensys.linea.traces.app.api
 
-import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Future
 import io.vertx.core.Vertx
@@ -25,7 +24,6 @@ class Api(
   private val configs: ApiConfig,
   private val vertx: Vertx,
   private val metricsFacade: MetricsFacade,
-  private val meterRegistry: MeterRegistry,
   private val semVerValidator: TracesSemanticVersionValidator,
   private val tracesCountingService: TracesCountingServiceV1,
   private val tracesConflationService: TracesConflationServiceV1
@@ -45,7 +43,7 @@ class Api(
       )
 
     val messageHandler: JsonRpcMessageHandler =
-      JsonRpcMessageProcessor(JsonRpcRequestRouter(requestHandlersV1), metricsFacade, meterRegistry)
+      JsonRpcMessageProcessor(JsonRpcRequestRouter(requestHandlersV1), metricsFacade)
 
     val numberOfVerticles: Int =
       if (configs.numberOfVerticles.toInt() > 0) {

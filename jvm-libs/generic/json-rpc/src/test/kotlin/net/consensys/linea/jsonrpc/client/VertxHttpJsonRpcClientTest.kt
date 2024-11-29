@@ -66,7 +66,7 @@ class VertxHttpJsonRpcClientTest {
     wiremock.start()
     endpoint = URI(wiremock.baseUrl() + path).toURL()
     meterRegistry = SimpleMeterRegistry()
-    metricsFacade = MicrometerMetricsFacade(registry = meterRegistry, "linea")
+    metricsFacade = MicrometerMetricsFacade(registry = meterRegistry)
     client = VertxHttpJsonRpcClient(vertx.createHttpClient(clientOptions), endpoint, metricsFacade)
   }
 
@@ -356,7 +356,7 @@ class VertxHttpJsonRpcClientTest {
 
     val timer =
       meterRegistry.timer(
-        "linea.jsonrpc.request",
+        "jsonrpc.request",
         listOf(Tag.of("method", "randomNumber"), Tag.of("endpoint", "localhost"))
       )
 
