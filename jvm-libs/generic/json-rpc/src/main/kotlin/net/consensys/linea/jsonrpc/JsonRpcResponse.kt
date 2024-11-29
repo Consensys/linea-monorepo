@@ -32,6 +32,7 @@ data class JsonRpcSuccessResponse(
   val result: Any?
 ) : JsonRpcResponse(jsonrpc, id) {
   constructor(id: Any, result: Any?) : this("2.0", id, result)
+  constructor(request: JsonRpcRequest, result: Any?) : this(request.jsonrpc, id = request.id, result)
 }
 
 @JsonPropertyOrder("jsonrpc", "id", "error")
