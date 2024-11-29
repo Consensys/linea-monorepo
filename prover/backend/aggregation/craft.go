@@ -25,6 +25,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
@@ -53,9 +54,16 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
 	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs))
 
-	hshM := mimc.NewMiMC()
+	hshM := test_utils.NewWriterHashToFile(mimc.NewMiMC(), ".tmp/exec-pi")
+	//hshM.Reset()
+
+	fmt.Printf("Initial rolling hash = %s\n\tmsg = %d\n", cf.LastFinalizedL1RollingHash, cf.LastFinalizedL1RollingHashMessageNumber)
 
 	for i, execReqFPath := range req.ExecutionProofs {
+
+		if i == 79 {
+			fmt.Println("execution", i)
+		}
 
 		var (
 			po                    = &execution.Response{}
@@ -107,6 +115,14 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 			cf.FinalTimestamp = uint(blockdata.TimeStamp)
 		}
+
+		if len(po.AllRollingHashEvent) != 0 {
+			last := po.AllRollingHashEvent[len(po.AllRollingHashEvent)-1]
+			fmt.Printf("execution #%d rolling hash update. Message no: %d\n\thash %s\n", i, last.MessageNumber, last.RollingHash.Hex())
+		}
+		/*if po. != 0 && i < 100 {
+			fmt.Printf("execution #%d rolling hash update. Message no: %d -> %d\n\thash %s -> %s\n", i, cf.LastFinalizedL1RollingHashMessageNumber, cf.L1RollingHashMessageNumber, cf.LastFinalizedL1RollingHash, cf.L1RollingHash)
+		}*/
 
 		// Append the proof claim to the list of collected proofs
 		if !cf.IsProoflessJob { // TODO @Tabaie @alexandre.belling proofless jobs will no longer be accepted post PI interconnection
