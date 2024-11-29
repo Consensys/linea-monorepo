@@ -2,6 +2,7 @@ package v1
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
@@ -9,6 +10,8 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/sirupsen/logrus"
@@ -49,6 +52,11 @@ type BlobMaker struct {
 	// some buffers to avoid repeated allocations
 	buf        bytes.Buffer
 	packBuffer bytes.Buffer
+
+	lock                     sync.Mutex
+	optimizerClock           *time.Ticker
+	modificationNum          uint64 // keeps track of changes to the blob
+	optimizerModificationNum uint64 // the last modification used by the optimizer
 }
 
 // NewBlobMaker returns a new bm.
@@ -88,11 +96,19 @@ func NewBlobMaker(dataLimit int, dictPath string) (*BlobMaker, error) {
 
 // StartNewBatch starts a new batch of blocks.
 func (bm *BlobMaker) StartNewBatch() {
+	bm.lock.Lock()
+	defer bm.lock.Unlock()
+	bm.modificationNum++
+
 	bm.Header.sealBatch()
 }
 
 // Reset resets the bm to its initial state.
 func (bm *BlobMaker) Reset() {
+	bm.lock.Lock()
+	defer bm.lock.Unlock()
+	bm.modificationNum++
+
 	bm.Header.resetTable()
 	bm.currentBlobLength = 0
 	bm.buf.Reset()
@@ -114,6 +130,9 @@ func (bm *BlobMaker) Written() int {
 // Bytes returns the compressed data. Note that it returns a slice of the internal buffer,
 // it is the caller's responsibility to copy the data if needed.
 func (bm *BlobMaker) Bytes() []byte {
+	bm.lock.Lock()
+	defer bm.lock.Unlock()
+
 	if bm.currentBlobLength > 0 {
 		// sanity check that we can always decompress.
 		header, rawBlocks, _, err := DecompressBlob(bm.currentBlob[:bm.currentBlobLength], bm.dictStore)
@@ -140,6 +159,9 @@ func (bm *BlobMaker) Bytes() []byte {
 // Write attempts to append the RLP block to the current batch.
 // if forceReset is set; this will NOT append the bytes but still returns true if the chunk could have been appended
 func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error) {
+	bm.lock.Lock()
+	defer bm.lock.Unlock()
+	bm.modificationNum++
 
 	// decode the RLP block.
 	var block types.Block
@@ -408,4 +430,111 @@ func (bm *BlobMaker) RawCompressedSize(data []byte) (int, error) {
 	n = encode.PackAlignSize(n, fr381.Bits-1, encode.NoTerminalSymbol())
 
 	return n, nil
+}
+
+func (bm *BlobMaker) StopOptimizer() {
+	bm.lock.Lock() // if the optimizer is currently running, let it finish
+	if bm.optimizerClock != nil {
+		bm.optimizerClock.Stop()
+	}
+	bm.lock.Unlock()
+}
+
+// StartOptimizer starts an optimizer that will try to compress the blob further periodically.
+func (bm *BlobMaker) StartOptimizer(period time.Duration) {
+	if bm.optimizerClock != nil {
+		bm.lock.Lock()
+		bm.optimizerClock.Reset(period)
+		bm.lock.Unlock()
+		return
+	}
+
+	bm.optimizerClock = time.NewTicker(period)
+	go func() {
+		var headerBuffer, packingBuffer bytes.Buffer
+		packingBuffer.Grow(MaxUsableBytes)
+		compressor, err := lzss.NewCompressor(bm.dict)
+		if err != nil {
+			logrus.WithError(err).Error("optimizer failed to create compressor")
+			return
+		}
+
+		for range bm.optimizerClock.C {
+
+			modificationNum := bm.modificationNum
+			if modificationNum == bm.optimizerModificationNum {
+				continue // no new data to optimize
+			}
+
+			headerBuffer.Reset()
+			packingBuffer.Reset()
+			compressor.Reset()
+
+			if _, err = bm.Header.WriteTo(&headerBuffer); err != nil {
+				logrus.WithError(err).Error("optimizer failed to write header to buffer")
+				continue
+			}
+
+			if _, err = compressor.Write(bm.compressor.WrittenBytes()); err != nil {
+				logrus.WithError(err).Error("optimizer failed to write compressor data")
+				continue
+			}
+
+			n, err := encode.PackAlign(&packingBuffer, headerBuffer.Bytes(), fr381.Bits-1, encode.WithAdditionalInput(compressor.Bytes()))
+			if err != nil {
+				logrus.WithError(err).Error("optimizer failed to pack align")
+				continue
+			}
+
+			// only go ahead with this if we're getting a better compression ratio
+			if bm.compressor.Len() < compressor.Len() {
+				logrus.Info("optimizer getting a worse compression ratio")
+				continue
+			}
+
+			if n > MaxUsableBytes {
+				logrus.Info("optimizer outgrowing blob capacity")
+				continue
+			}
+
+			// decompress and validate
+			// they may not be as catastrophic as they seem
+			// could be caused by changes to the blob as this method was running
+			header, payload, _, err := DecompressBlob(packingBuffer.Bytes(), bm.dictStore)
+			if err != nil {
+				logrus.WithError(err).Warn("optimizer failed to decompress blob", base64.StdEncoding.EncodeToString(packingBuffer.Bytes()))
+				continue
+			}
+
+			if !header.Equals(&bm.Header) {
+				logrus.Warn("optimizer header mismatch")
+				continue
+			}
+
+			if !bytes.Equal(payload, bm.compressor.WrittenBytes()) {
+				logrus.Warn("optimizer payload mismatch")
+				continue
+			}
+
+			bm.lock.Lock()
+
+			// blob has been modified since the optimizer started
+			if bm.modificationNum != modificationNum {
+				logrus.Warn("blob changed under the optimiser's feet")
+				bm.lock.Unlock()
+				continue
+			}
+
+			// swap the compressors
+			bm.compressor, compressor = compressor, bm.compressor
+
+			// store the new blob
+			bm.currentBlobLength = int(n)
+			copy(bm.currentBlob[:n], packingBuffer.Bytes())
+
+			bm.lock.Unlock()
+
+			bm.optimizerModificationNum = modificationNum
+		}
+	}()
 }
