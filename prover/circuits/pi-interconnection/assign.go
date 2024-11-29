@@ -5,8 +5,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"hash"
+
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
@@ -22,9 +24,10 @@ import (
 )
 
 type Request struct {
-	Decompressions []blobsubmission.Response
-	Executions     []public_input.Execution
-	Aggregation    public_input.Aggregation
+	Decompressions       []blobsubmission.Response
+	Executions           []public_input.Execution
+	ExecutionPublicInput [][]byte // Optional and redundant. For debugging purposes
+	Aggregation          public_input.Aggregation
 }
 
 func (c *Compiled) Assign(r Request) (a Circuit, err error) {
@@ -193,7 +196,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		MaxNbL2MessageHashes: config.ExecutionMaxNbMsg,
 	}
 
-	hshM := mimc.NewMiMC()
+	hshM := test_utils.NewReaderHashFromFile(mimc.NewMiMC(), ".tmp/exec-pi")
 	for i := range a.ExecutionFPIQ {
 		executionFPI.InitialRollingHash = [32]byte{}
 		executionFPI.InitialRollingHashNumber = 0
@@ -204,9 +207,6 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		executionFPI.InitialStateRootHash = executionFPI.FinalStateRootHash
 		executionFPI.InitialBlockTimestamp = executionFPI.FinalBlockTimestamp + 1
 		executionFPI.FinalBlockTimestamp = executionFPI.InitialBlockTimestamp
-
-		executionFPI.L2MessageServiceAddr = r.Aggregation.L2MessageServiceAddr
-		executionFPI.ChainID = r.Aggregation.ChainID
 
 		a.ExecutionPublicInput[i] = 0 // unless...
 
@@ -250,6 +250,11 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 			}
 
 			a.ExecutionPublicInput[i] = executionFPI.Sum(hshM)
+			if r.ExecutionPublicInput != nil {
+				if !bytes.Equal(a.ExecutionPublicInput[i].([]byte), r.ExecutionPublicInput[i]) {
+					return a, fmt.Errorf("execution #%d: public input mismatch: expected %x, got %x", i, r.ExecutionPublicInput[i], a.ExecutionPublicInput[i])
+				}
+			}
 		}
 
 		if snarkFPI, _err := executionFPI.ToSnarkType(); _err != nil {
@@ -337,6 +342,14 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 	logrus.Infof("generating wizard proof for %d hashes from %d permutations", hshK.NbHashes(), hshK.MaxNbKeccakF())
 	a.Keccak, err = hshK.Assign()
+
+	// These values are currently hard-coded in the circuit
+	// This assignment is then redundant, but it helps with debugging in the test engine
+	// TODO @Tabaie when we remove the hard-coding, this will still run correctly
+	// but would be doubly redundant. We can remove it then.
+	a.ChainID = r.Aggregation.ChainID
+	a.L2MessageServiceAddr = r.Aggregation.L2MessageServiceAddr
+	logrus.Infof("%d executions", len(r.Executions))
 
 	return
 }

@@ -2,10 +2,12 @@ package pi_interconnection
 
 import (
 	"errors"
-	"github.com/sirupsen/logrus"
+	"fmt"
 	"math"
 	"math/big"
 	"slices"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
@@ -13,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/consensys/gnark/frontend"
@@ -65,6 +68,10 @@ type Circuit struct {
 type compilationSuite = []func(*wizard.CompiledIOP)
 
 func (c *Circuit) Define(api frontend.API) error {
+	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
+	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)
+	api.AssertIsEqual(c.L2MessageServiceAddr[:], c.AggregationFPIQSnark.L2MessageServiceAddr)
+
 	maxNbDecompression, maxNbExecution := len(c.DecompressionPublicInput), len(c.ExecutionPublicInput)
 	if len(c.DecompressionFPIQ) != maxNbDecompression || len(c.ExecutionFPIQ) != maxNbExecution {
 		return errors.New("public / functional public input length mismatch")
@@ -143,9 +150,17 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
+	hshExec := test_utils.NewReaderHashSnarkFromFile(api, hshM, ".tmp/exec-pi")
 	comparator := cmp.NewBoundedComparator(api, new(big.Int).Lsh(big.NewInt(1), 64), false) // TODO does the "false" mean that the deltas are range checked?
 	// TODO try using lookups or crumb decomposition to make comparisons more efficient
 	for i, piq := range c.ExecutionFPIQ {
+		if i == 79 {
+			fmt.Println(i, "here")
+		}
+		if i > 70 {
+			fmt.Println("exec", i)
+		}
+
 		piq.RangeCheck(api)
 
 		inRange := rExecution.InRange[i]
@@ -179,7 +194,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		initBlockNum, initRHashNum, initRHash = nextExecInitBlockNum, pi.FinalRollingHashNumber, pi.FinalRollingHash
 		lastFinalizedBlockTime, initState = pi.FinalBlockTimestamp, pi.FinalStateRootHash
 
-		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hshM))) // "open" execution circuit public input
+		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hshExec))) // "open" execution circuit public input
 
 		if len(pi.L2MessageHashes.Values) != execMaxNbL2Msg {
 			return errors.New("number of L2 messages must be the same for all executions")
@@ -227,10 +242,6 @@ func (c *Circuit) Define(api frontend.API) error {
 	aggregationPIBytes := pi.Sum(api, &hshK)
 	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
 	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
-
-	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
-	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)
-	api.AssertIsEqual(c.L2MessageServiceAddr[:], c.AggregationFPIQSnark.L2MessageServiceAddr)
 
 	return hshK.Finalize()
 }
