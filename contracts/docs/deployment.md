@@ -23,7 +23,7 @@ Setting `VERIFY_CONTRACT=true` will start the verifying stage after the contract
 
 ## Network Specific Variables
 
-Dependent on which network you are using, a specific network private key needs to be used, as well as the corresponding API Key or RPC URL.  Also, dependent on which network you choose, the block explorer used could be different, so the block explorer parameter name might need to be adjusted.  The following table highlights which private key variable will be used per network. Please use the variable that pertains to the network. e.g. for `linea_goerli` use `LINEA_GOERLI_PRIVATE_KEY` (`LINEA_GOERLI_PRIVATE_KEY=<key> INFURA_API_KEY=<key>`)  
+Dependent on which network you are using, a specific network private key needs to be used, as well as the corresponding API Key or RPC URL.  Also, dependent on which network you choose, the block explorer used could be different, so the block explorer parameter name might need to be adjusted.  The following table highlights which private key variable will be used per network. Please use the variable that pertains to the network. e.g. for `linea_sepolia` use `LINEA_SEPOLIA_PRIVATE_KEY` (`LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key>`)  
 
 | Network       | Private key parameter name   | API Key / RPC URL | Block explorer parameter name |
 | ------------- | ----------------- | ---- | ----------------- | 
@@ -205,7 +205,7 @@ npx hardhat deploy --network linea_sepolia --tags L2MessageService
 
 Base command with cli arguments:
 ```shell
-SAVE_ADDRESS=true VERIFY_CONTRACT=true LINEA_GOERLI_PRIVATE_KEY=<key> LINEASCAN_API_KEY=<key> INFURA_API_KEY=<key> L2MSGSERVICE_SECURITY_COUNCIL=<address> L2MSGSERVICE_L1L2_MESSAGE_SETTER=<address>  L2MSGSERVICE_RATE_LIMIT_PERIOD=<value> L2MSGSERVICE_RATE_LIMIT_AMOUNT=<value> npx hardhat deploy --network linea_goerli --tags L2MessageService
+SAVE_ADDRESS=true VERIFY_CONTRACT=true LINEA_SEPOLIA_PRIVATE_KEY=<key> LINEASCAN_API_KEY=<key> INFURA_API_KEY=<key> L2MSGSERVICE_SECURITY_COUNCIL=<address> L2MSGSERVICE_L1L2_MESSAGE_SETTER=<address>  L2MSGSERVICE_RATE_LIMIT_PERIOD=<value> L2MSGSERVICE_RATE_LIMIT_AMOUNT=<value> npx hardhat deploy --network linea_sepolia --tags L2MessageService
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
