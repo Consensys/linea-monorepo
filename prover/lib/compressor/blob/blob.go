@@ -3,15 +3,14 @@ package blob
 import (
 	"bytes"
 	"errors"
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/rlp"
+	"os"
+	"path/filepath"
 )
 
 func GetVersion(blob []byte) uint16 {
@@ -25,23 +24,8 @@ func GetVersion(blob []byte) uint16 {
 	return 0
 }
 
-// GetRepoRootPath assumes that current working directory is within the repo
-func GetRepoRootPath() (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	const repoName = "linea-monorepo"
-	i := strings.LastIndex(wd, repoName)
-	if i == -1 {
-		return "", errors.New("could not find repo root")
-	}
-	i += len(repoName)
-	return wd[:i], nil
-}
-
 func GetDict() ([]byte, error) {
-	repoRoot, err := GetRepoRootPath()
+	repoRoot, err := utils.GetRepoRootPath()
 	if err != nil {
 		return nil, err
 	}

@@ -241,7 +241,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 			ExecutionMaxNbMsg:  1 + slack[2],
 			L2MsgMerkleDepth:   5,
 			L2MsgMaxNbMerkle:   1 + slack[3],
-			MockKeccakWizard:   true,
+			ProverMode:         "light",
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {

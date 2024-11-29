@@ -36,10 +36,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-type Circuit struct {
+type FunctionalPublicInput struct {
 	AggregationPublicInput   [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
 	ExecutionPublicInput     []frontend.Variable  `gnark:",public"`
 	DecompressionPublicInput []frontend.Variable  `gnark:",public"`
+}
+
+type Circuit struct {
+	FunctionalPublicInput `gnark:",public"`
 
 	DecompressionFPIQ []decompression.FunctionalPublicInputQSnark
 	ExecutionFPIQ     []execution.FunctionalPublicInputQSnark
@@ -263,9 +267,9 @@ func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.Com
 		c.L2MsgMaxNbMerkle = (c.MaxNbExecution*c.ExecutionMaxNbMsg + merkleNbLeaves - 1) / merkleNbLeaves
 	}
 
-	if c.MockKeccakWizard {
+	if c.ProverMode == "light" {
 		wizardCompilationOpts = nil
-		logrus.Warn("KECCAK HASH RESULTS WILL NOT BE CHECKED. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+		logrus.Warn("KECCAK HASH RESULTS WILL NOT BE CHECKED. THIS SHOULD ONLY OCCUR IN A TEST ENVIRONMENT.")
 	}
 	sh := newKeccakCompiler(c).Compile(wizardCompilationOpts...)
 	shc, err := sh.GetCircuit()
@@ -308,16 +312,18 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 
 func allocateCircuit(c config.PublicInput) Circuit {
 	return Circuit{
-		DecompressionPublicInput: make([]frontend.Variable, c.MaxNbDecompression),
-		ExecutionPublicInput:     make([]frontend.Variable, c.MaxNbExecution),
-		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, c.MaxNbDecompression),
-		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, c.MaxNbExecution),
-		L2MessageMerkleDepth:     c.L2MsgMerkleDepth,
-		L2MessageMaxNbMerkle:     c.L2MsgMaxNbMerkle,
-		MaxNbCircuits:            c.MaxNbCircuits,
-		L2MessageServiceAddr:     types.EthAddress(c.L2MsgServiceAddr),
-		ChainID:                  c.ChainID,
-		UseGkrMimc:               true,
+		FunctionalPublicInput: FunctionalPublicInput{
+			DecompressionPublicInput: make([]frontend.Variable, c.MaxNbDecompression),
+			ExecutionPublicInput:     make([]frontend.Variable, c.MaxNbExecution),
+		},
+		DecompressionFPIQ:    make([]decompression.FunctionalPublicInputQSnark, c.MaxNbDecompression),
+		ExecutionFPIQ:        make([]execution.FunctionalPublicInputQSnark, c.MaxNbExecution),
+		L2MessageMerkleDepth: c.L2MsgMerkleDepth,
+		L2MessageMaxNbMerkle: c.L2MsgMaxNbMerkle,
+		MaxNbCircuits:        c.MaxNbCircuits,
+		L2MessageServiceAddr: types.EthAddress(c.L2MsgServiceAddr),
+		ChainID:              c.ChainID,
+		UseGkrMimc:           true,
 	}
 }
 
@@ -349,14 +355,30 @@ func NewBuilder(c config.PublicInput) circuits.Builder {
 }
 
 func (b builder) Compile() (constraint.ConstraintSystem, error) {
-	c, err := Compile(*b.PublicInput, WizardCompilationParameters()...)
+	var circuit frontend.Circuit
+	estimatedNbConstraints := 1 << 26
+
+	switch b.ProverMode {
+	case "dev":
+		circuit = &DummyCircuit{
+			ExecutionPublicInput:     make([]frontend.Variable, b.MaxNbExecution),
+			DecompressionPublicInput: make([]frontend.Variable, b.MaxNbDecompression),
+		}
+		estimatedNbConstraints = utils.NextPowerOfTwo(b.MaxNbExecution + b.MaxNbDecompression + 10)
+	default:
+		c, err := Compile(*b.PublicInput, WizardCompilationParameters()...)
+		if err != nil {
+			return nil, err
+		}
+		circuit = c.Circuit
+	}
+
+	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit, frontend.WithCapacity(estimatedNbConstraints))
 	if err != nil {
 		return nil, err
 	}
-	const estimatedNbConstraints = 1 << 27
-	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit, frontend.WithCapacity(estimatedNbConstraints))
-	if err != nil {
-		return nil, err
+	if cs.GetNbConstraints() > estimatedNbConstraints {
+		logrus.Warnf("Estimated number of constraints exceeded: %d > %d", cs.GetNbConstraints(), estimatedNbConstraints)
 	}
 
 	return cs, nil

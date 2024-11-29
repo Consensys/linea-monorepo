@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/consensys/gnark/frontend"
 	"golang.org/x/exp/constraints"
@@ -316,4 +318,19 @@ func WriteToJSON(path string, v interface{}) error {
 	}
 	defer f.Close()
 	return json.NewEncoder(f).Encode(v)
+}
+
+// GetRepoRootPath assumes that current working directory is within the repo
+func GetRepoRootPath() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	const repoName = "linea-monorepo"
+	i := strings.LastIndex(wd, repoName)
+	if i == -1 {
+		return "", errors.New("could not find repo root")
+	}
+	i += len(repoName)
+	return wd[:i], nil
 }

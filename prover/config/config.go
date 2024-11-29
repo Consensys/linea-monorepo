@@ -265,6 +265,11 @@ func (cfg *WithRequestDir) DirDone() string {
 }
 
 type PublicInput struct {
+	// ProverMode stores the kind of prover to use.
+	// dev is a dummy circuit, similar to the dummy circuits for the other circuits.
+	// light is a special mode that doesn't prove the correctness of keccak hashes.
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev light full"`
+
 	MaxNbDecompression int `mapstructure:"max_nb_decompression" validate:"gte=0"`
 	MaxNbExecution     int `mapstructure:"max_nb_execution" validate:"gte=0"`
 	MaxNbCircuits      int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDecompression + MaxNbExecution
@@ -274,7 +279,6 @@ type PublicInput struct {
 
 	// not serialized
 
-	MockKeccakWizard bool           // for testing purposes only
 	ChainID          uint64         // duplicate from Config
 	L2MsgServiceAddr common.Address // duplicate from Config
 

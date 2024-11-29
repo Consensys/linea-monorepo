@@ -11,13 +11,13 @@ import (
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"math/big"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 
@@ -484,7 +484,7 @@ func BenchmarkWrite(b *testing.B) {
 var testBlocks [][]byte
 
 func init() {
-	rootPath, err := blob.GetRepoRootPath()
+	rootPath, err := utils.GetRepoRootPath()
 	if err != nil {
 		panic(err)
 	}

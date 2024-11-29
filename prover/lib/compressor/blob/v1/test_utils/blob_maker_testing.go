@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,7 +85,7 @@ func RandIntn(n int) int { // TODO @Tabaie remove
 func EmptyBlob(t require.TestingT) []byte {
 	var headerB bytes.Buffer
 
-	repoRoot, err := blob.GetRepoRootPath()
+	repoRoot, err := utils.GetRepoRootPath()
 	assert.NoError(t, err)
 	// Init bm
 	bm, err := v1.NewBlobMaker(1000, filepath.Join(repoRoot, "prover/lib/compressor/compressor_dict.bin"))
@@ -151,7 +152,7 @@ func ConsecutiveBlobs(t require.TestingT, n ...int) [][]byte {
 }
 
 func TestBlocksAndBlobMaker(t require.TestingT) ([][]byte, *v1.BlobMaker) {
-	repoRoot, err := blob.GetRepoRootPath()
+	repoRoot, err := utils.GetRepoRootPath()
 	assert.NoError(t, err)
 	testBlocks, err := LoadTestBlocks(filepath.Join(repoRoot, "testdata/prover-v2/prover-execution/requests"))
 	assert.NoError(t, err)

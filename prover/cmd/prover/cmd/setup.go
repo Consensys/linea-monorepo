@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
-
 	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/sirupsen/logrus"
@@ -77,7 +76,9 @@ func Setup(context context.Context, args SetupArgs) error {
 	}
 
 	// create assets dir if needed (example; efs://prover-assets/v0.1.0/)
-	os.MkdirAll(filepath.Join(cfg.AssetsDir, cfg.Version), 0755)
+	if err = os.MkdirAll(filepath.Join(cfg.AssetsDir, cfg.Version), 0755); err != nil {
+		return fmt.Errorf("%s failed to create assets directory: %w", cmdName, err)
+	}
 
 	// srs provider
 	var srsProvider circuits.SRSProvider
@@ -151,8 +152,19 @@ func Setup(context context.Context, args SetupArgs) error {
 		return nil
 	}
 
+	logrus.Info("loading the PI circuit setup")
 	// get verifying key for public-input circuit
-	piSetup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
+	var piSetup circuits.Setup
+	if cfg.PublicInputInterconnection.ProverMode == config.ProverModeDev {
+		cs, err := pi_interconnection.NewBuilder(cfg.PublicInputInterconnection).Compile()
+		if err != nil {
+			return fmt.Errorf("%s failed to compile dummy PI circuit: %w", cmdName, err)
+		}
+		piSetup, err = circuits.MakeSetup(context, "public-input-interconnection-dummy", cs, srsProvider, nil)
+	} else {
+		piSetup, err = circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
+	}
+
 	if err != nil {
 		return fmt.Errorf("%s failed to load public input interconnection setup: %w", cmdName, err)
 	}
@@ -162,8 +174,10 @@ func Setup(context context.Context, args SetupArgs) error {
 	for _, allowedInput := range cfg.Aggregation.AllowedInputs {
 		// first if it's a dummy circuit, we just run the setup here, we don't need to persist it.
 		if isDummyCircuit(allowedInput) {
-			var curveID ecc.ID
-			var mockID circuits.MockCircuitID
+			var (
+				curveID ecc.ID
+				mockID  circuits.MockCircuitID
+			)
 			switch allowedInput {
 			case string(circuits.ExecutionDummyCircuitID):
 				curveID = ecc.BLS12_377
@@ -196,7 +210,6 @@ func Setup(context context.Context, args SetupArgs) error {
 
 		allowedVkForAggregation = append(allowedVkForAggregation, vk)
 	}
-
 	// we need to compute the digest of the verifying keys & store them in the manifest
 	// for the aggregation circuits to be able to check compatibility at run time with the proofs
 	allowedVkForAggregationDigests := listOfChecksums(allowedVkForAggregation)
@@ -302,7 +315,6 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool, srsProvide
 	if err != nil {
 		return fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
 	}
-
 	logrus.Infof("writing assets for %s", circuit)
 	return setup.WriteTo(setupPath)
 }

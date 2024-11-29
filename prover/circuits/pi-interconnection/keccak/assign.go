@@ -132,7 +132,7 @@ func (h *CompiledStrictHasher) GetCircuit() (c StrictHasherCircuit, err error) {
 	c.InLengths = make([]frontend.Variable, len(h.lengths))
 	c.maxNbKeccakF = h.maxNbKeccakF
 	if h.wc == nil {
-		logrus.Warn("WIZARD SUB-PROVER NOT COMPILED. KECCAK HASH RESULTS WILL NOT BE VERIFIED. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+		logrus.Warn("WIZARD SUB-PROVER NOT COMPILED. KECCAK HASH RESULTS WILL NOT BE VERIFIED. THIS SHOULD ONLY OCCUR IN A TEST ENVIRONMENT.")
 	} else {
 		c.Wc, err = h.wc.Compile()
 	}
@@ -160,7 +160,7 @@ func (h *StrictHasher) Assign() (c StrictHasherCircuit, err error) {
 	}
 	c.maxNbKeccakF = h.maxNbKeccakF
 	if h.wc == nil {
-		logrus.Warn("WIZARD SUB-PROOF NOT GENERATED. KECCAK HASH RESULTS WILL NOT BE CHECKED. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+		logrus.Warn("WIZARD SUB-PROOF NOT GENERATED. KECCAK HASH RESULTS WILL NOT BE CHECKED. THIS SHOULD ONLY OCCUR IN A TEST ENVIRONMENT.")
 	} else {
 		c.Wc = h.wc.Assign(h.ins)
 	}

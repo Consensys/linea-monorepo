@@ -1,7 +1,7 @@
 environment = "integration-full"
 version = "3.0.0"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
-log_level = 4                                  # TODO @gbotrel will be refactored with new logger. 
+log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
 [controller]
 retry_delays = [0, 1]
@@ -10,6 +10,9 @@ retry_delays = [0, 1]
 prover_mode = "full"
 
 [blob_decompression]
+prover_mode = "dev"
+
+[public_input_interconnection]
 prover_mode = "dev"
 
 [aggregation]
