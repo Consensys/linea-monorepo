@@ -1,5 +1,64 @@
 # Changelog
 
+## 0.8.0-rc6
+* skip ref test that are deployment transaction to an already existing … (#1584)
+* tmp: disbale MMIO constraints for the release (#1587)
+* Update Linea Besu to 24.11-delivery39 (#1583)
+* Call gas work (#1570)
+* delete lt file if corset check passes (#1575)
+* Refactoring to use test watcher for unit tests as well. (#1513)
+* 1568 some last mmio issues second part (#1571)
+* fix(mmuCall): extcodecopy of account under deployment
+* fix: need to snapshot memory even if memorySpan empty
+* update equals on wcpoperation due to Bytes32 equal method inconsistency. (#1573)
+* update equals on wcpoperation due to Bytes32 equal method inconsistency.
+* fix equals on EWord
+* add test revert check order for speed up
+* spotless
+* Reenable TX Outcome Checks for Replay Tests (#1566)
+* **(Block Capture)** This updates the block capture debugging facility.  This allows one to generate captures from running tests locally.  The updates simply improve the generated capture filenames.
+* **(Replay Files)** This renames the replay test files so that they all indicate whether or not they are mainnet or sepolia blocks.  This also renames those which represent a single block to avoid the hyphonated notation.  For example, `123-123.json.gz` is renamed to `123.json.gz`
+* **(Replay Outcomes)** This updates the record TX outcomes in the replay test files to correctly follow mainnet.  This was done by playing the replays back through the ReplayExecutionEnvironment and the recording the outcomes using the BlockCapturer.
+* **(Misc)** The `BesuPlugin` interface has changed slightly, with `BesuContext` being deprecated in favour of `ServiceManager`.  This simply updates the various plugins used by the linea tracer to this new API.  Most of the changes were straightforward.
+* fix(mmuCall): extcodecopy of account under deployment (#1569)
+* Fix/getaccount (#1493)
+* revert due to performance regression (#1557)
+* change error thrown when too many requests. (#1558)
+* change error thrown when too many requests.
+* Disable implicit parallel forks (#1554)
+* IDENTITY size parameter fix (#1561)
+* fix: partialCopyOfReturnDataForIdentity correction of 'size' parameter
+* Unifying ranges (#1548)
+* Enable slack failure notifications (#1556)
+* HUB debugging continued --- CALL's (#1508)
+* fix: remove non-determinism from tests (#1537)
+* fix(MMU_BLAKE): add test + debug (#1519)
+* Fix/revert ref tests (#1530)
+* fix(txSkip): address collisions (#1510)
+* fix: update docs files with errors (#1506)
+* fix: incorrect generation of `Trace.java` files (#1524)
+* Update reference tests to latest develop (#1529)
+* Remove `CONSTRAINTS_SSH_KEY` from Github Actions (#1512)
+* update linea-besu version (#1526)
+* Disable Tx Outcome Checks (#1522)
+* remove nbAdded and nbRemoved columns (#1505)
+* fix: besu version
+* `HUB` debugging continued (#1492)
+* fix: constraints commit
+* Mega "simple exceptions testing" issue (#1450)
+* fix(modexp): add debuged failing ref test (#1500)
+* debug memory replay tests (#1473)
+* feat: update corset to `v9.7.17` (#1496)
+* fix hub lineCounter when pop transaction (#1489)
+* `HUB` debugging continued (#1481)
+* filter tests with invalid transactions. (#1423)
+* Support Variable Report Width for Corset (#1486)
+* ras: newer constraints commit
+* Remove redundant version declaration of dependencies (#1484)
+* Update Linea Besu to 24.11-develop-eb7bb53 (#1480)
+
+
+
 ## 0.8.0-rc5
 * fix: SHF_STAMP no longer converted to short ([#1408](https://github.com/Consensys/linea-tracer/pull/1408))
 * Update Linea Besu to 24.11-delivery37 ([#1474](https://github.com/Consensys/linea-tracer/pull/1474))
