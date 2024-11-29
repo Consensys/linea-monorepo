@@ -720,15 +720,15 @@ l1RollingHashes(
 # Gas price setting
 
 Gas pricing on Linea is designed to ensure the following three properties:
-* Ensure Sequencer's inclusion logic is aligned to the L1 fee market. This is to avoid exploiting Linea to execute
+* Sequencer's inclusion logic is aligned to the L1 fee market. This is to avoid exploiting Linea to execute
 transactions for unsustainably low fees
-* Ensure the best user experience for users who use Linea nodes with extended capabilities. Unlike the vanilla Ethereum
+* The fees charged to Linea's user represent their fair usage of the network. Unlike the vanilla Ethereum
 protocol, gas price on Linea and other rollups is not 2-dimensional (base fee, priority fee). There's at least L1 fees
 (execution fees and blob fees), infrastructural cost (mostly proving, but not only), potential priority fee
 (only when there's a high congestion and there's competition for L2 block space). This is an issue for interoperability,
 because vanilla Ethreum API isn't tailored for this. That's why there's a Besu plugin addressing this issue and
 providing gas price depending on input transaction
-* Ensure an acceptable user experience for users who run vanilla nodes. Namely, `eth_gasPrice` should return fees high enough, so
+* Linea remains compatible with users runing vanilla nodes. Namely, `eth_gasPrice` returns fees guaranteeing that
 99.9% of transactions are includable on Linea.
 
 This is how these challenges were solved technically:
@@ -744,13 +744,13 @@ pays for finalization, which in turn depends on the L1 blob and execution fee ma
 
 ## Gas pricing propagation
 This information is delivered to nodes in 2 ways:
-* via extraData, part of the vanilla Ethereum Protocol
+* it is added to the extraData block field, part of the vanilla Ethereum Protocol
 * via RPC calls (only Geth and Besu are supported and tested)
 
 ### ExtraData
-The Coordinator sends extraData to the Sequencer via `miner_setExtraData`. ExtraData contains all 3 fields mentioned above.
+The Coordinator sends extraData to the Sequencer via `miner_setExtraData`. ExtraData contains all 3 fields mentioned above (fixed cost, variable cost and legacy cost).
 The Sequencer in turn uses this information for inclusion logic, to include only profitable transactions, and it adds last
-received extraData to the next block it seals. Once it gets inside a block, it's propagated to all the nodes on Linea
+received extraData to the next block it seals. This ensures that pricing information is propagated to all the nodes on Linea
 via P2P as a block header's field. And since this info is on all the nodes, they can use this information to figure out,
 what the gas price is for a given transaction that would make it includable on Linea. This currently is possible with Besu +
 Linea plugin with a custom `linea_estimateGas` method.
