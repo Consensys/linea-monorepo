@@ -370,6 +370,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	a.L2MessageServiceAddr = r.Aggregation.L2MessageServiceAddr
 	logrus.Infof("%d executions", len(r.Executions))
 
+
 	return
 }
 
