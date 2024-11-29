@@ -40,19 +40,19 @@ func main() {
 	}
 
 	// This collects the verifying keys from the public parameters
-	var vkeys []plonk.VerifyingKey
+	vkeys := make([]plonk.VerifyingKey, 0, len(innerSetups))
 	for _, setup := range innerSetups {
 		vkeys = append(vkeys, setup.VerifyingKey)
 	}
 
+	ncs := []int{1, 5, 10, 20}
+
 	// At this step, we will collect several proofs for the BW6 circuit and
 	// several verification keys.
 	var (
-		bw6Vkeys  []plonk.VerifyingKey
-		bw6Proofs []plonk.Proof
+		bw6Vkeys  = make([]plonk.VerifyingKey, 0, len(ncs))
+		bw6Proofs = make([]plonk.Proof, 0, len(ncs))
 	)
-
-	ncs := []int{1, 5, 10, 20}
 
 	aggregationPIBytes := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
 	var aggregationPI frBw6.Element

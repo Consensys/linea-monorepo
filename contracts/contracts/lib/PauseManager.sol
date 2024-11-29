@@ -11,14 +11,22 @@ import { IPauseManager } from "../interfaces/IPauseManager.sol";
  * @custom:security-contact security-report@linea.build
  */
 abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpgradeable {
+  /// @notice This is used to pause all pausable functions.
   bytes32 public constant PAUSE_ALL_ROLE = keccak256("PAUSE_ALL_ROLE");
+
+  /// @notice This is used to unpause all unpausable functions.
   bytes32 public constant UNPAUSE_ALL_ROLE = keccak256("UNPAUSE_ALL_ROLE");
 
   // @dev DEPRECATED. USE _pauseTypeStatusesBitMap INSTEAD
   mapping(bytes32 pauseType => bool pauseStatus) public pauseTypeStatuses;
 
+  /// @dev The bitmap containing the pause statuses mapped by type.
   uint256 private _pauseTypeStatusesBitMap;
+
+  /// @dev This maps the pause type to the role that is allowed to pause it.
   mapping(PauseType pauseType => bytes32 role) private _pauseTypeRoles;
+
+  /// @dev This maps the unpause type to the role that is allowed to unpause it.
   mapping(PauseType unPauseType => bytes32 role) private _unPauseTypeRoles;
 
   /// @dev Total contract storage is 11 slots with the gap below.

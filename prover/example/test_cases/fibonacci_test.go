@@ -7,8 +7,9 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 func defineFibo(build *wizard.Builder) {
@@ -18,9 +19,11 @@ func defineFibo(build *wizard.Builder) {
 	p1 := build.RegisterCommit(P1, n) // overshadows P
 
 	// P(X) = P(X/w) + P(X/w^2)
-	expr := ifaces.ColumnAsVariable(column.Shift(p1, -1)).
-		Add(ifaces.ColumnAsVariable(column.Shift(p1, -2))).
-		Sub(ifaces.ColumnAsVariable(p1))
+	expr := sym.Sub(
+		p1,
+		column.Shift(p1, -1),
+		column.Shift(p1, -2),
+	)
 
 	_ = build.GlobalConstraint(GLOBAL1, expr)
 }
@@ -31,5 +34,5 @@ func proveFibo(run *wizard.ProverRuntime) {
 }
 
 func TestFibo(t *testing.T) {
-	checkSolved(t, defineFibo, proveFibo, ALL_BUT_ILC, true)
+	checkSolved(t, defineFibo, proveFibo, join(compilationSuite{globalcs.Compile}, DUMMY), true)
 }
