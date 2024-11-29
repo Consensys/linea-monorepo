@@ -719,7 +719,7 @@ l1RollingHashes(
 
 # Gas price setting
 
-There are 3 aspects to gas pricing on Linea:
+Gas pricing on Linea is designed to ensure the following three properties:
 * Ensure Sequencer's inclusion logic is aligned to the L1 fee market. This is to avoid exploiting Linea to execute
 transactions for unsustainably low fees
 * Ensure the best user experience for users who use Linea nodes with extended capabilities. Unlike the vanilla Ethereum
