@@ -87,7 +87,7 @@ export default function TokenDetails({ token, onTokenClick, setValue, clearError
         </div>
       )}
       {tokenNotFromCurrentLayer && (
-        <div className="text-left text-warning">
+        <div className="ml-10 text-left text-warning">
           <p>Token is from other layer. Please swap networks to import token.</p>
         </div>
       )}

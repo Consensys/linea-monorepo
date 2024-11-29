@@ -1,14 +1,22 @@
-import { JsonRpcProvider, Wallet } from "ethers";
-import { Config } from "./types";
+import { AbstractSigner, JsonRpcProvider, Wallet } from "ethers";
+import { Config, L2Config, LocalL2Config } from "./types";
 import {
+  BridgedToken,
+  BridgedToken__factory,
   DummyContract,
   DummyContract__factory,
   L2MessageService,
   L2MessageService__factory,
-  LineaRollup,
-  LineaRollup__factory,
+  LineaRollupV5,
+  LineaRollupV5__factory,
+  ProxyAdmin,
+  ProxyAdmin__factory,
   TestContract,
   TestContract__factory,
+  TestERC20,
+  TestERC20__factory,
+  TokenBridge,
+  TokenBridge__factory,
 } from "../../typechain";
 import { AccountManager } from "./accounts/account-manager";
 
@@ -24,19 +32,17 @@ export default class TestSetup {
   }
 
   public getL2SequencerProvider(): JsonRpcProvider | undefined {
-    if (this.config.L2.sequencerEndpoint) {
-      return new JsonRpcProvider(this.config.L2.sequencerEndpoint.toString());
-    } else {
+    if (!this.isLocalL2Config(this.config.L2)) {
       return undefined;
     }
+    return new JsonRpcProvider(this.config.L2.sequencerEndpoint.toString());
   }
 
   public getL2BesuNodeProvider(): JsonRpcProvider | undefined {
-    if (this.config.L2.besuNodeRpcUrl) {
-      return new JsonRpcProvider(this.config.L2.besuNodeRpcUrl.toString());
-    } else {
+    if (!this.isLocalL2Config(this.config.L2)) {
       return undefined;
     }
+    return new JsonRpcProvider(this.config.L2.besuNodeRpcUrl.toString());
   }
 
   public getL1ChainId(): number {
@@ -48,23 +54,35 @@ export default class TestSetup {
   }
 
   public getShomeiEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.shomeiEndpoint;
   }
 
   public getShomeiFrontendEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.shomeiFrontendEndpoint;
   }
 
   public getSequencerEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.sequencerEndpoint;
   }
 
   public getTransactionExclusionEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
     return this.config.L2.transactionExclusionEndpoint;
   }
 
-  public getLineaRollupContract(signer?: Wallet): LineaRollup {
-    const lineaRollup: LineaRollup = LineaRollup__factory.connect(
+  public getLineaRollupContract(signer?: AbstractSigner): LineaRollupV5 {
+    const lineaRollup: LineaRollupV5 = LineaRollupV5__factory.connect(
       this.config.L1.lineaRollupAddress,
       this.getL1Provider(),
     );
@@ -74,6 +92,19 @@ export default class TestSetup {
     }
 
     return lineaRollup;
+  }
+
+  public getLineaRollupProxyAdminContract(signer?: AbstractSigner): ProxyAdmin {
+    const proxyAdmin: ProxyAdmin = ProxyAdmin__factory.connect(
+      this.config.L1.lineaRollupProxyAdminAddress,
+      this.getL1Provider(),
+    );
+
+    if (signer) {
+      return proxyAdmin.connect(signer);
+    }
+
+    return proxyAdmin;
   }
 
   public getL2MessageServiceContract(signer?: Wallet): L2MessageService {
@@ -89,6 +120,71 @@ export default class TestSetup {
     return l2MessageService;
   }
 
+  public getL1TokenBridgeContract(signer?: Wallet): TokenBridge {
+    const l1TokenBridge: TokenBridge = TokenBridge__factory.connect(
+      this.config.L1.tokenBridgeAddress,
+      this.getL1Provider(),
+    );
+
+    if (signer) {
+      return l1TokenBridge.connect(signer);
+    }
+
+    return l1TokenBridge;
+  }
+
+  public getL2TokenBridgeContract(signer?: Wallet): TokenBridge {
+    const l2TokenBridge: TokenBridge = TokenBridge__factory.connect(
+      this.config.L2.tokenBridgeAddress,
+      this.getL2Provider(),
+    );
+
+    if (signer) {
+      return l2TokenBridge.connect(signer);
+    }
+
+    return l2TokenBridge;
+  }
+
+  public getL1TokenContract(signer?: Wallet): TestERC20 {
+    const l1Token: TestERC20 = TestERC20__factory.connect(this.config.L1.l1TokenAddress, this.getL1Provider());
+
+    if (signer) {
+      return l1Token.connect(signer);
+    }
+
+    return l1Token;
+  }
+
+  public getL2TokenContract(signer?: Wallet): TestERC20 {
+    const l2Token: TestERC20 = TestERC20__factory.connect(this.config.L2.l2TokenAddress, this.getL2Provider());
+
+    if (signer) {
+      return l2Token.connect(signer);
+    }
+
+    return l2Token;
+  }
+
+  public getL1BridgedTokenContract(bridgedTokenAddress: string, signer?: Wallet): BridgedToken {
+    const l1BridgedToken: BridgedToken = BridgedToken__factory.connect(bridgedTokenAddress, this.getL1Provider());
+
+    if (signer) {
+      return l1BridgedToken.connect(signer);
+    }
+
+    return l1BridgedToken;
+  }
+
+  public getL2BridgedTokenContract(bridgedTokenAddress: string, signer?: Wallet): BridgedToken {
+    const l2BridgedToken: BridgedToken = BridgedToken__factory.connect(bridgedTokenAddress, this.getL2Provider());
+
+    if (signer) {
+      return l2BridgedToken.connect(signer);
+    }
+
+    return l2BridgedToken;
+  }
   public getL1DummyContract(signer?: Wallet): DummyContract {
     const dummyContract = DummyContract__factory.connect(this.config.L1.dummyContractAddress, this.getL1Provider());
 
@@ -129,5 +225,15 @@ export default class TestSetup {
 
   public getL2AccountManager(): AccountManager {
     return this.config.L2.accountManager;
+  }
+
+  private isLocalL2Config(config: L2Config): config is LocalL2Config {
+    return (
+      (config as LocalL2Config).besuNodeRpcUrl !== undefined &&
+      (config as LocalL2Config).sequencerEndpoint !== undefined &&
+      (config as LocalL2Config).shomeiEndpoint !== undefined &&
+      (config as LocalL2Config).shomeiFrontendEndpoint !== undefined &&
+      (config as LocalL2Config).transactionExclusionEndpoint !== undefined
+    );
   }
 }

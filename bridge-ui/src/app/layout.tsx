@@ -1,8 +1,5 @@
 import { Metadata } from "next";
-import { headers } from "next/headers";
 import Script from "next/script";
-import { cookieToInitialState } from "wagmi";
-import { wagmiConfig } from "@/config";
 import usabillaBeScript from "@/scripts/usabilla";
 import { gtmScript, gtmNoScript } from "@/scripts/gtm";
 import { Providers } from "@/components/layouts/Providers";
@@ -23,8 +20,6 @@ const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const initialState = cookieToInitialState(wagmiConfig, headers().get("cookie"));
-
   return (
     <html lang="en" data-theme="dark">
       <title>{metadata.title?.toString()}</title>
@@ -33,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={cn(atypFont.variable, atypTextFont.variable, atypFont.className, atypTextFont.className)}>
         <noscript dangerouslySetInnerHTML={{ __html: gtmNoScript }} />
 
-        <Providers initialState={initialState}>
+        <Providers>
           <Layout>{children}</Layout>
         </Providers>
       </body>

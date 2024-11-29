@@ -49,8 +49,29 @@ runs:
         docker buildx imagetools create --tag ${{ inputs.image_name }}:${{ inputs.develop_tag }} ${{ inputs.image_name }}:${{ inputs.last_commit_tag }}
         docker buildx imagetools create --tag ${{ inputs.image_name }}:${{ inputs.commit_tag }} ${{ inputs.image_name }}:${{ inputs.last_commit_tag }}
         echo IMAGE_TAGGED=true >> $GITHUB_ENV
+    - name: Split docker image name (i.e. extract "xyz" from "consensys/xyz")
+      if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
+      env:
+        IMAGE_NAME: ${{ inputs.image_name }}
+      id: split
+      shell: bash
+      run: |
+        echo "image_name_suffix=${IMAGE_NAME##*/}" >> $GITHUB_OUTPUT
+    - name: Save Docker image as artifact for later use in e2e test
+      if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
+      shell: bash
+      run: |
+        docker pull ${{ inputs.image_name }}:${{ inputs.commit_tag }}
+        docker save ${{ inputs.image_name }}:${{ inputs.commit_tag }} | gzip > ${{ steps.split.outputs.image_name_suffix }}-docker-image.tar.gz
+    - name: Upload Docker image artifact for later use in e2e test
+      if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.split.outputs.image_name_suffix }}
+        path: ${{ steps.split.outputs.image_name_suffix }}-docker-image.tar.gz
     - name: Set output from environment variable
       shell: bash
       id: set-output
       run: |
         echo "image_tagged=$IMAGE_TAGGED" >> $GITHUB_OUTPUT
+        echo "image_name_suffix: ${{ steps.split.outputs.image_name_suffix }}"

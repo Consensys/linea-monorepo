@@ -144,7 +144,7 @@ func (r *Range) LastArray32F(provider func(int) [32]frontend.Variable) [32]front
 }
 
 func RegisterHints() {
-	hint.RegisterHint(toCrumbsHint, concatHint, checksumSubSlicesHint, partitionSliceHint)
+	hint.RegisterHint(toCrumbsHint, concatHint, checksumSubSlicesHint, partitionSliceHint, divEuclideanHint)
 }
 
 func toCrumbsHint(_ *big.Int, ins, outs []*big.Int) error {
@@ -890,4 +890,33 @@ func SelectMany(api frontend.API, c frontend.Variable, ifSo, ifNot []frontend.Va
 		res[i] = api.Select(c, ifSo[i], ifNot[i])
 	}
 	return res
+}
+
+// DivEuclidean conventional integer division with a remainder
+// TODO @Tabaie replace all/most special-case divisions with this, barring performance issues
+func DivEuclidean(api frontend.API, a, b frontend.Variable) (quotient, remainder frontend.Variable) {
+	api.AssertIsDifferent(b, 0)
+	outs, err := api.Compiler().NewHint(divEuclideanHint, 2, a, b)
+	if err != nil {
+		panic(err)
+	}
+	quotient, remainder = outs[0], outs[1]
+	api.AssertIsLessOrEqual(remainder, api.Sub(b, 1))
+	api.AssertIsLessOrEqual(quotient, a)
+
+	return
+}
+
+func divEuclideanHint(_ *big.Int, ins, outs []*big.Int) error {
+	if len(ins) != 2 || len(outs) != 2 {
+		return errors.New("expected two inputs and two outputs")
+	}
+
+	a, b := ins[0], ins[1]
+	quotient, remainder := outs[0], outs[1]
+
+	quotient.Div(a, b)
+	remainder.Mod(a, b)
+
+	return nil
 }

@@ -15,8 +15,6 @@ const parseETHEvents = async (
   storedTokens: NetworkTokens,
   networkType: NetworkType,
 ) => {
-  const history: TransactionHistory[] = [];
-
   if (
     networkType !== NetworkType.MAINNET &&
     networkType !== NetworkType.SEPOLIA &&
@@ -25,33 +23,35 @@ const parseETHEvents = async (
     throw new Error("Invalid network type");
   }
 
-  for (const event of events) {
-    const token = findETHToken(storedTokens, networkType);
+  const token = findETHToken(storedTokens, networkType);
 
-    // Token list may change, skip old tokens
-    if (!token) {
-      log.warn("Token not found");
-      continue;
-    }
-
-    const blockInfo = await client.getBlock({
-      blockNumber: event.blockNumber,
-    });
-
-    const logHistory: TransactionHistory = {
-      transactionHash: event.transactionHash,
-      fromChain,
-      toChain,
-      token,
-      tokenAddress: null,
-      amount: event.args._value,
-      recipient: event.args._to,
-      pending: true,
-      event,
-      timestamp: blockInfo.timestamp,
-    };
-    history.push(logHistory);
+  if (!token) {
+    log.warn("Token not found");
+    return [];
   }
+
+  const history = await Promise.all(
+    events.map(async (event) => {
+      const { timestamp } = await client.getBlock({
+        blockNumber: event.blockNumber,
+      });
+
+      const logHistory: TransactionHistory = {
+        transactionHash: event.transactionHash,
+        fromChain,
+        toChain,
+        token,
+        tokenAddress: null,
+        amount: event.args._value,
+        recipient: event.args._to,
+        pending: true,
+        event,
+        timestamp,
+      };
+      return logHistory;
+    }),
+  );
+
   return history;
 };
 

@@ -3,14 +3,10 @@
 
 services:
   sequencer:
-    environment:
-      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
     volumes:
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
-  
+
   l2-node-besu:
-    environment:
-      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
     volumes:
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
 
@@ -46,7 +42,7 @@ services:
       retries: 120
     restart: "no"
     environment:
-      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+      JAVA_OPTS: -Xmx1g -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
     entrypoint:
       - /bin/bash
@@ -72,7 +68,7 @@ services:
   prover-v3: # prover compatible with the traces from zkbesu
     container_name: prover-v3
     hostname: prover-v3
-    image: consensys/linea-prover:${PROVER_TAG:-bba9677}
+    image: consensys/linea-prover:${PROVER_TAG:-bb7cd3d}
     platform: linux/amd64
     # to avoid spinning up on CI for now
     profiles: [ "l2" ]
@@ -111,11 +107,3 @@ services:
       - ../config/common/traces-limits-v2.toml:/opt/consensys/linea/coordinator/config/traces-limits-v2.toml:ro
       - ../config/coordinator/coordinator-docker-traces-v2-override.config.toml:/opt/consensys/linea/coordinator/config/coordinator-docker-traces-v2-override.config.toml:ro
       - ../tmp/local/:/data/
-
-  zkbesu-shomei:
-    environment:
-      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
-
-  l1-el-node:
-    environment:
-      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC

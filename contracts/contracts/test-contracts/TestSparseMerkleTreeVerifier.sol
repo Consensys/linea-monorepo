@@ -21,6 +21,10 @@ contract TestSparseMerkleTreeVerifier {
     return Utils._efficientKeccak(_left, _right);
   }
 
+  function testSafeCastToUint32(uint256 _value) external pure returns (uint32) {
+    return SparseMerkleTreeVerifier.safeCastToUint32(_value);
+  }
+
   function getLeafHash(
     address _from,
     address _to,

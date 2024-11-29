@@ -36,7 +36,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
       - name: Restore cached images
         id: restore-cached-images
         uses: actions/cache/restore@v4.0.2
@@ -60,8 +60,9 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Run integration tests
+        timeout-minutes: 15
         run: |
-          ./gradlew integrationTest
+          ./gradlew coordinator:app:integrationTestAllNeeded
       - name: Run Jacoco
         run: |
           ./gradlew jacocoRootReport

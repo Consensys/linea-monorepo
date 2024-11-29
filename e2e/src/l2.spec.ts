@@ -7,6 +7,8 @@ import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Layer 2 test suite", () => {
+  const l2Provider = config.getL2Provider();
+
   it.concurrent("Should revert if transaction data size is above the limit", async () => {
     const account = await l2AccountManager.generateAccount();
     const dummyContract = config.getL2DummyContract(account);
@@ -19,8 +21,14 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should succeed if transaction data size is below the limit", async () => {
     const account = await l2AccountManager.generateAccount();
     const dummyContract = config.getL2DummyContract(account);
+    const nonce = await l2Provider.getTransactionCount(account.address, "pending");
+    const { maxPriorityFeePerGas, maxFeePerGas } = await l2Provider.getFeeData();
 
-    const tx = await dummyContract.connect(account).setPayload(ethers.randomBytes(1000));
+    const tx = await dummyContract.connect(account).setPayload(ethers.randomBytes(1000), {
+      nonce: nonce,
+      maxPriorityFeePerGas: maxPriorityFeePerGas,
+      maxFeePerGas: maxFeePerGas,
+    });
 
     const receipt = await tx.wait();
     expect(receipt?.status).toEqual(1);

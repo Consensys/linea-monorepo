@@ -18,34 +18,36 @@ type ExecutionDataCollectorVectors struct {
 
 	FirstAbsTxIDBlock, LastAbsTxIDBlock []field.Element
 
-	EndOfRlpSegment   []field.Element
-	TotalBytesCounter []field.Element
+	EndOfRlpSegment        []field.Element
+	TotalBytesCounter      []field.Element
+	FinalTotalBytesCounter field.Element
 }
 
 // NewExecutionDataCollectorVectors creates a new ExecutionDataCollectorVectors.
 func NewExecutionDataCollectorVectors(size int) *ExecutionDataCollectorVectors {
 	res := &ExecutionDataCollectorVectors{
-		BlockID:           make([]field.Element, size),
-		AbsTxID:           make([]field.Element, size),
-		AbsTxIDMax:        make([]field.Element, size),
-		Limb:              make([]field.Element, size),
-		NoBytes:           make([]field.Element, size),
-		UnalignedLimb:     make([]field.Element, size),
-		AlignedPow:        make([]field.Element, size),
-		TotalNoTxBlock:    make([]field.Element, size),
-		IsActive:          make([]field.Element, size),
-		IsNoTx:            make([]field.Element, size),
-		IsBlockHashHi:     make([]field.Element, size),
-		IsBlockHashLo:     make([]field.Element, size),
-		IsTimestamp:       make([]field.Element, size),
-		IsTxRLP:           make([]field.Element, size),
-		IsAddrHi:          make([]field.Element, size),
-		IsAddrLo:          make([]field.Element, size),
-		Ct:                make([]field.Element, size),
-		FirstAbsTxIDBlock: make([]field.Element, size),
-		LastAbsTxIDBlock:  make([]field.Element, size),
-		EndOfRlpSegment:   make([]field.Element, size),
-		TotalBytesCounter: make([]field.Element, size),
+		BlockID:                make([]field.Element, size),
+		AbsTxID:                make([]field.Element, size),
+		AbsTxIDMax:             make([]field.Element, size),
+		Limb:                   make([]field.Element, size),
+		NoBytes:                make([]field.Element, size),
+		UnalignedLimb:          make([]field.Element, size),
+		AlignedPow:             make([]field.Element, size),
+		TotalNoTxBlock:         make([]field.Element, size),
+		IsActive:               make([]field.Element, size),
+		IsNoTx:                 make([]field.Element, size),
+		IsBlockHashHi:          make([]field.Element, size),
+		IsBlockHashLo:          make([]field.Element, size),
+		IsTimestamp:            make([]field.Element, size),
+		IsTxRLP:                make([]field.Element, size),
+		IsAddrHi:               make([]field.Element, size),
+		IsAddrLo:               make([]field.Element, size),
+		Ct:                     make([]field.Element, size),
+		FirstAbsTxIDBlock:      make([]field.Element, size),
+		LastAbsTxIDBlock:       make([]field.Element, size),
+		EndOfRlpSegment:        make([]field.Element, size),
+		TotalBytesCounter:      make([]field.Element, size),
+		FinalTotalBytesCounter: field.Zero(),
 	}
 	return res
 }

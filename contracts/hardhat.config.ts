@@ -1,4 +1,5 @@
 import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-foundry";
 import "@openzeppelin/hardhat-upgrades";
 import * as dotenv from "dotenv";
 import "hardhat-deploy";
@@ -12,6 +13,9 @@ import "./scripts/operational/renounceContractRolesTask";
 import "./scripts/operational/setRateLimitTask";
 import "./scripts/operational/setVerifierAddressTask";
 import "./scripts/operational/transferOwnershipAndSetRemoteTokenBridgeTask";
+import "./scripts/operational/setMessageServiceOnTokenBridgeTask";
+
+import "solidity-docgen";
 
 dotenv.config();
 
@@ -36,7 +40,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 50_000,
+            runs: 10_000,
           },
           evmVersion: "cancun",
         },
@@ -47,7 +51,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 50_000,
+            runs: 10_000,
           },
           evmVersion: "cancun",
         },
@@ -58,7 +62,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 50_000,
+            runs: 10_000,
           },
           evmVersion: "cancun",
         },
@@ -69,7 +73,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 50_000,
+            runs: 10_000,
           },
           evmVersion: "london",
         },
@@ -148,6 +152,11 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+  },
+  docgen: {
+    exclude: ["token", "test-contracts", "proxies", "tools", "interfaces/tools", "tokenBridge/mocks", "verifiers"],
+    pages: "files",
+    outputDir: "docs/api/",
   },
 };
 

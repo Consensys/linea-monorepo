@@ -41,9 +41,10 @@
 "b015579f" = "IsNotPaused"
 "3b174434" = "MessageHashesListLengthHigherThanOneHundred"
 "ca389c44" = "InvalidProofOrProofVerificationRanOutOfGas"
+"42ab979d" = "ParentBlobNotSubmitted"
+"edeae83c" = "FinalBlobNotSubmitted"
 # L2 Message Service
 "6446cc9c" = "MessageHashesListLengthIsZero"
 "d39e75f9" = "L1MessageNumberSynchronizationWrong"
 "7557a60a" = "L1RollingHashSynchronizationWrong"
 "36a4bb94" = "FinalRollingHashIsZero"
-"42ab979d" = "ParentBlobNotSubmitted"

@@ -48,34 +48,24 @@ func TestSingleBlockBlobE2E(t *testing.T) {
 	a, err := compiled.Assign(req)
 	assert.NoError(t, err)
 
-	for _, gkrMimc := range []struct {
-		use  bool
-		prep string
-	}{{false, "without"}, {true, "with"}} {
-		t.Run(gkrMimc.prep+" gkrmimc", func(t *testing.T) {
-			c := *compiled.Circuit
-			c.UseGkrMimc = gkrMimc.use
+	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, compiled.Circuit, frontend.WithCapacity(3_000_000))
+	assert.NoError(t, err)
 
-			cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &c, frontend.WithCapacity(3_000_000))
-			assert.NoError(t, err)
+	w, err := frontend.NewWitness(&a, ecc.BLS12_377.ScalarField())
+	assert.NoError(t, err)
 
-			w, err := frontend.NewWitness(&a, ecc.BLS12_377.ScalarField())
-			assert.NoError(t, err)
+	assert.NoError(t, cs.IsSolved(w))
 
-			assert.NoError(t, cs.IsSolved(w))
-		})
-	}
 }
 
 // some of the execution data are faked
 func TestTinyTwoBatchBlob(t *testing.T) {
 
-	t.Skipf("this test flaky as it will attempt for keccakf permutation than what is set in the parameters")
-
 	blob := blobtesting.TinyTwoBatchBlob(t)
 
 	execReq := []public_input.Execution{{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
+		InitialBlockTimestamp:  6,
 		FinalStateRootHash:     internal.Uint64To32Bytes(4),
 		FinalBlockNumber:       5,
 		FinalBlockTimestamp:    6,
@@ -83,6 +73,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		FinalRollingHashNumber: 8,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(9)},
+		InitialBlockTimestamp:  7,
 		FinalStateRootHash:     internal.Uint64To32Bytes(10),
 		FinalBlockNumber:       11,
 		FinalBlockTimestamp:    12,
@@ -110,13 +101,13 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			FinalShnarf:                             blobResp.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,
 			ParentStateRootHash:                     blobReq.ParentStateRootHash,
-			ParentAggregationLastBlockTimestamp:     6,
+			ParentAggregationLastBlockTimestamp:     5,
 			FinalTimestamp:                          uint(execReq[1].FinalBlockTimestamp),
-			LastFinalizedBlockNumber:                5,
+			LastFinalizedBlockNumber:                4,
 			FinalBlockNumber:                        uint(execReq[1].FinalBlockNumber),
 			LastFinalizedL1RollingHash:              utils.FmtIntHex32Bytes(7),
 			L1RollingHash:                           utils.HexEncodeToString(execReq[1].FinalRollingHash[:]),
-			LastFinalizedL1RollingHashMessageNumber: 8,
+			LastFinalizedL1RollingHashMessageNumber: 7,
 			L1RollingHashMessageNumber:              uint(execReq[1].FinalRollingHashNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
@@ -127,11 +118,11 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 }
 
 func TestTwoTwoBatchBlobs(t *testing.T) {
-	t.Skipf("Flacky test due to the number of keccakf outgoing the limit specified for the test")
 	blobs := blobtesting.ConsecutiveBlobs(t, 2, 2)
 
 	execReq := []public_input.Execution{{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
+		InitialBlockTimestamp:  6,
 		FinalStateRootHash:     internal.Uint64To32Bytes(4),
 		FinalBlockNumber:       5,
 		FinalBlockTimestamp:    6,
@@ -139,6 +130,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		FinalRollingHashNumber: 8,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(9)},
+		InitialBlockTimestamp:  7,
 		FinalStateRootHash:     internal.Uint64To32Bytes(10),
 		FinalBlockNumber:       11,
 		FinalBlockTimestamp:    12,
@@ -146,6 +138,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		FinalRollingHashNumber: 14,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(15)},
+		InitialBlockTimestamp:  13,
 		FinalStateRootHash:     internal.Uint64To32Bytes(16),
 		FinalBlockNumber:       17,
 		FinalBlockTimestamp:    18,
@@ -153,6 +146,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		FinalRollingHashNumber: 20,
 	}, {
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(21)},
+		InitialBlockTimestamp:  19,
 		FinalStateRootHash:     internal.Uint64To32Bytes(22),
 		FinalBlockNumber:       23,
 		FinalBlockTimestamp:    24,
@@ -191,13 +185,13 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			FinalShnarf:                             blobResp1.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq0.PrevShnarf,
 			ParentStateRootHash:                     blobReq0.ParentStateRootHash,
-			ParentAggregationLastBlockTimestamp:     6,
+			ParentAggregationLastBlockTimestamp:     5,
 			FinalTimestamp:                          uint(execReq[3].FinalBlockTimestamp),
-			LastFinalizedBlockNumber:                5,
+			LastFinalizedBlockNumber:                4,
 			FinalBlockNumber:                        uint(execReq[3].FinalBlockNumber),
 			LastFinalizedL1RollingHash:              utils.FmtIntHex32Bytes(7),
 			L1RollingHash:                           utils.HexEncodeToString(execReq[3].FinalRollingHash[:]),
-			LastFinalizedL1RollingHashMessageNumber: 8,
+			LastFinalizedL1RollingHashMessageNumber: 7,
 			L1RollingHashMessageNumber:              uint(execReq[3].FinalRollingHashNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,

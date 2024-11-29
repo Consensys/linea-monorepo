@@ -27,6 +27,7 @@ fun BigDecimal.toUInt(): UInt = this.roundUpToBigInteger().toUInt()
 // BigInteger extensions
 fun BigInteger.multiply(multiplicand: Double): BigInteger = this.toBigDecimal()
   .multiply(BigDecimal.valueOf(multiplicand)).toBigInteger()
+
 fun BigInteger.toGWei(): BigDecimal = this.toBigDecimal().toGWei()
 inline val BigInteger.gwei: BigInteger get() = this.multiply(OneGWei.toBigInteger())
 fun BigInteger.toKWei(): BigDecimal = this.toBigDecimal().toKWei()
@@ -37,6 +38,21 @@ fun BigInteger.toUInt(): UInt = this.toString().toUInt()
 // ULong extensions
 fun ULong.toBigInteger(): BigInteger = BigInteger(this.toString())
 fun ULong.toHexString(): String = "0x${this.toString(16)}"
+fun ULong.toHexStringPaddedToBitSize(targetBitSize: Int): String {
+  require(targetBitSize % 4 == 0) { "targetBitSize=$targetBitSize should be a multiple of 4" }
+  val targetNumberOfHexDigits = targetBitSize / 4
+  val rawHex = this.toString(16)
+  require(rawHex.length <= targetNumberOfHexDigits) {
+    val requiredBits = rawHex.length * 4
+    "Number $this needs ${rawHex.length} hex digits ($requiredBits bits), targetBitSize=$targetBitSize"
+  }
+  return "0x${rawHex.padStart(targetNumberOfHexDigits, '0')}"
+}
+
+fun ULong.toHexStringPaddedToByteSize(targetByteSize: Int): String =
+  this.toHexStringPaddedToBitSize(targetByteSize * 8)
+
+fun ULong.toHexStringUInt256(): String = this.toHexStringPaddedToBitSize(256)
 
 fun ULong.toKWeiUInt(): UInt = this.toDouble().tokWeiUInt()
 

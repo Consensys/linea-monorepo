@@ -38,7 +38,7 @@ func TestPIConsistency(t *testing.T) {
 
 	snarkPi, err := pi.ToSnarkType()
 	require.NoError(t, err)
-	piSum := pi.Sum()
+	piSum := pi.Sum(nil)
 
 	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		hsh, err := mimc.NewMiMC(api)

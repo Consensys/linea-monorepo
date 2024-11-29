@@ -43,5 +43,4 @@ task integrationTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
     dependsOn(":localStackComposeUp")
-    dependsOn(rootProject.tasks.compileContracts)
 }

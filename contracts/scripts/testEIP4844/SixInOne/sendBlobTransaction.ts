@@ -146,7 +146,7 @@ async function main() {
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const wallet = new Wallet(privateKey, provider);
 
-  kzg.loadTrustedSetup(`${__dirname}/../trusted_setup.txt`);
+  kzg.loadTrustedSetup(`${__dirname}/trusted_setup.txt`);
 
   const parentSubmissionData1 = generateParentSubmissionData(
     "0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd",

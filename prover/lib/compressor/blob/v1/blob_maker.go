@@ -25,8 +25,8 @@ const (
 	NbElemsEncodingBytes = 2
 
 	// These also impact the circuit constraints (compile / setup time)
-	MaxUncompressedBytes = 740 * 1024 // defines the max size we can handle for a blob (uncompressed) input
-	MaxUsableBytes       = 32 * 4096  // defines the number of bytes available in a blob
+	MaxUncompressedBytes = 756240    // ~738.5KB defines the max size we can handle for a blob (uncompressed) input
+	MaxUsableBytes       = 32 * 4096 // defines the number of bytes available in a blob
 )
 
 // BlobMaker is a bm for RLP encoded blocks (see EIP-4844).
@@ -165,6 +165,10 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 		// 1. underlying writer error (shouldn't happen we use a simple in memory buffer)
 		// 2. we exceed the maximum input size of 2Mb (shouldn't happen either)
 		// In both cases, we can't do anything, so we reset the state.
+		if innerErr := bm.compressor.Revert(); innerErr != nil {
+			return false, fmt.Errorf("when reverting compressor because writing failed: %w\noriginal error: %w", innerErr, err)
+		}
+		bm.Header.removeLastBlock()
 		return false, fmt.Errorf("when writing block to compressor: %w", err)
 	}
 

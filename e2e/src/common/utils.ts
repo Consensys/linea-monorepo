@@ -1,9 +1,9 @@
 import * as fs from "fs";
 import assert from "assert";
-import { BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
+import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
-import { L2MessageService, LineaRollup } from "../typechain";
+import { L2MessageService, TokenBridge, LineaRollupV5, LineaRollupV6 } from "../typechain";
 import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
 
@@ -79,7 +79,8 @@ export class TransactionExclusionClient {
     this.endpoint = endpoint;
   }
 
-  public async getTransactionExclusionStatusV1(txHash: String): Promise<any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async getTransactionExclusionStatusV1(txHash: string): Promise<any> {
     const request = {
       method: "post",
       body: JSON.stringify({
@@ -94,13 +95,15 @@ export class TransactionExclusionClient {
   }
 
   public async saveRejectedTransactionV1(
-    txRejectionStage: String,
-    timestamp: String, // ISO-8601
-    blockNumber: Number | null,
-    transactionRLP: String,
-    reasonMessage: String,
-    overflows: { module: String; count: Number; limit: Number }[],
+    txRejectionStage: string,
+    timestamp: string, // ISO-8601
+    blockNumber: number | null,
+    transactionRLP: string,
+    reasonMessage: string,
+    overflows: { module: string; count: number; limit: number }[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<any> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let params: any = {
       txRejectionStage,
       timestamp,
@@ -144,7 +147,10 @@ export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag
   }
 }
 
-export async function getEvents<TContract extends LineaRollup | L2MessageService, TEvent extends TypedContractEvent>(
+export async function getEvents<
+  TContract extends LineaRollupV5 | LineaRollupV6 | L2MessageService | TokenBridge,
+  TEvent extends TypedContractEvent,
+>(
   contract: TContract,
   eventFilter: TypedDeferredTopicFilter<TEvent>,
   fromBlock?: BlockTag,
@@ -165,7 +171,7 @@ export async function getEvents<TContract extends LineaRollup | L2MessageService
 }
 
 export async function waitForEvents<
-  TContract extends LineaRollup | L2MessageService,
+  TContract extends LineaRollupV5 | LineaRollupV6 | L2MessageService | TokenBridge,
   TEvent extends TypedContractEvent,
 >(
   contract: TContract,
@@ -221,10 +227,13 @@ export async function waitForFile(
   throw new Error("File check timed out");
 }
 
-export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wallet, pollingInterval: number = 1_000) {
+export async function sendTransactionsToGenerateTrafficWithInterval(
+  signer: AbstractSigner,
+  pollingInterval: number = 1_000,
+) {
   const { maxPriorityFeePerGas, maxFeePerGas } = await signer.provider!.getFeeData();
   const transactionRequest = {
-    to: signer.address,
+    to: await signer.getAddress(),
     value: etherToWei("0.000001"),
     maxPriorityFeePerGas: maxPriorityFeePerGas,
     maxFeePerGas: maxFeePerGas,
@@ -288,8 +297,8 @@ export function getMessageSentEventFromLogs<T extends BaseContract>(
     });
 }
 
-export const sendMessage = async <T extends LineaRollup | L2MessageService>(
-  signer: Wallet,
+export const sendMessage = async <T extends LineaRollupV5 | L2MessageService>(
+  signer: AbstractSigner,
   contract: T,
   args: SendMessageArgs,
   overrides?: PayableOverrides,
@@ -322,4 +331,50 @@ export async function execDockerCommand(command: string, containerName: string):
       resolve(stdout);
     });
   });
+}
+
+export function generateRoleAssignments(
+  roles: string[],
+  defaultAddress: string,
+  overrides: { role: string; addresses: string[] }[],
+): { role: string; addressWithRole: string }[] {
+  const roleAssignments: { role: string; addressWithRole: string }[] = [];
+
+  const overridesMap = new Map<string, string[]>();
+  for (const override of overrides) {
+    overridesMap.set(override.role, override.addresses);
+  }
+
+  const allRolesSet = new Set<string>(roles);
+  for (const override of overrides) {
+    allRolesSet.add(override.role);
+  }
+
+  for (const role of allRolesSet) {
+    if (overridesMap.has(role)) {
+      const addresses = overridesMap.get(role);
+
+      if (addresses && addresses.length > 0) {
+        for (const addressWithRole of addresses) {
+          roleAssignments.push({ role, addressWithRole });
+        }
+      }
+    } else {
+      roleAssignments.push({ role, addressWithRole: defaultAddress });
+    }
+  }
+
+  return roleAssignments;
+}
+
+export function convertStringToPaddedHexBytes(strVal: string, paddedSize: number): string {
+  if (strVal.length > paddedSize) {
+    throw "Length is longer than padded size!";
+  }
+
+  const strBytes = ethers.toUtf8Bytes(strVal);
+  const bytes = ethers.zeroPadBytes(strBytes, paddedSize);
+  const bytes8Hex = ethers.hexlify(bytes);
+
+  return bytes8Hex;
 }

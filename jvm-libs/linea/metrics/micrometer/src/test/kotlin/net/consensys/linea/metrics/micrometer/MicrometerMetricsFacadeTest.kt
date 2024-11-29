@@ -7,6 +7,7 @@ import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.data.Offset
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -64,5 +65,39 @@ class MicrometerMetricsFacadeTest {
     assertThat(createdCounter.count()).isEqualTo(16.5)
     assertThat(createdCounter.id.tags).isEqualTo(listOf(ImmutableTag("key1", "value1"), ImmutableTag("key2", "value2")))
     assertThat(createdCounter.id.description).isEqualTo("This is a test metric")
+  }
+
+  @Test
+  fun `createHistogram creates histogram with specified parameters`() {
+    val expectedTags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
+    val histogram = metricsFacade.createHistogram(
+      category = LineaMetricsCategory.BATCH,
+      name = "some.metric",
+      description = "This is a test metric",
+      tags = expectedTags,
+      baseUnit = "seconds"
+    )
+
+    val createdHistogram = meterRegistry.find("linea.test.batch.some.metric").summary()
+    assertThat(createdHistogram).isNotNull
+    assertThat(createdHistogram!!.id.description).isEqualTo("This is a test metric")
+    assertThat(createdHistogram.id.baseUnit).isEqualTo("seconds")
+    assertThat(createdHistogram.count()).isEqualTo(0L)
+
+    histogram.record(10.0)
+    assertThat(createdHistogram.count()).isEqualTo(1L)
+    assertThat(createdHistogram.totalAmount()).isEqualTo(10.0)
+    assertThat(createdHistogram.mean()).isEqualTo(10.0)
+    assertThat(createdHistogram.max()).isEqualTo(10.0)
+    histogram.record(5.0)
+    assertThat(createdHistogram.count()).isEqualTo(2L)
+    assertThat(createdHistogram.totalAmount()).isEqualTo(15.0)
+    assertThat(createdHistogram.mean()).isEqualTo(7.5)
+    assertThat(createdHistogram.max()).isEqualTo(10.0)
+    histogram.record(100.0)
+    assertThat(createdHistogram.count()).isEqualTo(3L)
+    assertThat(createdHistogram.totalAmount()).isEqualTo(115.0)
+    assertThat(createdHistogram.mean()).isCloseTo(38.333, Offset.offset(0.1))
+    assertThat(createdHistogram.max()).isEqualTo(100.0)
   }
 }

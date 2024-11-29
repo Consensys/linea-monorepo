@@ -10,6 +10,7 @@ configurations.configureEach {
 
 configurations {
   runtimeClasspath.exclude group: "it.unimi.dsi", module: "fastutil"
+  runtimeClasspath.exclude group: "org.hyperledger.besu", module: "gnark"
 }
 
 dependencies {
@@ -105,4 +106,22 @@ run {
     .findAll { it.key.startsWith("config") }
     .collect { "-D${it.key}=${it.value}" }
   args = ["--traces-limits", "config/common/traces-limits-v1.toml", "--smart-contract-errors", "config/common/smart-contract-errors.toml", "--gas-price-cap-time-of-day-multipliers", "config/common/gas-price-cap-time-of-day-multipliers.toml", "config/coordinator/coordinator-docker.config.toml", "config/coordinator/coordinator-local-dev.config.overrides.toml"]
+}
+
+test {
+  inputs.dir("$rootDir/config/coordinator/")
+}
+
+task integrationTestAllNeeded {
+  description = "Runs integration tests of all dependencies of coordinator:app"
+  group = "verification"
+
+  def projectDependencies = configurations.implementation.getAllDependencies().withType(ProjectDependency)
+  def dependentProjects = projectDependencies.dependencyProject
+  dependentProjects.each { dependency ->
+    if (dependency.project.tasks.findByName("integrationTest")) {
+      def integrationTestTask = "${dependency.path}:integrationTest"
+      dependsOn integrationTestTask
+    }
+  }
 }

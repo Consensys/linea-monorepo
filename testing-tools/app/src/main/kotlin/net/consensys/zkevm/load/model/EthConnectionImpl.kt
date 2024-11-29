@@ -127,7 +127,7 @@ class EthConnectionImpl(url: String?) : EthConnection {
             value.stream().sorted { s: TransactionDetail, t: TransactionDetail -> 1 * s.nonce.compareTo(t.nonce) }
               .toList()
           if (sorted.size == 0) {
-            return@Function key.initialNonce
+            return@Function key.initialNonce!!
           } else {
             sendAllTransactions(sorted[0], sorted.subList(1, sorted.size))
           }

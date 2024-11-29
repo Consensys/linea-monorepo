@@ -12,12 +12,11 @@ const AMOUNT_REGEX = "^[0-9]*[.,]?[0-9]*$";
 const MAX_AMOUNT_CHAR = 20;
 
 export function Amount() {
-  const { token, fromChain, tokenAddress, networkType } = useChainStore((state) => ({
-    token: state.token,
-    fromChain: state.fromChain,
-    tokenAddress: state.token?.[state.networkLayer] || zeroAddress,
-    networkType: state.networkType,
-  }));
+  const token = useChainStore((state) => state.token);
+  const fromChain = useChainStore((state) => state.fromChain);
+  const tokenAddress = useChainStore((state) => state.token?.[state.networkLayer] || zeroAddress);
+  const networkType = useChainStore((state) => state.networkType);
+
   const { address } = useAccount();
 
   const { setValue, getValues, setError, clearErrors, trigger, watch } = useFormContext();
