@@ -205,7 +205,7 @@ npx hardhat deploy --network linea_sepolia --tags L2MessageService
 
 Base command with cli arguments:
 ```shell
-SAVE_ADDRESS=true VERIFY_CONTRACT=true LINEA_SEPOLIA_PRIVATE_KEY=<key> LINEASCAN_API_KEY=<key> INFURA_API_KEY=<key> L2MSGSERVICE_SECURITY_COUNCIL=<address> L2MSGSERVICE_L1L2_MESSAGE_SETTER=<address>  L2MSGSERVICE_RATE_LIMIT_PERIOD=<value> L2MSGSERVICE_RATE_LIMIT_AMOUNT=<value> npx hardhat deploy --network linea_sepolia --tags L2MessageService
+SAVE_ADDRESS=true VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> LINEASCAN_API_KEY=<key> INFURA_API_KEY=<key> L2MSGSERVICE_SECURITY_COUNCIL=<address> L2MSGSERVICE_L1L2_MESSAGE_SETTER=<address>  L2MSGSERVICE_RATE_LIMIT_PERIOD=<value> L2MSGSERVICE_RATE_LIMIT_AMOUNT=<value> npx hardhat deploy --network linea_sepolia --tags L2MessageService
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
