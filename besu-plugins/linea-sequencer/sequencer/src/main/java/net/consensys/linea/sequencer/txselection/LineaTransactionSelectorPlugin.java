@@ -25,8 +25,8 @@ import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 
@@ -43,22 +43,22 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
   private BesuConfiguration besuConfiguration;
 
   @Override
-  public void doRegister(final BesuContext context) {
+  public void doRegister(final ServiceManager serviceManager) {
     transactionSelectionService =
-        context
+        serviceManager
             .getService(TransactionSelectionService.class)
             .orElseThrow(
                 () ->
                     new RuntimeException(
-                        "Failed to obtain TransactionSelectionService from the BesuContext."));
+                        "Failed to obtain TransactionSelectionService from the ServiceManager."));
 
     besuConfiguration =
-        context
+        serviceManager
             .getService(BesuConfiguration.class)
             .orElseThrow(
                 () ->
                     new RuntimeException(
-                        "Failed to obtain BesuConfiguration from the BesuContext."));
+                        "Failed to obtain BesuConfiguration from the ServiceManager."));
   }
 
   @Override

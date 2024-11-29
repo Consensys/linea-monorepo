@@ -20,8 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.extradata.LineaExtraDataHandler;
 import net.consensys.linea.rpc.methods.LineaSetExtraData;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
 /** Registers RPC endpoints. This class provides RPC endpoints under the 'linea' namespace. */
@@ -34,18 +34,18 @@ public class LineaSetExtraDataEndpointPlugin extends AbstractLineaRequiredPlugin
   /**
    * Register the RPC service.
    *
-   * @param context the BesuContext to be used.
+   * @param serviceManager the ServiceManager to be used.
    */
   @Override
-  public void doRegister(final BesuContext context) {
+  public void doRegister(final ServiceManager serviceManager) {
 
     rpcEndpointService =
-        context
+        serviceManager
             .getService(RpcEndpointService.class)
             .orElseThrow(
                 () ->
                     new RuntimeException(
-                        "Failed to obtain RpcEndpointService from the BesuContext."));
+                        "Failed to obtain RpcEndpointService from the ServiceManager."));
 
     lineaSetExtraDataMethod = new LineaSetExtraData(rpcEndpointService);
 

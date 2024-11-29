@@ -31,8 +31,8 @@ import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.TransactionPoolValidatorService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
@@ -52,30 +52,30 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
 
   @Override
-  public void doRegister(final BesuContext context) {
+  public void doRegister(final ServiceManager serviceManager) {
     besuConfiguration =
-        context
+        serviceManager
             .getService(BesuConfiguration.class)
             .orElseThrow(
                 () ->
                     new RuntimeException(
-                        "Failed to obtain BesuConfiguration from the BesuContext."));
+                        "Failed to obtain BesuConfiguration from the ServiceManager."));
 
     transactionPoolValidatorService =
-        context
+        serviceManager
             .getService(TransactionPoolValidatorService.class)
             .orElseThrow(
                 () ->
                     new RuntimeException(
-                        "Failed to obtain TransactionPoolValidationService from the BesuContext."));
+                        "Failed to obtain TransactionPoolValidationService from the ServiceManager."));
 
     transactionSimulationService =
-        context
+        serviceManager
             .getService(TransactionSimulationService.class)
             .orElseThrow(
                 () ->
                     new RuntimeException(
-                        "Failed to obtain TransactionSimulatorService from the BesuContext."));
+                        "Failed to obtain TransactionSimulatorService from the ServiceManager."));
   }
 
   @Override

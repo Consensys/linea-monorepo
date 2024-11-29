@@ -352,7 +352,7 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
             + metricName
             + labelValues.stream()
                 .map(lv -> lv.getKey() + "=\"" + lv.getValue() + "\"")
-                .collect(Collectors.joining(",", "{", ",}"));
+                .collect(Collectors.joining(",", "{", "}"));
 
     final var foundMetric =
         respLines.body().filter(line -> line.startsWith(searchString)).findFirst();

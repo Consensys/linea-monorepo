@@ -36,7 +36,7 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.metrics.LineaMetricCategory;
 import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
-import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.MetricsSystem;
 import org.hyperledger.besu.plugin.services.metrics.MetricCategoryRegistry;
@@ -63,7 +63,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
 
-  private BesuContext besuContext;
+  private ServiceManager serviceManager;
 
   static {
     // force the initialization of the gnark compress native library to fail fast in case of issues
@@ -124,31 +124,31 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   }
 
   @Override
-  public synchronized void register(final BesuContext context) {
-    super.register(context);
+  public synchronized void register(final ServiceManager serviceManager) {
+    super.register(serviceManager);
 
-    besuContext = context;
+    this.serviceManager = serviceManager;
 
     if (sharedRegisterTasksDone.compareAndSet(false, true)) {
-      performSharedRegisterTasksOnce(context);
+      performSharedRegisterTasksOnce(serviceManager);
     }
   }
 
-  protected static void performSharedRegisterTasksOnce(final BesuContext context) {
+  protected static void performSharedRegisterTasksOnce(final ServiceManager serviceManager) {
     blockchainService =
-        context
+        serviceManager
             .getService(BlockchainService.class)
             .orElseThrow(
                 () ->
                     new RuntimeException(
-                        "Failed to obtain BlockchainService from the BesuContext."));
+                        "Failed to obtain BlockchainService from the ServiceManager."));
 
-    context
+    serviceManager
         .getService(MetricCategoryRegistry.class)
         .orElseThrow(
             () ->
                 new RuntimeException(
-                    "Failed to obtain MetricCategoryRegistry from the BesuContext."))
+                    "Failed to obtain MetricCategoryRegistry from the ServiceManager."))
         .addMetricCategory(LineaMetricCategory.PROFITABILITY);
   }
 
@@ -157,11 +157,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     super.start();
 
     if (sharedStartTasksDone.compareAndSet(false, true)) {
-      performSharedStartTasksOnce(besuContext);
+      performSharedStartTasksOnce(serviceManager);
     }
   }
 
-  private static void performSharedStartTasksOnce(final BesuContext context) {
+  private static void performSharedStartTasksOnce(final ServiceManager serviceManager) {
     blockchainService
         .getChainId()
         .ifPresentOrElse(
@@ -175,10 +175,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
             });
 
     metricsSystem =
-        context
+        serviceManager
             .getService(MetricsSystem.class)
             .orElseThrow(
-                () -> new RuntimeException("Failed to obtain MetricSystem from the BesuContext."));
+                () ->
+                    new RuntimeException("Failed to obtain MetricSystem from the ServiceManager."));
   }
 
   @Override
