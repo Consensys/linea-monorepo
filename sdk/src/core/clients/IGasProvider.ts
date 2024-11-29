@@ -1,4 +1,4 @@
-import { Direction } from "../enums/MessageEnums";
+import { Direction } from "../enums";
 
 export type GasFees = {
   maxFeePerGas: bigint;

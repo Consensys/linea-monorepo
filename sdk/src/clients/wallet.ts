@@ -1,5 +1,5 @@
 import { ethers, Signer } from "ethers";
-import { BaseError } from "../core/errors/Base";
+import { BaseError } from "../core/errors";
 
 export class Wallet<T extends ethers.Provider> extends ethers.Wallet {
   constructor(privateKey: string, provider?: T) {

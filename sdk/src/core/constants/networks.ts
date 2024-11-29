@@ -1,4 +1,4 @@
-import { NetworkInfo } from "../types/config";
+import { NetworkInfo } from "../types";
 
 export const NETWORKS: NetworkInfo = {
   ["linea-mainnet"]: {

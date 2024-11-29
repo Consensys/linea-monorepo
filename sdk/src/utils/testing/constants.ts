@@ -1,19 +1,7 @@
-import { Message, MessageProps } from "../../core/entities/Message";
-import { Direction, MessageStatus } from "../../core/enums/MessageEnums";
-import { L2MessagingBlockAnchored, MessageClaimed, MessageSent, ServiceVersionMigrated } from "../../core/types/events";
-import {
-  L2MerkleRootAddedEvent,
-  L2MessagingBlockAnchoredEvent,
-  MessageSentEvent,
-} from "../../clients/typechain/LineaRollup";
-import {
-  L2_MERKLE_TREE_ADDED_EVENT_SIGNATURE,
-  L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE,
-  MESSAGE_SENT_EVENT_SIGNATURE,
-  ZERO_ADDRESS,
-  ZERO_HASH,
-} from "../../core/constants";
+import { L2MessagingBlockAnchoredEvent, MessageSentEvent } from "../../clients/typechain/LineaRollup";
 import { MessageClaimedEvent, ServiceVersionMigratedEvent } from "../../clients/typechain/L2MessageService";
+import { L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE, MESSAGE_SENT_EVENT_SIGNATURE } from "../../core/constants";
+import { L2MessagingBlockAnchored, MessageClaimed, MessageSent, ServiceVersionMigrated } from "../../core/types";
 
 export const TEST_L1_SIGNER_PRIVATE_KEY = "0x0000000000000000000000000000000000000000000000000000000000000001";
 export const TEST_L2_SIGNER_PRIVATE_KEY = "0x0000000000000000000000000000000000000000000000000000000000000002";
@@ -35,131 +23,6 @@ export const TEST_MERKLE_ROOT_2 = "0x7777777777777777777777777777777777777777777
 
 export const TEST_RPC_URL = "http://localhost:8545";
 
-export const testMessage = new Message({
-  messageSender: TEST_ADDRESS_1,
-  destination: TEST_CONTRACT_ADDRESS_1,
-  fee: 100000000000n,
-  value: 0n,
-  messageNonce: 10n,
-  calldata: "0x",
-  messageHash: TEST_MESSAGE_HASH,
-  contractAddress: TEST_CONTRACT_ADDRESS_1,
-  sentBlockNumber: 10,
-  direction: Direction.L1_TO_L2,
-  status: MessageStatus.SENT,
-  claimNumberOfRetry: 0,
-  compressedTransactionSize: 100,
-});
-
-export const testAnchoredMessage = new Message({
-  messageSender: TEST_ADDRESS_1,
-  destination: TEST_CONTRACT_ADDRESS_1,
-  fee: 1000000000000000n,
-  value: 0n,
-  messageNonce: 10n,
-  calldata: "0x",
-  messageHash: TEST_MESSAGE_HASH,
-  contractAddress: TEST_CONTRACT_ADDRESS_1,
-  sentBlockNumber: 10,
-  direction: Direction.L1_TO_L2,
-  status: MessageStatus.ANCHORED,
-  claimNumberOfRetry: 0,
-});
-
-export const testZeroFeeAnchoredMessage = new Message({
-  messageSender: TEST_ADDRESS_1,
-  destination: TEST_CONTRACT_ADDRESS_1,
-  fee: 0n,
-  value: 0n,
-  messageNonce: 10n,
-  calldata: "0x",
-  messageHash: TEST_MESSAGE_HASH,
-  contractAddress: TEST_CONTRACT_ADDRESS_1,
-  sentBlockNumber: 10,
-  direction: Direction.L1_TO_L2,
-  status: MessageStatus.ANCHORED,
-  claimNumberOfRetry: 0,
-});
-
-export const testUnderpricedAnchoredMessage = new Message({
-  messageSender: TEST_ADDRESS_1,
-  destination: TEST_CONTRACT_ADDRESS_1,
-  fee: 1000000n,
-  value: 0n,
-  messageNonce: 10n,
-  calldata: "0x",
-  messageHash: TEST_MESSAGE_HASH,
-  contractAddress: TEST_CONTRACT_ADDRESS_1,
-  sentBlockNumber: 10,
-  direction: Direction.L1_TO_L2,
-  status: MessageStatus.ANCHORED,
-  claimNumberOfRetry: 0,
-});
-
-export const testPendingMessage = new Message({
-  messageSender: TEST_ADDRESS_1,
-  destination: TEST_CONTRACT_ADDRESS_1,
-  fee: 100000000000n,
-  value: 0n,
-  messageNonce: 10n,
-  calldata: "0x",
-  messageHash: TEST_MESSAGE_HASH,
-  contractAddress: TEST_CONTRACT_ADDRESS_1,
-  sentBlockNumber: 10,
-  direction: Direction.L1_TO_L2,
-  status: MessageStatus.PENDING,
-  claimNumberOfRetry: 0,
-  claimTxHash: TEST_TRANSACTION_HASH,
-  updatedAt: new Date(2024, 1, 1),
-});
-
-export const testPendingMessage2 = new Message({
-  messageSender: TEST_ADDRESS_1,
-  destination: TEST_CONTRACT_ADDRESS_1,
-  fee: 100000000000n,
-  value: 0n,
-  messageNonce: 10n,
-  calldata: "0x",
-  messageHash: TEST_MESSAGE_HASH_2,
-  contractAddress: TEST_CONTRACT_ADDRESS_1,
-  sentBlockNumber: 10,
-  direction: Direction.L1_TO_L2,
-  status: MessageStatus.PENDING,
-  claimNumberOfRetry: 0,
-  claimTxHash: TEST_TRANSACTION_HASH,
-  updatedAt: new Date(2024, 1, 1),
-});
-
-export const testClaimedMessage = new Message({
-  messageSender: TEST_ADDRESS_1,
-  destination: TEST_CONTRACT_ADDRESS_1,
-  fee: 100000000000n,
-  value: 0n,
-  messageNonce: 10n,
-  calldata: "0x",
-  messageHash: TEST_MESSAGE_HASH,
-  contractAddress: TEST_CONTRACT_ADDRESS_1,
-  sentBlockNumber: 10,
-  direction: Direction.L1_TO_L2,
-  status: MessageStatus.CLAIMED_SUCCESS,
-  claimNumberOfRetry: 0,
-});
-
-export const rejectedMessageProps: MessageProps = {
-  messageHash: ZERO_HASH,
-  messageSender: ZERO_ADDRESS,
-  destination: ZERO_ADDRESS,
-  fee: 0n,
-  value: 0n,
-  messageNonce: 0n,
-  calldata: "0x",
-  contractAddress: ZERO_ADDRESS,
-  sentBlockNumber: 0,
-  direction: Direction.L1_TO_L2,
-  status: MessageStatus.SENT,
-  claimNumberOfRetry: 0,
-};
-
 export const testMessageSentEvent: MessageSent = {
   blockNumber: 51,
   logIndex: 1,
@@ -171,20 +34,6 @@ export const testMessageSentEvent: MessageSent = {
   value: 0n,
   messageNonce: 1n,
   calldata: "0x",
-  messageHash: TEST_MESSAGE_HASH,
-};
-
-export const testMessageSentEventWithCallData: MessageSent = {
-  blockNumber: 51,
-  logIndex: 0,
-  contractAddress: TEST_CONTRACT_ADDRESS_1,
-  transactionHash: TEST_TRANSACTION_HASH,
-  messageSender: TEST_ADDRESS_1,
-  destination: TEST_ADDRESS_2,
-  fee: 0n,
-  value: 0n,
-  messageNonce: 1n,
-  calldata: "0x1111111111",
   messageHash: TEST_MESSAGE_HASH,
 };
 
@@ -323,34 +172,5 @@ export const testL2MessagingBlockAnchoredEventLog: L2MessagingBlockAnchoredEvent
   // @ts-ignore
   args: {
     l2Block: 51n,
-  },
-};
-
-export const testL2MerkleRootAddedEventLog: L2MerkleRootAddedEvent.Log = {
-  blockNumber: 51,
-  blockHash: TEST_BLOCK_HASH,
-  transactionIndex: 0,
-  removed: false,
-  address: TEST_CONTRACT_ADDRESS_1,
-  data: "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000",
-  topics: [
-    L2_MERKLE_TREE_ADDED_EVENT_SIGNATURE,
-    TEST_MERKLE_ROOT,
-    "0x0000000000000000000000000000000000000000000000000000000000000005",
-  ],
-  transactionHash: TEST_TRANSACTION_HASH,
-  index: 0,
-  removeListener: jest.fn(),
-  getBlock: jest.fn(),
-  getTransaction: jest.fn(),
-  getTransactionReceipt: jest.fn(),
-  event: "L2MerkleRootAddedEvent",
-  eventSignature: "L2MerkleRootAddedEvent(bytes32,uint256)",
-  decode: jest.fn(),
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  args: {
-    l2MerkleRoot: TEST_MERKLE_ROOT,
-    treeDepth: 5n,
   },
 };

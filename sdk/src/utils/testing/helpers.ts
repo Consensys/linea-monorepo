@@ -26,18 +26,19 @@ import {
   L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE,
   MESSAGE_SENT_EVENT_SIGNATURE,
 } from "../../core/constants";
-import { Direction, MessageStatus } from "../../core/enums/MessageEnums";
-import { Message, MessageProps } from "../../core/entities/Message";
-import { SDKMode } from "../../core/types/config";
-import { LineaRollupClient } from "../../clients/ethereum/LineaRollupClient";
-import { EthersLineaRollupLogClient } from "../../clients/ethereum/EthersLineaRollupLogClient";
-import { EthersL2MessageServiceLogClient } from "../../clients/linea/EthersL2MessageServiceLogClient";
-import { L2MessageServiceClient } from "../../clients/linea/L2MessageServiceClient";
-import { DefaultGasProvider } from "../../clients/gas/DefaultGasProvider";
-import { LineaRollupMessageRetriever } from "../../clients/ethereum/LineaRollupMessageRetriever";
-import { MerkleTreeService } from "../../clients/ethereum/MerkleTreeService";
-import { L2MessageServiceMessageRetriever } from "../../clients/linea/L2MessageServiceMessageRetriever";
-import { LineaGasProvider } from "../../clients/gas/LineaGasProvider";
+import { Message, SDKMode } from "../../core/types";
+import {
+  LineaRollupClient,
+  EthersLineaRollupLogClient,
+  LineaRollupMessageRetriever,
+  MerkleTreeService,
+} from "../../clients/ethereum";
+import {
+  L2MessageServiceClient,
+  EthersL2MessageServiceLogClient,
+  L2MessageServiceMessageRetriever,
+} from "../../clients/linea";
+import { DefaultGasProvider, LineaGasProvider } from "../../clients/gas";
 import { LineaProvider, Provider } from "../../clients/providers";
 
 export const getTestProvider = () => {
@@ -159,9 +160,8 @@ export const generateTransactionResponse = (overrides?: Partial<TransactionRespo
   );
 };
 
-export const generateMessage = (overrides?: Partial<MessageProps>): Message => {
-  return new Message({
-    id: 1,
+export const generateMessage = (overrides?: Partial<Message>): Message => {
+  return {
     messageSender: TEST_ADDRESS_1,
     destination: TEST_CONTRACT_ADDRESS_1,
     fee: 10n,
@@ -169,15 +169,8 @@ export const generateMessage = (overrides?: Partial<MessageProps>): Message => {
     messageNonce: 1n,
     calldata: "0x",
     messageHash: TEST_MESSAGE_HASH,
-    contractAddress: TEST_CONTRACT_ADDRESS_2,
-    sentBlockNumber: 100_000,
-    direction: Direction.L1_TO_L2,
-    status: MessageStatus.SENT,
-    claimNumberOfRetry: 0,
-    createdAt: new Date("2023-08-04"),
-    updatedAt: new Date("2023-08-04"),
     ...overrides,
-  });
+  };
 };
 
 export function generateLineaRollupClient(
@@ -246,24 +239,33 @@ export function generateL2MessageServiceClient(
     maxFeePerGas?: bigint;
     gasEstimationPercentile?: number;
     enforceMaxGasFee?: boolean;
+    enableLineaEstimateGas?: boolean;
   },
 ): {
   l2MessageServiceClient: L2MessageServiceClient;
   l2MessageServiceLogClient: EthersL2MessageServiceLogClient;
-  gasProvider: LineaGasProvider;
+  gasProvider: LineaGasProvider | DefaultGasProvider;
   messageRetriever: L2MessageServiceMessageRetriever;
 } {
   const l2MessageServiceLogClient = new EthersL2MessageServiceLogClient(l2Provider, l2ContractAddress);
 
-  const gasProvider = new LineaGasProvider(l2Provider, {
-    maxFeePerGas: gasFeesOptions?.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS,
-    enforceMaxGasFee: gasFeesOptions?.enforceMaxGasFee ?? DEFAULT_ENFORCE_MAX_GAS_FEE,
-  });
   const messageRetriever = new L2MessageServiceMessageRetriever(
     l2Provider,
     l2MessageServiceLogClient,
     l2ContractAddress,
   );
+
+  const gasProvider = gasFeesOptions?.enableLineaEstimateGas
+    ? new LineaGasProvider(l2Provider, {
+        maxFeePerGas: gasFeesOptions?.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS,
+        enforceMaxGasFee: gasFeesOptions?.enforceMaxGasFee ?? DEFAULT_ENFORCE_MAX_GAS_FEE,
+      })
+    : new DefaultGasProvider(l2Provider, {
+        maxFeePerGas: gasFeesOptions?.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS,
+        gasEstimationPercentile: gasFeesOptions?.gasEstimationPercentile ?? DEFAULT_GAS_ESTIMATION_PERCENTILE,
+        enforceMaxGasFee: gasFeesOptions?.enforceMaxGasFee ?? DEFAULT_ENFORCE_MAX_GAS_FEE,
+      });
+
   const l2MessageServiceClient = new L2MessageServiceClient(
     l2Provider,
     l2ContractAddress,

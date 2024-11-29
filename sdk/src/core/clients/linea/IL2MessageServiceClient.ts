@@ -1,6 +1,5 @@
-import { MessageSent } from "../../../core/types/events";
-import { MessageProps } from "../../entities/Message";
-import { IMessageServiceContract } from "../../services/contracts/IMessageServiceContract";
+import { Message } from "../../types";
+import { IMessageServiceContract } from "../IMessageServiceContract";
 import { LineaGasFees } from "../IGasProvider";
 
 export interface IL2MessageServiceClient<
@@ -10,11 +9,8 @@ export interface IL2MessageServiceClient<
   ContractTransactionResponse,
   Signer,
 > extends IMessageServiceContract<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse> {
-  encodeClaimMessageTransactionData(message: MessageProps & { feeRecipient?: string }): string;
-  estimateClaimGasFees(
-    message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    overrides?: Overrides,
-  ): Promise<LineaGasFees>;
+  encodeClaimMessageTransactionData(message: Message & { feeRecipient?: string }): string;
+  estimateClaimGasFees(message: Message & { feeRecipient?: string }, overrides?: Overrides): Promise<LineaGasFees>;
   getSigner(): Signer | undefined;
   getContractAddress(): string;
 }

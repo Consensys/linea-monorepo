@@ -1,7 +1,7 @@
 export { LineaSDK } from "./LineaSDK";
 export { LineaSDKOptions, Network, NetworkInfo, FeeEstimatorOptions } from "./core/types/config";
-export { Message } from "./core/entities/Message";
-export { OnChainMessageStatus } from "./core/enums/MessageEnums";
+export { Message } from "./core/types/message";
+export { OnChainMessageStatus } from "./core/enums/message";
 export * from "./core/constants";
 export { LineaRollupClient, EthersLineaRollupLogClient } from "./clients/ethereum";
 export { L2MessageServiceClient, EthersL2MessageServiceLogClient } from "./clients/linea";

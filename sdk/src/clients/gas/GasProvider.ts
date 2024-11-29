@@ -3,8 +3,8 @@ import { DefaultGasProvider } from "./DefaultGasProvider";
 import { LineaGasProvider } from "./LineaGasProvider";
 import { IProvider } from "../../core/clients/IProvider";
 import { GasFees, GasProviderConfig, IGasProvider, LineaGasFees } from "../../core/clients/IGasProvider";
-import { Direction } from "../../core/enums/MessageEnums";
-import { BaseError } from "../../core/errors/Base";
+import { Direction } from "../../core/enums";
+import { BaseError } from "../../core/errors";
 import { BrowserProvider, LineaBrowserProvider, LineaProvider, Provider } from "../providers";
 
 export class GasProvider implements IGasProvider<TransactionRequest> {

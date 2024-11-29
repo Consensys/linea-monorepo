@@ -2,17 +2,17 @@ import { describe, afterEach, jest, it, expect, beforeEach } from "@jest/globals
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
 import { DefaultGasProvider } from "../DefaultGasProvider";
 import { FeeEstimationError } from "../../../core/errors/GasFeeErrors";
-import { ChainQuerier } from "../../providers/provider";
+import { Provider } from "../../providers/provider";
 import { DEFAULT_GAS_ESTIMATION_PERCENTILE } from "../../../core/constants";
 
 const MAX_FEE_PER_GAS = 100_000_000n;
 
 describe("DefaultGasProvider", () => {
-  let chainQuerierMock: MockProxy<ChainQuerier>;
+  let providerMock: MockProxy<Provider>;
   let eip1559GasProvider: DefaultGasProvider;
   beforeEach(() => {
-    chainQuerierMock = mock<ChainQuerier>();
-    eip1559GasProvider = new DefaultGasProvider(chainQuerierMock, {
+    providerMock = mock<Provider>();
+    eip1559GasProvider = new DefaultGasProvider(providerMock, {
       maxFeePerGas: MAX_FEE_PER_GAS,
       gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
       enforceMaxGasFee: false,
@@ -20,12 +20,12 @@ describe("DefaultGasProvider", () => {
   });
 
   afterEach(() => {
-    mockClear(chainQuerierMock);
+    mockClear(providerMock);
   });
 
   describe("getGasFees", () => {
     it("should return fee from cache if currentBlockNumber == cacheIsValidForBlockNumber", async () => {
-      jest.spyOn(chainQuerierMock, "getCurrentBlockNumber").mockResolvedValueOnce(0);
+      jest.spyOn(providerMock, "getBlockNumber").mockResolvedValueOnce(0);
       const fees = await eip1559GasProvider.getGasFees();
 
       expect(fees).toStrictEqual({
@@ -35,8 +35,8 @@ describe("DefaultGasProvider", () => {
     });
 
     it("should throw an error 'FeeEstimationError' if maxPriorityFee is greater than maxFeePerGas", async () => {
-      jest.spyOn(chainQuerierMock, "getCurrentBlockNumber").mockResolvedValueOnce(1);
-      const sendSpy = jest.spyOn(chainQuerierMock, "sendRequest").mockResolvedValueOnce({
+      jest.spyOn(providerMock, "getBlockNumber").mockResolvedValueOnce(1);
+      const sendSpy = jest.spyOn(providerMock, "send").mockResolvedValueOnce({
         baseFeePerGas: ["0x3da8e7618", "0x3e1ba3b1b", "0x3dfd72b90", "0x3d64eee76", "0x3d4da2da0", "0x3ccbcac6b"],
         gasUsedRatio: [0.5290747666666666, 0.49240453333333334, 0.4615576, 0.49407083333333335, 0.4669053],
         oldestBlock: "0xfab8ac",
@@ -53,8 +53,8 @@ describe("DefaultGasProvider", () => {
     });
 
     it("should return maxFeePerGas and maxPriorityFeePerGas", async () => {
-      jest.spyOn(chainQuerierMock, "getCurrentBlockNumber").mockResolvedValueOnce(1);
-      const sendSpy = jest.spyOn(chainQuerierMock, "sendRequest").mockResolvedValueOnce({
+      jest.spyOn(providerMock, "getBlockNumber").mockResolvedValueOnce(1);
+      const sendSpy = jest.spyOn(providerMock, "send").mockResolvedValueOnce({
         baseFeePerGas: ["0x3da8e7618", "0x3e1ba3b1b", "0x3dfd72b90", "0x3d64eee76", "0x3d4da2da0", "0x3ccbcac6b"],
         gasUsedRatio: [0.5290747666666666, 0.49240453333333334, 0.4615576, 0.49407083333333335, 0.4669053],
         oldestBlock: "0xfab8ac",
@@ -78,9 +78,9 @@ describe("DefaultGasProvider", () => {
     });
 
     it("should return maxFeePerGas from config when maxFeePerGas and maxPriorityFeePerGas === 0", async () => {
-      jest.spyOn(chainQuerierMock, "getCurrentBlockNumber").mockResolvedValueOnce(1);
+      jest.spyOn(providerMock, "getBlockNumber").mockResolvedValueOnce(1);
 
-      const sendSpy = jest.spyOn(chainQuerierMock, "sendRequest").mockResolvedValueOnce({
+      const sendSpy = jest.spyOn(providerMock, "send").mockResolvedValueOnce({
         baseFeePerGas: ["0x0", "0x0", "0x0", "0x0", "0x0", "0x0"],
         gasUsedRatio: [0, 0, 0, 0, 0],
         oldestBlock: "0xfab8ac",

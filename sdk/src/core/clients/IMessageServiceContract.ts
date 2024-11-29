@@ -1,6 +1,5 @@
-import { OnChainMessageStatus } from "../../../core/enums/MessageEnums";
-import { MessageProps } from "../../entities/Message";
-import { MessageSent } from "../../types/events";
+import { OnChainMessageStatus } from "../enums";
+import { Message, MessageSent } from "../types";
 
 export interface IMessageServiceContract<
   Overrides,
@@ -12,10 +11,7 @@ export interface IMessageServiceContract<
   getMessageByMessageHash(messageHash: string): Promise<MessageSent | null>;
   getMessagesByTransactionHash(transactionHash: string): Promise<MessageSent[] | null>;
   getTransactionReceiptByMessageHash(messageHash: string): Promise<TransactionReceipt | null>;
-  claim(
-    message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    overrides?: Overrides,
-  ): Promise<ContractTransactionResponse>;
+  claim(message: Message & { feeRecipient?: string }, overrides?: Overrides): Promise<ContractTransactionResponse>;
   retryTransactionWithHigherFee(transactionHash: string, priceBumpPercent?: number): Promise<TransactionResponse>;
   isRateLimitExceeded(messageFee: bigint, messageValue: bigint): Promise<boolean>;
   isRateLimitExceededError(transactionHash: string): Promise<boolean>;

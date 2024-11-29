@@ -19,6 +19,7 @@ interface BaseOptions {
   readonly l2RpcUrlOrProvider: string | Eip1193Provider;
   readonly mode: SDKMode;
   readonly l2MessageTreeDepth?: number;
+  readonly feeEstimatorOptions?: FeeEstimatorOptions;
 }
 
 /**
@@ -35,7 +36,6 @@ export interface WriteModeOptions extends BaseOptions {
   readonly mode: "read-write";
   readonly l1SignerPrivateKeyOrWallet: string | Wallet;
   readonly l2SignerPrivateKeyOrWallet: string | Wallet;
-  readonly feeEstimatorOptions?: FeeEstimatorOptions;
 }
 
 /**
@@ -44,6 +44,8 @@ export interface WriteModeOptions extends BaseOptions {
 export type FeeEstimatorOptions = {
   maxFeePerGas?: bigint;
   gasFeeEstimationPercentile?: number;
+  enforceMaxGasFee?: boolean;
+  enableLineaEstimateGas?: boolean;
 };
 
 /**

@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { BaseError } from "../../core/errors/Base";
+import { BaseError } from "../../core/errors";
 import { GasFees } from "../../core/clients/IGasProvider";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -3,12 +3,12 @@ import {
   ILineaRollupLogClient,
   L2MessagingBlockAnchoredFilters,
   MessageClaimedFilters,
-} from "../../core/clients/ethereum/ILineaRollupLogClient";
-import { L2MessagingBlockAnchored, MessageClaimed, MessageSent } from "../../core/types/events";
+} from "../../core/clients/ethereum";
+import { L2MessagingBlockAnchored, MessageClaimed, MessageSent } from "../../core/types";
 import { LineaRollup, LineaRollup__factory } from "../typechain";
 import { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
 import { L2MessagingBlockAnchoredEvent, MessageClaimedEvent, MessageSentEvent } from "../typechain/LineaRollup";
-import { isUndefined } from "../../core/utils/shared";
+import { isUndefined } from "../../core/utils";
 import { BrowserProvider, Provider } from "../providers";
 
 export class EthersLineaRollupLogClient implements ILineaRollupLogClient {

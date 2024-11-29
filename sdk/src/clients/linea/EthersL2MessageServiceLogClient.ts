@@ -1,12 +1,9 @@
 import { MessageSent, ServiceVersionMigrated } from "../../core/types/events";
 import { L2MessageService, L2MessageService__factory } from "../typechain";
-import {
-  IL2MessageServiceLogClient,
-  MessageSentEventFilters,
-} from "../../core/clients/linea/IL2MessageServiceLogClient";
+import { IL2MessageServiceLogClient, MessageSentEventFilters } from "../../core/clients/linea";
 import { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
 import { MessageSentEvent, ServiceVersionMigratedEvent } from "../typechain/L2MessageService";
-import { isUndefined } from "../../core/utils/shared";
+import { isUndefined } from "../../core/utils";
 import { LineaBrowserProvider, LineaProvider } from "../providers";
 
 export class EthersL2MessageServiceLogClient implements IL2MessageServiceLogClient {

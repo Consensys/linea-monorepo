@@ -1,7 +1,7 @@
 import { describe, it, expect } from "@jest/globals";
 import { ethers, JsonRpcProvider } from "ethers";
 import { TEST_L1_SIGNER_PRIVATE_KEY, TEST_RPC_URL } from "../../utils/testing/constants";
-import Wallet from "../wallet";
+import { Wallet } from "../wallet";
 
 describe("Wallet", () => {
   describe("getWallet", () => {

@@ -1,24 +1,29 @@
-import { EthersLineaRollupLogClient } from "./clients/ethereum/EthersLineaRollupLogClient";
-import { LineaRollupClient } from "./clients/ethereum/LineaRollupClient";
-import { EthersL2MessageServiceLogClient } from "./clients/linea/EthersL2MessageServiceLogClient";
-import { L2MessageServiceClient } from "./clients/linea/L2MessageServiceClient";
 import {
+  LineaRollupClient,
+  EthersLineaRollupLogClient,
+  L1ClaimingService,
+  LineaRollupMessageRetriever,
+  MerkleTreeService,
+} from "./clients/ethereum";
+import {
+  L2MessageServiceClient,
+  EthersL2MessageServiceLogClient,
+  L2MessageServiceMessageRetriever,
+} from "./clients/linea";
+import { DefaultGasProvider, LineaGasProvider } from "./clients/gas";
+import { Provider, LineaProvider, BrowserProvider, LineaBrowserProvider } from "./clients/providers";
+import { Wallet } from "./clients/wallet";
+import {
+  DEFAULT_ENABLE_LINEA_ESTIMATE_GAS,
+  DEFAULT_ENFORCE_MAX_GAS_FEE,
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_L2_MESSAGE_TREE_DEPTH,
   DEFAULT_MAX_FEE_PER_GAS,
 } from "./core/constants";
-import { BaseError } from "./core/errors/Base";
-import { L1ClaimingService } from "./clients/ethereum/L1ClaimingService";
-import { LineaSDKOptions, Network, SDKMode } from "./core/types/config";
-import { NETWORKS } from "./core/constants/networks";
-import { DefaultGasProvider } from "./clients/gas/DefaultGasProvider";
-import { LineaGasProvider } from "./clients/gas/LineaGasProvider";
-import { LineaRollupMessageRetriever } from "./clients/ethereum/LineaRollupMessageRetriever";
-import { MerkleTreeService } from "./clients/ethereum/MerkleTreeService";
-import { L2MessageServiceMessageRetriever } from "./clients/linea/L2MessageServiceMessageRetriever";
-import { Provider, LineaProvider, BrowserProvider, LineaBrowserProvider } from "./clients/providers";
-import { isString } from "./core/utils/shared";
-import { Wallet } from "./clients/wallet";
+import { BaseError } from "./core/errors";
+import { LineaSDKOptions, Network, SDKMode } from "./core/types";
+import { NETWORKS } from "./core/constants";
+import { isString } from "./core/utils";
 
 export class LineaSDK {
   private network: Network;
@@ -28,6 +33,8 @@ export class LineaSDK {
   private l2Provider: LineaProvider | LineaBrowserProvider;
   private maxFeePerGas: bigint;
   private gasFeeEstimationPercentile: number;
+  private enabledLineaEstimateGas: boolean;
+  private enforceMaxGasFee: boolean;
   private mode: SDKMode;
   private l2MessageTreeDepth: number;
 
@@ -37,32 +44,49 @@ export class LineaSDK {
    * @param {LineaSDKOptions} options - Configuration options for the SDK, including network details, operational mode, and optional settings for L2 message tree depth and fee estimation.
    */
   constructor(options: LineaSDKOptions) {
-    this.network = options.network;
-    this.mode = options.mode;
-    this.l2MessageTreeDepth = options.l2MessageTreeDepth ?? DEFAULT_L2_MESSAGE_TREE_DEPTH;
+    const {
+      network,
+      mode,
+      l2MessageTreeDepth = DEFAULT_L2_MESSAGE_TREE_DEPTH,
+      l1RpcUrlOrProvider,
+      l2RpcUrlOrProvider,
+      feeEstimatorOptions = {},
+    } = options;
 
-    if (options.mode === "read-write") {
-      this.l1SignerPrivateKeyOrWallet = options.l1SignerPrivateKeyOrWallet;
-      this.l2SignerPrivateKeyOrWallet = options.l2SignerPrivateKeyOrWallet;
-      this.maxFeePerGas = options.feeEstimatorOptions?.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS;
-      this.gasFeeEstimationPercentile =
-        options.feeEstimatorOptions?.gasFeeEstimationPercentile ?? DEFAULT_GAS_ESTIMATION_PERCENTILE;
-    } else {
-      this.maxFeePerGas = DEFAULT_MAX_FEE_PER_GAS;
-      this.gasFeeEstimationPercentile = DEFAULT_GAS_ESTIMATION_PERCENTILE;
+    this.network = network;
+    this.mode = mode;
+    this.l2MessageTreeDepth = l2MessageTreeDepth;
+
+    if (mode === "read-write") {
+      const { l1SignerPrivateKeyOrWallet, l2SignerPrivateKeyOrWallet } = options;
+
+      if (!l1SignerPrivateKeyOrWallet || !l2SignerPrivateKeyOrWallet) {
+        throw new BaseError("You need to provide both L1 and L2 signer private keys or wallets.");
+      }
+
+      this.l1SignerPrivateKeyOrWallet = l1SignerPrivateKeyOrWallet;
+      this.l2SignerPrivateKeyOrWallet = l2SignerPrivateKeyOrWallet;
     }
 
-    if (isString(options.l1RpcUrlOrProvider)) {
-      this.l1Provider = new Provider(options.l1RpcUrlOrProvider);
-    } else {
-      this.l1Provider = new BrowserProvider(options.l1RpcUrlOrProvider);
-    }
+    const {
+      maxFeePerGas = DEFAULT_MAX_FEE_PER_GAS,
+      gasFeeEstimationPercentile = DEFAULT_GAS_ESTIMATION_PERCENTILE,
+      enableLineaEstimateGas = DEFAULT_ENABLE_LINEA_ESTIMATE_GAS,
+      enforceMaxGasFee = DEFAULT_ENFORCE_MAX_GAS_FEE,
+    } = feeEstimatorOptions;
 
-    if (isString(options.l2RpcUrlOrProvider)) {
-      this.l2Provider = new LineaProvider(options.l2RpcUrlOrProvider);
-    } else {
-      this.l2Provider = new LineaBrowserProvider(options.l2RpcUrlOrProvider);
-    }
+    this.maxFeePerGas = maxFeePerGas;
+    this.gasFeeEstimationPercentile = gasFeeEstimationPercentile;
+    this.enabledLineaEstimateGas = enableLineaEstimateGas;
+    this.enforceMaxGasFee = enforceMaxGasFee;
+
+    this.l1Provider = isString(l1RpcUrlOrProvider)
+      ? new Provider(l1RpcUrlOrProvider)
+      : new BrowserProvider(l1RpcUrlOrProvider);
+
+    this.l2Provider = isString(l2RpcUrlOrProvider)
+      ? new LineaProvider(l2RpcUrlOrProvider)
+      : new LineaBrowserProvider(l2RpcUrlOrProvider);
   }
 
   /**
@@ -72,17 +96,7 @@ export class LineaSDK {
    * @returns {EthersL2MessageServiceLogClient} An instance of the L2 message service log client.
    */
   public getL2ContractEventLogClient(localL2ContractAddress?: string): EthersL2MessageServiceLogClient {
-    let l2ContractAddress: string;
-
-    if (this.network === "custom") {
-      if (!localL2ContractAddress) {
-        throw new BaseError("You need to provide a L2 contract address.");
-      }
-      l2ContractAddress = localL2ContractAddress;
-    } else {
-      l2ContractAddress = NETWORKS[this.network].l2ContractAddress;
-    }
-
+    const l2ContractAddress = this.getContractAddress("l2", localL2ContractAddress);
     return new EthersL2MessageServiceLogClient(this.l2Provider, l2ContractAddress);
   }
 
@@ -94,19 +108,8 @@ export class LineaSDK {
    * @returns {LineaRollupClient} An instance of the `LineaRollupClient` configured for the specified L1 contract.
    */
   public getL1Contract(localL1ContractAddress?: string, localL2ContractAddress?: string): LineaRollupClient {
-    let l1ContractAddress: string;
-    let l2ContractAddress: string;
-
-    if (this.network === "custom") {
-      if (!localL1ContractAddress || !localL2ContractAddress) {
-        throw new BaseError("You need to provide both L1 and L2 contract addresses.");
-      }
-      l1ContractAddress = localL1ContractAddress;
-      l2ContractAddress = localL2ContractAddress;
-    } else {
-      l1ContractAddress = NETWORKS[this.network].l1ContractAddress;
-      l2ContractAddress = NETWORKS[this.network].l2ContractAddress;
-    }
+    const l1ContractAddress = this.getContractAddress("l1", localL1ContractAddress);
+    const l2ContractAddress = this.getContractAddress("l2", localL2ContractAddress);
 
     const signer =
       this.mode === "read-write"
@@ -124,7 +127,7 @@ export class LineaSDK {
       new DefaultGasProvider(this.l1Provider, {
         maxFeePerGas: this.maxFeePerGas,
         gasEstimationPercentile: this.gasFeeEstimationPercentile,
-        enforceMaxGasFee: false,
+        enforceMaxGasFee: this.enforceMaxGasFee,
       }),
       new LineaRollupMessageRetriever(this.l1Provider, lineaRollupLogClient, l1ContractAddress),
       new MerkleTreeService(
@@ -146,21 +149,23 @@ export class LineaSDK {
    * @returns {L2MessageServiceClient} An instance of the `L2MessageServiceClient` configured for the specified L2 contract.
    */
   public getL2Contract(localContractAddress?: string): L2MessageServiceClient {
-    let l2ContractAddress: string;
-
-    if (this.network === "custom") {
-      if (!localContractAddress) {
-        throw new BaseError("You need to provide a L2 contract address.");
-      }
-      l2ContractAddress = localContractAddress;
-    } else {
-      l2ContractAddress = NETWORKS[this.network].l2ContractAddress;
-    }
+    const l2ContractAddress = this.getContractAddress("l2", localContractAddress);
 
     const signer =
       this.mode === "read-write"
         ? Wallet.getWallet(this.l2SignerPrivateKeyOrWallet).connect(this.l2Provider)
         : undefined;
+
+    const gasProvider = this.enabledLineaEstimateGas
+      ? new LineaGasProvider(this.l2Provider, {
+          maxFeePerGas: this.maxFeePerGas,
+          enforceMaxGasFee: this.enforceMaxGasFee,
+        })
+      : new DefaultGasProvider(this.l2Provider, {
+          maxFeePerGas: this.maxFeePerGas,
+          gasEstimationPercentile: this.gasFeeEstimationPercentile,
+          enforceMaxGasFee: this.enforceMaxGasFee,
+        });
 
     const l2MessageServiceContract = new L2MessageServiceClient(
       this.l2Provider,
@@ -170,10 +175,7 @@ export class LineaSDK {
         this.getL2ContractEventLogClient(l2ContractAddress),
         l2ContractAddress,
       ),
-      new LineaGasProvider(this.l2Provider, {
-        maxFeePerGas: this.maxFeePerGas,
-        enforceMaxGasFee: false,
-      }),
+      gasProvider,
       this.mode,
       signer,
     );
@@ -195,5 +197,26 @@ export class LineaSDK {
       this.getL2ContractEventLogClient(localL2ContractAddress),
       this.network,
     );
+  }
+
+  /**
+   * Retrieves the contract address for the specified contract type.
+   * @param contractType The type of contract to retrieve the address for.
+   * @param localContractAddress Optional custom contract address.
+   * @returns The contract address for the specified contract type.
+   */
+  private getContractAddress(contractType: "l1" | "l2", localContractAddress?: string): string {
+    if (this.network === "custom") {
+      if (!localContractAddress) {
+        throw new BaseError(`You need to provide a ${contractType.toUpperCase()} contract address.`);
+      }
+      return localContractAddress;
+    } else {
+      const contractAddress = NETWORKS[this.network][`${contractType}ContractAddress`];
+      if (!contractAddress) {
+        throw new BaseError(`Contract address for ${contractType.toUpperCase()} not found in network ${this.network}.`);
+      }
+      return contractAddress;
+    }
   }
 }

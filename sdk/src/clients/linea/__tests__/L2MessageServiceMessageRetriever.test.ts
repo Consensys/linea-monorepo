@@ -1,5 +1,5 @@
 import { describe, beforeEach } from "@jest/globals";
-import { JsonRpcProvider, Wallet } from "ethers";
+import { Wallet } from "ethers";
 import { MockProxy, mock } from "jest-mock-extended";
 import {
   TEST_CONTRACT_ADDRESS_1,
@@ -10,16 +10,17 @@ import {
 import { generateL2MessageServiceClient, generateTransactionReceipt } from "../../../utils/testing/helpers";
 import { L2MessageServiceMessageRetriever } from "../L2MessageServiceMessageRetriever";
 import { EthersL2MessageServiceLogClient } from "../EthersL2MessageServiceLogClient";
+import { LineaProvider } from "../../providers";
 
 describe("L2MessageServiceMessageRetriever", () => {
-  let providerMock: MockProxy<JsonRpcProvider>;
+  let providerMock: MockProxy<LineaProvider>;
   let walletMock: MockProxy<Wallet>;
 
   let messageRetriever: L2MessageServiceMessageRetriever;
   let l2MessageServiceLogClient: EthersL2MessageServiceLogClient;
 
   beforeEach(() => {
-    providerMock = mock<JsonRpcProvider>();
+    providerMock = mock<LineaProvider>();
     walletMock = mock<Wallet>();
 
     const clients = generateL2MessageServiceClient(providerMock, TEST_CONTRACT_ADDRESS_1, "read-write", walletMock);

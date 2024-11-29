@@ -1,4 +1,4 @@
-import { MessageSent } from "../types/events";
+import { MessageSent } from "../types";
 
 export interface IMessageRetriever<TransactionReceipt> {
   getMessageByMessageHash(messageHash: string): Promise<MessageSent | null>;

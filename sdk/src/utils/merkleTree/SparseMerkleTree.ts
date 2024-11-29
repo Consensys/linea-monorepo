@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
-import { BaseError } from "../../core/errors/Base";
+import { BaseError } from "../../core/errors";
 import { ZERO_HASH } from "../../core/constants";
-import { Proof } from "../../core/clients/ethereum/IMerkleTreeService";
+import { Proof } from "../../core/clients/ethereum";
 
 class MerkleTreeNode {
   public value: string;

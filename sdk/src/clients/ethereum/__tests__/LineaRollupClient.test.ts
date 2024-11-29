@@ -1,6 +1,6 @@
 import { describe, afterEach, it, expect, beforeEach } from "@jest/globals";
 import { MockProxy, mock, mockClear, mockDeep } from "jest-mock-extended";
-import { ContractTransactionResponse, JsonRpcProvider, Wallet } from "ethers";
+import { ContractTransactionResponse, Wallet } from "ethers";
 import {
   testMessageSentEvent,
   TEST_MESSAGE_HASH,
@@ -13,7 +13,7 @@ import {
   TEST_CONTRACT_ADDRESS_2,
   TEST_ADDRESS_1,
 } from "../../../utils/testing/constants";
-import { LineaRollup, LineaRollup__factory } from "../../blockchain/typechain";
+import { LineaRollup, LineaRollup__factory } from "../../typechain";
 import {
   generateL2MerkleTreeAddedLog,
   generateL2MessagingBlockAnchoredLog,
@@ -26,16 +26,17 @@ import {
 } from "../../../utils/testing/helpers";
 import { LineaRollupClient } from "../LineaRollupClient";
 import { DEFAULT_MAX_FEE_PER_GAS, ZERO_ADDRESS } from "../../../core/constants";
-import { OnChainMessageStatus } from "../../../core/enums/MessageEnums";
+import { OnChainMessageStatus } from "../../../core/enums/message";
 import { GasEstimationError } from "../../../core/errors/GasFeeErrors";
 import { BaseError } from "../../../core/errors/Base";
 import { EthersL2MessageServiceLogClient } from "../../linea/EthersL2MessageServiceLogClient";
 import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
 import { DefaultGasProvider } from "../../gas/DefaultGasProvider";
+import { LineaProvider, Provider } from "../../providers";
 
 describe("TestLineaRollupClient", () => {
-  let providerMock: MockProxy<JsonRpcProvider>;
-  let l2ProviderMock: MockProxy<JsonRpcProvider>;
+  let providerMock: MockProxy<Provider>;
+  let l2ProviderMock: MockProxy<LineaProvider>;
   let walletMock: MockProxy<Wallet>;
   let lineaRollupMock: MockProxy<LineaRollup>;
 
@@ -45,8 +46,8 @@ describe("TestLineaRollupClient", () => {
   let gasFeeProvider: DefaultGasProvider;
 
   beforeEach(() => {
-    providerMock = mock<JsonRpcProvider>();
-    l2ProviderMock = mock<JsonRpcProvider>();
+    providerMock = mock<Provider>();
+    l2ProviderMock = mock<LineaProvider>();
     walletMock = mock<Wallet>();
     lineaRollupMock = mockDeep<LineaRollup>();
     jest.spyOn(LineaRollup__factory, "connect").mockReturnValue(lineaRollupMock);

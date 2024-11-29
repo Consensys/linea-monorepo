@@ -1,5 +1,5 @@
 import { describe, it } from "@jest/globals";
-import { ContractTransactionResponse, ethers, JsonRpcProvider } from "ethers";
+import { ContractTransactionResponse, ethers } from "ethers";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
 import { L1ClaimingService } from "../L1ClaimingService";
 import { LineaRollupClient } from "../LineaRollupClient";
@@ -27,10 +27,11 @@ import {
 import { EthersL2MessageServiceLogClient } from "../../linea/EthersL2MessageServiceLogClient";
 import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
 import { ZERO_ADDRESS } from "../../../core/constants";
+import { LineaProvider, Provider } from "../../providers";
 
 describe("L1ClaimingService", () => {
-  let l1Provider: MockProxy<JsonRpcProvider>;
-  let l2Provider: MockProxy<JsonRpcProvider>;
+  let l1Provider: MockProxy<Provider>;
+  let l2Provider: MockProxy<LineaProvider>;
 
   let l1ClaimingService: L1ClaimingService;
   let lineaRollupClient: LineaRollupClient;
@@ -40,8 +41,8 @@ describe("L1ClaimingService", () => {
   let l1LogClient: EthersLineaRollupLogClient;
 
   beforeEach(() => {
-    l1Provider = mock<JsonRpcProvider>();
-    l2Provider = mock<JsonRpcProvider>();
+    l1Provider = mock<Provider>();
+    l2Provider = mock<LineaProvider>();
 
     const clients = generateLineaRollupClient(
       l1Provider,

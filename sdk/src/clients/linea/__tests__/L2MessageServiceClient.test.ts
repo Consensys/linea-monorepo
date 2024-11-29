@@ -1,6 +1,6 @@
 import { describe, afterEach, it, expect, beforeEach } from "@jest/globals";
 import { MockProxy, mock, mockClear, mockDeep } from "jest-mock-extended";
-import { ContractTransactionResponse, FeeData, JsonRpcProvider, Wallet } from "ethers";
+import { ContractTransactionResponse, Wallet } from "ethers";
 import {
   TEST_MESSAGE_HASH,
   TEST_CONTRACT_ADDRESS_1,
@@ -17,21 +17,23 @@ import {
 } from "../../../utils/testing/helpers";
 import { L2MessageServiceClient } from "../L2MessageServiceClient";
 import { DEFAULT_MAX_FEE_PER_GAS, ZERO_ADDRESS } from "../../../core/constants";
-import { OnChainMessageStatus } from "../../../core/enums/MessageEnums";
+import { OnChainMessageStatus } from "../../../core/enums/message";
 import { GasEstimationError } from "../../../core/errors/GasFeeErrors";
 import { BaseError } from "../../../core/errors/Base";
 import { LineaGasProvider } from "../../gas/LineaGasProvider";
+import { LineaProvider } from "../../providers";
+import { DefaultGasProvider } from "../../gas";
 
 describe("TestL2MessageServiceClient", () => {
-  let providerMock: MockProxy<JsonRpcProvider>;
+  let providerMock: MockProxy<LineaProvider>;
   let walletMock: MockProxy<Wallet>;
   let l2MessageServiceMock: MockProxy<L2MessageService>;
 
   let l2MessageServiceClient: L2MessageServiceClient;
-  let gasFeeProvider: LineaGasProvider;
+  let gasFeeProvider: LineaGasProvider | DefaultGasProvider;
 
   beforeEach(() => {
-    providerMock = mock<JsonRpcProvider>();
+    providerMock = mock<LineaProvider>();
     walletMock = mock<Wallet>();
     l2MessageServiceMock = mockDeep<L2MessageService>();
 
@@ -346,11 +348,10 @@ describe("TestL2MessageServiceClient", () => {
       const getTransactionSpy = jest.spyOn(providerMock, "getTransaction").mockResolvedValue(transactionResponse);
       const signTransactionSpy = jest.spyOn(walletMock, "signTransaction").mockResolvedValue("");
       const sendTransactionSpy = jest.spyOn(providerMock, "broadcastTransaction");
-      const getFeeDataSpy = jest.spyOn(providerMock, "getFeeData").mockResolvedValueOnce({
+      const getFeeDataSpy = jest.spyOn(providerMock, "getFees").mockResolvedValueOnce({
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
-        gasPrice: 1n,
-      } as FeeData);
+      });
 
       const clients = generateL2MessageServiceClient(providerMock, TEST_CONTRACT_ADDRESS_1, "read-write", walletMock, {
         maxFeePerGas: 500000000n,

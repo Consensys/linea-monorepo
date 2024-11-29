@@ -1,36 +1,36 @@
 import { describe, afterEach, jest, it, expect, beforeEach } from "@jest/globals";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
 import { LineaGasProvider } from "../LineaGasProvider";
-import { ChainQuerier } from "../../providers/provider";
 import { generateTransactionRequest } from "../../../utils/testing/helpers";
 import { toBeHex } from "ethers";
+import { LineaProvider } from "../../providers";
 
 const MAX_FEE_PER_GAS = 100_000_000n;
 
 describe("LineaGasProvider", () => {
-  let chainQuerierMock: MockProxy<ChainQuerier>;
+  let providerMock: MockProxy<LineaProvider>;
   let lineaGasProvider: LineaGasProvider;
 
   beforeEach(() => {
-    chainQuerierMock = mock<ChainQuerier>();
-    lineaGasProvider = new LineaGasProvider(chainQuerierMock, {
+    providerMock = mock<LineaProvider>();
+    lineaGasProvider = new LineaGasProvider(providerMock, {
       maxFeePerGas: MAX_FEE_PER_GAS,
       enforceMaxGasFee: false,
     });
   });
 
   afterEach(() => {
-    mockClear(chainQuerierMock);
+    mockClear(providerMock);
   });
 
   describe("getGasFees", () => {
     it("should return maxFeePerGas, maxPriorityFeePerGas from config when enforceMaxGasFee option is enabled", async () => {
-      lineaGasProvider = new LineaGasProvider(chainQuerierMock, {
+      lineaGasProvider = new LineaGasProvider(providerMock, {
         maxFeePerGas: MAX_FEE_PER_GAS,
         enforceMaxGasFee: true,
       });
-      jest.spyOn(chainQuerierMock, "getCurrentBlockNumber").mockResolvedValueOnce(1);
-      const sendRequestSpy = jest.spyOn(chainQuerierMock, "sendRequest").mockResolvedValueOnce({
+      jest.spyOn(providerMock, "getBlockNumber").mockResolvedValueOnce(1);
+      const sendRequestSpy = jest.spyOn(providerMock, "send").mockResolvedValueOnce({
         baseFeePerGas: "0x7",
         priorityFeePerGas: toBeHex(MAX_FEE_PER_GAS),
         gasLimit: toBeHex(50_000n),
@@ -49,8 +49,8 @@ describe("LineaGasProvider", () => {
       expect(sendRequestSpy).toHaveBeenCalledTimes(1);
     });
     it("should return maxFeePerGas, maxPriorityFeePerGas and gasLimit", async () => {
-      jest.spyOn(chainQuerierMock, "getCurrentBlockNumber").mockResolvedValueOnce(1);
-      const sendRequestSpy = jest.spyOn(chainQuerierMock, "sendRequest").mockResolvedValueOnce({
+      jest.spyOn(providerMock, "getBlockNumber").mockResolvedValueOnce(1);
+      const sendRequestSpy = jest.spyOn(providerMock, "send").mockResolvedValueOnce({
         baseFeePerGas: "0x7",
         priorityFeePerGas: toBeHex(MAX_FEE_PER_GAS),
         gasLimit: toBeHex(50_000n),

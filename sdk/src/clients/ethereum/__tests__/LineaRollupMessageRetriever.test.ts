@@ -1,5 +1,5 @@
 import { describe, beforeEach } from "@jest/globals";
-import { JsonRpcProvider, Wallet } from "ethers";
+import { Wallet } from "ethers";
 import { MockProxy, mock } from "jest-mock-extended";
 import {
   TEST_CONTRACT_ADDRESS_1,
@@ -11,18 +11,19 @@ import {
 import { generateLineaRollupClient, generateTransactionReceipt } from "../../../utils/testing/helpers";
 import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
 import { LineaRollupMessageRetriever } from "../LineaRollupMessageRetriever";
+import { LineaProvider, Provider } from "../../providers";
 
 describe("LineaRollupMessageRetriever", () => {
-  let providerMock: MockProxy<JsonRpcProvider>;
-  let l2ProviderMock: MockProxy<JsonRpcProvider>;
+  let providerMock: MockProxy<Provider>;
+  let l2ProviderMock: MockProxy<LineaProvider>;
   let walletMock: MockProxy<Wallet>;
 
   let messageRetriever: LineaRollupMessageRetriever;
   let lineaRollupLogClient: EthersLineaRollupLogClient;
 
   beforeEach(() => {
-    providerMock = mock<JsonRpcProvider>();
-    l2ProviderMock = mock<JsonRpcProvider>();
+    providerMock = mock<Provider>();
+    l2ProviderMock = mock<LineaProvider>();
     walletMock = mock<Wallet>();
 
     const clients = generateLineaRollupClient(

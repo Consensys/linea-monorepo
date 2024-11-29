@@ -1,7 +1,6 @@
-import { MessageProps } from "../../entities/Message";
-import { OnChainMessageStatus } from "../../enums/MessageEnums";
-import { IMessageServiceContract } from "../../services/contracts/IMessageServiceContract";
-import { MessageSent } from "../../types/events";
+import { Message } from "../../types";
+import { OnChainMessageStatus } from "../../enums";
+import { IMessageServiceContract } from "../IMessageServiceContract";
 import { FinalizationMessagingInfo, Proof } from "./IMerkleTreeService";
 
 export interface ILineaRollupClient<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse>
@@ -12,16 +11,10 @@ export interface ILineaRollupClient<Overrides, TransactionReceipt, TransactionRe
   getMessageProof(messageHash: string): Promise<Proof>;
   getMessageStatusUsingMessageHash(messageHash: string, overrides: Overrides): Promise<OnChainMessageStatus>;
   getMessageStatusUsingMerkleTree(messageHash: string, overrides: Overrides): Promise<OnChainMessageStatus>;
-  estimateClaimGas(
-    message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    overrides?: Overrides,
-  ): Promise<bigint>;
-  estimateClaimWithoutProofGas(
-    message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    overrides: Overrides,
-  ): Promise<bigint>;
+  estimateClaimGas(message: Message & { feeRecipient?: string }, overrides?: Overrides): Promise<bigint>;
+  estimateClaimWithoutProofGas(message: Message & { feeRecipient?: string }, overrides: Overrides): Promise<bigint>;
   claimWithoutProof(
-    message: (MessageSent | MessageProps) & { feeRecipient?: string },
+    message: Message & { feeRecipient?: string },
     overrides: Overrides,
   ): Promise<ContractTransactionResponse>;
 }

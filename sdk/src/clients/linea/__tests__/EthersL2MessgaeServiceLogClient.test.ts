@@ -1,6 +1,5 @@
 import { describe, afterEach, it, expect, beforeEach } from "@jest/globals";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
-import { JsonRpcProvider } from "ethers";
 import { EthersL2MessageServiceLogClient } from "../EthersL2MessageServiceLogClient";
 import {
   testMessageSentEvent,
@@ -12,14 +11,15 @@ import {
 } from "../../../utils/testing/constants";
 import { L2MessageService, L2MessageService__factory } from "../../typechain";
 import { mockProperty } from "../../../utils/testing/helpers";
+import { LineaProvider } from "../../providers";
 
 describe("TestEthersL2MessgaeServiceLogClient", () => {
-  let providerMock: MockProxy<JsonRpcProvider>;
+  let providerMock: MockProxy<LineaProvider>;
   let l2MessgaeServiceMock: MockProxy<L2MessageService>;
   let l2MessgaeServiceLogClient: EthersL2MessageServiceLogClient;
 
   beforeEach(() => {
-    providerMock = mock<JsonRpcProvider>();
+    providerMock = mock<LineaProvider>();
     l2MessgaeServiceMock = mock<L2MessageService>();
     mockProperty(l2MessgaeServiceMock, "filters", {
       ...l2MessgaeServiceMock.filters,

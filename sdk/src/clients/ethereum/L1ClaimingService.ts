@@ -1,12 +1,10 @@
 import { Overrides, ContractTransactionResponse, Signer, TransactionReceipt, TransactionResponse } from "ethers";
-import { OnChainMessageStatus } from "../../core/enums/MessageEnums";
+import { OnChainMessageStatus } from "../../core/enums/message";
 import { Cache } from "../../utils/Cache";
-import { ILineaRollupClient } from "../../core/clients/ethereum/ILineaRollupClient";
-import { IL2MessageServiceClient } from "../../core/clients/linea/IL2MessageServiceClient";
-import { IL2MessageServiceLogClient } from "../../core/clients/linea/IL2MessageServiceLogClient";
-import { MessageSent } from "../../core/types/events";
+import { ILineaRollupClient } from "../../core/clients/ethereum";
+import { IL2MessageServiceClient, IL2MessageServiceLogClient } from "../../core/clients/linea";
+import { MessageSent, Network } from "../../core/types";
 import { BaseError } from "../../core/errors/Base";
-import { Network } from "../../core/types/config";
 import { FinalizationMessagingInfo, Proof } from "../../core/clients/ethereum/IMerkleTreeService";
 
 export class L1ClaimingService {

@@ -8,18 +8,14 @@ import {
   Block,
 } from "ethers";
 import { L2MessageService, L2MessageService__factory } from "../typechain";
-import { GasEstimationError } from "../../core/errors/GasFeeErrors";
-import { MessageProps } from "../../core/entities/Message";
-import { OnChainMessageStatus } from "../../core/enums/MessageEnums";
-import { IL2MessageServiceClient } from "../../core/clients/linea/IL2MessageServiceClient";
+import { GasEstimationError, BaseError } from "../../core/errors";
+import { Message, SDKMode, MessageSent } from "../../core/types";
+import { OnChainMessageStatus } from "../../core/enums";
+import { IL2MessageServiceClient, ILineaProvider } from "../../core/clients/linea";
 import { ZERO_ADDRESS } from "../../core/constants";
-import { BaseError } from "../../core/errors/Base";
-import { SDKMode } from "../../core/types/config";
-import { formatMessageStatus } from "../../core/utils/message";
+import { formatMessageStatus } from "../../core/utils";
 import { IGasProvider, LineaGasFees } from "../../core/clients/IGasProvider";
 import { IMessageRetriever } from "../../core/clients/IMessageRetriever";
-import { MessageSent } from "../../core/types/events";
-import { ILineaProvider } from "../../core/clients/linea/ILineaProvider";
 import { LineaBrowserProvider, LineaProvider } from "../providers";
 
 export class L2MessageServiceClient
@@ -128,12 +124,12 @@ export class L2MessageServiceClient
   /**
    * Estimates the gas required for the `claimMessage` transaction.
    *
-   * @param {MessageProps & { feeRecipient?: string }} message - The message information object.
+   * @param {Message & { feeRecipient?: string }} message - The message information object.
    * @param {Overrides} [overrides={}] - Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<bigint>} The `claimMessage` transaction gas estimation.
    */
   public async estimateClaimGasFees(
-    message: MessageProps & { feeRecipient?: string },
+    message: Message & { feeRecipient?: string },
     overrides: Overrides = {},
   ): Promise<LineaGasFees> {
     if (this.mode === "read-only") {
@@ -160,12 +156,12 @@ export class L2MessageServiceClient
   /**
    * Claims the message on L2.
    *
-   * @param {MessageProps & { feeRecipient?: string }} message - The message information object.
+   * @param {Message & { feeRecipient?: string }} message - The message information object.
    * @param {Overrides} [overrides] - Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<ContractTransactionResponse>} The claimMessage transaction info.
    */
   public async claim(
-    message: MessageProps & { feeRecipient?: string },
+    message: Message & { feeRecipient?: string },
     overrides: Overrides = {},
   ): Promise<ContractTransactionResponse> {
     if (this.mode === "read-only") {
@@ -292,7 +288,7 @@ export class L2MessageServiceClient
   /**
    * Encodes the transaction data for claiming a message.
    *
-   * @param {MessageProps & { feeRecipient?: string }} message - The message properties including an optional fee recipient.
+   * @param {Message & { feeRecipient?: string }} message - The message properties including an optional fee recipient.
    * @param {string} message.messageSender - The address of the message sender.
    * @param {string} message.destination - The destination address of the message.
    * @param {bigint} message.fee - The fee associated with the message.
@@ -302,7 +298,7 @@ export class L2MessageServiceClient
    * @param {string} [message.feeRecipient] - The optional address of the fee recipient. Defaults to ZERO_ADDRESS if not provided.
    * @returns {string} The encoded transaction data for claiming the message.
    */
-  public encodeClaimMessageTransactionData(message: MessageProps & { feeRecipient?: string }): string {
+  public encodeClaimMessageTransactionData(message: Message & { feeRecipient?: string }): string {
     const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
     const l2FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
 

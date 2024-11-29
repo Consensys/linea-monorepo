@@ -1,15 +1,19 @@
 import { Block, TransactionReceipt, TransactionRequest, TransactionResponse } from "ethers";
 import { SparseMerkleTreeFactory } from "../../utils/merkleTree/MerkleTreeFactory";
 import { BaseError } from "../../core/errors/Base";
-import { ILineaRollupLogClient } from "../../core/clients/ethereum/ILineaRollupLogClient";
-import { IL2MessageServiceLogClient } from "../../core/clients/linea/IL2MessageServiceLogClient";
+import {
+  ILineaRollupLogClient,
+  FinalizationMessagingInfo,
+  IMerkleTreeService,
+  Proof,
+} from "../../core/clients/ethereum";
+import { IL2MessageServiceLogClient } from "../../core/clients/linea";
 import {
   L2_MERKLE_TREE_ADDED_EVENT_SIGNATURE,
   L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE,
   ZERO_HASH,
 } from "../../core/constants";
 import { LineaRollup, LineaRollup__factory } from "../typechain";
-import { FinalizationMessagingInfo, IMerkleTreeService, Proof } from "../../core/clients/ethereum/IMerkleTreeService";
 import { IProvider } from "../../core/clients/IProvider";
 import { BrowserProvider, Provider } from "../providers";
 

@@ -1,8 +1,8 @@
 import { describe, afterEach, it, expect, beforeEach } from "@jest/globals";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
-import { ChainQuerier } from "../../providers/provider";
+import { Provider } from "../../providers/provider";
 import { GasProvider } from "../GasProvider";
-import { Direction } from "../../../core/enums/MessageEnums";
+import { Direction } from "../../../core/enums/message";
 import { DEFAULT_GAS_ESTIMATION_PERCENTILE, DEFAULT_MAX_FEE_PER_GAS } from "../../../core/constants";
 import { generateTransactionRequest } from "../../../utils/testing/helpers";
 import { toBeHex } from "ethers";
@@ -21,12 +21,12 @@ const testFeeHistory = {
 };
 
 describe("GasProvider", () => {
-  let chainQuerierMock: MockProxy<ChainQuerier>;
+  let providerMock: MockProxy<Provider>;
   let gasProvider: GasProvider;
 
   beforeEach(() => {
-    chainQuerierMock = mock<ChainQuerier>();
-    gasProvider = new GasProvider(chainQuerierMock, {
+    providerMock = mock<Provider>();
+    gasProvider = new GasProvider(providerMock, {
       enableLineaEstimateGas: true,
       direction: Direction.L1_TO_L2,
       enforceMaxGasFee: false,
@@ -36,7 +36,7 @@ describe("GasProvider", () => {
   });
 
   afterEach(() => {
-    mockClear(chainQuerierMock);
+    mockClear(providerMock);
     jest.clearAllMocks();
   });
 
@@ -49,7 +49,7 @@ describe("GasProvider", () => {
       });
 
       it("should use LineaGasProvider when enableLineaEstimateGas is enabled", async () => {
-        jest.spyOn(chainQuerierMock, "sendRequest").mockResolvedValueOnce({
+        jest.spyOn(providerMock, "send").mockResolvedValueOnce({
           gasLimit: "0x300000",
           baseFeePerGas: "0x7",
           priorityFeePerGas: toBeHex(DEFAULT_MAX_FEE_PER_GAS),
@@ -68,7 +68,7 @@ describe("GasProvider", () => {
       });
 
       it("should use DefaultGasProvider when enableLineaEstimateGas is disabled", async () => {
-        gasProvider = new GasProvider(chainQuerierMock, {
+        gasProvider = new GasProvider(providerMock, {
           enableLineaEstimateGas: false,
           direction: Direction.L1_TO_L2,
           enforceMaxGasFee: false,
@@ -76,10 +76,10 @@ describe("GasProvider", () => {
           gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
         });
 
-        jest.spyOn(chainQuerierMock, "getCurrentBlockNumber").mockResolvedValueOnce(1);
+        jest.spyOn(providerMock, "getBlockNumber").mockResolvedValueOnce(1);
         const estimatedGasLimit = 50_000n;
-        jest.spyOn(chainQuerierMock, "estimateGas").mockResolvedValueOnce(estimatedGasLimit);
-        jest.spyOn(chainQuerierMock, "sendRequest").mockResolvedValueOnce(testFeeHistory);
+        jest.spyOn(providerMock, "estimateGas").mockResolvedValueOnce(estimatedGasLimit);
+        jest.spyOn(providerMock, "send").mockResolvedValueOnce(testFeeHistory);
 
         const gasFees = await gasProvider.getGasFees();
 
@@ -93,7 +93,7 @@ describe("GasProvider", () => {
 
     describe("L2 to L1", () => {
       it("should use DefaultGasProvider", async () => {
-        gasProvider = new GasProvider(chainQuerierMock, {
+        gasProvider = new GasProvider(providerMock, {
           enableLineaEstimateGas: false,
           direction: Direction.L2_TO_L1,
           enforceMaxGasFee: false,
@@ -101,8 +101,8 @@ describe("GasProvider", () => {
           gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
         });
 
-        jest.spyOn(chainQuerierMock, "getCurrentBlockNumber").mockResolvedValueOnce(1);
-        jest.spyOn(chainQuerierMock, "sendRequest").mockResolvedValueOnce(testFeeHistory);
+        jest.spyOn(providerMock, "getBlockNumber").mockResolvedValueOnce(1);
+        jest.spyOn(providerMock, "send").mockResolvedValueOnce(testFeeHistory);
 
         const gasFees = await gasProvider.getGasFees();
 
@@ -120,7 +120,7 @@ describe("GasProvider", () => {
     });
 
     it("should use DefaultGasProvider if direction == L2_TO_L1", () => {
-      gasProvider = new GasProvider(chainQuerierMock, {
+      gasProvider = new GasProvider(providerMock, {
         enableLineaEstimateGas: false,
         direction: Direction.L2_TO_L1,
         enforceMaxGasFee: false,

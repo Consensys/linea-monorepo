@@ -1,14 +1,14 @@
 import { describe, it, expect } from "@jest/globals";
 import { JsonRpcProvider } from "ethers";
 import { LineaSDK } from "./LineaSDK";
-import { L1ClaimingService } from "./clients/ethereum/L1ClaimingService";
-import { TEST_L1_SIGNER_PRIVATE_KEY, TEST_L2_SIGNER_PRIVATE_KEY, TEST_RPC_URL } from "./utils/testing/constants";
-import { NETWORKS } from "./core/constants/networks";
-import { EthersL2MessageServiceLogClient } from "./clients/linea/EthersL2MessageServiceLogClient";
-import { serialize } from "./core/utils/serialize";
-import { generateL2MessageServiceClient, generateLineaRollupClient } from "./utils/testing/helpers";
-import Wallet from "./clients/wallet";
+import { L1ClaimingService } from "./clients/ethereum";
+import { Wallet } from "./clients/wallet";
 import { LineaProvider, Provider } from "./clients/providers";
+import { EthersL2MessageServiceLogClient } from "./clients/linea";
+import { NETWORKS } from "./core/constants";
+import { serialize } from "./core/utils";
+import { TEST_L1_SIGNER_PRIVATE_KEY, TEST_L2_SIGNER_PRIVATE_KEY, TEST_RPC_URL } from "./utils/testing/constants";
+import { generateL2MessageServiceClient, generateLineaRollupClient } from "./utils/testing/helpers";
 
 describe("LineaSDK", () => {
   describe("getL1Contract", () => {
@@ -120,7 +120,7 @@ describe("LineaSDK", () => {
         l2RpcUrlOrProvider: TEST_RPC_URL,
       });
 
-      expect(() => sdk.getL1Contract()).toThrow("You need to provide both L1 and L2 contract addresses.");
+      expect(() => sdk.getL1Contract()).toThrow("You need to provide a L1 contract address.");
     });
 
     it("should return LineaRollupClient with custom contract address when the network option is set to 'custom'", () => {

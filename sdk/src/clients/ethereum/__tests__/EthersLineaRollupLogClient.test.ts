@@ -1,6 +1,5 @@
 import { describe, afterEach, it, expect, beforeEach } from "@jest/globals";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
-import { JsonRpcProvider } from "ethers";
 import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
 import {
   TEST_CONTRACT_ADDRESS_1,
@@ -11,16 +10,17 @@ import {
   testMessageSentEvent,
   testMessageSentEventLog,
 } from "../../../utils/testing/constants";
-import { LineaRollup, LineaRollup__factory } from "../../blockchain/typechain";
+import { LineaRollup, LineaRollup__factory } from "../../typechain";
 import { mockProperty } from "../../../utils/testing/helpers";
+import { Provider } from "../../providers";
 
 describe("TestEthersLineaRollupLogClient", () => {
-  let providerMock: MockProxy<JsonRpcProvider>;
+  let providerMock: MockProxy<Provider>;
   let lineaRollupMock: MockProxy<LineaRollup>;
   let lineaRollupLogClient: EthersLineaRollupLogClient;
 
   beforeEach(() => {
-    providerMock = mock<JsonRpcProvider>();
+    providerMock = mock<Provider>();
     lineaRollupMock = mock<LineaRollup>();
     mockProperty(lineaRollupMock, "filters", {
       ...lineaRollupMock.filters,

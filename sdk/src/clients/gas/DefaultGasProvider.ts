@@ -1,5 +1,5 @@
 import { Block, TransactionReceipt, TransactionRequest, TransactionResponse } from "ethers";
-import { FeeEstimationError } from "../../core/errors/GasFeeErrors";
+import { FeeEstimationError } from "../../core/errors";
 import { DefaultGasProviderConfig, FeeHistory, GasFees, IEthereumGasProvider } from "../../core/clients/IGasProvider";
 import { IProvider } from "../../core/clients/IProvider";
 import { BrowserProvider, LineaBrowserProvider, LineaProvider, Provider } from "../providers";

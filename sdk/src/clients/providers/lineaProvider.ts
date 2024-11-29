@@ -1,7 +1,7 @@
 import { BlockTag, dataSlice, ethers, toNumber } from "ethers";
-import { BlockExtraData } from "../../core/clients/linea/ILineaProvider";
+import { BlockExtraData } from "../../core/clients/linea";
 import { GasFees } from "../../core/clients/IGasProvider";
-import { BaseError } from "../../core/errors/Base";
+import { BaseError } from "../../core/errors";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Constructor<T = object> = new (...args: any[]) => T;

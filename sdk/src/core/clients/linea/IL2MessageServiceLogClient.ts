@@ -1,4 +1,4 @@
-import { MessageSent, ServiceVersionMigrated } from "../../types/events";
+import { MessageSent, ServiceVersionMigrated } from "../../types";
 
 export type MessageSentEventFilters = {
   from?: string;

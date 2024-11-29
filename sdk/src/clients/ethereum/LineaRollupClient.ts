@@ -8,25 +8,26 @@ import {
   Block,
 } from "ethers";
 import { LineaRollup, LineaRollup__factory } from "../typechain";
-import { GasEstimationError } from "../../core/errors/GasFeeErrors";
-import { Message, MessageProps } from "../../core/entities/Message";
-import { OnChainMessageStatus } from "../../core/enums/MessageEnums";
+import { BaseError, GasEstimationError } from "../../core/errors";
+import { Message, SDKMode, MessageSent } from "../../core/types";
+import { OnChainMessageStatus } from "../../core/enums";
 import {
   MESSAGE_UNKNOWN_STATUS,
   MESSAGE_CLAIMED_STATUS,
   ZERO_ADDRESS,
   DEFAULT_RATE_LIMIT_MARGIN,
 } from "../../core/constants";
-import { ILineaRollupClient } from "../../core/clients/ethereum/ILineaRollupClient";
-import { ILineaRollupLogClient } from "../../core/clients/ethereum/ILineaRollupLogClient";
-import { IL2MessageServiceLogClient } from "../../core/clients/linea/IL2MessageServiceLogClient";
-import { BaseError } from "../../core/errors/Base";
-import { SDKMode } from "../../core/types/config";
-import { formatMessageStatus } from "../../core/utils/message";
+import {
+  ILineaRollupClient,
+  ILineaRollupLogClient,
+  FinalizationMessagingInfo,
+  IMerkleTreeService,
+  Proof,
+} from "../../core/clients/ethereum";
+import { IL2MessageServiceLogClient } from "../../core/clients/linea";
+import { formatMessageStatus } from "../../core/utils";
 import { GasFees, IEthereumGasProvider } from "../../core/clients/IGasProvider";
 import { IMessageRetriever } from "../../core/clients/IMessageRetriever";
-import { FinalizationMessagingInfo, IMerkleTreeService, Proof } from "../../core/clients/ethereum/IMerkleTreeService";
-import { MessageSent } from "../../core/types/events";
 import { IProvider } from "../../core/clients/IProvider";
 import { BrowserProvider, Provider } from "../providers";
 
@@ -230,12 +231,12 @@ export class LineaRollupClient
 
   /**
    * Estimates the gas required for the claimMessage transaction.
-   * @param {MessageProps & { feeRecipient?: string }} message - The message information.
+   * @param {Message & { feeRecipient?: string }} message - The message information.
    * @param {Overrides} [overrides={}] - Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<bigint>} The estimated transaction gas.
    */
   public async estimateClaimWithoutProofGas(
-    message: MessageProps & { feeRecipient?: string },
+    message: Message & { feeRecipient?: string },
     overrides: Overrides = {},
   ): Promise<bigint> {
     if (this.mode === "read-only") {
@@ -266,12 +267,12 @@ export class LineaRollupClient
 
   /**
    * Claims the message on L1 without merkle tree (for message sent before the migration).
-   * @param {MessageProps & { feeRecipient?: string }} message - The message information.
+   * @param {Message & { feeRecipient?: string }} message - The message information.
    * @param {Overrides} [overrides={}] - Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<ContractTransactionResponse>} The transaction response.
    */
   public async claimWithoutProof(
-    message: MessageProps & { feeRecipient?: string },
+    message: Message & { feeRecipient?: string },
     overrides: Overrides = {},
   ): Promise<ContractTransactionResponse> {
     if (this.mode === "read-only") {

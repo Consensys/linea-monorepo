@@ -1,5 +1,5 @@
 import { describe, beforeEach } from "@jest/globals";
-import { JsonRpcProvider, Wallet } from "ethers";
+import { Wallet } from "ethers";
 import { MockProxy, mock } from "jest-mock-extended";
 import {
   TEST_CONTRACT_ADDRESS_1,
@@ -16,14 +16,15 @@ import {
   generateLineaRollupClient,
   generateTransactionReceiptWithLogs,
 } from "../../../utils/testing/helpers";
-import { LineaRollup, LineaRollup__factory } from "../../blockchain/typechain";
+import { LineaRollup, LineaRollup__factory } from "../../typechain";
 import { EthersL2MessageServiceLogClient } from "../../linea/EthersL2MessageServiceLogClient";
 import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
 import { MerkleTreeService } from "../MerkleTreeService";
+import { LineaProvider, Provider } from "../../providers";
 
 describe("MerkleTreeService", () => {
-  let providerMock: MockProxy<JsonRpcProvider>;
-  let l2ProviderMock: MockProxy<JsonRpcProvider>;
+  let providerMock: MockProxy<Provider>;
+  let l2ProviderMock: MockProxy<LineaProvider>;
   let walletMock: MockProxy<Wallet>;
   let lineaRollupMock: MockProxy<LineaRollup>;
 
@@ -32,8 +33,8 @@ describe("MerkleTreeService", () => {
   let l2MessageServiceLogClient: EthersL2MessageServiceLogClient;
 
   beforeEach(() => {
-    providerMock = mock<JsonRpcProvider>();
-    l2ProviderMock = mock<JsonRpcProvider>();
+    providerMock = mock<Provider>();
+    l2ProviderMock = mock<LineaProvider>();
     walletMock = mock<Wallet>();
     lineaRollupMock = mock<LineaRollup>();
 

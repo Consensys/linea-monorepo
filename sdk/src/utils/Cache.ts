@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { LRUCache } from "lru-cache";
-import { serialize } from "../core/utils/serialize";
-import { isUndefined } from "../core/utils/shared";
+import { serialize, isUndefined } from "../core/utils";
 
 interface CacheInterface {
   get: (key: string) => any;
