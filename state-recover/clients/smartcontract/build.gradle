@@ -9,7 +9,6 @@ dependencies {
   implementation(project(':jvm-libs:generic:extensions:kotlin'))
   implementation(project(':jvm-libs:linea:web3j-extensions'))
   implementation(project(':state-recover:appcore:clients-interfaces'))
-  implementation('build.linea:l1-rollup-contract-client:6.0.0-rc2')
 
   testImplementation(project(':coordinator:core'))
   testImplementation(project(":coordinator:ethereum:test-utils"))
@@ -37,7 +36,7 @@ task integrationTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
+//    dependsOn(":localStackForStateRecoverComposeUp")
 
     testLogging {
       events TestLogEvent.FAILED,

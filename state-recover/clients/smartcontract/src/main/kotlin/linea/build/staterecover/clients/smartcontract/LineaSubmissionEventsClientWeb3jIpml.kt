@@ -5,8 +5,8 @@ import build.linea.staterecover.clients.DataFinalizedV3
 import build.linea.staterecover.clients.DataSubmittedV3
 import build.linea.staterecover.clients.FinalizationAndDataEventsV3
 import build.linea.staterecover.clients.LineaRollupSubmissionEventsClient
-import build.linea.web3j.LogsSearcher
-import build.linea.web3j.SearchDirection
+import linea.EthLogsSearcher
+import linea.SearchDirection
 import net.consensys.encodeHex
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.BlockParameter.Companion.toBlockParameter
@@ -14,7 +14,7 @@ import net.consensys.toHexStringUInt256
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class LineaSubmissionEventsClientWeb3jIpml(
-  private val logsSearcher: LogsSearcher,
+  private val logsSearcher: EthLogsSearcher,
   private val smartContractAddress: String,
   private val l1EarliestSearchBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
   private val l1LatestSearchBlock: BlockParameter = BlockParameter.Tag.FINALIZED,

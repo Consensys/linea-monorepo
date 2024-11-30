@@ -10,6 +10,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.post
 import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.vertx.core.Vertx
+import linea.SearchDirection
 import net.consensys.encodeHex
 import net.consensys.fromHexString
 import net.consensys.linea.BlockParameter.Companion.toBlockParameter

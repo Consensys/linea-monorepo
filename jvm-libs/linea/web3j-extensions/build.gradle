@@ -6,6 +6,7 @@ plugins {
 dependencies {
   api "org.web3j:core:${libs.versions.web3j.get()}"
   api project(':jvm-libs:linea:core:domain-models')
+  api project(':jvm-libs:linea:clients:interfaces')
   api project(':jvm-libs:generic:logging')
   api project(':jvm-libs:generic:extensions:futures')
   // For domain mappers

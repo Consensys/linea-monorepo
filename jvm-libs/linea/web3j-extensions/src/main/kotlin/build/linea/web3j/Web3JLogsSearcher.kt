@@ -5,6 +5,8 @@ import build.linea.web3j.domain.toDomain
 import build.linea.web3j.domain.toWeb3j
 import io.vertx.core.Vertx
 import io.vertx.core.impl.ConcurrentHashSet
+import linea.EthLogsSearcher
+import linea.SearchDirection
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.BlockParameter.Companion.toBlockParameter
 import net.consensys.linea.async.AsyncRetryer
@@ -21,29 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-enum class SearchDirection {
-  FORWARD,
-  BACKWARD
-}
-
-interface LogsSearcher {
-  fun findLog(
-    fromBlock: BlockParameter,
-    toBlock: BlockParameter,
-    chunkSize: Int = 1000,
-    address: String,
-    topics: List<String>,
-    shallContinueToSearchPredicate: (build.linea.domain.EthLog) -> SearchDirection? // null means stop searching
-  ): SafeFuture<build.linea.domain.EthLog?>
-
-  fun getLogs(
-    fromBlock: BlockParameter,
-    toBlock: BlockParameter,
-    address: String,
-    topics: List<String?>
-  ): SafeFuture<List<build.linea.domain.EthLog>>
-}
-
 sealed interface SearchResultT<T> {
   data class ItemFound<T>(val log: T) : SearchResultT<T>
   data class KeepSearching<T>(val direction: SearchDirection) : SearchResultT<T>
@@ -59,7 +38,7 @@ class Web3JLogsSearcher(
   val web3jClient: Web3j,
   val config: Config = Config(),
   val log: Logger = LogManager.getLogger(Web3JLogsSearcher::class.java)
-) : LogsSearcher {
+) : EthLogsSearcher {
   data class Config(
     val backoffDelay: Duration = 100.milliseconds,
     val requestRetryConfig: RetryConfig = RetryConfig()
