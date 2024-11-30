@@ -1,10 +1,6 @@
-package linea.build.staterecover.clients.smartcontract
+package linea.staterecover
 
 import build.linea.domain.EthLogEvent
-import build.linea.staterecover.clients.DataFinalizedV3
-import build.linea.staterecover.clients.DataSubmittedV3
-import build.linea.staterecover.clients.FinalizationAndDataEventsV3
-import build.linea.staterecover.clients.LineaRollupSubmissionEventsClient
 import linea.EthLogsSearcher
 import linea.SearchDirection
 import net.consensys.encodeHex
@@ -13,7 +9,7 @@ import net.consensys.linea.BlockParameter.Companion.toBlockParameter
 import net.consensys.toHexStringUInt256
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class LineaSubmissionEventsClientWeb3jIpml(
+class LineaSubmissionEventsClientImpl(
   private val logsSearcher: EthLogsSearcher,
   private val smartContractAddress: String,
   private val l1EarliestSearchBlock: BlockParameter = BlockParameter.Tag.EARLIEST,

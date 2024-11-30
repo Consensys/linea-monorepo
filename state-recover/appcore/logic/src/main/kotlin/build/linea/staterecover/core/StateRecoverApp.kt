@@ -4,13 +4,15 @@ import build.linea.clients.StateManagerClientV1
 import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import build.linea.domain.EthLogEvent
 import build.linea.staterecover.clients.BlobFetcher
-import build.linea.staterecover.clients.DataFinalizedV3
 import build.linea.staterecover.clients.ExecutionLayerClient
-import build.linea.staterecover.clients.LineaRollupSubmissionEventsClient
 import build.linea.staterecover.clients.StateRecoveryStatus
 import build.linea.staterecover.clients.TransactionDetailsClient
 import io.vertx.core.Vertx
+import linea.EthLogsSearcher
+import linea.staterecover.DataFinalizedV3
+import linea.staterecover.LineaSubmissionEventsClientImpl
 import net.consensys.linea.BlockParameter
+import net.consensys.linea.BlockParameter.Companion.toBlockParameter
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.blob.BlobDecompressorVersion
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
@@ -25,7 +27,7 @@ class StateRecoverApp(
   private val vertx: Vertx,
   // Driving Ports
   private val lineaContractClient: LineaRollupSmartContractClientReadOnly,
-  private val l1EventsClient: LineaRollupSubmissionEventsClient,
+  private val ethLogsSearcher: EthLogsSearcher,
   // Driven Ports
   private val blobFetcher: BlobFetcher,
   private val elClient: ExecutionLayerClient,
@@ -34,15 +36,49 @@ class StateRecoverApp(
   private val l1EventsPollingInterval: Duration,
   private val blockHeaderStaticFields: BlockHeaderStaticFields,
   // configs
-  private val config: Config = Config()
+  private val config: Config = Config.lineaMainnet
 ) : LongRunningService {
   data class Config(
-    val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
+    val smartContractAddress: String,
+    val l1EarliestSearchBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
+    val l1LatestSearchBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
     val l1PollingInterval: Duration = 12.seconds,
     val executionClientPollingInterval: Duration = 1.seconds,
-    val blobDecompressorVersion: BlobDecompressorVersion = BlobDecompressorVersion.V1_1_0
-  )
+    val blobDecompressorVersion: BlobDecompressorVersion = BlobDecompressorVersion.V1_1_0,
+    val logsBlockChunkSize: UInt = 1000u
+  ) {
+    companion object {
+      val lineaMainnet = Config(
+        smartContractAddress = "0xd19d4b5d358258f05d7b411e21a1460d11b0876f",
+        // TODO: set block of V6 Upgrade
+        l1EarliestSearchBlock = 1UL.toBlockParameter(),
+        l1LatestSearchBlock = BlockParameter.Tag.FINALIZED,
+        executionClientPollingInterval = 10.seconds,
+        l1PollingInterval = 12.seconds
+      )
+      val lineaSepolia = Config(
+        smartContractAddress = "0xb218f8a4bc926cf1ca7b3423c154a0d627bdb7e5",
+        // TODO: set block of V6 Upgrade
+        l1EarliestSearchBlock = 1UL.toBlockParameter(),
+        l1LatestSearchBlock = BlockParameter.Tag.FINALIZED,
+        executionClientPollingInterval = 10.seconds,
+        l1PollingInterval = 12.seconds
+      )
+    }
+  }
 
+  init {
+    require(config.smartContractAddress.lowercase() == lineaContractClient.getAddress().lowercase()) {
+      "contract address mismatch: config=${config.smartContractAddress} client=${lineaContractClient.getAddress()}"
+    }
+  }
+  private val l1EventsClient = LineaSubmissionEventsClientImpl(
+    logsSearcher = ethLogsSearcher,
+    smartContractAddress = config.smartContractAddress,
+    l1EarliestSearchBlock = config.l1EarliestSearchBlock,
+    l1LatestSearchBlock = config.l1LatestSearchBlock,
+    logsBlockChunkSize = config.logsBlockChunkSize.toInt()
+  )
   private val log = LogManager.getLogger(this::class.java)
   private val blockImporterAndStateVerifier = BlockImporterAndStateVerifierV1(
     vertx = vertx,
@@ -90,7 +126,7 @@ class StateRecoverApp(
           )
           SafeFuture.completedFuture(Unit)
         } else {
-          lineaContractClient.finalizedL2BlockNumber(blockParameter = config.l1HighestBlockTag)
+          lineaContractClient.finalizedL2BlockNumber(blockParameter = config.l1LatestSearchBlock)
             .thenCompose { lastFinalizedBlockNumber ->
               val stateRecoverStartBlockNumber = lastFinalizedBlockNumber + 1UL
               log.info(
@@ -119,9 +155,13 @@ class StateRecoverApp(
   }
 
   override fun start(): CompletableFuture<Unit> {
-    return enableRecoveryMode()
+    val enablementFuture = enableRecoveryMode()
+
+    enablementFuture
       .thenCompose { waitForSyncUntilStateRecoverBlock() }
       .thenCompose { stateSynchronizerService.start() }
+
+    return enablementFuture.thenApply { }
   }
 
   override fun stop(): CompletableFuture<Unit> {

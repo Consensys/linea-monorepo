@@ -1,4 +1,4 @@
-package build.linea.staterecover.clients
+package linea.staterecover
 
 import build.linea.domain.BlockInterval
 import build.linea.domain.EthLog
