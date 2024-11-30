@@ -2,8 +2,6 @@ package build.linea.staterecover.clients.el
 
 import build.linea.staterecover.BlockL1RecoveredData
 import build.linea.staterecover.TransactionL1RecoveredData
-import build.linea.staterecover.clients.ExecutionLayerClient
-import build.linea.staterecover.clients.StateRecoveryStatus
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.containing
 import com.github.tomakehurst.wiremock.client.WireMock.post
@@ -12,6 +10,8 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.junit5.VertxExtension
 import kotlinx.datetime.Instant
+import linea.staterecover.ExecutionLayerClient
+import linea.staterecover.StateRecoveryStatus
 import net.consensys.decodeHex
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.BlockParameter

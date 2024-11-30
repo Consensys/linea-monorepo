@@ -4,12 +4,12 @@ import build.linea.s11n.jackson.InstantAsHexNumberDeserializer
 import build.linea.s11n.jackson.InstantAsHexNumberSerializer
 import build.linea.s11n.jackson.ethApiObjectMapper
 import build.linea.staterecover.BlockL1RecoveredData
-import build.linea.staterecover.clients.ExecutionLayerClient
-import build.linea.staterecover.clients.StateRecoveryStatus
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
 import kotlinx.datetime.Instant
+import linea.staterecover.ExecutionLayerClient
+import linea.staterecover.StateRecoveryStatus
 import net.consensys.decodeHex
 import net.consensys.fromHexString
 import net.consensys.linea.BlockNumberAndHash

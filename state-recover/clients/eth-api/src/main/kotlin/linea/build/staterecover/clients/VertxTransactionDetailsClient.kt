@@ -1,8 +1,8 @@
 package linea.build.staterecover.clients
 
-import build.linea.staterecover.clients.TransactionDetailsClient
 import com.fasterxml.jackson.databind.JsonNode
 import com.github.michaelbull.result.Err
+import linea.staterecover.TransactionDetailsClient
 import net.consensys.decodeHex
 import net.consensys.linea.jsonrpc.client.JsonRpcClientFactory
 import net.consensys.linea.jsonrpc.client.JsonRpcV2Client
