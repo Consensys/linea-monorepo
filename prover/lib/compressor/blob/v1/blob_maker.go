@@ -39,7 +39,7 @@ type BlobMaker struct {
 	dict       []byte           // dictionary used for compression
 	dictStore  dictionary.Store // dictionary store comprising only dict, used for decompression sanity checks
 
-	Header Header
+	header Header
 
 	// contains currentBlob data from latest **valid** call to Write
 	// that is the header (uncompressed) and the body (compressed)
@@ -51,7 +51,7 @@ type BlobMaker struct {
 	buf        bytes.Buffer
 	packBuffer bytes.Buffer
 
-	lock                     sync.Mutex    // protects from concurrent writes
+	lock                     sync.Mutex    // protects from concurrent writes by the optimizer. no thread safety guarantees
 	doOptimize               chan struct{} // signal to the optimizer that a change has been made
 	modificationNum          uint64        // id for the last change to blob
 	optimizerModificationNum uint64        // the last change used by the optimizer
@@ -79,7 +79,7 @@ func NewBlobMaker(dataLimit int, dictPath string) (*BlobMaker, error) {
 	if err != nil {
 		return nil, err
 	}
-	copy(blobMaker.Header.DictChecksum[:], dictChecksum)
+	copy(blobMaker.header.DictChecksum[:], dictChecksum)
 
 	blobMaker.compressor, err = lzss.NewCompressor(dict)
 	if err != nil {
@@ -105,7 +105,7 @@ func (bm *BlobMaker) StartNewBatch() {
 // to be called from a method with lock ownership
 func (bm *BlobMaker) startNewBatch() {
 	bm.modificationNum++
-	bm.Header.sealBatch()
+	bm.header.sealBatch()
 }
 
 // Reset resets the bm to its initial state.
@@ -114,7 +114,7 @@ func (bm *BlobMaker) Reset() {
 	defer bm.releaseLock()
 	bm.modificationNum++
 
-	bm.Header.resetTable()
+	bm.header.resetTable()
 	bm.currentBlobLength = 0
 	bm.buf.Reset()
 	bm.packBuffer.Reset()
@@ -135,7 +135,7 @@ func (bm *BlobMaker) Written() int {
 // Bytes returns the compressed data. Note that it returns a slice of the internal buffer,
 // it is the caller's responsibility to copy the data if needed.
 func (bm *BlobMaker) Bytes() []byte {
-	bm.obtainLock()
+	bm.obtainLock() // to make sure no one (the optimizer specifically) is modifying the blob, possibly resulting in corrupted data
 	defer bm.releaseLock()
 
 	if bm.currentBlobLength > 0 {
@@ -144,14 +144,14 @@ func (bm *BlobMaker) Bytes() []byte {
 		if err != nil {
 			var sbb strings.Builder
 			fmt.Fprintf(&sbb, "invalid blob: %v\n", err)
-			fmt.Fprintf(&sbb, "header: %v\n", bm.Header)
+			fmt.Fprintf(&sbb, "header: %v\n", bm.header)
 			fmt.Fprintf(&sbb, "bm.currentBlobLength: %v\n", bm.currentBlobLength)
 			fmt.Fprintf(&sbb, "bm.currentBlob: %x\n", bm.currentBlob[:bm.currentBlobLength])
 
 			panic(sbb.String())
 		}
 		// compare the header
-		if !header.Equals(&bm.Header) {
+		if !header.Equals(&bm.header) {
 			panic("invalid blob: header mismatch")
 		}
 		if !bytes.Equal(rawBlocks, bm.compressor.WrittenBytes()) {
@@ -195,17 +195,17 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 		if innerErr := bm.compressor.Revert(); innerErr != nil {
 			return false, fmt.Errorf("when reverting compressor because writing failed: %w\noriginal error: %w", innerErr, err)
 		}
-		bm.Header.removeLastBlock()
+		bm.header.removeLastBlock()
 		return false, fmt.Errorf("when writing block to compressor: %w", err)
 	}
 
 	// increment length of the current batch
-	bm.Header.addBlock(blockLen)
+	bm.header.addBlock(blockLen)
 	// write the header to get its length.
 	bm.buf.Reset()
-	if _, err = bm.Header.WriteTo(&bm.buf); err != nil {
+	if _, err = bm.header.WriteTo(&bm.buf); err != nil {
 		// only possible error is an underlying writer error (shouldn't happen we use a simple in-memory buffer)
-		bm.Header.removeLastBlock()
+		bm.header.removeLastBlock()
 		return false, fmt.Errorf("when writing header to buffer: %w", err)
 	}
 
@@ -217,7 +217,7 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 		if err := bm.compressor.Revert(); err != nil {
 			return false, fmt.Errorf("when reverting compressor because uncompressed blob is > maxUncompressedSize: %w", err)
 		}
-		bm.Header.removeLastBlock()
+		bm.header.removeLastBlock()
 		return false, nil
 	}
 
@@ -237,7 +237,7 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 		if err = bm.compressor.Revert(); err != nil {
 			return false, fmt.Errorf("when reverting compressor because blob is full: %w", err)
 		}
-		bm.Header.removeLastBlock()
+		bm.header.removeLastBlock()
 		return false, nil
 	}
 bypass:
@@ -246,7 +246,7 @@ bypass:
 		if err = bm.compressor.Revert(); err != nil {
 			return false, fmt.Errorf("when reverting compressor (blob is not full but forceReset == true): %w", err)
 		}
-		bm.Header.removeLastBlock()
+		bm.header.removeLastBlock()
 		return true, nil
 	}
 
@@ -255,7 +255,7 @@ bypass:
 	n2, err := encode.PackAlign(&bm.packBuffer, bm.buf.Bytes(), fr381.Bits-1, encode.WithAdditionalInput(bm.compressor.Bytes()))
 	if err != nil {
 		bm.compressor.Revert()
-		bm.Header.removeLastBlock()
+		bm.header.removeLastBlock()
 		return false, fmt.Errorf("when packing blob: %w", err)
 	}
 	bm.currentBlobLength = int(n2)
@@ -268,9 +268,9 @@ bypass:
 // Clone returns a (almost) deep copy of the bm -- this is used for test purposes.
 func (bm *BlobMaker) Clone() *BlobMaker {
 	deepCopy := *bm
-	deepCopy.Header.BatchSizes = make([]int, len(bm.Header.BatchSizes))
+	deepCopy.header.BatchSizes = make([]int, len(bm.header.BatchSizes))
 
-	copy(deepCopy.Header.BatchSizes, bm.Header.BatchSizes)
+	copy(deepCopy.header.BatchSizes, bm.header.BatchSizes)
 
 	return &deepCopy
 }
@@ -286,10 +286,10 @@ func (bm *BlobMaker) Equals(other *BlobMaker) bool {
 	if !bytes.Equal(bm.currentBlob[:bm.currentBlobLength], other.currentBlob[:other.currentBlobLength]) {
 		return false
 	}
-	if len(bm.Header.BatchSizes) != len(other.Header.BatchSizes) {
+	if len(bm.header.BatchSizes) != len(other.header.BatchSizes) {
 		return false
 	}
-	if !slices.Equal(bm.Header.BatchSizes, other.Header.BatchSizes) {
+	if !slices.Equal(bm.header.BatchSizes, other.header.BatchSizes) {
 		return false
 	}
 	return true
@@ -470,7 +470,7 @@ func (bm *BlobMaker) startOptimizer() {
 			packingBuffer.Reset()
 			compressor.Reset()
 
-			if _, err = bm.Header.WriteTo(&headerBuffer); err != nil {
+			if _, err = bm.header.WriteTo(&headerBuffer); err != nil {
 				logrus.WithError(err).Error("optimizer failed to write header to buffer")
 				continue
 			}
@@ -506,7 +506,7 @@ func (bm *BlobMaker) startOptimizer() {
 				continue
 			}
 
-			if !header.Equals(&bm.Header) {
+			if !header.Equals(&bm.header) {
 				logrus.Warn("optimizer header mismatch")
 				goto newData // assuming this is not actually a compression error, but caused by changes to the blob
 			}
@@ -541,7 +541,7 @@ func (bm *BlobMaker) startOptimizer() {
 }
 
 // obtainLock and releaseLock wrap bm.lock.Lock and bm.lock.Unlock respectively, in order to enable
-// logging for debugging purposes. Normally (hopefully?) they are be inlined by the compiler.
+// logging for debugging purposes. Normally (hopefully?) they would be inlined by the compiler.
 func (bm *BlobMaker) obtainLock() {
 	bm.lock.Lock()
 }
