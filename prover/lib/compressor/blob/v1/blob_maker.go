@@ -438,12 +438,6 @@ func (bm *BlobMaker) RawCompressedSize(data []byte) (int, error) {
 	return n, nil
 }
 
-func (bm *BlobMaker) StopOptimizer() {
-	if bm.doOptimize != nil {
-		close(bm.doOptimize)
-	}
-}
-
 func (bm *BlobMaker) tryOptimize() {
 	if bm.doOptimize != nil && len(bm.doOptimize) == 0 {
 		bm.doOptimize <- struct{}{}
@@ -462,6 +456,8 @@ func (bm *BlobMaker) startOptimizer() {
 		}
 
 		for range bm.doOptimize {
+		newData:
+
 			modificationNum := bm.modificationNum
 			if bm.optimizerModificationNum == modificationNum {
 				continue // already optimized
@@ -512,12 +508,12 @@ func (bm *BlobMaker) startOptimizer() {
 
 			if !header.Equals(&bm.Header) {
 				logrus.Warn("optimizer header mismatch")
-				continue
+				goto newData // assuming this is not actually a compression error, but caused by changes to the blob
 			}
 
 			if !bytes.Equal(payload, bm.compressor.WrittenBytes()) {
 				logrus.Warn("optimizer payload mismatch")
-				continue
+				goto newData
 			}
 
 			bm.obtainLock()
@@ -526,7 +522,7 @@ func (bm *BlobMaker) startOptimizer() {
 			if bm.modificationNum != modificationNum {
 				logrus.Warn("optimized data version obsolete")
 				bm.releaseLock()
-				continue
+				goto newData
 			}
 
 			// swap the compressors (our current one has the payload)
