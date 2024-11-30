@@ -1,10 +1,11 @@
 package linea.build.staterecover.clients.smartcontract
 
 import build.linea.contract.l1.LineaContractVersion
+import build.linea.domain.RetryConfig
 import build.linea.staterecover.clients.DataFinalizedV3
 import build.linea.staterecover.clients.DataSubmittedV3
 import build.linea.staterecover.clients.LineaRollupSubmissionEventsClient
-import build.linea.web3j.Web3JLogsClient
+import build.linea.web3j.Web3JLogsSearcher
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
@@ -24,6 +25,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
@@ -58,17 +61,18 @@ class LineaSubmissionEventsClientIntTest {
       failuresLogLevel = Level.WARN
     )
     submissionEventsFetcher = LineaSubmissionEventsClientWeb3jIpml(
-      logsClient = Web3JLogsClient(
+      logsSearcher = Web3JLogsSearcher(
         vertx = vertx,
         web3jClient = eventsFetcherWeb3jClient,
-        config = Web3JLogsClient.Config(
-          timeout = 30.seconds,
-          backoffDelay = 1.seconds,
-          lookBackRange = 100
+        config = Web3JLogsSearcher.Config(
+          backoffDelay = 1.milliseconds,
+          requestRetryConfig = RetryConfig.noRetries
         )
       ),
       smartContractAddress = rollupDeploymentResult.contractAddress,
-      mostRecentBlockTag = BlockParameter.Tag.LATEST
+      l1EarliestSearchBlock = BlockParameter.Tag.EARLIEST,
+      l1LatestSearchBlock = BlockParameter.Tag.LATEST,
+      logsBlockChunkSize = 100
     )
   }
 
@@ -96,7 +100,7 @@ class LineaSubmissionEventsClientIntTest {
     // wait for all finalizations Txs to be mined
     Web3jClientManager.l1Client.waitForTxReceipt(
       txHash = submissionTxHashes.aggregationTxHashes.last(),
-      timeout = 20.seconds
+      timeout = 1.minutes
     )
 
     val expectedSubmissionEventsToFind: List<Pair<DataFinalizedV3, List<DataSubmittedV3>>> =

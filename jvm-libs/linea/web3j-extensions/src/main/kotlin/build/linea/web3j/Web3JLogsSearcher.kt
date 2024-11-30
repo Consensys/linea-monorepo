@@ -40,7 +40,7 @@ interface LogsSearcher {
     fromBlock: BlockParameter,
     toBlock: BlockParameter,
     address: String,
-    topics: List<String>
+    topics: List<String?>
   ): SafeFuture<List<build.linea.domain.EthLog>>
 }
 
@@ -160,7 +160,7 @@ class Web3JLogsSearcher(
     fromBlock: BlockParameter,
     toBlock: BlockParameter,
     address: String,
-    topics: List<String>
+    topics: List<String?>
   ): SafeFuture<List<build.linea.domain.EthLog>> {
     return if (config.requestRetryConfig.isRetryEnabled) {
       AsyncRetryer.retry(
@@ -180,7 +180,7 @@ class Web3JLogsSearcher(
     fromBlock: BlockParameter,
     toBlock: BlockParameter,
     address: String,
-    topics: List<String>
+    topics: List<String?>
   ): SafeFuture<List<build.linea.domain.EthLog>> {
     val ethFilter = EthFilter(
       /*fromBlock*/ fromBlock.toWeb3j(),

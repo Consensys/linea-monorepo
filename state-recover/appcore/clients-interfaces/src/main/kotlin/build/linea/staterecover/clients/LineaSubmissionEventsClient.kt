@@ -14,6 +14,7 @@ data class DataSubmittedV3(
   val finalStateRootHash: ByteArray
 ) {
   companion object {
+    val topic = "0x55f4c645c36aa5cd3f443d6be44d7a7a5df9d2100d7139dfc69d4289ee072319"
     fun fromEthLog(ethLog: EthLog): EthLogEvent<DataSubmittedV3> {
       // DataSubmittedV3(bytes32 parentShnarf, bytes32 indexed shnarf, bytes32 finalStateRootHash);
       return EthLogEvent(
@@ -63,6 +64,7 @@ data class DataFinalizedV3(
   val finalStateRootHash: ByteArray
 ) : BlockInterval {
   companion object {
+    val topic = "0xa0262dc79e4ccb71ceac8574ae906311ae338aa4a2044fd4ec4b99fad5ab60cb"
     fun fromEthLog(ethLog: EthLog): EthLogEvent<DataFinalizedV3> {
       /**event DataFinalizedV3(
        uint256 indexed startBlockNumber,

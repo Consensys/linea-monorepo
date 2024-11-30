@@ -1,40 +1,51 @@
 package linea.build.staterecover.clients.smartcontract
 
-import build.linea.contract.LineaRollupV6
 import build.linea.domain.EthLogEvent
 import build.linea.staterecover.clients.DataFinalizedV3
 import build.linea.staterecover.clients.DataSubmittedV3
 import build.linea.staterecover.clients.FinalizationAndDataEventsV3
 import build.linea.staterecover.clients.LineaRollupSubmissionEventsClient
-import build.linea.web3j.Web3JLogsClient
-import build.linea.web3j.domain.toDomain
-import build.linea.web3j.domain.toWeb3j
+import build.linea.web3j.LogsSearcher
+import build.linea.web3j.SearchDirection
 import net.consensys.encodeHex
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.BlockParameter.Companion.toBlockParameter
 import net.consensys.toHexStringUInt256
-import org.web3j.abi.EventEncoder
-import org.web3j.protocol.core.methods.request.EthFilter
-import org.web3j.protocol.core.methods.response.Log
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class LineaSubmissionEventsClientWeb3jIpml(
-  private val logsClient: Web3JLogsClient,
+  private val logsSearcher: LogsSearcher,
   private val smartContractAddress: String,
-  private val mostRecentBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED
+  private val l1EarliestSearchBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
+  private val l1LatestSearchBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
+  private val logsBlockChunkSize: Int = 1000
 ) : LineaRollupSubmissionEventsClient {
-
-  override fun findDataFinalizedEventContainingBlock(l2BlockNumber: ULong): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
-    TODO("findDataFinalizedEventContainingBlock(l2BlockNumber=$l2BlockNumber) not yet implemented: ")
+  override fun findDataFinalizedEventContainingBlock(
+    l2BlockNumber: ULong
+  ): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
+    return logsSearcher.findLog(
+      fromBlock = l1EarliestSearchBlock,
+      toBlock = l1LatestSearchBlock,
+      address = smartContractAddress,
+      topics = listOf(DataFinalizedV3.topic),
+      chunkSize = logsBlockChunkSize,
+      shallContinueToSearchPredicate = { log ->
+        val (event) = DataFinalizedV3.fromEthLog(log)
+        when {
+          l2BlockNumber < event.startBlockNumber -> SearchDirection.BACKWARD
+          l2BlockNumber > event.endBlockNumber -> SearchDirection.FORWARD
+          else -> null
+        }
+      }
+    ).thenApply { it?.let { DataFinalizedV3.fromEthLog(it) } }
   }
 
   override fun findDataFinalizedEventByStartBlockNumber(
     l2BlockNumber: ULong
   ): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
-    // TODO: be less eager on block range to search
     return findDataFinalizedV3Event(
-      fromL1BlockNumber = BlockParameter.Tag.EARLIEST,
-      toL1BlockNumber = mostRecentBlockTag,
+      fromL1BlockNumber = l1EarliestSearchBlock,
+      toL1BlockNumber = l1LatestSearchBlock,
       startBlockNumber = l2BlockNumber
     )
   }
@@ -43,8 +54,8 @@ class LineaSubmissionEventsClientWeb3jIpml(
     l2StartBlockNumberInclusive: ULong
   ): SafeFuture<FinalizationAndDataEventsV3?> {
     return findDataFinalizedV3Event(
-      fromL1BlockNumber = BlockParameter.Tag.EARLIEST,
-      toL1BlockNumber = mostRecentBlockTag,
+      fromL1BlockNumber = l1EarliestSearchBlock,
+      toL1BlockNumber = l1LatestSearchBlock,
       startBlockNumber = l2StartBlockNumberInclusive
     )
       .thenCompose { finalizationEvent ->
@@ -69,40 +80,37 @@ class LineaSubmissionEventsClientWeb3jIpml(
       "Either startBlockNumber or endBlockNumber must be provided"
     }
 
-    val ethFilter =
-      EthFilter(
-        fromL1BlockNumber.toWeb3j(),
-        toL1BlockNumber.toWeb3j(),
-        smartContractAddress
-      ).apply {
-        /**
-         event DataFinalizedV3(
-         uint256 indexed startBlockNumber,
-         uint256 indexed endBlockNumber,
-         bytes32 indexed shnarf,
-         bytes32 parentStateRootHash,
-         bytes32 finalStateRootHash
-         );
-         */
-        addSingleTopic(EventEncoder.encode(LineaRollupV6.DATAFINALIZEDV3_EVENT))
-        addSingleTopic(startBlockNumber?.toHexStringUInt256())
-        addSingleTopic(endBlockNumber?.toHexStringUInt256())
-      }
+    /**
+     event DataFinalizedV3(
+     uint256 indexed startBlockNumber,
+     uint256 indexed endBlockNumber,
+     bytes32 indexed shnarf,
+     bytes32 parentStateRootHash,
+     bytes32 finalStateRootHash
+     );
+     */
+    return logsSearcher.getLogs(
+      fromBlock = fromL1BlockNumber,
+      toBlock = toL1BlockNumber,
+      address = smartContractAddress,
+      topics = listOf(
+        DataFinalizedV3.topic,
+        startBlockNumber?.toHexStringUInt256(),
+        endBlockNumber?.toHexStringUInt256()
+      )
+    ).thenCompose { rawLogs ->
+      val finalizedEvents = rawLogs.map(DataFinalizedV3::fromEthLog)
 
-    return logsClient
-      .getLogs(ethFilter)
-      .thenApply(Companion::parseDataFinalizedV3)
-      .thenCompose { finalizedEvents ->
-        if (finalizedEvents.size > 1) {
-          // just a safety check
-          // this should never happen: Finalization events shall be sequential and deterministic
-          val errorMessage =
-            "More than one DataFinalizedV3 event found for startBlockNumber=$startBlockNumber events=$finalizedEvents"
-          SafeFuture.failedFuture(IllegalStateException(errorMessage))
-        } else {
-          SafeFuture.completedFuture(finalizedEvents.firstOrNull())
-        }
+      if (finalizedEvents.size > 1) {
+        // just a safety check
+        // this should never happen: Finalization events shall be sequential and deterministic
+        val errorMessage =
+          "More than one DataFinalizedV3 event found for startBlockNumber=$startBlockNumber events=$finalizedEvents"
+        SafeFuture.failedFuture(IllegalStateException(errorMessage))
+      } else {
+        SafeFuture.completedFuture(finalizedEvents.firstOrNull())
       }
+    }
   }
 
   private fun findAggregationDataSubmittedV3Events(
@@ -154,21 +162,18 @@ class LineaSubmissionEventsClientWeb3jIpml(
     tol1BlockParameter: BlockParameter,
     shnarf: ByteArray
   ): SafeFuture<EthLogEvent<DataSubmittedV3>?> {
-    val ethFilter =
-      EthFilter(
-        fromL1BlockParameter.toWeb3j(),
-        tol1BlockParameter.toWeb3j(),
-        smartContractAddress
-      ).apply {
-        // event DataSubmittedV3(bytes32 parentShnarf, bytes32 indexed shnarf, bytes32 finalStateRootHash);
-        addSingleTopic(EventEncoder.encode(LineaRollupV6.DATASUBMITTEDV3_EVENT))
-        addSingleTopic(shnarf.encodeHex()) // shnarf
-      }
-
-    return logsClient
-      .getLogs(ethFilter)
-      .thenApply(Companion::parseDataSubmittedV3)
-      .thenApply { events ->
+    return logsSearcher
+      .getLogs(
+        fromBlock = fromL1BlockParameter,
+        toBlock = tol1BlockParameter,
+        address = smartContractAddress,
+        topics = listOf(
+          DataSubmittedV3.topic,
+          shnarf.encodeHex()
+        )
+      )
+      .thenApply { rawLogs ->
+        val events = rawLogs.map(DataSubmittedV3::fromEthLog)
         if (events.size > 1) {
           // just a safety check
           // this should never happen: having more than blob with the same shnarf
@@ -179,15 +184,5 @@ class LineaSubmissionEventsClientWeb3jIpml(
           events.firstOrNull()
         }
       }
-  }
-
-  companion object {
-    private fun parseDataSubmittedV3(logs: List<Log>): List<EthLogEvent<DataSubmittedV3>> {
-      return logs.map { log -> DataSubmittedV3.fromEthLog(log.toDomain()) }
-    }
-
-    private fun parseDataFinalizedV3(logs: List<Log>): List<EthLogEvent<DataFinalizedV3>> {
-      return logs.map { log -> DataFinalizedV3.fromEthLog(log.toDomain()) }
-    }
   }
 }
