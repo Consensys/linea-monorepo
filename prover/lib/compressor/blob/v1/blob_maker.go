@@ -5,16 +5,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+	"github.com/sirupsen/logrus"
 	"os"
 	"slices"
 	"strings"
 	"sync"
-	"time"
-
-	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/compress/lzss"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -53,10 +51,10 @@ type BlobMaker struct {
 	buf        bytes.Buffer
 	packBuffer bytes.Buffer
 
-	lock                     sync.Mutex
-	optimizerClock           *time.Ticker
-	modificationNum          uint64 // keeps track of changes to the blob
-	optimizerModificationNum uint64 // the last modification used by the optimizer
+	lock                     sync.Mutex    // protects from concurrent writes
+	doOptimize               chan struct{} // signal to the optimizer that a change has been made
+	modificationNum          uint64        // id for the last change to blob
+	optimizerModificationNum uint64        // the last change used by the optimizer
 }
 
 // NewBlobMaker returns a new bm.
@@ -91,22 +89,29 @@ func NewBlobMaker(dataLimit int, dictPath string) (*BlobMaker, error) {
 	// initialize state
 	blobMaker.StartNewBatch()
 
+	blobMaker.startOptimizer()
+
 	return &blobMaker, nil
 }
 
 // StartNewBatch starts a new batch of blocks.
 func (bm *BlobMaker) StartNewBatch() {
-	bm.lock.Lock()
-	defer bm.lock.Unlock()
-	bm.modificationNum++
+	bm.obtainLock()
+	defer bm.releaseLock()
+	bm.startNewBatch()
+}
 
+// thread-unsafe version of StartNewBatch
+// to be called from a method with lock ownership
+func (bm *BlobMaker) startNewBatch() {
+	bm.modificationNum++
 	bm.Header.sealBatch()
 }
 
 // Reset resets the bm to its initial state.
 func (bm *BlobMaker) Reset() {
-	bm.lock.Lock()
-	defer bm.lock.Unlock()
+	bm.obtainLock()
+	defer bm.releaseLock()
 	bm.modificationNum++
 
 	bm.Header.resetTable()
@@ -115,7 +120,7 @@ func (bm *BlobMaker) Reset() {
 	bm.packBuffer.Reset()
 	bm.compressor.Reset()
 
-	bm.StartNewBatch()
+	bm.startNewBatch()
 }
 
 // Len returns the length of the compressed data, which includes the header.
@@ -130,8 +135,8 @@ func (bm *BlobMaker) Written() int {
 // Bytes returns the compressed data. Note that it returns a slice of the internal buffer,
 // it is the caller's responsibility to copy the data if needed.
 func (bm *BlobMaker) Bytes() []byte {
-	bm.lock.Lock()
-	defer bm.lock.Unlock()
+	bm.obtainLock()
+	defer bm.releaseLock()
 
 	if bm.currentBlobLength > 0 {
 		// sanity check that we can always decompress.
@@ -159,8 +164,8 @@ func (bm *BlobMaker) Bytes() []byte {
 // Write attempts to append the RLP block to the current batch.
 // if forceReset is set; this will NOT append the bytes but still returns true if the chunk could have been appended
 func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error) {
-	bm.lock.Lock()
-	defer bm.lock.Unlock()
+	bm.obtainLock()
+	defer bm.releaseLock()
 	bm.modificationNum++
 
 	// decode the RLP block.
@@ -256,6 +261,7 @@ bypass:
 	bm.currentBlobLength = int(n2)
 	copy(bm.currentBlob[:bm.currentBlobLength], bm.packBuffer.Bytes())
 
+	bm.tryOptimize()
 	return true, nil
 }
 
@@ -433,37 +439,35 @@ func (bm *BlobMaker) RawCompressedSize(data []byte) (int, error) {
 }
 
 func (bm *BlobMaker) StopOptimizer() {
-	bm.lock.Lock() // if the optimizer is currently running, let it finish
-	if bm.optimizerClock != nil {
-		bm.optimizerClock.Stop()
+	if bm.doOptimize != nil {
+		close(bm.doOptimize)
 	}
-	bm.lock.Unlock()
 }
 
-// StartOptimizer starts an optimizer that will try to compress the blob further periodically.
-func (bm *BlobMaker) StartOptimizer(period time.Duration) {
-	if bm.optimizerClock != nil {
-		bm.lock.Lock()
-		bm.optimizerClock.Reset(period)
-		bm.lock.Unlock()
-		return
+func (bm *BlobMaker) tryOptimize() {
+	if bm.doOptimize != nil && len(bm.doOptimize) == 0 {
+		bm.doOptimize <- struct{}{}
 	}
+}
 
-	bm.optimizerClock = time.NewTicker(period)
+func (bm *BlobMaker) startOptimizer() {
+	bm.doOptimize = make(chan struct{}, 1)
 	go func() {
 		var headerBuffer, packingBuffer bytes.Buffer
-		packingBuffer.Grow(MaxUsableBytes)
+		packingBuffer.Grow(MaxUsableBytes) // used for packing and holding the raw payload
 		compressor, err := lzss.NewCompressor(bm.dict)
 		if err != nil {
 			logrus.WithError(err).Error("optimizer failed to create compressor")
 			return
 		}
 
-		for range bm.optimizerClock.C {
-
+		for range bm.doOptimize {
 			modificationNum := bm.modificationNum
-			if modificationNum == bm.optimizerModificationNum {
-				continue // no new data to optimize
+			if bm.optimizerModificationNum == modificationNum {
+				continue // already optimized
+			}
+			if bm.optimizerModificationNum > modificationNum {
+				panic("optimizer modification num is ahead of the actual modification num")
 			}
 
 			headerBuffer.Reset()
@@ -516,25 +520,36 @@ func (bm *BlobMaker) StartOptimizer(period time.Duration) {
 				continue
 			}
 
-			bm.lock.Lock()
+			bm.obtainLock()
 
 			// blob has been modified since the optimizer started
 			if bm.modificationNum != modificationNum {
-				logrus.Warn("blob changed under the optimiser's feet")
-				bm.lock.Unlock()
+				logrus.Warn("optimized data version obsolete")
+				bm.releaseLock()
 				continue
 			}
 
-			// swap the compressors
+			// swap the compressors (our current one has the payload)
 			bm.compressor, compressor = compressor, bm.compressor
 
 			// store the new blob
 			bm.currentBlobLength = int(n)
 			copy(bm.currentBlob[:n], packingBuffer.Bytes())
 
-			bm.lock.Unlock()
+			bm.releaseLock()
 
 			bm.optimizerModificationNum = modificationNum
+			logrus.Info("optimizer success")
 		}
 	}()
+}
+
+// obtainLock and releaseLock wrap bm.lock.Lock and bm.lock.Unlock respectively, in order to enable
+// logging for debugging purposes. Normally (hopefully?) they are be inlined by the compiler.
+func (bm *BlobMaker) obtainLock() {
+	bm.lock.Lock()
+}
+
+func (bm *BlobMaker) releaseLock() {
+	bm.lock.Unlock()
 }
