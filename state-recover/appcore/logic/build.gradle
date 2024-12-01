@@ -1,6 +1,3 @@
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.tasks.testing.logging.TestLogEvent
-
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
 }
@@ -24,6 +21,7 @@ def wipBesuVersion = '24.10-develop-f9bd355'
 dependencies {
   implementation("io.vertx:vertx-core:${libs.versions.vertx.get()}")
   api(project(':jvm-libs:generic:extensions:kotlin'))
+  api(project(':jvm-libs:generic:logging'))
   api(project(':jvm-libs:linea:core:domain-models'))
   api(project(':jvm-libs:linea:core:long-running-service'))
   api(project(':jvm-libs:linea:clients:interfaces'))
@@ -53,41 +51,4 @@ configurations.all {
     force "org.hyperledger.besu:plugin-api:${wipBesuVersion}"
     force "org.hyperledger.besu:evm:${wipBesuVersion}"
   }
-}
-
-sourceSets {
-  integrationTest {
-    kotlin {
-      compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
-      runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
-    }
-    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
-    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
-  }
-}
-
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
-
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-
-    dependsOn(":localStackForStateRecoverComposeUp")
-
-    testLogging {
-      events TestLogEvent.FAILED,
-        TestLogEvent.SKIPPED,
-        TestLogEvent.STANDARD_ERROR,
-        TestLogEvent.STARTED,
-        TestLogEvent.PASSED
-      exceptionFormat TestExceptionFormat.FULL
-      showCauses true
-      showExceptions true
-      showStackTraces true
-      // set showStandardStreams if you need to see test logs
-      showStandardStreams false
-    }
 }
