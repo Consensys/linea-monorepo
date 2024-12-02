@@ -19,7 +19,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     steps:
       - name: Install Go
         uses: actions/setup-go@v4
@@ -52,7 +52,7 @@ jobs:
 
   tests:
     needs: [ build ]
-    runs-on: ubuntu-latest-32
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     steps:
       - name: Setup upterm session
         if: ${{ inputs.tests-with-ssh }}
@@ -98,7 +98,7 @@ jobs:
 
   go-corset-tests:
     needs: [ build ]
-    runs-on: ubuntu-latest-32
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     continue-on-error: true
     steps:
       - name: Setup upterm session
