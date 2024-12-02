@@ -14,7 +14,7 @@
 * [OpenZeppelin - November 2023 - gnark PLONK Solidity verifier template](https://blog.openzeppelin.com/linea-verifier-audit-1)
 ---
 **2022**
-* [Kudelski Security - October 2022 - gnark-crypto (contracted by Algorand Foundation)](https://github.com/Consensys/gnark/blob/master/audits/2022-10%20-%20Kudelski%20-%20gnark-crypto.pdf)
+* [Kudelski Security - October 2022 - gnark-crypto (contracted by Algorand Foundation)](https://github.com/Consensys/gnark/blob/53ce9b74e7ab372aa7358f1eac7fe3d689743f5f/audits/2022-10%20-%20Kudelski%20-%20gnark-crypto.pdf)
 
 
 ---
