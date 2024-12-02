@@ -34,4 +34,3 @@ make setup
 ./integration/run.sh dev-mode
 ./integration/run.sh full-mode
 ```
-
