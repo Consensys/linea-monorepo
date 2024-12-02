@@ -9,6 +9,7 @@ import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import org.apache.logging.log4j.Level
+import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -36,9 +37,10 @@ class VertxRestClient<Response>(
     vertx = vertx
   ),
   private val requestHeaders: Map<String, String> = mapOf("Accept" to "application/json"),
-  private val log: Logger = org.apache.logging.log4j.LogManager.getLogger(VertxRestClient::class.java),
+  private val log: Logger = LogManager.getLogger(VertxRestClient::class.java),
   private val requestResponseLogLevel: Level = Level.TRACE,
-  private val failuresLogLevel: Level = Level.DEBUG
+  private val failuresLogLevel: Level = Level.DEBUG,
+  private val responseLogMaxSize: UInt? = null
 ) : RestClient<Response> {
   private fun makeRequestWithRetry(
     request: HttpRequest<Buffer>
@@ -85,13 +87,21 @@ class VertxRestClient<Response>(
       logRequest(request, logLevel)
     }
 
+    val responseToLog = response?.bodyAsString()?.let { bodyStr ->
+      if (responseLogMaxSize != null) {
+        bodyStr.take(responseLogMaxSize.toInt()) + "..." + "(contentLength=${response.getHeader("Content-Length")})"
+      } else {
+        bodyStr
+      }
+    }
+
     log.log(
       logLevel,
       "<-- {} {} {} {} {}",
       request.method(),
       request.uri(),
       response?.statusCode(),
-      response?.bodyAsString(),
+      responseToLog,
       failureCause?.message ?: ""
     )
   }
