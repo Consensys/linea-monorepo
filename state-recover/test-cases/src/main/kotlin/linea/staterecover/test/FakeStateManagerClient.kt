@@ -7,7 +7,11 @@ import build.linea.domain.BlockInterval
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
+import linea.EthLogsSearcher
+import linea.staterecover.DataFinalizedV3
+import net.consensys.linea.BlockParameter
 import net.consensys.linea.errors.ErrorResponse
+import net.consensys.toHexStringUInt256
 import net.consensys.zkevm.domain.BlobRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -48,5 +52,49 @@ class FakeStateManagerClient(
           )
         )
     }
+  }
+}
+
+class FakeStateManagerClientReadFromL1(
+  val headBlockNumber: ULong,
+  val logsSearcher: EthLogsSearcher,
+  val contracAddress: String
+) : StateManagerClientV1 {
+
+  override fun rollupGetHeadBlockNumber(): SafeFuture<ULong> {
+    return SafeFuture.completedFuture(headBlockNumber)
+  }
+
+  override fun rollupGetStateMerkleProofWithTypedError(
+    blockInterval: BlockInterval
+  ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
+    return logsSearcher
+      .getLogs(
+        fromBlock = BlockParameter.Tag.EARLIEST,
+        toBlock = BlockParameter.Tag.FINALIZED,
+        address = contracAddress,
+        topics = listOf(
+          DataFinalizedV3.topic,
+          blockInterval.startBlockNumber.toHexStringUInt256(),
+          blockInterval.endBlockNumber.toHexStringUInt256()
+        )
+      )
+      .thenCompose { logs ->
+        if (logs.isEmpty()) {
+          SafeFuture.failedFuture(RuntimeException("No logs found for block interval: $blockInterval"))
+        } else {
+          val logEvent = DataFinalizedV3.fromEthLog(logs.first())
+          SafeFuture.completedFuture(
+            Ok(
+              GetZkEVMStateMerkleProofResponse(
+                zkStateMerkleProof = ArrayNode(null),
+                zkParentStateRootHash = logEvent.event.parentStateRootHash,
+                zkEndStateRootHash = logEvent.event.finalStateRootHash,
+                zkStateManagerVersion = "fake-version"
+              )
+            )
+          )
+        }
+      }
   }
 }
