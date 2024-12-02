@@ -142,6 +142,8 @@ contract TokenBridge is
     external
     nonZeroAddress(_initializationData.messageService)
     nonZeroAddress(_initializationData.tokenBeacon)
+    nonZeroAmount(_initializationData.sourceChainId)
+    nonZeroAmount(_initializationData.targetChainId)
     initializer
   {
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
@@ -157,6 +159,7 @@ contract TokenBridge is
     __Permissions_init(_initializationData.roleAddresses);
 
     tokenBeacon = _initializationData.tokenBeacon;
+    if (_initializationData.sourceChainId == _initializationData.targetChainId) revert SourceChainSameAsTargetChain();
     sourceChainId = _initializationData.sourceChainId;
     targetChainId = _initializationData.targetChainId;
 
