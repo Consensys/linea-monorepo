@@ -112,8 +112,20 @@ jobs:
               - 'finalized-tag-updater/**'
               - '.github/workflows/main.yml'
               - '.github/workflows/finalized-tag-updater-github-release.yml'
+      - name: Filter out commit changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.ref }}
+          list-files: "json"
+          filters: |
             not-markdown-only:
+              - '!**/*.md'
               - '!**/*.yml'
+          # Default value is 'some' which only requires a single filter to match
+          # For exclusion filter, we need `every` which requires all defined filters to match
+          # This is required to create a filter out changes in multiple file types
+          predicate-quantifier: 'every'
 
   check-and-tag-images:
     needs: [ store-image-name-and-tags, filter-commit-changes ]
