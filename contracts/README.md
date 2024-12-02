@@ -1,4 +1,4 @@
-# Smart Contracts 
+# Smart Contracts
 
 Contains Ethereum smart contract code for the Linea Rollup and Message Service.
 
