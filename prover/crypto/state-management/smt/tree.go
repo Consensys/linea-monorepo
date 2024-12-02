@@ -26,7 +26,7 @@ type Tree struct {
 	// OccupiedLeaves continuously list of the occupied leaves. For the toy
 	// implementation we track all the leaves.
 	OccupiedLeaves []types.Bytes32
-	// Occupied not stores all the node with a non-trivial value in the tree.
+	// OccupiedNodes stores all the nodes with a non-trivial value in the tree.
 	//
 	// Does not include the root. (So there are 39 levels and not 40).
 	// Returns a node at a given level:
@@ -39,7 +39,7 @@ type Tree struct {
 	// It does not include the "empty root" nor the empty leaf
 	// so the first position contains the empty node for the level one.
 	// So there are 39, and not 40 levels. That way, the indexing stays
-	// consistent with "OccupiedNode"
+	// consistent with "OccupiedNodes"
 	EmptyNodes []types.Bytes32
 }
 
