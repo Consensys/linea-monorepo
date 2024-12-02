@@ -155,7 +155,7 @@ Note: the deploy-l1-test-erc20 and deploy-l2-test-erc20 commands are executed fo
 
 ## Installation and testing
 
-To run the solution's tests, coverage and gas reporting, be sure to install pnpm and then
+To run the solution's tests, coverage and gas reporting, be sure to install pnpm and then 
 ```
 # Install all the dependencies
 
