@@ -10,9 +10,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.build.staterecover.clients.VertxTransactionDetailsClient
-import linea.staterecover.clients.blobscan.BlobInfo
 import linea.staterecover.clients.blobscan.BlobScanClient
-import linea.staterecover.clients.blobscan.FakeBlobFetcher
 import linea.staterecover.test.FakeExecutionLayerClient
 import linea.staterecover.test.FakeStateManagerClient
 import net.consensys.linea.BlockNumberAndHash
@@ -45,13 +43,15 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
   private lateinit var stateRecoverApp: StateRecoverApp
   private lateinit var aggregationsAndBlobs: List<AggregationAndBlobs>
   private lateinit var executionLayerClient: FakeExecutionLayerClient
-  private lateinit var blobFetcher: BlobFetcher
   private lateinit var fakeStateManagerClient: StateManagerClientV1
   private lateinit var transactionDetailsClient: TransactionDetailsClient
   private lateinit var lineaContractClient: LineaRollupSmartContractClientReadOnly
 
   private lateinit var contractClientForSubmittions: LineaRollupSmartContractClient
   private val testDataDir = "testdata/coordinator/prover/v3/"
+
+  private val l1RpcUrl = "http://localhost:8445"
+  private val blobScanUrl = "http://localhost:4001"
 
   @BeforeEach
   fun beforeEach(vertx: Vertx) {
@@ -65,15 +65,10 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
       initialStateRecoverStartBlockNumber = null,
       loggerName = "test.fake.clients.l1.fake-execution-layer"
     )
-    blobFetcher = FakeBlobFetcher(
-      blobRecords = aggregationsAndBlobs
-        .flatMap { it.blobs }
-        .map { BlobInfo(it.startBlockNumber, it.endBlockNumber, it.blobCompressionProof!!.compressedData) }
-    )
     fakeStateManagerClient = FakeStateManagerClient(blobRecords = aggregationsAndBlobs.flatMap { it.blobs })
     transactionDetailsClient = VertxTransactionDetailsClient.create(
       jsonRpcClientFactory = jsonRpcFactory,
-      endpoint = URI("http://localhost:8445"),
+      endpoint = URI(l1RpcUrl),
       retryConfig = RequestRetryConfig(
         backoffDelay = 10.milliseconds,
         timeout = 2.seconds
@@ -109,7 +104,7 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
     contractClientForSubmittions = rollupDeploymentResult.rollupOperatorClient
     val blobScanClient = BlobScanClient.create(
       vertx = vertx,
-      endpoint = URI("http://localhost:4001"),
+      endpoint = URI(blobScanUrl),
       requestRetryConfig = RequestRetryConfig(
         backoffDelay = 10.milliseconds,
         timeout = 2.seconds
