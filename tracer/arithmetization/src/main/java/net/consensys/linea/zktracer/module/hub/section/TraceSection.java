@@ -45,7 +45,6 @@ import org.hyperledger.besu.evm.internal.Words;
 @Accessors(fluent = true)
 /* A TraceSection gather the trace lines linked to a single operation */
 public class TraceSection {
-  private final Hub hub;
   public final CommonFragmentValues commonValues;
   @Getter List<TraceFragment> fragments;
   /* A link to the previous section */
@@ -56,7 +55,6 @@ public class TraceSection {
 
   /** Default creator specifying the max number of rows the section can contain. */
   public TraceSection(final Hub hub, final short maxNumberOfLines) {
-    this.hub = hub;
     hub.state().stamps().incrementHubStamp();
     commonValues = new CommonFragmentValues(hub);
     fragments = new ArrayList<>(maxNumberOfLines);
@@ -128,10 +126,11 @@ public class TraceSection {
         (int) fragments.stream().filter(l -> (l instanceof StackFragment)).count() == 2);
     commonValues.codeFragmentIndex(
         currentPhase == TX_EXEC
-            ? hub.getCfiByMetaData(
-                commonValues.callFrame().byteCodeAddress(),
-                commonValues.callFrame().byteCodeDeploymentNumber(),
-                commonValues.callFrame().isDeployment())
+            ? hub()
+                .getCfiByMetaData(
+                    commonValues.callFrame().byteCodeAddress(),
+                    commonValues.callFrame().byteCodeDeploymentNumber(),
+                    commonValues.callFrame().isDeployment())
             : 0);
     commonValues.contextNumberNew(computeContextNumberNew());
 
@@ -227,8 +226,8 @@ public class TraceSection {
               commonValues,
               stackLineCounter,
               nonStackLineCounter,
-              hub.state.stamps().mmu(),
-              hub.state.stamps().mxp());
+              hub().state.stamps().mmu(),
+              hub().state.stamps().mxp());
       commonFragment.trace(hubTrace);
       hubTrace.fillAndValidateRow();
     }
@@ -240,5 +239,9 @@ public class TraceSection {
 
   public int revertStamp() {
     return commonValues.callFrame().revertStamp();
+  }
+
+  private Hub hub() {
+    return commonValues.hub;
   }
 }
