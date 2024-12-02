@@ -119,6 +119,7 @@ jobs:
   check-and-tag-images:
     needs: [ store-image-name-and-tags, filter-commit-changes ]
     uses: ./.github/workflows/reuse-check-images-tags-and-push.yml
+    if: ${{ needs.filter-commit-changes.outputs.not-markdown-only == 'true' }}
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       last_commit_tag: ${{ needs.store-image-name-and-tags.outputs.last_commit_tag }}
@@ -172,7 +173,7 @@ jobs:
 
   testing:
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
-    if: ${{ always() }}
+    if: ${{ always() && needs.filter-commit-changes.outputs.not-markdown-only == 'true' }}
     uses: ./.github/workflows/testing.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
