@@ -8,7 +8,7 @@
 * [LeastAuthority - September 2024 - gnark general and GKR](https://github.com/Consensys/gnark/blob/master/audits/2024-09%20-%20Least%20Authority%20-%20arithm%20and%20GKR.pdf)
 ---
 **2023**
-* [Sigma Prime - May 2023 - gnark-crypto KZG (contracted by Ethereum Foundation)](https://github.com/Consensys/gnark/blob/master/audits/2024-05%20-%20Sigma%20Prime%20-%20kzg.pdf)
+* [Sigma Prime - May 2023 - gnark-crypto KZG (contracted by Ethereum Foundation)](https://github.com/Consensys/gnark/blob/53ce9b74e7ab372aa7358f1eac7fe3d689743f5f/audits/2024-05%20-%20Sigma%20Prime%20-%20kzg.pdf)
 * [Consensys Diligence - June 2023 - gnark PLONK Solidity verifier](https://consensys.io/diligence/audits/2023/06/linea-plonk-verifier/)
 * [LeastAuthority - August 2023 - gnark Groth16 Solidity verifier template (contracted by Worldcoin)](https://leastauthority.com/wp-content/uploads/2023/08/Worldcoin_Groth16_Verifier_in_EVM_Smart_Contract_Final_Audit_Report.pdf)
 * [OpenZeppelin - November 2023 - gnark PLONK Solidity verifier template](https://blog.openzeppelin.com/linea-verifier-audit-1)
