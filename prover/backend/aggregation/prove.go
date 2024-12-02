@@ -173,7 +173,6 @@ func makeBw6Proof(
 		numProofClaims              = len(cf.ProofClaims)
 		biggestAvailable            = 0
 		bestSize                    = math.MaxInt
-		bestSetupPos                = -1
 		bestAllowedVkForAggregation []string
 	)
 
@@ -255,7 +254,7 @@ func makeBw6Proof(
 	if err != nil {
 		return nil, 0, fmt.Errorf("could not create BW6 proof: %w", err)
 	}
-	return proofBW6, bestSetupPos, nil
+	return proofBW6, circuitID, nil
 }
 
 func makeBn254Proof(
