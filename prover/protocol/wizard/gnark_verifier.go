@@ -1,8 +1,6 @@
 package wizard
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
@@ -421,7 +419,6 @@ func GetWizardVerifierCircuitAssignment(comp *CompiledIOP, proof Proof) *WizardV
 			res.InnerProductParams = append(res.InnerProductParams, params.GnarkAssign())
 
 		case query.LocalOpeningParams:
-			fmt.Printf("assign local opening: name=%v y=%v", qName, params.Y.String())
 			res.localOpeningIDs.InsertNew(qName, len(res.LocalOpeningParams))
 			res.LocalOpeningParams = append(res.LocalOpeningParams, params.GnarkAssign())
 
