@@ -2,15 +2,23 @@ package linea.staterecover
 
 import build.linea.staterecover.BlockL1RecoveredData
 import build.linea.staterecover.TransactionL1RecoveredData
+import io.vertx.core.Vertx
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import net.consensys.decodeHex
+import net.consensys.linea.CommonDomainFunctions
+import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.blob.BlobDecompressor
 import net.consensys.toULong
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.core.Block
 import org.hyperledger.besu.ethereum.core.encoding.registry.BlockDecoder
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.ethereum.rlp.RLP
+import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.Callable
 import kotlin.jvm.optionals.getOrNull
 
 interface BlobDecompressorAndDeserializer {
@@ -20,7 +28,7 @@ interface BlobDecompressorAndDeserializer {
   fun decompress(
     startBlockNumber: ULong,
     blobs: List<ByteArray>
-  ): List<BlockL1RecoveredData>
+  ): SafeFuture<List<BlockL1RecoveredData>>
 }
 
 data class BlockHeaderStaticFields(
@@ -44,7 +52,9 @@ data class BlockHeaderStaticFields(
 class BlobDecompressorToDomainV1(
   val decompressor: BlobDecompressor,
 //  val chainId: ULong,
-  val staticFields: BlockHeaderStaticFields
+  val staticFields: BlockHeaderStaticFields,
+  val vertx: Vertx,
+  val logger: Logger = LogManager.getLogger(BlobDecompressorToDomainV1::class.java)
 ) : BlobDecompressorAndDeserializer {
 
   private val blockDecoder =
@@ -55,48 +65,72 @@ class BlobDecompressorToDomainV1(
   override fun decompress(
     startBlockNumber: ULong,
     blobs: List<ByteArray>
-  ): List<BlockL1RecoveredData> {
-    val blocksRecovered = mutableListOf<BlockL1RecoveredData>()
+  ): SafeFuture<List<BlockL1RecoveredData>> {
     var blockNumber = startBlockNumber
+    val startTime = Clock.System.now()
+    logger.debug("start decompressing blobs: startBlockNumber={} {} blobs", startBlockNumber, blobs.size)
+    val decompressedBlobs = blobs.map { decompressor.decompress(it) }
 
-    blobs.forEach { blob ->
-      val blocksRlp = rlpDecodeAsListOfBytes(decompressor.decompress(blob))
-      blocksRlp.forEach { blockRlp ->
-        val block: Block = blockDecoder.decode(RLP.input(Bytes.wrap(blockRlp), true), blockHeaderFunctions)
-
-        val blockRecovered = BlockL1RecoveredData(
-          blockNumber = blockNumber++,
-          blockHash = block.header.parentHash.toArray(),
-          coinbase = staticFields.coinbase,
-          blockTimestamp = Instant.fromEpochSeconds(block.header.timestamp),
-          gasLimit = this.staticFields.gasLimit,
-          difficulty = block.header.difficulty.asBigInteger.toULong(),
-          transactions = block.body.transactions.map { transaction ->
-            TransactionL1RecoveredData(
-              type = transaction.type.serializedType.toUByte(),
-              from = transaction.sender.toArray(),
-              nonce = transaction.nonce.toULong(),
-              gasLimit = transaction.gasLimit.toULong(),
-              maxFeePerGas = transaction.maxFeePerGas.getOrNull()?.asBigInteger,
-              maxPriorityFeePerGas = transaction.maxPriorityFeePerGas.getOrNull()?.asBigInteger,
-              gasPrice = transaction.gasPrice.getOrNull()?.asBigInteger,
-              to = transaction.to.getOrNull()?.toArray(),
-              value = transaction.value.asBigInteger,
-              data = transaction.data.getOrNull()?.toArray(),
-              accessList = transaction.accessList.getOrNull()?.map { accessTuple ->
-                TransactionL1RecoveredData.AccessTuple(
-                  address = accessTuple.address.toArray(),
-                  storageKeys = accessTuple.storageKeys.map { it.toArray() }
-                )
-              }
-            )
-          }
+    return SafeFuture
+      .collectAll(decompressedBlobs.map(::decodeBlocksAsync).stream())
+      .thenApply { blobsBlocks: List<List<Block>> ->
+        blobsBlocks.flatten().map { block ->
+          BlockL1RecoveredData(
+            blockNumber = blockNumber++,
+            blockHash = block.header.parentHash.toArray(),
+            coinbase = staticFields.coinbase,
+            blockTimestamp = Instant.fromEpochSeconds(block.header.timestamp),
+            gasLimit = this.staticFields.gasLimit,
+            difficulty = block.header.difficulty.asBigInteger.toULong(),
+            transactions = block.body.transactions.map { transaction ->
+              TransactionL1RecoveredData(
+                type = transaction.type.serializedType.toUByte(),
+                from = transaction.sender.toArray(),
+                nonce = transaction.nonce.toULong(),
+                gasLimit = transaction.gasLimit.toULong(),
+                maxFeePerGas = transaction.maxFeePerGas.getOrNull()?.asBigInteger,
+                maxPriorityFeePerGas = transaction.maxPriorityFeePerGas.getOrNull()?.asBigInteger,
+                gasPrice = transaction.gasPrice.getOrNull()?.asBigInteger,
+                to = transaction.to.getOrNull()?.toArray(),
+                value = transaction.value.asBigInteger,
+                data = transaction.data.getOrNull()?.toArray(),
+                accessList = transaction.accessList.getOrNull()?.map { accessTuple ->
+                  TransactionL1RecoveredData.AccessTuple(
+                    address = accessTuple.address.toArray(),
+                    storageKeys = accessTuple.storageKeys.map { it.toArray() }
+                  )
+                }
+              )
+            }
+          )
+        }
+      }.thenPeek {
+        val endTime = Clock.System.now()
+        logger.debug(
+          "blobs decompressed and serialized: duration={} {} blobs, blocks={}",
+          endTime - startTime,
+          blobs.size,
+          CommonDomainFunctions.blockIntervalString(startBlockNumber, blockNumber - 1UL)
         )
-        blocksRecovered.add(blockRecovered)
       }
-    }
+  }
 
-    return blocksRecovered
+  private fun decodeBlocksAsync(blocksRLP: ByteArray): SafeFuture<List<Block>> {
+    return vertx.executeBlocking(
+      Callable {
+        decodeBlocks(blocksRLP)
+      },
+      false
+    )
+      .onFailure(logger::error)
+      .toSafeFuture()
+  }
+
+  private fun decodeBlocks(blocksRLP: ByteArray): List<Block> {
+    return rlpDecodeAsListOfBytes(blocksRLP)
+      .map { blockRlp ->
+        blockDecoder.decode(RLP.input(Bytes.wrap(blockRlp), true), blockHeaderFunctions)
+      }
   }
 }
 

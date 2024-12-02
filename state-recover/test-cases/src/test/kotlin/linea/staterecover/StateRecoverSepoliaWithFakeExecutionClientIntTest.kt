@@ -23,7 +23,6 @@ import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.extension.ExtendWith
 import java.net.URI
 import kotlin.time.Duration.Companion.milliseconds
@@ -126,8 +125,8 @@ class StateRecoverSepoliaWithFakeExecutionClientIntTest {
     )
   }
 
-//  @Test
-  @Disabled("Disabled because it is mean for local testing and debug purposes")
+  // "Disabled because it is mean for local testing and debug purposes"
+  // @Test
   fun `simulate recovery from given point`(
     vertx: Vertx
   ) {

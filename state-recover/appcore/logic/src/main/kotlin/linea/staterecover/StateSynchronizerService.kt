@@ -107,21 +107,27 @@ class StateSynchronizerService(
     dataSubmissions: List<DataSubmittedEventAndBlobs>,
     dataFinalizedV3: DataFinalizedV3
   ): SafeFuture<BlockNumberAndHash> {
-    val decompressedBlocks: List<BlockL1RecoveredData> = blobDecompressor
+    return blobDecompressor
       .decompress(
         startBlockNumber = dataFinalizedV3.startBlockNumber,
         blobs = dataSubmissions.flatMap { it.blobs }
-      )
-      .sortedBy { it.blockNumber }
+      ).thenCompose { decompressedBlocks: List<BlockL1RecoveredData> ->
+        val decompressedBlocksInterval = decompressedBlocks
+          .first().blockNumber..decompressedBlocks.last().blockNumber
 
-    return blockImporterAndStateVerifier
-      .importBlocks(decompressedBlocks)
-      .thenCompose { importResult -> assertStateMatches(importResult, dataFinalizedV3) }
-      .thenApply {
-        BlockNumberAndHash(
-          number = decompressedBlocks.last().blockNumber,
-          hash = decompressedBlocks.last().blockHash
-        )
+        log.debug("importing blocks={}", dataFinalizedV3.intervalString())
+        blockImporterAndStateVerifier
+          .importBlocks(decompressedBlocks)
+          .thenCompose { importResult ->
+            log.debug("imported blocks={}", dataFinalizedV3.intervalString())
+            assertStateMatches(importResult, dataFinalizedV3)
+          }
+          .thenApply {
+            BlockNumberAndHash(
+              number = decompressedBlocks.last().blockNumber,
+              hash = decompressedBlocks.last().blockHash
+            )
+          }
       }
   }
 
@@ -131,9 +137,10 @@ class StateSynchronizerService(
   ): SafeFuture<Unit> {
     return if (importResult.zkStateRootHash.contentEquals(finalizedV3.finalStateRootHash)) {
       log.info(
-        "State recovered up to block={} zkStateRootHash={}",
+        "state recovered up to block={} zkStateRootHash={} finalization={}",
         importResult.blockNumber,
-        importResult.zkStateRootHash.encodeHex()
+        importResult.zkStateRootHash.encodeHex(),
+        finalizedV3.intervalString()
       )
       SafeFuture.completedFuture(Unit)
     } else {

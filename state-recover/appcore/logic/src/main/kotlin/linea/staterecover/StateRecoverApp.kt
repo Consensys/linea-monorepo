@@ -52,8 +52,7 @@ class StateRecoverApp(
       )
       val lineaSepolia = Config(
         smartContractAddress = "0xb218f8a4bc926cf1ca7b3423c154a0d627bdb7e5",
-        // TODO: set block of V6 Upgrade
-        l1EarliestSearchBlock = 1UL.toBlockParameter(),
+        l1EarliestSearchBlock = 7164537UL.toBlockParameter(),
         l1LatestSearchBlock = BlockParameter.Tag.FINALIZED,
         executionClientPollingInterval = 10.seconds,
         l1PollingInterval = 12.seconds
@@ -82,7 +81,8 @@ class StateRecoverApp(
   )
   private val blobDecompressor: BlobDecompressorAndDeserializer = BlobDecompressorToDomainV1(
     decompressor = GoNativeBlobDecompressorFactory.getInstance(config.blobDecompressorVersion),
-    staticFields = blockHeaderStaticFields
+    staticFields = blockHeaderStaticFields,
+    vertx = vertx
   )
   private val stateSynchronizerService = StateSynchronizerService(
     vertx = vertx,

@@ -2,6 +2,7 @@ package linea.staterecover
 
 import build.linea.staterecover.BlockL1RecoveredData
 import build.linea.staterecover.TransactionL1RecoveredData
+import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
 import net.consensys.encodeHex
 import net.consensys.linea.blob.BlobCompressorVersion
@@ -18,6 +19,7 @@ import org.hyperledger.besu.ethereum.core.Transaction
 import org.hyperledger.besu.ethereum.core.encoding.registry.BlockDecoder
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPInput
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -31,11 +33,12 @@ class BlobDecompressorAndDeserializerV1Test {
     gasLimit = 30_000_000UL,
     difficulty = 0UL
   )
-
   private lateinit var decompressorToDomain: BlobDecompressorAndDeserializer
+  private lateinit var vertx: Vertx
 
   @BeforeEach
   fun setUp() {
+    vertx = Vertx.vertx()
     compressor = GoNativeBlobCompressorFactory
       .getInstance(BlobCompressorVersion.V1_0_1)
       .apply {
@@ -43,7 +46,12 @@ class BlobDecompressorAndDeserializerV1Test {
         Reset()
       }
     val decompressor = GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V1_1_0)
-    decompressorToDomain = BlobDecompressorToDomainV1(decompressor, blockStaticFields)
+    decompressorToDomain = BlobDecompressorToDomainV1(decompressor, blockStaticFields, vertx)
+  }
+
+  @AfterEach
+  fun afterEach() {
+    vertx.close()
   }
 
   @Test
@@ -67,7 +75,7 @@ class BlobDecompressorAndDeserializerV1Test {
     val recoveredBlocks = decompressorToDomain.decompress(
       startBlockNumber = startingBlockNumber,
       blobs = listOf(blob1, blob2)
-    )
+    ).get()
     assertThat(recoveredBlocks[0].blockNumber).isEqualTo(startingBlockNumber)
 
     recoveredBlocks.zip(blocks) { recoveredBlock, originalBlock ->

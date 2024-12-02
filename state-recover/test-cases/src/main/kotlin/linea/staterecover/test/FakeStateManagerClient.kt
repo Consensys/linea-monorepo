@@ -75,13 +75,14 @@ class FakeStateManagerClientReadFromL1(
         address = contracAddress,
         topics = listOf(
           DataFinalizedV3.topic,
-          blockInterval.startBlockNumber.toHexStringUInt256(),
+          null,
+//          blockInterval.startBlockNumber.toHexStringUInt256()
           blockInterval.endBlockNumber.toHexStringUInt256()
         )
       )
       .thenCompose { logs ->
         if (logs.isEmpty()) {
-          SafeFuture.failedFuture(RuntimeException("No logs found for block interval: $blockInterval"))
+          SafeFuture.failedFuture(RuntimeException("No logs found for l2 blocks=$blockInterval"))
         } else {
           val logEvent = DataFinalizedV3.fromEthLog(logs.first())
           SafeFuture.completedFuture(
