@@ -121,7 +121,6 @@ jobs:
           filters: |
             not-markdown-only:
               - '!**/*.md'
-              - '!**/*.yml'
           # Default value is 'some' which only requires a single filter to match
           # For exclusion filter, we need `every` which requires all defined filters to match
           # This is required to create a filter out changes in multiple file types
