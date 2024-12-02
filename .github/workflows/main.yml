@@ -21,7 +21,7 @@ jobs:
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       finalized-tag-updater: ${{ steps.filter.outputs.finalized-tag-updater }}
       # If == 'false', then either only *.md file changes or no file changes. Need to use 'reverse logic' to filter for 'only *.md file changes' as per dorny/paths-filter@v3 definitions
-      not-markdown-only: ${{ steps.filter.outputs.not-markdown-only }}
+      not-markdown-only: ${{ steps.filter-out.outputs.not-markdown-only }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -114,7 +114,7 @@ jobs:
               - '.github/workflows/finalized-tag-updater-github-release.yml'
       - name: Filter out commit changes
         uses: dorny/paths-filter@v3
-        id: filter
+        id: filter-out
         with:
           base: ${{ github.ref }}
           list-files: "json"
