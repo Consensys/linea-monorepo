@@ -113,7 +113,7 @@ export default function TransactionProgressBar({
       </div>
       <progress
         className={cn("progress min-w-fit rounded-none [&::-webkit-progress-value]:rounded-none", {
-          "progress-orange": status === OnChainMessageStatus.UNKNOWN,
+          "progress-warning": status === OnChainMessageStatus.UNKNOWN,
           "progress-primary": status === OnChainMessageStatus.CLAIMABLE,
           "progress-secondary": status === OnChainMessageStatus.CLAIMED,
         })}

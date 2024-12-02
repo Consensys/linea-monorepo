@@ -42,7 +42,7 @@ const config: Config = {
           ...daisyuiThemes.light,
           primary: "#61DFFF",
           secondary: "#6119EF",
-          orange: "#FF8D4C",
+          warning: "#FF8D4C",
           info: "#61DFFF",
           success: "#C1FF14",
         },
