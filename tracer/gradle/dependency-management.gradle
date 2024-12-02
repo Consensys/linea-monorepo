@@ -26,19 +26,19 @@ repositories {
     url 'https://artifacts.consensys.net/public/maven/maven/'
     content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
   }
-  maven {
-    url 'https://splunk.jfrog.io/splunk/ext-releases-local'
-    content { includeGroupByRegex('com\\.splunk\\..*') }
-  }
   mavenCentral()
   mavenLocal()
 }
 
-configurations.all {
-  resolutionStrategy {
-    cacheChangingModulesFor 0, 'seconds'
+configurations {
+  pluginImplementation
+  resolvable('pluginClasspath') {
+    extendsFrom(pluginImplementation)
   }
 }
+
+sourceSets.main.compileClasspath += configurations.pluginImplementation
+sourceSets.main.runtimeClasspath += configurations.pluginImplementation
 
 apply plugin: 'io.spring.dependency-management'
 
@@ -57,6 +57,8 @@ dependencyManagement {
       entry 'logback-core'
       entry 'logback-classic'
     }
+
+    dependency 'com.google.code.gson:gson:2.11.0'
 
     dependency 'com.slack.api:slack-api-client:1.32.1'
   }

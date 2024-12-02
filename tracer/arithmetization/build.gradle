@@ -15,6 +15,7 @@
 
 plugins {
   id 'java'
+  id 'java-library-distribution'
   id 'common-plugins'
   id 'com.github.hierynomus.license'
   id "de.undercouch.download"
@@ -34,50 +35,38 @@ apply from: rootProject.file("gradle/lint.gradle")
 apply from: rootProject.file("gradle/trace-files.gradle")
 
 dependencies {
+  /**
+   * Use pluginImplementation for dependencies that are specific to this plugin
+   * and are not already provided by Besu.
+   * These dependencies are the only ones that are included in the final jar.
+   */
+  pluginImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+
   // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
   annotationProcessor 'com.google.auto.service:auto-service'
-  compileOnly "${besuArtifactGroup}:evm"
-  compileOnly 'com.google.auto.service:auto-service'
-  compileOnly 'com.google.auto.service:auto-service-annotations'
 
+  implementation "${besuArtifactGroup}:besu-datatypes"
   implementation "${besuArtifactGroup}:evm"
   implementation "${besuArtifactGroup}:plugin-api"
-  implementation "${besuArtifactGroup}:besu-datatypes"
+  implementation "${besuArtifactGroup}.internal:algorithms"
   implementation "${besuArtifactGroup}.internal:api"
   implementation "${besuArtifactGroup}.internal:clique"
   implementation "${besuArtifactGroup}.internal:core"
   implementation "${besuArtifactGroup}.internal:rlp"
-  implementation "${besuArtifactGroup}.internal:algorithms"
+
+  implementation 'com.google.auto.service:auto-service'
 
   implementation 'info.picocli:picocli'
-
-  implementation 'io.vertx:vertx-core'
-  implementation 'io.vertx:vertx-web'
-
-  implementation 'com.fasterxml.jackson.core:jackson-databind'
-  implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 
   implementation 'io.tmio:tuweni-bytes'
   implementation 'io.tmio:tuweni-units'
   implementation 'io.tmio:tuweni-toml'
-  implementation 'org.bouncycastle:bcprov-jdk18on'
-  implementation 'org.hibernate.validator:hibernate-validator'
+
+  implementation 'io.vertx:vertx-web'
 
   testImplementation project(path: ':testing')
 
-  testImplementation "${besuArtifactGroup}:evm"
-  testImplementation "${besuArtifactGroup}:besu-datatypes"
-  testImplementation "${besuArtifactGroup}.internal:core"
-  testImplementation "${besuArtifactGroup}.internal:rlp"
-  testImplementation "${besuArtifactGroup}.internal:core"
-  testImplementation "${besuArtifactGroup}.internal:referencetests"
   testImplementation 'org.junit.platform:junit-platform-launcher'
-}
-
-configurations {
-  installedJars {
-    transitive = false
-  }
 }
 
 apply from: rootProject.file("gradle/dist.gradle")

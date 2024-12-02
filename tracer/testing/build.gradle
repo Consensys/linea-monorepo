@@ -16,8 +16,10 @@ apply from: rootProject.file("gradle/lint.gradle")
 
 dependencies {
   implementation project(path: ':arithmetization')
+
   implementation "${besuArtifactGroup}:besu-datatypes"
   implementation "${besuArtifactGroup}:evm"
+  implementation "${besuArtifactGroup}:plugin-api"
   implementation "${besuArtifactGroup}.internal:clique"
   implementation "${besuArtifactGroup}.internal:common"
   implementation "${besuArtifactGroup}.internal:config"
@@ -28,17 +30,12 @@ dependencies {
   implementation "${besuArtifactGroup}.internal:services"
   implementation "${besuArtifactGroup}.internal:testutil"
   implementation "${besuArtifactGroup}.internal:algorithms"
-  implementation "${besuArtifactGroup}:plugin-api"
 
-  implementation 'org.junit.platform:junit-platform-launcher'
-  implementation 'org.junit.jupiter:junit-jupiter-api'
-  runtimeOnly 'org.junit.jupiter:junit-jupiter-engine'
-  implementation 'org.junit.jupiter:junit-jupiter-params'
-  runtimeOnly 'org.junit.vintage:junit-vintage-engine'
+  implementation 'com.google.code.gson:gson'
+  implementation 'com.google.guava:guava'
 
-  implementation 'org.mockito:mockito-core'
-  implementation 'org.mockito:mockito-junit-jupiter'
   implementation 'org.assertj:assertj-core'
+  implementation 'org.junit.jupiter:junit-jupiter-api'
 }
 
 node {
