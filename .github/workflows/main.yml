@@ -113,7 +113,6 @@ jobs:
               - '.github/workflows/main.yml'
               - '.github/workflows/finalized-tag-updater-github-release.yml'
             not-markdown-only:
-              - '!**/*.md'
               - '!**/*.yml'
 
   check-and-tag-images:
