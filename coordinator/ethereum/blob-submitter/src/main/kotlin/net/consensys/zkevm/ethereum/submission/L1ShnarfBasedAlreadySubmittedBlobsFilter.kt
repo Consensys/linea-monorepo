@@ -40,11 +40,9 @@ class L1ShnarfBasedAlreadySubmittedBlobsFilter(
           .maxOfOrNull { it }
       }
       .thenApply { highestBlobEndBlockNumberFoundInL1 ->
-        highestBlobEndBlockNumberFoundInL1?.also {
-          acceptedBlobEndBlockNumberConsumer.accept(it)
-        }?.let { blockNumber ->
-          items.filter { it.startBlockNumber > blockNumber }
-        } ?: items
+        highestBlobEndBlockNumberFoundInL1?.also(acceptedBlobEndBlockNumberConsumer::accept)
+          ?.let { blockNumber -> items.filter { it.startBlockNumber > blockNumber } }
+          ?: items
       }
   }
 }

@@ -38,9 +38,8 @@ class ShomeiClientTest {
     wiremock.start()
     meterRegistry = SimpleMeterRegistry()
     val metricsFacade: MetricsFacade = MicrometerMetricsFacade(registry = meterRegistry, "linea")
-    fakeShomeiServerURI = URI("http://127.0.0.1:" + wiremock.port()).toURL()
-
     val rpcClientFactory = VertxHttpJsonRpcClientFactory(vertx, metricsFacade)
+    fakeShomeiServerURI = URI("http://127.0.0.1:" + wiremock.port()).toURL()
     jsonRpcClient = rpcClientFactory.create(fakeShomeiServerURI)
   }
 
