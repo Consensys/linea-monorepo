@@ -1,5 +1,16 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
+import { DefaultGasProvider, Provider } from "@consensys/linea-sdk";
+import {
+  Block,
+  ContractTransactionResponse,
+  EthersError,
+  Overrides,
+  Signer,
+  TransactionReceipt,
+  TransactionRequest,
+  TransactionResponse,
+} from "ethers";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { Direction, MessageStatus, OnChainMessageStatus } from "../../../core/enums/MessageEnums";
 import {
@@ -13,21 +24,9 @@ import {
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { IMessageClaimingProcessor } from "../../../core/services/processors/IMessageClaimingProcessor";
 import { MessageClaimingProcessor } from "../MessageClaimingProcessor";
-import {
-  Block,
-  ContractTransactionResponse,
-  EthersError,
-  JsonRpcProvider,
-  Overrides,
-  TransactionReceipt,
-  TransactionRequest,
-  TransactionResponse,
-} from "ethers";
-import { Message } from "../../..";
+import { Message } from "../../../core/entities/Message";
 import { ErrorParser } from "../../../utils/ErrorParser";
-import { IChainQuerier } from "../../../core/clients/blockchain/IProvider";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
-import { DefaultGasProvider } from "../../../clients/blockchain/gas/DefaultGasProvider";
 import {
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_MAX_CLAIM_GAS_LIMIT,
@@ -38,6 +37,7 @@ import {
 } from "../../../core/constants";
 import { EthereumTransactionValidationService } from "../../EthereumTransactionValidationService";
 import { ILineaRollupClient } from "../../../core/clients/blockchain/ethereum/ILineaRollupClient";
+import { IProvider } from "../../../core/clients/blockchain/IProvider";
 
 describe("TestMessageClaimingProcessor", () => {
   let messageClaimingProcessor: IMessageClaimingProcessor;
@@ -47,12 +47,13 @@ describe("TestMessageClaimingProcessor", () => {
   let mockedDate: Date;
   const lineaRollupContractMock =
     mock<ILineaRollupClient<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse>>();
-  const l1QuerierMock =
-    mock<IChainQuerier<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
+  const provider = mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, Provider>>();
+  const signer = mock<Signer>();
+
   const logger = new TestLogger(MessageClaimingProcessor.name);
 
   beforeEach(() => {
-    gasProvider = new DefaultGasProvider(l1QuerierMock, {
+    gasProvider = new DefaultGasProvider(provider, {
       maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
       gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
       enforceMaxGasFee: false,
@@ -64,7 +65,7 @@ describe("TestMessageClaimingProcessor", () => {
     });
     messageClaimingProcessor = new MessageClaimingProcessor(
       lineaRollupContractMock,
-      l1QuerierMock,
+      signer,
       databaseService,
       transactionValidationService,
       {
@@ -92,7 +93,7 @@ describe("TestMessageClaimingProcessor", () => {
     it("Should return and log as error if claim tx nonce is higher than the max diff", async () => {
       const loggerErrorSpy = jest.spyOn(logger, "error");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(l1QuerierMock, "getCurrentNonce").mockResolvedValue(80);
+      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(80);
 
       await messageClaimingProcessor.process();
 
@@ -105,7 +106,7 @@ describe("TestMessageClaimingProcessor", () => {
     it("Should return without calling any get message status if getFirstMessageToClaim return null", async () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(l1QuerierMock, "getCurrentNonce").mockResolvedValue(99);
+      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -121,7 +122,7 @@ describe("TestMessageClaimingProcessor", () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(l1QuerierMock, "getCurrentNonce").mockResolvedValue(99);
+      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -160,7 +161,7 @@ describe("TestMessageClaimingProcessor", () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(l1QuerierMock, "getCurrentNonce").mockResolvedValue(99);
+      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -186,7 +187,7 @@ describe("TestMessageClaimingProcessor", () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(l1QuerierMock, "getCurrentNonce").mockResolvedValue(99);
+      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -220,7 +221,7 @@ describe("TestMessageClaimingProcessor", () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(l1QuerierMock, "getCurrentNonce").mockResolvedValue(99);
+      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -260,7 +261,7 @@ describe("TestMessageClaimingProcessor", () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(l1QuerierMock, "getCurrentNonce").mockResolvedValue(99);
+      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -287,31 +288,12 @@ describe("TestMessageClaimingProcessor", () => {
     });
 
     it("Should update message if successful", async () => {
-      // messageClaimingProcessor = new MessageClaimingProcessor(
-      //   lineaRollupContractMock,
-      //   l1QuerierMock,
-      //   databaseService,
-      //   new EthereumTransactionValidationService(lineaRollupContractMock, gasProvider, {
-      //     profitMargin: DEFAULT_PROFIT_MARGIN,
-      //     maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
-      //   }),
-      //   {
-      //     ...testL2NetworkConfig,
-      //     claiming: {
-      //       signerPrivateKey: TEST_L2_SIGNER_PRIVATE_KEY,
-      //       messageSubmissionTimeout: 300_000,
-      //     },
-      //   },
-      //   Direction.L1_TO_L2,
-      //   testL1NetworkConfig.messageServiceContractAddress,
-      //   logger,
-      // );
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const l2MessageServiceContractClaimSpy = jest.spyOn(lineaRollupContractMock, "claim");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const messageRepositoryUpdateAtomicSpy = jest.spyOn(databaseService, "updateMessageWithClaimTxAtomic");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(l1QuerierMock, "getCurrentNonce").mockResolvedValue(99);
+      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -347,7 +329,7 @@ describe("TestMessageClaimingProcessor", () => {
         .spyOn(databaseService, "updateMessageWithClaimTxAtomic")
         .mockRejectedValue(actionRejectedError);
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(l1QuerierMock, "getCurrentNonce").mockResolvedValue(99);
+      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });

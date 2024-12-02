@@ -7,7 +7,7 @@ import {
   testMessageSentEvent,
   testMessageSentEventWithCallData,
 } from "../../../utils/testing/constants";
-import { IChainQuerier } from "../../../core/clients/blockchain/IProvider";
+import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import { IMessageSentEventProcessor } from "../../../core/services/processors/IMessageSentEventProcessor";
 import { MessageSentEventProcessor } from "../MessageSentEventProcessor";
 import { ILineaRollupLogClient } from "../../../core/clients/blockchain/ethereum/ILineaRollupLogClient";
@@ -19,15 +19,15 @@ describe("TestMessageSentEventProcessor", () => {
   let messageSentEventProcessor: IMessageSentEventProcessor;
   const databaseService = mock<EthereumMessageDBService>();
   const l1LogClientMock = mock<ILineaRollupLogClient>();
-  const l1QuerierMock =
-    mock<IChainQuerier<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
+  const provider =
+    mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
   const logger = new TestLogger(MessageSentEventProcessor.name);
 
   beforeEach(() => {
     messageSentEventProcessor = new MessageSentEventProcessor(
       databaseService,
       l1LogClientMock,
-      l1QuerierMock,
+      provider,
       {
         direction: Direction.L1_TO_L2,
         maxBlocksToFetchLogs: testL1NetworkConfig.listener.maxBlocksToFetchLogs,
@@ -47,7 +47,7 @@ describe("TestMessageSentEventProcessor", () => {
     it("Should insert message with status as sent into repository if the message is not excluded", async () => {
       const loggerInfoSpy = jest.spyOn(logger, "info");
       const messageRepositoryInsertSpy = jest.spyOn(databaseService, "insertMessage");
-      jest.spyOn(l1QuerierMock, "getCurrentBlockNumber").mockResolvedValue(100);
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l1LogClientMock, "getMessageSentEvents").mockResolvedValue([testMessageSentEvent]);
       const expectedMessageToInsert = MessageFactory.createMessage({
         ...testMessageSentEvent,
@@ -68,7 +68,7 @@ describe("TestMessageSentEventProcessor", () => {
       messageSentEventProcessor = new MessageSentEventProcessor(
         databaseService,
         l1LogClientMock,
-        l1QuerierMock,
+        provider,
         {
           direction: Direction.L1_TO_L2,
           maxBlocksToFetchLogs: testL1NetworkConfig.listener.maxBlocksToFetchLogs,
@@ -80,7 +80,7 @@ describe("TestMessageSentEventProcessor", () => {
       );
       const loggerInfoSpy = jest.spyOn(logger, "info");
       const messageRepositoryInsertSpy = jest.spyOn(databaseService, "insertMessage");
-      jest.spyOn(l1QuerierMock, "getCurrentBlockNumber").mockResolvedValue(100);
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l1LogClientMock, "getMessageSentEvents").mockResolvedValue([testMessageSentEvent]);
       const expectedMessageToInsert = MessageFactory.createMessage({
         ...testMessageSentEvent,
@@ -101,7 +101,7 @@ describe("TestMessageSentEventProcessor", () => {
       messageSentEventProcessor = new MessageSentEventProcessor(
         databaseService,
         l1LogClientMock,
-        l1QuerierMock,
+        provider,
         {
           direction: Direction.L1_TO_L2,
           maxBlocksToFetchLogs: testL1NetworkConfig.listener.maxBlocksToFetchLogs,
@@ -113,7 +113,7 @@ describe("TestMessageSentEventProcessor", () => {
       );
       const loggerInfoSpy = jest.spyOn(logger, "info");
       const messageRepositoryInsertSpy = jest.spyOn(databaseService, "insertMessage");
-      jest.spyOn(l1QuerierMock, "getCurrentBlockNumber").mockResolvedValue(100);
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l1LogClientMock, "getMessageSentEvents").mockResolvedValue([testMessageSentEventWithCallData]);
       const expectedMessageToInsert = MessageFactory.createMessage({
         ...testMessageSentEventWithCallData,

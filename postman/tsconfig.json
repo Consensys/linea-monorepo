@@ -10,6 +10,9 @@
   },
   "references": [
     {
+      "path": "../ts-libs/linea-native-libs"
+    },
+    {
       "path": "../sdk"
     }
   ],

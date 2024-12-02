@@ -3,7 +3,6 @@ import { mock } from "jest-mock-extended";
 import { TestLogger, generateTransactionReceipt, generateTransactionResponse } from "../../../utils/testing/helpers";
 import { Direction, MessageStatus, OnChainMessageStatus } from "../../../core/enums/MessageEnums";
 import { testL2NetworkConfig, testPendingMessage, testPendingMessage2 } from "../../../utils/testing/constants";
-import { IChainQuerier } from "../../../core/clients/blockchain/IProvider";
 import { IMessageServiceContract } from "../../../core/services/contracts/IMessageServiceContract";
 import {
   Block,
@@ -15,10 +14,11 @@ import {
   TransactionResponse,
 } from "ethers";
 import { IGasProvider } from "../../../core/clients/blockchain/IGasProvider";
-import { Message } from "../../..";
+import { Message } from "../../../core/entities/Message";
 import { IMessageClaimingPersister } from "../../../core/services/processors/IMessageClaimingPersister";
 import { MessageClaimingPersister } from "../MessageClaimingPersister";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
+import { IProvider } from "../../../core/clients/blockchain/IProvider";
 
 describe("TestMessageClaimingPersister ", () => {
   let messageClaimingPersister: IMessageClaimingPersister;
@@ -28,15 +28,15 @@ describe("TestMessageClaimingPersister ", () => {
     IMessageServiceContract<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse> &
       IGasProvider<TransactionRequest>
   >();
-  const l2QuerierMock =
-    mock<IChainQuerier<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
+  const provider =
+    mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
   const logger = new TestLogger(MessageClaimingPersister.name);
 
   beforeEach(() => {
     messageClaimingPersister = new MessageClaimingPersister(
       databaseService,
       l2MessageServiceContractMock,
-      l2QuerierMock,
+      provider,
       {
         direction: Direction.L1_TO_L2,
         messageSubmissionTimeout: testL2NetworkConfig.claiming.messageSubmissionTimeout,
@@ -56,7 +56,7 @@ describe("TestMessageClaimingPersister ", () => {
 
   describe("process", () => {
     it("Should return if getTransactionReceipt return null", async () => {
-      const l2QuerierGetReceiptSpy = jest.spyOn(l2QuerierMock, "getTransactionReceipt");
+      const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt");
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(null);
 
       await messageClaimingPersister.process();
@@ -69,7 +69,7 @@ describe("TestMessageClaimingPersister ", () => {
       const getTxReceiptError = new Error("error for testing");
       const loggerErrorSpy = jest.spyOn(logger, "error");
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
-      jest.spyOn(l2QuerierMock, "getTransactionReceipt").mockRejectedValue(getTxReceiptError);
+      jest.spyOn(provider, "getTransactionReceipt").mockRejectedValue(getTxReceiptError);
 
       await messageClaimingPersister.process();
 
@@ -80,7 +80,7 @@ describe("TestMessageClaimingPersister ", () => {
     it("Should log as info and update message as claimed success if successful", async () => {
       const txReceipt = generateTransactionReceipt({ status: 1 });
       const loggerInfoSpy = jest.spyOn(logger, "info");
-      const l2QuerierGetReceiptSpy = jest.spyOn(l2QuerierMock, "getTransactionReceipt").mockResolvedValue(txReceipt);
+      const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const testPendingMessageLocal = new Message(testPendingMessage);
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
@@ -105,7 +105,7 @@ describe("TestMessageClaimingPersister ", () => {
 
     it("Should return and update message as sent if receipt status is 0 and rate limit exceeded", async () => {
       const txReceipt = generateTransactionReceipt({ status: 0 });
-      const l2QuerierGetReceiptSpy = jest.spyOn(l2QuerierMock, "getTransactionReceipt").mockResolvedValue(txReceipt);
+      const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const testPendingMessageLocal = new Message(testPendingMessage);
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
@@ -126,7 +126,7 @@ describe("TestMessageClaimingPersister ", () => {
     it("Should log as warning and update message as claimed reverted if receipt status is 0", async () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
       const txReceipt = generateTransactionReceipt({ status: 0 });
-      const l2QuerierGetReceiptSpy = jest.spyOn(l2QuerierMock, "getTransactionReceipt").mockResolvedValue(txReceipt);
+      const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const testPendingMessageLocal = new Message(testPendingMessage);
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
@@ -154,13 +154,13 @@ describe("TestMessageClaimingPersister ", () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
       const txReceipt = generateTransactionReceipt({ status: 1 });
       const l2QuerierGetReceiptSpy = jest
-        .spyOn(l2QuerierMock, "getTransactionReceipt")
+        .spyOn(provider, "getTransactionReceipt")
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(txReceipt);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "saveMessages");
       const testPendingMessageLocal = new Message(testPendingMessage);
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
-      jest.spyOn(l2QuerierMock, "getCurrentBlockNumber").mockResolvedValue(100);
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l2MessageServiceContractMock, "isRateLimitExceededError").mockResolvedValue(false);
       jest.spyOn(l2MessageServiceContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMED);
 
@@ -184,11 +184,11 @@ describe("TestMessageClaimingPersister ", () => {
 
     it("Should return and log as warning if message is claimed but receipt returned as null", async () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
-      const l2QuerierGetReceiptSpy = jest.spyOn(l2QuerierMock, "getTransactionReceipt").mockResolvedValue(null);
+      const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "saveMessages");
       const testPendingMessageLocal = new Message(testPendingMessage);
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
-      jest.spyOn(l2QuerierMock, "getCurrentBlockNumber").mockResolvedValue(100);
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l2MessageServiceContractMock, "isRateLimitExceededError").mockResolvedValue(false);
       jest.spyOn(l2MessageServiceContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMED);
 
@@ -214,12 +214,12 @@ describe("TestMessageClaimingPersister ", () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
       const txReceipt = generateTransactionReceipt({ status: 1 });
       const txResponse = generateTransactionResponse({ maxPriorityFeePerGas: undefined, maxFeePerGas: undefined });
-      const l2QuerierGetReceiptSpy = jest.spyOn(l2QuerierMock, "getTransactionReceipt").mockResolvedValue(null);
+      const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const testPendingMessageLocal = new Message(testPendingMessage);
 
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
-      jest.spyOn(l2QuerierMock, "getCurrentBlockNumber").mockResolvedValue(100);
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l2MessageServiceContractMock, "isRateLimitExceededError").mockResolvedValue(false);
       jest
         .spyOn(l2MessageServiceContractMock, "getMessageStatus")
@@ -256,7 +256,7 @@ describe("TestMessageClaimingPersister ", () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
       const txReceipt = generateTransactionReceipt({ status: 1 });
       const txResponse = generateTransactionResponse({ maxPriorityFeePerGas: undefined, maxFeePerGas: undefined });
-      const l2QuerierGetReceiptSpy = jest.spyOn(l2QuerierMock, "getTransactionReceipt").mockResolvedValue(null);
+      const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const testPendingMessageLocal = new Message(testPendingMessage);
       const testPendingMessageLocal2 = new Message(testPendingMessage2);
@@ -264,7 +264,7 @@ describe("TestMessageClaimingPersister ", () => {
         .spyOn(databaseService, "getFirstPendingMessage")
         .mockResolvedValueOnce(testPendingMessageLocal)
         .mockResolvedValueOnce(testPendingMessageLocal2);
-      jest.spyOn(l2QuerierMock, "getCurrentBlockNumber").mockResolvedValue(100);
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l2MessageServiceContractMock, "isRateLimitExceededError").mockResolvedValue(false);
       jest
         .spyOn(l2MessageServiceContractMock, "getMessageStatus")
@@ -303,7 +303,7 @@ describe("TestMessageClaimingPersister ", () => {
       messageClaimingPersister = new MessageClaimingPersister(
         databaseService,
         l2MessageServiceContractMock,
-        l2QuerierMock,
+        provider,
         {
           direction: Direction.L1_TO_L2,
           messageSubmissionTimeout: 0,
@@ -313,12 +313,12 @@ describe("TestMessageClaimingPersister ", () => {
       );
       const loggerWarnSpy = jest.spyOn(logger, "warn");
       const loggerErrorSpy = jest.spyOn(logger, "error");
-      const l2QuerierGetReceiptSpy = jest.spyOn(l2QuerierMock, "getTransactionReceipt").mockResolvedValue(null);
+      const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "saveMessages");
       const testPendingMessageLocal = new Message(testPendingMessage);
       const retryError = new Error("error for testing");
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
-      jest.spyOn(l2QuerierMock, "getCurrentBlockNumber").mockResolvedValue(100);
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l2MessageServiceContractMock, "isRateLimitExceededError").mockResolvedValue(false);
       jest.spyOn(l2MessageServiceContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
       jest.spyOn(l2MessageServiceContractMock, "retryTransactionWithHigherFee").mockRejectedValue(retryError);
@@ -357,11 +357,11 @@ describe("TestMessageClaimingPersister ", () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
       const loggerErrorSpy = jest.spyOn(logger, "error");
       const txResponse = generateTransactionResponse();
-      const l2QuerierGetReceiptSpy = jest.spyOn(l2QuerierMock, "getTransactionReceipt").mockResolvedValue(null);
+      const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "saveMessages");
       const testPendingMessageLocal = new Message(testPendingMessage);
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
-      jest.spyOn(l2QuerierMock, "getCurrentBlockNumber").mockResolvedValue(100);
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l2MessageServiceContractMock, "isRateLimitExceededError").mockResolvedValue(false);
       jest.spyOn(l2MessageServiceContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
       jest.spyOn(l2MessageServiceContractMock, "retryTransactionWithHigherFee").mockResolvedValue(txResponse);

@@ -1,4 +1,4 @@
-import { describe, it } from "@jest/globals";
+import { describe, it, expect } from "@jest/globals";
 import { DatabaseAccessError } from "../DatabaseErrors";
 import { DatabaseErrorType, DatabaseRepoName } from "../../enums/DatabaseEnums";
 import { MessageProps } from "../../entities/Message";

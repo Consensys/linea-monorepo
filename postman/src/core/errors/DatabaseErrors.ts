@@ -1,6 +1,6 @@
+import { BaseError } from "@consensys/linea-sdk";
 import { MessageProps } from "../entities/Message";
 import { DatabaseErrorType, DatabaseRepoName } from "../enums/DatabaseEnums";
-import { BaseError } from "./Base";
 
 export class DatabaseAccessError<T extends MessageProps> extends BaseError {
   override name = DatabaseAccessError.name;

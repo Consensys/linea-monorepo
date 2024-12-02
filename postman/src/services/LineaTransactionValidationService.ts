@@ -8,6 +8,7 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
+import { BaseError } from "@consensys/linea-sdk";
 import { Message } from "../core/entities/Message";
 import {
   ITransactionValidationService,
@@ -16,7 +17,6 @@ import {
 import { MINIMUM_MARGIN, PROFIT_MARGIN_MULTIPLIER } from "../core/constants";
 import { IL2MessageServiceClient } from "../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { ILineaProvider } from "../core/clients/blockchain/linea/ILineaProvider";
-import { BaseError } from "../core/errors/Base";
 
 export class LineaTransactionValidationService implements ITransactionValidationService {
   /**

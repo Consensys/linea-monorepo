@@ -1,7 +1,7 @@
 import { describe, it, expect } from "@jest/globals";
-import { ErrorParser } from "../ErrorParser";
 import { ErrorCode, EthersError } from "ethers";
-import { GasEstimationError } from "../../core/errors/GasFeeErrors";
+import { GasEstimationError } from "@consensys/linea-sdk";
+import { ErrorParser } from "../ErrorParser";
 import { DatabaseAccessError } from "../../core/errors/DatabaseErrors";
 import { DatabaseErrorType, DatabaseRepoName } from "../../core/enums/DatabaseEnums";
 import { generateMessage } from "../testing/helpers";

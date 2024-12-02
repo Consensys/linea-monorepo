@@ -7,6 +7,7 @@ import {
   Block,
   JsonRpcProvider,
 } from "ethers";
+import { BaseError } from "@consensys/linea-sdk";
 import { MessageStatus, OnChainMessageStatus } from "../../core/enums/MessageEnums";
 import { ILogger } from "../../core/utils/logging/ILogger";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
@@ -16,7 +17,6 @@ import {
   IMessageClaimingPersister,
   MessageClaimingPersisterConfig,
 } from "../../core/services/processors/IMessageClaimingPersister";
-import { BaseError } from "../../core/errors/Base";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 
 export class MessageClaimingPersister implements IMessageClaimingPersister {

@@ -7,7 +7,7 @@ export class DatabaseCleaner implements IDatabaseCleaner {
   /**
    * Constructs a new instance of the `DatabaseCleaner`.
    *
-   * @param {IMessageRepository<unknown>} messageRepository - An instance of a message repository that provides access to message storage and operations.
+   * @param {IMessageDBService<ContractTransactionResponse>} databaseService - An instance of a MessageDBService that provides access to message storage and operations.
    * @param {ILogger} logger - An instance of a logger for logging information and errors during the cleanup process.
    */
   constructor(

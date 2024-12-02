@@ -10,7 +10,7 @@ import { Message } from "../../core/entities/Message";
 import { Direction, MessageStatus } from "../../core/enums/MessageEnums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { ILineaProvider } from "../../core/clients/blockchain/linea/ILineaProvider";
-import { BaseError } from "../../core/errors/Base";
+import { BaseError } from "@consensys/linea-sdk";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { MessageDBService } from "./MessageDBService";
 import { MINIMUM_MARGIN } from "../../core/constants";

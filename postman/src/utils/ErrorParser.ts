@@ -1,5 +1,5 @@
 import { EthersError, ErrorCode } from "ethers";
-import { GasEstimationError } from "../core/errors/GasFeeErrors";
+import { GasEstimationError } from "@consensys/linea-sdk";
 import { DatabaseAccessError } from "../core/errors/DatabaseErrors";
 import { MessageProps } from "../core/entities/Message";
 

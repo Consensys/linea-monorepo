@@ -9,26 +9,28 @@ import {
   Wallet,
 } from "@consensys/linea-sdk";
 import { ILogger } from "../../../core/utils/logging/ILogger";
-import { DatabaseCleaner } from "../../../services/persistence/DatabaseCleaner";
 import { TypeOrmMessageRepository } from "../persistence/repositories/TypeOrmMessageRepository";
 import { WinstonLogger } from "../../../utils/WinstonLogger";
-import { MessageSentEventPoller } from "../../../services/pollers/MessageSentEventPoller";
 import { IPoller } from "../../../core/services/pollers/IPoller";
-import { MessageAnchoringPoller } from "../../../services/pollers/MessageAnchoringPoller";
-import { MessageAnchoringProcessor } from "../../../services/processors/MessageAnchoringProcessor";
+import {
+  MessageAnchoringProcessor,
+  MessageClaimingProcessor,
+  MessageClaimingPersister,
+  MessageSentEventProcessor,
+  L2ClaimMessageTransactionSizeProcessor,
+} from "../../../services/processors";
 import { PostmanOptions } from "./config/config";
 import { DB } from "../persistence/dataSource";
 import { Direction } from "../../../core/enums/MessageEnums";
-import { MessageClaimingProcessor } from "../../../services/processors/MessageClaimingProcessor";
-import { MessageClaimingPoller } from "../../../services/pollers/MessageClaimingPoller";
-import { MessageClaimingPersister } from "../../../services/processors/MessageClaimingPersister";
-import { MessagePersistingPoller } from "../../../services/pollers/MessagePersistingPoller";
-import { MessageSentEventProcessor } from "../../../services/processors/MessageSentEventProcessor";
-import { DatabaseCleaningPoller } from "../../../services/pollers/DatabaseCleaningPoller";
-import { LineaMessageDBService } from "../../../services/persistence/LineaMessageDBService";
-import { EthereumMessageDBService } from "../../../services/persistence/EthereumMessageDBService";
-import { L2ClaimMessageTransactionSizePoller } from "../../../services/pollers/L2ClaimMessageTransactionSizePoller";
-import { L2ClaimMessageTransactionSizeProcessor } from "../../../services/processors/L2ClaimMessageTransactionSizeProcessor";
+import {
+  MessageSentEventPoller,
+  MessageAnchoringPoller,
+  MessageClaimingPoller,
+  MessagePersistingPoller,
+  DatabaseCleaningPoller,
+  L2ClaimMessageTransactionSizePoller,
+} from "../../../services/pollers";
+import { DatabaseCleaner, LineaMessageDBService, EthereumMessageDBService } from "../../../services/persistence";
 import { L2ClaimTransactionSizeCalculator } from "../../../services/L2ClaimTransactionSizeCalculator";
 import { LineaTransactionValidationService } from "../../../services/LineaTransactionValidationService";
 import { EthereumTransactionValidationService } from "../../../services/EthereumTransactionValidationService";

@@ -1,19 +1,19 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
+import { Provider, DefaultGasProvider } from "@consensys/linea-sdk";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { Direction } from "../../../core/enums/MessageEnums";
 import { rejectedMessageProps, testL1NetworkConfig, testMessage } from "../../../utils/testing/constants";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 import { MessageSentEventPoller } from "../MessageSentEventPoller";
 import { IMessageSentEventProcessor } from "../../../core/services/processors/IMessageSentEventProcessor";
-import { IChainQuerier } from "../../../core/clients/blockchain/IProvider";
+import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { wait } from "../../../core/utils/shared";
 import { DatabaseAccessError } from "../../../core/errors/DatabaseErrors";
 import { DatabaseErrorType, DatabaseRepoName } from "../../../core/enums/DatabaseEnums";
-import { Block, JsonRpcProvider, TransactionReceipt, TransactionRequest, TransactionResponse } from "ethers";
+import { Block, TransactionReceipt, TransactionRequest, TransactionResponse } from "ethers";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
-import { DefaultGasProvider } from "../../../clients/blockchain/gas/DefaultGasProvider";
 import {
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_INITIAL_FROM_BLOCK,
@@ -26,12 +26,11 @@ describe("TestMessageSentEventPoller", () => {
   let databaseService: EthereumMessageDBService;
 
   const eventProcessorMock = mock<IMessageSentEventProcessor>();
-  const l1QuerierMock =
-    mock<IChainQuerier<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
+  const provider = mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, Provider>>();
   const logger = new TestLogger(MessageSentEventPoller.name);
 
   beforeEach(() => {
-    const gasProvider = new DefaultGasProvider(l1QuerierMock, {
+    const gasProvider = new DefaultGasProvider(provider, {
       maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
       gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
       enforceMaxGasFee: false,
@@ -39,7 +38,7 @@ describe("TestMessageSentEventPoller", () => {
     databaseService = new EthereumMessageDBService(gasProvider, mock<IMessageRepository<unknown>>());
     testMessageSentEventPoller = new MessageSentEventPoller(
       eventProcessorMock,
-      l1QuerierMock,
+      provider,
       databaseService,
       {
         direction: Direction.L1_TO_L2,
@@ -58,7 +57,7 @@ describe("TestMessageSentEventPoller", () => {
   describe("start", () => {
     it("Should return and log as warning if it has been started", async () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
-      jest.spyOn(l1QuerierMock, "getCurrentBlockNumber").mockResolvedValue(10);
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(10);
       jest.spyOn(databaseService, "getLatestMessageSent").mockResolvedValue(null);
       jest.spyOn(eventProcessorMock, "process").mockResolvedValue({
         nextFromBlock: 20,
@@ -76,7 +75,7 @@ describe("TestMessageSentEventPoller", () => {
     });
 
     it("Should call process and log as info if it started successfully", async () => {
-      const l1QuerierMockSpy = jest.spyOn(l1QuerierMock, "getCurrentBlockNumber").mockResolvedValue(10);
+      const l1QuerierMockSpy = jest.spyOn(provider, "getBlockNumber").mockResolvedValue(10);
       const messageRepositoryMockSpy = jest
         .spyOn(databaseService, "getLatestMessageSent")
         .mockResolvedValue(testMessage);
@@ -105,7 +104,7 @@ describe("TestMessageSentEventPoller", () => {
 
     it("Should log as warning if getCurrentBlockNumber throws error", async () => {
       const error = new Error("Other error for testing");
-      const l1QuerierMockSpy = jest.spyOn(l1QuerierMock, "getCurrentBlockNumber").mockRejectedValue(error);
+      const l1QuerierMockSpy = jest.spyOn(provider, "getBlockNumber").mockRejectedValue(error);
       const loggerErrorSpy = jest.spyOn(logger, "error");
 
       await testMessageSentEventPoller.start();
@@ -119,7 +118,7 @@ describe("TestMessageSentEventPoller", () => {
     });
 
     it("Should log as warning if process throws DatabaseAccessError", async () => {
-      const l1QuerierMockSpy = jest.spyOn(l1QuerierMock, "getCurrentBlockNumber").mockResolvedValue(10);
+      const l1QuerierMockSpy = jest.spyOn(provider, "getBlockNumber").mockResolvedValue(10);
       const messageRepositoryMockSpy = jest
         .spyOn(databaseService, "getLatestMessageSent")
         .mockResolvedValue(testMessage);
@@ -162,7 +161,7 @@ describe("TestMessageSentEventPoller", () => {
     });
 
     it("Should log as warning or error if process throws Error", async () => {
-      const l1QuerierMockSpy = jest.spyOn(l1QuerierMock, "getCurrentBlockNumber").mockResolvedValue(10);
+      const l1QuerierMockSpy = jest.spyOn(provider, "getBlockNumber").mockResolvedValue(10);
       const messageRepositoryMockSpy = jest
         .spyOn(databaseService, "getLatestMessageSent")
         .mockResolvedValue(testMessage);
@@ -193,7 +192,7 @@ describe("TestMessageSentEventPoller", () => {
       const loggerInfoSpy = jest.spyOn(logger, "info");
       testMessageSentEventPoller = new MessageSentEventPoller(
         eventProcessorMock,
-        l1QuerierMock,
+        provider,
         databaseService,
         {
           direction: Direction.L1_TO_L2,

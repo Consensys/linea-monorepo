@@ -18,16 +18,19 @@ ARG NATIVE_LIBS_RELEASE_TAG
 ENV NATIVE_LIBS_RELEASE_TAG=${NATIVE_LIBS_RELEASE_TAG}
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
+
+COPY ./postman/package.json ./postman/package.json
 COPY ./sdk/package.json ./sdk/package.json
 COPY ./ts-libs/linea-native-libs/package.json ./ts-libs/linea-native-libs/package.json
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline --ignore-scripts
 
+COPY ./postman ./postman
 COPY ./sdk ./sdk
 COPY ts-libs/linea-native-libs ./ts-libs/linea-native-libs
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build \
-    && pnpm deploy --filter=./sdk --prod ./prod/sdk
+    && pnpm deploy --filter=./postman --prod ./prod/postman
 
 FROM node:lts-slim AS production
 
@@ -37,6 +40,6 @@ WORKDIR /usr/src/app
 
 USER node
 
-COPY --from=builder /usr/src/app/prod/sdk ./sdk
+COPY --from=builder /usr/src/app/prod/postman ./postman
 
-CMD [ "node", "./sdk/dist/scripts/runPostman.js" ]
+CMD [ "node", "./postman/dist/scripts/runPostman.js" ]

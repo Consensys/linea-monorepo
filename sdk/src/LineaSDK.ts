@@ -117,6 +117,7 @@ export class LineaSDK {
         ? Wallet.getWallet(this.l1SignerPrivateKeyOrWallet).connect(this.l1Provider)
         : undefined;
 
+    console.log(this.l1Provider);
     const lineaRollupLogClient = new EthersLineaRollupLogClient(this.l1Provider, l1ContractAddress);
     const l2MessageServiceLogClient = this.getL2ContractEventLogClient(l2ContractAddress);
 

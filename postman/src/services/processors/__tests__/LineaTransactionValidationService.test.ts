@@ -1,26 +1,23 @@
 import { describe, it, beforeEach } from "@jest/globals";
-import { mock } from "jest-mock-extended";
+import { mock, MockProxy } from "jest-mock-extended";
 import {
   ContractTransactionResponse,
-  JsonRpcProvider,
   Overrides,
   Signer,
   TransactionReceipt,
   TransactionResponse,
   Wallet,
 } from "ethers";
+import { LineaGasProvider, LineaProvider } from "@consensys/linea-sdk";
 import { TEST_CONTRACT_ADDRESS_2, TEST_L2_SIGNER_PRIVATE_KEY, testMessage } from "../../../utils/testing/constants";
-import { LineaGasProvider } from "../../../clients/blockchain/gas/LineaGasProvider";
 import { DEFAULT_MAX_CLAIM_GAS_LIMIT, DEFAULT_MAX_FEE_PER_GAS, DEFAULT_PROFIT_MARGIN } from "../../../core/constants";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { LineaTransactionValidationService } from "../../LineaTransactionValidationService";
 import { generateL2MessageServiceClient } from "../../../utils/testing/helpers";
-import { L2ChainQuerier } from "../../../clients/blockchain/linea/L2ChainQuerier";
 
 describe("LineaTransactionValidationService", () => {
   let lineaTransactionValidationService: LineaTransactionValidationService;
   let gasProvider: LineaGasProvider;
-  let l2ChainQuerier: L2ChainQuerier;
   let l2ContractClient: IL2MessageServiceClient<
     Overrides,
     TransactionReceipt,
@@ -28,10 +25,12 @@ describe("LineaTransactionValidationService", () => {
     ContractTransactionResponse,
     Signer
   >;
+  let provider: MockProxy<LineaProvider>;
 
   beforeEach(() => {
+    provider = mock<LineaProvider>();
     const clients = generateL2MessageServiceClient(
-      mock<JsonRpcProvider>(),
+      provider,
       TEST_CONTRACT_ADDRESS_2,
       "read-write",
       new Wallet(TEST_L2_SIGNER_PRIVATE_KEY),
@@ -42,15 +41,14 @@ describe("LineaTransactionValidationService", () => {
     );
 
     l2ContractClient = clients.l2MessageServiceClient;
-    gasProvider = clients.gasProvider;
-    l2ChainQuerier = clients.l2ChainQuerier;
+    gasProvider = clients.gasProvider as LineaGasProvider;
 
     lineaTransactionValidationService = new LineaTransactionValidationService(
       {
         profitMargin: DEFAULT_PROFIT_MARGIN,
         maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
       },
-      l2ChainQuerier,
+      provider,
       l2ContractClient,
     );
   });
@@ -68,7 +66,7 @@ describe("LineaTransactionValidationService", () => {
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
       });
-      jest.spyOn(l2ChainQuerier, "getBlockExtraData").mockResolvedValueOnce(null);
+      jest.spyOn(provider, "getBlockExtraData").mockResolvedValueOnce(null);
 
       await expect(lineaTransactionValidationService.evaluateTransaction(testMessage)).rejects.toThrow("No extra data");
     });
@@ -81,7 +79,7 @@ describe("LineaTransactionValidationService", () => {
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
       });
-      jest.spyOn(l2ChainQuerier, "getBlockExtraData").mockResolvedValueOnce({
+      jest.spyOn(provider, "getBlockExtraData").mockResolvedValueOnce({
         version: 1,
         variableCost: 1_000_000,
         fixedCost: 1_000_000,
@@ -110,7 +108,7 @@ describe("LineaTransactionValidationService", () => {
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
       });
-      jest.spyOn(l2ChainQuerier, "getBlockExtraData").mockResolvedValueOnce({
+      jest.spyOn(provider, "getBlockExtraData").mockResolvedValueOnce({
         version: 1,
         variableCost: 1_000_000,
         fixedCost: 1_000_000,
@@ -138,7 +136,7 @@ describe("LineaTransactionValidationService", () => {
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
       });
-      jest.spyOn(l2ChainQuerier, "getBlockExtraData").mockResolvedValueOnce({
+      jest.spyOn(provider, "getBlockExtraData").mockResolvedValueOnce({
         version: 1,
         variableCost: 1_000_000,
         fixedCost: 1_000_000,
@@ -166,7 +164,7 @@ describe("LineaTransactionValidationService", () => {
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
       });
-      jest.spyOn(l2ChainQuerier, "getBlockExtraData").mockResolvedValueOnce({
+      jest.spyOn(provider, "getBlockExtraData").mockResolvedValueOnce({
         version: 1,
         variableCost: 1_000_000,
         fixedCost: 1_000_000,
