@@ -1,4 +1,4 @@
-package build.linea.web3j
+package linea.web3j
 
 import build.linea.domain.EthLog
 import build.linea.domain.RetryConfig
@@ -318,31 +318,78 @@ class Web3JLogsSearcherIntTest {
     }
   }
 
+//  fun assertCalledInCorrectOrder(targetNumber: ULong): (EthLog) -> SearchDirection? {
+//    var prevDirection: SearchDirection? = null
+//    var prevNumber: ULong? = null
+//    return { ethLog ->
+//      val number = ULong.fromHexString(ethLog.topics[1].encodeHex())
+//      val direction = when {
+//        number < targetNumber -> SearchDirection.FORWARD
+//        number > targetNumber -> SearchDirection.BACKWARD
+//        else -> null
+//      }
+//      if (prevDirection != null) {
+//        assertThat(direction).isEqualTo(prevDirection)
+//      }
+//      prevDirection = direction
+//      direction
+//    }
+//  }
+
   @Test
   fun `findLogs searches and returns log when found`() {
     setupClientWithFakeJsonRpcServer()
 
+    (100..200)
+      .forEach { number ->
+        logsClient.findLog(
+          fromBlock = 100UL.toBlockParameter(),
+          toBlock = 200UL.toBlockParameter(),
+          address = address,
+          topics = listOf("0xffaabbcc"),
+          chunkSize = 10,
+          shallContinueToSearchPredicate = { ehtLog ->
+            shallContinueToSearch(ehtLog, targetNumber = number.toULong())
+          }
+        )
+          .get()
+          .also { log ->
+            assertThat(log).isNotNull()
+            assertThat(log!!.topics[1].encodeHex()).isEqualTo(number.toULong().toHexStringUInt256())
+          }
+      }
+  }
+
+  @Test
+  fun `findLogs searches L1 and returns null when not found - before range`() {
+    setupClientWithFakeJsonRpcServer()
+
     logsClient.findLog(
       fromBlock = 100UL.toBlockParameter(),
       toBlock = 200UL.toBlockParameter(),
       address = address,
       topics = listOf("0xffaabbcc"),
-      shallContinueToSearchPredicate = { ethLog -> shallContinueToSearch(ethLog, targetNumber = 134UL) }
+      chunkSize = 10,
+      shallContinueToSearchPredicate = { ehtLog ->
+        shallContinueToSearch(ehtLog, targetNumber = 89UL)
+      }
     )
       .get()
       .also { log ->
-        assertThat(log!!.topics[1].encodeHex()).isEqualTo(134UL.toHexStringUInt256())
+        assertThat(log).isNull()
+        assertThat(fakeJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 4)
       }
   }
 
   @Test
-  fun `findLogs searches L1 and returns null when not found`() {
+  fun `findLogs searches L1 and returns null when not found - after range`() {
     setupClientWithFakeJsonRpcServer()
     logsClient.findLog(
       fromBlock = 100UL.toBlockParameter(),
       toBlock = 200UL.toBlockParameter(),
       address = address,
       topics = listOf("0xffaabbcc"),
+      chunkSize = 10,
       shallContinueToSearchPredicate = { ehtLog ->
         shallContinueToSearch(ehtLog, targetNumber = 250UL)
       }
@@ -350,27 +397,7 @@ class Web3JLogsSearcherIntTest {
       .get()
       .also { log ->
         assertThat(log).isNull()
-        assertThat(fakeJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 11)
-      }
-  }
-
-  @Test
-  fun `findLogs searches L1 and returns null when not found2`() {
-    setupClientWithFakeJsonRpcServer()
-    logsClient.findLog(
-      fromBlock = 100UL.toBlockParameter(),
-      toBlock = 200UL.toBlockParameter(),
-      address = address,
-      topics = listOf("0xffaabbcc"),
-      chunkSize = 2,
-      shallContinueToSearchPredicate = { ehtLog ->
-        shallContinueToSearch(ehtLog, targetNumber = 250UL)
-      }
-    )
-      .get()
-      .also { log ->
-        assertThat(log).isNull()
-        assertThat(fakeJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 11)
+        assertThat(fakeJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 4)
       }
   }
 }

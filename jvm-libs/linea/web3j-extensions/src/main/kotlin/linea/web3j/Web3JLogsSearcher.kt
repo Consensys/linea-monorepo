@@ -1,4 +1,4 @@
-package build.linea.web3j
+package linea.web3j
 
 import build.linea.domain.RetryConfig
 import build.linea.web3j.domain.toDomain
@@ -78,7 +78,7 @@ class Web3JLogsSearcher(
     val searchChunks = (fromBlock..toBlock)
       .chunked(chunkSize)
       .map { it.first() to it.last() }
-    log.debug("searching in chunks={}", searchChunks)
+    log.trace("searching in chunks={}", searchChunks)
     val threads = ConcurrentHashSet<String>()
     val left = AtomicInteger(0)
     val right = AtomicInteger(searchChunks.size - 1)
@@ -91,7 +91,7 @@ class Web3JLogsSearcher(
       threads.add(Thread.currentThread().name)
       val mid = left.get() + (right.get() - left.get()) / 2
       val (chunkStart, chunkEnd) = searchChunks[mid]
-      log.debug("searching in chunk {}..{} (left={}, right={})", chunkStart, chunkEnd, left, right)
+      log.debug("searching in chunk {}..{} (left={}, right={})", chunkStart, chunkEnd, left.get(), right.get())
       findLogInInterval(chunkStart, chunkEnd, address, topics, shallContinueToSearchPredicate)
         .thenPeek { result ->
           threads.add(Thread.currentThread().name)
@@ -99,7 +99,7 @@ class Web3JLogsSearcher(
             if (result.direction == SearchDirection.FORWARD) {
               left.set(mid + 1)
             } else {
-              right.set(mid + 1)
+              right.set(mid - 1)
             }
           }
         }

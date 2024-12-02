@@ -4,7 +4,6 @@ import build.linea.clients.StateManagerClientV1
 import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import build.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import build.linea.domain.RetryConfig
-import build.linea.web3j.Web3JLogsSearcher
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
@@ -13,6 +12,7 @@ import linea.build.staterecover.clients.VertxTransactionDetailsClient
 import linea.staterecover.clients.blobscan.BlobScanClient
 import linea.staterecover.test.FakeExecutionLayerClient
 import linea.staterecover.test.FakeStateManagerClientReadFromL1
+import linea.web3j.Web3JLogsSearcher
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig

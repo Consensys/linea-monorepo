@@ -112,9 +112,6 @@ class StateSynchronizerService(
         startBlockNumber = dataFinalizedV3.startBlockNumber,
         blobs = dataSubmissions.flatMap { it.blobs }
       ).thenCompose { decompressedBlocks: List<BlockL1RecoveredData> ->
-        val decompressedBlocksInterval = decompressedBlocks
-          .first().blockNumber..decompressedBlocks.last().blockNumber
-
         log.debug("importing blocks={}", dataFinalizedV3.intervalString())
         blockImporterAndStateVerifier
           .importBlocks(decompressedBlocks)

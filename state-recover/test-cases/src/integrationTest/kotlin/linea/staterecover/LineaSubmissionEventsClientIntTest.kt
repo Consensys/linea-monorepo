@@ -2,11 +2,11 @@ package linea.staterecover
 
 import build.linea.contract.l1.LineaContractVersion
 import build.linea.domain.RetryConfig
-import build.linea.web3j.Web3JLogsSearcher
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import linea.web3j.Web3JLogsSearcher
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.testing.submission.AggregationAndBlobs
 import net.consensys.linea.testing.submission.loadBlobsAndAggregationsSortedAndGrouped
