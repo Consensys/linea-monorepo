@@ -117,6 +117,9 @@ func (t *Tree) MustGetLeaf(pos int) types.Bytes32 {
 //
 // (for config.Depth == 40)
 func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
+	if posInLevel < 0 {
+		utils.Panic("negative position in level: %v", posInLevel)
+	}
 	switch {
 	case level == t.Config.Depth:
 		// The only logical posInLevels value is zero in this case
@@ -164,6 +167,9 @@ func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
 //
 // (for config.Depth == 40)
 func (t *Tree) updateNode(level, posInLevel int, newVal types.Bytes32) {
+	if posInLevel < 0 {
+		utils.Panic("negative position in level: %v", posInLevel)
+	}
 	switch {
 	case level == t.Config.Depth:
 		// The only logical posInLevels value is zero in this case
