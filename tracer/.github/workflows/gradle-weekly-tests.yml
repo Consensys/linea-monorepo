@@ -10,7 +10,7 @@ env:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -41,7 +41,7 @@ jobs:
           path: build/reports/tests/**/*
 
   go-corset-tests:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     continue-on-error: true
     steps:
       - name: Checkout repository
