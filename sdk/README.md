@@ -35,7 +35,7 @@ To install this package, execute the following command:
 
 This package exposes two main classes for usage:
 - The `PostmanServiceClient` class is used to run a Postman service for delivering messages.
-- The `LineaSDK` class is used to interact with smart contracts on Ethereum and Linea (both Goerli and Mainnet).
+- The `LineaSDK` class is used to interact with smart contracts on Ethereum and Linea (both Sepolia and Mainnet).
 
 ## License
 

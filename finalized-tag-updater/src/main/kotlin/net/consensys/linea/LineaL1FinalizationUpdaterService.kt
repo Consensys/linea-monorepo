@@ -1,8 +1,8 @@
 package net.consensys.linea
 
+import build.linea.contract.LineaRollupV5
 import io.vertx.core.Vertx
 import net.consensys.linea.consensus.EngineBlockTagUpdater
-import net.consensys.linea.contract.LineaRollup
 import net.consensys.linea.web3j.okHttpClientBuilder
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.ethereum.finalization.FinalizationUpdatePoller
@@ -86,7 +86,7 @@ class LineaL1FinalizationUpdaterService(
       okHttpClientBuilder(LogManager.getLogger("clients.l1")).build()
     )
   )
-  private val lineaRollup = LineaRollup.load(
+  private val lineaRollup = LineaRollupV5.load(
     config.l1SmartContractAddress.toHexString(),
     web3j,
     Credentials.create(Bytes.random(64).toHexString()),
