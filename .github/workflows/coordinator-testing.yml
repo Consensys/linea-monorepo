@@ -26,7 +26,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    runs-on: [self-hosted, ubuntu-22.04, X64, medium]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: Coordinator tests
     steps:
       - name: Checkout
