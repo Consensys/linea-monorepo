@@ -268,7 +268,7 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 	numLeaves := len(leaves)
 
 	// Sanity check : there should be a power of two number of leaves
-	if !utils.IsPowerOfTwo(numLeaves) || numLeaves == 0 {
+	if !utils.IsPowerOfTwo(numLeaves) {
 		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
 	}
 
