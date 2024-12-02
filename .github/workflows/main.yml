@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '!**.md'
 
 jobs:
   store-image-name-and-tags:
