@@ -113,7 +113,7 @@ func TestBuildFromScratch(t *testing.T) {
 		leaves[i] = Bytes32(leavesFr[i].Bytes())
 	}
 
-	// And generate the
+	// And generate the tree with those leaves
 	tree := smt.BuildComplete(leaves, config.HashFunc)
 
 	// Test-Merkle tests the merkle proof point by point
