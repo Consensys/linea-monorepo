@@ -2,17 +2,9 @@ name: main
 
 on:
   pull_request:
-    paths:
-      # '!**.md' will not work by itself to exclude *.md files. See https://github.com/orgs/community/discussions/25369
-      - '**'
-      - '!**.md'
   push:
     branches:
       - main
-    paths:
-      # '!**.md' will not work by itself to exclude *.md files. See https://github.com/orgs/community/discussions/25369
-      - '**'
-      - '!**.md'
 
 jobs:
   store-image-name-and-tags:
@@ -28,6 +20,8 @@ jobs:
       traces-api-facade: ${{ steps.filter.outputs.traces-api-facade }}
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       finalized-tag-updater: ${{ steps.filter.outputs.finalized-tag-updater }}
+      # If == 'false', then either only *.md file changes or no file changes. Need to use 'reverse logic' to filter for 'only *.md file changes' as per dorny/paths-filter@v3 definitions
+      not-markdown-only: ${{ steps.filter.outputs.not-markdown-only }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,6 +112,9 @@ jobs:
               - 'finalized-tag-updater/**'
               - '.github/workflows/main.yml'
               - '.github/workflows/finalized-tag-updater-github-release.yml'
+            not-markdown-only:
+              - '!**/*.md'
+              - '!**/*.yml'
 
   check-and-tag-images:
     needs: [ store-image-name-and-tags, filter-commit-changes ]
@@ -136,6 +133,7 @@ jobs:
   manual-docker-build-and-e2e-tests:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
+    if: ${{ needs.filter-commit-changes.outputs.not-markdown-only == 'true' }}
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     concurrency:
       group: manual-docker-build-and-e2e-tests-${{ github.workflow }}-${{ github.ref }}
