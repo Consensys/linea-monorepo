@@ -97,6 +97,26 @@ class StateRecoverApp(
   val lastProcessedFinalization: EthLogEvent<DataFinalizedV3>?
     get() = stateSynchronizerService.lastProcessedFinalization
 
+  fun trySetRecoveryModeAtBlockHeight(stateRecoverStartBlockNumber: ULong): SafeFuture<StateRecoveryStatus> {
+    return elClient
+      .lineaGetStateRecoveryStatus()
+      .thenCompose { statusBeforeUpdate ->
+        elClient
+          .lineaEnableStateRecovery(stateRecoverStartBlockNumber)
+          .thenPeek { newStatus ->
+            val updateLabel = if (statusBeforeUpdate.stateRecoverStartBlockNumber == null) "Enabled" else "Updated"
+            log.info(
+              "Recovery mode was {}: headBlockNumber={} " +
+                "prevStartBlockNumber={} newStartBlockNumber={}",
+              updateLabel,
+              newStatus.headBlockNumber,
+              statusBeforeUpdate.stateRecoverStartBlockNumber,
+              newStatus.stateRecoverStartBlockNumber
+            )
+          }
+      }
+  }
+
   private fun enableRecoveryMode(): SafeFuture<*> {
     /* start up scenarios:
     1. when state recovery disabled:
