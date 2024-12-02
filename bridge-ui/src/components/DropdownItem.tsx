@@ -21,7 +21,7 @@ export default function DropdownItem({ title, iconPath, onClick, externalLink, c
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
-            "btn btn-md flex justify-start font-normal rounded-none border-none bg-[#F8F7F2] hover:bg-primary-light",
+            "btn btn-md flex justify-start font-normal rounded-none border-none bg-backgroundColor hover:bg-primary-light",
             className,
           )}
         >
@@ -39,7 +39,7 @@ export default function DropdownItem({ title, iconPath, onClick, externalLink, c
     <li key={`dropdown-item-${title}`} className="w-full">
       <button
         className={cn(
-          "btn btn-md flex justify-start font-normal border-none bg-[#F8F7F2] hover:bg-primary-light rounded-none",
+          "btn btn-md flex justify-start font-normal border-none bg-backgroundColor hover:bg-primary-light rounded-none",
           className,
         )}
         onClick={onClick}

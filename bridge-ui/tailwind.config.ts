@@ -26,6 +26,9 @@ const config: Config = {
         },
         card: "#505050",
         cardBg: "#FFFFFF",
+        backgroundColor: "var(--background-color)",
+        icon: "#C0C0C0",
+        yellow: "var(--yellow)",
         success: "#C1FF14",
       },
       fontFamily: {

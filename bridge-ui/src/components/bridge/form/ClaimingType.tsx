@@ -55,7 +55,7 @@ export function ClaimingType() {
   }, [isManualConfirmed, setValue]);
 
   return (
-    <div className="form-control grid grid-flow-row gap-2 rounded-lg bg-[#F8F7F2] p-2 sm:grid-flow-col sm:rounded-full">
+    <div className="form-control grid grid-flow-row gap-2 rounded-lg bg-backgroundColor p-2 sm:grid-flow-col sm:rounded-full">
       <ClaimingTypeOption
         id="claim-auto"
         value="auto"

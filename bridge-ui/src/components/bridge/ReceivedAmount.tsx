@@ -22,7 +22,7 @@ export function ReceivedAmount({ receivedAmount }: ReceivedAmountProps) {
   const { data: tokenPrices } = useTokenPrices([tokenAddress], fromChain?.id);
 
   return (
-    <div className="flex min-h-20 flex-col gap-2 rounded-lg bg-[#F8F7F2] p-3">
+    <div className="flex min-h-20 flex-col gap-2 rounded-lg bg-backgroundColor p-3">
       {isConnected && (
         <>
           <span className="text-2xl font-semibold">

@@ -63,7 +63,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
       type="submit"
       variant="primary"
       className={cn("w-full text-lg font-normal", {
-        "bg-[#FFF068] border-none hover:bg-[#FFF068]": destinationBalanceTooLow,
+        "bg-yellow border-none hover:bg-yellow": destinationBalanceTooLow,
       })}
       disabled={isButtonDisabled}
       loading={isLoading || isWaitingLoading}
@@ -75,7 +75,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
           className="z-[99] normal-case"
           position="bottom"
         >
-          <MdInfo color="#C0C0C0" />
+          <MdInfo className="text-icon" />
         </Tooltip>
       )}
     </Button>
@@ -85,7 +85,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
     <Button
       id="submit-erc-btn"
       className={cn("w-full text-lg font-normal", {
-        "bg-[#FFF068] border-none hover:bg-[#FFF068]": destinationBalanceTooLow,
+        "bg-yellow border-none hover:bg-yellow": destinationBalanceTooLow,
       })}
       disabled={isButtonDisabled}
       loading={isLoading || isWaitingLoading}
@@ -98,7 +98,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
           className="z-[100] normal-case"
           position="top"
         >
-          <MdInfo color="#C0C0C0" />
+          <MdInfo className="text-icon" />
         </Tooltip>
       )}
     </Button>

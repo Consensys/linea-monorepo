@@ -39,7 +39,7 @@ export function Recipient() {
           className="z-[99]"
           position="bottom"
         >
-          <MdInfo color="#C0C0C0" />
+          <MdInfo className="text-icon" />
         </Tooltip>
       </div>
 
@@ -48,7 +48,7 @@ export function Recipient() {
           <div className="flex flex-row">
             <input
               type="text"
-              className="input w-full bg-[#F8F7F2] focus:border-none focus:outline-none"
+              className="input w-full bg-backgroundColor focus:border-none focus:outline-none"
               placeholder="0x..."
               {...register("recipient", {
                 validate: (value) => !value || isAddress(value) || "Invalid address",

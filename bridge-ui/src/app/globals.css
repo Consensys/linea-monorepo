@@ -6,10 +6,13 @@
   /* toastify */
   --toastify-color-success: #7adffd;
   --toastify-color-progress-success: #7adffd;
+
+  --background-color: #F8F7F2;
+  --yellow: #FFF068;
 }
 
 body {
-  background: #F8F7F2;
+  background: var(--background-color);
 }
 
 @layer components {
@@ -17,7 +20,7 @@ body {
   input:-webkit-autofill:hover, 
   input:-webkit-autofill:focus, 
   input:-webkit-autofill:active{
-    -webkit-box-shadow: 0 0 0 30px #F8F7F2 inset !important;
+    -webkit-box-shadow: 0 0 0 30px var(--background-color) inset !important;
   }
 
   .container {
@@ -42,24 +45,24 @@ body {
   }
 
   .tooltip-top::after {
-    border-color: #FFF068 transparent transparent transparent;
+    border-color: var(--yellow) transparent transparent transparent;
   }
   
   .tooltip-right::after {
-    border-color: transparent #FFF068 transparent transparent;
+    border-color: transparent var(--yellow) transparent transparent;
   }
   
   .tooltip-bottom::after {
-    border-color: transparent transparent #FFF068 transparent;
+    border-color: transparent transparent var(--yellow) transparent;
   }
   
   .tooltip-left::after {
-    border-color: transparent transparent transparent #FFF068;
+    border-color: transparent transparent transparent var(--yellow);
   }
 
   .tooltip:before {
-    border: 1px solid #FFF068;
-    background-color: #FFF068;
+    border: 1px solid var(--yellow);
+    background-color: var(--yellow);
     color: #525252;
     border-radius: 8px;
     padding: 8px;

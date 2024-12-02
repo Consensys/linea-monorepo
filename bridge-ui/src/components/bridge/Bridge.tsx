@@ -141,7 +141,7 @@ const Bridge = () => {
             <FromChain />
 
             <div className="mb-8">
-              <div className="grid grid-flow-col items-center gap-2 rounded-lg bg-[#F8F7F2] p-3">
+              <div className="grid grid-flow-col items-center gap-2 rounded-lg bg-backgroundColor p-3">
                 <div className="grid grid-flow-row gap-2">
                   <TokenList />
                   <Balance />

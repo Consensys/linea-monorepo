@@ -15,7 +15,7 @@ export const FeeLine: React.FC<FeeLineProps> = ({ label, value, tooltip, tooltip
       <span>{label}:</span>
       {tooltip && (
         <Tooltip text={tooltip} className={tooltipClassName}>
-          <MdInfo color="#C0C0C0" />
+          <MdInfo className="text-icon" />
         </Tooltip>
       )}
     </div>
