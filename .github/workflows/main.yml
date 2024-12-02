@@ -2,8 +2,8 @@ name: main
 
 on:
   pull_request:
-    paths:
-      - '!**.md'
+    paths-ignore:
+      - '**/*.md'
   push:
     branches:
       - main
