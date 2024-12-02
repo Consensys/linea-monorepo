@@ -4,7 +4,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/global"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/local"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -19,6 +21,7 @@ type DistributedWizard struct {
 	Aggregator         *wizard.CompiledIOP
 }
 
+// DistributedModule implements the utilities relevant to a single segment.
 type DistributedModule struct {
 	LookupPermProj *wizard.CompiledIOP
 	GlobalLocal    *wizard.CompiledIOP
@@ -30,32 +33,40 @@ type ModuleDiscoverer interface {
 	// group best the columns into modules.
 	Analyze(comp *wizard.CompiledIOP)
 	NbModules() moduleName
-	ModuleList() []string
+	ModuleList(comp *wizard.CompiledIOP) []string
 	FindModule(col ifaces.Column) moduleName
 }
 
 // This transforms the initial wizard. So it is not really the initial
 // wizard anymore. That means the caller can forget about "initialWizard"
 // after calling the function.
-func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer) DistributedWizard {
+// maxNbSegment is a large max for the number of segments in a module.
+func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxNbSegments int) DistributedWizard {
 
+	// prepare the  initialWizard for the distribution. e.g.,
+	// adding auxiliary columns or dividing a lookup query to two queries one over T and the other over S.
 	prepare(initialWizard)
+	// it updates the map of Modules-Columns (that is a field of initialWizard).
 	disc.Analyze(initialWizard)
 
-	addSplittingStep(disc, initialWizard) // adds a prover step to "push" all the sub-witness assignment
-
-	moduleLs := disc.ModuleList()
+	moduleLs := disc.ModuleList(initialWizard)
 	distModules := []DistributedModule{}
 
 	for _, modName := range moduleLs {
+		// Segment Compilation;
+		// Compile every dist module with the same sequence of compilation steps for uniformity
 		distMod := extractDistModule(initialWizard, disc, modName)
 		distModules = append(distModules, distMod)
 	}
 
-	// Compile every dist module with the same sequence of compilation steps for uniformity
+	// for each [DistributedModule] it checks the consistency among
+	// its replications where the number of replications is maxNbSegments.
+	aggr := aggregator(maxNbSegments, distModules, moduleLs)
 
 	return DistributedWizard{
-		Bootstrapper: initialWizard,
+		Bootstrapper:       initialWizard,
+		DistributedModules: distModules,
+		Aggregator:         aggr,
 	}
 }
 
@@ -69,12 +80,18 @@ func prepare(comp *wizard.CompiledIOP) {
 	inclusion.IntoLogDerivativeSum(comp)
 	permutation.IntoGrandProduct(comp)
 	projection.IntoGrandSum(comp)
+	local.IntoDistributedLocal(comp)
+	global.IntoDistributedGlobal(comp)
 }
 
-func addSplittingStep(comp *wizard.CompiledIOP) {
+func addSplittingStep(comp *wizard.CompiledIOP, disc ModuleDiscoverer) {
 	panic("unimplemented")
 }
 
 func extractDistModule(comp *wizard.CompiledIOP, disc ModuleDiscoverer, moduleName moduleName) DistributedModule {
+	panic("unimplemented")
+}
+
+func aggregator(n int, idsModules []DistributedModule, moduleNames []string) *wizard.CompiledIOP {
 	panic("unimplemented")
 }
