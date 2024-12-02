@@ -3,8 +3,9 @@ name: main
 on:
   pull_request:
     paths:
+      # '!**.md' will not work by itself to exclude *.md files. See https://github.com/orgs/community/discussions/25369
+      - '**'
       - '!**.md'
-      - '!**.yml'
   push:
     branches:
       - main
