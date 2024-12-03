@@ -76,7 +76,7 @@ class Web3JLogsSearcher(
     shallContinueToSearchPredicate: (build.linea.domain.EthLog) -> SearchDirection?
   ): SafeFuture<build.linea.domain.EthLog?> {
     val cursor = SearchCursor(fromBlock, toBlock, chunkSize)
-    log.debug("searching between blocks={}", CommonDomainFunctions.blockIntervalString(fromBlock, toBlock))
+    log.trace("searching between blocks={}", CommonDomainFunctions.blockIntervalString(fromBlock, toBlock))
 
     var nexChunkToSearch: Pair<ULong, ULong>? = cursor.next(searchDirection = SearchDirection.FORWARD)
     return AsyncRetryer.retry(
@@ -85,7 +85,7 @@ class Web3JLogsSearcher(
       stopRetriesPredicate = { it is SearchResult.ItemFound || nexChunkToSearch == null }
     ) {
       val (chunkStart, chunkEnd) = nexChunkToSearch!!
-      log.debug("searching in chunk {}..{}", chunkStart, chunkEnd)
+      log.trace("searching in chunk={}", CommonDomainFunctions.blockIntervalString(chunkStart, chunkEnd))
       findLogInInterval(chunkStart, chunkEnd, address, topics, shallContinueToSearchPredicate)
         .thenPeek { result ->
           if (result is SearchResult.NoResultsInInterval) {
