@@ -67,11 +67,11 @@ func dispatchPermutation(
 	var (
 		isMultiColumn = len(q.A[0]) > 1
 		alpha         coin.Info
-		beta          = comp.InsertCoin(round+1, deriveName[coin.Name](q, "BETA"), coin.Field)
+		beta          = comp.InsertCoin(round+1, DeriveName[coin.Name](q, "BETA"), coin.Field)
 	)
 
 	if isMultiColumn {
-		alpha = comp.InsertCoin(round+1, deriveName[coin.Name](q, "ALPHA"), coin.Field)
+		alpha = comp.InsertCoin(round+1, DeriveName[coin.Name](q, "ALPHA"), coin.Field)
 	}
 
 	for k, aOrB := range [2][][]ifaces.Column{q.A, q.B} {

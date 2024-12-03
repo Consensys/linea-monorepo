@@ -32,7 +32,7 @@ type ModuleDiscoverer interface {
 	// Analyze is responsible for letting the module discoverer compute how to
 	// group best the columns into modules.
 	Analyze(comp *wizard.CompiledIOP)
-	NbModules() moduleName
+	NbModules() int
 	ModuleList(comp *wizard.CompiledIOP) []string
 	FindModule(col ifaces.Column) moduleName
 }
@@ -91,6 +91,7 @@ func addSplittingStep(comp *wizard.CompiledIOP, disc ModuleDiscoverer) {
 func extractDistModule(comp *wizard.CompiledIOP, disc ModuleDiscoverer, moduleName moduleName) DistributedModule {
 	panic("unimplemented")
 }
+
 
 func aggregator(n int, idsModules []DistributedModule, moduleNames []string) *wizard.CompiledIOP {
 	panic("unimplemented")
