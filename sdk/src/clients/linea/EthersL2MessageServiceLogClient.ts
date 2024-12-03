@@ -1,4 +1,4 @@
-import { MessageSent, ServiceVersionMigrated } from "../../core/types/events";
+import { MessageSent, ServiceVersionMigrated } from "../../core/types";
 import { L2MessageService, L2MessageService__factory } from "../../contracts/typechain";
 import { IL2MessageServiceLogClient, MessageSentEventFilters } from "../../core/clients/linea";
 import { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../../contracts/typechain/common";
