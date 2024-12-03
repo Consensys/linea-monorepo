@@ -30,6 +30,7 @@ task downloadNativeLibs {
   doLast {
     fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v0.1.0/linea-blob-libs-v0.1.0.zip", "shnarf_calculator", libsZipDownloadOutputDir)
     fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.0.1/linea-blob-libs-v1.0.1.zip", "shnarf_calculator", libsZipDownloadOutputDir)
+    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.1.0-test8/linea-blob-libs-v1.1.0-test8.zip", "shnarf_calculator", libsZipDownloadOutputDir)
   }
 }
 
