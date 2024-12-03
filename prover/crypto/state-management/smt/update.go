@@ -11,7 +11,7 @@ func (t *Tree) Update(pos int, newVal types.Bytes32) {
 	current := newVal
 	idx := pos
 
-	if pos <= 0 || pos >= 1<<depth {
+	if pos < 0 || pos >= 1<<depth {
 		utils.Panic("out of bound %v", pos)
 	}
 
