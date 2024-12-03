@@ -84,19 +84,20 @@ class ExecutionLayerJsonRpcClient internal constructor(
       requestRetryConfig: RequestRetryConfig,
       logger: Logger = LogManager.getLogger(ExecutionLayerJsonRpcClient::class.java)
     ): ExecutionLayerClient {
+      val objectManager = ethApiObjectMapper
+        .copy()
+        .registerModules(
+          SimpleModule().apply {
+            this.addSerializer(Instant::class.java, InstantAsHexNumberSerializer)
+            this.addDeserializer(Instant::class.java, InstantAsHexNumberDeserializer)
+          }
+        )
+        .setSerializationInclusion(JsonInclude.Include.NON_NULL)
       return ExecutionLayerJsonRpcClient(
         rpcClient = rpcClientFactory.createJsonRpcV2Client(
           endpoints = listOf(endpoint),
           retryConfig = requestRetryConfig,
-          requestObjectMapper = ethApiObjectMapper
-            .copy()
-            .registerModules(
-              SimpleModule().apply {
-                this.addSerializer(Instant::class.java, InstantAsHexNumberSerializer)
-                this.addDeserializer(Instant::class.java, InstantAsHexNumberDeserializer)
-              }
-            )
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL),
+          requestObjectMapper = objectManager,
           log = logger
         )
       )
