@@ -12,7 +12,6 @@ definition isViewFunction(method f) returns bool = (
   f.selector == sig:streamer.MIN_LOCKUP_PERIOD().selector ||
   f.selector == sig:streamer.MAX_LOCKUP_PERIOD().selector ||
   f.selector == sig:streamer.MAX_MULTIPLIER().selector ||
-  f.selector == sig:streamer.accountedRewards().selector ||
   f.selector == sig:streamer.rewardIndex().selector ||
   f.selector == sig:streamer.lastMPUpdatedTime().selector ||
   f.selector == sig:streamer.owner().selector ||
@@ -23,7 +22,8 @@ definition isViewFunction(method f) returns bool = (
   f.selector == sig:streamer.emergencyModeEnabled().selector ||
   f.selector == sig:streamer.getStakedBalance(address).selector ||
   f.selector == sig:streamer.getAccount(address).selector ||
-  f.selector == sig:streamer.getPendingRewards(address).selector ||
+  f.selector == sig:streamer.rewardsBalanceOf(address).selector ||
+  f.selector == sig:streamer.totalRewardsSupply().selector ||
   f.selector == sig:streamer.calculateAccountRewards(address).selector
 );
 
@@ -38,7 +38,7 @@ definition isTrustedCodehashAccessFunction(method f) returns bool = (
 );
 
 definition isInitializerFunction(method f) returns bool = (
-  f.selector == sig:streamer.initialize(address,address,address).selector
+  f.selector == sig:streamer.initialize(address,address).selector
 );
 
 definition isUUPSUpgradeableFunction(method f) returns bool = (
