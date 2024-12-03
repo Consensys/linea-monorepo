@@ -1,6 +1,6 @@
 # Smart Contracts
 
-Contains Ethereum smart contract code for the Linea Rollup and Message Service.
+Contains Ethereum smart contract code for the Linea Rollup and Message Service. 
 
 ## LineaRollup (L1MessageService)
 The Linea Rollup, which contains the L1MessageService, is the smart contract that is responsible for:
