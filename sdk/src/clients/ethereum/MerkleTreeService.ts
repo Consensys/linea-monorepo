@@ -13,7 +13,7 @@ import {
   L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE,
   ZERO_HASH,
 } from "../../core/constants";
-import { LineaRollup, LineaRollup__factory } from "../typechain";
+import { LineaRollup, LineaRollup__factory } from "../../contracts/typechain";
 import { IProvider } from "../../core/clients/IProvider";
 import { BrowserProvider, Provider } from "../providers";
 

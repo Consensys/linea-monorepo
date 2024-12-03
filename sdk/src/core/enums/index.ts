@@ -1,1 +1,1 @@
-export { Direction, MessageStatus, OnChainMessageStatus } from "./message";
+export { Direction, OnChainMessageStatus } from "./message";

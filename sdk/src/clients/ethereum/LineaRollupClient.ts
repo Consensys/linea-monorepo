@@ -7,7 +7,7 @@ import {
   TransactionReceipt,
   Block,
 } from "ethers";
-import { LineaRollup, LineaRollup__factory } from "../typechain";
+import { LineaRollup, LineaRollup__factory } from "../../contracts/typechain";
 import { BaseError, GasEstimationError } from "../../core/errors";
 import { Message, SDKMode, MessageSent } from "../../core/types";
 import { OnChainMessageStatus } from "../../core/enums";

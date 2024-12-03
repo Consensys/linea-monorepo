@@ -1,4 +1,4 @@
-export type EventLogBase = {
+type EventLogBase = {
   blockNumber: number;
   logIndex: number;
   contractAddress: string;

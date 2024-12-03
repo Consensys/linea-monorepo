@@ -7,7 +7,7 @@ import {
   Signer,
   Block,
 } from "ethers";
-import { L2MessageService, L2MessageService__factory } from "../typechain";
+import { L2MessageService, L2MessageService__factory } from "../../contracts/typechain";
 import { GasEstimationError, BaseError } from "../../core/errors";
 import { Message, SDKMode, MessageSent } from "../../core/types";
 import { OnChainMessageStatus } from "../../core/enums";

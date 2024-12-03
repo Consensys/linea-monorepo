@@ -2,7 +2,7 @@ import { Block, TransactionReceipt, TransactionRequest, TransactionResponse } fr
 import { MessageSent } from "../../core/types";
 import { MESSAGE_SENT_EVENT_SIGNATURE } from "../../core/constants";
 import { isNull } from "../../core/utils";
-import { L2MessageService, L2MessageService__factory } from "../typechain";
+import { L2MessageService, L2MessageService__factory } from "../../contracts/typechain";
 import { IMessageRetriever } from "../../core/clients/IMessageRetriever";
 import { ILineaProvider, IL2MessageServiceLogClient } from "../../core/clients/linea";
 import { LineaBrowserProvider, LineaProvider } from "../providers";

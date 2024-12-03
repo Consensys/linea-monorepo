@@ -1,3 +1,3 @@
-export { LineaSDKOptions, Network, SDKMode, NetworkInfo } from "./config";
-export { EventLogBase, MessageSent, L2MessagingBlockAnchored, MessageClaimed, ServiceVersionMigrated } from "./events";
+export { LineaSDKOptions, Network, SDKMode, NetworkInfo, FeeEstimatorOptions } from "./config";
+export { MessageSent, L2MessagingBlockAnchored, MessageClaimed, ServiceVersionMigrated } from "./events";
 export { Message } from "./message";

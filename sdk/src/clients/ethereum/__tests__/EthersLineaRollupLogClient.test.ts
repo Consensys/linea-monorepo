@@ -10,7 +10,7 @@ import {
   testMessageSentEvent,
   testMessageSentEventLog,
 } from "../../../utils/testing/constants";
-import { LineaRollup, LineaRollup__factory } from "../../typechain";
+import { LineaRollup, LineaRollup__factory } from "../../../contracts/typechain";
 import { mockProperty } from "../../../utils/testing/helpers";
 import { Provider } from "../../providers";
 

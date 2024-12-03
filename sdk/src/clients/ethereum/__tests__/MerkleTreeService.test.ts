@@ -16,7 +16,7 @@ import {
   generateLineaRollupClient,
   generateTransactionReceiptWithLogs,
 } from "../../../utils/testing/helpers";
-import { LineaRollup, LineaRollup__factory } from "../../typechain";
+import { LineaRollup, LineaRollup__factory } from "../../../contracts/typechain";
 import { EthersL2MessageServiceLogClient } from "../../linea/EthersL2MessageServiceLogClient";
 import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
 import { MerkleTreeService } from "../MerkleTreeService";

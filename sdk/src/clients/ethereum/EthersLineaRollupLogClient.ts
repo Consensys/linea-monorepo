@@ -5,9 +5,13 @@ import {
   MessageClaimedFilters,
 } from "../../core/clients/ethereum";
 import { L2MessagingBlockAnchored, MessageClaimed, MessageSent } from "../../core/types";
-import { LineaRollup, LineaRollup__factory } from "../typechain";
-import { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
-import { L2MessagingBlockAnchoredEvent, MessageClaimedEvent, MessageSentEvent } from "../typechain/LineaRollup";
+import { LineaRollup, LineaRollup__factory } from "../../contracts/typechain";
+import { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../../contracts/typechain/common";
+import {
+  L2MessagingBlockAnchoredEvent,
+  MessageClaimedEvent,
+  MessageSentEvent,
+} from "../../contracts/typechain/LineaRollup";
 import { isUndefined } from "../../core/utils";
 import { BrowserProvider, Provider } from "../providers";
 

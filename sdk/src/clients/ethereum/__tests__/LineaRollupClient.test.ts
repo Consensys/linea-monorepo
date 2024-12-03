@@ -13,7 +13,7 @@ import {
   TEST_CONTRACT_ADDRESS_2,
   TEST_ADDRESS_1,
 } from "../../../utils/testing/constants";
-import { LineaRollup, LineaRollup__factory } from "../../typechain";
+import { LineaRollup, LineaRollup__factory } from "../../../contracts/typechain";
 import {
   generateL2MerkleTreeAddedLog,
   generateL2MessagingBlockAnchoredLog,

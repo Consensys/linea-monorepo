@@ -9,7 +9,7 @@ import {
   TEST_MESSAGE_HASH,
   TEST_CONTRACT_ADDRESS_2,
 } from "../../../utils/testing/constants";
-import { L2MessageService, L2MessageService__factory } from "../../typechain";
+import { L2MessageService, L2MessageService__factory } from "../../../contracts/typechain";
 import { mockProperty } from "../../../utils/testing/helpers";
 import { LineaProvider } from "../../providers";
 

@@ -15,7 +15,7 @@
     "clean": "rimraf dist src/typechain node_modules coverage tsconfig.build.tsbuildinfo",
     "build:pre": "pnpm run typechain",
     "build": "pnpm run build:pre && tsc -p tsconfig.build.json",
-    "typechain": "typechain --target ethers-v6 --out-dir ./src/clients/typechain './src/clients/abis/*.json'",
+    "typechain": "typechain --target ethers-v6 --out-dir ./src/contracts/typechain './src/contracts/abis/*.json'",
     "test": "npx jest --bail --detectOpenHandles --forceExit"
   },
   "dependencies": {
