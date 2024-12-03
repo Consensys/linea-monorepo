@@ -127,9 +127,7 @@ class StateRecoverSepoliaWithFakeExecutionClientIntTest {
 
   // "Disabled because it is mean for local testing and debug purposes"
   // @Test
-  fun `simulate recovery from given point`(
-    vertx: Vertx
-  ) {
+  fun `simulate recovery from given point`() {
     val finalizationEvents = logsSearcher
       .getLogs(
         fromBlock = BlockParameter.Tag.EARLIEST,
