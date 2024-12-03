@@ -87,12 +87,12 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 	}
 
 	if modexpCountSmall > mod.MaxNb256BitsInstances {
-		logrus.Errorf("limit overflow: the modexp (256 bits) count is %v and the limit is %v\n", modexpCountSmall, mod.GnarkCircuitConnector256Bits)
+		logrus.Errorf("limit overflow: the modexp (256 bits) count is %v and the limit is %v\n", modexpCountSmall, mod.MaxNb256BitsInstances)
 		os.Exit(77)
 	}
 
 	if modexpCountLarge > mod.MaxNb4096BitsInstances {
-		logrus.Errorf("limit overflow: the modexp (4096 bits) count is %v and the limit is %v\n", modexpCountSmall, mod.GnarkCircuitConnector4096Bits)
+		logrus.Errorf("limit overflow: the modexp (4096 bits) count is %v and the limit is %v\n", modexpCountSmall, mod.MaxNb4096BitsInstances)
 		os.Exit(77)
 	}
 
