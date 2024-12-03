@@ -1,7 +1,8 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
+import { Direction, OnChainMessageStatus } from "@consensys/linea-sdk";
 import { TestLogger, generateTransactionReceipt, generateTransactionResponse } from "../../../utils/testing/helpers";
-import { Direction, MessageStatus, OnChainMessageStatus } from "../../../core/enums/MessageEnums";
+import { MessageStatus } from "../../../core/enums";
 import { testL2NetworkConfig, testPendingMessage, testPendingMessage2 } from "../../../utils/testing/constants";
 import { IMessageServiceContract } from "../../../core/services/contracts/IMessageServiceContract";
 import {

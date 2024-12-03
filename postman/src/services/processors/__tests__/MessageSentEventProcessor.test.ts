@@ -1,7 +1,8 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 import { TestLogger } from "../../../utils/testing/helpers";
-import { Direction, MessageStatus } from "../../../core/enums/MessageEnums";
+import { Direction } from "@consensys/linea-sdk";
+import { MessageStatus } from "../../../core/enums";
 import {
   testL1NetworkConfig,
   testMessageSentEvent,

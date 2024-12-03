@@ -6,7 +6,7 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
-import { Direction } from "../../core/enums/MessageEnums";
+import { Direction, wait } from "@consensys/linea-sdk";
 import { ILogger } from "../../core/utils/logging/ILogger";
 import { DEFAULT_INITIAL_FROM_BLOCK } from "../../core/constants";
 import { IMessageSentEventProcessor } from "../../core/services/processors/IMessageSentEventProcessor";
@@ -14,7 +14,6 @@ import { Message } from "../../core/entities/Message";
 import { DatabaseAccessError } from "../../core/errors/DatabaseErrors";
 import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { IPoller } from "../../core/services/pollers/IPoller";
-import { wait } from "../../core/utils/shared";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 
 type MessageSentEventPollerConfig = {

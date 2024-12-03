@@ -1,9 +1,9 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
+import { Direction } from "@consensys/linea-sdk";
 import { MessageAnchoringPoller } from "../MessageAnchoringPoller";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { IMessageAnchoringProcessor } from "../../../core/services/processors/IMessageAnchoringProcessor";
-import { Direction } from "../../../core/enums/MessageEnums";
 import { testL2NetworkConfig } from "../../../utils/testing/constants";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 

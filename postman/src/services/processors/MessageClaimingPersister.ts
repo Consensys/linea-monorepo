@@ -7,8 +7,9 @@ import {
   Block,
   JsonRpcProvider,
 } from "ethers";
-import { BaseError } from "@consensys/linea-sdk";
-import { MessageStatus, OnChainMessageStatus } from "../../core/enums/MessageEnums";
+import { OnChainMessageStatus } from "@consensys/linea-sdk";
+import { BaseError } from "../../core/errors";
+import { MessageStatus } from "../../core/enums";
 import { ILogger } from "../../core/utils/logging/ILogger";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
 import { IProvider } from "../../core/clients/blockchain/IProvider";

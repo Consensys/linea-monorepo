@@ -1,18 +1,16 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
-import { Provider, DefaultGasProvider } from "@consensys/linea-sdk";
+import { Block, TransactionReceipt, TransactionRequest, TransactionResponse } from "ethers";
+import { Provider, DefaultGasProvider, Direction, wait } from "@consensys/linea-sdk";
 import { TestLogger } from "../../../utils/testing/helpers";
-import { Direction } from "../../../core/enums/MessageEnums";
 import { rejectedMessageProps, testL1NetworkConfig, testMessage } from "../../../utils/testing/constants";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 import { MessageSentEventPoller } from "../MessageSentEventPoller";
 import { IMessageSentEventProcessor } from "../../../core/services/processors/IMessageSentEventProcessor";
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
-import { wait } from "../../../core/utils/shared";
-import { DatabaseAccessError } from "../../../core/errors/DatabaseErrors";
-import { DatabaseErrorType, DatabaseRepoName } from "../../../core/enums/DatabaseEnums";
-import { Block, TransactionReceipt, TransactionRequest, TransactionResponse } from "ethers";
+import { DatabaseAccessError } from "../../../core/errors";
+import { DatabaseErrorType, DatabaseRepoName } from "../../../core/enums";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import {
   DEFAULT_GAS_ESTIMATION_PERCENTILE,

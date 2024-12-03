@@ -1,6 +1,7 @@
 import { ContractTransactionResponse, TransactionRequest } from "ethers";
+import { Direction } from "@consensys/linea-sdk";
 import { Message } from "../../core/entities/Message";
-import { Direction, MessageStatus } from "../../core/enums/MessageEnums";
+import { MessageStatus } from "../../core/enums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { IGasProvider } from "../../core/clients/blockchain/IGasProvider";

@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Brackets, DataSource, Repository } from "typeorm";
+import { ContractTransactionResponse } from "ethers";
+import { Direction } from "@consensys/linea-sdk";
 import { Message } from "../../../../core/entities/Message";
 import { mapMessageEntityToMessage, mapMessageToMessageEntity } from "../mappers/messageMappers";
-import { Direction, MessageStatus } from "../../../../core/enums/MessageEnums";
-import { DatabaseErrorType, DatabaseRepoName } from "../../../../core/enums/DatabaseEnums";
-import { DatabaseAccessError } from "../../../../core/errors/DatabaseErrors";
+import { DatabaseErrorType, DatabaseRepoName, MessageStatus } from "../../../../core/enums";
+import { DatabaseAccessError } from "../../../../core/errors";
 import { MessageEntity } from "../entities/Message.entity";
 import { subtractSeconds } from "../../../../core/utils/shared";
-import { ContractTransactionResponse } from "ethers";
 import { IMessageRepository } from "../../../../core/persistence/IMessageRepository";
 
 export class TypeOrmMessageRepository<TransactionResponse extends ContractTransactionResponse>

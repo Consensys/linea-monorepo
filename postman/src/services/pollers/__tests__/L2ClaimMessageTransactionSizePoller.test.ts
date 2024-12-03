@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { MockProxy, mock } from "jest-mock-extended";
+import { Direction } from "@consensys/linea-sdk";
 import { TestLogger } from "../../../utils/testing/helpers";
-import { Direction } from "../../../core/enums/MessageEnums";
 import { testL2NetworkConfig } from "../../../utils/testing/constants";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 import { L2ClaimMessageTransactionSizePoller } from "../L2ClaimMessageTransactionSizePoller";

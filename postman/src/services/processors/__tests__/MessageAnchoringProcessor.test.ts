@@ -9,9 +9,10 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
+import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { IMessageAnchoringProcessor } from "../../../core/services/processors/IMessageAnchoringProcessor";
-import { MessageStatus, OnChainMessageStatus } from "../../../core/enums/MessageEnums";
+import { MessageStatus } from "../../../core/enums";
 import { testL1NetworkConfig, testL2NetworkConfig, testMessage } from "../../../utils/testing/constants";
 import { MessageAnchoringProcessor } from "../MessageAnchoringProcessor";
 import { IMessageServiceContract } from "../../../core/services/contracts/IMessageServiceContract";

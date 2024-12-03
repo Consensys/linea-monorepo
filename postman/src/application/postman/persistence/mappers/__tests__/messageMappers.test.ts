@@ -1,4 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
+import { Direction } from "@consensys/linea-sdk";
 import { generateMessage, generateMessageEntity } from "../../../../../utils/testing/helpers";
 import { mapMessageEntityToMessage, mapMessageToMessageEntity } from "../messageMappers";
 import {
@@ -7,7 +8,7 @@ import {
   TEST_CONTRACT_ADDRESS_2,
   TEST_MESSAGE_HASH,
 } from "../../../../../utils/testing/constants";
-import { Direction, MessageStatus } from "../../../../../core/enums/MessageEnums";
+import { MessageStatus } from "../../../../../core/enums";
 import { Message } from "../../../../../core/entities/Message";
 
 describe("Message Mappers", () => {

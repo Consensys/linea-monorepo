@@ -1,4 +1,4 @@
-import { MessageSent } from "../../../types/events";
+import { MessageSent } from "@consensys/linea-sdk";
 import { MessageProps } from "../../../entities/Message";
 import { IMessageServiceContract } from "../../../services/contracts/IMessageServiceContract";
 import { LineaGasFees } from "../IGasProvider";

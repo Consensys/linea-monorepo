@@ -1,6 +1,5 @@
-import { OnChainMessageStatus } from "../../enums/MessageEnums";
+import { OnChainMessageStatus, MessageSent } from "@consensys/linea-sdk";
 import { MessageProps } from "../../entities/Message";
-import { MessageSent } from "../../types/events";
 
 export interface IMessageServiceContract<
   Overrides,

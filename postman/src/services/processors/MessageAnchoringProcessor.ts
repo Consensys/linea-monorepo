@@ -7,12 +7,13 @@ import {
   TransactionRequest,
   JsonRpcProvider,
 } from "ethers";
+import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import {
   IMessageAnchoringProcessor,
   MessageAnchoringProcessorConfig,
 } from "../../core/services/processors/IMessageAnchoringProcessor";
 import { IProvider } from "../../core/clients/blockchain/IProvider";
-import { MessageStatus, OnChainMessageStatus } from "../../core/enums/MessageEnums";
+import { MessageStatus } from "../../core/enums";
 import { ILogger } from "../../core/utils/logging/ILogger";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";

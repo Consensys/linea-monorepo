@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
-import { DefaultGasProvider, Provider } from "@consensys/linea-sdk";
+import { DefaultGasProvider, Provider, Direction, OnChainMessageStatus } from "@consensys/linea-sdk";
 import {
   Block,
   ContractTransactionResponse,
@@ -12,7 +12,7 @@ import {
   TransactionResponse,
 } from "ethers";
 import { TestLogger } from "../../../utils/testing/helpers";
-import { Direction, MessageStatus, OnChainMessageStatus } from "../../../core/enums/MessageEnums";
+import { MessageStatus } from "../../../core/enums";
 import {
   TEST_CONTRACT_ADDRESS_2,
   testAnchoredMessage,

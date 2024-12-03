@@ -1,4 +1,4 @@
-import { Direction } from "../../enums/MessageEnums";
+import { Direction } from "@consensys/linea-sdk";
 
 export interface IMessageClaimingProcessor {
   process(): Promise<void>;

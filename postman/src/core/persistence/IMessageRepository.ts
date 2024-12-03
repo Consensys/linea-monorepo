@@ -1,5 +1,6 @@
+import { Direction } from "@consensys/linea-sdk";
 import { Message } from "../entities/Message";
-import { Direction, MessageStatus } from "../enums/MessageEnums";
+import { MessageStatus } from "../enums";
 
 export interface IMessageRepository<ContractTransactionResponse> {
   insertMessage(message: Message): Promise<void>;

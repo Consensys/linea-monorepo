@@ -1,7 +1,6 @@
 import { MessageProps } from "../../../entities/Message";
-import { OnChainMessageStatus } from "../../../enums/MessageEnums";
+import { MessageSent, OnChainMessageStatus } from "@consensys/linea-sdk";
 import { IMessageServiceContract } from "../../../services/contracts/IMessageServiceContract";
-import { MessageSent } from "../../../types/events";
 import { FinalizationMessagingInfo, Proof } from "./IMerkleTreeService";
 
 export interface ILineaRollupClient<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse>

@@ -7,6 +7,7 @@ import {
   EthersLineaRollupLogClient,
   EthersL2MessageServiceLogClient,
   Wallet,
+  Direction,
 } from "@consensys/linea-sdk";
 import { ILogger } from "../../../core/utils/logging/ILogger";
 import { TypeOrmMessageRepository } from "../persistence/repositories/TypeOrmMessageRepository";
@@ -21,7 +22,6 @@ import {
 } from "../../../services/processors";
 import { PostmanOptions } from "./config/config";
 import { DB } from "../persistence/dataSource";
-import { Direction } from "../../../core/enums/MessageEnums";
 import {
   MessageSentEventPoller,
   MessageAnchoringPoller,

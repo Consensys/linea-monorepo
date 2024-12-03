@@ -1,4 +1,4 @@
-import { Direction } from "../../enums/MessageEnums";
+import { Direction } from "@consensys/linea-sdk";
 
 export interface IMessageSentEventProcessor {
   process(

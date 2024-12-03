@@ -1,8 +1,9 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 import { ContractTransactionResponse, Overrides, Signer, TransactionReceipt, TransactionResponse } from "ethers";
+import { Direction } from "@consensys/linea-sdk";
 import { TestLogger } from "../../../utils/testing/helpers";
-import { Direction, MessageStatus } from "../../../core/enums/MessageEnums";
+import { MessageStatus } from "../../../core/enums";
 import { testL1NetworkConfig, testMessage } from "../../../utils/testing/constants";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { L2ClaimMessageTransactionSizeProcessor } from "../L2ClaimMessageTransactionSizeProcessor";

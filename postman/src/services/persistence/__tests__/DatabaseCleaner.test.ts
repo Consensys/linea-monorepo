@@ -4,7 +4,7 @@ import { ContractTransactionResponse } from "ethers";
 import { DatabaseCleaner } from "../DatabaseCleaner";
 import { ILogger } from "../../../core/utils/logging/ILogger";
 import { DatabaseAccessError } from "../../../core/errors/DatabaseErrors";
-import { DatabaseErrorType, DatabaseRepoName } from "../../../core/enums/DatabaseEnums";
+import { DatabaseErrorType, DatabaseRepoName } from "../../../core/enums";
 import { IMessageDBService } from "../../../core/persistence/IMessageDBService";
 
 describe("TestDatabaseCleaner", () => {

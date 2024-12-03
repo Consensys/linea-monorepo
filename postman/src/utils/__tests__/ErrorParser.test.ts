@@ -2,8 +2,8 @@ import { describe, it, expect } from "@jest/globals";
 import { ErrorCode, EthersError } from "ethers";
 import { GasEstimationError } from "@consensys/linea-sdk";
 import { ErrorParser } from "../ErrorParser";
-import { DatabaseAccessError } from "../../core/errors/DatabaseErrors";
-import { DatabaseErrorType, DatabaseRepoName } from "../../core/enums/DatabaseEnums";
+import { DatabaseAccessError } from "../../core/errors";
+import { DatabaseErrorType, DatabaseRepoName } from "../../core/enums";
 import { generateMessage } from "../testing/helpers";
 
 describe("ErrorParser", () => {

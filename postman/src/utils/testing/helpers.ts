@@ -1,5 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { JsonRpcProvider, Signature, Signer, TransactionReceipt, TransactionResponse } from "ethers";
+import {
+  LineaRollupClient,
+  EthersLineaRollupLogClient,
+  EthersL2MessageServiceLogClient,
+  L2MessageServiceClient,
+  LineaRollupMessageRetriever,
+  L2MessageServiceMessageRetriever,
+  SDKMode,
+  Provider,
+  LineaProvider,
+  LineaGasProvider,
+  DefaultGasProvider,
+  MerkleTreeService,
+  Direction,
+} from "@consensys/linea-sdk";
 import { ILogger } from "../../core/utils/logging/ILogger";
 import {
   TEST_ADDRESS_1,
@@ -16,22 +31,8 @@ import {
   DEFAULT_MAX_FEE_PER_GAS,
   MESSAGE_SENT_EVENT_SIGNATURE,
 } from "../../core/constants";
-import { Direction, MessageStatus } from "../../core/enums/MessageEnums";
+import { MessageStatus } from "../../core/enums";
 import { Message, MessageProps } from "../../core/entities/Message";
-import {
-  LineaRollupClient,
-  EthersLineaRollupLogClient,
-  EthersL2MessageServiceLogClient,
-  L2MessageServiceClient,
-  LineaRollupMessageRetriever,
-  L2MessageServiceMessageRetriever,
-  SDKMode,
-  Provider,
-  LineaProvider,
-  LineaGasProvider,
-  DefaultGasProvider,
-  MerkleTreeService,
-} from "@consensys/linea-sdk";
 import { MessageEntity } from "../../application/postman/persistence/entities/Message.entity";
 
 export class TestLogger implements ILogger {

@@ -1,9 +1,8 @@
 import { describe, it, expect } from "@jest/globals";
+import { Direction, serialize } from "@consensys/linea-sdk";
 import { DatabaseAccessError } from "../DatabaseErrors";
-import { DatabaseErrorType, DatabaseRepoName } from "../../enums/DatabaseEnums";
+import { DatabaseErrorType, DatabaseRepoName, MessageStatus } from "../../enums";
 import { MessageProps } from "../../entities/Message";
-import { Direction, MessageStatus } from "../../enums/MessageEnums";
-import { serialize } from "../../utils/serialize";
 import { ZERO_ADDRESS, ZERO_HASH } from "../../constants";
 
 describe("DatabaseAccessError", () => {

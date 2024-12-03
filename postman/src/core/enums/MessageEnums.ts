@@ -1,8 +1,3 @@
-export enum Direction {
-  L1_TO_L2 = "L1_TO_L2",
-  L2_TO_L1 = "L2_TO_L1",
-}
-
 export enum MessageStatus {
   SENT = "SENT",
   TRANSACTION_SIZE_COMPUTED = "TRANSACTION_SIZE_COMPUTED",
@@ -14,10 +9,4 @@ export enum MessageStatus {
   ZERO_FEE = "ZERO_FEE",
   FEE_UNDERPRICED = "FEE_UNDERPRICED",
   EXCLUDED = "EXCLUDED",
-}
-
-export enum OnChainMessageStatus {
-  UNKNOWN = "UNKNOWN",
-  CLAIMABLE = "CLAIMABLE",
-  CLAIMED = "CLAIMED",
 }

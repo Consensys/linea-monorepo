@@ -1,4 +1,4 @@
-import { L2MessagingBlockAnchored, MessageClaimed, MessageSent } from "../../../types/events";
+import { L2MessagingBlockAnchored, MessageClaimed, MessageSent } from "@consensys/linea-sdk";
 
 export type MessageSentEventFilters = {
   from?: string;

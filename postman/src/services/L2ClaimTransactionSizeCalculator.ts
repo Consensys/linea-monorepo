@@ -8,11 +8,11 @@ import {
   TransactionResponse,
 } from "ethers";
 import { GoNativeCompressor } from "@consensys/linea-native-libs";
-import { BaseError } from "@consensys/linea-sdk";
+import { serialize } from "@consensys/linea-sdk";
+import { BaseError } from "../core/errors";
 import { MessageProps } from "../core/entities/Message";
 import { IL2MessageServiceClient } from "../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { LineaGasFees } from "../core/clients/blockchain/IGasProvider";
-import { serialize } from "../core/utils/serialize";
 import { IL2ClaimTransactionSizeCalculator } from "../core/services/processors/IL2ClaimTransactionSizeCalculator";
 
 export class L2ClaimTransactionSizeCalculator implements IL2ClaimTransactionSizeCalculator {

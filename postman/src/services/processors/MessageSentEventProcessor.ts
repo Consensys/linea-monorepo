@@ -1,15 +1,3 @@
-import { ILineaRollupLogClient } from "../../core/clients/blockchain/ethereum/ILineaRollupLogClient";
-import { IProvider } from "../../core/clients/blockchain/IProvider";
-import { MessageFactory } from "../../core/entities/MessageFactory";
-import { ILogger } from "../../core/utils/logging/ILogger";
-import { MessageStatus } from "../../core/enums/MessageEnums";
-import { IL2MessageServiceLogClient } from "../../core/clients/blockchain/linea/IL2MessageServiceLogClient";
-import {
-  IMessageSentEventProcessor,
-  MessageSentEventProcessorConfig,
-} from "../../core/services/processors/IMessageSentEventProcessor";
-import { isEmptyBytes } from "../../core/utils/shared";
-import { serialize } from "../../core/utils/serialize";
 import {
   Block,
   ContractTransactionResponse,
@@ -18,6 +6,17 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
+import { serialize, isEmptyBytes } from "@consensys/linea-sdk";
+import { ILineaRollupLogClient } from "../../core/clients/blockchain/ethereum/ILineaRollupLogClient";
+import { IProvider } from "../../core/clients/blockchain/IProvider";
+import { MessageFactory } from "../../core/entities/MessageFactory";
+import { ILogger } from "../../core/utils/logging/ILogger";
+import { MessageStatus } from "../../core/enums";
+import { IL2MessageServiceLogClient } from "../../core/clients/blockchain/linea/IL2MessageServiceLogClient";
+import {
+  IMessageSentEventProcessor,
+  MessageSentEventProcessorConfig,
+} from "../../core/services/processors/IMessageSentEventProcessor";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 
 export class MessageSentEventProcessor implements IMessageSentEventProcessor {

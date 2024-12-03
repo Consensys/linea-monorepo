@@ -1,4 +1,5 @@
-import { Direction, MessageStatus } from "../enums/MessageEnums";
+import { Direction } from "@consensys/linea-sdk";
+import { MessageStatus } from "../enums";
 
 export type MessageProps = {
   id?: number;

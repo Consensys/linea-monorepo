@@ -1,7 +1,7 @@
+import { Direction, MessageSent } from "@consensys/linea-sdk";
 import { L1NetworkConfig, L2NetworkConfig } from "../../application/postman/app/config/config";
 import { Message, MessageProps } from "../../core/entities/Message";
-import { Direction, MessageStatus } from "../../core/enums/MessageEnums";
-import { MessageSent } from "../../core/types/events";
+import { MessageStatus } from "../../core/enums";
 import {
   DEFAULT_INITIAL_FROM_BLOCK,
   DEFAULT_L2_MESSAGE_TREE_DEPTH,

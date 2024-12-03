@@ -1,5 +1,5 @@
 import { ContractTransactionResponse, Overrides, Signer, TransactionReceipt, TransactionResponse } from "ethers";
-import { MessageStatus } from "../../core/enums/MessageEnums";
+import { MessageStatus } from "../../core/enums";
 import { ILogger } from "../../core/utils/logging/ILogger";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { IL2MessageServiceClient } from "../../core/clients/blockchain/linea/IL2MessageServiceClient";

@@ -7,7 +7,8 @@ import {
   TransactionReceipt,
   Signer,
 } from "ethers";
-import { MessageStatus, OnChainMessageStatus } from "../../core/enums/MessageEnums";
+import { OnChainMessageStatus } from "@consensys/linea-sdk";
+import { MessageStatus } from "../../core/enums";
 import {
   IMessageClaimingProcessor,
   MessageClaimingProcessorConfig,

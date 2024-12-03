@@ -5,12 +5,12 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
-import { LineaProvider } from "@consensys/linea-sdk";
+import { LineaProvider, Direction } from "@consensys/linea-sdk";
 import { Message } from "../../core/entities/Message";
-import { Direction, MessageStatus } from "../../core/enums/MessageEnums";
+import { MessageStatus } from "../../core/enums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { ILineaProvider } from "../../core/clients/blockchain/linea/ILineaProvider";
-import { BaseError } from "@consensys/linea-sdk";
+import { BaseError } from "../../core/errors";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { MessageDBService } from "./MessageDBService";
 import { MINIMUM_MARGIN } from "../../core/constants";

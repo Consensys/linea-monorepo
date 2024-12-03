@@ -8,7 +8,7 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
-import { BaseError } from "@consensys/linea-sdk";
+import { BaseError } from "../core/errors";
 import { Message } from "../core/entities/Message";
 import {
   ITransactionValidationService,
