@@ -106,7 +106,7 @@ func IsExprEligible(
 	if hasAtLeastOneEligible && !allAreEligible {
 		// 1. we expect no expression including Proof columns
 		// 2. we expect no expression over ignored columns
-		// 3. we expect no VerifiyingKey withing the stitching range.
+		// 3. we expect no VerifiyingKey within the stitching range.
 		panic("the expression is not valid, it is mixed with invalid columns of status Proof/Ingnored/verifierKey")
 	}
 	if allAreVeriferCol {
