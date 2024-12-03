@@ -411,40 +411,6 @@ class Web3JLogsSearcherIntTest {
       )
     }
 
-//    private fun generateEthLog(
-//      blockNumber: Int,
-//      topic: ByteArray = ByteArray(0) { 0 },
-//      transactionHash: ByteArray = ByteArray(0) { 0 }
-//    ): EthLog {
-//      val topics = listOf(topic)
-//      return EthLog(
-//        address = ByteArray(0) { 0 },
-//        blockHash = blockNumber.toULong().toHexStringUInt256().decodeHex(),
-//        blockNumber = blockNumber.toULong(),
-//        data = ByteArray(0) { 0 },
-//        logIndex = 0.toULong(),
-//        removed = false,
-//        topics = topics,
-//        transactionHash = transactionHash,
-//        transactionIndex = 0.toULong()
-//      )
-//    }
-
-//    fun generateLogsForBlockRange2(
-//      fromBlock: Int,
-//      toBlock: Int,
-//      stepSize: Int = 1,
-//      topic: String = "0x"
-//    ): List<EthLog> {
-//      return (fromBlock..toBlock step stepSize)
-//        .map {
-//          generateEthLog(
-//            blockNumber = it,
-//            topic = topic.decodeHex()
-//          )
-//        }
-//    }
-
     internal fun generateLogs(
       blocksWithLogs: List<ULongRange>,
       filter: EthGetLogsRequest
@@ -460,6 +426,7 @@ class Web3JLogsSearcherIntTest {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun parseEthLogsRequest(request: JsonRpcRequest): EthGetLogsRequest {
       /** eth_getLogs request example
        {
@@ -472,7 +439,6 @@ class Web3JLogsSearcherIntTest {
        "address": ["0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"]
        }],
        }*/
-      @Suppress("UNCHECKED_CAST")
       val logsFilter = (request.params as List<Any>)[0] as Map<String, Any>
       val fromBlock = ULong.fromHexString(logsFilter["fromBlock"] as String)
       val toBlock = ULong.fromHexString(logsFilter["toBlock"] as String)
