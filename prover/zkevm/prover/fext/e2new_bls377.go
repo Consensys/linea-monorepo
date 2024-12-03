@@ -12,82 +12,66 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fieldextension
+package fext
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fp"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 )
 
-// Mul sets z to the E2-product of x,y, returns z
-func (z *E2) Mul(x, y *E2) *E2 {
-	var a, b, c fp.Element
+// Mul sets z to the Element-product of x,y, returns z
+func (z *Element) Mul(x, y *Element) *Element {
+	var a, b, c fr.Element
 	a.Add(&x.A0, &x.A1)
 	b.Add(&y.A0, &y.A1)
 	a.Mul(&a, &b)
 	b.Mul(&x.A0, &y.A0)
 	c.Mul(&x.A1, &y.A1)
 	z.A1.Sub(&a, &b).Sub(&z.A1, &c)
-	fp.MulBy5(&c)
+	MulByQnr(&c)
 	z.A0.Sub(&b, &c)
 	return z
 }
 
-// Square sets z to the E2-product of x,x returns z
-func (z *E2) Square(x *E2) *E2 {
+// Square sets z to the Element-product of x,x returns z
+func (z *Element) Square(x *Element) *Element {
 	//algo 22 https://eprint.iacr.org/2010/354.pdf
-	var c0, c2 fp.Element
-	c0.Add(&x.A0, &x.A1)
-	c2.Neg(&x.A1)
-	fp.MulBy5(&c2)
-	c2.Add(&c2, &x.A0)
-
-	c0.Mul(&c0, &c2) // (x1+x2)*(x1+(u**2)x2)
-	c2.Mul(&x.A0, &x.A1).Double(&c2)
-	z.A1 = c2
-	c2.Double(&c2)
-	z.A0.Add(&c0, &c2)
-
+	z.Mul(x, x)
 	return z
 }
 
-// MulByNonResidue multiplies a E2 by (0,1)
-func (z *E2) MulByNonResidue(x *E2) *E2 {
+// MulByNonResidue multiplies a Element by (0,1)
+func (z *Element) MulByNonResidue(x *Element) *Element {
 	a := x.A0
 	b := x.A1 // fetching x.A1 in the function below is slower
-	fp.MulBy5(&b)
+	MulByQnr(&b)
 	z.A0.Neg(&b)
 	z.A1 = a
 	return z
 }
 
-// MulByNonResidueInv multiplies a E2 by (0,1)^{-1}
-func (z *E2) MulByNonResidueInv(x *E2) *E2 {
+// MulByNonResidueInv multiplies a Element by (0,1)^{-1}
+func (z *Element) MulByNonResidueInv(x *Element) *Element {
 	//z.A1.MulByNonResidueInv(&x.A0)
 	a := x.A1
-	fiveinv := fp.Element{
-		330620507644336508,
-		9878087358076053079,
-		11461392860540703536,
-		6973035786057818995,
-		8846909097162646007,
-		104838758629667239,
-	}
-	z.A1.Mul(&x.A0, &fiveinv).Neg(&z.A1)
+	qnr := new(fr.Element).SetInt64(noQNR)
+	var qnrInv fr.Element
+	qnrInv.Inverse(qnr)
+	z.A1.Mul(&x.A0, &qnrInv).Neg(&z.A1)
 	z.A0 = a
 	return z
 }
 
-// Inverse sets z to the E2-inverse of x, returns z
-func (z *E2) Inverse(x *E2) *E2 {
+// Inverse sets z to the Element-inverse of x, returns z
+func (z *Element) Inverse(x *Element) *Element {
 	// Algorithm 8 from https://eprint.iacr.org/2010/354.pdf
-	//var a, b, t0, t1, tmp fp.Element
-	var t0, t1, tmp fp.Element
+	//var a, b, t0, t1, tmp fr.Element
+	var t0, t1, tmp fr.Element
 	a := &x.A0 // creating the buffers a, b is faster than querying &x.A0, &x.A1 in the functions call below
 	b := &x.A1
 	t0.Square(a)
 	t1.Square(b)
 	tmp.Set(&t1)
-	fp.MulBy5(&tmp)
+	MulByQnr(&tmp)
 	t0.Add(&t0, &tmp)
 	t1.Inverse(&t0)
 	z.A0.Mul(a, &t1)
@@ -97,21 +81,30 @@ func (z *E2) Inverse(x *E2) *E2 {
 }
 
 // norm sets x to the norm of z
-func (z *E2) norm(x *fp.Element) {
-	var tmp fp.Element
+func (z *Element) norm(x *fr.Element) {
+	var tmp fr.Element
 	x.Square(&z.A1)
 	tmp.Set(x)
-	fp.MulBy5(&tmp)
+	MulByQnr(&tmp)
 	x.Square(&z.A0).Add(x, &tmp)
+	// A0^2+A1^2*QNR
+}
+func MulByQnr(x *fr.Element) {
+	old := new(fr.Element).Set(x)
+	for i := 0; i < noQNR-1; i++ {
+		x.Add(x, old)
+	}
 }
 
+/*
 // MulBybTwistCurveCoeff multiplies by 1/(0,1)
-func (z *E2) MulBybTwistCurveCoeff(x *E2) *E2 {
+func (z *Element) MulBybTwistCurveCoeff(x *Element) *Element {
 
-	var res E2
+	var res Element
 	res.A0.Set(&x.A1)
 	res.A1.MulByNonResidueInv(&x.A0)
 	z.Set(&res)
 
 	return z
 }
+*/

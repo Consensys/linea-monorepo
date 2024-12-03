@@ -1,4 +1,4 @@
-package fieldextension
+package fext
 
 func (z *E12) nSquare(n int) {
 	for i := 0; i < n; i++ {
