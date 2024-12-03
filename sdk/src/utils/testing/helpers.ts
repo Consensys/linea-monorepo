@@ -38,8 +38,9 @@ import {
   EthersL2MessageServiceLogClient,
   L2MessageServiceMessageRetriever,
 } from "../../clients/linea";
-import { DefaultGasProvider, LineaGasProvider } from "../../clients/gas";
+import { DefaultGasProvider, GasProvider } from "../../clients/gas";
 import { LineaProvider, Provider } from "../../clients/providers";
+import { Direction } from "../../core/enums";
 
 export const getTestProvider = () => {
   return new JsonRpcProvider("http://localhost:8545");
@@ -244,7 +245,7 @@ export function generateL2MessageServiceClient(
 ): {
   l2MessageServiceClient: L2MessageServiceClient;
   l2MessageServiceLogClient: EthersL2MessageServiceLogClient;
-  gasProvider: LineaGasProvider | DefaultGasProvider;
+  gasProvider: GasProvider;
   messageRetriever: L2MessageServiceMessageRetriever;
 } {
   const l2MessageServiceLogClient = new EthersL2MessageServiceLogClient(l2Provider, l2ContractAddress);
@@ -255,16 +256,13 @@ export function generateL2MessageServiceClient(
     l2ContractAddress,
   );
 
-  const gasProvider = gasFeesOptions?.enableLineaEstimateGas
-    ? new LineaGasProvider(l2Provider, {
-        maxFeePerGas: gasFeesOptions?.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS,
-        enforceMaxGasFee: gasFeesOptions?.enforceMaxGasFee ?? DEFAULT_ENFORCE_MAX_GAS_FEE,
-      })
-    : new DefaultGasProvider(l2Provider, {
-        maxFeePerGas: gasFeesOptions?.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS,
-        gasEstimationPercentile: gasFeesOptions?.gasEstimationPercentile ?? DEFAULT_GAS_ESTIMATION_PERCENTILE,
-        enforceMaxGasFee: gasFeesOptions?.enforceMaxGasFee ?? DEFAULT_ENFORCE_MAX_GAS_FEE,
-      });
+  const gasProvider = new GasProvider(l2Provider, {
+    maxFeePerGas: gasFeesOptions?.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS,
+    enforceMaxGasFee: gasFeesOptions?.enforceMaxGasFee ?? DEFAULT_ENFORCE_MAX_GAS_FEE,
+    gasEstimationPercentile: gasFeesOptions?.gasEstimationPercentile ?? DEFAULT_GAS_ESTIMATION_PERCENTILE,
+    direction: Direction.L1_TO_L2,
+    enableLineaEstimateGas: gasFeesOptions?.enableLineaEstimateGas ?? false,
+  });
 
   const l2MessageServiceClient = new L2MessageServiceClient(
     l2Provider,

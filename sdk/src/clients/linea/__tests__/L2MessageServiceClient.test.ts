@@ -20,9 +20,8 @@ import { DEFAULT_MAX_FEE_PER_GAS, ZERO_ADDRESS } from "../../../core/constants";
 import { OnChainMessageStatus } from "../../../core/enums/message";
 import { GasEstimationError } from "../../../core/errors/GasFeeErrors";
 import { BaseError } from "../../../core/errors/Base";
-import { LineaGasProvider } from "../../gas/LineaGasProvider";
 import { LineaProvider } from "../../providers";
-import { DefaultGasProvider } from "../../gas";
+import { GasProvider } from "../../gas";
 
 describe("TestL2MessageServiceClient", () => {
   let providerMock: MockProxy<LineaProvider>;
@@ -30,7 +29,7 @@ describe("TestL2MessageServiceClient", () => {
   let l2MessageServiceMock: MockProxy<L2MessageService>;
 
   let l2MessageServiceClient: L2MessageServiceClient;
-  let gasFeeProvider: LineaGasProvider | DefaultGasProvider;
+  let gasFeeProvider: GasProvider;
 
   beforeEach(() => {
     providerMock = mock<LineaProvider>();

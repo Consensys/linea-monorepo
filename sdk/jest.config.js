@@ -7,6 +7,6 @@ module.exports = {
   collectCoverage: true,
   collectCoverageFrom: ["src/**/*.ts"],
   coverageReporters: ["html", "lcov", "text"],
-  testPathIgnorePatterns: ["src/clients/typechain", "src/index.ts"],
-  coveragePathIgnorePatterns: ["src/clients/typechain", "src/index.ts", "src/utils/testing/"],
+  testPathIgnorePatterns: ["src/contracts/typechain", "src/index.ts"],
+  coveragePathIgnorePatterns: ["src/contracts/typechain", "src/index.ts", "src/utils/testing/"],
 };

@@ -1,5 +1,5 @@
-import { L2MessagingBlockAnchoredEvent, MessageSentEvent } from "../../clients/typechain/LineaRollup";
-import { MessageClaimedEvent, ServiceVersionMigratedEvent } from "../../clients/typechain/L2MessageService";
+import { L2MessagingBlockAnchoredEvent, MessageSentEvent } from "../../contracts/typechain/LineaRollup";
+import { MessageClaimedEvent, ServiceVersionMigratedEvent } from "../../contracts/typechain/L2MessageService";
 import { L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE, MESSAGE_SENT_EVENT_SIGNATURE } from "../../core/constants";
 import { L2MessagingBlockAnchored, MessageClaimed, MessageSent, ServiceVersionMigrated } from "../../core/types";
 

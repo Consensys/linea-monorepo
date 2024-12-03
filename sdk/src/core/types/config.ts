@@ -19,7 +19,8 @@ interface BaseOptions {
   readonly l2RpcUrlOrProvider: string | Eip1193Provider;
   readonly mode: SDKMode;
   readonly l2MessageTreeDepth?: number;
-  readonly feeEstimatorOptions?: FeeEstimatorOptions;
+  readonly l1FeeEstimatorOptions?: L1FeeEstimatorOptions;
+  readonly l2FeeEstimatorOptions?: L2FeeEstimatorOptions;
 }
 
 /**
@@ -39,12 +40,23 @@ export interface WriteModeOptions extends BaseOptions {
 }
 
 /**
- * Options for configuring gas fee estimation in `read-write` mode.
+ * Options for configuring gas fee estimation.
  */
-export type FeeEstimatorOptions = {
+type FeeEstimatorOptions = {
   maxFeePerGas?: bigint;
   gasFeeEstimationPercentile?: number;
   enforceMaxGasFee?: boolean;
+};
+
+/**
+ * Options for configuring L1 gas fee estimation.
+ */
+export type L1FeeEstimatorOptions = FeeEstimatorOptions;
+
+/**
+ * Options for configuring L2 gas fee estimation.
+ */
+export type L2FeeEstimatorOptions = FeeEstimatorOptions & {
   enableLineaEstimateGas?: boolean;
 };
 

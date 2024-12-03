@@ -1,8 +1,7 @@
 import { describe, it, expect } from "@jest/globals";
-import { JsonRpcProvider } from "ethers";
+import { JsonRpcProvider, Wallet } from "ethers";
 import { LineaSDK } from "./LineaSDK";
 import { L1ClaimingService } from "./clients/ethereum";
-import { Wallet } from "./clients/wallet";
 import { LineaProvider, Provider } from "./clients/providers";
 import { EthersL2MessageServiceLogClient } from "./clients/linea";
 import { NETWORKS } from "./core/constants";
@@ -293,6 +292,7 @@ describe("LineaSDK", () => {
       });
 
       const l1ClaimingService = sdk.getL1ClaimingService();
+
       expect(serialize(l1ClaimingService)).toStrictEqual(
         serialize(
           new L1ClaimingService(

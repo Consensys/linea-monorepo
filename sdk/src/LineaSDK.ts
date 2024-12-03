@@ -1,3 +1,4 @@
+import { Eip1193Provider, Signer, Wallet } from "ethers";
 import {
   LineaRollupClient,
   EthersLineaRollupLogClient,
@@ -12,7 +13,6 @@ import {
 } from "./clients/linea";
 import { DefaultGasProvider, GasProvider } from "./clients/gas";
 import { Provider, LineaProvider, BrowserProvider, LineaBrowserProvider } from "./clients/providers";
-import { Wallet } from "./clients/wallet";
 import {
   DEFAULT_ENABLE_LINEA_ESTIMATE_GAS,
   DEFAULT_ENFORCE_MAX_GAS_FEE,
@@ -21,21 +21,19 @@ import {
   DEFAULT_MAX_FEE_PER_GAS,
 } from "./core/constants";
 import { BaseError } from "./core/errors";
-import { LineaSDKOptions, Network, SDKMode } from "./core/types";
+import { L1FeeEstimatorOptions, L2FeeEstimatorOptions, LineaSDKOptions, Network, SDKMode } from "./core/types";
 import { NETWORKS } from "./core/constants";
 import { isString } from "./core/utils";
 import { Direction } from "./core/enums";
 
 export class LineaSDK {
   private network: Network;
-  private l1SignerPrivateKeyOrWallet: string | Wallet<Provider | BrowserProvider>;
-  private l2SignerPrivateKeyOrWallet: string | Wallet<LineaProvider | LineaBrowserProvider>;
+  private l1Signer?: Signer;
+  private l2Signer?: Signer;
   private l1Provider: Provider | BrowserProvider;
   private l2Provider: LineaProvider | LineaBrowserProvider;
-  private maxFeePerGas: bigint;
-  private gasFeeEstimationPercentile: number;
-  private enabledLineaEstimateGas: boolean;
-  private enforceMaxGasFee: boolean;
+  private l1FeeEstimatorOptions: Required<L1FeeEstimatorOptions>;
+  private l2FeeEstimatorOptions: Required<L2FeeEstimatorOptions>;
   private mode: SDKMode;
   private l2MessageTreeDepth: number;
 
@@ -51,12 +49,16 @@ export class LineaSDK {
       l2MessageTreeDepth = DEFAULT_L2_MESSAGE_TREE_DEPTH,
       l1RpcUrlOrProvider,
       l2RpcUrlOrProvider,
-      feeEstimatorOptions = {},
+      l1FeeEstimatorOptions = {},
+      l2FeeEstimatorOptions = {},
     } = options;
 
     this.network = network;
     this.mode = mode;
     this.l2MessageTreeDepth = l2MessageTreeDepth;
+
+    this.l1Provider = this.getL1Provider(l1RpcUrlOrProvider);
+    this.l2Provider = this.getL2Provider(l2RpcUrlOrProvider);
 
     if (mode === "read-write") {
       const { l1SignerPrivateKeyOrWallet, l2SignerPrivateKeyOrWallet } = options;
@@ -65,29 +67,97 @@ export class LineaSDK {
         throw new BaseError("You need to provide both L1 and L2 signer private keys or wallets.");
       }
 
-      this.l1SignerPrivateKeyOrWallet = l1SignerPrivateKeyOrWallet;
-      this.l2SignerPrivateKeyOrWallet = l2SignerPrivateKeyOrWallet;
+      this.l1Signer = this.getWallet(l1SignerPrivateKeyOrWallet).connect(this.l1Provider);
+      this.l2Signer = this.getWallet(l2SignerPrivateKeyOrWallet).connect(this.l2Provider);
     }
 
+    const { maxFeePerGas, gasFeeEstimationPercentile, enforceMaxGasFee } = l1FeeEstimatorOptions;
     const {
-      maxFeePerGas = DEFAULT_MAX_FEE_PER_GAS,
-      gasFeeEstimationPercentile = DEFAULT_GAS_ESTIMATION_PERCENTILE,
-      enableLineaEstimateGas = DEFAULT_ENABLE_LINEA_ESTIMATE_GAS,
-      enforceMaxGasFee = DEFAULT_ENFORCE_MAX_GAS_FEE,
-    } = feeEstimatorOptions;
+      maxFeePerGas: l2MaxFeePerGas,
+      gasFeeEstimationPercentile: l2GasFeeEstimationPercentile,
+      enableLineaEstimateGas: l2EnableLineaEstimateGas,
+      enforceMaxGasFee: l2EnforceMaxGasFee,
+    } = l2FeeEstimatorOptions;
 
-    this.maxFeePerGas = maxFeePerGas;
-    this.gasFeeEstimationPercentile = gasFeeEstimationPercentile;
-    this.enabledLineaEstimateGas = enableLineaEstimateGas;
-    this.enforceMaxGasFee = enforceMaxGasFee;
+    this.l1FeeEstimatorOptions = {
+      maxFeePerGas: maxFeePerGas || DEFAULT_MAX_FEE_PER_GAS,
+      gasFeeEstimationPercentile: gasFeeEstimationPercentile || DEFAULT_GAS_ESTIMATION_PERCENTILE,
+      enforceMaxGasFee: enforceMaxGasFee || DEFAULT_ENFORCE_MAX_GAS_FEE,
+    };
 
-    this.l1Provider = isString(l1RpcUrlOrProvider)
-      ? new Provider(l1RpcUrlOrProvider)
-      : new BrowserProvider(l1RpcUrlOrProvider);
+    this.l2FeeEstimatorOptions = {
+      maxFeePerGas: l2MaxFeePerGas || DEFAULT_MAX_FEE_PER_GAS,
+      gasFeeEstimationPercentile: l2GasFeeEstimationPercentile || DEFAULT_GAS_ESTIMATION_PERCENTILE,
+      enforceMaxGasFee: l2EnforceMaxGasFee || DEFAULT_ENFORCE_MAX_GAS_FEE,
+      enableLineaEstimateGas: l2EnableLineaEstimateGas || DEFAULT_ENABLE_LINEA_ESTIMATE_GAS,
+    };
+  }
 
-    this.l2Provider = isString(l2RpcUrlOrProvider)
-      ? new LineaProvider(l2RpcUrlOrProvider)
-      : new LineaBrowserProvider(l2RpcUrlOrProvider);
+  public getL1Provider(l1RpcUrlOrProvider: string | Eip1193Provider): Provider | BrowserProvider {
+    if (isString(l1RpcUrlOrProvider)) {
+      return new Provider(l1RpcUrlOrProvider);
+    }
+
+    if (this.isEip1193Provider(l1RpcUrlOrProvider)) {
+      return new BrowserProvider(l1RpcUrlOrProvider);
+    }
+
+    throw new BaseError("Invalid argument: l1RpcUrlOrProvider must be a string or Eip1193Provider");
+  }
+
+  public getL1Signer(): Signer {
+    if (!this.l1Signer) {
+      throw new BaseError("L1 signer is not available in read-only mode.");
+    }
+    return this.l1Signer;
+  }
+
+  public getL2Signer(): Signer {
+    if (!this.l2Signer) {
+      throw new BaseError("L2 signer is not available in read-only mode.");
+    }
+    return this.l2Signer;
+  }
+
+  public getL1GasProvider(): DefaultGasProvider {
+    return new DefaultGasProvider(this.l1Provider, {
+      maxFeePerGas: this.l1FeeEstimatorOptions.maxFeePerGas,
+      gasEstimationPercentile: this.l1FeeEstimatorOptions.gasFeeEstimationPercentile,
+      enforceMaxGasFee: this.l1FeeEstimatorOptions.enforceMaxGasFee,
+    });
+  }
+
+  public getL2GasProvider(): GasProvider {
+    return new GasProvider(this.l2Provider, {
+      maxFeePerGas: this.l2FeeEstimatorOptions.maxFeePerGas,
+      enforceMaxGasFee: this.l2FeeEstimatorOptions.enforceMaxGasFee,
+      gasEstimationPercentile: this.l2FeeEstimatorOptions.gasFeeEstimationPercentile,
+      direction: Direction.L1_TO_L2,
+      enableLineaEstimateGas: this.l2FeeEstimatorOptions.enableLineaEstimateGas,
+    });
+  }
+
+  public getL2Provider(l2RpcUrlOrProvider: string | Eip1193Provider): LineaProvider | LineaBrowserProvider {
+    if (isString(l2RpcUrlOrProvider)) {
+      return new LineaProvider(l2RpcUrlOrProvider);
+    }
+
+    if (this.isEip1193Provider(l2RpcUrlOrProvider)) {
+      return new LineaBrowserProvider(l2RpcUrlOrProvider);
+    }
+
+    throw new Error("Invalid argument: l2RpcUrlOrProvider must be a string or Eip1193Provider");
+  }
+
+  /**
+   * Creates an instance of the `EthersLineaRollupLogClient` for interacting with L1 contract event logs.
+   *
+   * @param {string} [localL1ContractAddress] - Optional custom L1 contract address. Required if the network is set to 'custom'.
+   * @returns {EthersLineaRollupLogClient} An instance of the L1 message service log client.
+   */
+  public getL1ContractEventLogClient(localL1ContractAddress?: string): EthersLineaRollupLogClient {
+    const l1ContractAddress = this.getContractAddress("l1", localL1ContractAddress);
+    return new EthersLineaRollupLogClient(this.l1Provider, l1ContractAddress);
   }
 
   /**
@@ -112,12 +182,6 @@ export class LineaSDK {
     const l1ContractAddress = this.getContractAddress("l1", localL1ContractAddress);
     const l2ContractAddress = this.getContractAddress("l2", localL2ContractAddress);
 
-    const signer =
-      this.mode === "read-write"
-        ? Wallet.getWallet(this.l1SignerPrivateKeyOrWallet).connect(this.l1Provider)
-        : undefined;
-
-    console.log(this.l1Provider);
     const lineaRollupLogClient = new EthersLineaRollupLogClient(this.l1Provider, l1ContractAddress);
     const l2MessageServiceLogClient = this.getL2ContractEventLogClient(l2ContractAddress);
 
@@ -126,11 +190,7 @@ export class LineaSDK {
       l1ContractAddress,
       lineaRollupLogClient,
       l2MessageServiceLogClient,
-      new DefaultGasProvider(this.l1Provider, {
-        maxFeePerGas: this.maxFeePerGas,
-        gasEstimationPercentile: this.gasFeeEstimationPercentile,
-        enforceMaxGasFee: this.enforceMaxGasFee,
-      }),
+      this.getL1GasProvider(),
       new LineaRollupMessageRetriever(this.l1Provider, lineaRollupLogClient, l1ContractAddress),
       new MerkleTreeService(
         this.l1Provider,
@@ -140,7 +200,7 @@ export class LineaSDK {
         this.l2MessageTreeDepth,
       ),
       this.mode,
-      signer,
+      this.l1Signer,
     );
   }
 
@@ -153,19 +213,6 @@ export class LineaSDK {
   public getL2Contract(localContractAddress?: string): L2MessageServiceClient {
     const l2ContractAddress = this.getContractAddress("l2", localContractAddress);
 
-    const signer =
-      this.mode === "read-write"
-        ? Wallet.getWallet(this.l2SignerPrivateKeyOrWallet).connect(this.l2Provider)
-        : undefined;
-
-    const gasProvider = new GasProvider(this.l2Provider, {
-      maxFeePerGas: this.maxFeePerGas,
-      enforceMaxGasFee: this.enforceMaxGasFee,
-      gasEstimationPercentile: this.gasFeeEstimationPercentile,
-      direction: Direction.L1_TO_L2,
-      enableLineaEstimateGas: this.enabledLineaEstimateGas,
-    });
-
     const l2MessageServiceContract = new L2MessageServiceClient(
       this.l2Provider,
       l2ContractAddress,
@@ -174,9 +221,9 @@ export class LineaSDK {
         this.getL2ContractEventLogClient(l2ContractAddress),
         l2ContractAddress,
       ),
-      gasProvider,
+      this.getL2GasProvider(),
       this.mode,
-      signer,
+      this.l2Signer,
     );
 
     return l2MessageServiceContract;
@@ -217,5 +264,21 @@ export class LineaSDK {
       }
       return contractAddress;
     }
+  }
+
+  private getWallet(privateKeyOrWallet: string | Wallet): Signer {
+    try {
+      return privateKeyOrWallet instanceof Wallet ? privateKeyOrWallet : new Wallet(privateKeyOrWallet);
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("invalid private key")) {
+        throw new BaseError("Something went wrong when trying to generate Wallet. Please check your private key.");
+      }
+      throw e;
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private isEip1193Provider(obj: any): obj is Eip1193Provider {
+    return obj && typeof obj.request === "function";
   }
 }
