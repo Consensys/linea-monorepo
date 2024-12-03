@@ -5,8 +5,8 @@ import {
   TEST_CONTRACT_ADDRESS_1,
   TEST_MESSAGE_HASH,
   TEST_TRANSACTION_HASH,
-  testMessageSentEvent,
-} from "../../../utils/testing/constants";
+} from "../../../utils/testing/constants/common";
+import { testMessageSentEvent } from "../../../utils/testing/constants/events";
 import { generateL2MessageServiceClient, generateTransactionReceipt } from "../../../utils/testing/helpers";
 import { L2MessageServiceMessageRetriever } from "../L2MessageServiceMessageRetriever";
 import { EthersL2MessageServiceLogClient } from "../EthersL2MessageServiceLogClient";

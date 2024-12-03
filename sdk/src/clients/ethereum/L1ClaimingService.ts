@@ -1,4 +1,11 @@
-import { Overrides, ContractTransactionResponse, Signer, TransactionReceipt, TransactionResponse } from "ethers";
+import {
+  Overrides,
+  ContractTransactionResponse,
+  Signer,
+  TransactionReceipt,
+  TransactionResponse,
+  ErrorDescription,
+} from "ethers";
 import { OnChainMessageStatus } from "../../core/enums/message";
 import { Cache } from "../../utils/Cache";
 import { ILineaRollupClient } from "../../core/clients/ethereum";
@@ -23,14 +30,16 @@ export class L1ClaimingService {
       Overrides,
       TransactionReceipt,
       TransactionResponse,
-      ContractTransactionResponse
+      ContractTransactionResponse,
+      ErrorDescription
     >,
     public readonly l2ContractClient: IL2MessageServiceClient<
       Overrides,
       TransactionReceipt,
       TransactionResponse,
       ContractTransactionResponse,
-      Signer
+      Signer,
+      ErrorDescription
     >,
     public readonly l2EventLogClient: IL2MessageServiceLogClient,
     private readonly network: Network,

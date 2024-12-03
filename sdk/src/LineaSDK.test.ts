@@ -6,7 +6,7 @@ import { LineaProvider, Provider } from "./clients/providers";
 import { EthersL2MessageServiceLogClient } from "./clients/linea";
 import { NETWORKS } from "./core/constants";
 import { serialize } from "./core/utils";
-import { TEST_L1_SIGNER_PRIVATE_KEY, TEST_L2_SIGNER_PRIVATE_KEY, TEST_RPC_URL } from "./utils/testing/constants";
+import { TEST_L1_SIGNER_PRIVATE_KEY, TEST_L2_SIGNER_PRIVATE_KEY, TEST_RPC_URL } from "./utils/testing/constants/common";
 import { generateL2MessageServiceClient, generateLineaRollupClient } from "./utils/testing/helpers";
 
 describe("LineaSDK", () => {

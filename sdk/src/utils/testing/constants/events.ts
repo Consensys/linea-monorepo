@@ -1,27 +1,15 @@
-import { L2MessagingBlockAnchoredEvent, MessageSentEvent } from "../../contracts/typechain/LineaRollup";
-import { MessageClaimedEvent, ServiceVersionMigratedEvent } from "../../contracts/typechain/L2MessageService";
-import { L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE, MESSAGE_SENT_EVENT_SIGNATURE } from "../../core/constants";
-import { L2MessagingBlockAnchored, MessageClaimed, MessageSent, ServiceVersionMigrated } from "../../core/types";
-
-export const TEST_L1_SIGNER_PRIVATE_KEY = "0x0000000000000000000000000000000000000000000000000000000000000001";
-export const TEST_L2_SIGNER_PRIVATE_KEY = "0x0000000000000000000000000000000000000000000000000000000000000002";
-
-export const TEST_ADDRESS_1 = "0x0000000000000000000000000000000000000001";
-export const TEST_ADDRESS_2 = "0x0000000000000000000000000000000000000002";
-
-export const TEST_CONTRACT_ADDRESS_1 = "0x1000000000000000000000000000000000000000";
-export const TEST_CONTRACT_ADDRESS_2 = "0x2000000000000000000000000000000000000000";
-
-export const TEST_MESSAGE_HASH = "0x1010101010101010101010101010101010101010101010101010101010101010";
-export const TEST_MESSAGE_HASH_2 = "0x1010101010101010101010101010101010101010101010101010101010101020";
-
-export const TEST_TRANSACTION_HASH = "0x2020202020202020202020202020202020202020202020202020202020202020";
-export const TEST_BLOCK_HASH = "0x1000000000000000000000000000000000000000000000000000000000000000";
-
-export const TEST_MERKLE_ROOT = "0xfc3dfe7470d41465e77e7c929170578b14a066a2272c2469b60162c5282e05a6";
-export const TEST_MERKLE_ROOT_2 = "0x7777777777777777777777777777777777777777777777777777777777777777";
-
-export const TEST_RPC_URL = "http://localhost:8545";
+import {
+  TEST_ADDRESS_1,
+  TEST_ADDRESS_2,
+  TEST_BLOCK_HASH,
+  TEST_CONTRACT_ADDRESS_1,
+  TEST_MESSAGE_HASH,
+  TEST_TRANSACTION_HASH,
+} from "./common";
+import { L2MessagingBlockAnchoredEvent, MessageSentEvent } from "../../../contracts/typechain/LineaRollup";
+import { MessageClaimedEvent, ServiceVersionMigratedEvent } from "../../../contracts/typechain/L2MessageService";
+import { L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE, MESSAGE_SENT_EVENT_SIGNATURE } from "../../../core/constants";
+import { L2MessagingBlockAnchored, MessageClaimed, MessageSent, ServiceVersionMigrated } from "../../../core/types";
 
 export const testMessageSentEvent: MessageSent = {
   blockNumber: 51,

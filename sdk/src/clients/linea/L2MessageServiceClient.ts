@@ -6,6 +6,7 @@ import {
   TransactionResponse,
   Signer,
   Block,
+  ErrorDescription,
 } from "ethers";
 import { L2MessageService, L2MessageService__factory } from "../../contracts/typechain";
 import { GasEstimationError, BaseError } from "../../core/errors";
@@ -13,14 +14,21 @@ import { Message, SDKMode, MessageSent } from "../../core/types";
 import { OnChainMessageStatus } from "../../core/enums";
 import { IL2MessageServiceClient, ILineaProvider } from "../../core/clients/linea";
 import { ZERO_ADDRESS } from "../../core/constants";
-import { formatMessageStatus } from "../../core/utils";
+import { formatMessageStatus, isString } from "../../core/utils";
 import { IGasProvider, LineaGasFees } from "../../core/clients/IGasProvider";
 import { IMessageRetriever } from "../../core/clients/IMessageRetriever";
 import { LineaBrowserProvider, LineaProvider } from "../providers";
 
 export class L2MessageServiceClient
   implements
-    IL2MessageServiceClient<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse, Signer>
+    IL2MessageServiceClient<
+      Overrides,
+      TransactionReceipt,
+      TransactionResponse,
+      ContractTransactionResponse,
+      Signer,
+      ErrorDescription
+    >
 {
   private readonly contract: L2MessageService;
 
@@ -258,15 +266,15 @@ export class L2MessageServiceClient
   }
 
   /**
-   * Determines if a transaction failed due to exceeding the rate limit.
-   *
-   * @param {string} transactionHash - The hash of the transaction to check.
-   * @returns {Promise<boolean>} A promise that resolves to `true` if the transaction failed due to a rate limit exceedance, otherwise `false`.
+   * Parses the error from the transaction.
+   * @param {string} transactionHash - The transaction hash.
+   * @returns {Promise<ErrorDescription | string>} The error description or the error bytes.
    */
-  public async isRateLimitExceededError(transactionHash: string): Promise<boolean> {
+  public async parseTransactionError(transactionHash: string): Promise<ErrorDescription | string> {
+    let errorEncodedData = "0x";
     try {
       const tx = await this.provider.getTransaction(transactionHash);
-      const errorEncodedData = await this.provider.call({
+      errorEncodedData = await this.provider.call({
         to: tx?.to,
         from: tx?.from,
         nonce: tx?.nonce,
@@ -279,10 +287,30 @@ export class L2MessageServiceClient
         maxFeePerGas: tx?.maxFeePerGas,
       });
       const error = this.contract.interface.parseError(errorEncodedData);
-      return error?.name === "RateLimitExceeded";
+
+      if (!error) {
+        return errorEncodedData;
+      }
+
+      return error;
     } catch (e) {
+      return errorEncodedData;
+    }
+  }
+
+  /**
+   * Checks if an error is of type 'RateLimitExceeded'.
+   * @param {string} transactionHash - The transaction hash.
+   * @returns {Promise<boolean>} True if the error type is 'RateLimitExceeded', false otherwise.
+   */
+  public async isRateLimitExceededError(transactionHash: string): Promise<boolean> {
+    const parsedError = await this.parseTransactionError(transactionHash);
+
+    if (isString(parsedError)) {
       return false;
     }
+
+    return parsedError.name === "RateLimitExceeded";
   }
 
   /**

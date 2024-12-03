@@ -7,7 +7,7 @@ import {
   TEST_TRANSACTION_HASH,
   TEST_ADDRESS_2,
   TEST_ADDRESS_1,
-} from "../../../utils/testing/constants";
+} from "../../../utils/testing/constants/common";
 import { L2MessageService, L2MessageService__factory } from "../../../contracts/typechain";
 import {
   generateL2MessageServiceClient,

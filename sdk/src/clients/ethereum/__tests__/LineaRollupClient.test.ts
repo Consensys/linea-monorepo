@@ -2,17 +2,19 @@ import { describe, afterEach, it, expect, beforeEach } from "@jest/globals";
 import { MockProxy, mock, mockClear, mockDeep } from "jest-mock-extended";
 import { ContractTransactionResponse, Wallet } from "ethers";
 import {
-  testMessageSentEvent,
   TEST_MESSAGE_HASH,
   TEST_CONTRACT_ADDRESS_1,
   TEST_TRANSACTION_HASH,
   TEST_ADDRESS_2,
-  testMessageClaimedEvent,
-  testL2MessagingBlockAnchoredEvent,
   TEST_MERKLE_ROOT,
   TEST_CONTRACT_ADDRESS_2,
   TEST_ADDRESS_1,
-} from "../../../utils/testing/constants";
+} from "../../../utils/testing/constants/common";
+import {
+  testMessageSentEvent,
+  testMessageClaimedEvent,
+  testL2MessagingBlockAnchoredEvent,
+} from "../../../utils/testing/constants/events";
 import { LineaRollup, LineaRollup__factory } from "../../../contracts/typechain";
 import {
   generateL2MerkleTreeAddedLog,

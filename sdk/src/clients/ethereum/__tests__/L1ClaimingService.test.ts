@@ -20,10 +20,12 @@ import {
   TEST_MESSAGE_HASH,
   TEST_MESSAGE_HASH_2,
   TEST_TRANSACTION_HASH,
+} from "../../../utils/testing/constants/common";
+import {
   testL2MessagingBlockAnchoredEvent,
   testMessageSentEvent,
   testServiceVersionMigratedEvent,
-} from "../../../utils/testing/constants";
+} from "../../../utils/testing/constants/events";
 import { EthersL2MessageServiceLogClient } from "../../linea/EthersL2MessageServiceLogClient";
 import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
 import { ZERO_ADDRESS } from "../../../core/constants";

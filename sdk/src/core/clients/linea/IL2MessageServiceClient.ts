@@ -8,7 +8,14 @@ export interface IL2MessageServiceClient<
   TransactionResponse,
   ContractTransactionResponse,
   Signer,
-> extends IMessageServiceContract<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse> {
+  ErrorDescription,
+> extends IMessageServiceContract<
+    Overrides,
+    TransactionReceipt,
+    TransactionResponse,
+    ContractTransactionResponse,
+    ErrorDescription
+  > {
   encodeClaimMessageTransactionData(message: Message & { feeRecipient?: string }): string;
   estimateClaimGasFees(message: Message & { feeRecipient?: string }, overrides?: Overrides): Promise<LineaGasFees>;
   getSigner(): Signer | undefined;

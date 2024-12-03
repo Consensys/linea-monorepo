@@ -6,6 +6,7 @@ export interface IMessageServiceContract<
   TransactionReceipt,
   TransactionResponse,
   ContractTransactionResponse,
+  ErrorDescription,
 > {
   getMessageStatus(messageHash: string, overrides?: Overrides): Promise<OnChainMessageStatus>;
   getMessageByMessageHash(messageHash: string): Promise<MessageSent | null>;
@@ -15,4 +16,5 @@ export interface IMessageServiceContract<
   retryTransactionWithHigherFee(transactionHash: string, priceBumpPercent?: number): Promise<TransactionResponse>;
   isRateLimitExceeded(messageFee: bigint, messageValue: bigint): Promise<boolean>;
   isRateLimitExceededError(transactionHash: string): Promise<boolean>;
+  parseTransactionError(transactionHash: string): Promise<ErrorDescription | string>;
 }

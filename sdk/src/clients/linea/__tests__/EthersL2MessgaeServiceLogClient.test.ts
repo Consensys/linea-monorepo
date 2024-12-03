@@ -1,14 +1,13 @@
 import { describe, afterEach, it, expect, beforeEach } from "@jest/globals";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
 import { EthersL2MessageServiceLogClient } from "../EthersL2MessageServiceLogClient";
+import { TEST_MESSAGE_HASH, TEST_CONTRACT_ADDRESS_2 } from "../../../utils/testing/constants/common";
 import {
   testMessageSentEvent,
   testMessageSentEventLog,
-  testServiceVersionMigratedEventLog,
   testServiceVersionMigratedEvent,
-  TEST_MESSAGE_HASH,
-  TEST_CONTRACT_ADDRESS_2,
-} from "../../../utils/testing/constants";
+  testServiceVersionMigratedEventLog,
+} from "../../../utils/testing/constants/events";
 import { L2MessageService, L2MessageService__factory } from "../../../contracts/typechain";
 import { mockProperty } from "../../../utils/testing/helpers";
 import { LineaProvider } from "../../providers";

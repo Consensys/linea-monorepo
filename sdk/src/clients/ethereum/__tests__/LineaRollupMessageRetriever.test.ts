@@ -6,8 +6,8 @@ import {
   TEST_CONTRACT_ADDRESS_2,
   TEST_MESSAGE_HASH,
   TEST_TRANSACTION_HASH,
-  testMessageSentEvent,
-} from "../../../utils/testing/constants";
+} from "../../../utils/testing/constants/common";
+import { testMessageSentEvent } from "../../../utils/testing/constants/events";
 import { generateLineaRollupClient, generateTransactionReceipt } from "../../../utils/testing/helpers";
 import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
 import { LineaRollupMessageRetriever } from "../LineaRollupMessageRetriever";

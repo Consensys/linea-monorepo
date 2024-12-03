@@ -6,6 +6,7 @@ import {
   Signer,
   TransactionReceipt,
   Block,
+  ErrorDescription,
 } from "ethers";
 import { LineaRollup, LineaRollup__factory } from "../../contracts/typechain";
 import { BaseError, GasEstimationError } from "../../core/errors";
@@ -25,14 +26,21 @@ import {
   Proof,
 } from "../../core/clients/ethereum";
 import { IL2MessageServiceLogClient } from "../../core/clients/linea";
-import { formatMessageStatus } from "../../core/utils";
+import { formatMessageStatus, isString } from "../../core/utils";
 import { GasFees, IEthereumGasProvider } from "../../core/clients/IGasProvider";
 import { IMessageRetriever } from "../../core/clients/IMessageRetriever";
 import { IProvider } from "../../core/clients/IProvider";
 import { BrowserProvider, Provider } from "../providers";
 
 export class LineaRollupClient
-  implements ILineaRollupClient<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse>
+  implements
+    ILineaRollupClient<
+      Overrides,
+      TransactionReceipt,
+      TransactionResponse,
+      ContractTransactionResponse,
+      ErrorDescription
+    >
 {
   private readonly contract: LineaRollup;
 
@@ -457,14 +465,15 @@ export class LineaRollupClient
   }
 
   /**
-   * Checks if an error is of type 'RateLimitExceeded'.
+   * Parses the error from the transaction.
    * @param {string} transactionHash - The transaction hash.
-   * @returns {Promise<boolean>} True if the error type is 'RateLimitExceeded', false otherwise.
+   * @returns {Promise<ErrorDescription | string>} The error description or the error bytes.
    */
-  public async isRateLimitExceededError(transactionHash: string): Promise<boolean> {
+  public async parseTransactionError(transactionHash: string): Promise<ErrorDescription | string> {
+    let errorEncodedData = "0x";
     try {
       const tx = await this.provider.getTransaction(transactionHash);
-      const errorEncodedData = await this.provider.call({
+      errorEncodedData = await this.provider.call({
         to: tx?.to,
         from: tx?.from,
         nonce: tx?.nonce,
@@ -478,9 +487,28 @@ export class LineaRollupClient
       });
       const error = this.contract.interface.parseError(errorEncodedData);
 
-      return error?.name === "RateLimitExceeded";
+      if (!error) {
+        return errorEncodedData;
+      }
+
+      return error;
     } catch (e) {
+      return errorEncodedData;
+    }
+  }
+
+  /**
+   * Checks if an error is of type 'RateLimitExceeded'.
+   * @param {string} transactionHash - The transaction hash.
+   * @returns {Promise<boolean>} True if the error type is 'RateLimitExceeded', false otherwise.
+   */
+  public async isRateLimitExceededError(transactionHash: string): Promise<boolean> {
+    const parsedError = await this.parseTransactionError(transactionHash);
+
+    if (isString(parsedError)) {
       return false;
     }
+
+    return parsedError.name === "RateLimitExceeded";
   }
 }

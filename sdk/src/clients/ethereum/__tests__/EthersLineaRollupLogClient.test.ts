@@ -1,15 +1,15 @@
 import { describe, afterEach, it, expect, beforeEach } from "@jest/globals";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
 import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
+import { TEST_CONTRACT_ADDRESS_1 } from "../../../utils/testing/constants/common";
 import {
-  TEST_CONTRACT_ADDRESS_1,
   testL2MessagingBlockAnchoredEvent,
   testL2MessagingBlockAnchoredEventLog,
   testMessageClaimedEvent,
   testMessageClaimedEventLog,
   testMessageSentEvent,
   testMessageSentEventLog,
-} from "../../../utils/testing/constants";
+} from "../../../utils/testing/constants/events";
 import { LineaRollup, LineaRollup__factory } from "../../../contracts/typechain";
 import { mockProperty } from "../../../utils/testing/helpers";
 import { Provider } from "../../providers";

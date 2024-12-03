@@ -16,7 +16,7 @@ import {
   TEST_CONTRACT_ADDRESS_2,
   TEST_MESSAGE_HASH,
   TEST_TRANSACTION_HASH,
-} from "./constants";
+} from "./constants/common";
 import {
   DEFAULT_ENFORCE_MAX_GAS_FEE,
   DEFAULT_GAS_ESTIMATION_PERCENTILE,

@@ -7,9 +7,8 @@ import {
   TEST_MERKLE_ROOT_2,
   TEST_MESSAGE_HASH,
   TEST_MESSAGE_HASH_2,
-  testL2MessagingBlockAnchoredEvent,
-  testMessageSentEvent,
-} from "../../../utils/testing/constants";
+} from "../../../utils/testing/constants/common";
+import { testL2MessagingBlockAnchoredEvent, testMessageSentEvent } from "../../../utils/testing/constants/events";
 import {
   generateL2MerkleTreeAddedLog,
   generateL2MessagingBlockAnchoredLog,
