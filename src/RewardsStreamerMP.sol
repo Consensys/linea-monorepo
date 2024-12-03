@@ -9,7 +9,13 @@ import { IStakeManager } from "./interfaces/IStakeManager.sol";
 import { TrustedCodehashAccess } from "./TrustedCodehashAccess.sol";
 
 // Rewards Streamer with Multiplier Points
-contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAccess, ReentrancyGuardUpgradeable {
+contract RewardsStreamerMP is
+    Initializable,
+    UUPSUpgradeable,
+    IStakeManager,
+    TrustedCodehashAccess,
+    ReentrancyGuardUpgradeable
+{
     error StakingManager__AmountCannotBeZero();
     error StakingManager__TransferFailed();
     error StakingManager__InsufficientBalance();
