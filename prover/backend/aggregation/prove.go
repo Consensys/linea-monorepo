@@ -280,7 +280,7 @@ func makeBn254Proof(
 		return nil, fmt.Errorf("could not parse the public input: %w", err)
 	}
 
-	logrus.Infof("running the Bn254 prover circuitID=%v, proofBW6=%++v, piBn254=%v", circuitID, proofBw6, piBn254)
+	logrus.Infof("running the Bn254 prover circuitID=%v", circuitID)
 
 	proofBn254, err := emulation.MakeProof(&setup, circuitID, proofBw6, piBn254)
 	if err != nil {
