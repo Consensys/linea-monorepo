@@ -10,7 +10,7 @@
     <Logger name="test.case" level="INFO" additivity="false">
       <AppenderRef ref="console"/>
     </Logger>
-    <Logger name="fake-execution-layer-log-searcher" level="INFO" additivity="false">
+    <Logger name="linea.web3j.Web3JLogsSearcher" level="TRACE" additivity="false">
       <AppenderRef ref="console"/>
     </Logger>
     <Root level="info" additivity="false">

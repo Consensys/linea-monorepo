@@ -43,7 +43,7 @@ class BlobScanClient(
       endpoint: URI,
       requestRetryConfig: RequestRetryConfig,
       logger: Logger = LogManager.getLogger(BlobScanClient::class.java),
-      responseLogMaxSize: UInt? = null
+      responseLogMaxSize: UInt? = 1000u
     ): BlobScanClient {
       val restClient = VertxRestClient(
         vertx = vertx,

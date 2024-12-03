@@ -17,7 +17,10 @@
       <!--    <Logger name="test.clients" level="trace" additivity="false">-->
       <AppenderRef ref="console"/>
     </Logger>
-    <Logger name="test.clients.l1.blobscan" level="trace" additivity="false">
+    <Logger name="test.clients.l1.blobscan" level="DEBUG" additivity="false">
+      <AppenderRef ref="console"/>
+    </Logger>
+    <Logger name="test.clients.l1.executionlayer" level="TRACE" additivity="false">
       <AppenderRef ref="console"/>
     </Logger>
     <Root level="info" additivity="false">

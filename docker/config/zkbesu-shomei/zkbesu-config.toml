@@ -14,7 +14,7 @@ rpc-http-enabled=true
 rpc-http-host="0.0.0.0"
 rpc-http-port=8545
 rpc-http-cors-origins=["*"]
-rpc-http-api=["ADMIN","DEBUG","NET","ETH","WEB3","PLUGINS","MINER","SHOMEI"]
+rpc-http-api=["ADMIN","DEBUG","NET","ETH","WEB3","PLUGINS","MINER","SHOMEI","LINEA"]
 rpc-http-max-active-connections=200
 
 # ws
