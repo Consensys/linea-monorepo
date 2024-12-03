@@ -14,7 +14,9 @@ import linea.SearchDirection
 import net.consensys.encodeHex
 import net.consensys.fromHexString
 import net.consensys.linea.BlockParameter.Companion.toBlockParameter
+import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.jsonrpc.JsonRpcError
+import net.consensys.linea.jsonrpc.JsonRpcRequest
 import net.consensys.toHexString
 import net.consensys.toHexStringUInt256
 import org.apache.logging.log4j.LogManager
@@ -28,6 +30,13 @@ import org.web3j.protocol.http.HttpService
 import java.net.URI
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
+
+internal data class EthGetLogsRequest(
+  val fromBlock: ULong,
+  val toBlock: ULong,
+  val topics: List<String>,
+  val address: List<String>
+)
 
 class Web3JLogsSearcherIntTest {
   private lateinit var web3jClient: Web3j
@@ -67,9 +76,15 @@ class Web3JLogsSearcherIntTest {
   }
 
   private fun setupClientWithFakeJsonRpcServer(
-    retryConfig: RetryConfig = RetryConfig.noRetries
+    retryConfig: RetryConfig = RetryConfig.noRetries,
+    subsetOfBlocksWithLogs: List<ULongRange>? = null
   ) {
-    fakeJsonRpcServer = setUpFakeLogsServer()
+    fakeJsonRpcServer = FakeJsonRpcServer(
+      vertx = vertx,
+      serverName = "fake-execution-layer-log-searcher",
+      recordRequestsResponses = true
+    )
+    setUpFakeLogsServerToHandleEthLogs(fakeJsonRpcServer, subsetOfBlocksWithLogs)
     logsClient = Web3JLogsSearcher(
       vertx,
       web3jClient = Web3j.build(HttpService(URI("http://127.0.0.1:" + fakeJsonRpcServer.bindedPort).toString())),
@@ -79,39 +94,6 @@ class Web3JLogsSearcherIntTest {
       ),
       log = LogManager.getLogger("test.case.Web3JLogsSearcher")
     )
-  }
-
-  private fun setUpFakeLogsServer(): FakeJsonRpcServer {
-    return FakeJsonRpcServer(
-      vertx = vertx,
-      serverName = "fake-execution-layer-log-searcher",
-      recordRequestsResponses = true
-    ).apply {
-      /**
-       * eth_getLogs request example
-       * {
-       *     "jsonrpc": "2.0",
-       *     "method": "eth_getLogs",
-       *     "params": [{
-       *         "topics": ["0xa0262dc79e4ccb71ceac8574ae906311ae338aa4a2044fd4ec4b99fad5ab60cb"],
-       *         "fromBlock": "earliest",
-       *         "toBlock": "latest",
-       *         "address": ["0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"]
-       *     }],
-       *  }
-       */
-      @Suppress("UNCHECKED_CAST")
-      this.handle("eth_getLogs", { request ->
-        val logsFilter = (request.params as List<Any>)[0] as Map<String, Any>
-        val fromBlock = ULong.fromHexString(logsFilter["fromBlock"] as String)
-        val toBlock = ULong.fromHexString(logsFilter["toBlock"] as String)
-        val topics = logsFilter["topics"] as List<String>
-
-        val logs = generateLogsForBlockRange(fromBlock.toInt(), toBlock.toInt(), topic = topics[0])
-        log.debug("eth_getLogs fromBlock={} toBlock={} topics={} logs={}", fromBlock, toBlock, topics[0], logs)
-        logs
-      })
-    }
   }
 
   private fun replyEthGetLogsWith(statusCode: Int, responseBody: String) {
@@ -269,43 +251,6 @@ class Web3JLogsSearcherIntTest {
     vertx.close()
   }
 
-  private fun generateLogJson(
-    blockNumber: Int,
-    topic: String = "0x",
-    transactionHash: String = "0x"
-  ): Map<String, Any> {
-    val topics = listOf(
-      topic,
-      blockNumber.toULong().toHexStringUInt256()
-    )
-    return mapOf(
-      "address" to "0x",
-      "blockHash" to "${blockNumber.toULong().toHexStringUInt256()}",
-      "blockNumber" to "${blockNumber.toULong().toHexString()}",
-      "data" to "0x",
-      "logIndex" to "0x0",
-      "removed" to false,
-      "topics" to topics,
-      "transactionHash" to transactionHash,
-      "transactionIndex" to "0x0"
-    )
-  }
-
-  private fun generateLogsForBlockRange(
-    fromBlock: Int,
-    toBlock: Int,
-    stepSize: Int = 1,
-    topic: String = "0x"
-  ): List<Map<String, Any>> {
-    return (fromBlock..toBlock step stepSize)
-      .map {
-        generateLogJson(
-          blockNumber = it,
-          topic = topic
-        )
-      }
-  }
-
   private fun shallContinueToSearch(
     ethLog: EthLog,
     targetNumber: ULong
@@ -317,24 +262,6 @@ class Web3JLogsSearcherIntTest {
       else -> null
     }
   }
-
-//  fun assertCalledInCorrectOrder(targetNumber: ULong): (EthLog) -> SearchDirection? {
-//    var prevDirection: SearchDirection? = null
-//    var prevNumber: ULong? = null
-//    return { ethLog ->
-//      val number = ULong.fromHexString(ethLog.topics[1].encodeHex())
-//      val direction = when {
-//        number < targetNumber -> SearchDirection.FORWARD
-//        number > targetNumber -> SearchDirection.BACKWARD
-//        else -> null
-//      }
-//      if (prevDirection != null) {
-//        assertThat(direction).isEqualTo(prevDirection)
-//      }
-//      prevDirection = direction
-//      direction
-//    }
-//  }
 
   @Test
   fun `findLogs searches and returns log when found`() {
@@ -348,8 +275,8 @@ class Web3JLogsSearcherIntTest {
           address = address,
           topics = listOf("0xffaabbcc"),
           chunkSize = 10,
-          shallContinueToSearchPredicate = { ehtLog ->
-            shallContinueToSearch(ehtLog, targetNumber = number.toULong())
+          shallContinueToSearchPredicate = { ethLog ->
+            shallContinueToSearch(ethLog, targetNumber = number.toULong())
           }
         )
           .get()
@@ -370,14 +297,36 @@ class Web3JLogsSearcherIntTest {
       address = address,
       topics = listOf("0xffaabbcc"),
       chunkSize = 10,
-      shallContinueToSearchPredicate = { ehtLog ->
-        shallContinueToSearch(ehtLog, targetNumber = 89UL)
+      shallContinueToSearchPredicate = { ethLog ->
+        shallContinueToSearch(ethLog, targetNumber = 89UL)
       }
     )
       .get()
       .also { log ->
         assertThat(log).isNull()
         assertThat(fakeJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 4)
+      }
+  }
+
+  @Test
+  fun `findLogs searches L1 and returns null when no logs in blockRange`() {
+    setupClientWithFakeJsonRpcServer(
+      subsetOfBlocksWithLogs = listOf(100UL..109UL, 150UL..159UL)
+    )
+
+    logsClient.findLog(
+      fromBlock = 100UL.toBlockParameter(),
+      toBlock = 200UL.toBlockParameter(),
+      address = address,
+      topics = listOf("0xffaabbcc"),
+      chunkSize = 10,
+      shallContinueToSearchPredicate = { ethLog ->
+        shallContinueToSearch(ethLog, targetNumber = 89UL)
+      }
+    )
+      .get()
+      .also { log ->
+        assertThat(log).isNull()
       }
   }
 
@@ -390,8 +339,8 @@ class Web3JLogsSearcherIntTest {
       address = address,
       topics = listOf("0xffaabbcc"),
       chunkSize = 10,
-      shallContinueToSearchPredicate = { ehtLog ->
-        shallContinueToSearch(ehtLog, targetNumber = 250UL)
+      shallContinueToSearchPredicate = { ethLog ->
+        shallContinueToSearch(ethLog, targetNumber = 250UL)
       }
     )
       .get()
@@ -399,5 +348,160 @@ class Web3JLogsSearcherIntTest {
         assertThat(log).isNull()
         assertThat(fakeJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 4)
       }
+  }
+
+  @Test
+  fun `findLogs searches L1 and returns null when range has no logs`() {
+    setupClientWithFakeJsonRpcServer(
+      subsetOfBlocksWithLogs = listOf(10UL..19UL, 50UL..59UL)
+    )
+    logsClient.findLog(
+      fromBlock = 0UL.toBlockParameter(),
+      toBlock = 100UL.toBlockParameter(),
+      address = address,
+      topics = listOf("0xffaabbcc"),
+      chunkSize = 5,
+      shallContinueToSearchPredicate = { ethLog ->
+        shallContinueToSearch(ethLog, targetNumber = 35UL)
+          .also { println("log=${ethLog.blockNumber} direction=$it") }
+      }
+    )
+      .get()
+      .also { log ->
+        assertThat(log).isNull()
+        assertThat(fakeJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 11)
+      }
+  }
+
+  companion object {
+    private fun generateLogsForBlockRange(
+      fromBlock: Int,
+      toBlock: Int,
+      stepSize: Int = 1,
+      topic: String = "0x"
+    ): List<Map<String, Any>> {
+      return (fromBlock..toBlock step stepSize)
+        .map {
+          generateLogJson(
+            blockNumber = it,
+            topic = topic
+          )
+        }
+    }
+
+    private fun generateLogJson(
+      blockNumber: Int,
+      topic: String = "0x",
+      transactionHash: String = "0x"
+    ): Map<String, Any> {
+      val topics = listOf(
+        topic,
+        blockNumber.toULong().toHexStringUInt256()
+      )
+      return mapOf(
+        "address" to "0x",
+        "blockHash" to "${blockNumber.toULong().toHexStringUInt256()}",
+        "blockNumber" to "${blockNumber.toULong().toHexString()}",
+        "data" to "0x",
+        "logIndex" to "0x0",
+        "removed" to false,
+        "topics" to topics,
+        "transactionHash" to transactionHash,
+        "transactionIndex" to "0x0"
+      )
+    }
+
+//    private fun generateEthLog(
+//      blockNumber: Int,
+//      topic: ByteArray = ByteArray(0) { 0 },
+//      transactionHash: ByteArray = ByteArray(0) { 0 }
+//    ): EthLog {
+//      val topics = listOf(topic)
+//      return EthLog(
+//        address = ByteArray(0) { 0 },
+//        blockHash = blockNumber.toULong().toHexStringUInt256().decodeHex(),
+//        blockNumber = blockNumber.toULong(),
+//        data = ByteArray(0) { 0 },
+//        logIndex = 0.toULong(),
+//        removed = false,
+//        topics = topics,
+//        transactionHash = transactionHash,
+//        transactionIndex = 0.toULong()
+//      )
+//    }
+
+//    fun generateLogsForBlockRange2(
+//      fromBlock: Int,
+//      toBlock: Int,
+//      stepSize: Int = 1,
+//      topic: String = "0x"
+//    ): List<EthLog> {
+//      return (fromBlock..toBlock step stepSize)
+//        .map {
+//          generateEthLog(
+//            blockNumber = it,
+//            topic = topic.decodeHex()
+//          )
+//        }
+//    }
+
+    internal fun generateLogs(
+      blocksWithLogs: List<ULongRange>,
+      filter: EthGetLogsRequest
+    ): List<Map<String, Any>> {
+      return generateEffectiveIntervals(blocksWithLogs, filter.fromBlock, filter.toBlock)
+        .also {
+          println(
+            "filter=${CommonDomainFunctions.blockIntervalString(filter.fromBlock, filter.toBlock)} logs=$it"
+          )
+        }
+        .flatMap {
+          generateLogsForBlockRange(it.first.toInt(), it.last.toInt(), topic = filter.topics[0])
+        }
+    }
+
+    private fun parseEthLogsRequest(request: JsonRpcRequest): EthGetLogsRequest {
+      /** eth_getLogs request example
+       {
+       "jsonrpc": "2.0",
+       "method": "eth_getLogs",
+       "params": [{
+       "topics": ["0xa0262dc79e4ccb71ceac8574ae906311ae338aa4a2044fd4ec4b99fad5ab60cb", "0xa0262dc79e4ccb71ceac8574ae906311ae338aa4a2044fd4ec4b99fad5ab60ff"],
+       "fromBlock": "earliest",
+       "toBlock": "latest",
+       "address": ["0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"]
+       }],
+       }*/
+      @Suppress("UNCHECKED_CAST")
+      val logsFilter = (request.params as List<Any>)[0] as Map<String, Any>
+      val fromBlock = ULong.fromHexString(logsFilter["fromBlock"] as String)
+      val toBlock = ULong.fromHexString(logsFilter["toBlock"] as String)
+      val topics = logsFilter["topics"] as List<String>
+      return EthGetLogsRequest(
+        fromBlock = fromBlock,
+        toBlock = toBlock,
+        topics = topics,
+        address = logsFilter["address"] as List<String>
+      )
+    }
+
+    private fun setUpFakeLogsServerToHandleEthLogs(
+      fakeJsonRpcServer: FakeJsonRpcServer,
+      subsetOfBlocksWithLogs: List<ULongRange>?
+    ) {
+      fakeJsonRpcServer.apply {
+        this.handle("eth_getLogs", { request ->
+          val filter = parseEthLogsRequest(request)
+          subsetOfBlocksWithLogs
+            ?.let {
+              generateLogs(subsetOfBlocksWithLogs, filter)
+            } ?: generateLogsForBlockRange(
+            fromBlock = filter.fromBlock.toInt(),
+            toBlock = filter.toBlock.toInt(),
+            topic = filter.topics[0]
+          )
+        })
+      }
+    }
   }
 }

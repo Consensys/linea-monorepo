@@ -4,11 +4,11 @@ import build.linea.domain.RetryConfig
 import build.linea.web3j.domain.toDomain
 import build.linea.web3j.domain.toWeb3j
 import io.vertx.core.Vertx
-import io.vertx.core.impl.ConcurrentHashSet
 import linea.EthLogsSearcher
 import linea.SearchDirection
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.BlockParameter.Companion.toBlockParameter
+import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.toULong
@@ -19,7 +19,6 @@ import org.web3j.protocol.core.methods.request.EthFilter
 import org.web3j.protocol.core.methods.response.EthLog
 import org.web3j.protocol.core.methods.response.Log
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -31,6 +30,7 @@ sealed interface SearchResultT<T> {
 private sealed interface SearchResult {
   data class ItemFound(val log: build.linea.domain.EthLog) : SearchResult
   data class KeepSearching(val direction: SearchDirection) : SearchResult
+  data object NoResultsInInterval : SearchResult
 }
 
 class Web3JLogsSearcher(
@@ -75,32 +75,24 @@ class Web3JLogsSearcher(
     topics: List<String>,
     shallContinueToSearchPredicate: (build.linea.domain.EthLog) -> SearchDirection?
   ): SafeFuture<build.linea.domain.EthLog?> {
-    val searchChunks = (fromBlock..toBlock)
-      .chunked(chunkSize)
-      .map { it.first() to it.last() }
-    log.trace("searching in chunks={}", searchChunks)
-    val threads = ConcurrentHashSet<String>()
-    val left = AtomicInteger(0)
-    val right = AtomicInteger(searchChunks.size - 1)
+    val cursor = SearchCursor(fromBlock, toBlock, chunkSize)
+    log.debug("searching between blocks={}", CommonDomainFunctions.blockIntervalString(fromBlock, toBlock))
 
+    var nexChunkToSearch: Pair<ULong, ULong>? = cursor.next(searchDirection = SearchDirection.FORWARD)
     return AsyncRetryer.retry(
       vertx,
       backoffDelay = config.backoffDelay,
-      stopRetriesPredicate = { it is SearchResult.ItemFound || left.get() > right.get() }
+      stopRetriesPredicate = { it is SearchResult.ItemFound || nexChunkToSearch == null }
     ) {
-      threads.add(Thread.currentThread().name)
-      val mid = left.get() + (right.get() - left.get()) / 2
-      val (chunkStart, chunkEnd) = searchChunks[mid]
-      log.debug("searching in chunk {}..{} (left={}, right={})", chunkStart, chunkEnd, left.get(), right.get())
+      val (chunkStart, chunkEnd) = nexChunkToSearch!!
+      log.debug("searching in chunk {}..{}", chunkStart, chunkEnd)
       findLogInInterval(chunkStart, chunkEnd, address, topics, shallContinueToSearchPredicate)
         .thenPeek { result ->
-          threads.add(Thread.currentThread().name)
-          if (result is SearchResult.KeepSearching) {
-            if (result.direction == SearchDirection.FORWARD) {
-              left.set(mid + 1)
-            } else {
-              right.set(mid - 1)
-            }
+          if (result is SearchResult.NoResultsInInterval) {
+            nexChunkToSearch = cursor.next(searchDirection = null)
+          } else if (result is SearchResult.KeepSearching) {
+            // need to search in the same chunk
+            nexChunkToSearch = cursor.next(searchDirection = result.direction)
           }
         }
     }.thenApply { either ->
@@ -125,12 +117,16 @@ class Web3JLogsSearcher(
       topics = topics
     )
       .thenApply { logs ->
-        val item = logs.find { shallContinueToSearchPredicate(it) == null }
-        if (item != null) {
-          SearchResult.ItemFound(item)
+        if (logs.isEmpty()) {
+          SearchResult.NoResultsInInterval
         } else {
-          val nextSearchDirection = shallContinueToSearchPredicate(logs.first())!!
-          SearchResult.KeepSearching(nextSearchDirection)
+          val item = logs.find { shallContinueToSearchPredicate(it) == null }
+          if (item != null) {
+            SearchResult.ItemFound(item)
+          } else {
+            val nextSearchDirection = shallContinueToSearchPredicate(logs.first())!!
+            SearchResult.KeepSearching(nextSearchDirection)
+          }
         }
       }
   }
