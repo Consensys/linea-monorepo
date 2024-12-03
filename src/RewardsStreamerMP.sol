@@ -261,7 +261,7 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
         rewardEndTime = block.timestamp + duration;
     }
 
-    function _calculateAccruedRewards() internal view returns (uint256) {
+    function _calculatePendingRewards() internal view returns (uint256) {
         if (rewardEndTime <= rewardStartTime) {
             // No active reward period
             return 0;
@@ -300,7 +300,7 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
             return;
         }
 
-        uint256 newRewards = _calculateAccruedRewards();
+        uint256 newRewards = _calculatePendingRewards();
         if (newRewards == 0) {
             return;
         }
@@ -367,7 +367,7 @@ contract RewardsStreamerMP is UUPSUpgradeable, IStakeManager, TrustedCodehashAcc
     }
 
     function totalRewardsSupply() public view returns (uint256) {
-        return totalRewardsAccrued + _calculateAccruedRewards();
+        return totalRewardsAccrued + _calculatePendingRewards();
     }
 
     function rewardsBalanceOf(address accountAddress) external view returns (uint256) {

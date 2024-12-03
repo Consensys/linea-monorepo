@@ -224,7 +224,6 @@ contract IntegrationTest is RewardsStreamerMPTest {
 
         // T3
         vm.prank(admin);
-        // rewardToken.transfer(address(streamer), 1000e18);
         streamer.updateGlobalState();
 
         checkStreamer(
@@ -370,7 +369,6 @@ contract IntegrationTest is RewardsStreamerMPTest {
 
         // T6
         vm.prank(admin);
-        // rewardToken.transfer(address(streamer), 1000e18);
         streamer.updateGlobalState();
 
         checkStreamer(
@@ -1996,6 +1994,7 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
         // set other 2000 rewards for other 10 days
         vm.prank(admin);
         streamer.setReward(2000e18, 10 days);
+
         // accrued is 1000 from the previous reward and still 0 for the new one
         assertEq(streamer.totalRewardsSupply(), 1000e18, "totalRewardsSupply should be 1000");
         assertEq(streamer.totalRewardsAccrued(), 1000e18);

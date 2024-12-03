@@ -24,12 +24,18 @@ definition isViewFunction(method f) returns bool = (
   f.selector == sig:streamer.getAccount(address).selector ||
   f.selector == sig:streamer.rewardsBalanceOf(address).selector ||
   f.selector == sig:streamer.totalRewardsSupply().selector ||
-  f.selector == sig:streamer.calculateAccountRewards(address).selector
+  f.selector == sig:streamer.calculateAccountRewards(address).selector ||
+  f.selector == sig:streamer.lastRewardTime().selector ||
+  f.selector == sig:streamer.rewardAmount().selector ||
+  f.selector == sig:streamer.totalRewardsAccrued().selector ||
+  f.selector == sig:streamer.rewardStartTime().selector ||
+  f.selector == sig:streamer.rewardEndTime().selector
 );
 
 definition isOwnableFunction(method f) returns bool = (
   f.selector == sig:streamer.renounceOwnership().selector ||
-  f.selector == sig:streamer.transferOwnership(address).selector
+  f.selector == sig:streamer.transferOwnership(address).selector ||
+  f.selector == sig:streamer.setReward(uint256, uint256).selector
 );
 
 definition isTrustedCodehashAccessFunction(method f) returns bool = (
