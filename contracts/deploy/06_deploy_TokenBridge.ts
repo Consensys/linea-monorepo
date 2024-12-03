@@ -24,7 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const l2MessageServiceName = "L2MessageService";
   const lineaRollupName = "LineaRollup";
-  let l2MessageServiceAddress = process.env.L2_MESSAGE_SERVICE_ADDRESS;
+  let l2MessageServiceAddress = process.env.L2MESSAGESERVICE_ADDRESS;
   let lineaRollupAddress = process.env.LINEA_ROLLUP_ADDRESS;
   const remoteChainId = getRequiredEnvVar("REMOTE_CHAIN_ID");
   const pauseTypeRoles = getEnvVarOrDefault("TOKEN_BRIDGE_PAUSE_TYPES_ROLES", TOKEN_BRIDGE_PAUSE_TYPES_ROLES);
