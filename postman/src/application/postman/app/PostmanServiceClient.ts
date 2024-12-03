@@ -1,14 +1,5 @@
 import { DataSource } from "typeorm";
-import {
-  LineaSDK,
-  GasProvider,
-  Provider,
-  LineaProvider,
-  EthersLineaRollupLogClient,
-  EthersL2MessageServiceLogClient,
-  Wallet,
-  Direction,
-} from "@consensys/linea-sdk";
+import { LineaSDK, Direction } from "@consensys/linea-sdk";
 import { ILogger } from "../../../core/utils/logging/ILogger";
 import { TypeOrmMessageRepository } from "../persistence/repositories/TypeOrmMessageRepository";
 import { WinstonLogger } from "../../../utils/WinstonLogger";
@@ -71,12 +62,6 @@ export class PostmanServiceClient {
     this.l1L2AutoClaimEnabled = config.l1L2AutoClaimEnabled;
     this.l2L1AutoClaimEnabled = config.l2L1AutoClaimEnabled;
 
-    const l1Provider = new Provider(config.l1Config.rpcUrl);
-    const l2Provider = new LineaProvider(config.l2Config.rpcUrl);
-
-    const l1Signer = new Wallet(config.l1Config.claiming.signerPrivateKey, l1Provider);
-    const l2Signer = new Wallet(config.l2Config.claiming.signerPrivateKey, l2Provider);
-
     const lineaSdk = new LineaSDK({
       l1RpcUrlOrProvider: config.l1Config.rpcUrl,
       l2RpcUrlOrProvider: config.l2Config.rpcUrl,
@@ -84,13 +69,24 @@ export class PostmanServiceClient {
       l2SignerPrivateKeyOrWallet: config.l2Config.claiming.signerPrivateKey,
       network: "custom",
       mode: "read-write",
-      feeEstimatorOptions: {
+      l1FeeEstimatorOptions: {
         gasFeeEstimationPercentile: config.l1Config.claiming.gasEstimationPercentile,
         maxFeePerGas: config.l1Config.claiming.maxFeePerGas,
         enforceMaxGasFee: config.l1Config.claiming.isMaxGasFeeEnforced,
+      },
+      l2FeeEstimatorOptions: {
+        gasFeeEstimationPercentile: config.l2Config.claiming.gasEstimationPercentile,
+        maxFeePerGas: config.l2Config.claiming.maxFeePerGas,
+        enforceMaxGasFee: config.l2Config.claiming.isMaxGasFeeEnforced,
         enableLineaEstimateGas: config.l2Config.enableLineaEstimateGas,
       },
     });
+
+    const l1Provider = lineaSdk.getL1Provider(config.l1Config.rpcUrl);
+    const l2Provider = lineaSdk.getL2Provider(config.l2Config.rpcUrl);
+
+    const l1Signer = lineaSdk.getL1Signer();
+    const l2Signer = lineaSdk.getL2Signer();
 
     const lineaRollupClient = lineaSdk.getL1Contract(
       config.l1Config.messageServiceContractAddress,
@@ -99,22 +95,12 @@ export class PostmanServiceClient {
 
     const l2MessageServiceClient = lineaSdk.getL2Contract(config.l2Config.messageServiceContractAddress);
 
-    const lineaRollupLogClient = new EthersLineaRollupLogClient(
-      l1Provider,
-      config.l1Config.messageServiceContractAddress,
-    );
-    const l2MessageServiceLogClient = new EthersL2MessageServiceLogClient(
-      l2Provider,
+    const lineaRollupLogClient = lineaSdk.getL1ContractEventLogClient(config.l1Config.messageServiceContractAddress);
+    const l2MessageServiceLogClient = lineaSdk.getL2ContractEventLogClient(
       config.l2Config.messageServiceContractAddress,
     );
 
-    const l1GasProvider = new GasProvider(l1Provider, {
-      maxFeePerGas: config.l1Config.claiming.maxFeePerGas,
-      gasEstimationPercentile: config.l1Config.claiming.gasEstimationPercentile,
-      enforceMaxGasFee: config.l1Config.claiming.isMaxGasFeeEnforced,
-      enableLineaEstimateGas: false,
-      direction: Direction.L2_TO_L1,
-    });
+    const l1GasProvider = lineaSdk.getL1GasProvider();
 
     this.db = DB.create(config.databaseOptions);
 

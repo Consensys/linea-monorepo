@@ -119,15 +119,20 @@ describe("PostmanServiceClient", () => {
           ...postmanServiceClientOptions.l1Options,
           claiming: {
             ...postmanServiceClientOptions.l1Options.claiming,
-            signerPrivateKey: "",
+            signerPrivateKey: "0x",
+          },
+        },
+        l2Options: {
+          ...postmanServiceClientOptions.l2Options,
+          claiming: {
+            ...postmanServiceClientOptions.l2Options.claiming,
+            signerPrivateKey: "0x",
           },
         },
       };
 
       expect(() => new PostmanServiceClient(postmanServiceClientOptionsWithInvalidPrivateKey)).toThrow(
-        new Error(
-          "Something went wrong when trying to generate Wallet. Please check your private key and the provider url.",
-        ),
+        new Error("Something went wrong when trying to generate Wallet. Please check your private key."),
       );
     });
   });

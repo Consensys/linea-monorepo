@@ -8,16 +8,15 @@ import {
   TransactionResponse,
   Wallet,
 } from "ethers";
-import { LineaGasProvider, LineaProvider } from "@consensys/linea-sdk";
+import { GasProvider, LineaProvider, testingHelpers } from "@consensys/linea-sdk";
 import { TEST_CONTRACT_ADDRESS_2, TEST_L2_SIGNER_PRIVATE_KEY, testMessage } from "../../../utils/testing/constants";
 import { DEFAULT_MAX_CLAIM_GAS_LIMIT, DEFAULT_MAX_FEE_PER_GAS, DEFAULT_PROFIT_MARGIN } from "../../../core/constants";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { LineaTransactionValidationService } from "../../LineaTransactionValidationService";
-import { generateL2MessageServiceClient } from "../../../utils/testing/helpers";
 
 describe("LineaTransactionValidationService", () => {
   let lineaTransactionValidationService: LineaTransactionValidationService;
-  let gasProvider: LineaGasProvider;
+  let gasProvider: GasProvider;
   let l2ContractClient: IL2MessageServiceClient<
     Overrides,
     TransactionReceipt,
@@ -29,7 +28,7 @@ describe("LineaTransactionValidationService", () => {
 
   beforeEach(() => {
     provider = mock<LineaProvider>();
-    const clients = generateL2MessageServiceClient(
+    const clients = testingHelpers.generateL2MessageServiceClient(
       provider,
       TEST_CONTRACT_ADDRESS_2,
       "read-write",
@@ -41,7 +40,7 @@ describe("LineaTransactionValidationService", () => {
     );
 
     l2ContractClient = clients.l2MessageServiceClient;
-    gasProvider = clients.gasProvider as LineaGasProvider;
+    gasProvider = clients.gasProvider;
 
     lineaTransactionValidationService = new LineaTransactionValidationService(
       {

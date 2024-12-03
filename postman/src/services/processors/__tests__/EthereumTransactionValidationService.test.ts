@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 import { ContractTransactionResponse, Overrides, TransactionReceipt, TransactionResponse, Wallet } from "ethers";
-import { DefaultGasProvider, LineaProvider, Provider } from "@consensys/linea-sdk";
+import { DefaultGasProvider, LineaProvider, Provider, testingHelpers } from "@consensys/linea-sdk";
 import {
   TEST_CONTRACT_ADDRESS_1,
   TEST_CONTRACT_ADDRESS_2,
@@ -16,7 +16,6 @@ import {
 } from "../../../core/constants";
 import { EthereumTransactionValidationService } from "../../EthereumTransactionValidationService";
 import { ILineaRollupClient } from "../../../core/clients/blockchain/ethereum/ILineaRollupClient";
-import { generateLineaRollupClient } from "../../../utils/testing/helpers";
 
 describe("EthereumTransactionValidationService", () => {
   let lineaTransactionValidationService: EthereumTransactionValidationService;
@@ -30,7 +29,7 @@ describe("EthereumTransactionValidationService", () => {
   >;
 
   beforeEach(() => {
-    const clients = generateLineaRollupClient(
+    const clients = testingHelpers.generateLineaRollupClient(
       mock<Provider>(),
       mock<LineaProvider>(),
       TEST_CONTRACT_ADDRESS_1,

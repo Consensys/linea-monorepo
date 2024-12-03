@@ -8,14 +8,13 @@ import {
   TransactionResponse,
   Wallet,
 } from "ethers";
-import { LineaProvider, serialize } from "@consensys/linea-sdk";
+import { LineaProvider, serialize, testingHelpers } from "@consensys/linea-sdk";
 import { TEST_CONTRACT_ADDRESS_2, TEST_L2_SIGNER_PRIVATE_KEY, testMessage } from "../../../utils/testing/constants";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { L2ClaimTransactionSizeCalculator } from "../../L2ClaimTransactionSizeCalculator";
 import { DEFAULT_MAX_FEE_PER_GAS } from "../../../core/constants";
 import { BaseError } from "../../../core/errors";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
-import { generateL2MessageServiceClient } from "../../../utils/testing/helpers";
 
 describe("L2ClaimTransactionSizeCalculator", () => {
   let transactionSizeCalculator: L2ClaimTransactionSizeCalculator;
@@ -30,7 +29,7 @@ describe("L2ClaimTransactionSizeCalculator", () => {
   >;
 
   beforeEach(() => {
-    const clients = generateL2MessageServiceClient(
+    const clients = testingHelpers.generateL2MessageServiceClient(
       mock<LineaProvider>(),
       TEST_CONTRACT_ADDRESS_2,
       "read-only",

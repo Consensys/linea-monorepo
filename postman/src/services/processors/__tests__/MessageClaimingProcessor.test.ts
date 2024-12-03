@@ -93,7 +93,7 @@ describe("TestMessageClaimingProcessor", () => {
     it("Should return and log as error if claim tx nonce is higher than the max diff", async () => {
       const loggerErrorSpy = jest.spyOn(logger, "error");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(80);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(80);
 
       await messageClaimingProcessor.process();
 
@@ -106,7 +106,7 @@ describe("TestMessageClaimingProcessor", () => {
     it("Should return without calling any get message status if getFirstMessageToClaim return null", async () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -122,7 +122,7 @@ describe("TestMessageClaimingProcessor", () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -161,7 +161,7 @@ describe("TestMessageClaimingProcessor", () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -187,7 +187,7 @@ describe("TestMessageClaimingProcessor", () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -221,7 +221,7 @@ describe("TestMessageClaimingProcessor", () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -261,7 +261,7 @@ describe("TestMessageClaimingProcessor", () => {
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -293,7 +293,7 @@ describe("TestMessageClaimingProcessor", () => {
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const messageRepositoryUpdateAtomicSpy = jest.spyOn(databaseService, "updateMessageWithClaimTxAtomic");
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
@@ -329,7 +329,7 @@ describe("TestMessageClaimingProcessor", () => {
         .spyOn(databaseService, "updateMessageWithClaimTxAtomic")
         .mockRejectedValue(actionRejectedError);
       jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-      jest.spyOn(provider, "getTransactionCount").mockResolvedValue(99);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(99);
       jest
         .spyOn(gasProvider, "getGasFees")
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });

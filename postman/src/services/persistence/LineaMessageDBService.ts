@@ -1,11 +1,12 @@
 import {
   Block,
   ContractTransactionResponse,
+  JsonRpcProvider,
   TransactionReceipt,
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
-import { LineaProvider, Direction } from "@consensys/linea-sdk";
+import { Direction } from "@consensys/linea-sdk";
 import { Message } from "../../core/entities/Message";
 import { MessageStatus } from "../../core/enums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
@@ -28,7 +29,7 @@ export class LineaMessageDBService extends MessageDBService implements IMessageD
       Block,
       TransactionRequest,
       TransactionResponse,
-      LineaProvider
+      JsonRpcProvider
     >,
     messageRepository: IMessageRepository<ContractTransactionResponse>,
   ) {

@@ -1,1 +1,0 @@
-export const MESSAGE_SENT_EVENT_SIGNATURE = "0xe856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c";

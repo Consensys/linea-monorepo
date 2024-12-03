@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
-import { Direction, OnChainMessageStatus } from "@consensys/linea-sdk";
-import { TestLogger, generateTransactionReceipt, generateTransactionResponse } from "../../../utils/testing/helpers";
+import { Direction, OnChainMessageStatus, testingHelpers } from "@consensys/linea-sdk";
+import { TestLogger } from "../../../utils/testing/helpers";
 import { MessageStatus } from "../../../core/enums";
 import { testL2NetworkConfig, testPendingMessage, testPendingMessage2 } from "../../../utils/testing/constants";
 import { IMessageServiceContract } from "../../../core/services/contracts/IMessageServiceContract";
@@ -79,7 +79,7 @@ describe("TestMessageClaimingPersister ", () => {
     });
 
     it("Should log as info and update message as claimed success if successful", async () => {
-      const txReceipt = generateTransactionReceipt({ status: 1 });
+      const txReceipt = testingHelpers.generateTransactionReceipt({ status: 1 });
       const loggerInfoSpy = jest.spyOn(logger, "info");
       const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
@@ -105,7 +105,7 @@ describe("TestMessageClaimingPersister ", () => {
     });
 
     it("Should return and update message as sent if receipt status is 0 and rate limit exceeded", async () => {
-      const txReceipt = generateTransactionReceipt({ status: 0 });
+      const txReceipt = testingHelpers.generateTransactionReceipt({ status: 0 });
       const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const testPendingMessageLocal = new Message(testPendingMessage);
@@ -126,7 +126,7 @@ describe("TestMessageClaimingPersister ", () => {
 
     it("Should log as warning and update message as claimed reverted if receipt status is 0", async () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
-      const txReceipt = generateTransactionReceipt({ status: 0 });
+      const txReceipt = testingHelpers.generateTransactionReceipt({ status: 0 });
       const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const testPendingMessageLocal = new Message(testPendingMessage);
@@ -153,7 +153,7 @@ describe("TestMessageClaimingPersister ", () => {
 
     it("Should return and log as warning if message is claimed and receipt was retrieved successfully", async () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
-      const txReceipt = generateTransactionReceipt({ status: 1 });
+      const txReceipt = testingHelpers.generateTransactionReceipt({ status: 1 });
       const l2QuerierGetReceiptSpy = jest
         .spyOn(provider, "getTransactionReceipt")
         .mockResolvedValueOnce(null)
@@ -213,8 +213,11 @@ describe("TestMessageClaimingPersister ", () => {
 
     it("Should return and log as warning if message is claimable and retry tx was sent successfully", async () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
-      const txReceipt = generateTransactionReceipt({ status: 1 });
-      const txResponse = generateTransactionResponse({ maxPriorityFeePerGas: undefined, maxFeePerGas: undefined });
+      const txReceipt = testingHelpers.generateTransactionReceipt({ status: 1 });
+      const txResponse = testingHelpers.generateTransactionResponse({
+        maxPriorityFeePerGas: undefined,
+        maxFeePerGas: undefined,
+      });
       const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const testPendingMessageLocal = new Message(testPendingMessage);
@@ -255,8 +258,11 @@ describe("TestMessageClaimingPersister ", () => {
 
     it("Should return and log as warning if message is claimable and retry tx was sent successfully", async () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
-      const txReceipt = generateTransactionReceipt({ status: 1 });
-      const txResponse = generateTransactionResponse({ maxPriorityFeePerGas: undefined, maxFeePerGas: undefined });
+      const txReceipt = testingHelpers.generateTransactionReceipt({ status: 1 });
+      const txResponse = testingHelpers.generateTransactionResponse({
+        maxPriorityFeePerGas: undefined,
+        maxFeePerGas: undefined,
+      });
       const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
       const testPendingMessageLocal = new Message(testPendingMessage);
@@ -357,7 +363,7 @@ describe("TestMessageClaimingPersister ", () => {
     it("Should return and log as error if message is claimable but tx response wait returns null", async () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
       const loggerErrorSpy = jest.spyOn(logger, "error");
-      const txResponse = generateTransactionResponse();
+      const txResponse = testingHelpers.generateTransactionResponse();
       const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       const messageRepositorySaveSpy = jest.spyOn(databaseService, "saveMessages");
       const testPendingMessageLocal = new Message(testPendingMessage);
