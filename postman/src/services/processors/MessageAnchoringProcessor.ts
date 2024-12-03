@@ -6,6 +6,7 @@ import {
   Block,
   TransactionRequest,
   JsonRpcProvider,
+  ErrorDescription,
 } from "ethers";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import {
@@ -35,7 +36,8 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
       Overrides,
       TransactionReceipt,
       TransactionResponse,
-      ContractTransactionResponse
+      ContractTransactionResponse,
+      ErrorDescription
     >,
     private readonly provider: IProvider<
       TransactionReceipt,

@@ -8,6 +8,7 @@ import { IMessageServiceContract } from "../../../core/services/contracts/IMessa
 import {
   Block,
   ContractTransactionResponse,
+  ErrorDescription,
   JsonRpcProvider,
   Overrides,
   TransactionReceipt,
@@ -26,7 +27,13 @@ describe("TestMessageClaimingPersister ", () => {
   let mockedDate: Date;
   const databaseService = mock<EthereumMessageDBService>();
   const l2MessageServiceContractMock = mock<
-    IMessageServiceContract<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse> &
+    IMessageServiceContract<
+      Overrides,
+      TransactionReceipt,
+      TransactionResponse,
+      ContractTransactionResponse,
+      ErrorDescription
+    > &
       IGasProvider<TransactionRequest>
   >();
   const provider =

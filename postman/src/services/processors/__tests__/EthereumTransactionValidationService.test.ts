@@ -1,6 +1,13 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
-import { ContractTransactionResponse, Overrides, TransactionReceipt, TransactionResponse, Wallet } from "ethers";
+import {
+  ContractTransactionResponse,
+  ErrorDescription,
+  Overrides,
+  TransactionReceipt,
+  TransactionResponse,
+  Wallet,
+} from "ethers";
 import { DefaultGasProvider, LineaProvider, Provider, testingHelpers } from "@consensys/linea-sdk";
 import {
   TEST_CONTRACT_ADDRESS_1,
@@ -25,7 +32,8 @@ describe("EthereumTransactionValidationService", () => {
     Overrides,
     TransactionReceipt,
     TransactionResponse,
-    ContractTransactionResponse
+    ContractTransactionResponse,
+    ErrorDescription
   >;
 
   beforeEach(() => {

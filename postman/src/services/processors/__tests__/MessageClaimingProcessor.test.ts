@@ -4,6 +4,7 @@ import { DefaultGasProvider, Provider, Direction, OnChainMessageStatus } from "@
 import {
   Block,
   ContractTransactionResponse,
+  ErrorDescription,
   EthersError,
   Overrides,
   Signer,
@@ -46,7 +47,15 @@ describe("TestMessageClaimingProcessor", () => {
   let transactionValidationService: EthereumTransactionValidationService;
   let mockedDate: Date;
   const lineaRollupContractMock =
-    mock<ILineaRollupClient<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse>>();
+    mock<
+      ILineaRollupClient<
+        Overrides,
+        TransactionReceipt,
+        TransactionResponse,
+        ContractTransactionResponse,
+        ErrorDescription
+      >
+    >();
   const provider = mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, Provider>>();
   const signer = mock<Signer>();
 

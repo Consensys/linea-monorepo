@@ -2,9 +2,9 @@ import { ContractTransactionReceipt, Overrides, JsonRpcProvider, Wallet } from "
 import { config } from "dotenv";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import { L2MessageService, L2MessageService__factory } from "@consensys/linea-sdk";
 import { SendMessageArgs } from "./types";
 import { sanitizeAddress, sanitizePrivKey } from "./cli";
-import { L2MessageService, L2MessageService__factory } from "../src/clients/blockchain/typechain";
 
 config();
 

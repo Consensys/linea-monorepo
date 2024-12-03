@@ -6,6 +6,7 @@ import {
   TransactionRequest,
   Block,
   JsonRpcProvider,
+  ErrorDescription,
 } from "ethers";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { BaseError } from "../../core/errors";
@@ -38,7 +39,8 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       Overrides,
       TransactionReceipt,
       TransactionResponse,
-      ContractTransactionResponse
+      ContractTransactionResponse,
+      ErrorDescription
     >,
     private readonly provider: IProvider<
       TransactionReceipt,

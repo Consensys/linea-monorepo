@@ -2,6 +2,7 @@ import { describe, it, beforeEach } from "@jest/globals";
 import { mock, MockProxy } from "jest-mock-extended";
 import {
   ContractTransactionResponse,
+  ErrorDescription,
   Overrides,
   Signer,
   TransactionReceipt,
@@ -22,7 +23,8 @@ describe("LineaTransactionValidationService", () => {
     TransactionReceipt,
     TransactionResponse,
     ContractTransactionResponse,
-    Signer
+    Signer,
+    ErrorDescription
   >;
   let provider: MockProxy<LineaProvider>;
 

@@ -1,5 +1,6 @@
 import {
   ContractTransactionResponse,
+  ErrorDescription,
   ethers,
   Overrides,
   Signer,
@@ -29,7 +30,8 @@ export class L2ClaimTransactionSizeCalculator implements IL2ClaimTransactionSize
       TransactionReceipt,
       TransactionResponse,
       ContractTransactionResponse,
-      Signer
+      Signer,
+      ErrorDescription
     >,
   ) {
     this.compressor = new GoNativeCompressor(800_000);

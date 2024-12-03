@@ -1,5 +1,6 @@
 import {
   ContractTransactionResponse,
+  ErrorDescription,
   Overrides,
   TransactionReceipt,
   TransactionRequest,
@@ -27,7 +28,8 @@ export class EthereumTransactionValidationService implements ITransactionValidat
       Overrides,
       TransactionReceipt,
       TransactionResponse,
-      ContractTransactionResponse
+      ContractTransactionResponse,
+      ErrorDescription
     >,
     private readonly gasProvider: IEthereumGasProvider<TransactionRequest>,
     private readonly config: TransactionValidationServiceConfig,

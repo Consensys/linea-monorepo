@@ -1,4 +1,11 @@
-import { ContractTransactionResponse, Overrides, Signer, TransactionReceipt, TransactionResponse } from "ethers";
+import {
+  ContractTransactionResponse,
+  ErrorDescription,
+  Overrides,
+  Signer,
+  TransactionReceipt,
+  TransactionResponse,
+} from "ethers";
 import { MessageStatus } from "../../core/enums";
 import { ILogger } from "../../core/utils/logging/ILogger";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
@@ -26,7 +33,8 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
       TransactionReceipt,
       TransactionResponse,
       ContractTransactionResponse,
-      Signer
+      Signer,
+      ErrorDescription
     >,
     private readonly transactionSizeCalculator: IL2ClaimTransactionSizeCalculator,
     private readonly config: L2ClaimMessageTransactionSizeProcessorConfig,

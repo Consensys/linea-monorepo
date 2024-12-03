@@ -1,6 +1,7 @@
 import {
   Block,
   ContractTransactionResponse,
+  ErrorDescription,
   JsonRpcProvider,
   Overrides,
   Signer,
@@ -40,7 +41,8 @@ export class LineaTransactionValidationService implements ITransactionValidation
       TransactionReceipt,
       TransactionResponse,
       ContractTransactionResponse,
-      Signer
+      Signer,
+      ErrorDescription
     >,
   ) {}
 

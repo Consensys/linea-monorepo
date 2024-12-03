@@ -2,6 +2,7 @@ import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 import {
   ContractTransactionResponse,
+  ErrorDescription,
   Overrides,
   Signer,
   TransactionReceipt,
@@ -25,7 +26,8 @@ describe("L2ClaimTransactionSizeCalculator", () => {
     TransactionReceipt,
     TransactionResponse,
     ContractTransactionResponse,
-    Signer
+    Signer,
+    ErrorDescription
   >;
 
   beforeEach(() => {

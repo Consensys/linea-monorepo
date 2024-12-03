@@ -6,6 +6,7 @@ import {
   EthersError,
   TransactionReceipt,
   Signer,
+  ErrorDescription,
 } from "ethers";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { MessageStatus } from "../../core/enums";
@@ -37,7 +38,8 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       Overrides,
       TransactionReceipt,
       TransactionResponse,
-      ContractTransactionResponse
+      ContractTransactionResponse,
+      ErrorDescription
     >,
     private readonly signer: Signer,
     private readonly databaseService: IMessageDBService<TransactionResponse>,

@@ -1,6 +1,13 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
-import { ContractTransactionResponse, Overrides, Signer, TransactionReceipt, TransactionResponse } from "ethers";
+import {
+  ContractTransactionResponse,
+  ErrorDescription,
+  Overrides,
+  Signer,
+  TransactionReceipt,
+  TransactionResponse,
+} from "ethers";
 import { Direction } from "@consensys/linea-sdk";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { MessageStatus } from "../../../core/enums";
@@ -18,7 +25,14 @@ describe("L2ClaimMessageTransactionSizeProcessor", () => {
   const databaseService = mock<EthereumMessageDBService>();
   const l2ContractClientMock =
     mock<
-      IL2MessageServiceClient<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse, Signer>
+      IL2MessageServiceClient<
+        Overrides,
+        TransactionReceipt,
+        TransactionResponse,
+        ContractTransactionResponse,
+        Signer,
+        ErrorDescription
+      >
     >();
   const logger = new TestLogger(L2ClaimMessageTransactionSizeProcessor.name);
 

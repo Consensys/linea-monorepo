@@ -3,6 +3,7 @@ import { mock } from "jest-mock-extended";
 import {
   Block,
   ContractTransactionResponse,
+  ErrorDescription,
   JsonRpcProvider,
   Overrides,
   TransactionReceipt,
@@ -23,7 +24,15 @@ describe("TestMessageAnchoringProcessor", () => {
   let anchoringProcessor: IMessageAnchoringProcessor;
   const databaseService = mock<EthereumMessageDBService>();
   const l2ContractClientMock =
-    mock<IMessageServiceContract<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse>>();
+    mock<
+      IMessageServiceContract<
+        Overrides,
+        TransactionReceipt,
+        TransactionResponse,
+        ContractTransactionResponse,
+        ErrorDescription
+      >
+    >();
   const provider =
     mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
   const logger = new TestLogger(MessageAnchoringProcessor.name);
