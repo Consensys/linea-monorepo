@@ -476,7 +476,10 @@ class L1DependentApp(
       blobsRepository = blobsRepository,
       blobCompressionProverClient = proverClientFactory.blobCompressionProverClient(),
       rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
-        blobShnarfCalculator = GoBackedBlobShnarfCalculator(blobShnarfCalculatorVersion),
+        blobShnarfCalculator = GoBackedBlobShnarfCalculator(
+          version = blobShnarfCalculatorVersion,
+          metricsFacade = metricsFacade
+        ),
         blobsRepository = blobsRepository,
         genesisShnarf = genesisStateProvider.shnarf
       ),
