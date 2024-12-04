@@ -1,0 +1,57 @@
+# continuous tracing
+plugin-linea-continuous-tracing-enabled=true
+plugin-linea-continuous-tracing-zk-evm-bin="/home/ec2-user/shadow-node/zkevm.bin"
+plugin-linea-continuous-tracing-traces-output-path="/ramdisk/testnet-traces"
+plugin-linea-conflated-trace-generation-traces-output-path="/ramdisk/rpc-conflated-traces"
+
+filter-on-enr-fork-id=true
+
+# data
+data-path="/home/ec2-user/shadow-node/data-testnet"
+
+# logging
+# Settings for logging are defined in "/home/besu-log-config.xml"
+
+data-storage-format="BONSAI"
+
+# JWT
+# authentication is enabled by default when engine-jwt-disabled=false
+#engine-jwt-disabled=false
+#engine-jwt-secret="/etc/jwt-secret.hex"
+#engine-rpc-enabled=true
+#engine-rpc-port=8551
+#engine-host-allowlist=["*"]
+
+network="linea_goerli"
+
+min-gas-price=1000
+sync-mode="FULL"
+host-whitelist=["*"]
+
+# rpc
+rpc-http-enabled=true
+rpc-http-host="0.0.0.0"
+rpc-http-port=8646
+rpc-http-api=["TRACE","ADMIN","DEBUG","NET","ETH","WEB3","TXPOOL", "LINEA"]
+rpc-http-cors-origins=["all"]
+
+# ws
+rpc-ws-enabled=true
+rpc-ws-api=["NET","ETH","WEB3"]
+rpc-ws-host="0.0.0.0"
+rpc-ws-port=8647
+
+# graphql
+graphql-http-enabled=true
+graphql-http-host="0.0.0.0"
+graphql-http-port=8648
+graphql-http-cors-origins=["all"]
+
+# p2p
+p2p-host="107.21.85.50"
+p2p-port=30403
+
+# metrics
+metrics-enabled=true
+metrics-host="0.0.0.0"
+metrics-port=9646
