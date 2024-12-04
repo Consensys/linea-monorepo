@@ -19,7 +19,7 @@ interface IStakeManager is ITrustedCodehashAccess {
 
     function emergencyModeEnabled() external view returns (bool);
     function totalStaked() external view returns (uint256);
-    function totalMP() external view returns (uint256);
+    function totalMPAccrued() external view returns (uint256);
     function totalMaxMP() external view returns (uint256);
     function getStakedBalance(address _vault) external view returns (uint256 _balance);
 

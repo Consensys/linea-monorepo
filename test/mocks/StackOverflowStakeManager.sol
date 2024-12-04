@@ -23,7 +23,7 @@ contract StackOverflowStakeManager is
     uint256 public constant MAX_MULTIPLIER = 4;
 
     uint256 public totalStaked;
-    uint256 public totalMP;
+    uint256 public totalMPAccrued;
     uint256 public totalMaxMP;
     uint256 public rewardIndex;
     uint256 public accountedRewards;
