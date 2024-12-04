@@ -143,7 +143,7 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
   2.2 recoveryStartBlockNumber <= headBlockNumber: resume recovery from headBlockNumber
   */
   @Test
-  fun `when state recovery disabled and is starting from genesis`(vertx: Vertx) {
+  fun `when state recovery disabled and is starting from genesis`() {
     stateRecoverApp.start().get()
 
     val submissionTxHashes = submitBlobsAndAggregations(
@@ -174,9 +174,7 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
   }
 
   @Test
-  fun `when recovery is disabled and headBlock is before lastFinalizedBlock resumes from lastFinalizedBlock+1`(
-    vertx: Vertx
-  ) {
+  fun `when recovery is disabled and headBlock is before lastFinalizedBlock resumes from lastFinalizedBlock+1`() {
     val finalizationToResumeFrom = aggregationsAndBlobs.get(1).aggregation!!
     // assert that the finalization event to resume from has at least 1 middle block
     assertThat(finalizationToResumeFrom.endBlockNumber)

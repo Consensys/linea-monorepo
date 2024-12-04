@@ -153,7 +153,7 @@ class StateRecoverAppIntTest {
   }
 
   @Test
-  fun `state recovery from genesis`(vertx: Vertx) {
+  fun `state recovery from genesis`() {
     stateRecoverApp.start().get()
 
     val submissionTxHashes = submitBlobsAndAggregations(
@@ -162,6 +162,7 @@ class StateRecoverAppIntTest {
       blobChunksSize = 6
     )
 
+    log.info("Waiting for finalization tx to be executed on L1")
     Web3jClientManager.l1Client.waitForTxReceipt(
       txHash = submissionTxHashes.aggregationTxHashes.last(),
       timeout = 2.minutes

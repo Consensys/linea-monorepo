@@ -109,6 +109,6 @@ task integrationTest(type: Test) {
       showExceptions true
       showStackTraces true
       // set showStandardStreams if you need to see test logs
-      showStandardStreams false
+      showStandardStreams true
     }
 }
