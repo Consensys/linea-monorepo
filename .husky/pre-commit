@@ -16,7 +16,7 @@ SDK_PATH_CHANGES=()
 # SDK_CHANGE_DETECTED=0
 
 # Get list of all `git add` files to be committed
-GIT_ADDED_FILE_LIST=($(git diff --name-only --cached))
+GIT_ADDED_FILE_LIST=($(git diff --name-only HEAD))
 
 # Iterate through staged files to update filters
 for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
