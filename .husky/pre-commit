@@ -17,7 +17,7 @@ GIT_ADDED_FILE_LIST=($(git diff --name-only --cached))
 
 # Iterate through staged files to update filters
 for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
-    if [[ $FILE =~ ^$CONTRACTS_PATH_FILTER ]]; then 
+    if [[ $FILE =~ "^$CONTRACTS_PATH_FILTER" ]]; then 
         echo "HI"
     # if echo $FILE | grep -q "^$CONTRACTS_PATH_FILTER"; then
     #     CONTRACTS_CHANGE_DETECTED=1
