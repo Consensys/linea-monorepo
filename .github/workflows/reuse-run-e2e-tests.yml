@@ -50,7 +50,7 @@ on:
         type: boolean
         default: true
       not-markdown-only:
-        required: true
+        # required: true
         type: string
     outputs:
       tests_outcome:
