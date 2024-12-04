@@ -44,7 +44,8 @@ func reducePermutationIntoGrandProduct(comp *wizard.CompiledIOP, q query.Permuta
 	}
 
 	// Reduce a permutation query into a GrandProduct query
-	comp.InsertGrandProduct(round, q.Name(), alpha, beta)
+	comp.InsertGrandProduct(round, q.Name(), q.A, q.B, alpha, beta)
+	// Mark the query as ignored
 
 
 }
