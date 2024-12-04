@@ -24,7 +24,6 @@ task(
   "setRemoteTokenBridge",
   "Sets the remoteTokenBridge address.",
 )
-  .addParam("safeAddress")
   .addOptionalParam("remoteTokenBridgeAddress")
   .addOptionalParam("tokenBridgeAddress")
   .addParam("remoteNetwork")
