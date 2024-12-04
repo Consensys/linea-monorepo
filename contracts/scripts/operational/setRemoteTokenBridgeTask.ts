@@ -12,7 +12,6 @@ import { getDeployedContractOnNetwork } from "../../common/helpers/readAddress";
     SEPOLIA_PRIVATE_KEY=<key> \
     INFURA_API_KEY=<key> \
     npx hardhat setRemoteTokenBridge \
-    --safe-address <address> \
     --remote-token-bridge-address <address> \
     --token-bridge-address <address> \
     --remote-network sepolia \
