@@ -19,7 +19,9 @@ GIT_ADDED_FILE_LIST=($(git diff --name-only --cached))
 for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
     if [[ $FILE =~ "^$CONTRACTS_PATH_FILTER" ]]; then 
         echo "HI"
-    # if echo $FILE | grep -q "^$CONTRACTS_PATH_FILTER"; then
+    elif echo $FILE | grep -q "^$CONTRACTS_PATH_FILTER"; then
+        echo "HI2"
+
     #     CONTRACTS_CHANGE_DETECTED=1
     # elif echo $FILE | grep -q "^$SDK_PATH_FILTER"; then
     #     SDK_CHANGE_DETECTED=1
