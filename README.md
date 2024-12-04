@@ -22,7 +22,7 @@ It serves developers by making the Linea tech stack open source under the [Apach
 [Linea](https://linea.build) is a developer-ready layer 2 network scaling Ethereum. It's secured with a zero-knowledge rollup, built on lattice-based cryptography, and powered by [Consensys](https://consensys.io).
 
 
-## Get started 
+## Get started
 
 If you already have an understanding of the tech stack, use our [Get Started](docs/get-started.md) guide.
 
