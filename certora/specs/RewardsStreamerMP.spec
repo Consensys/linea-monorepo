@@ -109,3 +109,15 @@ rule stakingGreaterLockupTimeMeansGreaterMPs {
   assert lockupTime1 >= lockupTime2 => to_mathint(multiplierPointsAfter1) >= to_mathint(multiplierPointsAfter2);
   satisfy to_mathint(multiplierPointsAfter1) > to_mathint(multiplierPointsAfter2);
 }
+
+
+rule MPsOnlyDecreaseWhenUnstaking(method f) filtered { f -> f.selector != sig:upgradeToAndCall(address,bytes).selector } {
+  env e;
+  calldataarg args;
+
+  uint256 totalMPBefore = totalMP(e);
+  f(e, args);
+  uint256 totalMPAfter = totalMP(e);
+
+  assert totalMPAfter < totalMPBefore => f.selector == sig:unstake(uint256).selector || f.selector == sig:leave().selector;
+}
