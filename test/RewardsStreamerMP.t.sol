@@ -790,7 +790,8 @@ contract StakeTest is RewardsStreamerMPTest {
 
         // move forward in time to check we're not producing more MP
         currentTime = vm.getBlockTimestamp();
-        vm.warp(currentTime + 1);
+        // increasing time by some big enough time such that MPs are actually generated
+        vm.warp(currentTime + 14 days);
 
         streamer.updateGlobalState();
         streamer.updateAccountMP(vaults[alice]);
