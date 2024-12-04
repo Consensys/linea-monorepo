@@ -1,31 +1,52 @@
 # For this to run on pre-commit hook, should run `npx husky` in root after `git clone` repo onto dev machine
 echo "RUNNING HUSKY PRE-COMMIT HOOK"
 
+# File extension filters
+
+
 # Path filters
 CONTRACTS_PATH_FILTER="contracts/"
+SDK_PATH_FILTER="sdk/"
 
 # Filter booleans
 CONTRACTS_CHANGE_DETECTED=0
+SDK_CHANGE_DETECTED=0
 
 # Get list of all `git add` files to be committed
 GIT_ADDED_FILE_LIST=($(git diff --name-only --cached))
 
 # Iterate through staged files to update filters
 for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
-    if echo $FILE | grep -q "^$CONTRACTS_PATH_FILTER"; then
-        CONTRACTS_CHANGE_DETECTED=1
+    if [[ $FILE =~ ^$CONTRACTS_PATH_FILTER ]]; then 
+        echo "HI"
+    # if echo $FILE | grep -q "^$CONTRACTS_PATH_FILTER"; then
+    #     CONTRACTS_CHANGE_DETECTED=1
+    # elif echo $FILE | grep -q "^$SDK_PATH_FILTER"; then
+    #     SDK_CHANGE_DETECTED=1
     fi
 done
 
 # Selective linting based on filters
-if [ $CONTRACTS_CHANGE_DETECTED -eq 1 ]; then
-    echo "$CONTRACTS_PATH_FILTER files are changed, linting..."
-    cd contracts
-    if [ ! -d "node_modules" ]; then
-        echo "Missing dev dependencies in $CONTRACTS_PATH_FILTER, installing..."
-        pnpm i -D
-    fi
-    pnpm run lint
-    cd ..
-    git update-index --again
-fi
+# if [ $CONTRACTS_CHANGE_DETECTED -eq 1 ]; then
+#     echo "$CONTRACTS_PATH_FILTER files are changed, linting..."
+#     cd contracts
+#     if [ ! -d "node_modules" ]; then
+#         echo "Error: missing dependencies in $CONTRACTS_PATH_FILTER"
+#         exit 1
+#     fi
+#     pnpm run lint
+#     cd ..
+#     git update-index --again
+# fi
+
+# if [ $SDK_CHANGE_DETECTED -eq 1 ]; then
+#     echo "$SDK_PATH_FILTER files are changed, linting..."
+#     cd contracts
+#     if [ ! -d "node_modules" ]; then
+#         echo "Error: missing dependencies in $CONTRACTS_PATH_FILTER"
+#         exit 1
+#     fi
+#     pnpm run lint
+#     cd ..
+#     git update-index --again
+# fi
