@@ -1,0 +1,31 @@
+# For this to run on pre-commit hook, should run `npx husky` in root after `git clone` repo onto dev machine
+echo "RUNNING HUSKY PRE-COMMIT HOOK"
+
+# Path filters
+CONTRACTS_PATH_FILTER="contracts/"
+
+# Filter booleans
+CONTRACTS_CHANGE_DETECTED=0
+
+# Get list of all `git add` files to be committed
+GIT_ADDED_FILE_LIST=($(git diff --name-only --cached))
+
+# Iterate through staged files to update filters
+for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
+    if echo $FILE | grep -q "^$CONTRACTS_PATH_FILTER"; then
+        CONTRACTS_CHANGE_DETECTED=1
+    fi
+done
+
+# Selective linting based on filters
+if [ $CONTRACTS_CHANGE_DETECTED -eq 1 ]; then
+    echo "$CONTRACTS_PATH_FILTER files are changed, linting..."
+    cd contracts
+    if [ ! -d "node_modules" ]; then
+        echo "Missing dev dependencies in $CONTRACTS_PATH_FILTER, installing..."
+        pnpm i -D
+    fi
+    pnpm run lint
+    cd ..
+    git update-index --again
+fi
