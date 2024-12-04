@@ -121,6 +121,7 @@ jobs:
           list-files: "json"
           filters: |
             not-markdown-only:
+              - '!**/*.yml'
               - '!**/*.md'
           # Default value is 'some' which only requires a single filter to match
           # 'every' => all defined filters must match
