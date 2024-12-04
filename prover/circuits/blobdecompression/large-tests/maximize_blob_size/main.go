@@ -21,7 +21,7 @@ func nbConstraints(blobSize int) int {
 		UseGkrMiMC:            true,
 	}
 	runtime.GC()
-	if cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &c, frontend.WithCapacity(maxNbConstraints*6/5)); err != nil {
+	if cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &c, frontend.WithCapacity(*flagTargetNbConstraints*6/5)); err != nil {
 		panic(err)
 	} else {
 		res := cs.GetNbConstraints()
