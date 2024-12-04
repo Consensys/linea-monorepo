@@ -225,7 +225,6 @@ contract RewardsStreamerMP is
         totalMaxMP += accountMaxMP;
 
         account.accountRewardIndex = rewardIndex;
-        account.lastMPUpdateTime = block.timestamp;
     }
 
     function lock(uint256 lockPeriod)
@@ -264,7 +263,6 @@ contract RewardsStreamerMP is
         totalMaxMP += additionalBonusMP;
 
         account.accountRewardIndex = rewardIndex;
-        account.lastMPUpdateTime = block.timestamp;
     }
 
     function unstake(uint256 amount)
