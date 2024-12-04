@@ -503,10 +503,6 @@ contract LineaRollup is
     FinalizationDataV3 calldata _finalizationData,
     uint256 _lastFinalizedBlock
   ) internal returns (bytes32 finalShnarf) {
-    if (_finalizationData.endBlockNumber <= _lastFinalizedBlock) {
-      revert FinalBlockNumberLessThanOrEqualToLastFinalizedBlock(_finalizationData.endBlockNumber, _lastFinalizedBlock);
-    }
-
     _validateL2ComputedRollingHash(_finalizationData.l1RollingHashMessageNumber, _finalizationData.l1RollingHash);
 
     if (
