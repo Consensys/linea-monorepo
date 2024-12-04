@@ -2,15 +2,18 @@
 echo "RUNNING HUSKY PRE-COMMIT HOOK"
 
 # File extension filters
-
+TYPESCRIPT_FILTER="\.ts$"
+SOLIDITY_FILTER="\.sol$"
 
 # Path filters
 CONTRACTS_PATH_FILTER="contracts/"
 SDK_PATH_FILTER="sdk/"
 
-# Filter booleans
-CONTRACTS_CHANGE_DETECTED=0
-SDK_CHANGE_DETECTED=0
+# List of changed files
+CONTRACTS_PATH_CHANGES=()
+SDK_PATH_CHANGES=()
+# CONTRACTS_CHANGE_DETECTED=0
+# SDK_CHANGE_DETECTED=0
 
 # Get list of all `git add` files to be committed
 GIT_ADDED_FILE_LIST=($(git diff --name-only --cached))
@@ -18,15 +21,16 @@ GIT_ADDED_FILE_LIST=($(git diff --name-only --cached))
 # Iterate through staged files to update filters
 for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
     if [[ $FILE =~ ^"$CONTRACTS_PATH_FILTER" ]]; then 
-        echo "HI"
-    elif echo $FILE | grep -q "^$CONTRACTS_PATH_FILTER"; then
-        echo "HI2"
-
-    #     CONTRACTS_CHANGE_DETECTED=1
-    # elif echo $FILE | grep -q "^$SDK_PATH_FILTER"; then
-    #     SDK_CHANGE_DETECTED=1
+        CONTRACTS_PATH_CHANGES+=($FILE)
+        # CONTRACTS_CHANGE_DETECTED=1
+    elif [[ $FILE =~ ^"$SDK_PATH_FILTER" ]]; then 
+        SDK_CHANGE_DETECTED+=($FILE)
+        # SDK_CHANGE_DETECTED=1
     fi
 done
+
+echo $CONTRACTS_PATH_CHANGES
+echo $SDK_PATH_CHANGES
 
 # Selective linting based on filters
 # if [ $CONTRACTS_CHANGE_DETECTED -eq 1 ]; then
