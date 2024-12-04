@@ -38,7 +38,8 @@ interface BlobCompressor {
 }
 
 class GoBackedBlobCompressor private constructor(
-  internal val goNativeBlobCompressor: GoNativeBlobCompressor,
+  private val goNativeBlobCompressor: GoNativeBlobCompressor,
+  private val dataLimit: UInt,
   private val metricsFacade: MetricsFacade
 ) : BlobCompressor {
 
@@ -62,7 +63,7 @@ class GoBackedBlobCompressor private constructor(
             if (!initialized) {
               throw InstantiationException(goNativeBlobCompressor.Error())
             }
-            instance = GoBackedBlobCompressor(goNativeBlobCompressor, metricsFacade)
+            instance = GoBackedBlobCompressor(goNativeBlobCompressor, dataLimit, metricsFacade)
           } else {
             throw IllegalStateException("Compressor singleton instance already created")
           }
@@ -84,6 +85,16 @@ class GoBackedBlobCompressor private constructor(
     name = "compressor.appendblock",
     description = "Time taken to compress block into current blob"
   )
+  private val compressionRatioHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.BLOB,
+    name = "block.compression.ratio",
+    description = "Block compression ratio measured in [0.0,1.0]"
+  )
+  private val utilizationRatioHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.BLOB,
+    name = "data.utilization.ratio",
+    description = "Data utilization ratio of a blob measured in [0.0,1.0]"
+  )
 
   private val log = LogManager.getLogger(GoBackedBlobCompressor::class.java)
 
@@ -99,7 +110,9 @@ class GoBackedBlobCompressor private constructor(
       goNativeBlobCompressor.Write(blockRLPEncoded, blockRLPEncoded.size)
     }
     val compressedSizeAfter = goNativeBlobCompressor.Len()
-    val compressionRatio = 1.0 - ((compressedSizeAfter - compressionSizeBefore).toDouble() / blockRLPEncoded.size)
+    val compressionRatio = (1.0 - (compressedSizeAfter - compressionSizeBefore).toDouble() / blockRLPEncoded.size)
+      .also { compressionRatioHistogram.record(it) }
+
     log.trace(
       "block compressed: blockRlpSize={} compressionDataBefore={} compressionDataAfter={} compressionRatio={}",
       blockRLPEncoded.size,
@@ -122,6 +135,7 @@ class GoBackedBlobCompressor private constructor(
   override fun getCompressedData(): ByteArray {
     val compressedData = ByteArray(goNativeBlobCompressor.Len())
     goNativeBlobCompressor.Bytes(compressedData)
+    utilizationRatioHistogram.record(goNativeBlobCompressor.Len().toDouble() / dataLimit.toInt())
     return compressedData
   }
 

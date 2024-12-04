@@ -56,7 +56,7 @@ interface MetricsFacade {
     name: String,
     description: String,
     tags: List<Tag> = emptyList(),
-    baseUnit: String
+    baseUnit: String? = null
   ): Histogram
 
   fun <T> createSimpleTimer(

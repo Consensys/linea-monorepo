@@ -91,11 +91,11 @@ class MicrometerMetricsFacade(
     name: String,
     description: String,
     tags: List<Tag>,
-    baseUnit: String
+    baseUnit: String?
   ): Histogram {
     if (category != null) requireValidMicrometerName(category.toString())
     requireValidMicrometerName(name)
-    requireValidBaseUnit(baseUnit)
+    if (baseUnit != null) requireValidBaseUnit(baseUnit)
     val distributionSummaryBuilder = DistributionSummary.builder(metricHandle(category, name))
     if (tags.isNotEmpty()) {
       val flatTags = tags.flatMap {
