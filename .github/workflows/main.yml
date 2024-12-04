@@ -217,7 +217,7 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       tracing-engine: 'besu'
       e2e-tests-logs-dump: true
-      not-markdown-only: ${{ needs.filter-commit-changes.outputs.not-markdown-only }}
+      not-markdown-only: 'true'
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:
