@@ -3,9 +3,10 @@ pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { DeployRewardsStreamerMPScript } from "../script/DeployRewardsStreamerMP.s.sol";
+import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
@@ -17,7 +18,7 @@ contract RewardsStreamerMPTest is Test {
     MockToken stakingToken;
     RewardsStreamerMP public streamer;
 
-    address admin = makeAddr("admin");
+    address admin;
     address alice = makeAddr("alice");
     address bob = makeAddr("bob");
     address charlie = makeAddr("charlie");
@@ -26,20 +27,14 @@ contract RewardsStreamerMPTest is Test {
     mapping(address owner => address vault) public vaults;
 
     function setUp() public virtual {
-        stakingToken = new MockToken("Staking Token", "ST");
+        DeployRewardsStreamerMPScript deployment = new DeployRewardsStreamerMPScript();
+        (RewardsStreamerMP stakeManager, DeploymentConfig deploymentConfig) = deployment.run();
 
-        bytes memory initializeData = abi.encodeCall(RewardsStreamerMP.initialize, (admin, address(stakingToken)));
-        address impl = address(new RewardsStreamerMP());
-        address proxy = address(new StakeManagerProxy(impl, initializeData));
-        streamer = RewardsStreamerMP(proxy);
+        (address _deployer, address _stakingToken) = deploymentConfig.activeNetworkConfig();
 
-        // Create a temporary vault just to get the codehash
-        StakeVault tempVault = new StakeVault(address(this), IStakeManagerProxy(address(streamer)));
-        bytes32 vaultCodeHash = address(tempVault).codehash;
-
-        // Register the codehash before creating any user vaults
-        vm.prank(admin);
-        streamer.setTrustedCodehash(vaultCodeHash, true);
+        streamer = stakeManager;
+        stakingToken = MockToken(_stakingToken);
+        admin = _deployer;
 
         address[4] memory accounts = [alice, bob, charlie, dave];
         for (uint256 i = 0; i < accounts.length; i++) {
@@ -111,11 +106,6 @@ contract RewardsStreamerMPTest is Test {
         vm.prank(owner);
         vault = new StakeVault(owner, IStakeManagerProxy(address(streamer)));
         vault.register();
-
-        if (!streamer.isTrustedCodehash(address(vault).codehash)) {
-            vm.prank(admin);
-            streamer.setTrustedCodehash(address(vault).codehash, true);
-        }
     }
 
     function _stake(address account, uint256 amount, uint256 lockupTime) public {
