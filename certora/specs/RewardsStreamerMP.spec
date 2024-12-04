@@ -13,6 +13,12 @@ methods {
     function updateAccountMP(address accountAddress) external;
     function emergencyModeEnabled() external returns (bool) envfree;
     function leave() external;
+    function Math.mulDiv(uint256 a, uint256 b, uint256 c) internal returns uint256 => mulDivSummary(a,b,c);
+}
+
+function mulDivSummary(uint256 a, uint256 b, uint256 c) returns uint256 {
+  require c != 0;
+  return require_uint256(a*b/c);
 }
 
 ghost mathint sumOfBalances {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -33,7 +34,7 @@ contract RewardsStreamerMP is
     IERC20 public STAKING_TOKEN;
 
     uint256 public constant SCALE_FACTOR = 1e18;
-    uint256 public constant MP_RATE_PER_YEAR = 1e18;
+    uint256 public constant MP_RATE_PER_YEAR = 1;
 
     uint256 public constant MIN_LOCKUP_PERIOD = 90 days;
     uint256 public constant MAX_LOCKUP_PERIOD = 4 * 365 days;
@@ -289,8 +290,9 @@ contract RewardsStreamerMP is
 
         uint256 previousStakedBalance = account.stakedBalance;
 
-        uint256 mpToReduce = (account.accountMP * amount * SCALE_FACTOR) / (previousStakedBalance * SCALE_FACTOR);
-        uint256 maxMPToReduce = (account.maxMP * amount * SCALE_FACTOR) / (previousStakedBalance * SCALE_FACTOR);
+        // solhint-disable-next-line
+        uint256 mpToReduce = Math.mulDiv(account.accountMP, amount, previousStakedBalance);
+        uint256 maxMPToReduce = Math.mulDiv(account.maxMP, amount, previousStakedBalance);
 
         account.stakedBalance -= amount;
         account.accountMP -= mpToReduce;
@@ -340,7 +342,7 @@ contract RewardsStreamerMP is
             return;
         }
 
-        uint256 accruedMP = (timeDiff * totalStaked * MP_RATE_PER_YEAR) / (365 days * SCALE_FACTOR);
+        uint256 accruedMP = (timeDiff * totalStaked * MP_RATE_PER_YEAR) / 365 days;
         if (totalMP + accruedMP > totalMaxMP) {
             accruedMP = totalMaxMP - totalMP;
         }
@@ -423,13 +425,15 @@ contract RewardsStreamerMP is
         }
 
         totalRewardsAccrued += newRewards;
-        rewardIndex += (newRewards * SCALE_FACTOR) / totalWeight;
-        lastRewardTime = block.timestamp < rewardEndTime ? block.timestamp : rewardEndTime;
+        uint256 indexIncrease = Math.mulDiv(newRewards, SCALE_FACTOR, totalWeight);
+        if (indexIncrease > 0) {
+            rewardIndex += indexIncrease;
+            lastRewardTime = block.timestamp < rewardEndTime ? block.timestamp : rewardEndTime;
+        }
     }
 
     function _calculateBonusMP(uint256 amount, uint256 lockPeriod) internal pure returns (uint256) {
-        uint256 lockMultiplier = (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR) / MAX_LOCKUP_PERIOD;
-        return amount * lockMultiplier / SCALE_FACTOR;
+        return Math.mulDiv(amount * lockPeriod, MAX_MULTIPLIER, MAX_LOCKUP_PERIOD);
     }
 
     function _getAccountAccruedMP(Account storage account) internal view returns (uint256) {
@@ -442,7 +446,7 @@ contract RewardsStreamerMP is
             return 0;
         }
 
-        uint256 accruedMP = (timeDiff * account.stakedBalance * MP_RATE_PER_YEAR) / (365 days * SCALE_FACTOR);
+        uint256 accruedMP = Math.mulDiv(timeDiff * account.stakedBalance, MP_RATE_PER_YEAR, 365 days);
 
         if (account.accountMP + accruedMP > account.maxMP) {
             accruedMP = account.maxMP - account.accountMP;
@@ -468,7 +472,7 @@ contract RewardsStreamerMP is
         uint256 accountWeight = account.stakedBalance + account.accountMP;
         uint256 deltaRewardIndex = rewardIndex - account.accountRewardIndex;
 
-        return (accountWeight * deltaRewardIndex) / SCALE_FACTOR;
+        return Math.mulDiv(accountWeight, deltaRewardIndex, SCALE_FACTOR);
     }
 
     function enableEmergencyMode() external onlyOwner {

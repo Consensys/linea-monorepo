@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -142,20 +143,18 @@ contract RewardsStreamerMPTest is Test {
     }
 
     function _calculateBonusMP(uint256 amount, uint256 lockupTime) public view returns (uint256) {
-        return amount
-            * (lockupTime * streamer.MAX_MULTIPLIER() * streamer.SCALE_FACTOR() / streamer.MAX_LOCKUP_PERIOD())
-            / streamer.SCALE_FACTOR();
+        // solhint-disable-next-line
+        return Math.mulDiv(amount * lockupTime, streamer.MAX_MULTIPLIER(), streamer.MAX_LOCKUP_PERIOD());
     }
 
     function _calculeAccuredMP(uint256 totalStaked, uint256 timeDiff) public view returns (uint256) {
-        return (timeDiff * totalStaked * streamer.MP_RATE_PER_YEAR()) / (365 days * streamer.SCALE_FACTOR());
+        return Math.mulDiv(timeDiff * totalStaked, streamer.MP_RATE_PER_YEAR(), 365 days);
     }
 
     function _calculateTimeToMPLimit(uint256 amount) public view returns (uint256) {
         uint256 maxMP = amount * streamer.MAX_MULTIPLIER();
-        uint256 mpPerYear = (amount * streamer.MP_RATE_PER_YEAR()) / streamer.SCALE_FACTOR();
-        uint256 timeInSeconds = (maxMP * 365 days) / mpPerYear;
-        return timeInSeconds;
+        uint256 mpPerYear = amount * streamer.MP_RATE_PER_YEAR();
+        return maxMP * 365 days / mpPerYear;
     }
 }
 
@@ -597,7 +596,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalStaked: stakeAmount,
                 // 10e18 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKUP_PERIOD) / SCALE_FACTOR)
                 totalMP: stakeAmount + expectedBonusMP,
-                totalMaxMP: 52_465_753_424_657_534_240,
+                totalMaxMP: 52_465_753_424_657_534_246,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
                 rewardIndex: 0
@@ -637,7 +636,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 totalStaked: stakeAmount,
                 // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKUP_PERIOD) / SCALE_FACTOR)
                 totalMP: stakeAmount + expectedBonusMP,
-                totalMaxMP: 52_821_917_808_219_178_080,
+                totalMaxMP: 52_821_917_808_219_178_082,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
                 rewardIndex: 0
@@ -927,7 +926,7 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckStreamerParams({
                 totalStaked: sumOfStakeAmount,
                 totalMP: sumOfStakeAmount + sumOfExpectedBonusMP,
-                totalMaxMP: 202_465_753_424_657_534_240,
+                totalMaxMP: 202_465_753_424_657_534_246,
                 stakingBalance: sumOfStakeAmount,
                 rewardBalance: 0,
                 rewardIndex: 0
@@ -957,7 +956,7 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckStreamerParams({
                 totalStaked: sumOfStakeAmount,
                 totalMP: sumOfStakeAmount + sumOfExpectedBonusMP,
-                totalMaxMP: 250_356_164_383_561_643_820,
+                totalMaxMP: 250_356_164_383_561_643_835,
                 stakingBalance: sumOfStakeAmount,
                 rewardBalance: 0,
                 rewardIndex: 0
@@ -1218,7 +1217,7 @@ contract UnstakeTest is StakeTest {
                 totalStaked: stakeAmount,
                 totalMP: (stakeAmount + expectedBonusMP) + stakeAmount, // we do `+ stakeAmount` we've accrued
                     // `stakeAmount` after 1 year
-                totalMaxMP: 52_465_753_424_657_534_240,
+                totalMaxMP: 52_465_753_424_657_534_246,
                 stakingBalance: 10e18,
                 rewardBalance: 0,
                 rewardIndex: 0
@@ -1233,7 +1232,7 @@ contract UnstakeTest is StakeTest {
             CheckStreamerParams({
                 totalStaked: 5e18,
                 totalMP: (5e18 + expectedBonusMP) + 5e18,
-                totalMaxMP: 26_232_876_712_328_767_120,
+                totalMaxMP: 26_232_876_712_328_767_123,
                 stakingBalance: 5e18,
                 rewardBalance: 0,
                 rewardIndex: 0
@@ -1292,7 +1291,7 @@ contract UnstakeTest is StakeTest {
             timestamp[stage] = block.timestamp;
             totalStaked[stage] = amountStaked;
             predictedBonusMP[stage] = totalStaked[stage] + _calculateBonusMP(totalStaked[stage], secondsLocked);
-            predictedTotalMaxMP[stage] = 52_465_753_424_657_534_240;
+            predictedTotalMaxMP[stage] = 52_465_753_424_657_534_246;
             increasedAccuredMP[stage] = 0; //no increased accured MP in first stage
             predictedAccuredMP[stage] = 0; //no accured MP in first stage
             predictedTotalMP[stage] = predictedBonusMP[stage] + predictedAccuredMP[stage];
