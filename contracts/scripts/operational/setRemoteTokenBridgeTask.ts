@@ -22,7 +22,7 @@ import { getDeployedContractOnNetwork } from "../../common/helpers/readAddress";
 
 task(
   "setRemoteTokenBridge",
-  "Transfers the ownership of TokenBridge and Proxy Admin to the Safe address and also sets the remoteTokenBridge address.",
+  "Sets the remoteTokenBridge address.",
 )
   .addParam("safeAddress")
   .addOptionalParam("remoteTokenBridgeAddress")
