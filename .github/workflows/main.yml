@@ -22,7 +22,7 @@ jobs:
       finalized-tag-updater: ${{ steps.filter.outputs.finalized-tag-updater }}
       # If == 'false', then none of changed files are not *.md files => all changed files are *.md 
       # Cannot use == 'true' check, because this means any of the changed files are not *.md files => A change including *.md files and other files will pass, which is not our intention
-      is-markdown-only: ${{ !steps.filter-out.outputs.not-markdown-only }}
+      not-markdown-only: ${{ steps.filter-out.outputs.not-markdown-only }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -131,7 +131,7 @@ jobs:
   check-and-tag-images:
     needs: [ store-image-name-and-tags, filter-commit-changes ]
     uses: ./.github/workflows/reuse-check-images-tags-and-push.yml
-    if: ${{ needs.filter-commit-changes.outputs.is-markdown-only == 'false' }}
+    if: ${{ needs.filter-commit-changes.outputs.not-markdown-only == 'true' }}
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       last_commit_tag: ${{ needs.store-image-name-and-tags.outputs.last_commit_tag }}
@@ -146,7 +146,7 @@ jobs:
   manual-docker-build-and-e2e-tests:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
-    if: ${{ needs.filter-commit-changes.outputs.is-markdown-only == 'false' }}
+    if: ${{ needs.filter-commit-changes.outputs.not-markdown-only == 'true' }}
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     concurrency:
       group: manual-docker-build-and-e2e-tests-${{ github.workflow }}-${{ github.ref }}
@@ -185,7 +185,7 @@ jobs:
 
   testing:
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
-    if: ${{ always() && needs.filter-commit-changes.outputs.is-markdown-only == 'false' }}
+    if: ${{ always() && needs.filter-commit-changes.outputs.not-markdown-only == 'true' }}
     uses: ./.github/workflows/testing.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -210,7 +210,7 @@ jobs:
     secrets: inherit
 
   run-e2e-tests:
-    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, filter-commit-changes ]
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
     if: ${{ always() && needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
