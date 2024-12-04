@@ -16,7 +16,7 @@ The L2MessageService is the L2 smart contract that is responsible for:
 
 - Submitting messages to be sent to L1 for later claiming.
 - Anchoring of L1 to L2 Message hashes for later claiming.
-- Claiming of messages sent from L1 to L2. 
+- Claiming of messages sent from L1 to L2.
 
 ## Linea Canonical Token Bridge
 
