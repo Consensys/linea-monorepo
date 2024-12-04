@@ -50,7 +50,6 @@ on:
         type: boolean
         default: true
       not-markdown-only:
-        # required: true
         type: string
     outputs:
       tests_outcome:
@@ -63,7 +62,7 @@ on:
 
 jobs:
   run-e2e-tests:
-    if: ${{ inputs.not-markdown-only == 'false' }}
+    if: ${{ inputs.not-markdown-only == 'true' }}
     env:
       COORDINATOR_TAG: ${{ inputs.commit_tag }}
       POSTMAN_TAG: ${{ inputs.commit_tag }}
