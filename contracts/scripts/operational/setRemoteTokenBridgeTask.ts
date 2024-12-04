@@ -20,10 +20,7 @@ import { getDeployedContractOnNetwork } from "../../common/helpers/readAddress";
     *******************************************************************************************
 */
 
-task(
-  "setRemoteTokenBridge",
-  "Sets the remoteTokenBridge address.",
-)
+task("setRemoteTokenBridge", "Sets the remoteTokenBridge address.")
   .addOptionalParam("remoteTokenBridgeAddress")
   .addOptionalParam("tokenBridgeAddress")
   .addParam("remoteNetwork")
