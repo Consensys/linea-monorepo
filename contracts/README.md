@@ -12,7 +12,7 @@ The Linea Rollup, which contains the L1MessageService, is the smart contract tha
 - Finalization of L2 state on L1 using a Zero Knowledge Proof.
 
 ## L2MessageService
-The L2MessageService is the L2 smart contract that is responsible for:
+The L2MessageService is the L2 smart contract that is responsible for: 
 
 - Submitting messages to be sent to L1 for later claiming.
 - Anchoring of L1 to L2 Message hashes for later claiming.
