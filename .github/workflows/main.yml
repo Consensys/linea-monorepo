@@ -120,6 +120,7 @@ jobs:
           list-files: "json"
           filters: |
             not-markdown-only:
+              - '!**/*.yml'
               - '!**/*.md'
           # Enables us to exclude changes in multiple file types if required
           predicate-quantifier: 'every'
