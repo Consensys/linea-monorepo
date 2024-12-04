@@ -142,10 +142,12 @@ class StateSynchronizerService(
       SafeFuture.completedFuture(Unit)
     } else {
       log.error(
-        "stateRootHash mismatch: finalization={} l1StateRootHash={} localStateRootHash={}",
+        "stateRootHash mismatch: finalization={} recoveredStateRootHash={}  but expected l1StateRootHash={} " +
+          "for l2 block={}",
         finalizedV3.intervalString(),
-        finalizedV3.finalStateRootHash,
-        importResult.zkStateRootHash.encodeHex()
+        finalizedV3.finalStateRootHash.encodeHex(),
+        importResult.zkStateRootHash.encodeHex(),
+        finalizedV3.endBlockNumber
       )
       stateRootMismatchFound = true
       SafeFuture.failedFuture(IllegalStateException("stateRootHash mismatch"))

@@ -469,6 +469,11 @@ services:
         condition: service_healthy
       l1-node-genesis-generator:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/eth/v1/node/health || exit 1"]
+      interval: 1s
+      timeout: 1s
+      retries: 120
     command: [ "--config-file=/config/config-file.yaml" ]
     volumes:
       - ./config/l1-node/cl/teku.key:/config/keys/teku.key:ro
@@ -735,6 +740,8 @@ services:
         condition: service_healthy
       blobscan-api:
         condition: service_started
+      l1-cl-node:
+        condition: service_healthy
 
   redis:
     container_name: redis
