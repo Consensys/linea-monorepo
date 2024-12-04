@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -43,6 +44,7 @@ import org.bouncycastle.asn1.sec.SECNamedCurves;
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.hyperledger.besu.crypto.SECPSignature;
+import org.hyperledger.besu.datatypes.AccountOverrideMap;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.exception.InvalidJsonRpcParameters;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.exception.InvalidJsonRpcRequestException;
@@ -146,7 +148,8 @@ public class LineaEstimateGas {
         logId = 0;
       }
 
-      final var callParameters = parseRequest(request.getParams());
+      final var callParameters = parseCallParameters(request.getParams());
+      final var maybeStateOverrides = getAddressAccountOverrideMap(request.getParams());
       final var minGasPrice = besuConfiguration.getMinGasPrice();
       final var gasLimitUpperBound = calculateGasLimitUpperBound(callParameters, logId);
       final var transaction = createTransactionForSimulation(callParameters, gasLimitUpperBound);
@@ -157,7 +160,8 @@ public class LineaEstimateGas {
           .addArgument(transaction::toTraceLog)
           .addArgument(gasLimitUpperBound)
           .log();
-      final var estimatedGasUsed = estimateGasUsed(callParameters, transaction, logId);
+      final var estimatedGasUsed =
+          estimateGasUsed(callParameters, maybeStateOverrides, transaction, logId);
 
       final Wei baseFee =
           blockchainService
@@ -263,7 +267,10 @@ public class LineaEstimateGas {
   }
 
   private Long estimateGasUsed(
-      final JsonCallParameter callParameters, final Transaction transaction, final long logId) {
+      final JsonCallParameter callParameters,
+      final Optional<AccountOverrideMap> maybeStateOverrides,
+      final Transaction transaction,
+      final long logId) {
 
     final var estimateGasTracer = new EstimateGasOperationTracer();
     final var chainHeadHeader = blockchainService.getChainHeadHeader();
@@ -272,7 +279,8 @@ public class LineaEstimateGas {
 
     final var chainHeadHash = chainHeadHeader.getBlockHash();
     final var maybeSimulationResults =
-        transactionSimulationService.simulate(transaction, chainHeadHash, zkAndGasTracer, false);
+        transactionSimulationService.simulate(
+            transaction, maybeStateOverrides, chainHeadHash, zkAndGasTracer, false);
 
     ModuleLimitsValidationResult moduleLimit =
         moduleLineCountValidator.validate(zkTracer.getModulesLineCount());
@@ -319,6 +327,7 @@ public class LineaEstimateGas {
               final var lowResult =
                   transactionSimulationService.simulate(
                       createTransactionForSimulation(callParameters, lowGasEstimation),
+                      maybeStateOverrides,
                       chainHeadHash,
                       estimateGasTracer,
                       true);
@@ -354,6 +363,7 @@ public class LineaEstimateGas {
                             final var binarySearchResult =
                                 transactionSimulationService.simulate(
                                     createTransactionForSimulation(callParameters, mid),
+                                    maybeStateOverrides,
                                     chainHeadHash,
                                     estimateGasTracer,
                                     true);
@@ -409,7 +419,7 @@ public class LineaEstimateGas {
                     RpcErrorType.PLUGIN_INTERNAL_ERROR, "Empty result from simulation"));
   }
 
-  private JsonCallParameter parseRequest(final Object[] params) {
+  private JsonCallParameter parseCallParameters(final Object[] params) {
     final JsonCallParameter callParameters;
     try {
       callParameters = parameterParser.required(params, 0, JsonCallParameter.class);
@@ -417,11 +427,11 @@ public class LineaEstimateGas {
       throw new InvalidJsonRpcParameters(
           "Invalid call parameters (index 0)", RpcErrorType.INVALID_CALL_PARAMS);
     }
-    validateParameters(callParameters);
+    validateCallParameters(callParameters);
     return callParameters;
   }
 
-  private void validateParameters(final JsonCallParameter callParameters) {
+  private void validateCallParameters(final JsonCallParameter callParameters) {
     if (callParameters.getGasPrice() != null && isBaseFeeTransaction(callParameters)) {
       throw new InvalidJsonRpcParameters(
           "gasPrice cannot be used with maxFeePerGas or maxPriorityFeePerGas or maxFeePerBlobGas");
@@ -431,6 +441,15 @@ public class LineaEstimateGas {
         && callParameters.getGasLimit() > txValidatorConf.maxTxGasLimit()) {
       throw new InvalidJsonRpcParameters(
           "gasLimit above maximum of: " + txValidatorConf.maxTxGasLimit());
+    }
+  }
+
+  protected Optional<AccountOverrideMap> getAddressAccountOverrideMap(final Object[] params) {
+    try {
+      return parameterParser.optional(params, 1, AccountOverrideMap.class);
+    } catch (JsonRpcParameter.JsonRpcParameterException e) {
+      throw new InvalidJsonRpcRequestException(
+          "Invalid account overrides parameter (index 1)", RpcErrorType.INVALID_CALL_PARAMS, e);
     }
   }
 
