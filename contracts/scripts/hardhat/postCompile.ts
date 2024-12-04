@@ -18,7 +18,7 @@ async function main() {
   const checkOnly = process.env.CHECK_ONLY === "1";
 
   for (const contract of EXPOSED_CONTRACTS) {
-    const abiPath = path.resolve("abi", CONTRACT_OUPUT_ABIS[contract]);
+    const abiPath = path.resolve("abi", CONTRACT_OUTPUT_ABIS[contract]);
 
     if (checkOnly) {
       const currentAbi = JSON.parse(fs.readFileSync(abiPath, "utf8"));
