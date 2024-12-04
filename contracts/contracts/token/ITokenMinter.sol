@@ -13,7 +13,7 @@ interface ITokenMinter {
    * @param _amount The amount of token to receive.
    * @dev Only the MINTER_ROLE can mint these tokens
    */
-  function mint(address _to, uint256 _amount) external;
+  function mint(address _to, uint256 _amount) external; 
 
   /**
    * @notice Mints a single token amount for a multiple recipients.

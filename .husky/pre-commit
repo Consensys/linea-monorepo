@@ -9,14 +9,13 @@ SOLIDITY_FILTER="\.sol$"
 CONTRACTS_PATH_FILTER="contracts/"
 SDK_PATH_FILTER="sdk/"
 
-# List of changed files
+# Lists of changed files for each filter
 CONTRACTS_PATH_CHANGES=()
 SDK_PATH_CHANGES=()
 
 # Get list of all changes since last commit
 GIT_ADDED_FILE_LIST=($(git diff --name-only HEAD))
 
-# Iterate through staged files to update filters
 for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
     if [[ $FILE =~ ^"$CONTRACTS_PATH_FILTER" ]]; then 
         CONTRACTS_PATH_CHANGES+=($FILE)
