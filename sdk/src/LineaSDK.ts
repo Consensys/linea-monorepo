@@ -93,6 +93,12 @@ export class LineaSDK {
     };
   }
 
+  /**
+   * Gets the L1 provider instance based on the provided RPC URL or provider.
+   * @param {string | Eip1193Provider} l1RpcUrlOrProvider - The L1 RPC URL or EIP-1193 provider
+   * @returns {Provider | BrowserProvider} The configured L1 provider
+   * @throws {BaseError} If the provided argument is invalid
+   */
   public getL1Provider(l1RpcUrlOrProvider: string | Eip1193Provider): Provider | BrowserProvider {
     if (isString(l1RpcUrlOrProvider)) {
       return new Provider(l1RpcUrlOrProvider);
@@ -105,6 +111,11 @@ export class LineaSDK {
     throw new BaseError("Invalid argument: l1RpcUrlOrProvider must be a string or Eip1193Provider");
   }
 
+  /**
+   * Gets the L1 signer instance.
+   * @returns {Signer} The L1 signer
+   * @throws {BaseError} If the signer is not available in read-only mode
+   */
   public getL1Signer(): Signer {
     if (!this.l1Signer) {
       throw new BaseError("L1 signer is not available in read-only mode.");
@@ -112,6 +123,11 @@ export class LineaSDK {
     return this.l1Signer;
   }
 
+  /**
+   * Gets the L2 signer instance.
+   * @returns {Signer} The L2 signer
+   * @throws {BaseError} If the signer is not available in read-only mode
+   */
   public getL2Signer(): Signer {
     if (!this.l2Signer) {
       throw new BaseError("L2 signer is not available in read-only mode.");
@@ -119,6 +135,10 @@ export class LineaSDK {
     return this.l2Signer;
   }
 
+  /**
+   * Gets the L1 gas provider configured with the SDK's fee estimation options.
+   * @returns {DefaultGasProvider} The configured L1 gas provider
+   */
   public getL1GasProvider(): DefaultGasProvider {
     return new DefaultGasProvider(this.l1Provider, {
       maxFeePerGas: this.l1FeeEstimatorOptions.maxFeePerGas,
@@ -127,6 +147,10 @@ export class LineaSDK {
     });
   }
 
+  /**
+   * Gets the L2 gas provider configured with the SDK's fee estimation options.
+   * @returns {GasProvider} The configured L2 gas provider
+   */
   public getL2GasProvider(): GasProvider {
     return new GasProvider(this.l2Provider, {
       maxFeePerGas: this.l2FeeEstimatorOptions.maxFeePerGas,
@@ -137,6 +161,12 @@ export class LineaSDK {
     });
   }
 
+  /**
+   * Gets the L2 provider instance based on the provided RPC URL or provider.
+   * @param {string | Eip1193Provider} l2RpcUrlOrProvider - The L2 RPC URL or EIP-1193 provider
+   * @returns {LineaProvider | LineaBrowserProvider} The configured L2 provider
+   * @throws {Error} If the provided argument is invalid
+   */
   public getL2Provider(l2RpcUrlOrProvider: string | Eip1193Provider): LineaProvider | LineaBrowserProvider {
     if (isString(l2RpcUrlOrProvider)) {
       return new LineaProvider(l2RpcUrlOrProvider);
@@ -266,6 +296,13 @@ export class LineaSDK {
     }
   }
 
+  /**
+   * Creates a wallet instance from a private key or existing wallet.
+   * @param {string | Wallet} privateKeyOrWallet - The private key or wallet instance
+   * @returns {Signer} The configured signer
+   * @throws {BaseError} If the private key is invalid
+   * @private
+   */
   private getWallet(privateKeyOrWallet: string | Wallet): Signer {
     try {
       return privateKeyOrWallet instanceof Wallet ? privateKeyOrWallet : new Wallet(privateKeyOrWallet);
@@ -277,6 +314,12 @@ export class LineaSDK {
     }
   }
 
+  /**
+   * Type guard to check if an object implements the EIP-1193 provider interface.
+   * @param {any} obj - The object to check
+   * @returns {boolean} True if the object is an EIP-1193 provider
+   * @private
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private isEip1193Provider(obj: any): obj is Eip1193Provider {
     return obj && typeof obj.request === "function";
