@@ -20,8 +20,7 @@ jobs:
       traces-api-facade: ${{ steps.filter.outputs.traces-api-facade }}
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       finalized-tag-updater: ${{ steps.filter.outputs.finalized-tag-updater }}
-      # If == 'false', then none of changed files are not *.md files => all changed files are *.md 
-      # Cannot use == 'true' check, because this means any of the changed files are not *.md files => A change including *.md files and other files will pass, which is not our intention
+      # If 'false' => all changed files are *.md - https://stackoverflow.com/a/77068717
       not-markdown-only: ${{ steps.filter-out.outputs.not-markdown-only }}
     steps:
       - name: Checkout
@@ -123,9 +122,7 @@ jobs:
             not-markdown-only:
               - '!**/*.yml'
               - '!**/*.md'
-          # Default value is 'some' which only requires a single filter to match
-          # 'every' => all defined filters must match
-          # This enables us to filter out changes in multiple files types if needed
+          # Enables us to exclude changes in multiple file types if required
           predicate-quantifier: 'every'
 
   check-and-tag-images:
@@ -210,8 +207,8 @@ jobs:
     secrets: inherit
 
   run-e2e-tests:
-    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
-    if: ${{ always() && needs.docker-build.result == 'success' }}
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, filter-commit-changes ]
+    if: ${{ always() && needs.filter-commit-changes.outputs.not-markdown-only == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -220,6 +217,7 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       tracing-engine: 'besu'
       e2e-tests-logs-dump: true
+      not-markdown-only: ${{ needs.filter-commit-changes.outputs.not-markdown-only }}
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:
