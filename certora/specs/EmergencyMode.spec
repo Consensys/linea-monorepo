@@ -6,6 +6,7 @@ methods {
 }
 
 definition isViewFunction(method f) returns bool = (
+  f.selector == sig:streamer.YEAR().selector ||
   f.selector == sig:streamer.STAKING_TOKEN().selector ||
   f.selector == sig:streamer.SCALE_FACTOR().selector ||
   f.selector == sig:streamer.MP_RATE_PER_YEAR().selector ||
