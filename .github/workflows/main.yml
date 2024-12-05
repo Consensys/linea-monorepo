@@ -120,12 +120,7 @@ jobs:
           filters: |
             has-code-changes:
               - '!**/*.md'
-              - '!**/*.svg'
-              - '!**/*.png'
-              - '!**/*.jpeg'
-              - '!**/*.jpg'
-              - '!**/*.gif'
-              - '!**/*.webp'
+              - '!docs/**'
           # Enables us to exclude changes in multiple file types if required
           predicate-quantifier: 'every'
 
