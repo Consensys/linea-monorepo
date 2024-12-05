@@ -16,50 +16,68 @@ SDK_PATH_CHANGES=()
 # Get list of all changes since last commit
 GIT_ADDED_FILE_LIST=($(git diff --name-only HEAD))
 
+# for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
+#     if [[ $FILE =~ ^"$CONTRACTS_PATH_FILTER" ]]; then 
+#         CONTRACTS_PATH_CHANGES+=($FILE)
+#     elif [[ $FILE =~ ^"$SDK_PATH_FILTER" ]]; then 
+#         SDK_CHANGE_DETECTED+=($FILE)
+#     fi
+# done
+
+## Experiment
+
+declare -A PATH_FILTER_LISTS=(
+    ["CONTRACTS_PATH_FILTER"]="CONTRACTS_PATH_CHANGES"
+    ["SDK_PATH_FILTER"]="SDK_CHANGE_DETECTED"
+)
+
 for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
-    if [[ $FILE =~ ^"$CONTRACTS_PATH_FILTER" ]]; then 
-        CONTRACTS_PATH_CHANGES+=($FILE)
-    elif [[ $FILE =~ ^"$SDK_PATH_FILTER" ]]; then 
-        SDK_CHANGE_DETECTED+=($FILE)
-    fi
+    for FILTER in "${!PATH_FILTERS[@]}"; do
+        if [[ $FILE =~ ^"${!FILTER}" ]]; then
+            eval "${PATH_FILTERS[$FILTER]}+=(\"$FILE\")"
+            break
+        fi
+    done
 done
 
 echo $CONTRACTS_PATH_CHANGES
 echo $SDK_PATH_CHANGES
 
+# For demo purposes, to demonstrate that above steps don't take long
+echo "FILTERING GIT CHANGES DONE"
+
 # Selective linting based on filters
-if [[ ${#CONTRACTS_PATH_CHANGES[@]} -gt 0 ]]; then
-    cd $CONTRACTS_PATH_FILTER
-    if [ ! -d "node_modules" ]; then
-        echo "Error: missing dependencies in $CONTRACTS_PATH_FILTER"
-        exit 1
-    fi
+# if [[ ${#CONTRACTS_PATH_CHANGES[@]} -gt 0 ]]; then
+#     cd $CONTRACTS_PATH_FILTER
+#     if [ ! -d "node_modules" ]; then
+#         echo "Error: missing dependencies in $CONTRACTS_PATH_FILTER"
+#         exit 1
+#     fi
 
-    TYPESCRIPT_FILE_FOUND=0
-    SOLIDITY_FILE_FOUND=0
+#     TYPESCRIPT_FILE_FOUND=0
+#     SOLIDITY_FILE_FOUND=0
 
-    for FILE in "${CONTRACTS_PATH_CHANGES[@]}"; do
-        if [[ $FILE =~ $TYPESCRIPT_FILTER ]]; then 
-            TYPESCRIPT_FILE_FOUND=1
-        elif [[ $FILE =~ $SOLIDITY_FILTER ]]; then 
-            SOLIDITY_FILE_FOUND=1
-        fi
-    done
+#     for FILE in "${CONTRACTS_PATH_CHANGES[@]}"; do
+#         if [[ $FILE =~ $TYPESCRIPT_FILTER ]]; then 
+#             TYPESCRIPT_FILE_FOUND=1
+#         elif [[ $FILE =~ $SOLIDITY_FILTER ]]; then 
+#             SOLIDITY_FILE_FOUND=1
+#         fi
+#     done
 
-    if [ $TYPESCRIPT_FILE_FOUND -eq 1 ]; then
-        echo "*.ts files changed in $CONTRACTS_PATH_FILTER, linting..."
-        pnpm run lint:ts
-    fi
+#     if [ $TYPESCRIPT_FILE_FOUND -eq 1 ]; then
+#         echo "*.ts files changed in $CONTRACTS_PATH_FILTER, linting..."
+#         pnpm run lint:ts
+#     fi
 
-    if [ $SOLIDITY_FILE_FOUND -eq 1 ]; then
-        echo "*.sol files changed in $CONTRACTS_PATH_FILTER, linting..."
-        pnpm run lint:sol
-    fi
+#     if [ $SOLIDITY_FILE_FOUND -eq 1 ]; then
+#         echo "*.sol files changed in $CONTRACTS_PATH_FILTER, linting..."
+#         pnpm run lint:sol
+#     fi
 
-
-    cd ..
-    git update-index --again
-fi
+#     cd ..
+#     git update-index --again
+# fi
 
 # if [ $SDK_CHANGE_DETECTED -eq 1 ]; then
 #     echo "$SDK_PATH_FILTER files are changed, linting..."
