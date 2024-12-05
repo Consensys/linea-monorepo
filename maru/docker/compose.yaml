@@ -1,0 +1,145 @@
+networks:
+  linea:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 11.11.11.0/24
+
+volumes:
+  geth-data:
+    name: "geth-data"
+
+services:
+  sequencer:
+    image: hyperledger/besu:24.10.0
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:+UseZGC
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu --config-file=/var/lib/besu/config.toml \
+        --genesis-file=/var/lib/besu/genesis.json \
+        --node-private-key-file="/var/lib/besu/key"
+    volumes:
+      - ./sequencer/config.toml:/var/lib/besu/config.toml:ro
+      - ./sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./sequencer/key:/var/lib/besu/key:ro
+      - ./genesis-besu.json/:/var/lib/besu/genesis.json:ro
+    ports:
+      - "8545:8545"
+      - "8546:8546"
+      - "8550:8550"
+      - "8551:8551"
+      - "30303:30303"
+    networks:
+      linea:
+        ipv4_address: 11.11.11.101
+
+  follower-geth:
+    depends_on:
+      - sequencer
+    image: ethereum/client-go:release-1.14
+    healthcheck:
+      test: [ "CMD-SHELL", "geth attach --datadir /data --exec eth.blockNumber" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/genesis.json", "0x0", "0x1C9C380", "/data" ]
+    environment:
+      BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
+    volumes:
+      - ./geth:/scripts:ro
+      - ./genesis-geth.json:/genesis.json:ro
+      - ./geth/jwt:/jwt:ro
+    ports:
+      - "8555:8545"
+      - "8556:8546"
+      - "8560:8550"
+      - "8561:8551"
+    networks:
+      - linea
+
+  follower-geth-2:
+    depends_on:
+      - sequencer
+    image: ethereum/client-go:release-1.13
+    healthcheck:
+      test: [ "CMD-SHELL", "geth attach --datadir /data --exec eth.blockNumber" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/genesis.json", "0x0", "0x1C9C380", "/data" ]
+    environment:
+      BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
+    volumes:
+      - ./geth:/scripts:ro
+      - ./genesis-geth.json:/genesis.json:ro
+      - ./geth/jwt:/jwt:ro
+    ports:
+      - "8565:8545"
+      - "8566:8546"
+      - "8570:8550"
+      - "8571:8551"
+    networks:
+      - linea
+
+  follower-geth-snap-server:
+    depends_on:
+      - sequencer
+    image: ethereum/client-go:release-1.13
+    healthcheck:
+      test: [ "CMD-SHELL", "geth attach --datadir /data --exec eth.blockNumber" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/genesis.json", "0x0", "0x1C9C380", "/data" ]
+    environment:
+      BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
+    volumes:
+      - ./geth:/scripts:ro
+      - ./genesis-geth.json:/genesis.json:ro
+      - ./geth/jwt:/jwt:ro
+    ports:
+      - "8575:8545"
+      - "8576:8546"
+      - "8580:8550"
+      - "8581:8551"
+    networks:
+      - linea
+
+  follower-besu:
+    depends_on:
+      - sequencer
+    image: hyperledger/besu:24.10.0
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:+UseZGC
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu --config-file=/var/lib/besu/config.toml \
+        --genesis-file=/var/lib/besu/genesis.json
+    volumes:
+      - ./besu-follower/config.toml:/var/lib/besu/config.toml:ro
+      - ./besu-follower/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./genesis-besu.json/:/var/lib/besu/genesis.json:ro
+    ports:
+      - "9545:8545"
+      - "9546:8546"
+      - "9550:8550"
+      - "9551:8551"
+    networks:
+      - linea

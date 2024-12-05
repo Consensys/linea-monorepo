@@ -6,8 +6,18 @@ plugins {
   alias(libs.plugins.spring.dependency.management)
 }
 
+subprojects.each {
+
+  if (!it.project.plugins.hasPlugin("org.jetbrains.kotlin.jvm")) {
+    it.project.apply plugin: libs.plugins.errorprone.get().getPluginId()
+
+    it.project.dependencies {
+      errorprone 'com.google.errorprone:error_prone_core'
+    }
+  }
+}
+
 allprojects {
-  apply plugin: libs.plugins.errorprone.get().getPluginId()
   apply plugin: libs.plugins.spring.dependency.management.get().getPluginId()
   apply from: "${rootDir}/gradle/versions.gradle"
   apply plugin: 'java-library'
@@ -33,6 +43,10 @@ allprojects {
   apply plugin: libs.plugins.spotless.get().getPluginId()
 
   spotless {
+    kotlin {
+      // by default the target is every '.kt' and '.kts` file in the java sourcesets
+      ktfmt("0.53").googleStyle()
+    }
     java {
       // This path needs to be relative to each project
       target 'src/**/*.java'
@@ -98,10 +112,6 @@ allprojects {
     if (it.name.contains(".")) {
       outputs.upToDateWhen { false }
     }
-  }
-
-  dependencies {
-    errorprone 'com.google.errorprone:error_prone_core'
   }
 
   test {
@@ -206,10 +216,6 @@ subprojects {
       project.tasks.assemble.dependsOn compileIntegrationTestJava
     }
   }
-}
-
-dependencies {
-  errorprone 'com.google.errorprone:error_prone_core'
 }
 
 apply plugin: 'application'
