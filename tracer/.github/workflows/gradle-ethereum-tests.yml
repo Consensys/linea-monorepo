@@ -1,4 +1,4 @@
-name: reference tests
+name: Daily State Tests
 
 on:
   schedule:
@@ -58,7 +58,7 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: webhook-trigger
           payload: |
-             name: "Daily Reference Tests (Rust Corset)"
+             name: "Daily State Tests (Rust Corset)"
              status: "${{ job.status }}"
 
   ethereum-tests-go-corset:
@@ -110,5 +110,5 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: webhook-trigger
           payload: |
-             name: "Daily Reference Tests (Go Corset)"
+             name: "Daily State (Go Corset)"
              status: "${{ job.status }}"

@@ -1,4 +1,4 @@
-name: Daily Reference Blockchain Tests
+name: Daily Blockchain Tests
 
 on:
   schedule:
@@ -96,5 +96,5 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: webhook-trigger
           payload: |
-             name: "Daily Reference Tests"
+             name: "Daily Blockchain"
              status: "${{ job.status }}"
