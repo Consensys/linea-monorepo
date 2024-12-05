@@ -1,0 +1,48 @@
+name: 'Setup Testing Environment'
+description: 'Checkout repository and install what is needed for building / testing'
+inputs:
+  enable-ssh:
+    description: 'Enable ability to ssh into session'
+    required: false
+    default: false
+  rust-corset:
+    description: 'Setup Rust Corset'
+    required: false
+    default: false
+  go-corset:
+    description: 'Setup Go Corset'
+    required: false
+    default: false
+  github-token:
+    description: 'Github token (needed for downloading corset)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+      - name: Setup upterm session
+        if: ${{ inputs.enable-ssh == 'true' }}
+        uses: lhotari/action-upterm@v1
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+
+      - name: Get Submodules
+        shell: bash
+        run: git submodule update --init --recursive linea-constraints
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - name: Setup Rust Corset
+        if: ${{ inputs.rust-corset == 'true' }}
+        uses: ./.github/actions/setup-rust-corset
+        with:
+          github-token: ${{ inputs.github-token }}
+
+      - name: Setup Go Corset
+        if: ${{ inputs.go-corset == 'true' }}
+        uses: ./.github/actions/setup-go-corset
