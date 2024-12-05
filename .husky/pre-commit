@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # For this to run on pre-commit hook, should run `npx husky` in root after `git clone` repo onto dev machine
 echo "RUNNING HUSKY PRE-COMMIT HOOK"
 

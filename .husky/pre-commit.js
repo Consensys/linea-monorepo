@@ -49,8 +49,10 @@ const FOLDER_RUNTIME = {
 main();
 
 function main() {
+    console.time('GET_CHANGED_FILE_LIST_TIMER');
     const changedFileList = getChangedFileList();
     partitionChangedFileList(changedFileList);
+    console.timeEnd('GET_CHANGED_FILE_LIST_TIMER');
 
     // Iterate through each folder
     for (const folder in FOLDER) {
