@@ -339,6 +339,14 @@ error TokenListEmpty()
 
 _Thrown when the token list is empty._
 
+### SourceChainSameAsTargetChain
+
+```solidity
+error SourceChainSameAsTargetChain()
+```
+
+_Thrown when sourceChainId is the same as targetChainId during initialization._
+
 ### bridgeTokenWithPermit
 
 ```solidity
