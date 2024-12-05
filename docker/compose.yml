@@ -768,7 +768,7 @@ services:
     image: hyperledger/besu:24.12-develop-1df5f32
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
-    profiles: [ "l2", "l2-bc", "external-to-monorepo", "staterecover" ]
+    profiles: [ "external-to-monorepo", "staterecover" ]
     depends_on:
       shomei-plugin-downloader:
         condition: service_completed_successfully
@@ -811,7 +811,7 @@ services:
     image: consensys/linea-shomei:2.2.0
     hostname: shomei-sr
     container_name: shomei-sr
-    profiles: [ "l2", "l2-bc", "external-to-monorepo", "staterecover" ]
+    profiles: [ "external-to-monorepo", "staterecover" ]
     depends_on:
       zkbesu-shomei-sr:
         condition: service_started
