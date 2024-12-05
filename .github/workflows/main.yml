@@ -126,6 +126,7 @@ jobs:
               - '!**/*.jpg'
               - '!**/*.gif'
               - '!**/*.webp'
+              - '!**/*.yml'
           # Enables us to exclude changes in multiple file types if required
           predicate-quantifier: 'every'
 
