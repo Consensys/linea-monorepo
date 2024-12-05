@@ -1,6 +1,6 @@
 plugins {
-    id 'net.consensys.zkevm.kotlin-library-conventions'
-    id 'java-test-fixtures'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'java-test-fixtures'
 }
 
 dependencies {
@@ -39,6 +39,3 @@ dependencies {
   testImplementation("io.vertx:vertx-junit5")
 }
 
-test {
-  useJUnitPlatform()
-}

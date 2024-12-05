@@ -20,11 +20,11 @@ shadowJar {
   }
   manifest {
     attributes(
-      'Specification-Title': archiveBaseName,
-      'Specification-Version': project.version,
-      'Implementation-Title': archiveBaseName,
-      'Implementation-Version': project.version,
-    )
+        'Specification-Title': archiveBaseName,
+        'Specification-Version': project.version,
+        'Implementation-Title': archiveBaseName,
+        'Implementation-Version': project.version,
+        )
   }
 }
 
@@ -53,9 +53,9 @@ dependencies {
 tasks.register('copyShadowJarToLocalBesu', Copy) {
   def jarFileSuffix = "${project.version}" != 'unspecified' ? "${project.version}" : "all"
   def jarFile = project.getLayout().buildDirectory.dir("libs").get()
-    .asFileTree
-    .filter { it.name.endsWith("-${jarFileSuffix}.jar") }
-    .singleFile
+      .asFileTree
+      .filter { it.name.endsWith("-${jarFileSuffix}.jar") }
+      .singleFile
 
   from jarFile
   into file("$rootDir/tmp/linea-besu-sequencer/plugins")
