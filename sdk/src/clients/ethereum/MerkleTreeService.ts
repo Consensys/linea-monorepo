@@ -1,6 +1,6 @@
 import { Block, TransactionReceipt, TransactionRequest, TransactionResponse } from "ethers";
 import { SparseMerkleTreeFactory } from "../../utils/merkleTree/MerkleTreeFactory";
-import { BaseError } from "../../core/errors/Base";
+import { BaseError } from "../../core/errors";
 import {
   ILineaRollupLogClient,
   FinalizationMessagingInfo,

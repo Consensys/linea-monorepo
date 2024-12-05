@@ -30,7 +30,7 @@ import { LineaRollupClient } from "../LineaRollupClient";
 import { DEFAULT_MAX_FEE_PER_GAS, ZERO_ADDRESS } from "../../../core/constants";
 import { OnChainMessageStatus } from "../../../core/enums/message";
 import { GasEstimationError } from "../../../core/errors/GasFeeErrors";
-import { BaseError } from "../../../core/errors/Base";
+import { BaseError } from "../../../core/errors";
 import { EthersL2MessageServiceLogClient } from "../../linea/EthersL2MessageServiceLogClient";
 import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
 import { DefaultGasProvider } from "../../gas/DefaultGasProvider";

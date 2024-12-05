@@ -1,5 +1,5 @@
 import { describe, it } from "@jest/globals";
-import { BaseError } from "../Base";
+import { BaseError } from "../BaseError";
 import { serialize } from "../../utils/serialize";
 
 describe("BaseError", () => {

@@ -1,5 +1,5 @@
 import { Message } from "../types";
-import { BaseError } from "./Base";
+import { BaseError } from "./BaseError";
 
 export class FeeEstimationError extends BaseError {
   override name = FeeEstimationError.name;

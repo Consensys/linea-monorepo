@@ -11,7 +11,7 @@ import { Cache } from "../../utils/Cache";
 import { ILineaRollupClient } from "../../core/clients/ethereum";
 import { IL2MessageServiceClient, IL2MessageServiceLogClient } from "../../core/clients/linea";
 import { MessageSent, Network } from "../../core/types";
-import { BaseError } from "../../core/errors/Base";
+import { BaseError } from "../../core/errors";
 import { FinalizationMessagingInfo, Proof } from "../../core/clients/ethereum/IMerkleTreeService";
 
 export class L1ClaimingService {

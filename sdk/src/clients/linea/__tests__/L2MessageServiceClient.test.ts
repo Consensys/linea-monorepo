@@ -19,7 +19,7 @@ import { L2MessageServiceClient } from "../L2MessageServiceClient";
 import { DEFAULT_MAX_FEE_PER_GAS, ZERO_ADDRESS } from "../../../core/constants";
 import { OnChainMessageStatus } from "../../../core/enums/message";
 import { GasEstimationError } from "../../../core/errors/GasFeeErrors";
-import { BaseError } from "../../../core/errors/Base";
+import { BaseError } from "../../../core/errors";
 import { LineaProvider } from "../../providers";
 import { GasProvider } from "../../gas";
 
