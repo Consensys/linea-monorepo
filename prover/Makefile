@@ -57,7 +57,7 @@ zkevm/define/define.go: corset
 ## Generate the setup for the execution prover (to be run with S3 access)
 ##
 setup: bin/prover
-	bin/prover setup --config ./config/config-integration-full.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
+	bin/prover setup --config ./config/config-integration-development.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets --circuits=emulation-dummy
 
 ##
 ## Copy the prover assets to the S3 bucket (zkuat)
