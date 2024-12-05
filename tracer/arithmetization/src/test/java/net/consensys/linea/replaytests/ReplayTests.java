@@ -51,50 +51,42 @@ public class ReplayTests {
     // bulkReplay(LINEA_MAINNET, "");
   }
 
-  // @Disabled
   @Test
   void failingMmuModexp() {
     replay(LINEA_MAINNET, "5995162.mainnet.json.gz");
   }
 
-  // @Disabled
   @Test
   void failRlpAddress() {
     replay(LINEA_MAINNET, "5995097.mainnet.json.gz");
   }
 
-  // @Disabled
   @Test
   void rlprcptManyTopicsWoLogData() {
     replay(LINEA_MAINNET, "6569423.mainnet.json.gz");
   }
 
-  // @Disabled
   @Test
   void multipleFailingCallToEcrecover() {
     replay(LINEA_MAINNET, "5000544.mainnet.json.gz");
   }
 
-  // @Disabled
   @Test
   @Tag("nightly")
   void incident777zkGethMainnet() {
     replay(LINEA_MAINNET, "7461019-7461030.mainnet.json.gz");
   }
 
-  // @Disabled
   @Test
   void issue1006() {
     replay(LINEA_MAINNET, "6032696-6032699.mainnet.json.gz");
   }
 
-  // @Disabled
   @Test
   void issue1004() {
     replay(LINEA_MAINNET, "6020023-6020029.mainnet.json.gz");
   }
 
-  // @Disabled
   @Test
   void block_6110045() {
     // The purpose of this test is to check the mechanism for spotting divergence between the replay
@@ -103,19 +95,16 @@ public class ReplayTests {
     replay(LINEA_MAINNET, "6110045.mainnet.json.gz");
   }
 
-  // @Disabled
   @Test
   void failingCreate2() {
     replay(LINEA_MAINNET, "2250197.mainnet.json.gz");
   }
 
-  // @Disabled
   @Test
   void blockHash1() {
     replay(LINEA_MAINNET, "8718090.mainnet.json.gz");
   }
 
-  // @Disabled
   @Test
   void blockHash2() {
     replay(LINEA_MAINNET, "8718330.mainnet.json.gz");
@@ -139,10 +128,9 @@ public class ReplayTests {
     replay(LINEA_MAINNET, "41640-41649.mainnet.json.gz");
   }
 
-  @Disabled() // Unknown Problem
   @Test
   void largeInitCode() {
-    replay(LINEA_SEPOLIA, "3318494.sepolia.mainnet.json.gz");
+    replay(LINEA_SEPOLIA, "3318494.sepolia.json.gz");
   }
 
   /**
