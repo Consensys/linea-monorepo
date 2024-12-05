@@ -12,6 +12,11 @@ import {
   PAUSE_ALL_ROLE,
   PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
   PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
+  REMOVE_RESERVED_TOKEN_ROLE,
+  SET_CUSTOM_CONTRACT_ROLE,
+  SET_MESSAGE_SERVICE_ROLE,
+  SET_REMOTE_TOKENBRIDGE_ROLE,
+  SET_RESERVED_TOKEN_ROLE,
   TOKEN_BRIDGE_PAUSE_TYPES_ROLES,
   TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES,
   UNPAUSE_ALL_ROLE,
@@ -20,7 +25,13 @@ import {
 } from "contracts/common/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const securityCouncilAddress = getRequiredEnvVar("TOKENBRIDGE_SECURITY_COUNCIL");
+  let securityCouncilAddress;
+
+  if (process.env.TOKEN_BRIDGE_L1 === "true") {
+    securityCouncilAddress = getRequiredEnvVar("L1_TOKEN_BRIDGE_SECURITY_COUNCIL");
+  } else {
+    securityCouncilAddress = getRequiredEnvVar("L2_TOKEN_BRIDGE_SECURITY_COUNCIL");
+  }
 
   const newRoles = [
     PAUSE_ALL_ROLE,
@@ -29,6 +40,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
     PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
     UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
+    SET_CUSTOM_CONTRACT_ROLE,
+    REMOVE_RESERVED_TOKEN_ROLE,
+    SET_MESSAGE_SERVICE_ROLE,
+    SET_REMOTE_TOKENBRIDGE_ROLE,
+    SET_RESERVED_TOKEN_ROLE,
   ];
 
   const newRoleAddresses = generateRoleAssignments(newRoles, securityCouncilAddress, []);
