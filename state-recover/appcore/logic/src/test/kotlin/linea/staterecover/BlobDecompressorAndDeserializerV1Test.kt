@@ -11,18 +11,15 @@ import net.consensys.linea.blob.GoNativeBlobCompressor
 import net.consensys.linea.blob.GoNativeBlobCompressorFactory
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
 import net.consensys.linea.nativecompressor.CompressorTestData
-import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.ethereum.core.Block
 import org.hyperledger.besu.ethereum.core.Transaction
-import org.hyperledger.besu.ethereum.core.encoding.registry.BlockDecoder
-import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
-import org.hyperledger.besu.ethereum.rlp.BytesValueRLPInput
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import rlp.decodeBlockRlpEncoded
 import kotlin.jvm.optionals.getOrNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -57,19 +54,22 @@ class BlobDecompressorAndDeserializerV1Test {
   @Test
   fun `should decompress block and transactions`() {
     val blocksRLP = CompressorTestData.blocksRlpEncoded.toList()
-    val blocks = run {
-      val decoder = BlockDecoder.builder().build()
-      val mainnetFunctions = MainnetBlockHeaderFunctions()
-      blocksRLP.map { blockRlp ->
-        decoder.decode(
-          BytesValueRLPInput(Bytes.wrap(blockRlp), false),
-          mainnetFunctions
-        )
-      }
-    }
-    val startingBlockNumber = blocks[0].header.number.toULong()
+    assertBlockCompressionAndDecompression(blocksRLP)
+  }
 
-    val blob1 = compress(blocksRLP.slice(0..2))
+//  @Test
+//  fun `should decompress block and transactions - tx with contract deployment`() {
+//    assertBlockCompressionAndDecompression(CompressorTestData.blocksRlpEncodedV2)
+//  }
+
+  private fun assertBlockCompressionAndDecompression(
+    blocksRLP: List<ByteArray>
+  ) {
+    val blocks = blocksRLP.map(::decodeBlockRlpEncoded)
+    val startingBlockNumber = blocks[0].header.number.toULong()
+    println("starting block number: $startingBlockNumber")
+
+    val blob1 = compress(blocksRLP.slice(0..0))
     val blob2 = compress(blocksRLP.slice(3..3))
 
     val recoveredBlocks = decompressorToDomain.decompress(
@@ -87,9 +87,9 @@ class BlobDecompressorAndDeserializerV1Test {
     uncompressed: BlockL1RecoveredData,
     original: Block
   ) {
-    println("asserting block: ${original.header.number}")
+    println("asserting block: ${original.header.number} ${original.header}")
     assertThat(uncompressed.blockNumber).isEqualTo(original.header.number.toULong())
-    assertThat(uncompressed.blockHash).isEqualTo(original.header.hash.toArray())
+    assertThat(uncompressed.blockHash.encodeHex()).isEqualTo(original.header.hash.toArray().encodeHex())
     assertThat(uncompressed.coinbase).isEqualTo(blockStaticFields.coinbase)
     assertThat(uncompressed.blockTimestamp).isEqualTo(Instant.fromEpochSeconds(original.header.timestamp))
     assertThat(uncompressed.gasLimit).isEqualTo(blockStaticFields.gasLimit)
