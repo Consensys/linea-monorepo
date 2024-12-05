@@ -1,4 +1,4 @@
-import { BaseError } from "./Base";
+import { BaseError } from "./BaseError";
 import { MessageProps } from "../entities/Message";
 import { DatabaseErrorType, DatabaseRepoName } from "../enums";
 
