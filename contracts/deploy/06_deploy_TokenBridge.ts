@@ -76,7 +76,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   let bridgedTokenAddress = await getDeployedContractAddress("BridgedToken", deployments);
   if (bridgedTokenAddress === undefined) {
-    console.log(`Using environment variable for BridgedToken , ${process.env.BRIDGED_TOKEN_ADDRESS}`);
+    console.log(`Using environment va riable for BridgedToken , ${process.env.BRIDGED_TOKEN_ADDRESS}`);
     if (process.env.BRIDGED_TOKEN_ADDRESS !== undefined) {
       bridgedTokenAddress = process.env.BRIDGED_TOKEN_ADDRESS;
     } else {
@@ -88,7 +88,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const tokenBridge = await upgrades.deployProxy(TokenBridgeFactory, [
     {
-      defaultAdmin: tokenBridgeSecurityCouncil,
+      defaultAdmin: securityCouncilAddress,
       messageService: deployingChainMessageService,
       tokenBeacon: bridgedTokenAddress,
       sourceChainId: chainId,
