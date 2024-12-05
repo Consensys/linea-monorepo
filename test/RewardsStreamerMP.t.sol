@@ -2107,8 +2107,6 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
     function testRewardsBalanceOf() public {
         assertEq(streamer.totalRewardsSupply(), 0);
 
-        vm.warp(0);
-
         uint256 initialTime = vm.getBlockTimestamp();
 
         _stake(alice, 100e18, 0);
@@ -2120,22 +2118,19 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
 
         vm.warp(initialTime + 1 days);
 
-        // FIXME: this is needed to update the global state and account MP
-        // Later we should update the functions to use "real-time" values.
-        streamer.updateGlobalState();
-        streamer.updateAccountMP(vaults[alice]);
-
+        uint256 liveBalanceBeforeGlobalUpdate = streamer.rewardsBalanceOf(vaults[alice]);
         uint256 tolerance = 300; // 300 wei
 
         assertEq(streamer.totalRewardsSupply(), 100e18, "Total rewards supply mismatch");
+        assertEq(streamer.rewardsBalanceOf(vaults[alice]), liveBalanceBeforeGlobalUpdate);
         assertApproxEqAbs(streamer.rewardsBalanceOf(vaults[alice]), 100e18, tolerance);
 
         vm.warp(initialTime + 10 days);
 
-        streamer.updateGlobalState();
-        streamer.updateAccountMP(vaults[alice]);
+        uint256 secondLiveBalanceBeforeGlobalUpdate = streamer.rewardsBalanceOf(vaults[alice]);
 
         assertEq(streamer.totalRewardsSupply(), 1000e18, "Total rewards supply mismatch");
+        assertEq(streamer.rewardsBalanceOf(vaults[alice]), secondLiveBalanceBeforeGlobalUpdate);
         assertApproxEqAbs(streamer.rewardsBalanceOf(vaults[alice]), 1000e18, tolerance);
     }
 }

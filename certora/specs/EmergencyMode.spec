@@ -18,19 +18,21 @@ definition isViewFunction(method f) returns bool = (
   f.selector == sig:streamer.owner().selector ||
   f.selector == sig:streamer.totalStaked().selector ||
   f.selector == sig:streamer.totalMaxMP().selector ||
-  f.selector == sig:streamer.totalMP().selector ||
+  f.selector == sig:streamer.totalMPAccrued().selector ||
   f.selector == sig:streamer.accounts(address).selector ||
   f.selector == sig:streamer.emergencyModeEnabled().selector ||
   f.selector == sig:streamer.getStakedBalance(address).selector ||
   f.selector == sig:streamer.getAccount(address).selector ||
   f.selector == sig:streamer.rewardsBalanceOf(address).selector ||
+  f.selector == sig:streamer.rewardsBalanceOfUser(address).selector ||
+  f.selector == sig:streamer.pendingRewardIndex().selector ||
   f.selector == sig:streamer.totalRewardsSupply().selector ||
-  f.selector == sig:streamer.calculateAccountRewards(address).selector ||
   f.selector == sig:streamer.lastRewardTime().selector ||
   f.selector == sig:streamer.rewardAmount().selector ||
   f.selector == sig:streamer.totalRewardsAccrued().selector ||
   f.selector == sig:streamer.rewardStartTime().selector ||
   f.selector == sig:streamer.rewardEndTime().selector ||
+  f.selector == sig:streamer.mpBalanceOf(address).selector ||
   f.selector == sig:streamer.mpBalanceOfUser(address).selector ||
   f.selector == sig:streamer.getUserTotalMaxMP(address).selector ||
   f.selector == sig:streamer.getUserTotalStakedBalance(address).selector ||

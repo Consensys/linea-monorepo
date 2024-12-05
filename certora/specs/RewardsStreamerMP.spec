@@ -121,9 +121,9 @@ rule MPsOnlyDecreaseWhenUnstaking(method f) filtered { f -> f.selector != sig:up
   env e;
   calldataarg args;
 
-  uint256 totalMPBefore = totalMP(e);
+  uint256 totalMPBefore = totalMPAccrued(e);
   f(e, args);
-  uint256 totalMPAfter = totalMP(e);
+  uint256 totalMPAfter = totalMPAccrued(e);
 
   assert totalMPAfter < totalMPBefore => f.selector == sig:unstake(uint256).selector || f.selector == sig:leave().selector;
 }
