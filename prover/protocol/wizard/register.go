@@ -19,6 +19,9 @@ type ByRoundRegister[ID comparable, DATA any] struct {
 	byRoundsIndex collection.Mapping[ID, int]
 	// Marks an entry as ignorable (but does not delete it)
 	ignored collection.Set[ID]
+	// Marks an entry as skippedFromVerifierTranscript from the FS transcript for the verifier
+	skippedFromVerifierTranscript collection.Set[ID]
+	skippedFromProverTranscript   collection.Set[ID]
 }
 
 /*
@@ -26,10 +29,12 @@ Construct a new round register
 */
 func NewRegister[ID comparable, DATA any]() ByRoundRegister[ID, DATA] {
 	return ByRoundRegister[ID, DATA]{
-		mapping:       collection.NewMapping[ID, DATA](),
-		byRounds:      collection.NewVecVec[ID](),
-		byRoundsIndex: collection.NewMapping[ID, int](),
-		ignored:       collection.NewSet[ID](),
+		mapping:                       collection.NewMapping[ID, DATA](),
+		byRounds:                      collection.NewVecVec[ID](),
+		byRoundsIndex:                 collection.NewMapping[ID, int](),
+		ignored:                       collection.NewSet[ID](),
+		skippedFromVerifierTranscript: collection.NewSet[ID](),
+		skippedFromProverTranscript:   collection.NewSet[ID](),
 	}
 }
 
@@ -165,4 +170,41 @@ map.
 func (r *ByRoundRegister[ID, DATA]) IsIgnored(id ID) bool {
 	r.mapping.MustExists(id)
 	return r.ignored.Exists(id)
+}
+
+/*
+Marks an entry as skipped from the transcript of the verifier. Panic if the key
+is missing from the register. Returns true if the item was already ignored.
+*/
+func (r *ByRoundRegister[ID, DATA]) MarkAsSkippedFromVerifierTranscript(id ID) bool {
+	r.mapping.MustExists(id)
+	return r.skippedFromVerifierTranscript.Insert(id)
+}
+
+/*
+Returns if the entry is skipped from the transcript. Panics if the entry is
+missing from the map.
+*/
+func (r *ByRoundRegister[ID, DATA]) IsSkippedFromVerifierTranscript(id ID) bool {
+	r.mapping.MustExists(id)
+	return r.skippedFromVerifierTranscript.Exists(id)
+}
+
+/*
+Marks an entry as skipped from the transcript of the verifier. Panic if the key
+is missing from the register. Returns true if the item was already ignored.
+*/
+func (r *ByRoundRegister[ID, DATA]) MarkAsSkippedFromProverTranscript(id ID) bool {
+	r.mapping.MustExists(id)
+	r.skippedFromVerifierTranscript.Insert(id)
+	return r.skippedFromProverTranscript.Insert(id)
+}
+
+/*
+Returns if the entry is skipped from the transcript. Panics if the entry is
+missing from the map.
+*/
+func (r *ByRoundRegister[ID, DATA]) IsSkippedFromProverTranscript(id ID) bool {
+	r.mapping.MustExists(id)
+	return r.skippedFromProverTranscript.Exists(id)
 }

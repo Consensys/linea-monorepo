@@ -52,6 +52,34 @@ func NewGnarkFiatShamir(api frontend.API, factory *gkrmimc.HasherFactory) *Gnark
 	}
 }
 
+// SetState mutates the fiat-shamir state of
+func (fs *GnarkFiatShamir) SetState(state []frontend.Variable) {
+
+	switch hsh := fs.hasher.(type) {
+	case interface {
+		SetState([]frontend.Variable) error
+	}:
+		if err := hsh.SetState(state); err != nil {
+			panic(err)
+		}
+	default:
+		panic("unexpected hasher type")
+	}
+}
+
+// State mutates the fiat-shamir state of
+func (fs *GnarkFiatShamir) State() []frontend.Variable {
+
+	switch hsh := fs.hasher.(type) {
+	case interface {
+		State() []frontend.Variable
+	}:
+		return hsh.State()
+	default:
+		panic("unexpected hasher type")
+	}
+}
+
 // Update updates the Fiat-Shamir state with a vector of frontend.Variable
 // representing field element each.
 func (fs *GnarkFiatShamir) Update(vec ...frontend.Variable) {

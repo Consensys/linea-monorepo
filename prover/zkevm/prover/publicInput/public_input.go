@@ -302,4 +302,26 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 		L2MessageServiceAddrHi:   accessors.NewFromPublicColumn(pi.Aux.logSelectors.L2BridgeAddressColHI, 0),
 		L2MessageServiceAddrLo:   accessors.NewFromPublicColumn(pi.Aux.logSelectors.L2BridgeAddressColLo, 0),
 	}
+
+	comp.PublicInputs = append(comp.PublicInputs,
+		wizard.PublicInput{Name: "DataNbBytes", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.DataNbBytes, 0)},
+		wizard.PublicInput{Name: "DataChecksum", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.DataChecksum, 0)},
+		wizard.PublicInput{Name: "L2MessageHash", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.L2MessageHash, 0)},
+		wizard.PublicInput{Name: "InitialStateRootHash", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.InitialStateRootHash, 0)},
+		wizard.PublicInput{Name: "FinalStateRootHash", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.FinalStateRootHash, 0)},
+		wizard.PublicInput{Name: "InitialBlockNumber", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.InitialBlockNumber, 0)},
+		wizard.PublicInput{Name: "FinalBlockNumber", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.FinalBlockNumber, 0)},
+		wizard.PublicInput{Name: "InitialBlockTimestamp", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.InitialBlockTimestamp, 0)},
+		wizard.PublicInput{Name: "FinalBlockTimestamp", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.FinalBlockTimestamp, 0)},
+		wizard.PublicInput{Name: "InitialRollingHash[0]", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.InitialRollingHash[0], 0)},
+		wizard.PublicInput{Name: "InitialRollingHash[1]", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.InitialRollingHash[1], 0)},
+		wizard.PublicInput{Name: "FinalRollingHash[0]", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.FinalRollingHash[0], 0)},
+		wizard.PublicInput{Name: "FinalRollingHash[1]", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.FinalRollingHash[1], 0)},
+		wizard.PublicInput{Name: "InitialRollingHashNumber", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.InitialRollingHashNumber, 0)},
+		wizard.PublicInput{Name: "FinalRollingHashNumber", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.FinalRollingHashNumber, 0)},
+		wizard.PublicInput{Name: "ChainID", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.ChainID, 0)},
+		wizard.PublicInput{Name: "NBytesChainID", Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.NBytesChainID, 0)},
+		wizard.PublicInput{Name: "L2MessageServiceAddrHi", Acc: pi.Extractor.L2MessageServiceAddrHi},
+		wizard.PublicInput{Name: "L2MessageServiceAddrLo", Acc: pi.Extractor.L2MessageServiceAddrLo},
+	)
 }
