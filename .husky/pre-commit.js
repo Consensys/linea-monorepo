@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-// Enums
+// ENUMS
 
 const FILE_EXTENSION = {
     TYPESCRIPT: "TYPESCRIPT",
@@ -17,7 +17,7 @@ const RUNTIME = {
     NODEJS: "NODEJS"
 }
 
-// Maps
+// MAPS
 
 const FILE_EXTENSION_FILTERS = {
     [FILE_EXTENSION.TYPESCRIPT]: "\.ts$",
@@ -44,7 +44,7 @@ const FOLDER_RUNTIME = {
     [FOLDER.SDK]: RUNTIME.NODEJS,
 };
 
-// Main function
+// MAIN FUNCTION
 
 main();
 
@@ -54,9 +54,11 @@ function main() {
     partitionChangedFileList(changedFileList);
     console.timeEnd('GET_CHANGED_FILE_LIST_TIMER');
 
-    // Iterate through each folder
     for (const folder in FOLDER) {
-        if (!isDependenciesInstalled(folder)) process.exit(1);
+        if (!isDependenciesInstalled(folder)) {
+            console.error(`Dependencies not installed in ${FOLDER_PATH[folder]}, exiting...`)
+            process.exit(1);
+        }
         const changedFileExtensions = getChangedFileExtensions(folder);
         executeLinting(folder, changedFileExtensions);
     }
@@ -64,7 +66,8 @@ function main() {
     updateGitIndex();
 }
 
-// Utility functions
+// HELPER FUNCTIONS
+
 function getChangedFileList() {
     try {
         const cmd = 'git diff --name-only HEAD'
@@ -79,7 +82,6 @@ function getChangedFileList() {
 function partitionChangedFileList(_changedFileList) {
     // Populate lists of filter matches
     for (const file of _changedFileList) {
-        // ? Should we do better than O(N) iterating through each path.
         for (const path in FOLDER) {
             if (file.match(new RegExp(`^${FOLDER_PATH[path]}`))) {
                 FOLDER_CHANGED_FILES[path].push(file);
@@ -97,16 +99,16 @@ function isDependenciesInstalled(_folder) {
             const dependencyFolder = `${path}node_modules`
             return fs.existsSync(dependencyFolder)
         default:
+            console.error(`${runtime} runtime not supported.`);
             return false
     }
 }
 
 function getChangedFileExtensions(_folder) {
-    // Use sets to stop iterating through changed files, once we have found all file extensions of interest.
+    // Use sets to implement early exit from iteration of all changed files, once we have matched all file extensions of interest.
     const remainingFileExtensionsSet = new Set(Object.values(FILE_EXTENSION));
     const foundFileExtensionsSet = new Set();
 
-    // Iterate through each changed file, look for file extension matches
     for (const file of FOLDER_CHANGED_FILES[_folder]) {
         for (const fileExtension of remainingFileExtensionsSet) {
             if (file.match(new RegExp(FILE_EXTENSION_FILTERS[fileExtension]))) {
