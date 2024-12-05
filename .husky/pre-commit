@@ -1,5 +1,14 @@
+#!/bin/bash
+
 # For this to run on pre-commit hook, should run `npx husky` in root after `git clone` repo onto dev machine
 echo "RUNNING HUSKY PRE-COMMIT HOOK"
+
+# Execute NodeJS script because
+# i.) Husky requires NodeJS -> fair assumption that machine will have NodeJS
+# ii.) Shell scripting syntax more convoluted + sh shell lack hashmap (associative array) support
+node .husky/pre-commit.js
+
+exit 0
 
 # File extension filters
 TYPESCRIPT_FILTER="\.ts$"
@@ -25,26 +34,28 @@ GIT_ADDED_FILE_LIST=($(git diff --name-only HEAD))
 # done
 
 ## Experiment
+# typeset -A
+# PATH_FILTER_LISTS["CONTRACTS_PATH_FILTER"]="CONTRACTS_PATH_CHANGES"
+# PATH_FILTER_LISTS["SDK_PATH_FILTER"]="SDK_CHANGE_DETECTED"
 
-declare -A PATH_FILTER_LISTS=(
-    ["CONTRACTS_PATH_FILTER"]="CONTRACTS_PATH_CHANGES"
-    ["SDK_PATH_FILTER"]="SDK_CHANGE_DETECTED"
-)
-
-for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
-    for FILTER in "${!PATH_FILTERS[@]}"; do
-        if [[ $FILE =~ ^"${!FILTER}" ]]; then
-            eval "${PATH_FILTERS[$FILTER]}+=(\"$FILE\")"
-            break
-        fi
-    done
-done
+# for FILE in "${GIT_ADDED_FILE_LIST[@]}"; do
+#     for FILTER in "${!PATH_FILTERS[@]}"; do
+#         if [[ $FILE =~ ^"${!FILTER}" ]]; then
+#             eval "${PATH_FILTERS[$FILTER]}+=(\"$FILE\")"
+#             break
+#         fi
+#     done
+# done
 
 echo $CONTRACTS_PATH_CHANGES
 echo $SDK_PATH_CHANGES
+echo $SHELL
+
 
 # For demo purposes, to demonstrate that above steps don't take long
 echo "FILTERING GIT CHANGES DONE"
+
+exit 2
 
 # Selective linting based on filters
 # if [[ ${#CONTRACTS_PATH_CHANGES[@]} -gt 0 ]]; then
