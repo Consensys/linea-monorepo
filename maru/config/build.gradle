@@ -14,7 +14,7 @@
  */
 
 plugins {
-  id 'idea'
+  id 'maru.kotlin-library-conventions'
 }
 
 dependencies {
@@ -29,10 +29,4 @@ dependencies {
   implementation 'info.picocli:picocli'
   implementation 'io.tmio:tuweni-bytes'
   implementation 'io.tmio:tuweni-units'
-
-  implementation "org.hyperledger.besu:besu-datatypes"
-  testImplementation 'org.assertj:assertj-core'
-  testImplementation 'org.junit.jupiter:junit-jupiter'
 }
-
-configurations { testArtifacts }

@@ -1,8 +1,10 @@
+plugins {
+  id 'maru.kotlin-application-conventions'
+}
+
 dependencies {
   implementation project(":config")
-  implementation project(":consensus:qbft")
 
-  implementation "org.hyperledger.besu:besu-datatypes"
   implementation "org.hyperledger.besu.internal:config"
   implementation "org.hyperledger.besu.internal:core"
   implementation "org.hyperledger.besu.internal:common"
@@ -20,7 +22,6 @@ dependencies {
 
   testImplementation 'org.mockito:mockito-junit-jupiter'
   testImplementation 'org.assertj:assertj-core'
-  testImplementation 'org.junit.jupiter:junit-jupiter'
   testImplementation 'org.hyperledger.besu.internal:services::test-support'
   testImplementation 'org.hyperledger.besu.internal:kvstore'
 }

@@ -1,0 +1,45 @@
+plugins {
+  // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
+  id 'org.jetbrains.kotlin.jvm'
+  id 'idea'
+}
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
+}
+
+repositories {
+  mavenCentral()
+  maven {
+    url 'https://artifacts.consensys.net/public/teku/maven/'
+    content { includeGroupAndSubgroups('tech.pegasys') }
+  }
+//  maven {
+//    url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
+//    content { includeGroupAndSubgroups('org.hyperledger.besu') }
+//  }
+//  maven {
+//    url "https://artifacts.consensys.net/public/maven/maven/"
+//  }
+}
+
+dependencies {
+  //<testing>
+  testImplementation platform("org.junit:junit-bom")
+  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+  testImplementation 'org.junit.jupiter:junit-jupiter'
+  testImplementation 'org.assertj:assertj-core'
+  testImplementation 'org.mockito:mockito-core'
+  // TODO: org.mockito.kotlin:mockito-kotlin uses org.mockito:mockito-core:4.5.1,
+  // check later on if this may raise incompatibilities
+  testImplementation 'org.mockito.kotlin:mockito-kotlin'
+  testImplementation 'org.awaitility:awaitility'
+  //</testing>
+}
+
+tasks.named('test') {
+  // Use JUnit Platform for unit tests.
+  useJUnitPlatform()
+}
