@@ -36,8 +36,9 @@ contract RewardsStreamerMP is
     uint256 public constant SCALE_FACTOR = 1e18;
     uint256 public constant MP_RATE_PER_YEAR = 1;
 
+    uint256 public constant YEAR = 365 days;
     uint256 public constant MIN_LOCKUP_PERIOD = 90 days;
-    uint256 public constant MAX_LOCKUP_PERIOD = 4 * 365 days;
+    uint256 public constant MAX_LOCKUP_PERIOD = 4 * YEAR;
     uint256 public constant MAX_MULTIPLIER = 4;
 
     uint256 public totalStaked;
@@ -342,7 +343,7 @@ contract RewardsStreamerMP is
             return;
         }
 
-        uint256 accruedMP = (timeDiff * totalStaked * MP_RATE_PER_YEAR) / 365 days;
+        uint256 accruedMP = (timeDiff * totalStaked * MP_RATE_PER_YEAR) / YEAR;
         if (totalMP + accruedMP > totalMaxMP) {
             accruedMP = totalMaxMP - totalMP;
         }
@@ -433,7 +434,7 @@ contract RewardsStreamerMP is
     }
 
     function _calculateBonusMP(uint256 amount, uint256 lockPeriod) internal pure returns (uint256) {
-        return Math.mulDiv(amount * lockPeriod, MAX_MULTIPLIER, MAX_LOCKUP_PERIOD);
+        return Math.mulDiv(amount, lockPeriod, YEAR);
     }
 
     function _getAccountAccruedMP(Account storage account) internal view returns (uint256) {
@@ -446,7 +447,7 @@ contract RewardsStreamerMP is
             return 0;
         }
 
-        uint256 accruedMP = Math.mulDiv(timeDiff * account.stakedBalance, MP_RATE_PER_YEAR, 365 days);
+        uint256 accruedMP = Math.mulDiv(timeDiff * account.stakedBalance, MP_RATE_PER_YEAR, YEAR);
 
         if (account.accountMP + accruedMP > account.maxMP) {
             accruedMP = account.maxMP - account.accountMP;

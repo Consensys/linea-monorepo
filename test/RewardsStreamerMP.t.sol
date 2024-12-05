@@ -144,7 +144,7 @@ contract RewardsStreamerMPTest is Test {
 
     function _calculateBonusMP(uint256 amount, uint256 lockupTime) public view returns (uint256) {
         // solhint-disable-next-line
-        return Math.mulDiv(amount * lockupTime, streamer.MAX_MULTIPLIER(), streamer.MAX_LOCKUP_PERIOD());
+        return Math.mulDiv(amount, lockupTime, 365 days);
     }
 
     function _calculeAccuredMP(uint256 totalStaked, uint256 timeDiff) public view returns (uint256) {
