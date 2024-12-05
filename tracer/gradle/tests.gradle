@@ -118,13 +118,13 @@ tasks.withType(Test).configureEach {
 }
 
 tasks.test.configure {
-  if (System.getenv().containsKey("UNIT_TESTS_PARALLELISM")) {
-    // Only set this if parallelism is explicitly requested.
-    // Specifically, because this option is not compatible with
-    // go-corset.
-    maxParallelForks = System.getenv().get("UNIT_TESTS_PARALLELISM").toInteger()
-    println "Enabled parallel forks."
-  }
+  systemProperty("junit.jupiter.execution.parallel.enabled", true)
+  systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+  systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+  systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+  systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
+      System.getenv().getOrDefault("UNIT_TESTS_PARALLELISM", "4").toInteger())
+  //
   useJUnitPlatform {
     excludeTags("nightly")
     excludeTags("replay")
