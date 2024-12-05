@@ -120,7 +120,6 @@ jobs:
           filters: |
             has-code-changes:
               - '!**/*.md'
-              - '!**/*.yml'
               - '!docs/**'
           # Enables us to exclude changes in multiple file types if required
           predicate-quantifier: 'every'
