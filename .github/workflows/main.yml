@@ -20,8 +20,7 @@ jobs:
       traces-api-facade: ${{ steps.filter.outputs.traces-api-facade }}
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       finalized-tag-updater: ${{ steps.filter.outputs.finalized-tag-updater }}
-      # If 'false' => all changed files are *.md - https://stackoverflow.com/a/77068717
-      has-changes-other-than-markdown: ${{ steps.filter-out.outputs.has-changes-other-than-markdown }}
+      has-code-changes: ${{ steps.filter-out.outputs.has-code-changes }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -119,15 +118,21 @@ jobs:
           base: ${{ github.ref }}
           list-files: "json"
           filters: |
-            has-changes-other-than-markdown:
+            has-code-changes:
               - '!**/*.md'
+              - '!**/*.svg'
+              - '!**/*.png'
+              - '!**/*.jpeg'
+              - '!**/*.jpg'
+              - '!**/*.gif'
+              - '!**/*.webp'
           # Enables us to exclude changes in multiple file types if required
           predicate-quantifier: 'every'
 
   check-and-tag-images:
     needs: [ store-image-name-and-tags, filter-commit-changes ]
     uses: ./.github/workflows/reuse-check-images-tags-and-push.yml
-    if: ${{ needs.filter-commit-changes.outputs.has-changes-other-than-markdown == 'true' }}
+    if: ${{ needs.filter-commit-changes.outputs.has-code-changes == 'true' }}
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       last_commit_tag: ${{ needs.store-image-name-and-tags.outputs.last_commit_tag }}
@@ -142,7 +147,7 @@ jobs:
   manual-docker-build-and-e2e-tests:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
-    if: ${{ needs.filter-commit-changes.outputs.has-changes-other-than-markdown == 'true' }}
+    if: ${{ needs.filter-commit-changes.outputs.has-code-changes == 'true' }}
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     concurrency:
       group: manual-docker-build-and-e2e-tests-${{ github.workflow }}-${{ github.ref }}
@@ -181,7 +186,7 @@ jobs:
 
   testing:
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-other-than-markdown == 'true' }}
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-code-changes == 'true' }}
     uses: ./.github/workflows/testing.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -194,8 +199,8 @@ jobs:
 
   run-e2e-tests-geth-tracing:
     needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
-    # Make this execute for has-changes-other-than-markdown == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-other-than-markdown == 'false' || needs.docker-build.result == 'success' }}
+    # Make this execute for has-code-changes == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-code-changes == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-geth-tracing-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -204,13 +209,13 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       tracing-engine: 'geth'
       e2e-tests-logs-dump: true
-      has-changes-other-than-markdown: ${{ needs.filter-commit-changes.outputs.has-changes-other-than-markdown }}
+      has-code-changes: ${{ needs.filter-commit-changes.outputs.has-code-changes }}
     secrets: inherit
 
   run-e2e-tests:
     needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, filter-commit-changes ]
-    # Make this execute for has-changes-other-than-markdown == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-other-than-markdown == 'false' || needs.docker-build.result == 'success' }}
+    # Make this execute for has-code-changes == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-code-changes == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -219,7 +224,7 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       tracing-engine: 'besu'
       e2e-tests-logs-dump: true
-      has-changes-other-than-markdown: ${{ needs.filter-commit-changes.outputs.has-changes-other-than-markdown }}
+      has-code-changes: ${{ needs.filter-commit-changes.outputs.has-code-changes }}
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:

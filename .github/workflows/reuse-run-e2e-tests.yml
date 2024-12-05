@@ -49,7 +49,7 @@ on:
         required: false
         type: boolean
         default: true
-      has-changes-other-than-markdown:
+      has-code-changes:
         type: string
     outputs:
       tests_outcome:
@@ -64,7 +64,7 @@ jobs:
   # Required job
   run-e2e-tests:
     # We can only use conditionals, and not path filters to 'successfully' skip a required job - https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks#handling-skipped-but-required-checks
-    if: ${{ inputs.has-changes-other-than-markdown == 'true' }}
+    if: ${{ inputs.has-code-changes == 'true' }}
     env:
       COORDINATOR_TAG: ${{ inputs.commit_tag }}
       POSTMAN_TAG: ${{ inputs.commit_tag }}
