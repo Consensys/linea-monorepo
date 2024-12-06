@@ -1,11 +1,16 @@
 package maru.e2e
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.palantir.docker.compose.DockerComposeRule
+import com.palantir.docker.compose.configuration.ProjectName
+import com.palantir.docker.compose.connection.waiting.HealthChecks
 import java.io.File
 import java.math.BigInteger
+import java.nio.file.Path
 import java.util.Optional
 import java.util.UUID
 import kotlin.io.path.Path
+import kotlin.jvm.*
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -16,6 +21,8 @@ import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.*
 import org.awaitility.Awaitility.await
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -34,6 +41,29 @@ import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 
 class CliqueToPosTest {
+
+  companion object {
+
+    val qbftCluster =
+      DockerComposeRule.Builder()
+        .file(Path.of("./../docker/compose.yaml").toString())
+        .projectName(ProjectName.random())
+        .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
+        .build()
+
+    @BeforeAll
+    @JvmStatic
+    fun beforeAll() {
+      qbftCluster.before()
+    }
+
+    @AfterAll
+    @JvmStatic
+    fun afterAll() {
+      qbftCluster.after()
+    }
+  }
+
   private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
   private val web3jClient = createWeb3jClient("http://localhost:8550", Optional.empty())
   private val sequencerExecutionClient = Web3JExecutionEngineClient(web3jClient)
@@ -187,7 +217,7 @@ class CliqueToPosTest {
 
   private fun parseCancunTimestamp(): Long {
     val objectMapper = ObjectMapper()
-    val genesisTree = objectMapper.readTree(File("../docker/genesis-besu.json"))
+    val genesisTree = objectMapper.readTree(File("../docker/initialization/genesis-besu.json"))
     return genesisTree.at("/config/shanghaiTime").asLong()
   }
 
@@ -246,25 +276,22 @@ class CliqueToPosTest {
 
   private fun everyoneArePeered() {
     log.info("Call add peer on all nodes and wait for peering to happen.")
-    TestEnvironment.followerClients.map {
-      it.value
-        .adminAddPeer(
-          "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
-        )
-        .send()
-    }
     await()
       .pollInterval(1.seconds.toJavaDuration())
       .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
         TestEnvironment.followerClients
-          .map { it.key to it.value.adminPeers().sendAsync() }
           .forEach {
-            val peersResult = it.second.get().result
+            it.value
+              .adminAddPeer(
+                "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
+              )
+              .send()
+            val peersResult = it.value.adminPeers().send().result
             val peers = peersResult.size
-            log.info("Peers from node ${it.first}: $peers")
+            log.info("Peers from node ${it.key}: $peers")
             assertThat(peers)
-              .withFailMessage("${it.first} isn't peered! Peers: $peersResult")
+              .withFailMessage("${it.key} isn't peered! Peers: $peersResult")
               .isGreaterThan(0)
           }
       }
