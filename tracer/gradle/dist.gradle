@@ -95,7 +95,8 @@ jar {
 
   from {
     configurations.pluginClasspath.filter(excludeBesuProvidedDeps
-).collect {it.isDirectory() ? it : zipTree(it) }
+).collect {
+      it.isDirectory() ? it : zipTree(it) }
   }
   duplicatesStrategy('exclude')
 }
@@ -119,7 +120,9 @@ def calculateVersion() {
 tasks.register('distPlugin', Zip) {
   dependsOn installDist
 
-  from("${buildDir}/libs")
+  archiveBaseName = distributionIdentifier
+
+  from("${buildDir}/libs/${distributionIdentifier}-${calculateVersion()}.jar")
   from {
     configurations.pluginClasspath.filter(
             excludeBesuProvidedDeps)
