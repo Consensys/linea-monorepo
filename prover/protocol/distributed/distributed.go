@@ -1,11 +1,6 @@
 package distributed
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/permutation"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -13,7 +8,7 @@ import (
 type moduleName = string
 
 type DistributedWizard struct {
-	// initializedWizard which is ready for distribution.
+	// initializedWizard
 	Bootstrapper *wizard.CompiledIOP
 	// compiledIOPs for a segment of each module.
 	// Since splits are fair/uniform over a module. One segment can represent all the segments.
@@ -44,9 +39,6 @@ type ModuleDiscoverer interface {
 // maxSegmentSize is a static parameter for the max size of the columns in segments.
 // maxNumSegment give the max number of segments in a module.
 func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxSegmentSize, maxNumSegment int) DistributedWizard {
-	// prepare the  initialWizard for the distribution.
-	// This adds intermediates queries that are simpler to be distributed.
-	prepare(initialWizard)
 
 	// analyze the initialWizard to split it to modules.
 	disc.Analyze(initialWizard)
@@ -70,24 +62,6 @@ func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxSeg
 		DistributedModules: distModules,
 		Aggregator:         aggr,
 	}
-}
-
-// It compiles any other query to LPP or GL.
-// then transfer LPP  queries into the queries proper for distribution.
-func prepare(comp *wizard.CompiledIOP) {
-	// compile other queries to LPP and GL.
-	mimc.CompileMiMC(comp)
-	specialqueries.RangeProof(comp)
-	specialqueries.CompileFixedPermutations(comp)
-
-	// prepare LPP queries for the distribution.
-	inclusion.IntoLogDerivativeSum(comp)
-	permutation.IntoGrandProduct(comp)
-	projection.IntoGrandSum(comp)
-}
-
-func addSplittingStep(comp *wizard.CompiledIOP, disc ModuleDiscoverer) {
-	panic("unimplemented")
 }
 
 // it should scan comp and based on module name build compiledIOP for LPP and for GL.
