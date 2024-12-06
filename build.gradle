@@ -184,7 +184,10 @@ dockerCompose {
       // "l2-blockscout"
     ]
     composeAdditionalArgs = ["--profile", "l1", "--profile", "l2", "--profile", "staterecover"]
-    useComposeFiles = ["${project.rootDir.path}/docker/compose.yml"]
+    useComposeFiles = [
+      "${project.rootDir.path}/docker/compose.yml",
+      "${project.rootDir.path}/docker/compose-local-dev-traces-v2.overrides.yml"
+    ]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
     waitForTcpPorts = false
     removeOrphans = true
