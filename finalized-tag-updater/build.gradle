@@ -51,11 +51,12 @@ dependencies {
 
 tasks.register('copyShadowJarToLocalBesu', Copy) {
   def jarFileSuffix = "${project.version}" != 'unspecified' ? "${project.version}" : "all"
-  def jarFile = project.getLayout().buildDirectory.dir("libs").get()
+  def jarFiles = project.getLayout().buildDirectory.dir("libs").get()
       .asFileTree
       .filter { it.name.endsWith("-${jarFileSuffix}.jar") }
-      .singleFile
-
-  from jarFile
-  into file("$rootDir/tmp/linea-besu-sequencer/plugins")
+      .files
+  if (jarFiles.size() > 0) {
+    from jarFiles[0]
+    into file("$rootDir/tmp/linea-besu-sequencer/plugins")
+  }
 }
