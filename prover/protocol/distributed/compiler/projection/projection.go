@@ -5,7 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// CompileDist compiles a GrandSum query distributedly.
+// CompileDist compiles the projection queries distributedly.
 // It receives a compiledIop object relevant to a segment.
 // The seed is a random coin from randomness beacon (FS of all LPP commitments).
 // All the compilation steps are similar to the permutation compilation apart from:
