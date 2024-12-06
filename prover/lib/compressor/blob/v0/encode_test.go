@@ -61,7 +61,18 @@ func TestEncodeDecodeTx(t *testing.T) {
 			},
 		},
 		{
-			Name: "contract-deployment-legacy",
+			Name: "payment-0x0-legacy",
+			Tx: &types.LegacyTx{
+				Nonce:    3,
+				GasPrice: big.NewInt(10002),
+				Gas:      7000007,
+				To:       &common.Address{},
+				Value:    big.NewInt(66666666),
+				Data:     nil,
+			},
+		},
+		{
+			Name: "contract-deployment-dyn-fee",
 			Tx: &types.DynamicFeeTx{
 				Nonce:     3,
 				GasTipCap: big.NewInt(10002),
@@ -74,7 +85,7 @@ func TestEncodeDecodeTx(t *testing.T) {
 			},
 		},
 		{
-			Name: "contract-tx-legacy",
+			Name: "contract-tx-dyn-fee",
 			Tx: &types.DynamicFeeTx{
 				Nonce:     3,
 				GasTipCap: big.NewInt(10002),
@@ -87,13 +98,26 @@ func TestEncodeDecodeTx(t *testing.T) {
 			},
 		},
 		{
-			Name: "payment-legacy",
+			Name: "payment-dyn-fee",
 			Tx: &types.DynamicFeeTx{
 				Nonce:     3,
 				GasTipCap: big.NewInt(10002),
 				GasFeeCap: big.NewInt(33333),
 				Gas:       7000007,
 				To:        &common.Address{12, 24},
+				Value:     big.NewInt(66666666),
+				Data:      nil,
+				ChainID:   chainID,
+			},
+		},
+		{
+			Name: "payment-0x0-dyn-fee",
+			Tx: &types.DynamicFeeTx{
+				Nonce:     3,
+				GasTipCap: big.NewInt(10002),
+				GasFeeCap: big.NewInt(33333),
+				Gas:       7000007,
+				To:        &common.Address{},
 				Value:     big.NewInt(66666666),
 				Data:      nil,
 				ChainID:   chainID,

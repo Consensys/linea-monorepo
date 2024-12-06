@@ -203,12 +203,12 @@ func TestEncodeDecodeFromResponse(t *testing.T) {
 					// 	tx := types.NewTx(txData)
 
 					// 	if tx.To() == nil {
-					// 		t.Logf("batch=%v block=%v tx=%v tx.to=%v", batchI, blockData, txI, tx.To())
+					// 		t.Logf("batch=%v block=%v tx=%v tx.to=%v", batchI, blockI, txI, tx.To())
 					// 		t.Fail()
 					// 	}
 
 					// 	if tx.To() == (&common.Address{}) {
-					// 		t.Logf("batch=%v block=%v tx=%v tx.to=%v", batchI, blockData, txI, tx.To())
+					// 		t.Logf("batch=%v block=%v tx=%v tx.to=%v", batchI, blockI, txI, tx.To())
 					// 		t.Fail()
 					// 	}
 					// }
