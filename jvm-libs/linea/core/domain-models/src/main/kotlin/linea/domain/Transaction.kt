@@ -50,7 +50,7 @@ data class Transaction(
   val gasPrice: ULong,
   val gasLimit: ULong,
   val to: ByteArray?, // Nullable for contract creation transactions
-  val value: ULong,
+  val value: BigInteger,
   val input: ByteArray,
   val r: BigInteger,
   val s: BigInteger,

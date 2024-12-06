@@ -18,6 +18,7 @@ import org.hyperledger.besu.ethereum.core.Difficulty
 import org.hyperledger.besu.ethereum.core.Transaction
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.evm.log.LogsBloomFilter
+import java.math.BigInteger
 
 object BlockRLPEncoder : BlockEncoder {
   override fun encode(block: linea.domain.Block): ByteArray {
@@ -92,6 +93,7 @@ object BlockMapper {
 }
 
 fun ULong.toWei(): Wei = Wei.of(this.toBigInteger())
+fun BigInteger.toWei(): Wei = Wei.of(this)
 
 fun linea.domain.TransactionType.toBesuType(): TransactionType {
   return when (this) {

@@ -6,6 +6,7 @@ import linea.domain.TransactionType
 import net.consensys.decodeHex
 import net.consensys.toIntFromHex
 import net.consensys.toULong
+import net.consensys.toULongFromHex
 import org.web3j.protocol.core.methods.response.EthBlock
 
 fun EthBlock.Block.toDomain(): Block {
@@ -41,21 +42,25 @@ fun EthBlock.Block.toDomain(): Block {
 }
 
 fun EthBlock.TransactionObject.toDomain(): Transaction {
+  val maxFeePerGas = this.maxFeePerGas?.toULong()
+  // Web3J throws an exception if maxPriorityFeePerGas null, instead of a check like in maxFeePerGas
+  // we need to check if maxFeePerGas is null to avoid the exception
+  val maxPriorityFeePerGas = if (maxFeePerGas != null) this.maxPriorityFeePerGas?.toULong() else null
   return Transaction(
     nonce = this.nonce.toULong(),
     gasPrice = this.gasPrice.toULong(),
     gasLimit = this.gas.toULong(),
     to = this.to?.decodeHex(),
-    value = this.value.toULong(),
+    value = this.value,
     input = this.input.decodeHex(),
     r = this.r.removePrefix("0x").toBigInteger(16),
     s = this.s.removePrefix("0x").toBigInteger(16),
     v = this.v.toULong(),
-    yParity = this.getyParity()?.toULong(),
+    yParity = this.getyParity()?.toULongFromHex(),
     type = mapType(this.type), // Optional field for EIP-2718 typed transactions
     chainId = this.chainId?.toULong(), // Optional field for EIP-155 transactions
-    maxPriorityFeePerGas = this.maxPriorityFeePerGas?.toULong(), // Optional field for EIP-1559 transactions
-    maxFeePerGas = this.maxFeePerGas?.toULong() // Optional field for EIP-1559 transactions
+    maxFeePerGas = maxFeePerGas, // Optional field for EIP-1559 transactions
+    maxPriorityFeePerGas = maxPriorityFeePerGas // Optional field for EIP-1559 transactions
   )
 }
 
