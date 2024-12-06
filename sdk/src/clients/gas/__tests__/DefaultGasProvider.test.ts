@@ -55,7 +55,7 @@ describe("DefaultGasProvider", () => {
     it("should return maxFeePerGas and maxPriorityFeePerGas", async () => {
       jest.spyOn(providerMock, "getBlockNumber").mockResolvedValueOnce(1);
       const sendSpy = jest.spyOn(providerMock, "send").mockResolvedValueOnce({
-        baseFeePerGas: ["0x3da8e7618", "0x3e1ba3b1b", "0x3dfd72b90", "0x3d64eee76", "0x3d4da2da0", "0x3ccbcac6b"],
+        baseFeePerGas: ["0x3da8e", "0x3e1ba", "0x3dfd7", "0x3d64e", "0x3d4da", "0x3ccbc"],
         gasUsedRatio: [0.5290747666666666, 0.49240453333333334, 0.4615576, 0.49407083333333335, 0.4669053],
         oldestBlock: "0xfab8ac",
         reward: [
@@ -70,7 +70,7 @@ describe("DefaultGasProvider", () => {
       const fees = await eip1559GasProvider.getGasFees();
 
       expect(fees).toStrictEqual({
-        maxFeePerGas: BigInt(MAX_FEE_PER_GAS),
+        maxFeePerGas: 32_217_395n,
         maxPriorityFeePerGas: 31_719_355n,
       });
 
