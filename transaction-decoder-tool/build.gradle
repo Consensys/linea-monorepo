@@ -3,6 +3,6 @@ plugins {
 }
 
 dependencies {
-  implementation project(":jvm-libs:linea:teku-execution-client")
+  implementation project(':jvm-libs:linea:core:domain-models')
   implementation project(':jvm-libs:linea:web3j-extensions')
 }
