@@ -17,6 +17,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
+import net.consensys.ByteArrayExt
+import net.consensys.encodeHex
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.async.get
 import net.consensys.linea.errors.ErrorResponse
@@ -25,7 +27,6 @@ import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracingModuleV1
-import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -137,7 +138,7 @@ class TracesGeneratorJsonRpcClientV1Test {
         )
     )
 
-    val blockIdAndHash = BlockNumberAndHash(1U, Bytes32.random())
+    val blockIdAndHash = BlockNumberAndHash(1U, ByteArrayExt.random32())
     val resultFuture = tracesGeneratorClient.rollupGetTracesCounters(blockIdAndHash)
     resultFuture.get()
 
@@ -166,7 +167,7 @@ class TracesGeneratorJsonRpcClientV1Test {
       mapOf(
         "block" to mapOf(
           "blockNumber" to "1",
-          "blockHash" to blockIdAndHash.hash.toHexString()
+          "blockHash" to blockIdAndHash.hash.encodeHex()
         ),
         "rawExecutionTracesVersion" to rawExecutionTracesVersion,
         "expectedTracesApiVersion" to expectedTracesApiVersion
@@ -207,7 +208,7 @@ class TracesGeneratorJsonRpcClientV1Test {
         )
     )
 
-    val blockIdAndHash = BlockNumberAndHash(1U, Bytes32.random())
+    val blockIdAndHash = BlockNumberAndHash(1U, ByteArrayExt.random32())
     val resultFuture = tracesGeneratorClient.rollupGetTracesCounters(blockIdAndHash)
     val exception = assertThrows<ExecutionException> { resultFuture.get() }
     assertThat(exception.message).contains("missing modules: WCP")
@@ -241,7 +242,7 @@ class TracesGeneratorJsonRpcClientV1Test {
         )
     )
 
-    val blockIdAndHash = BlockNumberAndHash(1U, Bytes32.random())
+    val blockIdAndHash = BlockNumberAndHash(1U, ByteArrayExt.random32())
     val resultFuture = tracesGeneratorClient.rollupGetTracesCounters(blockIdAndHash)
     val exception = assertThrows<ExecutionException> { resultFuture.get() }
     assertThat(exception.message).contains("unsupported modules: NEW_EVM_MODULE")
@@ -280,9 +281,9 @@ class TracesGeneratorJsonRpcClientV1Test {
     )
 
     val blocks = listOf(
-      BlockNumberAndHash(1U, Bytes32.random()),
-      BlockNumberAndHash(2U, Bytes32.random()),
-      BlockNumberAndHash(3U, Bytes32.random())
+      BlockNumberAndHash(1U, ByteArrayExt.random32()),
+      BlockNumberAndHash(2U, ByteArrayExt.random32()),
+      BlockNumberAndHash(3U, ByteArrayExt.random32())
     )
 
     val resultFuture =
@@ -309,7 +310,7 @@ class TracesGeneratorJsonRpcClientV1Test {
             "blockNumber",
             it.number.toString(),
             "blockHash",
-            it.hash.toHexString()
+            it.hash.encodeHex()
           )
         },
         "rawExecutionTracesVersion",
@@ -340,7 +341,7 @@ class TracesGeneratorJsonRpcClientV1Test {
         )
     )
 
-    val blockIdAndHash = BlockNumberAndHash(1U, Bytes32.random())
+    val blockIdAndHash = BlockNumberAndHash(1U, ByteArrayExt.random32())
     val resultFuture = tracesGeneratorClient.rollupGetTracesCounters(blockIdAndHash)
     resultFuture.get()
 
@@ -366,9 +367,9 @@ class TracesGeneratorJsonRpcClientV1Test {
     )
 
     val blocks = listOf(
-      BlockNumberAndHash(1U, Bytes32.random()),
-      BlockNumberAndHash(2U, Bytes32.random()),
-      BlockNumberAndHash(3U, Bytes32.random())
+      BlockNumberAndHash(1U, ByteArrayExt.random32()),
+      BlockNumberAndHash(2U, ByteArrayExt.random32()),
+      BlockNumberAndHash(3U, ByteArrayExt.random32())
     )
     val resultFuture =
       tracesGeneratorClient.rollupGenerateConflatedTracesToFile(blocks)
@@ -442,7 +443,7 @@ class TracesGeneratorJsonRpcClientV1Test {
       )
     )
 
-    val blockIdAndHash = BlockNumberAndHash(1U, Bytes32.random())
+    val blockIdAndHash = BlockNumberAndHash(1U, ByteArrayExt.random32())
     val resultFuture = tracesGeneratorClient.rollupGenerateConflatedTracesToFile(listOf(blockIdAndHash))
 
     assertThat(resultFuture.get()).isInstanceOf(Ok::class.java)

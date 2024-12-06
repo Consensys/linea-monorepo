@@ -1,5 +1,6 @@
 package net.consensys.zkevm.ethereum.finalization
 
+import build.linea.contract.l1.LineaContractVersion
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
@@ -7,13 +8,15 @@ import io.vertx.junit5.VertxTestContext
 import net.consensys.FakeFixedClock
 import net.consensys.linea.ethereum.gaspricing.FakeGasPriceCapProvider
 import net.consensys.linea.testing.submission.loadBlobsAndAggregations
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobRecord
+import net.consensys.zkevm.domain.BlobSubmittedEvent
+import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.ethereum.Account
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.MakeFileDelegatedContractsManager
+import net.consensys.zkevm.ethereum.coordination.EventDispatcher
 import net.consensys.zkevm.ethereum.submission.BlobSubmissionCoordinator
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
 import net.consensys.zkevm.persistence.AggregationsRepository
@@ -30,6 +33,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.TimeUnit
+import java.util.function.Consumer
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -49,6 +53,11 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
   private lateinit var blobSubmissionCoordinator: BlobSubmissionCoordinator
   private lateinit var aggregationFinalizationCoordinator: AggregationFinalizationCoordinator
   private val testDataDir = "testdata/coordinator/prover/v2/"
+  private lateinit var blobSubmittedEvent: BlobSubmittedEvent
+  private var blobSubmissionDelay = 0L
+  private lateinit var finalizationSubmittedEvent: FinalizationSubmittedEvent
+  private var finalizationSubmissionDelay = 0L
+  private var acceptedBlob = 0UL
 
   // 1-block-per-blob test data has 3 aggregations: 1..7, 8..14, 15..21.
   // We will upgrade the contract in the middle of 2nd aggregation: 12
@@ -61,12 +70,12 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
     vertx: Vertx,
     smartContractVersion: LineaContractVersion
   ) {
-    if (smartContractVersion != LineaContractVersion.V5) {
+    if (listOf(LineaContractVersion.V5, LineaContractVersion.V6).contains(smartContractVersion).not()) {
       // V6 with prover V3 is soon comming, so we will need to update/extend this test setup
-      throw IllegalArgumentException("Only V5 contract version is supported")
+      throw IllegalArgumentException("unsupported contract version=$smartContractVersion!")
     }
     val rollupDeploymentFuture = ContractsManager.get()
-      .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V5)
+      .deployLineaRollup(numberOfOperators = 2, contractVersion = smartContractVersion)
     // load files from FS while smc deploy
     loadBlobsAndAggregations(
       blobsResponsesDir = "$testDataDir/compression/responses",
@@ -90,10 +99,19 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
     )
     aggregationsRepository = AggregationsRepositoryImpl(PostgresAggregationsDao(sqlClient, fakeClock))
 
-    val lineaRollupContractForDataSubmissionV4 = rollupDeploymentResult.rollupOperatorClient
+    val lineaRollupContractForDataSubmissionV5 = rollupDeploymentResult.rollupOperatorClient
+
+    val acceptedBlobEndBlockNumberConsumer = Consumer<ULong> { acceptedBlob = it }
 
     @Suppress("DEPRECATION")
-    val alreadySubmittedBlobFilter = L1ShnarfBasedAlreadySubmittedBlobsFilter(lineaRollupContractForDataSubmissionV4)
+    val alreadySubmittedBlobFilter = L1ShnarfBasedAlreadySubmittedBlobsFilter(
+      lineaRollup = lineaRollupContractForDataSubmissionV5,
+      acceptedBlobEndBlockNumberConsumer = acceptedBlobEndBlockNumberConsumer
+    )
+    val blobSubmittedEventConsumers = mapOf(
+      Consumer<BlobSubmittedEvent> { blobSubmittedEvent = it } to "Blob Submitted Consumer 1",
+      Consumer<BlobSubmittedEvent> { blobSubmissionDelay = it.getSubmissionDelay() } to "Blob Submitted Consumer 2"
+    )
 
     blobSubmissionCoordinator = run {
       BlobSubmissionCoordinator.create(
@@ -105,9 +123,10 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
         ),
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
-        lineaSmartContractClient = lineaRollupContractForDataSubmissionV4,
+        lineaSmartContractClient = lineaRollupContractForDataSubmissionV5,
         alreadySubmittedBlobsFilter = alreadySubmittedBlobFilter,
         gasPriceCapProvider = FakeGasPriceCapProvider(),
+        blobSubmittedEventDispatcher = EventDispatcher(blobSubmittedEventConsumers),
         vertx = vertx,
         clock = fakeClock
       )
@@ -115,14 +134,23 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
 
     aggregationFinalizationCoordinator = run {
       lineaRollupContractForAggregationSubmission = MakeFileDelegatedContractsManager
-        .connectToLineaRollupContractV5(
+        .connectToLineaRollupContract(
           rollupDeploymentResult.contractAddress,
           rollupDeploymentResult.rollupOperators[1].txManager
+
         )
+
+      val submittedFinalizationConsumers = mapOf(
+        Consumer<FinalizationSubmittedEvent> { finalizationSubmittedEvent = it } to "Finalization Submitted Consumer 1",
+        Consumer<FinalizationSubmittedEvent> { finalizationSubmissionDelay = it.getSubmissionDelay() }
+          to "Finalization Submitted Consumer 2"
+      )
 
       val aggregationSubmitter = AggregationSubmitterImpl(
         lineaRollup = lineaRollupContractForAggregationSubmission,
-        gasPriceCapProvider = FakeGasPriceCapProvider()
+        gasPriceCapProvider = FakeGasPriceCapProvider(),
+        aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers),
+        clock = fakeClock
       )
 
       AggregationFinalizationCoordinator(
@@ -139,15 +167,6 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
         clock = fakeClock
       )
     }
-  }
-
-  @Test
-  @Timeout(3, timeUnit = TimeUnit.MINUTES)
-  fun `submission works with contract V5`(
-    vertx: Vertx,
-    testContext: VertxTestContext
-  ) {
-    testSubmission(vertx, testContext, LineaContractVersion.V5)
   }
 
   private fun testSubmission(
@@ -176,8 +195,33 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
           .untilAsserted {
             val finalizedBlockNumber = lineaRollupContractForAggregationSubmission.finalizedL2BlockNumber().get()
             assertThat(finalizedBlockNumber).isEqualTo(aggregations.last().endBlockNumber)
+            assertThat(blobSubmittedEvent.blobs.last().endBlockNumber).isEqualTo(blobs[20].endBlockNumber)
+            assertThat(acceptedBlob).isEqualTo(blobs[20].endBlockNumber)
+            assertThat(finalizationSubmittedEvent.endBlockNumber).isEqualTo(
+              aggregations.last().endBlockNumber
+            )
+            assertThat(blobSubmissionDelay).isGreaterThan(0L)
+            assertThat(finalizationSubmissionDelay).isGreaterThan(0L)
           }
         testContext.completeNow()
       }.whenException(testContext::failNow)
+  }
+
+  @Test
+  @Timeout(3, timeUnit = TimeUnit.MINUTES)
+  fun `submission works with contract V5`(
+    vertx: Vertx,
+    testContext: VertxTestContext
+  ) {
+    testSubmission(vertx, testContext, LineaContractVersion.V5)
+  }
+
+  @Test
+  @Timeout(3, timeUnit = TimeUnit.MINUTES)
+  fun `submission works with contract V6`(
+    vertx: Vertx,
+    testContext: VertxTestContext
+  ) {
+    testSubmission(vertx, testContext, LineaContractVersion.V6)
   }
 }

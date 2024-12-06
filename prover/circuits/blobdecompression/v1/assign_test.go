@@ -5,6 +5,7 @@ package v1_test
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -27,7 +28,9 @@ func prepareTestBlob(t require.TestingT) (c, a frontend.Circuit) {
 
 func prepare(t require.TestingT, blobBytes []byte) (c *v1.Circuit, a frontend.Circuit) {
 
-	_, payload, _, err := blobcompressorv1.DecompressBlob(blobBytes, blobtestutils.GetDict(t))
+	dictStore, err := dictionary.SingletonStore(blobtestutils.GetDict(t), 1)
+	assert.NoError(t, err)
+	_, payload, _, err := blobcompressorv1.DecompressBlob(blobBytes, dictStore)
 	assert.NoError(t, err)
 
 	resp, err := blobsubmission.CraftResponse(&blobsubmission.Request{

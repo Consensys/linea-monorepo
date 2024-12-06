@@ -1,0 +1,58 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'net.consensys.zkevm.linea-native-libs-helper'
+  alias(libs.plugins.jreleaser)
+  id 'java-test-fixtures'
+}
+
+description = 'Java JNA wrapper for Linea Blob Decompressor Library implemented in GO Lang'
+apply from: rootProject.file("gradle/publishing.gradle")
+
+dependencies {
+  implementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"
+  implementation project(":jvm-libs:generic:extensions:kotlin")
+
+  testImplementation project(":jvm-libs:linea:blob-compressor")
+  testImplementation(testFixtures(project(":jvm-libs:linea:blob-compressor")))
+  testImplementation(project(":jvm-libs:linea:testing:file-system"))
+  testImplementation("io.tmio:tuweni-bytes:${libs.versions.tuweni.get()}")
+  testImplementation("org.hyperledger.besu:besu-datatypes:${libs.versions.besu.get()}")
+  testImplementation "org.hyperledger.besu:evm:${libs.versions.besu.get()}"
+  testImplementation("org.hyperledger.besu.internal:core:${libs.versions.besu.get()}")
+  testImplementation("org.hyperledger.besu:plugin-api:${libs.versions.besu.get()}")
+  testImplementation("org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}")
+}
+
+jar {
+  dependsOn configurations.runtimeClasspath
+}
+
+test {
+  // we cannot have more 1 compressor per JVM, hence we disable parallel execution
+  // because multiple threads would cause issues with the native library
+  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
+  maxParallelForks = 1
+}
+
+def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get().absolutePath
+
+task downloadNativeLibs {
+  doLast {
+    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.1.0-test8/linea-blob-libs-v1.1.0-test8.zip", "blob_decompressor", libsZipDownloadOutputDir)
+  }
+}
+
+compileKotlin {
+  dependsOn tasks.downloadNativeLibs
+}
+
+task cleanResources(type: Delete) {
+  fileTree(project.layout.projectDirectory.dir('src/main/resources'))
+    .filter {
+      it.name.endsWith(".so") || it.name.endsWith(".dll") || it.name.endsWith(".dylib")
+    }.each {
+      delete it
+    }
+}
+
+clean.dependsOn cleanResources

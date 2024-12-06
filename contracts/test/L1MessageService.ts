@@ -84,6 +84,7 @@ describe("L1MessageService", () => {
 
   before(async () => {
     [admin, pauser, limitSetter, notAuthorizedAccount, postmanAddress, l2Sender] = await ethers.getSigners();
+    // TODO adjust the tests to dynamically use whatever nonce is set for the merkle proof
     await setNonce(admin.address, 1);
   });
 

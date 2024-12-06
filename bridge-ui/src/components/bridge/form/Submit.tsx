@@ -22,11 +22,9 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
   const [watchAmount, watchAllowance, watchClaim, watchBalance] = watch(["amount", "allowance", "claim", "balance"]);
 
   // Context
-  const { token, networkLayer, toChainId } = useChainStore((state) => ({
-    token: state.token,
-    networkLayer: state.networkLayer,
-    toChainId: state.toChain?.id,
-  }));
+  const token = useChainStore((state) => state.token);
+  const networkLayer = useChainStore((state) => state.networkLayer);
+  const toChainId = useChainStore((state) => state.toChain?.id);
 
   // Wagmi
   const { bridgeEnabled } = useBridge();
@@ -63,8 +61,9 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
   return isETHTransfer ? (
     <Button
       type="submit"
+      variant="primary"
       className={cn("w-full text-lg font-normal", {
-        "btn-secondary": destinationBalanceTooLow,
+        "bg-yellow border-none hover:bg-yellow": destinationBalanceTooLow,
       })}
       disabled={isButtonDisabled}
       loading={isLoading || isWaitingLoading}
@@ -76,7 +75,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
           className="z-[99] normal-case"
           position="bottom"
         >
-          <MdInfo />
+          <MdInfo className="text-icon" />
         </Tooltip>
       )}
     </Button>
@@ -86,7 +85,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
     <Button
       id="submit-erc-btn"
       className={cn("w-full text-lg font-normal", {
-        "btn-secondary": destinationBalanceTooLow,
+        "bg-yellow border-none hover:bg-yellow": destinationBalanceTooLow,
       })}
       disabled={isButtonDisabled}
       loading={isLoading || isWaitingLoading}
@@ -99,7 +98,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
           className="z-[100] normal-case"
           position="top"
         >
-          <MdInfo />
+          <MdInfo className="text-icon" />
         </Tooltip>
       )}
     </Button>

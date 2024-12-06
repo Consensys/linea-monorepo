@@ -8,7 +8,6 @@ export { default as useFetchBridgeTransactions } from "./useFetchBridgeTransacti
 export { default as useFetchHistory } from "./useFetchHistory";
 export { default as useGasEstimation } from "./useGasEstimation";
 export { default as useInitialiseChain } from "./useInitialiseChain";
-export { default as useInitialiseToken } from "./useInitialiseToken";
 export { default as useLineaSDK } from "./useLineaSDK";
 export { default as useMessageStatus } from "./useMessageStatus";
 export { default as useMinimumFee } from "./useMinimumFee";

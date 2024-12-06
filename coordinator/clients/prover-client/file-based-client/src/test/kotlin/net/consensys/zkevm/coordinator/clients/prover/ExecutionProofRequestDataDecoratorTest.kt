@@ -1,14 +1,14 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
+import build.linea.clients.GetZkEVMStateMerkleProofResponse
 import com.fasterxml.jackson.databind.node.ArrayNode
+import net.consensys.ByteArrayExt
 import net.consensys.encodeHex
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
 import net.consensys.zkevm.coordinator.clients.GenerateTracesResponse
-import net.consensys.zkevm.coordinator.clients.GetZkEVMStateMerkleProofResponse
 import net.consensys.zkevm.coordinator.clients.L2MessageServiceLogsClient
 import net.consensys.zkevm.domain.RlpBridgeLogsData
 import net.consensys.zkevm.encoding.ExecutionPayloadV1Encoder
-import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -48,12 +48,12 @@ class ExecutionProofRequestDataDecoratorTest {
 
   @Test
   fun `should decorate data with bridge logs and parent stateRootHash`() {
-    val executionPayload1 = executionPayloadV1(blockNumber = 123)
-    val executionPayload2 = executionPayloadV1(blockNumber = 124)
+    val executionPayload1 = executionPayloadV1(blockNumber = 123, gasLimit = 20_000_000UL)
+    val executionPayload2 = executionPayloadV1(blockNumber = 124, gasLimit = 20_000_000UL)
     val type2StateResponse = GetZkEVMStateMerkleProofResponse(
       zkStateMerkleProof = ArrayNode(null),
-      zkParentStateRootHash = Bytes32.random(),
-      zkEndStateRootHash = Bytes32.random(),
+      zkParentStateRootHash = ByteArrayExt.random32(),
+      zkEndStateRootHash = ByteArrayExt.random32(),
       zkStateManagerVersion = "2.0.0"
     )
     val generateTracesResponse = GenerateTracesResponse(
@@ -82,7 +82,7 @@ class ExecutionProofRequestDataDecoratorTest {
     val requestDto = requestDatDecorator.invoke(request).get()
 
     assertThat(requestDto.keccakParentStateRootHash).isEqualTo(stateRoot)
-    assertThat(requestDto.zkParentStateRootHash).isEqualTo(type2StateResponse.zkParentStateRootHash.toHexString())
+    assertThat(requestDto.zkParentStateRootHash).isEqualTo(type2StateResponse.zkParentStateRootHash.encodeHex())
     assertThat(requestDto.conflatedExecutionTracesFile).isEqualTo("123-114-conflated-traces.json")
     assertThat(requestDto.tracesEngineVersion).isEqualTo("1.0.0")
     assertThat(requestDto.type2StateManagerVersion).isEqualTo("2.0.0")

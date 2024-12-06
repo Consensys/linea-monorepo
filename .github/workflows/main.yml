@@ -20,10 +20,9 @@ jobs:
       traces-api-facade: ${{ steps.filter.outputs.traces-api-facade }}
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       finalized-tag-updater: ${{ steps.filter.outputs.finalized-tag-updater }}
-      no-changes: ${{ steps.filter.outputs.coordinator == 'false' && steps.filter.outputs.postman == 'false' && steps.filter.outputs.prover == 'false' && steps.filter.outputs.traces-api-facade == 'false' && steps.filter.outputs.transaction-exclusion-api == 'false' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Filter commit changes
         uses: dorny/paths-filter@v3
         id: filter
@@ -118,9 +117,7 @@ jobs:
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       last_commit_tag: ${{ needs.store-image-name-and-tags.outputs.last_commit_tag }}
-      common_ancestor_tag: ${{ needs.store-image-name-and-tags.outputs.common_ancestor_tag }}
       develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
-      untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
@@ -132,6 +129,9 @@ jobs:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
+    concurrency:
+      group: manual-docker-build-and-e2e-tests-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - name: Deploy environment
         run: |
@@ -142,10 +142,7 @@ jobs:
     uses: ./.github/workflows/build-and-publish.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
-      last_commit_tag: ${{ needs.store-image-name-and-tags.outputs.last_commit_tag }}
-      common_ancestor_tag: ${{ needs.store-image-name-and-tags.outputs.common_ancestor_tag }}
       develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
-      untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
@@ -169,7 +166,7 @@ jobs:
 
   testing:
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
-    if: ${{ always() && needs.filter-commit-changes.outputs.no-changes == 'false' }}
+    if: ${{ always() }}
     uses: ./.github/workflows/testing.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -178,10 +175,6 @@ jobs:
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
-      coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
-      postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
-      traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
-      transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
     secrets: inherit
 
   run-e2e-tests-geth-tracing:
@@ -193,7 +186,6 @@ jobs:
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
-      untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
       tracing-engine: 'geth'
       e2e-tests-logs-dump: true
     secrets: inherit
@@ -207,20 +199,28 @@ jobs:
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
-      untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
       tracing-engine: 'besu'
       e2e-tests-logs-dump: true
     secrets: inherit
 
-  tag-after-run-tests-success:
+  publish-images-after-run-tests-success-on-main:
     needs: [ store-image-name-and-tags, testing, run-e2e-tests, run-e2e-tests-geth-tracing ]
-    if: ${{ always() && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' && needs.run-e2e-tests-geth-tracing.outputs.tests_outcome == 'success' }}
-    uses: ./.github/workflows/reuse-tag-without-untested-suffix.yml
+    if: ${{ always() && github.ref == 'refs/heads/main' && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' && needs.run-e2e-tests-geth-tracing.outputs.tests_outcome == 'success' }}
+    uses: ./.github/workflows/build-and-publish.yml
     with:
+      push_image: true
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
-      untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
-      image_names: '["consensys/linea-coordinator", "consensys/linea-postman", "consensys/linea-prover", "consensys/linea-traces-api-facade", "consensys/linea-transaction-exclusion-api"]'
+      coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
+      postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
+      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+      traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
+      transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
+      coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
+      postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
+      prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
+      traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
+      transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
     secrets: inherit
 
   cleanup-deployments:
@@ -228,7 +228,7 @@ jobs:
     if: ${{ always() }}
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     steps:
-      - uses: strumwolf/delete-deployment-environment@v2
+      - uses: strumwolf/delete-deployment-environment@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           environment: docker-build-and-e2e

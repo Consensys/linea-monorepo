@@ -1,10 +1,10 @@
 package net.consensys.zkevm.ethereum.coordination.messageanchoring
 
+import build.linea.contract.LineaRollupV5
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import net.consensys.linea.contract.LineaRollup
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -603,7 +603,7 @@ class L1EventQuerierImplTest {
 
   private fun createRandomSendEvent(blockNumber: String, logIndex: String): LogResult<Log> {
     val log = Log()
-    val eventSignature: String = EventEncoder.encode(LineaRollup.MESSAGESENT_EVENT)
+    val eventSignature: String = EventEncoder.encode(LineaRollupV5.MESSAGESENT_EVENT)
     val messageHashValue = Bytes32.random()
     val messageHash = org.web3j.abi.datatypes.generated.Bytes32(messageHashValue.toArray())
 

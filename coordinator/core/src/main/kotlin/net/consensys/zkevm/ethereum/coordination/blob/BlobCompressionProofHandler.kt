@@ -1,7 +1,7 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
+import build.linea.domain.BlockInterval
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
-import net.consensys.zkevm.domain.BlockInterval
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 data class BlobCompressionProofUpdate(

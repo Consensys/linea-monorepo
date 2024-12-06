@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"io"
 	"os"
 	"strings"
@@ -39,6 +41,7 @@ type BlobMaker struct {
 	limit      int              // maximum size of the compressed data
 	compressor *lzss.Compressor // compressor used to compress the blob body
 	dict       []byte           // dictionary used for compression
+	dictStore  dictionary.Store
 
 	header Header
 
@@ -67,6 +70,10 @@ func NewBlobMaker(dataLimit int, dictPath string) (*BlobMaker, error) {
 	}
 	dict = lzss.AugmentDict(dict)
 	blobMaker.dict = dict
+	blobMaker.dictStore, err = dictionary.SingletonStore(dict, 0)
+	if err != nil {
+		return nil, err
+	}
 
 	dictChecksum := compress.ChecksumPaddedBytes(dict, len(dict), hash.MIMC_BLS12_377.New(), fr.Bits)
 	copy(blobMaker.header.DictChecksum[:], dictChecksum)
@@ -119,7 +126,7 @@ func (bm *BlobMaker) Written() int {
 func (bm *BlobMaker) Bytes() []byte {
 	if bm.currentBlobLength > 0 {
 		// sanity check that we can always decompress.
-		header, rawBlocks, _, err := DecompressBlob(bm.currentBlob[:bm.currentBlobLength], bm.dict)
+		header, rawBlocks, _, err := DecompressBlob(bm.currentBlob[:bm.currentBlobLength], bm.dictStore)
 		if err != nil {
 			var sbb strings.Builder
 			fmt.Fprintf(&sbb, "invalid blob: %v\n", err)
@@ -130,8 +137,8 @@ func (bm *BlobMaker) Bytes() []byte {
 			panic(sbb.String())
 		}
 		// compare the header
-		if !header.Equals(&bm.header) {
-			panic("invalid blob: header mismatch")
+		if err = header.CheckEquality(&bm.header); err != nil {
+			panic(fmt.Errorf("invalid blob: header mismatch %v", err))
 		}
 		rawBlocksUnpacked, err := UnpackAlign(rawBlocks)
 		if err != nil {
@@ -146,7 +153,7 @@ func (bm *BlobMaker) Bytes() []byte {
 
 // Write attempts to append the RLP block to the current batch.
 // if forceReset is set; this will NOT append the bytes but still returns true if the chunk could have been appended
-func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error) {
+func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool, encodingOptions ...encode.Option) (ok bool, err error) {
 
 	// decode the RLP block.
 	var block types.Block
@@ -156,7 +163,7 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 
 	// re-encode it for compression
 	bm.buf.Reset()
-	if err := EncodeBlockForCompression(&block, &bm.buf); err != nil {
+	if err := EncodeBlockForCompression(&block, &bm.buf, encodingOptions...); err != nil {
 		return false, fmt.Errorf("when re-encoding block for compression: %w", err)
 	}
 	blockLen := bm.buf.Len()
@@ -281,7 +288,8 @@ func (bm *BlobMaker) Equals(other *BlobMaker) bool {
 }
 
 // DecompressBlob decompresses a blob and returns the header and the blocks as they were compressed.
-func DecompressBlob(b, dict []byte) (blobHeader *Header, rawBlocks []byte, blocks [][]byte, err error) {
+// rawBlocks is the raw payload of the blob, delivered in packed format @TODO bad idea. fix
+func DecompressBlob(b []byte, dictStore dictionary.Store) (blobHeader *Header, rawBlocks []byte, blocks [][]byte, err error) {
 	// UnpackAlign the blob
 	b, err = UnpackAlign(b)
 	if err != nil {
@@ -295,11 +303,10 @@ func DecompressBlob(b, dict []byte) (blobHeader *Header, rawBlocks []byte, block
 		return nil, nil, nil, fmt.Errorf("failed to read blob header: %w", err)
 	}
 
-	// ensure the dict hash matches
-	{
-		if !bytes.Equal(compress.ChecksumPaddedBytes(dict, len(dict), hash.MIMC_BLS12_377.New(), fr.Bits), blobHeader.DictChecksum[:]) {
-			return nil, nil, nil, errors.New("invalid dict hash")
-		}
+	// retrieve dict
+	dict, err := dictStore.Get(blobHeader.DictChecksum[:], 0)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	b = b[read:]
@@ -438,7 +445,8 @@ func UnpackAlign(r []byte) ([]byte, error) {
 		cpt++
 	}
 	// last byte should be equal to cpt
-	if cpt != int(out.Bytes()[out.Len()-1])-1 {
+	lastNonZero := out.Bytes()[out.Len()-1]
+	if (cpt % 31) != int(lastNonZero)-1 {
 		return nil, errors.New("invalid padding length")
 	}
 	out.Truncate(out.Len() - 1)

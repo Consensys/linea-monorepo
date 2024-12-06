@@ -15,8 +15,13 @@ abstract contract L1MessageManager is L1MessageManagerV1, IL1MessageManager {
   using BitMaps for BitMaps.BitMap;
   using Utils for *;
 
+  /// @notice Contains the L1 to L2 messaging rolling hashes mapped to message number computed on L1.
   mapping(uint256 messageNumber => bytes32 rollingHash) public rollingHashes;
+
+  /// @notice This maps which message numbers have been claimed to prevent duplicate claiming.
   BitMaps.BitMap internal _messageClaimedBitMap;
+
+  /// @notice Contains the L2 messages Merkle roots mapped to their tree depth.
   mapping(bytes32 merkleRoot => uint256 treeDepth) public l2MerkleRootsDepths;
 
   /// @dev Total contract storage is 53 slots including the gap below.
@@ -94,8 +99,9 @@ abstract contract L1MessageManager is L1MessageManagerV1, IL1MessageManager {
   /**
    * @notice Checks if the L2->L1 message is claimed or not.
    * @param _messageNumber The message number on L2.
+   * @return isClaimed Returns whether or not the message with _messageNumber has been claimed.
    */
-  function isMessageClaimed(uint256 _messageNumber) external view returns (bool) {
-    return _messageClaimedBitMap.get(_messageNumber);
+  function isMessageClaimed(uint256 _messageNumber) external view returns (bool isClaimed) {
+    isClaimed = _messageClaimedBitMap.get(_messageNumber);
   }
 }

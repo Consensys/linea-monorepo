@@ -5,6 +5,7 @@ import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.mapEither
 import com.github.michaelbull.result.runCatching
 import io.vertx.core.Vertx
+import net.consensys.encodeHex
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.errors.ErrorResponse
@@ -51,7 +52,7 @@ class ShomeiClient(
         listOf(
           mapOf(
             "finalizedBlockNumber" to finalizedBlockNumberAndHash.number.toString(),
-            "finalizedBlockHash" to finalizedBlockNumberAndHash.hash.toHexString()
+            "finalizedBlockHash" to finalizedBlockNumberAndHash.hash.encodeHex()
           )
         )
       )

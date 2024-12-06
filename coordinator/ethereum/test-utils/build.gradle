@@ -14,6 +14,8 @@ dependencies {
   implementation("org.web3j:core:${libs.versions.web3j.get()}") {
     exclude group: 'org.slf4j', module: 'slf4j-nop'
   }
+  implementation "com.sksamuel.hoplite:hoplite-core:${libs.versions.hoplite.get()}"
+  implementation "com.sksamuel.hoplite:hoplite-toml:${libs.versions.hoplite.get()}"
   implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
@@ -42,7 +44,6 @@ task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     dependsOn(":localStackComposeUp")
-    dependsOn(rootProject.tasks.compileContracts)
     testLogging {
       events TestLogEvent.FAILED,
         TestLogEvent.SKIPPED,

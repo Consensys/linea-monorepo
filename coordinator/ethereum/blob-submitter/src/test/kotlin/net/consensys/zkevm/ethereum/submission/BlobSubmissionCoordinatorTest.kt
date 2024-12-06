@@ -1,15 +1,15 @@
 package net.consensys.zkevm.ethereum.submission
 
+import build.linea.domain.BlockIntervals
+import build.linea.domain.toBlockIntervals
 import io.vertx.core.Vertx
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.AsyncFilter
 import net.consensys.zkevm.coordinator.clients.smartcontract.BlockAndNonce
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createBlobRecords
-import net.consensys.zkevm.domain.toBlockIntervals
 import net.consensys.zkevm.persistence.AggregationsRepository
 import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
@@ -101,7 +101,7 @@ class BlobSubmissionCoordinatorTest {
 
     whenever(blobsRepository.getConsecutiveBlobsFromBlockNumber(any(), any()))
       .thenReturn(SafeFuture.completedFuture(blobs))
-    whenever(aggregationsRepository.getProofsToFinalize(any(), any(), any(), any()))
+    whenever(aggregationsRepository.getProofsToFinalize(any(), any(), any()))
       .thenReturn(SafeFuture.completedFuture(aggregations.map { it.aggregationProof!! }))
   }
 

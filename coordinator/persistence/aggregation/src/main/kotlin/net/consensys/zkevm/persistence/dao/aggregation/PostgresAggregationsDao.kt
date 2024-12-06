@@ -1,5 +1,7 @@
 package net.consensys.zkevm.persistence.dao.aggregation
 
+import build.linea.domain.BlockIntervals
+import build.linea.domain.toBlockIntervalsString
 import io.vertx.core.Future
 import io.vertx.pgclient.PgException
 import io.vertx.sqlclient.Row
@@ -13,9 +15,7 @@ import net.consensys.zkevm.coordinator.clients.prover.serialization.ProofToFinal
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobCounters
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ProofToFinalize
-import net.consensys.zkevm.domain.toBlockIntervalsString
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.SQLQueryLogger
 import org.apache.logging.log4j.Level
@@ -124,15 +124,6 @@ class PostgresAggregationsDao(
         (start_block_number, end_block_number, status, start_block_timestamp, batch_count, aggregation_proof)
         VALUES ($1, $2, $3, $4, $5, CAST($6::text as jsonb))
       """.trimIndent()
-    )
-
-  private val setAggregationAsProvenQuery =
-    connection.preparedQuery(
-      """
-      update $aggregationsTable set status = $1, aggregation_proof = CAST($2::text as jsonb)
-      where start_block_number = $3 and end_block_number = $4 and batch_count = $5
-    """
-        .trimIndent()
     )
 
   private val selectAggregationProofs =
@@ -250,7 +241,7 @@ class PostgresAggregationsDao(
   override fun saveNewAggregation(aggregation: Aggregation): SafeFuture<Unit> {
     val startBlockNumber = aggregation.startBlockNumber.toLong()
     val endBlockNumber = aggregation.endBlockNumber.toLong()
-    val status = aggregationStatusToDbValue(aggregation.status)
+    val status = aggregationStatusToDbValue(Aggregation.Status.Proven)
     val batchCount = aggregation.batchCount.toLong()
     val aggregationProof = serializeAggregationProof(aggregation.aggregationProof)
 
@@ -286,7 +277,6 @@ class PostgresAggregationsDao(
 
   override fun getProofsToFinalize(
     fromBlockNumber: Long,
-    status: Aggregation.Status,
     finalEndBlockCreatedBefore: Instant,
     maximumNumberOfProofs: Int
   ): SafeFuture<List<ProofToFinalize>> {
@@ -294,7 +284,7 @@ class PostgresAggregationsDao(
       .execute(
         Tuple.of(
           fromBlockNumber,
-          aggregationStatusToDbValue(status),
+          aggregationStatusToDbValue(Aggregation.Status.Proven),
           maximumNumberOfProofs
         )
       )
@@ -325,28 +315,6 @@ class PostgresAggregationsDao(
           aggregationProofs.firstOrNull()
         }
       }
-  }
-
-  override fun updateAggregationAsProven(aggregation: Aggregation): SafeFuture<Int> {
-    val startBlockNumber = aggregation.startBlockNumber.toLong()
-    val endBlockNumber = aggregation.endBlockNumber.toLong()
-    val status = aggregationStatusToDbValue(aggregation.status)
-    val batchCount = aggregation.batchCount.toLong()
-    assert(aggregation.aggregationProof != null)
-    val aggregationProof = serializeAggregationProof(aggregation.aggregationProof)
-
-    val params =
-      listOf(
-        status,
-        aggregationProof,
-        startBlockNumber,
-        endBlockNumber,
-        batchCount
-      )
-    queryLog.log(Level.TRACE, setAggregationAsProvenQuery.toString(), params)
-    return setAggregationAsProvenQuery.execute(Tuple.tuple(params))
-      .map { rowSet -> rowSet.rowCount() }
-      .toSafeFuture()
   }
 
   override fun deleteAggregationsUpToEndBlockNumber(endBlockNumberInclusive: Long): SafeFuture<Int> {

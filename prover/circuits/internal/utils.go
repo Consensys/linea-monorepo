@@ -17,7 +17,6 @@ import (
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/exp/constraints"
 )
 
@@ -144,7 +143,7 @@ func (r *Range) LastArray32F(provider func(int) [32]frontend.Variable) [32]front
 }
 
 func RegisterHints() {
-	hint.RegisterHint(toCrumbsHint, concatHint, checksumSubSlicesHint, partitionSliceHint)
+	hint.RegisterHint(toCrumbsHint, concatHint, checksumSubSlicesHint, partitionSliceHint, divEuclideanHint)
 }
 
 func toCrumbsHint(_ *big.Int, ins, outs []*big.Int) error {
@@ -634,24 +633,6 @@ func Differences(api frontend.API, s []frontend.Variable) []frontend.Variable {
 	return res
 }
 
-func NewSliceOf32Array[T any](values [][32]T, maxLen int) Var32Slice {
-	if maxLen < len(values) {
-		panic("maxLen too small")
-	}
-	res := Var32Slice{
-		Values: make([][32]frontend.Variable, maxLen),
-		Length: len(values),
-	}
-	for i := range values {
-		utils.Copy(res.Values[i][:], values[i][:])
-	}
-	var zeros [32]byte
-	for i := len(values); i < maxLen; i++ {
-		utils.Copy(res.Values[i][:], zeros[:])
-	}
-	return res
-}
-
 func Sum[T constraints.Integer](x ...T) T {
 	var res T
 
@@ -879,4 +860,44 @@ func InnerProd(api frontend.API, x, y []frontend.Variable) frontend.Variable {
 		res = api.Add(res, api.Mul(x[i], y[i]))
 	}
 	return res
+}
+
+func SelectMany(api frontend.API, c frontend.Variable, ifSo, ifNot []frontend.Variable) []frontend.Variable {
+	if len(ifSo) != len(ifNot) {
+		panic("incompatible lengths")
+	}
+	res := make([]frontend.Variable, len(ifSo))
+	for i := range res {
+		res[i] = api.Select(c, ifSo[i], ifNot[i])
+	}
+	return res
+}
+
+// DivEuclidean conventional integer division with a remainder
+// TODO @Tabaie replace all/most special-case divisions with this, barring performance issues
+func DivEuclidean(api frontend.API, a, b frontend.Variable) (quotient, remainder frontend.Variable) {
+	api.AssertIsDifferent(b, 0)
+	outs, err := api.Compiler().NewHint(divEuclideanHint, 2, a, b)
+	if err != nil {
+		panic(err)
+	}
+	quotient, remainder = outs[0], outs[1]
+	api.AssertIsLessOrEqual(remainder, api.Sub(b, 1))
+	api.AssertIsLessOrEqual(quotient, a)
+
+	return
+}
+
+func divEuclideanHint(_ *big.Int, ins, outs []*big.Int) error {
+	if len(ins) != 2 || len(outs) != 2 {
+		return errors.New("expected two inputs and two outputs")
+	}
+
+	a, b := ins[0], ins[1]
+	quotient, remainder := outs[0], outs[1]
+
+	quotient.Div(a, b)
+	remainder.Mod(a, b)
+
+	return nil
 }

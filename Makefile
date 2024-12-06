@@ -28,7 +28,7 @@ clean-testnet-folders:
 		rm -rf tmp/testnet/*
 
 clean-environment:
-		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 --profile debug down || true
+		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 --profile debug --profile staterecover down || true
 		make clean-local-folders
 		docker network prune -f
 		docker volume rm linea-local-dev linea-logs || true # ignore failure if volumes do not exist already
@@ -44,15 +44,22 @@ start-l2:
 start-l2-blockchain-only:
 		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml --profile l2-bc up -d
 
+start-whole-environment: COMPOSE_PROFILES:=l1,l2
 start-whole-environment:
 		# docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml build prover
-		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml --profile l1 --profile l2 up -d
+		COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml up -d
 
+
+start-whole-environment-traces-v2: COMPOSE_PROFILES:=l1,l2
 start-whole-environment-traces-v2:
-		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 up -d
+		COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml up -d
+
 
 pull-all-images:
-		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 pull
+		COMPOSE_PROFILES:=l1,l2 docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml pull
+
+pull-images-external-to-monorepo:
+		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile external-to-monorepo pull
 
 compile-contracts:
 		cd contracts; \
@@ -62,12 +69,13 @@ compile-contracts-no-cache:
 		cd contracts/; \
 		make force-compile
 
+deploy-linea-rollup: L1_CONTRACT_VERSION:=5
 deploy-linea-rollup:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
-		BLOCKCHAIN_NODE=http:\\localhost:8445/ \
-		PLONKVERIFIER_NAME=IntegrationTestTrueVerifier \
+		RPC_URL=http:\\localhost:8445/ \
+		VERIFIER_CONTRACT_NAME=IntegrationTestTrueVerifier \
 		LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH=0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd \
 		LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER=0 \
 		LINEA_ROLLUP_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
@@ -75,25 +83,73 @@ deploy-linea-rollup:
 		LINEA_ROLLUP_RATE_LIMIT_PERIOD=86400 \
 		LINEA_ROLLUP_RATE_LIMIT_AMOUNT=1000000000000000000000 \
 		LINEA_ROLLUP_GENESIS_TIMESTAMP=1683325137 \
-		npx hardhat deploy --no-compile --network zkevm_dev --tags PlonkVerifier,LineaRollupV5
+		npx ts-node local-deployments-artifacts/deployPlonkVerifierAndLineaRollupV$(L1_CONTRACT_VERSION).ts
+
+deploy-linea-rollup-v5:
+		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=5
+
+deploy-linea-rollup-v6:
+		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=6
+
 
 deploy-l2messageservice:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
+		MESSAGE_SERVICE_CONTRACT_NAME=L2MessageService \
 		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
-		BLOCKCHAIN_NODE=http:\\localhost:8545/ \
+		RPC_URL=http:\\localhost:8545/ \
 		L2MSGSERVICE_SECURITY_COUNCIL=0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 \
 		L2MSGSERVICE_L1L2_MESSAGE_SETTER=$${L2MSGSERVICE_L1L2_MESSAGE_SETTER:-0xd42e308fc964b71e18126df469c21b0d7bcb86cc} \
 		L2MSGSERVICE_RATE_LIMIT_PERIOD=86400 \
 		L2MSGSERVICE_RATE_LIMIT_AMOUNT=1000000000000000000000 \
-		npx hardhat deploy --no-compile  --network zkevm_dev --tags L2MessageService
+		npx ts-node local-deployments-artifacts/deployL2MessageService.ts
 
-upgrade-linea-rollup-on-uat:
+deploy-token-bridge-l1:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		rm -f .openzeppelin/goerli.json; \
-		sed "s/BLOCKCHAIN_NODE=.*/BLOCKCHAIN_NODE=https:\/\/goerli.infura.io\/v3\/${INFURA_KEY}/" .env.template.uat > .env; \
-		sed -i~ "s/PRIVATE_KEY=.*/PRIVATE_KEY=${PRIVATE_KEY}/" .env; \
-		npx hardhat run ./scripts/upgrades/upgradeZkEVM.ts --network zkevm_dev
+		PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+		RPC_URL=http:\\localhost:8445/ \
+		REMOTE_CHAIN_ID=1337 \
+		TOKEN_BRIDGE_L1=true \
+		TOKEN_BRIDGE_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
+		L2MESSAGESERVICE_ADDRESS=0xe537D669CA013d86EBeF1D64e40fC74CADC91987 \
+		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
+		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridge.ts
+
+deploy-token-bridge-l2:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		SAVE_ADDRESS=true \
+		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		RPC_URL=http:\\localhost:8545/ \
+		REMOTE_CHAIN_ID=31648428 \
+		TOKEN_BRIDGE_L1=false \
+		TOKEN_BRIDGE_SECURITY_COUNCIL=0xf17f52151EbEF6C7334FAD080c5704D77216b732 \
+		L2MESSAGESERVICE_ADDRESS=0xe537D669CA013d86EBeF1D64e40fC74CADC91987 \
+		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
+		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridge.ts
+
+deploy-l1-test-erc20:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+		RPC_URL=http:\\localhost:8445/ \
+		TEST_ERC20_L1=true \
+		TEST_ERC20_NAME=TestERC20 \
+		TEST_ERC20_SYMBOL=TERC20 \
+		TEST_ERC20_INITIAL_SUPPLY=100000 \
+		npx ts-node local-deployments-artifacts/deployTestERC20.ts
+
+deploy-l2-test-erc20:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		RPC_URL=http:\\localhost:8545/ \
+		TEST_ERC20_L1=false \
+		TEST_ERC20_NAME=TestERC20 \
+		TEST_ERC20_SYMBOL=TERC20 \
+		TEST_ERC20_INITIAL_SUPPLY=100000 \
+		npx ts-node local-deployments-artifacts/deployTestERC20.ts
 
 fresh-start-l2-blockchain-only:
 		make clean-environment
@@ -104,37 +160,51 @@ restart-shomei:
 		rm -rf tmp/local/shomei/*
 		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml up zkbesu-shomei shomei -d
 
-fresh-start-all-smc-v4:
-		make clean-environment
-		make start-all-smc-v4
-
+fresh-start-all: COMPOSE_PROFILES:="l1,l2"
+fresh-start-all: L1_CONTRACT_VERSION:=5
 fresh-start-all:
 		make clean-environment
-		make start-all
+		make start-all L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
+fresh-start-all-traces-v2: COMPOSE_PROFILES:="l1,l2"
+fresh-start-all-traces-v2: L1_CONTRACT_VERSION:=5
 fresh-start-all-traces-v2:
 		make clean-environment
-		make start-all-traces-v2
+		$(MAKE) start-all-traces-v2 L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
-start-all-smc-v4:
-		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment
-		make deploy-contracts-v4
-
+start-all: COMPOSE_PROFILES:=l1,l2
+start-all: L1_CONTRACT_VERSION:=5
 start-all:
-		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment
-		make deploy-contracts
+		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment COMPOSE_PROFILES=$(COMPOSE_PROFILES)
+		make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
+start-all-traces-v2: COMPOSE_PROFILES:="l1,l2"
+start-all-traces-v2: L1_CONTRACT_VERSION:=5
 start-all-traces-v2:
-		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2
-		make deploy-contracts
+		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
+		$(MAKE) deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
-deploy-contracts-v4:
-	make compile-contracts
-	$(MAKE) -j2 deploy-linea-rollup-v4 deploy-l2messageservice
-
+deploy-contracts: L1_CONTRACT_VERSION:=5
 deploy-contracts:
-	make compile-contracts
-	$(MAKE) -j2 deploy-linea-rollup deploy-l2messageservice
+	cd contracts/; \
+	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
+	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
+	cd .. && \
+	$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20
+
+deploy-contracts-minimal: L1_CONTRACT_VERSION:=5
+deploy-contracts-minimal:
+	cd contracts/; \
+	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
+	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
+	cd .. && \
+	$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-l2messageservice
+
+start-all-staterecover: L1_CONTRACT_VERSION:=6
+start-all-staterecover: COMPOSE_PROFILES:=l1,l2,staterecover
+start-all-staterecover:
+		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment COMPOSE_PROFILES=$(COMPOSE_PROFILES)
+		make deploy-contracts-minimal L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
 testnet-start-l2:
 		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml --profile l2 up -d
@@ -142,7 +212,7 @@ testnet-start-l2:
 testnet-start-l2-traces-node-only:
 		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overries.yml up traces-node -d
 
-testnet-start: start-l1 deploy-linea-rollup testnet-start-l2
+testnet-start: start-l1 deploy-linea-rollup-v5 testnet-start-l2
 testnet-restart-l2-keep-state:
 		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml rm -f -s -v sequencer traces-node coordinator
 		make testnet-start-l2

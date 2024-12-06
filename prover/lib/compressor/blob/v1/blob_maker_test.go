@@ -9,6 +9,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"math/big"
 	"math/rand"
 	"os"
@@ -57,7 +59,8 @@ func testCompressorSingleSmallBatch(t *testing.T, blocks [][]byte) {
 
 	dict, err := os.ReadFile(testDictPath)
 	assert.NoError(t, err)
-	_, _, blocksBack, err := v1.DecompressBlob(bm.Bytes(), dict)
+	dictStore, err := dictionary.SingletonStore(dict, 1)
+	_, _, blocksBack, err := v1.DecompressBlob(bm.Bytes(), dictStore)
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), len(blocksBack), "number of blocks should match")
 	// TODO compare the blocks
@@ -121,7 +124,7 @@ func assertBatchesConsistent(t *testing.T, raw, decoded [][]byte) {
 		var block types.Block
 		assert.NoError(t, rlp.Decode(bytes.NewReader(raw[i]), &block))
 
-		blockBack, err := test_utils.DecodeBlockFromUncompressed(bytes.NewReader(decoded[i]))
+		blockBack, err := v1.DecodeBlockFromUncompressed(bytes.NewReader(decoded[i]))
 		assert.NoError(t, err)
 		assert.Equal(t, block.Time(), blockBack.Timestamp, "block time should match")
 	}
@@ -512,7 +515,11 @@ func decompressBlob(b []byte) ([][][]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't read dict: %w", err)
 	}
-	header, _, blocks, err := v1.DecompressBlob(b, dict)
+	dictStore, err := dictionary.SingletonStore(dict, 1)
+	if err != nil {
+		return nil, err
+	}
+	header, _, blocks, err := v1.DecompressBlob(b, dictStore)
 	if err != nil {
 		return nil, fmt.Errorf("can't decompress blob: %w", err)
 	}
@@ -641,10 +648,10 @@ func TestPack(t *testing.T) {
 	runTest := func(s1, s2 []byte) {
 		// pack them
 		buf.Reset()
-		written, err := v1.PackAlign(&buf, s1, fr381.Bits-1, v1.WithAdditionalInput(s2))
+		written, err := encode.PackAlign(&buf, s1, fr381.Bits-1, encode.WithAdditionalInput(s2))
 		assert.NoError(err, "pack should not generate an error")
-		assert.Equal(v1.PackAlignSize(len(s1)+len(s2), fr381.Bits-1), int(written), "written bytes should match expected PackAlignSize")
-		original, err := v1.UnpackAlign(buf.Bytes(), fr381.Bits-1, false)
+		assert.Equal(encode.PackAlignSize(len(s1)+len(s2), fr381.Bits-1), int(written), "written bytes should match expected PackAlignSize")
+		original, err := encode.UnpackAlign(buf.Bytes(), fr381.Bits-1, false)
 		assert.NoError(err, "unpack should not generate an error")
 
 		assert.Equal(s1, original[:len(s1)], "slices should match")

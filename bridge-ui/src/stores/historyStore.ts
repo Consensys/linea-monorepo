@@ -1,44 +1,71 @@
-import { create } from "zustand";
+import { createWithEqualityFn } from "zustand/traditional";
+import { shallow } from "zustand/vanilla/shallow";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { TransactionHistory } from "@/models/history";
 import { config } from "@/config";
+import { isEmptyObject } from "@/utils/utils";
 
 export type HistoryState = {
   isLoading: boolean;
-  transactions: Record<string, TransactionHistory[]>;
+  history: Record<
+    string,
+    { transactions: TransactionHistory[]; lastL1FetchedBlockNumber: bigint; lastL2FetchedBlockNumber: bigint }
+  >;
 };
 
 export type HistoryActions = {
   setIsLoading: (isLoading: boolean) => void;
-  setTransactions: (key: string, transactions: TransactionHistory[]) => void;
+  setTransactions: (
+    key: string,
+    transactions: TransactionHistory[],
+    lastL1FetchedBlockNumber?: bigint,
+    lastL2FetchedBlockNumber?: bigint,
+  ) => void;
   getTransactionsByKey: (key: string) => TransactionHistory[];
-  clearStorage: (key: string) => void;
+  getFromBlockNumbers: (key: string) => { l1FromBlock: bigint; l2FromBlock: bigint };
 };
 
 export type HistoryStore = HistoryState & HistoryActions;
 
 export const defaultInitState: HistoryState = {
-  transactions: {},
+  history: {},
   isLoading: false,
 };
 
-export const useHistoryStore = create<HistoryStore>()(
+export const useHistoryStore = createWithEqualityFn<HistoryStore>()(
   persist(
     (set, get) => ({
       ...defaultInitState,
       setIsLoading: (isLoading) => set({ isLoading }),
-      setTransactions: (key, transactions) =>
+      setTransactions: (key, transactions, lastL1FetchedBlockNumber, lastL2FetchedBlockNumber) =>
         set((state) => ({
-          transactions: { ...state.transactions, [key]: transactions },
+          history: {
+            ...state.history,
+            [key]: {
+              transactions,
+              lastL1FetchedBlockNumber: lastL1FetchedBlockNumber || 0n,
+              lastL2FetchedBlockNumber: lastL2FetchedBlockNumber || 0n,
+            },
+          },
         })),
-      clearStorage: (key) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [key]: _, ...newTransactions } = get().transactions;
-        set({ transactions: newTransactions });
-      },
       getTransactionsByKey: (key) => {
-        const { transactions } = get();
-        return transactions[key] ?? [];
+        const { history } = get();
+        return history[key]?.transactions ?? [];
+      },
+      getFromBlockNumbers: (key) => {
+        const { history } = get();
+
+        if (isEmptyObject(history) || !history[key]) {
+          return {
+            l1FromBlock: 0n,
+            l2FromBlock: 0n,
+          };
+        }
+
+        return {
+          l1FromBlock: history[key].lastL1FetchedBlockNumber,
+          l2FromBlock: history[key].lastL2FetchedBlockNumber,
+        };
       },
     }),
     {
@@ -62,4 +89,5 @@ export const useHistoryStore = create<HistoryStore>()(
       },
     },
   ),
+  shallow,
 );

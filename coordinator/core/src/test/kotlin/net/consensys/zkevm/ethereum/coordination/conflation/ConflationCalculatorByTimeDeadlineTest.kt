@@ -2,12 +2,12 @@ package net.consensys.zkevm.ethereum.coordination.conflation
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import net.consensys.ByteArrayExt
 import net.consensys.linea.traces.fakeTracesCountersV1
 import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockHeaderSummary
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
 import org.apache.logging.log4j.Logger
-import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
@@ -39,7 +39,7 @@ class ConflationCalculatorByTimeDeadlineTest {
       BlockHeaderSummary(
         number = 1u,
         timestamp = blockTimestamp,
-        hash = Bytes32.random()
+        hash = ByteArrayExt.random32()
       )
     )
   }
@@ -96,7 +96,7 @@ class ConflationCalculatorByTimeDeadlineTest {
         BlockHeaderSummary(
           number = 3u,
           timestamp = block2Timestamp.plus(config.conflationDeadline).plus(5.seconds),
-          hash = Bytes32.random()
+          hash = ByteArrayExt.random32()
         )
       )
     )
@@ -117,7 +117,7 @@ class ConflationCalculatorByTimeDeadlineTest {
           BlockHeaderSummary(
             number = 2u,
             timestamp = block2Timestamp,
-            hash = Bytes32.random()
+            hash = ByteArrayExt.random32()
           )
         )
       )
@@ -148,7 +148,7 @@ class ConflationCalculatorByTimeDeadlineTest {
           BlockHeaderSummary(
             number = 2u,
             timestamp = block2Timestamp,
-            hash = Bytes32.random()
+            hash = ByteArrayExt.random32()
           )
         )
       )
@@ -171,7 +171,7 @@ class ConflationCalculatorByTimeDeadlineTest {
           BlockHeaderSummary(
             number = 1u,
             timestamp = blockTimestamp,
-            hash = Bytes32.random()
+            hash = ByteArrayExt.random32()
           )
         )
       )

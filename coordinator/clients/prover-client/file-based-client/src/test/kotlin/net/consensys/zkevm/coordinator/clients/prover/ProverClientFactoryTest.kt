@@ -1,16 +1,16 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
+import build.linea.domain.BlockIntervals
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import kotlinx.datetime.Clock
+import net.consensys.ByteArrayExt
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.domain.ProofsToAggregate
-import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
@@ -78,21 +78,21 @@ class ProverClientFactoryTest {
     executionProofs = BlockIntervals(startingBlockNumber = 1uL, listOf(9uL)),
     parentAggregationLastBlockTimestamp = Clock.System.now(),
     parentAggregationLastL1RollingHashMessageNumber = 0uL,
-    parentAggregationLastL1RollingHash = Bytes32.random().toArray()
+    parentAggregationLastL1RollingHash = ByteArrayExt.random32()
   )
   private val request2 = ProofsToAggregate(
     compressionProofIndexes = listOf(ProofIndex(startBlockNumber = 10uL, endBlockNumber = 19uL)),
     executionProofs = BlockIntervals(startingBlockNumber = 10uL, listOf(19uL)),
     parentAggregationLastBlockTimestamp = Clock.System.now(),
     parentAggregationLastL1RollingHashMessageNumber = 9uL,
-    parentAggregationLastL1RollingHash = Bytes32.random().toArray()
+    parentAggregationLastL1RollingHash = ByteArrayExt.random32()
   )
   private val request3 = ProofsToAggregate(
     compressionProofIndexes = listOf(ProofIndex(startBlockNumber = 300uL, endBlockNumber = 319uL)),
     executionProofs = BlockIntervals(startingBlockNumber = 300uL, listOf(319uL)),
     parentAggregationLastBlockTimestamp = Clock.System.now(),
     parentAggregationLastL1RollingHashMessageNumber = 299uL,
-    parentAggregationLastL1RollingHash = Bytes32.random().toArray()
+    parentAggregationLastL1RollingHash = ByteArrayExt.random32()
   )
 
   @BeforeEach

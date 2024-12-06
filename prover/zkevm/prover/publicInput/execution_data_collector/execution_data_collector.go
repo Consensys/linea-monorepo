@@ -3,6 +3,7 @@ package execution_data_collector
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
@@ -182,7 +183,9 @@ type ExecutionDataCollector struct {
 	EndOfRlpSegment ifaces.Column
 	// a counter that computes the total number of bytes in all the previous rows, from the first to the current.
 	TotalBytesCounter ifaces.Column
-
+	// FinalTotalBytesCounter is a size-1 column that stores the last value of TotalBytesCounter for which the isActive filter is active.
+	// In other words, FinalTotalBytesCounter contains the total number of bytes in the limbs of the ExecutionDataCollector module.
+	FinalTotalBytesCounter ifaces.Column
 	// Selector columns
 	// SelectorBlockDiff[i]=1 if (edc.BlockId[i] = edc.BlockId[i+1]), used to enforce constancies when
 	// inside a block segment
@@ -206,28 +209,29 @@ type ExecutionDataCollector struct {
 // NewExecutionDataCollector instantiates an ExecutionDataCollector with unconstrained columns.
 func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) ExecutionDataCollector {
 	res := ExecutionDataCollector{
-		BlockID:           util.CreateCol(name, "BLOCK_ID", size, comp),
-		AbsTxID:           util.CreateCol(name, "ABS_TX_ID", size, comp),
-		AbsTxIDMax:        util.CreateCol(name, "ABS_TX_ID_MAX", size, comp),
-		FirstAbsTxIDBlock: util.CreateCol(name, "FIRST_ABS_TX_ID_BLOCK", size, comp),
-		LastAbsTxIDBlock:  util.CreateCol(name, "LAST_ABS_TX_ID_BLOCK", size, comp),
-		Limb:              util.CreateCol(name, "LIMB", size, comp),
-		NoBytes:           util.CreateCol(name, "NO_BYTES", size, comp),
-		UnalignedLimb:     util.CreateCol(name, "UNALIGNED_LIMB", size, comp),
-		AlignedPow:        util.CreateCol(name, "ALIGNED_POW", size, comp),
-		TotalNoTxBlock:    util.CreateCol(name, "TOTAL_NO_TX_BLOCK", size, comp),
-		IsActive:          util.CreateCol(name, "IS_ACTIVE", size, comp),
-		IsNoTx:            util.CreateCol(name, "IS_NO_TX", size, comp),
-		IsBlockHashHi:     util.CreateCol(name, "IS_BLOCK_HASH_HI", size, comp),
-		IsBlockHashLo:     util.CreateCol(name, "IS_BLOCK_HASH_LO", size, comp),
-		IsTimestamp:       util.CreateCol(name, "IS_TIMESTAMP", size, comp),
-		IsTxRLP:           util.CreateCol(name, "IS_TX_RLP", size, comp),
-		IsAddrHi:          util.CreateCol(name, "IS_ADDR_HI", size, comp),
-		IsAddrLo:          util.CreateCol(name, "IS_ADDR_LO", size, comp),
-		Ct:                util.CreateCol(name, "CT", size, comp),
-		HashNum:           util.CreateCol(name, "HASH_NUM", size, comp),
-		EndOfRlpSegment:   util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
-		TotalBytesCounter: util.CreateCol(name, "TOTAL_BYTES_COUNTER", size, comp),
+		BlockID:                util.CreateCol(name, "BLOCK_ID", size, comp),
+		AbsTxID:                util.CreateCol(name, "ABS_TX_ID", size, comp),
+		AbsTxIDMax:             util.CreateCol(name, "ABS_TX_ID_MAX", size, comp),
+		FirstAbsTxIDBlock:      util.CreateCol(name, "FIRST_ABS_TX_ID_BLOCK", size, comp),
+		LastAbsTxIDBlock:       util.CreateCol(name, "LAST_ABS_TX_ID_BLOCK", size, comp),
+		Limb:                   util.CreateCol(name, "LIMB", size, comp),
+		NoBytes:                util.CreateCol(name, "NO_BYTES", size, comp),
+		UnalignedLimb:          util.CreateCol(name, "UNALIGNED_LIMB", size, comp),
+		AlignedPow:             util.CreateCol(name, "ALIGNED_POW", size, comp),
+		TotalNoTxBlock:         util.CreateCol(name, "TOTAL_NO_TX_BLOCK", size, comp),
+		IsActive:               util.CreateCol(name, "IS_ACTIVE", size, comp),
+		IsNoTx:                 util.CreateCol(name, "IS_NO_TX", size, comp),
+		IsBlockHashHi:          util.CreateCol(name, "IS_BLOCK_HASH_HI", size, comp),
+		IsBlockHashLo:          util.CreateCol(name, "IS_BLOCK_HASH_LO", size, comp),
+		IsTimestamp:            util.CreateCol(name, "IS_TIMESTAMP", size, comp),
+		IsTxRLP:                util.CreateCol(name, "IS_TX_RLP", size, comp),
+		IsAddrHi:               util.CreateCol(name, "IS_ADDR_HI", size, comp),
+		IsAddrLo:               util.CreateCol(name, "IS_ADDR_LO", size, comp),
+		Ct:                     util.CreateCol(name, "CT", size, comp),
+		HashNum:                util.CreateCol(name, "HASH_NUM", size, comp),
+		EndOfRlpSegment:        util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
+		TotalBytesCounter:      util.CreateCol(name, "TOTAL_BYTES_COUNTER", size, comp),
+		FinalTotalBytesCounter: util.CreateCol(name, "FINAL_TOTAL_BYTES_COUNTER", 1, comp),
 	}
 	return res
 }
@@ -1022,27 +1026,33 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 
 // DefineTotalBytesCounterConstraints enforces that edc.TotalBytesCounter[0] = edc.NoBytes[0] and
 // edc.TotalBytesCounter[i+1]=edc.TotalBytesCounter[i]+edc.NoBytes[i+1] for i>=0
+// It also creates an accessor and constrains the size-1 column edc.FinalTotalBytesCounter to contain
+// the last value of TotalBytesCounter for which the filter IsActive = 1.
 func DefineTotalBytesCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
 	comp.InsertLocal(0, ifaces.QueryIDf("%s_%v_TOTAL_BYTES_COUNTER_START_LOCAL_CONSTRAINT", name, edc.TotalBytesCounter.GetColID()),
-		sym.Mul(
-			edc.IsActive,
-			sym.Sub(
-				edc.TotalBytesCounter,
-				edc.NoBytes, // blockIDs start from 1
-			),
+		sym.Sub(
+			edc.TotalBytesCounter,
+			edc.NoBytes, // the first value of the total bytes counter must be the number of bytes on the first row.
 		),
 	)
 
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%v_TOTAL_BYTES_COUNTER_GLOBAL_CONSTRAINT", name, edc.TotalBytesCounter.GetColID()),
 		sym.Mul(
-			edc.IsActive,
+			edc.IsActive, // Here, we only consider the active part. On the inactive part, edc.TotalBytesCounter is forced to be zero in DefineZeroizationConstraints.
 			sym.Sub(
 				edc.TotalBytesCounter,
 				edc.NoBytes,
-				column.Shift(edc.TotalBytesCounter, -1),
+				column.Shift(edc.TotalBytesCounter, -1), // the TotalBytes counter increases appropriately.
 			),
 		),
 	)
+
+	// set the FinalTotalBytesCounter as public for accessors
+	comp.Columns.SetStatus(edc.FinalTotalBytesCounter.GetColID(), column.Proof)
+	// get accessors
+	accessor := accessors.NewFromPublicColumn(edc.FinalTotalBytesCounter, 0)
+	// enforce that FinalTotalBytesCounter contains the last value of TotalBytesCounter on the active part.
+	util.CheckLastELemConsistency(comp, edc.IsActive, edc.TotalBytesCounter, accessor, name)
 }
 
 // DefineCounterConstraints enforces counter constraints for BlockId, AbsTxId and Ct.
@@ -1076,6 +1086,7 @@ func DefineZeroizationConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCo
 		edc.NoBytes,
 		edc.UnalignedLimb,
 		edc.AlignedPow,
+		edc.TotalBytesCounter,
 		// exclude edc.HashNum, as it is a fully constant column
 	}
 
@@ -1341,9 +1352,11 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			}
 
 		} else {
-			// finished processing all the blocks, move to padding
-			// we do not set the isActive filter to 1
-			// No more blocks to assign
+			// finished processing all the blocks, reached the inactive part of the module.
+			// therefore, we do not set the isActive filter to 1.
+			// No more blocks to assign.
+			// before breaking, set FinalTotalBytesCounter to correspond to TotalBytesCounter in the last active row (totalCt-1).
+			vect.FinalTotalBytesCounter = vect.TotalBytesCounter[totalCt-1]
 			break
 		}
 	} // end of the block for loop
@@ -1382,4 +1395,5 @@ func AssignExecutionDataColumns(run *wizard.ProverRuntime, edc ExecutionDataColl
 	run.AssignColumn(edc.FirstAbsTxIDBlock.GetColID(), smartvectors.NewRegular(vect.FirstAbsTxIDBlock))
 	run.AssignColumn(edc.LastAbsTxIDBlock.GetColID(), smartvectors.NewRegular(vect.LastAbsTxIDBlock))
 	run.AssignColumn(edc.TotalBytesCounter.GetColID(), smartvectors.NewRegular(vect.TotalBytesCounter))
+	run.AssignColumn(edc.FinalTotalBytesCounter.GetColID(), smartvectors.NewRegular([]field.Element{vect.FinalTotalBytesCounter}))
 }

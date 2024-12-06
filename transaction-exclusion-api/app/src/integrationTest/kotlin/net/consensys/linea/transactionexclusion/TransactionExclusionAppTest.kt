@@ -16,6 +16,8 @@ import net.consensys.linea.transactionexclusion.app.DbConnectionConfig
 import net.consensys.linea.transactionexclusion.app.PersistenceRetryConfig
 import net.consensys.linea.transactionexclusion.app.TransactionExclusionApp
 import net.consensys.linea.transactionexclusion.app.api.ApiConfig
+import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
+import net.consensys.linea.transactionexclusion.test.rejectedContractDeploymentTransaction
 import net.consensys.trimToMillisecondPrecision
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
@@ -30,7 +32,7 @@ import kotlin.random.Random
 @ExtendWith(VertxExtension::class)
 class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
   init {
-    target = "1"
+    target = "3"
   }
 
   override var databaseName = DbHelper.generateUniqueDbName("tx-exclusion-api-app-tests")
@@ -109,7 +111,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "params": {
         "txRejectionStage": "P2P",
         "timestamp": "${Clock.System.now().trimToMillisecondPrecision()}",
-        "transactionRLP": "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8",
+        "transactionRLP": "${defaultRejectedTransaction.transactionRLP.encodeHex()}",
         "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70",
         "overflows": [
           { "module": "ADD", "count": 402, "limit": 70 },
@@ -119,7 +121,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     }
     """.trimIndent()
 
-    // Check the save response and ensure the rejected txn was saved
+    // Check the save response and ensure the rejected tx was saved
     assertThatJson(makeRequestJsonResponse(saveTxJonRequest))
       .isEqualTo(
         """{
@@ -139,7 +141,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     // rejected reason and a more recent rejected timestamp
     val rejectionTimeStamp = Clock.System.now()
       .trimToMillisecondPrecision()
-      .toString()
+      .toString() // e.g. 2024-11-04T13:06:26.068Z
 
     val saveTxJonRequest = """{
       "jsonrpc": "2.0",
@@ -148,7 +150,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "params": [{
         "txRejectionStage": "SEQUENCER",
         "timestamp": "$rejectionTimeStamp",
-        "transactionRLP": "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8",
+        "transactionRLP": "${defaultRejectedTransaction.transactionRLP.encodeHex()}",
         "blockNumber": "10000",
         "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70 (from Sequencer)",
         "overflows": [
@@ -159,7 +161,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     }
     """.trimIndent()
 
-    // Check the save response and ensure the rejected txn was saved
+    // Check the save response and ensure the rejected tx was saved
     assertThatJson(makeRequestJsonResponse(saveTxJonRequest))
       .isEqualTo(
         """{
@@ -178,7 +180,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     }
     """.trimIndent()
 
-    // Check the get response is corresponding to the rejected txn from SEQUENCER
+    // Check the get response is corresponding to the rejected tx from SEQUENCER
     assertThatJson(makeRequestJsonResponse(getTxJsonRequest))
       .isEqualTo(
         """{
@@ -198,6 +200,66 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
   }
 
   @Test
+  fun `Should save the rejected contract deployment tx from RPC`() {
+    // Save the rejected contract deployment tx from RPC (without sender address)
+    val rejectionTimeStamp = Clock.System.now()
+      .trimToMillisecondPrecision()
+      .toString() // e.g. 2024-11-04T13:06:26.068Z
+
+    val saveTxJonRequest = """{
+      "jsonrpc": "2.0",
+      "id": 124,
+      "method": "linea_saveRejectedTransactionV1",
+      "params": [{
+        "txRejectionStage": "RPC",
+        "timestamp": "$rejectionTimeStamp",
+        "transactionRLP": "${rejectedContractDeploymentTransaction.transactionRLP.encodeHex()}",
+        "reasonMessage": "Transaction 0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525 line count for module HUB=2119318 is above the limit 2097152",
+        "overflows": [
+          { "module": "HUB", "count": 2119318, "limit": 2097152 }
+        ]
+      }]
+    }
+    """.trimIndent()
+
+    // Check the save response and ensure the rejected contract deployment tx was saved
+    assertThatJson(makeRequestJsonResponse(saveTxJonRequest))
+      .isEqualTo(
+        """{
+          "jsonrpc": "2.0",
+          "id": 124,
+          "result": {"status":"SAVED","txHash":"0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525"}
+        }"""
+      )
+
+    // Send the get request for the rejected contract deployment tx
+    val getTxJsonRequest = """{
+      "jsonrpc": "2.0",
+      "id": 125,
+      "method": "linea_getTransactionExclusionStatusV1",
+      "params": ["0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525"]
+    }
+    """.trimIndent()
+
+    // Check the get response is corresponding to the rejected contract deployment tx from RPC
+    assertThatJson(makeRequestJsonResponse(getTxJsonRequest))
+      .isEqualTo(
+        """{
+          "jsonrpc": "2.0",
+          "id": 125,
+          "result": {
+            "txHash": "0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525",
+            "from": "0x0d06838d1dfba9ef0a4166cca9be16fb1d76dbfc",
+            "nonce": "0x1",
+            "txRejectionStage": "RPC",
+            "reasonMessage": "Transaction 0x583eb047887cc72f93ead08f389a2cd84440f3322bc4b191803d5adb0a167525 line count for module HUB=2119318 is above the limit 2097152",
+            "timestamp": "$rejectionTimeStamp"
+          }
+        }"""
+      )
+  }
+
+  @Test
   fun `Should return DUPLICATE_ALREADY_SAVED_BEFORE when saving rejected tx with same txHash and reason message`() {
     // Save the first rejected tx from P2P without rejected block number
     saveFirstRejectedTransaction()
@@ -205,7 +267,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     // Save the same rejected tx from SEQUENCER with rejected block number and a more recent rejected timestamp
     val rejectionTimeStamp = Clock.System.now()
       .trimToMillisecondPrecision()
-      .toString()
+      .toString() // e.g. 2024-11-04T13:06:26.068Z
 
     val saveTxJonRequest = """{
       "jsonrpc": "2.0",
@@ -214,7 +276,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "params": [{
         "txRejectionStage": "SEQUENCER",
         "timestamp": "$rejectionTimeStamp",
-        "transactionRLP": "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8",
+        "transactionRLP": "${defaultRejectedTransaction.transactionRLP.encodeHex()}",
         "blockNumber": "10000",
         "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70",
         "overflows": [
@@ -241,7 +303,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
     // Save the first rejected tx from P2P without rejected block number
     saveFirstRejectedTransaction()
 
-    // Send the get request with a random txn hash
+    // Send the get request with a random tx hash
     val getTxJsonRequest = """{
       "jsonrpc": "2.0",
       "id": 124,
@@ -269,7 +331,7 @@ class TransactionExclusionAppTest : CleanDbTestSuiteParallel() {
       "method": "linea_saveRejectedTransactionV1",
       "params": [{
         "txRejectionStage": "SEQUENCER",
-        "transactionRLP": "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8",
+        "transactionRLP": "${defaultRejectedTransaction.transactionRLP.encodeHex()}",
         "blockNumber": "10000",
         "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70"
       }]

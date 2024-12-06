@@ -11,6 +11,7 @@ dependencies {
   testImplementation(project(":coordinator:persistence:batch"))
   testImplementation(project(":coordinator:persistence:blob"))
   testImplementation(project(":coordinator:persistence:db-common"))
+  testImplementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
   testImplementation(testFixtures(project(":coordinator:core")))
   testImplementation(testFixtures(project(":coordinator:persistence:db-common")))
   testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
@@ -38,7 +39,7 @@ task integrationTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
+    dependsOn(":localStackPostgresDbOnlyComposeUp")
 }
 
 

@@ -210,7 +210,7 @@ func newPublicInput(
 		RollingHashFetcher: rollingSelector,
 		LogHasher:          logHasherL2l1,
 		ExecMiMCHasher:     *mimcHasher,
-		DataNbBytes:        execDataCollector.TotalBytesCounter,
+		DataNbBytes:        execDataCollector.FinalTotalBytesCounter,
 		ChainID:            rlpFetcher.ChainID,
 		ChainIDNBytes:      rlpFetcher.NBytesChainID,
 		Inputs:             *inp,

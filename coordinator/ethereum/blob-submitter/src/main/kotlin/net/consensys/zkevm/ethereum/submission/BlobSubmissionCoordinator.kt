@@ -1,23 +1,24 @@
 package net.consensys.zkevm.ethereum.submission
 
+import build.linea.domain.filterOutWithEndBlockNumberBefore
+import build.linea.domain.toBlockIntervals
+import build.linea.domain.toBlockIntervalsString
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import net.consensys.linea.async.AsyncFilter
 import net.consensys.trimToMinutePrecision
 import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
-import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobRecord
+import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.domain.ProofToFinalize
-import net.consensys.zkevm.domain.filterOutWithEndBlockNumberBefore
-import net.consensys.zkevm.domain.toBlockIntervals
-import net.consensys.zkevm.domain.toBlockIntervalsString
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import net.consensys.zkevm.persistence.AggregationsRepository
 import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.function.Consumer
 import kotlin.time.Duration
 
 class BlobSubmissionCoordinator(
@@ -28,8 +29,7 @@ class BlobSubmissionCoordinator(
   private val blobSubmitter: BlobSubmitter,
   private val vertx: Vertx,
   private val clock: Clock,
-  private val blobSubmissionFilter: AsyncFilter<BlobRecord> =
-    L1ShnarfBasedAlreadySubmittedBlobsFilter(lineaRollup),
+  private val blobSubmissionFilter: AsyncFilter<BlobRecord>,
   private val blobsGrouperForSubmission: BlobsGrouperForSubmission,
   private val log: Logger = LogManager.getLogger(BlobSubmissionCoordinator::class.java)
 ) : PeriodicPollingService(
@@ -118,7 +118,6 @@ class BlobSubmissionCoordinator(
           } else {
             aggregationsRepository.getProofsToFinalize(
               fromBlockNumber = lastFinalizedBlockNumber.inc().toLong(),
-              status = Aggregation.Status.Proven,
               finalEndBlockCreatedBefore = clock.now().minus(config.proofSubmissionDelay),
               maximumNumberOfProofs = config.maxBlobsToSubmitPerTick.toInt()
             ).thenApply { proofsToFinalize ->
@@ -199,6 +198,7 @@ class BlobSubmissionCoordinator(
       lineaSmartContractClient: LineaRollupSmartContractClient,
       gasPriceCapProvider: GasPriceCapProvider?,
       alreadySubmittedBlobsFilter: AsyncFilter<BlobRecord>,
+      blobSubmittedEventDispatcher: Consumer<BlobSubmittedEvent>,
       vertx: Vertx,
       clock: Clock
     ): BlobSubmissionCoordinator {
@@ -207,9 +207,10 @@ class BlobSubmissionCoordinator(
       )
       val blobSubmitter = BlobSubmitterAsEIP4844MultipleBlobsPerTx(
         contract = lineaSmartContractClient,
-        gasPriceCapProvider = gasPriceCapProvider
+        gasPriceCapProvider = gasPriceCapProvider,
+        blobSubmittedEventConsumer = blobSubmittedEventDispatcher,
+        clock = clock
       )
-      val blobSubmissionFilter = alreadySubmittedBlobsFilter
 
       return BlobSubmissionCoordinator(
         config = config,
@@ -219,7 +220,7 @@ class BlobSubmissionCoordinator(
         blobSubmitter = blobSubmitter,
         vertx = vertx,
         clock = clock,
-        blobSubmissionFilter = blobSubmissionFilter,
+        blobSubmissionFilter = alreadySubmittedBlobsFilter,
         blobsGrouperForSubmission = blobsGrouperForSubmission
       )
     }

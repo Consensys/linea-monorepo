@@ -10,6 +10,7 @@ import com.github.michaelbull.result.mapError
 import io.vertx.core.Future
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.auth.User
+import net.consensys.decodeHex
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.TracesConflationServiceV1
 import net.consensys.linea.TracesCountingServiceV1
@@ -21,12 +22,11 @@ import net.consensys.linea.jsonrpc.JsonRpcRequest
 import net.consensys.linea.jsonrpc.JsonRpcRequestHandler
 import net.consensys.linea.jsonrpc.JsonRpcRequestMapParams
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
-import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 private fun parseBlockNumberAndHash(json: JsonObject) = BlockNumberAndHash(
   json.getString("blockNumber").toULong(),
-  Bytes32.fromHexString(json.getString("blockHash"))
+  json.getString("blockHash").decodeHex()
 )
 
 internal fun validateParams(request: JsonRpcRequest): Result<JsonRpcRequestMapParams, JsonRpcErrorResponse> {

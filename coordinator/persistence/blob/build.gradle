@@ -13,6 +13,7 @@ dependencies {
   testImplementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
+  testImplementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
   testImplementation("tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}")
   testImplementation(project(":coordinator:persistence:db-common"))
   testImplementation(testFixtures(project(":coordinator:core")))
@@ -52,6 +53,6 @@ task integrationTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
+    dependsOn(":localStackPostgresDbOnlyComposeUp")
 }
 

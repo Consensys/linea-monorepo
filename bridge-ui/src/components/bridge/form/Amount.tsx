@@ -12,12 +12,11 @@ const AMOUNT_REGEX = "^[0-9]*[.,]?[0-9]*$";
 const MAX_AMOUNT_CHAR = 20;
 
 export function Amount() {
-  const { token, fromChain, tokenAddress, networkType } = useChainStore((state) => ({
-    token: state.token,
-    fromChain: state.fromChain,
-    tokenAddress: state.token?.[state.networkLayer] || zeroAddress,
-    networkType: state.networkType,
-  }));
+  const token = useChainStore((state) => state.token);
+  const fromChain = useChainStore((state) => state.fromChain);
+  const tokenAddress = useChainStore((state) => state.token?.[state.networkLayer] || zeroAddress);
+  const networkType = useChainStore((state) => state.networkType);
+
   const { address } = useAccount();
 
   const { setValue, getValues, setError, clearErrors, trigger, watch } = useFormContext();
@@ -118,7 +117,7 @@ export function Amount() {
         onChange={checkAmountHandler}
         pattern={AMOUNT_REGEX}
         placeholder="Enter amount"
-        className="input input-md w-full border-0 bg-inherit p-0 text-right text-lg font-medium placeholder:text-right focus:border-0 focus:outline-none md:text-3xl"
+        className="input input-md w-full border-0 bg-inherit p-0 text-right text-lg font-medium placeholder:text-right placeholder:text-inherit focus:border-0 focus:outline-none md:text-3xl"
       />
       {networkType === NetworkType.MAINNET && (
         <span className="label-text flex items-center justify-end">

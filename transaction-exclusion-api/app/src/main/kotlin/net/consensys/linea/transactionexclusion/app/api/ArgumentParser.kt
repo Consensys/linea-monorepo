@@ -8,9 +8,12 @@ import net.consensys.linea.transactionexclusion.RejectedTransaction
 import net.consensys.linea.transactionexclusion.TransactionInfo
 import net.consensys.linea.transactionexclusion.dto.ModuleOverflowJsonDto
 import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.ethereum.core.encoding.EncodingContext
 import org.hyperledger.besu.ethereum.core.encoding.TransactionDecoder
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+
+const val MAX_REASON_MESSAGE_STR_LEN = 1024
 
 object ArgumentParser {
   fun getTransactionRLPInRawBytes(transactionRLP: String): ByteArray {
@@ -32,11 +35,12 @@ object ArgumentParser {
   fun getTransactionInfoFromRLP(rlp: ByteArray): TransactionInfo {
     try {
       return TransactionDecoder.decodeOpaqueBytes(
-        Bytes.wrap(rlp)
+        Bytes.wrap(rlp),
+        EncodingContext.BLOCK_BODY
       ).run {
         TransactionInfo(
           hash = this.hash.toArray(),
-          to = this.to.get().toArray(),
+          to = if (this.to.isPresent) this.to.get().toArray() else null,
           from = this.sender.toArray(),
           nonce = this.nonce.toULong()
         )
@@ -55,8 +59,10 @@ object ArgumentParser {
   }
 
   fun getReasonMessage(reasonMessage: String): String {
-    if (reasonMessage.length > 256) {
-      throw IllegalArgumentException("Reason message should not be more than 256 characters: $reasonMessage")
+    if (reasonMessage.length > MAX_REASON_MESSAGE_STR_LEN) {
+      throw IllegalArgumentException(
+        "Reason message should not be more than $MAX_REASON_MESSAGE_STR_LEN characters: $reasonMessage"
+      )
     }
     return reasonMessage
   }

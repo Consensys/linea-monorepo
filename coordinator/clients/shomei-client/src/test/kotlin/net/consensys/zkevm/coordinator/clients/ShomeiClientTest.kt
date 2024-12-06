@@ -9,11 +9,12 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
+import net.consensys.ByteArrayExt
+import net.consensys.encodeHex
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.async.get
 import net.consensys.linea.jsonrpc.client.JsonRpcClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
-import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -65,7 +66,7 @@ class ShomeiClientTest {
           WireMock.ok().withHeader("Content-type", "application/json").withBody(successResponse.toString())
         )
     )
-    val blockNumberAndHash = BlockNumberAndHash(1U, Bytes32.random())
+    val blockNumberAndHash = BlockNumberAndHash(1U, ByteArrayExt.random32())
     val resultFuture = shomeiClient.rollupForkChoiceUpdated(blockNumberAndHash)
     val result = resultFuture.get()
     Assertions.assertThat(resultFuture)
@@ -83,7 +84,7 @@ class ShomeiClientTest {
       listOf(
         mapOf(
           "finalizedBlockNumber" to blockNumberAndHash.number.toString(),
-          "finalizedBlockHash" to blockNumberAndHash.hash.toHexString()
+          "finalizedBlockHash" to blockNumberAndHash.hash.encodeHex()
         )
       )
     )
@@ -115,7 +116,7 @@ class ShomeiClientTest {
             .withBody(jsonRpcErrorResponse.toString())
         )
     )
-    val blockNumberAndHash = BlockNumberAndHash(1U, Bytes32.random())
+    val blockNumberAndHash = BlockNumberAndHash(1U, ByteArrayExt.random32())
     val resultFuture = shomeiClient.rollupForkChoiceUpdated(blockNumberAndHash)
     val result = resultFuture.get()
     Assertions.assertThat(resultFuture)
@@ -133,7 +134,7 @@ class ShomeiClientTest {
       listOf(
         mapOf(
           "finalizedBlockNumber" to blockNumberAndHash.number.toString(),
-          "finalizedBlockHash" to blockNumberAndHash.hash.toHexString()
+          "finalizedBlockHash" to blockNumberAndHash.hash.encodeHex()
         )
       )
     )

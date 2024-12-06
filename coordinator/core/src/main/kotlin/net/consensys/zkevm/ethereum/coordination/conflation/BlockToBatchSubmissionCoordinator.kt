@@ -2,11 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.conflation
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
-import com.github.michaelbull.result.getOrElse
-import com.github.michaelbull.result.map
-import com.github.michaelbull.result.runCatching
 import io.vertx.core.Vertx
-import io.vertx.core.json.JsonObject
 import kotlinx.datetime.Instant
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.async.toSafeFuture
@@ -38,7 +34,7 @@ class BlockToBatchSubmissionCoordinator(
       .rollupGetTracesCounters(
         BlockNumberAndHash(
           blockEvent.executionPayload.blockNumber.toULong(),
-          blockEvent.executionPayload.blockHash
+          blockEvent.executionPayload.blockHash.toArray()
         )
       )
       .thenCompose { result ->
@@ -48,22 +44,6 @@ class BlockToBatchSubmissionCoordinator(
           }
 
           is Ok<GetTracesCountersResponse> -> {
-            runCatching {
-              parseTracesCountersResponseToJson(
-                blockEvent.executionPayload.blockNumber.longValue(),
-                blockEvent.executionPayload.blockHash.toHexString(),
-                result.value
-              )
-            }.map {
-              log.info("Traces counters returned in JSON: {}", it)
-            }.getOrElse {
-              log.error(
-                "Error when parsing traces counters to JSON for block {}-{}: {}",
-                blockEvent.executionPayload.blockNumber.longValue(),
-                blockEvent.executionPayload.blockHash.toHexString(),
-                it.message
-              )
-            }
             SafeFuture.completedFuture(result.value)
           }
         }
@@ -97,28 +77,5 @@ class BlockToBatchSubmissionCoordinator(
 
     // This is to parallelize `getTracesCounters` requests which would otherwise be sent sequentially
     return SafeFuture.completedFuture(Unit)
-  }
-
-  internal companion object {
-    fun parseTracesCountersResponseToJson(
-      blockNumber: Long,
-      blockHash: String,
-      tcResponse: GetTracesCountersResponse
-    ): JsonObject {
-      return JsonObject.of(
-        "tracesEngineVersion",
-        tcResponse.tracesEngineVersion,
-        "blockNumber",
-        blockNumber,
-        "blockHash",
-        blockHash,
-        "tracesCounters",
-        tcResponse.tracesCounters
-          .entries()
-          .map { it.first.name to it.second.toLong() }
-          .sortedBy { it.first }
-          .toMap()
-      )
-    }
   }
 }

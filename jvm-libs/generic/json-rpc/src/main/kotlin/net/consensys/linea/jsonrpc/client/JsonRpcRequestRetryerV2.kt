@@ -53,7 +53,6 @@ class JsonRpcRequestRetryerV2(
     val lastException = AtomicReference<Throwable>()
     val retriesCount = AtomicInteger(0)
     val requestPredicate = Predicate<Result<T, Throwable>> { result ->
-      log.info("result: {}", result)
       shallRetryRequestsClientBasePredicate.test(result) || shallRetryRequestPredicate.test(result)
     }
 

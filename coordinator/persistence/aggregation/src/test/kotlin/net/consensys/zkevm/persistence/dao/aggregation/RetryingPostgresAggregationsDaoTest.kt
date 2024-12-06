@@ -1,12 +1,11 @@
 package net.consensys.zkevm.persistence.dao.aggregation
 
+import build.linea.domain.BlockIntervals
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import kotlinx.datetime.Instant
 import net.consensys.FakeFixedClock
-import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.blobCounters
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createProofToFinalize
@@ -68,7 +67,6 @@ class RetryingPostgresAggregationsDaoTest {
     whenever(
       delegateAggregationsDao.getProofsToFinalize(
         eq(0L),
-        eq(Aggregation.Status.Proven),
         eq(createdBeforeInstant),
         eq(1)
       )
@@ -77,9 +75,6 @@ class RetryingPostgresAggregationsDaoTest {
 
     whenever(delegateAggregationsDao.findAggregationProofByEndBlockNumber(eq(10L)))
       .thenReturn(SafeFuture.completedFuture(aggregationProof))
-
-    whenever(delegateAggregationsDao.updateAggregationAsProven(eq(aggregation)))
-      .thenReturn(SafeFuture.completedFuture(1))
 
     whenever(delegateAggregationsDao.deleteAggregationsUpToEndBlockNumber(eq(10L)))
       .thenReturn(SafeFuture.completedFuture(1))
@@ -98,22 +93,17 @@ class RetryingPostgresAggregationsDaoTest {
 
     retryingAggregationsPostgresDao.getProofsToFinalize(
       fromBlockNumber = 0L,
-      status = Aggregation.Status.Proven,
       finalEndBlockCreatedBefore = createdBeforeInstant,
       maximumNumberOfProofs = 1
     )
     verify(delegateAggregationsDao, times(1)).getProofsToFinalize(
       eq(0L),
-      eq(Aggregation.Status.Proven),
       eq(createdBeforeInstant),
       eq(1)
     )
 
     retryingAggregationsPostgresDao.findAggregationProofByEndBlockNumber(10L)
     verify(delegateAggregationsDao, times(1)).findAggregationProofByEndBlockNumber(eq(10L))
-
-    retryingAggregationsPostgresDao.updateAggregationAsProven(aggregation)
-    verify(delegateAggregationsDao, times(1)).updateAggregationAsProven(eq(aggregation))
 
     retryingAggregationsPostgresDao.deleteAggregationsUpToEndBlockNumber(10L)
     verify(delegateAggregationsDao, times(1)).deleteAggregationsUpToEndBlockNumber(eq(10L))

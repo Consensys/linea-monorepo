@@ -1,8 +1,8 @@
 package net.consensys.zkevm.coordinator.app
 
+import build.linea.contract.LineaRollupV5
 import io.vertx.core.Vertx
 import net.consensys.linea.async.AsyncRetryer
-import net.consensys.linea.contract.LineaRollup
 import net.consensys.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -26,7 +26,7 @@ interface LastFinalizedBlockProvider {
  */
 class L1BasedLastFinalizedBlockProvider(
   private val vertx: Vertx,
-  private val lineaRollupSmartContractWeb3jClient: LineaRollup,
+  private val lineaRollupSmartContractWeb3jClient: LineaRollupV5,
   private val consistentNumberOfBlocksOnL1: UInt,
   private val numberOfRetries: UInt = Int.MAX_VALUE.toUInt(),
   private val pollingInterval: Duration = 2.seconds

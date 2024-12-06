@@ -1,5 +1,6 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
+import build.linea.domain.BlockIntervals
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -9,7 +10,6 @@ import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.domain.ProofsToAggregate
@@ -183,7 +183,6 @@ class ProofAggregationCoordinatorServiceTest {
     val aggregation1 = Aggregation(
       startBlockNumber = blobsToAggregate1.startBlockNumber,
       endBlockNumber = blobsToAggregate1.endBlockNumber,
-      status = Aggregation.Status.Proven,
       batchCount = compressionBlobs1.sumOf { it.blobCounters.numberOfBatches }.toULong(),
       aggregationProof = aggregationProof1
     )
@@ -191,7 +190,6 @@ class ProofAggregationCoordinatorServiceTest {
     val aggregation2 = Aggregation(
       startBlockNumber = blobsToAggregate2.startBlockNumber,
       endBlockNumber = blobsToAggregate2.endBlockNumber,
-      status = Aggregation.Status.Proven,
       batchCount = compressionBlobs2.sumOf { it.blobCounters.numberOfBatches }.toULong(),
       aggregationProof = aggregationProof2
     )

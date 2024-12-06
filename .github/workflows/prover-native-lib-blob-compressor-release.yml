@@ -7,6 +7,7 @@ on:
         description: 'Version (e.g. v1.2.3)'
         required: true
         default: 'v0.0.0'
+        type: string
       draft-release:
         description: 'Draft Release'
         required: false
@@ -26,7 +27,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: 1.22.x
 
@@ -37,16 +38,19 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
           SRC_SHNARF: "./lib/shnarf_calculator/shnarf_calculator.go"
           TARGET_SHNARF: "shnarf_calculator"
-          SRC_COMPRESSOR: "./lib/compressor/libcompressor.go"
+          SRC_COMPRESSOR: "./lib/compressor/libcompressor/libcompressor.go"
           TARGET_COMPRESSOR: "blob_compressor"
+          SRC_DECOMPRESSOR: "./lib/compressor/libdecompressor/libdecompressor.go"
+          TARGET_DECOMPRESSOR: "blob_decompressor"
         run: |
           cd prover
           mkdir target
           GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_SHNARF}_${VERSION}_linux_x86_64.so ${SRC_SHNARF}
           GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_linux_x86_64.so ${SRC_COMPRESSOR}
+          GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_DECOMPRESSOR}_${VERSION}_linux_x86_64.so ${SRC_DECOMPRESSOR}
 
       - name: Cache built binaries
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v4
         with:
           name: linux-artefacts
           path: ./prover/target
@@ -57,7 +61,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: 1.22.x
           architecture: arm64
@@ -69,15 +73,18 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
           SRC_SHNARF: "./lib/shnarf_calculator/shnarf_calculator.go"
           TARGET_SHNARF: "shnarf_calculator"
-          SRC_COMPRESSOR: "./lib/compressor/libcompressor.go"
+          SRC_COMPRESSOR: "./lib/compressor/libcompressor/libcompressor.go"
           TARGET_COMPRESSOR: "blob_compressor"
+          SRC_DECOMPRESSOR: "./lib/compressor/libdecompressor/libdecompressor.go"
+          TARGET_DECOMPRESSOR: "blob_decompressor"
         run: |
           cd prover
           mkdir target
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_SHNARF}_${VERSION}_linux_arm64.so ${SRC_SHNARF}
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_linux_arm64.so ${SRC_COMPRESSOR}
+          GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_DECOMPRESSOR}_${VERSION}_linux_arm64.so ${SRC_DECOMPRESSOR}
       - name: Cache built binaries
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v4
         with:
           name: linux-arm64-artefacts
           path: ./prover/target
@@ -88,7 +95,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: 1.22.x
       - name: Build the MacOS artefacts
@@ -98,8 +105,10 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
           SRC_SHNARF: "./lib/shnarf_calculator/shnarf_calculator.go"
           TARGET_SHNARF: "shnarf_calculator"
-          SRC_COMPRESSOR: "./lib/compressor/libcompressor.go"
+          SRC_COMPRESSOR: "./lib/compressor/libcompressor/libcompressor.go"
           TARGET_COMPRESSOR: "blob_compressor"
+          SRC_DECOMPRESSOR: "./lib/compressor/libdecompressor/libdecompressor.go"
+          TARGET_DECOMPRESSOR: "blob_decompressor"
         run: |
           cd prover
           mkdir target
@@ -107,6 +116,8 @@ jobs:
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_SHNARF}_${VERSION}_darwin_arm64.dylib ${SRC_SHNARF}
           GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_darwin_x86_64.dylib ${SRC_COMPRESSOR}
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_darwin_arm64.dylib ${SRC_COMPRESSOR}
+          GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_DECOMPRESSOR}_${VERSION}_darwin_x86_64.dylib ${SRC_DECOMPRESSOR}
+          GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_DECOMPRESSOR}_${VERSION}_darwin_arm64.dylib ${SRC_DECOMPRESSOR}
 
       - name: Cache built binaries
         uses: actions/upload-artifact@v4

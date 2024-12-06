@@ -8,14 +8,8 @@ inputs:
   last_commit_tag:
     description: 'The tag of the last commit image'
     required: true
-  common_ancestor_tag:
-    description: 'The tag of the common ancestor commit image'
-    required: true
   develop_tag:
     description: 'The tag of the develop image'
-    required: true
-  untested_tag_suffix:
-    description: 'The suffix to add to untested images'
     required: true
   image_name:
     description: 'The name of the image to tag and push'
@@ -23,18 +17,15 @@ inputs:
   last_commit_tag_exists:
     description: 'Whether the last commit image tag exists'
     required: true
-  common_ancestor_commit_tag_exists:
-    description: 'Whether the common ancestor commit image tag exists'
-    required: true
   docker_username:
     description: 'The username to login to Docker Hub'
-    required: true
+    required: false
   docker_password:
     description: 'The password to login to Docker Hub'
-    required: true
+    required: false
 
 outputs:
-  image_tagged: 
+  image_tagged:
     description: 'Whether the image was tagged'
     value: ${{ steps.set-output.outputs.image_tagged }}
 
@@ -42,7 +33,8 @@ runs:
   using: 'composite'
   steps:
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
+      uses: docker/login-action@v3
       with:
         username: ${{ inputs.docker_username }}
         password: ${{ inputs.docker_password }}
@@ -50,29 +42,36 @@ runs:
       shell: bash
       run: |
         echo IMAGE_TAGGED=false >> $GITHUB_ENV
-    - name: Tag Docker image with last commit tag with the commit hash plus w/o "untested" suffix
-      shell: bash
-      if: ${{ inputs.last_commit_tag != '0000000' && inputs.last_commit_tag_exists == '0' }}
-      run: |
-        docker buildx imagetools create --tag ${{ inputs.image_name }}:${{ inputs.commit_tag }} ${{ inputs.image_name }}:${{ inputs.last_commit_tag }}
-        docker buildx imagetools create --tag ${{ inputs.image_name }}:${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }} ${{ inputs.image_name }}:${{ inputs.last_commit_tag }}
-        echo IMAGE_TAGGED=true >> $GITHUB_ENV
-    - name: Tag Docker image with common ancestor commit tag with the commit hash plus w/o "untested" suffix
-      shell: bash
-      if: ${{ inputs.last_commit_tag == '0000000' && inputs.common_ancestor_commit_tag_exists == '0' }}
-      run: |
-        docker buildx imagetools create --tag ${{ inputs.image_name }}:${{ inputs.commit_tag }} ${{ inputs.image_name }}:${{ inputs.common_ancestor_tag }}
-        docker buildx imagetools create --tag ${{ inputs.image_name }}:${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }} ${{ inputs.image_name }}:${{ inputs.common_ancestor_tag }}
-        echo IMAGE_TAGGED=true >> $GITHUB_ENV
     - name: Tag Docker image with develop if on main branch
       shell: bash
       if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
       run: |
         docker buildx imagetools create --tag ${{ inputs.image_name }}:${{ inputs.develop_tag }} ${{ inputs.image_name }}:${{ inputs.last_commit_tag }}
+        docker buildx imagetools create --tag ${{ inputs.image_name }}:${{ inputs.commit_tag }} ${{ inputs.image_name }}:${{ inputs.last_commit_tag }}
         echo IMAGE_TAGGED=true >> $GITHUB_ENV
-    
+    - name: Split docker image name (i.e. extract "xyz" from "consensys/xyz")
+      if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
+      env:
+        IMAGE_NAME: ${{ inputs.image_name }}
+      id: split
+      shell: bash
+      run: |
+        echo "image_name_suffix=${IMAGE_NAME##*/}" >> $GITHUB_OUTPUT
+    - name: Save Docker image as artifact for later use in e2e test
+      if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
+      shell: bash
+      run: |
+        docker pull ${{ inputs.image_name }}:${{ inputs.commit_tag }}
+        docker save ${{ inputs.image_name }}:${{ inputs.commit_tag }} | gzip > ${{ steps.split.outputs.image_name_suffix }}-docker-image.tar.gz
+    - name: Upload Docker image artifact for later use in e2e test
+      if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.split.outputs.image_name_suffix }}
+        path: ${{ steps.split.outputs.image_name_suffix }}-docker-image.tar.gz
     - name: Set output from environment variable
       shell: bash
       id: set-output
       run: |
         echo "image_tagged=$IMAGE_TAGGED" >> $GITHUB_OUTPUT
+        echo "image_name_suffix: ${{ steps.split.outputs.image_name_suffix }}"

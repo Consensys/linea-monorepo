@@ -1,5 +1,9 @@
 package net.consensys.zkevm.coordinator.app
 
+import build.linea.clients.StateManagerClientV1
+import build.linea.clients.StateManagerV1JsonRpcClient
+import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
+import build.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import net.consensys.linea.BlockNumberAndHash
@@ -9,7 +13,6 @@ import net.consensys.linea.contract.Web3JL2MessageService
 import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
 import net.consensys.linea.contract.Web3JLogsClient
 import net.consensys.linea.contract.l1.GenesisStateProvider
-import net.consensys.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
@@ -37,7 +40,6 @@ import net.consensys.linea.web3j.Web3jBlobExtended
 import net.consensys.linea.web3j.okHttpClientBuilder
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
-import net.consensys.zkevm.coordinator.app.config.StateManagerClientConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
@@ -49,18 +51,20 @@ import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV1
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
-import net.consensys.zkevm.coordinator.clients.Type2StateManagerClient
-import net.consensys.zkevm.coordinator.clients.Type2StateManagerJsonRpcClient
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
+import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.domain.BlocksConflation
+import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.encoding.ExecutionPayloadV1RLPEncoderByBesuImplementation
-import net.consensys.zkevm.ethereum.coordination.HighestAggregationTracker
+import net.consensys.zkevm.ethereum.coordination.EventDispatcher
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBlobTracker
+import net.consensys.zkevm.ethereum.coordination.HighestULongTracker
 import net.consensys.zkevm.ethereum.coordination.HighestUnprovenBlobTracker
+import net.consensys.zkevm.ethereum.coordination.LatestBlobSubmittedBlockNumberTracker
+import net.consensys.zkevm.ethereum.coordination.LatestFinalizationSubmittedBlockNumberTracker
 import net.consensys.zkevm.ethereum.coordination.SimpleCompositeSafeFutureHandler
 import net.consensys.zkevm.ethereum.coordination.aggregation.ConsecutiveProvenBlobsProviderWithLastEndBlockNumberTracker
 import net.consensys.zkevm.ethereum.coordination.aggregation.ProofAggregationCoordinatorService
@@ -88,6 +92,7 @@ import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCalc
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCoordinatorImpl
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinatorImpl
 import net.consensys.zkevm.ethereum.finalization.AggregationFinalizationCoordinator
+import net.consensys.zkevm.ethereum.finalization.AggregationSubmitterImpl
 import net.consensys.zkevm.ethereum.finalization.FinalizationHandler
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitorImpl
@@ -105,6 +110,7 @@ import org.web3j.protocol.http.HttpService
 import org.web3j.utils.Async
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
+import java.util.function.Consumer
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinDuration
 
@@ -299,26 +305,6 @@ class L1DependentApp(
     null
   }
 
-  private fun createStateManagerClient(
-    stateManagerConfig: StateManagerClientConfig,
-    logger: Logger
-  ): Type2StateManagerClient {
-    return Type2StateManagerJsonRpcClient(
-      vertx = vertx,
-      rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-        endpoints = stateManagerConfig.endpoints.toSet(),
-        maxInflightRequestsPerClient = stateManagerConfig.requestLimitPerEndpoint,
-        log = logger
-      ),
-      config = Type2StateManagerJsonRpcClient.Config(
-        requestRetry = stateManagerConfig.requestRetryConfig,
-        zkStateManagerVersion = stateManagerConfig.version
-      ),
-      retryConfig = stateManagerConfig.requestRetryConfig,
-      log = logger
-    )
-  }
-
   private val lastFinalizedBlock = lastFinalizedBlock().get()
   private val lastProcessedBlockNumber = resumeConflationFrom(
     aggregationsRepository,
@@ -422,8 +408,14 @@ class L1DependentApp(
   private val conflationService: ConflationService =
     ConflationServiceImpl(calculator = conflationCalculator, metricsFacade = metricsFacade)
 
-  private val zkStateClient: Type2StateManagerClient =
-    createStateManagerClient(configs.stateManager, LogManager.getLogger("clients.StateManagerShomeiClient"))
+  private val zkStateClient: StateManagerClientV1 = StateManagerV1JsonRpcClient.create(
+    rpcClientFactory = httpJsonRpcClientFactory,
+    endpoints = configs.stateManager.endpoints.map { it.toURI() },
+    maxInflightRequestsPerClient = configs.stateManager.requestLimitPerEndpoint,
+    requestRetry = configs.stateManager.requestRetryConfig,
+    zkStateManagerVersion = configs.stateManager.version,
+    logger = LogManager.getLogger("clients.StateManagerShomeiClient")
+  )
 
   private val lineaSmartContractClientForDataSubmission: LineaRollupSmartContractClient = run {
     // The below gas provider will act as the primary gas provider if L1
@@ -516,10 +508,46 @@ class L1DependentApp(
     blobCompressionProofCoordinator
   }
 
-  private val alreadySubmittedBlobsFilter =
-    L1ShnarfBasedAlreadySubmittedBlobsFilter(lineaSmartContractClientForDataSubmission)
+  private val highestAcceptedBlobTracker = HighestULongTracker(lastProcessedBlockNumber).also {
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.BLOB,
+      name = "highest.accepted.block.number",
+      description = "Highest accepted blob end block number",
+      measurementSupplier = it
+    )
+  }
 
+  private val alreadySubmittedBlobsFilter =
+    L1ShnarfBasedAlreadySubmittedBlobsFilter(
+      lineaRollup = lineaSmartContractClientForDataSubmission,
+      acceptedBlobEndBlockNumberConsumer = { highestAcceptedBlobTracker }
+    )
+
+  private val latestBlobSubmittedBlockNumberTracker = LatestBlobSubmittedBlockNumberTracker(0UL)
   private val blobSubmissionCoordinator = run {
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.BLOB,
+      name = "highest.submitted.on.l1",
+      description = "Highest submitted blob end block number on l1",
+      measurementSupplier = { latestBlobSubmittedBlockNumberTracker.get() }
+    )
+
+    val blobSubmissionDelayHistogram = metricsFacade.createHistogram(
+      category = LineaMetricsCategory.BLOB,
+      name = "submission.delay",
+      description = "Delay between blob submission and end block timestamps",
+      baseUnit = "seconds"
+    )
+
+    val blobSubmittedEventConsumers: Map<Consumer<BlobSubmittedEvent>, String> = mapOf(
+      Consumer<BlobSubmittedEvent> { blobSubmission ->
+        latestBlobSubmittedBlockNumberTracker(blobSubmission)
+      } to "Submitted Blob Tracker Consumer",
+      Consumer<BlobSubmittedEvent> { blobSubmission ->
+        blobSubmissionDelayHistogram.record(blobSubmission.getSubmissionDelay().toDouble())
+      } to "Blob Submission Delay Consumer"
+    )
+
     BlobSubmissionCoordinator.create(
       config = BlobSubmissionCoordinator.Config(
         configs.blobSubmission.dbPollingInterval.toKotlinDuration(),
@@ -531,6 +559,7 @@ class L1DependentApp(
       lineaSmartContractClient = lineaSmartContractClientForDataSubmission,
       gasPriceCapProvider = gasPriceCapProviderForDataSubmission,
       alreadySubmittedBlobsFilter = alreadySubmittedBlobsFilter,
+      blobSubmittedEventDispatcher = EventDispatcher(blobSubmittedEventConsumers),
       vertx = vertx,
       clock = Clock.System
     )
@@ -563,7 +592,7 @@ class L1DependentApp(
       measurementSupplier = maxBlobEndBlockNumberTracker
     )
 
-    val highestAggregationTracker = HighestAggregationTracker(lastProcessedBlockNumber)
+    val highestAggregationTracker = HighestULongTracker(lastProcessedBlockNumber)
     metricsFacade.createGauge(
       category = LineaMetricsCategory.AGGREGATION,
       name = "proven.highest.block.number",
@@ -628,6 +657,31 @@ class L1DependentApp(
         web3jClient = l1Web3jClient,
         smartContractErrors = smartContractErrors
       )
+
+      val latestFinalizationSubmittedBlockNumberTracker = LatestFinalizationSubmittedBlockNumberTracker(0UL)
+      metricsFacade.createGauge(
+        category = LineaMetricsCategory.AGGREGATION,
+        name = "highest.submitted.on.l1",
+        description = "Highest submitted finalization end block number on l1",
+        measurementSupplier = { latestFinalizationSubmittedBlockNumberTracker.get() }
+      )
+
+      val finalizationSubmissionDelayHistogram = metricsFacade.createHistogram(
+        category = LineaMetricsCategory.AGGREGATION,
+        name = "submission.delay",
+        description = "Delay between finalization submission and end block timestamps",
+        baseUnit = "seconds"
+      )
+
+      val submittedFinalizationConsumers: Map<Consumer<FinalizationSubmittedEvent>, String> = mapOf(
+        Consumer<FinalizationSubmittedEvent> { finalizationSubmission ->
+          latestFinalizationSubmittedBlockNumberTracker(finalizationSubmission)
+        } to "Finalization Submission Consumer",
+        Consumer<FinalizationSubmittedEvent> { finalizationSubmission ->
+          finalizationSubmissionDelayHistogram.record(finalizationSubmission.getSubmissionDelay().toDouble())
+        } to "Finalization Submission Delay Consumer"
+      )
+
       AggregationFinalizationCoordinator.create(
         config = AggregationFinalizationCoordinator.Config(
           configs.aggregationFinalization.dbPollingInterval.toKotlinDuration(),
@@ -636,8 +690,12 @@ class L1DependentApp(
         aggregationsRepository = aggregationsRepository,
         blobsRepository = blobsRepository,
         lineaRollup = lineaSmartContractClientForFinalization,
-        gasPriceCapProvider = gasPriceCapProviderForFinalization,
         alreadySubmittedBlobFilter = alreadySubmittedBlobsFilter,
+        aggregationSubmitter = AggregationSubmitterImpl(
+          lineaRollup = lineaSmartContractClientForFinalization,
+          gasPriceCapProvider = gasPriceCapProviderForFinalization,
+          aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers)
+        ),
         vertx = vertx,
         clock = Clock.System
       )
@@ -961,6 +1019,15 @@ class L1DependentApp(
       DisabledLongRunningService
     }
 
+  val highestAcceptedFinalizationTracker = HighestULongTracker(lastProcessedBlockNumber).also {
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.AGGREGATION,
+      name = "highest.accepted.block.number",
+      description = "Highest finalized accepted end block number",
+      measurementSupplier = it
+    )
+  }
+
   private val blockFinalizationHandlerMap = mapOf(
     "finalized records cleanup" to RecordsCleanupFinalizationHandler(
       batchesRepository = batchesRepository,
@@ -969,11 +1036,14 @@ class L1DependentApp(
     ),
     "type 2 state proof provider finalization updates" to FinalizationHandler {
       finalizedBlockNotifier.updateFinalizedBlock(
-        BlockNumberAndHash(it.blockNumber, it.blockHash)
+        BlockNumberAndHash(it.blockNumber, it.blockHash.toArray())
       )
     },
     "last_proven_block_provider" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
       lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(update.blockNumber.toLong())
+    },
+    "highest_accepted_finalization_on_l1" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
+      highestAcceptedFinalizationTracker(update.blockNumber)
     }
   )
 

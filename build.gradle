@@ -13,6 +13,10 @@ plugins {
 
 task compileAll
 
+// to allow to have unused vars/imports,etc for faster debugging/prototyping
+// instead of deleting and re-adding code all the time
+def allowCompilationWarnings = System.getenv('LINEA_DEV_ALLOW_WARNINGS') != null
+
 allprojects {
   repositories { mavenCentral() }
 
@@ -22,7 +26,7 @@ allprojects {
   tasks.withType(KotlinCompile).configureEach {
     compileAll.dependsOn it
     compilerOptions {
-      allWarningsAsErrors = true
+      allWarningsAsErrors = !allowCompilationWarnings
     }
   }
 
@@ -38,8 +42,12 @@ allprojects {
       '-Xlint:finally',
       '-Xlint:static',
       '-Xlint:deprecation',
-      '-Werror'
     ])
+    if (!allowCompilationWarnings) {
+      options.compilerArgs.addAll([
+        '-Werror'
+      ])
+    }
 
     if (!project.path.contains("testing-tools")) {
       // testing tools have 100+ errors because of this
@@ -154,10 +162,38 @@ dockerCompose {
     ]
     useComposeFiles = ["${project.rootDir.path}/docker/compose.yml"]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
-    waitForTcpPorts = false
+    waitForTcpPorts = true
     removeOrphans = true
     noRecreate = true
     projectName = "docker"
+  }
+
+  localStackForStateRecover {
+    startedServices = [
+      "postgres",
+      "sequencer",
+      "l1-node-genesis-generator",
+      "l1-el-node",
+      "l1-cl-node",
+      "l2-node",
+      "blobscan-api",
+      "blobscan-indexer",
+      "redis",
+      // For debug
+      // "l1-blockscout",
+      // "l2-blockscout"
+    ]
+    composeAdditionalArgs = ["--profile", "l1", "--profile", "l2", "--profile", "staterecover"]
+    useComposeFiles = ["${project.rootDir.path}/docker/compose.yml"]
+    waitForHealthyStateTimeout = Duration.ofMinutes(3)
+    waitForTcpPorts = false
+    removeOrphans = true
+    // this is to avoid recreating the containers
+    // specially l1-node-genesis-generator which corrupts the state if run more than once
+    // without cleaning the volumes
+    noRecreate = true
+    projectName = "docker"
+    environment.put("L1_GENESIS_TIME", "${Instant.now().plusSeconds(3).getEpochSecond()}")
   }
 }
 

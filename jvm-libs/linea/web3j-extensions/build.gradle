@@ -1,6 +1,7 @@
 plugins {
-    id 'net.consensys.zkevm.kotlin-common-conventions'
-    id 'java-library'
+  id 'net.consensys.zkevm.kotlin-common-conventions'
+  id 'java-library'
+  id 'java-test-fixtures'
 }
 
 dependencies {
@@ -8,16 +9,14 @@ dependencies {
   api project(':jvm-libs:linea:core:domain-models')
   api project(':jvm-libs:generic:logging')
   // For domain mappers
+  api project(':jvm-libs:linea:besu-libs')
   implementation project(":jvm-libs:generic:extensions:kotlin")
+  implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
   implementation "tech.pegasys.teku.internal:jackson:${libs.versions.teku.get()}"
   // Returned by domain mapper
   api project(":jvm-libs:linea:teku-execution-client")
   implementation "tech.pegasys.teku.internal:unsigned:${libs.versions.teku.get()}"
   implementation "org.hyperledger.besu:besu-datatypes:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu:evm:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu.internal:core:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu.internal:algorithms:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu:plugin-api:${libs.versions.besu.get()}"
 
   testImplementation "org.apache.logging.log4j:log4j-slf4j2-impl:${libs.versions.log4j.get()}"
   testImplementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
@@ -25,7 +24,7 @@ dependencies {
 }
 
 jar {
-    dependsOn configurations.runtimeClasspath
+  dependsOn configurations.runtimeClasspath
 }
 
 sourceSets {

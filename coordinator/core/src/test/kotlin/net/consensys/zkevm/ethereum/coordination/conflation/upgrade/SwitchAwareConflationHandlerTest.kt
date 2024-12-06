@@ -29,7 +29,7 @@ class SwitchAwareConflationHandlerTest {
 
   private fun generateArbitraryConflation(startBlockNumber: ULong, blocksLong: UInt): BlocksConflation {
     val executionPayloads = (startBlockNumber..startBlockNumber + blocksLong).map {
-      executionPayloadV1(blockNumber = it.toLong())
+      executionPayloadV1(blockNumber = it.toLong(), gasLimit = 20_000_000UL)
     }
 
     val conflationCalculationResult = ConflationCalculationResult(

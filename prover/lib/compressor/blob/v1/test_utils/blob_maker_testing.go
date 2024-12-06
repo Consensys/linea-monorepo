@@ -5,20 +5,16 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
-	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/consensys/compress/lzss"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,7 +75,7 @@ func LoadTestBlocks(testDataDir string) (testBlocks [][]byte, err error) {
 	return testBlocks, nil
 }
 
-func RandIntn(n int) int {
+func RandIntn(n int) int { // TODO @Tabaie remove
 	var b [8]byte
 	_, _ = rand.Read(b[:])
 	return int(binary.BigEndian.Uint64(b[:]) % uint64(n))
@@ -102,7 +98,7 @@ func EmptyBlob(t require.TestingT) []byte {
 	assert.NoError(t, err)
 
 	var bb bytes.Buffer
-	if _, err = v1.PackAlign(&bb, headerB.Bytes(), fr381.Bits-1, v1.WithAdditionalInput(compressor.Bytes())); err != nil {
+	if _, err = encode.PackAlign(&bb, headerB.Bytes(), fr381.Bits-1, encode.WithAdditionalInput(compressor.Bytes())); err != nil {
 		panic(err)
 	}
 	return bb.Bytes()
@@ -163,72 +159,6 @@ func TestBlocksAndBlobMaker(t require.TestingT) ([][]byte, *v1.BlobMaker) {
 	bm, err := v1.NewBlobMaker(40000, filepath.Join(repoRoot, "prover/lib/compressor/compressor_dict.bin"))
 	assert.NoError(t, err)
 	return testBlocks, bm
-}
-
-// DecodedBlockData is a wrapper struct storing the different fields of a block
-// that we deserialize when decoding an ethereum block.
-type DecodedBlockData struct {
-	// BlockHash stores the decoded block hash
-	BlockHash common.Hash
-	// Timestamp holds the Unix timestamp of the block in
-	Timestamp uint64
-	// Froms stores the list of the sender address of every transaction
-	Froms []common.Address
-	// Txs stores the list of the decoded transactions.
-	Txs []types.Transaction
-}
-
-// DecodeBlockFromUncompressed inverts [EncodeBlockForCompression]. It is primarily meant for
-// testing and ensuring the encoding is bijective.
-func DecodeBlockFromUncompressed(r *bytes.Reader) (DecodedBlockData, error) {
-
-	var (
-		decNumTxs    uint16
-		decTimestamp uint32
-		blockHash    common.Hash
-	)
-
-	if err := binary.Read(r, binary.BigEndian, &decNumTxs); err != nil {
-		return DecodedBlockData{}, fmt.Errorf("could not decode nb txs: %w", err)
-	}
-
-	if err := binary.Read(r, binary.BigEndian, &decTimestamp); err != nil {
-		return DecodedBlockData{}, fmt.Errorf("could not decode timestamp: %w", err)
-	}
-
-	if _, err := r.Read(blockHash[:]); err != nil {
-		return DecodedBlockData{}, fmt.Errorf("could not read the block hash: %w", err)
-	}
-
-	var (
-		numTxs     = int(decNumTxs)
-		decodedBlk = DecodedBlockData{
-			Froms:     make([]common.Address, numTxs),
-			Txs:       make([]types.Transaction, numTxs),
-			Timestamp: uint64(decTimestamp),
-			BlockHash: blockHash,
-		}
-	)
-
-	for i := 0; i < int(decNumTxs); i++ {
-		if err := DecodeTxFromUncompressed(r, &decodedBlk.Txs[i], &decodedBlk.Froms[i]); err != nil {
-			return DecodedBlockData{}, fmt.Errorf("could not decode transaction #%v: %w", i, err)
-		}
-	}
-
-	return decodedBlk, nil
-}
-
-func DecodeTxFromUncompressed(r *bytes.Reader, tx *types.Transaction, from *common.Address) (err error) {
-	if _, err := r.Read(from[:]); err != nil {
-		return fmt.Errorf("could not read from address: %w", err)
-	}
-
-	if err := ethereum.DecodeTxFromBytes(r, tx); err != nil {
-		return fmt.Errorf("could not deserialize transaction")
-	}
-
-	return nil
 }
 
 func GetDict(t require.TestingT) []byte {
