@@ -427,7 +427,7 @@ func squashSubSegmentForShomei(initialAccountValue types.Account, logs []StateAc
 
 	var (
 		currStorageSlotKey         types.FullBytes32
-		currStorageSlotInitalValue types.FullBytes32
+		currStorageSlotInitialValue types.FullBytes32
 		currAccountValue           = initialAccountValue
 		accountWasUpdated          = false
 	)
@@ -448,9 +448,9 @@ func squashSubSegmentForShomei(initialAccountValue types.Account, logs []StateAc
 			if i == 0 || log.Key != currStorageSlotKey {
 				currStorageSlotKey = log.Key
 				if log.IsWrite {
-					currStorageSlotInitalValue = log.OldValue.(types.FullBytes32)
+					currStorageSlotInitialValue = log.OldValue.(types.FullBytes32)
 				} else {
-					currStorageSlotInitalValue = log.Value.(types.FullBytes32)
+					currStorageSlotInitialValue = log.Value.(types.FullBytes32)
 				}
 			}
 
@@ -469,9 +469,9 @@ func squashSubSegmentForShomei(initialAccountValue types.Account, logs []StateAc
 					Value:   log.Value,
 				}
 
-				if currStorageSlotInitalValue != currStorageSlotFinalValue {
+				if currStorageSlotInitialValue != currStorageSlotFinalValue {
 					newSquashedLog.IsWrite = true
-					newSquashedLog.OldValue = currStorageSlotInitalValue
+					newSquashedLog.OldValue = currStorageSlotInitialValue
 				}
 
 				squashedLogs = append(squashedLogs, newSquashedLog)

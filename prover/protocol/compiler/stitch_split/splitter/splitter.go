@@ -58,7 +58,7 @@ func (ctx *splitterContext) ScanSplitCommit() {
 			status := comp.Columns.Status(col.GetColID())
 
 			// 1. we expect no constraint over a mix of eligible columns and proof, thus ignore Proof columns
-			// 2. we expect no verifingKey column to fall withing the stitching interval (ctx.MinSize, ctx.MaxSize)
+			// 2. we expect no verifingKey column to fall within the stitching interval (ctx.MinSize, ctx.MaxSize)
 			// 3. we expect no query over the ignored columns.
 			if status == column.Ignored || status == column.Proof || status == column.VerifyingKey {
 				continue
