@@ -14,14 +14,19 @@
  */
 
 // Default tasks and build aliases
-defaultTasks 'build', 'checkLicenses', 'javadoc', 'jar'
+defaultTasks 'build', 'checkLicenses', 'javadoc', 'artifacts'
 
-def buildAliases = ['dev': [
-  'spotlessApply',
-  'build',
-  'checkLicenses',
-  //      'javadoc'
-]]
+def buildAliases = [
+  'dev': [
+    'spotlessApply',
+    'build',
+    'checkLicenses'
+  ],
+  'artifacts' : [
+    'jar',
+    'distPlugin'
+  ]
+]
 
 def expandedTaskList = []
 gradle.startParameter.taskNames.each {
