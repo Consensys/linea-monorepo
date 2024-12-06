@@ -48,10 +48,10 @@ fun EthBlock.TransactionObject.toDomain(): Transaction {
     to = this.to?.decodeHex(),
     value = this.value.toULong(),
     input = this.input.decodeHex(),
-    r = this.r.decodeHex(),
-    s = this.s.decodeHex(),
+    r = this.r.removePrefix("0x").toBigInteger(16),
+    s = this.s.removePrefix("0x").toBigInteger(16),
     v = this.v.toULong(),
-    yParity = this.getyParity().toULong(),
+    yParity = this.getyParity()?.toULong(),
     type = mapType(this.type), // Optional field for EIP-2718 typed transactions
     chainId = this.chainId?.toULong(), // Optional field for EIP-155 transactions
     maxPriorityFeePerGas = this.maxPriorityFeePerGas?.toULong(), // Optional field for EIP-1559 transactions

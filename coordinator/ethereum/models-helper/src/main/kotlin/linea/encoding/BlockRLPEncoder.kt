@@ -16,6 +16,7 @@ import org.hyperledger.besu.ethereum.core.BlockBody
 import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder
 import org.hyperledger.besu.ethereum.core.Difficulty
 import org.hyperledger.besu.ethereum.core.Transaction
+import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.evm.log.LogsBloomFilter
 
 object BlockRLPEncoder : BlockEncoder {
@@ -25,7 +26,8 @@ object BlockRLPEncoder : BlockEncoder {
 }
 
 object BlockMapper {
-  val secp256k1 = SECP256K1()
+  private val secp256k1 = SECP256K1()
+  private val blockHeaderFunctions = MainnetBlockHeaderFunctions()
 
   fun linea.domain.Block.toBesuBlock(): org.hyperledger.besu.ethereum.core.Block {
     val header = BlockHeaderBuilder.create()
@@ -45,6 +47,7 @@ object BlockMapper {
       .mixHash(Hash.wrap(Bytes32.wrap(this.mixHash)))
       .nonce(this.nonce.toLong())
       .baseFee(this.baseFeePerGas?.toWei())
+      .blockHeaderFunctions(blockHeaderFunctions)
       .buildBlockHeader()
 
     val transactions = this.transactions.map { tx ->
@@ -69,8 +72,8 @@ object BlockMapper {
         )
         .signature(
           secp256k1.createSignature(
-            tx.r.encodeHex().toBigInteger(16),
-            tx.s.encodeHex().toBigInteger(16),
+            tx.r,
+            tx.s,
             tx.v.toByte()
           )
         )

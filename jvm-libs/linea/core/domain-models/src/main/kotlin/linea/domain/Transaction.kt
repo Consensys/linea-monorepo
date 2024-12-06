@@ -1,5 +1,6 @@
 package linea.domain
 
+import java.math.BigInteger
 import java.util.EnumSet
 
 enum class TransactionType(private val typeValue: Int) {
@@ -51,10 +52,10 @@ data class Transaction(
   val to: ByteArray?, // Nullable for contract creation transactions
   val value: ULong,
   val input: ByteArray,
-  val r: ByteArray,
-  val s: ByteArray,
+  val r: BigInteger,
+  val s: BigInteger,
   val v: ULong,
-  val yParity: ULong,
+  val yParity: ULong?,
   val type: TransactionType,
   val chainId: ULong? = null, // Optional field for EIP-155 transactions
   val maxPriorityFeePerGas: ULong? = null, // null for non EIP-1559 transactions
@@ -80,8 +81,8 @@ data class Transaction(
     } else if (other.to != null) return false
     if (value != other.value) return false
     if (!input.contentEquals(other.input)) return false
-    if (!r.contentEquals(other.r)) return false
-    if (!s.contentEquals(other.s)) return false
+    if (r != other.r) return false
+    if (s != other.s) return false
     if (v != other.v) return false
     if (yParity != other.yParity) return false
     if (type != other.type) return false
@@ -100,8 +101,8 @@ data class Transaction(
     result = 31 * result + (to?.contentHashCode() ?: 0)
     result = 31 * result + value.hashCode()
     result = 31 * result + input.contentHashCode()
-    result = 31 * result + r.contentHashCode()
-    result = 31 * result + s.contentHashCode()
+    result = 31 * result + r.hashCode()
+    result = 31 * result + s.hashCode()
     result = 31 * result + v.hashCode()
     result = 31 * result + yParity.hashCode()
     result = 31 * result + type.hashCode()
