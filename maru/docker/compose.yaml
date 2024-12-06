@@ -10,7 +10,18 @@ volumes:
     name: "geth-data"
 
 services:
+
+  initialization:
+    image: busybox:latest
+    container_name: intialization_using_busybox
+    entrypoint: [ "sh","/initialization/init.sh" ]
+    volumes:
+      - ./initialization/:/initialization:rw
+
   sequencer:
+    depends_on:
+      initialization:
+        condition: service_completed_successfully
     image: hyperledger/besu:24.10.0
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
@@ -25,13 +36,13 @@ services:
       - -c
       - |
         /opt/besu/bin/besu --config-file=/var/lib/besu/config.toml \
-        --genesis-file=/var/lib/besu/genesis.json \
+        --genesis-file=/initialization/genesis-besu.json \
         --node-private-key-file="/var/lib/besu/key"
     volumes:
       - ./sequencer/config.toml:/var/lib/besu/config.toml:ro
       - ./sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./sequencer/key:/var/lib/besu/key:ro
-      - ./genesis-besu.json/:/var/lib/besu/genesis.json:ro
+      - ./initialization/:/initialization/:ro
     ports:
       - "8545:8545"
       - "8546:8546"
@@ -51,12 +62,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/genesis.json", "0x0", "0x1C9C380", "/data" ]
+    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x0", "0x1C9C380", "/data" ]
     environment:
       BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
     volumes:
       - ./geth:/scripts:ro
-      - ./genesis-geth.json:/genesis.json:ro
+      - ./initialization/:/initialization/:ro
       - ./geth/jwt:/jwt:ro
     ports:
       - "8555:8545"
@@ -75,12 +86,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/genesis.json", "0x0", "0x1C9C380", "/data" ]
+    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x0", "0x1C9C380", "/data" ]
     environment:
       BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
     volumes:
       - ./geth:/scripts:ro
-      - ./genesis-geth.json:/genesis.json:ro
+      - ./initialization/:/initialization/:ro
       - ./geth/jwt:/jwt:ro
     ports:
       - "8565:8545"
@@ -99,12 +110,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/genesis.json", "0x0", "0x1C9C380", "/data" ]
+    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x0", "0x1C9C380", "/data" ]
     environment:
       BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
     volumes:
       - ./geth:/scripts:ro
-      - ./genesis-geth.json:/genesis.json:ro
+      - ./initialization/:/initialization/:ro
       - ./geth/jwt:/jwt:ro
     ports:
       - "8575:8545"
@@ -131,11 +142,11 @@ services:
       - -c
       - |
         /opt/besu/bin/besu --config-file=/var/lib/besu/config.toml \
-        --genesis-file=/var/lib/besu/genesis.json
+        --genesis-file=/initialization/genesis-besu.json
     volumes:
       - ./besu-follower/config.toml:/var/lib/besu/config.toml:ro
       - ./besu-follower/log4j.xml:/var/lib/besu/log4j.xml:ro
-      - ./genesis-besu.json/:/var/lib/besu/genesis.json:ro
+      - ./initialization/:/initialization/:ro
     ports:
       - "9545:8545"
       - "9546:8546"
