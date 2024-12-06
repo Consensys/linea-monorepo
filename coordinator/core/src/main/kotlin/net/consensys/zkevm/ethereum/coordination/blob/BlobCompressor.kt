@@ -38,7 +38,7 @@ interface BlobCompressor {
 }
 
 class GoBackedBlobCompressor private constructor(
-  private val goNativeBlobCompressor: GoNativeBlobCompressor,
+  internal val goNativeBlobCompressor: GoNativeBlobCompressor,
   private val dataLimit: UInt,
   private val metricsFacade: MetricsFacade
 ) : BlobCompressor {
