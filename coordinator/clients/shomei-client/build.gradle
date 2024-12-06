@@ -8,8 +8,6 @@ dependencies {
   implementation project(':jvm-libs:generic:json-rpc')
   implementation project(':jvm-libs:linea:metrics:micrometer')
   implementation project(':jvm-libs:linea:core:traces')
-  implementation "tech.pegasys.teku.internal:unsigned:${libs.versions.teku.get()}"
-
   api "io.vertx:vertx-core"
 
   testImplementation 'org.junit.jupiter:junit-jupiter'

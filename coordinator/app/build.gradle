@@ -42,7 +42,6 @@ dependencies {
   implementation project(':coordinator:persistence:batch')
   implementation project(':coordinator:persistence:feehistory')
   implementation project(':coordinator:persistence:db-common')
-  implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
 
   implementation project(':coordinator:ethereum:gas-pricing:static-cap')
   implementation project(':coordinator:ethereum:gas-pricing:dynamic-cap')
