@@ -10,3 +10,7 @@ type HorizontalSplitting struct {
 func (split HorizontalSplitting) Analyze(comp *wizard.CompiledIOP) {
 
 }
+
+func (split HorizontalSplitting) Split(comp *wizard.CompiledIOP) {
+
+}
