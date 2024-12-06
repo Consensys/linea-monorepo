@@ -15,7 +15,7 @@ type Request struct {
 
 	// Conflation order
 	ConflationOrder ConflationOrder `json:"conflationOrder"`
-	// The parent zkRootHash for the sucession of blocks. In hexstring.
+	// The parent zkRootHash for the succession of blocks. In hexstring.
 	ParentStateRootHash string `json:"parentStateRootHash"`
 	// The new state root hash
 	FinalStateRootHash string `json:"finalStateRootHash"`
@@ -51,7 +51,7 @@ type Response struct {
 
 	// Conflation order
 	ConflationOrder ConflationOrder `json:"conflationOrder"`
-	// (parentZkRootHash) The parent zkRootHash for the sucession of blocks. In hexstring.
+	// (parentZkRootHash) The parent zkRootHash for the succession of blocks. In hexstring.
 	ParentStateRootHash string `json:"parentStateRootHash"`
 	// (newStateRootHash) The last root hash after executing all the blocks in the blob.
 	FinalStateRootHash string `json:"finalStateRootHash"`
