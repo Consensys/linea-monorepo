@@ -76,7 +76,7 @@ export type ClaimingOptions = {
   messageSubmissionTimeout?: number;
   feeRecipientAddress?: string;
   maxNonceDiff?: number;
-  maxFeePerGas?: bigint;
+  maxFeePerGasCap?: bigint;
   gasEstimationPercentile?: number;
   isMaxGasFeeEnforced?: boolean;
   profitMargin?: number;

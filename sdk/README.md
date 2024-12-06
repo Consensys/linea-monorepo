@@ -63,12 +63,12 @@ interface ReadOnlyModeOptions {
   l2RpcUrlOrProvider: string | Eip1193Provider;
   l2MessageTreeDepth?: number;
   l1FeeEstimatorOptions?: {
-    maxFeePerGas?: bigint;
+    maxFeePerGasCap?: bigint;
     gasFeeEstimationPercentile?: number;
     enforceMaxGasFee?: boolean;
   };
   l2FeeEstimatorOptions?: {
-    maxFeePerGas?: bigint;
+    maxFeePerGasCap?: bigint;
     gasFeeEstimationPercentile?: number;
     enforceMaxGasFee?: boolean;
   };
@@ -112,26 +112,26 @@ interface WriteModeOptions extends ReadOnlyModeOptions {
 - `l1FeeEstimatorOptions?`: (Optional)
   - Description: Configuration options for estimating transaction fees on Layer 1.
   - Fields:
-    - `maxFeePerGas?`: `bigint` (Optional)
+    - `maxFeePerGasCap?`: `bigint` (Optional)
       - Description: The maximum gas price (in wei) you're willing to pay per unit of gas on L1.
       - Default: If not provided, a default value of `100000000000n` is used.
     - `gasFeeEstimationPercentile?`: `number` (Optional)
       - Description: The percentile of recent gas prices to use for fee estimation (used in `eth_feeHistory`).
       - Default: If not provided, a default value of `20` is used.
     - `enforceMaxGasFee?`: `boolean` (Optional)
-      - Description: If true, ensures the gas fee does not exceed maxFeePerGas.
+      - Description: If true, ensures the gas fee does not exceed maxFeePerGasCap.
       - Default: `false`
 - `l2FeeEstimatorOptions?`: (Optional)
   - Description: Configuration options for estimating transaction fees on Layer 2.
   - Fields:
-    - `maxFeePerGas?`: `bigint` (Optional)
+    - `maxFeePerGasCap?`: `bigint` (Optional)
       - Description: The maximum gas price (in wei) you're willing to pay per unit of gas on L2.
       - Default: If not provided, a default value of `100000000000n` is used.
     - `gasFeeEstimationPercentile?`: `number` (Optional)
       - Description: The percentile of recent gas prices to use for fee estimation (used in `eth_feeHistory`).
       - Default: If not provided, a default value of `20` is used.
     - `enforceMaxGasFee?`: `boolean` (Optional)
-      - Description: If true, ensures the gas fee does not exceed maxFeePerGas.
+      - Description: If true, ensures the gas fee does not exceed maxFeePerGasCap.
       - Default: `false`
 - `l1SignerPrivateKeyOrWallet`: `string | Wallet` <strong>(Required in "read-write" mode)</strong>
   - Description: Credentials used to sign transactions on Layer 1.
@@ -155,9 +155,9 @@ interface WriteModeOptions extends ReadOnlyModeOptions {
     - All common fields are required.
     - Additional Required Fields: l1SignerPrivateKeyOrWallet and l2SignerPrivateKeyOrWallet are necessary to enable transaction signing and sending capabilities.
 - <strong>Fee Estimator Options</strong>:
-  - `maxFeePerGas`: Sets an upper limit on the gas price you're willing to pay.
+  - `maxFeePerGasCap`: Sets an upper limit on the gas price you're willing to pay.
   - `gasFeeEstimationPercentile`: Helps in choosing a gas price based on recent network activity (used in `eth_feeHistory`).
-  - `enforceMaxGasFee`: Ensures that the gas fee does not exceed the maxFeePerGas value, providing cost control.
+  - `enforceMaxGasFee`: Ensures that the gas fee does not exceed the maxFeePerGasCap value, providing cost control.
 
 #### Usage Summary
 

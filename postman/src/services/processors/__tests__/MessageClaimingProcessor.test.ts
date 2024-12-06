@@ -15,6 +15,7 @@ import {
 import { TestLogger } from "../../../utils/testing/helpers";
 import { MessageStatus } from "../../../core/enums";
 import {
+  DEFAULT_MAX_FEE_PER_GAS,
   TEST_CONTRACT_ADDRESS_2,
   testAnchoredMessage,
   testClaimedMessage,
@@ -31,7 +32,7 @@ import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBSer
 import {
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_MAX_CLAIM_GAS_LIMIT,
-  DEFAULT_MAX_FEE_PER_GAS,
+  DEFAULT_MAX_FEE_PER_GAS_CAP,
   DEFAULT_MAX_NUMBER_OF_RETRIES,
   DEFAULT_PROFIT_MARGIN,
   DEFAULT_RETRY_DELAY_IN_SECONDS,
@@ -63,7 +64,7 @@ describe("TestMessageClaimingProcessor", () => {
 
   beforeEach(() => {
     gasProvider = new DefaultGasProvider(provider, {
-      maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+      maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
       gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
       enforceMaxGasFee: false,
     });

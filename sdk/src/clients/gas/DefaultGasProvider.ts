@@ -25,7 +25,10 @@ export class DefaultGasProvider implements IEthereumGasProvider<TransactionReque
     private readonly config: DefaultGasProviderConfig,
   ) {
     this.cacheIsValidForBlockNumber = 0n;
-    this.gasFeesCache = { maxFeePerGas: this.config.maxFeePerGas, maxPriorityFeePerGas: this.config.maxFeePerGas };
+    this.gasFeesCache = {
+      maxFeePerGas: this.config.maxFeePerGasCap,
+      maxPriorityFeePerGas: this.config.maxFeePerGasCap,
+    };
   }
 
   /**
@@ -45,8 +48,8 @@ export class DefaultGasProvider implements IEthereumGasProvider<TransactionReque
   public async getGasFees(): Promise<GasFees> {
     if (this.config.enforceMaxGasFee) {
       return {
-        maxPriorityFeePerGas: this.config.maxFeePerGas,
-        maxFeePerGas: this.config.maxFeePerGas,
+        maxPriorityFeePerGas: this.config.maxFeePerGasCap,
+        maxFeePerGas: this.config.maxFeePerGasCap,
       };
     }
 
@@ -58,9 +61,9 @@ export class DefaultGasProvider implements IEthereumGasProvider<TransactionReque
     const feeHistory = await this.fetchFeeHistory();
     const maxPriorityFeePerGas = this.calculateMaxPriorityFee(feeHistory.reward);
 
-    if (maxPriorityFeePerGas > this.config.maxFeePerGas) {
+    if (maxPriorityFeePerGas > this.config.maxFeePerGasCap) {
       throw new FeeEstimationError(
-        `Estimated miner tip of ${maxPriorityFeePerGas} exceeds configured max fee per gas of ${this.config.maxFeePerGas}!`,
+        `Estimated miner tip of ${maxPriorityFeePerGas} exceeds configured max fee per gas of ${this.config.maxFeePerGasCap}!`,
       );
     }
 
@@ -116,12 +119,12 @@ export class DefaultGasProvider implements IEthereumGasProvider<TransactionReque
     if (maxFeePerGas > 0n && maxPriorityFeePerGas > 0n) {
       this.gasFeesCache = {
         maxPriorityFeePerGas,
-        maxFeePerGas: maxFeePerGas > this.config.maxFeePerGas ? this.config.maxFeePerGas : maxFeePerGas,
+        maxFeePerGas: maxFeePerGas > this.config.maxFeePerGasCap ? this.config.maxFeePerGasCap : maxFeePerGas,
       };
     } else {
       this.gasFeesCache = {
-        maxPriorityFeePerGas: this.config.maxFeePerGas,
-        maxFeePerGas: this.config.maxFeePerGas,
+        maxPriorityFeePerGas: this.config.maxFeePerGasCap,
+        maxFeePerGas: this.config.maxFeePerGasCap,
       };
     }
   }
@@ -132,6 +135,6 @@ export class DefaultGasProvider implements IEthereumGasProvider<TransactionReque
    * @returns {bigint} The maximum fee per gas.
    */
   public getMaxFeePerGas(): bigint {
-    return this.config.maxFeePerGas;
+    return this.config.maxFeePerGasCap;
   }
 }

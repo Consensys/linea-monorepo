@@ -228,12 +228,12 @@ export class L2MessageServiceClient
     } else {
       maxPriorityFeePerGas = (transaction.maxPriorityFeePerGas * (BigInt(priceBumpPercent) + 100n)) / 100n;
       maxFeePerGas = (transaction.maxFeePerGas * (BigInt(priceBumpPercent) + 100n)) / 100n;
-      const maxFeePerGasFromConfig = this.gasFeeProvider.getMaxFeePerGas();
-      if (maxPriorityFeePerGas > maxFeePerGasFromConfig) {
-        maxPriorityFeePerGas = maxFeePerGasFromConfig;
+      const maxFeePerGasCap = this.gasFeeProvider.getMaxFeePerGas();
+      if (maxPriorityFeePerGas > maxFeePerGasCap) {
+        maxPriorityFeePerGas = maxFeePerGasCap;
       }
-      if (maxFeePerGas > maxFeePerGasFromConfig) {
-        maxFeePerGas = maxFeePerGasFromConfig;
+      if (maxFeePerGas > maxFeePerGasCap) {
+        maxFeePerGas = maxFeePerGasCap;
       }
     }
 

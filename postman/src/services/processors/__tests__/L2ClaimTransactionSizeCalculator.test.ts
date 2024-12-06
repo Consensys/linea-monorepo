@@ -10,10 +10,15 @@ import {
   Wallet,
 } from "ethers";
 import { LineaProvider, serialize, testingHelpers } from "@consensys/linea-sdk";
-import { TEST_CONTRACT_ADDRESS_2, TEST_L2_SIGNER_PRIVATE_KEY, testMessage } from "../../../utils/testing/constants";
+import {
+  DEFAULT_MAX_FEE_PER_GAS,
+  TEST_CONTRACT_ADDRESS_2,
+  TEST_L2_SIGNER_PRIVATE_KEY,
+  testMessage,
+} from "../../../utils/testing/constants";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { L2ClaimTransactionSizeCalculator } from "../../L2ClaimTransactionSizeCalculator";
-import { DEFAULT_MAX_FEE_PER_GAS } from "../../../core/constants";
+import { DEFAULT_MAX_FEE_PER_GAS_CAP } from "../../../core/constants";
 import { BaseError } from "../../../core/errors";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 
@@ -37,7 +42,7 @@ describe("L2ClaimTransactionSizeCalculator", () => {
       "read-only",
       undefined,
       {
-        maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
         enforceMaxGasFee: false,
       },
     );

@@ -3,9 +3,10 @@ import { MockProxy, mock, mockClear } from "jest-mock-extended";
 import { Provider } from "../../providers/provider";
 import { GasProvider } from "../GasProvider";
 import { Direction } from "../../../core/enums/message";
-import { DEFAULT_GAS_ESTIMATION_PERCENTILE, DEFAULT_MAX_FEE_PER_GAS } from "../../../core/constants";
+import { DEFAULT_GAS_ESTIMATION_PERCENTILE, DEFAULT_MAX_FEE_PER_GAS_CAP } from "../../../core/constants";
 import { generateTransactionRequest } from "../../../utils/testing/helpers";
 import { toBeHex } from "ethers";
+import { DEFAULT_MAX_FEE_PER_GAS } from "../../../utils/testing/constants/common";
 
 const testFeeHistory = {
   baseFeePerGas: ["0x3da8e7618", "0x3e1ba3b1b", "0x3dfd72b90", "0x3d64eee76", "0x3d4da2da0", "0x3ccbcac6b"],
@@ -30,7 +31,7 @@ describe("GasProvider", () => {
       enableLineaEstimateGas: true,
       direction: Direction.L1_TO_L2,
       enforceMaxGasFee: false,
-      maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+      maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
       gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
     });
   });
@@ -72,7 +73,7 @@ describe("GasProvider", () => {
           enableLineaEstimateGas: false,
           direction: Direction.L1_TO_L2,
           enforceMaxGasFee: false,
-          maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+          maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
           gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
         });
 
@@ -97,7 +98,7 @@ describe("GasProvider", () => {
           enableLineaEstimateGas: false,
           direction: Direction.L2_TO_L1,
           enforceMaxGasFee: false,
-          maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+          maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
           gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
         });
 
@@ -124,7 +125,7 @@ describe("GasProvider", () => {
         enableLineaEstimateGas: false,
         direction: Direction.L2_TO_L1,
         enforceMaxGasFee: false,
-        maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
         gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
       });
       expect(gasProvider.getMaxFeePerGas()).toStrictEqual(DEFAULT_MAX_FEE_PER_GAS);

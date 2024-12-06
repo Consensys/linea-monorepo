@@ -16,7 +16,7 @@ import {
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_INITIAL_FROM_BLOCK,
   DEFAULT_LISTENER_INTERVAL,
-  DEFAULT_MAX_FEE_PER_GAS,
+  DEFAULT_MAX_FEE_PER_GAS_CAP,
 } from "../../../core/constants";
 
 describe("TestMessageSentEventPoller", () => {
@@ -29,7 +29,7 @@ describe("TestMessageSentEventPoller", () => {
 
   beforeEach(() => {
     const gasProvider = new DefaultGasProvider(provider, {
-      maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+      maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
       gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
       enforceMaxGasFee: false,
     });

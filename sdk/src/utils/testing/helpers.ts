@@ -21,7 +21,7 @@ import {
   DEFAULT_ENFORCE_MAX_GAS_FEE,
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_L2_MESSAGE_TREE_DEPTH,
-  DEFAULT_MAX_FEE_PER_GAS,
+  DEFAULT_MAX_FEE_PER_GAS_CAP,
   L2_MERKLE_TREE_ADDED_EVENT_SIGNATURE,
   L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE,
   MESSAGE_SENT_EVENT_SIGNATURE,
@@ -182,7 +182,7 @@ export function generateLineaRollupClient(
   mode: SDKMode,
   signer?: Signer,
   gasFeesOptions?: {
-    maxFeePerGas?: bigint;
+    maxFeePerGasCap?: bigint;
     gasEstimationPercentile?: number;
     enforceMaxGasFee?: boolean;
   },
@@ -197,7 +197,7 @@ export function generateLineaRollupClient(
   const lineaRollupLogClient = new EthersLineaRollupLogClient(l1Provider, l1ContractAddress);
   const l2MessageServiceLogClient = new EthersL2MessageServiceLogClient(l2Provider, l2ContractAddres);
   const gasProvider = new DefaultGasProvider(l1Provider, {
-    maxFeePerGas: gasFeesOptions?.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS,
+    maxFeePerGasCap: gasFeesOptions?.maxFeePerGasCap ?? DEFAULT_MAX_FEE_PER_GAS_CAP,
     gasEstimationPercentile: gasFeesOptions?.gasEstimationPercentile ?? DEFAULT_GAS_ESTIMATION_PERCENTILE,
     enforceMaxGasFee: gasFeesOptions?.enforceMaxGasFee ?? DEFAULT_ENFORCE_MAX_GAS_FEE,
   });
@@ -237,7 +237,7 @@ export function generateL2MessageServiceClient(
   mode: SDKMode,
   signer?: Signer,
   gasFeesOptions?: {
-    maxFeePerGas?: bigint;
+    maxFeePerGasCap?: bigint;
     gasEstimationPercentile?: number;
     enforceMaxGasFee?: boolean;
     enableLineaEstimateGas?: boolean;
@@ -257,7 +257,7 @@ export function generateL2MessageServiceClient(
   );
 
   const gasProvider = new GasProvider(l2Provider, {
-    maxFeePerGas: gasFeesOptions?.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS,
+    maxFeePerGasCap: gasFeesOptions?.maxFeePerGasCap ?? DEFAULT_MAX_FEE_PER_GAS_CAP,
     enforceMaxGasFee: gasFeesOptions?.enforceMaxGasFee ?? DEFAULT_ENFORCE_MAX_GAS_FEE,
     gasEstimationPercentile: gasFeesOptions?.gasEstimationPercentile ?? DEFAULT_GAS_ESTIMATION_PERCENTILE,
     direction: Direction.L1_TO_L2,

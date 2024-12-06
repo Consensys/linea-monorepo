@@ -10,8 +10,17 @@ import {
   Wallet,
 } from "ethers";
 import { GasProvider, LineaProvider, testingHelpers } from "@consensys/linea-sdk";
-import { TEST_CONTRACT_ADDRESS_2, TEST_L2_SIGNER_PRIVATE_KEY, testMessage } from "../../../utils/testing/constants";
-import { DEFAULT_MAX_CLAIM_GAS_LIMIT, DEFAULT_MAX_FEE_PER_GAS, DEFAULT_PROFIT_MARGIN } from "../../../core/constants";
+import {
+  DEFAULT_MAX_FEE_PER_GAS,
+  TEST_CONTRACT_ADDRESS_2,
+  TEST_L2_SIGNER_PRIVATE_KEY,
+  testMessage,
+} from "../../../utils/testing/constants";
+import {
+  DEFAULT_MAX_CLAIM_GAS_LIMIT,
+  DEFAULT_MAX_FEE_PER_GAS_CAP,
+  DEFAULT_PROFIT_MARGIN,
+} from "../../../core/constants";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { LineaTransactionValidationService } from "../../LineaTransactionValidationService";
 
@@ -36,7 +45,7 @@ describe("LineaTransactionValidationService", () => {
       "read-write",
       new Wallet(TEST_L2_SIGNER_PRIVATE_KEY),
       {
-        maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
         enforceMaxGasFee: false,
       },
     );

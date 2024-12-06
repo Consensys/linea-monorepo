@@ -7,6 +7,7 @@ import {
   TEST_TRANSACTION_HASH,
   TEST_ADDRESS_2,
   TEST_ADDRESS_1,
+  DEFAULT_MAX_FEE_PER_GAS,
 } from "../../../utils/testing/constants/common";
 import { L2MessageService, L2MessageService__factory } from "../../../contracts/typechain";
 import {
@@ -16,7 +17,7 @@ import {
   mockProperty,
 } from "../../../utils/testing/helpers";
 import { L2MessageServiceClient } from "../L2MessageServiceClient";
-import { DEFAULT_MAX_FEE_PER_GAS, ZERO_ADDRESS } from "../../../core/constants";
+import { ZERO_ADDRESS } from "../../../core/constants";
 import { OnChainMessageStatus } from "../../../core/enums/message";
 import { GasEstimationError } from "../../../core/errors/GasFeeErrors";
 import { BaseError } from "../../../core/errors";
@@ -318,7 +319,7 @@ describe("TestL2MessageServiceClient", () => {
         TEST_CONTRACT_ADDRESS_1,
         "read-write",
         walletMock,
-        { maxFeePerGas: 500000000n },
+        { maxFeePerGasCap: 500000000n },
       ).l2MessageServiceClient;
 
       await l2MessageServiceClient.retryTransactionWithHigherFee(TEST_TRANSACTION_HASH, 1000);
@@ -353,7 +354,7 @@ describe("TestL2MessageServiceClient", () => {
       });
 
       const clients = generateL2MessageServiceClient(providerMock, TEST_CONTRACT_ADDRESS_1, "read-write", walletMock, {
-        maxFeePerGas: 500000000n,
+        maxFeePerGasCap: 500000000n,
         enforceMaxGasFee: true,
       });
 

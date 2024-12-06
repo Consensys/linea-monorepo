@@ -10,6 +10,7 @@ import {
 } from "ethers";
 import { DefaultGasProvider, LineaProvider, Provider, testingHelpers } from "@consensys/linea-sdk";
 import {
+  DEFAULT_MAX_FEE_PER_GAS,
   TEST_CONTRACT_ADDRESS_1,
   TEST_CONTRACT_ADDRESS_2,
   TEST_L1_SIGNER_PRIVATE_KEY,
@@ -18,7 +19,7 @@ import {
 import {
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_MAX_CLAIM_GAS_LIMIT,
-  DEFAULT_MAX_FEE_PER_GAS,
+  DEFAULT_MAX_FEE_PER_GAS_CAP,
   DEFAULT_PROFIT_MARGIN,
 } from "../../../core/constants";
 import { EthereumTransactionValidationService } from "../../EthereumTransactionValidationService";
@@ -46,7 +47,7 @@ describe("EthereumTransactionValidationService", () => {
       new Wallet(TEST_L1_SIGNER_PRIVATE_KEY),
       {
         gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
-        maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
         enforceMaxGasFee: false,
       },
     );

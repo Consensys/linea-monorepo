@@ -33,6 +33,8 @@ export const TEST_TRANSACTION_HASH = "0x2020202020202020202020202020202020202020
 
 export const TEST_RPC_URL = "http://localhost:8545";
 
+export const DEFAULT_MAX_FEE_PER_GAS = 100000000000n;
+
 export const testMessage = new Message({
   messageSender: TEST_ADDRESS_1,
   destination: TEST_CONTRACT_ADDRESS_1,
@@ -190,7 +192,7 @@ export const testL1NetworkConfig: L1NetworkConfig = {
   claiming: {
     signerPrivateKey: TEST_L1_SIGNER_PRIVATE_KEY,
     messageSubmissionTimeout: 300_000,
-    maxFeePerGas: 100_000_000n,
+    maxFeePerGasCap: 100_000_000n,
     gasEstimationPercentile: 15,
     maxNonceDiff: DEFAULT_MAX_NONCE_DIFF,
     isMaxGasFeeEnforced: false,
@@ -217,7 +219,7 @@ export const testL2NetworkConfig: L2NetworkConfig = {
   claiming: {
     signerPrivateKey: TEST_L2_SIGNER_PRIVATE_KEY,
     messageSubmissionTimeout: 300_000,
-    maxFeePerGas: 100_000_000n,
+    maxFeePerGasCap: 100_000_000n,
     gasEstimationPercentile: 15,
     maxNonceDiff: 10,
     maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,

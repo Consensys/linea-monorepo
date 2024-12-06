@@ -14,7 +14,7 @@ describe("LineaGasProvider", () => {
   beforeEach(() => {
     providerMock = mock<LineaProvider>();
     lineaGasProvider = new LineaGasProvider(providerMock, {
-      maxFeePerGas: MAX_FEE_PER_GAS,
+      maxFeePerGasCap: MAX_FEE_PER_GAS,
       enforceMaxGasFee: false,
     });
   });
@@ -26,7 +26,7 @@ describe("LineaGasProvider", () => {
   describe("getGasFees", () => {
     it("should return maxFeePerGas, maxPriorityFeePerGas from config when enforceMaxGasFee option is enabled", async () => {
       lineaGasProvider = new LineaGasProvider(providerMock, {
-        maxFeePerGas: MAX_FEE_PER_GAS,
+        maxFeePerGasCap: MAX_FEE_PER_GAS,
         enforceMaxGasFee: true,
       });
       jest.spyOn(providerMock, "getBlockNumber").mockResolvedValueOnce(1);

@@ -41,8 +41,8 @@ export class LineaGasProvider implements ILineaGasProvider<TransactionRequest> {
     if (this.config.enforceMaxGasFee) {
       return {
         ...gasFees,
-        maxPriorityFeePerGas: this.config.maxFeePerGas,
-        maxFeePerGas: this.config.maxFeePerGas,
+        maxPriorityFeePerGas: this.config.maxFeePerGasCap,
+        maxFeePerGas: this.config.maxFeePerGasCap,
       };
     }
     return gasFees;
@@ -121,6 +121,6 @@ export class LineaGasProvider implements ILineaGasProvider<TransactionRequest> {
    * @returns {bigint} The maximum fee per gas.
    */
   public getMaxFeePerGas(): bigint {
-    return this.config.maxFeePerGas;
+    return this.config.maxFeePerGasCap;
   }
 }

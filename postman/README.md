@@ -44,7 +44,7 @@ All messages are stored in a configurable Postgres DB.
 - `MESSAGE_SUBMISSION_TIMEOUT`: Timeout for message submission (ms)
 - `MAX_FETCH_MESSAGES_FROM_DB`: Maximum messages to fetch from database
 - `MAX_NONCE_DIFF`: Maximum allowed nonce difference between the DB and the chain
-- `MAX_FEE_PER_GAS`: Maximum gas fee limit
+- `MAX_FEE_PER_GAS_CAP`: Maximum gas fee cap
 - `GAS_ESTIMATION_PERCENTILE`: Gas estimation percentile
 - `PROFIT_MARGIN`: Profit margin for gas fees
 - `MAX_NUMBER_OF_RETRIES`: Maximum retry attempts

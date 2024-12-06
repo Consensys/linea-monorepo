@@ -11,11 +11,10 @@ import {
 import { Direction } from "@consensys/linea-sdk";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { MessageStatus } from "../../../core/enums";
-import { testL1NetworkConfig, testMessage } from "../../../utils/testing/constants";
+import { testL1NetworkConfig, testMessage, DEFAULT_MAX_FEE_PER_GAS } from "../../../utils/testing/constants";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { L2ClaimMessageTransactionSizeProcessor } from "../L2ClaimMessageTransactionSizeProcessor";
 import { L2ClaimTransactionSizeCalculator } from "../../L2ClaimTransactionSizeCalculator";
-import { DEFAULT_MAX_FEE_PER_GAS } from "../../../core/constants";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 
 describe("L2ClaimMessageTransactionSizeProcessor", () => {

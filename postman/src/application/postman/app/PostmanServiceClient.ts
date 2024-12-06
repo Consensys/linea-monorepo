@@ -71,12 +71,12 @@ export class PostmanServiceClient {
       mode: "read-write",
       l1FeeEstimatorOptions: {
         gasFeeEstimationPercentile: config.l1Config.claiming.gasEstimationPercentile,
-        maxFeePerGas: config.l1Config.claiming.maxFeePerGas,
+        maxFeePerGasCap: config.l1Config.claiming.maxFeePerGasCap,
         enforceMaxGasFee: config.l1Config.claiming.isMaxGasFeeEnforced,
       },
       l2FeeEstimatorOptions: {
         gasFeeEstimationPercentile: config.l2Config.claiming.gasEstimationPercentile,
-        maxFeePerGas: config.l2Config.claiming.maxFeePerGas,
+        maxFeePerGasCap: config.l2Config.claiming.maxFeePerGasCap,
         enforceMaxGasFee: config.l2Config.claiming.isMaxGasFeeEnforced,
         enableLineaEstimateGas: config.l2Config.enableLineaEstimateGas,
       },

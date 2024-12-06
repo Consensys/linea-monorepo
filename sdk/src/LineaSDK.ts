@@ -18,7 +18,7 @@ import {
   DEFAULT_ENFORCE_MAX_GAS_FEE,
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_L2_MESSAGE_TREE_DEPTH,
-  DEFAULT_MAX_FEE_PER_GAS,
+  DEFAULT_MAX_FEE_PER_GAS_CAP,
 } from "./core/constants";
 import { BaseError } from "./core/errors";
 import { L1FeeEstimatorOptions, L2FeeEstimatorOptions, LineaSDKOptions, Network, SDKMode } from "./core/types";
@@ -71,22 +71,22 @@ export class LineaSDK {
       this.l2Signer = this.getWallet(l2SignerPrivateKeyOrWallet).connect(this.l2Provider);
     }
 
-    const { maxFeePerGas, gasFeeEstimationPercentile, enforceMaxGasFee } = l1FeeEstimatorOptions;
+    const { maxFeePerGasCap, gasFeeEstimationPercentile, enforceMaxGasFee } = l1FeeEstimatorOptions;
     const {
-      maxFeePerGas: l2MaxFeePerGas,
+      maxFeePerGasCap: l2MaxFeePerGasCap,
       gasFeeEstimationPercentile: l2GasFeeEstimationPercentile,
       enableLineaEstimateGas: l2EnableLineaEstimateGas,
       enforceMaxGasFee: l2EnforceMaxGasFee,
     } = l2FeeEstimatorOptions;
 
     this.l1FeeEstimatorOptions = {
-      maxFeePerGas: maxFeePerGas || DEFAULT_MAX_FEE_PER_GAS,
+      maxFeePerGasCap: maxFeePerGasCap || DEFAULT_MAX_FEE_PER_GAS_CAP,
       gasFeeEstimationPercentile: gasFeeEstimationPercentile || DEFAULT_GAS_ESTIMATION_PERCENTILE,
       enforceMaxGasFee: enforceMaxGasFee || DEFAULT_ENFORCE_MAX_GAS_FEE,
     };
 
     this.l2FeeEstimatorOptions = {
-      maxFeePerGas: l2MaxFeePerGas || DEFAULT_MAX_FEE_PER_GAS,
+      maxFeePerGasCap: l2MaxFeePerGasCap || DEFAULT_MAX_FEE_PER_GAS_CAP,
       gasFeeEstimationPercentile: l2GasFeeEstimationPercentile || DEFAULT_GAS_ESTIMATION_PERCENTILE,
       enforceMaxGasFee: l2EnforceMaxGasFee || DEFAULT_ENFORCE_MAX_GAS_FEE,
       enableLineaEstimateGas: l2EnableLineaEstimateGas || DEFAULT_ENABLE_LINEA_ESTIMATE_GAS,
@@ -141,7 +141,7 @@ export class LineaSDK {
    */
   public getL1GasProvider(): DefaultGasProvider {
     return new DefaultGasProvider(this.l1Provider, {
-      maxFeePerGas: this.l1FeeEstimatorOptions.maxFeePerGas,
+      maxFeePerGasCap: this.l1FeeEstimatorOptions.maxFeePerGasCap,
       gasEstimationPercentile: this.l1FeeEstimatorOptions.gasFeeEstimationPercentile,
       enforceMaxGasFee: this.l1FeeEstimatorOptions.enforceMaxGasFee,
     });
@@ -153,7 +153,7 @@ export class LineaSDK {
    */
   public getL2GasProvider(): GasProvider {
     return new GasProvider(this.l2Provider, {
-      maxFeePerGas: this.l2FeeEstimatorOptions.maxFeePerGas,
+      maxFeePerGasCap: this.l2FeeEstimatorOptions.maxFeePerGasCap,
       enforceMaxGasFee: this.l2FeeEstimatorOptions.enforceMaxGasFee,
       gasEstimationPercentile: this.l2FeeEstimatorOptions.gasFeeEstimationPercentile,
       direction: Direction.L1_TO_L2,

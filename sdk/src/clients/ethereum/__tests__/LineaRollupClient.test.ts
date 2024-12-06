@@ -9,6 +9,7 @@ import {
   TEST_MERKLE_ROOT,
   TEST_CONTRACT_ADDRESS_2,
   TEST_ADDRESS_1,
+  DEFAULT_MAX_FEE_PER_GAS,
 } from "../../../utils/testing/constants/common";
 import {
   testMessageSentEvent,
@@ -27,7 +28,7 @@ import {
   mockProperty,
 } from "../../../utils/testing/helpers";
 import { LineaRollupClient } from "../LineaRollupClient";
-import { DEFAULT_MAX_FEE_PER_GAS, ZERO_ADDRESS } from "../../../core/constants";
+import { ZERO_ADDRESS } from "../../../core/constants";
 import { OnChainMessageStatus } from "../../../core/enums/message";
 import { GasEstimationError } from "../../../core/errors/GasFeeErrors";
 import { BaseError } from "../../../core/errors";
@@ -598,7 +599,7 @@ describe("TestLineaRollupClient", () => {
         "read-write",
         walletMock,
         {
-          maxFeePerGas: 500000000n,
+          maxFeePerGasCap: 500000000n,
           enforceMaxGasFee: true,
         },
       ).lineaRollupClient;
@@ -636,7 +637,7 @@ describe("TestLineaRollupClient", () => {
         "read-write",
         walletMock,
         {
-          maxFeePerGas: 500000000n,
+          maxFeePerGasCap: 500000000n,
           enforceMaxGasFee: true,
         },
       ).lineaRollupClient;
@@ -821,7 +822,7 @@ describe("TestLineaRollupClient", () => {
         "read-write",
         walletMock,
         {
-          maxFeePerGas: 500000000n,
+          maxFeePerGasCap: 500000000n,
         },
       ).lineaRollupClient;
 
@@ -859,7 +860,7 @@ describe("TestLineaRollupClient", () => {
         "read-write",
         walletMock,
         {
-          maxFeePerGas: 500000000n,
+          maxFeePerGasCap: 500000000n,
           enforceMaxGasFee: true,
         },
       ).lineaRollupClient;

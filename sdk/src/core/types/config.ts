@@ -43,7 +43,7 @@ export interface WriteModeOptions extends BaseOptions {
  * Options for configuring gas fee estimation.
  */
 type FeeEstimatorOptions = {
-  maxFeePerGas?: bigint;
+  maxFeePerGasCap?: bigint;
   gasFeeEstimationPercentile?: number;
   enforceMaxGasFee?: boolean;
 };

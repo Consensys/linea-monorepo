@@ -23,7 +23,7 @@ export type LineaEstimateGasResponse = {
 };
 
 type BaseGasProviderConfig = {
-  maxFeePerGas: bigint;
+  maxFeePerGasCap: bigint;
   enforceMaxGasFee: boolean;
 };
 

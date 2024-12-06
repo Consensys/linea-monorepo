@@ -28,12 +28,12 @@ export class GasProvider implements IGasProvider<TransactionRequest> {
     private readonly config: GasProviderConfig,
   ) {
     this.defaultGasProvider = new DefaultGasProvider(this.provider, {
-      maxFeePerGas: config.maxFeePerGas,
+      maxFeePerGasCap: config.maxFeePerGasCap,
       gasEstimationPercentile: config.gasEstimationPercentile,
       enforceMaxGasFee: config.enforceMaxGasFee,
     });
     this.lineaGasProvider = new LineaGasProvider(this.provider, {
-      maxFeePerGas: config.maxFeePerGas,
+      maxFeePerGasCap: config.maxFeePerGasCap,
       enforceMaxGasFee: config.enforceMaxGasFee,
     });
   }

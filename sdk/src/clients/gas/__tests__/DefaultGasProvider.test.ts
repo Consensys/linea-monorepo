@@ -13,7 +13,7 @@ describe("DefaultGasProvider", () => {
   beforeEach(() => {
     providerMock = mock<Provider>();
     eip1559GasProvider = new DefaultGasProvider(providerMock, {
-      maxFeePerGas: MAX_FEE_PER_GAS,
+      maxFeePerGasCap: MAX_FEE_PER_GAS,
       gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
       enforceMaxGasFee: false,
     });

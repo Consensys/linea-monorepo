@@ -1,7 +1,7 @@
 import { FeeData } from "ethers";
 import { describe, afterEach, it, beforeEach } from "@jest/globals";
 import { Provider } from "..";
-import { DEFAULT_MAX_FEE_PER_GAS } from "../../../core/constants";
+import { DEFAULT_MAX_FEE_PER_GAS } from "../../../utils/testing/constants/common";
 
 describe("Provider", () => {
   let provider: Provider;

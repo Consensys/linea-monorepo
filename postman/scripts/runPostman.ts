@@ -32,7 +32,7 @@ async function main() {
           ? parseInt(process.env.MESSAGE_SUBMISSION_TIMEOUT)
           : undefined,
         maxNonceDiff: process.env.MAX_NONCE_DIFF ? parseInt(process.env.MAX_NONCE_DIFF) : undefined,
-        maxFeePerGas: process.env.MAX_FEE_PER_GAS ? BigInt(process.env.MAX_FEE_PER_GAS) : undefined,
+        maxFeePerGasCap: process.env.MAX_FEE_PER_GAS_CAP ? BigInt(process.env.MAX_FEE_PER_GAS_CAP) : undefined,
         gasEstimationPercentile: process.env.GAS_ESTIMATION_PERCENTILE
           ? parseInt(process.env.GAS_ESTIMATION_PERCENTILE)
           : undefined,
@@ -72,7 +72,7 @@ async function main() {
           ? parseInt(process.env.MESSAGE_SUBMISSION_TIMEOUT)
           : undefined,
         maxNonceDiff: process.env.MAX_NONCE_DIFF ? parseInt(process.env.MAX_NONCE_DIFF) : undefined,
-        maxFeePerGas: process.env.MAX_FEE_PER_GAS ? BigInt(process.env.MAX_FEE_PER_GAS) : undefined,
+        maxFeePerGasCap: process.env.MAX_FEE_PER_GAS_CAP ? BigInt(process.env.MAX_FEE_PER_GAS_CAP) : undefined,
         gasEstimationPercentile: process.env.GAS_ESTIMATION_PERCENTILE
           ? parseInt(process.env.GAS_ESTIMATION_PERCENTILE)
           : undefined,
