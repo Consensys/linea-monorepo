@@ -59,9 +59,10 @@ export class DefaultGasProvider implements IEthereumGasProvider<TransactionReque
     }
 
     const feeHistory = await this.fetchFeeHistory();
+    const baseFeePerGas = this.calculateBaseFeePerGas(feeHistory.baseFeePerGas);
     const maxPriorityFeePerGas = this.calculateMaxPriorityFee(feeHistory.reward);
 
-    if (maxPriorityFeePerGas > this.config.maxFeePerGasCap) {
+    if (baseFeePerGas + maxPriorityFeePerGas > this.config.maxFeePerGasCap) {
       throw new FeeEstimationError(
         `Estimated miner tip of ${maxPriorityFeePerGas} exceeds configured max fee per gas of ${this.config.maxFeePerGasCap}!`,
       );
@@ -91,6 +92,20 @@ export class DefaultGasProvider implements IEthereumGasProvider<TransactionReque
   private calculateMaxPriorityFee(reward: string[][]): bigint {
     return (
       reward.reduce((acc: bigint, currentValue: string[]) => acc + BigInt(currentValue[0]), 0n) / BigInt(reward.length)
+    );
+  }
+
+  /**
+   * Calculates the base fee per gas based on the baseFeePerGas data.
+   *
+   * @private
+   * @param {string[][]} baseFeePerGas - The baseFeePerGas data from the fee history.
+   * @returns {bigint} The calculated base fee per gas.
+   */
+  private calculateBaseFeePerGas(baseFeePerGas: string[]): bigint {
+    return (
+      baseFeePerGas.reduce((acc: bigint, currentValue: string) => acc + BigInt(currentValue), 0n) /
+      BigInt(baseFeePerGas.length)
     );
   }
 
