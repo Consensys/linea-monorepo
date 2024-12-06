@@ -6,6 +6,9 @@ on:
       - 'contracts/**'
       - 'testdata/**'
       - 'prover/**'
+      - '!contracts/**/*.md'
+      - '!testdata/**/*.md'
+      - '!prover/**/*.md'
   push:
     branches:
       - main
@@ -13,6 +16,9 @@ on:
       - 'contracts/**'
       - 'testdata/**'
       - 'prover/**'
+      - '!contracts/**/*.md'
+      - '!testdata/**/*.md'
+      - '!prover/**/*.md'
 
 env:
   GOPROXY: "https://proxy.golang.org"
@@ -26,12 +32,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: 1.23.x
           cache: false
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/go/pkg/mod
@@ -59,7 +65,7 @@ jobs:
         run: pnpm -F contracts run coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           fail_ci_if_error: true
           files: ./contracts/coverage/coverage-final.json
