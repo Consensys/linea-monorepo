@@ -28,7 +28,7 @@ tasks.register('javadocJar', Jar) {
 
 version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
 
-def lineaBesuDistTar = new File(new File(buildDir, "tmp"), rootProject.besuFilename)
+def lineaBesuDistTar = new File(new File(buildDir, "downloads"), rootProject.besuFilename)
 tasks.register('downloadLineaBesu', Download) {
   src rootProject.besuUrl
   dest lineaBesuDistTar
