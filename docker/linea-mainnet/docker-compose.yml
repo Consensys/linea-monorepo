@@ -71,6 +71,8 @@ services:
       - ./static-nodes.json:/var/lib/besu/static-nodes.json
 
   nethermind-node:
+      hostname: nethermind-node
+      container_name: nethermind-node
     image: nethermindeth/nethermind:master
     restart: unless-stopped
     command:
