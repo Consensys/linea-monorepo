@@ -2,21 +2,18 @@ package v1
 
 import (
 	"bytes"
-	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/consensys/compress/lzss"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/sirupsen/logrus"
 	"os"
 	"slices"
 	"strings"
-	"sync"
-
-	"github.com/consensys/compress/lzss"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 )
 
 const (
@@ -50,11 +47,6 @@ type BlobMaker struct {
 	// some buffers to avoid repeated allocations
 	buf        bytes.Buffer
 	packBuffer bytes.Buffer
-
-	lock                     sync.Mutex    // protects from concurrent writes by the optimizer. no thread safety guarantees
-	doOptimize               chan struct{} // signal to the optimizer that a change has been made
-	modificationNum          uint64        // id for the last change to blob
-	optimizerModificationNum uint64        // the last change used by the optimizer
 }
 
 // NewBlobMaker returns a new bm.
@@ -89,38 +81,23 @@ func NewBlobMaker(dataLimit int, dictPath string) (*BlobMaker, error) {
 	// initialize state
 	blobMaker.StartNewBatch()
 
-	blobMaker.startOptimizer()
-
 	return &blobMaker, nil
 }
 
 // StartNewBatch starts a new batch of blocks.
 func (bm *BlobMaker) StartNewBatch() {
-	bm.obtainLock()
-	defer bm.releaseLock()
-	bm.startNewBatch()
-}
-
-// thread-unsafe version of StartNewBatch
-// to be called from a method with lock ownership
-func (bm *BlobMaker) startNewBatch() {
-	bm.modificationNum++
 	bm.header.sealBatch()
 }
 
 // Reset resets the bm to its initial state.
 func (bm *BlobMaker) Reset() {
-	bm.obtainLock()
-	defer bm.releaseLock()
-	bm.modificationNum++
-
 	bm.header.resetTable()
 	bm.currentBlobLength = 0
 	bm.buf.Reset()
 	bm.packBuffer.Reset()
 	bm.compressor.Reset()
 
-	bm.startNewBatch()
+	bm.header.sealBatch()
 }
 
 // Len returns the length of the compressed data, which includes the header.
@@ -135,9 +112,6 @@ func (bm *BlobMaker) Written() int {
 // Bytes returns the compressed data. Note that it returns a slice of the internal buffer,
 // it is the caller's responsibility to copy the data if needed.
 func (bm *BlobMaker) Bytes() []byte {
-	bm.obtainLock() // to make sure no one (the optimizer specifically) is modifying the blob, possibly resulting in corrupted data
-	defer bm.releaseLock()
-
 	if bm.currentBlobLength > 0 {
 		// sanity check that we can always decompress.
 		header, rawBlocks, _, err := DecompressBlob(bm.currentBlob[:bm.currentBlobLength], bm.dictStore)
@@ -164,9 +138,7 @@ func (bm *BlobMaker) Bytes() []byte {
 // Write attempts to append the RLP block to the current batch.
 // if forceReset is set; this will NOT append the bytes but still returns true if the chunk could have been appended
 func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error) {
-	bm.obtainLock()
-	defer bm.releaseLock()
-	bm.modificationNum++
+	prevLen := bm.compressor.Written()
 
 	// decode the RLP block.
 	var block types.Block
@@ -195,7 +167,6 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 		if innerErr := bm.compressor.Revert(); innerErr != nil {
 			return false, fmt.Errorf("when reverting compressor because writing failed: %w\noriginal error: %w", innerErr, err)
 		}
-		bm.header.removeLastBlock()
 		return false, fmt.Errorf("when writing block to compressor: %w", err)
 	}
 
@@ -221,32 +192,64 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 		return false, nil
 	}
 
+	fitsInBlob := func() bool {
+		return encode.PackAlignSize(bm.buf.Len()+bm.compressor.Len(), fr381.Bits-1) <= bm.Limit
+	}
+
+	payload := bm.compressor.WrittenBytes()
+	recompressionAttempted := false
+	revert := func() error { // from this point on, we may have recompressed the entire payload in one go
+		// that makes the compressor's own Revert method unusable.
+		bm.header.removeLastBlock()
+		if !recompressionAttempted { // fast path for most "CanWrite" calls
+			return bm.compressor.Revert()
+		}
+		// we can't use the compressor's own Revert method because we tried to compress in one go.
+		bm.compressor.Reset()
+		_, err := bm.compressor.Write(payload[:prevLen])
+		return wrapError(err, "reverting the compressor")
+	}
+
 	// check that the header + the compressed data fits in the blob
-	fitsInBlob := encode.PackAlignSize(bm.buf.Len()+bm.compressor.Len(), fr381.Bits-1) <= bm.Limit
-	if !fitsInBlob {
-		// first thing to check is if we bypass compression, would that fit?
+	if !fitsInBlob() {
+		recompressionAttempted = true
+
+		// first thing to check is whether we can fit the block if we recompress everything in one go, known to achieve a higher ratio.
+		bm.compressor.Reset()
+		if _, err = bm.compressor.Write(payload); err != nil {
+			err = fmt.Errorf("when recompressing the blob: %w", err)
+
+			if innerErr := revert(); innerErr != nil {
+				err = fmt.Errorf("%w\n\tto recover from write failure: %w", innerErr, err)
+			}
+
+			return false, err
+		}
+		if fitsInBlob() {
+			goto bypass
+		}
+
+		// that didn't work. a "desperate" attempt is not to compress at all.
 		if bm.compressor.ConsiderBypassing() {
 			// we can bypass compression and get a better ratio.
 			// let's check if now we fit in the blob.
-			if encode.PackAlignSize(bm.buf.Len()+bm.compressor.Len(), fr381.Bits-1) <= bm.Limit {
+			if fitsInBlob() {
 				goto bypass
 			}
 		}
 
 		// discard.
-		if err = bm.compressor.Revert(); err != nil {
+		if err = revert(); err != nil {
 			return false, fmt.Errorf("when reverting compressor because blob is full: %w", err)
 		}
-		bm.header.removeLastBlock()
 		return false, nil
 	}
 bypass:
 	if forceReset {
 		// we don't want to append the data, but we could have.
-		if err = bm.compressor.Revert(); err != nil {
-			return false, fmt.Errorf("when reverting compressor (blob is not full but forceReset == true): %w", err)
+		if err = revert(); err != nil {
+			return false, fmt.Errorf("%w\nreverting because forceReset == true even though the blob isn't full", err)
 		}
-		bm.header.removeLastBlock()
 		return true, nil
 	}
 
@@ -254,14 +257,16 @@ bypass:
 	bm.packBuffer.Reset()
 	n2, err := encode.PackAlign(&bm.packBuffer, bm.buf.Bytes(), fr381.Bits-1, encode.WithAdditionalInput(bm.compressor.Bytes()))
 	if err != nil {
-		bm.compressor.Revert()
-		bm.header.removeLastBlock()
+		err = fmt.Errorf("when packing blob: %w", err)
+		innerErr := revert()
+		if innerErr != nil {
+			err = fmt.Errorf("%w\n\twhen attempting to recover from: %w", innerErr, err)
+		}
 		return false, fmt.Errorf("when packing blob: %w", err)
 	}
 	bm.currentBlobLength = int(n2)
 	copy(bm.currentBlob[:bm.currentBlobLength], bm.packBuffer.Bytes())
 
-	bm.tryOptimize()
 	return true, nil
 }
 
@@ -438,114 +443,9 @@ func (bm *BlobMaker) RawCompressedSize(data []byte) (int, error) {
 	return n, nil
 }
 
-func (bm *BlobMaker) tryOptimize() {
-	if bm.doOptimize != nil && len(bm.doOptimize) == 0 {
-		bm.doOptimize <- struct{}{}
+func wrapError(err error, format string, args ...any) error {
+	if err == nil {
+		return nil
 	}
-}
-
-func (bm *BlobMaker) startOptimizer() {
-	bm.doOptimize = make(chan struct{}, 1)
-	go func() {
-		var headerBuffer, packingBuffer bytes.Buffer
-		packingBuffer.Grow(MaxUsableBytes) // used for packing and holding the raw payload
-		compressor, err := lzss.NewCompressor(bm.dict)
-		if err != nil {
-			logrus.WithError(err).Error("optimizer failed to create compressor")
-			return
-		}
-
-		for range bm.doOptimize {
-		newData:
-
-			modificationNum := bm.modificationNum
-			if bm.optimizerModificationNum == modificationNum {
-				continue // already optimized
-			}
-			if bm.optimizerModificationNum > modificationNum {
-				panic("optimizer modification num is ahead of the actual modification num")
-			}
-
-			headerBuffer.Reset()
-			packingBuffer.Reset()
-			compressor.Reset()
-
-			if _, err = bm.header.WriteTo(&headerBuffer); err != nil {
-				logrus.WithError(err).Error("optimizer failed to write header to buffer")
-				continue
-			}
-
-			if _, err = compressor.Write(bm.compressor.WrittenBytes()); err != nil {
-				logrus.WithError(err).Error("optimizer failed to write compressor data")
-				continue
-			}
-
-			n, err := encode.PackAlign(&packingBuffer, headerBuffer.Bytes(), fr381.Bits-1, encode.WithAdditionalInput(compressor.Bytes()))
-			if err != nil {
-				logrus.WithError(err).Error("optimizer failed to pack align")
-				continue
-			}
-
-			// only go ahead with this if we're getting a better compression ratio
-			if bm.compressor.Len() < compressor.Len() {
-				logrus.Info("optimizer getting a worse compression ratio")
-				continue
-			}
-
-			if n > MaxUsableBytes {
-				logrus.Info("optimizer outgrowing blob capacity")
-				continue
-			}
-
-			// decompress and validate
-			// they may not be as catastrophic as they seem
-			// could be caused by changes to the blob as this method was running
-			header, payload, _, err := DecompressBlob(packingBuffer.Bytes(), bm.dictStore)
-			if err != nil {
-				logrus.WithError(err).Warn("optimizer failed to decompress blob", base64.StdEncoding.EncodeToString(packingBuffer.Bytes()))
-				continue
-			}
-
-			if !header.Equals(&bm.header) {
-				logrus.Warn("optimizer header mismatch")
-				goto newData // assuming this is not actually a compression error, but caused by changes to the blob
-			}
-
-			if !bytes.Equal(payload, bm.compressor.WrittenBytes()) {
-				logrus.Warn("optimizer payload mismatch")
-				goto newData
-			}
-
-			bm.obtainLock()
-
-			// blob has been modified since the optimizer started
-			if bm.modificationNum != modificationNum {
-				logrus.Warn("optimized data version obsolete")
-				bm.releaseLock()
-				goto newData
-			}
-
-			// swap the compressors (our current one has the payload)
-			bm.compressor, compressor = compressor, bm.compressor
-
-			// store the new blob
-			bm.currentBlobLength = int(n)
-			copy(bm.currentBlob[:n], packingBuffer.Bytes())
-
-			bm.releaseLock()
-
-			bm.optimizerModificationNum = modificationNum
-			logrus.Info("optimizer success")
-		}
-	}()
-}
-
-// obtainLock and releaseLock wrap bm.lock.Lock and bm.lock.Unlock respectively, in order to enable
-// logging for debugging purposes. Normally (hopefully?) they would be inlined by the compiler.
-func (bm *BlobMaker) obtainLock() {
-	bm.lock.Lock()
-}
-
-func (bm *BlobMaker) releaseLock() {
-	bm.lock.Unlock()
+	return fmt.Errorf(format+": %w", append(args, err)...)
 }
