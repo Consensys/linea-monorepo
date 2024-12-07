@@ -1,7 +1,7 @@
 ##
 # Time of day multipliers for dynamic gas price cap calculation:
 #
-# TDM stands for "Time of Day Mutliplier" and has a range of values between 0.25 - 1.75.
+# TDM stands for "Time of Day Multiplier" and has a range of values between 0.25 - 1.75.
 #
 # When we expect the L1 gas price to be low, for example on a Saturday night, the TDM will be at it's highest because
 # we want to increase the rate at which we increase the threshold to try and settle within this time window.
