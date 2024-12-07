@@ -122,7 +122,7 @@ func Add(res, a, b []field.Element, extras ...[]field.Element) {
 	}
 }
 
-// Sub substracts two vectors `a` and `b` and put the result in `res`
+// Sub subtracts two vectors `a` and `b` and put the result in `res`
 // `res` must be pre-allocated by the caller and res, a and b must all have
 // the same size.
 // res == a or res == b or both is valid assignment.
