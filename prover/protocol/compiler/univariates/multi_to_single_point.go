@@ -281,7 +281,7 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 			}
 
 			/*
-				Substract by the lagrange interpolator and get the quotient
+				Subtract by the lagrange interpolator and get the quotient
 			*/
 			for j, hpos := range ctx.xPoly[polHandle.GetColID()] {
 				var lagrange sv.SmartVector = sv.NewRegular(lagranges[hpos])
