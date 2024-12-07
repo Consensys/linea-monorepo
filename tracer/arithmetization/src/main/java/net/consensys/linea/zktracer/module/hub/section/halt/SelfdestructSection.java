@@ -228,10 +228,6 @@ public class SelfdestructSection extends TraceSection
     this.addFragment(selfDestroyerUndoingAccountFragment);
     this.addFragment(recipientUndoingAccountFragment);
 
-    ContextFragment squashParentContextReturnData =
-        ContextFragment.executionProvidesEmptyReturnData(hub);
-    this.addFragment(squashParentContextReturnData);
-
     selfDestructWasReverted = true;
 
     selfdestructScenarioFragment.setScenario(

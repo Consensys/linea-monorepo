@@ -142,7 +142,7 @@ class TestRandomTxns {
   //  final ToyAccount receiverAccount() {
   //
   //    return ToyAccount.builder()
-  //        .balance(Wei.ONE)
+  //        .balance(Wei.v_ONE)
   //        .nonce(6)
   //        .address(Address.wrap(Bytes.random(20, rnd)))
   //        .code(

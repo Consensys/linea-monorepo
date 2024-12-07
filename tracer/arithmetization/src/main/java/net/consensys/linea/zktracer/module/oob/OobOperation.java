@@ -93,6 +93,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.Mode
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpPricingOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpXbsOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.PrecompileCommonOobCall;
+import net.consensys.linea.zktracer.module.hub.section.CreateSection;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -273,8 +274,18 @@ public class OobOperation extends ModuleOperation {
         final Address deploymentAddress = getDeploymentAddress(frame);
         final Account deployedAccount = frame.getWorldUpdater().get(deploymentAddress);
 
-        final long nonce = (deployedAccount != null) ? deployedAccount.getNonce() : 0;
-        final boolean hasCode = deployedAccount != null && deployedAccount.hasCode();
+        checkState(hub.currentTraceSection() instanceof CreateSection);
+        final boolean unexceptional = hub.isUnexceptional();
+        final boolean unaborted = hub.pch().abortingConditions().snapshot().none();
+        final boolean unexcepationalAndUnabortedCreateAndDeploymentAccountExists =
+            ((deployedAccount != null) && unexceptional && unaborted);
+
+        final long nonce =
+            unexcepationalAndUnabortedCreateAndDeploymentAccountExists
+                ? deployedAccount.getNonce()
+                : 0;
+        final boolean hasCode =
+            unexcepationalAndUnabortedCreateAndDeploymentAccountExists && deployedAccount.hasCode();
 
         final CreateOobCall createOobCall = (CreateOobCall) oobCall;
         createOobCall.setValue(EWord.of(frame.getStackItem(0)));

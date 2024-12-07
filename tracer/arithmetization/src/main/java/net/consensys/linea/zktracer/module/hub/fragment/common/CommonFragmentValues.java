@@ -257,9 +257,6 @@ public class CommonFragmentValues {
 
     final long gasAfterDeductingCost = computeGasRemaining() - computeGasCost();
 
-    OpCode opCode = hub.opCode();
-    GasProjection gasUtility = Hub.GAS_PROJECTOR.of(hub.messageFrame(), opCode);
-
     return switch (hub.opCodeData().instructionFamily()) {
       case KEC, COPY, STACK_RAM, STORAGE, LOG, HALT -> gasAfterDeductingCost;
       case CREATE -> gasAfterDeductingCost;
