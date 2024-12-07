@@ -98,7 +98,7 @@ public class Tests {
    * @param program
    * @param account
    */
-  public void fullCodeCopyOf(BytecodeCompiler program, ToyAccount account) {
+  public static void fullCodeCopyOf(BytecodeCompiler program, ToyAccount account) {
     final Address address = account.getAddress();
     program
         .push(address)

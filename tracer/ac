@@ -1,0 +1,35 @@
+# SELFDESTRUCT testing
+
+- STATICX
+	- i.e. done in an execution context spawned through STATICCALL
+- OOGX
+	- zero / nonzero balance
+	- warmth / cold recipient
+	- self recipient
+	- new account cost for recipient
+- REVERT'ed later or not
+- inside of a CREATE / deployment transaction
+	- leads to early deployment of empty code
+	- said account will be wiped off the world later
+	- can still have storage in the mean time
+
+- carried out several times in the same account, same transaction
+- reverted yes or no at the end
+- done indirectly (i.e. through DELEGATECALL / CALLCODE)
+- interaction with storage
+
+More involved:
+- deploying from an account MARKED_FOR_SELFDESTRUCT
+- deploying with CREATE from an account MARKED_FOR_SELFDESTRUCT
+
+This would be to reproduce CREATE address collisions
+
+
+# PRC calls
+
+- all 9 precompiles
+- testing all possible success / failure paths (some extensive work was already done for EC stuff)
+- in particular for gas
+- testing variations on CALLDATA
+- testing the output RETURNDATA
+- interaction with DELEGATECALL / CALLCODE ?

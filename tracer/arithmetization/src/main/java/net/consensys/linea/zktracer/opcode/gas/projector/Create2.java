@@ -57,13 +57,15 @@ public final class Create2 extends GasProjection {
   @Override
   public long gasPaidOutOfPocket() {
     long currentGas = frame.getRemainingGas();
-    long gasCost = this.staticGas() + this.memoryExpansion() + this.linearPerWord();
+    long upfrontGasCost = this.upfrontGasCost();
 
-    if (gasCost > currentGas) {
+    if (upfrontGasCost > currentGas) {
       return 0;
-    } else {
-      return currentGas - currentGas / 64;
     }
+
+    final long gasMinusUpfrontGasCost = currentGas - upfrontGasCost;
+
+    return gasMinusUpfrontGasCost - gasMinusUpfrontGasCost / 64;
   }
 
   @Override

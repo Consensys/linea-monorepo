@@ -625,7 +625,7 @@ public class Hub implements Module {
           frameType,
           newChildContextNumber(),
           this.deploymentStatusOf(frame.getContractAddress()),
-          frame.getValue(),
+          frame.getApparentValue(),
           frame.getRemainingGas(),
           frame.getRecipientAddress(),
           this.deploymentNumberOf(frame.getRecipientAddress()),

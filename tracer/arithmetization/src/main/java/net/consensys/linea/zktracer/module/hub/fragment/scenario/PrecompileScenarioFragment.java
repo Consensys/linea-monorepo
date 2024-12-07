@@ -28,6 +28,7 @@ import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.PrecompileSubsection;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 
 @Getter
@@ -169,9 +170,9 @@ public class PrecompileScenarioFragment implements TraceFragment {
         .pScenarioPrcSuccessCallerWontRevert(scenario == PRC_SUCCESS_WONT_REVERT)
         .pScenarioPrcFailureKnownToHub(scenario == PRC_FAILURE_KNOWN_TO_HUB)
         .pScenarioPrcFailureKnownToRam(scenario == PRC_FAILURE_KNOWN_TO_RAM)
-        .pScenarioPrcCallerGas(precompileSubSection.callerGas())
-        .pScenarioPrcCalleeGas(precompileSubSection.calleeGas())
-        .pScenarioPrcReturnGas(precompileSubSection.returnGas())
+        .pScenarioPrcCallerGas(Bytes.ofUnsignedLong(precompileSubSection.callerGas()))
+        .pScenarioPrcCalleeGas(Bytes.ofUnsignedLong(precompileSubSection.calleeGas()))
+        .pScenarioPrcReturnGas(Bytes.ofUnsignedLong(precompileSubSection.returnGas()))
         .pScenarioPrcCdo(precompileSubSection.callDataOffset())
         .pScenarioPrcCds(precompileSubSection.callDataSize())
         .pScenarioPrcRao(precompileSubSection.returnAtOffset())

@@ -59,16 +59,17 @@ public class StpCall implements TraceSubFragment {
   @EqualsAndHashCode.Include long gasPaidOutOfPocket;
   @EqualsAndHashCode.Include long stipend;
 
-  public StpCall(Hub hub, long memoryExpansionGas) {
-    this.memoryExpansionGas = memoryExpansionGas;
+  public StpCall(Hub hub, MessageFrame frame, long memoryExpansionGas) {
     this.opCode = hub.opCode();
-    this.gasActual = hub.messageFrame().getRemainingGas();
     checkArgument(this.opCode.isCall() || this.opCode.isCreate());
+
+    this.memoryExpansionGas = memoryExpansionGas;
+    this.gasActual = frame.getRemainingGas();
 
     if (this.opCode.isCall()) {
       this.stpCallForCalls(hub);
     } else {
-      this.stpCallForCreates(hub);
+      this.stpCallForCreates(frame);
     }
   }
 
@@ -114,8 +115,7 @@ public class StpCall implements TraceSubFragment {
     }
   }
 
-  private void stpCallForCreates(Hub hub) {
-    MessageFrame frame = hub.messageFrame();
+  private void stpCallForCreates(MessageFrame frame) {
 
     this.gas = ZERO; // irrelevant
     this.value = EWord.of(frame.getStackItem(0));
@@ -132,7 +132,7 @@ public class StpCall implements TraceSubFragment {
       return 0;
     } else {
       long gasMinusUpfrontCost = gasActual - upfrontGasCost;
-      return gasMinusUpfrontCost - (gasMinusUpfrontCost >> 6);
+      return gasMinusUpfrontCost - gasMinusUpfrontCost / 64;
     }
   }
 

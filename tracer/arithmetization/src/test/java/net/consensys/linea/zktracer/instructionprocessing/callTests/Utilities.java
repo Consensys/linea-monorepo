@@ -62,6 +62,22 @@ public class Utilities {
     program.push(to).push(gas).op(callOpcode);
   }
 
+  public static void callCaller(
+      BytecodeCompiler program,
+      OpCode callOpcode,
+      int gas,
+      int value,
+      int cdo,
+      int cds,
+      int rao,
+      int rac) {
+    program.push(rac).push(rao).push(cds).push(cdo);
+    if (callOpcode.callHasValueArgument()) {
+      program.push(value);
+    }
+    program.op(CALLER).push(gas).op(callOpcode);
+  }
+
   public static void appendInsufficientBalanceCall(
       BytecodeCompiler program,
       OpCode callOpcode,
