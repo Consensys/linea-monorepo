@@ -259,7 +259,7 @@ func ExpressionContainingAllCases() *Expression {
 	expr = expr.Add(c.Add(b))
 	expr = expr.Add(c.Add(c))
 
-	// Substraction
+	// Subtraction
 	expr = expr.Add(a.Sub(a))
 	expr = expr.Add(a.Sub(b))
 	expr = expr.Add(a.Sub(c))
