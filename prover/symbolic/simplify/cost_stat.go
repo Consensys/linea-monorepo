@@ -62,7 +62,7 @@ func evaluateNodeCosts(nodes ...sym.Node) (s costStats) {
 				// The technique here is to to use addition for small
 				// coefficients because this is a faster than multiplying
 				// in a field element. We do that up to 2 and -2. The
-				// second assumption is that addition and substraction
+				// second assumption is that addition and subtraction
 				// are equivalent in term of runtime. Otherwise, this is
 				// done with a multiplication and an addition.
 
