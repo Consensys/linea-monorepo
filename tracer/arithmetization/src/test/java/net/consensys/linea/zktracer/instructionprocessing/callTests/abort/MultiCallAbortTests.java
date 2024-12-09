@@ -17,13 +17,16 @@ package net.consensys.linea.zktracer.instructionprocessing.callTests.abort;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /** CALL/ABORT's are revert sensitive. We test this with two CALL's. */
+@ExtendWith(UnitTestWatcher.class)
 public class MultiCallAbortTests {
 
   @Test

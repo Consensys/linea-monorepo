@@ -16,11 +16,14 @@ package net.consensys.linea.zktracer.instructionprocessing;
 
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(UnitTestWatcher.class)
 public class ExtCodeHashAndAccountExistenceTests {
   /**
    * EXTCODEHASH targets a precompile (which is DEAD initially) CALL the same precompile

@@ -14,39 +14,14 @@
  */
 package net.consensys.linea;
 
-import java.util.Optional;
-
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.reporting.TestOutcomeWriterTool;
+import net.consensys.linea.reporting.LineaTestWatcher;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.TestWatcher;
 
 @Slf4j
-public class UnitTestWatcher implements TestWatcher {
-
-  private String FAILED = "FAILED";
-
+public class UnitTestWatcher extends LineaTestWatcher {
   @Override
-  public void testFailed(ExtensionContext context, Throwable cause) {
-    String testName = context.getDisplayName();
-    log.info("Adding failure for {}", testName);
-    TestOutcomeWriterTool.addFailure(
-        FAILED, cause.getMessage().split(System.lineSeparator(), 2)[0], testName);
-    log.info("Failure added for {}", testName);
-  }
-
-  @Override
-  public void testSuccessful(ExtensionContext context) {
-    TestOutcomeWriterTool.addSuccess();
-  }
-
-  @Override
-  public void testDisabled(ExtensionContext context, Optional<String> reason) {
-    TestOutcomeWriterTool.addSkipped();
-  }
-
-  @Override
-  public void testAborted(ExtensionContext context, Throwable cause) {
-    TestOutcomeWriterTool.addAborted();
+  public String getTestName(ExtensionContext context) {
+    return context.getDisplayName();
   }
 }

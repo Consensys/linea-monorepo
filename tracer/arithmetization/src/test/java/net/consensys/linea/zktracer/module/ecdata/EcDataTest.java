@@ -15,10 +15,13 @@
 
 package net.consensys.linea.zktracer.module.ecdata;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(UnitTestWatcher.class)
 public class EcDataTest {
 
   // TODO: add documentation

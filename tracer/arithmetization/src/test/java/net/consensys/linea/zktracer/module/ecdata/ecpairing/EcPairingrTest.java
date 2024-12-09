@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -48,6 +49,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 // that can be used to run the same test cases with @CsvFileSource
 
 @ExtendWith(EcPairingTestWatcher.class)
+@ExtendWith(UnitTestWatcher.class)
 public class EcPairingrTest {
   // https://github.com/Consensys/linea-arithmetization/issues/822
 

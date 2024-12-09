@@ -17,12 +17,15 @@ package net.consensys.linea.replaytests;
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_SEPOLIA;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(UnitTestWatcher.class)
 public class Issue1216Tests {
 
   /**

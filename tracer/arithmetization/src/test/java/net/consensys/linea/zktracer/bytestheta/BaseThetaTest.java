@@ -17,16 +17,19 @@ package net.consensys.linea.zktracer.bytestheta;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * Test class related to {@link BaseTheta} data structure, which is an extension of {@link
  * BytesArray}, with support for high and low bytes' manipulation.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class BaseThetaTest {
   @Test
   public void baseThetaTest() {

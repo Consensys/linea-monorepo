@@ -17,8 +17,10 @@ package net.consensys.linea.replaytests;
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
 
+import net.consensys.linea.UnitTestWatcher;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * The following ranges blew up the MMU circuit:
@@ -36,6 +38,7 @@ import org.junit.jupiter.api.Test;
  * <p>See https://github.com/Consensys/linea-tracer/issues/1121
  */
 @Tag("nightly")
+@ExtendWith(UnitTestWatcher.class)
 public class Issue1126Tests {
   @Test
   void test_3108622_3108633() {

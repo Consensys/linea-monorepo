@@ -17,10 +17,12 @@ package net.consensys.linea.zktracer.instructionprocessing.callTests.abort;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -32,6 +34,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * <p>- <b>scn/CALL_ABORT_WONT_REVERT</b> The main point being: (unexceptional) aborted CALL's warm
  * up the target account.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class BalanceAbortTests {
 
   final String eoaAddress = "abcdef0123456789";

@@ -16,6 +16,7 @@ package net.consensys.linea.zktracer.instructionprocessing;
 
 import java.util.List;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -31,6 +32,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * The purpose of {@link CodeCopyingInitializationCodeTest} is to test the coherence between the
@@ -42,6 +44,7 @@ import org.junit.jupiter.api.Test;
  * <p>This test answers the point raised in <a
  * href="https://github.com/Consensys/linea-tracer/issues/1482">this issue</a>.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class CodeCopyingInitializationCodeTest {
 
   final Bytes initCodeSimple =

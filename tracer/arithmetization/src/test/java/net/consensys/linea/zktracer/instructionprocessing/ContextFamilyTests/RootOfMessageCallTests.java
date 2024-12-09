@@ -16,10 +16,13 @@ package net.consensys.linea.zktracer.instructionprocessing.ContextFamilyTests;
 
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MultiOpCodeSmcs.allContextOpCodes;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(UnitTestWatcher.class)
 public class RootOfMessageCallTests {
 
   @Test

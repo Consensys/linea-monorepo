@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.DynamicTests;
 import net.consensys.linea.testing.OpcodeCall;
 import net.consensys.linea.zktracer.container.module.Module;
@@ -30,7 +31,9 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(UnitTestWatcher.class)
 public class MxpTracerTest {
   // private static final Random RAND = new Random();
   private static final int TEST_REPETITIONS = 2;
