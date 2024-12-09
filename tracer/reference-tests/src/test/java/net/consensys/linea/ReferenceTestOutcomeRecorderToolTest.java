@@ -51,9 +51,9 @@ public class ReferenceTestOutcomeRecorderToolTest {
 
     List<String> modules = List.of(module1, module2);
 
-    ReferenceTestOutcomeRecorderTool.mapAndStoreTestResult(
+    TestOutcomeWriterTool.mapAndStoreTestResult(
         "test1", TestState.FAILED, Map.of("Constraint", Set.of(module1, module2)));
-    ReferenceTestOutcomeRecorderTool.mapAndStoreTestResult(
+    TestOutcomeWriterTool.mapAndStoreTestResult(
         "test2", TestState.FAILED, Map.of("Constraint", Set.of(module1)));
     TestOutcomeWriterTool.writeToJsonFile(JSON_OUTPUT_FILENAME_TEST);
 
@@ -150,7 +150,7 @@ public class ReferenceTestOutcomeRecorderToolTest {
             + "      at java.base@21.0.2/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1808)\n"
             + "      at java.base@21.0.2/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:188)";
 
-    Map<String, Set<String>> res = ReferenceTestOutcomeRecorderTool.extractConstraints(message);
+    Map<String, Set<String>> res = TestOutcomeWriterTool.extractConstraints(message);
     assertThat(res.size()).isEqualTo(2);
     assertThat(res.get("txndata")).isEqualTo(Set.of("wcp", "rlptxrcpt", "cumulative-gas"));
     assertThat(res.get("rlptxrcpt")).isEqualTo(Set.of("phase3", "phase-transition"));

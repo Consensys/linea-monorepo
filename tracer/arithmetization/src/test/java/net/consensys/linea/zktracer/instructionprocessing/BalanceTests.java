@@ -16,6 +16,7 @@ package net.consensys.linea.zktracer.instructionprocessing;
 
 import java.util.List;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -27,11 +28,13 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * the purpose of these tests is to track balance updates for the sender, the coinbase and, in case
  * of a reverted transaction, the recipient.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class BalanceTests {
 
   @Test

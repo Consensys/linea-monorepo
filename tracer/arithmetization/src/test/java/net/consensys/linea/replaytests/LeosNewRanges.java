@@ -17,10 +17,14 @@ package net.consensys.linea.replaytests;
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
 
+import net.consensys.linea.UnitTestWatcher;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@Disabled
+@ExtendWith(UnitTestWatcher.class)
 @Tag("nightly")
 public class LeosNewRanges {
   @Disabled

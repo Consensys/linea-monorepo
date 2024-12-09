@@ -25,18 +25,21 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @Slf4j
+@ExtendWith(UnitTestWatcher.class)
 public class ExpTest {
   // Generates 128, 64, 2, 1 as LD (leading digit)
   // LD_INDICES | LD

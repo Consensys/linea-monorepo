@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -47,11 +48,13 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 // https://github.com/Consensys/linea-besu-plugin/issues/197
 @Execution(ExecutionMode.SAME_THREAD)
+@ExtendWith(UnitTestWatcher.class)
 public class MxpTest {
 
   /** Construct non-static instance to prevent sharing across tests. */

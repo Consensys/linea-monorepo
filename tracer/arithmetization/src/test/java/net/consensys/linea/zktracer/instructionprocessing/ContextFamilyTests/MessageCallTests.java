@@ -23,12 +23,14 @@ import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -42,6 +44,7 @@ public class MessageCallTests {
   @EnumSource(
       value = OpCode.class,
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
+  @ExtendWith(UnitTestWatcher.class)
   public void testWithCall(OpCode opCode) {
 
     ToyAccount recipientAccount = buildRecipient(opCode);

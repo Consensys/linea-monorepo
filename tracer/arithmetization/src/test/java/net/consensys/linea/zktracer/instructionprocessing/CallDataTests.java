@@ -16,6 +16,7 @@ package net.consensys.linea.zktracer.instructionprocessing;
 
 import java.util.List;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -27,12 +28,14 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * The tests below are designed to test our handling of call data. For deployment transactions, and
  * more generally deployment context's, call data is empty and the tests are "trivial" in some
  * sense. They aren't for message calls.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class CallDataTests {
   // @Test
   // void transactionCallDataForMessageCallTest() {

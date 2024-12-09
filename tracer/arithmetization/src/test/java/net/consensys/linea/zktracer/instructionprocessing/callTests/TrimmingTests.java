@@ -18,10 +18,13 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.untrimmedEoaAddress;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(UnitTestWatcher.class)
 public class TrimmingTests {
 
   @Test

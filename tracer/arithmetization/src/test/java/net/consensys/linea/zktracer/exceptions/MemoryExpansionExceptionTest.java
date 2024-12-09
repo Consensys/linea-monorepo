@@ -27,14 +27,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.mxp.MxpTestUtils;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+@ExtendWith(UnitTestWatcher.class)
 public class MemoryExpansionExceptionTest {
 
   @ParameterizedTest

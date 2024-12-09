@@ -17,13 +17,16 @@ package net.consensys.linea.zktracer.exceptions;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OUT_OF_SSTORE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@ExtendWith(UnitTestWatcher.class)
 public class OutOfSStoreExceptionTest {
 
   @ParameterizedTest

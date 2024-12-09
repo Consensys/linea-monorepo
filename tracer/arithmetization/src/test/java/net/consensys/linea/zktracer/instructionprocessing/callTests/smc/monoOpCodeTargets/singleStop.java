@@ -18,13 +18,16 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * Simplest case where we enter a smart contract. The called smart contract executes a single STOP
  * opcode (which is free of charge). No value is transferred.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class singleStop {
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */

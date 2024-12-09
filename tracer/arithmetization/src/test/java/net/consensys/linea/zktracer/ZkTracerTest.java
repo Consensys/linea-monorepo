@@ -17,8 +17,11 @@ package net.consensys.linea.zktracer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import net.consensys.linea.UnitTestWatcher;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(UnitTestWatcher.class)
 public class ZkTracerTest {
 
   @Test
