@@ -86,7 +86,7 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
 
     // ECRECOVER can only be FAILURE_KNOWN_TO_HUB or some form of SUCCESS_XXXX_REVERT
     if (flag().isAnyOf(PRC_ECADD, PRC_ECMUL, PRC_ECPAIRING)) {
-      if (oobCall.isHubSuccess() && !callSuccess) { // hub success is implicitly true
+      if (oobCall.isHubSuccess() && !callSuccess) {
         precompileScenarioFragment.scenario(PRC_FAILURE_KNOWN_TO_RAM);
       }
     }
@@ -116,6 +116,8 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
           extractCallData(),
           returnData); // TODO @Lorenzo @Olivier : verify it's at the right position
     }
+
+    if (!callSuccess) return;
 
     final ImcFragment secondImcFragment = ImcFragment.empty(hub);
     this.fragments().add(secondImcFragment);

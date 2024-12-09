@@ -180,11 +180,6 @@ public class TransactionProcessingMetadata {
     hubStampTransactionEnd = hub.stamp();
     this.logs = logs;
     for (Address address : selfDestructs) {
-      hub.transients()
-          .conflation()
-          .deploymentInfo()
-          .freshDeploymentNumberFinishingSelfdestruct(
-              address); // depNum += 1 and depStatus <- false
       destructedAccountsSnapshot.add(
           AccountSnapshot.fromAddress(
               address, true, hub.deploymentNumberOf(address), hub.deploymentStatusOf(address)));

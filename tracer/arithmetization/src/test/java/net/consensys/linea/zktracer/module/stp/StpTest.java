@@ -57,8 +57,8 @@ public class StpTest {
 
   @Test
   void testCall() {
-    List<ToyAccount> world = new ArrayList<>();
-    List<Transaction> txList = new ArrayList<>();
+    List<ToyAccount> accounts = new ArrayList<>();
+    List<Transaction> transactions = new ArrayList<>();
 
     for (int i = 0; i < NB_CALL; i++) {
       final OpCode opcode = randOpCodeCall();
@@ -69,12 +69,13 @@ public class StpTest {
       final BigInteger value = BigInteger.valueOf(RAND.nextLong(0, 100000L));
       final long gasLimit = RAND.nextLong(23400, 1000000L);
 
-      txList.add(txCall(opcode, toExists, toWarm, balance, value, gasCall, gasLimit, world));
+      transactions.add(
+          txCall(opcode, toExists, toWarm, balance, value, gasCall, gasLimit, accounts));
     }
 
     ToyExecutionEnvironmentV2.builder()
-        .accounts(world)
-        .transactions(txList)
+        .accounts(accounts)
+        .transactions(transactions)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
         .run();

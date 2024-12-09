@@ -77,10 +77,10 @@ public class DomSubStampsSubFragment implements TraceSubFragment {
   }
 
   // TODO: to be use with care, as stamps might have changed
-  public static DomSubStampsSubFragment selfdestructDomSubStamps(final Hub hub) {
+  public static DomSubStampsSubFragment selfdestructDomSubStamps(Hub hub, int hubStamp) {
     return new DomSubStampsSubFragment(
         DomSubType.SELFDESTRUCT,
-        hub.stamp(),
+        hubStamp,
         0,
         0,
         0,

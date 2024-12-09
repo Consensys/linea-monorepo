@@ -50,7 +50,7 @@ public class DeploymentInfo {
     this.setInitializationCode(address, Bytes.EMPTY);
   }
 
-  public void freshDeploymentNumberFinishingSelfdestruct(Address address) {
+  public void deploymentUpdateForSuccessfulSelfDestruct(Address address) {
     this.incrementDeploymentNumber(address);
     this.markAsNotUnderDeployment(address);
     this.setInitializationCode(address, Bytes.EMPTY);
