@@ -9,9 +9,17 @@
 | script/DeploymentConfig.s.sol:DeploymentConfig contract |                 |     |        |     |         |
 |---------------------------------------------------------|-----------------|-----|--------|-----|---------|
 | Deployment Cost                                         | Deployment Size |     |        |     |         |
-| 0                                                       | 7132            |     |        |     |         |
+| 0                                                       | 0               |     |        |     |         |
 | Function Name                                           | min             | avg | median | max | # calls |
 | activeNetworkConfig                                     | 454             | 454 | 454    | 454 | 126     |
+
+
+| script/UpgradeRewardsStreamerMP.s.sol:UpgradeRewardsStreamerMPScript contract |                 |         |         |         |         |
+|-------------------------------------------------------------------------------|-----------------|---------|---------|---------|---------|
+| Deployment Cost                                                               | Deployment Size |         |         |         |         |
+| 2845816                                                                       | 14079           |         |         |         |         |
+| Function Name                                                                 | min             | avg     | median  | max     | # calls |
+| run                                                                           | 2383391         | 2383391 | 2383391 | 2383391 | 3       |
 
 
 | src/RewardsStreamer.sol:RewardsStreamer contract |                 |        |        |        |         |
@@ -66,16 +74,42 @@
 | unstake                                              | 60382           | 60919  | 60382  | 63877  | 13      |
 | updateAccountMP                                      | 15396           | 18474  | 17898  | 34998  | 21      |
 | updateGlobalState                                    | 11088           | 28045  | 25249  | 110284 | 21      |
-| upgradeToAndCall                                     | 3225            | 9387   | 10926  | 10936  | 5       |
+| upgradeToAndCall                                     | 3225            | 7887   | 8426   | 10936  | 5       |
 
 
-| src/StakeManagerProxy.sol:StakeManagerProxy contract |                 |      |        |        |         |
-|------------------------------------------------------|-----------------|------|--------|--------|---------|
-| Deployment Cost                                      | Deployment Size |      |        |        |         |
-| 256467                                               | 1231            |      |        |        |         |
-| Function Name                                        | min             | avg  | median | max    | # calls |
-| fallback                                             | 678             | 7210 | 2115   | 136272 | 823     |
-| implementation                                       | 343             | 775  | 343    | 2343   | 412     |
+| src/StakeManagerProxy.sol:StakeManagerProxy contract |                 |       |        |        |         |
+|------------------------------------------------------|-----------------|-------|--------|--------|---------|
+| Deployment Cost                                      | Deployment Size |       |        |        |         |
+| 256467                                               | 1263            |       |        |        |         |
+| Function Name                                        | min             | avg   | median | max    | # calls |
+| MAX_LOCKUP_PERIOD                                    | 776             | 3776  | 5276   | 5276   | 6       |
+| MAX_MULTIPLIER                                       | 678             | 1905  | 678    | 5178   | 33      |
+| MIN_LOCKUP_PERIOD                                    | 724             | 3424  | 5224   | 5224   | 15      |
+| MP_RATE_PER_YEAR                                     | 680             | 1180  | 680    | 5180   | 9       |
+| STAKING_TOKEN                                        | 855             | 6083  | 7355   | 7355   | 322     |
+| emergencyModeEnabled                                 | 7347            | 7347  | 7347   | 7347   | 7       |
+| enableEmergencyMode                                  | 28480           | 45381 | 50665  | 50665  | 8       |
+| getAccount                                           | 2115            | 2115  | 2115   | 2115   | 72      |
+| getStakedBalance                                     | 7559            | 7559  | 7559   | 7559   | 1       |
+| getUserTotalMP                                       | 9660            | 9660  | 9660   | 9660   | 1       |
+| getUserTotalMaxMP                                    | 3553            | 3553  | 3553   | 3553   | 1       |
+| getUserTotalStakedBalance                            | 15548           | 15548 | 15548  | 15548  | 1       |
+| getUserVaults                                        | 5637            | 6762  | 5637   | 10137  | 4       |
+| implementation                                       | 343             | 775   | 343    | 2343   | 412     |
+| lastRewardTime                                       | 822             | 1822  | 1822   | 2822   | 2       |
+| rewardEndTime                                        | 800             | 1800  | 1800   | 2800   | 2       |
+| rewardStartTime                                      | 779             | 4029  | 4029   | 7279   | 2       |
+| rewardsBalanceOf                                     | 1747            | 1747  | 1747   | 1747   | 4       |
+| setReward                                            | 28863           | 77206 | 86636  | 128881 | 7       |
+| setTrustedCodehash                                   | 52889           | 52889 | 52889  | 52889  | 2       |
+| totalMP                                              | 800             | 800   | 800    | 800    | 81      |
+| totalMaxMP                                           | 777             | 777   | 777    | 777    | 81      |
+| totalRewardsAccrued                                  | 800             | 800   | 800    | 800    | 3       |
+| totalRewardsSupply                                   | 1387            | 2498  | 2151   | 11627  | 30      |
+| totalStaked                                          | 823             | 823   | 823    | 823    | 82      |
+| updateAccountMP                                      | 41755           | 44833 | 44257  | 61357  | 21      |
+| updateGlobalState                                    | 37076           | 54033 | 51237  | 136272 | 21      |
+| upgradeToAndCall                                     | 29868           | 33720 | 33720  | 37572  | 2       |
 
 
 | src/StakeVault.sol:StakeVault contract |                 |        |        |        |         |
@@ -167,7 +201,7 @@
 | test/mocks/MockToken.sol:MockToken contract |                 |       |        |       |         |
 |---------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                             | Deployment Size |       |        |       |         |
-| 625454                                      | 3260            |       |        |       |         |
+| 625370                                      | 3260            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
 | approve                                     | 46330           | 46339 | 46342  | 46342 | 262     |
 | balanceOf                                   | 558             | 989   | 558    | 2558  | 139     |

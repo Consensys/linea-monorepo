@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import { Test } from "forge-std/Test.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { DeployRewardsStreamerMPScript } from "../script/DeployRewardsStreamerMP.s.sol";
+import { UpgradeRewardsStreamerMPScript } from "../script/UpgradeRewardsStreamerMP.s.sol";
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -171,6 +172,11 @@ contract RewardsStreamerMPTest is Test {
     function _calculateTimeToAccureMP(uint256 amount, uint256 target) internal view returns (uint256) {
         uint256 mpPerYear = amount * streamer.MP_RATE_PER_YEAR();
         return target * 365 days / mpPerYear;
+    }
+
+    function _upgradeStakeManager() internal {
+        UpgradeRewardsStreamerMPScript upgrade = new UpgradeRewardsStreamerMPScript();
+        upgrade.run(admin, IStakeManagerProxy(address(streamer)));
     }
 }
 
@@ -1844,13 +1850,6 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
 }
 
 contract UpgradeTest is RewardsStreamerMPTest {
-    function _upgradeStakeManager() internal {
-        address newImpl = address(new RewardsStreamerMP());
-        bytes memory initializeData;
-        vm.prank(admin);
-        UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
-    }
-
     function setUp() public override {
         super.setUp();
     }
@@ -1897,13 +1896,6 @@ contract UpgradeTest is RewardsStreamerMPTest {
 }
 
 contract LeaveTest is RewardsStreamerMPTest {
-    function _upgradeStakeManager() internal {
-        address newImpl = address(new RewardsStreamerMP());
-        bytes memory initializeData;
-        vm.prank(admin);
-        UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
-    }
-
     function setUp() public override {
         super.setUp();
     }
@@ -1996,13 +1988,6 @@ contract LeaveTest is RewardsStreamerMPTest {
 }
 
 contract MaliciousUpgradeTest is RewardsStreamerMPTest {
-    function _upgradeStakeManager() internal {
-        address newImpl = address(new RewardsStreamerMP());
-        bytes memory initializeData;
-        vm.prank(admin);
-        UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
-    }
-
     function setUp() public override {
         super.setUp();
     }
