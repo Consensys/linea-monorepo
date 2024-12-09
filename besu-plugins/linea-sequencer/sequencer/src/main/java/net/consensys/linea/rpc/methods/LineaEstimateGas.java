@@ -277,10 +277,9 @@ public class LineaEstimateGas {
     final var zkTracer = createZkTracer(chainHeadHeader, blockchainService.getChainId().get());
     final TracerAggregator zkAndGasTracer = TracerAggregator.create(estimateGasTracer, zkTracer);
 
-    final var chainHeadHash = chainHeadHeader.getBlockHash();
     final var maybeSimulationResults =
         transactionSimulationService.simulate(
-            transaction, maybeStateOverrides, chainHeadHash, zkAndGasTracer, false);
+            transaction, maybeStateOverrides, Optional.empty(), zkAndGasTracer, false);
 
     ModuleLimitsValidationResult moduleLimit =
         moduleLineCountValidator.validate(zkTracer.getModulesLineCount());
@@ -328,7 +327,7 @@ public class LineaEstimateGas {
                   transactionSimulationService.simulate(
                       createTransactionForSimulation(callParameters, lowGasEstimation),
                       maybeStateOverrides,
-                      chainHeadHash,
+                      Optional.empty(),
                       estimateGasTracer,
                       true);
 
@@ -364,7 +363,7 @@ public class LineaEstimateGas {
                                 transactionSimulationService.simulate(
                                     createTransactionForSimulation(callParameters, mid),
                                     maybeStateOverrides,
-                                    chainHeadHash,
+                                    Optional.empty(),
                                     estimateGasTracer,
                                     true);
 
