@@ -228,7 +228,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 // effect.
 //
 // Something to note however, is that the function will panic if the
-// the provided name does not exists explictly in the [ProverRuntime.Columns]
+// the provided name does not exists explicitly in the [ProverRuntime.Columns]
 // database and this will be the case if the attempts to recover a column such
 // as a [column.Shifted] or any other type of derivative columns. While theses
 // columns are absolutely legal they are not stored explicitly in the runtime
@@ -240,7 +240,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 //
 // Namely, the function will panic if:
 //   - `name` relates to a column that does not exists or to a column that is
-//     not explictly an assigned column.
+//     not explicitly an assigned column.
 //   - `name` relates to a column that does exists but whose assignment is
 //     not readily available when the function is called.
 func (run ProverRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
