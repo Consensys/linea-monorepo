@@ -1299,7 +1299,7 @@ contract UnstakeTest is StakeTest {
         );
         uint256 newBalance = stakeAmount - unstakeAmount;
         // unstake half of the tokens
-        _unstake(alice, 5e18);
+        _unstake(alice, unstakeAmount);
 
         uint256 expectedTotalMP = _calculeInitialMP(newBalance) + _calculateBonusMP(newBalance, lockUpPeriod)
             + _calculateAccuredMP(newBalance, warpLength);
