@@ -132,19 +132,96 @@ contract RewardsStreamerMPTest is Test {
         vault.leave(account);
     }
 
-    function _calculateBonusMP(uint256 amount, uint256 lockupTime) public view returns (uint256) {
+    function _calculeInitialMP(uint256 amount) internal pure returns (uint256) {
+        return amount;
+    }
+
+    function _calculateMaxAccruedMP(uint256 amount) internal view returns (uint256) {
+        return amount * streamer.MAX_MULTIPLIER();
+    }
+
+    function _calculateAbsoluteMaxTotalMP(uint256 amount) internal view returns (uint256) {
+        return _calculeInitialMP(amount) + _calculateBonusMP(amount, streamer.MAX_LOCKUP_PERIOD())
+            + _calculateMaxAccruedMP(amount);
+    }
+
+    function _calculateMaxTotalMP(uint256 amount, uint256 lockPeriod) internal view returns (uint256 maxTotalMaxMP) {
+        uint256 bonusMP = 0;
+        if (lockPeriod != 0) {
+            bonusMP = _calculateBonusMP(amount, lockPeriod);
+        }
+        return _calculeInitialMP(amount) + bonusMP + _calculateMaxAccruedMP(amount);
+    }
+
+    function _calculateBonusMP(uint256 amount, uint256 lockupTime) internal view returns (uint256) {
         // solhint-disable-next-line
         return Math.mulDiv(amount, lockupTime, 365 days);
     }
 
-    function _calculeAccuredMP(uint256 totalStaked, uint256 timeDiff) public view returns (uint256) {
+    function _calculateAccuredMP(uint256 totalStaked, uint256 timeDiff) internal view returns (uint256) {
         return Math.mulDiv(timeDiff * totalStaked, streamer.MP_RATE_PER_YEAR(), 365 days);
     }
 
-    function _calculateTimeToMPLimit(uint256 amount) public view returns (uint256) {
+    function _calculateTimeToAccureMPLimit(uint256 amount) internal view returns (uint256) {
         uint256 maxMP = amount * streamer.MAX_MULTIPLIER();
+        uint256 timeInSeconds = _calculateTimeToAccureMP(amount, maxMP);
+        return timeInSeconds;
+    }
+
+    function _calculateTimeToAccureMP(uint256 amount, uint256 target) internal view returns (uint256) {
         uint256 mpPerYear = amount * streamer.MP_RATE_PER_YEAR();
-        return maxMP * 365 days / mpPerYear;
+        return target * 365 days / mpPerYear;
+    }
+}
+
+contract MathTest is RewardsStreamerMPTest {
+    function test_CalcInitialMP() public {
+        assertEq(_calculeInitialMP(1), 1, "wrong initial MP");
+        assertEq(_calculeInitialMP(10e18), 10e18, "wrong initial MP");
+        assertEq(_calculeInitialMP(20e18), 20e18, "wrong initial MP");
+        assertEq(_calculeInitialMP(30e18), 30e18, "wrong initial MP");
+    }
+
+    function test_CalcAccrueMP() public {
+        assertEq(_calculateAccuredMP(10e18, 0), 0, "wrong accrued MP");
+        assertEq(_calculateAccuredMP(10e18, 365 days / 2), 5e18, "wrong accrued MP");
+        assertEq(_calculateAccuredMP(10e18, 365 days), 10e18, "wrong accrued MP");
+        assertEq(_calculateAccuredMP(10e18, 365 days * 2), 20e18, "wrong accrued MP");
+        assertEq(_calculateAccuredMP(10e18, 365 days * 3), 30e18, "wrong accrued MP");
+    }
+
+    function test_CalcBonusMP() public {
+        assertEq(_calculateBonusMP(10e18, 0), 0, "wrong bonus MP");
+        assertEq(_calculateBonusMP(10e18, streamer.MIN_LOCKUP_PERIOD()), 2_465_753_424_657_534_246, "wrong bonus MP");
+        assertEq(
+            _calculateBonusMP(10e18, streamer.MIN_LOCKUP_PERIOD() + 13 days),
+            2_821_917_808_219_178_082,
+            "wrong bonus MP"
+        );
+        assertEq(_calculateBonusMP(100e18, 0), 0, "wrong bonus MP");
+    }
+
+    function test_CalcMaxTotalMP() public {
+        assertEq(_calculateMaxTotalMP(10e18, 0), 50e18, "wrong max total MP");
+        assertEq(
+            _calculateMaxTotalMP(10e18, streamer.MIN_LOCKUP_PERIOD()), 52_465_753_424_657_534_246, "wrong max total MP"
+        );
+        assertEq(
+            _calculateMaxTotalMP(10e18, streamer.MIN_LOCKUP_PERIOD() + 13 days),
+            52_821_917_808_219_178_082,
+            "wrong max total MP"
+        );
+        assertEq(_calculateMaxTotalMP(100e18, 0), 500e18, "wrong max total MP");
+    }
+
+    function test_CalcAbsoluteMaxTotalMP() public {
+        assertEq(_calculateAbsoluteMaxTotalMP(10e18), 90e18, "wrong absolute max total MP");
+        assertEq(_calculateAbsoluteMaxTotalMP(100e18), 900e18, "wrong absolute max total MP");
+    }
+
+    function test_CalcMaxAccruedMP() public {
+        assertEq(_calculateMaxAccruedMP(10e18), 40e18, "wrong max accrued MP");
+        assertEq(_calculateMaxAccruedMP(100e18), 400e18, "wrong max accrued MP");
     }
 }
 
@@ -580,13 +657,14 @@ contract StakeTest is RewardsStreamerMPTest {
         uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockUpPeriod);
 
         _stake(alice, stakeAmount, lockUpPeriod);
+        uint256 expectedMaxTotalMP = _calculateMaxTotalMP(stakeAmount, lockUpPeriod);
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
                 // 10e18 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKUP_PERIOD) / SCALE_FACTOR)
                 totalMP: stakeAmount + expectedBonusMP,
-                totalMaxMP: 52_465_753_424_657_534_246,
+                totalMaxMP: expectedMaxTotalMP,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
                 rewardIndex: 0
@@ -620,13 +698,14 @@ contract StakeTest is RewardsStreamerMPTest {
         uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockUpPeriod);
 
         _stake(alice, stakeAmount, lockUpPeriod);
+        uint256 expectedMaxTotalMP = _calculateMaxTotalMP(stakeAmount, lockUpPeriod);
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
                 // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKUP_PERIOD) / SCALE_FACTOR)
                 totalMP: stakeAmount + expectedBonusMP,
-                totalMaxMP: 52_821_917_808_219_178_082,
+                totalMaxMP: expectedMaxTotalMP,
                 stakingBalance: stakeAmount,
                 rewardBalance: 0,
                 rewardIndex: 0
@@ -748,7 +827,7 @@ contract StakeTest is RewardsStreamerMPTest {
         );
 
         uint256 currentTime = vm.getBlockTimestamp();
-        uint256 timeToMaxMP = _calculateTimeToMPLimit(stakeAmount);
+        uint256 timeToMaxMP = _calculateTimeToAccureMP(stakeAmount, totalMaxMP - totalMP);
         vm.warp(currentTime + timeToMaxMP);
 
         streamer.updateGlobalState();
@@ -911,12 +990,13 @@ contract StakeTest is RewardsStreamerMPTest {
 
         uint256 sumOfStakeAmount = aliceStakeAmount + bobStakeAmount;
         uint256 sumOfExpectedBonusMP = aliceExpectedBonusMP + bobExpectedBonusMP;
-
+        uint256 expectedMaxTotalMP = _calculateMaxTotalMP(aliceStakeAmount, aliceLockUpPeriod)
+            + _calculateMaxTotalMP(bobStakeAmount, bobLockUpPeriod);
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: sumOfStakeAmount,
                 totalMP: sumOfStakeAmount + sumOfExpectedBonusMP,
-                totalMaxMP: 202_465_753_424_657_534_246,
+                totalMaxMP: expectedMaxTotalMP,
                 stakingBalance: sumOfStakeAmount,
                 rewardBalance: 0,
                 rewardIndex: 0
@@ -941,12 +1021,14 @@ contract StakeTest is RewardsStreamerMPTest {
 
         uint256 sumOfStakeAmount = aliceStakeAmount + bobStakeAmount;
         uint256 sumOfExpectedBonusMP = aliceExpectedBonusMP + bobExpectedBonusMP;
+        uint256 expectedMaxTotalMP = _calculateMaxTotalMP(aliceStakeAmount, aliceLockUpPeriod)
+            + _calculateMaxTotalMP(bobStakeAmount, bobLockUpPeriod);
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: sumOfStakeAmount,
                 totalMP: sumOfStakeAmount + sumOfExpectedBonusMP,
-                totalMaxMP: 250_356_164_383_561_643_835,
+                totalMaxMP: expectedMaxTotalMP,
                 stakingBalance: sumOfStakeAmount,
                 rewardBalance: 0,
                 rewardIndex: 0
@@ -1194,10 +1276,12 @@ contract UnstakeTest is StakeTest {
         uint256 lockUpPeriod = streamer.MIN_LOCKUP_PERIOD();
         // 10e18 is what's used in `test_StakeOneAccountWithMinLockUp`
         uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockUpPeriod);
-
+        uint256 unstakeAmount = 5e18;
+        uint256 warpLength = (365 days);
         // wait for 1 year
         uint256 currentTime = vm.getBlockTimestamp();
-        vm.warp(currentTime + (365 days));
+
+        vm.warp(currentTime + (warpLength));
 
         streamer.updateGlobalState();
         streamer.updateAccountMP(vaults[alice]);
@@ -1207,23 +1291,24 @@ contract UnstakeTest is StakeTest {
                 totalStaked: stakeAmount,
                 totalMP: (stakeAmount + expectedBonusMP) + stakeAmount, // we do `+ stakeAmount` we've accrued
                     // `stakeAmount` after 1 year
-                totalMaxMP: 52_465_753_424_657_534_246,
+                totalMaxMP: _calculateMaxTotalMP(stakeAmount, lockUpPeriod),
                 stakingBalance: 10e18,
                 rewardBalance: 0,
                 rewardIndex: 0
             })
         );
-
+        uint256 newBalance = stakeAmount - unstakeAmount;
         // unstake half of the tokens
         _unstake(alice, 5e18);
-        expectedBonusMP = _calculateBonusMP(5e18, lockUpPeriod);
 
+        uint256 expectedTotalMP = _calculeInitialMP(newBalance) + _calculateBonusMP(newBalance, lockUpPeriod)
+            + _calculateAccuredMP(newBalance, warpLength);
         checkStreamer(
             CheckStreamerParams({
-                totalStaked: 5e18,
-                totalMP: (5e18 + expectedBonusMP) + 5e18,
-                totalMaxMP: 26_232_876_712_328_767_123,
-                stakingBalance: 5e18,
+                totalStaked: newBalance,
+                totalMP: expectedTotalMP,
+                totalMaxMP: _calculateMaxTotalMP(newBalance, lockUpPeriod),
+                stakingBalance: newBalance,
                 rewardBalance: 0,
                 rewardIndex: 0
             })
@@ -1281,7 +1366,7 @@ contract UnstakeTest is StakeTest {
             timestamp[stage] = block.timestamp;
             totalStaked[stage] = amountStaked;
             predictedBonusMP[stage] = totalStaked[stage] + _calculateBonusMP(totalStaked[stage], secondsLocked);
-            predictedTotalMaxMP[stage] = 52_465_753_424_657_534_246;
+            predictedTotalMaxMP[stage] = _calculateMaxTotalMP(totalStaked[stage], secondsLocked);
             increasedAccuredMP[stage] = 0; //no increased accured MP in first stage
             predictedAccuredMP[stage] = 0; //no accured MP in first stage
             predictedTotalMP[stage] = predictedBonusMP[stage] + predictedAccuredMP[stage];
@@ -1292,7 +1377,8 @@ contract UnstakeTest is StakeTest {
             totalStaked[stage] = totalStaked[stage - 1];
             predictedBonusMP[stage] = predictedBonusMP[stage - 1]; //no change in bonusMP in second stage
             predictedTotalMaxMP[stage] = predictedTotalMaxMP[stage - 1];
-            increasedAccuredMP[stage] = _calculeAccuredMP(totalStaked[stage], timestamp[stage] - timestamp[stage - 1]);
+            // solhint-disable-next-line max-line-length
+            increasedAccuredMP[stage] = _calculateAccuredMP(totalStaked[stage], timestamp[stage] - timestamp[stage - 1]);
             predictedAccuredMP[stage] = predictedAccuredMP[stage - 1] + increasedAccuredMP[stage];
             predictedTotalMP[stage] = predictedBonusMP[stage] + predictedAccuredMP[stage];
         }
