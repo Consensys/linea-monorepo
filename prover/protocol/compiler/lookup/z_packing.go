@@ -37,6 +37,8 @@ type zCtx struct {
 	// ZOpenings are the opening queries to the end of each Z.
 	ZOpenings []query.LocalOpening
 	Name      string
+	// Public Input is supposed to be the global sum of ZOpening
+	PI ifaces.Column
 }
 
 // check permutation and see how/where compile is called (see how to constracut z there)
@@ -119,6 +121,13 @@ func (z *zCtx) compile(comp *wizard.CompiledIOP) {
 			column.Shift(z.Zs[i], -1),
 		)
 	}
+
+	z.PI = comp.InsertColumn(
+		z.Round,
+		deriveName[ifaces.ColID]("PI", comp.SelfRecursionCount, z.Round, z.Size),
+		1,
+		column.PublicInput,
+	)
 }
 
 // attempt to take the subslice of a slice, and truncates or returns an empty
