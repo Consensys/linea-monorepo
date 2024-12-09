@@ -157,6 +157,8 @@ const config: HardhatUserConfig = {
     exclude: ["token", "test-contracts", "proxies", "tools", "interfaces/tools", "tokenBridge/mocks", "verifiers"],
     pages: "files",
     outputDir: "docs/api/",
+    pageExtension: ".mdx",
+    templates: "docs/docgen-templates",
   },
 };
 
