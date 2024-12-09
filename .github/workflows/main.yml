@@ -20,7 +20,7 @@ jobs:
       traces-api-facade: ${{ steps.filter.outputs.traces-api-facade }}
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       finalized-tag-updater: ${{ steps.filter.outputs.finalized-tag-updater }}
-      no-changes: ${{ steps.filter.outputs.coordinator == 'false' && steps.filter.outputs.postman == 'false' && steps.filter.outputs.prover == 'false' && steps.filter.outputs.traces-api-facade == 'false' && steps.filter.outputs.transaction-exclusion-api == 'false' }}
+      has-changes-requiring-build: ${{ steps.filter-out.outputs.has-changes-requiring-build }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,7 +52,9 @@ jobs:
               - 'docker/compose-local-dev.overrides.yml'
               - 'docker/compose-local-dev-traces-v2.overrides.yml'
             postman:
+              - 'postman/**'
               - 'sdk/**'
+              - 'ts-libs/linea-native-libs/**'
               - '.github/workflows/postman-*.yml'
               - '.github/workflows/build-and-publish.yml'
               - '.github/workflows/main.yml'
@@ -111,10 +113,23 @@ jobs:
               - 'finalized-tag-updater/**'
               - '.github/workflows/main.yml'
               - '.github/workflows/finalized-tag-updater-github-release.yml'
+      - name: Filter out commit changes
+        uses: dorny/paths-filter@v3
+        id: filter-out
+        with:
+          base: ${{ github.ref }}
+          list-files: "json"
+          filters: |
+            has-changes-requiring-build:
+              - '!**/*.md'
+              - '!docs/**'
+          # Enables us to exclude changes in multiple file types if required
+          predicate-quantifier: 'every'
 
   check-and-tag-images:
     needs: [ store-image-name-and-tags, filter-commit-changes ]
     uses: ./.github/workflows/reuse-check-images-tags-and-push.yml
+    if: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       last_commit_tag: ${{ needs.store-image-name-and-tags.outputs.last_commit_tag }}
@@ -129,6 +144,7 @@ jobs:
   manual-docker-build-and-e2e-tests:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
+    if: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     concurrency:
       group: manual-docker-build-and-e2e-tests-${{ github.workflow }}-${{ github.ref }}
@@ -167,7 +183,7 @@ jobs:
 
   testing:
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
-    if: ${{ always() && needs.filter-commit-changes.outputs.no-changes == 'false' }}
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/testing.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -176,15 +192,12 @@ jobs:
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
-      coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
-      postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
-      traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
-      transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
     secrets: inherit
 
   run-e2e-tests-geth-tracing:
-    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
-    if: ${{ always() && needs.docker-build.result == 'success' }}
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, filter-commit-changes ]
+    # Make this execute for has-changes-requiring-build == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-geth-tracing-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -193,11 +206,13 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       tracing-engine: 'geth'
       e2e-tests-logs-dump: true
+      has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
     secrets: inherit
 
   run-e2e-tests:
-    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests ]
-    if: ${{ always() && needs.docker-build.result == 'success' }}
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, filter-commit-changes ]
+    # Make this execute for has-changes-requiring-build == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -206,6 +221,7 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       tracing-engine: 'besu'
       e2e-tests-logs-dump: true
+      has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:
@@ -233,7 +249,7 @@ jobs:
     if: ${{ always() }}
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     steps:
-      - uses: strumwolf/delete-deployment-environment@v2
+      - uses: strumwolf/delete-deployment-environment@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           environment: docker-build-and-e2e

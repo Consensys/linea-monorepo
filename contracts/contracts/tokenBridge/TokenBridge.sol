@@ -44,10 +44,19 @@ contract TokenBridge is
   /// @dev This is the ABI version and not the reinitialize version.
   string public constant CONTRACT_VERSION = "1.0";
 
+  /// @notice Role used for setting the message service address.
   bytes32 public constant SET_MESSAGE_SERVICE_ROLE = keccak256("SET_MESSAGE_SERVICE_ROLE");
+
+  /// @notice Role used for setting the remote token bridge address.
   bytes32 public constant SET_REMOTE_TOKENBRIDGE_ROLE = keccak256("SET_REMOTE_TOKENBRIDGE_ROLE");
+
+  /// @notice Role used for setting a reserved token address.
   bytes32 public constant SET_RESERVED_TOKEN_ROLE = keccak256("SET_RESERVED_TOKEN_ROLE");
+
+  /// @notice Role used for removing a reserved token address.
   bytes32 public constant REMOVE_RESERVED_TOKEN_ROLE = keccak256("REMOVE_RESERVED_TOKEN_ROLE");
+
+  /// @notice Role used for setting a custom token contract address.
   bytes32 public constant SET_CUSTOM_CONTRACT_ROLE = keccak256("SET_CUSTOM_CONTRACT_ROLE");
 
   // Special addresses used in the mappings to mark specific states for tokens.
@@ -61,21 +70,32 @@ contract TokenBridge is
   address internal constant DEPLOYED_STATUS = address(0x333);
 
   // solhint-disable-next-line var-name-mixedcase
+  /// @dev The permit selector to be used when decoding the permit.
   bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
 
-  /// @notice used for the token metadata
+  /// @notice These 3 variables are used for the token metadata.
   bytes private constant METADATA_NAME = abi.encodeCall(IERC20MetadataUpgradeable.name, ());
   bytes private constant METADATA_SYMBOL = abi.encodeCall(IERC20MetadataUpgradeable.symbol, ());
   bytes private constant METADATA_DECIMALS = abi.encodeCall(IERC20MetadataUpgradeable.decimals, ());
 
+  /// @dev These 3 values are used when checking for token decimals and string values.
+  uint256 private constant VALID_DECIMALS_ENCODING_LENGTH = 32;
+  uint256 private constant SHORT_STRING_ENCODING_LENGTH = 32;
+  uint256 private constant MINIMUM_STRING_ABI_DECODE_LENGTH = 64;
+
+  /// @notice The token beacon for deployed tokens.
   address public tokenBeacon;
 
+  /// @notice The chainId mapped to a native token address which is then mapped to the bridged token address.
   mapping(uint256 chainId => mapping(address native => address bridged)) public nativeToBridgedToken;
+
+  /// @notice The bridged token address mapped to the native token address.
   mapping(address bridged => address native) public bridgedToNativeToken;
 
-  /// @notice The current layer chainId from where the bridging is triggered
+  /// @notice The current layer's chainId from where the bridging is triggered.
   uint256 public sourceChainId;
-  /// @notice The targeted layer chainId where the bridging is received
+
+  /// @notice The targeted layer's chainId where the bridging is received.
   uint256 public targetChainId;
 
   /// @dev Keep free storage slots for future implementation updates to avoid storage collision.
@@ -329,7 +349,7 @@ contract TokenBridge is
    */
   function setMessageService(
     address _messageService
-  ) public nonZeroAddress(_messageService) onlyRole(SET_MESSAGE_SERVICE_ROLE) {
+  ) external nonZeroAddress(_messageService) onlyRole(SET_MESSAGE_SERVICE_ROLE) {
     address oldMessageService = address(messageService);
     messageService = IMessageService(_messageService);
     emit MessageServiceUpdated(_messageService, oldMessageService, msg.sender);
@@ -341,8 +361,13 @@ contract TokenBridge is
    * @param _tokens Array of bridged tokens that have been deployed.
    */
   function confirmDeployment(address[] memory _tokens) external payable {
+    uint256 tokensLength = _tokens.length;
+    if (tokensLength == 0) {
+      revert TokenListEmpty();
+    }
+
     // Check that the tokens have actually been deployed
-    for (uint256 i; i < _tokens.length; i++) {
+    for (uint256 i; i < tokensLength; i++) {
       address nativeToken = bridgedToNativeToken[_tokens[i]];
       if (nativeToken == EMPTY) {
         revert TokenNotDeployed(_tokens[i]);
@@ -423,7 +448,7 @@ contract TokenBridge is
    */
   function setReserved(
     address _token
-  ) public nonZeroAddress(_token) isNewToken(_token) onlyRole(SET_RESERVED_TOKEN_ROLE) {
+  ) external nonZeroAddress(_token) isNewToken(_token) onlyRole(SET_RESERVED_TOKEN_ROLE) {
     nativeToBridgedToken[sourceChainId][_token] = RESERVED_STATUS;
     emit TokenReserved(_token);
   }
@@ -510,7 +535,7 @@ contract TokenBridge is
   function _safeDecimals(address _token) internal view returns (uint8) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_DECIMALS);
 
-    if (success && data.length == 32) {
+    if (success && data.length == VALID_DECIMALS_ENCODING_LENGTH) {
       return abi.decode(data, (uint8));
     }
 
@@ -523,16 +548,16 @@ contract TokenBridge is
    * @return decodedString The decoded string data.
    */
   function _returnDataToString(bytes memory _data) internal pure returns (string memory decodedString) {
-    if (_data.length >= 64) {
+    if (_data.length >= MINIMUM_STRING_ABI_DECODE_LENGTH) {
       return abi.decode(_data, (string));
-    } else if (_data.length != 32) {
+    } else if (_data.length != SHORT_STRING_ENCODING_LENGTH) {
       return "NOT_VALID_ENCODING";
     }
 
     // Since the strings on bytes32 are encoded left-right, check the first zero in the data
     uint256 nonZeroBytes;
     unchecked {
-      while (nonZeroBytes < 32 && _data[nonZeroBytes] != 0) {
+      while (nonZeroBytes < SHORT_STRING_ENCODING_LENGTH && _data[nonZeroBytes] != 0) {
         nonZeroBytes++;
       }
     }
@@ -576,6 +601,9 @@ contract TokenBridge is
     );
     if (owner != msg.sender) revert PermitNotFromSender(owner);
     if (spender != address(this)) revert PermitNotAllowingBridge(spender);
-    IERC20PermitUpgradeable(_token).permit(msg.sender, address(this), amount, deadline, v, r, s);
+
+    if (IERC20Upgradeable(_token).allowance(owner, spender) < amount) {
+      IERC20PermitUpgradeable(_token).permit(msg.sender, address(this), amount, deadline, v, r, s);
+    }
   }
 }

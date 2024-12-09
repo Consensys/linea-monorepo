@@ -11,6 +11,7 @@ import { L2MessageServicePauseManager } from "../../../lib/L2MessageServicePause
  * @custom:security-contact security-report@linea.build
  */
 abstract contract L2MessageManagerV1 is Initializable, L2MessageServicePauseManager, IL2MessageManagerV1 {
+  /// @notice The 3 status constants for L1 to L2 message statuses.
   uint8 public constant INBOX_STATUS_UNKNOWN = 0;
   uint8 public constant INBOX_STATUS_RECEIVED = 1;
   uint8 public constant INBOX_STATUS_CLAIMED = 2;

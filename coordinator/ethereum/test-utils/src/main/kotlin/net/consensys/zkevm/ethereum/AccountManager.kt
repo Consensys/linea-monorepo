@@ -137,7 +137,7 @@ private open class WhaleBasedAccountManager(
         val randomPrivKey = Bytes.random(32).toHexString().replace("0x", "")
         val newAccount = Account(randomPrivKey, Credentials.create(randomPrivKey).address)
         val transferResult = whaleTxManager.sendTransaction(
-          /*gasPrice*/ 300000000.toBigInteger(),
+          /*gasPrice*/ 300_000_000.toBigInteger(),
           /*gasLimit*/ 21000.toBigInteger(),
           newAccount.address,
           "",
@@ -163,11 +163,11 @@ private open class WhaleBasedAccountManager(
         transferTx.transactionHash,
         whaleAccount.address
       )
-      web3jClient.waitForTransactionExecution(
+      web3jClient.waitForTxReceipt(
         transferTx.transactionHash,
         expectedStatus = "0x1",
-        timeout = 24.seconds,
-        pollInterval = 500.milliseconds
+        timeout = 40.seconds,
+        pollingInterval = 500.milliseconds
       )
       if (log.isDebugEnabled) {
         log.debug(

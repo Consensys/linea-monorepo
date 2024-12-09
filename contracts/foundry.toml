@@ -2,7 +2,21 @@
 src = 'contracts'
 out = 'out'
 libs = ['node_modules', 'lib']
-test = 'test'
 cache_path  = 'cache_forge'
-auto_detect_solc = true
-evm_version = 'cancun'
+
+# Test settings
+match-path = 'test/foundry/*'
+
+# Default solc compiler settings
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 10_000
+
+# Compiler overrides
+additional_compiler_profiles = [ { name = "london", evm_version = "london" } ]
+
+# Specify EVM_VERSION restrictions for contract compilation
+compilation_restrictions = [
+    { paths = "./**/L2MessageService.sol", evm_version = "london" },
+    { paths = "./**/TokenBridge.sol", evm_version = "london" },
+]
