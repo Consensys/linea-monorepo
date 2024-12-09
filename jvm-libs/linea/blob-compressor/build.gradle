@@ -5,7 +5,6 @@ plugins {
 }
 
 description = 'Java JNA wrapper for Linea Blob Compressor Library implemented in GO Lang'
-group=rootProject.group
 
 dependencies {
   implementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"

@@ -10,7 +10,6 @@ java {
 
 description = 'Web3J Java client for Linea L2 Message Service Contract'
 ext.artifactId = 'l2-message-service-contract-client'
-group=rootProject.group
 
 dependencies {
   // this shall be very lightweight dependency, just export the generated sources
