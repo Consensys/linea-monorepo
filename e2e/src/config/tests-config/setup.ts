@@ -5,6 +5,8 @@ import {
   BridgedToken__factory,
   DummyContract,
   DummyContract__factory,
+  GasLimitTestContract,
+  GasLimitTestContract__factory,
   L2MessageService,
   L2MessageService__factory,
   LineaRollupV6,
