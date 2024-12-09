@@ -52,7 +52,7 @@ func allocatableClaimPlaceHolder(cs constraint.ConstraintSystem) proofClaim {
 // Generates a placeholder claim from a place holder asset. This function is
 // meant to be used for assigning the main circuit in the event where the
 // not enough non-placeholder proofs have been provided to complete the circuit.
-// In that case, we can use the ouput of this function to assign the remaining
+// In that case, we can use the output of this function to assign the remaining
 // "slots" in the circuit.
 
 // Convert a proof claim into a gnark assignment
