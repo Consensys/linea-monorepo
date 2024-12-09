@@ -8,11 +8,25 @@ plugins {
   id 'net.consensys.zkevm.kotlin-library-minimal-conventions'
 }
 
+Set<String> externalLibs = [
+  "blob-compressor",
+  "blob-decompressor",
+  "blob-shnarf-calculator",
+  "l1-rollup",
+  "l2-message-service"
+]
+
 subprojects {
+  // Note that artifacts with generated code only will be skipped if :publish is called without preceding :build
+  def hasGeneratedSources = it.fileTree(dir: 'build/generated', includes: ['**/*.java', '**/*.kt']).files.size() > 0
   def hasSourceFiles = it.fileTree(dir: 'src', includes: ['**/*.java', '**/*.kt']).files.size() > 0
 
-  group="${rootProject.group}.internal"
-  if (hasSourceFiles) {
+  if (hasSourceFiles || hasGeneratedSources) {
+    // !in operator doesn't work with spotless plugin
+    if (!externalLibs.contains(it.name)) {
+      group="${rootProject.group}.internal"
+    }
+
     it.apply from: rootProject.file("gradle/publishing.gradle")
   }
 }
