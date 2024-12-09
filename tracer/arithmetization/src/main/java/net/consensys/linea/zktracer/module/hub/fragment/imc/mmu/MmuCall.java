@@ -439,7 +439,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(subsection.rawCallerMemory()))
         .sourceOffset(EWord.ZERO)
-        .size(subsection.returnDataSize())
+        .size(subsection.callDataSize())
         .referenceOffset(subsection.returnAtOffset())
         .referenceSize(subsection.returnAtCapacity());
   }
@@ -481,9 +481,9 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
             Optional.of(leftPadTo(subsection.returnDataRange.extract(), TOTAL_SIZE_ECADD_RESULT)))
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(subsection.rawCallerMemory()))
+        .size(TOTAL_SIZE_ECADD_RESULT)
         .referenceOffset(subsection.returnAtOffset())
-        .size(subsection.returnAtCapacity())
-        .referenceSize(TOTAL_SIZE_ECADD_RESULT);
+        .referenceSize(subsection.returnAtCapacity());
   }
 
   public static MmuCall callDataExtractionForEcmul(
@@ -523,9 +523,9 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
             Optional.of(leftPadTo(subsection.returnDataRange.extract(), TOTAL_SIZE_ECMUL_RESULT)))
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(subsection.rawCallerMemory()))
+        .size(TOTAL_SIZE_ECMUL_RESULT)
         .referenceOffset(subsection.returnAtOffset())
-        .size(subsection.returnAtCapacity())
-        .referenceSize(TOTAL_SIZE_ECMUL_RESULT);
+        .referenceSize(subsection.returnAtCapacity());
   }
 
   public static MmuCall callDataExtractionForEcpairing(
@@ -578,9 +578,9 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
                 leftPadTo(subsection.returnDataRange.extract(), TOTAL_SIZE_ECPAIRING_RESULT)))
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(Optional.of(subsection.rawCallerMemory()))
+        .size(TOTAL_SIZE_ECPAIRING_RESULT)
         .referenceOffset(subsection.returnAtOffset())
-        .size(subsection.returnAtCapacity())
-        .referenceSize(TOTAL_SIZE_ECPAIRING_RESULT);
+        .referenceSize(subsection.returnAtCapacity());
   }
 
   public static MmuCall parameterExtractionForBlake(

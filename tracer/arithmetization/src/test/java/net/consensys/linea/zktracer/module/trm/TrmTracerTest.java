@@ -115,15 +115,15 @@ public class TrmTracerTest {
 
   @Test
   void testSevenArgCall() {
-    for (int tiny = 0; tiny < 16; tiny++) {
-      sevenArgCall(tiny);
+    for (int addr = 0; addr < 16; addr++) {
+      sevenArgCall(addr);
     }
   }
 
   @Test
   void testSampleDelegateCall() {
-    for (long tiny = 0; tiny < 16; tiny++) {
-      sampleDelegateCall(tiny);
+    for (long addr = 0; addr < 16; addr++) {
+      sampleDelegateCall(addr);
     }
   }
 

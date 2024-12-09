@@ -51,14 +51,22 @@ public class CallScenarioFragment implements TraceFragment {
     CALL_PRC_SUCCESS_WILL_REVERT,
     CALL_PRC_SUCCESS_WONT_REVERT;
 
+    public boolean isAnyOf(CallScenario... scenarios) {
+      for (CallScenario scenario : scenarios) {
+        if (this == scenario) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     public boolean isIndefinitePrcCallScenario() {
       return this == CALL_PRC_UNDEFINED || isPrcCallScenario();
     }
 
     public boolean isPrcCallScenario() {
-      return this == CALL_PRC_FAILURE
-          || this == CALL_PRC_SUCCESS_WILL_REVERT
-          || this == CALL_PRC_SUCCESS_WONT_REVERT;
+      return this.isAnyOf(
+          CALL_PRC_FAILURE, CALL_PRC_SUCCESS_WILL_REVERT, CALL_PRC_SUCCESS_WONT_REVERT);
     }
 
     public boolean isIndefiniteSmcCallScenario() {
@@ -66,10 +74,11 @@ public class CallScenarioFragment implements TraceFragment {
     }
 
     public boolean isSmcCallScenario() {
-      return this == CALL_SMC_FAILURE_WILL_REVERT
-          || this == CALL_SMC_FAILURE_WONT_REVERT
-          || this == CALL_SMC_SUCCESS_WILL_REVERT
-          || this == CALL_SMC_SUCCESS_WONT_REVERT;
+      return this.isAnyOf(
+          CALL_SMC_FAILURE_WILL_REVERT,
+          CALL_SMC_FAILURE_WONT_REVERT,
+          CALL_SMC_SUCCESS_WILL_REVERT,
+          CALL_SMC_SUCCESS_WONT_REVERT);
     }
 
     public boolean isIndefiniteEoaCallScenario() {
@@ -77,18 +86,15 @@ public class CallScenarioFragment implements TraceFragment {
     }
 
     public boolean isEoaCallScenario() {
-      return this == CALL_EOA_SUCCESS_WILL_REVERT || this == CALL_EOA_SUCCESS_WONT_REVERT;
+      return this.isAnyOf(CALL_EOA_SUCCESS_WILL_REVERT, CALL_EOA_SUCCESS_WONT_REVERT);
     }
 
     public boolean isAbortingScenario() {
-      return this == CALL_ABORT_WILL_REVERT || this == CALL_ABORT_WONT_REVERT;
+      return this.isAnyOf(CALL_ABORT_WILL_REVERT, CALL_ABORT_WONT_REVERT);
     }
 
     public boolean noLongerUndefined() {
-      return this != UNDEFINED
-          && this != CALL_PRC_UNDEFINED
-          && this != CALL_SMC_UNDEFINED
-          && this != CALL_EOA_UNDEFINED;
+      return !this.isAnyOf(UNDEFINED, CALL_PRC_UNDEFINED, CALL_SMC_UNDEFINED, CALL_EOA_UNDEFINED);
     }
   }
 

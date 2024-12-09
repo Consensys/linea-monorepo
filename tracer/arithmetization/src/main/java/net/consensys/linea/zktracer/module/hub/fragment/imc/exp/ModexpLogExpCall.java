@@ -67,6 +67,7 @@ public class ModexpLogExpCall implements ExpCall {
   public Trace trace(Trace trace) {
     return trace
         .pMiscExpFlag(true)
+        .pMiscExpInst(EXP_INST_MODEXPLOG)
         .pMiscExpData1(rawLeadingWord.hi())
         .pMiscExpData2(rawLeadingWord.lo())
         .pMiscExpData3(Bytes.ofUnsignedShort(cdsCutoff))

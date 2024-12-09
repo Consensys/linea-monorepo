@@ -253,10 +253,9 @@ public class SelfdestructSection extends TraceSection
     checkArgument(effectiveSelfDestructMap.containsKey(ephemeralAccount));
 
     // We modify the account fragment to reflect the self-destruct time
-    final int hubStampOfTheSelfDestructThatSealedTheDeal =
-        effectiveSelfDestructMap.get(ephemeralAccount);
+    final int hubStampOfTheActionableSelfDestruct = effectiveSelfDestructMap.get(ephemeralAccount);
 
-    checkArgument(hubStamp >= hubStampOfTheSelfDestructThatSealedTheDeal);
+    checkArgument(hubStamp >= hubStampOfTheActionableSelfDestruct);
 
     final AccountSnapshot accountBeforeSelfDestruct =
         transactionProcessingMetadata.getDestructedAccountsSnapshot().stream()
@@ -265,10 +264,15 @@ public class SelfdestructSection extends TraceSection
             .findFirst()
             .orElseThrow(() -> new IllegalStateException("Account not found"));
 
-    if (hubStamp == hubStampOfTheSelfDestructThatSealedTheDeal) {
+    if (hubStamp == hubStampOfTheActionableSelfDestruct) {
       selfdestructScenarioFragment.setScenario(
           SelfdestructScenarioFragment.SelfdestructScenario
               .SELFDESTRUCT_WONT_REVERT_NOT_YET_MARKED);
+
+      hub.transients()
+          .conflation()
+          .deploymentInfo()
+          .deploymentUpdateForSuccessfulSelfDestruct(selfdestructorAccountBefore.address());
 
       // the hub's defers.resolvePostTransaction() gets called after the
       // hub's completeLineaTransaction which in turn calls
@@ -280,7 +284,7 @@ public class SelfdestructSection extends TraceSection
               .make(
                   accountBeforeSelfDestruct,
                   selfdestructorAccountAfter.wipe(hub.transients().conflation().deploymentInfo()),
-                  DomSubStampsSubFragment.selfdestructDomSubStamps(hub));
+                  DomSubStampsSubFragment.selfdestructDomSubStamps(hub, hubStamp));
 
       this.addFragment(accountWipingFragment);
     } else {
