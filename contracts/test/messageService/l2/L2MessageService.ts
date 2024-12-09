@@ -1431,7 +1431,7 @@ describe("L2MessageService", () => {
 
     async function deployL2MessageServiceFixture() {
       return deployUpgradableFromFactory(
-        "contracts/test-contracts/L2MessageServiceLineaMainnet.sol:L2MessageServiceLineaMainnet",
+        "src/_testing/integration/L2MessageServiceLineaMainnet.sol:L2MessageServiceLineaMainnet",
         [securityCouncil.address, l1l2MessageSetter.address, ONE_DAY_IN_SECONDS, INITIAL_WITHDRAW_LIMIT],
       ) as unknown as Promise<TestL2MessageService>;
     }
@@ -1460,7 +1460,7 @@ describe("L2MessageService", () => {
 
       // Deploy new implementation
       const newL2MessageServiceFactory = await ethers.getContractFactory(
-        "contracts/messageService/l2/L2MessageService.sol:L2MessageService",
+        "src/messaging/l2/L2MessageService.sol:L2MessageService",
       );
       const newL2MessageService = await upgrades.upgradeProxy(l2MessageService, newL2MessageServiceFactory);
 
@@ -1476,7 +1476,7 @@ describe("L2MessageService", () => {
     it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializePauseTypesAndPermissions", async () => {
       // Deploy new implementation
       const newL2MessageServiceFactory = await ethers.getContractFactory(
-        "contracts/messageService/l2/L2MessageService.sol:L2MessageService",
+        "src/messaging/l2/L2MessageService.sol:L2MessageService",
       );
       const newL2MessageService = await upgrades.upgradeProxy(l2MessageService, newL2MessageServiceFactory);
 
@@ -1496,7 +1496,7 @@ describe("L2MessageService", () => {
     it("Should set all permissions", async () => {
       // Deploy new implementation
       const newL2MessageServiceFactory = await ethers.getContractFactory(
-        "contracts/messageService/l2/L2MessageService.sol:L2MessageService",
+        "src/messaging/l2/L2MessageService.sol:L2MessageService",
       );
       const newL2MessageService = await upgrades.upgradeProxy(l2MessageService, newL2MessageServiceFactory);
 
@@ -1514,7 +1514,7 @@ describe("L2MessageService", () => {
     it("Should set all pause types and unpause types in mappings and emit events", async () => {
       // Deploy new implementation
       const newL2MessageServiceFactory = await ethers.getContractFactory(
-        "contracts/messageService/l2/L2MessageService.sol:L2MessageService",
+        "src/messaging/l2/L2MessageService.sol:L2MessageService",
       );
       const newL2MessageService = await upgrades.upgradeProxy(l2MessageService, newL2MessageServiceFactory);
 
