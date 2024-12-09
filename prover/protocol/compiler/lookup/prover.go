@@ -303,6 +303,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 type zAssignmentTask zCtx
 
 func (z zAssignmentTask) run(run *wizard.ProverRuntime) {
+	zSum := field.Zero()
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
 		for frag := start; frag < stop; frag++ {
 
@@ -330,6 +331,11 @@ func (z zAssignmentTask) run(run *wizard.ProverRuntime) {
 
 			run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
 			run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
+
+			// compute the global sum of all ZOpenings
+			zSum.Add(&zSum, &packedZ[len(packedZ)-1])
 		}
 	})
+	// assign the public input
+	run.AssignColumn(z.PI.GetColID(), sv.NewRegular([]field.Element{zSum}))
 }
