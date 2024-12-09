@@ -1,5 +1,6 @@
 package linea.web3j
 
+import linea.domain.AccessListEntry
 import linea.domain.Block
 import linea.domain.Transaction
 import linea.domain.TransactionType
@@ -49,6 +50,13 @@ fun EthBlock.TransactionObject.toDomain(): Transaction {
   // Web3J throws an exception if maxPriorityFeePerGas null, instead of a check like in maxFeePerGas
   // we need to check if maxFeePerGas is null to avoid the exception
   val maxPriorityFeePerGas = if (maxFeePerGas != null) this.maxPriorityFeePerGas?.toULong() else null
+  val accessList = this.accessList?.map { accessListEntry ->
+    AccessListEntry(
+      accessListEntry.address.decodeHex(),
+      accessListEntry.storageKeys.map { it.decodeHex() }
+    )
+  }
+
   return Transaction(
     nonce = this.nonce.toULong(),
     gasPrice = this.gasPrice.toULong(),
@@ -63,7 +71,8 @@ fun EthBlock.TransactionObject.toDomain(): Transaction {
     type = mapType(this.type), // Optional field for EIP-2718 typed transactions
     chainId = this.chainId?.toULong(), // Optional field for EIP-155 transactions
     maxFeePerGas = maxFeePerGas, // Optional field for EIP-1559 transactions
-    maxPriorityFeePerGas = maxPriorityFeePerGas // Optional field for EIP-1559 transactions
+    maxPriorityFeePerGas = maxPriorityFeePerGas, // Optional field for EIP-1559 transactions,
+    accessList = accessList
   )
 }
 

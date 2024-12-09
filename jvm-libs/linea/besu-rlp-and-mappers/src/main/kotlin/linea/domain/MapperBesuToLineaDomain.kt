@@ -51,7 +51,13 @@ object MapperBesuToLineaDomain {
       type = transaction.type.toDomain(),
       chainId = transaction.chainId?.getOrNull()?.toULong(),
       maxFeePerGas = transaction.maxFeePerGas?.getOrNull()?.toBigInteger()?.toULong(),
-      maxPriorityFeePerGas = transaction.maxPriorityFeePerGas?.getOrNull()?.toBigInteger()?.toULong()
+      maxPriorityFeePerGas = transaction.maxPriorityFeePerGas?.getOrNull()?.toBigInteger()?.toULong(),
+      accessList = transaction.accessList.getOrNull()?.map { accessListEntry ->
+        AccessListEntry(
+          accessListEntry.address.toArray(),
+          accessListEntry.storageKeys.map { it.toArray() }
+        )
+      }
     )
   }
 }

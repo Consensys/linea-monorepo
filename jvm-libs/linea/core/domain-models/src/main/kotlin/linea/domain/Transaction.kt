@@ -61,7 +61,7 @@ data class Transaction(
   val chainId: ULong? = null, // Optional field for EIP-155 transactions
   val maxPriorityFeePerGas: ULong? = null, // null for non EIP-1559 transactions
   val maxFeePerGas: ULong? = null, // null for EIP-1559 transactions
-  val accessList: List<AccessListEntry> = emptyList() // null non for EIP-2930 transactions
+  val accessList: List<AccessListEntry>? // null non for EIP-2930 transactions
 ) {
   companion object {
     // companion object to allow static extension functions
@@ -138,6 +138,14 @@ data class AccessListEntry(
   val address: ByteArray,
   val storageKeys: List<ByteArray>
 ) {
+
+  override fun toString(): String {
+    return "AccessListEntry(" +
+      "address=${address.encodeHex()}, " +
+      "storageKeys=[${storageKeys.joinToString(",") { it.encodeHex() }}]" +
+      ")"
+  }
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -145,7 +153,10 @@ data class AccessListEntry(
     other as AccessListEntry
 
     if (!address.contentEquals(other.address)) return false
-    if (storageKeys != other.storageKeys) return false
+    if (storageKeys.size != other.storageKeys.size) return false
+    storageKeys.zip(other.storageKeys).forEach { (a, b) ->
+      if (!a.contentEquals(b)) return false
+    }
 
     return true
   }

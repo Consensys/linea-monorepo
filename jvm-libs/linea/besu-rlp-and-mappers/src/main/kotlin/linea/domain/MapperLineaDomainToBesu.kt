@@ -69,7 +69,10 @@ object MapperLineaDomainToBesu {
         .blockHeaderFunctions(blockHeaderFunctions)
         .buildBlockHeader()
 
-      val transactions = block.transactions.map(MapperLineaDomainToBesu::mapToBesu)
+      val transactions =
+        block.transactions.mapIndexed { index, transaction ->
+          mapToBesu(block.number, index, transaction)
+        }
       // linea does not support uncles, so we are not converting them
       // throwing an exception just in case we get one and we can fix it
       if (block.ommers.isNotEmpty()) {
@@ -79,9 +82,23 @@ object MapperLineaDomainToBesu {
       val body = BlockBody(transactions, emptyList())
 
       return org.hyperledger.besu.ethereum.core.Block(header, body)
-    }.getOrElse {
-      throw IllegalStateException("Error mapping block to Besu: block=${block.number}", it)
+    }.getOrElse { th ->
+      if (th.message?.startsWith("Error mapping transaction to Besu") ?: false) {
+        throw th
+      } else {
+        throw RuntimeException("Error mapping block to Besu: block=${block.number}", th)
+      }
     }
+  }
+
+  fun mapToBesu(blockNumber: ULong, txIndex: Int, tx: linea.domain.Transaction): Transaction {
+    return runCatching { mapToBesu(tx) }
+      .getOrElse { th ->
+        throw RuntimeException(
+          "Error mapping transaction to Besu: block=$blockNumber txIndex=$txIndex transaction=$tx",
+          th
+        )
+      }
   }
 
   fun mapToBesu(tx: linea.domain.Transaction): Transaction {
@@ -91,6 +108,8 @@ object MapperLineaDomainToBesu {
       tx.s,
       recId
     )
+
+    val besuType = tx.type.toBesu()
 
     return Transaction.builder()
       .type(tx.type.toBesu())
@@ -104,13 +123,14 @@ object MapperLineaDomainToBesu {
       .maxPriorityFeePerGas(tx.maxPriorityFeePerGas?.toWei())
       .maxFeePerGas(tx.maxFeePerGas?.toWei())
       .apply {
-        if (!tx.accessList.isEmpty()) {
-          tx.accessList.map { entry ->
+        if (besuType.supportsAccessList()) {
+          val accList = tx.accessList?.map { entry ->
             AccessListEntry(
               Address.wrap(Bytes.wrap(entry.address)),
               entry.storageKeys.map { Bytes32.wrap(it) }
             )
-          }
+          } ?: emptyList()
+          accessList(accList)
         }
       }
       .signature(signature)
