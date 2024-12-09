@@ -5,6 +5,8 @@ import {
   BridgedToken__factory,
   DummyContract,
   DummyContract__factory,
+  GasLimitTestContract,
+  GasLimitTestContract__factory,
   L2MessageService,
   L2MessageService__factory,
   LineaRollupV5,
@@ -185,6 +187,7 @@ export default class TestSetup {
 
     return l2BridgedToken;
   }
+
   public getL1DummyContract(signer?: Wallet): DummyContract {
     const dummyContract = DummyContract__factory.connect(this.config.L1.dummyContractAddress, this.getL1Provider());
 
@@ -217,6 +220,19 @@ export default class TestSetup {
     } else {
       return undefined;
     }
+  }
+
+  public getGasLimitTestContract(signer?: Wallet): GasLimitTestContract {
+    const gasLimitTestContract = GasLimitTestContract__factory.connect(
+      this.config.L2.gasLimitTestContractAddress,
+      this.getL2Provider(),
+    );
+
+    if (signer) {
+      return gasLimitTestContract.connect(signer);
+    }
+
+    return gasLimitTestContract;
   }
 
   public getL1AccountManager(): AccountManager {
