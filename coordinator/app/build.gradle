@@ -19,7 +19,6 @@ dependencies {
   implementation project(':jvm-libs:generic:vertx-helper')
   implementation project(':jvm-libs:generic:extensions:futures')
   implementation project(':jvm-libs:generic:persistence:db')
-  //  implementation project(':jvm-libs:generic:serialization:jackson')
   implementation project(':jvm-libs:linea:web3j-extensions')
   implementation project(':jvm-libs:linea:core:metrics')
   implementation project(':jvm-libs:linea:metrics:micrometer')
