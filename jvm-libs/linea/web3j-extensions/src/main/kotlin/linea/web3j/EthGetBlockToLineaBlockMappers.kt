@@ -5,6 +5,7 @@ import linea.domain.Block
 import linea.domain.Transaction
 import linea.domain.TransactionType
 import net.consensys.decodeHex
+import net.consensys.toBigIntegerFromHex
 import net.consensys.toIntFromHex
 import net.consensys.toULong
 import net.consensys.toULongFromHex
@@ -46,10 +47,17 @@ fun mapToDomain(web3jBlock: EthBlock.Block): Block {
 }
 
 fun EthBlock.TransactionObject.toDomain(): Transaction {
-  val maxFeePerGas = this.maxFeePerGas?.toULong()
-  // Web3J throws an exception if maxPriorityFeePerGas null, instead of a check like in maxFeePerGas
-  // we need to check if maxFeePerGas is null to avoid the exception
-  val maxPriorityFeePerGas = if (maxFeePerGas != null) this.maxPriorityFeePerGas?.toULong() else null
+  val txType = mapType(this.type)
+  var gasPrice: ULong? = null
+  var maxFeePerGas: ULong? = null
+  var maxPriorityFeePerGas: ULong? = null
+
+  if (txType.supports1559FeeMarket()) {
+    maxFeePerGas = this.maxFeePerGas?.toULong()
+    maxPriorityFeePerGas = this.maxPriorityFeePerGas?.toULong()
+  } else {
+    gasPrice = this.gasPrice.toULong()
+  }
   val accessList = this.accessList?.map { accessListEntry ->
     AccessListEntry(
       accessListEntry.address.decodeHex(),
@@ -57,23 +65,24 @@ fun EthBlock.TransactionObject.toDomain(): Transaction {
     )
   }
 
-  return Transaction(
+  val domainTx = Transaction(
     nonce = this.nonce.toULong(),
-    gasPrice = this.gasPrice.toULong(),
     gasLimit = this.gas.toULong(),
     to = this.to?.decodeHex(),
     value = this.value,
     input = this.input.decodeHex(),
-    r = this.r.removePrefix("0x").toBigInteger(16),
-    s = this.s.removePrefix("0x").toBigInteger(16),
+    r = this.r.toBigIntegerFromHex(),
+    s = this.s.toBigIntegerFromHex(),
     v = this.v.toULong(),
     yParity = this.getyParity()?.toULongFromHex(),
     type = mapType(this.type), // Optional field for EIP-2718 typed transactions
     chainId = this.chainId?.toULong(), // Optional field for EIP-155 transactions
+    gasPrice = gasPrice, // Optional field for EIP-1559 transactions
     maxFeePerGas = maxFeePerGas, // Optional field for EIP-1559 transactions
     maxPriorityFeePerGas = maxPriorityFeePerGas, // Optional field for EIP-1559 transactions,
     accessList = accessList
   )
+  return domainTx
 }
 
 fun mapType(type: String?): TransactionType {

@@ -283,7 +283,7 @@ class EthGetBlockToLineaBlockMapperTest {
           "v": "0x1",
           "r": "0xeb4f70991ea4f14d23efb32591da3621d551406fd32bdfdd78bb677dec13160a",
           "s": "0x783aaa89f73ef7535924da8fd5f12e15cae1a0811c4c4746d1c23abff1eacddf",
-          "maxFeePerGas": "0x1017df87",
+          "maxFeePerGas": "0x1017dff7",
           "maxPriorityFeePerGas": "0x1017df87"
         }
       """.trimIndent()
@@ -293,7 +293,9 @@ class EthGetBlockToLineaBlockMapperTest {
     assertThat(txDomain).isEqualTo(
       Transaction(
         nonce = 0UL,
-        gasPrice = 0x1017df87UL,
+        // when type is EIP1559 gasPrice is null,
+        // eth_getBlock returns effectiveGasPrice but we will place as null here
+        gasPrice = null,
         gasLimit = 0x5208UL,
         to = "0xe4392c8ecc46b304c83cdb5edaf742899b1bda93".decodeHex(),
         value = 0x2386f26fc10000UL.toBigInteger(),
@@ -304,7 +306,7 @@ class EthGetBlockToLineaBlockMapperTest {
         yParity = 1UL,
         type = TransactionType.EIP1559,
         chainId = 0x539UL,
-        maxFeePerGas = 0x1017df87UL,
+        maxFeePerGas = 0x1017dff7UL,
         maxPriorityFeePerGas = 0x1017df87UL,
         accessList = emptyList()
       )
@@ -313,7 +315,7 @@ class EthGetBlockToLineaBlockMapperTest {
     txDomain.toBesu().also { txBesu ->
       assertThat(txBesu.type).isEqualTo(org.hyperledger.besu.datatypes.TransactionType.EIP1559)
       assertThat(txBesu.nonce).isEqualTo(0L)
-      assertThat(txBesu.gasPrice.getOrNull()).isEqualTo(Wei.of(0x1017df87L))
+      assertThat(txBesu.gasPrice.getOrNull()).isNull()
       assertThat(txBesu.gasLimit).isEqualTo(0x5208L)
       assertThat(txBesu.to.getOrNull()).isEqualTo(Address.fromHexString("0xe4392c8ecc46b304c83cdb5edaf742899b1bda93"))
       assertThat(txBesu.value).isEqualTo(Wei.of(0x2386f26fc10000L))
@@ -326,7 +328,7 @@ class EthGetBlockToLineaBlockMapperTest {
       )
       assertThat(txBesu.signature.recId).isEqualTo(1)
       assertThat(txBesu.chainId.getOrNull()).isEqualTo(0x539L)
-      assertThat(txBesu.maxFeePerGas.getOrNull()).isEqualTo(Wei.of(0x1017df87L))
+      assertThat(txBesu.maxFeePerGas.getOrNull()).isEqualTo(Wei.of(0x1017dff7L))
       assertThat(txBesu.maxPriorityFeePerGas.getOrNull()).isEqualTo(Wei.of(0x1017df87L))
       assertThat(txBesu.accessList.getOrNull()).isEmpty()
     }
@@ -368,7 +370,6 @@ class EthGetBlockToLineaBlockMapperTest {
     assertThat(txDomain).isEqualTo(
       Transaction(
         nonce = 1UL,
-        gasPrice = 0x7UL,
         gasLimit = 0x83a3dUL,
         to = null,
         value = 0UL.toBigInteger(),
@@ -379,6 +380,7 @@ class EthGetBlockToLineaBlockMapperTest {
         yParity = 1UL,
         type = TransactionType.EIP1559,
         chainId = 0x539UL,
+        gasPrice = null,
         maxFeePerGas = 0xeUL,
         maxPriorityFeePerGas = 0UL,
         accessList = emptyList()
@@ -388,7 +390,7 @@ class EthGetBlockToLineaBlockMapperTest {
     txDomain.toBesu().let { txBesu ->
       assertThat(txBesu.type).isEqualTo(org.hyperledger.besu.datatypes.TransactionType.EIP1559)
       assertThat(txBesu.nonce).isEqualTo(1L)
-      assertThat(txBesu.gasPrice.getOrNull()).isEqualTo(Wei.of(0x7L))
+      assertThat(txBesu.gasPrice.getOrNull()).isNull()
       assertThat(txBesu.gasLimit).isEqualTo(0x83a3dL)
       assertThat(txBesu.to.getOrNull()).isNull()
       assertThat(txBesu.value).isEqualTo(Wei.ZERO)

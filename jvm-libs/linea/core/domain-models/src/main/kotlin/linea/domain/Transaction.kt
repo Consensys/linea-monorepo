@@ -21,6 +21,10 @@ enum class TransactionType(private val typeValue: Int) {
     return serializedType.compareTo(b!!)
   }
 
+  fun supports1559FeeMarket(): Boolean {
+    return !TransactionType.LEGACY_FEE_MARKET_TRANSACTION_TYPES.contains(this)
+  }
+
   companion object {
     private val ACCESS_LIST_SUPPORTED_TRANSACTION_TYPES: Set<TransactionType> =
       EnumSet.of(ACCESS_LIST, EIP1559, BLOB, DELEGATE_CODE)
@@ -47,8 +51,8 @@ enum class TransactionType(private val typeValue: Int) {
 }
 
 data class Transaction(
+  val type: TransactionType,
   val nonce: ULong,
-  val gasPrice: ULong?,
   val gasLimit: ULong,
   val to: ByteArray?, // Nullable for contract creation transactions
   val value: BigInteger,
@@ -57,10 +61,10 @@ data class Transaction(
   val s: BigInteger,
   val v: ULong,
   val yParity: ULong?,
-  val type: TransactionType,
   val chainId: ULong? = null, // Optional field for EIP-155 transactions
-  val maxPriorityFeePerGas: ULong? = null, // null for non EIP-1559 transactions
+  val gasPrice: ULong?, // null for EIP-1559 transactions
   val maxFeePerGas: ULong? = null, // null for EIP-1559 transactions
+  val maxPriorityFeePerGas: ULong? = null, // null for non EIP-1559 transactions
   val accessList: List<AccessListEntry>? // null non for EIP-2930 transactions
 ) {
   companion object {
@@ -116,8 +120,8 @@ data class Transaction(
 
   override fun toString(): String {
     return "Transaction(" +
+      "type=$type, " +
       "nonce=$nonce, " +
-      "gasPrice=$gasPrice, " +
       "gasLimit=$gasLimit, " +
       "to=${to?.encodeHex()}, " +
       "value=$value, " +
@@ -126,10 +130,10 @@ data class Transaction(
       "s=$s, " +
       "v=$v, " +
       "yParity=$yParity, " +
-      "type=$type, " +
       "chainId=$chainId, " +
-      "maxPriorityFeePerGas=$maxPriorityFeePerGas, " +
+      "gasPrice=$gasPrice, " +
       "maxFeePerGas=$maxFeePerGas, " +
+      "maxPriorityFeePerGas=$maxPriorityFeePerGas, " +
       "accessList=$accessList)"
   }
 }
