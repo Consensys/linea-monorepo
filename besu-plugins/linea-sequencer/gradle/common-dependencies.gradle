@@ -16,24 +16,21 @@
 dependencies {
   api 'org.slf4j:slf4j-api'
 
-  implementation 'org.apache.logging.log4j:log4j-api'
-  implementation 'org.apache.logging.log4j:log4j-core'
-  implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
-
-  implementation 'commons-io:commons-io'
-  implementation 'com.slack.api:slack-api-client'
-
   testImplementation 'org.apache.commons:commons-lang3'
   testImplementation 'com.google.guava:guava'
   testImplementation 'org.assertj:assertj-core'
 
   testImplementation 'org.junit.jupiter:junit-jupiter-api'
-  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
   testImplementation 'org.junit.jupiter:junit-jupiter-params'
-  testRuntimeOnly 'org.junit.vintage:junit-vintage-engine'
 
   testImplementation 'org.mockito:mockito-core'
   testImplementation 'org.mockito:mockito-junit-jupiter'
 
-  testImplementation "org.wiremock:wiremock"
+  testImplementation 'org.wiremock:wiremock'
+
+  testRuntimeOnly 'org.apache.logging.log4j:log4j-api'
+  testRuntimeOnly 'org.apache.logging.log4j:log4j-core'
+  testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j2-impl'
+
+  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 }

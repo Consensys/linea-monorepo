@@ -32,49 +32,35 @@ dependencies {
   // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
   annotationProcessor 'com.google.auto.service:auto-service'
 
-  compileOnly "${besuArtifactGroup}:besu-datatypes"
-  compileOnly "${besuArtifactGroup}:evm"
-  compileOnly "${besuArtifactGroup}:plugin-api"
-  compileOnly "${besuArtifactGroup}.internal:algorithms"
-  compileOnly "${besuArtifactGroup}.internal:api"
-  compileOnly "${besuArtifactGroup}.internal:core"
-  compileOnly "${besuArtifactGroup}.internal:rlp"
-
-  compileOnly 'com.google.auto.service:auto-service'
-  compileOnly 'com.google.auto.service:auto-service-annotations'
-
-  compileOnly 'info.picocli:picocli'
-
-  compileOnly 'io.vertx:vertx-core'
-
-  compileOnly 'com.squareup.okhttp3:okhttp'
-
   implementation project(":native:compress")
 
-  implementation 'com.fasterxml.jackson.core:jackson-databind'
-  implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+  implementation "${besuArtifactGroup}:besu-datatypes"
+  implementation "${besuArtifactGroup}:evm"
+  implementation "${besuArtifactGroup}:plugin-api"
+  implementation "${besuArtifactGroup}.internal:algorithms"
+  implementation "${besuArtifactGroup}.internal:api"
+  implementation "${besuArtifactGroup}.internal:core"
+  implementation "${besuArtifactGroup}.internal:rlp"
+
+  implementation 'com.google.auto.service:auto-service'
+
+  implementation 'com.google.code.gson:gson'
+
+  implementation 'info.picocli:picocli'
 
   implementation 'io.tmio:tuweni-bytes'
   implementation 'io.tmio:tuweni-units'
   implementation 'io.tmio:tuweni-toml'
 
-  implementation 'org.bouncycastle:bcprov-jdk18on'
+  implementation 'net.consensys.linea.zktracer:arithmetization'
+
   implementation 'org.hibernate.validator:hibernate-validator'
 
-  implementation ('net.consensys.linea.zktracer:arithmetization') {
-    transitive = false
-  }
-
-  testImplementation "${besuArtifactGroup}:evm"
-  testImplementation "${besuArtifactGroup}:besu-datatypes"
-  testImplementation "${besuArtifactGroup}.internal:core"
-  testImplementation "${besuArtifactGroup}.internal:rlp"
-  testImplementation "${besuArtifactGroup}:plugin-api"
   testImplementation "${besuArtifactGroup}.internal:besu"
-  testImplementation "org.awaitility:awaitility"
 
-  // workaround for bug https://github.com/dnsjava/dnsjava/issues/329, remove when upgraded upstream
-  testImplementation 'dnsjava:dnsjava:3.6.1'
+
+
+  testImplementation 'org.awaitility:awaitility'
 }
 
 configurations {

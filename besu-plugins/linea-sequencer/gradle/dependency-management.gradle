@@ -44,12 +44,6 @@ repositories {
   mavenLocal()
 }
 
-configurations.all {
-  resolutionStrategy {
-    cacheChangingModulesFor 0, 'seconds'
-  }
-}
-
 apply plugin: 'io.spring.dependency-management'
 
 dependencyManagement {
@@ -57,108 +51,19 @@ dependencyManagement {
   generatedPomCustomization {
     enabled = false
   }
+  imports {
+    mavenBom "${besuArtifactGroup}:bom:${besuVersion}"
+  }
 
   dependencies {
     dependencySet(group: "net.consensys.linea.zktracer", version: "${arithmetizationVersion}") {
       entry "arithmetization"
     }
 
-    // Besu dependencies
-    dependencySet(group: "${besuArtifactGroup}", version: "${besuVersion}") {
-      entry "besu-datatypes"
-      entry "evm"
-      entry "plugin-api"
-    }
+    dependency 'com.google.code.gson:gson:2.11.0'
 
-    // Besu internal dependencies
-    dependencySet(group: "${besuArtifactGroup}.internal", version: "${besuVersion}") {
-      entry "algorithms"
-      entry "api"
-      entry "core"
-      entry "dsl"
-      entry "eth"
-      entry "rlp"
-      entry "besu"
-    }
-
-    dependencySet(group: 'ch.qos.logback', version: '1.5.6') {
-      entry 'logback-core'
-      entry 'logback-classic'
-    }
-
-    dependency 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
-    dependency 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.2'
-    dependency 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.2'
-
-    dependency 'com.google.auto.service:auto-service:1.1.1'
-
-    dependency 'com.google.guava:guava:33.3.0-jre'
-
-    dependency 'commons-io:commons-io:2.16.1'
-
-    dependency 'com.slack.api:slack-api-client:1.32.1'
-
-    dependency 'com.splunk.logging:splunk-library-javalogging:1.11.8'
-
-    dependencySet(group: 'info.picocli', version: '4.7.6') {
-      entry 'picocli'
-      entry 'picocli-codegen'
-    }
-
-    dependency 'com.squareup.okhttp3:okhttp:4.12.0'
-
-    dependencySet(group: 'io.tmio', version: '2.4.2') {
-      entry 'tuweni-bytes'
-      entry 'tuweni-net'
-      entry 'tuweni-toml'
-      entry 'tuweni-units'
-    }
-
-    dependency 'io.vertx:vertx-core:4.5.9'
-
-    dependency 'net.java.dev.jna:jna:5.14.0'
-
-    dependency 'org.assertj:assertj-core:3.26.3'
-
-    dependency 'org.apache.commons:commons-lang3:3.17.0'
-
-    dependencySet(group: 'org.apache.logging.log4j', version: '2.23.1') {
-      entry 'log4j-api'
-      entry 'log4j-core'
-      entry 'log4j-slf4j2-impl'
-    }
-
-    dependency 'org.awaitility:awaitility:4.2.2'
-
-    dependencySet(group: 'org.bouncycastle', version: '1.78.1') {
-      entry 'bcpkix-jdk18on'
-      entry 'bcprov-jdk18on'
-      entry 'jcajce'
-    }
-
-    dependency 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
-
-    dependencySet(group: 'org.junit.jupiter', version: '5.11.0') {
-      entry 'junit-jupiter-api'
-      entry 'junit-jupiter-engine'
-      entry 'junit-jupiter-params'
-    }
-    dependency 'org.junit.vintage:junit-vintage-engine:5.11.0'
-
-    dependencySet(group: 'org.mockito', version: '5.13.0') {
-      entry 'mockito-core'
-      entry 'mockito-junit-jupiter'
-    }
-
-    dependency 'org.slf4j:slf4j-api:2.0.16'
-
-    dependencySet(group: 'org.web3j', version: '4.12.1') {
-      entry 'abi'
-      entry 'besu'
-      entry 'core'
-      entry 'crypto'
-    }
-
-    dependency "org.wiremock:wiremock:3.9.1"
+    // ToDo: remove when fixed in Besu, force version to avoid conflict with previous version
+    dependency 'org.apache.logging.log4j:log4j-api:2.24.1'
+    dependency 'org.apache.logging.log4j:log4j-core:2.24.1'
   }
 }

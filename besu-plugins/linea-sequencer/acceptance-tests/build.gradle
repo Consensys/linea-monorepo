@@ -52,27 +52,14 @@ tasks.register('acceptanceTests', Test) {
 
 dependencies {
   testImplementation project(":native:compress")
+
   testImplementation project(":sequencer")
 
-  testImplementation "${besuArtifactGroup}:besu-datatypes"
-  testImplementation "${besuArtifactGroup}:evm"
-  testImplementation "${besuArtifactGroup}:plugin-api"
-
-  testImplementation "${besuArtifactGroup}.internal:algorithms"
-  testImplementation "${besuArtifactGroup}.internal:api"
-  testImplementation "${besuArtifactGroup}.internal:core"
   testImplementation "${besuArtifactGroup}.internal:dsl"
-  testImplementation "${besuArtifactGroup}.internal:eth"
 
-  testImplementation 'io.tmio:tuweni-bytes'
-  testImplementation 'io.tmio:tuweni-units'
-
-  testImplementation 'org.web3j:abi'
-  testImplementation 'org.web3j:besu'
-  testImplementation 'org.web3j:core'
+  testImplementation 'net.consensys.linea.zktracer:arithmetization'
 
   testImplementation 'org.awaitility:awaitility'
-  testImplementation 'com.splunk.logging:splunk-library-javalogging'
 }
 
 test.enabled = false
