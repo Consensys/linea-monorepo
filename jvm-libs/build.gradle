@@ -8,7 +8,8 @@ plugins {
   id 'net.consensys.zkevm.kotlin-library-minimal-conventions'
 }
 
-Set<String> externalLibs = [
+// These libs are public, so we're commited on their artifactIds and `build.linea` group id, unlike the internal ones
+Set<String> publicApiLibs = [
   "blob-compressor",
   "blob-decompressor",
   "blob-shnarf-calculator",
@@ -23,7 +24,7 @@ subprojects {
 
   if (hasSourceFiles || hasGeneratedSources) {
     // !in operator doesn't work with spotless plugin
-    if (!externalLibs.contains(it.name)) {
+    if (!publicApiLibs.contains(it.name)) {
       group="${rootProject.group}.internal"
     }
 
