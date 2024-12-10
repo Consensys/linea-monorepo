@@ -1,27 +1,17 @@
 package linea.rlp
 
-import linea.domain.toBesu
-import linea.domain.toDomain
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.core.Block
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput
 import org.hyperledger.besu.ethereum.rlp.RLP
 
-object RLP : RLPBlockEncoder {
-  override fun encode(block: linea.domain.Block): ByteArray {
-    return encodeBlock(block.toBesu())
-  }
-
-  override fun decode(block: ByteArray): linea.domain.Block {
-    return decodeBlock(block).toDomain()
-  }
-
+object RLP {
   fun encodeBlock(besuBlock: org.hyperledger.besu.ethereum.core.Block): ByteArray {
     return besuBlock.toRlp().toArray()
   }
 
-  fun decodeBlock(block: ByteArray): org.hyperledger.besu.ethereum.core.Block {
+  fun decodeBlockWithMainnetFunctions(block: ByteArray): org.hyperledger.besu.ethereum.core.Block {
     return Block.readFrom(
       RLP.input(Bytes.wrap(block)),
       MainnetBlockHeaderFunctions()
