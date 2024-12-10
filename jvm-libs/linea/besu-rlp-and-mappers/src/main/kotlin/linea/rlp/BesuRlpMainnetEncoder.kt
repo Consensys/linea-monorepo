@@ -35,9 +35,19 @@ class BesuRlpMainnetEncoderAsyncVertxImpl(
  * used for state reconstruction
  */
 class BesuRlpDecoderAsyncVertxImpl(
-  val vertx: Vertx,
-  val decoder: BesuBlockRlpDecoder
+  private val vertx: Vertx,
+  private val decoder: BesuBlockRlpDecoder
 ) : BesuBlockRlpDecoderAsync {
+  companion object {
+    fun mainnetDecoder(vertx: Vertx): BesuBlockRlpDecoderAsync {
+      return BesuRlpDecoderAsyncVertxImpl(vertx, BesuMainnetBlockRlpDecoder)
+    }
+
+    fun blobDecoder(vertx: Vertx): BesuBlockRlpDecoderAsync {
+      return BesuRlpDecoderAsyncVertxImpl(vertx, BesuRlpBlobDecoder)
+    }
+  }
+
   override fun decodeAsync(block: ByteArray): SafeFuture<Block> {
     return vertx.executeBlocking(
       Callable {
