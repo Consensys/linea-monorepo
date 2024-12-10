@@ -521,7 +521,7 @@ func (ctx splitterCtx) compileLocalOpening(comp *wizard.CompiledIOP, q query.Loc
 		run.AssignLocalPoint(newQName, params.Y)
 	})
 
-	// The verifier ensures that the old and new queries have the same assignement
+	// The verifier ensures that the old and new queries have the same assignment
 	comp.InsertVerifier(round, func(run *wizard.VerifierRuntime) error {
 		oldParams := run.GetLocalPointEvalParams(q.ID)
 		newParams := run.GetLocalPointEvalParams(newQName)
