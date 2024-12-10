@@ -47,17 +47,10 @@ zkevm/arithmetization/zkevm.bin: corset
 	cd ../constraints && $(CORSET) make zkevm.bin && mv zkevm.bin ../prover/zkevm/arithmetization
 
 ##
-## Generate `define.go` based on the latest version of corset and the constraints
-##
-wizard: zkevm/define/define.go
-zkevm/define/define.go: corset
-	cd ../constraints && $(CORSET) make -B define.go && mv define.go ../prover/zkevm/arithmetization/define/define.go
-
-##
 ## Generate the setup for the execution prover (to be run with S3 access)
 ##
 setup: bin/prover
-	bin/prover setup --config ./config/config-integration-development.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets --circuits=emulation-dummy
+	bin/prover setup --config ./config/config-sepolia-full.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
 
 ##
 ## Copy the prover assets to the S3 bucket (zkuat)
@@ -82,7 +75,7 @@ bin/controller:
 bin/prover:
 	mkdir -p bin
 	rm -f $@
-	go build -o $@ ./cmd/prover
+	go build -tags debug -o $@ ./cmd/prover
 
 ##
 ##	Compiles the state-manager inspector
