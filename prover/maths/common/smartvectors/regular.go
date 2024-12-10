@@ -2,45 +2,43 @@ package smartvectors
 
 import (
 	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // It's normal vector in a nutshell
-type Regular []field.Element
+type Regular[T fmt.Stringer] []T
 
 // Instanstiate a new regular from a slice. Returns a pointer so that the result
 // can be reused without referencing as a SmartVector.
-func NewRegular(v []field.Element) *Regular {
+func NewRegular[T fmt.Stringer](v []T) *Regular[T] {
 	assertStrictPositiveLen(len(v))
-	res := Regular(v)
+	res := Regular[T](v)
 	return &res
 }
 
 // Returns the length of the regular vector
-func (r *Regular) Len() int { return len(*r) }
+func (r *Regular[T]) Len() int { return len(*r) }
 
 // Returns a particular element of the vector
-func (r *Regular) Get(n int) field.Element { return (*r)[n] }
+func (r *Regular[T]) Get(n int) T { return (*r)[n] }
 
 // Returns a subvector of the regular
-func (r *Regular) SubVector(start, stop int) SmartVector {
+func (r *Regular[T]) SubVector(start, stop int) SmartVector[T] {
 	if start > stop {
 		utils.Panic("Negative length are not allowed")
 	}
 	if start == stop {
 		utils.Panic("Subvector of zero lengths are not allowed")
 	}
-	res := Regular((*r)[start:stop])
+	res := Regular[T]((*r)[start:stop])
 	return &res
 }
 
 // Rotates the vector into a new one
-func (r *Regular) RotateRight(offset int) SmartVector {
-	resSlice := make(Regular, r.Len())
+func (r *Regular[T]) RotateRight(offset int) SmartVector[T] {
+	resSlice := make(Regular[T], r.Len())
 
 	if offset == 0 {
 		copy(resSlice, *r)
@@ -68,22 +66,22 @@ func (r *Regular) RotateRight(offset int) SmartVector {
 	panic("unreachable")
 }
 
-func (r *Regular) WriteInSlice(s []field.Element) {
+func (r *Regular[T]) WriteInSlice(s []T) {
 	assertHasLength(len(s), len(*r))
 	copy(s, *r)
 }
 
-func (r *Regular) Pretty() string {
+func (r *Regular[T]) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vector.Prettify(*r))
 }
 
-func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mempool.MemPool) (result *Pooled, numMatches int) {
+func processRegularOnly[T fmt.Stringer](op operator, svecs []SmartVector[T], coeffs []int, p ...mempool.MemPool[T]) (result *Pooled[T], numMatches int) {
 
 	length := svecs[0].Len()
 
 	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 
-	var resvec *Pooled
+	var resvec *Pooled[T]
 
 	isFirst := true
 	numMatches = 0
@@ -93,15 +91,15 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mem
 		svec := svecs[i]
 		// In case the current vec is Rotated, we reduce it to a regular form
 		// NB : this could use the pool.
-		if rot, ok := svec.(*Rotated); ok {
+		if rot, ok := svec.(*Rotated[T]); ok {
 			svec = rotatedAsRegular(rot)
 		}
 
-		if pooled, ok := svec.(*Pooled); ok {
+		if pooled, ok := svec.(*Pooled[T]); ok {
 			svec = &pooled.Regular
 		}
 
-		if reg, ok := svec.(*Regular); ok {
+		if reg, ok := svec.(*Regular[T]); ok {
 			numMatches++
 			// For the first one, we can save by just copying the result
 			// Importantly, we do not need to assume that regRes is originally
@@ -110,7 +108,7 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mem
 				if hasPool {
 					resvec = AllocFromPool(pool)
 				} else {
-					resvec = &Pooled{Regular: make([]field.Element, length)}
+					resvec = &Pooled[T]{Regular: make([]T, length)}
 				}
 
 				isFirst = false
@@ -129,30 +127,30 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mem
 	return resvec, numMatches
 }
 
-func (r *Regular) DeepCopy() SmartVector {
-	return NewRegular(vector.DeepCopy(*r))
+func (r *Regular[T]) DeepCopy() SmartVector[T] {
+	return NewRegular[T](vector.DeepCopy[T](*r))
 }
 
 // Converts a smart-vector into a normal vec. The implementation minimizes
 // then number of copies.
-func (r *Regular) IntoRegVecSaveAlloc() []field.Element {
+func (r *Regular[T]) IntoRegVecSaveAlloc() []T {
 	return (*r)[:]
 }
 
-type Pooled struct {
-	Regular
-	poolPtr *[]field.Element
+type Pooled[T fmt.Stringer] struct {
+	Regular[T]
+	poolPtr *[]T
 }
 
-func AllocFromPool(pool mempool.MemPool) *Pooled {
+func AllocFromPool[T fmt.Stringer](pool mempool.MemPool[T]) *Pooled[T] {
 	poolPtr := pool.Alloc()
-	return &Pooled{
+	return &Pooled[T]{
 		Regular: *poolPtr,
 		poolPtr: poolPtr,
 	}
 }
 
-func (p *Pooled) Free(pool mempool.MemPool) {
+func (p *Pooled[T]) Free(pool mempool.MemPool[T]) {
 	if p.poolPtr != nil {
 		pool.Free(p.poolPtr)
 	}

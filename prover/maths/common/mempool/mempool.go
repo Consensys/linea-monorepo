@@ -1,14 +1,13 @@
 package mempool
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-type MemPool interface {
-	Prewarm(nbPrewarm int) MemPool
-	Alloc() *[]field.Element
-	Free(vec *[]field.Element) error
+type MemPool[T any] interface {
+	Prewarm(nbPrewarm int) MemPool[T]
+	Alloc() *[]T
+	Free(vec *[]T) error
 	Size() int
 }
 
@@ -21,7 +20,7 @@ type MemPool interface {
 // This is used to unwrap a [FromSyncPool] that is commonly passed to functions as an
 // optional variadic parameter and at the same time validating that the pool
 // object has the right size.
-func ExtractCheckOptionalStrict(expectedSize int, p ...MemPool) (pool MemPool, ok bool) {
+func ExtractCheckOptionalStrict[T any](expectedSize int, p ...MemPool[T]) (pool MemPool[T], ok bool) {
 	// Checks if there is a pool
 	hasPool := len(p) > 0 && p[0] != nil
 	if hasPool {
@@ -44,7 +43,7 @@ func ExtractCheckOptionalStrict(expectedSize int, p ...MemPool) (pool MemPool, o
 //
 // This is used to unwrap a [FromSyncPool] that is commonly passed to functions as an
 // optional variadic parameter.
-func ExtractCheckOptionalSoft(expectedSize int, p ...MemPool) (pool MemPool, ok bool) {
+func ExtractCheckOptionalSoft[T any](expectedSize int, p ...MemPool[T]) (pool MemPool[T], ok bool) {
 	// Checks if there is a pool
 	hasPool := len(p) > 0
 	if hasPool {

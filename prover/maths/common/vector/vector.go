@@ -13,8 +13,8 @@ import (
 )
 
 // DeepCopy deep-copies the input vector
-func DeepCopy(pol []field.Element) []field.Element {
-	return append([]field.Element{}, pol...)
+func DeepCopy[T any](pol []T) []T {
+	return append([]T{}, pol...)
 }
 
 // ScalarMul multiplies a vector by a scalar - in place.
@@ -41,8 +41,8 @@ func ScalarProd(a, b []field.Element) field.Element {
 }
 
 // Rand creates a random vector of size n
-func Rand(n int) []field.Element {
-	vec := make([]field.Element, n)
+func Rand[T fieldElement](n int) []T {
+	vec := make([]T, n)
 	for i := range vec {
 		_, err := vec[i].SetRandom()
 		// Just to enfore never having to deal with zeroes
@@ -62,7 +62,7 @@ func MulElementWise(res, a, b []field.Element) {
 }
 
 // Prettify returns a string representing `a` in a human-readable fashion
-func Prettify(a []field.Element) string {
+func Prettify[T fmt.Stringer](a []T) string {
 	res := "["
 
 	for i := range a {
@@ -237,10 +237,10 @@ func Equal(a, b []field.Element) bool {
 
 // PseudoRand generates a vector of field element with a given size using the
 // provided random number generator
-func PseudoRand(rng *rand.Rand, size int) []field.Element {
-	slice := make([]field.Element, size)
+func PseudoRand[T fieldElement](rng *rand.Rand, size int) []T {
+	slice := make([]T, size)
 	for i := range slice {
-		slice[i] = field.PseudoRand(rng)
+		slice[i] = PseudoRandElement[T](rng)
 	}
 	return slice
 }

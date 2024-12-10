@@ -19,7 +19,9 @@ package fext
 import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fp"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"math/big"
+	"math/rand"
 )
 
 const noQNR = 11
@@ -298,4 +300,11 @@ func (z *Element) Div(x *Element, y *Element) *Element {
 	var r Element
 	r.Inverse(y).Mul(x, &r)
 	return z.Set(&r)
+}
+
+func PseudoRand(rng *rand.Rand) Element {
+	x := field.PseudoRand(rng)
+	y := field.PseudoRand(rng)
+	result := new(Element).SetZero()
+	return *result.Add(result, &Element{x, y})
 }
