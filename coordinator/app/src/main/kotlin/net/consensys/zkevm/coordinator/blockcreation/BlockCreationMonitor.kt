@@ -147,7 +147,7 @@ class BlockCreationMonitor(
                     block.number,
                     block.hash.encodeHex(),
                     block.parentHash.encodeHex(),
-                    expectedParentBlockHash.get().encodeHex().subSequence(0, 8)
+                    expectedParentBlockHash.get().encodeHex()
                   )
                   SafeFuture.failedFuture(IllegalStateException("Reorg detected on block ${block.number}"))
                 }
