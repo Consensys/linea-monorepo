@@ -193,25 +193,18 @@ func TestEncodeDecodeFromResponse(t *testing.T) {
 				for blockI := range batches[batchI] {
 
 					r := bytes.NewReader(batches[batchI][blockI])
-					_, err := v1.DecodeBlockFromUncompressed(r)
+					blockData, err := v1.DecodeBlockFromUncompressed(r)
 
 					if err != nil {
 						t.Fatalf("could not decode block: %v", err)
 					}
 
-					// for txI, txData := range blockData.Txs {
-					// 	tx := types.NewTx(txData)
-
-					// 	if tx.To() == nil {
-					// 		t.Logf("batch=%v block=%v tx=%v tx.to=%v", batchI, blockI, txI, tx.To())
-					// 		t.Fail()
-					// 	}
-
-					// 	if tx.To() == (&common.Address{}) {
-					// 		t.Logf("batch=%v block=%v tx=%v tx.to=%v", batchI, blockI, txI, tx.To())
-					// 		t.Fail()
-					// 	}
-					// }
+					for _, txData := range blockData.Txs {
+						tx := types.NewTx(txData)
+						if tx.To() == (&common.Address{}) {
+							t.Fatalf("transaction's 'to' decoded as the zero address instead of nil")
+						}
+					}
 
 				}
 			}
