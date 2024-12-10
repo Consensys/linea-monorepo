@@ -120,13 +120,6 @@ type CompiledIOP struct {
 	//
 	// For efficiency reasons, the fiatShamirSetup is derived using SHA2.
 	fiatShamirSetup field.Element
-
-	// seed stores an initial value (instead of transcript of round 0) to update the Fiat-Shamir
-	// for the distributed compiler.
-	Seed field.Element
-
-	// HasSeed indicates if there is a valid seed to use for the distributed compilations
-	HasSeed bool
 }
 
 // NumRounds returns the total number of prover interactions with the verifier

@@ -61,20 +61,14 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		// push to zCatalog
 		tableCtx.pushToZCatalog(zCatalog)
 
-		if comp.HasSeed {
-			panic("unimplemented")
-			// we expect the following format
-			// proverActions[round].pushMAssignment(mShare [][]field.Element)
-		} else {
-			proverActions[round].pushMAssignment(
-				mAssignmentTask{
-					M:       tableCtx.M,
-					S:       checkTable,
-					T:       lookupTable,
-					SFilter: includedFilters,
-				},
-			)
-		}
+		proverActions[round].pushMAssignment(
+			mAssignmentTask{
+				M:       tableCtx.M,
+				S:       checkTable,
+				T:       lookupTable,
+				SFilter: includedFilters,
+			},
+		)
 	}
 
 	// This loops is necessary to build a sorted list of the entries of zCatalog.
@@ -112,10 +106,6 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		proverActions[round].pushZAssignment(zAssignmentTask(*zC))
 		va.ZOpenings = append(va.ZOpenings, zC.ZOpenings...)
 		va.Name = zC.Name
-	}
-
-	if comp.HasSeed {
-		va.IsDistributed = true
 	}
 
 	for round := range proverActions {

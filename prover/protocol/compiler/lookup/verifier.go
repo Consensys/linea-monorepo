@@ -21,10 +21,6 @@ type finalEvaluationCheck struct {
 	Name string
 	// ZOpenings lists all the openings of all the zCtx
 	ZOpenings []query.LocalOpening
-	// public input is expected to be the global sum of ZOpenings, for the distributed compilation.
-	PI field.Element
-	// IsDistributed indicates sif the compilation is distributed
-	IsDistributed bool
 }
 
 // Run implements the [wizard.VerifierAction]
@@ -38,11 +34,7 @@ func (f *finalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
 		zSum.Add(&zSum, &temp)
 	}
 
-	if f.IsDistributed {
-		if zSum != f.PI {
-			return fmt.Errorf("log-derivate lookup, the final evaluation check failed for %v,", f.Name)
-		}
-	} else if zSum != field.Zero() {
+	if zSum != field.Zero() {
 		return fmt.Errorf("log-derivate lookup, the final evaluation check failed for %v,", f.Name)
 	}
 
