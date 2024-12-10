@@ -175,7 +175,8 @@ describe("TokenBridge", function () {
         "ZeroAddressNotAllowed",
       );
     });
-    it("Should revert if one of the initializing parameters is uint256 0", async function () {
+
+    it("Should revert if one of the initializing parameters is chainId 0", async function () {
       const { chainIds } = await loadFixture(deployContractsFixture);
       const TokenBridge = await ethers.getContractFactory("TokenBridge");
 
@@ -194,8 +195,7 @@ describe("TokenBridge", function () {
             unpauseTypeRoles: [],
           },
         ]),
-        "ZeroAmountNotAllowed",
-        [0],
+        "ZeroChainIdNotAllowed",
       );
 
       await expectRevertWithCustomError(
@@ -213,8 +213,7 @@ describe("TokenBridge", function () {
             unpauseTypeRoles: [],
           },
         ]),
-        "ZeroAmountNotAllowed",
-        [0],
+        "ZeroChainIdNotAllowed",
       );
     });
     it("Should revert if the sourceChainId is the same as the targetChainId", async function () {

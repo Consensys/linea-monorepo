@@ -339,6 +339,14 @@ error TokenListEmpty()
 
 _Thrown when the token list is empty._
 
+### ZeroChainIdNotAllowed
+
+```solidity
+error ZeroChainIdNotAllowed()
+```
+
+_Thrown when the chainId provided during initialization is zero._
+
 ### SourceChainSameAsTargetChain
 
 ```solidity

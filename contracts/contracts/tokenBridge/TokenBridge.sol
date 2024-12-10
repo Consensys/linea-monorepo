@@ -116,12 +116,22 @@ contract TokenBridge is
     if (_addr == EMPTY) revert ZeroAddressNotAllowed();
     _;
   }
+
   /**
    * @dev Ensures the amount is not 0.
    * @param _amount amount to check.
    */
   modifier nonZeroAmount(uint256 _amount) {
     if (_amount == 0) revert ZeroAmountNotAllowed(_amount);
+    _;
+  }
+
+  /**
+   * @dev Ensures the chainId is not 0.
+   * @param _chainId chainId to check.
+   */
+  modifier nonZeroChainId(uint256 _chainId) {
+    if (_chainId == 0) revert ZeroChainIdNotAllowed();
     _;
   }
 
@@ -142,8 +152,8 @@ contract TokenBridge is
     external
     nonZeroAddress(_initializationData.messageService)
     nonZeroAddress(_initializationData.tokenBeacon)
-    nonZeroAmount(_initializationData.sourceChainId)
-    nonZeroAmount(_initializationData.targetChainId)
+    nonZeroChainId(_initializationData.sourceChainId)
+    nonZeroChainId(_initializationData.targetChainId)
     initializer
   {
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
