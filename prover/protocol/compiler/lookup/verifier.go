@@ -35,11 +35,7 @@ func (f *finalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
 		zSum.Add(&zSum, &temp)
 	}
 
-	if f.IsDistributed {
-		if zSum != f.PI {
-			return fmt.Errorf("log-derivate lookup, the final evaluation check failed for %v,", f.Name)
-		}
-	} else if zSum != field.Zero() {
+	if zSum != field.Zero() {
 		return fmt.Errorf("log-derivate lookup, the final evaluation check failed for %v,", f.Name)
 	}
 
