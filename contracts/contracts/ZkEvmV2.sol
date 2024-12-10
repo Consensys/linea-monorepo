@@ -49,7 +49,7 @@ abstract contract ZkEvmV2 is Initializable, AccessControlUpgradeable, L1MessageS
     }
 
     (bool callSuccess, bytes memory result) = verifierToUse.call(
-      abi.encodeWithSelector(IPlonkVerifier.Verify.selector, _proof, publicInput)
+      abi.encodeCall(IPlonkVerifier.Verify, (_proof, publicInput))
     );
 
     if (!callSuccess) {
