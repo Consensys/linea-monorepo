@@ -18,7 +18,7 @@ on:
 
 jobs:
   release:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: [self-hosted, ubuntu-22.04, X64, small]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
