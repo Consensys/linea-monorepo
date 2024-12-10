@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.0-rc8
+* upgrade linea-besu dependency
+* deactivate MMIO constraints
+
 ## 0.8.0-rc7
 * constraints update (#1629)
 * HUB debugging (#1625)
