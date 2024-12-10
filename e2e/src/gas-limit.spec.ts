@@ -8,7 +8,7 @@ describe("Gas limit test suite", () => {
 
   it.concurrent("Should successfully invoke GasLimitTestContract.setGasLimit()", async () => {
     const account = await l2AccountManager.generateAccount();
-    const gasLimitTestContract = config.getGasLimitTestContract(account);
+    const gasLimitTestContract = config.getOpcodeTestContract(account);
     const nonce = await l2Provider.getTransactionCount(account.address, "pending");
     const { maxPriorityFeePerGas, maxFeePerGas } = await l2Provider.getFeeData();
 

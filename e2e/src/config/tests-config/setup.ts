@@ -5,12 +5,12 @@ import {
   BridgedToken__factory,
   DummyContract,
   DummyContract__factory,
-  GasLimitTestContract,
-  GasLimitTestContract__factory,
   L2MessageService,
   L2MessageService__factory,
   LineaRollupV6,
   LineaRollupV6__factory,
+  OpcodeTestContract,
+  OpcodeTestContract__factory,
   ProxyAdmin,
   ProxyAdmin__factory,
   TestContract,
@@ -222,17 +222,17 @@ export default class TestSetup {
     }
   }
 
-  public getGasLimitTestContract(signer?: Wallet): GasLimitTestContract {
-    const gasLimitTestContract = GasLimitTestContract__factory.connect(
-      this.config.L2.gasLimitTestContractAddress,
+  public getOpcodeTestContract(signer?: Wallet): OpcodeTestContract {
+    const opcodeTestContract = OpcodeTestContract__factory.connect(
+      this.config.L2.opcodeTestContractAddress,
       this.getL2Provider(),
     );
 
     if (signer) {
-      return gasLimitTestContract.connect(signer);
+      return opcodeTestContract.connect(signer);
     }
 
-    return gasLimitTestContract;
+    return opcodeTestContract;
   }
 
   public getL1AccountManager(): AccountManager {
