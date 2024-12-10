@@ -24,6 +24,7 @@ export type BaseL2Config = BaseConfig & {
   shomeiFrontendEndpoint?: URL;
   sequencerEndpoint?: URL;
   transactionExclusionEndpoint?: URL;
+  gasLimitTestContractAddress: string;
 };
 
 export type LocalL2Config = BaseL2Config & {
