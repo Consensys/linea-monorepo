@@ -32,11 +32,13 @@ describe("Gas limit test suite", () => {
     const account = await l2AccountManager.generateAccount();
     const lineaRollupV6 = config.getLineaRollupContract();
 
-    const firstTxReceipt = await setGasLimit(account);
-    expect(firstTxReceipt?.status).toEqual(1);
+    const txReceipt = await setGasLimit(account);
+    expect(txReceipt?.status).toEqual(1);
+    // Ok to type assertion here, because txReceipt won't be null if it passed above assertion.
+    const txBlockNumber = <number>txReceipt?.blockNumber;
 
     console.log("Waiting for the first DataFinalizedV3 event for OpcodeTestContract.setGasLimit()...");
-    waitForEvents(lineaRollupV6, lineaRollupV6.filters.DataFinalizedV3(<number>firstTxReceipt?.blockNumber), 1_000);
+    await waitForEvents(lineaRollupV6, lineaRollupV6.filters.DataFinalizedV3(txBlockNumber), 1_000);
     console.log("Finalization confirmed!");
   });
 });
