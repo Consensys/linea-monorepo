@@ -6,12 +6,16 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"path"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -212,4 +216,45 @@ func TestEncodeDecodeFromResponse(t *testing.T) {
 
 	}
 
+}
+
+func decompressBlob(b []byte) ([][][]byte, error) {
+
+	// we should be able to hash the blob with MiMC with no errors;
+	// this is a good indicator that the blob is valid.
+	if len(b)%fr.Bytes != 0 {
+		return nil, errors.New("invalid blob length; not a multiple of 32")
+	}
+
+	dict, err := os.ReadFile(testDictPath)
+	if err != nil {
+		return nil, fmt.Errorf("can't read dict: %w", err)
+	}
+	dictStore, err := dictionary.SingletonStore(dict, 1)
+	if err != nil {
+		return nil, err
+	}
+	header, _, blocks, err := v1.DecompressBlob(b, dictStore)
+	if err != nil {
+		return nil, fmt.Errorf("can't decompress blob: %w", err)
+	}
+
+	batches := make([][][]byte, len(header.BatchSizes))
+	for i, batchNbBytes := range header.BatchSizes {
+		batches[i] = make([][]byte, 0)
+		batchLenYet := 0
+		for batchLenYet < batchNbBytes {
+			batches[i] = append(batches[i], blocks[0])
+			batchLenYet += len(blocks[0])
+			blocks = blocks[1:]
+		}
+		if batchLenYet != batchNbBytes {
+			return nil, errors.New("invalid batch size")
+		}
+	}
+	if len(blocks) != 0 {
+		return nil, errors.New("not all blocks were consumed")
+	}
+
+	return batches, nil
 }
