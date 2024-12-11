@@ -2,6 +2,7 @@ package net.consensys.zkevm.ethereum.finalization
 
 import build.linea.contract.LineaRollupV5
 import io.vertx.core.Vertx
+import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.toULong
 import net.consensys.zkevm.PeriodicPollingService
@@ -32,8 +33,8 @@ data class FinalizationUpdatePollerConfig(
 }
 
 class FinalizationUpdatePoller(
-  vertx: Vertx,
-  config: FinalizationUpdatePollerConfig,
+  private val vertx: Vertx,
+  private val config: FinalizationUpdatePollerConfig,
   private val lineaRollup: LineaRollupV5,
   private val finalizationHandler: (ULong) -> CompletableFuture<*>,
   private val log: Logger = LogManager.getLogger(FinalizationUpdatePoller::class.java)
@@ -49,7 +50,12 @@ class FinalizationUpdatePoller(
   }
 
   override fun action(): SafeFuture<*> {
-    return lineaRollup.currentL2BlockNumber().sendAsync()
+    return AsyncRetryer.retry(
+      vertx,
+      backoffDelay = config.pollingInterval
+    ) {
+      SafeFuture.of(lineaRollup.currentL2BlockNumber().sendAsync())
+    }
       .thenCompose { lineaFinalizedBlockNumber ->
         val prevFinalizedBlockNumber = lastFinalizationRef.get()
         lastFinalizationRef.set(lineaFinalizedBlockNumber.toULong())
