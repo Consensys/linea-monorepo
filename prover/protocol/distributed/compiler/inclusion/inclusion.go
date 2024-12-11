@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	lookUp "github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -25,7 +26,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
 		// which Z context should be used to handle a part of a given permutation
 		// query.
-		zCatalog = map[[2]int]*lookUp.ZCtx{}
+		zCatalog = map[[2]int]*query.LogDerivativeSumInput{}
 	)
 
 	// Skip the compilation phase if no lookup constraint is being used. Otherwise
@@ -45,7 +46,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		)
 
 		// push to zCatalog
-		tableCtx.PushToZCatalog(zCatalog)
+		PushToZCatalog(tableCtx, zCatalog)
 	}
 
 	// Handle cases where only T part is present
@@ -61,10 +62,11 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		)
 
 		// push to zCatalog
-		tableCtx.PushToZCatalog(zCatalog)
+		PushToZCatalog(tableCtx, zCatalog)
 	}
 
-	InsertLogDerivativeSum(comp, lastRound, zCatalog)
+	// insert a  LogDerivativeSum for all the Sigma Columns .
+	comp.InsertLogDerivativeSum(lastRound, "LogDerivativeSum", zCatalog)
 }
 
 // findLookupTableByName searches for a lookup table by its name in the list of lookup tables.
@@ -158,4 +160,55 @@ func compileLookupTable(
 	)
 
 	return ctx
+}
+
+// PushToZCatalog constructs the numerators and denominators for S and T of the
+// stc into zCatalog for their corresponding rounds and size.
+func PushToZCatalog(stc lookUp.SingleTableCtx, zCatalog map[[2]int]*query.LogDerivativeSumInput) {
+
+	var (
+		round = stc.Gamma.Round
+	)
+
+	// tableCtx push to -> zCtx
+	// Process the T columns
+	for frag := range stc.T {
+		size := stc.M[frag].Size()
+
+		key := [2]int{round, size}
+		if zCatalog[key] == nil {
+			zCatalog[key] = &query.LogDerivativeSumInput{
+				Size:  size,
+				Round: round,
+			}
+		}
+
+		zCtxEntry := zCatalog[key]
+		zCtxEntry.Numerator = append(zCtxEntry.Numerator, symbolic.Neg(stc.M[frag])) // no functions for num, denom here
+		zCtxEntry.Denominator = append(zCtxEntry.Denominator, symbolic.Add(stc.Gamma, stc.T[frag]))
+	}
+
+	// Process the S columns
+	for table := range stc.S {
+		var (
+			_, _, size = wizardutils.AsExpr(stc.S[table])
+			sFilter    = symbolic.NewConstant(1)
+		)
+
+		if stc.SFilters[table] != nil {
+			sFilter = symbolic.NewVariable(stc.SFilters[table])
+		}
+
+		key := [2]int{round, size}
+		if zCatalog[key] == nil {
+			zCatalog[key] = &query.LogDerivativeSumInput{
+				Size:  size,
+				Round: round,
+			}
+		}
+
+		zCtxEntry := zCatalog[key]
+		zCtxEntry.Numerator = append(zCtxEntry.Numerator, sFilter)
+		zCtxEntry.Denominator = append(zCtxEntry.Denominator, symbolic.Add(stc.Gamma, stc.S[table]))
+	}
 }
