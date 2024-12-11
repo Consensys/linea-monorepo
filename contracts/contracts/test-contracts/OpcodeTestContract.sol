@@ -1,22 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.26;
 
+/// @dev Not intended for mainnet or testnet deployment, only for local testing
 contract OpcodeTestContract {
-  // bytes32(uint256(keccak256("opcodeTestContract.gasLimit")) - 1)
-  bytes32 private constant GAS_LIMIT_SLOT = 0x8a6969ba29f186c962469e088de2cadf70bf152ef5985279682dcca1927a9240;
+  /// @custom:storage-location erc7201:opcodeTestContract.main
+  struct MainStorage {
+    uint256 gasLimit;
+  }
+
+  // keccak256(abi.encode(uint256(keccak256("opcodeTestContract.main")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 private constant MAIN_STORAGE_SLOT =
+      0xb69ece048aea1886497badfc9449787df15ad9606ca8687d17308088ee555100;
+
+  function _getMainStorage() private pure returns (MainStorage storage $) {
+    assembly {
+      $.slot := MAIN_STORAGE_SLOT
+    }
+  }
 
   function getGasLimit() external view returns (uint256) {
-    uint256 gasLimit;
-    assembly {
-      gasLimit := sload(GAS_LIMIT_SLOT)
-    }
-    return gasLimit;
+    MainStorage storage $ = _getMainStorage();
+    return $.gasLimit;
   }
 
   function setGasLimit() external {
+    uint256 gasLimit;
     assembly {
-      let gasLimit := gaslimit()
-      sstore(GAS_LIMIT_SLOT, gasLimit)
+      gasLimit := gaslimit()
     }
+    MainStorage storage $ = _getMainStorage();
+    $.gasLimit = gasLimit;
   }
 }
