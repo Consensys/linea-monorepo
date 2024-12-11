@@ -241,10 +241,10 @@ func (ctx *stickContext) createMapToNew() {
 			for j := range values {
 				values[i] = smartvectors.IntoRegVec(ctx.comp.Precomputed.MustGet(group[j].GetColID()))
 			}
-			assignement := vector.Interleave(values...)
+			assignment := vector.Interleave(values...)
 			ctx.comp.InsertPrecomputed(
 				groupedName(group),
-				smartvectors.NewRegular(assignement),
+				smartvectors.NewRegular(assignment),
 			)
 		}
 

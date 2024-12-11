@@ -48,7 +48,7 @@ type multiLimbCmp struct {
 
 // CmpMultiLimbs returns three columns: isGreater, isEqual and isLower which
 // are mutually-exclusive pre-constrainted binary columns and a
-// [wizard.ProverAction] computing their assignement. The returned columns
+// [wizard.ProverAction] computing their assignment. The returned columns
 // indicates whether the words represented by `a` are greater, equal or
 // smaller compared to `b`. It can be used to perform comparison between large
 // numbers.

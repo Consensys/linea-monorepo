@@ -154,11 +154,11 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 				for i := range witnesses {
 					witnesses[i] = subColumns[i].GetColAssignment(run)
 				}
-				assignement := smartvectors.
+				assignment := smartvectors.
 					AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
 				for i := range subColumns {
 					for j := 0; j < witnesses[0].Len(); j++ {
-						(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
+						(*assignment)[i+j*maxSizeGroup] = witnesses[i].Get(j)
 					}
 				}
 				run.AssignColumn(idBigCol, assignement)
