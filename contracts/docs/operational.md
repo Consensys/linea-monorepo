@@ -237,7 +237,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | INFURA_API_KEY     | true     | key | Infura API Key |
 | REMOTE_TOKEN_BRIDGE_ADDRESS   | true  | address   | Token Bridge address deployed on the `--remote-network`. It must be provided as CLI argument using the `--remote-token-bridge-address` flag. If not found, the script will also check .env. variable `TOKEN_BRIDGE_ADDRESS`. If the .env variable doesn't exist, it will also check the `deployments/<remote-network>` folder and try to use that address. Otherwise it will throw an error.  |
 | TOKEN_BRIDGE_ADDRESS  | true  |   address | Token Bridge address deployed on current network. It must be provided as CLI argument using the `--token-bridge-address` flag. If not found, the script will also check .env. variable `TOKEN_BRIDGE_ADDRESS`. If the .env variable doesn't exist, it will also check the `deployments/<network_name>` folder and try to use that address. Otherwise it will throw an error.  |
-| --remote-network  | true  |   string   | Network name. It must be provided as CLI argument using the `--safe-address` flag  otherwise the script will throw an error. |
+| --remote-network  | true  |   string   | Network name. It must be provided as CLI argument using the `--remote-network` flag  otherwise the script will throw an error. |
 
 <br />
 <br />
