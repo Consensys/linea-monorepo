@@ -220,7 +220,7 @@ interface ITokenBridge {
   error TokenListEmpty();
 
   /**
-   * @dev Thrown when the chainId provided during initialization is zero.
+   * @dev Thrown when a chainId provided during initialization is zero.
    */
   error ZeroChainIdNotAllowed();
 
