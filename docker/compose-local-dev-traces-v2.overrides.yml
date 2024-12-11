@@ -89,7 +89,13 @@ services:
   traces-node-v2-plugin-downloader:
     image: busybox:1.36.1
     # profiles: ["l2", "l2-bc"] this works locally but breakes on CI, maybe Docker compose version issue
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-tracer/releases/download/v0.8.0-rc6/linea-tracer-v0.8.0-rc6.jar",  "/traces-node-v2" ]
+    environment:
+      TRACER_VERSION: v0.8.0-rc8
+    entrypoint: ["/bin/sh","-c"]
+    command:
+    - |
+      sh /file-downloader.sh https://github.com/Consensys/linea-tracer/releases/download/$${TRACER_VERSION}/linea-tracer-$${TRACER_VERSION}.zip /
+      unzip /linea-tracer-$${TRACER_VERSION}.zip -d /traces-node-v2
     volumes:
       - ./scripts/file-downloader.sh:/file-downloader.sh:ro
       - ../tmp/traces-node-v2/plugins:/traces-node-v2/
