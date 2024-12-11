@@ -345,7 +345,7 @@ _Thrown when the token list is empty._
 error ZeroChainIdNotAllowed()
 ```
 
-_Thrown when the chainId provided during initialization is zero._
+_Thrown when a chainId provided during initialization is zero._
 
 ### SourceChainSameAsTargetChain
 
