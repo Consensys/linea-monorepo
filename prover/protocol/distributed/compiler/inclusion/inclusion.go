@@ -12,20 +12,22 @@ import (
 
 // CompileLogDerivative scans `comp`, looking for Inclusion queries and compiles
 // them using the LogDerivativeLookup technique. The compiler attempts to group
-// queries relating to the same table. This allows saving in commitment because
-// when grouping is possible, then we only need to commit to a single
-// extract the table and the checked from the lookup query and ensures that the
-// table are in canonical order. That is because we want to group lookups into
-// the same columns but not in the same order.
-func CompileLogDerivative(comp *wizard.CompiledIOP) {
+// queries relating to the same table (as such groups needs the same randomness).
+//
+//	The input is a wizard.CompiledIOP object relevant to the module.
+//	It contains a list of the columns relevant to the module (inside its Columns field).
+//
+// For each T column inside the module, it also contains the M column.
+//
+// Note that for a lookup query the module may contain only the S or T columns (and not both).
+func CompileLogDerivative(moduleComp *wizard.CompiledIOP) {
 
 	var (
-		mainLookupCtx = captureModuleLookupTables(comp)
-		lastRound     = comp.NumRounds() - 1
+		mainLookupCtx = captureModuleLookupTables(moduleComp)
+		lastRound     = moduleComp.NumRounds() - 1
 
-		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
-		// which Z context should be used to handle a part of a given permutation
-		// query.
+		// zCatalog stores a mapping (round, size) into [query.LogDerivativeSumInput].
+		// it packs the sigma columns from the same (round,size) together.
 		zCatalog = map[[2]int]*query.LogDerivativeSumInput{}
 	)
 
@@ -42,7 +44,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		var (
 			round           = mainLookupCtx.Rounds[tableName]
 			includedFilters = mainLookupCtx.IncludedFilters[tableName]
-			tableCtx        = compileLookupTable(comp, round, lookupTable, checkedTables, includedFilters)
+			tableCtx        = collapsMultiColsToSingleCol(moduleComp, round, lookupTable, checkedTables, includedFilters)
 		)
 
 		// push to zCatalog
@@ -58,7 +60,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 
 		var (
 			round    = mainLookupCtx.Rounds[tableName]
-			tableCtx = compileLookupTable(comp, round, lookupTable, nil, nil)
+			tableCtx = collapsMultiColsToSingleCol(moduleComp, round, lookupTable, nil, nil)
 		)
 
 		// push to zCatalog
@@ -66,7 +68,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 	}
 
 	// insert a  LogDerivativeSum for all the Sigma Columns .
-	comp.InsertLogDerivativeSum(lastRound, "LogDerivativeSum", zCatalog)
+	moduleComp.InsertLogDerivativeSum(lastRound, "LogDerivativeSum", zCatalog)
 }
 
 // findLookupTableByName searches for a lookup table by its name in the list of lookup tables.
@@ -79,19 +81,8 @@ func findLookupTableByName(lookupTables [][]table, name string) []table {
 	return nil
 }
 
-// compileLookupTable applies the log-derivative lookup compilation context to
-// the supplied table. round denotes the interaction round in which to start the
-// compilation.
-//
-// It registers the following queries
-//   - (1) The verifier queries that $\sum_{k=0\ldots n-1} (\Sigma_{S,k})[|S_k| - 1] == (\Sigma_T)[|T| - 1]$. Namely, the sum of the last entry of all $\Sigma_{S,k}$ equals the last entry of $\Sigma_T$
-//   - (2) **(For all k)** the verifier makes a `Local` query : $(\Sigma_{S,k})[0] = \frac{1}{S_{k,0} + \gamma}$
-//   - (3) The verifier makes a `Local` query : $(\Sigma_T)[0] = \frac{M_0}{T_0 + \gamma}$
-//   - (4) **(For all k)** The verifier makes a `Global` query : $\left((\Sigma_{S,k})[i] - (\Sigma_{S,k})[i-1]\right)(S_{k,i} + \gamma) = 1$
-//   - (5) The verifier makes a `Global` query : $\left((\Sigma_T)[i] - (\Sigma_T)[i-1]\right)(T_i + \gamma) = M_i$
-
-// here we are looking up set of columns S in a single column T
-func compileLookupTable(
+// It collapses the tables of MultiColumns to single columns. It also sample the Gamma coin for the rest of the compilation.
+func collapsMultiColsToSingleCol(
 	comp *wizard.CompiledIOP,
 	round int,
 	lookupTable []table,
@@ -116,11 +107,6 @@ func compileLookupTable(
 	if !isMultiColumn {
 		for frag := range ctx.T {
 			ctx.T[frag] = symbolic.NewVariable(lookupTable[frag][0])
-			ctx.M[frag] = comp.InsertCommit(
-				round,
-				lookUp.DeriveTableNameWithIndex[ifaces.ColID](lookUp.LogDerivativePrefix, lookupTable, frag, "M"),
-				lookupTable[frag][0].Size(),
-			)
 
 		}
 
@@ -141,11 +127,6 @@ func compileLookupTable(
 
 		for frag := range ctx.T {
 			ctx.T[frag] = wizardutils.RandLinCombColSymbolic(alpha, lookupTable[frag])
-			ctx.M[frag] = comp.InsertCommit(
-				round,
-				lookUp.DeriveTableNameWithIndex[ifaces.ColID](lookUp.LogDerivativePrefix, lookupTable, frag, "M"),
-				lookupTable[frag][0].Size(),
-			)
 		}
 
 		for i := range ctx.S {
