@@ -18,22 +18,23 @@ The below function does the following:
 2. (ToDo) It adds relevant constraints
 */
 type PermutationIntoGrandProductCtx struct {
-	numerator   *symbolic.Expression // aimed at storing the expressions Ai + \beta_i
-	denominator *symbolic.Expression // aimed at storing the expressions Bi + \beta_i
+	numerators   []*symbolic.Expression // aimed at storing the expressions Ai + \beta_i for a particular permutation query
+	denominators []*symbolic.Expression // aimed at storing the expressions Bi + \beta_i for a particular permutation query
 }
 
 // Return a new PermutationIntoGrandProductCtx with numerator and denominator set as symobilc constant 1
-func newPermutationIntoGrandProductCtx() *PermutationIntoGrandProductCtx {
+func newPermutationIntoGrandProductCtx(s Settings) *PermutationIntoGrandProductCtx {
 	permCtx := PermutationIntoGrandProductCtx{}
-	permCtx.numerator = symbolic.NewConstant(1)
-	permCtx.denominator = symbolic.NewConstant(1)
+	permCtx.numerators = make([]*symbolic.Expression, s.maxNumofQueryPerModule)
+	permCtx.denominators = make([]*symbolic.Expression, s.maxNumofQueryPerModule)
 	return &permCtx
 }
 
 func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
-	targetModuleName distributed.ModuleName) {
+	targetModuleName distributed.ModuleName,
+	s Settings) {
 	numRounds := initialComp.NumRounds()
-	permCtx := newPermutationIntoGrandProductCtx()
+	permCtx := newPermutationIntoGrandProductCtx(s)
 	/*
 		Handles the lookups and permutations checks
 	*/
@@ -66,12 +67,12 @@ func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 		}
 	}
 	// Reduce a permutation query into a GrandProduct query
-	moduleComp.InsertGrandProduct(0, ifaces.QueryIDf(targetModuleName), permCtx.numerator, permCtx.denominator)
+	moduleComp.InsertGrandProduct(0, ifaces.QueryIDf(targetModuleName), permCtx.numerators, permCtx.denominators)
 }
 
 // The below function does the following:
-// 1. Register beta and alpha (for the random linear combination in case A and B are multi-columns)
-// 2. Tell the prover that they are not needed to be sampled as they are to be fetched from the randomness beacon
+// 1. Register beta and alpha (for the random linear combination in case A and B are multi-columns) in the compiledIop
+// 2. Populates the nemerators and the denominators of the grand product query
 func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query.Permutation, round, queryInRound int, isNumerator, isBoth bool) {
 	/*
 		Sanity checks : Mark the query as compiled and make sure that
@@ -95,17 +96,17 @@ func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query
 	if isNumerator && !isBoth {
 		// Take only the numerator
 		factor := computeFactor(q.A, isMultiColumn, alpha, beta)
-		p.numerator = symbolic.Mul(p.numerator, factor)
+		p.numerators = append(p.numerators, factor)
 	} else if !isNumerator && !isBoth {
 		// Take only the denominator
 		factor := computeFactor(q.B, isMultiColumn, alpha, beta)
-		p.denominator = symbolic.Mul(p.denominator, factor)
+		p.denominators = append(p.denominators, factor)
 	} else if isNumerator && isBoth {
 		// Take both the numerator and the denominator
 		numFactor := computeFactor(q.A, isMultiColumn, alpha, beta)
 		denFactor := computeFactor(q.B, isMultiColumn, alpha, beta)
-		p.numerator = symbolic.Mul(p.numerator, numFactor)
-		p.denominator = symbolic.Mul(p.denominator, denFactor)
+		p.numerators = append(p.numerators, numFactor)
+		p.denominators = append(p.denominators, denFactor)
 	} else if !isNumerator && isBoth {
 		panic("Invalid case")
 	}

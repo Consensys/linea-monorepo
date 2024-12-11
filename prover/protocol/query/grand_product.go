@@ -11,16 +11,16 @@ import (
 // by splitting the grand product Z = \prod(A_i+\beta)/(B_i+\beta) itself.
 type GrandProduct struct {
 	ID          ifaces.QueryID
-	Numerator   *symbolic.Expression // stores A as multi-column
-	Denominator *symbolic.Expression // stores B as multi-column
+	Numerators   []*symbolic.Expression // stores A as multi-column
+	Denominators []*symbolic.Expression // stores B as multi-column
 	Round       int
 }
 
-func NewGrandProduct(round int, id ifaces.QueryID, numerator, denominator *symbolic.Expression) GrandProduct {
+func NewGrandProduct(round int, id ifaces.QueryID, numerators, denominators []*symbolic.Expression) GrandProduct {
 	return GrandProduct{
 		ID:          id,
-		Numerator:   numerator,
-		Denominator: denominator,
+		Numerators:   numerators,
+		Denominators: denominators,
 		Round:       round,
 	}
 }
