@@ -4,6 +4,8 @@ plugins {
   id 'java-test-fixtures'
 }
 
+description="Web3j extensions for Linea"
+
 dependencies {
   api "org.web3j:core:${libs.versions.web3j.get()}"
   api project(':jvm-libs:linea:core:domain-models')
@@ -38,17 +40,13 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
+task integrationTest(type: Test) { test ->
+  description = "Runs integration tests."
+  group = "verification"
+  useJUnitPlatform()
 
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
+  dependsOn(":localStackComposeUp")
 }
-
-
-
