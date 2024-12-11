@@ -315,11 +315,12 @@ public class MxpTest {
     OpCode opCode;
 
     if (!isHalting) {
-      mxpType = MxpType.values()[util.nextRandomInt(1, 5)]; // Type 1 to 4 excluding opCodeLast
-      opCode = getRandomOpCodeByType(mxpType);
+      mxpType =
+          MxpType.values()[util.nextRandomInt(1, 5)]; // Type 1 to 4 excluding opCodesType4Halting
+      opCode = getRandomNonHaltingOpCodeByType(mxpType);
     } else {
       mxpType = MxpType.TYPE_4;
-      opCode = opCodesType4Halting[util.nextRandomInt(opCodesType4Halting.length)]; // opCodeLast
+      opCode = opCodesType4Halting[util.nextRandomInt(opCodesType4Halting.length)];
     }
 
     // Generate as many random values as needed at most
@@ -466,16 +467,17 @@ public class MxpTest {
     OpCode opCode;
 
     if (!isHalting) {
-      MxpType mxpType = MxpType.values()[util.nextRandomInt(2, 5)]; // Type 2 to 4
-      opCode = getRandomOpCodeByType(mxpType);
+      MxpType mxpType =
+          MxpType.values()[util.nextRandomInt(2, 5)]; // Type 2 to 4 excluding opCodesType4Halting
+      opCode = getRandomNonHaltingOpCodeByType(mxpType);
     } else {
-      opCode = opCodesType4Halting[util.nextRandomInt(opCodesType4Halting.length)]; // opCodeLast
+      opCode = opCodesType4Halting[util.nextRandomInt(opCodesType4Halting.length)];
     }
     // OpCode.CALL-type (Type 5) are tested via testCall()
     util.triggerNonTrivialButMxpxOrRoobForOpCode(program, triggerRoob, opCode);
   }
 
-  private OpCode getRandomOpCodeByType(MxpType mxpType) {
+  private OpCode getRandomNonHaltingOpCodeByType(MxpType mxpType) {
     return switch (mxpType) {
       case TYPE_1 -> opCodesType1[util.nextRandomInt(opCodesType1.length)];
       case TYPE_2 -> opCodesType2[util.nextRandomInt(opCodesType2.length)];
