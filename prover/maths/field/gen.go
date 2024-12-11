@@ -7,7 +7,7 @@ import (
 )
 
 // ParBatchInvert is as a parallel implementation of [BatchInvert]. The caller
-// can supply the target number of cores to use to perform the paralellization.
+// can supply the target number of cores to use to perform the parallelization.
 // If `numCPU=0` is provided, the function defaults to using all the available
 // cores exposed by the OS.
 func ParBatchInvert(a []Element, numCPU int) []Element {
