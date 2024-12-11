@@ -7,8 +7,10 @@ import {
   DummyContract__factory,
   L2MessageService,
   L2MessageService__factory,
-  LineaRollupV5,
-  LineaRollupV5__factory,
+  LineaRollupV6,
+  LineaRollupV6__factory,
+  ProxyAdmin,
+  ProxyAdmin__factory,
   TestContract,
   TestContract__factory,
   TestERC20,
@@ -79,8 +81,8 @@ export default class TestSetup {
     return this.config.L2.transactionExclusionEndpoint;
   }
 
-  public getLineaRollupContract(signer?: AbstractSigner): LineaRollupV5 {
-    const lineaRollup: LineaRollupV5 = LineaRollupV5__factory.connect(
+  public getLineaRollupContract(signer?: AbstractSigner): LineaRollupV6 {
+    const lineaRollup: LineaRollupV6 = LineaRollupV6__factory.connect(
       this.config.L1.lineaRollupAddress,
       this.getL1Provider(),
     );
@@ -90,6 +92,19 @@ export default class TestSetup {
     }
 
     return lineaRollup;
+  }
+
+  public getLineaRollupProxyAdminContract(signer?: AbstractSigner): ProxyAdmin {
+    const proxyAdmin: ProxyAdmin = ProxyAdmin__factory.connect(
+      this.config.L1.lineaRollupProxyAdminAddress,
+      this.getL1Provider(),
+    );
+
+    if (signer) {
+      return proxyAdmin.connect(signer);
+    }
+
+    return proxyAdmin;
   }
 
   public getL2MessageServiceContract(signer?: Wallet): L2MessageService {
@@ -210,6 +225,10 @@ export default class TestSetup {
 
   public getL2AccountManager(): AccountManager {
     return this.config.L2.accountManager;
+  }
+
+  public getL1DummyContractAddress(): string {
+    return this.config.L1.dummyContractAddress;
   }
 
   private isLocalL2Config(config: L2Config): config is LocalL2Config {

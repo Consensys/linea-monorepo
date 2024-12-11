@@ -2,10 +2,12 @@ plugins {
   id 'net.consensys.zkevm.kotlin-common-conventions'
 }
 
+description="Linea domain models"
+
 dependencies {
   implementation project(":jvm-libs:generic:extensions:kotlin")
 }
 
 jar {
-    dependsOn configurations.runtimeClasspath
+  dependsOn configurations.runtimeClasspath
 }
