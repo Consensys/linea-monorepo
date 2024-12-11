@@ -28,9 +28,8 @@ type ModuleDiscoverer interface {
 	// Analyze is responsible for letting the module discoverer compute how to
 	// group best the columns into modules.
 	Analyze(comp *wizard.CompiledIOP)
-	ModuleList(comp *wizard.CompiledIOP) []string
+	ModuleList(comp *wizard.CompiledIOP) []moduleName
 	FindModule(col ifaces.Column) moduleName
-	FindNbSegments(moduleName string, SegParam map[string]int) int
 }
 
 // This transforms the initial wizard. So it is not really the initial
