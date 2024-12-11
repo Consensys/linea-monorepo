@@ -34,8 +34,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testDictPath = "../../compressor_dict.bin"
-
 func TestCompressorOneBlock(t *testing.T) { // most basic test just to see if block encoding/decoding works
 	testCompressorSingleSmallBatch(t, testBlocks[1:2])
 }

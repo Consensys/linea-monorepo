@@ -25,6 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testDictPath = "../../compressor_dict.bin"
+
 func TestEncodeDecodeTx(t *testing.T) {
 
 	var (
@@ -44,6 +46,17 @@ func TestEncodeDecodeTx(t *testing.T) {
 				GasPrice: big.NewInt(10002),
 				Gas:      7000007,
 				To:       nil,
+				Value:    big.NewInt(66666666),
+				Data:     hexutil.MustDecode("0xdeadbeafbeefbeef12345689"),
+			},
+		},
+		{
+			Name: "contract-deployment-legacy-0x0",
+			Tx: &types.LegacyTx{
+				Nonce:    3,
+				GasPrice: big.NewInt(10002),
+				Gas:      7000007,
+				To:       &common.Address{},
 				Value:    big.NewInt(66666666),
 				Data:     hexutil.MustDecode("0xdeadbeafbeefbeef12345689"),
 			},
