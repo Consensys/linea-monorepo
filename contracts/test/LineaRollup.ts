@@ -198,7 +198,7 @@ describe("Linea Rollup contract", () => {
         defaultAdmin: securityCouncil.address,
       };
 
-      const deployCall = deployUpgradableFromFactory("contracts/LineaRollup.sol:LineaRollup", [initializationData], {
+      const deployCall = deployUpgradableFromFactory("src/rollup/LineaRollup.sol:LineaRollup", [initializationData], {
         initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
         unsafeAllow: ["constructor"],
       });
@@ -265,7 +265,7 @@ describe("Linea Rollup contract", () => {
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
-        "contracts/LineaRollup.sol:LineaRollup",
+        "src/rollup/LineaRollup.sol:LineaRollup",
         [initializationData],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
@@ -292,7 +292,7 @@ describe("Linea Rollup contract", () => {
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
-        "contracts/LineaRollup.sol:LineaRollup",
+        "src/rollup/LineaRollup.sol:LineaRollup",
         [initializationData],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
@@ -2377,7 +2377,7 @@ describe("Linea Rollup contract", () => {
       verifier = await plonkVerifier.getAddress();
 
       const lineaRollup = (await deployUpgradableFromFactory(
-        "contracts/test-contracts/TestLineaRollupV5.sol:TestLineaRollupV5",
+        "src/_testing/unit/TestLineaRollupV5.sol:TestLineaRollupV5",
         [
           parentStateRootHash,
           0,
@@ -2435,7 +2435,7 @@ describe("Linea Rollup contract", () => {
 
       // Deploy new implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
-        "contracts/test-contracts/TestLineaRollup.sol:TestLineaRollup",
+        "src/_testing/unit/TestLineaRollup.sol:TestLineaRollup",
       );
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollupV5, newLineaRollupFactory, {
         unsafeAllowRenames: true,
@@ -2463,7 +2463,7 @@ describe("Linea Rollup contract", () => {
 
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
-        "contracts/test-contracts/TestLineaRollup.sol:TestLineaRollup",
+        "src/_testing/unit/TestLineaRollup.sol:TestLineaRollup",
       );
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollupV5, newLineaRollupFactory, {
         unsafeAllowRenames: true,
@@ -2510,7 +2510,7 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollupV5.currentL2BlockNumber()).to.equal(0);
 
       // Deploy new implementation
-      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollupFactory = await ethers.getContractFactory("src/rollup/LineaRollup.sol:LineaRollup");
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollupV5, newLineaRollupFactory, {
         unsafeAllowRenames: true,
       });
@@ -2536,7 +2536,7 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollupV5.currentL2BlockNumber()).to.equal(0);
 
       // Deploy new implementation
-      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollupFactory = await ethers.getContractFactory("src/rollup/LineaRollup.sol:LineaRollup");
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollupV5, newLineaRollupFactory, {
         unsafeAllowRenames: true,
       });
@@ -2558,7 +2558,7 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollupV5.currentL2BlockNumber()).to.equal(0);
 
       // Deploy new implementation
-      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollupFactory = await ethers.getContractFactory("src/rollup/LineaRollup.sol:LineaRollup");
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollupV5, newLineaRollupFactory, {
         unsafeAllowRenames: true,
       });
@@ -2582,7 +2582,7 @@ describe("Linea Rollup contract", () => {
 
     it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializeLineaRollupV6", async () => {
       // Deploy new implementation
-      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollupFactory = await ethers.getContractFactory("src/rollup/LineaRollup.sol:LineaRollup");
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollupV5, newLineaRollupFactory, {
         unsafeAllowRenames: true,
       });
@@ -2603,7 +2603,7 @@ describe("Linea Rollup contract", () => {
 
     it("Should set all permissions", async () => {
       // Deploy new implementation
-      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollupFactory = await ethers.getContractFactory("src/rollup/LineaRollup.sol:LineaRollup");
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollupV5, newLineaRollupFactory, {
         unsafeAllowRenames: true,
       });
@@ -2623,7 +2623,7 @@ describe("Linea Rollup contract", () => {
 
     it("Should set all pause types and unpause types in mappings and emit events", async () => {
       // Deploy new implementation
-      const newLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollupFactory = await ethers.getContractFactory("src/rollup/LineaRollup.sol:LineaRollup");
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollupV5, newLineaRollupFactory, {
         unsafeAllowRenames: true,
       });
