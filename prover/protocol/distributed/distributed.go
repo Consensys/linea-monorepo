@@ -2,18 +2,11 @@ package distributed
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/global"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/local"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/permutation"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-type moduleName = string
+type ModuleName = string
 
 type DistributedWizard struct {
 	Bootstrapper       *wizard.CompiledIOP
@@ -33,8 +26,8 @@ type ModuleDiscoverer interface {
 	// group best the columns into modules.
 	Analyze(comp *wizard.CompiledIOP)
 	NbModules() int
-	ModuleList(comp *wizard.CompiledIOP) []string
-	FindModule(col ifaces.Column) moduleName
+	ModuleList(comp *wizard.CompiledIOP) []ModuleName
+	FindModule(col ifaces.Column) ModuleName
 }
 
 // This transforms the initial wizard. So it is not really the initial
@@ -42,10 +35,6 @@ type ModuleDiscoverer interface {
 // after calling the function.
 // maxNbSegment is a large max for the number of segments in a module.
 func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxNbSegments int) DistributedWizard {
-
-	// prepare the  initialWizard for the distribution. e.g.,
-	// adding auxiliary columns or dividing a lookup query to two queries one over T and the other over S.
-	prepare(initialWizard)
 	// it updates the map of Modules-Columns (that is a field of initialWizard).
 	disc.Analyze(initialWizard)
 
@@ -70,28 +59,13 @@ func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxNbS
 	}
 }
 
-// It adds the compilation steps
-func prepare(comp *wizard.CompiledIOP) {
-
-	mimc.CompileMiMC(comp)
-	specialqueries.RangeProof(comp)
-	specialqueries.CompileFixedPermutations(comp)
-
-	inclusion.IntoLogDerivativeSum(comp)
-	permutation.IntoGrandProduct(comp)
-	projection.IntoGrandSum(comp)
-	local.IntoDistributedLocal(comp)
-	global.IntoDistributedGlobal(comp)
-}
-
 func addSplittingStep(comp *wizard.CompiledIOP, disc ModuleDiscoverer) {
 	panic("unimplemented")
 }
 
-func extractDistModule(comp *wizard.CompiledIOP, disc ModuleDiscoverer, moduleName moduleName) DistributedModule {
+func extractDistModule(comp *wizard.CompiledIOP, disc ModuleDiscoverer, moduleName ModuleName) DistributedModule {
 	panic("unimplemented")
 }
-
 
 func aggregator(n int, idsModules []DistributedModule, moduleNames []string) *wizard.CompiledIOP {
 	panic("unimplemented")

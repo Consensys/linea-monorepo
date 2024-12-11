@@ -631,10 +631,10 @@ func (c *CompiledIOP) RegisterVerifierAction(round int, action VerifierAction) {
 }
 
 // Register a GrandProduct query
-func (c *CompiledIOP) InsertGrandProduct(round int, name ifaces.QueryID, numerator, denominator [][]ifaces.Column, alpha, beta coin.Info) query.GrandProduct {
+func (c *CompiledIOP) InsertGrandProduct(round int, id ifaces.QueryID, numerator, denominator *symbolic.Expression) query.GrandProduct {
 	c.assertConsistentRound(round)
-	q := query.NewGrandProduct(name, numerator, denominator, alpha, beta, round)
+	q := query.NewGrandProduct(round, id, numerator, denominator)
 	// Finally registers the query
-	c.QueriesParams.AddToRound(round, name, q)
+	c.QueriesParams.AddToRound(round, q.Name(), q)
 	return q
 }
