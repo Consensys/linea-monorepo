@@ -1,7 +1,10 @@
-package lookup
+package inclusion
 
 import (
+	"slices"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	lookUp "github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -26,17 +29,10 @@ const (
 // T:       lookupTable,
 // SFilter: includedFilters,
 
-type ZCtx struct {
-	Round, Size      int
-	SigmaNumerator   []*sym.Expression // T -> -M, S -> +Filter
-	SigmaDenominator []*sym.Expression // S or T -> ({S,T} + X)
-
-	ZNumeratorBoarded, ZDenominatorBoarded []sym.ExpressionBoard
-
-	Zs []ifaces.Column
-	// ZOpenings are the opening queries to the end of each Z.
-	ZOpenings []query.LocalOpening
-	Name      string
+type logDerivativeSumCtx struct {
+	zCtx *lookUp.ZCtx
+	// the global sum in LogDerivative
+	PI ifaces.Column
 }
 
 // check permutation and see how/where compile is called (see how to constracut z there)
@@ -44,9 +40,10 @@ type ZCtx struct {
 // and change T -> -M, S -> +Filter
 // S or T -> ({S,T} + X)
 // compile should be called inside CompileGrandSum
-func (z *ZCtx) compile(comp *wizard.CompiledIOP) {
+func (lgSum *logDerivativeSumCtx) compileLogDerivativeSum(comp *wizard.CompiledIOP) {
 
 	var (
+		z     = lgSum.zCtx
 		numZs = utils.DivCeil(
 			len(z.SigmaDenominator),
 			packingArity,
@@ -56,6 +53,13 @@ func (z *ZCtx) compile(comp *wizard.CompiledIOP) {
 	z.ZOpenings = make([]query.LocalOpening, numZs)
 	z.ZNumeratorBoarded = make([]sym.ExpressionBoard, numZs)
 	z.ZDenominatorBoarded = make([]sym.ExpressionBoard, numZs)
+
+	lgSum.PI = comp.InsertColumn(
+		z.Round,
+		lookUp.DeriveName[ifaces.ColID]("PI", comp.SelfRecursionCount, z.Round, z.Size),
+		1,
+		column.PublicInput,
+	)
 
 	for i := range z.Zs {
 
@@ -82,14 +86,14 @@ func (z *ZCtx) compile(comp *wizard.CompiledIOP) {
 
 		z.Zs[i] = comp.InsertCommit(
 			z.Round,
-			DeriveName[ifaces.ColID]("Z", comp.SelfRecursionCount, z.Round, z.Size, i),
+			lookUp.DeriveName[ifaces.ColID]("Z", comp.SelfRecursionCount, z.Round, z.Size, i),
 			z.Size,
 		)
 
 		// initial condition
 		comp.InsertLocal(
 			z.Round,
-			DeriveName[ifaces.QueryID]("Z_CONSISTENCY_START", comp.SelfRecursionCount, z.Round, z.Size, i),
+			lookUp.DeriveName[ifaces.QueryID]("Z_CONSISTENCY_START", comp.SelfRecursionCount, z.Round, z.Size, i),
 			sym.Sub(
 				zNumerator,
 				sym.Mul(
@@ -102,7 +106,7 @@ func (z *ZCtx) compile(comp *wizard.CompiledIOP) {
 		// consistency check
 		comp.InsertGlobal(
 			z.Round,
-			DeriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
+			lookUp.DeriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
 			sym.Sub(
 				zNumerator,
 				sym.Mul(
@@ -115,7 +119,7 @@ func (z *ZCtx) compile(comp *wizard.CompiledIOP) {
 		// local opening of the final value of the Z polynomial
 		z.ZOpenings[i] = comp.InsertLocalOpening(
 			z.Round,
-			DeriveName[ifaces.QueryID]("Z_FINAL", comp.SelfRecursionCount, z.Round, z.Size, i),
+			lookUp.DeriveName[ifaces.QueryID]("Z_FINAL", comp.SelfRecursionCount, z.Round, z.Size, i),
 			column.Shift(z.Zs[i], -1),
 		)
 	}
@@ -146,4 +150,55 @@ func safeAnySubSlice[T any](t []T, start, stop int) []any {
 	}
 
 	return res
+}
+
+// IntoLogDerivativeSum handles the remaining process after PushToZCatalog.
+func InsertLogDerivativeSum(comp *wizard.CompiledIOP, lastRound int, zCatalog map[[2]int]*lookUp.ZCtx) {
+	var (
+		zEntries = [][2]int{}
+		va       = finalEvaluationCheck{}
+	)
+
+	// This loop is necessary to build a sorted list of the entries of zCatalog.
+	// Without it, if we tried to loop over zCatalog directly, the entries would
+	// be processed in a non-deterministic order. The sorting order itself is
+	// without importance, what matters is that zEntries is in deterministic
+	// order.
+	for entry := range zCatalog {
+		zEntries = append(zEntries, entry)
+	}
+
+	slices.SortFunc(zEntries, func(a, b [2]int) int {
+		switch {
+		case a[0] < b[0]:
+			return -1
+		case a[0] > b[0]:
+			return 1
+		case a[1] < b[1]:
+			return -1
+		case a[1] > b[1]:
+			return 1
+		default:
+			return 0
+		}
+	})
+
+	// compile zCatalog
+	for _, entry := range zEntries {
+		zC := zCatalog[entry]
+		logDerivSumCtx :=
+			logDerivativeSumCtx{
+				zCtx: zC,
+			}
+		// z-packing compile
+		logDerivSumCtx.compileLogDerivativeSum(comp)
+		// entry[0]:round, entry[1]: size
+		// the round that Gamma was registered.
+
+		// pushZAssignment(zAssignmentTask(*zC))
+		va.ZOpenings = append(va.ZOpenings, zC.ZOpenings...)
+		va.Name = zC.Name
+	}
+
+	comp.RegisterVerifierAction(lastRound, &va)
 }
