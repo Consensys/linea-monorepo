@@ -13,7 +13,7 @@ const FOLDER = {
     CONTRACTS: "CONTRACTS",
     E2E: "E2E",
     OPERATIONS: "OPERATIONS",
-    // POSTMAN: "POSTMAN",
+    POSTMAN: "POSTMAN",
     SDK: "SDK",
 }
 
@@ -39,7 +39,7 @@ const FOLDER_PATH = {
     [FOLDER.CONTRACTS]: "contracts/",
     [FOLDER.E2E]: "e2e/",
     [FOLDER.OPERATIONS]: "operations/",
-    // [FOLDER.POSTMAN]: "postman/",
+    [FOLDER.POSTMAN]: "postman/",
     [FOLDER.SDK]: "sdk/",
 };
 
@@ -48,7 +48,7 @@ const FOLDER_CHANGED_FILES = {
     [FOLDER.CONTRACTS]: new Array(),
     [FOLDER.E2E]: new Array(),
     [FOLDER.OPERATIONS]: new Array(),
-    // [FOLDER.POSTMAN]: new Array(),
+    [FOLDER.POSTMAN]: new Array(),
     [FOLDER.SDK]: new Array(),
 };
 
@@ -57,7 +57,7 @@ const FOLDER_RUNTIME = {
     [FOLDER.CONTRACTS]: RUNTIME.NODEJS,
     [FOLDER.E2E]: RUNTIME.NODEJS,
     [FOLDER.OPERATIONS]: RUNTIME.NODEJS,
-    // [FOLDER.POSTMAN]: RUNTIME.NODEJS,
+    [FOLDER.POSTMAN]: RUNTIME.NODEJS,
     [FOLDER.SDK]: RUNTIME.NODEJS,
 };
 
