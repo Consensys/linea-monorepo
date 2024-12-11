@@ -75,7 +75,7 @@ services:
   nethermind-node:
     hostname: nethermind-node
     container_name: nethermind-node
-    image: nethermind/nethermind:1.30.0-rc 
+    image: nethermind/nethermind:1.30.0 
     restart: unless-stopped
     command:
       --datadir /nethermind/nethermind_db
