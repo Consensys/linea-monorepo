@@ -9,7 +9,11 @@ const FILE_EXTENSION = {
 }
 
 const FOLDER = {
+    BRIDGEUI: "BRIDGEUI",
     CONTRACTS: "CONTRACTS",
+    E2E: "E2E",
+    OPERATIONS: "OPERATIONS",
+    // POSTMAN: "POSTMAN",
     SDK: "SDK",
 }
 
@@ -25,22 +29,35 @@ const FILE_EXTENSION_FILTERS = {
 };
 
 const FILE_EXTENSION_LINTING_COMMAND = {
-    [FILE_EXTENSION.TYPESCRIPT]: "pnpm run lint:ts",
+    [FILE_EXTENSION.TYPESCRIPT]: "pnpm run lint:ts:fix",
     [FILE_EXTENSION.SOLIDITY]: "pnpm run lint:sol",
 };
 
 const FOLDER_PATH = {
+
+    [FOLDER.BRIDGEUI]: "bridge-ui/",
     [FOLDER.CONTRACTS]: "contracts/",
+    [FOLDER.E2E]: "e2e/",
+    [FOLDER.OPERATIONS]: "operations/",
+    // [FOLDER.POSTMAN]: "postman/",
     [FOLDER.SDK]: "sdk/",
 };
 
 const FOLDER_CHANGED_FILES = {
+    [FOLDER.BRIDGEUI]: new Array(),
     [FOLDER.CONTRACTS]: new Array(),
+    [FOLDER.E2E]: new Array(),
+    [FOLDER.OPERATIONS]: new Array(),
+    // [FOLDER.POSTMAN]: new Array(),
     [FOLDER.SDK]: new Array(),
 };
 
 const FOLDER_RUNTIME = {
+    [FOLDER.BRIDGEUI]: RUNTIME.NODEJS,
     [FOLDER.CONTRACTS]: RUNTIME.NODEJS,
+    [FOLDER.E2E]: RUNTIME.NODEJS,
+    [FOLDER.OPERATIONS]: RUNTIME.NODEJS,
+    // [FOLDER.POSTMAN]: RUNTIME.NODEJS,
     [FOLDER.SDK]: RUNTIME.NODEJS,
 };
 
@@ -49,10 +66,8 @@ const FOLDER_RUNTIME = {
 main();
 
 function main() {
-    console.time('GET_CHANGED_FILE_LIST_TIMER');
     const changedFileList = getChangedFileList();
     partitionChangedFileList(changedFileList);
-    console.timeEnd('GET_CHANGED_FILE_LIST_TIMER');
 
     for (const folder in FOLDER) {
         if (!isDependenciesInstalled(folder)) {
