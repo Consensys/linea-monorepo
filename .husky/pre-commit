@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# For this to run on pre-commit hook, should run `npx husky` in root after `git clone` repo onto dev machine
+
+# Execute NodeJS script because
+# i.) Husky requires NodeJS -> fair assumption that machine will have NodeJS
+# ii.) Cleaner syntax and abstractions than shell scripting
+node .husky/pre-commit.js
+
+exit 0
