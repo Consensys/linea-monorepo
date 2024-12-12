@@ -20,7 +20,10 @@ import static net.consensys.linea.zktracer.opcode.InstructionFamily.*;
 import java.util.Objects;
 
 import net.consensys.linea.zktracer.opcode.gas.Billing;
+import net.consensys.linea.zktracer.opcode.gas.BillingRate;
+import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
+import net.consensys.linea.zktracer.opcode.stack.Pattern;
 import net.consensys.linea.zktracer.opcode.stack.StackSettings;
 
 /**
@@ -44,6 +47,28 @@ public record OpCodeData(
 
   public Billing billing() {
     return Objects.requireNonNullElse(billing, Billing.DEFAULT);
+  }
+
+  public static OpCodeData forNonOpCodes(int value) {
+    return new OpCodeData(
+        OpCode.INVALID,
+        value,
+        INVALID,
+        new StackSettings(
+            Pattern.ZERO_ZERO,
+            0,
+            0,
+            GasConstants.G_ZERO,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false),
+        new RamSettings(DataLocation.NONE, DataLocation.NONE),
+        new Billing(GasConstants.G_ZERO, BillingRate.NONE, MxpType.NONE));
   }
 
   /**
