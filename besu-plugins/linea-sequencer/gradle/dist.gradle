@@ -32,10 +32,10 @@ jar {
 
   manifest {
     attributes(
-      'Specification-Title': archiveBaseName.get(),
-      'Specification-Version': rootProject.version,
-      'Implementation-Title': archiveBaseName.get(),
-      'Implementation-Version': calculateVersion()
+      'Specification-Title': 'arithmetization',
+      'Specification-Version': arithmetizationVersion,
+      'Implementation-Title': 'arithmetization',
+      'Implementation-Version': arithmetizationVersion
     )
   }
 
