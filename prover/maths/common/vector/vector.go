@@ -237,10 +237,10 @@ func Equal(a, b []field.Element) bool {
 
 // PseudoRand generates a vector of field element with a given size using the
 // provided random number generator
-func PseudoRand[T fieldElement](rng *rand.Rand, size int) []T {
-	slice := make([]T, size)
+func PseudoRand(rng *rand.Rand, size int) []field.Element {
+	slice := make([]field.Element, size)
 	for i := range slice {
-		slice[i] = PseudoRandElement[T](rng)
+		slice[i] = field.PseudoRand(rng)
 	}
 	return slice
 }

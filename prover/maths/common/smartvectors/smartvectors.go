@@ -58,7 +58,7 @@ func Copy[T fmt.Stringer](into *SmartVector[T], x SmartVector[T]) {
 
 // Rand creates a vector with random entries. Used for testing. Should not be
 // used to generate secrets. Not reproducible.
-func Rand[T any](n int) SmartVector[T] {
+func Rand[T fmt.Stringer](n int) SmartVector[T] {
 	v := vector.Rand(n)
 	return NewRegular[T](v)
 }
