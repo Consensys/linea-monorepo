@@ -272,7 +272,7 @@ conflation-deadline="PT6S" # =3*l2_block_time
 conflation-deadline-check-interval="PT3S"
 conflation-deadline-last-block-confirmation-delay="PT2S" # recommended: at least 2 * blockInterval
 
-# This is to prevent inflight trasactions that may change Smart contract state while coordinator is restarted.
+# This is to prevent inflight transactions that may change Smart contract state while coordinator is restarted.
 # Queries SMC for last finalised block, and keeps polling until this number of blocks observe the same state.
 # If state is updated meanwhile, it resets counter and restarts the polling.
 consistent-number-of-blocks-on-l1-to-wait=1
