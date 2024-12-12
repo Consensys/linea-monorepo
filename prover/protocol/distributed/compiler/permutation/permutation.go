@@ -3,7 +3,6 @@ package permutation
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	modulediscoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -15,7 +14,6 @@ import (
 /*
 The below function does the following:
 1. For a given target module name, it finds all the relevant permutation query and combine them into a big grand product query
-2. (ToDo) It adds relevant constraints
 */
 type PermutationIntoGrandProductCtx struct {
 	numerators   []*symbolic.Expression // aimed at storing the expressions Ai + \beta_i for a particular permutation query
@@ -31,10 +29,13 @@ func newPermutationIntoGrandProductCtx(s Settings) *PermutationIntoGrandProductC
 }
 
 func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
-	targetModuleName distributed.ModuleName,
+	targetModuleName modulediscoverer.ModuleName,
 	s Settings) {
 	numRounds := initialComp.NumRounds()
 	permCtx := newPermutationIntoGrandProductCtx(s)
+	// Initialise the period separating module discoverer
+	disc := modulediscoverer.PeriodSeperatingModuleDiscoverer{}
+	disc.Analyze(initialComp)
 	/*
 		Handles the lookups and permutations checks
 	*/
@@ -49,13 +50,13 @@ func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 			switch q_ := initialComp.QueriesNoParams.Data(qName).(type) {
 			case query.Permutation:
 				{
-					colNameA := modulediscoverer.ModuleDiscoverer(q_.A[0][0])
-					colNameB := modulediscoverer.ModuleDiscoverer(q_.B[0][0])
-					if colNameA == targetModuleName && colNameB != targetModuleName {
+					moduleNameA := disc.FindModule(q_.A[0][0])
+					moduleNameB := disc.FindModule(q_.B[0][0])
+					if moduleNameA == targetModuleName && moduleNameB != targetModuleName {
 						permCtx.push(moduleComp, &q_, i, j, true, false)
-					} else if colNameA != targetModuleName && colNameB == targetModuleName {
+					} else if moduleNameA != targetModuleName && moduleNameB == targetModuleName {
 						permCtx.push(moduleComp, &q_, i, j, false, false)
-					} else if colNameA == targetModuleName && colNameB == targetModuleName {
+					} else if moduleNameA == targetModuleName && moduleNameB == targetModuleName {
 						permCtx.push(moduleComp, &q_, i, j, true, true)
 					} else {
 						continue
@@ -67,7 +68,7 @@ func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 		}
 	}
 	// Reduce a permutation query into a GrandProduct query
-	moduleComp.InsertGrandProduct(0, ifaces.QueryIDf(targetModuleName), permCtx.numerators, permCtx.denominators)
+	moduleComp.InsertGrandProduct(0, ifaces.QueryIDf(string(targetModuleName)), permCtx.numerators, permCtx.denominators)
 }
 
 // The below function does the following:
