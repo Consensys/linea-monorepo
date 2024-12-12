@@ -51,12 +51,12 @@ private data class RequestContext(
 class JsonRpcMessageProcessor(
   private val requestsHandler: JsonRpcRequestHandler,
   private val meterRegistry: MeterRegistry,
-  private val requestParser: JsonRpcRequestParser = Companion::parseRequest
+  private val requestParser: JsonRpcRequestParser = Companion::parseRequest,
+  private val log: Logger = LogManager.getLogger(JsonRpcMessageProcessor::class.java)
 ) : JsonRpcMessageHandler {
   init {
     DatabindCodec.mapper().registerKotlinModule()
   }
-  private val log: Logger = LogManager.getLogger(this.javaClass)
   private val counterBuilder = Counter.builder("jsonrpc.counter")
   override fun invoke(user: User?, messageJsonStr: String): Future<String> =
     handleMessage(user, messageJsonStr)
