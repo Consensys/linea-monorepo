@@ -35,8 +35,6 @@ import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.ContextEntryDefer;
-import net.consensys.linea.zktracer.module.hub.defer.ContextExitDefer;
-import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -49,8 +47,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Accessors(fluent = true)
 @RequiredArgsConstructor
-public class RomLex
-    implements OperationSetModule<RomOperation>, ContextEntryDefer, ContextExitDefer {
+public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDefer {
 
   private final Hub hub;
 
@@ -189,7 +186,12 @@ public class RomLex
         checkArgument(length > 0, "callRomLex for RETURN expects positive size");
 
         byteCode = frame.shadowReadMemory(offset, length);
-        hub.defers().scheduleForContextExit(this, hub.currentFrame().id());
+        Address deploymentAddress = hub.currentFrame().byteCodeAddress();
+        final ContractMetadata contractMetadata =
+            ContractMetadata.make(
+                deploymentAddress, hub.deploymentNumberOf(deploymentAddress), false);
+        final RomOperation chunk = new RomOperation(contractMetadata, false, true, byteCode);
+        operations.add(chunk);
       }
 
       case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
@@ -319,18 +321,5 @@ public class RomLex
     for (RomOperation operation : sortedOperations) {
       traceOperation(operation, ++cfi, codeFragmentIndexInfinity, trace);
     }
-  }
-
-  @Override
-  public void resolveUponContextExit(Hub hub, CallFrame frame) {
-
-    checkArgument(hub.opCode() == RETURN);
-    checkArgument(!hub.deploymentStatusOfBytecodeAddress());
-
-    final ContractMetadata contractMetadata =
-        ContractMetadata.canonical(hub, hub.messageFrame().getContractAddress());
-
-    final RomOperation chunk = new RomOperation(contractMetadata, false, true, byteCode);
-    operations.add(chunk);
   }
 }

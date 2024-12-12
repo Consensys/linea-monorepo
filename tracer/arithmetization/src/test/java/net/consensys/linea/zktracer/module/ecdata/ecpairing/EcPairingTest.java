@@ -50,7 +50,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(EcPairingTestWatcher.class)
 @ExtendWith(UnitTestWatcher.class)
-public class EcPairingrTest {
+public class EcPairingTest {
   // https://github.com/Consensys/linea-arithmetization/issues/822
 
   // SMALL POINTS

@@ -117,8 +117,14 @@ public final class CommonFragment implements TraceFragment {
         .gasCost(Bytes.ofUnsignedLong(commonFragmentValues.gasCostToTrace()))
         .gasNext(
             Bytes.ofUnsignedLong(isExec && isUnexceptional() ? commonFragmentValues.gasNext : 0))
-        .refundCounter(commonFragmentValues.gasRefund)
-        .refundCounterNew(commonFragmentValues.gasRefundNew)
+        .refundCounter(
+            (commonFragmentValues.hubProcessingPhase == TX_EXEC)
+                ? commonFragmentValues.gasRefund
+                : 0)
+        .refundCounterNew(
+            (commonFragmentValues.hubProcessingPhase == TX_EXEC)
+                ? commonFragmentValues.gasRefundNew
+                : 0)
         .twoLineInstruction(commonFragmentValues.TLI)
         .counterTli(twoLineInstructionCounter)
         .nonStackRows((short) commonFragmentValues.numberOfNonStackRows)

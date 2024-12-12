@@ -17,9 +17,11 @@ package net.consensys.linea.zktracer.instructionprocessing.callTests.smc.complex
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendRevert;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -27,6 +29,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * The following uses a smart contract that calls itself but stops after one iteration. At which
  * point it reverts and its caller reverts, too.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class FailureWillRevertTest {
 
   @ParameterizedTest

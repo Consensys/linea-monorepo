@@ -23,16 +23,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.instructionprocessing.createTests.CreateType;
 import net.consensys.linea.zktracer.instructionprocessing.createTests.OffsetParameter;
 import net.consensys.linea.zktracer.instructionprocessing.createTests.SizeParameter;
 import net.consensys.linea.zktracer.instructionprocessing.createTests.ValueParameter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+@ExtendWith(UnitTestWatcher.class)
 public class Balance {
 
   /** The tests below are meant to trigger the "insufficientBalanceAbort" condition. */
@@ -70,6 +73,31 @@ public class Balance {
       OffsetParameter offsetParameter,
       SizeParameter sizeParameter,
       boolean reverts) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    genericCreate(
+        program,
+        createType,
+        ValueParameter.v_SELFBALANCE_PLUS_ONE,
+        offsetParameter,
+        sizeParameter,
+        salt01); // aborts
+    genericCreate(
+        program, createType, ValueParameter.v_ONE, offsetParameter, sizeParameter, salt01);
+
+    if (reverts) {
+      appendRevert(program, 2, 13);
+    }
+
+    run(program);
+  }
+
+  @Test
+  void specialRootLevelAbortThenSuccessCreateTest() {
+    final CreateType createType = CreateType.CREATE;
+    final OffsetParameter offsetParameter = OffsetParameter.o_ZERO;
+    final SizeParameter sizeParameter = SizeParameter.s_ZERO;
+    final boolean reverts = true;
+
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     genericCreate(
         program,

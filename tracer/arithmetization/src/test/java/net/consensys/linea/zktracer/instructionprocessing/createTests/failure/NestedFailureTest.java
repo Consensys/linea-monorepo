@@ -24,6 +24,7 @@ import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import java.util.List;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -32,6 +33,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -39,6 +41,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * The purpose of this class is to tests <b>Failure Condition F</b>'s arising from <i>nested</i>
  * <b>CREATE2</b>'s.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class NestedFailureTest {
 
   @ParameterizedTest

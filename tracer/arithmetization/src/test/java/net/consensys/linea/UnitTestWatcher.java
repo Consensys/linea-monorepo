@@ -22,6 +22,6 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 public class UnitTestWatcher extends LineaTestWatcher {
   @Override
   public String getTestName(ExtensionContext context) {
-    return context.getDisplayName();
+    return context.getRequiredTestMethod().getName() + ",   " + context.getDisplayName();
   }
 }

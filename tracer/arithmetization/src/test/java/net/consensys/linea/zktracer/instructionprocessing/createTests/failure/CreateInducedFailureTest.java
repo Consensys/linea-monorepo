@@ -23,6 +23,7 @@ import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 
 import java.util.List;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -32,6 +33,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * The present test case tests the ZKEVM's reaction to triggering the <b>Failure Condition F</b>
@@ -60,6 +62,7 @@ import org.junit.jupiter.api.Test;
  * <i>attempting</i> to redeploy at the same address where it did the first deployment; indeed
  * {@link #delegateCaller}'s nonce is again =1; deploying a new account at nonce 1;
  */
+@ExtendWith(UnitTestWatcher.class)
 public class CreateInducedFailureTest {
 
   final Bytes tinyAddress1 = Bytes.fromHexString("badd1ec0de");
