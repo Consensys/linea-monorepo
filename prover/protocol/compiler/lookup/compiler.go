@@ -131,9 +131,9 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 // The function also implictly reduces the conditionals over the Including table
 // be appending a "one" column on the included side and the filter on the
 // including side.
-func captureLookupTables(comp *wizard.CompiledIOP) MainLookupCtx {
+func captureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 
-	ctx := MainLookupCtx{
+	ctx := mainLookupCtx{
 		LookupTables:    [][]table{},
 		CheckedTables:   map[string][]table{},
 		IncludedFilters: map[string][]ifaces.Column{},

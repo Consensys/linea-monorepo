@@ -14,16 +14,17 @@ import (
 // compiler as a shorthand to make the code more eye-parseable.
 type table = []ifaces.Column
 
-// captureModuleLookupTables inspects comp and looks for Inclusion queries.
+// captureModuleLookupTables inspects moduleComp and looks for Inclusion queries.
 // It groups the matched queries by lookup table and marks them as ignored.
-// It creates a list of lookupTables and checkedTables present in the module.
+// It creates a list of lookupTables, mTables and checkedTables present in the module.
 //
 // The input is a compiledIOP object that stores the columns relevant to the module (in its Column field)
 // Note that for a lookup query the module may contain only S or T table (and not necessarily both).
-func captureModuleLookupTables(moduleComp *wizard.CompiledIOP) lookUp.MainLookupCtx {
+func captureModuleLookupTables(moduleComp *wizard.CompiledIOP) mainLookupCtx {
 	var (
-		ctx = lookUp.MainLookupCtx{
+		ctx = mainLookupCtx{
 			LookupTables:    [][]table{},
+			mTables:         map[string]table{},
 			CheckedTables:   map[string][]table{},
 			IncludedFilters: map[string][]ifaces.Column{},
 			Rounds:          map[string]int{},
@@ -39,11 +40,8 @@ func captureModuleLookupTables(moduleComp *wizard.CompiledIOP) lookUp.MainLookup
 			continue
 		}
 
-		// Determine if the query is relevant to the module
+		// Determine the part of the query that is relevant to the module
 		relevantPart := determineRelevantPart(lookup, moduleComp.Columns)
-		if relevantPart == "" {
-			continue
-		}
 
 		// This ensures that the lookup query is not used again in the
 		// compilation process. We know that the query was already ignored at
@@ -85,6 +83,7 @@ func captureModuleLookupTables(moduleComp *wizard.CompiledIOP) lookUp.MainLookup
 			ctx.IncludedFilters[tableName] = []ifaces.Column{}
 			ctx.CheckedTables[tableName] = []table{}
 			ctx.LookupTables = [][]table{}
+			ctx.mTables[tableName] = table{}
 			ctx.Rounds[tableName] = 0
 		}
 
@@ -93,12 +92,17 @@ func captureModuleLookupTables(moduleComp *wizard.CompiledIOP) lookUp.MainLookup
 			ctx.IncludedFilters[tableName] = append(ctx.IncludedFilters[tableName], includedFilter)
 			ctx.CheckedTables[tableName] = append(ctx.CheckedTables[tableName], checkedTable)
 			ctx.LookupTables = append(ctx.LookupTables, lookupTable)
+			// get the M table from the moduleComp and add it to the  mTables.
+			ctx.mTables[tableName] = mTable(moduleComp, lookupTable)
+
 		}
 		if relevantPart == "S" {
 			ctx.IncludedFilters[tableName] = append(ctx.IncludedFilters[tableName], includedFilter)
 			ctx.CheckedTables[tableName] = append(ctx.CheckedTables[tableName], checkedTable)
 		} else if relevantPart == "T" {
 			ctx.LookupTables = append(ctx.LookupTables, lookupTable)
+			// get the M table from the moduleComp and add it to the  mTables.
+			ctx.mTables[tableName] = mTable(moduleComp, lookupTable)
 		}
 
 		ctx.Rounds[tableName] = max(ctx.Rounds[tableName], moduleComp.QueriesNoParams.Round(lookup.ID))
@@ -129,7 +133,15 @@ func determineRelevantPart(lookup query.Inclusion, moduleColumns column.Store) s
 	if hasS && !hasT {
 		return "S"
 	} else {
-		panic("the module contains a query that is not relevant to any column")
+		panic("the module contains a query that is not relevant to any module-column")
 	}
 
+}
+
+func mTable(comp *wizard.CompiledIOP, t [][]ifaces.Column) (m []ifaces.Column) {
+	for frag := range t[0] {
+		id := ifaces.ColIDf("%v_%v_%v", lookUp.NameTable(t), "M", frag)
+		m = append(m, comp.Columns.GetHandle(id))
+	}
+	return m
 }
