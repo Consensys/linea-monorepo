@@ -41,7 +41,7 @@ import org.hyperledger.besu.datatypes.Address;
 @AllArgsConstructor
 public class ContextFragment implements TraceFragment {
   private final Hub hub;
-  private final Either<Integer, Integer> callFrameReference;
+  private final Either<Integer, Integer> callFrameReference; // left: id, right: context number
   private final MemoryRange returnDataRange;
   private final boolean updateReturnData;
 

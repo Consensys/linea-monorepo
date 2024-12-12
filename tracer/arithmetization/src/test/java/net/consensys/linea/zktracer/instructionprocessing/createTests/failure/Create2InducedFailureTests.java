@@ -17,14 +17,17 @@ package net.consensys.linea.zktracer.instructionprocessing.createTests.failure;
 import static net.consensys.linea.zktracer.instructionprocessing.createTests.trivial.RootLevel.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * The following tests raise the <b>Failure Condition F</b> with the <b>CREATE2</b> opcode. These
  * tests are sequential in nature: one <b>CREATE2</b> after another.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class Create2InducedFailureTests {
 
   @Test

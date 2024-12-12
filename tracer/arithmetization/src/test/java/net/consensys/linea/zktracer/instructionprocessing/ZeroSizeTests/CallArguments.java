@@ -16,11 +16,13 @@ package net.consensys.linea.zktracer.instructionprocessing.ZeroSizeTests;
 
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -29,6 +31,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * data" and "return at ..." parameters. This follows up on the recent change in constraints where,
  * focusing on CALLs only, we set CDO to zero whenever CDS ≡ 0, and similarly for R@0 and R@C.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class CallArguments {
 
   @ParameterizedTest

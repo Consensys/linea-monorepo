@@ -245,6 +245,15 @@ public class AccountSnapshot {
     return this;
   }
 
+  public AccountSnapshot setDeploymentNumber(Hub hub) {
+    return this.setDeploymentNumber(hub.transients.conflation().deploymentInfo());
+  }
+
+  public AccountSnapshot setDeploymentNumber(DeploymentInfo deploymentInfo) {
+    this.deploymentNumber(deploymentInfo.deploymentNumber(address));
+    return this;
+  }
+
   public AccountSnapshot setDeploymentInfo(Hub hub) {
     return this.setDeploymentInfo(hub.transients.conflation().deploymentInfo());
   }

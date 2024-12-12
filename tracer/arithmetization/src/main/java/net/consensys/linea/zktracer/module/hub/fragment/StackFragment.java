@@ -117,7 +117,9 @@ public final class StackFragment implements TraceFragment {
           hub.currentFrame().frame().getStackItem(0).toUnsignedBigInteger();
       final BigInteger codeSize = BigInteger.valueOf(hub.currentFrame().code().getSize());
 
-      boolean prospectivePcNewIsInBounds = codeSize.compareTo(prospectivePcNew) > 0;
+      boolean noOutOfGasException = !Exceptions.outOfGasException(exceptions);
+      boolean prospectivePcNewIsInBounds =
+          codeSize.compareTo(prospectivePcNew) > 0 && noOutOfGasException;
 
       if (opCode.equals(OpCode.JUMPI)) {
         boolean nonzeroJumpCondition =

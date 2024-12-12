@@ -17,9 +17,12 @@ package net.consensys.linea.zktracer.instructionprocessing.createTests.failure;
 import static net.consensys.linea.zktracer.instructionprocessing.createTests.trivial.RootLevel.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(UnitTestWatcher.class)
 public class NoFailure {
 
   /**

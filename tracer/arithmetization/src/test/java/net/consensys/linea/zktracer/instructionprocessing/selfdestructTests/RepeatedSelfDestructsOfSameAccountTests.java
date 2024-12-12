@@ -21,12 +21,14 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoO
 
 import java.util.List;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -36,6 +38,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * selfDestructorAddress parameter decides whether the SELFDESTRUCT targets the same
  * selfDestructorAddress or not. We consider the reverted vs unreverted cases.
  */
+@ExtendWith(UnitTestWatcher.class)
 public class RepeatedSelfDestructsOfSameAccountTests {
 
   private ToyAccount toAccount;

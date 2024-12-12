@@ -163,8 +163,10 @@ public class CallSection extends TraceSection
 
     if (Exceptions.any(exceptions)) {
       scenarioFragment.setScenario(CALL_EXCEPTION);
-      final XCallOobCall oobCall = new XCallOobCall();
-      firstImcFragment.callOob(oobCall);
+      if (opCode == CALL) {
+        final XCallOobCall oobCall = new XCallOobCall();
+        firstImcFragment.callOob(oobCall);
+      }
     }
 
     // STATICX cases

@@ -14,6 +14,7 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.selfdestructTests;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.instructionprocessing.utilities.*;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -21,7 +22,9 @@ import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(UnitTestWatcher.class)
 public class SeveralSelfDestructsInARowModifyingStorageTests {
   Address modifyStorageThenSelfDestructAddress = Address.fromHexString("ffc0de");
   Hash hash = Hash.fromHexString("modifyStorageThenSelfDestruct");

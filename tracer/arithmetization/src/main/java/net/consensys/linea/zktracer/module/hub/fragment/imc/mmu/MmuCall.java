@@ -261,7 +261,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
                     .frame()
                     .shadowReadMemory(0, hub.currentFrame().frame().memoryByteSize())))
         .sourceOffset(EWord.of(hub.messageFrame().getStackItem(0)))
-        .successBit(!Exceptions.invalidCodePrefix(currentExceptions));
+        .successBit(Exceptions.invalidCodePrefix(currentExceptions));
   }
 
   public static MmuCall revert(final Hub hub) {
