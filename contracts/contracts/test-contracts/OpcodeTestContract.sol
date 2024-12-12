@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.26;
+pragma solidity 0.8.19;
 
 /// @dev Not intended for mainnet or testnet deployment, only for local testing
 contract OpcodeTestContract {

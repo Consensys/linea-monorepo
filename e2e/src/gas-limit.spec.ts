@@ -33,7 +33,7 @@ describe("Gas limit test suite", () => {
     expect(receipt?.status).toEqual(1);
   });
 
-  it.concurrent("Should successfully finalize OpcodeTestContract.setGasLimit()", async () => {
+  it("Should successfully finalize OpcodeTestContract.setGasLimit()", async () => {
     const account = await l2AccountManager.generateAccount();
     const lineaRollupV6 = config.getLineaRollupContract();
 
