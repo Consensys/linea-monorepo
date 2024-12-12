@@ -24,6 +24,7 @@
 
 rootProject.name = 'linea-arithmetization'
 include 'arithmetization'
+include 'plugins'
 include 'reference-tests'
 include 'testing'
 

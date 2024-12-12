@@ -16,10 +16,9 @@
 dependencies {
   api 'org.slf4j:slf4j-api'
 
-  implementation 'ch.qos.logback:logback-core'
-  implementation 'ch.qos.logback:logback-classic'
   implementation 'commons-io:commons-io'
-  implementation 'com.slack.api:slack-api-client'
+
+  implementation 'com.google.guava:guava'
 
   testImplementation 'org.apache.commons:commons-lang3'
   testImplementation 'com.google.guava:guava'
@@ -32,4 +31,7 @@ dependencies {
 
   testImplementation 'org.mockito:mockito-core'
   testImplementation 'org.mockito:mockito-junit-jupiter'
+
+  testRuntimeOnly 'ch.qos.logback:logback-core'
+  testRuntimeOnly 'ch.qos.logback:logback-classic'
 }

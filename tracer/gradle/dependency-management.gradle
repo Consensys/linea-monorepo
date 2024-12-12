@@ -30,16 +30,6 @@ repositories {
   mavenLocal()
 }
 
-configurations {
-  pluginImplementation
-  resolvable('pluginClasspath') {
-    extendsFrom(pluginImplementation)
-  }
-}
-
-sourceSets.main.compileClasspath += configurations.pluginImplementation
-sourceSets.main.runtimeClasspath += configurations.pluginImplementation
-
 apply plugin: 'io.spring.dependency-management'
 
 dependencyManagement {
