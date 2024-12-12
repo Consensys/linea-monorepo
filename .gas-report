@@ -22,20 +22,6 @@
 | run                                                                           | 2482684         | 2482684 | 2482684 | 2482684 | 3       |
 
 
-| src/RewardsStreamer.sol:RewardsStreamer contract |                 |        |        |        |         |
-|--------------------------------------------------|-----------------|--------|--------|--------|---------|
-| Deployment Cost                                  | Deployment Size |        |        |        |         |
-| 677674                                           | 3080            |        |        |        |         |
-| Function Name                                    | min             | avg    | median | max    | # calls |
-| accountedRewards                                 | 350             | 600    | 350    | 2350   | 8       |
-| getUserInfo                                      | 789             | 789    | 789    | 789    | 12      |
-| rewardIndex                                      | 349             | 599    | 349    | 2349   | 8       |
-| stake                                            | 85202           | 100705 | 105102 | 111812 | 3       |
-| totalStaked                                      | 350             | 350    | 350    | 350    | 8       |
-| unstake                                          | 110056          | 110062 | 110062 | 110068 | 2       |
-| updateRewardIndex                                | 23372           | 45573  | 39574  | 73774  | 3       |
-
-
 | src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |        |        |        |         |
 |------------------------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                                      | Deployment Size |        |        |        |         |
@@ -201,12 +187,11 @@
 | test/mocks/MockToken.sol:MockToken contract |                 |       |        |       |         |
 |---------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                             | Deployment Size |       |        |       |         |
-| 625370                                      | 3260            |       |        |       |         |
+| 625454                                      | 3260            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
-| approve                                     | 46330           | 46339 | 46342  | 46342 | 262     |
-| balanceOf                                   | 558             | 989   | 558    | 2558  | 139     |
-| mint                                        | 51279           | 56438 | 51279  | 68379 | 275     |
-| transfer                                    | 34384           | 42934 | 42934  | 51484 | 2       |
+| approve                                     | 46330           | 46339 | 46342  | 46342 | 257     |
+| balanceOf                                   | 558             | 926   | 558    | 2558  | 103     |
+| mint                                        | 51279           | 56407 | 51279  | 68379 | 270     |
 
 
 | test/mocks/StackOverflowStakeManager.sol:StackOverflowStakeManager contract |                 |        |        |        |         |
