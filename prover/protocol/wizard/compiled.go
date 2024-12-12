@@ -579,6 +579,17 @@ func (c *CompiledIOP) InsertLocalOpening(round int, name ifaces.QueryID, pol ifa
 	return q
 }
 
+// InsertLogDerivativeSum registers a new LogDerivativeSum query [query.LogDerivativeSum].
+// It generates a single global summation for many Sigma Columns from Lookup compilation.
+// The sigma columns are categorized by [round,size].
+func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, in map[[2]int]*query.LogDerivativeSumInput) query.LogDerivativeSum {
+	c.assertConsistentRound(lastRound)
+	q := query.NewLogDerivativeSum(in)
+	// Finally registers the query
+	c.QueriesParams.AddToRound(lastRound, id, q)
+	return q
+}
+
 // assertConsistentRound compares the round passed as an argument and panic if it greater than
 // coin.Round. This helps ensuring that we do not have "useless" rounds.
 func (c *CompiledIOP) assertConsistentRound(round int) {

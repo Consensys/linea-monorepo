@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	// logDerivativePrefix is a prefix that we commonly use to derive query,
+	// LogDerivativePrefix is a prefix that we commonly use to derive query,
 	// coin or column names that are introduced by the compiler.
-	logDerivativePrefix = "LOGDERIVATIVE"
+	LogDerivativePrefix = "LOGDERIVATIVE"
 )
 
-// getTableCanonicalOrder extracts the lookup table and the queried tables
+// GetTableCanonicalOrder extracts the lookup table and the queried tables
 // from `q` and rearrange them conjointly so that the names of T are returned
 // in alphabetical order.
 //
@@ -28,7 +28,7 @@ const (
 // can always make sure to specify the table in the same order all the time.
 //
 // Importantly, the function allocates its own result.
-func getTableCanonicalOrder(q query.Inclusion) ([]ifaces.Column, [][]ifaces.Column) {
+func GetTableCanonicalOrder(q query.Inclusion) ([]ifaces.Column, [][]ifaces.Column) {
 
 	if len(q.Including) > 1 {
 		// The append here are performing a deep-copy of the slice within the
@@ -67,8 +67,8 @@ func getTableCanonicalOrder(q query.Inclusion) ([]ifaces.Column, [][]ifaces.Colu
 	return checked, [][]ifaces.Column{table}
 }
 
-// deriveName constructs a generic name
-func deriveName[R ~string](args ...any) R {
+// DeriveName constructs a generic name
+func DeriveName[R ~string](args ...any) R {
 	argStr := []string{"LOOKUP_LOGDERIVATIVE"}
 	for _, arg := range args {
 		argStr = append(argStr, fmt.Sprintf("%v", arg))
@@ -76,25 +76,25 @@ func deriveName[R ~string](args ...any) R {
 	return R(strings.Join(argStr, "_"))
 }
 
-// deriveTableName constructs a name for the table `t`. The caller may provide
+// DeriveTableName constructs a name for the table `t`. The caller may provide
 // a context and a suffix to the name. If `t` is empty, the name is the
 // concatenation of `context` and `name` separated by an underscore.
-func deriveTableName[R ~string](context string, t [][]ifaces.Column, name string) R {
-	res := fmt.Sprintf("%v_%v_%v", nameTable(t), context, name)
+func DeriveTableName[R ~string](context string, t [][]ifaces.Column, name string) R {
+	res := fmt.Sprintf("%v_%v_%v", NameTable(t), context, name)
 	return R(res)
 }
 
-// deriveTableNameWithIndex is as [deriveTableName] but additionally allows
+// DeriveTableNameWithIndex is as [deriveTableName] but additionally allows
 // appending an integer index in the name.
-func deriveTableNameWithIndex[R ~string](context string, t [][]ifaces.Column, index int, name string) R {
-	res := fmt.Sprintf("%v_%v_%v_%v", nameTable(t), index, context, name)
+func DeriveTableNameWithIndex[R ~string](context string, t [][]ifaces.Column, index int, name string) R {
+	res := fmt.Sprintf("%v_%v_%v_%v", NameTable(t), index, context, name)
 	return R(res)
 }
 
-// nameTable returns a unique name corresponding to the provided
+// NameTable returns a unique name corresponding to the provided
 // sequence of columns `t`. The unique name is constructed by appending the
 // name of all the column separated by an underscore.
-func nameTable(t []table) string {
+func NameTable(t []table) string {
 	// This single fragment case is managed as a special case although it is
 	// not really one. This is for backwards compatibility.
 	if len(t) == 1 {

@@ -281,7 +281,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 				}
 				utils.Panic(
 					"entry %v of the table %v is not included in the table. tableRow=%v",
-					k, nameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow),
+					k, NameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow),
 				)
 			}
 
@@ -300,7 +300,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 // zAssignmentTask represents a prover task of assignming the columns
 // SigmaS and SigmaT for a specific lookup table.
 // sigmaAssignment
-type zAssignmentTask zCtx
+type zAssignmentTask ZCtx
 
 func (z zAssignmentTask) run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
