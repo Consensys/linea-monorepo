@@ -136,15 +136,16 @@ func mustProveAndPass(
 		}
 
 		// ensure the checksum for the traces in the setup matches the one in the config
-		_, err := setup.Manifest.GetString("cfg_checksum")
+		setupCfgChecksum, err := setup.Manifest.GetString("cfg_checksum")
 		if err != nil {
 			utils.Panic("could not get the traces checksum from the setup manifest: %v", err)
 		}
 
-		// This check is failing on prod but works locally.
-		// if setupCfgChecksum != traces.Checksum() {
-		// 	utils.Panic("traces checksum in the setup manifest does not match the one in the config")
-		// }
+		if setupCfgChecksum != traces.Checksum() {
+			// This check is failing on prod but works locally.
+			// 	utils.Panic("traces checksum in the setup manifest does not match the one in the config")
+			logrus.Warnf("the setup checksum does not match the provided trace limits: provided=%++v", traces)
+		}
 
 		// TODO: implements the collection of the functional inputs from the prover response
 		return execution.MakeProof(traces, setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
