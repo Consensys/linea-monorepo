@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { pollForContractMethodReturnValueExceedTarget } from "./common/utils";
+import { pollForContractMethodReturnValueExceedTarget, wait } from "./common/utils";
 import { config } from "./config/tests-config";
 import { ContractTransactionReceipt, Wallet } from "ethers";
 
@@ -33,7 +33,7 @@ describe("Gas limit test suite", () => {
     expect(receipt?.status).toEqual(1);
   });
 
-  it("Should successfully finalize OpcodeTestContract.setGasLimit()", async () => {
+  it.concurrent("Should successfully finalize OpcodeTestContract.setGasLimit()", async () => {
     const account = await l2AccountManager.generateAccount();
     const lineaRollupV6 = config.getLineaRollupContract();
 
