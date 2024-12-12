@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { waitForEvents } from "./common/utils";
+import { pollForContractMethodReturnValueExceedTarget } from "./common/utils";
 import { config } from "./config/tests-config";
 import { ContractTransactionReceipt, Wallet } from "ethers";
 
@@ -28,7 +28,7 @@ describe("Gas limit test suite", () => {
     expect(receipt?.status).toEqual(1);
   });
 
-  it.concurrent("Should successfully finalize OpcodeTestContract.setGasLimit()", async () => {
+  it("Should successfully finalize OpcodeTestContract.setGasLimit()", async () => {
     const account = await l2AccountManager.generateAccount();
     const lineaRollupV6 = config.getLineaRollupContract();
 
@@ -37,8 +37,13 @@ describe("Gas limit test suite", () => {
     // Ok to type assertion here, because txReceipt won't be null if it passed above assertion.
     const txBlockNumber = <number>txReceipt?.blockNumber;
 
-    console.log("Waiting for the first DataFinalizedV3 event for OpcodeTestContract.setGasLimit()...");
-    await waitForEvents(lineaRollupV6, lineaRollupV6.filters.DataFinalizedV3(txBlockNumber), 1_000);
-    console.log("Finalization confirmed!");
+    console.log(`Waiting for ${txBlockNumber} to be finalized...`);
+
+    const isBlockFinalized = await pollForContractMethodReturnValueExceedTarget(
+      lineaRollupV6.currentL2BlockNumber,
+      BigInt(txBlockNumber),
+    );
+
+    expect(isBlockFinalized).toEqual(true);
   });
 });
