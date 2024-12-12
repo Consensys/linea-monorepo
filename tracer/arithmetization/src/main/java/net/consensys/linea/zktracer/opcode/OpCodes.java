@@ -70,7 +70,7 @@ public class OpCodes {
       throw new IllegalArgumentException("No OpCode with value %s is defined.".formatted(value));
     }
 
-    return valueToOpCodeDataMap.getOrDefault(value, of(OpCode.INVALID));
+    return valueToOpCodeDataMap.getOrDefault(value, OpCodeData.forNonOpCodes(value));
   }
 
   /**
