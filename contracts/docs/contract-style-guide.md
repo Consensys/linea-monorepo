@@ -38,7 +38,7 @@ Contracts and interfaces will use the [NatSpec](https://docs.soliditylang.org/en
 ## General
 - Avoid magic numbers by using constants
 - Name variables so that their intent is easy to understand
-- In assembly memory mappings use hexidecimal values for memory offsets - e.g `mstore(add(mPtr, 0x20), _varName)`
+- In assembly memory mappings use hexadecimal values for memory offsets - e.g `mstore(add(mPtr, 0x20), _varName)`
 
 ## Linting
 Be sure to run `pnpm run lint:fix` in the contracts folder or `pnpm run -F contracts lint:fix` from the repository root.
