@@ -23,10 +23,11 @@ import (
 func CompileLogDerivative(moduleComp *wizard.CompiledIOP) {
 
 	var (
+		// capture the S and T columns relevant to the module.
 		mainLookupCtx = captureModuleLookupTables(moduleComp)
 		lastRound     = moduleComp.NumRounds() - 1
 
-		// zCatalog stores a mapping (round, size) into [query.LogDerivativeSumInput].
+		// zCatalog stores a mapping from (round, size) into [query.LogDerivativeSumInput].
 		// it packs the sigma columns from the same (round,size) together.
 		zCatalog = map[[2]int]*query.LogDerivativeSumInput{}
 	)
@@ -44,14 +45,16 @@ func CompileLogDerivative(moduleComp *wizard.CompiledIOP) {
 		var (
 			round           = mainLookupCtx.Rounds[tableName]
 			includedFilters = mainLookupCtx.IncludedFilters[tableName]
-			tableCtx        = collapsMultiColsToSingleCol(moduleComp, round, lookupTable, checkedTables, includedFilters)
+			mTable          = mainLookupCtx.mTables[tableName]
+			// it collapses multiColumn tables to single columns.
+			tableCtx = collapsMultiColToSingleCol(moduleComp, round, lookupTable, checkedTables, includedFilters, mTable)
 		)
 
 		// push to zCatalog
 		PushToZCatalog(tableCtx, zCatalog)
 	}
 
-	// Handle cases where only T part is present
+	// Handle cases where only T part is present in the module
 	for _, lookupTable := range mainLookupCtx.LookupTables {
 		tableName := lookUp.NameTable(lookupTable)
 		if _, ok := mainLookupCtx.CheckedTables[tableName]; ok {
@@ -60,14 +63,15 @@ func CompileLogDerivative(moduleComp *wizard.CompiledIOP) {
 
 		var (
 			round    = mainLookupCtx.Rounds[tableName]
-			tableCtx = collapsMultiColsToSingleCol(moduleComp, round, lookupTable, nil, nil)
+			mTable   = mainLookupCtx.mTables[tableName]
+			tableCtx = collapsMultiColToSingleCol(moduleComp, round, lookupTable, nil, nil, mTable)
 		)
 
 		// push to zCatalog
 		PushToZCatalog(tableCtx, zCatalog)
 	}
 
-	// insert a  LogDerivativeSum for all the Sigma Columns .
+	// insert a  LogDerivativeSum for all the Sigma Columns in the module.
 	moduleComp.InsertLogDerivativeSum(lastRound, "LogDerivativeSum", zCatalog)
 }
 
@@ -81,13 +85,15 @@ func findLookupTableByName(lookupTables [][]table, name string) []table {
 	return nil
 }
 
-// It collapses the tables of MultiColumns to single columns. It also sample the Gamma coin for the rest of the compilation.
-func collapsMultiColsToSingleCol(
+// It collapses the tables of MultiColumns to single columns.
+// It also sample the Gamma coin for the rest of the compilation.
+func collapsMultiColToSingleCol(
 	comp *wizard.CompiledIOP,
 	round int,
 	lookupTable []table,
 	checkedTables []table,
 	includedFilters []ifaces.Column,
+	mTable table,
 ) (ctx lookUp.SingleTableCtx) {
 
 	ctx = lookUp.SingleTableCtx{
@@ -134,6 +140,8 @@ func collapsMultiColsToSingleCol(
 		}
 	}
 
+	ctx.M = mTable
+
 	ctx.Gamma = comp.InsertCoin(
 		round+1,
 		lookUp.DeriveTableName[coin.Name](lookUp.LogDerivativePrefix, lookupTable, "GAMMA"),
@@ -143,8 +151,8 @@ func collapsMultiColsToSingleCol(
 	return ctx
 }
 
-// PushToZCatalog constructs the numerators and denominators for S and T of the
-// stc into zCatalog for their corresponding rounds and size.
+// PushToZCatalog constructs the numerators and denominators for the collapsed S and T
+// into zCatalog, for their corresponding rounds and size.
 func PushToZCatalog(stc lookUp.SingleTableCtx, zCatalog map[[2]int]*query.LogDerivativeSumInput) {
 
 	var (

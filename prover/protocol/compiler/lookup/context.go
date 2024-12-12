@@ -6,9 +6,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
-// MainLookupCtx stores the compilation context of all the lookup queries
+// mainLookupCtx stores the compilation context of all the lookup queries
 // altogether.
-type MainLookupCtx struct {
+type mainLookupCtx struct {
 
 	// LookupTables stores all the lookup table the compiler encounters. They are
 	// sorted in canonical order. This used to derive a determistic ordering
@@ -36,9 +36,6 @@ type MainLookupCtx struct {
 	// round is obtained by taking the max of the declaration Rounds of the
 	// Inclusion queries using the corresponding lookup table.
 	Rounds map[string]int
-
-	// the name of the tables
-	AllTableNames []string
 }
 
 // SingleTableCtx stores the compilation context for a single lookup query
