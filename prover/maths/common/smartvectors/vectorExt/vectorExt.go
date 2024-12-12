@@ -25,8 +25,8 @@ func ScalarMul(res, vec []fext.Element, scalar fext.Element) {
 		return
 	}
 
-	r := fext.Vector(res)
-	r.ScalarMul(fext.Vector(vec), &scalar)
+	r := Vector(res)
+	r.ScalarMul(Vector(vec), &scalar)
 }
 
 // ScalarProd returns the scalar (inner) product of a and b. The function panics
@@ -34,8 +34,8 @@ func ScalarMul(res, vec []fext.Element, scalar fext.Element) {
 // function returns 0.
 func ScalarProd(a, b []fext.Element) fext.Element {
 	// The length checks is done by gnark-crypto already
-	a_ := fext.Vector(a)
-	res := a_.InnerProduct(fext.Vector(b))
+	a_ := Vector(a)
+	res := a_.InnerProduct(Vector(b))
 	return res
 }
 
@@ -56,8 +56,8 @@ func Rand(n int) []fext.Element {
 // res. res = a is a valid assignment.
 func MulElementWise(res, a, b []fext.Element) {
 	// The length checks is done by gnark-crypto already
-	res_ := fext.Vector(res)
-	res_.Mul(fext.Vector(a), fext.Vector(b))
+	res_ := Vector(res)
+	res_.Mul(Vector(a), Vector(b))
 }
 
 // Prettify returns a string representing `a` in a human-readable fashion
@@ -113,11 +113,11 @@ func Add(res, a, b []fext.Element, extras ...[]fext.Element) {
 		return
 	}
 
-	r := fext.Vector(res)
+	r := Vector(res)
 	r.Add(a, b)
 
 	for _, x := range extras {
-		r.Add(r, fext.Vector(x))
+		r.Add(r, Vector(x))
 	}
 }
 
@@ -127,11 +127,11 @@ func AddExt(res, a, b []fext.Element, extras ...[]fext.Element) {
 		return
 	}
 
-	r := fext.Vector(res)
+	r := Vector(res)
 	r.Add(a, b)
 
 	for _, x := range extras {
-		r.Add(r, fext.Vector(x))
+		r.Add(r, Vector(x))
 	}
 }
 
@@ -145,8 +145,8 @@ func Sub(res, a, b []fext.Element) {
 		return
 	}
 
-	r := fext.Vector(res)
-	r.Sub(fext.Vector(a), fext.Vector(b))
+	r := Vector(res)
+	r.Sub(Vector(a), Vector(b))
 }
 
 // ZeroPad pads a vector to a given length.
@@ -200,7 +200,6 @@ func Fill(v []fext.Element, val fext.Element) {
 // powers of x, starting from x^0 = 1 and ending on x^{n-1}. The function panics
 // if given x=0 and returns an empty vector if n=0.
 func PowerVec(x fext.Element, n int) []fext.Element {
-
 	if x == fext.Zero() {
 		utils.Panic("cannot build a power vec for x=0")
 	}
