@@ -33,9 +33,9 @@ jar {
   manifest {
     attributes(
       'Specification-Title': 'arithmetization',
-      'Specification-Version': arithmetizationVersion,
+      'Specification-Version': "v${arithmetizationVersion}",
       'Implementation-Title': 'arithmetization',
-      'Implementation-Version': arithmetizationVersion
+      'Implementation-Version': "v${arithmetizationVersion}"
     )
   }
 
