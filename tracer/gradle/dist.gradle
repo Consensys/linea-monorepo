@@ -14,20 +14,6 @@
  */
 import de.undercouch.gradle.tasks.download.Download
 
-tasks.register('sourcesJar', Jar) {
-  dependsOn classes
-  archiveClassifier = 'sources'
-  from sourceSets.main.allSource
-}
-
-tasks.register('javadocJar', Jar) {
-  dependsOn javadoc
-  archiveClassifier = 'javadoc'
-  from javadoc.destinationDir
-}
-
-version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
-
 def lineaBesuDistTar = new File(new File(buildDir, "downloads"), rootProject.besuFilename)
 tasks.register('downloadLineaBesu', Download) {
   src rootProject.besuUrl
@@ -63,30 +49,42 @@ task unTarLineaBesu(type: Copy) {
   into lineaBesuDistTar.parentFile
 }
 
-// Get all the dependencies that are provided by Besu, removing the version and suffix
 def lineaBesuLibDir = new File(lineaBesuDistTar.parentFile, rootProject.besuIdentifier + '/lib')
 def lineaBesuLibs = []
-fileTree(dir: lineaBesuLibDir, include: '*.jar').visit {
-  FileVisitDetails details ->
-    def libPrefix = details.file.name =~ dependencyNamePattern()
-    lineaBesuLibs << libPrefix[0][1]
-}
 
 def excludeBesuProvidedDeps = {
+  if(lineaBesuLibs.isEmpty()) {
+    // Get all the dependencies that are provided by Besu
+    fileTree(dir: lineaBesuLibDir, include: '*.jar').visit {
+      FileVisitDetails details ->
+        lineaBesuLibs << details.file.name
+    }
+  }
   // include the dependency in the jar only if it is not already provided by Besu
-  def libName = it.name =~ dependencyNamePattern()
-  def libPrefix = libName[0][1]
-  !lineaBesuLibs.contains(libPrefix)
+  !lineaBesuLibs.any { artifactName ->
+    if(artifactName == it.name) {
+      return true
+    }
+    // exclude Besu group
+    if(it.toString().contains(besuArtifactGroup)) {
+      return true
+    }
+    // try ignoring the version
+    def libName = it.name =~ dependencyNamePattern()
+    def artName = artifactName =~ dependencyNamePattern()
+    libName[0][1] == artName[0][1]
+    }
 }
 
 jar {
   dependsOn unTarLineaBesu
   archiveBaseName = distributionIdentifier
+  version = calculateVersion()
 
   manifest {
     attributes(
       'Specification-Title': archiveBaseName.get(),
-      'Specification-Version': rootProject.version,
+      'Specification-Version': calculateVersion(),
       'Implementation-Title': archiveBaseName.get(),
       'Implementation-Version': calculateVersion()
     )
@@ -94,22 +92,12 @@ jar {
 
 
   from {
-    configurations.pluginClasspath.filter(excludeBesuProvidedDeps
-).collect {
-      it.isDirectory() ? it : zipTree(it) }
+    configurations.runtimeClasspath.filter(excludeBesuProvidedDeps).collect {
+      it.isDirectory() ? it : zipTree(it)
+    }
   }
+
   duplicatesStrategy('exclude')
-}
-
-// Takes the version, and if -SNAPSHOT is part of it replaces SNAPSHOT
-// with the git commit version.
-def calculateVersion() {
-  String version = rootProject.version
-  if (version.endsWith("-SNAPSHOT")) {
-    version = version.replace("-SNAPSHOT", "-dev-${getCheckedOutGitCommitHash()}")
-  }
-
-  return version
 }
 
 /**
@@ -124,15 +112,10 @@ tasks.register('distPlugin', Zip) {
 
   from("${buildDir}/libs/${distributionIdentifier}-${calculateVersion()}.jar")
   from {
-    configurations.pluginClasspath.filter(
+    configurations.runtimeClasspath.filter(
             excludeBesuProvidedDeps)
 
   }
-}
-
-static def getCheckedOutGitCommitHash() {
-  def hashLength = 8
-  "git rev-parse HEAD".execute().text.take(hashLength)
 }
 
 static def dependencyNamePattern() {

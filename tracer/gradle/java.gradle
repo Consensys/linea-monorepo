@@ -37,3 +37,19 @@ tasks.withType(JavaCompile) {
 
   options.encoding = 'UTF-8'
 }
+
+// Takes the version, and if -SNAPSHOT is part of it replaces SNAPSHOT
+// with the git commit version.
+ext.calculateVersion = { ->
+  String version = rootProject.version
+  if (version.endsWith("-SNAPSHOT")) {
+    version = version.replace("-SNAPSHOT", "-dev-${getCheckedOutGitCommitHash()}")
+  }
+
+  return version
+}
+
+static def getCheckedOutGitCommitHash() {
+  def hashLength = 8
+  "git rev-parse HEAD".execute().text.take(hashLength)
+}
