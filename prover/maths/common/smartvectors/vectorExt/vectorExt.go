@@ -4,6 +4,7 @@ package vectorExt
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/rand"
 
@@ -252,7 +253,7 @@ func Equal(a, b []fext.Element) bool {
 func PseudoRand(rng *rand.Rand, size int) []fext.Element {
 	slice := make([]fext.Element, size)
 	for i := range slice {
-		slice[i] = PseudoRandElement(rng)
+		slice[i] = vector.PseudoRandElement[fext.Element](rng)
 	}
 	return slice
 }
