@@ -1,8 +1,10 @@
 plugins {
-    id 'net.consensys.zkevm.kotlin-library-conventions'
-    id 'java-library'
-    id 'java-test-fixtures'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'java-library'
+  id 'java-test-fixtures'
 }
+
+description = "JSON RPC 2.0 utilities"
 
 dependencies {
   implementation project(":jvm-libs:linea:metrics:micrometer")
@@ -29,5 +31,5 @@ dependencies {
 }
 
 jar {
-    dependsOn configurations.runtimeClasspath
+  dependsOn configurations.runtimeClasspath
 }
