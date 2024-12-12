@@ -56,31 +56,31 @@ func TestConstructor(t *testing.T) {
 			Actual:           a.Sub(b),
 			ExpectedOperator: LinComb{Coeffs: []int{1, -1}},
 			ExpectedParent:   []*Expression{b, a},
-			Explainer:        "Normally substracting two variables should create a LinComb object",
+			Explainer:        "Normally subtracting two variables should create a LinComb object",
 		},
 		{
 			Actual:           a.Sub(zero),
 			ExpectedOperator: a.Operator,
 			ExpectedParent:   []*Expression{},
-			Explainer:        "When substracting zero, this should be simplified into a no-op",
+			Explainer:        "When subtracting zero, this should be simplified into a no-op",
 		},
 		{
 			Actual:           a.Sub(a),
 			ExpectedOperator: zero.Operator,
 			ExpectedParent:   []*Expression{},
-			Explainer:        "When substracting a with itself, this should be simplified into zero",
+			Explainer:        "When subtracting a with itself, this should be simplified into zero",
 		},
 		{
 			Actual:           a.Sub(one).Sub(one),
 			ExpectedOperator: LinComb{Coeffs: []int{1, 1}},
 			ExpectedParent:   []*Expression{a, NewConstant(-2)},
-			Explainer:        "When substracting twice by a constant, this should be simplified into LinComb with only `1` as coeffs",
+			Explainer:        "When subtracting twice by a constant, this should be simplified into LinComb with only `1` as coeffs",
 		},
 		{
 			Actual:           a.Sub(b).Sub(c),
 			ExpectedOperator: LinComb{Coeffs: []int{1, -1, -1}},
 			ExpectedParent:   []*Expression{a, b, c},
-			Explainer:        "When substracting a with b then c, this should be regrouped into a single linear combination",
+			Explainer:        "When subtracting a with b then c, this should be regrouped into a single linear combination",
 		},
 		{
 			Actual:           a.Mul(b),
@@ -153,12 +153,12 @@ func TestImmutableConstructors(t *testing.T) {
 		{
 			Actual:    Sub(a, b, 1),
 			Expected:  aVar.Sub(bVar).Sub(one),
-			Explainer: "Substracting two metadata and a constant",
+			Explainer: "Subtracting two metadata and a constant",
 		},
 		{
 			Actual:    Sub(aVar, bVar, c),
 			Expected:  aVar.Sub(bVar).Sub(cVar),
-			Explainer: "Substracting two expressions and a metadata",
+			Explainer: "Subtracting two expressions and a metadata",
 		},
 		{
 			Actual:    Mul(a, b, 1),

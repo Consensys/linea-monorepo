@@ -60,7 +60,7 @@ func (expr *Expression) Neg() *Expression {
 }
 
 /*
-Substract two expressions
+Subtract two expressions
 
 Deprecated: Use [Sub] instead of this function as it will be made private.
 */
