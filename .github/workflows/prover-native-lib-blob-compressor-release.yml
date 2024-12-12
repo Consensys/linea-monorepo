@@ -56,7 +56,7 @@ jobs:
           path: ./prover/target
 
   build-linux-arm64:
-    runs-on: [self-hosted, arm, small]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-arm64-small
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
