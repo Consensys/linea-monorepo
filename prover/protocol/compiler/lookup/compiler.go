@@ -27,7 +27,7 @@ type table = []ifaces.Column
 func CompileLogDerivative(comp *wizard.CompiledIOP) {
 
 	var (
-		mainLookupCtx = captureLookupTables(comp)
+		mainLookupCtx = CaptureLookupTables(comp)
 		lastRound     = comp.NumRounds() - 1
 		proverActions = make([]proverTaskAtRound, comp.NumRounds()+1)
 		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
@@ -119,7 +119,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 	comp.RegisterVerifierAction(lastRound, &va)
 }
 
-// captureLookupTables inspects comp and look for Inclusion queries that are not
+// CaptureLookupTables inspects comp and look for Inclusion queries that are not
 // marked as ignored yet. All the queries matched queries are grouped by look-up
 // table (e.g. all the queries that use the same lookup table). All the matched
 // queries are marked as ignored. The function returns the thereby-initialized
@@ -131,7 +131,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 // The function also implictly reduces the conditionals over the Including table
 // be appending a "one" column on the included side and the filter on the
 // including side.
-func captureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
+func CaptureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 
 	ctx := mainLookupCtx{
 		LookupTables:    [][]table{},

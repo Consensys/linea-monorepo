@@ -1,9 +1,6 @@
 package distributed
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -131,15 +128,4 @@ func addToGlobalLocal(comp *wizard.CompiledIOP, q ifaces.Query) {
 // It builds a CompiledIOP object that contains the consistency checks among the segments.
 func aggregator(distModules []DistributedModule, maxNumSegments int) *wizard.CompiledIOP {
 	panic("unimplemented")
-}
-
-// prepare reduces any query to LPP or GL.
-// it prepares the columns that depends on whole the witness,e.g., M column for lookups.
-func prepare(comp *wizard.CompiledIOP) {
-	mimc.CompileMiMC(comp)
-	specialqueries.RangeProof(comp)
-	specialqueries.CompileFixedPermutations(comp)
-	innerproduct.Compile(comp)
-
-	// prepareLookup(comp)
 }
