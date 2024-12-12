@@ -14,8 +14,10 @@ fun configureLoggers(loggerConfigs: List<Pair<String, Level>>) {
 }
 
 fun main() {
-  val lineaSepoliaUrl = "https://linea-sepolia.infura.io/v3/${System.getenv("INFURA_PROJECT_ID")}"
-//  val lineaMainnetUrl = "https://linea-mainnet.infura.io/v3/${System.getenv("INFURA_PROJECT_ID")}"
+  val rplUrl = run {
+    "https://linea-sepolia.infura.io/v3/${System.getenv("INFURA_PROJECT_ID")}"
+//    "https://linea-mainnet.infura.io/v3/${System.getenv("INFURA_PROJECT_ID")}"
+  }
   val vertx = Vertx.vertx()
   vertx.exceptionHandler { error ->
     println("Unhandled exception: message=${error.message}")
@@ -23,28 +25,29 @@ fun main() {
   }
   val fetcherAndValidate =
     FetchAndValidationRunner(
-      rpcUrl = lineaSepoliaUrl,
+      rpcUrl = rplUrl,
       vertx = vertx,
       log = LogManager.getLogger("test.validator")
     )
   configureLoggers(
     listOf(
+      "linea.rlp" to Level.INFO,
       "test.client.web3j" to Level.INFO,
       "test.validator" to Level.INFO
     )
   )
 
-//  val startBlockNumber = 924973UL
-//  val startBlockNumber = 924976UL
-//  val startBlockNumber = 929527UL
-  val startBlockNumber = 100_034UL // encoding/decoding does not match
-//  val startBlockNumber = 100_000UL
+  // Sepolia Blocks
+  val startBlockNumber = 924_973UL
+//  val startBlockNumber = 5_099_599UL
+  // Mainnet Blocks
+//  val startBlockNumber = 10_000_308UL
   runCatching {
     fetcherAndValidate.fetchAndValidateBlocks(
       startBlockNumber = startBlockNumber,
-//      endBlockNumber = startBlockNumber + 5000u,
-      endBlockNumber = startBlockNumber + 0u,
-      chuckSize = 500U,
+      endBlockNumber = startBlockNumber + 1_000_000U,
+//      endBlockNumber = startBlockNumber + 0u,
+      chuckSize = 1_000U,
       rlpEncodingDecodingOnly = false
     ).get(2, TimeUnit.MINUTES)
   }.onFailure { error ->

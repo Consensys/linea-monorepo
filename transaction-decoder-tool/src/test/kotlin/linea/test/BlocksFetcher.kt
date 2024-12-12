@@ -66,7 +66,7 @@ class BlocksFetcher(
       }
     ) {
       val start = (lastBlockFetched.get() + 1).toULong()
-      val end = (start + chunkSize).coerceAtMost(endBlockNumber ?: ULong.MAX_VALUE)
+      val end = (start + chunkSize - 1U).coerceAtMost(endBlockNumber ?: ULong.MAX_VALUE)
       fetchBlocks(start, end)
         .thenCompose { blocks ->
           lastBlockFetched.set(blocks.last().number.toLong())

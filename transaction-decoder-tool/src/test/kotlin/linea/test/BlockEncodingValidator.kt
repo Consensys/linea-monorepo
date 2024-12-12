@@ -92,11 +92,20 @@ class BlockEncodingValidator(
         val decompressedBlocksList = RLP.decodeList(decompressedData)
         rlpBlobDecoder.decodeAsync(decompressedBlocksList)
       }.thenApply { decompressedBlocks ->
+        assertThat(decompressedBlocks.size).isEqualTo(besuBlocks.size)
+          .withFailMessage(
+            "decompressedBlocks.size=${decompressedBlocks.size} != originalBlocks.size=${besuBlocks.size}"
+          )
         decompressedBlocks.zip(besuBlocks).forEach { (decompressed, original) ->
           runCatching {
             assertBlock(decompressed, original)
           }.getOrElse {
-            log.error("Decompressed block={} does not match", original.header.number, it)
+            log.error(
+              "Decompressed block={} does not match: error={}",
+              original.header.number,
+              it.message,
+              it
+            )
           }
         }
       }
@@ -122,14 +131,25 @@ fun <T> ConcurrentLinkedQueue<T>.pull(elementsLimit: Int): List<T> {
 
 fun assertBlock(
   decompressedBlock: org.hyperledger.besu.ethereum.core.Block,
-  originalBlock: org.hyperledger.besu.ethereum.core.Block
+  originalBlock: org.hyperledger.besu.ethereum.core.Block,
+  log: Logger = LogManager.getLogger("test.assert.Block")
 ) {
   // on decompression, the hash is placed as parentHash because besu recomputes the hash
+  // but custom decoder overrides hash calculation to use parentHash
   assertThat(decompressedBlock.header.timestamp).isEqualTo(originalBlock.header.timestamp)
-  assertThat(decompressedBlock.header.parentHash).isEqualTo(originalBlock.header.hash)
+  assertThat(decompressedBlock.header.hash).isEqualTo(originalBlock.header.hash)
 
   decompressedBlock.body.transactions.forEachIndexed { index, decompressedTx ->
     val originalTx = originalBlock.body.transactions[index]
+    log.trace(
+      "block={} txIndex={} \n originalTx={} \n decodedTx={} \n originalTxRlp={}",
+      originalBlock.header.number,
+      index,
+      originalTx,
+      decompressedTx,
+
+      originalTx.encoded()
+    )
     runCatching {
       assertThat(decompressedTx.type).isEqualTo(originalTx.type)
       assertThat(decompressedTx.sender).isEqualTo(originalTx.sender)
@@ -144,8 +164,8 @@ fun assertBlock(
       // FIXME: tmp work around until decompressor is fixed
       originalTx.to.getOrNull()?.let { assertThat(decompressedTx.to.getOrNull()).isEqualTo(it) }
       assertThat(decompressedTx.value).isEqualTo(originalTx.value)
-      assertThat(decompressedTx.data).isEqualTo(originalTx.data)
       assertThat(decompressedTx.accessList).isEqualTo(originalTx.accessList)
+      assertThat(decompressedTx.payload).isEqualTo(originalTx.payload)
     }.getOrElse { th ->
       fail(
         "Transaction does not match: block=${originalBlock.header.number} " +
