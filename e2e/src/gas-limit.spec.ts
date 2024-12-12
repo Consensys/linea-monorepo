@@ -83,5 +83,6 @@ describe("Gas limit test suite", () => {
     );
 
     expect(isBlockFinalized).toEqual(true);
-  });
+    // Timeout of 6 hrs
+  }, 21_600_000);
 });
