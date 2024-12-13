@@ -204,6 +204,7 @@ export async function pollForContractMethodReturnValue<
 >(
   method: TypedContractMethod<[], R, "view">,
   expectedReturnValue: ExpectedReturnType,
+  compareFunction: (a: ExpectedReturnType, b: ExpectedReturnType) => boolean = (a, b) => a === b,
   pollingInterval: number = 500,
   timeout: number = 2 * 60 * 1000,
 ): Promise<boolean> {
@@ -214,7 +215,7 @@ export async function pollForContractMethodReturnValue<
 
   while (!isExceedTimeOut) {
     const returnValue = await method();
-    if (returnValue === expectedReturnValue) return true;
+    if (compareFunction(returnValue, expectedReturnValue)) return true;
     await wait(pollingInterval);
   }
 
@@ -231,18 +232,7 @@ export async function pollForContractMethodReturnValueExceedTarget<
   pollingInterval: number = 500,
   timeout: number = 2 * 60 * 1000,
 ): Promise<boolean> {
-  let isExceedTimeOut = false;
-  setTimeout(() => {
-    isExceedTimeOut = true;
-  }, timeout);
-
-  while (!isExceedTimeOut) {
-    const returnValue = await method();
-    if (returnValue >= targetReturnValue) return true;
-    await wait(pollingInterval);
-  }
-
-  return false;
+  return pollForContractMethodReturnValue(method, targetReturnValue, (a, b) => a >= b, pollingInterval, timeout);
 }
 
 export function getFiles(directory: string, fileRegex: RegExp[]): string[] {
