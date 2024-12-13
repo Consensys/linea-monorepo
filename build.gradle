@@ -23,12 +23,6 @@ allprojects {
   apply plugin: 'java' // do not add kotlin plugin here, it will add unnecessary Kotlin runtime dependencies
   apply plugin: 'jacoco'
 
-  configurations.all {
-    resolutionStrategy {
-      force "org.web3j:core:${libs.versions.web3j.get()}"
-    }
-  }
-
   tasks.withType(KotlinCompile).configureEach {
     compileAll.dependsOn it
     compilerOptions {
