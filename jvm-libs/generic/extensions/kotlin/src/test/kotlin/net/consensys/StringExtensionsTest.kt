@@ -28,7 +28,6 @@ class StringExtensionsTest {
     assertThat("this string won't match".containsAny(stringList, ignoreCase = true)).isFalse()
   }
 
-  @OptIn(ExperimentalStdlibApi::class)
   @Test
   fun `String#toIntFromHex`() {
     assertThat("0x00".toIntFromHex()).isEqualTo(0)
@@ -37,7 +36,6 @@ class StringExtensionsTest {
     assertThat("0x7FFFFFFF".toIntFromHex()).isEqualTo(Int.MAX_VALUE)
   }
 
-  @OptIn(ExperimentalStdlibApi::class)
   @Test
   fun `String#toLongFromHex`() {
     assertThat("0x00".toLongFromHex()).isEqualTo(0L)

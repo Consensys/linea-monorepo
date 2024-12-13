@@ -62,7 +62,7 @@ open class TestingJsonRpcServer(
           requestsHandler = this::handleRequest,
           meterRegistry = SimpleMeterRegistry(),
           log = log,
-          responseObjectMapper = responseObjectMapper
+          responseResultObjectMapper = responseObjectMapper
         )
       ),
       serverName = serverName

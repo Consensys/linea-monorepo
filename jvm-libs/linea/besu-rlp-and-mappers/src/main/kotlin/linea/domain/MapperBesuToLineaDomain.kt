@@ -41,7 +41,7 @@ object MapperBesuToLineaDomain {
       nonce = transaction.nonce.toULong(),
       gasPrice = transaction.getGasPrice().getOrNull()?.toBigInteger()?.toULong(),
       gasLimit = transaction.gasLimit.toULong(),
-      to = transaction.to?.getOrNull()?.toArray(),
+      to = transaction.to.getOrNull()?.toArray(),
       value = transaction.value.toBigInteger(),
       input = transaction.payload.toArray(),
       r = transaction.signature.getR(),
@@ -49,9 +49,9 @@ object MapperBesuToLineaDomain {
       v = transaction.getV().toULong(),
       yParity = transaction.yParity?.toULong(),
       type = transaction.type.toDomain(),
-      chainId = transaction.chainId?.getOrNull()?.toULong(),
-      maxFeePerGas = transaction.maxFeePerGas?.getOrNull()?.toBigInteger()?.toULong(),
-      maxPriorityFeePerGas = transaction.maxPriorityFeePerGas?.getOrNull()?.toBigInteger()?.toULong(),
+      chainId = transaction.chainId.getOrNull()?.toULong(),
+      maxFeePerGas = transaction.maxFeePerGas.getOrNull()?.toBigInteger()?.toULong(),
+      maxPriorityFeePerGas = transaction.maxPriorityFeePerGas.getOrNull()?.toBigInteger()?.toULong(),
       accessList = transaction.accessList.getOrNull()?.map { accessListEntry ->
         AccessListEntry(
           accessListEntry.address.toArray(),

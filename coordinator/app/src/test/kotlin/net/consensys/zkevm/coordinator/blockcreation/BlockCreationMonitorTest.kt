@@ -140,7 +140,7 @@ class BlockCreationMonitorTest {
       blocks.find { it.number == blockNumber }?.toEthGetBlockResponse()
     }
 
-    fakeL2RpcNode.handle("eth_blockNumber") { request ->
+    fakeL2RpcNode.handle("eth_blockNumber") { _ ->
       blocks.last().number.toHexString()
     }
   }
@@ -176,7 +176,7 @@ class BlockCreationMonitorTest {
     )
 
     setupFakeExecutionLayerWithBlocks(createBlocks(startBlockNumber = 99u, numberOfBlocks = 200))
-    fakeL2RpcNode.handle("eth_blockNumber") { request -> 105UL.toHexString() }
+    fakeL2RpcNode.handle("eth_blockNumber") { _ -> 105UL.toHexString() }
     // latest eligible conflation is: 105 - 2 = 103, inclusive
 
     monitor.start()
@@ -192,7 +192,7 @@ class BlockCreationMonitorTest {
     assertThat(blockCreationListener.blocksReceived.last().number).isEqualTo(103UL)
 
     // move chain head forward
-    fakeL2RpcNode.handle("eth_blockNumber") { request -> 120UL.toHexString() }
+    fakeL2RpcNode.handle("eth_blockNumber") { _ -> 120UL.toHexString() }
 
     // assert it resumes conflation
     await()

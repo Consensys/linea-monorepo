@@ -2,6 +2,7 @@ package net.consensys.linea.jsonrpc
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
@@ -23,6 +24,7 @@ import io.vertx.core.json.Json
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.json.jackson.DatabindCodec
+import io.vertx.core.json.jackson.VertxModule
 import io.vertx.ext.auth.User
 import net.consensys.linea.metrics.micrometer.DynamicTagTimerCapture
 import net.consensys.linea.metrics.micrometer.SimpleTimerCapture
@@ -55,7 +57,8 @@ class JsonRpcMessageProcessor(
   private val meterRegistry: MeterRegistry,
   private val requestParser: JsonRpcRequestParser = Companion::parseRequest,
   private val log: Logger = LogManager.getLogger(JsonRpcMessageProcessor::class.java),
-  private val responseObjectMapper: ObjectMapper = ObjectMapper().registerKotlinModule()
+  private val responseResultObjectMapper: ObjectMapper = jacksonObjectMapper().registerModules(VertxModule()),
+  private val rpcEnvelopeObjectMapper: ObjectMapper = jacksonObjectMapper()
 ) : JsonRpcMessageHandler {
   init {
     DatabindCodec.mapper().registerKotlinModule()
@@ -180,10 +183,10 @@ class JsonRpcMessageProcessor(
       .setTag("method", requestContext.method)
       .captureTime {
         val result = requestContext.result.map { successResponse ->
-          val resultJsonNode = responseObjectMapper.valueToTree<JsonNode>(successResponse.result)
+          val resultJsonNode = responseResultObjectMapper.valueToTree<JsonNode>(successResponse.result)
           successResponse.copy(result = resultJsonNode)
         }
-        Json.encode(result.merge())
+        rpcEnvelopeObjectMapper.writeValueAsString(result.merge())
       }
   }
 
