@@ -129,7 +129,7 @@ describe("PauseManager", () => {
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
       
       await pauseManager.connect(defaultAdmin).unPauseByType(GENERAL_PAUSE_TYPE);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).false;
+      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
     });
   });
 
