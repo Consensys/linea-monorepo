@@ -219,8 +219,10 @@ contract OpcodeTester {
     bytes memory section2 = abi.encode(block.gaslimit, block.number, block.difficulty, block.timestamp, gasleft());
 
     bytes memory section3 = abi.encode(msg.data, msg.sender, msg.sig, msg.value, tx.gasprice, tx.origin);
-        
-    rollingBlockDetailComputations = keccak256(abi.encode(rollingBlockDetailComputations, bytes.concat(bytes.concat(section1,section2),section3)));
+
+    rollingBlockDetailComputations = keccak256(
+      abi.encode(rollingBlockDetailComputations, bytes.concat(bytes.concat(section1, section2), section3))
+    );
   }
 
   function saveOpcodeSuccess() private {
