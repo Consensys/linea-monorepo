@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.signals;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_3541_MARKER;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MAX_CODE_SIZE;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.getOpCode;
+import static org.hyperledger.besu.evm.internal.Words.clampedToInt;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.util.function.Consumer;
@@ -156,8 +157,8 @@ public class Exceptions {
 
   private static boolean isJumpFault(final MessageFrame frame, OpCode opCode) {
     if (opCode == OpCode.JUMP || opCode == OpCode.JUMPI) {
-      final long target = clampedToLong(frame.getStackItem(0));
-      final boolean invalidDestination = frame.getCode().isJumpDestInvalid((int) target);
+      final int target = clampedToInt(frame.getStackItem(0));
+      final boolean invalidDestination = frame.getCode().isJumpDestInvalid(target);
 
       switch (opCode) {
         case JUMP -> {
