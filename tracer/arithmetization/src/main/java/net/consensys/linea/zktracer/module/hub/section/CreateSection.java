@@ -375,10 +375,10 @@ public class CreateSection extends TraceSection
   private void revertAfterFailedDeployment(Hub hub, int revertStamp) {
 
     thirdCreator = secondCreatorNew.deepCopy().setDeploymentNumber(hub);
-    thirdCreatorNew = secondCreator.deepCopy().setDeploymentNumber(hub);
+    thirdCreatorNew = firstCreator.deepCopy().setDeploymentNumber(hub);
 
     thirdCreatee = secondCreateeNew.deepCopy().setDeploymentNumber(hub);
-    thirdCreateeNew = secondCreatee.deepCopy().setDeploymentNumber(hub);
+    thirdCreateeNew = firstCreatee.deepCopy().setDeploymentNumber(hub);
 
     final AccountFragment undoCreatorFinal =
         accountFragmentFactory.make(
