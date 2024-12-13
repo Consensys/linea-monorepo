@@ -160,6 +160,10 @@ contract TokenBridge is
     __MessageServiceBase_init(_initializationData.messageService);
     __ReentrancyGuard_init();
 
+    if (_initializationData.defaultAdmin == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     /**
      * @dev DEFAULT_ADMIN_ROLE is set for the security council explicitly,
      * as the permissions init purposefully does not allow DEFAULT_ADMIN_ROLE to be set.
