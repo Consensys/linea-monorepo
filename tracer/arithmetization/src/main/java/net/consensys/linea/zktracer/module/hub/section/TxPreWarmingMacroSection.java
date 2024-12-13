@@ -69,14 +69,17 @@ public class TxPreWarmingMacroSection {
                       "Deployment status during TX_INIT phase of any accountAddress should always be false");
 
                   final boolean isAccountWarm = seenAddresses.contains(address);
+                  seenAddresses.add(address);
 
                   final AccountSnapshot preWarmingAccountSnapshot =
-                      AccountSnapshot.fromAccount(
-                          world.get(address), isAccountWarm, deploymentNumber, false);
+                      world.get(address) == null
+                          ? AccountSnapshot.fromAddress(
+                              address, isAccountWarm, deploymentNumber, false)
+                          : AccountSnapshot.fromAccount(
+                              world.get(address), isAccountWarm, deploymentNumber, false);
 
                   final AccountSnapshot postWarmingAccountSnapshot =
-                      AccountSnapshot.fromAccount(
-                          world.get(address), true, deploymentNumber, false);
+                      preWarmingAccountSnapshot.deepCopy().turnOnWarmth();
 
                   final DomSubStampsSubFragment domSubStampsSubFragment =
                       new DomSubStampsSubFragment(
@@ -97,8 +100,6 @@ public class TxPreWarmingMacroSection {
                               postWarmingAccountSnapshot,
                               address,
                               domSubStampsSubFragment));
-
-                  seenAddresses.add(address);
 
                   final List<Bytes32> keys = entry.storageKeys();
                   for (Bytes32 k : keys) {
