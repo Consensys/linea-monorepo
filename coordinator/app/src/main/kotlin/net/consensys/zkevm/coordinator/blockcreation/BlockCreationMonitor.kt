@@ -2,19 +2,15 @@ package net.consensys.zkevm.coordinator.blockcreation
 
 import io.vertx.core.Vertx
 import linea.domain.Block
-import linea.web3j.toDomain
-import net.consensys.decodeHex
 import net.consensys.encodeHex
+import net.consensys.linea.BlockParameter.Companion.toBlockParameter
 import net.consensys.linea.async.AsyncRetryer
-import net.consensys.linea.async.toSafeFuture
+import net.consensys.linea.web3j.ExtendedWeb3J
 import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreated
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreationListener
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.web3j.protocol.Web3j
-import org.web3j.protocol.core.DefaultBlockParameter
-import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -24,7 +20,7 @@ import kotlin.time.Duration.Companion.days
 
 class BlockCreationMonitor(
   private val vertx: Vertx,
-  private val web3j: Web3j,
+  private val web3j: ExtendedWeb3J,
   private val startingBlockNumberExclusive: Long,
   private val blockCreationListener: BlockCreationListener,
   private val lastProvenBlockNumberProviderAsync: LastProvenBlockNumberProviderAsync,
@@ -40,7 +36,7 @@ class BlockCreationMonitor(
     val blocksToFinalization: Long,
     val blocksFetchLimit: Long,
     val startingBlockWaitTimeout: Duration = 14.days,
-    val lastL2BlockNumberToProcessInclusive: ULong?
+    val lastL2BlockNumberToProcessInclusive: ULong? = null
   )
 
   private val _nexBlockNumberToFetch: AtomicLong = AtomicLong(startingBlockNumberExclusive + 1)
@@ -75,8 +71,8 @@ class BlockCreationMonitor(
         vertx,
         backoffDelay = config.pollingInterval,
         timeout = config.startingBlockWaitTimeout,
-        stopRetriesPredicate = { block: EthBlock ->
-          if (block.block == null) {
+        stopRetriesPredicate = { block: Block? ->
+          if (block == null) {
             log.warn(
               "Block {} not found yet. Retrying in {}",
               startingBlockNumberExclusive,
@@ -85,15 +81,12 @@ class BlockCreationMonitor(
             false
           } else {
             log.info("Block {} found. Resuming block monitor", startingBlockNumberExclusive)
-            expectedParentBlockHash.set(block.block.hash.decodeHex())
+            expectedParentBlockHash.set(block.hash)
             true
           }
         }
       ) {
-        web3j
-          .ethGetBlockByNumber(DefaultBlockParameter.valueOf(startingBlockNumberExclusive.toBigInteger()), false)
-          .sendAsync()
-          .toSafeFuture()
+        web3j.ethGetBlock(startingBlockNumberExclusive.toBlockParameter())
       }
     }
 
@@ -101,7 +94,7 @@ class BlockCreationMonitor(
   }
 
   override fun action(): SafeFuture<*> {
-    log.trace("tick start")
+    log.trace("tick start: nexBlockNumberToFetch={}", nexBlockNumberToFetch)
     return lastProvenBlockNumberProviderAsync.getLastProvenBlockNumber()
       .thenCompose { lastProvenBlockNumber ->
         if (!nextBlockNumberWithinLimit(lastProvenBlockNumber)) {
@@ -118,8 +111,8 @@ class BlockCreationMonitor(
           nexBlockNumberToFetch.toULong() > config.lastL2BlockNumberToProcessInclusive
         ) {
           log.warn(
-            "Stopping Conflation, Blob and Aggregation at lastL2BlockNumberInclusiveToProcess - 1. " +
-              "All blocks unto and including lastL2BlockNumberInclusiveToProcess={} have been processed. " +
+            "stopping conflation at lastL2BlockNumberInclusiveToProcess - 1. " +
+              "All blocks upto and including lastL2BlockNumberInclusiveToProcess={} have been processed. " +
               "nextBlockNumberToFetch={}",
             config.lastL2BlockNumberToProcessInclusive,
             nexBlockNumberToFetch
@@ -165,6 +158,7 @@ class BlockCreationMonitor(
   }
 
   private fun notifyListener(payload: Block): SafeFuture<Unit> {
+    log.trace("notifying blockCreationListener: block={}", payload.number)
     return blockCreationListener
       .acceptBlock(BlockCreated(payload))
       .thenApply {
@@ -186,19 +180,16 @@ class BlockCreationMonitor(
   private fun getNetNextSafeBlock(): SafeFuture<Block?> {
     return web3j
       .ethBlockNumber()
-      .sendAsync()
-      .toSafeFuture()
-      .thenApply { it.blockNumber }
       .thenCompose { latestBlockNumber ->
         // Check if is safe to fetch nextWaitingBlockNumber
         if (latestBlockNumber.toLong() >=
           _nexBlockNumberToFetch.get() + config.blocksToFinalization
         ) {
           val blockNumber = _nexBlockNumberToFetch.get()
-          web3j.ethGetBlockByNumber(DefaultBlockParameter.valueOf(blockNumber.toBigInteger()), true)
-            .sendAsync()
-            .toSafeFuture()
-            .thenApply { it.block.toDomain() }
+          web3j.ethGetBlock(blockNumber.toBlockParameter())
+            .thenPeek { block ->
+              log.trace("requestedBock={} responselock={}", blockNumber, block?.number)
+            }
             .whenException {
               log.warn(
                 "eth_getBlockByNumber({}) failed: errorMessage={}",

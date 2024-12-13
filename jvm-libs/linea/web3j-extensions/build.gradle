@@ -12,6 +12,7 @@ dependencies {
   api project(':jvm-libs:generic:logging')
   api project(':jvm-libs:linea:besu-libs')
   implementation project(":jvm-libs:generic:extensions:kotlin")
+  implementation project(":jvm-libs:generic:extensions:futures")
   implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
   implementation "tech.pegasys.teku.internal:jackson:${libs.versions.teku.get()}"
   implementation "tech.pegasys.teku.internal:unsigned:${libs.versions.teku.get()}"

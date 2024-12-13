@@ -12,7 +12,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 fun createWeb3jHttpClient(
   rpcUrl: String,
-  log: Logger,
+  log: Logger = org.apache.logging.log4j.LogManager.getLogger(Web3j::class.java),
   pollingInterval: Duration = 500.milliseconds,
   executorService: ScheduledExecutorService = Async.defaultExecutorService(),
   requestResponseLogLevel: Level = Level.TRACE,

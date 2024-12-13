@@ -45,3 +45,63 @@ fun createBlock(
     ommers = emptyList()
   )
 }
+
+/**
+ * This is very similar to Block class,
+ * but creating DTO to avoid coupling with domain model,
+ * some fields are not present in domain model, e.g uncles
+ *
+ * This is meant to help creating fake JSON-RPC server
+ */
+class EthGetBlockResponseDTO(
+  val number: ULong,
+  val hash: ByteArray,
+  val parentHash: ByteArray,
+  val miner: ByteArray,
+  val stateRoot: ByteArray,
+  val transactionsRoot: ByteArray,
+  val receiptsRoot: ByteArray,
+  val logsBloom: ByteArray,
+  val difficulty: ULong,
+  val gasLimit: ULong,
+  val gasUsed: ULong,
+  val timestamp: ULong,
+  val extraData: ByteArray,
+  val mixHash: ByteArray,
+  val nonce: ULong,
+  val baseFeePerGas: ULong?,
+  val sha3Uncles: ByteArray, // ommersHash
+  val size: ULong,
+  val totalDifficulty: ULong,
+  val transactions: List<ByteArray>,
+  val uncles: List<ByteArray> = emptyList()
+)
+
+fun Block?.toEthGetBlockResponse(
+  size: ULong = 10UL * 1024UL,
+  totalDifficulty: ULong = this?.difficulty ?: 0UL
+): EthGetBlockResponseDTO? {
+  if (this == null) return null
+  return EthGetBlockResponseDTO(
+    number = this.number,
+    hash = this.hash,
+    parentHash = this.parentHash,
+    miner = this.miner,
+    stateRoot = this.stateRoot,
+    transactionsRoot = this.transactionsRoot,
+    receiptsRoot = this.receiptsRoot,
+    logsBloom = this.logsBloom,
+    difficulty = this.difficulty,
+    gasLimit = this.gasLimit,
+    gasUsed = this.gasUsed,
+    timestamp = this.timestamp,
+    extraData = this.extraData,
+    mixHash = this.mixHash,
+    nonce = this.nonce,
+    baseFeePerGas = this.baseFeePerGas,
+    sha3Uncles = this.ommersHash,
+    size = size,
+    totalDifficulty = totalDifficulty,
+    transactions = emptyList<ByteArray>()
+  )
+}
