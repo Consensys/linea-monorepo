@@ -584,7 +584,7 @@ func (c *CompiledIOP) InsertLocalOpening(round int, name ifaces.QueryID, pol ifa
 // The sigma columns are categorized by [round,size].
 func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, in map[[2]int]*query.LogDerivativeSumInput) query.LogDerivativeSum {
 	c.assertConsistentRound(lastRound)
-	q := query.NewLogDerivativeSum(in)
+	q := query.NewLogDerivativeSum(in, id)
 	// Finally registers the query
 	c.QueriesParams.AddToRound(lastRound, id, q)
 	return q
