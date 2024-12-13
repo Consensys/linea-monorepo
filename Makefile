@@ -162,7 +162,7 @@ execute-all-opcodes:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		OPCODE_TEST_CONTRACT_ADDRESS=0x64191198b39a0B8fD27F5153bd84111530409a17 \
-		NUMBER_OF_RUNS=4 \
+		NUMBER_OF_RUNS=3 \
 		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/executeAllOpcodes.ts

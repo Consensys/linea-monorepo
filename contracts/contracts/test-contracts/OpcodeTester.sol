@@ -176,18 +176,58 @@ contract OpcodeTester {
   bytes2 private constant INVALID = 0x00FE;
   bytes2 private constant SELFDESTRUCT = 0x00FF;
 
-  event Failure(string reason);
-  event LowLevelFailure(bytes data);
-
   constructor(address _yulContract) {
     yulContract = _yulContract;
   }
 
   function executeAllOpcodes() public payable {
+    executeExternalCalls();
+
+    saveOpcodeSuccess();
+
+    storeRollingGlobalVariablesToState();
+  }
+
+  function storeRollingGlobalVariablesToState() private {
+    bytes memory fieldsToHashSection1 = abi.encode(
+      rollingBlockDetailComputations,
+      blockhash(block.number - 1),
+      block.basefee,
+      block.chainid,
+      block.coinbase,
+      block.difficulty
+    );
+
+    bytes memory fieldsToHashSection2 = abi.encode(
+      block.gaslimit,
+      block.number,
+      block.difficulty,
+      block.timestamp,
+      gasleft()
+    );
+
+    bytes memory fieldsToHashSection3 = abi.encode(msg.data, msg.sender, msg.sig, msg.value, tx.gasprice, tx.origin);
+
+    rollingBlockDetailComputations = keccak256(
+      abi.encode(
+        rollingBlockDetailComputations,
+        bytes.concat(bytes.concat(fieldsToHashSection1, fieldsToHashSection2), fieldsToHashSection3)
+      )
+    );
+  }
+
+  function executeExternalCalls() private {
     ErrorAndDestructionTesting errorAndDestructingContract = new ErrorAndDestructionTesting();
 
     bool success;
     (success, ) = address(errorAndDestructingContract).call(abi.encodeWithSignature("externalRevert()"));
+
+    // it should fail
+    if (success) {
+      revert("externalRevert Failed");
+    }
+
+    (success, ) = address(errorAndDestructingContract).staticcall(abi.encodeWithSignature("externalRevert()"));
 
     // it should fail
     if (success) {
@@ -204,25 +244,6 @@ contract OpcodeTester {
     if (!success) {
       revert("executeAll on yulContract Failed");
     }
-
-    saveOpcodeSuccess();
-
-    bytes memory section1 = abi.encode(
-      rollingBlockDetailComputations,
-      blockhash(block.number - 1),
-      block.basefee,
-      block.chainid,
-      block.coinbase,
-      block.difficulty
-    );
-
-    bytes memory section2 = abi.encode(block.gaslimit, block.number, block.difficulty, block.timestamp, gasleft());
-
-    bytes memory section3 = abi.encode(msg.data, msg.sender, msg.sig, msg.value, tx.gasprice, tx.origin);
-
-    rollingBlockDetailComputations = keccak256(
-      abi.encode(rollingBlockDetailComputations, bytes.concat(bytes.concat(section1, section2), section3))
-    );
   }
 
   function saveOpcodeSuccess() private {
