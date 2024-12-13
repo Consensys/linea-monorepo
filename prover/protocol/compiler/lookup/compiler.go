@@ -55,7 +55,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 			checkTable      = mainLookupCtx.CheckedTables[lookupTableName]
 			round           = mainLookupCtx.Rounds[lookupTableName]
 			includedFilters = mainLookupCtx.IncludedFilters[lookupTableName]
-			tableCtx        = compileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
+			tableCtx        = CompileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
 		)
 
 		// push to zCatalog
@@ -213,7 +213,7 @@ func CaptureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 //   - (5) The verier makes a `Global` query : $\left((\Sigma_T)[i] - (\Sigma_T)[i-1]\right)(T_i + \gamma) = M_i$
 
 // here we are looking up set of columns S in a single column T
-func compileLookupTable(
+func CompileLookupTable(
 	comp *wizard.CompiledIOP,
 	round int,
 	lookupTable []table,

@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 type moduleName = string
@@ -33,6 +34,7 @@ type ModuleDiscoverer interface {
 	FindModule(col ifaces.Column) moduleName
 	// given a query and a module name it checks if the query is inside the module
 	QueryIsInModule(ifaces.Query, moduleName) bool
+	ExpressionIsInModule(*symbolic.Expression, moduleName) bool
 }
 
 // This transforms the initial wizard. So it is not really the initial
