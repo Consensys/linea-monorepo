@@ -43,6 +43,7 @@ dependencies {
 
   // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
   annotationProcessor 'com.google.auto.service:auto-service'
+  compileOnly 'com.google.auto.service:auto-service'
 
   implementation "${besuArtifactGroup}:besu-datatypes"
   implementation "${besuArtifactGroup}:evm"
@@ -53,8 +54,6 @@ dependencies {
   implementation "${besuArtifactGroup}.internal:core"
   implementation "${besuArtifactGroup}.internal:rlp"
 
-  implementation 'com.google.auto.service:auto-service'
-
   implementation 'info.picocli:picocli'
 
   implementation 'io.tmio:tuweni-bytes'
@@ -62,7 +61,6 @@ dependencies {
   implementation 'io.tmio:tuweni-toml'
 
   implementation 'io.vertx:vertx-web'
-
 }
 
 apply from: rootProject.file("gradle/dist.gradle")
