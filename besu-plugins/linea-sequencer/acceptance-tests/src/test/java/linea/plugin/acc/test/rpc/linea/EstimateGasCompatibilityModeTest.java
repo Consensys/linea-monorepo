@@ -70,7 +70,8 @@ public class EstimateGasCompatibilityModeTest extends EstimateGasTest {
   public void lineaEstimateGasPriorityFeeMinGasPriceLowerBound() {
     final Account sender = accounts.getSecondaryBenefactor();
 
-    final CallParams callParams = new CallParams(sender.getAddress(), null, "", "", "0", null);
+    final CallParams callParams =
+        new CallParams(null, sender.getAddress(), null, "", "", "0", null, null, null);
 
     final var reqLinea = new LineaEstimateGasRequest(callParams);
     final var respLinea = reqLinea.execute(minerNode.nodeRequests()).getResult();

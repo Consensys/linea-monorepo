@@ -48,11 +48,14 @@ public class EstimateGasModuleLimitOverflowTest extends LineaPluginTestBase {
 
     final EstimateGasTest.CallParams callParams =
         new EstimateGasTest.CallParams(
+            null,
             sender.getAddress(),
             simpleStorage.getContractAddress(),
             null,
             payload.toHexString(),
             "0",
+            null,
+            null,
             null);
 
     final var reqLinea = new EstimateGasTest.BadLineaEstimateGasRequest(callParams);
