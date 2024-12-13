@@ -9,7 +9,7 @@ import (
 
 type fieldElement interface {
 	SetRandom() (*fieldElement, error)
-	//String() string
+	String() string
 }
 
 func PseudoRandElement[T fieldElement](rng *rand.Rand) T {

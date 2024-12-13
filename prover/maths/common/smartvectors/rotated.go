@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -17,13 +18,13 @@ import (
 // Rotated works by abstractly storing the offset and only applying the rotation
 // when the vector is written or sub-vectored. This makes rotations essentially
 // free.
-type Rotated[T fmt.Stringer] struct {
-	v      *Pooled[T]
+type Rotated struct {
+	v      *Pooled
 	offset int
 }
 
 // NewRotated constructs a new Rotated, positive offset means a cyclic left shift.
-func NewRotated[T fmt.Stringer](reg Regular[T], offset int) *Rotated[T] {
+func NewRotated(reg Regular, offset int) *Rotated {
 
 	// empty vector
 	if len(reg) == 0 {
@@ -42,31 +43,31 @@ func NewRotated[T fmt.Stringer](reg Regular[T], offset int) *Rotated[T] {
 		utils.Panic("len %v, is less than, offset %v", len(reg), offset)
 	}
 
-	return &Rotated[T]{
-		v: &Pooled[T]{Regular: reg}, offset: offset,
+	return &Rotated{
+		v: &Pooled{Regular: reg}, offset: offset,
 	}
 }
 
 // Returns the lenght of the vector
-func (r *Rotated[T]) Len() int {
+func (r *Rotated) Len() int {
 	return r.v.Len()
 }
 
 // Returns a particular element of the vector
-func (r *Rotated[T]) Get(n int) T {
+func (r *Rotated) Get(n int) field.Element {
 	return r.v.Get(utils.PositiveMod(n+r.offset, r.Len()))
 }
 
 // Returns a particular element. The subvector is taken at indices
 // [start, stop). (stop being excluded from the span)
-func (r *Rotated[T]) SubVector(start, stop int) SmartVector[T] {
+func (r *Rotated) SubVector(start, stop int) SmartVector {
 
 	if stop+r.offset < len(r.v.Regular) && start+r.offset > 0 {
-		res := Regular[T](r.v.Regular[start+r.offset : stop+r.offset])
+		res := Regular(r.v.Regular[start+r.offset : stop+r.offset])
 		return &res
 	}
 
-	res := make([]T, stop-start)
+	res := make([]field.Element, stop-start)
 	size := r.Len()
 	spanSize := stop - start
 
@@ -96,50 +97,50 @@ func (r *Rotated[T]) SubVector(start, stop int) SmartVector[T] {
 	howManyElementLeftToCopy := startWithOffsetClean + spanSize - size
 	howManyAlreadyCopied := spanSize - howManyElementLeftToCopy
 	if howManyElementLeftToCopy <= 0 {
-		ret := Regular[T](res)
+		ret := Regular(res)
 		return &ret
 	}
 
 	// if necessary perform a second
 	copy(res[howManyAlreadyCopied:], r.v.Regular[:howManyElementLeftToCopy])
-	ret := Regular[T](res)
+	ret := Regular(res)
 	return &ret
 }
 
 // Rotates the vector into a new one, a positive offset means a left cyclic shift
-func (r *Rotated[T]) RotateRight(offset int) SmartVector[T] {
+func (r *Rotated) RotateRight(offset int) SmartVector {
 	// We limit the offset value to prevent integer overflow
 	if offset > 1<<40 {
 		utils.Panic("offset is too large")
 	}
-	return &Rotated[T]{
-		v: &Pooled[T]{
+	return &Rotated{
+		v: &Pooled{
 			Regular: vector.DeepCopy(r.v.Regular),
 		},
 		offset: r.offset + offset,
 	}
 }
 
-func (r *Rotated[T]) DeepCopy() SmartVector[T] {
+func (r *Rotated) DeepCopy() SmartVector {
 	return NewRotated(vector.DeepCopy(r.v.Regular), r.offset)
 }
 
-func (r *Rotated[T]) WriteInSlice(s []T) {
+func (r *Rotated) WriteInSlice(s []field.Element) {
 	res := rotatedAsRegular(r)
 	res.WriteInSlice(s)
 }
 
-func (r *Rotated[T]) Pretty() string {
+func (r *Rotated) Pretty() string {
 	return fmt.Sprintf("Rotated[%v, %v]", r.v.Pretty(), r.offset)
 }
 
 // rotatedAsRegular converts a [Rotated] into a [Regular] by effecting the
 // symbolic shifting operation. The function allocates the result.
-func rotatedAsRegular[T fmt.Stringer](r *Rotated[T]) *Regular[T] {
-	return r.SubVector(0, r.Len()).(*Regular[T])
+func rotatedAsRegular(r *Rotated) *Regular {
+	return r.SubVector(0, r.Len()).(*Regular)
 }
 
-func (r *Rotated[T]) IntoRegVecSaveAlloc() []T {
+func (r *Rotated) IntoRegVecSaveAlloc() []field.Element {
 	return *rotatedAsRegular(r)
 }
 

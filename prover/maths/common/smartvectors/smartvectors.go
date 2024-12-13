@@ -23,55 +23,55 @@ import (
 //   - although the smart-vectors are not immutable, the user should refrain
 //     mutating them after they are created as this may have unintended side
 //     effects that are hard to track.
-type SmartVector[T fmt.Stringer] interface {
+type SmartVector interface {
 	// Len returns the length of the SmartVector
 	Len() int
 	// Get returns an entry of the SmartVector at particular position
-	Get(int) T
+	Get(int) field.Element
 	// SubVector returns a subvector of the [SmartVector]. It mirrors slice[start:stop]
-	SubVector(int, int) SmartVector[T]
+	SubVector(int, int) SmartVector
 	// RotateRight cyclically rotates the SmartVector
-	RotateRight(int) SmartVector[T]
+	RotateRight(int) SmartVector
 	// WriteInSlice writes the SmartVector into a slice. The slice must be just
 	// as large as [Len] otherwise the function will panic
-	WriteInSlice([]T)
+	WriteInSlice([]field.Element)
 	// Pretty returns a prettified version of the vector, useful for debugging.
 	Pretty() string
 	// DeepCopy returns a deep-copy of the SmartVector which can be freely
 	// mutated without affecting the
-	DeepCopy() SmartVector[T]
+	DeepCopy() SmartVector
 	// IntoRegVecSaveAlloc converts a smart-vector into a normal vec. The
 	// implementation minimizes then number of copies
-	IntoRegVecSaveAlloc() []T
+	IntoRegVecSaveAlloc() []field.Element
 }
 
 // AllocateRegular returns a newly allocated smart-vector
-func AllocateRegular[T fmt.Stringer](n int) SmartVector[T] {
-	return NewRegular[T](make([]T, n))
+func AllocateRegular(n int) SmartVector {
+	return NewRegular(make([]field.Element, n))
 }
 
 // Copy into a smart-vector, will panic if into is not a regular
 // Mainly used as a sugar for refactoring
-func Copy[T fmt.Stringer](into *SmartVector[T], x SmartVector[T]) {
+func Copy(into *SmartVector, x SmartVector) {
 	*into = x.DeepCopy()
 }
 
 // Rand creates a vector with random entries. Used for testing. Should not be
 // used to generate secrets. Not reproducible.
-func Rand[T fmt.Stringer](n int) SmartVector[T] {
+func Rand(n int) SmartVector {
 	v := vector.Rand(n)
-	return NewRegular[T](v)
+	return NewRegular(v)
 }
 
 // Rand creates a vector with random entries. Used for testing. Should not be
 // used to generate secrets. Takes a math.Rand as input for reproducibility
 // math
-func PseudoRand[T fmt.Stringer](rng *rand.Rand, n int) SmartVector[T] {
+func PseudoRand(rng *rand.Rand, n int) SmartVector {
 	return NewRegular(vector.PseudoRand(rng, n))
 }
 
 // ForTest returns a witness from a explicit litteral assignement
-func ForTest[T any](xs ...int) SmartVector[T] {
+func ForTest(xs ...int) SmartVector {
 	return NewRegular(vector.ForTest(xs...))
 }
 
