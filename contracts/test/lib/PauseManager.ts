@@ -126,7 +126,7 @@ describe("PauseManager", () => {
       
       // pause with non-modified pausing account
       await pauseManager.connect(pauseManagerAccount).pauseByType(GENERAL_PAUSE_TYPE);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).true;
+      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
       
       await pauseManager.connect(defaultAdmin).unPauseByType(GENERAL_PAUSE_TYPE);
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).false;
