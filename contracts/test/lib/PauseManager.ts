@@ -117,7 +117,7 @@ describe("PauseManager", () => {
       await expectEvent(pauseManager,updateCall,"PauseTypeRoleUpdated",[GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE, PAUSE_ALL_ROLE ])
 
       await pauseManager.connect(defaultAdmin).pauseByType(GENERAL_PAUSE_TYPE);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).true;
+      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
     });
 
     it("should update unpause type role with unpausing working", async () => {
