@@ -52,7 +52,7 @@ public class IdentitySubsection extends PrecompileSubsection {
     checkArgument(callSuccess == oobCall.isHubSuccess());
 
     if (!callSuccess) {
-      precompileScenarioFragment.scenario(PRC_FAILURE_KNOWN_TO_HUB);
+      return;
     }
 
     final boolean extractCallData = callSuccess && !getCallDataRange().isEmpty();
