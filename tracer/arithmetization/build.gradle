@@ -34,9 +34,6 @@ apply from: rootProject.file("gradle/lint.gradle")
 apply from: rootProject.file("gradle/trace-files.gradle")
 
 dependencies {
-  // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
-  annotationProcessor 'com.google.auto.service:auto-service'
-
   implementation "${besuArtifactGroup}:besu-datatypes"
   implementation "${besuArtifactGroup}:evm"
   implementation "${besuArtifactGroup}:plugin-api"
