@@ -81,7 +81,7 @@ describe("PauseManager", () => {
     });
   });
 
-  describe("Updating pause type and unpausetype roles", () => {
+  describe("Updating pause type and unpause type roles", () => {
     it("should fail updatePauseTypeRole if unused pause type is used", async () => {
       const updateCall = pauseManager.updatePauseTypeRole(UNUSED_PAUSE_TYPE, DEFAULT_ADMIN_ROLE);
       await expectRevertWithCustomError(pauseManager, updateCall, "PauseTypeNotUsed");
