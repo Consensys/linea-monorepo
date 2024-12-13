@@ -471,7 +471,7 @@ Corset is hosted inside the same process as the short running component of the p
   * Reduce the probability of incompatibility between Corset/Prover versions and their input/output formats;
 * Reduce latency of the overall system (rather a beneficial side effect than a driving motivation);
 
-The paragraphs highlights the roles of the different proofs that are generated.
+The paragraphs highlights the roles of the different proofs that are generated. Please refer to the prover backend codebase [here](https://github.com/Consensys/linea-monorepo/tree/main/prover/backend) for details on the objects and attributes for various types of proof requests and responses 
 
 ### Execution proofs
 
