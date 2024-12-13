@@ -10,6 +10,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.ext.auth.User
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import linea.jsonrpc2.JsonRpcMessageProcessor
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

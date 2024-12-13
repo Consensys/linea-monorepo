@@ -1,5 +1,7 @@
 package net.consensys.linea.jsonrpc
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
@@ -51,12 +53,14 @@ private data class RequestContext(
 class JsonRpcMessageProcessor(
   private val requestsHandler: JsonRpcRequestHandler,
   private val meterRegistry: MeterRegistry,
-  private val requestParser: JsonRpcRequestParser = Companion::parseRequest
+  private val requestParser: JsonRpcRequestParser = Companion::parseRequest,
+  private val log: Logger = LogManager.getLogger(JsonRpcMessageProcessor::class.java),
+  private val responseObjectMapper: ObjectMapper = ObjectMapper().registerKotlinModule()
 ) : JsonRpcMessageHandler {
   init {
     DatabindCodec.mapper().registerKotlinModule()
   }
-  private val log: Logger = LogManager.getLogger(this.javaClass)
+
   private val counterBuilder = Counter.builder("jsonrpc.counter")
   override fun invoke(user: User?, messageJsonStr: String): Future<String> =
     handleMessage(user, messageJsonStr)
@@ -174,7 +178,13 @@ class JsonRpcMessageProcessor(
     return SimpleTimerCapture<String>(meterRegistry, "jsonrpc.serialization.response")
       .setDescription("Time of json response serialization")
       .setTag("method", requestContext.method)
-      .captureTime { Json.encode(requestContext.result.merge()) }
+      .captureTime {
+        val result = requestContext.result.map { successResponse ->
+          val resultJsonNode = responseObjectMapper.valueToTree<JsonNode>(successResponse.result)
+          successResponse.copy(result = resultJsonNode)
+        }
+        Json.encode(result.merge())
+      }
   }
 
   private fun handleRequest(
