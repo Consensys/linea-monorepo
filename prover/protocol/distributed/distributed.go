@@ -84,18 +84,32 @@ func extractDistModule(
 
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
 
-		// Filter LPP queries
 		q := comp.QueriesNoParams.Data(qName)
+		if disc.QueryIsInModule(q, moduleName) {
+			continue
+		}
 
 		switch v := q.(type) {
-		case query.Inclusion, query.Permutation, query.Projection:
-			if disc.QueryIsInModule(v, moduleName) {
-				addToLookupPermProj(disModule.LookupPermProj, q)
-			}
-		case query.GlobalConstraint, query.LocalConstraint, query.LocalOpening:
-			if disc.QueryIsInModule(v, moduleName) {
-				addToGlobalLocal(disModule.GlobalLocal, q)
-			}
+		// Filter LPP queries
+		case query.Inclusion:
+			addToLookupPermProj(disModule.LookupPermProj, v)
+
+		case query.Permutation:
+			addToLookupPermProj(disModule.LookupPermProj, v)
+
+		case query.Projection:
+			addToLookupPermProj(disModule.LookupPermProj, v)
+
+			// Filter LG queries
+		case query.GlobalConstraint:
+			addToGlobalLocal(disModule.GlobalLocal, v)
+
+		case query.LocalConstraint:
+			addToGlobalLocal(disModule.GlobalLocal, v)
+
+		case query.LocalOpening:
+			addToGlobalLocal(disModule.GlobalLocal, v)
+
 		default:
 			// Handle other types if necessary
 			panic("Other type queries are not handled")
