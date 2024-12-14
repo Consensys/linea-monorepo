@@ -91,8 +91,17 @@ func IntoRegVec(s SmartVector) []field.Element {
 // IntoGnarkAssignment converts a smart-vector into a gnark assignment
 func IntoGnarkAssignment(sv SmartVector) []frontend.Variable {
 	res := make([]frontend.Variable, sv.Len())
-	for i := range res {
-		res[i] = sv.Get(i)
+	_, err := sv.Get(0)
+	if err == nil {
+		for i := range res {
+			elem, _ := sv.Get(i)
+			res[i] = elem
+		}
+	} else {
+		for i := range res {
+			elem := sv.GetExt(i)
+			res[i] = elem
+		}
 	}
 	return res
 }
@@ -166,16 +175,41 @@ func Density(v SmartVector) int {
 // Window returns the effective window of the vector,
 // if the vector is Padded with zeroes it return the window.
 // Namely, the part without zero pads.
-func Window(v SmartVector) []field.Element {
+func Window(v SmartVector) ([]field.Element, error) {
 	switch w := v.(type) {
 	case *Constant:
 		return w.IntoRegVecSaveAlloc()
 	case *PaddedCircularWindow:
-		return w.window
+		return w.window, nil
 	case *Regular:
-		return *w
+		return *w, nil
 	case *Rotated:
 		return w.IntoRegVecSaveAlloc()
+	default:
+		panic(fmt.Sprintf("unexpected type %T", v))
+	}
+}
+
+func WindowExt(v SmartVector) []fext.Element {
+	switch w := v.(type) {
+	case *Constant:
+		return w.IntoRegVecSaveAllocExt()
+	case *PaddedCircularWindow:
+		temp := make([]fext.Element, len(w.window))
+		for i := 0; i < len(w.window); i++ {
+			elem := w.window[i]
+			temp[i].SetFromBase(&elem)
+		}
+		return temp
+	case *Regular:
+		temp := make([]fext.Element, len(*w))
+		for i := 0; i < len(*w); i++ {
+			elem, _ := w.Get(i)
+			temp[i].SetFromBase(&elem)
+		}
+		return temp
+	case *Rotated:
+		return w.IntoRegVecSaveAllocExt()
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}
