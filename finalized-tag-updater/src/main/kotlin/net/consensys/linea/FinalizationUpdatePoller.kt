@@ -54,18 +54,18 @@ class FinalizationUpdatePoller(
       vertx,
       backoffDelay = config.pollingInterval
     ) {
-      SafeFuture.of(lineaRollup.currentL2BlockNumber().sendAsync())
-    }
-      .thenCompose { lineaFinalizedBlockNumber ->
-        val prevFinalizedBlockNumber = lastFinalizationRef.get()
-        lastFinalizationRef.set(lineaFinalizedBlockNumber.toULong())
-        if (prevFinalizedBlockNumber != lineaFinalizedBlockNumber.toULong()) {
-          finalizationHandler(lineaFinalizedBlockNumber.toULong()).thenApply { Unit }
-        } else {
-          CompletableFuture.completedFuture(Unit)
+      lineaRollup.currentL2BlockNumber().sendAsync()
+        .thenCompose { lineaFinalizedBlockNumber ->
+          val prevFinalizedBlockNumber = lastFinalizationRef.get()
+          lastFinalizationRef.set(lineaFinalizedBlockNumber.toULong())
+          if (prevFinalizedBlockNumber != lineaFinalizedBlockNumber.toULong()) {
+            finalizationHandler(lineaFinalizedBlockNumber.toULong()).thenApply { Unit }
+          } else {
+            CompletableFuture.completedFuture(Unit)
+          }
         }
-      }
-      .toSafeFuture()
+        .toSafeFuture()
+    }
   }
 
   override fun handleError(error: Throwable) {

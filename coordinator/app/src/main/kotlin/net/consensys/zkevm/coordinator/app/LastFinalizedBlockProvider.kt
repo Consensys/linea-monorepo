@@ -36,46 +36,32 @@ class L1BasedLastFinalizedBlockProvider(
   override fun getLastFinalizedBlock(): SafeFuture<ULong> {
     lineaRollupSmartContractWeb3jClient.setDefaultBlockParameter(DefaultBlockParameterName.LATEST)
 
+    val lastObservedBlock = AtomicReference<BigInteger>(null)
+    val numberOfObservations = AtomicInteger(1)
+    val isConsistentEnough = { lastPolledBlockNumber: BigInteger ->
+      if (lastPolledBlockNumber == lastObservedBlock.get()) {
+        numberOfObservations.incrementAndGet().toUInt() >= consistentNumberOfBlocksOnL1
+      } else {
+        log.info(
+          "Rollup finalized block updated from {} to {}, waiting {} blocks for confirmation",
+          lastObservedBlock.get(),
+          lastPolledBlockNumber,
+          consistentNumberOfBlocksOnL1
+        )
+        numberOfObservations.set(1)
+        lastObservedBlock.set(lastPolledBlockNumber)
+        false
+      }
+    }
+
     return AsyncRetryer.retry(
       vertx,
       maxRetries = numberOfRetries.toInt(),
-      backoffDelay = pollingInterval
+      backoffDelay = pollingInterval,
+      stopRetriesPredicate = isConsistentEnough
     ) {
       SafeFuture.of(lineaRollupSmartContractWeb3jClient.currentL2BlockNumber().sendAsync())
     }
-      .thenCompose { blockNumber ->
-        log.info(
-          "Rollup lastFinalizedBlockNumber={} waiting {} blocks for confirmation for no updates",
-          blockNumber,
-          consistentNumberOfBlocksOnL1
-        )
-        val lastObservedBlock = AtomicReference(blockNumber)
-        val numberOfObservations = AtomicInteger(1)
-        val isConsistentEnough = { lastPolledBlockNumber: BigInteger ->
-          if (lastPolledBlockNumber == lastObservedBlock.get()) {
-            numberOfObservations.incrementAndGet().toUInt() >= consistentNumberOfBlocksOnL1
-          } else {
-            log.info(
-              "Rollup finalized block updated from {} to {}, waiting {} blocks for confirmation",
-              blockNumber,
-              lastPolledBlockNumber,
-              consistentNumberOfBlocksOnL1
-            )
-            numberOfObservations.set(1)
-            lastObservedBlock.set(lastPolledBlockNumber)
-            false
-          }
-        }
-
-        AsyncRetryer.retry(
-          vertx,
-          maxRetries = numberOfRetries.toInt(),
-          backoffDelay = pollingInterval,
-          stopRetriesPredicate = isConsistentEnough
-        ) {
-          SafeFuture.of(lineaRollupSmartContractWeb3jClient.currentL2BlockNumber().sendAsync())
-        }
-      }
       .thenApply { it.toULong() }
   }
 }
