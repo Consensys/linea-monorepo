@@ -38,14 +38,14 @@ fun main() {
   )
 
   // Sepolia Blocks
-  val startBlockNumber = 924_973UL
+  val startBlockNumber = 930_973UL
 //  val startBlockNumber = 5_099_599UL
   // Mainnet Blocks
 //  val startBlockNumber = 10_000_308UL
   runCatching {
     fetcherAndValidate.fetchAndValidateBlocks(
       startBlockNumber = startBlockNumber,
-      endBlockNumber = startBlockNumber + 1_000_000U,
+      endBlockNumber = startBlockNumber + 100_000U,
 //      endBlockNumber = startBlockNumber + 0u,
       chuckSize = 1_000U,
       rlpEncodingDecodingOnly = false

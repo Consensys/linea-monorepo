@@ -19,16 +19,17 @@ import org.assertj.core.api.Assertions.fail
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.jvm.optionals.getOrNull
-import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Duration.Companion.milliseconds
 
+// 100MB, much larger than a real blob, but just for testing to allow faster testing by compressing more blocks
+val BLOB_COMPRESSOR_SIZE: UInt = 100u * 1024u * 1024U
 class BlockEncodingValidator(
   val vertx: Vertx,
   val compressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_0_1,
   val decompressorVersion: BlobDecompressorVersion = BlobDecompressorVersion.V1_1_0,
-  val blobSizeLimitBytes: UInt = 1024u * 1024U, // 1MB, much larger than a real blob, but just for testing
+  val blobSizeLimitBytes: UInt = BLOB_COMPRESSOR_SIZE,
   val log: Logger = LogManager.getLogger(BlockEncodingValidator::class.java)
-) : PeriodicPollingService(vertx, pollingIntervalMs = 1.seconds.inWholeMilliseconds, log = log) {
+) : PeriodicPollingService(vertx, pollingIntervalMs = 1.milliseconds.inWholeMilliseconds, log = log) {
 
   val compressor = GoBackedBlobCompressor.getInstance(compressorVersion, blobSizeLimitBytes)
   val decompressor = GoNativeBlobDecompressorFactory.getInstance(decompressorVersion)
@@ -83,6 +84,7 @@ class BlockEncodingValidator(
       CommonDomainFunctions.blockIntervalString(blocks.first().number, blocks.last().number)
     )
     val besuBlocks = blocks.map { it.toBesu() }
+    val originalBlockInterval = CommonDomainFunctions.blockIntervalString(blocks.first().number, blocks.last().number)
     return rlpEncoder.encodeAsync(besuBlocks)
       .thenCompose { encodedBlocks ->
         encodedBlocks.forEach { compressor.appendBlock(it) }
@@ -94,7 +96,8 @@ class BlockEncodingValidator(
       }.thenApply { decompressedBlocks ->
         assertThat(decompressedBlocks.size).isEqualTo(besuBlocks.size)
           .withFailMessage(
-            "decompressedBlocks.size=${decompressedBlocks.size} != originalBlocks.size=${besuBlocks.size}"
+            // this can happen if not all blocks fit into compressor limit
+            "originalBlocks=$originalBlockInterval decompressedBlocks.size=${decompressedBlocks.size} != "
           )
         decompressedBlocks.zip(besuBlocks).forEach { (decompressed, original) ->
           runCatching {
@@ -161,8 +164,7 @@ fun assertBlock(
       } else {
         assertThat(decompressedTx.gasPrice).isEqualTo(originalTx.gasPrice)
       }
-      // FIXME: tmp work around until decompressor is fixed
-      originalTx.to.getOrNull()?.let { assertThat(decompressedTx.to.getOrNull()).isEqualTo(it) }
+      assertThat(decompressedTx.to).isEqualTo(originalTx.to)
       assertThat(decompressedTx.value).isEqualTo(originalTx.value)
       assertThat(decompressedTx.accessList).isEqualTo(originalTx.accessList)
       assertThat(decompressedTx.payload).isEqualTo(originalTx.payload)
