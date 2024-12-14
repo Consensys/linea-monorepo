@@ -2,6 +2,7 @@ package smartvectors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/rand"
 
 	"github.com/consensys/gnark/frontend"
@@ -27,7 +28,8 @@ type SmartVector interface {
 	// Len returns the length of the SmartVector
 	Len() int
 	// Get returns an entry of the SmartVector at particular position
-	Get(int) field.Element
+	Get(int) (field.Element, error)
+	GetExt(int) fext.Element
 	// SubVector returns a subvector of the [SmartVector]. It mirrors slice[start:stop]
 	SubVector(int, int) SmartVector
 	// RotateRight cyclically rotates the SmartVector
@@ -35,6 +37,7 @@ type SmartVector interface {
 	// WriteInSlice writes the SmartVector into a slice. The slice must be just
 	// as large as [Len] otherwise the function will panic
 	WriteInSlice([]field.Element)
+	WriteInSliceExt([]fext.Element)
 	// Pretty returns a prettified version of the vector, useful for debugging.
 	Pretty() string
 	// DeepCopy returns a deep-copy of the SmartVector which can be freely
@@ -42,7 +45,8 @@ type SmartVector interface {
 	DeepCopy() SmartVector
 	// IntoRegVecSaveAlloc converts a smart-vector into a normal vec. The
 	// implementation minimizes then number of copies
-	IntoRegVecSaveAlloc() []field.Element
+	IntoRegVecSaveAlloc() ([]field.Element, error)
+	IntoRegVecSaveAllocExt() []fext.Element
 }
 
 // AllocateRegular returns a newly allocated smart-vector

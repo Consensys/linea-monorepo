@@ -2,6 +2,7 @@ package smartvectors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -54,8 +55,14 @@ func (r *Rotated) Len() int {
 }
 
 // Returns a particular element of the vector
-func (r *Rotated) Get(n int) field.Element {
+func (r *Rotated) Get(n int) (field.Element, error) {
 	return r.v.Get(utils.PositiveMod(n+r.offset, r.Len()))
+}
+
+// Returns a particular element of the vector
+func (r *Rotated) GetExt(n int) fext.Element {
+	temp, _ := r.v.Get(utils.PositiveMod(n+r.offset, r.Len()))
+	return *new(fext.Element).SetFromBase(&temp)
 }
 
 // Returns a particular element. The subvector is taken at indices
@@ -130,6 +137,14 @@ func (r *Rotated) WriteInSlice(s []field.Element) {
 	res.WriteInSlice(s)
 }
 
+func (r *Rotated) WriteInSliceExt(s []fext.Element) {
+	temp := rotatedAsRegular(r)
+	for i := 0; i < temp.Len(); i++ {
+		elem, _ := temp.Get(i)
+		s[i].SetFromBase(&elem)
+	}
+}
+
 func (r *Rotated) Pretty() string {
 	return fmt.Sprintf("Rotated[%v, %v]", r.v.Pretty(), r.offset)
 }
@@ -140,8 +155,17 @@ func rotatedAsRegular(r *Rotated) *Regular {
 	return r.SubVector(0, r.Len()).(*Regular)
 }
 
-func (r *Rotated) IntoRegVecSaveAlloc() []field.Element {
-	return *rotatedAsRegular(r)
+func (r *Rotated) IntoRegVecSaveAlloc() ([]field.Element, error) {
+	return *rotatedAsRegular(r), nil
+}
+
+func (r *Rotated) IntoRegVecSaveAllocExt() []fext.Element {
+	temp := *rotatedAsRegular(r)
+	res := make([]fext.Element, temp.Len())
+	for i := 0; i < temp.Len(); i++ {
+		res[i].SetFromBase(&temp[i])
+	}
+	return res
 }
 
 // SoftRotate converts v into a [SmartVector] representing the same

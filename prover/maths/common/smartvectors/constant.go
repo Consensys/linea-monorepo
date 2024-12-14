@@ -2,6 +2,7 @@ package smartvectors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -25,7 +26,9 @@ func NewConstant(val field.Element, length int) *Constant {
 func (c *Constant) Len() int { return c.length }
 
 // Returns an entry of the constant
-func (c *Constant) Get(int) field.Element { return c.val }
+func (c *Constant) Get(int) (field.Element, error) { return c.val, nil }
+
+func (c *Constant) GetExt(int) fext.Element { return *new(fext.Element).SetFromBase(&c.val) }
 
 // Returns a subvector
 func (c *Constant) SubVector(start, stop int) SmartVector {
@@ -54,6 +57,12 @@ func (c *Constant) WriteInSlice(s []field.Element) {
 	}
 }
 
+func (c *Constant) WriteInSliceExt(s []fext.Element) {
+	for i := 0; i < len(s); i++ {
+		s[i].SetFromBase(&c.val)
+	}
+}
+
 func (c *Constant) Val() field.Element {
 	return c.val
 }
@@ -66,6 +75,16 @@ func (c *Constant) DeepCopy() SmartVector {
 	return NewConstant(c.val, c.length)
 }
 
-func (c *Constant) IntoRegVecSaveAlloc() []field.Element {
-	return IntoRegVec(c)
+func (c *Constant) IntoRegVecSaveAlloc() ([]field.Element, error) {
+	return IntoRegVec(c), nil
+}
+
+func (c *Constant) IntoRegVecSaveAllocExt() []fext.Element {
+	temp := IntoRegVec(c)
+	res := make([]fext.Element, len(temp))
+	for i := 0; i < len(temp); i++ {
+		elem := temp[i]
+		res[i].SetFromBase(&elem)
+	}
+	return res
 }

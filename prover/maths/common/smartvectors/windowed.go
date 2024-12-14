@@ -2,6 +2,7 @@ package smartvectors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -47,14 +48,19 @@ func (p *PaddedCircularWindow) Len() int {
 }
 
 // Returns a queries position
-func (p *PaddedCircularWindow) Get(n int) field.Element {
+func (p *PaddedCircularWindow) Get(n int) (field.Element, error) {
 	// Check if the queried index is in the window
 	posFromWindowsPoV := utils.PositiveMod(n-p.offset, p.totLen)
 	if posFromWindowsPoV < len(p.window) {
-		return p.window[posFromWindowsPoV]
+		return p.window[posFromWindowsPoV], nil
 	}
 	// Else, return the padding value
-	return p.paddingVal
+	return p.paddingVal, nil
+}
+
+func (p *PaddedCircularWindow) GetExt(n int) fext.Element {
+	elem, _ := p.Get(n)
+	return *new(fext.Element).SetFromBase(&elem)
 }
 
 // Extract a subvector from p[start:stop), the subvector cannot "roll-over".
@@ -178,6 +184,16 @@ func (p *PaddedCircularWindow) WriteInSlice(buff []field.Element) {
 	}
 }
 
+func (p *PaddedCircularWindow) WriteInSliceExt(buff []fext.Element) {
+	temp := make([]field.Element, len(buff))
+	p.WriteInSlice(temp)
+	for i := 0; i < len(buff); i++ {
+		elem := temp[i]
+		buff[i].SetFromBase(&elem)
+	}
+
+}
+
 func (p *PaddedCircularWindow) Pretty() string {
 	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.totLen, p.offset, p.paddingVal.String(), vector.Prettify(p.window))
 }
@@ -236,7 +252,8 @@ func processWindowedOnly(op operator, svecs []SmartVector, coeffs_ []int) (res S
 	if smallestCover.isFullCircle() {
 		for i, svec := range svecs {
 			if _, ok := svec.(*PaddedCircularWindow); ok {
-				svecs[i] = NewRegular(svec.IntoRegVecSaveAlloc())
+				temp, _ := svec.IntoRegVecSaveAlloc()
+				svecs[i] = NewRegular(temp)
 			}
 		}
 		return nil, 0
@@ -319,6 +336,16 @@ func (w *PaddedCircularWindow) DeepCopy() SmartVector {
 
 // Converts a smart-vector into a normal vec. The implementation minimizes
 // then number of copies.
-func (w *PaddedCircularWindow) IntoRegVecSaveAlloc() []field.Element {
-	return IntoRegVec(w)
+func (w *PaddedCircularWindow) IntoRegVecSaveAlloc() ([]field.Element, error) {
+	return IntoRegVec(w), nil
+}
+
+func (w *PaddedCircularWindow) IntoRegVecSaveAllocExt() []fext.Element {
+	temp, _ := w.IntoRegVecSaveAlloc()
+	res := make([]fext.Element, len(temp))
+	for i := 0; i < len(temp); i++ {
+		elem := temp[i]
+		res[i].SetFromBase(&elem)
+	}
+	return res
 }

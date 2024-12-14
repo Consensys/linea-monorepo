@@ -323,5 +323,21 @@ func (littleEndian) String() string { return "LittleEndian" }
 // 0 ≤ x, y < 2²⁵³
 // |xC|, |yC| < 2⁶³
 func (z *Element) linearComb(x *Element, xC int64, y *Element, yC int64) {
+	var e1, e2 Element
+	e1.Set(x)
+	e2.Set(y)
+	var i int64
+	for i = 0; i < xC-1; i++ {
+		e1.Add(&e1, x)
+	}
+	for i = 0; i < yC-1; i++ {
+		e2.Add(&e1, y)
+	}
+	z.Add(&e1, &e2)
+}
 
+func (z *Element) SetFromBase(x *fr.Element) *Element {
+	z.A0.Set(x)
+	z.A1.SetZero()
+	return z
 }
