@@ -8,6 +8,8 @@ volumes:
     name: "linea-mainnet-besu"
   linea-mainnet-erigon:
     name: "linea-mainnet-erigon"
+  linea-mainnet-nethermind:
+    name: "linea-mainnet-nethermind"
 
 services:
   # Geth initialization
@@ -76,7 +78,7 @@ services:
       - ./besu-genesis.json:/var/lib/besu/genesis.json:ro
       - ../config/linea-besu-sequencer/log4j.xml:/var/lib/besu/log4j.xml
       - ./static-nodes.json:/var/lib/besu/static-nodes.json
-      - linea-mainnet-besu:/data
+      - linea-mainnet-besu:/data                                                                                       
 
   # Erigon initialization
   erigon-init:
@@ -135,4 +137,4 @@ services:
       - 8545:8545
       - 8008:8008
     volumes:
-      - linea-mainnet:/nethermind/nethermind_db
+      - linea-mainnet-nethermind:/nethermind/nethermind_db
