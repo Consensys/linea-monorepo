@@ -262,7 +262,11 @@ public class CallFrame {
             frame -> {
               frame.getsReverted = true;
               if (!frame.selfReverts) {
-                frame.revertStamp = parentRevertStamp;
+                if (frame.revertStamp == 0) {
+                  frame.revertStamp = parentRevertStamp;
+                } else if (frame.revertStamp > parentRevertStamp) {
+                  frame.revertStamp = parentRevertStamp;
+                }
               }
               frame.revertChildren(callStack, parentRevertStamp);
             });
