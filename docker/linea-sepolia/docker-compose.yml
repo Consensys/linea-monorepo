@@ -8,6 +8,8 @@ volumes:
     name: "linea-sepolia-besu"
   linea-sepolia-erigon:
     name: "linea-sepolia-erigon"
+  linea-sepolia-nethermind:
+    name: "linea-sepolia-nethermind"
 
 services:
   # Geth initialization
@@ -138,4 +140,4 @@ services:
       - 8545:8545
       - 8008:8008
     volumes:
-      - linea-sepolia:/nethermind/nethermind_db
+      - linea-sepolia-nethermind:/nethermind/nethermind_db
