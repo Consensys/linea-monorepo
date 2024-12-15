@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.fragment.account;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.hub.Trace.MULTIPLIER___DOM_SUB_STAMPS;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
@@ -173,7 +174,8 @@ public final class AccountFragment
         new EphemeralAccount(oldState.address(), oldState.deploymentNumber());
     if (effectiveSelfDestructMap.containsKey(ephemeralAccount)) {
       final int selfDestructTime = effectiveSelfDestructMap.get(ephemeralAccount);
-      markedForSelfDestruct = hubStamp > selfDestructTime;
+      markedForSelfDestruct =
+          domSubStampsSubFragment.domStamp() > MULTIPLIER___DOM_SUB_STAMPS * selfDestructTime;
       markedForSelfDestructNew = hubStamp >= selfDestructTime;
     } else {
       markedForSelfDestruct = false;
