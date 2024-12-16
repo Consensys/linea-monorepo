@@ -14,7 +14,7 @@ fun configureLoggers(loggerConfigs: List<Pair<String, Level>>) {
 }
 
 fun main() {
-  val rplUrl = run {
+  val rpcUrl = run {
     "https://linea-sepolia.infura.io/v3/${System.getenv("INFURA_PROJECT_ID")}"
 //    "https://linea-mainnet.infura.io/v3/${System.getenv("INFURA_PROJECT_ID")}"
   }
@@ -25,7 +25,7 @@ fun main() {
   }
   val fetcherAndValidate =
     FetchAndValidationRunner(
-      rpcUrl = rplUrl,
+      rpcUrl = rpcUrl,
       vertx = vertx,
       log = LogManager.getLogger("test.validator")
     )
