@@ -23,7 +23,7 @@ object "DynamicBytecode" {
 
             function doExternalCallsAndMStore8(){
                 
-                // Using a random function on an EOA for all calls other than the embedded staticcall in the verbatim code to the precome
+                // Using a random function on an EOA for all calls other than the embedded staticcall in the verbatim code to the precompile
                 // - should be a successful call for all.
 
                 let callSelector := 0xfed44325
