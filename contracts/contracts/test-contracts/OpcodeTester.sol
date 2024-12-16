@@ -196,20 +196,20 @@ contract OpcodeTester {
 
     // it should fail
     if (success) {
-      revert("externalRevert Failed");
+      revert("Error: externalRevert did not revert");
     }
 
     (success, ) = address(errorAndDestructingContract).staticcall(abi.encodeWithSignature("externalRevert()"));
 
     // it should fail
     if (success) {
-      revert("externalRevert Failed");
+      revert("Error: externalRevert did not revert");
     }
 
     (success, ) = address(errorAndDestructingContract).call(abi.encodeWithSignature("callmeToSelfDestruct()"));
     // it should succeed
     if (!success) {
-      revert("callmeToSelfDestruct Failed");
+      revert("Error: revertcallmeToSelfDestruct Failed");
     }
 
     (success, ) = yulContract.call(abi.encodeWithSignature("executeAll()"));
@@ -219,44 +219,49 @@ contract OpcodeTester {
   }
 
   function incrementOpcodeExecutions() private {
-    // 0x00 - 0x1D
-    for (uint16 i = 0x0000; i <= 0x1D; i++) {
+    // 0x0000 - 0x000B
+    for (uint16 i = 0x0000; i <= 0x000B; i += 0x0001) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
     }
 
-    // 0x20 - 0x20
+    // 0x0010 - 0x001D
+    for (uint16 i = 0x0010; i <= 0x001D; i += 0x0001) {
+      opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
+    }
+
+    // 0x0020 - 0x000
     opcodeExecutions[KECCAK256] = opcodeExecutions[KECCAK256] + 1;
 
-    // 0x30 - 0x48
-    for (uint16 i = 0x0030; i <= 0x48; i++) {
+    // 0x0030 - 0x0048
+    for (uint16 i = 0x0030; i <= 0x0048; i += 0x0001) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
     }
 
-    // 0x50 - 0x5B
-    for (uint16 i = 0x0050; i <= 0x5B; i++) {
+    // 0x0050 - 0x005B
+    for (uint16 i = 0x0050; i <= 0x005B; i += 0x0001) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
     }
 
-    // 0x60 - 0x9F
-    for (uint16 i = 0x0060; i <= 0x9F; i++) {
+    // 0x0060 - 0x009F
+    for (uint16 i = 0x0060; i <= 0x009F; i += 0x0001) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
     }
 
-    // 0xA0 - 0xA4
-    for (uint16 i = 0x00A0; i <= 0xA4; i++) {
+    // 0x00A0 - 0x00A4
+    for (uint16 i = 0x00A0; i <= 0x00A4; i += 0x0001) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
     }
 
-    // 0xF0 - 0xF5
-    for (uint16 i = 0x00F0; i <= 0xF5; i++) {
+    // 0x00F0 - 0x00F5
+    for (uint16 i = 0x00F0; i <= 0x00F5; i += 0x0001) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
     }
 
-    // 0xFA
+    // 0x00FA
     opcodeExecutions[STATICCALL] = opcodeExecutions[STATICCALL] + 1;
 
-    // 0xFD - 0xFF
-    for (uint16 i = 0x00FD; i <= 0xFF; i++) {
+    // 0x00FD - 0x00FF
+    for (uint16 i = 0x00FD; i <= 0x00FF; i += 0x0001) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
     }
   }
