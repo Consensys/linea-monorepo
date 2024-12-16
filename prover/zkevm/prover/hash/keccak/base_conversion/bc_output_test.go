@@ -1,7 +1,7 @@
 package base_conversion
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -78,11 +78,11 @@ func (b *hashBaseConversion) assignInputs(run *wizard.ProverRuntime) {
 		for row := 0; row < size; row++ {
 			// generate a random value in baseB
 			// #nosec G404 -- we don't need a cryptographic PRNG for testing purposes
-			rng := rand.New(rand.NewSource(int64(row * j)))
+			rng := rand.New(utils.NewRandSource(int64(row * j)))
 			// #nosec G404 -- we don't need a cryptographic PRNG for testing purposes
-			rngm := rand.New(rand.NewSource(int64((row + 3) * j)))
-			n := rng.Intn(max) + 1
-			m := rngm.Intn(max) + 1
+			rngm := rand.New(utils.NewRandSource(int64((row + 3) * j)))
+			n := rng.IntN(max) + 1
+			m := rngm.IntN(max) + 1
 			sliceHiB[j].PushInt(n)
 			sliceLoB[j].PushInt(m)
 		}
