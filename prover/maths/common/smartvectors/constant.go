@@ -47,7 +47,7 @@ func (c *Constant) SubVector(start, stop int) SmartVector {
 		utils.Panic("zero length are not allowed")
 	}
 	assertCorrectBound(start, c.length)
-	// The +1 is because we accept if "stop = length"
+	// The +1 is because we accept if "Stop = length"
 	assertCorrectBound(stop, c.length+1)
 	return NewConstant(c.val, stop-start)
 }

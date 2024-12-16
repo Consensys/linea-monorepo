@@ -74,7 +74,7 @@ func (r *Rotated) Get(n int) field.Element {
 }
 
 // Returns a particular element. The subvector is taken at indices
-// [start, stop). (stop being excluded from the span)
+// [Start, Stop). (Stop being excluded from the span)
 func (r *Rotated) SubVector(start, stop int) SmartVector {
 
 	if stop+r.offset < len(r.v.Regular) && start+r.offset > 0 {
@@ -88,16 +88,16 @@ func (r *Rotated) SubVector(start, stop int) SmartVector {
 
 	// checking
 	if stop <= start {
-		utils.Panic("the start %v >= stop %v", start, stop)
+		utils.Panic("the Start %v >= Stop %v", start, stop)
 	}
 
 	// boundary checks
 	if start < 0 {
-		utils.Panic("the start value was negative %v", start)
+		utils.Panic("the Start value was negative %v", start)
 	}
 
 	if stop > size {
-		utils.Panic("the stop is OOO : %v (the length is %v)", stop, size)
+		utils.Panic("the Stop is OOO : %v (the length is %v)", stop, size)
 	}
 
 	// normalize the offset to something positive [0: size)

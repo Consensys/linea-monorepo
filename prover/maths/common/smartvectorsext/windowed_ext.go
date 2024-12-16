@@ -3,10 +3,9 @@ package smartvectorsext
 import (
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -118,8 +117,8 @@ func (p *PaddedCircularWindowExt) SubVector(start, stop int) smartvectors.SmartV
 
 	n := p.Len()
 	b := stop - start
-	c := normalize(p.interval().start(), start, n)
-	d := normalize(p.interval().stop(), start, n)
+	c := normalize(p.interval().Start(), start, n)
+	d := normalize(p.interval().Stop(), start, n)
 
 	// Case 1 : return a ConstantExt vector
 	if b <= c && c < d {
@@ -155,7 +154,7 @@ func (p *PaddedCircularWindowExt) SubVector(start, stop int) smartvectors.SmartV
 
 		// The deep-copy of left ensures that we do not append
 		// on the same concrete slice.
-		w := append(vector.DeepCopy(left), right...)
+		w := append(vectorext.DeepCopy(left), right...)
 		return NewPaddedCircularWindowExt(w, p.paddingVal, c, b)
 	}
 
@@ -174,11 +173,15 @@ func (p *PaddedCircularWindowExt) SubVector(start, stop int) smartvectors.SmartV
 }
 
 // Rotate the vector
-func (p *PaddedCircularWindowExt) RotateRight(offset int) SmartVector {
-	return NewPaddedCircularWindowExt(vector.DeepCopy(p.window), p.paddingVal, p.offset+offset, p.totLen)
+func (p *PaddedCircularWindowExt) RotateRight(offset int) smartvectors.SmartVector {
+	return NewPaddedCircularWindowExt(vectorext.DeepCopy(p.window), p.paddingVal, p.offset+offset, p.totLen)
 }
 
-func (p *PaddedCircularWindowExt) WriteInSlice(buff []fext.Element) {
+func (p *PaddedCircularWindowExt) WriteInSlice(buff []field.Element) {
+	panic(conversionError)
+}
+
+func (p *PaddedCircularWindowExt) WriteInSliceExt(buff []fext.Element) {
 	assertHasLength(len(buff), p.totLen)
 
 	for i := range p.window {
@@ -192,22 +195,12 @@ func (p *PaddedCircularWindowExt) WriteInSlice(buff []fext.Element) {
 	}
 }
 
-func (p *PaddedCircularWindowExt) WriteInSliceExt(buff []fext.Element) {
-	temp := make([]fext.Element, len(buff))
-	p.WriteInSlice(temp)
-	for i := 0; i < len(buff); i++ {
-		elem := temp[i]
-		buff[i].SetFromBase(&elem)
-	}
-
-}
-
 func (p *PaddedCircularWindowExt) Pretty() string {
-	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.totLen, p.offset, p.paddingVal.String(), vector.Prettify(p.window))
+	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.totLen, p.offset, p.paddingVal.String(), vectorext.Prettify(p.window))
 }
 
-func (p *PaddedCircularWindowExt) interval() smartvectors.circularInterval {
-	return ivalWithStartLen(p.offset, len(p.window), p.totLen)
+func (p *PaddedCircularWindowExt) interval() smartvectors.CircularInterval {
+	return smartvectors.IvalWithStartLen(p.offset, len(p.window), p.totLen)
 }
 
 // normalize converts the (circle) coordinator x to another coordinate by changing
@@ -233,7 +226,7 @@ func processWindowedOnly(op operator, svecs []smartvectors.SmartVector, coeffs_ 
 	// First we compute the union windows.
 	length := svecs[0].Len()
 	windows := []PaddedCircularWindowExt{}
-	intervals := []circularInterval{}
+	intervals := []smartvectors.CircularInterval{}
 	coeffs := []int{}
 
 	// Gather all the windows into a slice
@@ -253,14 +246,14 @@ func processWindowedOnly(op operator, svecs []smartvectors.SmartVector, coeffs_ 
 	}
 
 	// has the dimension of the cover with garbage values in it
-	smallestCover := smallestCoverInterval(intervals)
+	smallestCover := smartvectors.SmallestCoverInterval(intervals)
 
 	// Edge-case: in case the smallest-cover of the pcw found in svecs is the
 	// full-circle the code below will not work as it assumes that is possible
-	if smallestCover.isFullCircle() {
+	if smallestCover.IsFullCircle() {
 		for i, svec := range svecs {
 			if _, ok := svec.(*PaddedCircularWindowExt); ok {
-				temp, _ := svec.IntoRegVecSaveAlloc()
+				temp := svec.IntoRegVecSaveAllocExt()
 				svecs[i] = NewRegularExt(temp)
 			}
 		}
@@ -270,16 +263,16 @@ func processWindowedOnly(op operator, svecs []smartvectors.SmartVector, coeffs_ 
 	// Sanity-check : normally all offset are normalized, this should ensure that start
 	// is positive. This is critical here because if some of the offset are not normalized
 	// then we may end up with a union windows that does not make sense.
-	if smallestCover.start() < 0 {
-		utils.Panic("All offset should be normalized, but start is %v", smallestCover.start())
+	if smallestCover.Start() < 0 {
+		utils.Panic("All offset should be normalized, but start is %v", smallestCover.Start())
 	}
 
 	// Ensures we do not reuse an input vector here to limit the risk of overwriting one
 	// of the input. This can happen if there is only a single window or if one windows
 	// covers all the other.
-	unionWindow := make([]fext.Element, smallestCover.intervalLen)
+	unionWindow := make([]fext.Element, smallestCover.IntervalLen)
 	var paddedTerm fext.Element
-	offset := smallestCover.start()
+	offset := smallestCover.Start()
 
 	/*
 		Now we actually compute the linear combinations for all offsets
@@ -290,8 +283,8 @@ func processWindowedOnly(op operator, svecs []smartvectors.SmartVector, coeffs_ 
 		interval := intervals[i]
 
 		// Find the intersection with the larger window
-		start_ := normalize(interval.start(), offset, length)
-		stop_ := normalize(interval.stop(), offset, length)
+		start_ := normalize(interval.Start(), offset, length)
+		stop_ := normalize(interval.Stop(), offset, length)
 		if stop_ == 0 {
 			stop_ = length
 		}
@@ -303,8 +296,8 @@ func processWindowedOnly(op operator, svecs []smartvectors.SmartVector, coeffs_ 
 			op.vecIntoTerm(unionWindow[start_:stop_], pcw.window, coeffs[i])
 			// #nosec G601 -- Deliberate pass by reference. (We trust the pointed object is not mutated)
 			op.constIntoTerm(&paddedTerm, &pcw.paddingVal, coeffs[i])
-			vector.Fill(unionWindow[:start_], paddedTerm)
-			vector.Fill(unionWindow[stop_:], paddedTerm)
+			vectorext.Fill(unionWindow[:start_], paddedTerm)
+			vectorext.Fill(unionWindow[stop_:], paddedTerm)
 			continue
 		}
 
@@ -330,22 +323,22 @@ func processWindowedOnly(op operator, svecs []smartvectors.SmartVector, coeffs_ 
 		op.constIntoVec(unionWindow[stop_:], &pcw.paddingVal, coeffs[i])
 	}
 
-	if smallestCover.isFullCircle() {
+	if smallestCover.IsFullCircle() {
 		return NewRegularExt(unionWindow), numMatches
 	}
 
 	return NewPaddedCircularWindowExt(unionWindow, paddedTerm, offset, length), numMatches
 }
 
-func (w *PaddedCircularWindowExt) DeepCopy() SmartVector {
-	window := vector.DeepCopy(w.window)
+func (w *PaddedCircularWindowExt) DeepCopy() smartvectors.SmartVector {
+	window := vectorext.DeepCopy(w.window)
 	return NewPaddedCircularWindowExt(window, w.paddingVal, w.offset, w.totLen)
 }
 
 // Converts a smart-vector into a normal vec. The implementation minimizes
 // then number of copies.
-func (w *PaddedCircularWindowExt) IntoRegVecSaveAlloc() ([]fext.Element, error) {
-	return IntoRegVec(w), nil
+func (w *PaddedCircularWindowExt) IntoRegVecSaveAlloc() ([]field.Element, error) {
+	return nil, fmt.Errorf(conversionError)
 }
 
 func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocExt() []fext.Element {

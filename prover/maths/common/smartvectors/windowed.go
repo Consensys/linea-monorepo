@@ -71,16 +71,16 @@ func (r *PaddedCircularWindow) Get(n int) field.Element {
 	return res
 }
 
-// Extract a subvector from p[start:stop), the subvector cannot "roll-over".
-// i.e, we enforce that start < stop
+// Extract a subvector from p[Start:Stop), the subvector cannot "roll-over".
+// i.e, we enforce that Start < Stop
 func (p *PaddedCircularWindow) SubVector(start, stop int) SmartVector {
-	// negative start value is not allowed
+	// negative Start value is not allowed
 	if start < 0 {
-		panic("negative start value is not allowed")
+		panic("negative Start value is not allowed")
 	}
 	// Sanity checks for all subvectors
 	assertCorrectBound(start, p.totLen)
-	// The +1 is because we accept if "stop = length"
+	// The +1 is because we accept if "Stop = length"
 	assertCorrectBound(stop, p.totLen+1)
 
 	if start > stop {
@@ -118,8 +118,8 @@ func (p *PaddedCircularWindow) SubVector(start, stop int) SmartVector {
 
 	n := p.Len()
 	b := stop - start
-	c := normalize(p.interval().start(), start, n)
-	d := normalize(p.interval().stop(), start, n)
+	c := normalize(p.interval().Start(), start, n)
+	d := normalize(p.interval().Stop(), start, n)
 
 	// Case 1 : return a constant vector
 	if b <= c && c < d {
@@ -206,8 +206,8 @@ func (p *PaddedCircularWindow) Pretty() string {
 	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.totLen, p.offset, p.paddingVal.String(), vector.Prettify(p.window))
 }
 
-func (p *PaddedCircularWindow) interval() circularInterval {
-	return ivalWithStartLen(p.offset, len(p.window), p.totLen)
+func (p *PaddedCircularWindow) interval() CircularInterval {
+	return IvalWithStartLen(p.offset, len(p.window), p.totLen)
 }
 
 // normalize converts the (circle) coordinator x to another coordinate by changing
@@ -233,7 +233,7 @@ func processWindowedOnly(op operator, svecs []SmartVector, coeffs_ []int) (res S
 	// First we compute the union windows.
 	length := svecs[0].Len()
 	windows := []PaddedCircularWindow{}
-	intervals := []circularInterval{}
+	intervals := []CircularInterval{}
 	coeffs := []int{}
 
 	// Gather all the windows into a slice
@@ -253,11 +253,11 @@ func processWindowedOnly(op operator, svecs []SmartVector, coeffs_ []int) (res S
 	}
 
 	// has the dimension of the cover with garbage values in it
-	smallestCover := smallestCoverInterval(intervals)
+	smallestCover := SmallestCoverInterval(intervals)
 
 	// Edge-case: in case the smallest-cover of the pcw found in svecs is the
 	// full-circle the code below will not work as it assumes that is possible
-	if smallestCover.isFullCircle() {
+	if smallestCover.IsFullCircle() {
 		for i, svec := range svecs {
 			if _, ok := svec.(*PaddedCircularWindow); ok {
 				temp, _ := svec.IntoRegVecSaveAlloc()
@@ -267,19 +267,19 @@ func processWindowedOnly(op operator, svecs []SmartVector, coeffs_ []int) (res S
 		return nil, 0
 	}
 
-	// Sanity-check : normally all offset are normalized, this should ensure that start
+	// Sanity-check : normally all offset are normalized, this should ensure that Start
 	// is positive. This is critical here because if some of the offset are not normalized
 	// then we may end up with a union windows that does not make sense.
-	if smallestCover.start() < 0 {
-		utils.Panic("All offset should be normalized, but start is %v", smallestCover.start())
+	if smallestCover.Start() < 0 {
+		utils.Panic("All offset should be normalized, but Start is %v", smallestCover.Start())
 	}
 
 	// Ensures we do not reuse an input vector here to limit the risk of overwriting one
 	// of the input. This can happen if there is only a single window or if one windows
 	// covers all the other.
-	unionWindow := make([]field.Element, smallestCover.intervalLen)
+	unionWindow := make([]field.Element, smallestCover.IntervalLen)
 	var paddedTerm field.Element
-	offset := smallestCover.start()
+	offset := smallestCover.Start()
 
 	/*
 		Now we actually compute the linear combinations for all offsets
@@ -290,8 +290,8 @@ func processWindowedOnly(op operator, svecs []SmartVector, coeffs_ []int) (res S
 		interval := intervals[i]
 
 		// Find the intersection with the larger window
-		start_ := normalize(interval.start(), offset, length)
-		stop_ := normalize(interval.stop(), offset, length)
+		start_ := normalize(interval.Start(), offset, length)
+		stop_ := normalize(interval.Stop(), offset, length)
 		if stop_ == 0 {
 			stop_ = length
 		}
@@ -308,10 +308,10 @@ func processWindowedOnly(op operator, svecs []SmartVector, coeffs_ []int) (res S
 			continue
 		}
 
-		// sanity-check : start and stop are consistent with the size of pcw
+		// sanity-check : Start and Stop are consistent with the size of pcw
 		if stop_-start_ != len(pcw.window) {
 			utils.Panic(
-				"sanity-check failed. The renormalized coordinates (start=%v, stop=%v) are inconsistent with pcw : (len=%v)",
+				"sanity-check failed. The renormalized coordinates (Start=%v, Stop=%v) are inconsistent with pcw : (len=%v)",
 				start_, stop_, len(pcw.window),
 			)
 		}
@@ -330,7 +330,7 @@ func processWindowedOnly(op operator, svecs []SmartVector, coeffs_ []int) (res S
 		op.constIntoVec(unionWindow[stop_:], &pcw.paddingVal, coeffs[i])
 	}
 
-	if smallestCover.isFullCircle() {
+	if smallestCover.IsFullCircle() {
 		return NewRegular(unionWindow), numMatches
 	}
 

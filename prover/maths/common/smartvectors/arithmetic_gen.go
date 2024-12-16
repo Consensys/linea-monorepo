@@ -134,17 +134,17 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...mempoo
 		length := len(regvec)
 
 		// The windows rolls over
-		if interval.doesWrapAround() {
-			op.vecTermIntoVec(regvec[:interval.stop()], windowRes.window[length-interval.start():])
-			op.vecTermIntoVec(regvec[interval.start():], windowRes.window[:length-interval.start()])
-			op.constTermIntoVec(regvec[interval.stop():interval.start()], &windowRes.paddingVal)
+		if interval.DoesWrapAround() {
+			op.vecTermIntoVec(regvec[:interval.Stop()], windowRes.window[length-interval.Start():])
+			op.vecTermIntoVec(regvec[interval.Start():], windowRes.window[:length-interval.Start()])
+			op.constTermIntoVec(regvec[interval.Stop():interval.Start()], &windowRes.paddingVal)
 			return regularRes
 		}
 
 		// Else, no roll-over
-		op.vecTermIntoVec(regvec[interval.start():interval.stop()], windowRes.window)
-		op.constTermIntoVec(regvec[:interval.start()], &windowRes.paddingVal)
-		op.constTermIntoVec(regvec[interval.stop():], &windowRes.paddingVal)
+		op.vecTermIntoVec(regvec[interval.Start():interval.Stop()], windowRes.window)
+		op.constTermIntoVec(regvec[:interval.Start()], &windowRes.paddingVal)
+		op.constTermIntoVec(regvec[interval.Stop():], &windowRes.paddingVal)
 		return regularRes
 	}
 }

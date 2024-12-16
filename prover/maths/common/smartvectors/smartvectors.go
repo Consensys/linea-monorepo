@@ -31,7 +31,7 @@ type SmartVector interface {
 	GetBase(int) (field.Element, error)
 	Get(int) field.Element
 	GetExt(int) fext.Element
-	// SubVector returns a subvector of the [SmartVector]. It mirrors slice[start:stop]
+	// SubVector returns a subvector of the [SmartVector]. It mirrors slice[Start:Stop]
 	SubVector(int, int) SmartVector
 	// RotateRight cyclically rotates the SmartVector
 	RotateRight(int) SmartVector

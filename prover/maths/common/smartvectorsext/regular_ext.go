@@ -118,7 +118,7 @@ func processRegularExtOnly(op operator, svecs []smartvectors.SmartVector, coeffs
 		svec := svecs[i]
 		// In case the current vec is Rotated, we reduce it to a regular form
 		// NB : this could use the pool.
-		if rot, ok := svec.(*smartvectors.Rotated); ok {
+		if rot, ok := svec.(*RotatedExt); ok {
 			svec = rotatedAsRegular(rot)
 		}
 
@@ -126,7 +126,7 @@ func processRegularExtOnly(op operator, svecs []smartvectors.SmartVector, coeffs
 			svec = &pooled.Regular
 		}
 
-		if reg, ok := svec.(*smartvectors.Regular); ok {
+		if reg, ok := svec.(*RegularExt); ok {
 			numMatches++
 			// For the first one, we can save by just copying the result
 			// Importantly, we do not need to assume that regRes is originally
