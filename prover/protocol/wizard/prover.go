@@ -691,6 +691,43 @@ func (run *ProverRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.Loc
 	return run.QueriesParams.MustGet(name).(query.LocalOpeningParams)
 }
 
+// AssignLogDerivSum assign the claimed values for a logDeriveSum
+// The function will panic if:
+//   - the parameters were already assigned
+//   - the specified query is not registered
+//   - the assignment round is incorrect
+func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y field.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewLogDerivSumParams(y)
+	run.QueriesParams.InsertNew(name, params)
+}
+
+// GetLogDeriveSum gets the metadata of a [query.LogDerivativeSum] query. Panic if not found.
+func (run *ProverRuntime) GetLogDeriveSum(name ifaces.QueryID) query.LogDerivativeSum {
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+	return run.Spec.QueriesParams.Data(name).(query.LogDerivativeSum)
+}
+
+// GetLogDerivSumParams returns the parameters of [query.LogDerivativeSum]
+func (run *ProverRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
+
+	// Global prover's lock for accessing params
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams)
+}
+
 // GetParams generically extracts the parameters of a query. Will panic if no
 // parameters are found
 func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {

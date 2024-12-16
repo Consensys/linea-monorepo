@@ -25,6 +25,10 @@ type LogDerivativeSumInput struct {
 
 // LogDerivativeSum is the context of LogDerivativeSum query.
 // The fields are maps from [round, size].
+// the aim of the query is to compute:
+// \sum_{i,j} N_{i,j}/D_{i,j} where
+// N_{i,j} is  the i-th element of the underlying column of  j-th Numerator
+// D_{i,j} is  the i-th element of the underlying column of  j-th Denominator
 type LogDerivativeSum struct {
 	Inputs map[[2]int]*LogDerivativeSumInput
 
@@ -78,7 +82,7 @@ func (r LogDerivativeSum) Name() ifaces.QueryID {
 }
 
 // Constructor for the query parameters/result
-func NewLogDeriveSumParams(sum field.Element) LogDerivSumParams {
+func NewLogDerivSumParams(sum field.Element) LogDerivSumParams {
 	return LogDerivSumParams{Sum: sum}
 }
 
@@ -126,7 +130,10 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 
 // Test that global sum is correct
 func (r LogDerivativeSum) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-
+	/*params := run.GetParams(r.ID).(GnarkLogDerivSumParams)
+	actualY := TBD
+	api.AssertIsEqual(params.Y, actualY)
+	*/
 }
 
 func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvectors.SmartVector {
