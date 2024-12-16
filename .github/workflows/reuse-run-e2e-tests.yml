@@ -76,7 +76,7 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
-    runs-on: [self-hosted, ubuntu-20.04, X64, large]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     steps:
       - name: Setup upterm session
         if: ${{ inputs.e2e-tests-with-ssh }}
