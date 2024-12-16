@@ -183,34 +183,9 @@ contract OpcodeTester {
   function executeAllOpcodes() public payable {
     executeExternalCalls();
 
-    saveOpcodeSuccess();
+    incrementOpcodeExecutions();
 
     storeRollingGlobalVariablesToState();
-  }
-
-  function storeRollingGlobalVariablesToState() private {
-    bytes memory fieldsToHashSection1 = abi.encode(
-      rollingBlockDetailComputations,
-      blockhash(block.number - 1),
-      block.basefee,
-      block.chainid,
-      block.coinbase,
-      block.difficulty
-    );
-
-    bytes memory fieldsToHashSection2 = abi.encode(
-      block.gaslimit,
-      block.number,
-      block.difficulty,
-      block.timestamp,
-      gasleft()
-    );
-
-    bytes memory fieldsToHashSection3 = abi.encode(msg.data, msg.sender, msg.sig, msg.value, tx.gasprice, tx.origin);
-
-    rollingBlockDetailComputations = keccak256(
-      bytes.concat(bytes.concat(fieldsToHashSection1, fieldsToHashSection2), fieldsToHashSection3)
-    );
   }
 
   function executeExternalCalls() private {
@@ -284,5 +259,30 @@ contract OpcodeTester {
     for (uint16 i = 0x00FD; i <= 0xFF; i++) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
     }
+  }
+
+  function storeRollingGlobalVariablesToState() private {
+    bytes memory fieldsToHashSection1 = abi.encode(
+      rollingBlockDetailComputations,
+      blockhash(block.number - 1),
+      block.basefee,
+      block.chainid,
+      block.coinbase,
+      block.difficulty
+    );
+
+    bytes memory fieldsToHashSection2 = abi.encode(
+      block.gaslimit,
+      block.number,
+      block.difficulty,
+      block.timestamp,
+      gasleft()
+    );
+
+    bytes memory fieldsToHashSection3 = abi.encode(msg.data, msg.sender, msg.sig, msg.value, tx.gasprice, tx.origin);
+
+    rollingBlockDetailComputations = keccak256(
+      bytes.concat(bytes.concat(fieldsToHashSection1, fieldsToHashSection2), fieldsToHashSection3)
+    );
   }
 }
