@@ -487,7 +487,7 @@ fetchNext() is called after clearing and when a transaction is onSuccess()
 
 ## Description:
 
-Readme technical documentation for deployment. Explains how to deploy the Bruidge ui on prod.
+Readme technical documentation for deployment. Explains how to deploy the Bridge ui on prod.
 
 # Feature:
 
