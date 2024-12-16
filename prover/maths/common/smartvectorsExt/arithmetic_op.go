@@ -4,8 +4,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors/vectorExt"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
-
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // operator represents a mathematical operation that can be performed between
@@ -269,7 +267,7 @@ func (productOp) constIntoTerm(res, x *fext.Element, coeff int) {
 func (productOp) vecIntoTerm(res, x []fext.Element, coeff int) {
 	switch coeff {
 	case 0:
-		vectorExt.Fill(res, field.One())
+		vectorExt.Fill(res, fext.One())
 	case 1:
 		copy(res, x)
 	case 2:
