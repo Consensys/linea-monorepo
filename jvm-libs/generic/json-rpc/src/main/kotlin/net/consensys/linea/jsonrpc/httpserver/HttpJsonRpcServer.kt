@@ -19,7 +19,7 @@ class HttpJsonRpcServer(
 ) : AbstractVerticle() {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private lateinit var httpServer: HttpServer
-  val bindedPort: Int
+  val boundPort: Int
     get() = if (this::httpServer.isInitialized) {
       httpServer.actualPort()
     } else {
@@ -54,5 +54,6 @@ class HttpJsonRpcServer(
 
   override fun stop(endFuture: Promise<Void>) {
     httpServer.close(endFuture)
+    super.stop(endFuture)
   }
 }
