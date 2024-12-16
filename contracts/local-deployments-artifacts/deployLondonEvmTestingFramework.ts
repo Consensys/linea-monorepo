@@ -27,8 +27,6 @@ async function deployLondonEvmYul(wallet: ethers.Wallet, provider: ethers.JsonRp
 
   console.log(`londonEvmYulAddress deployed: address=${londonEvmYulAddress} chainId=${chainId}`);
 
-  process.env.OPCODE_TEST_CONTRACT_ADDRESS = londonEvmYulAddress;
-
   return londonEvmYulAddress;
 }
 
