@@ -7,6 +7,7 @@ import (
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
@@ -308,7 +309,7 @@ func (z zAssignmentTask) run(run *wizard.ProverRuntime) {
 
 			var (
 				numeratorMetadata = z.ZNumeratorBoarded[frag].ListVariableMetadata()
-				denominator       = wizardutils.EvalExprColumn(run, z.ZDenominatorBoarded[frag]).IntoRegVecSaveAlloc()
+				denominator       = column.EvalExprColumn(run, z.ZDenominatorBoarded[frag]).IntoRegVecSaveAlloc()
 				numerator         []field.Element
 				packedZ           = field.BatchInvert(denominator)
 			)
@@ -318,7 +319,7 @@ func (z zAssignmentTask) run(run *wizard.ProverRuntime) {
 			}
 
 			if len(numeratorMetadata) > 0 {
-				numerator = wizardutils.EvalExprColumn(run, z.ZNumeratorBoarded[frag]).IntoRegVecSaveAlloc()
+				numerator = column.EvalExprColumn(run, z.ZNumeratorBoarded[frag]).IntoRegVecSaveAlloc()
 			}
 
 			for k := range packedZ {

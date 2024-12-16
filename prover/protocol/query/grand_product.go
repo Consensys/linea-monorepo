@@ -1,9 +1,12 @@
 package query
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -22,8 +25,8 @@ type GrandProductParams struct {
 	Y field.Element
 }
 
-func NewGrandProduct(round int, id ifaces.QueryID, numerators, denominators []*symbolic.Expression) GrandProduct {
-	return GrandProduct{
+func NewGrandProduct(round int, id ifaces.QueryID, numerators, denominators []*symbolic.Expression) *GrandProduct {
+	return &GrandProduct{
 		ID:           id,
 		Numerators:   numerators,
 		Denominators: denominators,
@@ -45,7 +48,7 @@ func (gp GrandProductParams) UpdateFS(fs *fiatshamir.State) {
 	fs.Update(gp.Y)
 }
 
-func (g GrandProduct) Check(run ifaces.Runtime) error {
+func (g *GrandProduct) Check(run ifaces.Runtime) error {
 	var (
 		numNumerators   = len(g.Numerators)
 		numDenominators = len(g.Denominators)
@@ -59,12 +62,24 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 	for j := 0; j < numDenominators; j++ {
 		denProd = symbolic.Mul(denProd, g.Denominators[j])
 	}
-	// params := run.GetParams(g.ID).(GrandProductParams)
-	// numProdWit := wizardutils.EvalExprColumn(run, numProd.Board()).IntoRegVecSaveAlloc()
-	// denProdWit := wizardutils.EvalExprColumn(run, denProd.Board()).IntoRegVecSaveAlloc()
-	// if numProdWit != denProdWit*params.Y {
-	// 	return fmt.Errorf("the grand product query %v is not satisfied, numProd = %v, denProd = %v, witness = %v", g.ID, numProdWit, denProdWit, params.Y)
-	// }
+	params := run.GetParams(g.ID).(GrandProductParams)
+	numProdFrVec := column.EvalExprColumn(run, numProd.Board()).IntoRegVecSaveAlloc()
+	denProdFrVec := column.EvalExprColumn(run, denProd.Board()).IntoRegVecSaveAlloc()
+	numProdFr := numProdFrVec[0]
+	denProdFr := denProdFrVec[0]
+	if len(numProdFrVec) > 1 {
+		for i := 1; i < len(numProdFrVec); i++ {
+			numProdFr.Mul(&numProdFr, &numProdFrVec[i])
+		}
+	}
+	if len(numProdFrVec) > 1 {
+		for j := 1; j < len(denProdFrVec); j++ {
+			denProdFr.Mul(&denProdFr, &denProdFrVec[j])
+		}
+	}
+	if numProdFr != *denProdFr.Mul(&denProdFr, &params.Y) {
+		return fmt.Errorf("the grand product query %v is not satisfied, numProd = %v, denProd = %v, witness = %v", g.ID, numProdFr, denProdFr, params.Y)
+	}
 
 	return nil
 }

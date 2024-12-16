@@ -698,6 +698,7 @@ func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 }
 
 // AssignGrandProduct assigns the value \prod(num)/\prod(den)
+// The function will panic if:
 //   - the parameters were already assigned
 //   - the specified query is not registered
 //   - the assignment round is incorrect

@@ -1,4 +1,4 @@
-package permutation
+package dist_permutation
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
