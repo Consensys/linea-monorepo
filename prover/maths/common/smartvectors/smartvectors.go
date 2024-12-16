@@ -28,7 +28,8 @@ type SmartVector interface {
 	// Len returns the length of the SmartVector
 	Len() int
 	// Get returns an entry of the SmartVector at particular position
-	Get(int) (field.Element, error)
+	GetBase(int) (field.Element, error)
+	Get(int) field.Element
 	GetExt(int) fext.Element
 	// SubVector returns a subvector of the [SmartVector]. It mirrors slice[start:stop]
 	SubVector(int, int) SmartVector
@@ -91,10 +92,10 @@ func IntoRegVec(s SmartVector) []field.Element {
 // IntoGnarkAssignment converts a smart-vector into a gnark assignment
 func IntoGnarkAssignment(sv SmartVector) []frontend.Variable {
 	res := make([]frontend.Variable, sv.Len())
-	_, err := sv.Get(0)
+	_, err := sv.GetBase(0)
 	if err == nil {
 		for i := range res {
-			elem, _ := sv.Get(i)
+			elem, _ := sv.GetBase(i)
 			res[i] = elem
 		}
 	} else {
@@ -204,7 +205,7 @@ func WindowExt(v SmartVector) []fext.Element {
 	case *Regular:
 		temp := make([]fext.Element, len(*w))
 		for i := 0; i < len(*w); i++ {
-			elem, _ := w.Get(i)
+			elem, _ := w.GetBase(i)
 			temp[i].SetFromBase(&elem)
 		}
 		return temp

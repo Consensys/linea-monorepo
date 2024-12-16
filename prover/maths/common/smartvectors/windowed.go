@@ -48,7 +48,7 @@ func (p *PaddedCircularWindow) Len() int {
 }
 
 // Returns a queries position
-func (p *PaddedCircularWindow) Get(n int) (field.Element, error) {
+func (p *PaddedCircularWindow) GetBase(n int) (field.Element, error) {
 	// Check if the queried index is in the window
 	posFromWindowsPoV := utils.PositiveMod(n-p.offset, p.totLen)
 	if posFromWindowsPoV < len(p.window) {
@@ -59,8 +59,16 @@ func (p *PaddedCircularWindow) Get(n int) (field.Element, error) {
 }
 
 func (p *PaddedCircularWindow) GetExt(n int) fext.Element {
-	elem, _ := p.Get(n)
+	elem, _ := p.GetBase(n)
 	return *new(fext.Element).SetFromBase(&elem)
+}
+
+func (r *PaddedCircularWindow) Get(n int) field.Element {
+	res, err := r.GetBase(n)
+	if err != nil {
+		panic(err)
+	}
+	return res
 }
 
 // Extract a subvector from p[start:stop), the subvector cannot "roll-over".

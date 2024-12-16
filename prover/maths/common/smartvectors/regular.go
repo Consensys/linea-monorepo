@@ -25,10 +25,18 @@ func NewRegular(v []field.Element) *Regular {
 func (r *Regular) Len() int { return len(*r) }
 
 // Returns a particular element of the vector
-func (r *Regular) Get(n int) (field.Element, error) { return (*r)[n], nil }
+func (r *Regular) GetBase(n int) (field.Element, error) { return (*r)[n], nil }
 
 func (r *Regular) GetExt(n int) fext.Element {
 	return *new(fext.Element).SetFromBase(&(*r)[n])
+}
+
+func (r *Regular) Get(n int) field.Element {
+	res, err := r.GetBase(n)
+	if err != nil {
+		panic(err)
+	}
+	return res
 }
 
 // Returns a subvector of the regular
@@ -81,7 +89,7 @@ func (r *Regular) WriteInSlice(s []field.Element) {
 func (r *Regular) WriteInSliceExt(s []fext.Element) {
 	assertHasLength(len(s), len(*r))
 	for i := 0; i < len(s); i++ {
-		elem, _ := r.Get(i)
+		elem, _ := r.GetBase(i)
 		s[i].SetFromBase(&elem)
 	}
 }
@@ -155,7 +163,7 @@ func (r *Regular) IntoRegVecSaveAlloc() ([]field.Element, error) {
 func (r *Regular) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := make([]fext.Element, r.Len())
 	for i := 0; i < r.Len(); i++ {
-		elem, _ := r.Get(i)
+		elem, _ := r.GetBase(i)
 		temp[i].SetFromBase(&elem)
 	}
 	return temp

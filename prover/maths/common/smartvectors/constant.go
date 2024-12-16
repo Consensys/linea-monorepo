@@ -26,9 +26,17 @@ func NewConstant(val field.Element, length int) *Constant {
 func (c *Constant) Len() int { return c.length }
 
 // Returns an entry of the constant
-func (c *Constant) Get(int) (field.Element, error) { return c.val, nil }
+func (c *Constant) GetBase(int) (field.Element, error) { return c.val, nil }
 
 func (c *Constant) GetExt(int) fext.Element { return *new(fext.Element).SetFromBase(&c.val) }
+
+func (r *Constant) Get(n int) field.Element {
+	res, err := r.GetBase(n)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
 
 // Returns a subvector
 func (c *Constant) SubVector(start, stop int) SmartVector {

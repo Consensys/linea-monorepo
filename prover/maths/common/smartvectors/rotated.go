@@ -55,14 +55,22 @@ func (r *Rotated) Len() int {
 }
 
 // Returns a particular element of the vector
-func (r *Rotated) Get(n int) (field.Element, error) {
-	return r.v.Get(utils.PositiveMod(n+r.offset, r.Len()))
+func (r *Rotated) GetBase(n int) (field.Element, error) {
+	return r.v.GetBase(utils.PositiveMod(n+r.offset, r.Len()))
 }
 
 // Returns a particular element of the vector
 func (r *Rotated) GetExt(n int) fext.Element {
-	temp, _ := r.v.Get(utils.PositiveMod(n+r.offset, r.Len()))
+	temp, _ := r.v.GetBase(utils.PositiveMod(n+r.offset, r.Len()))
 	return *new(fext.Element).SetFromBase(&temp)
+}
+
+func (r *Rotated) Get(n int) field.Element {
+	res, err := r.GetBase(n)
+	if err != nil {
+		panic(err)
+	}
+	return res
 }
 
 // Returns a particular element. The subvector is taken at indices
@@ -140,7 +148,7 @@ func (r *Rotated) WriteInSlice(s []field.Element) {
 func (r *Rotated) WriteInSliceExt(s []fext.Element) {
 	temp := rotatedAsRegular(r)
 	for i := 0; i < temp.Len(); i++ {
-		elem, _ := temp.Get(i)
+		elem, _ := temp.GetBase(i)
 		s[i].SetFromBase(&elem)
 	}
 }
