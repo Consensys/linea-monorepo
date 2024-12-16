@@ -209,10 +209,7 @@ contract OpcodeTester {
     bytes memory fieldsToHashSection3 = abi.encode(msg.data, msg.sender, msg.sig, msg.value, tx.gasprice, tx.origin);
 
     rollingBlockDetailComputations = keccak256(
-      abi.encode(
-        rollingBlockDetailComputations,
-        bytes.concat(bytes.concat(fieldsToHashSection1, fieldsToHashSection2), fieldsToHashSection3)
-      )
+      bytes.concat(bytes.concat(fieldsToHashSection1, fieldsToHashSection2), fieldsToHashSection3)
     );
   }
 
