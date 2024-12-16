@@ -3,6 +3,7 @@ package query_test
 import (
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -33,6 +34,7 @@ func TestGrandProduct(t *testing.T) {
 
 	prove := func(run *wizard.ProverRuntime) {
 		runS = run
+		runS.AssignGrandProduct("G", field.One())
 	}
 
 	var (

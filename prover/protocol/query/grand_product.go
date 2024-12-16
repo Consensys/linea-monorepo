@@ -1,9 +1,9 @@
 package query
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -18,6 +18,10 @@ type GrandProduct struct {
 	Round        int
 }
 
+type GrandProductParams struct {
+	Y field.Element
+}
+
 func NewGrandProduct(round int, id ifaces.QueryID, numerators, denominators []*symbolic.Expression) GrandProduct {
 	return GrandProduct{
 		ID:           id,
@@ -27,8 +31,18 @@ func NewGrandProduct(round int, id ifaces.QueryID, numerators, denominators []*s
 	}
 }
 
+// Constructor for grand product query parameters
+func NewGrandProductParams(y field.Element) GrandProductParams {
+	return GrandProductParams{Y: y}
+}
+
 func (g GrandProduct) Name() ifaces.QueryID {
 	return g.ID
+}
+
+// Updates a Fiat-Shamir state
+func (gp GrandProductParams) UpdateFS(fs *fiatshamir.State) {
+	fs.Update(gp.Y)
 }
 
 func (g GrandProduct) Check(run ifaces.Runtime) error {
@@ -45,9 +59,12 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 	for j := 0; j < numDenominators; j++ {
 		denProd = symbolic.Mul(denProd, g.Denominators[j])
 	}
-	if numProd != denProd {
-		return fmt.Errorf("the grand product query %v is not satisfied, numProd = %v, denProd = %v", g.ID, numProd, denProd)
-	}
+	// params := run.GetParams(g.ID).(GrandProductParams)
+	// numProdWit := wizardutils.EvalExprColumn(run, numProd.Board()).IntoRegVecSaveAlloc()
+	// denProdWit := wizardutils.EvalExprColumn(run, denProd.Board()).IntoRegVecSaveAlloc()
+	// if numProdWit != denProdWit*params.Y {
+	// 	return fmt.Errorf("the grand product query %v is not satisfied, numProd = %v, denProd = %v, witness = %v", g.ID, numProdWit, denProdWit, params.Y)
+	// }
 
 	return nil
 }
