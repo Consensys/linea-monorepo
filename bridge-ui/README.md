@@ -128,7 +128,7 @@ docker run -p 3000:3000 linea/bridge-ui
 
 Frontend should be available at: http://localhost:3000
 
-### End to end tests
+### End-to-end tests
 
 E2E tests are run in the CI but can also be run locally.  
 Make sure `E2E_TEST_PRIVATE_KEY` .env (The private key used needs to have some sepolia ETH, USDC and WETH to run the tests)
