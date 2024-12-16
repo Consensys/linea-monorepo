@@ -1,4 +1,4 @@
-package mempool
+package mempoolext
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"

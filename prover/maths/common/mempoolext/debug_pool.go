@@ -1,4 +1,4 @@
-package mempool
+package mempoolext
 
 import (
 	"errors"

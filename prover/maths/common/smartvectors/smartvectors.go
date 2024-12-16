@@ -89,6 +89,12 @@ func IntoRegVec(s SmartVector) []field.Element {
 	return res
 }
 
+func IntoRegVecExt(s SmartVector) []fext.Element {
+	res := make([]fext.Element, s.Len())
+	s.WriteInSliceExt(res)
+	return res
+}
+
 // IntoGnarkAssignment converts a smart-vector into a gnark assignment
 func IntoGnarkAssignment(sv SmartVector) []frontend.Variable {
 	res := make([]frontend.Variable, sv.Len())

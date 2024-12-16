@@ -1,7 +1,7 @@
-package smartvectors
+package smartvectorsext
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors/vectorExt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 )
@@ -103,9 +103,9 @@ func (linCombOp) vecIntoVec(res, x []fext.Element, coeff int) {
 	assertHasLength(len(res), len(x))
 	switch coeff {
 	case 1:
-		vectorExt.Add(res, res, x)
+		vectorext.Add(res, res, x)
 	case -1:
-		vectorExt.Sub(res, res, x)
+		vectorext.Sub(res, res, x)
 	case 2:
 		for i := range res {
 			res[i].Add(&res[i], &x[i]).Add(&res[i], &x[i])
@@ -139,7 +139,7 @@ func (linCombOp) vecIntoTerm(term, x []fext.Element, coeff int) {
 			term[i].Neg(&x[i])
 		}
 	case 2:
-		vectorExt.Add(term, x, x)
+		vectorext.Add(term, x, x)
 	case -2:
 		for i := range term {
 			term[i].Add(&x[i], &x[i]).Neg(&term[i])
@@ -175,7 +175,7 @@ func (linCombOp) constTermIntoConst(res, term *fext.Element) {
 }
 
 func (linCombOp) vecTermIntoVec(res, term []fext.Element) {
-	vectorExt.Add(res, res, term)
+	vectorext.Add(res, res, term)
 }
 
 func (linCombOp) constTermIntoVec(res []fext.Element, term *fext.Element) {
@@ -217,7 +217,7 @@ func (productOp) vecIntoVec(res, x []fext.Element, coeff int) {
 	case 0:
 		// Nothing to do
 	case 1:
-		vectorExt.MulElementWise(res, res, x)
+		vectorext.MulElementWise(res, res, x)
 	case 2:
 		for i := range res {
 			res[i].Mul(&res[i], &x[i]).Mul(&res[i], &x[i])
@@ -267,11 +267,11 @@ func (productOp) constIntoTerm(res, x *fext.Element, coeff int) {
 func (productOp) vecIntoTerm(res, x []fext.Element, coeff int) {
 	switch coeff {
 	case 0:
-		vectorExt.Fill(res, fext.One())
+		vectorext.Fill(res, fext.One())
 	case 1:
 		copy(res, x)
 	case 2:
-		vectorExt.MulElementWise(res, x, x)
+		vectorext.MulElementWise(res, x, x)
 	case 3:
 		for i := range res {
 			// Creating a new variable for the case where res and x are the same variable
@@ -294,11 +294,11 @@ func (productOp) constTermIntoConst(res, term *fext.Element) {
 
 // res += term for vectors
 func (productOp) vecTermIntoVec(res, term []fext.Element) {
-	vectorExt.MulElementWise(res, res, term)
+	vectorext.MulElementWise(res, res, term)
 
 }
 
 // res += term where res is a vector and term is a constant
 func (productOp) constTermIntoVec(res []fext.Element, term *fext.Element) {
-	vectorExt.ScalarMul(res, res, *term)
+	vectorext.ScalarMul(res, res, *term)
 }

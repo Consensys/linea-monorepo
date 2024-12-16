@@ -1,6 +1,6 @@
 // vector offers a set of utility function relating to slices of field element
 // and that are commonly used as part of the repo.
-package vectorExt
+package vectorext
 
 import (
 	"fmt"
