@@ -185,7 +185,7 @@ func DecodeTxFromUncompressed(r *bytes.Reader, from *common.Address) (types.TxDa
 func decodeLegacyTx(fields []any, from *common.Address) (types.TxData, error) {
 
 	if len(fields) != 7 {
-		return nil, fmt.Errorf("unexpected number of field")
+		return nil, errors.New("unexpected number of field")
 	}
 
 	tx := new(types.LegacyTx)
@@ -204,7 +204,7 @@ func decodeLegacyTx(fields []any, from *common.Address) (types.TxData, error) {
 func decodeAccessListTx(fields []any, from *common.Address) (types.TxData, error) {
 
 	if len(fields) != 8 {
-		return nil, fmt.Errorf("invalid number of field for a dynamic transaction")
+		return nil, errors.New("invalid number of field for a dynamic transaction")
 	}
 
 	tx := new(types.AccessListTx)
@@ -225,7 +225,7 @@ func decodeAccessListTx(fields []any, from *common.Address) (types.TxData, error
 func decodeDynamicFeeTx(fields []any, from *common.Address) (types.TxData, error) {
 
 	if len(fields) != 9 {
-		return nil, fmt.Errorf("invalid number of field for a dynamic transaction")
+		return nil, errors.New("invalid number of field for a dynamic transaction")
 	}
 
 	tx := new(types.DynamicFeeTx)

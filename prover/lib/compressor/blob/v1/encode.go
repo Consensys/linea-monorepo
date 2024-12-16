@@ -18,11 +18,11 @@ import (
 func EncodeBlockForCompression(block *types.Block, w io.Writer) error {
 
 	if block == nil {
-		return fmt.Errorf("block is nil")
+		return errors.New("block is nil")
 	}
 
 	if block.Transactions() == nil {
-		return fmt.Errorf("block has nil transactions")
+		return errors.New("block has nil transactions")
 	}
 
 	var (
@@ -54,7 +54,7 @@ func EncodeBlockForCompression(block *types.Block, w io.Writer) error {
 // encodeTransaction encodes a single transaction
 func EncodeTxForCompression(tx *types.Transaction, w io.Writer) error {
 	if tx == nil {
-		return fmt.Errorf("transactions is nil")
+		return errors.New("transactions is nil")
 	}
 
 	var (
