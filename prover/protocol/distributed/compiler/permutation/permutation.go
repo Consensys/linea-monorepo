@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/sirupsen/logrus"
 )
 
 /*
@@ -23,14 +24,14 @@ type PermutationIntoGrandProductCtx struct {
 // Return a new PermutationIntoGrandProductCtx with numerator and denominator set as symobilc constant 1
 func newPermutationIntoGrandProductCtx(s Settings) *PermutationIntoGrandProductCtx {
 	permCtx := PermutationIntoGrandProductCtx{}
-	permCtx.numerators = make([]*symbolic.Expression, s.maxNumofQueryPerModule)
-	permCtx.denominators = make([]*symbolic.Expression, s.maxNumofQueryPerModule)
+	permCtx.numerators = make([]*symbolic.Expression, s.MaxNumOfQueryPerModule)
+	permCtx.denominators = make([]*symbolic.Expression, s.MaxNumOfQueryPerModule)
 	return &permCtx
 }
 
 func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 	targetModuleName modulediscoverer.ModuleName,
-	s Settings) {
+	s Settings) *query.GrandProduct {
 	numRounds := initialComp.NumRounds()
 	permCtx := newPermutationIntoGrandProductCtx(s)
 	// Initialise the period separating module discoverer
@@ -52,6 +53,7 @@ func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 				{
 					moduleNameA := disc.FindModule(q_.A[0][0])
 					moduleNameB := disc.FindModule(q_.B[0][0])
+					logrus.Printf("moduleNameA = %v, moduleNameB = %v", moduleNameA, moduleNameB)
 					if moduleNameA == targetModuleName && moduleNameB != targetModuleName {
 						permCtx.push(moduleComp, &q_, i, j, true, false)
 					} else if moduleNameA != targetModuleName && moduleNameB == targetModuleName {
@@ -68,20 +70,15 @@ func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 		}
 	}
 	// Reduce a permutation query into a GrandProduct query
-	moduleComp.InsertGrandProduct(0, ifaces.QueryIDf(string(targetModuleName)), permCtx.numerators, permCtx.denominators)
+	qId := ifaces.QueryIDf(string(targetModuleName)+"GRAND_PRODUCT")
+	return moduleComp.InsertGrandProduct(0, qId, permCtx.numerators, permCtx.denominators)
 }
 
 // The below function does the following:
 // 1. Register beta and alpha (for the random linear combination in case A and B are multi-columns) in the compiledIop
 // 2. Populates the nemerators and the denominators of the grand product query
 func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query.Permutation, round, queryInRound int, isNumerator, isBoth bool) {
-	/*
-		Sanity checks : Mark the query as compiled and make sure that
-		it was not previously compiled.
-	*/
-	if comp.QueriesNoParams.MarkAsIgnored(q.ID) {
-		panic("did not expect that a query no param could be ignored at this stage")
-	}
+	logrus.Printf("queryInRound %d", queryInRound)
 	var (
 		isMultiColumn = len(q.A[0]) > 1
 		alpha         coin.Info
