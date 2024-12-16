@@ -50,8 +50,8 @@ class BlocksFetcher(
 
   fun consumeBlocks(
     startBlockNumber: ULong,
-    chunkSize: UInt = pollingChuckSize,
     endBlockNumber: ULong? = null,
+    chunkSize: UInt = pollingChuckSize,
     consumer: (List<Block>) -> SafeFuture<*>
   ): SafeFuture<*> {
     val lastBlockFetched = AtomicLong(startBlockNumber.toLong() - 1)

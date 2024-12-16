@@ -36,7 +36,7 @@ class TestingJsonRpcServerTest {
       meterRegistry = SimpleMeterRegistry()
     )
     client = rpcClientFactory.createJsonRpcV2Client(
-      endpoints = listOf(URI.create("http://localhost:${jsonRpcServer.bindedPort}")),
+      endpoints = listOf(URI.create("http://localhost:${jsonRpcServer.boundPort}")),
       retryConfig = RequestRetryConfig(
         maxRetries = 10u,
         backoffDelay = 10.milliseconds,

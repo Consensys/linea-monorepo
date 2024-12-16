@@ -23,6 +23,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 // 100MB, much larger than a real blob, but just for testing to allow faster testing by compressing more blocks
 val BLOB_COMPRESSOR_SIZE: UInt = 100u * 1024u * 1024U
+
 class BlockEncodingValidator(
   val vertx: Vertx,
   val compressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_0_1,
@@ -116,7 +117,7 @@ class BlockEncodingValidator(
         highestValidatedBlockNumber.set(highestValidatedBlockNumber.get().coerceAtLeast(blocks.last().number))
         log.info(
           "compression validation blocks={} finished",
-          CommonDomainFunctions.blockIntervalString(blocks.first().number, blocks.last().number)
+          originalBlockInterval
         )
       }
   }

@@ -101,7 +101,7 @@ class BlockCreationMonitorTest {
     blockCreationListener = BlockCreationListenerDouble()
     web3jClient = ExtendedWeb3JImpl(
       createWeb3jHttpClient(
-        rpcUrl = "http://localhost:${fakeL2RpcNode.bindedPort}",
+        rpcUrl = "http://localhost:${fakeL2RpcNode.boundPort}",
         log = LogManager.getLogger("test.client.l2.web3j")
       )
     )

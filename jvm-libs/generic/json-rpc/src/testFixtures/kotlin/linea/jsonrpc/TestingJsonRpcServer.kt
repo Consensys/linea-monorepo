@@ -39,8 +39,8 @@ open class TestingJsonRpcServer(
 ) {
   val log: Logger = LogManager.getLogger(loggerName)
   private var httpServer: HttpJsonRpcServer = createHttpServer(port)
-  val bindedPort: Int
-    get() = httpServer.bindedPort
+  val boundPort: Int
+    get() = httpServer.boundPort
   private var verticleId: String? = null
   private val handlers: MutableMap<String, (JsonRpcRequest) -> Any?> = ConcurrentHashMap()
   private var requests: MutableList<
@@ -82,11 +82,11 @@ open class TestingJsonRpcServer(
 
   fun resumeHttpServer(): Future<Unit> {
     // reuse the same port
-    httpServer = createHttpServer(bindedPort)
+    httpServer = createHttpServer(boundPort)
     return vertx
       .deployVerticle(httpServer, DeploymentOptions().setInstances(1))
       .onSuccess { verticleId: String ->
-        log.info("Http server resumed at port {}", httpServer.bindedPort)
+        log.info("Http server resumed at port {}", httpServer.boundPort)
         this.verticleId = verticleId
       }
       .onFailure { th ->
