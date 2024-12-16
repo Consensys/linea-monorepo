@@ -246,7 +246,7 @@ contract OpcodeTester {
     }
   }
 
-  function saveOpcodeSuccess() private {
+  function incrementOpcodeExecutions() private {
     // 0x00 - 0x1D
     for (uint16 i = 0x0000; i <= 0x1D; i++) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
