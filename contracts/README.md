@@ -91,7 +91,7 @@ If the stack is *already running*, to redeploy the contracts, the following comm
 
 Note: The addresses change per deployment due to nonce increments, so be sure to validate the correct ones are being used.
 
-**NB:** The end to end tests run against a fresh stack and deploy with predetermined addresses.
+**NB:** The end-to-end tests run against a fresh stack and deploy with predetermined addresses.
 
 If there is a need to get predetermined addresses for contract deployments, the following script can be used [precomputeDeployedAddresses.ts](./scripts/operational/precomputeDeployedAddress.ts).
 
@@ -112,7 +112,7 @@ The L2MessageService deploy uses nonce 2 as the following are deployed beforehan
 **Deploying the L1 contracts**
 ```
 # This will deploy the Linea Rollup that is currently deployed on Mainnet - the current version is the LineaRollupV5.
-# Some end to end tests will test future upgrades to validate the stack remains functional.
+# Some end-to-end tests will test future upgrades to validate the stack remains functional.
 
 # Note: By default a test/placeholder verifier contract is used `IntegrationTestTrueVerifier` if you wish to use a proper verifier, adjust the
 # PLONKVERIFIER_NAME=IntegrationTestTrueVerifier in the make command to be something like PLONKVERIFIER_NAME=PlonkVerifierForDataAggregation .
@@ -131,7 +131,7 @@ make deploy-token-bridge-l1
 **Deploying the L2 contracts**
 ```
 # This will deploy the current L2 Message Service.
-# Some end to end tests will test future upgrades to validate the stack remains functional.
+# Some end-to-end tests will test future upgrades to validate the stack remains functional.
 
 make deploy-l2messageservice
 
@@ -152,7 +152,7 @@ The above command will trigger the following commands to deploy:
 - deploy-token-bridge-l2 
 - deploy-l2-test-erc20
 
-Note: the deploy-l1-test-erc20 and deploy-l2-test-erc20 commands are executed for use in the end to end tests.
+Note: the deploy-l1-test-erc20 and deploy-l2-test-erc20 commands are executed for use in the end-to-end tests.
 
 ## Installation and testing
 
