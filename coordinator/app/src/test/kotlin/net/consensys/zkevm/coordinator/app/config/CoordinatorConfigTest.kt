@@ -359,7 +359,7 @@ class CoordinatorConfigTest {
       maxFeePerGasCap = 100000000000u,
       feeHistoryBlockCount = 4U,
       feeHistoryRewardPercentile = 15.0,
-      blocksToFinalization = 2U,
+      blocksToFinalization = 0U,
       lastHashSearchWindow = 25U,
       anchoringReceiptPollingInterval = Duration.parse("PT01S"),
       maxReceiptRetries = 120U
@@ -837,13 +837,14 @@ class CoordinatorConfigTest {
               blobCompressorVersion = BlobCompressorVersion.V1_0_1,
               expectedTracesApiVersionV2 = "v0.8.0-rc8",
               conflationV2 = tracesConfig.conflation.copy(
-                endpoints = listOf(URI("http://traces-node-v2:8545/").toURL())
+                endpoints = listOf(URI("http://traces-node-v2:8545/").toURL()),
+                requestLimitPerEndpoint = 1U
               ),
               countersV2 = TracesConfig.FunctionalityEndpoint(
                 listOf(
                   URI("http://traces-node-v2:8545/").toURL()
                 ),
-                requestLimitPerEndpoint = 2U,
+                requestLimitPerEndpoint = 1U,
                 requestRetry = RequestRetryConfigTomlFriendly(
                   backoffDelay = Duration.parse("PT1S"),
                   failuresWarningThreshold = 2

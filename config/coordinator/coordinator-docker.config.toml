@@ -35,7 +35,7 @@ blob-size-limit=102400 # 100KB
 handler-polling-interval="PT1S"
 # default batches limit is  aggregation-proofs-limit -1
 # batches-limit must be less than or equal to aggregation-proofs-limit-1
-batches-limit=2
+batches-limit=1
 
 [zk-traces]
 eth-api="http://traces-node:8545"
@@ -151,11 +151,11 @@ max-aggregations-to-finalize-per-tick=1
 proof-submission-delay="PT1S"
 
 [proof-aggregation]
-aggregation-proofs-limit=200
-aggregation-deadline="PT20M"
-aggregation-coordinator-polling-interval="PT20S"
-deadline-check-interval="PT20S"
-target-end-blocks=[32,88,100]
+aggregation-proofs-limit=3
+aggregation-deadline="PT1M"
+aggregation-coordinator-polling-interval="PT2S"
+deadline-check-interval="PT8S"
+target-end-blocks=[]
 
 [finalization-signer]
 # Web3j/Web3signer
@@ -267,9 +267,9 @@ storage-period="PT2M"
 
 [conflation]
 blocks-limit=2
-conflation-deadline="P60D" # =3*l2_block_time
-conflation-deadline-check-interval="PT30M"
-conflation-deadline-last-block-confirmation-delay="PT20S" # recommended: at least 2 * blockInterval
+conflation-deadline="PT6S" # =3*l2_block_time
+conflation-deadline-check-interval="PT3S"
+conflation-deadline-last-block-confirmation-delay="PT2S" # recommended: at least 2 * blockInterval
 
 # This is to prevent inflight trasactions that may change Smart contract state while coordinator is restarted.
 # Queries SMC for last finalised block, and keeps polling until this number of blocks observe the same state.
@@ -290,9 +290,3 @@ transactional_pool_size=10
 [persistence-retry]
 #max-retries = 10 commented as can be null
 backoff-delay = "PT1S"
-
-# batches = 1..2, 3..4, 5..6, 7..8, 9..10, 11..12, 13..14, 15..16, 17..18, 19..20, 21..22, 23..24, 25..26, 27..28, 29..30, 31..32, 33..34, 35..36, 37..38
-# blobs = 1..4, 5..8, 9..12, 13..16, 17..20, 21..24, 25..28, 29..32, 33..36, 37..38
-# aggr =
-# 1..32 (8 Blobs)
-# 33..88 (14 Blobs)
