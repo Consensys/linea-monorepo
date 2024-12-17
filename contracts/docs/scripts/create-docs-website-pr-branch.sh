@@ -49,4 +49,4 @@ rm $UPDATE_SIDEBAR_SCRIPT_NAME
 # Git commit and push
 git add .
 git commit -m "$DOCS_REPO_PR_COMMIT_MESSAGE"
-# git push --set-upstream origin $DOCS_REPO_PR_BRANCH_NAME
+git push --set-upstream origin $DOCS_REPO_PR_BRANCH_NAME

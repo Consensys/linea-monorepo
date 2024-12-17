@@ -107,10 +107,10 @@ function createNewSidebarFile(sidebarObject) {
 
 function lintJSFile(filePath) {
   try {
-    const installCmd = `npm i --save-dev eslint`;
+    const installCmd = `npm install --save-dev --no-save eslint`;
     execSync(installCmd, { stdio: "inherit" });
 
-    const lintCmd = `npx eslint --fix ${filePath}`;
+    const lintCmd = `npx eslint --fix --no-ignore ${filePath}`;
     // Execute command synchronously and route output directly to the current stdout
     execSync(lintCmd, { stdio: "inherit" });
   } catch (error) {
