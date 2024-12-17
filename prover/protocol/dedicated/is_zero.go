@@ -2,6 +2,7 @@ package dedicated
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
@@ -44,7 +45,7 @@ func IsZero(comp *wizard.CompiledIOP, c any) (ifaces.Column, wizard.ProverAction
 	case *sym.Expression:
 		board := c1.Board()
 		ctx.c = c1
-		ctx.size = wizardutils.ExprIsOnSameLengthHandles(&board)
+		ctx.size = column.ExprIsOnSameLengthHandles(&board)
 		ctx.round = wizardutils.LastRoundToEval(c1)
 	}
 
@@ -123,13 +124,13 @@ func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *isZeroCtx) {
 // Run implements the [wizard.ProverAction] interface
 func (ctx *isZeroCtx) Run(run *wizard.ProverRuntime) {
 	var (
-		c         = wizardutils.EvalExprColumn(run, ctx.c.Board())
+		c         = column.EvalExprColumn(run, ctx.c.Board())
 		invOrZero = smartvectors.BatchInvert(c)
 		isZero    = smartvectors.IsZero(c)
 	)
 
 	if ctx.mask != nil {
-		mask := wizardutils.EvalExprColumn(run, ctx.mask.Board())
+		mask := column.EvalExprColumn(run, ctx.mask.Board())
 		invOrZero = smartvectors.Mul(invOrZero, mask)
 		isZero = smartvectors.Mul(isZero, mask)
 	}
