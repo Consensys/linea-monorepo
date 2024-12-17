@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { IXPProvider } from "../../src/interfaces/IXPProvider.sol";
+import { IRewardProvider } from "../../src/interfaces/IRewardProvider.sol";
 
-contract XPProviderMock is IXPProvider {
+contract XPProviderMock is IRewardProvider {
     mapping(address => uint256) public userXPShare;
 
     uint256 public totalXPShares;
@@ -16,11 +16,15 @@ contract XPProviderMock is IXPProvider {
         totalXPShares = xp;
     }
 
-    function getUserXPShare(address account) external view override returns (uint256) {
+    function rewardsBalanceOf(address) external pure override returns (uint256) {
+        revert("Not implemented");
+    }
+
+    function rewardsBalanceOfUser(address account) external view override returns (uint256) {
         return userXPShare[account];
     }
 
-    function getTotalXPShares() external view override returns (uint256) {
+    function totalRewardsSupply() external view override returns (uint256) {
         return totalXPShares;
     }
 }

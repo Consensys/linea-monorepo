@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import { Test } from "forge-std/Test.sol";
 import { XPToken } from "../src/XPToken.sol";
 import { XPProviderMock } from "./mocks/XPProviderMock.sol";
-import { IXPProvider } from "../src/interfaces/IXPProvider.sol";
+import { IRewardProvider } from "../src/interfaces/IRewardProvider.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract XPTokenTest is Test {
@@ -25,10 +25,10 @@ contract XPTokenTest is Test {
         provider2 = new XPProviderMock();
 
         vm.prank(owner);
-        xpToken.addXPProvider(provider1);
+        xpToken.addRewardProvider(provider1);
 
         vm.prank(owner);
-        xpToken.addXPProvider(provider2);
+        xpToken.addRewardProvider(provider2);
     }
 
     function testAddXPProviderOnlyOwner() public {
@@ -36,12 +36,12 @@ contract XPTokenTest is Test {
 
         vm.prank(alice);
         vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
-        xpToken.addXPProvider(provider3);
+        xpToken.addRewardProvider(provider3);
 
         vm.prank(owner);
-        xpToken.addXPProvider(provider3);
+        xpToken.addRewardProvider(provider3);
 
-        IXPProvider[] memory providers = xpToken.getXPProviders();
+        IRewardProvider[] memory providers = xpToken.getRewardProviders();
         assertEq(providers.length, 3);
         assertEq(address(providers[0]), address(provider1));
         assertEq(address(providers[1]), address(provider2));
@@ -51,20 +51,20 @@ contract XPTokenTest is Test {
     function testRemoveXPProviderOnlyOwner() public {
         vm.prank(alice);
         vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
-        xpToken.removeXPProvider(0);
+        xpToken.removeRewardProvider(0);
 
         vm.prank(owner);
-        xpToken.removeXPProvider(0);
+        xpToken.removeRewardProvider(0);
 
-        IXPProvider[] memory providers = xpToken.getXPProviders();
+        IRewardProvider[] memory providers = xpToken.getRewardProviders();
         assertEq(providers.length, 1);
         assertEq(address(providers[0]), address(provider2));
     }
 
     function testRemoveXPProviderIndexOutOfBounds() public {
         vm.prank(owner);
-        vm.expectRevert(XPToken.XPProvider__IndexOutOfBounds.selector);
-        xpToken.removeXPProvider(10);
+        vm.expectRevert(XPToken.RewardProvider__IndexOutOfBounds.selector);
+        xpToken.removeRewardProvider(10);
     }
 
     function testTotalSupply() public {

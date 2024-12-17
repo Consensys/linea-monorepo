@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 
 import { Ownable, Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IXPProvider } from "./interfaces/IXPProvider.sol";
+import { IRewardProvider } from "./interfaces/IRewardProvider.sol";
 
 contract XPToken is ERC20, Ownable2Step {
     error XPToken__MintAllowanceExceeded();
@@ -11,28 +11,28 @@ contract XPToken is ERC20, Ownable2Step {
     string public constant NAME = "XP Token";
     string public constant SYMBOL = "XP";
 
-    IXPProvider[] public xpProviders;
+    IRewardProvider[] public rewardProviders;
 
     error XPToken__TransfersNotAllowed();
-    error XPProvider__IndexOutOfBounds();
+    error RewardProvider__IndexOutOfBounds();
 
     constructor() ERC20(NAME, SYMBOL) Ownable(msg.sender) { }
 
-    function addXPProvider(IXPProvider provider) external onlyOwner {
-        xpProviders.push(provider);
+    function addRewardProvider(IRewardProvider provider) external onlyOwner {
+        rewardProviders.push(provider);
     }
 
-    function removeXPProvider(uint256 index) external onlyOwner {
-        if (index >= xpProviders.length) {
-            revert XPProvider__IndexOutOfBounds();
+    function removeRewardProvider(uint256 index) external onlyOwner {
+        if (index >= rewardProviders.length) {
+            revert RewardProvider__IndexOutOfBounds();
         }
 
-        xpProviders[index] = xpProviders[xpProviders.length - 1];
-        xpProviders.pop();
+        rewardProviders[index] = rewardProviders[rewardProviders.length - 1];
+        rewardProviders.pop();
     }
 
-    function getXPProviders() external view returns (IXPProvider[] memory) {
-        return xpProviders;
+    function getRewardProviders() external view returns (IRewardProvider[] memory) {
+        return rewardProviders;
     }
 
     function _totalSupply() public view returns (uint256) {
@@ -68,8 +68,8 @@ contract XPToken is ERC20, Ownable2Step {
     function _externalSupply() internal view returns (uint256) {
         uint256 externalSupply;
 
-        for (uint256 i = 0; i < xpProviders.length; i++) {
-            externalSupply += xpProviders[i].getTotalXPShares();
+        for (uint256 i = 0; i < rewardProviders.length; i++) {
+            externalSupply += rewardProviders[i].totalRewardsSupply();
         }
 
         return externalSupply;
@@ -78,9 +78,9 @@ contract XPToken is ERC20, Ownable2Step {
     function balanceOf(address account) public view override returns (uint256) {
         uint256 externalBalance;
 
-        for (uint256 i = 0; i < xpProviders.length; i++) {
-            IXPProvider provider = xpProviders[i];
-            externalBalance += provider.getUserXPShare(account);
+        for (uint256 i = 0; i < rewardProviders.length; i++) {
+            IRewardProvider provider = rewardProviders[i];
+            externalBalance += provider.rewardsBalanceOfUser(account);
         }
 
         return super.balanceOf(account) + externalBalance;

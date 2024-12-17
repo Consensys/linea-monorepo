@@ -8,6 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { IStakeManager } from "./interfaces/IStakeManager.sol";
 import { IStakeVault } from "./interfaces/IStakeVault.sol";
+import { IRewardProvider } from "./interfaces/IRewardProvider.sol";
 import { TrustedCodehashAccess } from "./TrustedCodehashAccess.sol";
 
 // Rewards Streamer with Multiplier Points
@@ -16,7 +17,8 @@ contract RewardsStreamerMP is
     UUPSUpgradeable,
     IStakeManager,
     TrustedCodehashAccess,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    IRewardProvider
 {
     error StakingManager__InvalidVault();
     error StakingManager__VaultNotRegistered();

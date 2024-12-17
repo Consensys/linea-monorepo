@@ -150,21 +150,21 @@
 | src/XPToken.sol:XPToken contract |                 |       |        |       |         |
 |----------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                  | Deployment Size |       |        |       |         |
-| 1041788                          | 4854            |       |        |       |         |
+| 1040918                          | 4850            |       |        |       |         |
 | Function Name                    | min             | avg   | median | max   | # calls |
-| acceptOwnership                  | 28282           | 28282 | 28282  | 28282 | 1       |
-| addXPProvider                    | 23966           | 57627 | 51088  | 68188 | 44      |
+| acceptOwnership                  | 28260           | 28260 | 28260  | 28260 | 1       |
+| addRewardProvider                | 23967           | 57628 | 51089  | 68189 | 44      |
 | allowance                        | 530             | 530   | 530    | 530   | 2       |
 | approve                          | 410             | 410   | 410    | 410   | 2       |
-| balanceOf                        | 3601            | 11267 | 9601   | 20601 | 6       |
-| getXPProviders                   | 1028            | 3281  | 3281   | 5534  | 4       |
-| mint                             | 24244           | 75876 | 91025  | 91037 | 14      |
-| mintAllowance                    | 5604            | 5641  | 5641   | 5678  | 2       |
-| owner                            | 373             | 1039  | 373    | 2373  | 3       |
-| removeXPProvider                 | 23686           | 28093 | 25801  | 34793 | 6       |
-| totalSupply                      | 2952            | 4952  | 2952   | 10952 | 8       |
+| balanceOf                        | 3647            | 11313 | 9647   | 20647 | 6       |
+| getRewardProviders               | 1051            | 3304  | 3304   | 5557  | 4       |
+| mint                             | 24199           | 75906 | 91068  | 91080 | 14      |
+| mintAllowance                    | 5714            | 5751  | 5751   | 5788  | 2       |
+| owner                            | 340             | 1006  | 340    | 2340  | 3       |
+| removeRewardProvider             | 23685           | 28092 | 25800  | 34792 | 6       |
+| totalSupply                      | 3018            | 5018  | 3018   | 11018 | 8       |
 | transfer                         | 408             | 408   | 408    | 408   | 2       |
-| transferFrom                     | 495             | 495   | 495    | 495   | 2       |
+| transferFrom                     | 517             | 517   | 517    | 517   | 2       |
 | transferOwnership                | 47730           | 47730 | 47730  | 47730 | 1       |
 
 
@@ -221,12 +221,12 @@
 | test/mocks/XPProviderMock.sol:XPProviderMock contract |                 |       |        |       |         |
 |-------------------------------------------------------|-----------------|-------|--------|-------|---------|
 | Deployment Cost                                       | Deployment Size |       |        |       |         |
-| 149299                                                | 472             |       |        |       |         |
+| 177753                                                | 606             |       |        |       |         |
 | Function Name                                         | min             | avg   | median | max   | # calls |
-| getTotalXPShares                                      | 301             | 967   | 301    | 2301  | 72      |
-| getUserXPShare                                        | 501             | 1834  | 2501   | 2501  | 12      |
-| setTotalXPShares                                      | 43630           | 43630 | 43630  | 43630 | 20      |
+| rewardsBalanceOfUser                                  | 524             | 1857  | 2524   | 2524  | 12      |
+| setTotalXPShares                                      | 43652           | 43652 | 43652  | 43652 | 20      |
 | setUserXPShare                                        | 44125           | 44125 | 44125  | 44125 | 4       |
+| totalRewardsSupply                                    | 323             | 989   | 323    | 2323  | 72      |
 
 
 
