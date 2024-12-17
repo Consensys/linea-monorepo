@@ -158,7 +158,7 @@ deploy-l2-evm-opcode-tester:
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/deployLondonEvmTestingFramework.ts
 
-execute-all-opcodes:
+evm-opcode-tester-execute-all-opcodes:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		OPCODE_TEST_CONTRACT_ADDRESS=0x997FC3aF1F193Cbdc013060076c67A13e218980e \
