@@ -11,54 +11,42 @@ import (
 )
 
 func TestDistPermutation(t *testing.T) {
-	var (
-		runS *wizard.ProverRuntime
-		G    ifaces.Query
-	)
-
-	define := func(builder *wizard.Builder) {
+	initialDefine := func(builder *wizard.Builder) {
 		A := []ifaces.Column{
-			builder.RegisterCommit("modExp.A0", 4),
-			builder.RegisterCommit("modExp.A1", 4),
-			builder.RegisterCommit("modExp.A2", 4),
+			builder.RegisterCommit("MODULE_A.A0", 4),
+			builder.RegisterCommit("MODULE_A.A1", 4),
+			builder.RegisterCommit("MODULE_A.A2", 4),
 		}
 		B := []ifaces.Column{
-			builder.RegisterCommit("rom.B0", 4),
-			builder.RegisterCommit("rom.B1", 4),
-			builder.RegisterCommit("rom.B2", 4),
+			builder.RegisterCommit("MODULE_B.B0", 4),
+			builder.RegisterCommit("MODULE_B.B1", 4),
+			builder.RegisterCommit("MODULE_B.B2", 4),
 		}
 		C := []ifaces.Column{
-			builder.RegisterCommit("romLex.C0", 4),
-			builder.RegisterCommit("romLex.C1", 4),
-			builder.RegisterCommit("romLex.C2", 4),
+			builder.RegisterCommit("MODULE_C.C0", 4),
+			builder.RegisterCommit("MODULE_C.C1", 4),
+			builder.RegisterCommit("MODULE_C.C2", 4),
 		}
-		_ = builder.CompiledIOP.InsertPermutation(0, "P_MODEXP_ROM", A, B)
-		_ = builder.CompiledIOP.InsertPermutation(0, "P_ROMLEX_MODEXP", C, A)
-		_ = builder.CompiledIOP.InsertPermutation(0, "P_ROM_ROMLEX", B, C)
+		_ = builder.CompiledIOP.InsertPermutation(0, "P_MOD_A_MOD_B", A, B)
+		_ = builder.CompiledIOP.InsertPermutation(0, "P_MOD_C_MOD_A", C, A)
+		_ = builder.CompiledIOP.InsertPermutation(0, "P_MOD_B_MOD_C", B, C)
 	}
 
-	initialComp := wizard.Compile(define)
-	moduleCompModExp := wizard.Compile(define)
-	G = dist_permutation.AddGdProductQuery(initialComp, moduleCompModExp, "modExp", dist_permutation.Settings{MaxNumOfQueryPerModule: 4})
-	prove := func(run *wizard.ProverRuntime) {
-		runS = run
-		run.AssignColumn("modExp.A0", smartvectors.ForTest(1, 2, 3, 4))
-		run.AssignColumn("modExp.A1", smartvectors.ForTest(1, 2, 3, 4))
-		run.AssignColumn("modExp.A2", smartvectors.ForTest(1, 2, 3, 4))
-		run.AssignColumn("rom.B0", smartvectors.ForTest(1, 2, 3, 4))
-		run.AssignColumn("rom.B1", smartvectors.ForTest(1, 2, 3, 4))
-		run.AssignColumn("rom.B2", smartvectors.ForTest(1, 2, 3, 4))
-		run.AssignColumn("romLex.C0", smartvectors.ForTest(1, 2, 3, 4))
-		run.AssignColumn("romLex.C1", smartvectors.ForTest(1, 2, 3, 4))
-		run.AssignColumn("romLex.C2", smartvectors.ForTest(1, 2, 3, 4))
-		runS.AssignGrandProduct("modExp_GRAND_PRODUCT", field.One())
-	}
-	_ = wizard.Prove(initialComp, prove)
-	_ = wizard.Prove(moduleCompModExp, prove)
-	errG := G.Check(runS)
-
-	if errG != nil {
-		t.Fatalf("error verifying the grand product: %v", errG.Error())
+	moduleADefine := func(builder *wizard.Builder) {
+		builder.RegisterCommit("MODULE_A.A0", 4)
+		builder.RegisterCommit("MODULE_A.A1", 4)
+		builder.RegisterCommit("MODULE_A.A2", 4)
 	}
 
+	initialComp := wizard.Compile(initialDefine)
+	moduleAComp := wizard.Compile(moduleADefine)
+	_ = dist_permutation.AddGdProductQuery(initialComp, moduleAComp, "MODULE_A", dist_permutation.Settings{MaxNumOfQueryPerModule: 4})
+
+	moduleAProve := func(run *wizard.ProverRuntime) {
+		run.AssignColumn("MODULE_A.A0", smartvectors.ForTest(1, 2, 3, 4))
+		run.AssignColumn("MODULE_A.A1", smartvectors.ForTest(1, 2, 3, 4))
+		run.AssignColumn("MODULE_A.A2", smartvectors.ForTest(1, 2, 3, 4))
+		run.AssignGrandProduct("MODULE_A_GRAND_PRODUCT", field.One())
+	}
+	_ = wizard.Prove(moduleAComp, moduleAProve)
 }

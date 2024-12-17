@@ -21,7 +21,7 @@ type PermutationIntoGrandProductCtx struct {
 	denominators []*symbolic.Expression // aimed at storing the expressions Bi + \beta_i for a particular permutation query
 }
 
-// Return a new PermutationIntoGrandProductCtx with numerator and denominator set as symobilc constant 1
+// Returns a new PermutationIntoGrandProductCtx
 func newPermutationIntoGrandProductCtx(s Settings) *PermutationIntoGrandProductCtx {
 	permCtx := PermutationIntoGrandProductCtx{}
 	permCtx.numerators = make([]*symbolic.Expression, s.MaxNumOfQueryPerModule)
@@ -70,7 +70,7 @@ func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 		}
 	}
 	// Reduce a permutation query into a GrandProduct query
-	qId := ifaces.QueryIDf(string(targetModuleName)+"GRAND_PRODUCT")
+	qId := ifaces.QueryIDf(string(targetModuleName) + "_GRAND_PRODUCT")
 	return moduleComp.InsertGrandProduct(0, qId, permCtx.numerators, permCtx.denominators)
 }
 
@@ -83,12 +83,12 @@ func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query
 		isMultiColumn = len(q.A[0]) > 1
 		alpha         coin.Info
 		// beta has to be different for different queries for a perticular round for the soundness of z-packing
-		beta = comp.InsertCoin(round+1, permutation.DeriveName[coin.Name](*q, "BETA_%v", queryInRound), coin.Field)
+		beta = comp.InsertCoin(round, permutation.DeriveName[coin.Name](*q, "BETA_%v", queryInRound), coin.Field)
 	)
 
 	if isMultiColumn {
 		// alpha has to be different for different queries for a perticular round for the soundness of z-packing
-		alpha = comp.InsertCoin(round+1, permutation.DeriveName[coin.Name](*q, "ALPHA_%v", queryInRound), coin.Field)
+		alpha = comp.InsertCoin(round, permutation.DeriveName[coin.Name](*q, "ALPHA_%v", queryInRound), coin.Field)
 
 	}
 	if isNumerator && !isBoth {

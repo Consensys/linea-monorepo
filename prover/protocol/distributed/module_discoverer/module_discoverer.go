@@ -19,7 +19,7 @@ func (p *PeriodSeperatingModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 	p.modules = make(map[ModuleName][]ifaces.Column)
 	numRounds := comp.NumRounds()
 	for i := range numRounds {
-		for _, col := range comp.Columns.AllHandlesAtRound(i) { // Assume comp.Columns exists
+		for _, col := range comp.Columns.AllHandlesAtRound(i) {
 			module := periodLogicToDetermineModule(col)
 			p.modules[module] = append(p.modules[module], col)
 		}

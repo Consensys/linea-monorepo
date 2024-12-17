@@ -78,7 +78,7 @@ func (g *GrandProduct) Check(run ifaces.Runtime) error {
 		}
 	}
 	if numProdFr != *denProdFr.Mul(&denProdFr, &params.Y) {
-		return fmt.Errorf("the grand product query %v is not satisfied, numProd = %v, denProd = %v, witness = %v", g.ID, numProdFr, denProdFr, params.Y)
+		return fmt.Errorf("the grand product query %v is not satisfied, numProd = %v, denProd = %v, param.Y = %v", g.ID, numProdFr, denProdFr, params.Y)
 	}
 
 	return nil
