@@ -6,10 +6,11 @@ const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
 
-const SIDEBAR_FILE_PATH = process.env.SIDEBAR_FILE_PATH ?? "sidebars.js";
+// CONSTANTS
+const SIDEBAR_FILE_PATH = "sidebars.js";
 
-// Get JSON object from sidebar
-const sidebars = require(path.join(__dirname, SIDEBAR_FILE_PATH));
+// IMPORTED OBJECT
+const sidebarObject = require(path.join(__dirname, SIDEBAR_FILE_PATH));
 
 // TYPES
 class FolderSidebar {
@@ -19,17 +20,23 @@ class FolderSidebar {
   collapsible = true;
   items = [];
 
-  constructor(label = "", collapsible = false) {
+  constructor(label = "", collapsible = true) {
     this.label = label;
     this.collapsible = collapsible;
   }
 }
 
 // MAIN
-
 main();
 
 function main() {
+  const smartContractSidebarNode = getSmartContractSidebar();
+  sidebarObject?.apiSidebar?.push(smartContractSidebarNode);
+  createNewSidebarFile(sidebarObject);
+}
+
+// HELPER FUNCTIONS
+function getSmartContractSidebar() {
   // Create and populate smart contract sidebar
   const smartContractsPath = path.join(
     __dirname,
@@ -38,71 +45,74 @@ function main() {
     "linea-smart-contracts",
   );
 
-  let smartContractSidebarNode = new FolderSidebar(
+  let smartContractSidebar = new FolderSidebar(
     "Linea Smart Contracts",
-    true,
+    false,
   );
 
-  smartContractSidebarNode = getFileTree(
-    smartContractSidebarNode,
+  populateFolderSidebar(
+    smartContractSidebar,
     smartContractsPath,
     ".mdx",
   );
 
-  // Push smart contract sidebar to main sidebar object
-  sidebars?.apiSidebar?.push(smartContractSidebarNode);
-
-  // Create new js file
-  const sidebarFileLine1 =
-    "/** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */";
-  const sidebarFileLine2 = "const sidebars =";
-  const sidebarFileLineFinal = "module.exports = sidebars;";
-
-  const newSidebarFileContent = `${sidebarFileLine1}\n${sidebarFileLine2}\n${JSON.stringify(sidebars, null, 2)}\n\n${sidebarFileLineFinal}`;
-
-  // Save new js file
-  const newSidebarFilePath = path.join(__dirname, "sidebar.tmp.js");
-
-  fs.writeFileSync(newSidebarFilePath, newSidebarFileContent);
-
-  // Lint the file
-  lintJSFile(newSidebarFilePath);
+  return smartContractSidebar;
 }
 
-// HELPER FUNCTIONS
-
 // Recursive function to populate sidebar object for a given folder
-function getFileTree(nodePointer, subdirectoryPath, fileExtension) {
-  const subdirectoryFileList = fs.readdirSync(subdirectoryPath);
+// Essentially we do a depth-first search (DFS) of the folder tree, and populate the sidebar object recursively
+// Do note that we mutate the parameter `folderSidebar` throughout the function body
+function populateFolderSidebar(folderSidebar, subdirectoryPath, fileExtension) {
+  const folderFileList = fs.readdirSync(subdirectoryPath);
 
-  for (const fileNode of subdirectoryFileList) {
+  for (const fileNode of folderFileList) {
     const filePath = path.join(subdirectoryPath, fileNode);
     const fileMetadata = fs.statSync(filePath);
 
     // Directory => Create folder node, recurse then add folder node
     if (fileMetadata.isDirectory()) {
       let newFolderNode = new FolderSidebar(fileNode);
-      newFolderNode = getFileTree(newFolderNode, filePath, fileExtension);
-      nodePointer?.items.push(newFolderNode);
+      populateFolderSidebar(newFolderNode, filePath, fileExtension);
+      folderSidebar?.items.push(newFolderNode);
 
-      // Base case *.mdx file => Add relative path
+      // Base case => *.mdx file => Add relative path
     } else if (fileMetadata.isFile() && fileNode.endsWith(fileExtension)) {
       const relativePath = path.relative(
         path.join(__dirname, "docs"),
         filePath.split(fileExtension)[0],
       );
-      nodePointer?.items.push(relativePath);
+      folderSidebar?.items.push(relativePath);
     }
+    // Not a directory or *.mdx file => Do nothing
   }
 
-  return nodePointer;
+  return folderSidebar;
+}
+
+function createNewSidebarFile(sidebarObject) {
+  // Create new js file
+  const sidebarFileLine1 =
+    "/** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */";
+  const sidebarFileLine2 = "const sidebars =";
+  const sidebarFileLineFinal = "module.exports = sidebars;";
+
+  const newSidebarFileContent = `${sidebarFileLine1}\n${sidebarFileLine2}\n${JSON.stringify(sidebarObject, null, 2)}\n\n${sidebarFileLineFinal}`;
+
+  // Save new js file
+  const newSidebarFilePath = path.join(__dirname, SIDEBAR_FILE_PATH);
+  fs.writeFileSync(newSidebarFilePath, newSidebarFileContent);
+
+  lintJSFile(newSidebarFilePath);
 }
 
 function lintJSFile(filePath) {
   try {
-    const cmd = `npx eslint --fix ${filePath}`;
+    const installCmd = `npm i --save-dev eslint`;
+    execSync(installCmd, { stdio: "inherit" });
+
+    const lintCmd = `npx eslint --fix ${filePath}`;
     // Execute command synchronously and route output directly to the current stdout
-    execSync(cmd, { stdio: "inherit" });
+    execSync(lintCmd, { stdio: "inherit" });
   } catch (error) {
     console.error(`Error:`, error.message);
     console.error(`Exiting...`);
