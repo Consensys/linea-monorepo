@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 type ModuleName string
@@ -66,4 +67,41 @@ func (p *PeriodSeperatingModuleDiscoverer) FindModule(col ifaces.Column) ModuleN
 		}
 	}
 	return "no column found" // Return a default or error value
+}
+
+// ColumnIsInModule checks that the given column is inside the given module.
+func (p *PeriodSeperatingModuleDiscoverer) ColumnIsInModule(col ifaces.Column, name ModuleName) bool {
+	for _, c := range p.modules[name] {
+		if c.GetColID() == col.GetColID() {
+			return true
+		}
+	}
+	return false
+}
+
+//	ExpressionIsInModule checks that all the columns in the expression are from the given module.
+//
+// It does not check the presence of the coins and other metadata.
+func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr symbolic.Expression, name ModuleName) bool {
+	var (
+		board    = expr.Board()
+		metadata = board.ListVariableMetadata()
+		b        = true
+		cols     []ifaces.Column
+	)
+
+	for _, m := range metadata {
+		switch v := m.(type) {
+		case ifaces.Column:
+			if !p.ColumnIsInModule(v, name) {
+				b = b && false
+				cols = append(cols, v)
+			}
+		}
+	}
+	if len(cols) == 0 {
+		panic("could not find any column in the expression")
+	} else {
+		return b
+	}
 }
