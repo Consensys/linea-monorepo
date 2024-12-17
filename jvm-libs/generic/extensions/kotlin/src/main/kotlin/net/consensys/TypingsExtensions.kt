@@ -72,7 +72,7 @@ fun ULongRange.intersection(other: ULongRange): ULongRange {
   return if (start <= end) {
     start..end
   } else {
-    ULongRange.EMPTY // Represents an empty range
+    ULongRange.EMPTY
   }
 }
 

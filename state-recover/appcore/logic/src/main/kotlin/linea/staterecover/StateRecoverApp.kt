@@ -118,23 +118,13 @@ class StateRecoverApp(
   }
 
   private fun enableRecoveryMode(): SafeFuture<*> {
-    /* start up scenarios:
-    1. when state recovery disabled:
-      1.1 when there are no finalizations - start from genesis or V6 upgrade
-      1.2 when there is finalization - start from the last finalized block
-    2. when state recovery enabled:
-      2.1 recoveryStartBlockNumber > headBlockNumber:
-        pull for head block number until is reached and start recovery there
-      2.2 recoveryStartBlockNumber <= headBlockNumber:
-        resume recovery from headBlockNumber
-    */
     return elClient
       .lineaGetStateRecoveryStatus()
       .thenCompose { status ->
         if (status.stateRecoverStartBlockNumber != null) {
           // already enabled, let's just resume from where we left off
           log.info(
-            "Starting recovery mode already enabled: stateRecoverStartBlockNumber={} headBlockNumber={}",
+            "starting recovery mode already enabled: stateRecoverStartBlockNumber={} headBlockNumber={}",
             status.stateRecoverStartBlockNumber,
             status.headBlockNumber
           )

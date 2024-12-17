@@ -7,20 +7,6 @@ plugins {
 
 group = 'build.linea.staterecover'
 
-repositories {
-  // FIXME: temporary workaround until besu delivers final version
-  maven {
-    url = uri("https://maven.pkg.github.com/Gabriel-Trintinalia/besu")
-    credentials {
-      username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_MAVEN_USERNAME")
-      password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_MAVEN_TOKEN")
-    }
-  }
-}
-
-def wipBesuVersion = '24.10-develop-f9bd355'
-//def wipBesuVersion = '24.10.0'
-
 dependencies {
   implementation("io.vertx:vertx-core:${libs.versions.vertx.get()}")
   api(project(':jvm-libs:generic:extensions:kotlin'))
@@ -53,17 +39,6 @@ dependencies {
   implementation(project(":jvm-libs:linea:testing:l1-blob-and-proof-submission"))
   implementation(testFixtures(project(":jvm-libs:linea:blob-compressor")))
   testImplementation("io.vertx:vertx-junit5")
-}
-
-configurations.all {
-  resolutionStrategy {
-    force "org.hyperledger.besu.internal:rlp:${wipBesuVersion}"
-    force "org.hyperledger.besu.internal:core:${wipBesuVersion}"
-    force "org.hyperledger.besu.internal:algorithms:${wipBesuVersion}"
-    force "org.hyperledger.besu:besu-datatypes:${wipBesuVersion}"
-    force "org.hyperledger.besu:plugin-api:${wipBesuVersion}"
-    force "org.hyperledger.besu:evm:${wipBesuVersion}"
-  }
 }
 
 sourceSets {
