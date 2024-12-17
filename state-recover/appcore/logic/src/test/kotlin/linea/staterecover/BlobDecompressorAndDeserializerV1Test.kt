@@ -13,6 +13,7 @@ import net.consensys.linea.blob.BlobDecompressorVersion
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
 import net.consensys.linea.nativecompressor.CompressorTestData
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.fail
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.ethereum.core.Block
 import org.hyperledger.besu.ethereum.core.Transaction
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.opentest4j.AssertionFailedError
 import kotlin.jvm.optionals.getOrNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -51,28 +53,21 @@ class BlobDecompressorAndDeserializerV1Test {
 
   @Test
   fun `should decompress block and transactions`() {
-    val blocksRLP = CompressorTestData.blocksRlpEncoded.toList()
+    val blocksRLP = CompressorTestData.blocksRlpEncoded
     assertBlockCompressionAndDecompression(blocksRLP)
   }
-
-//  @Test
-//  fun `should decompress block and transactions - tx with contract deployment`() {
-//    assertBlockCompressionAndDecompression(CompressorTestData.blocksRlpEncodedV2)
-//  }
 
   private fun assertBlockCompressionAndDecompression(
     blocksRLP: List<ByteArray>
   ) {
     val blocks = blocksRLP.map(RLP::decodeBlockWithMainnetFunctions)
     val startingBlockNumber = blocks[0].header.number.toULong()
-    println("starting block number: $startingBlockNumber")
 
-    val blob1 = compress(blocksRLP.slice(0..0))
-    val blob2 = compress(blocksRLP.slice(3..3))
+    val blobs = blocks.chunked(2).map { compressBlocks(it) }
 
     val recoveredBlocks = decompressorToDomain.decompress(
       startBlockNumber = startingBlockNumber,
-      blobs = listOf(blob1, blob2)
+      blobs = blobs
     ).get()
     assertThat(recoveredBlocks[0].blockNumber).isEqualTo(startingBlockNumber)
 
@@ -85,15 +80,23 @@ class BlobDecompressorAndDeserializerV1Test {
     uncompressed: BlockL1RecoveredData,
     original: Block
   ) {
-    println("asserting block: ${original.header.number} ${original.header}")
-    assertThat(uncompressed.blockNumber).isEqualTo(original.header.number.toULong())
-    assertThat(uncompressed.blockHash.encodeHex()).isEqualTo(original.header.hash.toArray().encodeHex())
-    assertThat(uncompressed.coinbase).isEqualTo(blockStaticFields.coinbase)
-    assertThat(uncompressed.blockTimestamp).isEqualTo(Instant.fromEpochSeconds(original.header.timestamp))
-    assertThat(uncompressed.gasLimit).isEqualTo(blockStaticFields.gasLimit)
-    assertThat(uncompressed.difficulty).isEqualTo(0UL)
-    uncompressed.transactions.zip(original.body.transactions) { uncompressedTransaction, originalTransaction ->
-      assertTransactionData(uncompressedTransaction, originalTransaction)
+    try {
+      assertThat(uncompressed.blockNumber).isEqualTo(original.header.number.toULong())
+      assertThat(uncompressed.blockHash.encodeHex()).isEqualTo(original.header.hash.toArray().encodeHex())
+      assertThat(uncompressed.coinbase).isEqualTo(blockStaticFields.coinbase)
+      assertThat(uncompressed.blockTimestamp).isEqualTo(Instant.fromEpochSeconds(original.header.timestamp))
+      assertThat(uncompressed.gasLimit).isEqualTo(blockStaticFields.gasLimit)
+      assertThat(uncompressed.difficulty).isEqualTo(0UL)
+      uncompressed.transactions.zip(original.body.transactions) { uncompressedTransaction, originalTransaction ->
+        assertTransactionData(uncompressedTransaction, originalTransaction)
+      }
+    } catch (e: AssertionFailedError) {
+      fail(
+        "uncompressed block does not match original counter part: blockNumber: ${e.message} " +
+          "\n original    =$original " +
+          "\n uncompressed=$uncompressed ",
+        e
+      )
     }
   }
 

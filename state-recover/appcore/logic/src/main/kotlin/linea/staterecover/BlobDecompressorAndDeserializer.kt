@@ -5,7 +5,9 @@ import build.linea.staterecover.TransactionL1RecoveredData
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import linea.domain.BinaryDecoder
 import linea.rlp.BesuRlpBlobDecoder
+import linea.rlp.RLP
 import net.consensys.decodeHex
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.async.toSafeFuture
@@ -13,10 +15,7 @@ import net.consensys.linea.blob.BlobDecompressor
 import net.consensys.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.core.Block
-import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
-import org.hyperledger.besu.ethereum.rlp.RLP
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.Callable
 import kotlin.jvm.optionals.getOrNull
@@ -54,9 +53,9 @@ class BlobDecompressorToDomainV1(
 //  val chainId: ULong,
   val staticFields: BlockHeaderStaticFields,
   val vertx: Vertx,
+  val decoder: BinaryDecoder<Block> = BesuRlpBlobDecoder,
   val logger: Logger = LogManager.getLogger(BlobDecompressorToDomainV1::class.java)
 ) : BlobDecompressorAndDeserializer {
-  private val blockHeaderFunctions = MainnetBlockHeaderFunctions()
 
   override fun decompress(
     startBlockNumber: ULong,
@@ -73,7 +72,7 @@ class BlobDecompressorToDomainV1(
         blobsBlocks.flatten().map { block ->
           BlockL1RecoveredData(
             blockNumber = blockNumber++,
-            blockHash = block.header.parentHash.toArray(),
+            blockHash = block.header.hash.toArray(),
             coinbase = staticFields.coinbase,
             blockTimestamp = Instant.fromEpochSeconds(block.header.timestamp),
             gasLimit = this.staticFields.gasLimit,
@@ -113,28 +112,10 @@ class BlobDecompressorToDomainV1(
 
   private fun decodeBlocksAsync(blocksRLP: ByteArray): SafeFuture<List<Block>> {
     return vertx.executeBlocking(
-      Callable {
-        decodeBlocks(blocksRLP)
-      },
+      Callable { RLP.decodeList(blocksRLP).map(decoder::decode) },
       false
     )
       .onFailure(logger::error)
       .toSafeFuture()
   }
-
-  private fun decodeBlocks(blocksRLP: ByteArray): List<Block> {
-    return rlpDecodeAsListOfBytes(blocksRLP).map(BesuRlpBlobDecoder::decode)
-  }
-}
-
-internal fun rlpDecodeAsListOfBytes(rlpEncoded: ByteArray): List<ByteArray> {
-  val decodedBytes = mutableListOf<ByteArray>()
-  RLP.input(Bytes.wrap(rlpEncoded), true).also { rlpInput ->
-    rlpInput.enterList()
-    while (!rlpInput.isEndOfCurrentList) {
-      decodedBytes.add(rlpInput.readBytes().toArray())
-    }
-    rlpInput.leaveList()
-  }
-  return decodedBytes
 }

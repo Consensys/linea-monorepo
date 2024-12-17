@@ -31,7 +31,7 @@ fun loadBlocksFromProverRequests(
     .sortedBy { it.first.header.number }
     .also {
       it.forEach {
-        println("block=${it.first.header.number} rlp=${it.second.encodeHex()}")
+        println("block=${it.first.header} rlp=${it.second.encodeHex()}")
       }
     }
 }
@@ -60,9 +60,11 @@ fun main() {
     destFile
   )
 
+  // Just a visual indicator that it can read/decode again
   println("\n\n")
-
-  loadBlocksRlpEncoded(destFile).forEach {
-    println("rlp=${it.encodeHex()}")
-  }
+  loadBlocksRlpEncoded(destFile)
+    .map(RLP::decodeBlockWithMainnetFunctions)
+    .forEach {
+      println("block=$it")
+    }
 }
