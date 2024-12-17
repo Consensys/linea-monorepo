@@ -5,13 +5,10 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/variables"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -98,7 +95,7 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 				numBoard          = num.Board()
 				denBoard          = r.Inputs[key].Denominator[i].Board()
 				numeratorMetadata = numBoard.ListVariableMetadata()
-				denominator       = EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
+				denominator       = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
 				numerator         []field.Element
 				packedZ           = field.BatchInvert(denominator)
 			)
@@ -108,7 +105,7 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 			}
 
 			if len(numeratorMetadata) > 0 {
-				numerator = EvalExprColumn(run, numBoard).IntoRegVecSaveAlloc()
+				numerator = column.EvalExprColumn(run, numBoard).IntoRegVecSaveAlloc()
 			}
 
 			for k := range packedZ {
@@ -134,73 +131,4 @@ func (r LogDerivativeSum) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 	actualY := TBD
 	api.AssertIsEqual(params.Y, actualY)
 	*/
-}
-
-func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvectors.SmartVector {
-
-	var (
-		metadata = board.ListVariableMetadata()
-		inputs   = make([]smartvectors.SmartVector, len(metadata))
-		length   = ExprIsOnSameLengthHandles(&board)
-	)
-
-	// Attempt to recover the size of the
-	for i := range inputs {
-		switch m := metadata[i].(type) {
-		case ifaces.Column:
-			inputs[i] = m.GetColAssignment(run)
-		case coin.Info:
-			v := run.GetRandomCoinField(m.Name)
-			inputs[i] = smartvectors.NewConstant(v, length)
-		case ifaces.Accessor:
-			v := m.GetVal(run)
-			inputs[i] = smartvectors.NewConstant(v, length)
-		case variables.PeriodicSample:
-			v := m.EvalCoset(length, 0, 1, false)
-			inputs[i] = v
-		case variables.X:
-			v := m.EvalCoset(length, 0, 1, false)
-			inputs[i] = v
-		}
-	}
-
-	return board.Evaluate(inputs)
-}
-
-// ExprIsOnSameLengthHandles checks that all the variables of the expression
-// that are [ifaces.Column] have the same size (and panics if it does not), then
-// returns the match.
-func ExprIsOnSameLengthHandles(board *symbolic.ExpressionBoard) int {
-
-	var (
-		metadatas = board.ListVariableMetadata()
-		length    = 0
-	)
-
-	for _, m := range metadatas {
-		switch metadata := m.(type) {
-		case ifaces.Column:
-			// Initialize the length with the first commitment
-			if length == 0 {
-				length = metadata.Size()
-			}
-
-			// Sanity-check the vector should all have the same length
-			if length != metadata.Size() {
-				utils.Panic("Inconsistent length for %v (has size %v, but expected %v)", metadata.GetColID(), metadata.Size(), length)
-			}
-		// The expression can involve random coins
-		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor:
-			// Do nothing
-		default:
-			utils.Panic("unknown type %T", metadata)
-		}
-	}
-
-	// No commitment were found in the metadata, thus this call is broken
-	if length == 0 {
-		utils.Panic("declared a handle from an expression which does not contains any handle")
-	}
-
-	return length
 }
