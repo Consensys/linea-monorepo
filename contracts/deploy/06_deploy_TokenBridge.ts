@@ -103,12 +103,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await tokenBridge.waitForDeployment();
   const tokenBridgeAddress = await tokenBridge.getAddress();
 
-  const deployTx = tokenBridge.deploymentTransaction();
-  if (!deployTx) {
-    throw "Contract deployment transaction receipt not found.";
+  const txReceipt = await tokenBridge.deploymentTransaction()?.wait();
+  if (!txReceipt) {
+    throw "Deployment transaction not found.";
   }
 
-  await tryStoreAddress(network.name, contractName, tokenBridgeAddress, deployTx.hash);
+  const contractAddress = await tokenBridge.getAddress();
+
+  console.log(
+    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
+  );
+
+  await tryStoreAddress(network.name, contractName, tokenBridgeAddress, txReceipt.hash);
 
   const proxyAdminAddress = await upgrades.erc1967.getAdminAddress(tokenBridgeAddress);
 

@@ -23,19 +23,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const BridgedToken = await ethers.getContractFactory(contractName);
 
   const bridgedToken = (await upgrades.deployBeacon(BridgedToken)) as unknown as BridgedToken;
-  await bridgedToken.waitForDeployment();
 
   const bridgedTokenAddress = await bridgedToken.getAddress();
   process.env.BRIDGED_TOKEN_ADDRESS = bridgedTokenAddress;
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  const deployTx = bridgedToken.deployTransaction;
-  if (!deployTx) {
-    throw "Contract deployment transaction receipt not found.";
+  const txReceipt = await bridgedToken.deploymentTransaction()?.wait();
+  if (!txReceipt) {
+    throw "Deployment transaction not found.";
   }
 
-  await tryStoreAddress(network.name, contractName, bridgedTokenAddress, deployTx.hash);
+  const contractAddress = await bridgedToken.getAddress();
+  console.log(
+    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
+  );
+
+  await tryStoreAddress(network.name, contractName, bridgedTokenAddress, txReceipt.hash);
 
   if (process.env.TOKEN_BRIDGE_L1 === "true") {
     console.log(`L1 BridgedToken beacon deployed on ${network.name}, at address:`, bridgedTokenAddress);

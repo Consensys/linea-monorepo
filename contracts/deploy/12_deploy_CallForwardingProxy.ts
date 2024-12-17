@@ -14,12 +14,15 @@ const func: DeployFunction = async function () {
   const contract = await deployFromFactory(contractName, provider, targetAddress);
   const contractAddress = await contract.getAddress();
 
-  console.log(`${contractName} deployed at ${contractAddress}`);
-
-  const deployTx = contract.deploymentTransaction();
-  if (!deployTx) {
+  const txReceipt = await contract.deploymentTransaction()?.wait();
+  if (!txReceipt) {
     throw "Deployment transaction not found.";
   }
+
+  const chainId = (await ethers.provider!.getNetwork()).chainId;
+  console.log(
+    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
+  );
 
   const args = [targetAddress];
 

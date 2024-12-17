@@ -2,6 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import { tryVerifyContract, getDeployedContractAddress, tryStoreAddress, getRequiredEnvVar } from "../common/helpers";
+import { ethers } from "hardhat";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -36,7 +37,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     throw "Contract deployment transaction receipt not found.";
   }
 
-  console.log(`${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber}`);
+  const chainId = (await ethers.provider!.getNetwork()).chainId;
+  console.log(
+    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
+  );
 
   await tryStoreAddress(hre.network.name, contractName, contractAddress, txReceipt.hash);
 

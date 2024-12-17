@@ -25,15 +25,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await contract.waitForDeployment();
   const contractAddress = await contract.getAddress();
 
-  const deployTx = contract.deploymentTransaction();
-  if (!deployTx) {
+  const txReceipt = await contract.deploymentTransaction()?.wait();
+  if (!txReceipt) {
     throw "Deployment transaction not found.";
   }
 
-  await tryStoreAddress(network.name, contractName, contractAddress, deployTx.hash);
+  await tryStoreAddress(network.name, contractName, contractAddress, txReceipt.hash);
 
-  const chainId = (await ethers.provider.getNetwork()).chainId;
-  console.log(`${contractName} deployed on ${network.name}, chainId=${chainId}, at address: ${contractAddress}`);
+  const chainId = (await ethers.provider!.getNetwork()).chainId;
+  console.log(
+    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
+  );
+
   await tryVerifyContract(contractAddress);
 };
 

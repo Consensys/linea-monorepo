@@ -16,6 +16,7 @@ import {
   L2_MESSAGE_SERVICE_ROLES,
   L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
 } from "../common/constants";
+import { ethers } from "hardhat";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -62,9 +63,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractAddress = await contract.getAddress();
   const txReceipt = await contract.deploymentTransaction()?.wait();
   if (!txReceipt) {
-    throw "Contract deployment transaction receipt not found.";
+    throw "Deployment transaction not found.";
   }
-  console.log(`${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber}`);
+
+  const chainId = (await ethers.provider!.getNetwork()).chainId;
+  console.log(
+    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
+  );
 
   await tryStoreAddress(hre.network.name, contractName, contractAddress, txReceipt.hash);
 

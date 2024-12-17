@@ -19,16 +19,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
   const contract = await deployFromFactory(contractName, provider);
   const contractAddress = await contract.getAddress();
-  console.log(`${contractName} deployed at ${contractAddress}`);
 
   process.env.PLONKVERIFIER_ADDRESS = contractAddress;
 
-  const deployTx = contract.deploymentTransaction();
-  if (!deployTx) {
+  const txReceipt = await contract.deploymentTransaction()?.wait();
+  if (!txReceipt) {
     throw "Deployment transaction not found.";
   }
 
-  await tryStoreAddress(hre.network.name, contractName, contractAddress, deployTx.hash);
+  const chainId = (await ethers.provider!.getNetwork()).chainId;
+  console.log(
+    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
+  );
+
+  await tryStoreAddress(hre.network.name, contractName, contractAddress, txReceipt.hash);
 
   await tryVerifyContract(contractAddress);
 };

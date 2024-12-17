@@ -35,19 +35,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     transferAddresses,
     await get1559Fees(provider),
   );
-  const contractAddress = await contract.getAddress();
 
-  console.log(`${contractName} deployed at ${contractAddress}`);
-
-  const deployTx = contract.deploymentTransaction();
-  if (!deployTx) {
-    throw "Contract deployment transaction receipt not found.";
+  const txReceipt = await contract.deploymentTransaction()?.wait();
+  if (!txReceipt) {
+    throw "Deployment transaction not found.";
   }
 
-  await tryStoreAddress(hre.network.name, contractName, contractAddress, deployTx.hash);
+  const contractAddress = await contract.getAddress();
+
+  const chainId = (await ethers.provider!.getNetwork()).chainId;
+  console.log(
+    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
+  );
+
+  await tryStoreAddress(hre.network.name, contractName, contractAddress, txReceipt.hash);
 
   const args = [adminAddress, minterAddress, transferAddresses];
-
   await tryVerifyContractWithConstructorArgs(contractAddress, "contracts/token/LineaSurgeXP.sol:LineaSurgeXP", args);
 };
 export default func;
