@@ -2,7 +2,6 @@ package linea.web3j
 
 import build.linea.domain.EthLog
 import build.linea.domain.RetryConfig
-import build.linea.jsonrpc.FakeJsonRpcServer
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.containing
@@ -11,6 +10,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.vertx.core.Vertx
 import linea.SearchDirection
+import linea.jsonrpc.TestingJsonRpcServer
 import net.consensys.encodeHex
 import net.consensys.fromHexString
 import net.consensys.linea.BlockParameter.Companion.toBlockParameter
@@ -43,7 +43,7 @@ class Web3JLogsSearcherIntTest {
   private lateinit var logsClient: Web3JLogsSearcher
   private lateinit var vertx: Vertx
   private lateinit var wireMockServer: WireMockServer
-  private lateinit var fakeJsonRpcServer: FakeJsonRpcServer
+  private lateinit var TestingJsonRpcServer: TestingJsonRpcServer
   private val address = "0x508ca82df566dcd1b0de8296e70a96332cd644ec"
   private val log = LogManager.getLogger("test.case.Web3JLogsSearcherIntTest")
 
@@ -75,19 +75,19 @@ class Web3JLogsSearcherIntTest {
     )
   }
 
-  private fun setupClientWithFakeJsonRpcServer(
+  private fun setupClientWithTestingJsonRpcServer(
     retryConfig: RetryConfig = RetryConfig.noRetries,
     subsetOfBlocksWithLogs: List<ULongRange>? = null
   ) {
-    fakeJsonRpcServer = FakeJsonRpcServer(
+    TestingJsonRpcServer = TestingJsonRpcServer(
       vertx = vertx,
       serverName = "fake-execution-layer-log-searcher",
       recordRequestsResponses = true
     )
-    setUpFakeLogsServerToHandleEthLogs(fakeJsonRpcServer, subsetOfBlocksWithLogs)
+    setUpFakeLogsServerToHandleEthLogs(TestingJsonRpcServer, subsetOfBlocksWithLogs)
     logsClient = Web3JLogsSearcher(
       vertx,
-      web3jClient = Web3j.build(HttpService(URI("http://127.0.0.1:" + fakeJsonRpcServer.bindedPort).toString())),
+      web3jClient = Web3j.build(HttpService(URI("http://127.0.0.1:" + TestingJsonRpcServer.boundPort).toString())),
       config = Web3JLogsSearcher.Config(
         backoffDelay = 1.milliseconds,
         requestRetryConfig = retryConfig
@@ -174,17 +174,17 @@ class Web3JLogsSearcherIntTest {
 
   @Test
   fun `when eth_getLogs request fails shall retry request until it succeeds`() {
-    setupClientWithFakeJsonRpcServer(
+    setupClientWithTestingJsonRpcServer(
       retryConfig = RetryConfig(
         backoffDelay = 1.milliseconds,
         maxRetries = 4u
       )
     )
 
-    fakeJsonRpcServer.handle("eth_getLogs", { _ ->
+    TestingJsonRpcServer.handle("eth_getLogs", { _ ->
       // simulate 2 failures
-      log.debug("eth_getLogs callCount=${fakeJsonRpcServer.callCountByMethod("eth_getLogs")}")
-      if (fakeJsonRpcServer.callCountByMethod("eth_getLogs") < 2) {
+      log.debug("eth_getLogs callCount=${TestingJsonRpcServer.callCountByMethod("eth_getLogs")}")
+      if (TestingJsonRpcServer.callCountByMethod("eth_getLogs") < 2) {
         throw JsonRpcError.internalError().asException()
       } else {
         generateLogsForBlockRange(fromBlock = 10, toBlock = 15)
@@ -265,7 +265,7 @@ class Web3JLogsSearcherIntTest {
 
   @Test
   fun `findLogs searches and returns log when found`() {
-    setupClientWithFakeJsonRpcServer()
+    setupClientWithTestingJsonRpcServer()
 
     (100..200)
       .forEach { number ->
@@ -289,7 +289,7 @@ class Web3JLogsSearcherIntTest {
 
   @Test
   fun `findLogs searches L1 and returns null when not found - before range`() {
-    setupClientWithFakeJsonRpcServer()
+    setupClientWithTestingJsonRpcServer()
 
     logsClient.findLog(
       fromBlock = 100UL.toBlockParameter(),
@@ -304,13 +304,13 @@ class Web3JLogsSearcherIntTest {
       .get()
       .also { log ->
         assertThat(log).isNull()
-        assertThat(fakeJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 4)
+        assertThat(TestingJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 4)
       }
   }
 
   @Test
   fun `findLogs searches L1 and returns null when no logs in blockRange`() {
-    setupClientWithFakeJsonRpcServer(
+    setupClientWithTestingJsonRpcServer(
       subsetOfBlocksWithLogs = listOf(100UL..109UL, 150UL..159UL)
     )
 
@@ -332,7 +332,7 @@ class Web3JLogsSearcherIntTest {
 
   @Test
   fun `findLogs searches L1 and returns null when not found - after range`() {
-    setupClientWithFakeJsonRpcServer()
+    setupClientWithTestingJsonRpcServer()
     logsClient.findLog(
       fromBlock = 100UL.toBlockParameter(),
       toBlock = 200UL.toBlockParameter(),
@@ -346,13 +346,13 @@ class Web3JLogsSearcherIntTest {
       .get()
       .also { log ->
         assertThat(log).isNull()
-        assertThat(fakeJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 4)
+        assertThat(TestingJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 4)
       }
   }
 
   @Test
   fun `findLogs searches L1 and returns null when range has no logs`() {
-    setupClientWithFakeJsonRpcServer(
+    setupClientWithTestingJsonRpcServer(
       subsetOfBlocksWithLogs = listOf(10UL..19UL, 50UL..59UL)
     )
     logsClient.findLog(
@@ -369,7 +369,7 @@ class Web3JLogsSearcherIntTest {
       .get()
       .also { log ->
         assertThat(log).isNull()
-        assertThat(fakeJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 11)
+        assertThat(TestingJsonRpcServer.callCountByMethod("eth_getLogs")).isBetween(1, 11)
       }
   }
 
@@ -452,10 +452,10 @@ class Web3JLogsSearcherIntTest {
     }
 
     private fun setUpFakeLogsServerToHandleEthLogs(
-      fakeJsonRpcServer: FakeJsonRpcServer,
+      TestingJsonRpcServer: TestingJsonRpcServer,
       subsetOfBlocksWithLogs: List<ULongRange>?
     ) {
-      fakeJsonRpcServer.apply {
+      TestingJsonRpcServer.apply {
         this.handle("eth_getLogs", { request ->
           val filter = parseEthLogsRequest(request)
           subsetOfBlocksWithLogs

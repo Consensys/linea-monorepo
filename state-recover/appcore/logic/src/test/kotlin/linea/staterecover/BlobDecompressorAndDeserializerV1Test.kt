@@ -4,11 +4,12 @@ import build.linea.staterecover.BlockL1RecoveredData
 import build.linea.staterecover.TransactionL1RecoveredData
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
+import linea.blob.BlobCompressor
+import linea.blob.GoBackedBlobCompressor
+import linea.rlp.RLP
 import net.consensys.encodeHex
 import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.blob.BlobDecompressorVersion
-import net.consensys.linea.blob.GoNativeBlobCompressor
-import net.consensys.linea.blob.GoNativeBlobCompressorFactory
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
 import net.consensys.linea.nativecompressor.CompressorTestData
 import org.assertj.core.api.Assertions.assertThat
@@ -19,12 +20,11 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import rlp.decodeBlockRlpEncoded
 import kotlin.jvm.optionals.getOrNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class BlobDecompressorAndDeserializerV1Test {
-  private lateinit var compressor: GoNativeBlobCompressor
+  private lateinit var compressor: BlobCompressor
   private val blockStaticFields = BlockHeaderStaticFields(
     coinbase = Address.ZERO.toArray(),
     gasLimit = 30_000_000UL,
@@ -36,12 +36,10 @@ class BlobDecompressorAndDeserializerV1Test {
   @BeforeEach
   fun setUp() {
     vertx = Vertx.vertx()
-    compressor = GoNativeBlobCompressorFactory
-      .getInstance(BlobCompressorVersion.V1_0_1)
-      .apply {
-        Init(124 * 1024, GoNativeBlobCompressorFactory.dictionaryPath.toAbsolutePath().toString())
-        Reset()
-      }
+    compressor = GoBackedBlobCompressor.getInstance(
+      compressorVersion = BlobCompressorVersion.V1_0_1,
+      dataLimit = 124u * 1024u
+    )
     val decompressor = GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V1_1_0)
     decompressorToDomain = BlobDecompressorToDomainV1(decompressor, blockStaticFields, vertx)
   }
@@ -65,7 +63,7 @@ class BlobDecompressorAndDeserializerV1Test {
   private fun assertBlockCompressionAndDecompression(
     blocksRLP: List<ByteArray>
   ) {
-    val blocks = blocksRLP.map(::decodeBlockRlpEncoded)
+    val blocks = blocksRLP.map(RLP::decodeBlockWithMainnetFunctions)
     val startingBlockNumber = blocks[0].header.number.toULong()
     println("starting block number: $startingBlockNumber")
 
@@ -94,8 +92,8 @@ class BlobDecompressorAndDeserializerV1Test {
     assertThat(uncompressed.blockTimestamp).isEqualTo(Instant.fromEpochSeconds(original.header.timestamp))
     assertThat(uncompressed.gasLimit).isEqualTo(blockStaticFields.gasLimit)
     assertThat(uncompressed.difficulty).isEqualTo(0UL)
-    uncompressed.transactions.zip(original.body.transactions) { a, b ->
-      assertTransactionData(a, b)
+    uncompressed.transactions.zip(original.body.transactions) { uncompressedTransaction, originalTransaction ->
+      assertTransactionData(uncompressedTransaction, originalTransaction)
     }
   }
 
@@ -129,15 +127,9 @@ class BlobDecompressorAndDeserializerV1Test {
 
   private fun compress(blocks: List<ByteArray>): ByteArray {
     blocks.forEach { blockRlp ->
-      compressor.Write(blockRlp, blockRlp.size)
-      if (compressor.Error()?.isNotEmpty() == true) {
-        throw RuntimeException("Failed to compress block, error='${compressor.Error()}'")
-      }
+      compressor.appendBlock(blockRlp)
     }
 
-    val compressedData = ByteArray(compressor.Len())
-    compressor.Bytes(compressedData)
-    compressor.Reset()
-    return compressedData
+    return compressor.getCompressedDataAndReset()
   }
 }

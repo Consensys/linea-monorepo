@@ -5,6 +5,7 @@ import build.linea.staterecover.TransactionL1RecoveredData
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import linea.rlp.BesuRlpBlobDecoder
 import net.consensys.decodeHex
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.async.toSafeFuture
@@ -14,7 +15,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.core.Block
-import org.hyperledger.besu.ethereum.core.encoding.registry.BlockDecoder
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.ethereum.rlp.RLP
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -56,10 +56,6 @@ class BlobDecompressorToDomainV1(
   val vertx: Vertx,
   val logger: Logger = LogManager.getLogger(BlobDecompressorToDomainV1::class.java)
 ) : BlobDecompressorAndDeserializer {
-
-  private val blockDecoder =
-    BlockDecoder.builder().withTransactionDecoder({ NoSignatureTransactionDecoder() })
-      .build()
   private val blockHeaderFunctions = MainnetBlockHeaderFunctions()
 
   override fun decompress(
@@ -127,10 +123,7 @@ class BlobDecompressorToDomainV1(
   }
 
   private fun decodeBlocks(blocksRLP: ByteArray): List<Block> {
-    return rlpDecodeAsListOfBytes(blocksRLP)
-      .map { blockRlp ->
-        blockDecoder.decode(RLP.input(Bytes.wrap(blockRlp), true), blockHeaderFunctions)
-      }
+    return rlpDecodeAsListOfBytes(blocksRLP).map(BesuRlpBlobDecoder::decode)
   }
 }
 

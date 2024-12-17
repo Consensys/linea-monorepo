@@ -30,7 +30,8 @@ dependencies {
   api(project(':state-recover:appcore:clients-interfaces'))
   api(project(':state-recover:appcore:domain-models'))
 
-  implementation project(':jvm-libs:linea:besu-libs')
+  api project(':jvm-libs:linea:besu-libs')
+  api project(':jvm-libs:linea:besu-rlp-and-mappers')
   implementation("org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}") {
     transitive = false
   }
