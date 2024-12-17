@@ -6,8 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 )
 
 // proverTaskAtRound implements the [wizard.ProverAction] interface and is
@@ -48,13 +48,13 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 		)
 
 		if packingArity*i < len(z.NumeratorFactors) {
-			numerator = wizardutils.EvalExprColumn(run, z.NumeratorFactorsBoarded[i]).IntoRegVecSaveAlloc()
+			numerator = column.EvalExprColumn(run, z.NumeratorFactorsBoarded[i]).IntoRegVecSaveAlloc()
 		} else {
 			numerator = vector.Repeat(field.One(), z.Size)
 		}
 
 		if packingArity*i < len(z.DenominatorFactors) {
-			denominator = wizardutils.EvalExprColumn(run, z.DenominatorFactorsBoarded[i]).IntoRegVecSaveAlloc()
+			denominator = column.EvalExprColumn(run, z.DenominatorFactorsBoarded[i]).IntoRegVecSaveAlloc()
 		} else {
 			denominator = vector.Repeat(field.One(), z.Size)
 		}

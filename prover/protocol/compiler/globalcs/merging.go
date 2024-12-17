@@ -7,11 +7,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -194,7 +194,7 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 func getExprRatio(expr *symbolic.Expression) int {
 	var (
 		board        = expr.Board()
-		domainSize   = wizardutils.ExprIsOnSameLengthHandles(&board)
+		domainSize   = column.ExprIsOnSameLengthHandles(&board)
 		exprDegree   = board.Degree(GetDegree(domainSize))
 		quotientSize = exprDegree - domainSize + 1
 		ratio        = utils.DivCeil(quotientSize, domainSize)

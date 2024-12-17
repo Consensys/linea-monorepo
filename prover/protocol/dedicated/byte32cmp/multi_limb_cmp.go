@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -192,7 +193,7 @@ func (mCmp *multiLimbCmp) Run(run *wizard.ProverRuntime) {
 	}()
 
 	var (
-		syndrom   = wizardutils.EvalExprColumn(run, mCmp.syndromBoard)
+		syndrom   = column.EvalExprColumn(run, mCmp.syndromBoard)
 		isGreater = make([]field.Element, mCmp.isGreater.Size())
 		isLower   = make([]field.Element, mCmp.isLower.Size())
 		nnSyndrom = make([]field.Element, mCmp.isLower.Size())

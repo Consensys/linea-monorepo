@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -39,44 +40,6 @@ func LastRoundToEval(expr *symbolic.Expression) int {
 	}
 
 	return maxRound
-}
-
-// ExprIsOnSameLengthHandles checks that all the variables of the expression
-// that are [ifaces.Column] have the same size (and panics if it does not), then
-// returns the match.
-func ExprIsOnSameLengthHandles(board *symbolic.ExpressionBoard) int {
-
-	var (
-		metadatas = board.ListVariableMetadata()
-		length    = 0
-	)
-
-	for _, m := range metadatas {
-		switch metadata := m.(type) {
-		case ifaces.Column:
-			// Initialize the length with the first commitment
-			if length == 0 {
-				length = metadata.Size()
-			}
-
-			// Sanity-check the vector should all have the same length
-			if length != metadata.Size() {
-				utils.Panic("Inconsistent length for %v (has size %v, but expected %v)", metadata.GetColID(), metadata.Size(), length)
-			}
-		// The expression can involve random coins
-		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor:
-			// Do nothing
-		default:
-			utils.Panic("unknown type %T", metadata)
-		}
-	}
-
-	// No commitment were found in the metadata, thus this call is broken
-	if length == 0 {
-		utils.Panic("declared a handle from an expression which does not contains any handle")
-	}
-
-	return length
 }
 
 // maximal round of declaration for a list of commitment
@@ -128,7 +91,7 @@ func AsExpr(x any) (e *symbolic.Expression, round, size int) {
 	case *symbolic.Expression:
 		board := c1.Board()
 		e = c1
-		size = ExprIsOnSameLengthHandles(&board)
+		size = column.ExprIsOnSameLengthHandles(&board)
 		round = LastRoundToEval(c1)
 		return e, round, size
 	}
