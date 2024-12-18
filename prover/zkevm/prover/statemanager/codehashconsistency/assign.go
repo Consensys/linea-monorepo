@@ -114,17 +114,21 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 	romData = slices.Clip(romData)
 
 	assignment := struct {
-		IsActive       *common.VectorBuilder
-		StateSumKeccak common.HiLoAssignmentBuilder
-		StateSumMiMC   *common.VectorBuilder
-		RomKeccak      common.HiLoAssignmentBuilder
-		RomMiMC        *common.VectorBuilder
+		IsActive        *common.VectorBuilder
+		StateSumKeccak  common.HiLoAssignmentBuilder
+		StateSumMiMC    *common.VectorBuilder
+		RomKeccak       common.HiLoAssignmentBuilder
+		RomMiMC         *common.VectorBuilder
+		RomOngoing      *common.VectorBuilder
+		StateSumOngoing *common.VectorBuilder
 	}{
-		IsActive:       common.NewVectorBuilder(mod.IsActive),
-		StateSumKeccak: common.NewHiLoAssignmentBuilder(mod.StateSumKeccak),
-		RomKeccak:      common.NewHiLoAssignmentBuilder(mod.RomKeccak),
-		StateSumMiMC:   common.NewVectorBuilder(mod.StateSumMiMC),
-		RomMiMC:        common.NewVectorBuilder(mod.RomMiMC),
+		IsActive:        common.NewVectorBuilder(mod.IsActive),
+		StateSumKeccak:  common.NewHiLoAssignmentBuilder(mod.StateSumKeccak),
+		RomKeccak:       common.NewHiLoAssignmentBuilder(mod.RomKeccak),
+		StateSumMiMC:    common.NewVectorBuilder(mod.StateSumMiMC),
+		RomMiMC:         common.NewVectorBuilder(mod.RomMiMC),
+		RomOngoing:      common.NewVectorBuilder(mod.RomOngoing),
+		StateSumOngoing: common.NewVectorBuilder(mod.StateSumOngoing),
 	}
 
 	var (
@@ -133,6 +137,7 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		nbRowMax     = len(romData) + len(ssData)
 	)
 
+assign_loop:
 	for i := 0; i < nbRowMax; i++ {
 
 		var (
@@ -145,15 +150,30 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		assignment.RomMiMC.PushField(romRow[0])
 		assignment.RomKeccak.Hi.PushField(romRow[1])
 		assignment.RomKeccak.Lo.PushField(romRow[2])
+		assignment.RomOngoing.PushBoolean(cRom < len(romData)-1)
 		assignment.StateSumMiMC.PushField(ssRow[0])
 		assignment.StateSumKeccak.Hi.PushField(ssRow[1])
 		assignment.StateSumKeccak.Lo.PushField(ssRow[2])
+		assignment.StateSumOngoing.PushBoolean(cSS < len(ssData)-1)
 
-		if romCmpSs <= 0 {
+		var (
+			isLastSS  = cSS >= len(ssData)-1
+			isLastRom = cRom >= len(romData)-1
+		)
+
+		switch {
+		case isLastSS && isLastRom:
+			break assign_loop
+		case !isLastSS && isLastRom:
+			cSS++
+		case isLastSS && !isLastRom:
 			cRom++
-		}
-
-		if romCmpSs >= 0 {
+		case romCmpSs < 0:
+			cRom++
+		case romCmpSs == 0:
+			cRom++
+			cSS++
+		case romCmpSs > 0:
 			cSS++
 		}
 	}
@@ -162,9 +182,11 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 	assignment.RomMiMC.PadAndAssign(run, field.Zero())
 	assignment.RomKeccak.Hi.PadAndAssign(run, field.Zero())
 	assignment.RomKeccak.Lo.PadAndAssign(run, field.Zero())
+	assignment.RomOngoing.PadAndAssign(run, field.Zero())
 	assignment.StateSumMiMC.PadAndAssign(run, field.Zero())
 	assignment.StateSumKeccak.Hi.PadAndAssign(run, field.Zero())
 	assignment.StateSumKeccak.Lo.PadAndAssign(run, field.Zero())
+	assignment.StateSumOngoing.PadAndAssign(run, field.Zero())
 
 	mod.CptStateSumKeccakLimbsHi.Run(run)
 	mod.CptStateSumKeccakLimbsLo.Run(run)
@@ -172,5 +194,5 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 	mod.CptRomKeccakLimbsLo.Run(run)
 	mod.CmpStateSumLimbs.Run(run)
 	mod.CmpRomLimbs.Run(run)
-	mod.ComRomVsStateSumLimbs.Run(run)
+	mod.CmpRomVsStateSumLimbs.Run(run)
 }
