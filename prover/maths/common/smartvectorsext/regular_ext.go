@@ -102,7 +102,7 @@ func (r *RegularExt) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vectorext.Prettify(*r))
 }
 
-func processRegularExtOnly(op operator, svecs []smartvectors.SmartVector, coeffs []int, p ...mempoolext.MemPool) (result *PooledExt, numMatches int) {
+func processRegularOnlyExt(op operator, svecs []smartvectors.SmartVector, coeffs []int, p ...mempoolext.MemPool) (result *PooledExt, numMatches int) {
 
 	length := svecs[0].Len()
 

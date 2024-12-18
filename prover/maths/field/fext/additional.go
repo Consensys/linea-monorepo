@@ -28,3 +28,7 @@ func (z *Element) SetInt64(v int64) *Element {
 
 	return z
 }
+
+func (z *Element) Uint64() (uint64, uint64) {
+	return z.A0.Bits()[0], z.A1.Bits()[0]
+}
