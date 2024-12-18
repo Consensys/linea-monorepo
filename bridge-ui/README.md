@@ -158,8 +158,8 @@ The config variables are:
 | NEXT_PUBLIC_SEPOLIA_LINEA_TOKEN_BRIDGE        | Linea Token Bridge on Linea Sepolia            | 0x93DcAdf238932e6e6a85852caC89cBd71798F463                                                                |
 | NEXT_PUBLIC_SEPOLIA_L1_MESSAGE_SERVICE        | Linea Message Service on Ethereum Sepolia      | 0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5                                                                |
 | NEXT_PUBLIC_SEPOLIA_LINEA_MESSAGE_SERVICE     | Linea Message Service on Linea Sepolia         | 0x971e727e956690b9957be6d51Ec16E73AcAC83A7                                                                |
-| NEXT_PUBLIC_SEPOLIA_L1_USDC_BRIDGE            | Linea USDC Bridge on Ethereum Sepolia          | 0x32D123756d32d3eD6580935f8edF416e57b940f4                                                                |
-| NEXT_PUBLIC_SEPOLIA_LINEA_USDC_BRIDGE         | Linea USDC Bridge on Linea Sepolia             | 0xDFa112375c9be9D124932b1d104b73f888655329                                                                |
+| NEXT_PUBLIC_SEPOLIA_L1_USDC_BRIDGE            | Linea USDC Bridge on Ethereum Sepolia          | 0x52F9cDBcb44746E433b012Aa7FC9C0637309f040                                                                |
+| NEXT_PUBLIC_SEPOLIA_LINEA_USDC_BRIDGE         | Linea USDC Bridge on Linea Sepolia             | 0x39fd5cF710314341d35f9Dca20c1daa059Acb843                                                                |
 | NEXT_PUBLIC_SEPOLIA_GAS_ESTIMATED             | Linea gas estimated on Sepolia                 | 6100000000                                                                                                |
 | NEXT_PUBLIC_SEPOLIA_DEFAULT_GAS_LIMIT_SURPLUS | Linea gas limit surplus on Sepolia             | 6000                                                                                                      |
 | NEXT_PUBLIC_SEPOLIA_PROFIT_MARGIN             | Linea profit margin on Sepolia                 | 2                                                                                                         |
