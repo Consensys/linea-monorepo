@@ -33,7 +33,7 @@ func BlockCompression(oldState, block field.Element) (newState field.Element) {
 
 	// s <- (s + old + c)^17
 	for i := range Constants {
-		// We don't use the loop value of Constant to explictly
+		// We don't use the loop value of Constant to explicitly
 		// show the linter that we are not mutating the loop value.
 		c := Constants[i]
 		res.Add(&res, &c)
