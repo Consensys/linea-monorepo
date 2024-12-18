@@ -145,10 +145,8 @@ func (r *RotatedExt) WriteInSlice(s []field.Element) {
 
 func (r *RotatedExt) WriteInSliceExt(s []fext.Element) {
 	temp := rotatedAsRegular(r)
-	for i := 0; i < temp.Len(); i++ {
-		elem, _ := temp.GetBase(i)
-		s[i].SetFromBase(&elem)
-	}
+	assertHasLength(len(s), len(*temp))
+	copy(s, *temp)
 }
 
 func (r *RotatedExt) Pretty() string {

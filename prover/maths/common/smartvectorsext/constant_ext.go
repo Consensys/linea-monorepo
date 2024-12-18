@@ -88,11 +88,6 @@ func (c *ConstantExt) IntoRegVecSaveAlloc() ([]field.Element, error) {
 }
 
 func (c *ConstantExt) IntoRegVecSaveAllocExt() []fext.Element {
-	temp := smartvectors.IntoRegVecExt(c)
-	res := make([]fext.Element, len(temp))
-	for i := 0; i < len(temp); i++ {
-		elem := temp[i]
-		res[i].Set(&elem)
-	}
+	res := smartvectors.IntoRegVecExt(c)
 	return res
 }
