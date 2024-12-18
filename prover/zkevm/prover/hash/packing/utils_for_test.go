@@ -27,7 +27,7 @@ func table(t *dataTraceImported, numHash, blockSize, size int) [][]byte {
 		limbs     = make([][][]byte, numHash)
 		nByte     = make([][]int, numHash)
 		isNewHash = make([][]int, numHash)
-		rand      = rand.New(utils.NewRandSource(0))
+		rand      = rand.New(utils.NewRandSource(0)) // nolint
 	)
 
 	// build the stream for each hash.

@@ -91,7 +91,7 @@ func TestCaseGeneration(t *testing.T) {
 	t.Skip()
 
 	var (
-		rng                = rand.New(utils.NewRandSource(67569))
+		rng                = rand.New(utils.NewRandSource(67569)) // nolint
 		shared             = [][3]field.Element{}
 		numSharedRow       = 1
 		numStateSummaryRow = 128
