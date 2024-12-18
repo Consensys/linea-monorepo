@@ -96,7 +96,7 @@ func randNBytes(rng *rand.Rand) (int, field.Element) {
 
 	// nBytesInt must be in 1..=16
 	var (
-		nBytesInt = rng.Int31n(16) + 1
+		nBytesInt = rng.Int32N(16) + 1
 		nBytesF   = field.NewElement(uint64(nBytesInt))
 	)
 
