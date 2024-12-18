@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,10 +43,17 @@ func Prove(args ProverArgs) error {
 		if err := readRequest(args.Input, req); err != nil {
 			return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 		}
+
 		// we use the large traces in 2 cases;
 		// 1. the user explicitly asked for it (args.Large)
 		// 2. the job contains the large suffix and we are a large machine (cfg.Execution.CanRunLarge)
 		large := args.Large || (strings.Contains(args.Input, "large") && cfg.Execution.CanRunFullLarge)
+
+		// check the arithmetization version used to generated the trace is contained in the prover request
+		// and fail fast if the version is not supported.
+		if err := containsVersionInFile(req.ConflatedExecutionTracesFile, "../constraints-versions.txt"); err != nil {
+			return err
+		}
 
 		resp, err := execution.Prove(cfg, req, large)
 		if err != nil {
@@ -109,4 +117,27 @@ func writeResponse(path string, from any) error {
 	}
 
 	return nil
+}
+
+// containsVersionInFile: checks if the given string contains any of the versions from the file.
+func containsVersionInFile(traceFileName, filepath string) error {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		version := strings.TrimSpace(scanner.Text())
+		if version != "" && strings.Contains(traceFileName, version) {
+			return nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	return fmt.Errorf("unsupported arithmetization version found in the conflated trace file: %s", traceFileName)
 }

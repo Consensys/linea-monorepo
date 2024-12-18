@@ -17,4 +17,6 @@ const (
 
 	// Extension to add in order to defer the job to the large prover
 	LargeSuffix = "large"
+
+	// Version compatibility check
 )
