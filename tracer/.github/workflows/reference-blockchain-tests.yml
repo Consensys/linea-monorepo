@@ -43,7 +43,7 @@ jobs:
         run: cd ./linea-constraints; make zkevm_for_reference_tests.bin -B; cd ..
 
       - name: Generate block chain reference tests
-        run:  ./gradlew :reference-tests:generateBlockchainReferenceTests -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
+        run: ./gradlew :reference-tests:generateBlockchainReferenceTests -Dorg.gradle.caching=true
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: fields,expand,expand,expand
@@ -63,10 +63,10 @@ jobs:
         run: mv ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests.json ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests-input.json
 
       - name: Run reference blockchain tests
-        run: ./gradlew referenceBlockchainTests -x spotlessCheck
-        timeout-minutes: 180
+        run: GOMEMLIMIT=32GiB ./gradlew referenceBlockchainTests -x spotlessCheck
+        timeout-minutes: 360
         env:
-          REFERENCE_TESTS_PARALLELISM: 7
+          REFERENCE_TESTS_PARALLELISM: 2
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -wd --ansi-escapes=false --report --air
