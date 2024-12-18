@@ -148,10 +148,6 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 	// 	}
 	//
 	// The reciproqual constraint is enforced over the ROM module.
-	// 	107: map[IS_ACTIVE:1 IS_ZERO_283_RES:0 SHIFT_255_256_STATESUM_GT_ROM:1 SHIFT_255_256_ROM_ONGOING:1 SHIFT_255_256_STATE_SUM_ONGOING:1]
-	//
-	//	1 * (0 - 1 * (0 + 1)) >> -1
-	//
 	comp.InsertGlobal(
 		0,
 		ifaces.QueryID(name+"_STATE_SUM_STAY_SAME"),
