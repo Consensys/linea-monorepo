@@ -73,7 +73,9 @@ type CompiledIOP struct {
 	// always be preferred to express a relation that the witness must satisfy.
 	SubVerifiers collection.VecVec[VerifierAction]
 
-	// FiatShamirHooks is a verifier action that sets the FS state to a particular value
+	// FiatShamirHooks is an action that is run during the FS sampling. Compared
+	// to a normal verifier action it has the possibility to interact with the
+	// Fiat-Shamir state.
 	FiatShamirHooks collection.VecVec[VerifierAction]
 
 	// Precomputed stores the assignments of all the Precomputed and VerifierKey
