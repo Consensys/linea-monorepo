@@ -45,13 +45,9 @@ corset:
 ##
 zkevm/arithmetization/zkevm.bin: corset
 	cd ../constraints && \
-	BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD).lt && \
-	VERSION=$(echo $$BRANCH_NAME | sed 's/^rel\///') && \
-	echo '{' > ../prover/linea-constraints-config.json && \
-    echo '  "version": "'$BRANCH_NAME'",' >> ../prover/linea-constraints-config.json && \
-    echo '  "tag": "'$(git describe --tags --abbrev=0)'"' >> ../prover/linea-constraints-config.json && \
-    echo '}' >> ../prover/linea-constraints-config.json && \
-	$(CORSET) make zkevm.bin && \
+	BRANCHES=$$(git branch -r --contains HEAD | sed 's|origin/rel/||') && \
+	echo "$$BRANCHES" > ../prover/constraints-versions.txt && \
+	$(CORSET) && make zkevm.bin && \
 	mv zkevm.bin ../prover/zkevm/arithmetization
 
 ##
