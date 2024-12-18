@@ -20,10 +20,11 @@ The below function does the following:
 1. For a given target module name, it finds all the relevant permutation query and combine them into a big grand product query
 */
 type PermutationIntoGrandProductCtx struct {
-	Numerators   []*symbolic.Expression // aimed at storing the expressions Ai + \beta_i for a particular permutation query
-	Denominators []*symbolic.Expression // aimed at storing the expressions Bi + \beta_i for a particular permutation query
-	ParamY       field.Element
-	QId          ifaces.QueryID
+	Numerators       []*symbolic.Expression // aimed at storing the expressions Ai + \beta_i for a particular permutation query
+	Denominators     []*symbolic.Expression // aimed at storing the expressions Bi + \beta_i for a particular permutation query
+	ParamY           field.Element
+	QId              ifaces.QueryID
+	TargetModuleName string
 }
 
 // Returns a new PermutationIntoGrandProductCtx
@@ -43,6 +44,7 @@ func (p *PermutationIntoGrandProductCtx) AddGdProductQuery(initialComp, moduleCo
 	qId := deriveName[ifaces.QueryID](ifaces.QueryID(targetModuleName))
 	logrus.Printf("qId : %s", qId)
 	p.QId = qId
+	p.TargetModuleName = string(targetModuleName)
 	/*
 		Handles the lookups and permutations checks
 	*/
@@ -94,8 +96,8 @@ func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query
 	)
 
 	// alpha has to be different for different queries for a perticular round for the soundness of z-packing
-	alpha = comp.InsertCoin(1, deriveName[coin.Name](ifaces.QueryID("ALPHA"), round, queryInRound), coin.Field)
-	beta = comp.InsertCoin(1, deriveName[coin.Name](ifaces.QueryID("BETA"), round, queryInRound), coin.Field)
+	alpha = comp.InsertCoin(1, deriveName[coin.Name](ifaces.QueryID(p.TargetModuleName), "ALPHA", round, queryInRound), coin.Field)
+	beta = comp.InsertCoin(1, deriveName[coin.Name](ifaces.QueryID(p.TargetModuleName), "BETA", round, queryInRound), coin.Field)
 	if isNumerator && !isBoth {
 		// Take only the numerator
 		factor := computeFactor(q.A, isMultiColumn, &alpha, &beta)
