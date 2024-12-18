@@ -14,6 +14,7 @@ import {
   tryStoreAddress,
   tryStoreProxyAdminAddress,
   getRequiredEnvVar,
+  LogContractDeployment,
 } from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -100,21 +101,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
   ]);
 
-  await tokenBridge.waitForDeployment();
+  await LogContractDeployment(contractName, tokenBridge);
+
   const tokenBridgeAddress = await tokenBridge.getAddress();
-
-  const txReceipt = await tokenBridge.deploymentTransaction()?.wait();
-  if (!txReceipt) {
-    throw "Deployment transaction not found.";
-  }
-
-  const contractAddress = await tokenBridge.getAddress();
-
-  console.log(
-    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
-  );
-
-  await tryStoreAddress(network.name, contractName, tokenBridgeAddress, txReceipt.hash);
+  await tryStoreAddress(hre.network.name, contractName, tokenBridgeAddress, tokenBridge.deploymentTransaction()!.hash);
 
   const proxyAdminAddress = await upgrades.erc1967.getAdminAddress(tokenBridgeAddress);
 

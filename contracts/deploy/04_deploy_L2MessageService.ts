@@ -8,6 +8,7 @@ import {
   tryVerifyContract,
   getDeployedContractAddress,
   tryStoreAddress,
+  LogContractDeployment,
 } from "../common/helpers";
 import {
   L1_L2_MESSAGE_SETTER_ROLE,
@@ -16,7 +17,6 @@ import {
   L2_MESSAGE_SERVICE_ROLES,
   L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
 } from "../common/constants";
-import { ethers } from "hardhat";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
@@ -60,18 +60,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       unsafeAllow: ["constructor"],
     },
   );
+
+  await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
-  const txReceipt = await contract.deploymentTransaction()?.wait();
-  if (!txReceipt) {
-    throw "Deployment transaction not found.";
-  }
 
-  const chainId = (await ethers.provider!.getNetwork()).chainId;
-  console.log(
-    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
-  );
-
-  await tryStoreAddress(hre.network.name, contractName, contractAddress, txReceipt.hash);
+  await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
 
   await tryVerifyContract(contractAddress);
 };

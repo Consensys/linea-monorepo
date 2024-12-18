@@ -4,7 +4,13 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import path from "path";
 import { deployUpgradableWithAbiAndByteCode } from "../scripts/hardhat/utils";
-import { tryVerifyContract, getDeployedContractAddress, tryStoreAddress, getRequiredEnvVar } from "../common/helpers";
+import {
+  tryVerifyContract,
+  getDeployedContractAddress,
+  tryStoreAddress,
+  getRequiredEnvVar,
+  LogContractDeployment,
+} from "../common/helpers";
 import { abi, bytecode } from "./V1/L2MessageServiceV1Deployed.json";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -54,18 +60,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
   );
 
+  await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
-  const txReceipt = await contract.deploymentTransaction()?.wait();
-  if (!txReceipt) {
-    throw "Deployment transaction not found.";
-  }
 
-  const chainId = (await ethers.provider!.getNetwork()).chainId;
-  console.log(
-    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
-  );
-
-  await tryStoreAddress(hre.network.name, contractName, contractAddress, txReceipt.hash);
+  await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
 
   await tryVerifyContract(contractAddress);
 

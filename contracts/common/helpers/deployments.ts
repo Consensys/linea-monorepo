@@ -1,4 +1,4 @@
-import { ethers, AbstractSigner, Interface, InterfaceAbi } from "ethers";
+import { ethers, AbstractSigner, Interface, InterfaceAbi, BaseContract } from "ethers";
 
 export function getInitializerData(contractAbi: InterfaceAbi, initializerFunctionName: string, args: unknown[]) {
   const contractInterface = new Interface(contractAbi);
@@ -22,18 +22,20 @@ export async function deployContractFromArtifacts(
   const factory = new ethers.ContractFactory(abi, bytecode, wallet);
   const contract = await factory.deploy(...args);
 
-  const chainId = (await wallet.provider!.getNetwork()).chainId;
-  const txReceipt = await contract.deploymentTransaction()?.wait();
+  await LogContractDeployment(contractName,contract);
+  
+  return contract;
+}
 
+export async function LogContractDeployment(contractName: string, contract: BaseContract) {
+  const txReceipt = await contract.deploymentTransaction()?.wait();
   if (!txReceipt) {
-    throw `Contract deployment transaction receipt not found for contract=${contractName}`;
+    throw "Deployment transaction not found.";
   }
 
-  // This should match the regexes used in the coordinator - e.g.
-  // contract=LineaRollup(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)
+  const contractAddress = await contract.getAddress();
+  const chainId = (await contract.deploymentTransaction()!.provider.getNetwork()).chainId;
   console.log(
-    `contract=${contractName} deployed: address=${contract.target} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
+    `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
   );
-
-  return contract;
 }
