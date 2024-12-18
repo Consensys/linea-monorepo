@@ -23,7 +23,7 @@ export async function deployContractFromArtifacts(
   const contract = await factory.deploy(...args);
 
   const chainId = (await wallet.provider!.getNetwork()).chainId;
-  const txReceipt = await contract.deploymentTransaction()!.wait();
+  const txReceipt = await contract.deploymentTransaction()?.wait();
 
   if (!txReceipt) {
     throw `Contract deployment transaction receipt not found for contract=${contractName}`;
