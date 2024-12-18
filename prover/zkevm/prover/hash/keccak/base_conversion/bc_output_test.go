@@ -53,6 +53,7 @@ func makeTestCaseBaseConversionOutput() (
 	}
 	return define, prover
 }
+
 func TestBaseConversionOutput(t *testing.T) {
 	define, prover := makeTestCaseBaseConversionOutput()
 	comp := wizard.Compile(define, dummy.Compile)
@@ -73,18 +74,15 @@ func (b *hashBaseConversion) assignInputs(run *wizard.ProverRuntime) {
 		sliceLoB[j] = common.NewVectorBuilder(b.Inputs.LimbsLoB[j])
 	}
 
+	// #nosec G404 -- we don't need a cryptographic PRNG for testing purposes
+	rng := rand.New(utils.NewRandSource(678988))
+
 	max := keccakf.BaseBPow4
 	for j := range sliceHiB {
 		for row := 0; row < size; row++ {
 			// generate a random value in baseB
-			// #nosec G404 -- we don't need a cryptographic PRNG for testing purposes
-			rng := rand.New(utils.NewRandSource(int64(row * j)))
-			// #nosec G404 -- we don't need a cryptographic PRNG for testing purposes
-			rngm := rand.New(utils.NewRandSource(int64((row + 3) * j)))
-			n := rng.IntN(max) + 1
-			m := rngm.IntN(max) + 1
-			sliceHiB[j].PushInt(n)
-			sliceLoB[j].PushInt(m)
+			sliceHiB[j].PushInt(rng.IntN(max))
+			sliceLoB[j].PushInt(rng.IntN(max))
 		}
 	}
 
