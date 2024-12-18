@@ -13,7 +13,9 @@ func TestDistPermutation(t *testing.T) {
 	var (
 		runS *wizard.ProverRuntime
 		G ifaces.Query
+		permCtx *dist_permutation.PermutationIntoGrandProductCtx
 	)
+	permCtx = dist_permutation.NewPermutationIntoGrandProductCtx(dist_permutation.Settings{MaxNumOfQueryPerModule: 4})
 	initialDefine := func(builder *wizard.Builder) {
 		A := []ifaces.Column{
 			builder.RegisterCommit("MODULE_A.A0", 4),
@@ -49,7 +51,7 @@ func TestDistPermutation(t *testing.T) {
 		run.AssignColumn("MODULE_A.A0", smartvectors.ForTest(1, 2, 3, 4))
 		run.AssignColumn("MODULE_A.A1", smartvectors.ForTest(1, 2, 3, 4))
 		run.AssignColumn("MODULE_A.A2", smartvectors.ForTest(1, 2, 3, 4))
-		G = dist_permutation.AddGdProductQuery(initialComp, moduleAComp, "MODULE_A", dist_permutation.Settings{MaxNumOfQueryPerModule: 4}, run)
+		G = permCtx.AddGdProductQuery(initialComp, moduleAComp, "MODULE_A", run)
 	}
 	_ = wizard.Prove(moduleAComp, moduleAProve)
 	errG := G.Check(runS)

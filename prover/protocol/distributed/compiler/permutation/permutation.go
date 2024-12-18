@@ -1,6 +1,7 @@
 package dist_permutation
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
@@ -18,23 +19,23 @@ The below function does the following:
 1. For a given target module name, it finds all the relevant permutation query and combine them into a big grand product query
 */
 type PermutationIntoGrandProductCtx struct {
-	numerators   []*symbolic.Expression // aimed at storing the expressions Ai + \beta_i for a particular permutation query
-	denominators []*symbolic.Expression // aimed at storing the expressions Bi + \beta_i for a particular permutation query
+	Numerators   []*symbolic.Expression // aimed at storing the expressions Ai + \beta_i for a particular permutation query
+	Denominators []*symbolic.Expression // aimed at storing the expressions Bi + \beta_i for a particular permutation query
+	ParamY field.Element
+	QId ifaces.QueryID
 }
 
 // Returns a new PermutationIntoGrandProductCtx
-func newPermutationIntoGrandProductCtx(s Settings) *PermutationIntoGrandProductCtx {
+func NewPermutationIntoGrandProductCtx(s Settings) *PermutationIntoGrandProductCtx {
 	permCtx := PermutationIntoGrandProductCtx{}
-	permCtx.numerators = make([]*symbolic.Expression, s.MaxNumOfQueryPerModule)
-	permCtx.denominators = make([]*symbolic.Expression, s.MaxNumOfQueryPerModule)
+	permCtx.Numerators = make([]*symbolic.Expression, 0, s.MaxNumOfQueryPerModule)
+	permCtx.Denominators = make([]*symbolic.Expression, 0, s.MaxNumOfQueryPerModule)
 	return &permCtx
 }
 
-func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
-	targetModuleName modulediscoverer.ModuleName,
-	s Settings, run *wizard.ProverRuntime) ifaces.Query {
+func (p *PermutationIntoGrandProductCtx) AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
+	targetModuleName modulediscoverer.ModuleName, run *wizard.ProverRuntime) ifaces.Query {
 	numRounds := initialComp.NumRounds()
-	permCtx := newPermutationIntoGrandProductCtx(s)
 	// Initialise the period separating module discoverer
 	disc := modulediscoverer.PeriodSeperatingModuleDiscoverer{}
 	disc.Analyze(initialComp)
@@ -56,11 +57,11 @@ func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 					moduleNameB := disc.FindModule(q_.B[0][0])
 					logrus.Printf("moduleNameA = %v, moduleNameB = %v", moduleNameA, moduleNameB)
 					if moduleNameA == targetModuleName && moduleNameB != targetModuleName {
-						permCtx.push(moduleComp, &q_, i, j, true, false)
+						p.push(moduleComp, &q_, i, j, true, false)
 					} else if moduleNameA != targetModuleName && moduleNameB == targetModuleName {
-						permCtx.push(moduleComp, &q_, i, j, false, false)
+						p.push(moduleComp, &q_, i, j, false, false)
 					} else if moduleNameA == targetModuleName && moduleNameB == targetModuleName {
-						permCtx.push(moduleComp, &q_, i, j, true, true)
+						p.push(moduleComp, &q_, i, j, true, true)
 					} else {
 						continue
 					}
@@ -72,8 +73,9 @@ func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 	}
 	// Reduce a permutation query into a GrandProduct query
 	qId := ifaces.QueryIDf(string(targetModuleName) + "_GRAND_PRODUCT")
-	G := moduleComp.InsertGrandProduct(0, qId, permCtx.numerators, permCtx.denominators)
-	moduleComp.RegisterProverAction(1, permCtx.AssignParam(run, qId))
+	p.QId = qId
+	G := moduleComp.InsertGrandProduct(0, qId, p.Numerators, p.Denominators)
+	moduleComp.RegisterProverAction(1, p.AssignParam(run, qId))
 	return G
 }
 
@@ -84,37 +86,36 @@ func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query
 	logrus.Printf("queryInRound %d", queryInRound)
 	var (
 		isMultiColumn = len(q.A[0]) > 1
-		alpha         coin.Info
+		// isFragmented  = len(q.A) > 1
+		alpha coin.Info
 		// beta has to be different for different queries for a perticular round for the soundness of z-packing
-		beta = comp.InsertCoin(round+1, permutation.DeriveName[coin.Name](*q, "BETA_%v", queryInRound), coin.Field)
+		beta coin.Info
 	)
 
-	if isMultiColumn {
-		// alpha has to be different for different queries for a perticular round for the soundness of z-packing
-		alpha = comp.InsertCoin(round+1, permutation.DeriveName[coin.Name](*q, "ALPHA_%v", queryInRound), coin.Field)
-
-	}
+	// alpha has to be different for different queries for a perticular round for the soundness of z-packing
+	alpha = comp.InsertCoin(1, permutation.DeriveName[coin.Name](*q, "ALPHA_%v_%v", round, queryInRound), coin.Field)
+	beta = comp.InsertCoin(1, permutation.DeriveName[coin.Name](*q, "BETA_%v_%v", round, queryInRound), coin.Field)
 	if isNumerator && !isBoth {
 		// Take only the numerator
-		factor := computeFactor(q.A, isMultiColumn, alpha, beta)
-		p.numerators = append(p.numerators, factor)
+		factor := computeFactor(q.A, isMultiColumn, &alpha, &beta)
+		p.Numerators = append(p.Numerators, factor)
 	} else if !isNumerator && !isBoth {
 		// Take only the denominator
-		factor := computeFactor(q.B, isMultiColumn, alpha, beta)
-		p.denominators = append(p.denominators, factor)
+		factor := computeFactor(q.B, isMultiColumn, &alpha, &beta)
+		p.Denominators = append(p.Denominators, factor)
 	} else if isNumerator && isBoth {
 		// Take both the numerator and the denominator
-		numFactor := computeFactor(q.A, isMultiColumn, alpha, beta)
-		denFactor := computeFactor(q.B, isMultiColumn, alpha, beta)
-		p.numerators = append(p.numerators, numFactor)
-		p.denominators = append(p.denominators, denFactor)
+		numFactor := computeFactor(q.A, isMultiColumn, &alpha, &beta)
+		denFactor := computeFactor(q.B, isMultiColumn, &alpha, &beta)
+		p.Numerators = append(p.Numerators, numFactor)
+		p.Denominators = append(p.Denominators, denFactor)
 	} else if !isNumerator && isBoth {
 		panic("Invalid case")
 	}
 
 }
 
-func computeFactor(aOrB [][]ifaces.Column, isMultiColumn bool, alpha, beta coin.Info) *symbolic.Expression {
+func computeFactor(aOrB [][]ifaces.Column, isMultiColumn bool, alpha, beta *coin.Info) *symbolic.Expression {
 	var (
 		numFrag    = len(aOrB)
 		factor     = symbolic.NewConstant(1)
@@ -123,11 +124,11 @@ func computeFactor(aOrB [][]ifaces.Column, isMultiColumn bool, alpha, beta coin.
 
 	for frag := range numFrag {
 		if isMultiColumn {
-			fragFactor = wizardutils.RandLinCombColSymbolic(alpha, aOrB[frag])
+			fragFactor = wizardutils.RandLinCombColSymbolic(*alpha, aOrB[frag])
 		} else {
 			fragFactor = ifaces.ColumnAsVariable(aOrB[frag][0])
 		}
-		fragFactor = symbolic.Add(fragFactor, beta)
+		fragFactor = symbolic.Add(fragFactor, *beta)
 		factor = symbolic.Mul(factor, fragFactor)
 	}
 	return factor
@@ -135,17 +136,16 @@ func computeFactor(aOrB [][]ifaces.Column, isMultiColumn bool, alpha, beta coin.
 
 func (p *PermutationIntoGrandProductCtx) AssignParam(run *wizard.ProverRuntime, name ifaces.QueryID) *PermutationIntoGrandProductCtx {
 	var (
-		numNumerators   = len(p.numerators)
-		numDenominators = len(p.denominators)
+		numNumerators   = len(p.Numerators)
+		numDenominators = len(p.Denominators)
 		numProd         = symbolic.NewConstant(1)
 		denProd         = symbolic.NewConstant(1)
 	)
-
 	for i := 0; i < numNumerators; i++ {
-		numProd = symbolic.Mul(numProd, p.numerators[i])
+		numProd = symbolic.Mul(numProd, p.Numerators[i])
 	}
 	for j := 0; j < numDenominators; j++ {
-		denProd = symbolic.Mul(denProd, p.denominators[j])
+		denProd = symbolic.Mul(denProd, p.Denominators[j])
 	}
 	numProdFrVec := column.EvalExprColumn(run, numProd.Board()).IntoRegVecSaveAlloc()
 	denProdFrVec := column.EvalExprColumn(run, denProd.Board()).IntoRegVecSaveAlloc()
@@ -163,10 +163,10 @@ func (p *PermutationIntoGrandProductCtx) AssignParam(run *wizard.ProverRuntime, 
 	}
 	denProdFr.Inverse(&denProdFr)
 	Y := numProdFr.Mul(&numProdFr, &denProdFr)
-	run.AssignGrandProduct(name, *Y)
+	p.ParamY = *Y
 	return p
 }
 
 func (p *PermutationIntoGrandProductCtx) Run(run *wizard.ProverRuntime) {
-	panic("unimplemented")
+	run.AssignGrandProduct(p.QId, p.ParamY)
 }
