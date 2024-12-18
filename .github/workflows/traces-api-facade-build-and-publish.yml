@@ -51,7 +51,7 @@ concurrency:
 
 jobs:
   build-and-publish:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: Traces api facade build
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
@@ -91,7 +91,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: Docker meta
         id: traces-api-facade
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v5
         with:
           images: consensys/linea-traces-api-facade
       - name: Build for testing
