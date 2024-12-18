@@ -1,0 +1,11 @@
+# This file is empty, partly because we have not determined what should be the
+# the exact configuration of the prover-compression yet. We leave it as a placeholder.
+# NOTE: It will be passed to the prover-compression, but it will not be opened by the
+# command.
+dev_mode = false
+
+[[setups]]
+dict_path = "/opt/linea/prover/lib/compressor/compressor_dict.bin"
+compressed_max_data_size = 131_072
+decompressed_max_data_size = 800_000
+files = {out_folder = "/opt/linea/prover/prover-assets/2.0.0/prover-compression/regular/32ece02", pkey_file = "proving_key.bin", vkey_file = "verifying_key.bin", circuit_file = "circuit.bin"}

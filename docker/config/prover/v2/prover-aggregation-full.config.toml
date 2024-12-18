@@ -1,0 +1,21 @@
+dev_mode = false
+version = "v2.0.0"
+exec_proof_dir = "/data/prover/v2/execution/responses"
+decompress_proof_dir = "/data/prover/v2/compression/responses"
+
+[bn254_circuit]
+verifier_id = 2
+files = {out_folder = "/opt/linea/prover/prover-assets/2.0.0/prover-aggregation/regular/895c049", pkey_file = "proving_key.bin", vkey_file = "verifying_key.bin", circuit_file = "circuit.bin"}
+
+[[bw6_circuits]]
+max_nb_execution = 10
+files = {out_folder = "/opt/linea/prover/prover-assets/2.0.0/prover-aggregation/regular/895c049/aggregation-bw6-50-proofs", pkey_file = "proving_key.bin", vkey_file = "verifying_key.bin", circuit_file = "circuit.bin"}
+verifying_keys_shasum = [
+            "0xd1624b8e9e5987f7bbf85cb32bb7b9787144aceb4527864f31ba1957e300f7eb",
+            "0xe89bce9a0de99fcc66f02c528de4584d68e8f614a258d9df6f16ffa6875e257e",
+            "0x3a0a889b95674c33892c8c2894a2026d9c0769d749af7efe0da2f8bfc68c264e",
+            "0xbcade9728beb1bf5b51c74081d38b47db7276f7ffc3a2fdfe3a081ce04dd8a35",
+            "0x6ff0a53bfe1d28c5a850006d7908c3d9e48a64b886be7f56597a98e7ef87d806",
+            "0x0dd53e4bc14eca47b1c5590dea10ee526d835b2c89e4ea46af7d798dcd164f64",
+            "0x32ece023e1ffe0123c9c1cce9b450a147eda42a1037a140705bb23271c48a9d4"
+          ]

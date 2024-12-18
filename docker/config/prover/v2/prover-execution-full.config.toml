@@ -1,0 +1,43 @@
+tolerate_parent_state_root_hash_mismatch = true
+
+[logging]
+# level: trace=1|debug=2|info=3|warn=4|error=5|fatal=6
+level = 3
+file = ""
+
+[monitoring]
+profiling = true
+tracing = true
+
+[prover]
+version = "v2.0.0"
+# type: development|partial|full|proofless
+#type = "development"
+type = "full"
+# size: medium|large
+size = "medium"
+
+[files]
+#out_folder = "/opt/linea/prover/setup/light/d1624b8"
+out_folder = "/opt/linea/prover/prover-assets/2.0.0/prover-execution/full/3a0a889"
+pkey_file = "proving_key.bin"
+vkey_file = "verifying_key.bin"
+circuit_file = "circuit.bin"
+
+[verifier_contract]
+verifier_id_partial_m = 1
+verifier_id_full_m = 2
+verifier_id_full_l = 3
+
+[inputs]
+# @alex: Hotfix, although the exec prover runs in dev mode. It will still check
+# if the conflated traces dir exists.
+conflated_traces_dir = "/data/traces/v1/conflated"
+
+[feature_gates]
+with_keccak = true
+with_ecdsa = false
+
+[layer2]
+message_service_contract = "0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
+chain_id = 1337
