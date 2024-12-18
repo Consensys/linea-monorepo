@@ -158,10 +158,12 @@ deploy-l2-evm-opcode-tester:
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/deployLondonEvmTestingFramework.ts
 
+
+evm-opcode-tester-execute-all-opcodes: OPCODE_TEST_CONTRACT_ADDRESS:=0x997FC3aF1F193Cbdc013060076c67A13e218980e
 evm-opcode-tester-execute-all-opcodes:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		OPCODE_TEST_CONTRACT_ADDRESS=0x997FC3aF1F193Cbdc013060076c67A13e218980e \
+		OPCODE_TEST_CONTRACT_ADDRESS=$(OPCODE_TEST_CONTRACT_ADDRESS) \
 		NUMBER_OF_RUNS=3 \
 		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
 		RPC_URL=http:\\localhost:8545/ \
@@ -218,9 +220,7 @@ deploy-contracts-minimal:
 
 fresh-start-all-staterecover: COMPOSE_PROFILES:=l1,l2,staterecover
 fresh-start-all-staterecover:
-		make clean-environment
-		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
-		make deploy-contracts-minimal
+		make fresh-start-all-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
 fresh-start-staterecover-for-replay-only: COMPOSE_PROFILES:=l1,staterecover
 fresh-start-staterecover-for-replay-only:
