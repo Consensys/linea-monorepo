@@ -44,15 +44,20 @@ cd $MONOREPO_ROOT_PATH
 cp -r "$MONOREPO_ROOT_PATH/$MONOREPO_SMART_CONTRACT_DOCS_DIRECTORY" "$DOCS_WEBSITE_REPO_PATH/$DOCS_REPO_SMART_CONTRACT_DOC_DIRECTORY"
 cp "$MONOREPO_ROOT_PATH/$UPDATE_SIDEBAR_SCRIPT_PATH" "$DOCS_WEBSITE_REPO_PATH/$UPDATE_SIDEBAR_SCRIPT_NAME"
 
-# Convert filenames of copied *.mdx files from PascalCase to camelCase
-# To pass Github Action enforcing camelCase for file name
+# Ensure directories is entirely lowercase
+# To pass Github Action enforcing no uppercase for file name
+for FOLDER in `find "$DOCS_WEBSITE_REPO_PATH/$DOCS_REPO_SMART_CONTRACT_DOC_DIRECTORY" -type d`
+do
+    # NEW_FILENAME=$(echo $FILENAME | tr 'A-Z' 'a-z')
+    NEW_FOLDER=$(echo $FOLDER | tr 'A-Z' 'a-z')
+    mv $FOLDER $NEW_FOLDER
+done;
+
+# Ensure filenames is entirely lowercase
+# To pass Github Action enforcing no uppercase for file name
 for FILENAME in `find "$DOCS_WEBSITE_REPO_PATH/$DOCS_REPO_SMART_CONTRACT_DOC_DIRECTORY" -type f  \( -iname \*.md -o -iname \*.mdx \)`
 do
-    # Extract the base name of the file
-    BASE_FILENAME=$(basename $FILENAME)
-    FIRST_CHAR=$(echo "${BASE_FILENAME:0:1}" | tr 'A-Z' 'a-z')
-    NEW_BASE_FILENAME="$FIRST_CHAR${BASE_FILENAME:1}"
-    NEW_FILENAME=$(echo $FILENAME | sed "s/$BASE_FILENAME/$NEW_BASE_FILENAME/")
+    NEW_FILENAME=$(echo $FILENAME | tr 'A-Z' 'a-z')
     mv $FILENAME $NEW_FILENAME
 done;
 

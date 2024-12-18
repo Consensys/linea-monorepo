@@ -65,6 +65,23 @@ function getSmartContractSidebar() {
 function populateFolderSidebar(folderSidebar, subdirectoryPath, fileExtension) {
   const folderFileList = fs.readdirSync(subdirectoryPath);
 
+  // Ensure *.mdx directories at the top
+  for (const fileNode of folderFileList) {
+    const filePath = path.join(subdirectoryPath, fileNode);
+    const fileMetadata = fs.statSync(filePath);
+
+    // Base case => *.mdx file => Add relative path
+    if (fileMetadata.isFile() && fileNode.endsWith(fileExtension)) {
+      const relativePath = path.relative(
+        path.join(__dirname, "docs"),
+        filePath.split(fileExtension)[0],
+      );
+      folderSidebar?.items.push(relativePath);
+    }
+    // Not a *.mdx file => Do nothing
+  }
+
+  // Ensure directories are ordered on bottom
   for (const fileNode of folderFileList) {
     const filePath = path.join(subdirectoryPath, fileNode);
     const fileMetadata = fs.statSync(filePath);
@@ -74,16 +91,8 @@ function populateFolderSidebar(folderSidebar, subdirectoryPath, fileExtension) {
       let newFolderNode = new FolderSidebar(fileNode);
       populateFolderSidebar(newFolderNode, filePath, fileExtension);
       folderSidebar?.items.push(newFolderNode);
-
-      // Base case => *.mdx file => Add relative path
-    } else if (fileMetadata.isFile() && fileNode.endsWith(fileExtension)) {
-      const relativePath = path.relative(
-        path.join(__dirname, "docs"),
-        filePath.split(fileExtension)[0],
-      );
-      folderSidebar?.items.push(relativePath);
     }
-    // Not a directory or *.mdx file => Do nothing
+    // Not a directory => Do nothing
   }
 
   return folderSidebar;
