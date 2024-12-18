@@ -78,7 +78,7 @@ internal val lineaRollupAddressPattern = Pattern.compile(
   "^contract=LineaRollup(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
 )
 internal val l2MessageServiceAddressPattern = Pattern.compile(
-  "contract=L2MessageService(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
+  "^contract=L2MessageService(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
 )
 
 data class DeployedContract(
