@@ -5,7 +5,6 @@ import io.vertx.core.Vertx;
 import net.consensys.linea.LineaBesuEngineBlockTagUpdater;
 import net.consensys.linea.LineaL1FinalizationUpdaterService;
 import net.consensys.linea.PluginCliOptions;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BlockchainService;
