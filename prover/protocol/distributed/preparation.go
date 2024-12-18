@@ -61,9 +61,18 @@ func IntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 		// push single-columns into zCatalog
 		PushToZCatalog(tableCtx, zCatalog)
 
-		// insert a single LogDerivativeSum query for the global zCatalog.
-		comp.InsertLogDerivativeSum(lastRound, "GlobalLogDerivativeSum", zCatalog)
+		a := lookup.MAssignmentTask{
+			M:       tableCtx.M,
+			S:       checkTable,
+			T:       lookupTable,
+			SFilter: includedFilters,
+		}
+		comp.SubProvers.AppendToInner(round, a.Run)
+
 	}
+
+	// insert a single LogDerivativeSum query for the global zCatalog.
+	comp.InsertLogDerivativeSum(lastRound, "GlobalLogDerivativeSum", zCatalog)
 }
 
 // PushToZCatalog constructs the numerators and denominators for the collapsed S and T

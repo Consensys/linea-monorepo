@@ -3,10 +3,25 @@ package distributed
 import (
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+// ModuleDiscoverer a set of methods responsible for the horizontal splittings (i.e., splitting to modules)
+type ModuleDiscoverer interface {
+	// Analyze is responsible for letting the module discoverer compute how to
+	// group best the columns into modules.
+	Analyze(comp *wizard.CompiledIOP)
+	ModuleList(comp *wizard.CompiledIOP) []ModuleName
+	FindModule(col ifaces.Column) ModuleName
+	// given a query and a module name it checks if the query is inside the module
+	QueryIsInModule(ifaces.Query, ModuleName) bool
+	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
+}
 
 type ModuleName string
 
@@ -81,27 +96,42 @@ func (p *PeriodSeperatingModuleDiscoverer) ColumnIsInModule(col ifaces.Column, n
 
 //	ExpressionIsInModule checks that all the columns in the expression are from the given module.
 //
-// It does not check the presence of the coins and other metadata.
-func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr symbolic.Expression, name ModuleName) bool {
+// It does not check the presence of the coins and other metadata in the module.
+func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr *symbolic.Expression, name ModuleName) bool {
 	var (
 		board    = expr.Board()
 		metadata = board.ListVariableMetadata()
 		b        = true
-		cols     []ifaces.Column
+		nCols    = 0
 	)
+
+	// by contradiction, if there is no metadata it belongs to the module.
+	if len(metadata) == 0 {
+		return true
+	}
 
 	for _, m := range metadata {
 		switch v := m.(type) {
 		case ifaces.Column:
 			if !p.ColumnIsInModule(v, name) {
 				b = b && false
-				cols = append(cols, v)
 			}
+			nCols++
+			// The expression can involve random coins
+		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor:
+			// Do nothing
+		default:
+			utils.Panic("unknown type %T", metadata)
 		}
 	}
-	if len(cols) == 0 {
+
+	if nCols == 0 {
 		panic("could not find any column in the expression")
 	} else {
 		return b
 	}
+}
+
+func (p *PeriodSeperatingModuleDiscoverer) QueryIsInModule(ifaces.Query, ModuleName) bool {
+	panic("unimplemented")
 }

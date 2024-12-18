@@ -54,7 +54,7 @@ func NewLogDerivativeSum(inp map[[2]int]*LogDerivativeSumInput, id ifaces.QueryI
 	// check the length consistency
 	for key := range inp {
 		if len(inp[key].Numerator) != len(inp[key].Denominator) || len(inp[key].Numerator) == 0 {
-			panic("Numerator and Denominator should have the same (no-zero) length")
+			utils.Panic("Numerator and Denominator should have the same (no-zero) length, %v , %v", len(inp[key].Numerator), len(inp[key].Denominator))
 		}
 		for i := range inp[key].Numerator {
 			if err := inp[key].Numerator[i].Validate(); err != nil {

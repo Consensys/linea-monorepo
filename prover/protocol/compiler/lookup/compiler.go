@@ -62,7 +62,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		tableCtx.PushToZCatalog(zCatalog)
 
 		proverActions[round].pushMAssignment(
-			mAssignmentTask{
+			MAssignmentTask{
 				M:       tableCtx.M,
 				S:       checkTable,
 				T:       lookupTable,
