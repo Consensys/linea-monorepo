@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
@@ -50,8 +51,8 @@ func Prove(args ProverArgs) error {
 		large := args.Large || (strings.Contains(args.Input, "large") && cfg.Execution.CanRunFullLarge)
 
 		// check the arithmetization version used to generated the trace is contained in the prover request
-		// and fail fast if the version is not supported.
-		if err := containsVersionInFile(req.ConflatedExecutionTracesFile, "../constraints-versions.txt"); err != nil {
+		// and fail fast if the constraint version is not supported
+		if err := checkArithmetizationVersion(req.ConflatedExecutionTracesFile, "../constraints-versions.txt"); err != nil {
 			return err
 		}
 
@@ -119,25 +120,44 @@ func writeResponse(path string, from any) error {
 	return nil
 }
 
-// containsVersionInFile: checks if the given string contains any of the versions from the file.
-func containsVersionInFile(traceFileName, filepath string) error {
+// verifies the arithmetization version used to generate the trace files against the list of versions
+// specified by the constraints in the file path.
+func checkArithmetizationVersion(traceFileName, filepath string) error {
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		version := strings.TrimSpace(scanner.Text())
-		if version != "" && strings.Contains(traceFileName, version) {
-			return nil
-		}
+	traceFileVersion, err := validateAndExtractVersion(traceFileName)
+	if err != nil {
+		return err
 	}
 
+	scanner := bufio.NewScanner(file)
 	if err := scanner.Err(); err != nil {
 		return err
 	}
 
+	for scanner.Scan() {
+		version := strings.TrimSpace(scanner.Text())
+		if version != "" && strings.Compare(traceFileVersion, version) == 0 {
+			return nil
+		}
+	}
+
 	return fmt.Errorf("unsupported arithmetization version found in the conflated trace file: %s", traceFileName)
+}
+
+func validateAndExtractVersion(traceFileName string) (string, error) {
+	// Define the regex pattern with a capturing group for the version part
+	traceFilePattern := `^\d+-\d+\.conflated\.(v\d+\.\d+\.\d+-[^.]+)\.lt$`
+	re := regexp.MustCompile(traceFilePattern)
+
+	// Check if the file name matches the pattern and extract the version part
+	matches := re.FindStringSubmatch(traceFileName)
+	if len(matches) > 1 {
+		return matches[1], nil
+	}
+	return "", fmt.Errorf("conflated trace file: %s not in the appropriate format or version not found", traceFileName)
 }
