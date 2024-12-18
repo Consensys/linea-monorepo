@@ -1,13 +1,24 @@
+/**
+ * Runs as git pre-commit hook
+ * Filters the list of changed files on 'git commit'
+ * If *.ts files in specified projects are detected, runs the 'lint:ts:fix' package.json script for that project
+ * E.g. if a *.ts file is changed in /sdk, then this script will run 'pnpm run lint:ts:fix' in the /sdk project
+ */
+
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-// ENUMS
+/**
+ * ENUMS
+ */
 
+// File extensions to filter for
 const FILE_EXTENSION = {
     TYPESCRIPT: "TYPESCRIPT",
     SOLIDITY: "SOLIDITY",
 }
 
+// Projects to filter for
 const FOLDER = {
     BRIDGEUI: "BRIDGEUI",
     CONTRACTS: "CONTRACTS",
@@ -17,24 +28,29 @@ const FOLDER = {
     SDK: "SDK",
 }
 
+// Project runtimes
 const RUNTIME = {
     NODEJS: "NODEJS"
 }
 
-// MAPS
+/**
+ * MAPPINGS
+ */
 
+// File extension => regex
 const FILE_EXTENSION_FILTERS = {
     [FILE_EXTENSION.TYPESCRIPT]: "\.ts$",
     [FILE_EXTENSION.SOLIDITY]: "\.sol$",
 };
 
+// File extension => script in package.json to run
 const FILE_EXTENSION_LINTING_COMMAND = {
     [FILE_EXTENSION.TYPESCRIPT]: "pnpm run lint:ts:fix",
     [FILE_EXTENSION.SOLIDITY]: "pnpm run lint:sol",
 };
 
+// Project => Path in monorepo
 const FOLDER_PATH = {
-
     [FOLDER.BRIDGEUI]: "bridge-ui/",
     [FOLDER.CONTRACTS]: "contracts/",
     [FOLDER.E2E]: "e2e/",
@@ -43,6 +59,7 @@ const FOLDER_PATH = {
     [FOLDER.SDK]: "sdk/",
 };
 
+// Project => List of changed files
 const FOLDER_CHANGED_FILES = {
     [FOLDER.BRIDGEUI]: new Array(),
     [FOLDER.CONTRACTS]: new Array(),
@@ -52,6 +69,7 @@ const FOLDER_CHANGED_FILES = {
     [FOLDER.SDK]: new Array(),
 };
 
+// Project => Runtime
 const FOLDER_RUNTIME = {
     [FOLDER.BRIDGEUI]: RUNTIME.NODEJS,
     [FOLDER.CONTRACTS]: RUNTIME.NODEJS,
@@ -61,7 +79,9 @@ const FOLDER_RUNTIME = {
     [FOLDER.SDK]: RUNTIME.NODEJS,
 };
 
-// MAIN FUNCTION
+/**
+ * MAIN FUNCTION
+ */
 
 main();
 
@@ -81,8 +101,14 @@ function main() {
     updateGitIndex();
 }
 
-// HELPER FUNCTIONS
+/**
+ * HELPER FUNCTIONS
+ */
 
+/**
+ * Gets a list of changed files in the git commit
+ * @returns {string[]}
+ */
 function getChangedFileList() {
     try {
         const cmd = 'git diff --name-only HEAD'
@@ -94,8 +120,12 @@ function getChangedFileList() {
     }
 }
 
+/**
+ * Partitions list of changed files from getChangedFileList() by project
+ * Stores results in FOLDER_CHANGED_FILES
+ * @param {string[]}
+ */
 function partitionChangedFileList(_changedFileList) {
-    // Populate lists of filter matches
     for (const file of _changedFileList) {
         for (const path in FOLDER) {
             if (file.match(new RegExp(`^${FOLDER_PATH[path]}`))) {
@@ -105,6 +135,11 @@ function partitionChangedFileList(_changedFileList) {
     }
 }
 
+/**
+ * Checks if runtime dependencies are installed for a project
+ * @param {FOLDER}
+ * @returns {boolean}
+ */
 function isDependenciesInstalled(_folder) {
     const runtime = FOLDER_RUNTIME[_folder];
     const path = FOLDER_PATH[_folder];
@@ -119,8 +154,13 @@ function isDependenciesInstalled(_folder) {
     }
 }
 
+/**
+ * Resolve list of changed file extensions for a project
+ * @param {FOLDER}
+ * @returns {FILE_EXTENSION[]}
+ */
 function getChangedFileExtensions(_folder) {
-    // Use sets to implement early exit from iteration of all changed files, once we have matched all file extensions of interest.
+    // Use sets to implement early exit from loop, once we have matched all configured file extensions
     const remainingFileExtensionsSet = new Set(Object.values(FILE_EXTENSION));
     const foundFileExtensionsSet = new Set();
 
@@ -139,13 +179,17 @@ function getChangedFileExtensions(_folder) {
     return Array.from(foundFileExtensionsSet);
 }
 
+/**
+ * Execute linting command
+ * @param {FOLDER, FILE_EXTENSION[]}
+ */
 function executeLinting(_folder, _changedFileExtensions) {
     for (const fileExtension of _changedFileExtensions) {
         const path = FOLDER_PATH[_folder];
         const cmd = FILE_EXTENSION_LINTING_COMMAND[fileExtension];
         console.log(`${fileExtension} change found in ${path}, linting...`);
         try {
-            // Execute command synchronously and route output directly to the current stdout
+            // Execute command synchronously and stream output directly to the current stdout
             execSync(`
                 cd ${path};
                 ${cmd};
@@ -158,6 +202,10 @@ function executeLinting(_folder, _changedFileExtensions) {
     }
 }
 
+/**
+ * Redo `git add` for files updated during executeLinting(), so that they are not left out of the commit
+ * The difference between 'git add .' and 'git update-index --again', is that the latter will not include untracked files
+ */
 function updateGitIndex() {
     try {
         const cmd = 'git update-index --again'
