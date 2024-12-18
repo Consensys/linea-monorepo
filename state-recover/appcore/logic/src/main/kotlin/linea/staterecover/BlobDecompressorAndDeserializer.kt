@@ -88,7 +88,7 @@ class BlobDecompressorToDomainV1(
                 gasPrice = transaction.gasPrice.getOrNull()?.asBigInteger,
                 to = transaction.to.getOrNull()?.toArray(),
                 value = transaction.value.asBigInteger,
-                data = transaction.data.getOrNull()?.toArray(),
+                data = transaction.payload.toArray(),
                 accessList = transaction.accessList.getOrNull()?.map { accessTuple ->
                   TransactionL1RecoveredData.AccessTuple(
                     address = accessTuple.address.toArray(),

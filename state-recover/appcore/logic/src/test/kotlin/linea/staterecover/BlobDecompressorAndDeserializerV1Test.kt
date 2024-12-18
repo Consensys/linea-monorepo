@@ -113,7 +113,7 @@ class BlobDecompressorAndDeserializerV1Test {
     assertThat(uncompressed.maxPriorityFeePerGas).isEqualTo(original.maxPriorityFeePerGas.getOrNull()?.asBigInteger)
     assertThat(uncompressed.gasPrice).isEqualTo(original.gasPrice.getOrNull()?.asBigInteger)
     assertThat(uncompressed.value).isEqualTo(original.value.asBigInteger)
-    assertThat(uncompressed.data?.encodeHex()).isEqualTo(original.data.getOrNull()?.toArray()?.encodeHex())
+    assertThat(uncompressed.data?.encodeHex()).isEqualTo(original.payload?.toArray()?.encodeHex())
     if (uncompressed.accessList.isNullOrEmpty() != original.accessList.getOrNull().isNullOrEmpty()) {
       assertThat(uncompressed.accessList).isEqualTo(original.accessList.getOrNull())
     } else {
