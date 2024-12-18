@@ -112,7 +112,7 @@ func TestLCConstruction(t *testing.T) {
 
 	{
 		/*
-			Adding y then substracting x should give back (y)
+			Adding y then subtracting x should give back (y)
 		*/
 		expr1 := x.Add(y).Sub(x)
 		require.Equal(t, expr1, y)
@@ -149,7 +149,7 @@ func TestProductConstruction(t *testing.T) {
 
 	{
 		/*
-			Adding y then substracting x should give back (y)
+			Adding y then subtracting x should give back (y)
 		*/
 		expr1 := x.Mul(y).Mul(x)
 		require.Equal(t, 2, len(expr1.Children))
