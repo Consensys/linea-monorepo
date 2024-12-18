@@ -4,13 +4,16 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	dist_permutation "github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
 func TestDistPermutation(t *testing.T) {
+	var (
+		runS *wizard.ProverRuntime
+		G ifaces.Query
+	)
 	initialDefine := func(builder *wizard.Builder) {
 		A := []ifaces.Column{
 			builder.RegisterCommit("MODULE_A.A0", 4),
@@ -40,13 +43,18 @@ func TestDistPermutation(t *testing.T) {
 
 	initialComp := wizard.Compile(initialDefine)
 	moduleAComp := wizard.Compile(moduleADefine)
-	_ = dist_permutation.AddGdProductQuery(initialComp, moduleAComp, "MODULE_A", dist_permutation.Settings{MaxNumOfQueryPerModule: 4})
-
+	
 	moduleAProve := func(run *wizard.ProverRuntime) {
+		runS = run
 		run.AssignColumn("MODULE_A.A0", smartvectors.ForTest(1, 2, 3, 4))
 		run.AssignColumn("MODULE_A.A1", smartvectors.ForTest(1, 2, 3, 4))
 		run.AssignColumn("MODULE_A.A2", smartvectors.ForTest(1, 2, 3, 4))
-		run.AssignGrandProduct("MODULE_A_GRAND_PRODUCT", field.One())
+		G = dist_permutation.AddGdProductQuery(initialComp, moduleAComp, "MODULE_A", dist_permutation.Settings{MaxNumOfQueryPerModule: 4}, run)
 	}
 	_ = wizard.Prove(moduleAComp, moduleAProve)
+	errG := G.Check(runS)
+
+	if errG != nil {
+		t.Fatalf("error verifying the grand product: %v", errG.Error())
+	}
 }

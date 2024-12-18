@@ -2,6 +2,7 @@ package dist_permutation
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	modulediscoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -31,7 +32,7 @@ func newPermutationIntoGrandProductCtx(s Settings) *PermutationIntoGrandProductC
 
 func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 	targetModuleName modulediscoverer.ModuleName,
-	s Settings) *query.GrandProduct {
+	s Settings, run *wizard.ProverRuntime) ifaces.Query {
 	numRounds := initialComp.NumRounds()
 	permCtx := newPermutationIntoGrandProductCtx(s)
 	// Initialise the period separating module discoverer
@@ -71,7 +72,9 @@ func AddGdProductQuery(initialComp, moduleComp *wizard.CompiledIOP,
 	}
 	// Reduce a permutation query into a GrandProduct query
 	qId := ifaces.QueryIDf(string(targetModuleName) + "_GRAND_PRODUCT")
-	return moduleComp.InsertGrandProduct(0, qId, permCtx.numerators, permCtx.denominators)
+	G := moduleComp.InsertGrandProduct(0, qId, permCtx.numerators, permCtx.denominators)
+	moduleComp.RegisterProverAction(1, permCtx.AssignParam(run, qId))
+	return G
 }
 
 // The below function does the following:
@@ -83,12 +86,12 @@ func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query
 		isMultiColumn = len(q.A[0]) > 1
 		alpha         coin.Info
 		// beta has to be different for different queries for a perticular round for the soundness of z-packing
-		beta = comp.InsertCoin(round, permutation.DeriveName[coin.Name](*q, "BETA_%v", queryInRound), coin.Field)
+		beta = comp.InsertCoin(round+1, permutation.DeriveName[coin.Name](*q, "BETA_%v", queryInRound), coin.Field)
 	)
 
 	if isMultiColumn {
 		// alpha has to be different for different queries for a perticular round for the soundness of z-packing
-		alpha = comp.InsertCoin(round, permutation.DeriveName[coin.Name](*q, "ALPHA_%v", queryInRound), coin.Field)
+		alpha = comp.InsertCoin(round+1, permutation.DeriveName[coin.Name](*q, "ALPHA_%v", queryInRound), coin.Field)
 
 	}
 	if isNumerator && !isBoth {
@@ -113,17 +116,57 @@ func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query
 
 func computeFactor(aOrB [][]ifaces.Column, isMultiColumn bool, alpha, beta coin.Info) *symbolic.Expression {
 	var (
-		numFrag = len(aOrB)
-		factor  = symbolic.NewConstant(1)
+		numFrag    = len(aOrB)
+		factor     = symbolic.NewConstant(1)
+		fragFactor = symbolic.NewConstant(1)
 	)
 
 	for frag := range numFrag {
-		fragFactor := symbolic.NewVariable(aOrB[frag][0])
 		if isMultiColumn {
 			fragFactor = wizardutils.RandLinCombColSymbolic(alpha, aOrB[frag])
+		} else {
+			fragFactor = ifaces.ColumnAsVariable(aOrB[frag][0])
 		}
 		fragFactor = symbolic.Add(fragFactor, beta)
 		factor = symbolic.Mul(factor, fragFactor)
 	}
 	return factor
+}
+
+func (p *PermutationIntoGrandProductCtx) AssignParam(run *wizard.ProverRuntime, name ifaces.QueryID) *PermutationIntoGrandProductCtx {
+	var (
+		numNumerators   = len(p.numerators)
+		numDenominators = len(p.denominators)
+		numProd         = symbolic.NewConstant(1)
+		denProd         = symbolic.NewConstant(1)
+	)
+
+	for i := 0; i < numNumerators; i++ {
+		numProd = symbolic.Mul(numProd, p.numerators[i])
+	}
+	for j := 0; j < numDenominators; j++ {
+		denProd = symbolic.Mul(denProd, p.denominators[j])
+	}
+	numProdFrVec := column.EvalExprColumn(run, numProd.Board()).IntoRegVecSaveAlloc()
+	denProdFrVec := column.EvalExprColumn(run, denProd.Board()).IntoRegVecSaveAlloc()
+	numProdFr := numProdFrVec[0]
+	denProdFr := denProdFrVec[0]
+	if len(numProdFrVec) > 1 {
+		for i := 1; i < len(numProdFrVec); i++ {
+			numProdFr.Mul(&numProdFr, &numProdFrVec[i])
+		}
+	}
+	if len(numProdFrVec) > 1 {
+		for j := 1; j < len(denProdFrVec); j++ {
+			denProdFr.Mul(&denProdFr, &denProdFrVec[j])
+		}
+	}
+	denProdFr.Inverse(&denProdFr)
+	Y := numProdFr.Mul(&numProdFr, &denProdFr)
+	run.AssignGrandProduct(name, *Y)
+	return p
+}
+
+func (p *PermutationIntoGrandProductCtx) Run(run *wizard.ProverRuntime) {
+	panic("unimplemented")
 }
