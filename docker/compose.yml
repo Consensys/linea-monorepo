@@ -640,7 +640,7 @@ services:
 
   shomei-plugin-downloader:
     container_name: shomei-plugin-downloader
-    profiles: [ "l2", "l2-bc", "staterecover", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     image: busybox:1.36.1
     command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/besu-shomei-plugin/releases/download/v0.3.1/besu-shomei-plugin-v0.3.1.jar",  "/shomei-plugin" ]
     volumes:
@@ -745,12 +745,13 @@ services:
         ipv4_address: 10.10.10.205
 
   zkbesu-shomei-sr:
-    image: hyperledger/besu:24.12-develop-1df5f32
+    image: hyperledger/besu:24.12-develop-6c6276f
+#    image: hyperledger/besu:24.12-develop-1df5f32
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
     profiles: [ "external-to-monorepo", "staterecover" ]
     depends_on:
-      shomei-plugin-downloader:
+      shomei-plugin-downloader-sr:
         condition: service_completed_successfully
     privileged: true
     restart: always
@@ -823,6 +824,15 @@ services:
       - local-dev:/data/
       - ./config/shomei/log4j.xml:/log4j.xml:ro
   #      - ../tmp/local/shomei:/data/shomei/:z
+
+  shomei-plugin-downloader-sr:
+    container_name: shomei-plugin-downloader-sr
+    profiles: [ "l2", "l2-bc", "staterecover", "external-to-monorepo" ]
+    image: busybox:1.36.1
+    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/besu-shomei-plugin/releases/download/v0.4.0/besu-shomei-plugin-v0.4.0.jar",  "/shomei-plugin" ]
+    volumes:
+      - ./scripts/file-downloader.sh:/file-downloader.sh:ro
+      - ../tmp/zkbesu-shomei-sr/plugins:/shomei-plugin/
 
   ########################
   # Observability stack

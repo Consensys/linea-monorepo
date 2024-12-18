@@ -11,6 +11,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.build.staterecover.clients.VertxTransactionDetailsClient
+import linea.log4j.configureLoggers
 import linea.staterecover.clients.blobscan.BlobScanClient
 import linea.web3j.Web3JLogsSearcher
 import net.consensys.linea.BlockParameter
@@ -47,7 +48,10 @@ class StateRecoverAppIntTest {
   private lateinit var lineaContractClient: LineaRollupSmartContractClientReadOnly
 
   private lateinit var contractClientForSubmittions: LineaRollupSmartContractClient
-  private val testDataDir = "testdata/coordinator/prover/v3/"
+
+  //  private val testDataDir = "testdata/coordinator/prover/v3/"
+  private val testDataDir = "testdata/coordinator/prover/v3-unrecoverable-state-minimal-sample"
+  //  private val testDataDir = "tmp/local/prover/v3/"
 
   private val l1RpcUrl = "http://localhost:8445"
   private val blobScanUrl = "http://localhost:4001"
@@ -132,6 +136,18 @@ class StateRecoverAppIntTest {
       logger = LogManager.getLogger("test.clients.l1.blobscan")
     )
 
+    configureLoggers(
+      rootLevel = Level.INFO,
+      "test.clients.l1.executionlayer" to Level.INFO,
+      "test.clients.l1.web3j-default" to Level.INFO,
+      "test.clients.l1.state-manager" to Level.INFO,
+      "test.clients.l1.transaction-details" to Level.INFO,
+      "test.clients.l1.linea-contract" to Level.INFO,
+      "test.clients.l1.events-fetcher" to Level.INFO,
+      "test.clients.l1.blobscan" to Level.INFO,
+      "net.consensys.linea.contract.l1" to Level.INFO
+    )
+
     stateRecoverApp = StateRecoverApp(
       vertx = vertx,
       elClient = executionLayerClient,
@@ -162,23 +178,31 @@ class StateRecoverAppIntTest {
       blobChunksSize = 6
     )
 
-    log.info("Waiting for finalization tx to be executed on L1")
+    val lastAggregation = aggregationsAndBlobs.findLast { it.aggregation != null }!!.aggregation!!
+    log.info("Waiting for finalization={} tx to be executed on L1", lastAggregation.intervalString())
     Web3jClientManager.l1Client.waitForTxReceipt(
       txHash = submissionTxHashes.aggregationTxHashes.last(),
       timeout = 2.minutes
-    )
-    val lastAggregation = aggregationsAndBlobs.findLast { it.aggregation != null }!!.aggregation
+    ).also {
+      assertThat(it.status).isEqualTo("0x1")
+        .withFailMessage(
+          "finalization=${lastAggregation.intervalString()} tx failed! " +
+            "replay data is not consistent with L1 state, potential cause: " +
+            "data has L1 -> L2 anchoring messages and misses L1 Rolling Hash: tx=$it"
+        )
+      log.info("finalization={} executed on l1 tx={}", lastAggregation.intervalString(), it)
+    }
     await()
       .atMost(4.minutes.toJavaDuration())
       .untilAsserted {
         assertThat(stateRecoverApp.lastProcessedFinalization?.event?.endBlockNumber)
-          .isEqualTo(lastAggregation!!.endBlockNumber)
+          .isEqualTo(lastAggregation.endBlockNumber)
       }
 
     assertThat(executionLayerClient.lineaGetStateRecoveryStatus().get())
       .isEqualTo(
         StateRecoveryStatus(
-          headBlockNumber = lastAggregation!!.endBlockNumber,
+          headBlockNumber = lastAggregation.endBlockNumber,
           stateRecoverStartBlockNumber = 1UL
         )
       )
