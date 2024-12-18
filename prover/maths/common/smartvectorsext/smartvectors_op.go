@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -17,9 +18,9 @@ func ForTestExt(xs ...int) smartvectors.SmartVector {
 // IntoRegVec converts a smart-vector into a normal vec. The resulting vector
 // is always reallocated and can be safely mutated without side-effects
 // on s.
-func IntoRegVec(s smartvectors.SmartVector) []fext.Element {
-	res := make([]fext.Element, s.Len())
-	s.WriteInSliceExt(res)
+func IntoRegVec(s smartvectors.SmartVector) []field.Element {
+	res := make([]field.Element, s.Len())
+	s.WriteInSlice(res)
 	return res
 }
 

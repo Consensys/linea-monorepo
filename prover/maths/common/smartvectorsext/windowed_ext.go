@@ -342,11 +342,6 @@ func (w *PaddedCircularWindowExt) IntoRegVecSaveAlloc() ([]field.Element, error)
 }
 
 func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocExt() []fext.Element {
-	temp, _ := w.IntoRegVecSaveAlloc()
-	res := make([]fext.Element, len(temp))
-	for i := 0; i < len(temp); i++ {
-		elem := temp[i]
-		res[i].SetFromBase(&elem)
-	}
+	res := IntoRegVecExt(w)
 	return res
 }
