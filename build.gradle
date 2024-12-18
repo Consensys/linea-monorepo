@@ -56,16 +56,15 @@ allprojects {
 
   jacoco {
     toolVersion = '0.8.11'
-    if (project.tasks.findByName('integrationTest')) {
-      applyTo integrationTest
-    }
-    if (project.tasks.findByName('acceptanceTest')) {
-      applyTo acceptanceTest
-    }
   }
 
-  jacocoTestReport {
-    dependsOn test
+  gradle.projectsEvaluated {
+    project.tasks.jacocoTestReport {
+      if (project.tasks.findByName('integrationTest')) {
+        executionData(tasks.named("integrationTest").get())
+        sourceSets(sourceSets["integrationTest"])
+      }
+    }
   }
 
   tasks.withType(Test).configureEach {
