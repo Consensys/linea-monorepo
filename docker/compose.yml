@@ -82,7 +82,7 @@ services:
       BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
       NETRESTRICT: "11.11.11.0/24"
       DISABLE_ZKEVM: "true"
-      MAX_BLOCK_GAS: 10000000  #10M
+      MAX_BLOCK_GAS: 10000000 #10M
       MAX_BLOCKDATA_BYTES: 35000 #35 KBytes
       MAX_TXDATA_BYTES: 30000 #30 KBytes
       ZKGETH_LOWER_GAS_MARGIN_PERCENTS: 120
@@ -164,7 +164,7 @@ services:
       # ETHSTATS_URL: "zkgeth-traces-node:${WS_SECRET:-dummy-secret}@l2-ethstats:3000"
       BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
       TRACES_DIR: "/data/traces/raw"
-      MAX_BLOCK_GAS: 10000000  #10M
+      MAX_BLOCK_GAS: 10000000 #10M
       MAX_BLOCKDATA_BYTES: 35000 #35 KBytes
       MAX_TXDATA_BYTES: 30000 #30 KBytes
       VERSION: "0.2.0"
@@ -199,6 +199,8 @@ services:
       - ./config/prover/v2/prover-decompression.config.toml:/opt/linea/prover/config/executor/decompression.config.toml
       - ./config/prover/v2/prover-aggregation.config.toml:/opt/linea/prover/config/executor/aggregation.config.toml
       - ../config/common/traces-limits-v1.toml:/opt/linea/prover/config/executor/traces-limits-M.toml
+      # full-prover assets
+      # - ../prover/prover-assets:/opt/linea/prover/prover-assets
     networks:
       linea:
         ipv4_address: 11.11.11.108
@@ -233,7 +235,7 @@ services:
         condition: service_started
     ports:
       - "8080:8080"
-    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/app-all.jar', 'config/traces-app-docker.config.toml', ]
+    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/app-all.jar', 'config/traces-app-docker.config.toml' ]
     volumes:
       - ../config/traces-api/traces-app-docker.config.toml:/opt/consensys/linea/traces-api-facade/config/traces-app-docker.config.toml:ro
       - ../config/traces-api/vertx-options.json:/opt/consensys/linea/traces-api-facade/config/vertx-options.json:ro
@@ -254,7 +256,7 @@ services:
         condition: service_healthy
     ports:
       - "8082:8080"
-    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/transaction-exclusion-api.jar', 'config/transaction-exclusion-app-docker.config.toml', ]
+    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/transaction-exclusion-api.jar', 'config/transaction-exclusion-app-docker.config.toml' ]
     volumes:
       - ../config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml:/opt/consensys/linea/transaction-exclusion-api/config/transaction-exclusion-app-docker.config.toml:ro
       - ../config/transaction-exclusion-api/vertx-options.json:/opt/consensys/linea/transaction-exclusion-api/config/vertx-options.json:ro
@@ -400,7 +402,7 @@ services:
   l1-cl-node:
     container_name: l1-cl-node
     hostname: l1-cl-node
-#    image: consensys/teku:24.2.0
+    #    image: consensys/teku:24.2.0
     image: consensys/teku:24.10.3
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
@@ -428,12 +430,7 @@ services:
     build:
       context: ./config/l1-node/
     profiles: [ "l1", "debug", "external-to-monorepo" ]
-    command:
-      --genesis-time ${L1_GENESIS_TIME}
-      --l1-genesis /config/l1-genesis.json
-      --network-config /config/network-config.yml
-      --mnemonics /config/mnemonics.yaml
-      --output-dir /data/l1-node-config
+    command: --genesis-time ${L1_GENESIS_TIME} --l1-genesis /config/l1-genesis.json --network-config /config/network-config.yml --mnemonics /config/mnemonics.yaml --output-dir /data/l1-node-config
     volumes:
       - ./config/l1-node/cl/network-config.yml:/config/network-config.yml:ro
       - ./config/l1-node/cl/mnemonics.yaml:/config/mnemonics.yaml:ro
@@ -628,13 +625,13 @@ services:
       - "4001:4001"
     env_file: "./config/blobscan/env"
     restart: no
-#    healthcheck:
-#      test: [ "CMD", "curl", "-f", "http://localhost:4001/healthcheck" ]
-#      disable: true
-#      interval: 30s
-#      timeout: 10s
-#      retries: 20
-#      start_period: 5s
+    #    healthcheck:
+    #      test: [ "CMD", "curl", "-f", "http://localhost:4001/healthcheck" ]
+    #      disable: true
+    #      interval: 30s
+    #      timeout: 10s
+    #      retries: 20
+    #      start_period: 5s
     networks:
       linea:
       l1network:
@@ -740,4 +737,3 @@ services:
       - loki
     networks:
       - linea
-
