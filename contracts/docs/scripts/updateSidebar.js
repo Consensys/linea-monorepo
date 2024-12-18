@@ -46,7 +46,7 @@ function getSmartContractSidebar() {
   );
 
   let smartContractSidebar = new FolderSidebar(
-    "Linea Smart Contracts",
+    "Linea smart contracts",
     false,
   );
 
