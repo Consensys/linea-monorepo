@@ -382,3 +382,15 @@ func (run VerifierRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element
 func (run *VerifierRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 	return run.QueriesParams.MustGet(name)
 }
+
+// GetPublicInput returns a public input from its name
+func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
+	allPubs := run.Spec.PublicInputs
+	for i := range allPubs {
+		if allPubs[i].Name == name {
+			return allPubs[i].Acc.GetVal(run)
+		}
+	}
+	utils.Panic("could not find public input nb %v", name)
+	return field.Element{}
+}

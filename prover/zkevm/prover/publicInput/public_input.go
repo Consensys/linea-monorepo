@@ -17,6 +17,28 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+var (
+	DataNbBytes                  = "DataNbBytes"
+	DataChecksum                 = "DataChecksum"
+	L2MessageHash                = "L2MessageHash"
+	InitialStateRootHash         = "InitialStateRootHash"
+	FinalStateRootHash           = "FinalStateRootHash"
+	InitialBlockNumber           = "InitialBlockNumber"
+	FinalBlockNumber             = "FinalBlockNumber"
+	InitialBlockTimestamp        = "InitialBlockTimestamp"
+	FinalBlockTimestamp          = "FinalBlockTimestamp"
+	FirstRollingHashUpdate_0     = "FirstRollingHashUpdate_0"
+	FirstRollingHashUpdate_1     = "FirstRollingHashUpdate_1"
+	LastRollingHashUpdate_0      = "LastRollingHashUpdate_0"
+	LastRollingHashUpdate_1      = "LastRollingHashUpdate_1"
+	FirstRollingHashUpdateNumber = "FirstRollingHashUpdateNumber"
+	LastRollingHashNumberUpdate  = "LastRollingHashNumberUpdate"
+	ChainID                      = "ChainID"
+	NBytesChainID                = "NBytesChainID"
+	L2MessageServiceAddrHi       = "L2MessageServiceAddrHi"
+	L2MessageServiceAddrLo       = "L2MessageServiceAddrLo"
+)
+
 // PublicInput collects a number of submodules responsible for collecting the
 // wizard witness data holding the public inputs of the execution circuit.
 type PublicInput struct {

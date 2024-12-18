@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -510,4 +511,16 @@ func (c *WizardVerifierCircuit) AssignLocalOpening(qName ifaces.QueryID, params 
 	// Note that nil is the default value for frontend.Variable
 	c.localOpeningIDs.InsertNew(qName, len(c.LocalOpeningParams))
 	c.LocalOpeningParams = append(c.LocalOpeningParams, params.GnarkAssign())
+}
+
+// GetPublicInput returns a public input from its name
+func (c *WizardVerifierCircuit) GetPublicInput(api frontend.API, name string) frontend.Variable {
+	allPubs := c.Spec.PublicInputs
+	for i := range allPubs {
+		if allPubs[i].Name == name {
+			return allPubs[i].Acc.GetFrontendVariable(api, c)
+		}
+	}
+	utils.Panic("could not find public input nb %v", name)
+	return field.Element{}
 }
