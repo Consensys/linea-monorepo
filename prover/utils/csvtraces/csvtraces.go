@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -109,12 +110,7 @@ func FmtCsv(w io.Writer, run *wizard.ProverRuntime, cols []ifaces.Column, option
 				allZeroes = false
 			}
 
-			if assignment[c][r].IsUint64() {
-				fmtVals = append(fmtVals, assignment[c][r].String())
-				continue
-			}
-
-			fmtVals = append(fmtVals, "0x"+assignment[c][r].Text(16))
+			fmtVals = append(fmtVals, fmtFieldElement(assignment[c][r]))
 		}
 
 		if !allZeroes {
@@ -249,4 +245,33 @@ func (c *CsvTrace) Len() int {
 
 func (c *CsvTrace) LenPadded() int {
 	return utils.NextPowerOfTwo(c.nbRows)
+}
+
+// WritesExplicit format value-provided columns into a csv file. Unlike [FmtCsv]
+// it does not need the columns to be registered as the assignmet of a wizard.
+// It is suitable for test-case generation.
+func WriteExplicit(w io.Writer, names []string, cols [][]field.Element) {
+
+	fmt.Fprintf(w, "%v\n", strings.Join(names, ","))
+
+	for i := range cols[0] {
+
+		row := []string{}
+		for j := range cols {
+			row = append(row, fmtFieldElement(cols[j][i]))
+		}
+
+		fmt.Fprintf(w, "%v\n", strings.Join(row, ","))
+	}
+
+}
+
+func fmtFieldElement(x field.Element) string {
+
+	if x.IsUint64() && x.Uint64() < 1<<10 {
+		xInt := x.Uint64()
+		return strconv.Itoa(int(xInt))
+	}
+
+	return "0x" + x.Text(16)
 }
