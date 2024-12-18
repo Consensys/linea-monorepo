@@ -71,8 +71,8 @@ type Hasher struct {
 // and will provide the same results for the same usage.
 //
 // However, the hasher should not be used in deferred gnark circuit execution.
-func (f *HasherFactory) NewHasher() Hasher {
-	return Hasher{factory: f, state: frontend.Variable(0)}
+func (f *HasherFactory) NewHasher() *Hasher {
+	return &Hasher{factory: f, state: frontend.Variable(0)}
 }
 
 // Writes fields elements into the hasher; implements [hash.FieldHasher]

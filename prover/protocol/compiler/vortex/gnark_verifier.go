@@ -62,7 +62,7 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) 
 	// function that will defer the hashing to gkr
 	factoryHasherFunc := func(_ frontend.API) (hash.FieldHasher, error) {
 		h := vr.HasherFactory.NewHasher()
-		return &h, nil
+		return h, nil
 	}
 
 	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
