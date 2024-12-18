@@ -58,15 +58,6 @@ allprojects {
     toolVersion = '0.8.11'
   }
 
-  gradle.projectsEvaluated {
-    project.tasks.jacocoTestReport {
-      if (project.tasks.findByName('integrationTest')) {
-        executionData(tasks.named("integrationTest").get())
-        sourceSets(sourceSets["integrationTest"])
-      }
-    }
-  }
-
   tasks.withType(Test).configureEach {
     testLogging {
       events = [
@@ -113,6 +104,13 @@ allprojects {
           indentWithSpaces(2)
           endWithNewline()
         }
+      }
+    }
+
+    project.tasks.jacocoTestReport {
+      if (project.tasks.findByName('integrationTest')) {
+        executionData(tasks.named("integrationTest").get())
+        sourceSets(sourceSets["integrationTest"])
       }
     }
   }
