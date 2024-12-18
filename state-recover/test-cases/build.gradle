@@ -21,10 +21,6 @@ dependencies {
   api(project(':state-recover:appcore:logic'))
 
   implementation project(':jvm-libs:linea:besu-libs')
-  implementation("org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}") {
-    transitive = false
-  }
-
   implementation(testFixtures(project(':jvm-libs:generic:json-rpc')))
   implementation(project(':state-recover:clients:eth-api'))
   implementation(project(':state-recover:clients:blobscan-client'))
