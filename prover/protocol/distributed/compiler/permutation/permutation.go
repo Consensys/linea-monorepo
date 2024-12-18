@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	modulediscoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -14,6 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const grandProductStr = "GRAND_PRODUCT"
+
 /*
 The below function does the following:
 1. For a given target module name, it finds all the relevant permutation query and combine them into a big grand product query
@@ -21,8 +22,8 @@ The below function does the following:
 type PermutationIntoGrandProductCtx struct {
 	Numerators   []*symbolic.Expression // aimed at storing the expressions Ai + \beta_i for a particular permutation query
 	Denominators []*symbolic.Expression // aimed at storing the expressions Bi + \beta_i for a particular permutation query
-	ParamY field.Element
-	QId ifaces.QueryID
+	ParamY       field.Element
+	QId          ifaces.QueryID
 }
 
 // Returns a new PermutationIntoGrandProductCtx
@@ -39,6 +40,9 @@ func (p *PermutationIntoGrandProductCtx) AddGdProductQuery(initialComp, moduleCo
 	// Initialise the period separating module discoverer
 	disc := modulediscoverer.PeriodSeperatingModuleDiscoverer{}
 	disc.Analyze(initialComp)
+	qId := deriveName[ifaces.QueryID](ifaces.QueryID(targetModuleName))
+	logrus.Printf("qId : %s", qId)
+	p.QId = qId
 	/*
 		Handles the lookups and permutations checks
 	*/
@@ -55,7 +59,6 @@ func (p *PermutationIntoGrandProductCtx) AddGdProductQuery(initialComp, moduleCo
 				{
 					moduleNameA := disc.FindModule(q_.A[0][0])
 					moduleNameB := disc.FindModule(q_.B[0][0])
-					logrus.Printf("moduleNameA = %v, moduleNameB = %v", moduleNameA, moduleNameB)
 					if moduleNameA == targetModuleName && moduleNameB != targetModuleName {
 						p.push(moduleComp, &q_, i, j, true, false)
 					} else if moduleNameA != targetModuleName && moduleNameB == targetModuleName {
@@ -72,8 +75,6 @@ func (p *PermutationIntoGrandProductCtx) AddGdProductQuery(initialComp, moduleCo
 		}
 	}
 	// Reduce a permutation query into a GrandProduct query
-	qId := ifaces.QueryIDf(string(targetModuleName) + "_GRAND_PRODUCT")
-	p.QId = qId
 	G := moduleComp.InsertGrandProduct(0, qId, p.Numerators, p.Denominators)
 	moduleComp.RegisterProverAction(1, p.AssignParam(run, qId))
 	return G
@@ -93,8 +94,8 @@ func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query
 	)
 
 	// alpha has to be different for different queries for a perticular round for the soundness of z-packing
-	alpha = comp.InsertCoin(1, permutation.DeriveName[coin.Name](*q, "ALPHA_%v_%v", round, queryInRound), coin.Field)
-	beta = comp.InsertCoin(1, permutation.DeriveName[coin.Name](*q, "BETA_%v_%v", round, queryInRound), coin.Field)
+	alpha = comp.InsertCoin(1, deriveName[coin.Name](ifaces.QueryID("ALPHA"), round, queryInRound), coin.Field)
+	beta = comp.InsertCoin(1, deriveName[coin.Name](ifaces.QueryID("BETA"), round, queryInRound), coin.Field)
 	if isNumerator && !isBoth {
 		// Take only the numerator
 		factor := computeFactor(q.A, isMultiColumn, &alpha, &beta)
@@ -141,6 +142,10 @@ func (p *PermutationIntoGrandProductCtx) AssignParam(run *wizard.ProverRuntime, 
 		numProd         = symbolic.NewConstant(1)
 		denProd         = symbolic.NewConstant(1)
 	)
+	coins := run.Spec.Coins.AllKeys()
+	for i := range coins {
+		logrus.Printf("coin : %v", coins[i])
+	}
 	for i := 0; i < numNumerators; i++ {
 		numProd = symbolic.Mul(numProd, p.Numerators[i])
 	}
@@ -169,4 +174,10 @@ func (p *PermutationIntoGrandProductCtx) AssignParam(run *wizard.ProverRuntime, 
 
 func (p *PermutationIntoGrandProductCtx) Run(run *wizard.ProverRuntime) {
 	run.AssignGrandProduct(p.QId, p.ParamY)
+}
+
+// DeriveName constructs a name for the permutation context
+func deriveName[R ~string](q ifaces.QueryID, ss ...any) R {
+	ss = append([]any{grandProductStr, q}, ss...)
+	return wizardutils.DeriveName[R](ss...)
 }

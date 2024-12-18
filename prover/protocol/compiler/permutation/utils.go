@@ -7,8 +7,8 @@ import (
 
 const permutationStr = "PERMUTATION"
 
-// DeriveName constructs a name for the permutation context
-func DeriveName[R ~string](q query.Permutation, ss ...any) R {
+// deriveName constructs a name for the permutation context
+func deriveName[R ~string](q query.Permutation, ss ...any) R {
 	ss = append([]any{permutationStr, q}, ss...)
 	return wizardutils.DeriveName[R](ss...)
 }

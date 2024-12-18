@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -21,15 +22,16 @@ func TestGrandProduct(t *testing.T) {
 		A0 := builder.RegisterCommit("A0", 4)
 		B0 := builder.RegisterCommit("B0", 4)
 		C0 := builder.RegisterCommit("C0", 4)
+		alpha := builder.RegisterRandomCoin("ALPHA", coin.Field)
 		A := []*symbolic.Expression{
-			symbolic.Add(A0, B0),
-			symbolic.Add(B0, C0),
-			symbolic.Add(C0, A0),
+			symbolic.Add(A0, symbolic.Mul(B0, alpha)),
+			symbolic.Add(B0, symbolic.Mul(C0, alpha)),
+			symbolic.Add(C0, symbolic.Mul(A0, alpha)),
 		}
 		B := []*symbolic.Expression{
-			symbolic.Add(C0, A0),
-			symbolic.Add(B0, C0),
-			symbolic.Add(A0, B0),
+			symbolic.Add(C0, symbolic.Mul(A0, alpha)),
+			symbolic.Add(B0, symbolic.Mul(C0, alpha)),
+			symbolic.Add(A0, symbolic.Mul(B0, alpha)),
 		}
 		G = builder.CompiledIOP.InsertGrandProduct(0, "G", A, B)
 	}
