@@ -448,17 +448,25 @@ func assertCorrectStatusTransition(old, new Status) {
 	}
 }
 
+// IgnoreButKeepInProverTranscript marks a column as ignored but also asks that
+// the column stays included in the FS transcript. This is used as part of
+// full-recursion where the commitments to an inner-proofs should not be sent to
+// the verifier but should still play a part in the FS transcript.
 func (s *Store) IgnoreButKeepInProverTranscript(colName ifaces.ColID) {
 	in := s.info(colName)
 	in.Status = Ignored
 	in.IncludeInProverFS = true
 }
 
+// IsIgnoredAndNotKeptInTranscript indicates whether the column can be ignored
+// from the transcript and is used during the Fiat-Shamir randomness generation.
 func (s *Store) IsIgnoredAndNotKeptInTranscript(colName ifaces.ColID) bool {
 	in := s.info(colName)
 	return in.Status == Ignored && !in.IncludeInProverFS
 }
 
+// AllKeysProofsOrIgnoredButKeptInProverTranscript returns the list of the
+// columns to be used as part of the FS transcript.
 func (s *Store) AllKeysProofsOrIgnoredButKeptInProverTranscript(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := s.byRounds.MustGet(round) // precomputed are always at round zero
