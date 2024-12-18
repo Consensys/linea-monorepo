@@ -22,8 +22,8 @@ export async function deployContractFromArtifacts(
   const factory = new ethers.ContractFactory(abi, bytecode, wallet);
   const contract = await factory.deploy(...args);
 
-  await LogContractDeployment(contractName,contract);
-  
+  await LogContractDeployment(contractName, contract);
+
   return contract;
 }
 
