@@ -32,6 +32,7 @@ func NewPermutationIntoGrandProductCtx(s Settings) *PermutationIntoGrandProductC
 	permCtx := PermutationIntoGrandProductCtx{}
 	permCtx.Numerators = make([]*symbolic.Expression, 0, s.MaxNumOfQueryPerModule)
 	permCtx.Denominators = make([]*symbolic.Expression, 0, s.MaxNumOfQueryPerModule)
+	permCtx.ParamY = field.One()
 	return &permCtx
 }
 
@@ -77,7 +78,7 @@ func (p *PermutationIntoGrandProductCtx) AddGdProductQuery(initialComp, moduleCo
 		}
 	}
 	// Reduce a permutation query into a GrandProduct query
-	G := moduleComp.InsertGrandProduct(0, qId, p.Numerators, p.Denominators)
+	G := moduleComp.InsertGrandProduct(1, qId, p.Numerators, p.Denominators)
 	moduleComp.RegisterProverAction(1, p.AssignParam(run, qId))
 	return G
 }

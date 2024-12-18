@@ -422,6 +422,7 @@ func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coi
 			params, messages etc.. from the past round have been set. Then, we can generate
 			the coins the user is requesting.
 		*/
+		logrus.Printf("We get error here")
 		run.goNextRound()
 
 	case foundAtRound > run.currRound+1:
