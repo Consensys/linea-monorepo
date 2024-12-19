@@ -51,7 +51,7 @@ func Prove(args ProverArgs) error {
 		// 2. the job contains the large suffix and we are a large machine (cfg.Execution.CanRunLarge)
 		large := args.Large || (strings.Contains(args.Input, "large") && cfg.Execution.CanRunFullLarge)
 
-		// check the arithmetization version used to generated the trace is contained in the prover request
+		// check the arithmetization version used to generate the trace is contained in the prover request
 		// and fail fast if the constraint version is not supported
 		if err := checkArithmetizationVersion(req.ConflatedExecutionTracesFile, req.TracesEngineVersion, "./constraints-versions.txt"); err != nil {
 			return err
@@ -121,7 +121,7 @@ func writeResponse(path string, from any) error {
 	return nil
 }
 
-// verifies the arithmetization version used to generate the trace files against the list of versions
+// verifies the arithmetization version used to generate the trace file against the list of versions
 // specified by the constraints in the file path.
 func checkArithmetizationVersion(traceFileName, tracesEngineVersion, filepath string) error {
 	logrus.Info("Verifying the arithmetization version for generating the trace file is supported by the constraints version")
