@@ -107,7 +107,7 @@ func (z *E6) Double(x *E6) *E6 {
 
 // String puts E6 elmt in string form
 func (z *E6) String() string {
-	return (z.B0.String() + "+(" + z.B1.String() + ")*v+(" + z.B2.String() + ")*v**2")
+	return z.B0.String() + "+(" + z.B1.String() + ")*v+(" + z.B2.String() + ")*v**2"
 }
 
 // MulByNonResidue mul x by (0,1,0)
