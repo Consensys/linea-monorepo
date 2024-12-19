@@ -1,12 +1,10 @@
 package distributed
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 type moduleName = string
@@ -36,6 +34,7 @@ type ModuleDiscoverer interface {
 	FindModule(col ifaces.Column) moduleName
 	// given a query and a module name it checks if the query is inside the module
 	QueryIsInModule(ifaces.Query, moduleName) bool
+	ExpressionIsInModule(*symbolic.Expression, moduleName) bool
 }
 
 // This transforms the initial wizard. So it is not really the initial
@@ -131,15 +130,4 @@ func addToGlobalLocal(comp *wizard.CompiledIOP, q ifaces.Query) {
 // It builds a CompiledIOP object that contains the consistency checks among the segments.
 func aggregator(distModules []DistributedModule, maxNumSegments int) *wizard.CompiledIOP {
 	panic("unimplemented")
-}
-
-// prepare reduces any query to LPP or GL.
-// it prepares the columns that depends on whole the witness,e.g., M column for lookups.
-func prepare(comp *wizard.CompiledIOP) {
-	mimc.CompileMiMC(comp)
-	specialqueries.RangeProof(comp)
-	specialqueries.CompileFixedPermutations(comp)
-	innerproduct.Compile(comp)
-
-	// prepareLookup(comp)
 }

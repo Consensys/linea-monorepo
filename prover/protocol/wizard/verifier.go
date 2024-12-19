@@ -308,6 +308,11 @@ func (run *VerifierRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.L
 	return run.QueriesParams.MustGet(name).(query.LocalOpeningParams)
 }
 
+// GetLogDerivSumParams returns the parameters of a [query.LogDerivativeSum]
+func (run *VerifierRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
+	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams)
+}
+
 /*
 CopyColumnInto implements `column.GetWitness`
 Copies the witness into a slice
