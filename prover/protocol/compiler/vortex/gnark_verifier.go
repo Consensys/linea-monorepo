@@ -15,8 +15,6 @@ import (
 )
 
 func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) {
-	// Evaluate explicitly the public columns
-	ctx.gnarkExplicitPublicEvaluation(api, vr)
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -64,7 +62,7 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) 
 	// function that will defer the hashing to gkr
 	factoryHasherFunc := func(_ frontend.API) (hash.FieldHasher, error) {
 		h := vr.HasherFactory.NewHasher()
-		return &h, nil
+		return h, nil
 	}
 
 	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
