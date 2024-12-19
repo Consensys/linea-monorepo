@@ -21,6 +21,8 @@ MONOREPO_SMART_CONTRACT_DOCS_DIRECTORY=contracts/docs/api
 
 DOCS_REPO_SMART_CONTRACT_DOC_DIRECTORY=docs/api/linea-smart-contracts
 
+MAX_FOLDER_DEPTH=3
+
 ### SCRIPT START
 
 # Ensure that `contracts` is the starting working directory
@@ -47,16 +49,37 @@ cp "$MONOREPO_ROOT_PATH/$UPDATE_SIDEBAR_SCRIPT_PATH" "$DOCS_WEBSITE_REPO_PATH/$U
 
 # Ensure directories is entirely lowercase
 # To pass Github Action enforcing no uppercase for file name
-for FOLDER in `find "$DOCS_WEBSITE_REPO_PATH/$DOCS_REPO_SMART_CONTRACT_DOC_DIRECTORY" -type d`
-do
-    # NEW_FILENAME=$(echo $FILENAME | tr 'A-Z' 'a-z')
-    NEW_FOLDER=$(echo $FOLDER | tr 'A-Z' 'a-z')
-    mv $FOLDER $NEW_FOLDER
-done;
+cd $DOCS_WEBSITE_REPO_PATH
+
+# Purpose: Change folder names to lowercase
+# Parameters:
+#   $1 - max folder depth
+function directory_to_lowercase_at_depth() {
+    local DEPTH=$1
+    for FOLDER in `find -d "$DOCS_REPO_SMART_CONTRACT_DOC_DIRECTORY" -type d -maxdepth $DEPTH`
+    do
+        NEW_FOLDER=$(echo $FOLDER | tr 'A-Z' 'a-z')
+        if [[ "$FOLDER" != "$NEW_FOLDER" ]]; then
+            mv $FOLDER $NEW_FOLDER
+        fi
+    done;
+}
+
+# Clumsy way of forcing `find` to do breadth-first search (BFS)
+# Not a true BFS currently - as we 'descend' we are redundantly repeating BFS of previously explored folder depths
+# Can tolerate inefficient implementation for readability
+#
+# The issue with default depth-first search (DFS) algorithm of `find` is that we mutate the folder list as iterate through it
+# So the `mv` command spits errors because it is acting on stale folder names
+# Seems that `find` first obtains the complete folder list, then iterates through the list to apply our for-loop
+# What we want is for `find` to apply our for-loop body as it adds each item to the folder list
+for ((i = 1; i <= MAX_FOLDER_DEPTH; i++)); do
+  directory_to_lowercase_at_depth $i
+done
 
 # Ensure filenames is entirely lowercase
 # To pass Github Action enforcing no uppercase for file name
-for FILENAME in `find "$DOCS_WEBSITE_REPO_PATH/$DOCS_REPO_SMART_CONTRACT_DOC_DIRECTORY" -type f  \( -iname \*.md -o -iname \*.mdx \)`
+for FILENAME in `find "$DOCS_REPO_SMART_CONTRACT_DOC_DIRECTORY" -type f  \( -iname \*.md -o -iname \*.mdx \)`
 do
     NEW_FILENAME=$(echo $FILENAME | tr 'A-Z' 'a-z')
     mv $FILENAME $NEW_FILENAME

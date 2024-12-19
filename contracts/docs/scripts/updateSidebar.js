@@ -69,7 +69,9 @@ function main() {
  * @param {FolderSidebar} sidebarObject
  */
 function removeExistingSmartContractSidebar(sidebarObject) {
-  sidebarObject?.apiSidebar = sidebarObject?.apiSidebar.filter(sidebarSection => sidebarSection?.label === SMART_CONTRACT_SIDEBAR_LABEL);
+  if (sidebarObject?.apiSidebar) {
+    sidebarObject.apiSidebar = sidebarObject?.apiSidebar.filter(sidebarSection => sidebarSection?.label !== SMART_CONTRACT_SIDEBAR_LABEL);
+  }
 }
 
 /**
