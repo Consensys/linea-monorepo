@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
@@ -14,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/sirupsen/logrus"
 )
 
 type ProverArgs struct {
@@ -50,12 +47,6 @@ func Prove(args ProverArgs) error {
 		// 1. the user explicitly asked for it (args.Large)
 		// 2. the job contains the large suffix and we are a large machine (cfg.Execution.CanRunLarge)
 		large := args.Large || (strings.Contains(args.Input, "large") && cfg.Execution.CanRunFullLarge)
-
-		// check the arithmetization version used to generate the trace is contained in the prover request
-		// and fail fast if the constraint version is not supported
-		if err := checkArithmetizationVersion(req.ConflatedExecutionTracesFile, req.TracesEngineVersion, "./constraints-versions.txt"); err != nil {
-			return err
-		}
 
 		resp, err := execution.Prove(cfg, req, large)
 		if err != nil {
@@ -119,51 +110,4 @@ func writeResponse(path string, from any) error {
 	}
 
 	return nil
-}
-
-// verifies the arithmetization version used to generate the trace file against the list of versions
-// specified by the constraints in the file path.
-func checkArithmetizationVersion(traceFileName, tracesEngineVersion, filepath string) error {
-	logrus.Info("Verifying the arithmetization version for generating the trace file is supported by the constraints version")
-	file, err := os.Open(filepath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	traceFileVersion, err := validateAndExtractVersion(traceFileName)
-	if err != nil {
-		return err
-	}
-
-	if strings.Compare(traceFileVersion, tracesEngineVersion) != 0 {
-		return fmt.Errorf("version specified in the conflated trace file: %s does not match with the trace engine version: %s", traceFileVersion, tracesEngineVersion)
-	}
-
-	scanner := bufio.NewScanner(file)
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-
-	for scanner.Scan() {
-		version := strings.TrimSpace(scanner.Text())
-		if version != "" && strings.Compare(traceFileVersion, version) == 0 && strings.Compare(tracesEngineVersion, version) == 0 {
-			return nil
-		}
-	}
-	return fmt.Errorf("unsupported arithmetization version found in the conflated trace file: %s", traceFileName)
-}
-
-func validateAndExtractVersion(traceFileName string) (string, error) {
-	logrus.Info("Validating and extracting the version from conflated trace files")
-	// Define the regex pattern with a capturing group for the version part
-	traceFilePattern := `^\d+-\d+\.conflated\.(v\d+\.\d+\.\d+-[^.]+)\.lt$`
-	re := regexp.MustCompile(traceFilePattern)
-
-	// Check if the file name matches the pattern and extract the version part
-	matches := re.FindStringSubmatch(traceFileName)
-	if len(matches) > 1 {
-		return matches[1], nil
-	}
-	return "", fmt.Errorf("conflated trace file: %s not in the appropriate format or version not found", traceFileName)
 }
