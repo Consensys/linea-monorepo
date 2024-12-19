@@ -3,23 +3,22 @@ package inclusion_test
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
 	modulediscoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/stretchr/testify/require"
 )
 
-func TestDistributedLogDerivSum(t *testing.T) {
+// It tests if the expression is properly distributed among modules.
+// It does not test the prover steps.
+func TestDistributedLogDerivSumExpr(t *testing.T) {
 
 	var (
 		// columns that are used in the cross queries.
 		crossCols        [2]ifaces.Column
 		define0, define1 func(b *wizard.Builder)
-		prover0, prover1 func(run *wizard.ProverRuntime)
 	)
 
 	// moduleComp0
@@ -59,22 +58,4 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", &disc)
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", &disc)
 
-	prover0 = func(run *wizard.ProverRuntime) {
-		run.AssignColumn("module0.col0", smartvectors.ForTest(2, 2, 4, 6))
-		run.AssignColumn("module0.col1", smartvectors.ForTest(1, 1, 2, 3))
-
-	}
-
-	prover1 = func(run *wizard.ProverRuntime) {
-		run.AssignColumn("module1.col0", smartvectors.ForTest(1, 2, 2, 2, 3, 3, 3, 2))
-		run.AssignColumn("module1.col1", smartvectors.ForTest(2, 3, 4, 5, 6, 6, 7, 9))
-		run.AssignColumn("module1.col2", smartvectors.ForTest(2, 4, 4, 4, 6, 6, 6, 4))
-
-	}
-
-	proof0 := wizard.Prove(moduleComp0, prover0)
-	require.NoError(t, wizard.Verify(moduleComp0, proof0))
-
-	proof1 := wizard.Prove(moduleComp1, prover1)
-	require.NoError(t, wizard.Verify(moduleComp1, proof1))
 }

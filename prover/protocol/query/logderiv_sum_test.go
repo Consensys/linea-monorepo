@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// It tests that the given expression for the LogDerivativeSum adds up to the given parameter.
 func TestLogDerivSum(t *testing.T) {
 
 	define := func(b *wizard.Builder) {
