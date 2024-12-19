@@ -2,6 +2,7 @@ package lzss
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/bits"
 
@@ -352,7 +353,7 @@ func (compressor *Compressor) WrittenBytes() []byte {
 // between any two calls to Revert, a call to Reset or Write should be made
 func (compressor *Compressor) Revert() error {
 	if compressor.lastInLen == -1 {
-		return fmt.Errorf("cannot revert twice in a row")
+		return errors.New("cannot revert twice in a row")
 	}
 
 	compressor.inBuf.Truncate(compressor.lastInLen)
