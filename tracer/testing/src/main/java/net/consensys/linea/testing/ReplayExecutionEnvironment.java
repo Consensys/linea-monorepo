@@ -97,7 +97,7 @@ public class ReplayExecutionEnvironment {
   private final TransactionProcessingResultValidator transactionProcessingResultValidator =
       TransactionProcessingResultValidator.EMPTY_VALIDATOR;
 
-  private final ZkTracer zkTracer = new ZkTracer();
+  private ZkTracer zkTracer;
 
   public void checkTracer(String inputFilePath) {
     // Generate the output file path based on the input file path
