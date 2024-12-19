@@ -160,7 +160,11 @@ func (r *RegularExt) DeepCopy() smartvectors.SmartVector {
 
 // Converts a smart-vector into a normal vec. The implementation minimizes
 // then number of copies.
-func (r *RegularExt) IntoRegVecSaveAlloc() ([]field.Element, error) {
+func (r *RegularExt) IntoRegVecSaveAlloc() []field.Element {
+	panic(conversionError)
+}
+
+func (r *RegularExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 	return nil, fmt.Errorf(conversionError)
 }
 

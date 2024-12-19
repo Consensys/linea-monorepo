@@ -337,7 +337,11 @@ func (w *PaddedCircularWindowExt) DeepCopy() smartvectors.SmartVector {
 
 // Converts a smart-vector into a normal vec. The implementation minimizes
 // then number of copies.
-func (w *PaddedCircularWindowExt) IntoRegVecSaveAlloc() ([]field.Element, error) {
+func (w *PaddedCircularWindowExt) IntoRegVecSaveAlloc() []field.Element {
+	panic(conversionError)
+}
+
+func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 	return nil, fmt.Errorf(conversionError)
 }
 

@@ -156,7 +156,15 @@ func (r *Regular) DeepCopy() SmartVector {
 
 // Converts a smart-vector into a normal vec. The implementation minimizes
 // then number of copies.
-func (r *Regular) IntoRegVecSaveAlloc() ([]field.Element, error) {
+func (r *Regular) IntoRegVecSaveAlloc() []field.Element {
+	res, err := r.IntoRegVecSaveAllocBase()
+	if err != nil {
+		panic(conversionError)
+	}
+	return res
+}
+
+func (r *Regular) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 	return (*r)[:], nil
 }
 

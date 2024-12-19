@@ -163,7 +163,15 @@ func rotatedAsRegular(r *Rotated) *Regular {
 	return r.SubVector(0, r.Len()).(*Regular)
 }
 
-func (r *Rotated) IntoRegVecSaveAlloc() ([]field.Element, error) {
+func (r *Rotated) IntoRegVecSaveAlloc() []field.Element {
+	res, err := r.IntoRegVecSaveAllocBase()
+	if err != nil {
+		panic(conversionError)
+	}
+	return res
+}
+
+func (r *Rotated) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 	return *rotatedAsRegular(r), nil
 }
 

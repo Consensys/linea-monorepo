@@ -83,7 +83,16 @@ func (c *Constant) DeepCopy() SmartVector {
 	return NewConstant(c.val, c.length)
 }
 
-func (c *Constant) IntoRegVecSaveAlloc() ([]field.Element, error) {
+func (c *Constant) IntoRegVecSaveAlloc() []field.Element {
+	res, err := c.IntoRegVecSaveAllocBase()
+	if err != nil {
+		panic(conversionError)
+	}
+	return res
+}
+
+// Temporary function for code transition
+func (c *Constant) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 	return IntoRegVec(c), nil
 }
 

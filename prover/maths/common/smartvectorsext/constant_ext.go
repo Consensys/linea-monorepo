@@ -83,7 +83,11 @@ func (c *ConstantExt) DeepCopy() smartvectors.SmartVector {
 	return NewConstantExt(c.val, c.length)
 }
 
-func (c *ConstantExt) IntoRegVecSaveAlloc() ([]field.Element, error) {
+func (c *ConstantExt) IntoRegVecSaveAlloc() []field.Element {
+	panic(conversionError)
+}
+
+func (c *ConstantExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 	return nil, fmt.Errorf(conversionError)
 }
 

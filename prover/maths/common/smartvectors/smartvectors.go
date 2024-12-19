@@ -11,6 +11,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+const conversionError = "smartvector holds field extensions, but a base element was requested"
+
 // SmartVector is an abstraction over vectors of field elements that can be
 // optimized for structured vectors. For instance, if we have a vector of
 // repeated elements we can use smartvectors.NewConstant(x, n) to represent it.
@@ -46,7 +48,8 @@ type SmartVector interface {
 	DeepCopy() SmartVector
 	// IntoRegVecSaveAlloc converts a smart-vector into a normal vec. The
 	// implementation minimizes then number of copies
-	IntoRegVecSaveAlloc() ([]field.Element, error)
+	IntoRegVecSaveAlloc() []field.Element
+	IntoRegVecSaveAllocBase() ([]field.Element, error)
 	IntoRegVecSaveAllocExt() []fext.Element
 }
 
@@ -182,16 +185,24 @@ func Density(v SmartVector) int {
 // Window returns the effective window of the vector,
 // if the vector is Padded with zeroes it return the window.
 // Namely, the part without zero pads.
-func Window(v SmartVector) ([]field.Element, error) {
+func Window(v SmartVector) []field.Element {
+	res, err := WindowBase(v)
+	if err != nil {
+		panic(conversionError)
+	}
+	return res
+}
+
+func WindowBase(v SmartVector) ([]field.Element, error) {
 	switch w := v.(type) {
 	case *Constant:
-		return w.IntoRegVecSaveAlloc()
+		return w.IntoRegVecSaveAllocBase()
 	case *PaddedCircularWindow:
 		return w.window, nil
 	case *Regular:
 		return *w, nil
 	case *Rotated:
-		return w.IntoRegVecSaveAlloc()
+		return w.IntoRegVecSaveAllocBase()
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}

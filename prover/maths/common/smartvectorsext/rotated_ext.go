@@ -159,7 +159,11 @@ func rotatedAsRegular(r *RotatedExt) *RegularExt {
 	return r.SubVector(0, r.Len()).(*RegularExt)
 }
 
-func (r *RotatedExt) IntoRegVecSaveAlloc() ([]field.Element, error) {
+func (r *RotatedExt) IntoRegVecSaveAlloc() []field.Element {
+	panic(conversionError)
+}
+
+func (r *RotatedExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 	return nil, fmt.Errorf(conversionError)
 }
 

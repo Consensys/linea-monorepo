@@ -260,7 +260,7 @@ func processWindowedOnly(op operator, svecs []SmartVector, coeffs_ []int) (res S
 	if smallestCover.IsFullCircle() {
 		for i, svec := range svecs {
 			if _, ok := svec.(*PaddedCircularWindow); ok {
-				temp, _ := svec.IntoRegVecSaveAlloc()
+				temp, _ := svec.IntoRegVecSaveAllocBase()
 				svecs[i] = NewRegular(temp)
 			}
 		}
@@ -344,12 +344,21 @@ func (w *PaddedCircularWindow) DeepCopy() SmartVector {
 
 // Converts a smart-vector into a normal vec. The implementation minimizes
 // then number of copies.
-func (w *PaddedCircularWindow) IntoRegVecSaveAlloc() ([]field.Element, error) {
+func (w *PaddedCircularWindow) IntoRegVecSaveAlloc() []field.Element {
+	res, err := w.IntoRegVecSaveAllocBase()
+	if err != nil {
+		panic(conversionError)
+	}
+	return res
+
+}
+
+func (w *PaddedCircularWindow) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 	return IntoRegVec(w), nil
 }
 
 func (w *PaddedCircularWindow) IntoRegVecSaveAllocExt() []fext.Element {
-	temp, _ := w.IntoRegVecSaveAlloc()
+	temp, _ := w.IntoRegVecSaveAllocBase()
 	res := make([]fext.Element, len(temp))
 	for i := 0; i < len(temp); i++ {
 		elem := temp[i]
