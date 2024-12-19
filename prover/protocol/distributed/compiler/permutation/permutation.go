@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/sirupsen/logrus"
 )
 
 const grandProductStr = "GRAND_PRODUCT"
@@ -43,7 +42,6 @@ func (p *PermutationIntoGrandProductCtx) AddGdProductQuery(initialComp, moduleCo
 	disc := modulediscoverer.PeriodSeperatingModuleDiscoverer{}
 	disc.Analyze(initialComp)
 	qId := deriveName[ifaces.QueryID](ifaces.QueryID(targetModuleName))
-	logrus.Printf("qId : %s", qId)
 	p.QId = qId
 	p.TargetModuleName = string(targetModuleName)
 	/*
@@ -87,7 +85,6 @@ func (p *PermutationIntoGrandProductCtx) AddGdProductQuery(initialComp, moduleCo
 // 1. Register beta and alpha (for the random linear combination in case A and B are multi-columns) in the compiledIop
 // 2. Populates the nemerators and the denominators of the grand product query
 func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query.Permutation, round, queryInRound int, isNumerator, isBoth bool) {
-	logrus.Printf("queryInRound %d", queryInRound)
 	var (
 		isMultiColumn = len(q.A[0]) > 1
 		// isFragmented  = len(q.A) > 1
@@ -145,10 +142,6 @@ func (p *PermutationIntoGrandProductCtx) AssignParam(run *wizard.ProverRuntime, 
 		numProd         = symbolic.NewConstant(1)
 		denProd         = symbolic.NewConstant(1)
 	)
-	coins := run.Spec.Coins.AllKeys()
-	for i := range coins {
-		logrus.Printf("coin : %v", coins[i])
-	}
 	for i := 0; i < numNumerators; i++ {
 		numProd = symbolic.Mul(numProd, p.Numerators[i])
 	}
