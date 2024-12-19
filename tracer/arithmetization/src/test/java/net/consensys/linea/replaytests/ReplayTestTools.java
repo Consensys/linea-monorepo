@@ -35,6 +35,7 @@ import java.util.zip.GZIPInputStream;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.ReplayExecutionEnvironment;
+import net.consensys.linea.zktracer.ZkTracer;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.provider.Arguments;
 
@@ -87,6 +88,7 @@ public class ReplayTestTools {
       throw new RuntimeException(e);
     }
     ReplayExecutionEnvironment.builder()
+        .zkTracer(new ZkTracer(chainId))
         .txResultChecking(resultChecking)
         .build()
         .replay(chainId, new BufferedReader(new InputStreamReader(stream)));
@@ -118,6 +120,7 @@ public class ReplayTestTools {
 
     try (GZIPInputStream gzipStream = new GZIPInputStream(stream)) {
       ReplayExecutionEnvironment.builder()
+          .zkTracer(new ZkTracer(chainId))
           .build()
           .replay(chainId, new BufferedReader(new InputStreamReader(gzipStream)), filePath);
     } catch (IOException e) {

@@ -180,8 +180,6 @@ public class Hub implements Module {
     return state.lineCounter().lineCount();
   }
 
-  @Getter private final BigInteger chainId;
-
   /** List of all modules of the ZK-evm */
   // stateless modules
   @Getter private final Wcp wcp = new Wcp();
@@ -381,17 +379,14 @@ public class Hub implements Module {
         .toList();
   }
 
-  public Hub(
-      final Address l2l1ContractAddress,
-      final Bytes l2l1Topic,
-      final BigInteger nonnegativeChainId) {
-    checkState(nonnegativeChainId.signum() >= 0);
-    chainId = nonnegativeChainId;
+  public Hub(final Address l2l1ContractAddress, final Bytes l2l1Topic, final BigInteger chainId) {
+    checkState(chainId.signum() >= 0);
     l2Block = new L2Block(l2l1ContractAddress, LogTopic.of(l2l1Topic));
     l2L1Logs = new L2L1Logs(l2Block);
     keccak = new Keccak(ecRecoverEffectiveCall, l2Block);
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
-    blockdata = new Blockdata(wcp, txnData, rlpTxn, chainId);
+    blockdata = new Blockdata(wcp, euc, txnData);
+    blockdata.setChainId(chainId);
     mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);
 

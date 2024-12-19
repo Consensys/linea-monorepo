@@ -24,6 +24,7 @@ import lombok.Builder;
 import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.blockcapture.snapshots.*;
+import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.ethereum.core.*;
 
 @Builder
@@ -62,6 +63,7 @@ public class MultiBlockExecutionEnvironment {
 
   public void run() {
     ReplayExecutionEnvironment.builder()
+        .zkTracer(new ZkTracer(ToyExecutionEnvironmentV2.CHAIN_ID))
         .useCoinbaseAddressFromBlockHeader(true)
         .transactionProcessingResultValidator(this.transactionProcessingResultValidator)
         .build()

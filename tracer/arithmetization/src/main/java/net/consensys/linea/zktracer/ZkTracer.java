@@ -82,7 +82,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   public ZkTracer() {
     this(
         LineaL1L2BridgeSharedConfiguration.EMPTY,
-        Bytes.fromHexString("c0ffee").toBigInteger().abs());
+        Bytes.fromHexString("c0ffee").toUnsignedBigInteger());
   }
 
   public ZkTracer(BigInteger nonnegativeChainId) {
@@ -91,9 +91,8 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   public ZkTracer(
       final LineaL1L2BridgeSharedConfiguration bridgeConfiguration, BigInteger chainId) {
-    BigInteger nonnegativeChainId = chainId.abs();
-    this.hub =
-        new Hub(bridgeConfiguration.contract(), bridgeConfiguration.topic(), nonnegativeChainId);
+    ;
+    this.hub = new Hub(bridgeConfiguration.contract(), bridgeConfiguration.topic(), chainId);
     for (Module m : this.hub.getModulesToCount()) {
       if (!spillings.containsKey(m.moduleKey())) {
         throw new IllegalStateException(
