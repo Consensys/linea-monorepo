@@ -3,7 +3,7 @@ logging="DEBUG"
 data-path="/opt/besu/data"
 data-storage-format="FOREST"
 sync-mode="FULL"
-host-whitelist=["*"]
+host-allowlist=["*"]
 
 min-gas-price=1000000
 tx-pool-min-gas-price=0
@@ -45,6 +45,7 @@ api-gas-and-priority-fee-upper-bound-coefficient=300
 poa-block-txs-selection-max-time=1000
 
 # plugins
+plugins=["LineaEstimateGasEndpointPlugin","L1FinalizationTagUpdaterPlugin","LineaExtraDataPlugin", "LineaTransactionPoolValidatorPlugin"]
 plugin-linea-module-limit-file-path="/var/lib/besu/traces-limits.toml"
 plugin-linea-deny-list-path="/var/lib/besu/deny-list.txt"
 plugin-linea-estimate-gas-compatibility-mode-enabled=false
