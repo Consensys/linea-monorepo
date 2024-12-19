@@ -8,7 +8,6 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "full"
-conflated_traces_dir = "~/prover-testdata/sepolia-v0.8.0-rc8.1/traces/conflated"
 
 [blob_decompression]
 prover_mode = "dev"
