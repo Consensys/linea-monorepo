@@ -1,37 +1,42 @@
-package smartvectors
+package smartvectorsext
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+const conversionError = "smartvector holds field extensions, but a base element was requested"
+
 // It's normal vector in a nutshell
-type Regular []field.Element
+type RegularExt []fext.Element
 
 // Instanstiate a new regular from a slice. Returns a pointer so that the result
 // can be reused without referencing as a SmartVector.
-func NewRegular(v []field.Element) *Regular {
+func NewRegularExt(v []fext.Element) *RegularExt {
 	assertStrictPositiveLen(len(v))
-	res := Regular(v)
+	res := RegularExt(v)
 	return &res
 }
 
 // Returns the length of the regular vector
-func (r *Regular) Len() int { return len(*r) }
+func (r *RegularExt) Len() int { return len(*r) }
 
 // Returns a particular element of the vector
-func (r *Regular) GetBase(n int) (field.Element, error) { return (*r)[n], nil }
-
-func (r *Regular) GetExt(n int) fext.Element {
-	return *new(fext.Element).SetFromBase(&(*r)[n])
+func (r *RegularExt) GetBase(n int) (field.Element, error) {
+	return field.Zero(), fmt.Errorf(conversionError)
 }
 
-func (r *Regular) Get(n int) field.Element {
+func (r *RegularExt) GetExt(n int) fext.Element {
+	return (*r)[n]
+}
+
+func (r *RegularExt) Get(n int) field.Element {
 	res, err := r.GetBase(n)
 	if err != nil {
 		panic(err)
@@ -40,20 +45,20 @@ func (r *Regular) Get(n int) field.Element {
 }
 
 // Returns a subvector of the regular
-func (r *Regular) SubVector(start, stop int) SmartVector {
+func (r *RegularExt) SubVector(start, stop int) smartvectors.SmartVector {
 	if start > stop {
 		utils.Panic("Negative length are not allowed")
 	}
 	if start == stop {
 		utils.Panic("Subvector of zero lengths are not allowed")
 	}
-	res := Regular((*r)[start:stop])
+	res := RegularExt((*r)[start:stop])
 	return &res
 }
 
 // Rotates the vector into a new one
-func (r *Regular) RotateRight(offset int) SmartVector {
-	resSlice := make(Regular, r.Len())
+func (r *RegularExt) RotateRight(offset int) smartvectors.SmartVector {
+	resSlice := make(RegularExt, r.Len())
 
 	if offset == 0 {
 		copy(resSlice, *r)
@@ -64,7 +69,7 @@ func (r *Regular) RotateRight(offset int) SmartVector {
 		// v and w may be the same vector thus we should use a
 		// separate leftover buffer for temporary memory buffers.
 		cutAt := len(*r) - offset
-		leftovers := vector.DeepCopy((*r)[cutAt:])
+		leftovers := vectorext.DeepCopy((*r)[cutAt:])
 		copy(resSlice[offset:], (*r)[:cutAt])
 		copy(resSlice[:offset], leftovers)
 		return &resSlice
@@ -72,7 +77,7 @@ func (r *Regular) RotateRight(offset int) SmartVector {
 
 	if offset < 0 {
 		glueAt := len(*r) + offset
-		leftovers := vector.DeepCopy((*r)[:-offset])
+		leftovers := vectorext.DeepCopy((*r)[:-offset])
 		copy(resSlice[:glueAt], (*r)[-offset:])
 		copy(resSlice[glueAt:], leftovers)
 		return &resSlice
@@ -81,12 +86,11 @@ func (r *Regular) RotateRight(offset int) SmartVector {
 	panic("unreachable")
 }
 
-func (r *Regular) WriteInSlice(s []field.Element) {
-	assertHasLength(len(s), len(*r))
-	copy(s, *r)
+func (r *RegularExt) WriteInSlice(s []field.Element) {
+	panic("conversionError")
 }
 
-func (r *Regular) WriteInSliceExt(s []fext.Element) {
+func (r *RegularExt) WriteInSliceExt(s []fext.Element) {
 	assertHasLength(len(s), len(*r))
 	for i := 0; i < len(s); i++ {
 		elem, _ := r.GetBase(i)
@@ -94,17 +98,17 @@ func (r *Regular) WriteInSliceExt(s []fext.Element) {
 	}
 }
 
-func (r *Regular) Pretty() string {
-	return fmt.Sprintf("Regular[%v]", vector.Prettify(*r))
+func (r *RegularExt) Pretty() string {
+	return fmt.Sprintf("Regular[%v]", vectorext.Prettify(*r))
 }
 
-func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mempool.MemPool) (result *Pooled, numMatches int) {
+func processRegularOnlyExt(op operator, svecs []smartvectors.SmartVector, coeffs []int, p ...mempoolext.MemPool) (result *PooledExt, numMatches int) {
 
 	length := svecs[0].Len()
 
-	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
+	pool, hasPool := mempoolext.ExtractCheckOptionalStrict(length, p...)
 
-	var resvec *Pooled
+	var resvec *PooledExt
 
 	isFirst := true
 	numMatches = 0
@@ -114,32 +118,32 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mem
 		svec := svecs[i]
 		// In case the current vec is Rotated, we reduce it to a regular form
 		// NB : this could use the pool.
-		if rot, ok := svec.(*Rotated); ok {
+		if rot, ok := svec.(*RotatedExt); ok {
 			svec = rotatedAsRegular(rot)
 		}
 
-		if pooled, ok := svec.(*Pooled); ok {
+		if pooled, ok := svec.(*smartvectors.Pooled); ok {
 			svec = &pooled.Regular
 		}
 
-		if reg, ok := svec.(*Regular); ok {
+		if reg, ok := svec.(*RegularExt); ok {
 			numMatches++
 			// For the first one, we can save by just copying the result
 			// Importantly, we do not need to assume that regRes is originally
 			// zero.
 			if isFirst {
 				if hasPool {
-					resvec = AllocFromPool(pool)
+					resvec = AllocFromPoolExt(pool)
 				} else {
-					resvec = &Pooled{Regular: make([]field.Element, length)}
+					resvec = &PooledExt{RegularExt: make([]fext.Element, length)}
 				}
 
 				isFirst = false
-				op.vecIntoTerm(resvec.Regular, *reg, coeffs[i])
+				op.vecIntoTerm(resvec.RegularExt, *reg, coeffs[i])
 				continue
 			}
 
-			op.vecIntoVec(resvec.Regular, *reg, coeffs[i])
+			op.vecIntoVec(resvec.RegularExt, *reg, coeffs[i])
 		}
 	}
 
@@ -150,17 +154,17 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mem
 	return resvec, numMatches
 }
 
-func (r *Regular) DeepCopy() SmartVector {
-	return NewRegular(vector.DeepCopy(*r))
+func (r *RegularExt) DeepCopy() smartvectors.SmartVector {
+	return NewRegularExt(vectorext.DeepCopy(*r))
 }
 
 // Converts a smart-vector into a normal vec. The implementation minimizes
 // then number of copies.
-func (r *Regular) IntoRegVecSaveAlloc() ([]field.Element, error) {
-	return (*r)[:], nil
+func (r *RegularExt) IntoRegVecSaveAlloc() ([]field.Element, error) {
+	return nil, fmt.Errorf(conversionError)
 }
 
-func (r *Regular) IntoRegVecSaveAllocExt() []fext.Element {
+func (r *RegularExt) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := make([]fext.Element, r.Len())
 	for i := 0; i < r.Len(); i++ {
 		elem, _ := r.GetBase(i)
@@ -169,23 +173,23 @@ func (r *Regular) IntoRegVecSaveAllocExt() []fext.Element {
 	return temp
 }
 
-type Pooled struct {
-	Regular
-	poolPtr *[]field.Element
+type PooledExt struct {
+	RegularExt
+	poolPtr *[]fext.Element
 }
 
-func AllocFromPool(pool mempool.MemPool) *Pooled {
+func AllocFromPoolExt(pool mempoolext.MemPool) *PooledExt {
 	poolPtr := pool.Alloc()
-	return &Pooled{
-		Regular: *poolPtr,
-		poolPtr: poolPtr,
+	return &PooledExt{
+		RegularExt: *poolPtr,
+		poolPtr:    poolPtr,
 	}
 }
 
-func (p *Pooled) Free(pool mempool.MemPool) {
+func (p *PooledExt) Free(pool mempoolext.MemPool) {
 	if p.poolPtr != nil {
 		pool.Free(p.poolPtr)
 	}
 	p.poolPtr = nil
-	p.Regular = nil
+	p.RegularExt = nil
 }
