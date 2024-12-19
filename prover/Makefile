@@ -45,8 +45,8 @@ corset:
 ##
 zkevm/arithmetization/zkevm.bin: corset
 	cd ../constraints && \
-	BRANCHES=$$(git branch -r --contains HEAD | sed 's|origin/rel/||') && \
-	echo "$$BRANCHES" > ../prover/constraints-versions.txt && \
+	TAGS=$$(git tag --points-at HEAD) && \
+	echo "$$TAGS" > ../prover/constraints-versions.txt && \
 	$(CORSET) && make zkevm.bin && \
 	mv zkevm.bin ../prover/zkevm/arithmetization
 

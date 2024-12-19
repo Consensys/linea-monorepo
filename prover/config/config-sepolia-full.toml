@@ -7,18 +7,18 @@ log_level = 4                                  # TODO @gbotrel will be refactore
 retry_delays = [0, 1]
 
 [execution]
-prover_mode = "dev"
+prover_mode = "full"
 conflated_traces_dir = "/home/ubuntu/prover-testdata/sepolia-v0.8.0-rc8.1/traces/conflated"
 requests_root_dir = "/home/ubuntu/prover-testdata/sepolia-v0.8.0-rc8.1/prover-execution"
 
 
 [blob_decompression]
-prover_mode = "dev"
+prover_mode = "full"
 requests_root_dir = "/home/ubuntu/prover-testdata/sepolia-v0.8.0-rc8.1/prover-compression"
 dict_path = "lib/compressor/compressor_dict.bin"
 
 [aggregation]
-prover_mode = "dev"
+prover_mode = "full"
 requests_root_dir = "/home/ubuntu/prover-testdata/sepolia-v0.8.0-rc8.1/prover-aggregation"
 num_proofs = [10, 20, 50, 100, 200, 400]
 allowed_inputs = ["execution-dummy", "execution", "execution-large", "blob-decompression-dummy", "blob-decompression-v0", "blob-decompression-v1"]

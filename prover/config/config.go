@@ -210,8 +210,6 @@ type Execution struct {
 
 	// ConflatedTracesDir stores the directory where the conflation traces are stored.
 	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
-
-	// ExpectedTraceVersion
 }
 
 type BlobDecompression struct {
