@@ -164,7 +164,7 @@ func computeFactor(aOrB [][]ifaces.Column, isMultiColumn bool, alpha, beta *coin
 	var (
 		numFrag    = len(aOrB)
 		factor     = symbolic.NewConstant(1)
-		fragFactor = symbolic.NewConstant(1)
+		fragFactor *symbolic.Expression
 	)
 
 	for frag := range numFrag {
