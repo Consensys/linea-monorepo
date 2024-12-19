@@ -9,6 +9,51 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
+
+func TestDistPermutationNoMultiColumnNoFragment(t *testing.T) {
+	var (
+		runS *wizard.ProverRuntime
+		G ifaces.Query
+		permCtx *dist_permutation.PermutationIntoGrandProductCtx
+	)
+	permCtx = dist_permutation.NewPermutationIntoGrandProductCtx(dist_permutation.Settings{MaxNumOfQueryPerModule: 4})
+	initialDefine := func(builder *wizard.Builder) {
+		A := []ifaces.Column{
+			builder.RegisterCommit("MODULE_A.A0", 4),
+		}
+		B := []ifaces.Column{
+			builder.RegisterCommit("MODULE_B.B0", 4),
+		}
+		C := []ifaces.Column{
+			builder.RegisterCommit("MODULE_C.C0", 4),
+		}
+		_ = builder.CompiledIOP.InsertPermutation(0, "P_MOD_A_MOD_B", A, B)
+		_ = builder.CompiledIOP.InsertPermutation(0, "P_MOD_C_MOD_A", C, A)
+		_ = builder.CompiledIOP.InsertPermutation(0, "P_MOD_B_MOD_C", B, C)
+	}
+
+	moduleADefine := func(builder *wizard.Builder) {
+		builder.RegisterCommit("MODULE_A.A0", 4)
+	}
+
+	initialComp := wizard.Compile(initialDefine)
+	moduleAComp := wizard.Compile(moduleADefine)
+	
+	moduleAProve := func(run *wizard.ProverRuntime) {
+		runS = run
+		run.AssignColumn("MODULE_A.A0", smartvectors.ForTest(1, 2, 3, 4))
+		G = permCtx.AddGdProductQuery(initialComp, moduleAComp, "MODULE_A", run)
+	}
+	_ = wizard.Prove(moduleAComp, moduleAProve)
+	errG := G.Check(runS)
+
+	if errG != nil {
+		t.Fatalf("error verifying the grand product: %v", errG.Error())
+	}
+}
+
+
+
 func TestDistPermutationNoFragment(t *testing.T) {
 	var (
 		runS *wizard.ProverRuntime
