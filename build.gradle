@@ -203,7 +203,8 @@ dockerCompose {
       "staterecover"
     ]
     useComposeFiles = [
-      "${project.rootDir.path}/docker/compose.yml"
+      "${project.rootDir.path}/docker/compose.yml",
+      "${project.rootDir.path}/docker/compose-local-dev-traces-v2.overrides.yml"
     ]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
     waitForTcpPorts = false
