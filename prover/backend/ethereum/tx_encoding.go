@@ -14,6 +14,10 @@ import (
 
 // Returns the transaction hash of the transaction
 func GetTxHash(tx *types.Transaction) common.Hash {
+
+	// This is a patch for the v=35 transaction that reached us.
+	tx = IntoLegalTx(tx)
+
 	if !tx.Protected() {
 		// The normal signer does not return the right value
 		return getUnprotectedSigner().Hash(tx)
@@ -24,6 +28,9 @@ func GetTxHash(tx *types.Transaction) common.Hash {
 // Encode the transaction so that the hash of the encoded bytes produces exactly
 // the transaction hash.
 func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {
+
+	// This is a patch for the v=35 transaction that reached us.
+	tx = IntoLegalTx(tx)
 
 	// Since there are different types of transactions in Ethereum.
 	// We encode them differently

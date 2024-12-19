@@ -26,6 +26,10 @@ type Signature struct {
 
 // Returns the sender of a transaction
 func GetFrom(tx *ethtypes.Transaction) types.EthAddress {
+
+	// This is a patch for the v=35 transaction that reached us.
+	tx = IntoLegalTx(tx)
+
 	from, err := GetSigner(tx).Sender(tx)
 	if err != nil {
 		v, r, s := tx.RawSignatureValues()
@@ -40,6 +44,9 @@ func GetFrom(tx *ethtypes.Transaction) types.EthAddress {
 // Returns the signature in json and the sender of the transaction
 // Signature in JSONable format and from as an hex string
 func GetJsonSignature(tx *ethtypes.Transaction) Signature {
+
+	// This is a patch for the v=35 transaction that reached us.
+	tx = IntoLegalTx(tx)
 
 	// Depending on the type of transaction and the chainID, we may need
 	// to update V in a specific way.
@@ -78,7 +85,8 @@ func GetJsonSignature(tx *ethtypes.Transaction) Signature {
 }
 
 // RecoverPublicKey returns the public key from the signature and the msg hash
-// the signature should be "cleaned" before calling this function.
+// the signature should be "cleaned" before calling this function. Meaning, we
+// expect V=27|28 as in the ecrecover precompile.
 func RecoverPublicKey(msgHash [32]byte, sig Signature) (pubKey [64]byte, encodedSig [65]byte, err error) {
 
 	/*
@@ -114,4 +122,34 @@ func RecoverPublicKey(msgHash [32]byte, sig Signature) (pubKey [64]byte, encoded
 	pubkey_, err := crypto.Ecrecover(msgHash[:], encodedSig[:])
 	copy(pubKey[:], pubkey_[1:])
 	return pubKey, encodedSig, err
+}
+
+// IntoLegalTx checks the v of the transaction's signature and either returns
+// the same transaction if v != 35|36 or returns an equivalent transaction with
+// v set to 27|28.
+func IntoLegalTx(tx *ethtypes.Transaction) *ethtypes.Transaction {
+
+	if tx.Type() > ethtypes.LegacyTxType {
+		return tx
+	}
+
+	v, r, s := tx.RawSignatureValues()
+
+	if v.Uint64() != 35 && v.Uint64() != 36 {
+		return tx
+	}
+
+	newTx := ethtypes.LegacyTx{
+		To:       tx.To(),
+		Gas:      tx.Gas(),
+		GasPrice: tx.GasPrice(),
+		Value:    tx.Value(),
+		Data:     tx.Data(),
+		Nonce:    tx.Nonce(),
+		V:        big.NewInt(v.Int64() - 8),
+		R:        r,
+		S:        s,
+	}
+
+	return ethtypes.NewTx(&newTx)
 }

@@ -57,6 +57,9 @@ func encodeTxForCompression(tx *types.Transaction, w io.Writer) error {
 		return fmt.Errorf("transactions is nil")
 	}
 
+	// This is a patch for the v=35 transaction that reached us.
+	tx = ethereum.IntoLegalTx(tx)
+
 	var (
 		from    = ethereum.GetFrom(tx)
 		txRlp   = ethereum.EncodeTxForSigning(tx)

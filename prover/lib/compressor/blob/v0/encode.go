@@ -31,10 +31,15 @@ func EncodeBlockForCompression(block *types.Block, w io.Writer, encodingOptions 
 // EncodeTxForCompression encodes a transaction for compression.
 // this code is from zk-evm-monorepo/prover/... but doesn't include the chainID
 func EncodeTxForCompression(tx *types.Transaction, w io.Writer, encodingOptions ...encode.Option) error {
+
 	cfg := encode.NewConfig()
 	for _, o := range encodingOptions {
 		o(&cfg)
 	}
+
+	// This is a patch for the v=35 transaction that reached us.
+	tx = ethereum.IntoLegalTx(tx)
+
 	switch {
 	// LONDON with dynamic fees
 	case tx.Type() == types.DynamicFeeTxType:
