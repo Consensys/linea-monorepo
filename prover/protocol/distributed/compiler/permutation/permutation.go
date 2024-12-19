@@ -16,7 +16,7 @@ import (
 const grandProductStr = "GRAND_PRODUCT"
 
 /*
-The below function aims to process all the permuation queries specific to a target module
+The below function aims to process all the permutation queries specific to a target module
 into a grand product query. We store the randomised symbolic products of A and B of permuation
 queries combinedly into the Numerators and the Denominators of the GrandProduct query
 */
@@ -161,22 +161,22 @@ func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, q *query
 // Returns:
 // - A pointer to a symbolic.Expression representing the computed factor for the permutation query.
 func computeFactor(aOrB [][]ifaces.Column, isMultiColumn bool, alpha, beta *coin.Info) *symbolic.Expression {
-    var (
-        numFrag    = len(aOrB)
-        factor     = symbolic.NewConstant(1)
-        fragFactor = symbolic.NewConstant(1)
-    )
+	var (
+		numFrag    = len(aOrB)
+		factor     = symbolic.NewConstant(1)
+		fragFactor = symbolic.NewConstant(1)
+	)
 
-    for frag := range numFrag {
-        if isMultiColumn {
-            fragFactor = wizardutils.RandLinCombColSymbolic(*alpha, aOrB[frag])
-        } else {
-            fragFactor = ifaces.ColumnAsVariable(aOrB[frag][0])
-        }
-        fragFactor = symbolic.Add(fragFactor, *beta)
-        factor = symbolic.Mul(factor, fragFactor)
-    }
-    return factor
+	for frag := range numFrag {
+		if isMultiColumn {
+			fragFactor = wizardutils.RandLinCombColSymbolic(*alpha, aOrB[frag])
+		} else {
+			fragFactor = ifaces.ColumnAsVariable(aOrB[frag][0])
+		}
+		fragFactor = symbolic.Add(fragFactor, *beta)
+		factor = symbolic.Mul(factor, fragFactor)
+	}
+	return factor
 }
 
 // AssignParam computes the query parameter for the grand product query and assigns it in round one.
@@ -190,43 +190,43 @@ func computeFactor(aOrB [][]ifaces.Column, isMultiColumn bool, alpha, beta *coin
 // Returns:
 // - A pointer to the PermutationIntoGrandProductCtx instance with the updated ParamY field.
 func (p *PermutationIntoGrandProductCtx) AssignParam(run *wizard.ProverRuntime, name ifaces.QueryID) *PermutationIntoGrandProductCtx {
-    var (
-        numNumerators   = len(p.Numerators)
-        numDenominators = len(p.Denominators)
-        numProd         = symbolic.NewConstant(1)
-        denProd         = symbolic.NewConstant(1)
-    )
-    // Multiply all Numerators
-    for i := 0; i < numNumerators; i++ {
-        numProd = symbolic.Mul(numProd, p.Numerators[i])
-    }
-    // Multiply all Denominators
-    for j := 0; j < numDenominators; j++ {
-        denProd = symbolic.Mul(denProd, p.Denominators[j])
-    }
-    // Evaluate the symbolic expressions for Numerator and Denominator products
-    numProdFrVec := column.EvalExprColumn(run, numProd.Board()).IntoRegVecSaveAlloc()
-    denProdFrVec := column.EvalExprColumn(run, denProd.Board()).IntoRegVecSaveAlloc()
-    numProdFr := numProdFrVec[0]
-    denProdFr := denProdFrVec[0]
-    // Multiply all field elements in the Numerator product vector
-    if len(numProdFrVec) > 1 {
-        for i := 1; i < len(numProdFrVec); i++ {
-            numProdFr.Mul(&numProdFr, &numProdFrVec[i])
-        }
-    }
-    // Multiply all field elements in the Denominator product vector
-    if len(denProdFrVec) > 1 {
-        for j := 1; j < len(denProdFrVec); j++ {
-            denProdFr.Mul(&denProdFr, &denProdFrVec[j])
-        }
-    }
-    // Invert the Denominator product field element
-    denProdFr.Inverse(&denProdFr)
-    // Compute the final query parameter Y
-    Y := numProdFr.Mul(&numProdFr, &denProdFr)
-    p.ParamY = *Y
-    return p
+	var (
+		numNumerators   = len(p.Numerators)
+		numDenominators = len(p.Denominators)
+		numProd         = symbolic.NewConstant(1)
+		denProd         = symbolic.NewConstant(1)
+	)
+	// Multiply all Numerators
+	for i := 0; i < numNumerators; i++ {
+		numProd = symbolic.Mul(numProd, p.Numerators[i])
+	}
+	// Multiply all Denominators
+	for j := 0; j < numDenominators; j++ {
+		denProd = symbolic.Mul(denProd, p.Denominators[j])
+	}
+	// Evaluate the symbolic expressions for Numerator and Denominator products
+	numProdFrVec := column.EvalExprColumn(run, numProd.Board()).IntoRegVecSaveAlloc()
+	denProdFrVec := column.EvalExprColumn(run, denProd.Board()).IntoRegVecSaveAlloc()
+	numProdFr := numProdFrVec[0]
+	denProdFr := denProdFrVec[0]
+	// Multiply all field elements in the Numerator product vector
+	if len(numProdFrVec) > 1 {
+		for i := 1; i < len(numProdFrVec); i++ {
+			numProdFr.Mul(&numProdFr, &numProdFrVec[i])
+		}
+	}
+	// Multiply all field elements in the Denominator product vector
+	if len(denProdFrVec) > 1 {
+		for j := 1; j < len(denProdFrVec); j++ {
+			denProdFr.Mul(&denProdFr, &denProdFrVec[j])
+		}
+	}
+	// Invert the Denominator product field element
+	denProdFr.Inverse(&denProdFr)
+	// Compute the final query parameter Y
+	Y := numProdFr.Mul(&numProdFr, &denProdFr)
+	p.ParamY = *Y
+	return p
 }
 
 // Run executes the grand product query by assigning the computed parameter Y to the prover runtime.
@@ -237,7 +237,7 @@ func (p *PermutationIntoGrandProductCtx) AssignParam(run *wizard.ProverRuntime, 
 // The function does not return any value. It directly assigns the computed parameter Y to the prover runtime
 // using the AssignGrandProduct method of the runtime.
 func (p *PermutationIntoGrandProductCtx) Run(run *wizard.ProverRuntime) {
-    run.AssignGrandProduct(p.QueryId, p.ParamY)
+	run.AssignGrandProduct(p.QueryId, p.ParamY)
 }
 
 // deriveName constructs a name for the PermutationIntoGrandProduct context

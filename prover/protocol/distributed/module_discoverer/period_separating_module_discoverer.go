@@ -67,3 +67,9 @@ func (p *PeriodSeperatingModuleDiscoverer) FindModule(col ifaces.Column) ModuleN
 	}
 	return "no column found" // Return a default or error value
 }
+
+// QueryIsInModule checks if the given query is inside the given module
+func (p *PeriodSeperatingModuleDiscoverer) QueryIsInModule(ifaces.Query, ModuleName) bool {
+	panic("unimplemented")
+
+}

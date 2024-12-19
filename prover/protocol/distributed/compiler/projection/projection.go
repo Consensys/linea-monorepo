@@ -1,6 +1,5 @@
 package projection
 
-=======
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"

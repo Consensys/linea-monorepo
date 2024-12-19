@@ -9,11 +9,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-
 func TestDistPermutationNoMultiColumnNoFragment(t *testing.T) {
 	var (
-		runS *wizard.ProverRuntime
-		G ifaces.Query
+		runS    *wizard.ProverRuntime
+		G       ifaces.Query
 		permCtx *dist_permutation.PermutationIntoGrandProductCtx
 	)
 	permCtx = dist_permutation.NewPermutationIntoGrandProductCtx(dist_permutation.Settings{MaxNumOfQueryPerModule: 4})
@@ -38,7 +37,7 @@ func TestDistPermutationNoMultiColumnNoFragment(t *testing.T) {
 
 	initialComp := wizard.Compile(initialDefine)
 	moduleAComp := wizard.Compile(moduleADefine)
-	
+
 	moduleAProve := func(run *wizard.ProverRuntime) {
 		runS = run
 		run.AssignColumn("MODULE_A.A0", smartvectors.ForTest(1, 2, 3, 4))
@@ -52,12 +51,10 @@ func TestDistPermutationNoMultiColumnNoFragment(t *testing.T) {
 	}
 }
 
-
-
 func TestDistPermutationNoFragment(t *testing.T) {
 	var (
-		runS *wizard.ProverRuntime
-		G ifaces.Query
+		runS    *wizard.ProverRuntime
+		G       ifaces.Query
 		permCtx *dist_permutation.PermutationIntoGrandProductCtx
 	)
 	permCtx = dist_permutation.NewPermutationIntoGrandProductCtx(dist_permutation.Settings{MaxNumOfQueryPerModule: 4})
@@ -90,7 +87,7 @@ func TestDistPermutationNoFragment(t *testing.T) {
 
 	initialComp := wizard.Compile(initialDefine)
 	moduleAComp := wizard.Compile(moduleADefine)
-	
+
 	moduleAProve := func(run *wizard.ProverRuntime) {
 		runS = run
 		run.AssignColumn("MODULE_A.A0", smartvectors.ForTest(1, 2, 3, 4))
@@ -106,38 +103,37 @@ func TestDistPermutationNoFragment(t *testing.T) {
 	}
 }
 
-
 func TestDistPermutationFragment(t *testing.T) {
 	var (
-		runS *wizard.ProverRuntime
-		G ifaces.Query
+		runS    *wizard.ProverRuntime
+		G       ifaces.Query
 		permCtx *dist_permutation.PermutationIntoGrandProductCtx
 	)
 	permCtx = dist_permutation.NewPermutationIntoGrandProductCtx(dist_permutation.Settings{MaxNumOfQueryPerModule: 4})
 	initialDefine := func(builder *wizard.Builder) {
 		A := [][]ifaces.Column{
 			{builder.RegisterCommit("MODULE_A.A00", 4),
-			builder.RegisterCommit("MODULE_A.A10", 4),
-			builder.RegisterCommit("MODULE_A.A20", 4)},
+				builder.RegisterCommit("MODULE_A.A10", 4),
+				builder.RegisterCommit("MODULE_A.A20", 4)},
 			{builder.RegisterCommit("MODULE_A.A01", 4),
-			builder.RegisterCommit("MODULE_A.A11", 4),
-			builder.RegisterCommit("MODULE_A.A21", 4)},
+				builder.RegisterCommit("MODULE_A.A11", 4),
+				builder.RegisterCommit("MODULE_A.A21", 4)},
 		}
 		B := [][]ifaces.Column{
 			{builder.RegisterCommit("MODULE_B.B00", 4),
-			builder.RegisterCommit("MODULE_B.B10", 4),
-			builder.RegisterCommit("MODULE_B.B20", 4),},
+				builder.RegisterCommit("MODULE_B.B10", 4),
+				builder.RegisterCommit("MODULE_B.B20", 4)},
 			{builder.RegisterCommit("MODULE_B.B01", 4),
-			builder.RegisterCommit("MODULE_B.B11", 4),
-			builder.RegisterCommit("MODULE_B.B21", 4),},
+				builder.RegisterCommit("MODULE_B.B11", 4),
+				builder.RegisterCommit("MODULE_B.B21", 4)},
 		}
 		C := [][]ifaces.Column{
 			{builder.RegisterCommit("MODULE_C.C00", 4),
-			builder.RegisterCommit("MODULE_C.C10", 4),
-			builder.RegisterCommit("MODULE_C.C20", 4),},
+				builder.RegisterCommit("MODULE_C.C10", 4),
+				builder.RegisterCommit("MODULE_C.C20", 4)},
 			{builder.RegisterCommit("MODULE_C.C01", 4),
-			builder.RegisterCommit("MODULE_C.C11", 4),
-			builder.RegisterCommit("MODULE_C.C21", 4),},
+				builder.RegisterCommit("MODULE_C.C11", 4),
+				builder.RegisterCommit("MODULE_C.C21", 4)},
 		}
 		_ = builder.CompiledIOP.InsertFragmentedPermutation(0, "P_MOD_A_MOD_B", A, B)
 		_ = builder.CompiledIOP.InsertFragmentedPermutation(0, "P_MOD_C_MOD_A", C, A)
@@ -155,7 +151,7 @@ func TestDistPermutationFragment(t *testing.T) {
 
 	initialComp := wizard.Compile(initialDefine)
 	moduleAComp := wizard.Compile(moduleADefine)
-	
+
 	moduleAProve := func(run *wizard.ProverRuntime) {
 		runS = run
 		run.AssignColumn("MODULE_A.A00", smartvectors.ForTest(1, 2, 3, 4))
