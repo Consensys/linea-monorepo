@@ -219,8 +219,8 @@ func InsertProjection(
 func (pa projectionProverAction) Run(run *wizard.ProverRuntime) {
 
 	var (
-		a       = wizardutils.EvalExprColumn(run, pa.ABoard).IntoRegVecSaveAlloc()
-		b       = wizardutils.EvalExprColumn(run, pa.BBoard).IntoRegVecSaveAlloc()
+		a       = column.EvalExprColumn(run, pa.ABoard).IntoRegVecSaveAlloc()
+		b       = column.EvalExprColumn(run, pa.BBoard).IntoRegVecSaveAlloc()
 		fA      = pa.FilterA.GetColAssignment(run).IntoRegVecSaveAlloc()
 		fB      = pa.FilterB.GetColAssignment(run).IntoRegVecSaveAlloc()
 		x       = run.GetRandomCoinField(pa.EvalCoin.Name)

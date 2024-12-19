@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -25,7 +26,7 @@ func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...str
 	var (
 		boarded    = expr.Board()
 		maxRound   = wizardutils.LastRoundToEval(expr)
-		length     = wizardutils.ExprIsOnSameLengthHandles(&boarded)
+		length     = column.ExprIsOnSameLengthHandles(&boarded)
 		handleName = fmt.Sprintf("SYMBOLIC_%v", expr.ESHash.String())
 	)
 
