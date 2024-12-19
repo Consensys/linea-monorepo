@@ -96,6 +96,14 @@ func NbLeaves(h ifaces.Column) int {
 	panic("unreachable")
 }
 
+// EvalExprColumn resolves an expression to a column assignment. The expression
+// must be converted to a board prior to evaluating the expression.
+//
+//   - If the expression does not uses ifaces.Column as metadata, the function
+//     will panic.
+//
+//   - If the expression contains several columns and they don't contain all
+//     have the same size.
 func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvectors.SmartVector {
 
 	var (
