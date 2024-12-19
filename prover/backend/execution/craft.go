@@ -269,13 +269,14 @@ func checkArithmetizationVersion(traceFileName, tracesEngineVersion string, cons
 			return nil
 		}
 	}
-	return fmt.Errorf("unsupported arithmetization version found in the conflated trace file: %s", traceFileName)
+	return fmt.Errorf("unsupported arithmetization version:%s found in the conflated trace file: %s", traceFileVersion, traceFileName)
 }
 
 func validateAndExtractVersion(traceFileName string) (string, error) {
 	logrus.Info("Validating and extracting the version from conflated trace files")
 	// Define the regex pattern with a capturing group for the version part
-	traceFilePattern := `^\d+-\d+\.conflated\.(v\d+\.\d+\.\d+-[^.]+)\.lt$`
+	// The pattern accounts for an optional directory path
+	traceFilePattern := `^(?:.*/)?\d+-\d+\.conflated\.(v\d+\.\d+\.\d+-[^.]+)\.lt$`
 	re := regexp.MustCompile(traceFilePattern)
 
 	// Check if the file name matches the pattern and extract the version part
