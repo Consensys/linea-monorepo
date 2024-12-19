@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/sirupsen/logrus"
 )
 
 type ProverArgs struct {
@@ -52,7 +53,7 @@ func Prove(args ProverArgs) error {
 
 		// check the arithmetization version used to generated the trace is contained in the prover request
 		// and fail fast if the constraint version is not supported
-		if err := checkArithmetizationVersion(req.ConflatedExecutionTracesFile, "../constraints-versions.txt"); err != nil {
+		if err := checkArithmetizationVersion(req.ConflatedExecutionTracesFile, "./constraints-versions.txt"); err != nil {
 			return err
 		}
 
@@ -123,6 +124,7 @@ func writeResponse(path string, from any) error {
 // verifies the arithmetization version used to generate the trace files against the list of versions
 // specified by the constraints in the file path.
 func checkArithmetizationVersion(traceFileName, filepath string) error {
+	logrus.Info("Verifying the arithmetization version is supported by the existing constraints version")
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err
@@ -145,11 +147,11 @@ func checkArithmetizationVersion(traceFileName, filepath string) error {
 			return nil
 		}
 	}
-
 	return fmt.Errorf("unsupported arithmetization version found in the conflated trace file: %s", traceFileName)
 }
 
 func validateAndExtractVersion(traceFileName string) (string, error) {
+	logrus.Info("Validating and extracting the version from conflated trace files")
 	// Define the regex pattern with a capturing group for the version part
 	traceFilePattern := `^\d+-\d+\.conflated\.(v\d+\.\d+\.\d+-[^.]+)\.lt$`
 	re := regexp.MustCompile(traceFilePattern)
