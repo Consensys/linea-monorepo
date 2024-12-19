@@ -43,7 +43,7 @@ func (z *E12) Equal(x *E12) bool {
 
 // String puts E12 in string form
 func (z *E12) String() string {
-	return (z.C0.String() + "+(" + z.C1.String() + ")*w")
+	return z.C0.String() + "+(" + z.C1.String() + ")*w"
 }
 
 // SetString sets a E12 from string

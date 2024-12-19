@@ -29,8 +29,7 @@ import (
 )
 
 const (
-	frBits  = 253 // number of bits needed to represent a Element
-	frBytes = 32  // number of bytes needed to represent a Element
+	frBytes = 32 // number of bytes needed to represent a Element
 )
 
 func NewElement(v1 uint64, v2 uint64) Element {
@@ -95,12 +94,6 @@ func BatchInvert(a []Element) []Element {
 	}
 
 	return res
-}
-
-func _butterflyGeneric(a, b *Element) {
-	t := *a
-	a.Add(a, b)
-	b.Sub(&t, b)
 }
 
 // Bytes returns the value of z as a big-endian byte array
@@ -196,13 +189,8 @@ func (z *Element) MarshalJSON() ([]byte, error) {
 	if z == nil {
 		return []byte("null"), nil
 	}
-	const maxSafeBound = 15 // we encode it as number if it's small
 	s := z.A0.Text(10)
-	/*
-		if len(s) <= maxSafeBound {
-			return []byte(s), nil
-		}
-	*/
+
 	var sbb strings.Builder
 	sbb.WriteByte('"')
 	sbb.WriteString(s)

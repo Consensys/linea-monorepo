@@ -68,10 +68,17 @@ func (z *Element) LexicographicallyLargest() bool {
 }
 
 // SetString sets a Element element from strings
-func (z *Element) SetString(s1, s2 string) *Element {
-	z.A0.SetString(s1)
-	z.A1.SetString(s2)
-	return z
+func (z *Element) SetString(s1, s2 string) (*Element, error) {
+	_, err := z.A0.SetString(s1)
+	if err != nil {
+		return z, err
+	}
+
+	_, err = z.A1.SetString(s2)
+	if err != nil {
+		return z, err
+	}
+	return z, nil
 }
 
 // SetZero sets an Element elmt to zero
