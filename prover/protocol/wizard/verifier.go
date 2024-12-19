@@ -72,7 +72,7 @@ type VerifierRuntime struct {
 	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
-	FiatShamirHistory [][3][]field.Element
+	FiatShamirHistory [][2][]field.Element
 }
 
 // Verify verifies a wizard proof. The caller specifies a [CompiledIOP] that
@@ -128,7 +128,7 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		Columns:           proof.Messages,
 		QueriesParams:     proof.QueriesParams,
 		FS:                fiatshamir.NewMiMCFiatShamir(),
-		FiatShamirHistory: make([][3][]field.Element, c.NumRounds()),
+		FiatShamirHistory: make([][2][]field.Element, c.NumRounds()),
 	}
 
 	runtime.FS.Update(c.fiatShamirSetup)
@@ -193,8 +193,6 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 			}
 		}
 
-		postUpdateFsState := run.FS.State()
-
 		/*
 			Then assigns the coins for the new round. As the round incrementation
 			is made lazily, we expect that there is a next round.
@@ -221,9 +219,8 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 			}
 		}
 
-		run.FiatShamirHistory[currRound] = [3][]field.Element{
+		run.FiatShamirHistory[currRound] = [2][]field.Element{
 			initialState,
-			postUpdateFsState,
 			run.FS.State(),
 		}
 	}

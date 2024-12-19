@@ -75,7 +75,7 @@ func (c *gnarkCircuit) Define(api frontend.API) error {
 		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
 	}
 
-	w.FiatShamirHistory = make([][3][]frontend.Variable, c.comp.NumRounds())
+	w.FiatShamirHistory = make([][2][]frontend.Variable, c.comp.NumRounds())
 
 	c.generateAllRandomCoins(api)
 
@@ -140,8 +140,6 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 			}
 		}
 
-		postUpdateFsState := w.FS.State()
-
 		for _, info := range ctx.Coins[currRound] {
 			switch info.Type {
 			case coin.Field:
@@ -157,9 +155,8 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 			fsHook.RunGnark(api, w)
 		}
 
-		w.FiatShamirHistory[currRound] = [3][]frontend.Variable{
+		w.FiatShamirHistory[currRound] = [2][]frontend.Variable{
 			initialState,
-			postUpdateFsState,
 			w.FS.State(),
 		}
 	}
@@ -203,7 +200,7 @@ func AssignGnarkCircuit(ctx *fullRecursionCtx, comp *wizard.CompiledIOP, run *wi
 		Pubs:           make([]frontend.Variable, len(comp.PublicInputs)),
 		Commitments:    make([]frontend.Variable, len(ctx.NonEmptyMerkleRootPositions)),
 		InitialFsState: run.FiatShamirHistory[ctx.FirstRound+1][0][0],
-		FinalFsState:   run.FiatShamirHistory[ctx.LastRound][2][0],
+		FinalFsState:   run.FiatShamirHistory[ctx.LastRound][1][0],
 	}
 
 	polyParams := run.GetUnivariateParams(ctx.PolyQuery.QueryID).GnarkAssign()

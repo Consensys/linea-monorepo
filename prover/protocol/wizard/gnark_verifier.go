@@ -85,7 +85,7 @@ type WizardVerifierCircuit struct {
 	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
-	FiatShamirHistory [][3][]frontend.Variable `gnark:"-"`
+	FiatShamirHistory [][2][]frontend.Variable `gnark:"-"`
 }
 
 // AllocateWizardCircuit allocates the inner-slices of the verifier struct from a precompiled IOP. It
@@ -154,7 +154,7 @@ func (c *WizardVerifierCircuit) Verify(api frontend.API) {
 	c.FS.Update(c.Spec.fiatShamirSetup)
 	c.generateAllRandomCoins(api)
 
-	c.FiatShamirHistory = make([][3][]frontend.Variable, c.Spec.NumRounds())
+	c.FiatShamirHistory = make([][2][]frontend.Variable, c.Spec.NumRounds())
 
 	for _, roundSteps := range c.Spec.SubVerifiers.Inner() {
 		for _, step := range roundSteps {
@@ -205,8 +205,6 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 			}
 		}
 
-		postUpdateFsState := c.FS.State()
-
 		/*
 			Then assigns the coins for the new round.
 		*/
@@ -238,9 +236,8 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 			}
 		}
 
-		c.FiatShamirHistory[currRound] = [3][]frontend.Variable{
+		c.FiatShamirHistory[currRound] = [2][]frontend.Variable{
 			initialState,
-			postUpdateFsState,
 			c.FS.State(),
 		}
 	}

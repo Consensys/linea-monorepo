@@ -123,7 +123,7 @@ type ProverRuntime struct {
 	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
-	FiatShamirHistory [][3][]field.Element
+	FiatShamirHistory [][2][]field.Element
 }
 
 // Prove is the top-level function that runs the Prover on the user's side. It
@@ -216,11 +216,10 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 		FS:                fs,
 		currRound:         0,
 		lock:              &sync.Mutex{},
-		FiatShamirHistory: make([][3][]field.Element, c.NumRounds()),
+		FiatShamirHistory: make([][2][]field.Element, c.NumRounds()),
 	}
 
-	runtime.FiatShamirHistory[0] = [3][]field.Element{
-		fs.State(),
+	runtime.FiatShamirHistory[0] = [2][]field.Element{
 		fs.State(),
 		fs.State(),
 	}
@@ -528,7 +527,6 @@ func (run *ProverRuntime) goNextRound() {
 		}
 	}
 
-	postUpdateFsState := run.FS.State()
 	// Increment the number of rounds
 	run.currRound++
 
@@ -546,9 +544,8 @@ func (run *ProverRuntime) goNextRound() {
 
 	finalState := run.FS.State()
 
-	run.FiatShamirHistory[run.currRound] = [3][]field.Element{
+	run.FiatShamirHistory[run.currRound] = [2][]field.Element{
 		initialState,
-		postUpdateFsState,
 		finalState,
 	}
 }
