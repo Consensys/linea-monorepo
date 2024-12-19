@@ -53,7 +53,7 @@ func Prove(args ProverArgs) error {
 
 		// check the arithmetization version used to generated the trace is contained in the prover request
 		// and fail fast if the constraint version is not supported
-		if err := checkArithmetizationVersion(req.ConflatedExecutionTracesFile, "./constraints-versions.txt"); err != nil {
+		if err := checkArithmetizationVersion(req.ConflatedExecutionTracesFile, req.TracesEngineVersion, "./constraints-versions.txt"); err != nil {
 			return err
 		}
 
@@ -123,8 +123,8 @@ func writeResponse(path string, from any) error {
 
 // verifies the arithmetization version used to generate the trace files against the list of versions
 // specified by the constraints in the file path.
-func checkArithmetizationVersion(traceFileName, filepath string) error {
-	logrus.Info("Verifying the arithmetization version is supported by the existing constraints version")
+func checkArithmetizationVersion(traceFileName, tracesEngineVersion, filepath string) error {
+	logrus.Info("Verifying the arithmetization version for generating the trace file is supported by the constraints version")
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err
@@ -136,6 +136,10 @@ func checkArithmetizationVersion(traceFileName, filepath string) error {
 		return err
 	}
 
+	if strings.Compare(traceFileVersion, tracesEngineVersion) != 0 {
+		return fmt.Errorf("version specified in the conflated trace file: %s does not match with the trace engine version: %s", traceFileVersion, tracesEngineVersion)
+	}
+
 	scanner := bufio.NewScanner(file)
 	if err := scanner.Err(); err != nil {
 		return err
@@ -143,7 +147,7 @@ func checkArithmetizationVersion(traceFileName, filepath string) error {
 
 	for scanner.Scan() {
 		version := strings.TrimSpace(scanner.Text())
-		if version != "" && strings.Compare(traceFileVersion, version) == 0 {
+		if version != "" && strings.Compare(traceFileVersion, version) == 0 && strings.Compare(tracesEngineVersion, version) == 0 {
 			return nil
 		}
 	}
