@@ -1,19 +1,14 @@
-docker-start:
-	docker compose -f docker/compose.yaml up -d
+.PHONY: build
 
-docker-stop:
-	docker compose -f docker/compose.yaml down
+build:
+	./gradlew build
 
-docker-clean:
-	make docker-stop
-	docker compose -f docker/compose.yaml rm -v
+spotless-happy:
+	./gradlew spotlessApply
 
-patch-genesis:
-	cp docker/genesis-besu.json.template docker/genesis-besu.json
-	cp docker/genesis-geth.json.template docker/genesis-geth.json
-	./docker/patch_genesis.sh docker/genesis-besu.json docker/genesis-geth.json
+pre-commit:
+	$(MAKE) spotless-happy
+	$(MAKE) build
 
-docker-clean-start:
-	make docker-clean
-	make patch-genesis
-	make docker-start
+run-e2e-test:
+	./gradlew acceptanceTest

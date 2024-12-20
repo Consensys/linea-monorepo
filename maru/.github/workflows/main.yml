@@ -1,0 +1,62 @@
+name: main
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  filter-commit-changes:
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    name: Filter commit changes
+    outputs:
+      consensus-client: ${{ steps.filter.outputs.consensus-client }}
+      has-changes-requiring-build: ${{ steps.filter-out.outputs.has-changes-requiring-build }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Filter commit changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.ref }}
+          list-files: "json"
+          filters: |
+            consensus-client:
+              - 'buildSrc/**'
+              - 'config/**'
+              - 'consensus/**'
+
+      - name: Filter out commit changes
+        uses: dorny/paths-filter@v3
+        id: filter-out
+        with:
+          base: ${{ github.ref }}
+          list-files: "json"
+          filters: |
+            has-changes-requiring-build:
+              - '!**/*.md'
+              - '!docs/**'
+
+  testing:
+    needs: [ filter-commit-changes ]
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
+    uses: ./.github/workflows/testing.yml
+    with:
+#      commit-tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+      consensus-client-changed: ${{ needs.filter-commit-changes.outputs.consensus-client }}
+    secrets: inherit
+
+  run-e2e-tests:
+    needs: [ filter-commit-changes ]
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
+    concurrency:
+      group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    uses: ./.github/workflows/e2e-tests.yml
+    with:
+#      commit-tag: ${{ needs.store-image-name-and-tags.outputs.commit-tag }}
+      e2e-tests-logs-dump: true
+      has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
+    secrets: inherit

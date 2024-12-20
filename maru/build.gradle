@@ -4,6 +4,7 @@ plugins {
   alias(libs.plugins.errorprone)
   alias(libs.plugins.spotless)
   alias(libs.plugins.spring.dependency.management)
+  id "jacoco"
 }
 
 subprojects.each {
@@ -21,7 +22,6 @@ allprojects {
   apply plugin: libs.plugins.spring.dependency.management.get().getPluginId()
   apply from: "${rootDir}/gradle/versions.gradle"
   apply plugin: 'java-library'
-  apply plugin: 'jacoco'
 
   repositories {
     maven {
@@ -161,6 +161,8 @@ allprojects {
 }
 
 subprojects {
+  apply plugin: "jacoco"
+
   if (file('src/integration-test').directory) {
     sourceSets {
       integrationTest {
@@ -211,10 +213,31 @@ subprojects {
   }
 
   // making sure assemble task invokes integration test compile
-  afterEvaluate { project ->
-    if (project.tasks.findByName('compileIntegrationTestJava')) {
-      project.tasks.assemble.dependsOn compileIntegrationTestJava
+  afterEvaluate { subproject ->
+    project.tasks.jacocoTestReport {
+      if (project.tasks.findByName('acceptanceTest')) {
+        executionData(tasks.named("acceptanceTest").get())
+        sourceSets(sourceSets["acceptanceTest"])
+      }
     }
+
+    if (subproject.tasks.findByName('compileIntegrationTestJava')) {
+      subproject.tasks.assemble.dependsOn compileIntegrationTestJava
+    }
+  }
+}
+
+task jacocoAggregatedReport(type: JacocoReport) {
+  group = "verification"
+
+  additionalSourceDirs.from files(subprojects.sourceSets.main.allSource.srcDirs)
+  sourceDirectories.from files(subprojects.sourceSets.main.allSource.srcDirs)
+  classDirectories.from files(subprojects.sourceSets.main.output)
+
+  executionData.from fileTree(dir: '.', includes: ['**/jacoco/*.exec'])
+  reports {
+    xml.required = true
+    html.destination file("build/reports/jacocoHtml")
   }
 }
 
