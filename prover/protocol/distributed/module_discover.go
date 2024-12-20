@@ -19,7 +19,7 @@ func (split HorizontalSplitting) Split(comp *wizard.CompiledIOP) {
 }
 
 // QueryIsInModule checks if the given query is inside the given module
-func (split HorizontalSplitting) QueryIsInModule(ifaces.Query, moduleName) bool {
+func (split HorizontalSplitting) QueryIsInModule(ifaces.Query, ModuleName) bool {
 	panic("unimplemented")
 
 }
