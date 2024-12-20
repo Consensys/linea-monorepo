@@ -46,7 +46,7 @@ const FILE_EXTENSION_FILTERS = {
 // File extension => script in package.json to run
 const FILE_EXTENSION_LINTING_COMMAND = {
     [FILE_EXTENSION.TYPESCRIPT]: "pnpm run lint:ts:fix",
-    [FILE_EXTENSION.SOLIDITY]: "pnpm run lint:sol",
+    [FILE_EXTENSION.SOLIDITY]: "pnpm run lint:sol:fix",
 };
 
 // Project => Path in monorepo
