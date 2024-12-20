@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -41,7 +42,7 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 		limbs        = make([]ifaces.Column, numLimbs)
 		round        = wizardutils.LastRoundToEval(expr)
 		boarded      = expr.Board()
-		size         = wizardutils.ExprIsOnSameLengthHandles(&boarded)
+		size         = column.ExprIsOnSameLengthHandles(&boarded)
 		totalNumBits = numLimbs * bitPerLimbs
 	)
 
