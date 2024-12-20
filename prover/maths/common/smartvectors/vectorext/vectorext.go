@@ -89,7 +89,7 @@ func Reverse(v []fext.Element) {
 func Repeat(x fext.Element, n int) []fext.Element {
 	res := make([]fext.Element, n)
 	for i := range res {
-		res[i] = x
+		res[i].Set(&x)
 	}
 	return res
 }
