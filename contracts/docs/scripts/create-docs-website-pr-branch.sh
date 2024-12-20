@@ -8,6 +8,7 @@
 ### ASSUMPTIONS
 # - Requires permissions to create a branch on docs.linea.build repo
 # - Must execute this script from within linea-monorepo (can be anywhere)
+# - Hardhat must be installed in the local project, forge must be installed globally
 
 ### CONSTANTS
 DOCS_WEBSITE_REPO_NAME=doc.linea
@@ -29,6 +30,22 @@ MAX_FOLDER_DEPTH=3
 MONOREPO_ROOT_PATH=$(git rev-parse --show-toplevel)
 cd $MONOREPO_ROOT_PATH
 cd contracts
+
+# Check required installations
+if ! command -v forge &> /dev/null; then
+    echo "Please install Foundry - https://book.getfoundry.sh/getting-started/installation"
+    exit 1
+fi
+
+if ! command -v pnpm &> /dev/null; then
+    echo "Please install pnpm - https://pnpm.io/installation"
+    exit 1
+fi
+
+if [ -z "$(pnpm -F contracts list hardhat)" ]; then
+    echo "Please install Hardhat - \`pnpm i\`"
+    exit 1
+fi
 
 # Docgen
 npx hardhat docgen
