@@ -640,3 +640,12 @@ func (c *CompiledIOP) RegisterVerifierAction(round int, action VerifierAction) {
 	// switch.
 	c.InsertVerifier(round, action.Run, action.RunGnark)
 }
+
+// Register a GrandProduct query
+func (c *CompiledIOP) InsertGrandProduct(round int, id ifaces.QueryID, numerators, denominators []*symbolic.Expression) *query.GrandProduct {
+	c.assertConsistentRound(round)
+	q := query.NewGrandProduct(round, id, numerators, denominators)
+	// Finally registers the query
+	c.QueriesParams.AddToRound(round, q.Name(), q)
+	return q
+}

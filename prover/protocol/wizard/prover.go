@@ -733,3 +733,22 @@ func (run *ProverRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogDer
 func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 	return run.QueriesParams.MustGet(name)
 }
+
+// AssignGrandProduct assigns the value \prod(num)/\prod(den)
+// The function will panic if:
+//   - the parameters were already assigned
+//   - the specified query is not registered
+//   - the assignment round is incorrect
+func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewGrandProductParams(y)
+	run.QueriesParams.InsertNew(name, params)
+}

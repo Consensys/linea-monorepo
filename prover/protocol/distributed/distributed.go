@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
-type moduleName = string
+type ModuleName = string
 
 type DistributedWizard struct {
 	// initializedWizard
@@ -30,11 +30,12 @@ type ModuleDiscoverer interface {
 	// Analyze is responsible for letting the module discoverer compute how to
 	// group best the columns into modules.
 	Analyze(comp *wizard.CompiledIOP)
-	ModuleList(comp *wizard.CompiledIOP) []moduleName
-	FindModule(col ifaces.Column) moduleName
+	NbModules() int
+	ModuleList(comp *wizard.CompiledIOP) []ModuleName
+	FindModule(col ifaces.Column) ModuleName
 	// given a query and a module name it checks if the query is inside the module
-	QueryIsInModule(ifaces.Query, moduleName) bool
-	ExpressionIsInModule(*symbolic.Expression, moduleName) bool
+	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
+	QueryIsInModule(ifaces.Query, ModuleName) bool
 }
 
 // This transforms the initial wizard. So it is not really the initial
@@ -55,7 +56,7 @@ func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxSeg
 		// CompiledIOP of Segment; it mainly represent the queries over the segment
 		// Due to the fair distribution over a module. the CompiledIOP for the segments from the same module are the same.
 		// Compile every dist module with the same sequence of compilation steps for uniformity.
-		distMod := extractDistModule(initialWizard, disc, modName, maxSegmentSize, maxNumSegment)
+		distMod := extractDistModule(initialWizard, disc, modName, maxSegmentSize)
 		distModules = append(distModules, distMod)
 	}
 
@@ -72,13 +73,24 @@ func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxSeg
 // it should scan comp and based on module name build compiledIOP for LPP and for GL.
 func extractDistModule(
 	comp *wizard.CompiledIOP, disc ModuleDiscoverer,
-	moduleName moduleName,
-	maxSegmentSize, maxNumSegment int,
+	moduleName ModuleName,
+	maxSegmentSize int,
 ) DistributedModule {
 	// initialize  two compiledIOPs, for LPP and GL.
 	disModule := DistributedModule{
 		LookupPermProj: &wizard.CompiledIOP{},
 		GlobalLocal:    &wizard.CompiledIOP{},
+	}
+
+	for _, colName := range comp.Columns.AllKeys() {
+
+		if comp.Columns.IsIgnored(colName) {
+			continue
+		}
+
+		col := comp.Columns.GetHandle(colName)
+		status := comp.Columns.Status(colName)
+		comp.InsertColumn(col.Round(), colName, maxSegmentSize, status)
 	}
 
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
