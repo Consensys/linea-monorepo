@@ -10,9 +10,9 @@ import (
 // altogether.
 type mainLookupCtx struct {
 
-	// lookupTables stores all the lookup table the compiler encounters. They are
+	// LookupTables stores all the lookup table the compiler encounters. They are
 	// sorted in canonical order. This used to derive a determistic ordering
-	// of the lookup lookupTables. (We want to ensure the compiler yields always
+	// of the lookup LookupTables. (We want to ensure the compiler yields always
 	// exactly the same result for replicability).
 	//
 	// To illustrates its structure, the following sub-statement
@@ -20,31 +20,31 @@ type mainLookupCtx struct {
 	// 		table[numTable][frag]
 	//
 	// refers to to the fragment #frag of the the table #numTable.
-	lookupTables [][]table
+	LookupTables [][]table
 
-	// checkedTables stores all the checked column by lookup table. The key is
+	// CheckedTables stores all the checked column by lookup table. The key is
 	// obtained as nameTable(lookupTable) where lookup is sorted in
 	// canonical order.
-	checkedTables map[string][]table
+	CheckedTables map[string][]table
 
-	// includedFilters stores all the filters for the checked columns and `nil`
+	// IncludedFilters stores all the filters for the checked columns and `nil`
 	// if no filter is applied. As for [checkedTables] they are stored by
 	// lookup table name and in the same order for each key.
-	includedFilters map[string][]ifaces.Column
+	IncludedFilters map[string][]ifaces.Column
 
-	// rounds stores the interaction round assigned to each lookupTable. The
-	// round is obtained by taking the max of the declaration rounds of the
+	// Rounds stores the interaction round assigned to each lookupTable. The
+	// round is obtained by taking the max of the declaration Rounds of the
 	// Inclusion queries using the corresponding lookup table.
-	rounds map[string]int
+	Rounds map[string]int
 }
 
-// singleTableCtx stores the compilation context for a single lookup query
+// SingleTableCtx stores the compilation context for a single lookup query
 // when it is compiled using the log-derivative lookup technique.
 //
-// A singleTableCtx relates to a lookup table rather than a lookup query. This
+// A SingleTableCtx relates to a lookup table rather than a lookup query. This
 // means that multiple lookup queries that are related to the same table will be
 // grouped into the same context. This allows optimizing the
-type singleTableCtx struct {
+type SingleTableCtx struct {
 
 	// TableName reflects the name of the lookup table being compiled.
 	TableName string
