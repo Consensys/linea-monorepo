@@ -134,6 +134,7 @@ dependencyManagement {
       entry 'spec'
       entry 'executionclient'
       entry 'unsigned'
+      entry 'ssz'
     }
 
     dependencySet(group: 'org.hyperledger.besu', version: '24.10.0') {
