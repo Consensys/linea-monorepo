@@ -45,7 +45,9 @@ type storedColumnInfo struct {
 	// Status of the commitment
 	Status Status
 	// IncludeInProverFS states the prover should include the column in his FS
-	// transcript. This is used for columns that are recursed using FullRecursion.
+	// transcript. This is used for columns that are recursed using
+	// FullRecursion. This field is only meaningfull for [Ignored] columns as
+	// they are excluded by default.
 	IncludeInProverFS bool
 }
 
