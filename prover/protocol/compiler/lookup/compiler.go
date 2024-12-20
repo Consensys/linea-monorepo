@@ -27,13 +27,13 @@ type table = []ifaces.Column
 func CompileLogDerivative(comp *wizard.CompiledIOP) {
 
 	var (
-		mainLookupCtx = captureLookupTables(comp)
+		mainLookupCtx = CaptureLookupTables(comp)
 		lastRound     = comp.NumRounds() - 1
 		proverActions = make([]proverTaskAtRound, comp.NumRounds()+1)
 		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
 		// which Z context should be used to handle a part of a given permutation
 		// query.
-		zCatalog = map[[2]int]*zCtx{}
+		zCatalog = map[[2]int]*ZCtx{}
 		zEntries = [][2]int{}
 		// verifier actions
 		va = finalEvaluationCheck{}
@@ -41,28 +41,28 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 
 	// Skip the compilation phase if no lookup constraint is being used. Otherwise
 	// it will register a verifier action that is not required and will be bugged.
-	if len(mainLookupCtx.lookupTables) == 0 {
+	if len(mainLookupCtx.LookupTables) == 0 {
 		return
 	}
 
 	// Step 1. construct the "per table" contexts and pack the Sigma's into
 	// zCatalog.
-	for _, lookupTable := range mainLookupCtx.lookupTables {
+	for _, lookupTable := range mainLookupCtx.LookupTables {
 
 		var (
 			// get checkedTables, rounds, Filters by lookupTableName
-			lookupTableName = nameTable(lookupTable)
-			checkTable      = mainLookupCtx.checkedTables[lookupTableName]
-			round           = mainLookupCtx.rounds[lookupTableName]
-			includedFilters = mainLookupCtx.includedFilters[lookupTableName]
-			tableCtx        = compileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
+			lookupTableName = NameTable(lookupTable)
+			checkTable      = mainLookupCtx.CheckedTables[lookupTableName]
+			round           = mainLookupCtx.Rounds[lookupTableName]
+			includedFilters = mainLookupCtx.IncludedFilters[lookupTableName]
+			tableCtx        = CompileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
 		)
 
 		// push to zCatalog
-		tableCtx.pushToZCatalog(zCatalog)
+		tableCtx.PushToZCatalog(zCatalog)
 
 		proverActions[round].pushMAssignment(
-			mAssignmentTask{
+			MAssignmentTask{
 				M:       tableCtx.M,
 				S:       checkTable,
 				T:       lookupTable,
@@ -119,7 +119,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 	comp.RegisterVerifierAction(lastRound, &va)
 }
 
-// captureLookupTables inspects comp and look for Inclusion queries that are not
+// CaptureLookupTables inspects comp and look for Inclusion queries that are not
 // marked as ignored yet. All the queries matched queries are grouped by look-up
 // table (e.g. all the queries that use the same lookup table). All the matched
 // queries are marked as ignored. The function returns the thereby-initialized
@@ -131,13 +131,13 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 // The function also implictly reduces the conditionals over the Including table
 // be appending a "one" column on the included side and the filter on the
 // including side.
-func captureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
+func CaptureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 
 	ctx := mainLookupCtx{
-		lookupTables:    [][]table{},
-		checkedTables:   map[string][]table{},
-		includedFilters: map[string][]ifaces.Column{},
-		rounds:          map[string]int{},
+		LookupTables:    [][]table{},
+		CheckedTables:   map[string][]table{},
+		IncludedFilters: map[string][]ifaces.Column{},
+		Rounds:          map[string]int{},
 	}
 
 	// Collect all the lookup queries into "lookups"
@@ -157,8 +157,8 @@ func captureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 		var (
 			// checkedTable corresponds to the "included" table and lookupTable
 			// corresponds to the including table.
-			checkedTable, lookupTable = getTableCanonicalOrder(lookup)
-			tableName                 = nameTable(lookupTable)
+			checkedTable, lookupTable = GetTableCanonicalOrder(lookup)
+			tableName                 = NameTable(lookupTable)
 			// includedFilters stores the query.IncludedFilter parameter. If the
 			// query has no includedFilters on the Included side. Then this is
 			// left as nil.
@@ -176,7 +176,7 @@ func captureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 				lookupTable[frag] = append([]ifaces.Column{lookup.IncludingFilter[frag]}, lookupTable[frag]...)
 			}
 
-			tableName = nameTable(lookupTable)
+			tableName = NameTable(lookupTable)
 		}
 
 		if lookup.IsFilteredOnIncluded() {
@@ -185,16 +185,16 @@ func captureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 
 		// In case this is the first iteration where we encounter the lookupTable
 		// we need to add entries in the registering maps.
-		if _, ok := ctx.checkedTables[tableName]; !ok {
-			ctx.includedFilters[tableName] = []ifaces.Column{}
-			ctx.checkedTables[tableName] = []table{}
-			ctx.lookupTables = append(ctx.lookupTables, lookupTable)
-			ctx.rounds[tableName] = 0
+		if _, ok := ctx.CheckedTables[tableName]; !ok {
+			ctx.IncludedFilters[tableName] = []ifaces.Column{}
+			ctx.CheckedTables[tableName] = []table{}
+			ctx.LookupTables = append(ctx.LookupTables, lookupTable)
+			ctx.Rounds[tableName] = 0
 		}
 
-		ctx.includedFilters[tableName] = append(ctx.includedFilters[tableName], includedFilter)
-		ctx.checkedTables[tableName] = append(ctx.checkedTables[tableName], checkedTable)
-		ctx.rounds[tableName] = max(ctx.rounds[tableName], comp.QueriesNoParams.Round(lookup.ID))
+		ctx.IncludedFilters[tableName] = append(ctx.IncludedFilters[tableName], includedFilter)
+		ctx.CheckedTables[tableName] = append(ctx.CheckedTables[tableName], checkedTable)
+		ctx.Rounds[tableName] = max(ctx.Rounds[tableName], comp.QueriesNoParams.Round(lookup.ID))
 
 	}
 
@@ -213,16 +213,16 @@ func captureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 //   - (5) The verier makes a `Global` query : $\left((\Sigma_T)[i] - (\Sigma_T)[i-1]\right)(T_i + \gamma) = M_i$
 
 // here we are looking up set of columns S in a single column T
-func compileLookupTable(
+func CompileLookupTable(
 	comp *wizard.CompiledIOP,
 	round int,
 	lookupTable []table,
 	checkedTables []table,
 	includedFilters []ifaces.Column,
-) (ctx singleTableCtx) {
+) (ctx SingleTableCtx) {
 
-	ctx = singleTableCtx{
-		TableName: nameTable(lookupTable),
+	ctx = SingleTableCtx{
+		TableName: NameTable(lookupTable),
 		S:         make([]*symbolic.Expression, len(checkedTables)),
 		SFilters:  includedFilters,
 		T:         make([]*symbolic.Expression, len(lookupTable)),
@@ -240,7 +240,7 @@ func compileLookupTable(
 			ctx.T[frag] = symbolic.NewVariable(lookupTable[frag][0])
 			ctx.M[frag] = comp.InsertCommit(
 				round,
-				deriveTableNameWithIndex[ifaces.ColID](logDerivativePrefix, lookupTable, frag, "M"),
+				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
 				lookupTable[frag][0].Size(),
 			)
 
@@ -257,7 +257,7 @@ func compileLookupTable(
 		// columns of T and S when they are (both) multi-columns.
 		alpha := comp.InsertCoin(
 			round+1,
-			deriveTableName[coin.Name](logDerivativePrefix, lookupTable, "ALPHA"),
+			DeriveTableName[coin.Name](LogDerivativePrefix, lookupTable, "ALPHA"),
 			coin.Field,
 		)
 
@@ -265,7 +265,7 @@ func compileLookupTable(
 			ctx.T[frag] = wizardutils.RandLinCombColSymbolic(alpha, lookupTable[frag])
 			ctx.M[frag] = comp.InsertCommit(
 				round,
-				deriveTableNameWithIndex[ifaces.ColID](logDerivativePrefix, lookupTable, frag, "M"),
+				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
 				lookupTable[frag][0].Size(),
 			)
 		}
@@ -277,16 +277,16 @@ func compileLookupTable(
 
 	ctx.Gamma = comp.InsertCoin(
 		round+1,
-		deriveTableName[coin.Name](logDerivativePrefix, lookupTable, "GAMMA"),
+		DeriveTableName[coin.Name](LogDerivativePrefix, lookupTable, "GAMMA"),
 		coin.Field,
 	)
 
 	return ctx
 }
 
-// pushToZCatalog constructs the numerators and denominators for S and T of the
+// PushToZCatalog constructs the numerators and denominators for S and T of the
 // stc into zCatalog for their corresponding rounds and size.
-func (stc *singleTableCtx) pushToZCatalog(zCatalog map[[2]int]*zCtx) {
+func (stc *SingleTableCtx) PushToZCatalog(zCatalog map[[2]int]*ZCtx) {
 
 	var (
 		round = stc.Gamma.Round
@@ -299,7 +299,7 @@ func (stc *singleTableCtx) pushToZCatalog(zCatalog map[[2]int]*zCtx) {
 
 		key := [2]int{round, size}
 		if zCatalog[key] == nil {
-			zCatalog[key] = &zCtx{
+			zCatalog[key] = &ZCtx{
 				Size:  size,
 				Round: round,
 				Name:  stc.TableName,
@@ -324,7 +324,7 @@ func (stc *singleTableCtx) pushToZCatalog(zCatalog map[[2]int]*zCtx) {
 
 		key := [2]int{round, size}
 		if zCatalog[key] == nil {
-			zCatalog[key] = &zCtx{
+			zCatalog[key] = &ZCtx{
 				Size:  size,
 				Round: round,
 				Name:  stc.TableName,

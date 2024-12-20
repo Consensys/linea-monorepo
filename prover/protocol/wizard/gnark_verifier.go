@@ -47,6 +47,8 @@ type WizardVerifierCircuit struct {
 	innerProductIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
 	// Same for local-opening query
 	localOpeningIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
+	// Same for logDerivativeSum query
+	logDerivSumIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
 
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
@@ -63,6 +65,9 @@ type WizardVerifierCircuit struct {
 	// LocalOpeningParams stores an assignment for each [query.LocalOpeningParams]
 	// from the proof. It is part of the witness of the gnark circuit.
 	LocalOpeningParams []query.GnarkLocalOpeningParams `gnark:",secret"`
+	// LogDerivSumParams stores an assignment for each [query.LogDerivSumParams]
+	// from the proof. It is part of the witness of the gnark circuit.
+	LogDerivSumParams []query.GnarkLogDerivSumParams `gnark:",secret"`
 
 	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
@@ -311,6 +316,14 @@ func (c *WizardVerifierCircuit) GetLocalPointEvalParams(name ifaces.QueryID) que
 	return c.LocalOpeningParams[qID]
 }
 
+// GetLogDerivSumParams returns the parameters for the requested
+// [query.LogDerivativeSum] query. Its work mirrors the function
+// [VerifierRuntime.GetLogDerivSumParams]
+func (c *WizardVerifierCircuit) GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLocalOpeningParams {
+	qID := c.localOpeningIDs.MustGet(name)
+	return c.LocalOpeningParams[qID]
+}
+
 // GetColumns returns the gnark assignment of a column in a gnark circuit. It
 // mirrors the function [VerifierRuntime.GetColumn]
 func (c *WizardVerifierCircuit) GetColumn(name ifaces.ColID) []frontend.Variable {
@@ -350,11 +363,13 @@ func newWizardVerifierCircuit() *WizardVerifierCircuit {
 	res.columnsIDs = collection.NewMapping[ifaces.ColID, int]()
 	res.univariateParamsIDs = collection.NewMapping[ifaces.QueryID, int]()
 	res.localOpeningIDs = collection.NewMapping[ifaces.QueryID, int]()
+	res.logDerivSumIDs = collection.NewMapping[ifaces.QueryID, int]()
 	res.innerProductIDs = collection.NewMapping[ifaces.QueryID, int]()
 	res.Columns = [][]frontend.Variable{}
 	res.UnivariateParams = make([]query.GnarkUnivariateEvalParams, 0)
 	res.InnerProductParams = make([]query.GnarkInnerProductParams, 0)
 	res.LocalOpeningParams = make([]query.GnarkLocalOpeningParams, 0)
+	res.LogDerivSumParams = make([]query.GnarkLogDerivSumParams, 0)
 	res.Coins = collection.NewMapping[coin.Name, interface{}]()
 	return res
 }
@@ -418,6 +433,9 @@ func GetWizardVerifierCircuitAssignment(comp *CompiledIOP, proof Proof) *WizardV
 		case query.LocalOpeningParams:
 			res.localOpeningIDs.InsertNew(qName, len(res.LocalOpeningParams))
 			res.LocalOpeningParams = append(res.LocalOpeningParams, params.GnarkAssign())
+		case query.LogDerivSumParams:
+			res.logDerivSumIDs.InsertNew(qName, len(res.LogDerivSumParams))
+			res.LogDerivSumParams = append(res.LogDerivSumParams, params.GnarkAssign())
 
 		default:
 			utils.Panic("unknow type %T", params)
@@ -435,6 +453,8 @@ func (c *WizardVerifierCircuit) GetParams(id ifaces.QueryID) ifaces.GnarkQueryPa
 		return c.GetUnivariateParams(id)
 	case query.LocalOpening:
 		return c.GetLocalPointEvalParams(id)
+	case query.LogDerivativeSum:
+		return c.GetLogDerivSumParams(id)
 	case query.InnerProduct:
 		return c.GetInnerProductParams(id)
 	default:

@@ -1,12 +1,10 @@
 package distributed
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 type ModuleName = string
@@ -36,6 +34,7 @@ type ModuleDiscoverer interface {
 	ModuleList(comp *wizard.CompiledIOP) []ModuleName
 	FindModule(col ifaces.Column) ModuleName
 	// given a query and a module name it checks if the query is inside the module
+	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
 	QueryIsInModule(ifaces.Query, ModuleName) bool
 }
 
@@ -57,7 +56,7 @@ func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxSeg
 		// CompiledIOP of Segment; it mainly represent the queries over the segment
 		// Due to the fair distribution over a module. the CompiledIOP for the segments from the same module are the same.
 		// Compile every dist module with the same sequence of compilation steps for uniformity.
-		distMod := extractDistModule(initialWizard, disc, modName, maxSegmentSize, maxNumSegment)
+		distMod := extractDistModule(initialWizard, disc, modName, maxSegmentSize)
 		distModules = append(distModules, distMod)
 	}
 
@@ -75,12 +74,23 @@ func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxSeg
 func extractDistModule(
 	comp *wizard.CompiledIOP, disc ModuleDiscoverer,
 	moduleName ModuleName,
-	maxSegmentSize, maxNumSegment int,
+	maxSegmentSize int,
 ) DistributedModule {
 	// initialize  two compiledIOPs, for LPP and GL.
 	disModule := DistributedModule{
 		LookupPermProj: &wizard.CompiledIOP{},
 		GlobalLocal:    &wizard.CompiledIOP{},
+	}
+
+	for _, colName := range comp.Columns.AllKeys() {
+
+		if comp.Columns.IsIgnored(colName) {
+			continue
+		}
+
+		col := comp.Columns.GetHandle(colName)
+		status := comp.Columns.Status(colName)
+		comp.InsertColumn(col.Round(), colName, maxSegmentSize, status)
 	}
 
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
@@ -132,15 +142,4 @@ func addToGlobalLocal(comp *wizard.CompiledIOP, q ifaces.Query) {
 // It builds a CompiledIOP object that contains the consistency checks among the segments.
 func aggregator(distModules []DistributedModule, maxNumSegments int) *wizard.CompiledIOP {
 	panic("unimplemented")
-}
-
-// prepare reduces any query to LPP or GL.
-// it prepares the columns that depends on whole the witness,e.g., M column for lookups.
-func prepare(comp *wizard.CompiledIOP) {
-	mimc.CompileMiMC(comp)
-	specialqueries.RangeProof(comp)
-	specialqueries.CompileFixedPermutations(comp)
-	innerproduct.Compile(comp)
-
-	// prepareLookup(comp)
 }
