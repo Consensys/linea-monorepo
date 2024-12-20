@@ -46,7 +46,7 @@ describe("Timelock", () => {
       expect(await contract.hasRole(EXECUTOR_ROLE, executor.address)).to.be.true;
     });
 
-    it("Should set the minDelay state variable with the value passed in the contructor params", async () => {
+    it("Should set the minDelay state variable with the value passed in the constructor params", async () => {
       expect(await contract.getMinDelay()).to.equal(10);
     });
   });

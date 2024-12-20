@@ -29,7 +29,7 @@ pnpm run test:e2e:local
 To stop that stack run:
 
 ```
-make clean-enviroment
+make clean-environment
 ```
 
 While running the end2end tests, you should observe files being generated in `tmp/local/` directory.
