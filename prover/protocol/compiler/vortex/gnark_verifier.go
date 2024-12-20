@@ -91,7 +91,7 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) 
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) gnarkGetYs(api frontend.API, vr *wizard.WizardVerifierCircuit) (ys [][]frontend.Variable) {
+func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr *wizard.WizardVerifierCircuit) (ys [][]frontend.Variable) {
 
 	query := ctx.Query
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
