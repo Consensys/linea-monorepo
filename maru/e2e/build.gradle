@@ -40,6 +40,7 @@ tasks.register('acceptanceTest', Test) { test ->
   description = "Runs acceptance tests."
   group = "verification"
   useJUnitPlatform()
+  outputs.upToDateWhen { false }
 
   classpath = sourceSets.acceptanceTest.runtimeClasspath
   testClassesDirs = sourceSets.acceptanceTest.output.classesDirs

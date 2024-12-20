@@ -5,9 +5,9 @@ docker-stop:
 	docker compose -f compose.yaml down
 
 docker-clean:
-	make docker-stop
+	$(MAKE) docker-stop
 	docker compose -f compose.yaml rm -v
 
 docker-clean-start:
-	make docker-clean
-	make docker-start
+	$(MAKE) docker-clean
+	$(MAKE) docker-start

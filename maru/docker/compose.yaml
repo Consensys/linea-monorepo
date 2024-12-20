@@ -5,10 +5,6 @@ networks:
       config:
         - subnet: 11.11.11.0/24
 
-volumes:
-  geth-data:
-    name: "geth-data"
-
 services:
 
   initialization:
@@ -57,9 +53,10 @@ services:
     depends_on:
       - sequencer
     image: ethereum/client-go:release-1.14
+    restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "geth attach --datadir /data --exec eth.blockNumber" ]
-      interval: 10s
+      test: [ "CMD-SHELL", "/scripts/healthcheck.sh" ]
+      interval: 1s
       timeout: 5s
       retries: 5
     entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x0", "0x1C9C380", "/data" ]
@@ -81,8 +78,9 @@ services:
     depends_on:
       - sequencer
     image: ethereum/client-go:release-1.13
+    restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "geth attach --datadir /data --exec eth.blockNumber" ]
+      test: [ "CMD-SHELL", "/scripts/healthcheck.sh" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -105,8 +103,9 @@ services:
     depends_on:
       - sequencer
     image: ethereum/client-go:release-1.13
+    restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "geth attach --datadir /data --exec eth.blockNumber" ]
+      test: [ "CMD-SHELL", "/scripts/healthcheck.sh" ]
       interval: 10s
       timeout: 5s
       retries: 5
