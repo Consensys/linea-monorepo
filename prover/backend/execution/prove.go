@@ -140,7 +140,13 @@ func mustProveAndPass(
 		if err != nil {
 			utils.Panic("could not get the traces checksum from the setup manifest: %v", err)
 		}
+
 		if setupCfgChecksum != traces.Checksum() {
+			// This check is failing on prod but works locally.
+			// @alex: since this is a setup-related constraint, it would likely be
+			// more interesting to directly include that information in the setup
+			// instead of the config. That way we are guaranteed to not pass the
+			// wrong value at runtime.
 			utils.Panic("traces checksum in the setup manifest does not match the one in the config")
 		}
 
