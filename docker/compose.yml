@@ -692,14 +692,10 @@ services:
         ipv4_address: 10.10.10.205
 
   zkbesu-shomei-sr:
-    image: hyperledger/besu:24.12-develop-6c6276f
-#    image: hyperledger/besu:24.12-develop-1df5f32
+    image: consensys/linea-besu-package:${SEQUENCER_TAG:-devnet-811f30b}
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
     profiles: [ "external-to-monorepo", "staterecover" ]
-    depends_on:
-      shomei-plugin-downloader-sr:
-        condition: service_completed_successfully
     privileged: true
     restart: always
     user: root
@@ -733,11 +729,11 @@ services:
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
       - ./config/zkbesu-shomei/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
-      - ../tmp/zkbesu-shomei-sr/plugins:/opt/besu/plugins/
+      - ../tmp/zkbesu-shomei-sr/plugins/linea-state-recovery-plugin-0.0.2.jar:/opt/besu/plugins/linea-state-recovery-plugin-0.0.2.jar
       - ./scripts/file-downloader.sh:/file-downloader.sh:ro
 
   shomei-sr:
-    image: consensys/linea-shomei:2.2.0
+    image: consensys/linea-shomei:2.3.0
     hostname: shomei-sr
     container_name: shomei-sr
     profiles: [ "external-to-monorepo", "staterecover" ]
@@ -771,15 +767,6 @@ services:
       - local-dev:/data/
       - ./config/shomei/log4j.xml:/log4j.xml:ro
   #      - ../tmp/local/shomei:/data/shomei/:z
-
-  shomei-plugin-downloader-sr:
-    container_name: shomei-plugin-downloader-sr
-    profiles: [ "l2", "l2-bc", "staterecover", "external-to-monorepo" ]
-    image: busybox:1.36.1
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/besu-shomei-plugin/releases/download/v0.4.0/besu-shomei-plugin-v0.4.0.jar",  "/shomei-plugin" ]
-    volumes:
-      - ./scripts/file-downloader.sh:/file-downloader.sh:ro
-      - ../tmp/zkbesu-shomei-sr/plugins:/shomei-plugin/
 
   ########################
   # Observability stack
