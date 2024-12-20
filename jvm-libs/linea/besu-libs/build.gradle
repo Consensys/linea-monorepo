@@ -13,6 +13,9 @@ dependencies {
   api("org.hyperledger.besu.internal:core:${libs.versions.besu.get()}") {
     transitive = false
   }
+  api "io.tmio:tuweni-bytes:${libs.versions.tuweni.get()}"
+  api "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
+
   api("org.hyperledger.besu.internal:algorithms:${libs.versions.besu.get()}") {
     transitive = false
   }
@@ -31,5 +34,12 @@ dependencies {
 
   api("io.tmio:tuweni-units:${libs.versions.tuweni.get()}") {
     transitive = false
+  }
+
+  implementation("org.bouncycastle:bcpkix-jdk18on:1.79") {
+    because "necessary for besu Transaction object that verifies signatures"
+  }
+  implementation("org.bouncycastle:bcprov-jdk18on:1.79") {
+    because "necessary for besu Transaction object that verifies signatures"
   }
 }
