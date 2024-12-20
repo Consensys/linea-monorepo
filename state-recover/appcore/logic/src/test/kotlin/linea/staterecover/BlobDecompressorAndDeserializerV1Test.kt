@@ -12,6 +12,7 @@ import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.blob.BlobDecompressorVersion
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
 import net.consensys.linea.nativecompressor.CompressorTestData
+import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.fail
 import org.hyperledger.besu.datatypes.Address
@@ -92,7 +93,7 @@ class BlobDecompressorAndDeserializerV1Test {
       }
     } catch (e: AssertionFailedError) {
       fail(
-        "uncompressed block does not match original counter part: blockNumber: ${e.message} " +
+        "uncompressed block does not match expected original: blockNumber: ${e.message} " +
           "\n original    =$original " +
           "\n uncompressed=$uncompressed ",
         e
@@ -119,7 +120,7 @@ class BlobDecompressorAndDeserializerV1Test {
     } else {
       uncompressed.accessList?.zip(original.accessList.getOrNull()!!) { a, b ->
         assertThat(a.address).isEqualTo(b.address.toArray())
-        assertThat(a.storageKeys).isEqualTo(b.storageKeys.map { it.toArray() })
+        assertThat(a.storageKeys.map { Bytes32.wrap(it) }).isEqualTo(b.storageKeys)
       }
     }
   }
