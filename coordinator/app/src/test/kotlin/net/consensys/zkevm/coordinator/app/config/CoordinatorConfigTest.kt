@@ -283,7 +283,7 @@ class CoordinatorConfigTest {
       )
     )
     private val stateManagerConfig = StateManagerClientConfig(
-      version = "2.2.0",
+      version = "2.3.0",
       endpoints = listOf(
         URI("http://shomei:8888/").toURL()
       ),
@@ -835,7 +835,7 @@ class CoordinatorConfigTest {
             traces = tracesConfig.copy(
               switchToLineaBesu = true,
               blobCompressorVersion = BlobCompressorVersion.V1_0_1,
-              expectedTracesApiVersionV2 = "v0.8.0-rc6",
+              expectedTracesApiVersionV2 = "v0.8.0-rc8",
               conflationV2 = tracesConfig.conflation.copy(
                 endpoints = listOf(URI("http://traces-node-v2:8545/").toURL())
               ),
