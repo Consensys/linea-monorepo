@@ -958,7 +958,7 @@ describe("TokenBridge", function () {
       const { owner, messageService, chainIds } = await loadFixture(deployContractsFixture);
 
       const TokenBridgeV1 = await ethers.getContractFactory(
-        "contracts/tokenBridge/mocks/TokenBridgeFlatten.sol:TokenBridgeFlatten",
+        "src/_testing/integration/TokenBridgeFlatten.sol:TokenBridgeFlatten",
       );
       const tokenBridgeV1 = (await upgrades.deployProxy(TokenBridgeV1, [
         owner.address,
@@ -1053,7 +1053,7 @@ describe("TokenBridge", function () {
       const { owner, messageService, chainIds } = await loadFixture(deployContractsFixture);
 
       const TokenBridgeV1 = await ethers.getContractFactory(
-        "contracts/tokenBridge/mocks/TokenBridgeFlatten.sol:TokenBridgeFlatten",
+        "src/_testing/integration/TokenBridgeFlatten.sol:TokenBridgeFlatten",
       );
       const tokenBridgeV1 = (await upgrades.deployProxy(TokenBridgeV1, [
         owner.address,

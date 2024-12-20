@@ -30,6 +30,7 @@ const useViaIR = process.env.ENABLE_VIA_IR === "true";
 const config: HardhatUserConfig = {
   paths: {
     artifacts: "./build",
+    sources: "./src",
   },
   solidity: {
     // NB: double check the autoupdate shell script version complies to the latest solidity version if you add a new one.
@@ -154,7 +155,7 @@ const config: HardhatUserConfig = {
     ],
   },
   docgen: {
-    exclude: ["token", "test-contracts", "proxies", "tools", "interfaces/tools", "tokenBridge/mocks", "verifiers"],
+    exclude: ["tokens", "_testing", "proxies", "recovery", "verifiers"],
     pages: "files",
     outputDir: "docs/api/",
     // For compatibility with docs.linea.build
