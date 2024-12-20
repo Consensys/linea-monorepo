@@ -470,7 +470,7 @@ func (c *WizardVerifierCircuit) AllocUnivariateEval(qName ifaces.QueryID, qInfo 
 	c.UnivariateParams = append(c.UnivariateParams, qInfo.GnarkAllocate())
 }
 
-// AllocUnivariateEval inserts a slot for an inner-product query opening in the
+// AllocInnerProduct inserts a slot for an inner-product query opening in the
 // witness of the verifier circuit.
 func (c *WizardVerifierCircuit) AllocInnerProduct(qName ifaces.QueryID, qInfo query.InnerProduct) {
 	// Note that nil is the default value for frontend.Variable
@@ -494,7 +494,7 @@ func (c *WizardVerifierCircuit) AssignUnivariateEval(qName ifaces.QueryID, param
 	c.UnivariateParams = append(c.UnivariateParams, params.GnarkAssign())
 }
 
-// AssignUnivariateEval inserts a slot for an inner-product query opening in the
+// AssignInnerProduct inserts a slot for an inner-product query opening in the
 // witness of the verifier circuit.
 func (c *WizardVerifierCircuit) AssignInnerProduct(qName ifaces.QueryID, params query.InnerProductParams) {
 	// Note that nil is the default value for frontend.Variable
@@ -510,7 +510,7 @@ func (c *WizardVerifierCircuit) AssignLocalOpening(qName ifaces.QueryID, params 
 	c.LocalOpeningParams = append(c.LocalOpeningParams, params.GnarkAssign())
 }
 
-// GetPublicInput returns a public input from its name
+// GetPublicInput returns a public input value from its name
 func (c *WizardVerifierCircuit) GetPublicInput(api frontend.API, name string) frontend.Variable {
 	allPubs := c.Spec.PublicInputs
 	for i := range allPubs {
