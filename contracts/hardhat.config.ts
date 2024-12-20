@@ -158,6 +158,9 @@ const config: HardhatUserConfig = {
     exclude: ["tokens", "_testing", "proxies", "recovery", "verifiers"],
     pages: "files",
     outputDir: "docs/api/",
+    // For compatibility with docs.linea.build
+    pageExtension: ".mdx",
+    templates: "docs/docgen-templates",
   },
 };
 
