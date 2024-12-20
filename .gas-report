@@ -1,9 +1,9 @@
 | script/DeployRewardsStreamerMP.s.sol:DeployRewardsStreamerMPScript contract |                 |         |         |         |         |
 |-----------------------------------------------------------------------------|-----------------|---------|---------|---------|---------|
 | Deployment Cost                                                             | Deployment Size |         |         |         |         |
-| 6303045                                                                     | 30177           |         |         |         |         |
+| 6307818                                                                     | 30199           |         |         |         |         |
 | Function Name                                                               | min             | avg     | median  | max     | # calls |
-| run                                                                         | 5397428         | 5397428 | 5397428 | 5397428 | 63      |
+| run                                                                         | 5401845         | 5401845 | 5401845 | 5401845 | 63      |
 
 
 | script/DeploymentConfig.s.sol:DeploymentConfig contract |                 |     |        |     |         |
@@ -17,9 +17,9 @@
 | script/UpgradeRewardsStreamerMP.s.sol:UpgradeRewardsStreamerMPScript contract |                 |         |         |         |         |
 |-------------------------------------------------------------------------------|-----------------|---------|---------|---------|---------|
 | Deployment Cost                                                               | Deployment Size |         |         |         |         |
-| 2948151                                                                       | 14552           |         |         |         |         |
+| 2952925                                                                       | 14574           |         |         |         |         |
 | Function Name                                                                 | min             | avg     | median  | max     | # calls |
-| run                                                                           | 2478266         | 2478266 | 2478266 | 2478266 | 3       |
+| run                                                                           | 2482684         | 2482684 | 2482684 | 2482684 | 3       |
 
 
 | src/RewardsStreamer.sol:RewardsStreamer contract |                 |        |        |        |         |
@@ -39,7 +39,7 @@
 | src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |        |        |        |         |
 |------------------------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                                      | Deployment Size |        |        |        |         |
-| 2628212                                              | 12113           |        |        |        |         |
+| 2632986                                              | 12135           |        |        |        |         |
 | Function Name                                        | min             | avg    | median | max    | # calls |
 | MAX_LOCKUP_PERIOD                                    | 349             | 349    | 349    | 349    | 6       |
 | MAX_MULTIPLIER                                       | 251             | 251    | 251    | 251    | 33      |
@@ -55,8 +55,8 @@
 | getUserVaults                                        | 5201            | 5201   | 5201   | 5201   | 4       |
 | initialize                                           | 115611          | 115611 | 115611 | 115611 | 65      |
 | lastRewardTime                                       | 395             | 1395   | 1395   | 2395   | 2       |
-| leave                                                | 59897           | 59897  | 59897  | 59897  | 1       |
-| lock                                                 | 12063           | 35390  | 16480  | 77628  | 3       |
+| leave                                                | 59939           | 59939  | 59939  | 59939  | 1       |
+| lock                                                 | 12063           | 35404  | 16480  | 77670  | 3       |
 | mpBalanceOfUser                                      | 9185            | 9185   | 9185   | 9185   | 1       |
 | proxiableUUID                                        | 353             | 353    | 353    | 353    | 3       |
 | registerVault                                        | 55866           | 72766  | 72966  | 72966  | 257     |
@@ -65,14 +65,14 @@
 | rewardsBalanceOf                                     | 3231            | 6627   | 7074   | 7341   | 8       |
 | setReward                                            | 2583            | 58371  | 86341  | 105731 | 7       |
 | setTrustedCodehash                                   | 24243           | 24304  | 24243  | 26243  | 65      |
-| stake                                                | 134799          | 172378 | 179192 | 199525 | 66      |
+| stake                                                | 134841          | 172420 | 179234 | 199567 | 66      |
 | totalMPAccrued                                       | 395             | 395    | 395    | 395    | 81      |
 | totalMaxMP                                           | 350             | 350    | 350    | 350    | 81      |
 | totalRewardsAccrued                                  | 351             | 351    | 351    | 351    | 3       |
 | totalRewardsSupply                                   | 1025            | 1984   | 1806   | 6765   | 30      |
 | totalStaked                                          | 374             | 374    | 374    | 374    | 82      |
-| unstake                                              | 64035           | 64572  | 64035  | 67530  | 13      |
-| updateAccountMP                                      | 15392           | 17634  | 17898  | 17898  | 19      |
+| unstake                                              | 64077           | 64613  | 64077  | 67567  | 13      |
+| updateAccountMP                                      | 12217           | 17332  | 17934  | 17934  | 19      |
 | updateGlobalState                                    | 14317           | 26623  | 28594  | 28594  | 19      |
 | upgradeToAndCall                                     | 3225            | 7901   | 8448   | 10936  | 5       |
 
@@ -107,7 +107,7 @@
 | totalRewardsAccrued                                  | 778             | 778   | 778    | 778    | 3       |
 | totalRewardsSupply                                   | 1452            | 2561  | 2233   | 11692  | 30      |
 | totalStaked                                          | 801             | 801   | 801    | 801    | 82      |
-| updateAccountMP                                      | 41751           | 43993 | 44257  | 44257  | 19      |
+| updateAccountMP                                      | 38576           | 43691 | 44293  | 44293  | 19      |
 | updateGlobalState                                    | 40305           | 52611 | 54582  | 54582  | 19      |
 | upgradeToAndCall                                     | 29868           | 33720 | 33720  | 37572  | 2       |
 
@@ -119,14 +119,14 @@
 | Function Name                          | min             | avg    | median | max    | # calls |
 | STAKING_TOKEN                          | 216             | 216    | 216    | 216    | 1       |
 | emergencyExit                          | 36375           | 48879  | 48113  | 65213  | 7       |
-| leave                                  | 33507           | 132169 | 62097  | 370978 | 4       |
-| lock                                   | 33245           | 61590  | 50845  | 111425 | 4       |
+| leave                                  | 33507           | 132178 | 62113  | 370978 | 4       |
+| lock                                   | 33245           | 61600  | 50845  | 111467 | 4       |
 | owner                                  | 2339            | 2339   | 2339   | 2339   | 257     |
 | register                               | 87015           | 103915 | 104115 | 104115 | 257     |
-| stake                                  | 33411           | 243707 | 253696 | 274077 | 67      |
+| stake                                  | 33411           | 243748 | 253738 | 274119 | 67      |
 | stakeManager                           | 368             | 368    | 368    | 368    | 257     |
 | trustStakeManager                      | 28953           | 28953  | 28953  | 28953  | 1       |
-| unstake                                | 33282           | 99918  | 105715 | 113562 | 14      |
+| unstake                                | 33282           | 99955  | 105755 | 113604 | 14      |
 | withdraw                               | 42289           | 42289  | 42289  | 42289  | 1       |
 
 

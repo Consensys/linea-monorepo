@@ -198,7 +198,7 @@ contract RewardsStreamerMP is
         }
 
         _updateGlobalState();
-        _updateAccountMP(msg.sender);
+        _updateAccountMP(msg.sender, true);
 
         Account storage account = accounts[msg.sender];
         if (account.lockUntil != 0 && account.lockUntil > block.timestamp) {
@@ -253,7 +253,7 @@ contract RewardsStreamerMP is
         }
 
         _updateGlobalState();
-        _updateAccountMP(msg.sender);
+        _updateAccountMP(msg.sender, true);
 
         uint256 additionalBonusMP = _calculateBonusMP(account.stakedBalance, lockPeriod);
 
@@ -289,7 +289,7 @@ contract RewardsStreamerMP is
 
     function _unstake(uint256 amount, Account storage account, address accountAddress) internal {
         _updateGlobalState();
-        _updateAccountMP(accountAddress);
+        _updateAccountMP(accountAddress, true);
 
         uint256 previousStakedBalance = account.stakedBalance;
 
@@ -487,16 +487,17 @@ contract RewardsStreamerMP is
         return accruedMP;
     }
 
-    function _updateAccountMP(address accountAddress) internal {
+    function _updateAccountMP(address accountAddress, bool forceMPUpdate) internal {
         Account storage account = accounts[accountAddress];
         uint256 accruedMP = _getAccountPendingdMP(account);
-
-        account.mpAccrued += accruedMP;
-        account.lastMPUpdateTime = block.timestamp;
+        if (accruedMP > 0 || forceMPUpdate) {
+            account.mpAccrued += accruedMP;
+            account.lastMPUpdateTime = block.timestamp;
+        }
     }
 
     function updateAccountMP(address accountAddress) external onlyNotEmergencyMode {
-        _updateAccountMP(accountAddress);
+        _updateAccountMP(accountAddress, false);
     }
 
     function enableEmergencyMode() external onlyOwner {
