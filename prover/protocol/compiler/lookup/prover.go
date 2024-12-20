@@ -30,7 +30,7 @@ type proverTaskAtRound struct {
 
 	// MAssignmentTasks lists all the tasks consisting of assigning the column
 	// M related to table that are scheduled in the current interaction round.
-	MAssignmentTasks []mAssignmentTask
+	MAssignmentTasks []MAssignmentTask
 
 	// ZAssignmentTasks lists all the tasks consisting of assigning the
 	// columns SigmaS and SigmaT for the given round.
@@ -72,7 +72,7 @@ func (p proverTaskAtRound) Run(run *wizard.ProverRuntime) {
 				wg.Done()
 			}()
 
-			p.MAssignmentTasks[i].run(run)
+			p.MAssignmentTasks[i].Run(run)
 		}(i)
 	}
 
@@ -108,7 +108,7 @@ func (p proverTaskAtRound) Run(run *wizard.ProverRuntime) {
 }
 
 // pushMAssignment appends an [mAssignmentTask] to the list of tasks
-func (p *proverTaskAtRound) pushMAssignment(m mAssignmentTask) {
+func (p *proverTaskAtRound) pushMAssignment(m MAssignmentTask) {
 	p.MAssignmentTasks = append(p.MAssignmentTasks, m)
 }
 
@@ -126,7 +126,7 @@ func (p *proverTaskAtRound) numTasks() int {
 // mAssignmentWork specifically represent the prover task of computing and
 // assigning the [singleTableCtx.M] for a particular table. M is computing the
 // appearance of the rows of T in the rows of S.
-type mAssignmentTask struct {
+type MAssignmentTask struct {
 
 	// M is the column that the assignMWork
 	M []ifaces.Column
@@ -142,7 +142,7 @@ type mAssignmentTask struct {
 	SFilter []ifaces.Column
 }
 
-// run executes the task represented by the receiver of the method. Namely, it
+// Run executes the task represented by the receiver of the method. Namely, it
 // actually computes the value of M.
 //
 // In the case where the table has a single column, the execution path is
@@ -162,7 +162,7 @@ type mAssignmentTask struct {
 // In case one of the Ss contains an entry that does not appear in T, the
 // function panics. This aims at early detecting that the lookup query is not
 // satisfied.
-func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
+func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 	var (
 		// isMultiColumn flags whether the table have multiple column and
@@ -288,7 +288,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 				}
 				logrus.Errorf(
 					"entry %v of the table %v is not included in the table. tableRow=%v",
-					k, nameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow),
+					k, NameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow),
 				)
 
 				exit.OnUnsatisfiedConstraints()
@@ -309,7 +309,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 // zAssignmentTask represents a prover task of assignming the columns
 // SigmaS and SigmaT for a specific lookup table.
 // sigmaAssignment
-type zAssignmentTask zCtx
+type zAssignmentTask ZCtx
 
 func (z zAssignmentTask) run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
