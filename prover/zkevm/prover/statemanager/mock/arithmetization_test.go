@@ -52,7 +52,7 @@ func CheckDifferentVectorLengths(v *StateManagerVectors) bool {
 	return len(lengthSet) > 1
 }
 
-// TestArithmetization uses an inital State and a StateLogBuilder to generate frames for different scenarios.
+// TestArithmetization uses an initial State and a StateLogBuilder to generate frames for different scenarios.
 // It then runs the Stitcher on the resulting traces and checks if the Stitcher outputs columns of the same size without failing
 func TestArithmetization(t *testing.T) {
 
