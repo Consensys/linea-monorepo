@@ -84,7 +84,7 @@ export async function fetchTokenInfo(
   if (!chainFound) {
     const chains: Chain[] = networkType === NetworkType.SEPOLIA ? [lineaSepolia, sepolia] : [linea, mainnet];
 
-    // Put the fromChain arg at the begining to take it as priority
+    // Put the fromChain arg at the beginning to take it as priority
     if (fromChain) chains.unshift(fromChain);
 
     for (const chain of chains) {
