@@ -1,5 +1,6 @@
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'java-test-fixtures'
 }
 
 dependencies {
@@ -12,6 +13,8 @@ dependencies {
   implementation(project(':jvm-libs:linea:core:domain-models'))
   implementation(project(':state-recover:appcore:clients-interfaces'))
   implementation(project(':state-recover:appcore:domain-models'))
+
+  testFixturesImplementation(testFixtures(project(':jvm-libs:generic:json-rpc')))
 
   testImplementation "com.github.tomakehurst:wiremock-jre8:${libs.versions.wiremock.get()}"
   testImplementation "net.javacrumbs.json-unit:json-unit-assertj:${libs.versions.jsonUnit.get()}"
