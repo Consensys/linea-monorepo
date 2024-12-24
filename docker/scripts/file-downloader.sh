@@ -3,7 +3,7 @@
 if [ $# -lt 2 ]; then
     echo "Usage: $0 file_url destination_folder"
     echo "Example: $0 https://example.com/somefile.txt /path/to/destination/"
-    exit
+    exit 1
 fi
 
 check_and_download_file() {
@@ -11,15 +11,28 @@ check_and_download_file() {
     local directory="$2"
     local filename="${file_url##*/}"  # Extracts the filename from the URL
 
-    # Check if the file exists in the directory
+    # Create the directory if it doesn't exist
+    if [[ ! -d "$directory" ]]; then
+        echo "Directory $directory does not exist. Creating it..."
+        mkdir -p "$directory" || {
+            echo "Failed to create directory $directory."
+            exit 1
+        }
+    fi
+
+    # Check if the file already exists
     if [[ ! -f "$directory/$filename" ]]; then
-        # File does not exist, download it
-        echo "Downloading $file_url ..."
-        wget "$file_url" -P "$directory"
-        echo "Download complete!"
+        echo "Downloading $file_url to $directory..."
+        if wget -q "$file_url" -P "$directory"; then
+            echo "Download of $filename completed successfully!"
+        else
+            echo "Failed to download $file_url."
+            exit 1
+        fi
     else
-        echo "File $filename already exists in $directory."
+        echo "File $filename already exists in $directory. Skipping download"
     fi
 }
-echo "$0 $1 $2"
+
+# Execute the function
 check_and_download_file "$1" "$2"
