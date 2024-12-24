@@ -39,7 +39,7 @@ Dependent on which network you are using, a specific network private key needs t
 ## Generalized Command Format
 
 ```shell
-<possible CLI environment arguments> npx hardhat deploy --network sepolia --tags <contract tags, comma delimitted list>
+<possible CLI environment arguments> npx hardhat deploy --network sepolia --tags <contract tags, comma delimited list>
 ```
 
 <br />
