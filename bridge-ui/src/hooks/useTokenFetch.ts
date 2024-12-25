@@ -82,28 +82,28 @@ const useTokenFetch = () => {
         return;
       }
 
-      // Since we don't if a token is native or bridged for a chain we try all the combinations
+      // Since we don't know if a token is native or bridged for a chain we try all the combinations
       // possible to find its counterpart on the other chain
       if (!token.L1 && token.L2) {
         token.L1 = (await fetchNativeToken(fromChain, token.L2)) || null;
-        if (!token.L1 || token.L1 !== zeroAddress) return;
+        if (token.L1 && token.L1 !== zeroAddress) return;
 
         token.L1 = (await fetchNativeToken(toChain, token.L2)) || null;
-        if (!token.L1 || token.L1 !== zeroAddress) return;
+        if (token.L1 && token.L1 !== zeroAddress) return;
 
         token.L1 = (await fetchBridgedToken(fromChain, toChain, token.L2)) || null;
-        if (!token.L1 || token.L1 !== zeroAddress) return;
+        if (token.L1 && token.L1 !== zeroAddress) return;
 
         token.L1 = (await fetchBridgedToken(toChain, fromChain, token.L2)) || null;
       } else if (token.L1) {
         token.L2 = (await fetchNativeToken(fromChain, token.L1)) || null;
-        if (!token.L2 || token.L2 !== zeroAddress) return;
+        if (token.L2 && token.L2 !== zeroAddress) return;
 
         token.L2 = (await fetchNativeToken(toChain, token.L1)) || null;
-        if (!token.L2 || token.L2 !== zeroAddress) return;
+        if (token.L2 && token.L2 !== zeroAddress) return;
 
         token.L2 = (await fetchBridgedToken(fromChain, toChain, token.L1)) || null;
-        if (!token.L2 || token.L2 !== zeroAddress) return;
+        if (token.L2 && token.L2 !== zeroAddress) return;
 
         token.L2 = (await fetchBridgedToken(toChain, fromChain, token.L1)) || null;
       }
