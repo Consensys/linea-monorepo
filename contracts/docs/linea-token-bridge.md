@@ -2,7 +2,7 @@
 
 ## Documentation
 
-Token Bridge is a canonical brige between Ethereum and Linea networks.
+Token Bridge is a canonical bridge between Ethereum and Linea networks.
 
 ## Install
 

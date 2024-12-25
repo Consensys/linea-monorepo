@@ -168,7 +168,7 @@ The config variables are:
 | NEXT_PUBLIC_WALLET_CONNECT_ID                 | Wallet Connect Api Key                         |                                                                                                           |
 | NEXT_PUBLIC_INFURA_ID                         | Infura API Key                                 |                                                                                                           |
 | E2E_TEST_PRIVATE_KEY                          | Private key to execute e2e on Sepolia          |                                                                                                           |
-| NEXT_PUBLIC_STORAGE_MIN_VERSION               | Local storage version for reseting the storage | 1                                                                                                         |
+| NEXT_PUBLIC_STORAGE_MIN_VERSION               | Local storage version for resetting the storage | 1                                                                                                         |
 
 ## About
 
