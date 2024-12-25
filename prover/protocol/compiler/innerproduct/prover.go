@@ -5,8 +5,8 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 )
 
 // proverTask implements the [wizard.ProverAction] interface and as such
@@ -39,7 +39,7 @@ func (ctx *contextForSize) run(run *wizard.ProverRuntime) {
 
 	var (
 		size      = ctx.Summation.Size()
-		collapsed = wizardutils.EvalExprColumn(run, ctx.CollapsedBoard).IntoRegVecSaveAlloc()
+		collapsed = column.EvalExprColumn(run, ctx.CollapsedBoard).IntoRegVecSaveAlloc()
 		summation = make([]field.Element, size)
 	)
 
