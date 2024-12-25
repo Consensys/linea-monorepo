@@ -58,4 +58,4 @@ See `blob.PackAlign` and `blob.UnpackAlign` for more info.
 
 ## Reference implementation
 
-We provide `DecompressBlob(data, dictionary)` that decompresses the body and builds a `Blob` data structure in: TODO @gbotrel add link once open sourced.
+We provide `DecompressBlob(data, dictionary)` that decompresses the body and builds a `Blob` data structure in /prover/lib/compressor/blob/v0/blob_maker.go.
