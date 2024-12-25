@@ -131,7 +131,7 @@ Frontend should be available at: http://localhost:3000
 ### End to end tests
 
 E2E tests are run in the CI but can also be run locally.  
-Make sure `E2E_TEST_PRIVATE_KEY` .env (The private key used needs to have some sepolia ETH, USDC and WETH to run the tests)
+Make sure `E2E_TEST_PRIVATE_KEY` .env (The private key used needs to have some Sepolia ETH, USDC and WETH to run the tests)
 
 1. Add `NEXT_PUBLIC_WALLET_CONNECT_ID` and `NEXT_PUBLIC_INFURA_ID` to your command line env
 2. Build the Bridge UI in local in a terminal: `npm run build`
