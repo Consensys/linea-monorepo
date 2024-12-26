@@ -16,7 +16,7 @@ import (
 // used to instantiate a [Variable] with them.
 type Metadata interface {
 	/*
-		Strings allows adressing a map by variable 2 instances for which
+		Strings allows addressing a map by variable 2 instances for which
 		String() returns the same result are treated as equal.
 	*/
 	String() string
