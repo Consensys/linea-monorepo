@@ -69,6 +69,9 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		}
 
 		if i == 0 {
+			if po.FirstBlockNumber == 0 {
+				return nil, fmt.Errorf("invalid FirstBlockNumber: cannot be 0")
+			}
 			cf.LastFinalizedBlockNumber = uint(po.FirstBlockNumber) - 1
 			cf.ParentStateRootHash = po.ParentStateRootHash
 		}
