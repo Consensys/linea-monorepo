@@ -71,7 +71,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
     smartContractVersion: LineaContractVersion
   ) {
     if (listOf(LineaContractVersion.V5, LineaContractVersion.V6).contains(smartContractVersion).not()) {
-      // V6 with prover V3 is soon comming, so we will need to update/extend this test setup
+      // V6 with prover V3 is soon coming, so we will need to update/extend this test setup
       throw IllegalArgumentException("unsupported contract version=$smartContractVersion!")
     }
     val rollupDeploymentFuture = ContractsManager.get()

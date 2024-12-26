@@ -27,7 +27,7 @@ type isZeroCtx struct {
 //
 // The function also returns a context object that can be invoked to perform the
 // assignment of `z` and the intermediate internal columns. It has to be called
-// explictly by the the caller during the prover runtime.
+// explicitly by the the caller during the prover runtime.
 func IsZero(comp *wizard.CompiledIOP, c any) (ifaces.Column, wizard.ProverAction) {
 
 	var (
