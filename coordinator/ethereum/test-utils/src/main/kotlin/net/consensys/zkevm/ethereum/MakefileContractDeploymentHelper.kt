@@ -1,8 +1,8 @@
 package net.consensys.zkevm.ethereum
 
+import build.linea.contract.l1.LineaContractVersion
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.testing.filesystem.getPathTo
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.io.BufferedReader
@@ -75,10 +75,10 @@ fun executeCommand(
 }
 
 internal val lineaRollupAddressPattern = Pattern.compile(
-  "^LineaRollup(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
+  "^contract=LineaRollup(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
 )
 internal val l2MessageServiceAddressPattern = Pattern.compile(
-  "^L2MessageService(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
+  "^contract=L2MessageService(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
 )
 
 data class DeployedContract(

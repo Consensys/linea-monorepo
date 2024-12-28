@@ -1,5 +1,4 @@
 import { defaultWagmiConfig } from "@web3modal/wagmi/react/config";
-import { cookieStorage, createStorage } from "wagmi";
 import { http, injected } from "@wagmi/core";
 import { mainnet, sepolia, linea, lineaSepolia } from "@wagmi/core/chains";
 import { walletConnect, coinbaseWallet } from "@wagmi/connectors";
@@ -43,7 +42,4 @@ export const wagmiConfig = defaultWagmiConfig({
     [linea.id]: http(`https://linea-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`, { batch: true }),
     [lineaSepolia.id]: http(`https://linea-sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`, { batch: true }),
   },
-  storage: createStorage({
-    storage: cookieStorage,
-  }),
 });

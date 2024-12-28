@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity >=0.8.19 <=0.8.26;
 
+/**
+ * @title Contract to manage some efficient hashing functions.
+ * @author ConsenSys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
 library Utils {
   /**
    * @notice Performs a gas optimized keccak hash for two bytes32 values.

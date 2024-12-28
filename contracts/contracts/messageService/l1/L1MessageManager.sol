@@ -15,8 +15,13 @@ abstract contract L1MessageManager is L1MessageManagerV1, IL1MessageManager {
   using BitMaps for BitMaps.BitMap;
   using Utils for *;
 
+  /// @notice Contains the L1 to L2 messaging rolling hashes mapped to message number computed on L1.
   mapping(uint256 messageNumber => bytes32 rollingHash) public rollingHashes;
+
+  /// @notice This maps which message numbers have been claimed to prevent duplicate claiming.
   BitMaps.BitMap internal _messageClaimedBitMap;
+
+  /// @notice Contains the L2 messages Merkle roots mapped to their tree depth.
   mapping(bytes32 merkleRoot => uint256 treeDepth) public l2MerkleRootsDepths;
 
   /// @dev Total contract storage is 53 slots including the gap below.

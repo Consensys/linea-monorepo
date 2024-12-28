@@ -3,6 +3,9 @@ package execution
 import (
 	"math/big"
 
+	"github.com/consensys/linea-monorepo/prover/config"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
@@ -45,10 +48,10 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 		extractor:      zkevm.PublicInput.Extractor,
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-				L2MessageHashes: NewL2MessageHashes(
-					[][32]frontend.Variable{},
-					zkevm.Limits().BlockL2L1Logs,
-				),
+				L2MessageHashes: L2MessageHashes{
+					Values: make([][32]frontend.Variable, zkevm.Limits().BlockL2L1Logs),
+					Length: nil,
+				},
 			},
 		},
 	}
@@ -56,20 +59,28 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 
 // assign the wizard proof to the outer circuit
 func assign(
+	limits *config.TracesLimits,
 	comp *wizard.CompiledIOP,
 	proof wizard.Proof,
-	funcInputs FunctionalPublicInput,
+	funcInputs public_input.Execution,
 ) CircuitExecution {
-	wizardVerifier := wizard.GetWizardVerifierCircuitAssignment(comp, proof)
-	fpiSnark, err := funcInputs.ToSnarkType()
-	if err != nil {
-		panic(err) // TODO error handling
-	}
-	return CircuitExecution{
-		WizardVerifier: *wizardVerifier,
-		FuncInputs:     fpiSnark,
-		PublicInput:    new(big.Int).SetBytes(funcInputs.Sum(nil)),
-	}
+
+	var (
+		wizardVerifier = wizard.GetWizardVerifierCircuitAssignment(comp, proof)
+		res            = CircuitExecution{
+			WizardVerifier: *wizardVerifier,
+			FuncInputs: FunctionalPublicInputSnark{
+				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
+					L2MessageHashes: L2MessageHashes{Values: make([][32]frontend.Variable, limits.BlockL2L1Logs)}, // TODO use a maximum from config
+				},
+			},
+			PublicInput: new(big.Int).SetBytes(funcInputs.Sum(nil)),
+		}
+	)
+
+	res.FuncInputs.Assign(&funcInputs)
+
+	return res
 }
 
 // Define of the wizard circuit
@@ -89,13 +100,14 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 }
 
 func MakeProof(
+	limits *config.TracesLimits,
 	setup circuits.Setup,
 	comp *wizard.CompiledIOP,
 	wproof wizard.Proof,
-	funcInputs FunctionalPublicInput,
+	funcInputs public_input.Execution,
 ) string {
 
-	assignment := assign(comp, wproof, funcInputs)
+	assignment := assign(limits, comp, wproof, funcInputs)
 	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	if err != nil {
 		panic(err)

@@ -6,6 +6,11 @@ on:
       - 'contracts/**'
       - 'testdata/**'
       - 'prover/**'
+      - '!contracts/**/*.md'
+      - '!contracts/**/*.mdx'
+      - '!testdata/**/*.md'
+      - '!prover/**/*.md'
+      - '!**/docs/**'
   push:
     branches:
       - main
@@ -13,6 +18,11 @@ on:
       - 'contracts/**'
       - 'testdata/**'
       - 'prover/**'
+      - '!contracts/**/*.md'
+      - '!contracts/**/*.mdx'
+      - '!testdata/**/*.md'
+      - '!prover/**/*.md'
+      - '!**/docs/**'
 
 env:
   GOPROXY: "https://proxy.golang.org"
@@ -26,12 +36,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: 1.23.x
           cache: false
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/go/pkg/mod
@@ -48,6 +58,10 @@ jobs:
       - name: Check JS formatting
         run: pnpm -F contracts run lint:ts
 
+      # Required for hardhat commands due to @nomicfoundation/hardhat-foundry package
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
       - name: Compile kzg.node
         run: npx node-gyp --directory=contracts/node_modules/c-kzg rebuild # explicitly running rebuild to get the .node file
 
@@ -55,7 +69,7 @@ jobs:
         run: pnpm -F contracts run coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           fail_ci_if_error: true
           files: ./contracts/coverage/coverage-final.json

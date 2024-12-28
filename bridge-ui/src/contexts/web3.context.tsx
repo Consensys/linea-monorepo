@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { State, WagmiProvider } from "wagmi";
+import { WagmiProvider } from "wagmi";
 import { createWeb3Modal } from "@web3modal/wagmi/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config, wagmiConfig } from "@/config";
@@ -14,12 +14,11 @@ createWeb3Modal({ wagmiConfig, projectId: config.walletConnectId });
 
 type Web3ProviderProps = {
   children: ReactNode;
-  initialState?: State;
 };
 
-export function Web3Provider({ children, initialState }: Web3ProviderProps) {
+export function Web3Provider({ children }: Web3ProviderProps) {
   return (
-    <WagmiProvider config={wagmiConfig} initialState={initialState}>
+    <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </WagmiProvider>
   );

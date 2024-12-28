@@ -8,14 +8,13 @@ import {
   tryVerifyContract,
   getDeployedContractAddress,
   tryStoreAddress,
-  validateDeployBranchAndTags,
   getRequiredEnvVar,
+  LogContractDeployment,
 } from "../common/helpers";
 import { abi, bytecode } from "./V1/L2MessageServiceV1Deployed.json";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
-  validateDeployBranchAndTags(hre.network.name);
 
   const mainnetDeployedL2MessageServiceCacheFolder = path.resolve("./deploy/V1/L2MessageServiceV1Cache/");
 
@@ -61,15 +60,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
   );
 
+  await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
-  const txReceipt = await contract.deploymentTransaction()?.wait();
-  if (!txReceipt) {
-    throw "Contract deployment transaction receipt not found.";
-  }
 
-  console.log(`${contractName} deployed at ${contractAddress}`);
-
-  await tryStoreAddress(hre.network.name, contractName, contractAddress, txReceipt.hash);
+  await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
 
   await tryVerifyContract(contractAddress);
 
