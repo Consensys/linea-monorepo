@@ -6,12 +6,12 @@ labels: Bug
 assignees: ''
 ---
 
-_Remenber not to put too much unhelpful information or too little important information, be specific._
+_Remember not to put too much unhelpful information or too little important information, be specific._
 
 ## Impact
 __environment [Testnet/Mainnet]__
 
-__an user is impacted [Y/N], if yes type of user: [External/Internal]__
+__is a user impacted? [Y/N], if yes, specify the type of user: [External/Internal]__
 
 ## Describe the bug
 ### Steps to Reproduce
@@ -24,7 +24,7 @@ Steps to reproduce the bug:
 4. See error
 
 ### Actual result
-Evidence of the bug including log extracts, screen shot, wallet addresses, Tx hash, ...
+Provide evidence of the bug including log extracts, screen shot, wallet addresses, Tx hash, ...
 
 ### Expected result
 A clear and concise description of what you expected to happen.
