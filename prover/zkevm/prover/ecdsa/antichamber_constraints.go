@@ -65,7 +65,7 @@ func (ac *antichamber) csTransitions(comp *wizard.CompiledIOP) {
 		),
 	)
 
-	// stop fetching when recived txsignature
+	// stop fetching when received txsignature
 	comp.InsertGlobal(
 		ROUND_NR,
 		ifaces.QueryIDf("%v_TRANSITIONS_TXSIGNATURE_FETCHING", NAME_ANTICHAMBER),
