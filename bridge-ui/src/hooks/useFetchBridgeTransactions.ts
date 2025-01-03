@@ -63,7 +63,7 @@ const useFetchBridgeTransactions = () => {
 
   const updateMessagesStatus = async (transactions: TransactionHistory[], networkType: NetworkType) => {
     const promises = transactions.map(async (transaction, index) => {
-      // Only process the transaction that haves messages with unclaimed or unknwon statuses
+      // Only process the transaction that haves messages with unclaimed or unknown statuses
       const message = transaction.message;
       if (message) {
         const isMessageClaimed = message.status === OnChainMessageStatus.CLAIMED;
