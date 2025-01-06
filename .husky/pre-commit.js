@@ -193,6 +193,7 @@ function executeCommand(_folder, _changedFileExtensions, _command) {
     for (const fileExtension of _changedFileExtensions) {
         const path = FOLDER_PATH[_folder];
         const cmd = _command[fileExtension];
+        if (!cmd) return;
         console.log(`${fileExtension} change found in ${path}, executing command ${cmd}`);
         try {
             // Execute command synchronously and stream output directly to the current stdout
