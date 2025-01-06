@@ -85,7 +85,7 @@ services:
 
   # Erigon initialization
   erigon-init:
-    image: erigontech/erigon:2.60.8
+    image: erigontech/erigon:2.61.0
     command:
       - init
       - /genesis.json
@@ -96,7 +96,7 @@ services:
 
   # Erigon node
   erigon-node:
-    image: erigontech/erigon:2.60.8
+    image: erigontech/erigon:2.61.0
     pull_policy: always
     restart: unless-stopped
     stop_grace_period: 30s
