@@ -124,8 +124,6 @@ func (c *ConsistencyCheck) Run(run *wizard.VerifierRuntime) error {
 		}
 	}
 
-	piCursor += len(paramsRt.Ys)
-
 	// The public inputs do not need to be checked because they are redefined in
 	// term of the local openings directly. So checking it would amount to checking
 	// that the local openings are equal to themselves.
@@ -175,8 +173,6 @@ func (c *ConsistencyCheck) RunGnark(api frontend.API, run *wizard.WizardVerifier
 
 		api.AssertIsEqual(fromRt, fromCirc)
 	}
-
-	piCursor += len(paramsRt.Ys)
 
 	// The public inputs do not need to be checked because they are redefined in
 	// term of the local openings directly. So checking it would amount to checking
