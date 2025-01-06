@@ -15,12 +15,8 @@ dependencies {
   api(project(':jvm-libs:linea:blob-decompressor'))
   api(project(':state-recover:appcore:clients-interfaces'))
   api(project(':state-recover:appcore:domain-models'))
-
-  api project(':jvm-libs:linea:besu-libs')
   api project(':jvm-libs:linea:besu-rlp-and-mappers')
-  implementation("org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}") {
-    transitive = false
-  }
+  api project(':jvm-libs:linea:besu-libs')
 
   testImplementation(project(":jvm-libs:linea:testing:file-system"))
   testImplementation(testFixtures(project(":jvm-libs:linea:blob-compressor")))
