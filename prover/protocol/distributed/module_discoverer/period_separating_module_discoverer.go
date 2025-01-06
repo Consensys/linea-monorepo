@@ -3,11 +3,17 @@ package distributed
 import (
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-type ModuleName string
+// Type alias for distributed.ModuleName
+type ModuleName = distributed.ModuleName
 
 // Example struct implementing ModuleDiscoverer
 type PeriodSeperatingModuleDiscoverer struct {
@@ -72,4 +78,52 @@ func (p *PeriodSeperatingModuleDiscoverer) FindModule(col ifaces.Column) ModuleN
 func (p *PeriodSeperatingModuleDiscoverer) QueryIsInModule(ifaces.Query, ModuleName) bool {
 	panic("unimplemented")
 
+}
+
+// ColumnIsInModule checks that the given column is inside the given module.
+func (p *PeriodSeperatingModuleDiscoverer) ColumnIsInModule(col ifaces.Column, name ModuleName) bool {
+	for _, c := range p.modules[name] {
+		if c.GetColID() == col.GetColID() {
+			return true
+		}
+	}
+	return false
+}
+
+//	ExpressionIsInModule checks that all the columns in the expression are from the given module.
+//
+// It does not check the presence of the coins and other metadata in the module.
+func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr *symbolic.Expression, name ModuleName) bool {
+	var (
+		board    = expr.Board()
+		metadata = board.ListVariableMetadata()
+		b        = true
+		nCols    = 0
+	)
+
+	// by contradiction, if there is no metadata it belongs to the module.
+	if len(metadata) == 0 {
+		return true
+	}
+
+	for _, m := range metadata {
+		switch v := m.(type) {
+		case ifaces.Column:
+			if !p.ColumnIsInModule(v, name) {
+				b = b && false
+			}
+			nCols++
+			// The expression can involve random coins
+		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor:
+			// Do nothing
+		default:
+			utils.Panic("unknown type %T", metadata)
+		}
+	}
+
+	if nCols == 0 {
+		panic("could not find any column in the expression")
+	} else {
+		return b
+	}
 }
