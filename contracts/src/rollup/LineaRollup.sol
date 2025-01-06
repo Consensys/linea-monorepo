@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.26;
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
@@ -14,14 +13,7 @@ import { Utils } from "../libraries/Utils.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is
-  Initializable,
-  AccessControlUpgradeable,
-  ZkEvmV2,
-  L1MessageService,
-  PermissionsManager,
-  ILineaRollup
-{
+contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, PermissionsManager, ILineaRollup {
   using Utils for *;
 
   /// @notice This is the ABI version and not the reinitialize version.
@@ -32,18 +24,6 @@ contract LineaRollup is
 
   /// @notice The role required to set/remove  proof verifiers by type.
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
-
-  /// @notice The default genesis shnarf using empty/default hashes and a default state.
-  bytes32 public constant GENESIS_SHNARF =
-    keccak256(
-      abi.encode(
-        EMPTY_HASH,
-        EMPTY_HASH,
-        0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd,
-        EMPTY_HASH,
-        EMPTY_HASH
-      )
-    );
 
   /// @dev Value indicating a shnarf exists.
   uint256 internal constant SHNARF_EXISTS_DEFAULT_VALUE = 1;
@@ -122,6 +102,10 @@ contract LineaRollup is
 
     __MessageService_init(_initializationData.rateLimitPeriodInSeconds, _initializationData.rateLimitAmountInWei);
 
+    if (_initializationData.defaultAdmin == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     /**
      * @dev DEFAULT_ADMIN_ROLE is set for the security council explicitly,
      * as the permissions init purposefully does not allow DEFAULT_ADMIN_ROLE to be set.
@@ -132,15 +116,26 @@ contract LineaRollup is
 
     verifiers[0] = _initializationData.defaultVerifier;
 
+    if (_initializationData.fallbackOperator == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     fallbackOperator = _initializationData.fallbackOperator;
     emit FallbackOperatorAddressSet(msg.sender, _initializationData.fallbackOperator);
 
     currentL2BlockNumber = _initializationData.initialL2BlockNumber;
     stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
-    blobShnarfExists[GENESIS_SHNARF] = SHNARF_EXISTS_DEFAULT_VALUE;
+    bytes32 genesisShnarf = _computeShnarf(
+      EMPTY_HASH,
+      EMPTY_HASH,
+      _initializationData.initialStateRootHash,
+      EMPTY_HASH,
+      EMPTY_HASH
+    );
 
-    currentFinalizedShnarf = GENESIS_SHNARF;
+    blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
+    currentFinalizedShnarf = genesisShnarf;
     currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
   }
 
@@ -487,8 +482,7 @@ contract LineaRollup is
       _finalizationData,
       lastFinalizedShnarf,
       finalShnarf,
-      lastFinalizedBlockNumber,
-      _finalizationData.endBlockNumber
+      lastFinalizedBlockNumber
     );
 
     _verifyProof(publicInput, _proofType, _aggregatedProof);
@@ -504,10 +498,6 @@ contract LineaRollup is
     FinalizationDataV3 calldata _finalizationData,
     uint256 _lastFinalizedBlock
   ) internal returns (bytes32 finalShnarf) {
-    if (_finalizationData.endBlockNumber <= _lastFinalizedBlock) {
-      revert FinalBlockNumberLessThanOrEqualToLastFinalizedBlock(_finalizationData.endBlockNumber, _lastFinalizedBlock);
-    }
-
     _validateL2ComputedRollingHash(_finalizationData.l1RollingHashMessageNumber, _finalizationData.l1RollingHash);
 
     if (
@@ -678,14 +668,12 @@ contract LineaRollup is
    * @param _finalizationData The full finalization data.
    * @param _finalShnarf The final shnarf in the finalization.
    * @param _lastFinalizedBlockNumber The last finalized block number.
-   * @param _endBlockNumber End block number being finalized.
    */
   function _computePublicInput(
     FinalizationDataV3 calldata _finalizationData,
     bytes32 _lastFinalizedShnarf,
     bytes32 _finalShnarf,
-    uint256 _lastFinalizedBlockNumber,
-    uint256 _endBlockNumber
+    uint256 _lastFinalizedBlockNumber
   ) private pure returns (uint256 publicInput) {
     assembly {
       let mPtr := mload(0x40)
@@ -701,7 +689,7 @@ contract LineaRollup is
       mstore(add(mPtr, 0x80), _lastFinalizedBlockNumber)
 
       // _finalizationData.endBlockNumber
-      mstore(add(mPtr, 0xA0), _endBlockNumber)
+      calldatacopy(add(mPtr, 0xA0), add(_finalizationData, 0x20), 0x20)
 
       /**
        * _finalizationData.lastFinalizedL1RollingHash
