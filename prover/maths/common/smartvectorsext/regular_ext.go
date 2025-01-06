@@ -93,8 +93,8 @@ func (r *RegularExt) WriteInSlice(s []field.Element) {
 func (r *RegularExt) WriteInSliceExt(s []fext.Element) {
 	assertHasLength(len(s), len(*r))
 	for i := 0; i < len(s); i++ {
-		elem, _ := r.GetBase(i)
-		s[i].SetFromBase(&elem)
+		elem := r.GetExt(i)
+		s[i].Set(&elem)
 	}
 }
 
