@@ -1,7 +1,9 @@
 plugins {
-    id 'net.consensys.zkevm.kotlin-common-conventions'
-    id 'java-test-fixtures'
+  id 'net.consensys.zkevm.kotlin-common-conventions'
+  id 'java-test-fixtures'
 }
+
+description="Linea Tracing utilities"
 
 dependencies {
   implementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
@@ -12,5 +14,5 @@ dependencies {
 }
 
 jar {
-    dependsOn configurations.runtimeClasspath
+  dependsOn configurations.runtimeClasspath
 }
