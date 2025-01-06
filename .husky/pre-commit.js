@@ -101,7 +101,7 @@ function main() {
         }
         const changedFileExtensions = getChangedFileExtensions(folder);
         executeCommands(folder, changedFileExtensions, FILE_EXTENSION_LINTING_COMMAND);
-        executeCommands(folder, changedFileExtensions, FILE_EXTENSION_DOCUMENTATION_UPDATING_COMMAND);
+        executeCommand(folder, changedFileExtensions, FILE_EXTENSION_DOCUMENTATION_UPDATING_COMMAND);
     }
 
     updateGitIndex();
