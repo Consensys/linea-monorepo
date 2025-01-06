@@ -1,6 +1,10 @@
 package logderiv
 
 import (
+	"fmt"
+
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -23,7 +27,7 @@ func CompileLogDerivSum(comp *wizard.CompiledIOP) {
 		// the beginning because we are iterating over the unignored keys.
 		comp.QueriesParams.MarkAsIgnored(qName)
 		zEntries := logDeriv.Inputs
-		va := lookup.FinalEvaluationCheck{}
+		va := FinalEvaluationCheck{}
 		for _, entry := range zEntries {
 			zC := &lookup.ZCtx{
 				Round:            entry.Round,
@@ -46,4 +50,45 @@ func CompileLogDerivSum(comp *wizard.CompiledIOP) {
 		comp.RegisterVerifierAction(lastRound, &va)
 	}
 
+}
+
+type FinalEvaluationCheck struct {
+	// the name of a lookupTable in the pack, this can help for debugging.
+	Name string
+	// ZOpenings lists all the openings of all the zCtx
+	ZOpenings []query.LocalOpening
+	// the expected sum
+	Sum field.Element
+}
+
+// Run implements the [wizard.VerifierAction]
+func (f *FinalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
+
+	// zSum stores the sum of the ending values of the zs as queried
+	// in the protocol via the local opening queries.
+	zSum := field.Zero()
+	for k := range f.ZOpenings {
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		zSum.Add(&zSum, &temp)
+	}
+
+	if zSum != f.Sum {
+		return fmt.Errorf("log-derivate lookup, the final evaluation check failed for %v,", f.Name)
+	}
+
+	return nil
+}
+
+// RunGnark implements the [wizard.VerifierAction]
+func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+
+	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried
+	// in the protocol via the
+	zSum := frontend.Variable(f.Sum)
+	for k := range f.ZOpenings {
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		zSum = api.Add(zSum, temp)
+	}
+
+	api.AssertIsEqual(zSum, 0)
 }
