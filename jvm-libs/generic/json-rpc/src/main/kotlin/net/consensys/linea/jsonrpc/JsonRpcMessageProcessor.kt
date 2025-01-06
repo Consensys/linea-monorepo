@@ -206,7 +206,7 @@ class JsonRpcMessageProcessor(
       tags = listOf(Tag("method", requestContext.method))
     )
 
-    return timerCapture.captureTime { 
+    return timerCapture.captureTime {
       val result = requestContext.result.map { successResponse ->
         val resultJsonNode = responseResultObjectMapper.valueToTree<JsonNode>(successResponse.result)
         successResponse.copy(result = resultJsonNode)
