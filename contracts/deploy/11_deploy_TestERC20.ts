@@ -1,17 +1,16 @@
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
   getRequiredEnvVar,
   tryVerifyContract,
   tryStoreAddress,
-  validateDeployBranchAndTags,
   getDeployedContractAddress,
+  LogContractDeployment,
 } from "../common/helpers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
-  validateDeployBranchAndTags(hre.network.name);
 
   const contractName = "TestERC20";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
@@ -29,18 +28,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const TestERC20Factory = await ethers.getContractFactory(contractName);
   const contract = await TestERC20Factory.deploy(tokenName, tokenSymbol, ethers.parseEther(initialSupply));
 
-  await contract.waitForDeployment();
+  await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
 
-  const deployTx = contract.deploymentTransaction();
-  if (!deployTx) {
-    throw "Deployment transaction not found.";
-  }
+  await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
 
-  await tryStoreAddress(network.name, contractName, contractAddress, deployTx.hash);
-
-  const chainId = (await ethers.provider.getNetwork()).chainId;
-  console.log(`${contractName} deployed on ${network.name}, chainId=${chainId}, at address: ${contractAddress}`);
   await tryVerifyContract(contractAddress);
 };
 

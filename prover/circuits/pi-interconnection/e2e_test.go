@@ -8,6 +8,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
@@ -63,28 +65,41 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 
 	blob := blobtesting.TinyTwoBatchBlob(t)
 
+	const lastFinStateRootHash = 34
+	stateRootHashes := [3][32]byte{
+		internal.Uint64To32Bytes(lastFinStateRootHash),
+		internal.Uint64To32Bytes(23),
+		internal.Uint64To32Bytes(45),
+	}
+
 	execReq := []public_input.Execution{{
-		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
-		InitialBlockTimestamp:  6,
-		FinalStateRootHash:     internal.Uint64To32Bytes(4),
-		FinalBlockNumber:       5,
-		FinalBlockTimestamp:    6,
-		FinalRollingHash:       internal.Uint64To32Bytes(7),
-		FinalRollingHashNumber: 8,
+		InitialBlockTimestamp:        6,
+		FinalStateRootHash:           stateRootHashes[1],
+		FinalBlockNumber:             5,
+		FinalBlockTimestamp:          6,
+		LastRollingHashUpdate:        internal.Uint64To32Bytes(7),
+		LastRollingHashUpdateNumber:  8,
+		FirstRollingHashUpdateNumber: 8,
+		L2MessageHashes:              [][32]byte{internal.Uint64To32Bytes(3)},
+		InitialStateRootHash:         stateRootHashes[0],
+		InitialBlockNumber:           5,
 	}, {
-		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(9)},
-		InitialBlockTimestamp:  7,
-		FinalStateRootHash:     internal.Uint64To32Bytes(10),
-		FinalBlockNumber:       11,
-		FinalBlockTimestamp:    12,
-		FinalRollingHash:       internal.Uint64To32Bytes(13),
-		FinalRollingHashNumber: 14,
+		L2MessageHashes:              [][32]byte{internal.Uint64To32Bytes(9)},
+		InitialBlockTimestamp:        7,
+		FinalStateRootHash:           stateRootHashes[2],
+		FinalBlockNumber:             11,
+		FinalBlockTimestamp:          12,
+		LastRollingHashUpdate:        internal.Uint64To32Bytes(13),
+		LastRollingHashUpdateNumber:  14,
+		FirstRollingHashUpdateNumber: 9,
+		InitialStateRootHash:         stateRootHashes[1],
+		InitialBlockNumber:           6,
 	}}
 
 	blobReq := blobsubmission.Request{
 		Eip4844Enabled:      true,
 		CompressedData:      base64.StdEncoding.EncodeToString(blob),
-		ParentStateRootHash: utils.FmtIntHex32Bytes(1),
+		ParentStateRootHash: utils.FmtIntHex32Bytes(lastFinStateRootHash),
 		FinalStateRootHash:  utils.HexEncodeToString(execReq[1].FinalStateRootHash[:]),
 		PrevShnarf:          utils.FmtIntHex32Bytes(2),
 	}
@@ -92,11 +107,12 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	blobResp, err := blobsubmission.CraftResponse(&blobReq)
 	assert.NoError(t, err)
 
-	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes))
+	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MessageHashes, execReq[1].L2MessageHashes))
 
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp},
 		Executions:     execReq,
+		DictPath:       "../../lib/compressor/compressor_dict.bin",
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,
@@ -105,10 +121,10 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			FinalTimestamp:                          uint(execReq[1].FinalBlockTimestamp),
 			LastFinalizedBlockNumber:                4,
 			FinalBlockNumber:                        uint(execReq[1].FinalBlockNumber),
-			LastFinalizedL1RollingHash:              utils.FmtIntHex32Bytes(7),
-			L1RollingHash:                           utils.HexEncodeToString(execReq[1].FinalRollingHash[:]),
+			LastFinalizedL1RollingHash:              utils.FmtIntHex32Bytes(13),
+			L1RollingHash:                           utils.HexEncodeToString(execReq[1].LastRollingHashUpdate[:]),
 			LastFinalizedL1RollingHashMessageNumber: 7,
-			L1RollingHashMessageNumber:              uint(execReq[1].FinalRollingHashNumber),
+			L1RollingHashMessageNumber:              uint(execReq[1].LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
 		},
@@ -121,37 +137,49 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	blobs := blobtesting.ConsecutiveBlobs(t, 2, 2)
 
 	execReq := []public_input.Execution{{
-		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
-		InitialBlockTimestamp:  6,
-		FinalStateRootHash:     internal.Uint64To32Bytes(4),
-		FinalBlockNumber:       5,
-		FinalBlockTimestamp:    6,
-		FinalRollingHash:       internal.Uint64To32Bytes(7),
-		FinalRollingHashNumber: 8,
+		L2MessageHashes:              [][32]byte{internal.Uint64To32Bytes(3)},
+		InitialBlockTimestamp:        6,
+		FinalStateRootHash:           internal.Uint64To32Bytes(4),
+		FinalBlockNumber:             5,
+		FinalBlockTimestamp:          6,
+		LastRollingHashUpdate:        internal.Uint64To32Bytes(7),
+		LastRollingHashUpdateNumber:  8,
+		InitialStateRootHash:         internal.Uint64To32Bytes(1),
+		InitialBlockNumber:           5,
+		FirstRollingHashUpdateNumber: 8,
 	}, {
-		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(9)},
-		InitialBlockTimestamp:  7,
-		FinalStateRootHash:     internal.Uint64To32Bytes(10),
-		FinalBlockNumber:       11,
-		FinalBlockTimestamp:    12,
-		FinalRollingHash:       internal.Uint64To32Bytes(13),
-		FinalRollingHashNumber: 14,
+		L2MessageHashes:              [][32]byte{internal.Uint64To32Bytes(9)},
+		InitialBlockTimestamp:        7,
+		InitialStateRootHash:         internal.Uint64To32Bytes(4),
+		InitialBlockNumber:           6,
+		FirstRollingHashUpdateNumber: 9,
+		FinalStateRootHash:           internal.Uint64To32Bytes(10),
+		FinalBlockNumber:             11,
+		FinalBlockTimestamp:          12,
+		LastRollingHashUpdate:        internal.Uint64To32Bytes(13),
+		LastRollingHashUpdateNumber:  14,
 	}, {
-		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(15)},
-		InitialBlockTimestamp:  13,
-		FinalStateRootHash:     internal.Uint64To32Bytes(16),
-		FinalBlockNumber:       17,
-		FinalBlockTimestamp:    18,
-		FinalRollingHash:       internal.Uint64To32Bytes(19),
-		FinalRollingHashNumber: 20,
+		L2MessageHashes:              [][32]byte{internal.Uint64To32Bytes(15)},
+		InitialBlockTimestamp:        13,
+		InitialBlockNumber:           12,
+		InitialStateRootHash:         internal.Uint64To32Bytes(10),
+		FirstRollingHashUpdateNumber: 15,
+		FinalStateRootHash:           internal.Uint64To32Bytes(16),
+		FinalBlockNumber:             17,
+		FinalBlockTimestamp:          18,
+		LastRollingHashUpdate:        internal.Uint64To32Bytes(19),
+		LastRollingHashUpdateNumber:  20,
 	}, {
-		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(21)},
-		InitialBlockTimestamp:  19,
-		FinalStateRootHash:     internal.Uint64To32Bytes(22),
-		FinalBlockNumber:       23,
-		FinalBlockTimestamp:    24,
-		FinalRollingHash:       internal.Uint64To32Bytes(25),
-		FinalRollingHashNumber: 26,
+		InitialBlockNumber:           18,
+		InitialStateRootHash:         internal.Uint64To32Bytes(16),
+		L2MessageHashes:              [][32]byte{internal.Uint64To32Bytes(21)},
+		InitialBlockTimestamp:        19,
+		FirstRollingHashUpdateNumber: 21,
+		FinalStateRootHash:           internal.Uint64To32Bytes(22),
+		FinalBlockNumber:             23,
+		FinalBlockTimestamp:          24,
+		LastRollingHashUpdate:        internal.Uint64To32Bytes(25),
+		LastRollingHashUpdateNumber:  26,
 	}}
 
 	blobReq0 := blobsubmission.Request{
@@ -163,7 +191,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	}
 
 	blobResp0, err := blobsubmission.CraftResponse(&blobReq0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	blobReq1 := blobsubmission.Request{
 		Eip4844Enabled:      true,
@@ -174,13 +202,14 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	}
 
 	blobResp1, err := blobsubmission.CraftResponse(&blobReq1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes, execReq[2].L2MsgHashes, execReq[3].L2MsgHashes))
+	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MessageHashes, execReq[1].L2MessageHashes, execReq[2].L2MessageHashes, execReq[3].L2MessageHashes))
 
 	req := pi_interconnection.Request{
 		Decompressions: []blobsubmission.Response{*blobResp0, *blobResp1},
 		Executions:     execReq,
+		DictPath:       "../../lib/compressor/compressor_dict.bin",
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp1.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq0.PrevShnarf,
@@ -190,9 +219,9 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			LastFinalizedBlockNumber:                4,
 			FinalBlockNumber:                        uint(execReq[3].FinalBlockNumber),
 			LastFinalizedL1RollingHash:              utils.FmtIntHex32Bytes(7),
-			L1RollingHash:                           utils.HexEncodeToString(execReq[3].FinalRollingHash[:]),
+			L1RollingHash:                           utils.HexEncodeToString(execReq[3].LastRollingHashUpdate[:]),
 			LastFinalizedL1RollingHashMessageNumber: 7,
-			L1RollingHashMessageNumber:              uint(execReq[3].FinalRollingHashNumber),
+			L1RollingHashMessageNumber:              uint(execReq[3].LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
 		},

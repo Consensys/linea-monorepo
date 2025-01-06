@@ -17,7 +17,6 @@ import (
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/exp/constraints"
 )
 
@@ -29,6 +28,16 @@ func AssertEqualIf(api frontend.API, cond, a, b frontend.Variable) {
 	// in r1cs it's more efficient to do api.AssertIsEqual(0, api.Mul(cond, api.Sub(a, b))) but we don't care about that
 	// and the following is better for debugging
 	api.AssertIsEqual(api.Mul(cond, a), api.Mul(cond, b))
+}
+
+// AssertIsLessIf asserts cond ≠ 0 ⇒ (a < b)
+func AssertIsLessIf(api frontend.API, cond, a, b frontend.Variable) {
+	var (
+		condIsNonZero = api.Sub(1, api.IsZero(cond))
+		a_            = api.Mul(condIsNonZero, api.Add(a, 1))
+		b_            = api.Mul(condIsNonZero, b)
+	)
+	api.AssertIsLessOrEqual(a_, b_)
 }
 
 func SliceToTable(api frontend.API, slice []frontend.Variable) *logderivlookup.Table {
@@ -630,24 +639,6 @@ func Differences(api frontend.API, s []frontend.Variable) []frontend.Variable {
 	for i := range s {
 		res[i] = api.Sub(s[i], prev)
 		prev = s[i]
-	}
-	return res
-}
-
-func NewSliceOf32Array[T any](values [][32]T, maxLen int) Var32Slice {
-	if maxLen < len(values) {
-		panic("maxLen too small")
-	}
-	res := Var32Slice{
-		Values: make([][32]frontend.Variable, maxLen),
-		Length: len(values),
-	}
-	for i := range values {
-		utils.Copy(res.Values[i][:], values[i][:])
-	}
-	var zeros [32]byte
-	for i := len(values); i < maxLen; i++ {
-		utils.Copy(res.Values[i][:], zeros[:])
 	}
 	return res
 }

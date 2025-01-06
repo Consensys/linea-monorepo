@@ -3,8 +3,14 @@ import assert from "assert";
 import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
-import { L2MessageService, TokenBridge, LineaRollupV5, LineaRollupV6 } from "../typechain";
-import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
+import { L2MessageService, TokenBridge, LineaRollupV6 } from "../typechain";
+import {
+  PayableOverrides,
+  TypedContractEvent,
+  TypedDeferredTopicFilter,
+  TypedEventLog,
+  TypedContractMethod,
+} from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
 
 export function etherToWei(amount: string): bigint {
@@ -148,7 +154,7 @@ export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag
 }
 
 export async function getEvents<
-  TContract extends LineaRollupV5 | LineaRollupV6 | L2MessageService | TokenBridge,
+  TContract extends LineaRollupV6 | L2MessageService | TokenBridge,
   TEvent extends TypedContractEvent,
 >(
   contract: TContract,
@@ -171,7 +177,7 @@ export async function getEvents<
 }
 
 export async function waitForEvents<
-  TContract extends LineaRollupV5 | LineaRollupV6 | L2MessageService | TokenBridge,
+  TContract extends LineaRollupV6 | L2MessageService | TokenBridge,
   TEvent extends TypedContractEvent,
 >(
   contract: TContract,
@@ -189,6 +195,44 @@ export async function waitForEvents<
   }
 
   return events;
+}
+
+// Currently only handle simple single return types - uint256 | bytesX | string | bool
+export async function pollForContractMethodReturnValue<
+  ExpectedReturnType extends bigint | string | boolean,
+  R extends [ExpectedReturnType],
+>(
+  method: TypedContractMethod<[], R, "view">,
+  expectedReturnValue: ExpectedReturnType,
+  compareFunction: (a: ExpectedReturnType, b: ExpectedReturnType) => boolean = (a, b) => a === b,
+  pollingInterval: number = 500,
+  timeout: number = 2 * 60 * 1000,
+): Promise<boolean> {
+  let isExceedTimeOut = false;
+  setTimeout(() => {
+    isExceedTimeOut = true;
+  }, timeout);
+
+  while (!isExceedTimeOut) {
+    const returnValue = await method();
+    if (compareFunction(returnValue, expectedReturnValue)) return true;
+    await wait(pollingInterval);
+  }
+
+  return false;
+}
+
+// Currently only handle single uint256 return type
+export async function pollForContractMethodReturnValueExceedTarget<
+  ExpectedReturnType extends bigint,
+  R extends [ExpectedReturnType],
+>(
+  method: TypedContractMethod<[], R, "view">,
+  targetReturnValue: ExpectedReturnType,
+  pollingInterval: number = 500,
+  timeout: number = 2 * 60 * 1000,
+): Promise<boolean> {
+  return pollForContractMethodReturnValue(method, targetReturnValue, (a, b) => a >= b, pollingInterval, timeout);
 }
 
 export function getFiles(directory: string, fileRegex: RegExp[]): string[] {
@@ -297,7 +341,7 @@ export function getMessageSentEventFromLogs<T extends BaseContract>(
     });
 }
 
-export const sendMessage = async <T extends LineaRollupV5 | L2MessageService>(
+export const sendMessage = async <T extends LineaRollupV6 | L2MessageService>(
   signer: AbstractSigner,
   contract: T,
   args: SendMessageArgs,

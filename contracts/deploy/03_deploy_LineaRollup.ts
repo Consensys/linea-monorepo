@@ -8,7 +8,7 @@ import {
   tryVerifyContract,
   getDeployedContractAddress,
   tryStoreAddress,
-  validateDeployBranchAndTags,
+  LogContractDeployment,
 } from "../common/helpers";
 import {
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
@@ -20,7 +20,6 @@ import {
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
-  validateDeployBranchAndTags(hre.network.name);
 
   const contractName = "LineaRollup";
   const verifierName = "PlonkVerifier";
@@ -77,15 +76,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       unsafeAllow: ["constructor"],
     },
   );
+
+  await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
-  const txReceipt = await contract.deploymentTransaction()?.wait();
-  if (!txReceipt) {
-    throw "Contract deployment transaction receipt not found.";
-  }
 
-  console.log(`${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber}`);
-
-  await tryStoreAddress(hre.network.name, contractName, contractAddress, txReceipt.hash);
+  await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
 
   await tryVerifyContract(contractAddress);
 };

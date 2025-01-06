@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
@@ -13,7 +14,7 @@ import (
 )
 
 type Witness struct {
-	FuncInp *execution.FunctionalPublicInput
+	FuncInp *public_input.Execution
 	ZkEVM   *zkevm.Witness
 }
 
@@ -139,12 +140,18 @@ func mustProveAndPass(
 		if err != nil {
 			utils.Panic("could not get the traces checksum from the setup manifest: %v", err)
 		}
+
 		if setupCfgChecksum != traces.Checksum() {
+			// This check is failing on prod but works locally.
+			// @alex: since this is a setup-related constraint, it would likely be
+			// more interesting to directly include that information in the setup
+			// instead of the config. That way we are guaranteed to not pass the
+			// wrong value at runtime.
 			utils.Panic("traces checksum in the setup manifest does not match the one in the config")
 		}
 
 		// TODO: implements the collection of the functional inputs from the prover response
-		return execution.MakeProof(setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
+		return execution.MakeProof(traces, setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
 
 	case config.ProverModeBench:
 
