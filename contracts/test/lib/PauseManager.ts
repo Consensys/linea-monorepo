@@ -104,32 +104,50 @@ describe("PauseManager", () => {
 
     it("should fail updateUnpauseTypeRole if roles are not different", async () => {
       const updateCall = pauseManager.connect(pauseManagerAccount).updatePauseTypeRole(GENERAL_PAUSE_TYPE, PAUSE_ALL_ROLE);
-      await expectRevertWithCustomError(pauseManager, updateCall,"RolesNotDifferent");
+      await expectRevertWithCustomError(pauseManager, updateCall, "RolesNotDifferent");
     });
 
     it("should fail updateUnpauseTypeRole if roles are not different", async () => {
       const updateCall = pauseManager.connect(pauseManagerAccount).updateUnpauseTypeRole(GENERAL_PAUSE_TYPE, UNPAUSE_ALL_ROLE);
-      await expectRevertWithCustomError(pauseManager, updateCall,"RolesNotDifferent");
+      await expectRevertWithCustomError(pauseManager, updateCall, "RolesNotDifferent");
     });
 
     it("should update pause type role with pausing working", async () => {
       const updateCall = pauseManager.connect(pauseManagerAccount).updatePauseTypeRole(GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE);
-      await expectEvent(pauseManager,updateCall,"PauseTypeRoleUpdated",[GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE, PAUSE_ALL_ROLE ])
+      await expectEvent(pauseManager, updateCall, "PauseTypeRoleUpdated", [GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE, PAUSE_ALL_ROLE])
 
       await pauseManager.connect(defaultAdmin).pauseByType(GENERAL_PAUSE_TYPE);
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
     });
 
+    it("should fail to pause with old role", async () => {
+      const updateCall = pauseManager.connect(pauseManagerAccount).updatePauseTypeRole(GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE);
+      await expectEvent(pauseManager, updateCall, "PauseTypeRoleUpdated", [GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE, PAUSE_ALL_ROLE])
+
+      await expectRevertWithReason(pauseManager.connect(pauseManagerAccount).pauseByType(GENERAL_PAUSE_TYPE), buildAccessErrorMessage(pauseManagerAccount, DEFAULT_ADMIN_ROLE));
+    });
+
     it("should update unpause type role with unpausing working", async () => {
       const updateCall = pauseManager.connect(pauseManagerAccount).updateUnpauseTypeRole(GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE);
-      await expectEvent(pauseManager,updateCall,"UnPauseTypeRoleUpdated",[GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE, UNPAUSE_ALL_ROLE ])
-      
+      await expectEvent(pauseManager, updateCall, "UnPauseTypeRoleUpdated", [GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE, UNPAUSE_ALL_ROLE])
+
       // pause with non-modified pausing account
       await pauseManager.connect(pauseManagerAccount).pauseByType(GENERAL_PAUSE_TYPE);
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
-      
+
       await pauseManager.connect(defaultAdmin).unPauseByType(GENERAL_PAUSE_TYPE);
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+    });
+
+    it("should fail to unpause with old role", async () => {
+      const updateCall = pauseManager.connect(pauseManagerAccount).updateUnpauseTypeRole(GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE);
+      await expectEvent(pauseManager, updateCall, "UnPauseTypeRoleUpdated", [GENERAL_PAUSE_TYPE, DEFAULT_ADMIN_ROLE, UNPAUSE_ALL_ROLE])
+
+      // pause with non-modified pausing account
+      await pauseManager.connect(pauseManagerAccount).pauseByType(GENERAL_PAUSE_TYPE);
+      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+
+      await expectRevertWithReason(pauseManager.connect(pauseManagerAccount).unPauseByType(GENERAL_PAUSE_TYPE), buildAccessErrorMessage(pauseManagerAccount, DEFAULT_ADMIN_ROLE));
     });
   });
 
