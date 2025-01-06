@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -45,6 +46,7 @@ func CompileLogDerivSum(comp *wizard.CompiledIOP) {
 			})
 			va.ZOpenings = append(va.ZOpenings, zC.ZOpenings...)
 		}
+		va.LogDeriveSumID = qName
 		// verifer step
 		lastRound := comp.NumRounds() - 1
 		comp.RegisterVerifierAction(lastRound, &va)
@@ -57,8 +59,8 @@ type FinalEvaluationCheck struct {
 	Name string
 	// ZOpenings lists all the openings of all the zCtx
 	ZOpenings []query.LocalOpening
-	// the expected sum
-	Sum field.Element
+	// query ID
+	LogDeriveSumID ifaces.QueryID
 }
 
 // Run implements the [wizard.VerifierAction]
@@ -72,7 +74,8 @@ func (f *FinalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
 		zSum.Add(&zSum, &temp)
 	}
 
-	if zSum != f.Sum {
+	claimedSum := run.GetLogDerivSumParams(f.LogDeriveSumID).Sum
+	if zSum != claimedSum {
 		return fmt.Errorf("log-derivate lookup, the final evaluation check failed for %v,", f.Name)
 	}
 
@@ -82,13 +85,14 @@ func (f *FinalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
 // RunGnark implements the [wizard.VerifierAction]
 func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
 
+	claimedSum := run.GetLogDerivSumParams(f.LogDeriveSumID)
 	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried
 	// in the protocol via the
-	zSum := frontend.Variable(f.Sum)
+	zSum := frontend.Variable(field.Zero())
 	for k := range f.ZOpenings {
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
 		zSum = api.Add(zSum, temp)
 	}
 
-	api.AssertIsEqual(zSum, 0)
+	api.AssertIsEqual(zSum, claimedSum)
 }
