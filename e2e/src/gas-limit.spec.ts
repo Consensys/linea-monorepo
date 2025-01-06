@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { pollForContractMethodReturnValueExceedTarget, wait } from "./common/utils";
+import { pollForContractMethodReturnValueExceedTarget } from "./common/utils";
 import { config } from "./config/tests-config";
 import { ContractTransactionReceipt, Wallet } from "ethers";
 
@@ -53,7 +53,7 @@ describe("Gas limit test suite", () => {
   });
 
   // One-time test to test block gas limit increase from 61M -> 2B
-  it.skip("Should successfully reach the target gas limit, and finalize the corresponding transaction", async () => {
+  it.concurrent("Should successfully reach the target gas limit, and finalize the corresponding transaction", async () => {
     const targetBlockGasLimit = 2_000_000_000n;
     let isTargetBlockGasLimitReached = false;
     let blockNumberToCheckFinalization = 0;
@@ -72,7 +72,7 @@ describe("Gas limit test suite", () => {
         // Ok to type assertion here, because txReceipt won't be null if it passed above assertion.
         blockNumberToCheckFinalization = <number>txReceipt?.blockNumber;
       }
-      await wait(1000);
+      //await wait(1000);
     }
 
     console.log(`Waiting for ${blockNumberToCheckFinalization} to be finalized...`);

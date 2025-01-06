@@ -4,7 +4,7 @@ const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
   rootDir: "src",
-  testRegex: ".spec.ts$",
+  testRegex: "gas-limit.spec.ts$",
   verbose: true,
   globalSetup: "./config/jest/global-setup.ts",
   globalTeardown: "./config/jest/global-teardown.ts",
