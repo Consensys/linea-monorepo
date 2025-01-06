@@ -17,7 +17,7 @@ function getActiveTestName(): string | undefined {
   return currentConcurrentTestName();
 }
 
-function appendTestName(level: LogLevel, args: unknown[]): Logger {
+function prefixWithTestName(level: LogLevel, args: unknown[]): Logger {
   const testName = getActiveTestName();
 
   if (!testName) {
@@ -41,22 +41,22 @@ export function createTestLogger(): Logger {
   return {
     ...baseLogger,
     error(...args: Parameters<LeveledLogMethod>) {
-      return appendTestName("error", args);
+      return prefixWithTestName("error", args);
     },
     warn(...args: Parameters<LeveledLogMethod>) {
-      return appendTestName("warn", args);
+      return prefixWithTestName("warn", args);
     },
     info(...args: Parameters<LeveledLogMethod>) {
-      return appendTestName("info", args);
+      return prefixWithTestName("info", args);
     },
     verbose(...args: Parameters<LeveledLogMethod>) {
-      return appendTestName("verbose", args);
+      return prefixWithTestName("verbose", args);
     },
     debug(...args: Parameters<LeveledLogMethod>) {
-      return appendTestName("debug", args);
+      return prefixWithTestName("debug", args);
     },
     silly(...args: Parameters<LeveledLogMethod>) {
-      return appendTestName("silly", args);
+      return prefixWithTestName("silly", args);
     },
   } as Logger;
 }
