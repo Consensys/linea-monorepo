@@ -152,9 +152,8 @@ func (c *WizardVerifierCircuit) Verify(api frontend.API) {
 	c.HasherFactory = gkrmimc.NewHasherFactory(api)
 	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
 	c.FS.Update(c.Spec.fiatShamirSetup)
-	c.generateAllRandomCoins(api)
-
 	c.FiatShamirHistory = make([][2][]frontend.Variable, c.Spec.NumRounds())
+	c.generateAllRandomCoins(api)
 
 	for _, roundSteps := range c.Spec.SubVerifiers.Inner() {
 		for _, step := range roundSteps {
