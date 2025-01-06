@@ -100,7 +100,7 @@ function main() {
             process.exit(1);
         }
         const changedFileExtensions = getChangedFileExtensions(folder);
-        executeCommands(folder, changedFileExtensions, FILE_EXTENSION_LINTING_COMMAND);
+        executeCommand(folder, changedFileExtensions, FILE_EXTENSION_LINTING_COMMAND);
         executeCommand(folder, changedFileExtensions, FILE_EXTENSION_DOCUMENTATION_UPDATING_COMMAND);
     }
 
