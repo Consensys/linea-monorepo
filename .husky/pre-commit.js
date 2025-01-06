@@ -186,7 +186,7 @@ function getChangedFileExtensions(_folder) {
 }
 
 /**
- * Execute commands based on file extensions
+ * Execute command based on file extension
  * @param {FOLDER, FILE_EXTENSION[], FILE_EXTENSION_LINTING_COMMAND | FILE_EXTENSION_DOCUMENTATION_UPDATING_COMMAND}
  */
 function executeCommand(_folder, _changedFileExtensions, _command) {
