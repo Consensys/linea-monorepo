@@ -36,7 +36,7 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		zCatalog = map[[2]int]*ZCtx{}
 		zEntries = [][2]int{}
 		// verifier actions
-		va = finalEvaluationCheck{}
+		va = FinalEvaluationCheck{}
 	)
 
 	// Skip the compilation phase if no lookup constraint is being used. Otherwise
@@ -99,11 +99,11 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 	for _, entry := range zEntries {
 		zC := zCatalog[entry]
 		// z-packing compile
-		zC.compile(comp)
+		zC.Compile(comp)
 		// entry[0]:round, entry[1]: size
 		// the round that Gamma was registered.
 		round := entry[0]
-		proverActions[round].pushZAssignment(zAssignmentTask(*zC))
+		proverActions[round].pushZAssignment(ZAssignmentTask(*zC))
 		va.ZOpenings = append(va.ZOpenings, zC.ZOpenings...)
 		va.Name = zC.Name
 	}
