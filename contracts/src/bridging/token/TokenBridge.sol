@@ -19,7 +19,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { StorageFiller39 } from "./utils/StorageFiller39.sol";
 import { PermissionsManager } from "../../security/access/PermissionsManager.sol";
 
-import { Utils } from "../../libraries/Utils.sol";
+import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
 /**
  * @title Linea Canonical Token Bridge
  * @notice Contract to manage cross-chain ERC20 bridging.
@@ -35,7 +35,7 @@ contract TokenBridge is
   PermissionsManager,
   StorageFiller39
 {
-  using Utils for *;
+  using EfficientLeftRightKeccak for *;
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
   /// @dev This is the ABI version and not the reinitialize version.
@@ -444,7 +444,7 @@ contract TokenBridge is
     uint256 _chainId
   ) internal returns (address bridgedTokenAddress) {
     bridgedTokenAddress = address(
-      new BeaconProxy{ salt: Utils._efficientKeccak(_chainId, _nativeToken) }(tokenBeacon, "")
+      new BeaconProxy{ salt: EfficientLeftRightKeccak._efficientKeccak(_chainId, _nativeToken) }(tokenBeacon, "")
     );
 
     (string memory name, string memory symbol, uint8 decimals) = abi.decode(_tokenMetadata, (string, string, uint8));

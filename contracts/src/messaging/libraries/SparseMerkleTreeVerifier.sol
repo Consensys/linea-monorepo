@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.26;
 
-import { Utils } from "../../libraries/Utils.sol";
+import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
 
 /**
  * @title Library to verify sparse merkle proofs and to get the leaf hash value
@@ -9,7 +9,7 @@ import { Utils } from "../../libraries/Utils.sol";
  * @custom:security-contact security-report@linea.build
  */
 library SparseMerkleTreeVerifier {
-  using Utils for *;
+  using EfficientLeftRightKeccak for *;
 
   /**
    * @dev Value doesn't fit in a uint of `bits` size.
@@ -47,9 +47,9 @@ library SparseMerkleTreeVerifier {
 
     for (uint256 height; height < _proof.length; ++height) {
       if (((_leafIndex >> height) & 1) == 1) {
-        node = Utils._efficientKeccak(_proof[height], node);
+        node = EfficientLeftRightKeccak._efficientKeccak(_proof[height], node);
       } else {
-        node = Utils._efficientKeccak(node, _proof[height]);
+        node = EfficientLeftRightKeccak._efficientKeccak(node, _proof[height]);
       }
     }
     proofIsValid = node == _root;

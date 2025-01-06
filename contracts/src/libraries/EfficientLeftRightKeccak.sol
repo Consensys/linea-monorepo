@@ -6,7 +6,7 @@ pragma solidity >=0.8.19 <=0.8.26;
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-library Utils {
+library EfficientLeftRightKeccak {
   /**
    * @notice Performs a gas optimized keccak hash for two bytes32 values.
    * @param _left Left value.

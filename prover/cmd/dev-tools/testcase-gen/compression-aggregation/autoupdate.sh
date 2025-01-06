@@ -39,14 +39,14 @@ rm -rf .samples-simple-eip4844 .samples-multiproof-eip4844 .samples-test-eip4844
 
 sed -i.bak 's/pragma solidity \0.8.24;/pragma solidity 0.8.26;/g' ../contracts/test/testData/compressedData/Verifier1.sol
 
-cp ../contracts/test/testData/compressedData/Verifier1.sol ../contracts/contracts/verifiers/PlonkVerifierForDataAggregation.sol
-sed -i.bak 's/contract PlonkVerifier /contract PlonkVerifierForDataAggregation /g' ../contracts/contracts/verifiers/PlonkVerifierForDataAggregation.sol
+cp ../contracts/test/testData/compressedData/Verifier1.sol ../contracts/src/verifiers/PlonkVerifierForDataAggregation.sol
+sed -i.bak 's/contract PlonkVerifier /contract PlonkVerifierForDataAggregation /g' ../contracts/src/verifiers/PlonkVerifierForDataAggregation.sol
 
-cp ../contracts/test/testData/compressedData/Verifier1.sol ../contracts/contracts/verifiers/test/TestPlonkVerifierForDataAggregation.sol
-sed -i.bak 's/contract PlonkVerifier /contract TestPlonkVerifierForDataAggregation /g' ../contracts/contracts/verifiers/test/TestPlonkVerifierForDataAggregation.sol
+cp ../contracts/test/testData/compressedData/Verifier1.sol ../contracts/src/_testing/unit/TestPlonkVerifierForDataAggregation.sol
+sed -i.bak 's/contract PlonkVerifier /contract TestPlonkVerifierForDataAggregation /g' ../contracts/src/_testing/unit/TestPlonkVerifierForDataAggregation.sol
 
-rm  ../contracts/contracts/verifiers/test/TestPlonkVerifierForDataAggregation.sol.bak
-rm  ../contracts/contracts/verifiers/PlonkVerifierForDataAggregation.sol.bak
+rm  ../contracts/src/_testing/unit/TestPlonkVerifierForDataAggregation.sol.bak
+rm  ../contracts/src/verifiers/PlonkVerifierForDataAggregation.sol.bak
 
 # Remove this artefact from the code. This litters the contracts tests
 rm ../contracts/test/testData/**/Verifier1.*

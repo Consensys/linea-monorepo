@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L2MessageManagerV1 } from "./v1/L2MessageManagerV1.sol";
 import { IL2MessageManager } from "./interfaces/IL2MessageManager.sol";
-import { Utils } from "../../libraries/Utils.sol";
+import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
 
 /**
  * @title Contract to manage cross-chain message hashes storage and statuses on L2.
@@ -12,7 +12,7 @@ import { Utils } from "../../libraries/Utils.sol";
  * @custom:security-contact security-report@linea.build
  */
 abstract contract L2MessageManager is AccessControlUpgradeable, IL2MessageManager, L2MessageManagerV1 {
-  using Utils for *;
+  using EfficientLeftRightKeccak for *;
 
   /// @notice The role required to anchor L1 to L2 message hashes.
   bytes32 public constant L1_L2_MESSAGE_SETTER_ROLE = keccak256("L1_L2_MESSAGE_SETTER_ROLE");
@@ -70,7 +70,7 @@ abstract contract L2MessageManager is AccessControlUpgradeable, IL2MessageManage
       if (inboxL1L2MessageStatus[messageHash] == INBOX_STATUS_UNKNOWN) {
         inboxL1L2MessageStatus[messageHash] = INBOX_STATUS_RECEIVED;
 
-        rollingHash = Utils._efficientKeccak(rollingHash, messageHash);
+        rollingHash = EfficientLeftRightKeccak._efficientKeccak(rollingHash, messageHash);
 
         ++currentL1MessageNumber;
       }

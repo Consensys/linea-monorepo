@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import { BitMaps } from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 import { L1MessageManagerV1 } from "./v1/L1MessageManagerV1.sol";
 import { IL1MessageManager } from "./interfaces/IL1MessageManager.sol";
-import { Utils } from "../../libraries/Utils.sol";
+import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
 
 /**
  * @title Contract to manage cross-chain message rolling hash computation and storage on L1.
@@ -13,7 +13,7 @@ import { Utils } from "../../libraries/Utils.sol";
  */
 abstract contract L1MessageManager is L1MessageManagerV1, IL1MessageManager {
   using BitMaps for BitMaps.BitMap;
-  using Utils for *;
+  using EfficientLeftRightKeccak for *;
 
   /// @notice Contains the L1 to L2 messaging rolling hashes mapped to message number computed on L1.
   mapping(uint256 messageNumber => bytes32 rollingHash) public rollingHashes;
@@ -35,7 +35,7 @@ abstract contract L1MessageManager is L1MessageManagerV1, IL1MessageManager {
    */
   function _addRollingHash(uint256 _messageNumber, bytes32 _messageHash) internal {
     unchecked {
-      bytes32 newRollingHash = Utils._efficientKeccak(rollingHashes[_messageNumber - 1], _messageHash);
+      bytes32 newRollingHash = EfficientLeftRightKeccak._efficientKeccak(rollingHashes[_messageNumber - 1], _messageHash);
 
       rollingHashes[_messageNumber] = newRollingHash;
       emit RollingHashUpdated(_messageNumber, newRollingHash, _messageHash);

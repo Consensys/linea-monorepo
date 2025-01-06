@@ -2,11 +2,11 @@
 pragma solidity 0.8.26;
 
 import { SparseMerkleTreeVerifier } from "../../messaging/libraries/SparseMerkleTreeVerifier.sol";
-import { Utils } from "../../libraries/Utils.sol";
+import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
 
 contract TestSparseMerkleTreeVerifier {
   using SparseMerkleTreeVerifier for *;
-  using Utils for *;
+  using EfficientLeftRightKeccak for *;
 
   function verifyMerkleProof(
     bytes32 _leafHash,
@@ -18,7 +18,7 @@ contract TestSparseMerkleTreeVerifier {
   }
 
   function efficientKeccak(bytes32 _left, bytes32 _right) external pure returns (bytes32 value) {
-    return Utils._efficientKeccak(_left, _right);
+    return EfficientLeftRightKeccak._efficientKeccak(_left, _right);
   }
 
   function testSafeCastToUint32(uint256 _value) external pure returns (uint32) {

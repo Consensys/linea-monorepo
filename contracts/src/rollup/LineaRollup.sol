@@ -7,14 +7,14 @@ import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 
-import { Utils } from "../libraries/Utils.sol";
+import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, PermissionsManager, ILineaRollup {
-  using Utils for *;
+  using EfficientLeftRightKeccak for *;
 
   /// @notice This is the ABI version and not the reinitialize version.
   string public constant CONTRACT_VERSION = "6.0";
@@ -286,7 +286,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
 
       bytes32 snarkHash = blobSubmission.snarkHash;
 
-      currentDataEvaluationPoint = Utils._efficientKeccak(snarkHash, currentDataHash);
+      currentDataEvaluationPoint = EfficientLeftRightKeccak._efficientKeccak(snarkHash, currentDataHash);
 
       _verifyPointEvaluation(
         currentDataHash,
@@ -341,7 +341,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
 
     bytes32 currentDataHash = keccak256(_submission.compressedData);
 
-    bytes32 dataEvaluationPoint = Utils._efficientKeccak(_submission.snarkHash, currentDataHash);
+    bytes32 dataEvaluationPoint = EfficientLeftRightKeccak._efficientKeccak(_submission.snarkHash, currentDataHash);
 
     bytes32 computedShnarf = _computeShnarf(
       _parentShnarf,
