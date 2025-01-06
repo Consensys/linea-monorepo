@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
-	modulediscoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
+	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -51,11 +51,11 @@ func TestDistributedLogDerivSumExpr(t *testing.T) {
 	moduleComp1 := wizard.Compile(define1)
 
 	// Initialise the period separating module discoverer
-	disc := modulediscoverer.PeriodSeperatingModuleDiscoverer{}
+	disc := &md.PeriodSeperatingModuleDiscoverer{}
 	disc.Analyze(initialComp)
 
 	// distribute the shares to modules.
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", &disc)
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", &disc)
+	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc)
+	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc)
 
 }

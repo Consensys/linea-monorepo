@@ -1,7 +1,7 @@
 package inclusion
 
 import (
-	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -17,9 +17,9 @@ type DistributionInputs struct {
 	ModuleComp  *wizard.CompiledIOP
 	InitialComp *wizard.CompiledIOP
 	// module Discoverer used to detect the relevant part of the query to the module
-	Disc md.ModuleDiscoverer
+	Disc distributed.ModuleDiscoverer
 	// Name of the module
-	ModuleName md.ModuleName
+	ModuleName distributed.ModuleName
 	// query is supposed to be the global LogDerivativeSum.
 	QueryID ifaces.QueryID
 }
@@ -94,7 +94,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 
 // DistributeLogDerivativeSum extract the LogDerivativeSum query that is subject to the distribution.
 // It ignores the inclusion queries in the module compiledIOP and replaces them with its share of LogDerivativeSum.
-func DistributeLogDerivativeSum(initialComp, moduleComp *wizard.CompiledIOP, moduleName md.ModuleName, disc md.ModuleDiscoverer) {
+func DistributeLogDerivativeSum(initialComp, moduleComp *wizard.CompiledIOP, moduleName distributed.ModuleName, disc distributed.ModuleDiscoverer) {
 
 	var queryID ifaces.QueryID
 	for _, qName := range initialComp.QueriesParams.AllUnignoredKeys() {
