@@ -2,6 +2,7 @@ package smartvectors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -54,12 +55,26 @@ func (r *Rotated) Len() int {
 }
 
 // Returns a particular element of the vector
+func (r *Rotated) GetBase(n int) (field.Element, error) {
+	return r.v.GetBase(utils.PositiveMod(n+r.offset, r.Len()))
+}
+
+// Returns a particular element of the vector
+func (r *Rotated) GetExt(n int) fext.Element {
+	temp, _ := r.v.GetBase(utils.PositiveMod(n+r.offset, r.Len()))
+	return *new(fext.Element).SetFromBase(&temp)
+}
+
 func (r *Rotated) Get(n int) field.Element {
-	return r.v.Get(utils.PositiveMod(n+r.offset, r.Len()))
+	res, err := r.GetBase(n)
+	if err != nil {
+		panic(err)
+	}
+	return res
 }
 
 // Returns a particular element. The subvector is taken at indices
-// [start, stop). (stop being excluded from the span)
+// [Start, Stop). (Stop being excluded from the span)
 func (r *Rotated) SubVector(start, stop int) SmartVector {
 
 	if stop+r.offset < len(r.v.Regular) && start+r.offset > 0 {
@@ -73,16 +88,16 @@ func (r *Rotated) SubVector(start, stop int) SmartVector {
 
 	// checking
 	if stop <= start {
-		utils.Panic("the start %v >= stop %v", start, stop)
+		utils.Panic("the Start %v >= Stop %v", start, stop)
 	}
 
 	// boundary checks
 	if start < 0 {
-		utils.Panic("the start value was negative %v", start)
+		utils.Panic("the Start value was negative %v", start)
 	}
 
 	if stop > size {
-		utils.Panic("the stop is OOO : %v (the length is %v)", stop, size)
+		utils.Panic("the Stop is OOO : %v (the length is %v)", stop, size)
 	}
 
 	// normalize the offset to something positive [0: size)
@@ -130,6 +145,14 @@ func (r *Rotated) WriteInSlice(s []field.Element) {
 	res.WriteInSlice(s)
 }
 
+func (r *Rotated) WriteInSliceExt(s []fext.Element) {
+	temp := rotatedAsRegular(r)
+	for i := 0; i < temp.Len(); i++ {
+		elem, _ := temp.GetBase(i)
+		s[i].SetFromBase(&elem)
+	}
+}
+
 func (r *Rotated) Pretty() string {
 	return fmt.Sprintf("Rotated[%v, %v]", r.v.Pretty(), r.offset)
 }
@@ -141,7 +164,24 @@ func rotatedAsRegular(r *Rotated) *Regular {
 }
 
 func (r *Rotated) IntoRegVecSaveAlloc() []field.Element {
-	return *rotatedAsRegular(r)
+	res, err := r.IntoRegVecSaveAllocBase()
+	if err != nil {
+		panic(conversionError)
+	}
+	return res
+}
+
+func (r *Rotated) IntoRegVecSaveAllocBase() ([]field.Element, error) {
+	return *rotatedAsRegular(r), nil
+}
+
+func (r *Rotated) IntoRegVecSaveAllocExt() []fext.Element {
+	temp := *rotatedAsRegular(r)
+	res := make([]fext.Element, temp.Len())
+	for i := 0; i < temp.Len(); i++ {
+		res[i].SetFromBase(&temp[i])
+	}
+	return res
 }
 
 // SoftRotate converts v into a [SmartVector] representing the same
