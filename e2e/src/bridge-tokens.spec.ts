@@ -24,12 +24,12 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     const l1Token = config.getL1TokenContract();
     const l1Provider = config.getL1Provider();
 
-    logger.info("Minting ERC20 tokens to L1 Account");
+    logger.debug("Minting ERC20 tokens to L1 Account");
 
     let { maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData();
     let nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
 
-    logger.info("Minting and approving tokens to L1 TokenBridge");
+    logger.debug("Minting and approving tokens to L1 TokenBridge");
 
     await Promise.all([
       (
@@ -54,7 +54,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     const allowanceL1Account = await l1Token.allowance(l1Account.address, l1TokenBridgeAddress);
     logger.info(`Current allowance of L1 account to L1 TokenBridge is ${allowanceL1Account.toString()}`);
 
-    logger.info("Calling the bridgeToken function on the L1 TokenBridge contract");
+    logger.debug("Calling the bridgeToken function on the L1 TokenBridge contract");
 
     ({ maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData());
     nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
@@ -88,7 +88,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     const messageNumber = messageSentEvent[messageSentEventMessageNumberIndex];
     const messageHash = messageSentEvent[messageSentEventMessageHashIndex];
 
-    logger.info(`Message sent on L1 messageHash=${messageHash}`);
+    logger.info(`Message sent on L1. messageHash=${messageHash}`);
 
     logger.info("Waiting for anchoring...");
 
@@ -166,7 +166,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     logger.info(`Current allowance of L2 account to L2 TokenBridge is ${allowanceL2Account.toString()}`);
     logger.info(`Current balance of  L2 account is ${await l2Token.balanceOf(l2Account)}`);
 
-    logger.info("Calling the bridgeToken function on the L2 TokenBridge contract");
+    logger.debug("Calling the bridgeToken function on the L2 TokenBridge contract");
 
     nonce = await l2Provider.getTransactionCount(l2Account.address, "pending");
 

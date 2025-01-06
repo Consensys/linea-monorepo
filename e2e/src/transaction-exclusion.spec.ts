@@ -34,7 +34,7 @@ describe("Transaction exclusion test suite", () => {
       }
 
       expect(rejectedTxHash).toBeDefined();
-      logger.info(`Transaction rejected as expected (RPC). transactionHash=${rejectedTxHash}`);
+      logger.debug(`Transaction rejected as expected (RPC). transactionHash=${rejectedTxHash}`);
 
       let getResponse;
       do {
@@ -60,7 +60,7 @@ describe("Transaction exclusion test suite", () => {
     // This shall be rejected by sequencer due to traces module limit overflow
     const tx = await testContract!.connect(l2AccountLocal).testAddmod(13000, 31);
     const rejectedTxHash = tx.hash;
-    logger.info(`Transaction rejected as expected (SEQUENCER). transactionHash=${rejectedTxHash}`);
+    logger.debug(`Transaction rejected as expected (SEQUENCER). transactionHash=${rejectedTxHash}`);
 
     let getResponse;
     do {
