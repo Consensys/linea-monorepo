@@ -13,8 +13,6 @@ dependencies {
   api("org.hyperledger.besu.internal:core:${libs.versions.besu.get()}") {
     transitive = false
   }
-  api "io.tmio:tuweni-bytes:${libs.versions.tuweni.get()}"
-  api "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
 
   api("org.hyperledger.besu.internal:algorithms:${libs.versions.besu.get()}") {
     transitive = false
