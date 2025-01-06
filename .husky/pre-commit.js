@@ -189,7 +189,7 @@ function getChangedFileExtensions(_folder) {
  * Execute commands based on file extensions
  * @param {FOLDER, FILE_EXTENSION[], FILE_EXTENSION_LINTING_COMMAND | FILE_EXTENSION_DOCUMENTATION_UPDATING_COMMAND}
  */
-function executeCommands(_folder, _changedFileExtensions, _command) {
+function executeCommand(_folder, _changedFileExtensions, _command) {
     for (const fileExtension of _changedFileExtensions) {
         const path = FOLDER_PATH[_folder];
         const cmd = _command[fileExtension];
