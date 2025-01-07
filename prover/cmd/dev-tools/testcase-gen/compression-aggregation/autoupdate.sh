@@ -42,10 +42,10 @@ sed -i.bak 's/pragma solidity \0.8.24;/pragma solidity 0.8.26;/g' ../contracts/t
 cp ../contracts/test/hardhat/_testData/compressedData/Verifier1.sol ../contracts/src/verifiers/PlonkVerifierForDataAggregation.sol
 sed -i.bak 's/contract PlonkVerifier /contract PlonkVerifierForDataAggregation /g' ../contracts/src/verifiers/PlonkVerifierForDataAggregation.sol
 
-cp ../contracts/test/hardhat/_testData/compressedData/Verifier1.sol ../contracts/src/_testing/unit/TestPlonkVerifierForDataAggregation.sol
-sed -i.bak 's/contract PlonkVerifier /contract TestPlonkVerifierForDataAggregation /g' ../contracts/src/_testing/unit/TestPlonkVerifierForDataAggregation.sol
+cp ../contracts/test/hardhat/_testData/compressedData/Verifier1.sol ../contracts/src/_testing/unit/verifiers/TestPlonkVerifierForDataAggregation.sol
+sed -i.bak 's/contract PlonkVerifier /contract TestPlonkVerifierForDataAggregation /g' ../contracts/src/_testing/unit/verifiers/TestPlonkVerifierForDataAggregation.sol
 
-rm  ../contracts/src/_testing/unit/TestPlonkVerifierForDataAggregation.sol.bak
+rm  ../contracts/src/_testing/unit/verifiers/TestPlonkVerifierForDataAggregation.sol.bak
 rm  ../contracts/src/verifiers/PlonkVerifierForDataAggregation.sol.bak
 
 # Remove this artefact from the code. This litters the contracts tests
