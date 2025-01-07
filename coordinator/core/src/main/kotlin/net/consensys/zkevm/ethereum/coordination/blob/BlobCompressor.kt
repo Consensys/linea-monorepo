@@ -88,12 +88,14 @@ class GoBackedBlobCompressor private constructor(
   private val compressionRatioHistogram = metricsFacade.createHistogram(
     category = LineaMetricsCategory.BLOB,
     name = "block.compression.ratio",
-    description = "Block compression ratio measured in [0.0,1.0]"
+    description = "Block compression ratio measured in [0.0,1.0]",
+    isRatio = true
   )
   private val utilizationRatioHistogram = metricsFacade.createHistogram(
     category = LineaMetricsCategory.BLOB,
     name = "data.utilization.ratio",
-    description = "Data utilization ratio of a blob measured in [0.0,1.0]"
+    description = "Data utilization ratio of a blob measured in [0.0,1.0]",
+    isRatio = true
   )
 
   private val log = LogManager.getLogger(GoBackedBlobCompressor::class.java)

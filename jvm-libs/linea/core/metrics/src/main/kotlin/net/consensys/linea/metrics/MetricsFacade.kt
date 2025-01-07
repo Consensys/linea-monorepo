@@ -56,6 +56,7 @@ interface MetricsFacade {
     name: String,
     description: String,
     tags: List<Tag> = emptyList(),
+    isRatio: Boolean = false,
     baseUnit: String? = null
   ): Histogram
 

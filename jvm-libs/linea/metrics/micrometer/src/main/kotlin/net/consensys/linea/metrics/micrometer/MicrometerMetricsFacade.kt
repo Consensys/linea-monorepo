@@ -91,6 +91,7 @@ class MicrometerMetricsFacade(
     name: String,
     description: String,
     tags: List<Tag>,
+    isRatio: Boolean,
     baseUnit: String?
   ): Histogram {
     if (category != null) requireValidMicrometerName(category.toString())
@@ -106,6 +107,10 @@ class MicrometerMetricsFacade(
     }
     distributionSummaryBuilder.description(description)
     distributionSummaryBuilder.baseUnit(baseUnit)
+    if (isRatio) {
+      distributionSummaryBuilder.scale(100.0)
+      distributionSummaryBuilder.maximumExpectedValue(100.0)
+    }
     return MicrometerHistogramAdapter(distributionSummaryBuilder.register(registry))
   }
 
