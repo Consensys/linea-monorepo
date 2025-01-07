@@ -327,9 +327,9 @@ func (c *WizardVerifierCircuit) GetLocalPointEvalParams(name ifaces.QueryID) que
 // GetLogDerivSumParams returns the parameters for the requested
 // [query.LogDerivativeSum] query. Its work mirrors the function
 // [VerifierRuntime.GetLogDerivSumParams]
-func (c *WizardVerifierCircuit) GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLocalOpeningParams {
-	qID := c.localOpeningIDs.MustGet(name)
-	return c.LocalOpeningParams[qID]
+func (c *WizardVerifierCircuit) GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams {
+	qID := c.logDerivSumIDs.MustGet(name)
+	return c.LogDerivSumParams[qID]
 }
 
 // GetColumns returns the gnark assignment of a column in a gnark circuit. It

@@ -25,7 +25,7 @@ type DistributionInputs struct {
 }
 
 // GetShareOfLogDerivativeSum extracts the share of the given modules from the given LogDerivativeSum query.
-// It insert a new LogDerivativeSum for the extracted share.
+// It inserts a new LogDerivativeSum for the extracted share.
 func GetShareOfLogDerivativeSum(in DistributionInputs) {
 	var (
 		initialComp = in.InitialComp

@@ -32,7 +32,7 @@ type proverTaskAtRound struct {
 
 	// ZAssignmentTasks lists all the tasks consisting of assigning the
 	// columns SigmaS and SigmaT for the given round.
-	ZAssignmentTasks []zAssignmentTask
+	ZAssignmentTasks []ZAssignmentTask
 }
 
 // Run implements the [wizard.ProverAction interface]. The tasks will spawn
@@ -94,7 +94,7 @@ func (p proverTaskAtRound) Run(run *wizard.ProverRuntime) {
 				wg.Done()
 			}()
 
-			p.ZAssignmentTasks[i].run(run)
+			p.ZAssignmentTasks[i].Run(run)
 		}(i)
 	}
 
@@ -111,7 +111,7 @@ func (p *proverTaskAtRound) pushMAssignment(m MAssignmentTask) {
 }
 
 // pushZAssignment appends an [sigmaAssignmentTask] to the list of tasks
-func (p *proverTaskAtRound) pushZAssignment(s zAssignmentTask) {
+func (p *proverTaskAtRound) pushZAssignment(s ZAssignmentTask) {
 	p.ZAssignmentTasks = append(p.ZAssignmentTasks, s)
 }
 
@@ -298,12 +298,12 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 }
 
-// zAssignmentTask represents a prover task of assignming the columns
+// ZAssignmentTask represents a prover task of assignming the columns
 // SigmaS and SigmaT for a specific lookup table.
 // sigmaAssignment
-type zAssignmentTask ZCtx
+type ZAssignmentTask ZCtx
 
-func (z zAssignmentTask) run(run *wizard.ProverRuntime) {
+func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
 		for frag := start; frag < stop; frag++ {
 
