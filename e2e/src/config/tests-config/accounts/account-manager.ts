@@ -145,7 +145,7 @@ abstract class AccountManager implements IAccountManager {
     this.logger.debug(
       `Accounts funded. newAccounts=${accounts
         .map((account) => account.address)
-        .join(", ")} balance=${initialBalanceWei.toString()} wei`,
+        .join(", ")} balance=${initialBalanceWei.toString()} Wei`,
     );
 
     return accounts.map((account) => this.getWallet(account));
