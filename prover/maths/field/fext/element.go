@@ -23,6 +23,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"math/big"
 	"math/bits"
+	"math/rand"
 	"strings"
 
 	"github.com/bits-and-blooms/bitset"
@@ -31,6 +32,8 @@ import (
 const (
 	frBytes = 32 // number of bytes needed to represent a Element
 )
+
+type Element = E2 // type alias
 
 func NewElement(v1 uint64, v2 uint64) Element {
 	z1 := fr.Element{v1}
@@ -350,4 +353,11 @@ func ExpToInt(z *Element, x Element, k int) *Element {
 	}
 
 	return z
+}
+
+func PseudoRand(rng *rand.Rand) Element {
+	x := field.PseudoRand(rng)
+	y := field.PseudoRand(rng)
+	result := new(Element).SetZero()
+	return *result.Add(result, &Element{x, y})
 }
