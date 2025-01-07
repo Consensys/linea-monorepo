@@ -14,7 +14,7 @@ import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 
 @AutoService(BesuPlugin.class)
 public class L1FinalizationTagUpdaterPlugin implements BesuPlugin {
-  private final Logger log = LogManager.getLogger(this.getClass().getName());
+  private final Logger log = LogManager.getLogger(L1FinalizationTagUpdaterPlugin.class);
 	private static final String CLI_OPTIONS_PREFIX = "linea";
 	private PluginCliOptions cliOptions = new PluginCliOptions();
 	private Vertx vertx = Vertx.vertx();
