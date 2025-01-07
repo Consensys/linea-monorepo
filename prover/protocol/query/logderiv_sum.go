@@ -28,14 +28,7 @@ type LogDerivativeSumInput struct {
 // D_{i,j} is  the i-th element of the underlying column of  j-th Denominator
 type LogDerivativeSum struct {
 	Inputs map[[2]int]*LogDerivativeSumInput
-
-	ZNumeratorBoarded, ZDenominatorBoarded map[[2]int][]sym.ExpressionBoard
-
-	Zs map[[2]int][]ifaces.Column
-	// ZOpenings are the opening queries to the end of each Z.
-	ZOpenings map[[2]int][]LocalOpening
-
-	ID ifaces.QueryID
+	ID     ifaces.QueryID
 }
 
 // the result of the global Sum
