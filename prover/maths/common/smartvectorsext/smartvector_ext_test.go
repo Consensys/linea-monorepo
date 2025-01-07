@@ -99,8 +99,8 @@ func TestSubvectorFuzzy(t *testing.T) {
 				require.Equal(t, stop-start, sub.Len(), "subvector has wrong size")
 
 				for i := 0; i < stop-start; i++ {
-					expected := v.Get(start + i)
-					actual := sub.Get(i)
+					expected := v.GetExt(start + i)
+					actual := sub.GetExt(i)
 					require.Equal(t, expected.String(), actual.String(), "Start %v, Stop %v, i %v", start, stop, i)
 				}
 
