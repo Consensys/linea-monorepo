@@ -1852,7 +1852,6 @@ describe("Linea Rollup contract", () => {
         maxFeePerGas: maxFeePerGas!,
         to: lineaRollupAddress,
         chainId: 31337,
-        nonce: 4,
         value: 0,
         gasLimit: 5_000_000,
       };
@@ -1891,7 +1890,6 @@ describe("Linea Rollup contract", () => {
         maxFeePerGas: maxFeePerGas!,
         to: lineaRollupAddress,
         chainId: 31337,
-        nonce: 4,
         value: 0,
         gasLimit: 5_000_000,
       };
