@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity >=0.8.19 <=0.8.26;
 
-import { PauseManager } from "../../security/pausing/PauseManager.sol";
+import { PauseManager } from "../../../security/pausing/PauseManager.sol";
 
 contract TestSetPauseTypeRoles is PauseManager {
   function initializePauseTypesAndPermissions(

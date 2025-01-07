@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.26;
 
-import { L1MessageManager } from "../../messaging/l1/L1MessageManager.sol";
+import { L1MessageManager } from "../../../messaging/l1/L1MessageManager.sol";
 
 contract TestL1MessageManager is L1MessageManager {
   /**

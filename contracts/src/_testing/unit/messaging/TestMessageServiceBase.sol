@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity >=0.8.19 <=0.8.26;
 
-import { MessageServiceBase } from "../../messaging/MessageServiceBase.sol";
+import { MessageServiceBase } from "../../../messaging/MessageServiceBase.sol";
 
 contract TestMessageServiceBase is MessageServiceBase {
   function initialize(address _messageService, address _remoteSender) external initializer {

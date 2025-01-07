@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.24;
 
-import { LineaRollupV5 } from "../integration/LineaRollupV5.sol";
+import { LineaRollupV5 } from "../../integration/LineaRollupV5.sol";
 
 contract TestLineaRollupV5 is LineaRollupV5 {
   function setDefaultShnarfExistValue(bytes32 _shnarf) external {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.19;
 
-import { L2MessageService } from "../../messaging/l2/L2MessageService.sol";
+import { L2MessageService } from "../../../messaging/l2/L2MessageService.sol";
 
 contract TestL2MessageService is L2MessageService {
   address public originalSender;

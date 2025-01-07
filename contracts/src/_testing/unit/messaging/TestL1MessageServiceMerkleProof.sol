@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.26;
 
-import { L1MessageService } from "../../messaging/l1/L1MessageService.sol";
-import { IL1MessageService } from "../../messaging/l1/interfaces/IL1MessageService.sol";
-import { TestSetPauseTypeRoles } from "./TestSetPauseTypeRoles.sol";
+import { L1MessageService } from "../../../messaging/l1/L1MessageService.sol";
+import { IL1MessageService } from "../../../messaging/l1/interfaces/IL1MessageService.sol";
+import { TestSetPauseTypeRoles } from "../security/TestSetPauseTypeRoles.sol";
 
 interface ITestL1MessageService {
   function claimMessageWithProof(IL1MessageService.ClaimMessageWithProofParams calldata _params) external;

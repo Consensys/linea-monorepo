@@ -2,7 +2,7 @@
 pragma solidity >=0.8.19 <=0.8.26;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { RateLimiter } from "../../security/limiting/RateLimiter.sol";
+import { RateLimiter } from "../../../security/limiting/RateLimiter.sol";
 
 contract TestRateLimiter is Initializable, RateLimiter {
   // we need eth to test the limits with

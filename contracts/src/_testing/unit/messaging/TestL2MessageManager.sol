@@ -2,9 +2,9 @@
 pragma solidity 0.8.19;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { L2MessageManager } from "../../messaging/l2/L2MessageManager.sol";
-import { IGenericErrors } from "../../interfaces/IGenericErrors.sol";
-import { TestSetPauseTypeRoles } from "./TestSetPauseTypeRoles.sol";
+import { L2MessageManager } from "../../../messaging/l2/L2MessageManager.sol";
+import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
+import { TestSetPauseTypeRoles } from "../security/TestSetPauseTypeRoles.sol";
 
 contract TestL2MessageManager is Initializable, L2MessageManager, IGenericErrors, TestSetPauseTypeRoles {
   /// @custom:oz-upgrades-unsafe-allow constructor

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.26;
 
-import { SparseMerkleTreeVerifier } from "../../messaging/libraries/SparseMerkleTreeVerifier.sol";
-import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
+import { SparseMerkleTreeVerifier } from "../../../messaging/libraries/SparseMerkleTreeVerifier.sol";
+import { EfficientLeftRightKeccak } from "../../../libraries/EfficientLeftRightKeccak.sol";
 
 contract TestSparseMerkleTreeVerifier {
   using SparseMerkleTreeVerifier for *;
