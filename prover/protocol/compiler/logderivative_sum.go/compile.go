@@ -77,7 +77,9 @@ func (f *FinalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
 
 	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	if zSum != claimedSum {
-		return fmt.Errorf("log-derivate-sum, the final evaluation check failed for %v,", f.LogDerivSumID)
+		return fmt.Errorf("log-derivate-sum; the final evaluation check failed for %v\n"+
+			"given %v but calculated %v,",
+			f.LogDerivSumID, claimedSum.String(), zSum.String())
 	}
 
 	return nil
