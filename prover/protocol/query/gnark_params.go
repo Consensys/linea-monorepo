@@ -16,11 +16,11 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 }
 
 type GnarkLogDerivSumParams struct {
-	Y frontend.Variable
+	Sum frontend.Variable
 }
 
 func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
-	return GnarkLogDerivSumParams{Y: p.Sum}
+	return GnarkLogDerivSumParams{Sum: p.Sum}
 }
 
 // A gnark circuit version of InnerProductParams
@@ -64,7 +64,7 @@ func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	fs.Update(p.Y)
+	fs.Update(p.Sum)
 }
 
 // Update the fiat-shamir state with the the present parameters

@@ -39,12 +39,12 @@ type ZCtx struct {
 	Name      string
 }
 
-// check permutation and see how/where compile is called (see how to constracut z there)
+// check permutation and see how/where Compile is called (see how to constracut z there)
 // when constructing z, check if z is T or S
 // and change T -> -M, S -> +Filter
 // S or T -> ({S,T} + X)
-// compile should be called inside CompileGrandSum
-func (z *ZCtx) compile(comp *wizard.CompiledIOP) {
+// Compile should be called inside CompileGrandSum
+func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
 
 	var (
 		numZs = utils.DivCeil(

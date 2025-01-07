@@ -54,7 +54,7 @@ func IntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 			checkTable      = mainLookupCtx.CheckedTables[lookupTableName]
 			round           = mainLookupCtx.Rounds[lookupTableName]
 			includedFilters = mainLookupCtx.IncludedFilters[lookupTableName]
-			// collapse multiColumns to single Columns
+			// collapse multiColumns to single Columns and commit to M.
 			tableCtx = lookup.CompileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
 		)
 
