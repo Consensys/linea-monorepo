@@ -14,10 +14,10 @@ import (
 // compile [query.LogDerivativeSum] query
 func CompileLogDerivSum(comp *wizard.CompiledIOP) {
 
-	// Collect all the lookup queries into "lookups"
+	// Collect all the logDerivativeSum queries
 	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
 
-		// Filter out non lookup queries
+		// Filter out non other types of queries
 		logDeriv, ok := comp.QueriesParams.Data(qName).(query.LogDerivativeSum)
 		if !ok {
 			continue
@@ -27,6 +27,7 @@ func CompileLogDerivSum(comp *wizard.CompiledIOP) {
 		// compilation process. We know that the query was already ignored at
 		// the beginning because we are iterating over the unignored keys.
 		comp.QueriesParams.MarkAsIgnored(qName)
+		// get the Numerator and Denominator from the input and prepare their compilation.
 		zEntries := logDeriv.Inputs
 		va := FinalEvaluationCheck{}
 		for _, entry := range zEntries {
@@ -37,17 +38,19 @@ func CompileLogDerivSum(comp *wizard.CompiledIOP) {
 				SigmaDenominator: entry.Denominator,
 			}
 
-			// z-packing compile
+			// z-packing compile; it imposes the correct accumulation over Numerator and Denominator.
 			zC.Compile(comp)
 			// prover step; Z assignments
 			zAssignmentTask := lookup.ZAssignmentTask(*zC)
 			comp.SubProvers.AppendToInner(zC.Round, func(run *wizard.ProverRuntime) {
 				zAssignmentTask.Run(run)
 			})
+			// collect all the zOpening for all the z columns
 			va.ZOpenings = append(va.ZOpenings, zC.ZOpenings...)
 		}
-		va.LogDeriveSumID = qName
+
 		// verifer step
+		va.LogDerivSumID = qName
 		lastRound := comp.NumRounds() - 1
 		comp.RegisterVerifierAction(lastRound, &va)
 	}
@@ -55,12 +58,10 @@ func CompileLogDerivSum(comp *wizard.CompiledIOP) {
 }
 
 type FinalEvaluationCheck struct {
-	// the name of a lookupTable in the pack, this can help for debugging.
-	Name string
 	// ZOpenings lists all the openings of all the zCtx
 	ZOpenings []query.LocalOpening
 	// query ID
-	LogDeriveSumID ifaces.QueryID
+	LogDerivSumID ifaces.QueryID
 }
 
 // Run implements the [wizard.VerifierAction]
@@ -74,9 +75,9 @@ func (f *FinalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
 		zSum.Add(&zSum, &temp)
 	}
 
-	claimedSum := run.GetLogDerivSumParams(f.LogDeriveSumID).Sum
+	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	if zSum != claimedSum {
-		return fmt.Errorf("log-derivate lookup, the final evaluation check failed for %v,", f.Name)
+		return fmt.Errorf("log-derivate-sum, the final evaluation check failed for %v,", f.LogDerivSumID)
 	}
 
 	return nil
@@ -85,7 +86,7 @@ func (f *FinalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
 // RunGnark implements the [wizard.VerifierAction]
 func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
 
-	claimedSum := run.GetLogDerivSumParams(f.LogDeriveSumID)
+	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried
 	// in the protocol via the
 	zSum := frontend.Variable(field.Zero())
