@@ -164,7 +164,7 @@ abstract class AccountManager implements IAccountManager {
       } catch (error) {
         attempt++;
         if (attempt >= retries) {
-          this.logger.error(`Operation failed after ${attempt} attempts. error=${(error as Error).message}`);
+          this.logger.error(`Operation failed after attempts=${attempt} error=${(error as Error).message}`);
           throw error;
         }
         this.logger.warn(`Attempt ${attempt} failed. Retrying in ${delayMs}ms... error=${(error as Error).message}`);
