@@ -532,7 +532,7 @@ const (
 	ignorePosteriorLogAppMode
 )
 
-// applySquashedLog applies a "squashed" access Storage log (which are obtained
+// applySquashedStorageLog applies a "squashed" access Storage log (which are obtained
 // through the [squashLogsForShomei]) function (meaning the function expects
 // only logs of type Storage). The function also admit an
 // extra parameter `mode` which specifies how the log has to be interpreted.
