@@ -91,7 +91,14 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 	)
 
 	for currPos := 0; currPos < len(srcLimbs); {
-		// we need to check if the current position is a pairing or not. If not, then skip it.
+		// we need to check if the current position is a pairing or not. If not,
+		// then skip it.
+		//
+		// this also skips inputs to the current pairing instance which do not
+		// require passing to the pairing circuit (full-trivial or half-trivial
+		// inputs). But this is fine as it doesn't change the result as trivial
+		// result ML is 1. Only non-trivial input pairs affect the pairing check
+		// result.
 		if srcIsPairing[currPos].IsZero() {
 			currPos++
 			continue
@@ -100,16 +107,23 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		// input data. We iterate over the data to get the number of pairing
 		// inputs.
 		nbInputs := 1 // we start with 1 because we always have at least one pairing input
+		// we may have trivial input pairs in-between the non-trivial ones. We
+		// mark which inputs we are interested in.
+		actualInputs := []int{0} // we started when isPairing is 1, this means that we have non-trivial input.
 		for {
 			if srcIsRes[currPos+nbInputs*(nbG1Limbs+nbG2Limbs)].IsOne() {
 				break
 			}
+			if srcIsPairing[currPos+nbInputs*(nbG1Limbs+nbG2Limbs)].IsOne() {
+				actualInputs = append(actualInputs, nbInputs)
+			}
 			nbInputs++
 		}
+		nbActualTotalPairs := len(actualInputs)
 		// now, we have continous chunk of data that is for the pairing. Prepare it for processing.
-		pairingInG1 = make([][nbG1Limbs]field.Element, nbInputs)
-		pairingInG2 = make([][nbG2Limbs]field.Element, nbInputs)
-		for i := 0; i < nbInputs; i++ {
+		pairingInG1 = make([][nbG1Limbs]field.Element, nbActualTotalPairs)
+		pairingInG2 = make([][nbG2Limbs]field.Element, nbActualTotalPairs)
+		for _, i := range actualInputs {
 			for j := 0; j < nbG1Limbs; j++ {
 				pairingInG1[i][j] = srcLimbs[currPos+i*(nbG1Limbs+nbG2Limbs)+j]
 			}
@@ -133,11 +147,11 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			dstIndex.PushInt(i)
 			dstIsActive.PushOne()
 		}
-		for i := 0; i < nbInputs-1; i++ {
+		for ii := range actualInputs[:len(actualInputs)-1] {
 			for j := 0; j < nbGtLimbs; j++ {
 				dstIsComputed.PushOne()
 				dstIsPulling.PushZero()
-				if i == 0 {
+				if ii == 0 {
 					dstIsAccInit.PushOne()
 					dstIsAccPrev.PushZero()
 					dstIsFirstPrev.PushZero()
@@ -178,14 +192,14 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			for j := 0; j < nbG1Limbs+nbG2Limbs+2*nbGtLimbs; j++ {
 				dstToMillerLoop.PushOne()
 				dstToFinalExp.PushZero()
-				dstPairId.PushInt(i + 1)
-				dstTotalPairs.PushInt(nbInputs)
+				dstPairId.PushInt(ii + 1)
+				dstTotalPairs.PushInt(nbActualTotalPairs)
 			}
 		}
 		for j := 0; j < nbGtLimbs; j++ {
 			dstIsComputed.PushOne()
 			dstIsPulling.PushZero()
-			dstPairId.PushInt(nbInputs)
+			dstPairId.PushInt(nbActualTotalPairs)
 			dstIsAccInit.PushZero()
 			dstIsAccPrev.PushOne()
 			dstIsAccCurr.PushZero()
@@ -199,7 +213,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		for j := nbGtLimbs; j < nbGtLimbs+nbG1Limbs+nbG2Limbs; j++ {
 			dstIsPulling.PushOne()
 			dstIsComputed.PushZero()
-			dstPairId.PushInt(nbInputs)
+			dstPairId.PushInt(nbActualTotalPairs)
 			dstIsAccInit.PushZero()
 			dstIsAccPrev.PushZero()
 			dstIsAccCurr.PushZero()
@@ -219,7 +233,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		for j := 0; j < nbG1Limbs+nbG2Limbs+nbGtLimbs+2; j++ {
 			dstToFinalExp.PushOne()
 			dstToMillerLoop.PushZero()
-			dstTotalPairs.PushInt(nbInputs)
+			dstTotalPairs.PushInt(nbActualTotalPairs)
 		}
 		currPos += nbInputs*(nbG1Limbs+nbG2Limbs) + 2
 	}
