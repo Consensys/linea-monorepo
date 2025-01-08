@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import type { Logger } from "winston";
 import {
   execDockerCommand,
   waitForEvents,
@@ -13,19 +14,19 @@ let testsWaitingForRestart = 0;
 const TOTAL_TESTS_WAITING = 2;
 let coordinatorHasRestarted = false;
 
-async function waitForCoordinatorRestart() {
+async function waitForCoordinatorRestart(logger: Logger) {
   testsWaitingForRestart += 1;
   while (testsWaitingForRestart < TOTAL_TESTS_WAITING) {
-    console.log("Both tests have reached the restart point. Restarting coordinator...");
+    logger.debug("Both tests have reached the restart point. Restarting coordinator...");
     await wait(1_000);
     if (!coordinatorHasRestarted) {
       coordinatorHasRestarted = true;
       try {
         await execDockerCommand("restart", "coordinator");
-        console.log("Coordinator restarted.");
+        logger.debug("Coordinator restarted.");
         return;
       } catch (error) {
-        console.error("Failed to restart coordinator:", error);
+        logger.error(`Failed to restart coordinator: ${error}`);
         throw error;
       }
     }
@@ -39,7 +40,7 @@ describe("Coordinator restart test suite", () => {
     "When the coordinator restarts it should resume blob submission and finalization",
     async () => {
       if (process.env.TEST_ENV !== "local") {
-        console.log("Skipping test because it's not running on a local environment.");
+        logger.warn("Skipping test because it's not running on a local environment.");
         return;
       }
       const lineaRollup = config.getLineaRollupContract();
@@ -53,16 +54,23 @@ describe("Coordinator restart test suite", () => {
       const lastDataSubmittedEventBeforeRestart = dataSubmittedEventsBeforeRestart.slice(-1)[0];
       const lastDataFinalizedEventsBeforeRestart = dataFinalizedEventsBeforeRestart.slice(-1)[0];
 
+      logger.debug(
+        `DataSubmittedV3 event before coordinator restart found. event=${JSON.stringify(lastDataSubmittedEventBeforeRestart)}`,
+      );
+      logger.debug(
+        `DataFinalizedV3 event before coordinator restart found. event=${JSON.stringify(lastDataFinalizedEventsBeforeRestart)}`,
+      );
+
       // Just some sanity checks
       // Check that the coordinator has submitted and finalized data before the restart
       expect(lastDataSubmittedEventBeforeRestart.blockNumber).toBeGreaterThan(0n);
       expect(lastDataFinalizedEventsBeforeRestart.args.endBlockNumber).toBeGreaterThan(0n);
 
-      await waitForCoordinatorRestart();
+      await waitForCoordinatorRestart(logger);
 
       const currentBlockNumberAfterRestart = await l1Provider.getBlockNumber();
 
-      console.log("Waiting for DataSubmittedV3 event after coordinator restart...");
+      logger.debug("Waiting for DataSubmittedV3 event after coordinator restart...");
       const [dataSubmittedV3EventAfterRestart] = await waitForEvents(
         lineaRollup,
         lineaRollup.filters.DataSubmittedV3(),
@@ -71,9 +79,11 @@ describe("Coordinator restart test suite", () => {
         "latest",
         async (events) => events.filter((event) => event.blockNumber > lastDataSubmittedEventBeforeRestart.blockNumber),
       );
-      console.log(`New DataSubmittedV3 event found: event=${JSON.stringify(dataSubmittedV3EventAfterRestart)}`);
+      logger.debug(
+        `DataSubmittedV3 event after coordinator restart found. event=${JSON.stringify(dataSubmittedV3EventAfterRestart)}`,
+      );
 
-      console.log("Waiting for DataFinalized event after coordinator restart...");
+      logger.debug("Waiting for DataFinalizedV3 event after coordinator restart...");
       const [dataFinalizedEventAfterRestart] = await waitForEvents(
         lineaRollup,
         lineaRollup.filters.DataFinalizedV3(),
@@ -85,7 +95,9 @@ describe("Coordinator restart test suite", () => {
             (event) => event.args.endBlockNumber > lastDataFinalizedEventsBeforeRestart.args.endBlockNumber,
           ),
       );
-      console.log(`New DataFinalized event found: event=${JSON.stringify(dataFinalizedEventAfterRestart)}`);
+      logger.debug(
+        `DataFinalizedV3 event after coordinator restart found. event=${JSON.stringify(dataFinalizedEventAfterRestart)}`,
+      );
 
       expect(dataFinalizedEventAfterRestart.args.endBlockNumber).toBeGreaterThan(
         lastDataFinalizedEventsBeforeRestart.args.endBlockNumber,
@@ -98,7 +110,7 @@ describe("Coordinator restart test suite", () => {
     "When the coordinator restarts it should resume anchoring",
     async () => {
       if (process.env.TEST_ENV !== "local") {
-        console.log("Skipping test because it's not running on a local environment.");
+        logger.warn("Skipping test because it's not running on a local environment.");
         return;
       }
 
@@ -116,7 +128,9 @@ describe("Coordinator restart test suite", () => {
       const l1MessagesPromises = [];
       let l1MessageSenderNonce = await l1Provider.getTransactionCount(l1MessageSender.address);
       const { maxPriorityFeePerGas, maxFeePerGas } = await l1Provider.getFeeData();
+      logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
+      logger.debug("Sending messages L1 -> L2 before coordinator restart...");
       for (let i = 0; i < 5; i++) {
         l1MessagesPromises.push(
           sendMessage(
@@ -144,7 +158,7 @@ describe("Coordinator restart test suite", () => {
       // Wait for L2 Anchoring
       const lastNewL1MessageNumber = l1Messages.slice(-1)[0].messageNumber;
 
-      console.log(`Waiting L1->L2 anchoring messageNumber=${lastNewL1MessageNumber}`);
+      logger.debug(`Waiting for L1->L2 anchoring before coordinator restart. messageNumber=${lastNewL1MessageNumber}`);
       await waitForEvents(
         l2MessageService,
         l2MessageService.filters.RollingHashUpdated(),
@@ -157,9 +171,10 @@ describe("Coordinator restart test suite", () => {
       );
 
       // Restart Coordinator
-      await waitForCoordinatorRestart();
+      await waitForCoordinatorRestart(logger);
       const l1Fees = await l1Provider.getFeeData();
 
+      logger.debug("Sending messages L1 -> L2 after coordinator restart...");
       // Send more messages L1 -> L2
       for (let i = 0; i < 5; i++) {
         l1MessagesPromises.push(
@@ -188,8 +203,8 @@ describe("Coordinator restart test suite", () => {
       // Wait for messages to be anchored on L2
       const lastNewL1MessageNumberAfterRestart = l1MessagesAfterRestart.slice(-1)[0].messageNumber;
 
-      console.log(
-        `Waiting L1->L2 anchoring after coordinator restart messageNumber=${lastNewL1MessageNumberAfterRestart}`,
+      logger.debug(
+        `Waiting for L1->L2 anchoring after coordinator restart. messageNumber=${lastNewL1MessageNumberAfterRestart}`,
       );
       const [rollingHashUpdatedEventAfterRestart] = await waitForEvents(
         l2MessageService,
