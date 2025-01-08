@@ -1,14 +1,12 @@
 package net.consensys.zkevm.coordinator.app
 
-import build.linea.contract.LineaRollupV5
+import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import io.vertx.core.Vertx
+import net.consensys.linea.BlockParameter
 import net.consensys.linea.async.AsyncRetryer
-import net.consensys.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.web3j.protocol.core.DefaultBlockParameterName
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.math.BigInteger
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
@@ -26,7 +24,7 @@ interface LastFinalizedBlockProvider {
  */
 class L1BasedLastFinalizedBlockProvider(
   private val vertx: Vertx,
-  private val lineaRollupSmartContractWeb3jClient: LineaRollupV5,
+  private val lineaRollupSmartContractClient: LineaRollupSmartContractClientReadOnly,
   private val consistentNumberOfBlocksOnL1: UInt,
   private val numberOfRetries: UInt = Int.MAX_VALUE.toUInt(),
   private val pollingInterval: Duration = 2.seconds
@@ -34,11 +32,9 @@ class L1BasedLastFinalizedBlockProvider(
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   override fun getLastFinalizedBlock(): SafeFuture<ULong> {
-    lineaRollupSmartContractWeb3jClient.setDefaultBlockParameter(DefaultBlockParameterName.LATEST)
-
-    val lastObservedBlock = AtomicReference<BigInteger>(null)
+    val lastObservedBlock = AtomicReference<ULong>(null)
     val numberOfObservations = AtomicInteger(1)
-    val isConsistentEnough = { lastPolledBlockNumber: BigInteger ->
+    val isConsistentEnough = { lastPolledBlockNumber: ULong ->
       if (lastPolledBlockNumber == lastObservedBlock.get()) {
         numberOfObservations.incrementAndGet().toUInt() >= consistentNumberOfBlocksOnL1
       } else {
@@ -60,8 +56,9 @@ class L1BasedLastFinalizedBlockProvider(
       backoffDelay = pollingInterval,
       stopRetriesPredicate = isConsistentEnough
     ) {
-      SafeFuture.of(lineaRollupSmartContractWeb3jClient.currentL2BlockNumber().sendAsync())
+      lineaRollupSmartContractClient.finalizedL2BlockNumber(
+        blockParameter = BlockParameter.Tag.LATEST
+      )
     }
-      .thenApply { it.toULong() }
   }
 }
