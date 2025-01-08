@@ -1653,6 +1653,31 @@ describe("Linea Rollup contract", () => {
         ),
       );
     });
+
+    // Function to extract range from the file name
+    function extractBlockRangeFromFileName(fileName: string): [number, number] | null {
+      const rangeRegex = /(\d+)-(\d+)-/;
+      const match = fileName.match(rangeRegex);
+      if (match && match.length >= 3) {
+        return [parseInt(match[1], 10), parseInt(match[2], 10)];
+      }
+      return null;
+    }
+
+    function getBetaV1BlobFiles(): string[] {
+      // Read all files in the folder
+      const files = fs.readdirSync(`${__dirname}/testData/betaV1`);
+
+      // Map files to their ranges and filter invalid ones
+      const filesWithRanges = files
+        .map((fileName) => {
+          const range = extractBlockRangeFromFileName(fileName);
+          return range ? { fileName, range } : null;
+        })
+        .filter(Boolean) as { fileName: string; range: [number, number] }[];
+
+      return filesWithRanges.sort((a, b) => a.range[0] - b.range[0]).map((f) => f.fileName);
+    }
   });
 
   describe("Compressed data finalization with proof", () => {
@@ -2894,33 +2919,3 @@ describe("Linea Rollup contract", () => {
     });
   });
 });
-
-// Function to extract range from the file name
-function extractBlockRangeFromFileName(fileName: string): [number, number] | null {
-  const rangeRegex = /(\d+)-(\d+)-/;
-  const match = fileName.match(rangeRegex);
-  if (match && match.length >= 3) {
-    return [parseInt(match[1], 10), parseInt(match[2], 10)];
-  }
-  return null;
-}
-
-// Main function to process files
-function getBetaV1BlobFiles(): string[] {
-  // Read all files in the folder
-  const files = fs.readdirSync(`${__dirname}/testData/betaV1`);
-
-  // Map files to their ranges and filter invalid ones
-  const filesWithRanges = files
-    .map((fileName) => {
-      const range = extractBlockRangeFromFileName(fileName);
-      return range ? { fileName, range } : null;
-    })
-    .filter(Boolean) as { fileName: string; range: [number, number] }[];
-
-  // Sort files based on the range
-  const sortedFiles = filesWithRanges.sort((a, b) => a.range[0] - b.range[0]);
-
-  // Output the sorted file names
-  return sortedFiles.map((f) => f.fileName);
-}
