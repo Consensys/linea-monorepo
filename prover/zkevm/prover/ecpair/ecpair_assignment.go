@@ -116,9 +116,9 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			for j := 0; j < nbG2Limbs; j++ {
 				pairingInG2[i][j] = srcLimbs[currPos+i*(nbG1Limbs+nbG2Limbs)+nbG1Limbs+j]
 			}
-			inputResult[0] = srcLimbs[currPos+(i+1)*(nbG1Limbs+nbG2Limbs)]
-			inputResult[1] = srcLimbs[currPos+(i+1)*(nbG1Limbs+nbG2Limbs)+1]
 		}
+		inputResult[0] = srcLimbs[currPos+nbInputs*(nbG1Limbs+nbG2Limbs)]
+		inputResult[1] = srcLimbs[currPos+nbInputs*(nbG1Limbs+nbG2Limbs)+1]
 		limbs := processPairingData(pairingInG1, pairingInG2, inputResult)
 		instanceId := srcID[currPos]
 		// processed data has the input limbs, but we have entered the intermediate Gt accumulator values
