@@ -143,7 +143,7 @@ abstract class AccountManager implements IAccountManager {
     await Promise.all(successfulTransactions.map((tx) => tx.wait()));
 
     this.logger.debug(
-      `Accounts funded. newAccounts=${accounts
+      `${successfulTransactions.length} accounts funded. newAccounts=${accounts
         .map((account) => account.address)
         .join(", ")} balance=${initialBalanceWei.toString()} Wei`,
     );
