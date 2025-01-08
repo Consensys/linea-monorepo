@@ -276,11 +276,19 @@ func (ec *ECPair) csAccumulatorMask(comp *wizard.CompiledIOP) {
 	)
 }
 
-func (ec *ECPair) csExclusiveUnalignedDatas(comp *wizard.CompiledIOP) {
-	common.MustBeMutuallyExclusiveBinaryFlags(comp, ec.IsActive, []ifaces.Column{
-		ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
-		ec.UnalignedPairingData.IsActive,
-	})
+func (ec *ECPair) csPairingDataOrMembershipActive(comp *wizard.CompiledIOP) {
+	// when module is active, then either pairing data or membership data is
+	// active. Can also be both.
+	comp.InsertGlobal(
+		roundNr,
+		ifaces.QueryIDf("%v_PAIRING_OR_MEMBERSHIP_ACTIVE", nameECPair),
+		sym.Add(
+			ec.IsActive,
+			sym.Neg(ec.UnalignedPairingData.IsActive),
+			sym.Neg(ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask),
+			sym.Mul(ec.UnalignedPairingData.IsActive, ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask),
+		),
+	)
 }
 
 func (ec *ECPair) csExclusivePairingCircuitMasks(comp *wizard.CompiledIOP) {
