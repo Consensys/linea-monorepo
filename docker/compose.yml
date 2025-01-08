@@ -25,6 +25,9 @@ services:
     container_name: sequencer
     image: consensys/linea-besu-package:${SEQUENCER_TAG:-mainnet-b297345}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    depends_on:
+      l1-el-node:
+        condition: service_healthy
     ports:
       - "8545:8545"
       - "8546:8546"

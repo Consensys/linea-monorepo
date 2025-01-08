@@ -1,15 +1,13 @@
 package net.consensys.zkevm.ethereum.finalization
 
-import build.linea.contract.LineaRollupV5
+import build.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import io.vertx.core.Vertx
+import net.consensys.linea.BlockParameter
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.toULong
 import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.web3j.protocol.core.DefaultBlockParameter
-import org.web3j.protocol.core.DefaultBlockParameterName
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
@@ -18,16 +16,11 @@ import kotlin.time.Duration.Companion.seconds
 
 data class FinalizationUpdatePollerConfig(
   val pollingInterval: Duration = 12.seconds,
-  val blockTag: String
+  val blockTag: BlockParameter
 ) {
   init {
     require(pollingInterval >= 0.seconds) {
       "pollingInterval must be greater than 0"
-    }
-
-    require(DefaultBlockParameterName.fromString(blockTag) != null) {
-      "Invalid blockTag='$blockTag', " +
-        "valid values: ${DefaultBlockParameterName.values().joinToString(", ")}"
     }
   }
 }
@@ -35,7 +28,7 @@ data class FinalizationUpdatePollerConfig(
 class FinalizationUpdatePoller(
   private val vertx: Vertx,
   private val config: FinalizationUpdatePollerConfig,
-  private val lineaRollup: LineaRollupV5,
+  private val lineaRollup: Web3JLineaRollupSmartContractClientReadOnly,
   private val finalizationHandler: (ULong) -> CompletableFuture<*>,
   private val log: Logger = LogManager.getLogger(FinalizationUpdatePoller::class.java)
 ) : PeriodicPollingService(
@@ -45,16 +38,12 @@ class FinalizationUpdatePoller(
 ) {
   private val lastFinalizationRef: AtomicReference<ULong> = AtomicReference(null)
 
-  init {
-    lineaRollup.setDefaultBlockParameter(DefaultBlockParameter.valueOf(config.blockTag))
-  }
-
   override fun action(): SafeFuture<*> {
     return AsyncRetryer.retry(
       vertx,
       backoffDelay = config.pollingInterval
     ) {
-      lineaRollup.currentL2BlockNumber().sendAsync()
+      lineaRollup.finalizedL2BlockNumber(config.blockTag)
         .thenCompose { lineaFinalizedBlockNumber ->
           val prevFinalizedBlockNumber = lastFinalizationRef.get()
           lastFinalizationRef.set(lineaFinalizedBlockNumber.toULong())
