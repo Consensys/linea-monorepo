@@ -13,7 +13,7 @@ if (!config.walletConnectId) throw new Error("Project ID is not defined");
 
 const metadata = {
   name: "Linea Bridge",
-  description: `Linea Bridge is a bridge solution, providing secure and efficient cross-chain transactions between Layer 1 and Linea networks.
+  description: `The Linea Bridge is a bridge solution, providing secure and efficient cross-chain transactions between Ethereum Layer 1 and Linea networks.
   Discover the future of blockchain interaction with Linea Bridge.`,
   url: "https://bridge.linea.build",
   icons: [],
