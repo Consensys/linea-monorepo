@@ -1,5 +1,7 @@
 package fext
 
+import "github.com/consensys/linea-monorepo/prover/maths/field"
+
 // SetUint64 sets z to v and returns z
 func (z *Element) SetUint64(v uint64) *Element {
 	//  sets z LSB to v (non-Montgomery form) and convert z to Montgomery form
@@ -18,4 +20,9 @@ func (z *Element) SetInt64(v int64) *Element {
 
 func (z *Element) Uint64() (uint64, uint64) {
 	return z.A0.Bits()[0], z.A1.Bits()[0]
+}
+
+func Butterfly(a, b *Element) {
+	field.Butterfly(&a.A0, &b.A0)
+	field.Butterfly(&a.A1, &b.A1)
 }
