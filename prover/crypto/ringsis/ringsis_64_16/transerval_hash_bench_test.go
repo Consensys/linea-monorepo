@@ -18,7 +18,7 @@ func BenchmarkTransversalHash(b *testing.B) {
 	var (
 		numRow          = 1024
 		numCols         = 1024
-		rng             = rand.New(rand.NewSource(786868))
+		rng             = rand.New(rand.NewSource(786868)) // nolint
 		domain          = fft.NewDomain(64, fft.WithShift(wfft.GetOmega(64*2)))
 		twiddles        = ringsis_64_16.PrecomputeTwiddlesCoset(domain.Generator, domain.FrMultiplicativeGen)
 		params          = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
