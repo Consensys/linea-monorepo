@@ -174,15 +174,6 @@ jobs:
       transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
     secrets: inherit
 
-  # Comment out the auto build and release step below as the plugin release should be
-  # by manual Github action for versioning control
-  # finalized-tag-updater-jar-build-release:
-  #   needs: [ filter-commit-changes ]
-  #   if: ${{ always() && needs.filter-commit-changes.outputs.finalized-tag-updater == 'true' }}
-  #   uses: ./.github/workflows/finalized-tag-updater-github-release.yml
-  #   with:
-  #     version: '0.0.1'
-
   testing:
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
     if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
