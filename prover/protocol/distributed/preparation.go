@@ -36,7 +36,7 @@ func IntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 		// zCatalog stores a mapping (round, size) into query.LogDerivativeSumInput and helps finding
 		// which Z context should be used to handle a part of a given inclusion
 		// query.
-		zCatalog = map[[2]int]*query.LogDerivativeSumInput{}
+		zCatalog = map[int]*query.LogDerivativeSumInput{}
 	)
 
 	// Skip the compilation phase if no lookup constraint is being used. Otherwise
@@ -60,7 +60,7 @@ func IntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 		)
 
 		// push single-columns into zCatalog
-		PushToZCatalog(tableCtx, zCatalog)
+		pushToZCatalog(tableCtx, zCatalog)
 
 		a := lookup.MAssignmentTask{
 			M:       tableCtx.M,
@@ -68,37 +68,33 @@ func IntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 			T:       lookupTable,
 			SFilter: includedFilters,
 		}
+
 		// assign the multiplicity column
 		comp.SubProvers.AppendToInner(round, a.Run)
-
 	}
 
 	// insert a single LogDerivativeSum query for the global zCatalog.
-	comp.InsertLogDerivativeSum(lastRound, "GlobalLogDerivativeSum", zCatalog)
+	comp.InsertLogDerivativeSum(lastRound+1, "GlobalLogDerivativeSum", zCatalog)
+
 	// assign parameters of LogDerivativeSum, it is just to prevent the panic attack in the prover
-	comp.SubProvers.AppendToInner(lastRound, func(run *wizard.ProverRuntime) {
+	comp.SubProvers.AppendToInner(lastRound+1, func(run *wizard.ProverRuntime) {
 		run.AssignLogDerivSum("GlobalLogDerivativeSum", field.Zero())
 	})
 }
 
-// PushToZCatalog constructs the numerators and denominators for the collapsed S and T
+// pushToZCatalog constructs the numerators and denominators for the collapsed S and T
 // into zCatalog, for their corresponding rounds and size.
-func PushToZCatalog(stc lookup.SingleTableCtx, zCatalog map[[2]int]*query.LogDerivativeSumInput) {
-
-	var (
-		round = stc.Gamma.Round
-	)
+func pushToZCatalog(stc lookup.SingleTableCtx, zCatalog map[int]*query.LogDerivativeSumInput) {
 
 	// tableCtx push to -> zCtx
 	// Process the T columns
 	for frag := range stc.T {
 		size := stc.M[frag].Size()
 
-		key := [2]int{round, size}
+		key := size
 		if zCatalog[key] == nil {
 			zCatalog[key] = &query.LogDerivativeSumInput{
-				Size:  size,
-				Round: round,
+				Size: size,
 			}
 		}
 
@@ -118,11 +114,10 @@ func PushToZCatalog(stc lookup.SingleTableCtx, zCatalog map[[2]int]*query.LogDer
 			sFilter = symbolic.NewVariable(stc.SFilters[table])
 		}
 
-		key := [2]int{round, size}
+		key := size
 		if zCatalog[key] == nil {
 			zCatalog[key] = &query.LogDerivativeSumInput{
-				Size:  size,
-				Round: round,
+				Size: size,
 			}
 		}
 
