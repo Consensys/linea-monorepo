@@ -697,7 +697,7 @@ services:
     container_name: zkbesu-shomei-sr
     profiles: [ "external-to-monorepo", "staterecover" ]
     privileged: true
-    restart: always
+#    restart: none
     user: root
     ports:
       - "9145:8545" # http
@@ -708,7 +708,10 @@ services:
       interval: 1s
       timeout: 1s
       retries: 120
+    restart: "no"
     networks:
+      l1network:
+        ipv4_address: 10.10.10.206
       linea:
         ipv4_address: 11.11.11.116
     environment:
@@ -718,20 +721,38 @@ services:
       - /bin/bash
       - -c
       - |
+        chown -R besu:besu /opt/besu/plugins && \
+        ls -lh /opt/besu/plugins && \
+        rm -fr /opt/besu/plugins/finalized-tag-updater-v0.0.3.jar && \
+        rm -fr /opt/besu/plugins/jackson-annotations-2.18.0.jar && \
+        rm -fr /opt/besu/plugins/jackson-core-2.18.0.jar && \
+        rm -fr /opt/besu/plugins/jackson-databind-2.18.0.jar && \
+        rm -fr /opt/besu/plugins/jackson-dataformat-yaml-2.18.0.jar && \
+        rm -fr /opt/besu/plugins/linea-sequencer-v0.8.0-rc8.5.jar && \
+        rm -fr /opt/besu/plugins/linea-tracer-v0.8.0-rc8.jar && \
+        rm -fr /opt/besu/plugins/besu-shomei-plugin-v0.4.0.jar && \
+        rm -fr /opt/besu/plugins/snakeyaml-2.0.jar && \
+        ls -lh /opt/besu/plugins && \
         /opt/besu/bin/besu \
         --config-file=/var/lib/besu/zkbesu-config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
-        --plugin-shomei-http-host="11.11.11.117" \
-        --plugin-shomei-http-port=8888 \
-        --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,MINER,SHOMEI,LINEA \
+        --plugins=JacksonTestPlugin \
+        --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,MINER \
         --Xbonsai-limit-trie-logs-enabled=false \
     volumes:
+#      - ../state-recover/besu-plugin/build/libs/linea-staterecover-plugin-0.0.1-rc2.jar:/opt/besu/plugins/linea-staterecover-plugin-0.0.1-rc2.jar
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
-      - ./config/zkbesu-shomei/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/zkbesu-shomei/log4j-staterecovery.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
-      - ../tmp/zkbesu-shomei-sr/plugins/linea-state-recovery-plugin-0.0.2.jar:/opt/besu/plugins/linea-state-recovery-plugin-0.0.2.jar
+      - ../state-recover/besu-plugin-jackson-test/build/libs/linea-staterecover-plugin-0.0.1-rc2.jar:/opt/besu/plugins/linea-staterecover-plugin-0.0.1-rc2.jar
       - ./scripts/file-downloader.sh:/file-downloader.sh:ro
 
+  #        --plugins=BesuShomeiRpcPlugin,ZkTrieLogPlugin,LineaStateRecoverPlugin \
+#      --plugin-staterecovery-l1-smart-contract-address=0x649d75f15cF3e5Dd85Ffae83c1E28903e348f5cD \
+#      --plugin-staterecovery-l1-rpc-endpoint=http://l1-el-node:8545 \
+#      --plugin-staterecovery-shomei-endpoint=http://shomei-sr:8888 \
+#      --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \
+#      --plugin-staterecovery-overriding-recovery-start-block-number=1 \
   shomei-sr:
     image: consensys/linea-shomei:2.3.0
     hostname: shomei-sr

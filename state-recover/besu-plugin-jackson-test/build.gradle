@@ -1,0 +1,62 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'com.gradleup.shadow' version '8.3.5'
+}
+
+group = 'build.linea.staterecover'
+archivesBaseName = 'linea-staterecover-plugin'
+version = '0.0.1-rc2'
+
+dependencies {
+  compileOnly("info.picocli:picocli:4.7.6") {
+    because 'Required for command line parsing. Provided by Besu at runtime.'
+  }
+  //  implementation "org.jetbrains.kotlin:kotlin-reflect:1.9.21"
+  api project(":jvm-libs:generic:serialization:jackson")
+  api project(':jvm-libs:linea:besu-libs')
+}
+
+ext.groupsToIncludeInShadow = [
+  "build.linea..*",
+  "io.micrometer..*",
+  "org.jetbrains.kotlin..*",
+  "com.fasterxml.jackson.module:jackson-module-kotlin",
+]
+
+def canIncludeLib(String lib) {
+  def allowed = groupsToIncludeInShadow.find { libAllowed ->
+    lib.matches(libAllowed)
+  } != null
+  allowed
+}
+
+tasks.create("testLibsInclusion", Task) {
+  //  def lib = "build.linea.internal:kotlin-extensions"
+  doLast {
+    def lib = "com.fasterxml.jackson.module:jackson-module-kotlin"
+    println("Can include $lib: ${canIncludeLib(lib)}")
+  }
+}
+
+shadowJar {
+  if ("${project.version}" != 'unspecified') {
+    archiveClassifier.set('')
+    archiveVersion.set("${project.version}")
+  }
+
+  //  dependencies {
+  //    exclude {dependency ->
+  //      def shallExclude = !canIncludeLib("${dependency.moduleGroup}:${dependency.moduleName}")
+  //      shallExclude
+  //    }
+  //  }
+
+  manifest {
+    attributes(
+        'Specification-Title': archiveBaseName,
+        'Specification-Version': project.version,
+        'Implementation-Title': archiveBaseName,
+        'Implementation-Version': project.version,
+        )
+  }
+}
