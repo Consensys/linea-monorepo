@@ -55,8 +55,8 @@ func (ec *ECPair) csProjections(comp *wizard.CompiledIOP) {
 	// we project data from the arithmetization correctly to the unaligned part of the circuit
 	projection.InsertProjection(
 		comp, ifaces.QueryIDf("%v_PROJECTION_PAIRING", nameECPair),
-		[]ifaces.Column{ec.ECPairSource.Limb, ec.ECPairSource.AccPairings, ec.ECPairSource.TotalPairings, ec.ECPairSource.ID},
-		[]ifaces.Column{ec.UnalignedPairingData.Limb, ec.UnalignedPairingData.PairID, ec.UnalignedPairingData.TotalPairs, ec.UnalignedPairingData.InstanceID},
+		[]ifaces.Column{ec.ECPairSource.Limb, ec.ECPairSource.ID},
+		[]ifaces.Column{ec.UnalignedPairingData.Limb, ec.UnalignedPairingData.InstanceID},
 		ec.ECPairSource.CsEcpairing,
 		ec.UnalignedPairingData.IsPulling,
 	)
