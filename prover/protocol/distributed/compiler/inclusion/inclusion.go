@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 const (
@@ -30,24 +31,28 @@ type DistributionInputs struct {
 	InitialProver *wizard.ProverRuntime
 }
 
-// DistributeLogDerivativeSum extract the LogDerivativeSum query that is subject to the distribution.
-// It ignores the inclusion queries in the module compiledIOP and replaces them with its share of LogDerivativeSum.
+// DistributeLogDerivativeSum distributes a  share from a global [query.LogDerivativeSum] query to the given module.
 func DistributeLogDerivativeSum(
 	initialComp, moduleComp *wizard.CompiledIOP,
 	moduleName distributed.ModuleName,
 	disc distributed.ModuleDiscoverer,
 	initialProver *wizard.ProverRuntime) {
 
-	var queryID ifaces.QueryID
+	var (
+		queryID ifaces.QueryID
+	)
 	for _, qName := range initialComp.QueriesParams.AllUnignoredKeys() {
+
 		_, ok := initialComp.QueriesParams.Data(qName).(query.LogDerivativeSum)
 		if !ok {
 			continue
 		}
+		// panic if there is more than a LogDerivativeSum query in the initialComp.
+		if string(queryID) != "" {
+			utils.Panic("found more than a LogDerivativeSum query in the initialComp")
+		}
+
 		queryID = qName
-		//@Azam panic if it has more than one.
-		// it breaks since we expect only a single query of this type.
-		break
 	}
 	input := DistributionInputs{
 		ModuleComp:    moduleComp,
@@ -57,6 +62,7 @@ func DistributeLogDerivativeSum(
 		QueryID:       queryID,
 		InitialProver: initialProver,
 	}
+	// get the share of the module from the LogDerivativeSum query
 	GetShareOfLogDerivativeSum(input)
 
 }
@@ -87,8 +93,8 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 		if !ok {
 			continue
 		}
+		// ignore the query as it is about to be compiled and replaces with low level queries.
 		moduleComp.QueriesNoParams.MarkAsIgnored(qName)
-
 	}
 
 	// extract the share of the module from the global sum.
@@ -121,14 +127,18 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 		keyIsInModule = false
 
 	}
+	// sanity check; the initialComp has only two rounds
+	if initialComp.NumRounds() != 2 {
+		utils.Panic("expected initialComp to have 2 rounds but it has %v rounds", initialComp.NumRounds())
+	}
 
-	// insert a  LogDerivativeSum specific to the module.
+	// insert a  LogDerivativeSum specific to the module at round 1 (since initialComp has 2 rounds).
 	moduleComp.InsertLogDerivativeSum(
 		1,
 		ifaces.QueryIDf("%v_%v", LogDerivativeSum, in.ModuleName),
 		zCatalog,
 	)
-	// prover step to assign the parameters of LogDerivativeSum
+	// prover step to assign the parameters of LogDerivativeSum at the same round.
 	moduleComp.SubProvers.AppendToInner(1, func(run *wizard.ProverRuntime) {
 		run.AssignLogDerivSum(
 			ifaces.QueryIDf("%v_%v", LogDerivativeSum, in.ModuleName),
@@ -138,7 +148,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 
 }
 
-// GetLogDerivativeSumResult allows the prover to calculate the result of its associated LogDerivativeSum query.
+// GetLogDerivativeSumResult is a helper allowing the prover to calculate the result of its associated LogDerivativeSum query.
 func GetLogDerivativeSumResult(zCatalog map[[2]int]*query.LogDerivativeSumInput, run *wizard.ProverRuntime) field.Element {
 	// compute the actual sum from the Numerator and Denominator
 	actualSum := field.Zero()

@@ -31,7 +31,7 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	define1 := func(b *wizard.Builder) {
 		col10 := b.CompiledIOP.InsertCommit(0, "module1.col0", 8)
 		col11 := b.CompiledIOP.InsertCommit(0, "module1.col1", 8)
-		// S \subset T , S in module0, T in module1.
+		// the inclusion query: S \subset T , S in module0, T in module1.
 		b.CompiledIOP.InsertInclusion(0, "module1.lookup0", []ifaces.Column{col10}, []ifaces.Column{col01})
 		b.CompiledIOP.InsertGlobal(0, "module1.global0",
 			symbolic.Sub(col11, symbolic.Mul(2, col10)))

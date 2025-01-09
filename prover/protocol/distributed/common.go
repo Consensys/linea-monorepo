@@ -8,7 +8,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// For an expression that has all its columns in the module, it replaces the external coins with local coins
+// ReplaceExternalCoins replaces the external coins with local coins, for a given expression.
+// It does not check if all the columns from the expression are in the module.
+// If this is required should be check before calling ReplaceExternalCoins.
+// If the Coin does not exist in the initialComp it panics.
 func ReplaceExternalCoins(initialComp, moduleComp *wizard.CompiledIOP, expr *symbolic.Expression) {
 	var (
 		board    = expr.Board()
@@ -25,7 +28,7 @@ func ReplaceExternalCoins(initialComp, moduleComp *wizard.CompiledIOP, expr *sym
 				utils.Panic("Coin %v is declared in round %v != 1", v.Name, v.Round)
 			}
 			if !moduleComp.Coins.Exists(v.Name) {
-				moduleComp.InsertCoin(1, v.Name, coin.Field)
+				moduleComp.InsertCoin(v.Round, v.Name, coin.Field)
 			}
 		}
 	}
@@ -33,6 +36,8 @@ func ReplaceExternalCoins(initialComp, moduleComp *wizard.CompiledIOP, expr *sym
 
 // PassColumnToModule passes the column, underlying the expression, from initialComp to moduleComp.
 // It also handles the prover steps to assign the passed column in the moduleColumn.
+// It also check that the expression is a single column.
+// It panics if the column is not in the initialComp.
 func PassColumnToModule(
 	initComp, moduleComp *wizard.CompiledIOP,
 	initialProver *wizard.ProverRuntime,
