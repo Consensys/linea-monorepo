@@ -37,7 +37,7 @@
 - Gas optimization audit: [https://blog.openzeppelin.com/linea-gas-optimizations-audit](https://blog.openzeppelin.com/linea-gas-optimizations-audit)
 
 **Cyfrin**
-- Full codebase audit including gas optimizations and TokenBridge updates: [https://github.com/Cyfrin/cyfrin-audit-reports//blob/642b409c207d0e31679467480c3d9b8797b98696/reports/reports/2025-01-06-cyfrin-linea-v2.2.pdf](https://github.com/Cyfrin/cyfrin-audit-reports//blob/642b409c207d0e31679467480c3d9b8797b98696/reports/reports/2025-01-06-cyfrin-linea-v2.2.pdf)
+- Full codebase audit including gas optimizations and TokenBridge updates: [https://github.com/Cyfrin/cyfrin-audit-reports/blob/main/reports/2024-05-24-cyfrin-linea-v2.0.pdf](https://github.com/Cyfrin/cyfrin-audit-reports/blob/main/reports/2024-05-24-cyfrin-linea-v2.0.pdf)
 
 ### Third Audit Round
 **OpenZeppelin**
