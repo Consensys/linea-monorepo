@@ -7,9 +7,9 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 )
 
-// FextAPI is a wrapper of [frontend.API] with methods specialized for field
+// API is a wrapper of [frontend.API] with methods specialized for field
 // extension operations.
-type FextAPI struct {
+type API struct {
 	Inner frontend.API
 }
 
@@ -26,7 +26,7 @@ func NewZero() E2 {
 }
 
 // SetOne returns a newly allocated element equal to 1
-func NewOne() E2 {
+func One() E2 {
 	return E2{
 		A0: 1,
 		A1: 0,
@@ -34,12 +34,12 @@ func NewOne() E2 {
 }
 
 // IsZero returns 1 if the element is equal to 0 and 0 otherwise
-func (api *FextAPI) IsZero(e E2) frontend.Variable {
+func (api *API) IsZero(e E2) frontend.Variable {
 	return api.Inner.And(api.Inner.IsZero(e.A0), api.Inner.IsZero(e.A1))
 }
 
 // Neg negates a e2 elmt
-func (api *FextAPI) Neg(e1 E2) E2 {
+func (api *API) Neg(e1 E2) E2 {
 	return E2{
 		A0: api.Inner.Sub(0, e1.A0),
 		A1: api.Inner.Sub(0, e1.A1),
@@ -47,7 +47,7 @@ func (api *FextAPI) Neg(e1 E2) E2 {
 }
 
 // Add e2 elmts
-func (api *FextAPI) Add(e1, e2 E2) E2 {
+func (api *API) Add(e1, e2 E2) E2 {
 	return E2{
 		A0: api.Inner.Add(e1.A0, e2.A0),
 		A1: api.Inner.Add(e1.A1, e2.A1),
@@ -55,7 +55,7 @@ func (api *FextAPI) Add(e1, e2 E2) E2 {
 }
 
 // Double e2 elmt
-func (api *FextAPI) Double(e1 E2) E2 {
+func (api *API) Double(e1 E2) E2 {
 	return E2{
 		A0: api.Inner.Mul(e1.A0, 2),
 		A1: api.Inner.Mul(e1.A1, 2),
@@ -63,7 +63,7 @@ func (api *FextAPI) Double(e1 E2) E2 {
 }
 
 // Sub e2 elmts
-func (api *FextAPI) Sub(e1, e2 E2) E2 {
+func (api *API) Sub(e1, e2 E2) E2 {
 	return E2{
 		A0: api.Inner.Sub(e1.A0, e2.A0),
 		A1: api.Inner.Sub(e1.A1, e2.A1),
@@ -71,7 +71,7 @@ func (api *FextAPI) Sub(e1, e2 E2) E2 {
 }
 
 // Mul e2 elmts
-func (api *FextAPI) Mul(x, y E2) E2 {
+func (api *API) Mul(x, y E2) E2 {
 
 	a := api.Inner.Add(x.A0, x.A1)
 	b := api.Inner.Add(y.A0, y.A1)
@@ -87,7 +87,7 @@ func (api *FextAPI) Mul(x, y E2) E2 {
 }
 
 // Square e2 elt
-func (api_ *FextAPI) Square(x E2) E2 {
+func (api_ *API) Square(x E2) E2 {
 
 	var a, b, c frontend.Variable
 	api := api_.Inner
@@ -104,7 +104,7 @@ func (api_ *FextAPI) Square(x E2) E2 {
 }
 
 // MulByFp multiplies an fp2 elmt by an fp elmt
-func (api *FextAPI) MulByBase(e1 E2, c frontend.Variable) E2 {
+func (api *API) MulByBase(e1 E2, c frontend.Variable) E2 {
 	return E2{
 		A0: api.Inner.Mul(e1.A0, c),
 		A1: api.Inner.Mul(e1.A1, c),
@@ -113,7 +113,7 @@ func (api *FextAPI) MulByBase(e1 E2, c frontend.Variable) E2 {
 
 // MulByNonResidue multiplies an fp2 elmt by the imaginary elmt
 // ext.uSquare is the square of the imaginary root
-func (api *FextAPI) MulByNonResidue(e1 E2) E2 {
+func (api *API) MulByNonResidue(e1 E2) E2 {
 	return E2{
 		A0: api.Inner.Mul(e1.A1, -11),
 		A1: e1.A0,
@@ -121,7 +121,7 @@ func (api *FextAPI) MulByNonResidue(e1 E2) E2 {
 }
 
 // Conjugate conjugation of an e2 elmt
-func (api *FextAPI) Conjugate(e1 E2) E2 {
+func (api *API) Conjugate(e1 E2) E2 {
 	return E2{
 		A0: e1.A0,
 		A1: api.Inner.Sub(0, e1.A1),
@@ -129,7 +129,7 @@ func (api *FextAPI) Conjugate(e1 E2) E2 {
 }
 
 // Inverse e2 elmts
-func (api_ *FextAPI) Inverse(x E2) E2 {
+func (api_ *API) Inverse(x E2) E2 {
 
 	api := api_.Inner
 
@@ -157,13 +157,13 @@ func Assign(a *fext.Element) E2 {
 }
 
 // AssertIsEqual constraint self to be equal to other into the given constraint system
-func (api *FextAPI) AssertIsEqual(e, other E2) {
+func (api *API) AssertIsEqual(e, other E2) {
 	api.Inner.AssertIsEqual(e.A0, other.A0)
 	api.Inner.AssertIsEqual(e.A1, other.A1)
 }
 
 // Select sets e to r1 if b=1, r2 otherwise
-func (api *FextAPI) Select(b frontend.Variable, r1, r2 E2) E2 {
+func (api *API) Select(b frontend.Variable, r1, r2 E2) E2 {
 	return E2{
 		A0: api.Inner.Select(b, r1.A0, r2.A0),
 		A1: api.Inner.Select(b, r1.A1, r2.A1),
@@ -175,7 +175,7 @@ func (api *FextAPI) Select(b frontend.Variable, r1, r2 E2) E2 {
 //   - r2 if b1=0 and b2=1,
 //   - r3 if b1=1 and b2=0,
 //   - r3 if b1=1 and b2=1.
-func (api *FextAPI) Lookup2(b1, b2 frontend.Variable, r1, r2, r3, r4 E2) E2 {
+func (api *API) Lookup2(b1, b2 frontend.Variable, r1, r2, r3, r4 E2) E2 {
 	return E2{
 		A0: api.Inner.Lookup2(b1, b2, r1.A0, r2.A0, r3.A0, r4.A0),
 		A1: api.Inner.Lookup2(b1, b2, r1.A1, r2.A1, r3.A1, r4.A1),
