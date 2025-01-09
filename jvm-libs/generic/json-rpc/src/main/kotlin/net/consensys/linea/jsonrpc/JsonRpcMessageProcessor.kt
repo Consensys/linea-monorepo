@@ -61,46 +61,74 @@ class JsonRpcMessageProcessor(
   }
 
   override fun invoke(user: User?, messageJsonStr: String): Future<String> =
-    handleMessage(user, messageJsonStr)
+    handleAndMeasureRequestProcessing(user, messageJsonStr)
 
-  private fun handleMessage(user: User?, requestJsonStr: String): Future<String> {
+  private fun handleAndMeasureRequestProcessing(
+    user: User?,
+    requestJsonStr: String
+  ): Future<String> {
+    return Future.fromCompletionStage(
+      metricsFacade.createDynamicTagTimer<Triple<String, String, Boolean>>(
+        name = "jsonrpc.processing.whole",
+        description = "Processing of JSON-RPC message: Deserialization + Business Logic + Serialization",
+        tagKey = "method",
+        tagValueExtractorOnError = { "METHOD_PARSE_ERROR" }
+      ) {
+        it.first
+      }
+        .captureTime(
+          handleMessage(
+            user = user,
+            requestJsonStr = requestJsonStr
+          ).toCompletionStage().toCompletableFuture()
+        )
+        .thenApply {
+          logResponse(it.third, it.second, requestJsonStr)
+          it.second
+        }
+        .exceptionally {
+          it.cause?.message
+        }
+    )
+  }
+
+  private fun handleMessage(user: User?, requestJsonStr: String): Future<Triple<String, String, Boolean>> {
     val json: Any =
       when (val result = decodeMessage(requestJsonStr)) {
         is Ok -> result.value
         is Err -> {
-          return Future.succeededFuture(Json.encode(result.error))
+          return Future.failedFuture(Json.encode(result.error))
         }
       }
     log.trace(json)
     val isBulkRequest: Boolean = json is JsonArray
     val jsonArray = if (isBulkRequest) json as JsonArray else JsonArray().add(json)
-    val parsingResults: List<Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse>> =
+    val requestParsingResults: List<Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse>> =
       jsonArray.map(::measureRequestParsing)
     val methodTag =
       if (isBulkRequest) {
         "bulk_request"
       } else {
-        parsingResults.first()
+        requestParsingResults.first()
           .unwrap().first.method
       }
 
     // all or nothing: if any of the requests has a parsing error, return before execution
-    parsingResults.forEach {
+    requestParsingResults.forEach {
       when (it) {
-        is Err -> return Future.succeededFuture(Json.encode(it.error))
+        is Err -> return Future.failedFuture(Json.encode(it.error))
         is Ok -> Unit
       }
     }
 
-    return measureRequestProcessing(
+    return handleMessageRequests(
       user = user,
-      requestJsonStr = requestJsonStr,
-      parsingResults = parsingResults,
+      parsingResults = requestParsingResults,
       methodTag = methodTag
     )
   }
 
-  private fun handleMessageRequest(
+  private fun handleMessageRequests(
     user: User?,
     parsingResults: List<Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse>>,
     methodTag: String
@@ -110,7 +138,7 @@ class JsonRpcMessageProcessor(
       parsingResults.map { result ->
         // all success results at this state
         val (rpc: JsonRpcRequest, jsonObj: JsonObject) = result.unwrap()
-        handleRequest(user, rpc, jsonObj)
+        handleAndMeasureRequestHandling(user, rpc, jsonObj)
           .map { RequestContext(rpc.id, rpc.method, it) }
           .recover { error: Throwable ->
             log.error(
@@ -156,35 +184,6 @@ class JsonRpcMessageProcessor(
       }
   }
 
-  private fun measureRequestProcessing(
-    user: User?,
-    requestJsonStr: String,
-    parsingResults: List<Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse>>,
-    methodTag: String
-  ): Future<String> {
-    return Future.fromCompletionStage(
-      metricsFacade.createDynamicTagTimer<Triple<String, String, Boolean>>(
-        name = "jsonrpc.processing.whole",
-        description = "Processing of JSON-RPC message: Deserialization + Business Logic + Serialization",
-        tagKey = "method",
-        tagValueExtractorOnError = { "METHOD_PARSE_ERROR" }
-      ) {
-        it.first
-      }
-        .captureTime(
-          handleMessageRequest(
-            user = user,
-            parsingResults = parsingResults,
-            methodTag = methodTag
-          ).toCompletionStage().toCompletableFuture()
-        )
-        .thenApply {
-          logResponse(it.third, it.second, requestJsonStr)
-          it.second
-        }
-    )
-  }
-
   private fun measureRequestParsing(
     json: Any
   ): Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse> {
@@ -215,7 +214,7 @@ class JsonRpcMessageProcessor(
     }
   }
 
-  private fun handleRequest(
+  private fun handleAndMeasureRequestHandling(
     user: User?,
     jsonRpcRequest: JsonRpcRequest,
     requestJson: JsonObject
