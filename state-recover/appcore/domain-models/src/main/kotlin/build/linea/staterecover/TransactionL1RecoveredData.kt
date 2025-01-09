@@ -1,5 +1,6 @@
 package build.linea.staterecover
 
+import net.consensys.encodeHex
 import java.math.BigInteger
 
 data class TransactionL1RecoveredData(
@@ -36,6 +37,10 @@ data class TransactionL1RecoveredData(
       var result = address.contentHashCode()
       result = 31 * result + storageKeys.hashCode()
       return result
+    }
+
+    override fun toString(): String {
+      return "AccessTuple(address=${address.encodeHex()}, storageKeys=$storageKeys)"
     }
   }
 
@@ -79,5 +84,20 @@ data class TransactionL1RecoveredData(
     result = 31 * result + (data?.contentHashCode() ?: 0)
     result = 31 * result + (accessList?.hashCode() ?: 0)
     return result
+  }
+
+  override fun toString(): String {
+    return "TransactionL1RecoveredData(" +
+      "type=$type, " +
+      "nonce=$nonce, " +
+      "maxPriorityFeePerGas=$maxPriorityFeePerGas, " +
+      "maxFeePerGas=$maxFeePerGas, " +
+      "gasPrice=$gasPrice, " +
+      "gasLimit=$gasLimit, " +
+      "from=${from.encodeHex()}, " +
+      "to=${to?.encodeHex()}, " +
+      "value=$value, " +
+      "data=${data?.encodeHex()}, " +
+      "accessList=$accessList)"
   }
 }
