@@ -191,7 +191,6 @@ func (ec *ECPair) csIndexConsistency(comp *wizard.CompiledIOP) {
 		ifaces.QueryIDf("%v_INDEX_INCREMENT", nameECPair),
 		sym.Mul(
 			ec.UnalignedPairingData.IsActive,
-			sym.Sub(1, ec.UnalignedG2MembershipData.IsPulling, ec.UnalignedG2MembershipData.IsComputed), // we dont use index in the G2 membership check
 			sym.Sub(1, ec.UnalignedPairingData.IsFirstLineOfInstance),
 			sym.Sub(ec.UnalignedPairingData.Index, column.Shift(ec.UnalignedPairingData.Index, -1), 1),
 		),
