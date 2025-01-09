@@ -17,14 +17,18 @@ import (
 // We store the randomised symbolic products of A and B of permuation queries combinedly
 // into the Numerators and the Denominators of the GrandProduct query
 type GrandProductInput struct {
-	Round, Size  int
+	Size         int
 	Numerators   []*symbolic.Expression // stores A as multi-column
 	Denominators []*symbolic.Expression // stores B as multi-column
 }
 
+// GrandProduct is a query for computing the grand-product of several vector expressions. The
+// query returns a unique field element result.
 type GrandProduct struct {
-	ID     ifaces.QueryID
-	Inputs map[[2]int]*GrandProductInput
+	Round int
+	ID    ifaces.QueryID
+	// The list of the inputs of the query, grouped by sizes
+	Inputs map[int]*GrandProductInput
 }
 
 type GrandProductParams struct {
@@ -44,7 +48,7 @@ type GrandProductParams struct {
 //
 // Returns:
 // - A pointer to a new instance of GrandProduct.
-func NewGrandProduct(inp map[[2]int]*GrandProductInput, id ifaces.QueryID) *GrandProduct {
+func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryID) *GrandProduct {
 	// check the length consistency
 	for key := range inp {
 		// To check if the below is required or not
@@ -62,6 +66,7 @@ func NewGrandProduct(inp map[[2]int]*GrandProductInput, id ifaces.QueryID) *Gran
 	}
 
 	return &GrandProduct{
+		Round:  round,
 		Inputs: inp,
 		ID:     id,
 	}

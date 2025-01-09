@@ -34,8 +34,8 @@ func TestGrandProduct(t *testing.T) {
 			symbolic.Add(B0, symbolic.Mul(C0, alpha)),
 			symbolic.Add(A0, symbolic.Mul(B0, alpha)),
 		}
-		key := [2]int{0, 0}
-		zCat1 := map[[2]int]*query.GrandProductInput{}
+		key := 0
+		zCat1 := map[int]*query.GrandProductInput{}
 		zCat1[key] = &query.GrandProductInput{
 			Numerators:   A,
 			Denominators: B,
