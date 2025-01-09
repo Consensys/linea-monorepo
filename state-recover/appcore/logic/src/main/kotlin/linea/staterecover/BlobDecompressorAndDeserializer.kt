@@ -76,7 +76,7 @@ class BlobDecompressorToDomainV1(
             coinbase = staticFields.coinbase,
             blockTimestamp = Instant.fromEpochSeconds(block.header.timestamp),
             gasLimit = this.staticFields.gasLimit,
-            difficulty = block.header.difficulty.asBigInteger.toULong(),
+            difficulty = this.staticFields.difficulty,
             transactions = block.body.transactions.map { transaction ->
               TransactionL1RecoveredData(
                 type = transaction.type.serializedType.toUByte(),
