@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
@@ -34,17 +33,15 @@ type ZkEvm struct {
 	// modexp is the module responsible for proving the calls to the modexp
 	// precompile
 	modexp *modexp.Module
-	// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
-	//
 	// ecadd is the module responsible for proving the calls to the ecadd
 	// precompile
-	// ecadd *ecarith.EcAdd
+	ecadd *ecarith.EcAdd
 	// ecmul is the module responsible for proving the calls to the ecmul
 	// precompile
 	ecmul *ecarith.EcMul
 	// ecpair is the module responsible for the proving the calls the ecpairing
 	// precompile
-	ecpair *ecpair.ECPair
+	// ecpair *ecpair.ECPair
 	// sha2 is the module responsible for doing the computation of the sha2
 	// precompile.
 	sha2 *sha2.Sha2SingleProvider
@@ -100,11 +97,9 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		stateManager = statemanager.NewStateManagerNoHub(comp, s.Statemanager)
 		keccak       = keccak.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders())
 		modexp       = modexp.NewModuleZkEvm(comp, s.Modexp)
-		// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
-		//
-		// ecadd        = ecarith.NewEcAddZkEvm(comp, &s.Ecadd)
-		ecmul       = ecarith.NewEcMulZkEvm(comp, &s.Ecmul)
-		ecpair      = ecpair.NewECPairZkEvm(comp, &s.Ecpair)
+		ecadd        = ecarith.NewEcAddZkEvm(comp, &s.Ecadd)
+		ecmul        = ecarith.NewEcMulZkEvm(comp, &s.Ecmul)
+		// ecpair      = ecpair.NewECPairZkEvm(comp, &s.Ecpair)
 		sha2        = sha2.NewSha2ZkEvm(comp, s.Sha2)
 		publicInput = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
 	)
@@ -115,11 +110,9 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		stateManager:    stateManager,
 		keccak:          keccak,
 		modexp:          modexp,
-		// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
-		//
-		// ecadd:           ecadd,
-		ecmul:       ecmul,
-		ecpair:      ecpair,
+		ecadd:           ecadd,
+		ecmul:           ecmul,
+		// ecpair:      ecpair,
 		sha2:        sha2,
 		PublicInput: &publicInput,
 	}
@@ -140,11 +133,9 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		z.stateManager.Assign(run, input.SMTraces)
 		z.keccak.Run(run)
 		z.modexp.Assign(run)
-		// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
-		//
-		// z.ecadd.Assign(run)
+		z.ecadd.Assign(run)
 		z.ecmul.Assign(run)
-		z.ecpair.Assign(run)
+		// z.ecpair.Assign(run)
 		z.sha2.Run(run)
 		z.PublicInput.Assign(run, input.L2BridgeAddress)
 	}
