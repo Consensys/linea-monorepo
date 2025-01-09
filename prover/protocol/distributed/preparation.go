@@ -1,6 +1,7 @@
 package distributed
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
@@ -24,7 +25,7 @@ func prepare(comp *wizard.CompiledIOP) {
 	IntoLogDerivativeSum(comp)
 }
 
-// IIntoLogDerivativeSum compiles  all the inclusion queries to a single LogDerivativeSum query that is ready for the split.
+// IntoLogDerivativeSum compiles  all the inclusion queries to a single LogDerivativeSum query that is ready for the split.
 // This step is necessary for inclusion,
 // as the M table depends on the whole witness and so can not be handled modules-wise without changing the API of WizardIOP.
 func IntoLogDerivativeSum(comp *wizard.CompiledIOP) {
@@ -67,12 +68,17 @@ func IntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 			T:       lookupTable,
 			SFilter: includedFilters,
 		}
+		// assign the multiplicity column
 		comp.SubProvers.AppendToInner(round, a.Run)
 
 	}
 
 	// insert a single LogDerivativeSum query for the global zCatalog.
 	comp.InsertLogDerivativeSum(lastRound, "GlobalLogDerivativeSum", zCatalog)
+	// assign parameters of LogDerivativeSum, it is just to prevent the panic attack in the prover
+	comp.SubProvers.AppendToInner(lastRound, func(run *wizard.ProverRuntime) {
+		run.AssignLogDerivSum("GlobalLogDerivativeSum", field.Zero())
+	})
 }
 
 // PushToZCatalog constructs the numerators and denominators for the collapsed S and T

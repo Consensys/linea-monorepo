@@ -179,6 +179,7 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 	return Proof{
 		Messages:      messages,
 		QueriesParams: runtime.QueriesParams,
+		RunTime:       &runtime,
 	}
 }
 
