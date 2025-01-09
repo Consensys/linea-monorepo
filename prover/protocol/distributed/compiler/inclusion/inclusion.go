@@ -3,14 +3,12 @@ package inclusion
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 const (
@@ -81,14 +79,6 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 		panic("the given query is not a valid LogDerivativeSum from the compiledIOP")
 	}
 
-	// This ensures that the logDerivative query is not used again in the
-	// compilation process for the module.
-	/*	_, ok = moduleComp.QueriesParams.Data(in.QueryID).(query.LogDerivativeSum)
-		if ok {
-			moduleComp.QueriesNoParams.MarkAsIgnored(in.QueryID)
-		} */
-
-	// also mark all the inclusion queries in the module as ignored
 	// @Azam this is because for the moment we dont know how the module-discoverer extracts moduleComp from InitialComp.
 	// if we are sure that inclusions are already removed from modComp, we can skip this step here.
 	for _, qName := range moduleComp.QueriesNoParams.AllUnignoredKeys() {
@@ -108,13 +98,13 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 			// Particularly, T might be in the module and needs to take M from initialComp.
 			if in.Disc.ExpressionIsInModule(logDeriv.Inputs[key].Denominator[i], in.ModuleName) {
 				if !in.Disc.ExpressionIsInModule(logDeriv.Inputs[key].Numerator[i], in.ModuleName) {
-					PassColumnToModule(initialComp, moduleComp, initialProver, logDeriv.Inputs[key].Numerator[i])
+					distributed.PassColumnToModule(initialComp, moduleComp, initialProver, logDeriv.Inputs[key].Numerator[i])
 				}
 				denominator = append(denominator, logDeriv.Inputs[key].Denominator[i])
 				numerator = append(numerator, logDeriv.Inputs[key].Numerator[i])
 				// replaces the external coins with local coins
-				// they just appear in the denominator.
-				ReplaceExternalCoins(initialComp, moduleComp, logDeriv.Inputs[key].Denominator[i])
+				// note that they just appear in the denominator.
+				distributed.ReplaceExternalCoins(initialComp, moduleComp, logDeriv.Inputs[key].Denominator[i])
 				keyIsInModule = true
 			}
 		}
@@ -182,66 +172,4 @@ func GetLogDerivativeSumResult(zCatalog map[[2]int]*query.LogDerivativeSumInput,
 		}
 	}
 	return actualSum
-}
-
-// For an expression that has all its columns in the module, it replaces the external coins with local coins
-func ReplaceExternalCoins(initialComp, moduleComp *wizard.CompiledIOP, expr *symbolic.Expression) {
-	var (
-		board    = expr.Board()
-		metadata = board.ListVariableMetadata()
-	)
-	for _, m := range metadata {
-		switch v := m.(type) {
-		case coin.Info:
-
-			if !initialComp.Coins.Exists(v.Name) {
-				utils.Panic("Coin %v does not exist in the InitialComp", v.Name)
-			}
-			if v.Round != 1 {
-				utils.Panic("Coin %v is declared in round %v != 1", v.Name, v.Round)
-			}
-			if !moduleComp.Coins.Exists(v.Name) {
-				moduleComp.InsertCoin(1, v.Name, coin.Field)
-			}
-		}
-	}
-}
-
-// PassColumnToModule passes the column, underlying the expression, from initialComp to moduleComp.
-// It also handles the prover steps to assign the passed column in the moduleColumn.
-func PassColumnToModule(
-	initComp, moduleComp *wizard.CompiledIOP,
-	initialProver *wizard.ProverRuntime,
-	expr *symbolic.Expression) {
-
-	var (
-		board    = expr.Board()
-		metadata = board.ListVariableMetadata()
-	)
-	// check that the expression is a single column
-	if len(metadata) != 1 {
-		utils.Panic("expected a single metadata")
-	}
-	for _, m := range metadata {
-		switch v := m.(type) {
-		case ifaces.Column:
-			// check that the column is in the initComp
-			if !initComp.Columns.Exists(v.GetColID()) {
-				utils.Panic("Expected to find column %v in the initialComp", v.GetColID())
-			}
-
-			// commit to the column in the moduleComp
-			moduleComp.InsertCommit(0, v.GetColID(), v.Size())
-
-			// assign the column in the moduleComp
-			moduleComp.SubProvers.AppendToInner(v.Round(), func(run *wizard.ProverRuntime) {
-				run.AssignColumn(v.GetColID(), initialProver.GetColumn(v.GetColID()))
-
-			})
-
-		default:
-			utils.Panic("expected only column type in the expression")
-		}
-
-	}
 }

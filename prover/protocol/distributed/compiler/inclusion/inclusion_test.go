@@ -14,8 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// It tests if the expression is properly distributed among modules.
-// It does not test the prover steps.
+// It tests DistributedLogDerivSum.
 func TestDistributedLogDerivSum(t *testing.T) {
 
 	var (
@@ -37,6 +36,7 @@ func TestDistributedLogDerivSum(t *testing.T) {
 		b.CompiledIOP.InsertGlobal(0, "module1.global0",
 			symbolic.Sub(col11, symbolic.Mul(2, col10)))
 	}
+	// initial Define
 	define := func(b *wizard.Builder) {
 		define0(b)
 		define1(b)
@@ -53,6 +53,7 @@ func TestDistributedLogDerivSum(t *testing.T) {
 		run.AssignColumn("module1.col1", smartvectors.ForTest(2, 2, 4, 2, 2, 2, 2, 4))
 	}
 
+	// initial Prover
 	prover := func(run *wizard.ProverRuntime) {
 		prover0(run)
 		prover1(run)
@@ -67,18 +68,21 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	disc := &md.PeriodSeperatingModuleDiscoverer{}
 	disc.Analyze(initialComp)
 
+	// get the run time for the initial Prover; this includes whole the witness and multiplicity columns.
 	proof := wizard.Prove(initialComp, prover)
 	initialProver := proof.RunTime
 
-	// distribute the shares to modules.
+	// distribute the shares of LogDerivativeSum to modules.
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc, initialProver)
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc, initialProver)
 
+	// Compile and prove for module0
 	logderiv.CompileLogDerivSum(moduleComp0)
 	proof0 := wizard.Prove(moduleComp0, prover0)
 	valid := wizard.Verify(moduleComp0, proof0)
 	require.NoError(t, valid)
 
+	// Compile and prove for module1
 	logderiv.CompileLogDerivSum(moduleComp1)
 	proof1 := wizard.Prove(moduleComp1, prover1)
 	valid1 := wizard.Verify(moduleComp1, proof1)
