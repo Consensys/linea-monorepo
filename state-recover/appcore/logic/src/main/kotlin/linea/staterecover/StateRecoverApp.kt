@@ -39,7 +39,12 @@ class StateRecoverApp(
     val l1PollingInterval: Duration = 12.seconds,
     val executionClientPollingInterval: Duration = 1.seconds,
     val blobDecompressorVersion: BlobDecompressorVersion = BlobDecompressorVersion.V1_1_0,
-    val logsBlockChunkSize: UInt = 1000u
+    val logsBlockChunkSize: UInt = 1000u,
+    /**
+     * The block number at which the recovery mode will start overriding the recovery start block number
+     * this is mean for testing purposes, not production
+     */
+    val overridingRecoveryStartBlockNumber: ULong? = null
   ) {
     companion object {
       val lineaMainnet = Config(
@@ -118,6 +123,10 @@ class StateRecoverApp(
   }
 
   private fun enableRecoveryMode(): SafeFuture<*> {
+    if (config.overridingRecoveryStartBlockNumber != null) {
+      return trySetRecoveryModeAtBlockHeight(config.overridingRecoveryStartBlockNumber)
+    }
+
     return elClient
       .lineaGetStateRecoveryStatus()
       .thenCompose { status ->
@@ -148,10 +157,17 @@ class StateRecoverApp(
     return AsyncRetryer.retry(
       vertx = vertx,
       backoffDelay = config.executionClientPollingInterval,
-      stopRetriesPredicate = {
+      stopRetriesPredicate = { recoveryStatus ->
+        log.debug(
+          "waiting for node to sync until stateRecoverStartBlockNumber={} headBlockNumber={}",
+          recoveryStatus.stateRecoverStartBlockNumber,
+          recoveryStatus.headBlockNumber
+        )
         // headBlockNumber shall be at least 1 block behind of stateRecoverStartBlockNumber
-        // if it is after is means it has already enabled
-        (it.headBlockNumber + 1UL) >= (it.stateRecoverStartBlockNumber ?: 0UL)
+        // if it is after it means it was already enabled
+        recoveryStatus.stateRecoverStartBlockNumber?.let { startBlockNumber ->
+          recoveryStatus.headBlockNumber + 1u >= startBlockNumber
+        } ?: false
       }
     ) {
       elClient.lineaGetStateRecoveryStatus()
@@ -159,6 +175,7 @@ class StateRecoverApp(
   }
 
   override fun start(): CompletableFuture<Unit> {
+    log.warn("Starting StateRecoverApp")
     val enablementFuture = enableRecoveryMode()
 
     enablementFuture
