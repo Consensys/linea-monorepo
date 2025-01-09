@@ -1,7 +1,9 @@
 import { ethers, NonceManager, Provider, TransactionResponse, Wallet } from "ethers";
 import { Mutex } from "async-mutex";
+import type { Logger } from "winston";
 import Account from "./account";
 import { etherToWei } from "../../../common/utils";
+import { createTestLogger } from "../../../config/logger";
 
 interface IAccountManager {
   whaleAccount(accIndex?: number): NonceManager;
@@ -29,6 +31,10 @@ abstract class AccountManager implements IAccountManager {
   protected provider: Provider;
   protected accountWallets: NonceManager[];
   private whaleAccountMutex: Mutex;
+  private logger: Logger;
+
+  private readonly MAX_RETRIES = 5;
+  private readonly RETRY_DELAY_MS = 1_000;
 
   constructor(provider: Provider, whaleAccounts: Account[], chainId: number) {
     this.provider = provider;
@@ -38,6 +44,8 @@ abstract class AccountManager implements IAccountManager {
       (account) => new NonceManager(getWallet(this.provider, account.privateKey)),
     );
     this.whaleAccountMutex = new Mutex();
+
+    this.logger = createTestLogger();
   }
 
   selectWhaleAccount(accIndex?: number): { account: Account; accountWallet: NonceManager } {
@@ -65,12 +73,12 @@ abstract class AccountManager implements IAccountManager {
   async generateAccounts(numberOfAccounts: number, initialBalanceWei = etherToWei("10")): Promise<Wallet[]> {
     const { account: whaleAccount, accountWallet: whaleAccountWallet } = this.selectWhaleAccount();
 
-    console.log(
-      `Generating accounts: chainId=${this.chainId} numberOfAccounts=${numberOfAccounts} whaleAccount=${whaleAccount.address}`,
+    this.logger.debug(
+      `Generating accounts... chainId=${this.chainId} numberOfAccounts=${numberOfAccounts} whaleAccount=${whaleAccount.address}`,
     );
 
     const accounts: Account[] = [];
-    const transactionResponses: TransactionResponse[] = [];
+    const transactionPromises: Promise<TransactionResponse>[] = [];
 
     for (let i = 0; i < numberOfAccounts; i++) {
       const randomBytes = ethers.randomBytes(32);
@@ -85,26 +93,59 @@ abstract class AccountManager implements IAccountManager {
         gasLimit: 21000n,
       };
 
-      const release = await this.whaleAccountMutex.acquire();
-      try {
-        const transactionResponse = await whaleAccountWallet.sendTransaction(tx);
-        console.log(
-          `Transaction sent: newAccount=${newAccount.address} txHash=${transactionResponse.hash} whaleAccount=${whaleAccount.address}`,
+      const sendTransactionWithRetry = async (): Promise<TransactionResponse> => {
+        return this.retry<TransactionResponse>(
+          async () => {
+            const release = await this.whaleAccountMutex.acquire();
+            try {
+              const transactionResponse = await whaleAccountWallet.sendTransaction(tx);
+              this.logger.debug(
+                `Transaction sent. newAccount=${newAccount.address} txHash=${transactionResponse.hash} whaleAccount=${whaleAccount.address}`,
+              );
+              return transactionResponse;
+            } catch (error) {
+              this.logger.warn(
+                `sendTransaction failed for account=${newAccount.address}. Error: ${(error as Error).message}`,
+              );
+              throw error;
+            } finally {
+              release();
+            }
+          },
+          this.MAX_RETRIES,
+          this.RETRY_DELAY_MS,
         );
-        transactionResponses.push(transactionResponse);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (error: any) {
-        console.error(`Failed to fund account ${newAccount.address}: ${error.message}`);
+      };
+
+      const txPromise = sendTransactionWithRetry().catch((error) => {
+        this.logger.error(
+          `Failed to fund account after ${this.MAX_RETRIES} attempts. address=${newAccount.address} error=${error.message}`,
+        );
         whaleAccountWallet.reset();
-      } finally {
-        release();
-      }
+        return null as unknown as TransactionResponse;
+      });
+
+      transactionPromises.push(txPromise);
     }
 
-    await Promise.all(transactionResponses.map((tx) => tx.wait()));
+    const transactionResponses = await Promise.all(transactionPromises);
 
-    console.log(
-      `Accounts funded: newAccounts=${accounts.map((account) => account.address).join(",")} balance=${initialBalanceWei.toString()} wei`,
+    const successfulTransactions = transactionResponses.filter(
+      (txResponse): txResponse is TransactionResponse => txResponse !== null,
+    );
+
+    if (successfulTransactions.length < numberOfAccounts) {
+      this.logger.warn(
+        `Some accounts were not funded successfully. successful=${successfulTransactions.length} expected=${numberOfAccounts}`,
+      );
+    }
+
+    await Promise.all(successfulTransactions.map((tx) => tx.wait()));
+
+    this.logger.debug(
+      `${successfulTransactions.length} accounts funded. newAccounts=${accounts
+        .map((account) => account.address)
+        .join(", ")} balance=${initialBalanceWei.toString()} Wei`,
     );
 
     return accounts.map((account) => this.getWallet(account));
@@ -112,6 +153,30 @@ abstract class AccountManager implements IAccountManager {
 
   getWallet(account: Account): Wallet {
     return getWallet(this.provider, account.privateKey);
+  }
+
+  private async retry<T>(fn: () => Promise<T>, retries: number, delayMs: number): Promise<T> {
+    let attempt = 0;
+
+    while (attempt < retries) {
+      try {
+        return await fn();
+      } catch (error) {
+        attempt++;
+        if (attempt >= retries) {
+          this.logger.error(`Operation failed after attempts=${attempt} error=${(error as Error).message}`);
+          throw error;
+        }
+        this.logger.warn(`Attempt ${attempt} failed. Retrying in ${delayMs}ms... error=${(error as Error).message}`);
+        await this.delay(delayMs);
+      }
+    }
+
+    throw new Error("Unexpected error in retry mechanism.");
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
