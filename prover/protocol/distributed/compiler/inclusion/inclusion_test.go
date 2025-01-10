@@ -43,14 +43,22 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	}
 
 	// prover for module0
-	prover0 := func(run *wizard.ProverRuntime) {
-		run.AssignColumn("module0.col0", smartvectors.ForTest(2, 4, 1, 4))
-		run.AssignColumn("module0.col1", smartvectors.ForTest(1, 2, 1, 2))
+	prover0 := func(parent *wizard.ProverRuntime) func(run *wizard.ProverRuntime) {
+
+		initialComp := parent.Spec
+
+		return func(run *wizard.ProverRuntime) {
+			moduleComp := run.Spec
+			run.AssignColumn("module0.col0", smartvectors.ForTest(2, 4, 1, 4))
+			run.AssignColumn("module0.col1", smartvectors.ForTest(1, 2, 1, 2))
+		}
 	}
 	// prover for module1
-	prover1 := func(run *wizard.ProverRuntime) {
-		run.AssignColumn("module1.col0", smartvectors.ForTest(1, 1, 2, 1, 1, 1, 1, 2))
-		run.AssignColumn("module1.col1", smartvectors.ForTest(2, 2, 4, 2, 2, 2, 2, 4))
+	prover1 := func(parent *wizard.ProverRuntime) func(run *wizard.ProverRuntime) {
+		return func(run *wizard.ProverRuntime) {
+			run.AssignColumn("module1.col0", smartvectors.ForTest(1, 1, 2, 1, 1, 1, 1, 2))
+			run.AssignColumn("module1.col1", smartvectors.ForTest(2, 2, 4, 2, 2, 2, 2, 4))
+		}
 	}
 
 	// initial Prover
@@ -61,24 +69,26 @@ func TestDistributedLogDerivSum(t *testing.T) {
 
 	// in initialComp replace inclusion queries with a global LogDerivativeSum
 	initialComp := wizard.Compile(define, distributed.IntoLogDerivativeSum)
-	moduleComp0 := wizard.Compile(define0)
-	moduleComp1 := wizard.Compile(define1)
 
 	// Initialize the period separating module discoverer
 	disc := &md.PeriodSeperatingModuleDiscoverer{}
 	disc.Analyze(initialComp)
 
+	//
+	moduleComp0 := distributed.GetFreshModuleComp(initialComp, disc, "module0")
+	moduleComp1 := distributed.GetFreshModuleComp(initialComp, disc, "module1")
+
+	// distribute the shares of LogDerivativeSum to modules.
+	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc)
+	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc)
+
 	// get the run time for the initial Prover; this includes whole the witness and multiplicity columns.
 	proof := wizard.Prove(initialComp, prover)
 	initialProver := proof.RunTime
 
-	// distribute the shares of LogDerivativeSum to modules.
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc, initialProver)
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc, initialProver)
-
 	// Compile and prove for module0
 	logderiv.CompileLogDerivSum(moduleComp0)
-	proof0 := wizard.Prove(moduleComp0, prover0)
+	proof0 := wizard.Prove(moduleComp0, prover0(initialProver))
 	valid := wizard.Verify(moduleComp0, proof0)
 	require.NoError(t, valid)
 
