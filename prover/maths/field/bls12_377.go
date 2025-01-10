@@ -4,9 +4,10 @@ import (
 	"math/big"
 	"math/rand"
 
+	"math/bits"
+
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"math/bits"
 )
 
 // Element aliases [fr.Element] and represents a field element in the scalar

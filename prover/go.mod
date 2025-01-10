@@ -6,10 +6,10 @@ toolchain go1.23.0
 
 require (
 	github.com/bits-and-blooms/bitset v1.14.3
-	github.com/consensys/bavard v0.1.24
+	github.com/consensys/bavard v0.1.25
 	github.com/consensys/compress v0.2.5
 	github.com/consensys/gnark v0.11.1-0.20241217141116-f3d91999250b
-	github.com/consensys/gnark-crypto v0.14.1-0.20241217134352-810063550bd4
+	github.com/consensys/gnark-crypto v0.14.1-0.20241217131346-b998989abdbe
 	github.com/consensys/go-corset v0.0.0-20241125005324-5cb0c289c021
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
@@ -30,6 +30,8 @@ require (
 	golang.org/x/sync v0.10.0
 	golang.org/x/time v0.5.0
 )
+
+replace github.com/consensys/gnark-crypto => ../../gnark-crypto
 
 require (
 	github.com/DataDog/zstd v1.5.5 // indirect
