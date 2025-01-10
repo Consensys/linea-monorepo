@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-func TestPermutationAlex(t *testing.T) {
+func TestPermutation(t *testing.T) {
 
 	var (
 		moduleAName = "MODULE_A"
