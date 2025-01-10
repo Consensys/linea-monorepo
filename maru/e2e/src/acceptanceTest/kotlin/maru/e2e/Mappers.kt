@@ -30,7 +30,7 @@ object Mappers {
     var chainId: BigInteger? = null
     if (
       v == Transaction.REPLAY_UNPROTECTED_V_BASE ||
-        v == Transaction.REPLAY_UNPROTECTED_V_BASE_PLUS_1
+      v == Transaction.REPLAY_UNPROTECTED_V_BASE_PLUS_1
     ) {
       recId = v.subtract(Transaction.REPLAY_UNPROTECTED_V_BASE).byteValueExact()
     } else if (v > Transaction.REPLAY_PROTECTED_V_MIN) {
@@ -85,7 +85,7 @@ object Mappers {
                   Address.fromHexString(entry.address),
                   entry.storageKeys,
                 )
-              }
+              },
             )
           }
         }

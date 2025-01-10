@@ -10,7 +10,6 @@ import java.nio.file.Path
 import java.util.Optional
 import java.util.UUID
 import kotlin.io.path.Path
-import kotlin.jvm.*
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -19,7 +18,7 @@ import maru.e2e.TestEnvironment.waitForInclusion
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
-import org.assertj.core.api.Assertions.*
+import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -41,9 +40,7 @@ import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 
 class CliqueToPosTest {
-
   companion object {
-
     val qbftCluster =
       DockerComposeRule.Builder()
         .file(Path.of("./../docker/compose.yaml").toString())
@@ -100,7 +97,8 @@ class CliqueToPosTest {
       .untilAsserted {
         val unixTimestamp = System.currentTimeMillis() / 1000
         log.info(
-          "Waiting for Cancun switch ${newBlockTimestamp.longValue() - unixTimestamp} seconds until the switch "
+          "Waiting for Cancun switch " +
+            "${newBlockTimestamp.longValue() - unixTimestamp} seconds until the switch ",
         )
         assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
       }
@@ -129,7 +127,7 @@ class CliqueToPosTest {
           Bytes20.fromHexString("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
           emptyList(),
           Bytes32.ZERO,
-        )
+        ),
       )
     val fcuResponse =
       sequencerExecutionClient
@@ -156,7 +154,7 @@ class CliqueToPosTest {
           Bytes20.fromHexString("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
           emptyList(),
           Bytes32.ZERO,
-        )
+        ),
       )
     val nextForkChoiceState = ForkChoiceStateV1(newPayloadHash, newPayloadHash, newPayloadHash)
     sequencerExecutionClient
@@ -229,7 +227,10 @@ class CliqueToPosTest {
     repeat(5) { TestEnvironment.sendArbitraryTransaction().waitForInclusion() }
   }
 
-  private fun createWeb3jClient(eeEndpoint: String, jwtConfig: Optional<JwtConfig>): Web3JClient =
+  private fun createWeb3jClient(
+    eeEndpoint: String,
+    jwtConfig: Optional<JwtConfig>,
+  ): Web3JClient =
     Web3jClientBuilder()
       .timeout(1.minutes.toJavaDuration())
       .endpoint(eeEndpoint)
@@ -241,8 +242,7 @@ class CliqueToPosTest {
   private fun createExecutionClient(
     eeEndpoint: String,
     jwtConfig: Optional<JwtConfig> = Optional.empty(),
-  ): Web3JExecutionEngineClient =
-    Web3JExecutionEngineClient(createWeb3jClient(eeEndpoint, jwtConfig))
+  ): Web3JExecutionEngineClient = Web3JExecutionEngineClient(createWeb3jClient(eeEndpoint, jwtConfig))
 
   @Disabled
   fun listBlockHeights() {
@@ -267,7 +267,8 @@ class CliqueToPosTest {
       blockHeights.forEach {
         assertThat(it.second.blockNumber)
           .withFailMessage {
-            "Block height doesn't match for ${it.first}. Found ${it.second.blockNumber} while expecting ${sequencerBlockHeight.blockNumber}."
+            "Block height doesn't match for ${it.first}. Found ${it.second.blockNumber} " +
+              "while expecting ${sequencerBlockHeight.blockNumber}."
           }
           .isEqualTo(sequencerBlockHeight.blockNumber)
       }
@@ -283,7 +284,8 @@ class CliqueToPosTest {
         TestEnvironment.followerClients.forEach {
           it.value
             .adminAddPeer(
-              "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
+              "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e2" +
+                "2bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303",
             )
             .send()
           val peersResult = it.value.adminPeers().send().result

@@ -24,11 +24,12 @@ object TestEnvironment {
       "gethSnapServer" to gethSnapServerL2Client,
       "besuFollower" to besuFollowerL2Client,
     )
-  val transactionManager = let {
-    val credentials =
-      Credentials.create("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae")
-    RawTransactionManager(sequencerL2Client, credentials)
-  }
+  val transactionManager =
+    let {
+      val credentials =
+        Credentials.create("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae")
+      RawTransactionManager(sequencerL2Client, credentials)
+    }
 
   fun sendArbitraryTransaction(): EthSendTransaction {
     val gasPrice = sequencerL2Client.ethGasPrice().send().gasPrice
