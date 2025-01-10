@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
@@ -33,7 +34,13 @@ func TestGrandProduct(t *testing.T) {
 			symbolic.Add(B0, symbolic.Mul(C0, alpha)),
 			symbolic.Add(A0, symbolic.Mul(B0, alpha)),
 		}
-		G = builder.CompiledIOP.InsertGrandProduct(0, "G", A, B)
+		key := 0
+		zCat1 := map[int]*query.GrandProductInput{}
+		zCat1[key] = &query.GrandProductInput{
+			Numerators:   A,
+			Denominators: B,
+		}
+		G = builder.CompiledIOP.InsertGrandProduct(0, "GrandProductTest", zCat1)
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
@@ -41,7 +48,7 @@ func TestGrandProduct(t *testing.T) {
 		run.AssignColumn("A0", smartvectors.ForTest(1, 2, 3, 4))
 		run.AssignColumn("B0", smartvectors.ForTest(1, 2, 3, 4))
 		run.AssignColumn("C0", smartvectors.ForTest(1, 2, 3, 4))
-		runS.AssignGrandProduct("G", field.One())
+		runS.AssignGrandProduct("GrandProductTest", field.One())
 	}
 
 	var (
