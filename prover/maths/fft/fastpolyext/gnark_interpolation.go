@@ -95,7 +95,7 @@ func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.E2, x gnarkfext.E2) gn
 	factor := xN
 	factor = api.Sub(factor, one)
 	factor = api.MulByBase(factor, domain.CardinalityInv)
-	res = api.MulByBase(res, factor)
+	res = api.Mul(res, factor)
 
 	return res
 
