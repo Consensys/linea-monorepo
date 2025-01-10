@@ -13,7 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// The GrandProduct query is obtained by  process all the permuation queries specific to a target module.
+// The GrandProduct query is obtained by processing all the permuation queries specific to a target module.
 // We store the randomised symbolic products of A and B of permuation queries combinedly
 // into the Numerators and the Denominators of the GrandProduct query
 type GrandProductInput struct {
@@ -36,9 +36,6 @@ type GrandProductParams struct {
 }
 
 // NewGrandProduct creates a new instance of a GrandProduct query.
-// The GrandProduct query is obtained by processing all permutation queries specific to a target module.
-// We store the randomized symbolic products of A and B of permutation queries combinedly
-// into the Numerators and the Denominators of the GrandProduct query.
 //
 // Parameters:
 // - round: The round number of the query.
@@ -51,10 +48,6 @@ type GrandProductParams struct {
 func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryID) *GrandProduct {
 	// check the length consistency
 	for key := range inp {
-		// To check if the below is required or not
-		// if len(inp[key].Numerators) != len(inp[key].Denominator) || len(inp[key].Numerator) == 0 {
-		// 	utils.Panic("Numerator and Denominator should have the same (non-zero) length, %v , %v", len(inp[key].Numerator), len(inp[key].Denominator))
-		// }
 		for i := range inp[key].Numerators {
 			if err := inp[key].Numerators[i].Validate(); err != nil {
 				utils.Panic(" Numerator[%v] is not a valid expression", i)

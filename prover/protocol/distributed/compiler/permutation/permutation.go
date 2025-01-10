@@ -166,8 +166,7 @@ func (p *PermutationIntoGrandProductCtx) push(comp *wizard.CompiledIOP, aOrb []i
 
 // computeFactor computes the symbolic factor for a permutation query based on the given parameters.
 // It iterates through the fragments of the query, computes the linear combination of columns with alpha
-// (if multi-column) or directly uses the column as a variable, adds the beta value, and multiplies it with
-// the current factor. The final computed factor is returned.
+// (if multi-column) or directly uses the column as a variable, adds the beta value and returns the result.
 //
 // Parameters:
 // - aOrB: A 2D slice of Column interfaces representing the fragments of the permutation query.
@@ -184,10 +183,8 @@ func computeFactor(aOrB []ifaces.Column, alpha, beta coin.Info) *symbolic.Expres
 	return symbolic.Add(beta, aOrB[0])
 }
 
-// computeQueryParam computes the query parameter for the grand product query and assigns it in round one.
+// computeQueryParam computes the query parameter for the grand product query.
 // It multiplies the products of the Numerators and Denominators, evaluates the resulting symbolic expressions,
-// and assigns the result to the field element ParamY.
-//
 // Parameters:
 // - run: The prover runtime.
 // - name: The query ID specific to the target module.
