@@ -90,7 +90,6 @@ open class LineaStateRecoverPlugin : BesuPlugin {
   }
 
   override fun afterExternalServicePostMainLoop() {
-    recoveryStatusPersistence.getRecoveryStartBlockNumber()?.let(recoveryModeManager::setTargetBlockNumber)
   }
 
   override fun stop() {

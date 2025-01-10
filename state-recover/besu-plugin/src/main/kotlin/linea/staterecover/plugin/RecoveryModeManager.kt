@@ -31,6 +31,7 @@ class RecoveryModeManager(
     NORMAL_MODE,
     RECOVERY_MODE
   }
+
   private var recoveryModeState = RecoveryModeState.NORMAL_MODE
 
   /**
@@ -56,11 +57,26 @@ class RecoveryModeManager(
    *
    * @param targetBlockNumber the target block number to set
    */
+  @Synchronized
   fun setTargetBlockNumber(targetBlockNumber: ULong) {
     check(!triggered.get()) {
       "Cannot set target block number after recovery mode has been triggered"
     }
-    recoveryStatePersistence.saveRecoveryStartBlockNumber(targetBlockNumber)
+    val effectiveRecoveryStartBlockNumber = if (targetBlockNumber <= currentBlockNumber + 1u) {
+      log.warn(
+        "targetBlockNumber={} is less than or equal to headBlockNumber={}" +
+          " enabling recovery mode immediately at blockNumber={}",
+        targetBlockNumber,
+        currentBlockNumber,
+        currentBlockNumber + 1u
+
+      )
+      switchToRecoveryMode()
+      currentBlockNumber + 1u
+    } else {
+      targetBlockNumber
+    }
+    recoveryStatePersistence.saveRecoveryStartBlockNumber(effectiveRecoveryStartBlockNumber)
   }
 
   /** Switches the node to recovery mode.  */
@@ -81,6 +97,7 @@ class RecoveryModeManager(
       "Switched to state recovery mode at block={}",
       headBlockNumber
     )
+    triggered.set(true)
     recoveryModeState = RecoveryModeState.RECOVERY_MODE
   }
 }

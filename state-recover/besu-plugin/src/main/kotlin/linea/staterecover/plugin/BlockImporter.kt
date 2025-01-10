@@ -89,7 +89,6 @@ class BlockImporter(
 
   private fun createOverrides(blockHeader: BlockHeader): BlockOverrides {
     return BlockOverrides.builder()
-      .blockHash(blockHeader.blockHash)
       .feeRecipient(blockHeader.coinbase)
       .blockNumber(blockHeader.number)
       .gasLimit(blockHeader.gasLimit)

@@ -76,7 +76,7 @@ fun createAppAllInProcess(
       backoffDelay = 1.seconds,
       maxRetries = 1u
     ),
-    zkStateManagerVersion = "2.3.1",
+    zkStateManagerVersion = "2.3.0",
     logger = LogManager.getLogger("linea.plugin.staterecover.clients.state-manager")
   )
 
