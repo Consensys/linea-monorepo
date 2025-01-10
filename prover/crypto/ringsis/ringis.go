@@ -284,7 +284,8 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 
 	N := s.OutputSize()
 
-	res := make([]field.Element, nbCols*N)
+	constPoly := make(field.Vector, N)
+	res := make(field.Vector, nbCols*N)
 
 	k := make([]field.Element, N)
 	for start := 0; start < len(v); start += nbFieldPerPoly {
@@ -292,28 +293,46 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 		if end > len(v) {
 			end = len(v)
 		}
-
 		polID := start / nbFieldPerPoly
+
+		// first, we iterate over the lines; if all are smartvectors.Constant, we contribute the contribution
+		// once only, and add it at the end before reducing
+		isConstant := true
+		for row := start; row < end; row++ {
+			if _, ok := v[row].(*smartvectors.Constant); !ok {
+				isConstant = false
+				break
+			}
+		}
+		if isConstant {
+			it := sis.NewLimbIterator(newColumnIterator(v[start:end], 0), s.LogTwoBound/8)
+			s.gnarkInternal.InnerHash(it, constPoly, k, polID)
+			continue
+		}
+
 		pool.ExecutePoolChunky(nbIterations, func(chunkID int) {
 			for j := 0; j < tileWidth; j++ {
+				colID := chunkID*tileWidth + j
+				it := sis.NewLimbIterator(newColumnIterator(v[start:end], colID), s.LogTwoBound/8)
+				s.gnarkInternal.InnerHash(it, res[colID*N:colID*N+N], k, polID)
+			}
+		})
+
+		if remainingIterations > 0 {
+			chunkID := nbIterations - 1
+			for j := 0; j < remainingIterations; j++ {
 				colId := chunkID*tileWidth + j
 				it := sis.NewLimbIterator(newColumnIterator(v[start:end], colId), s.LogTwoBound/8)
 				s.gnarkInternal.InnerHash(it, res[colId*N:colId*N+N], k, polID)
 			}
-
-			if chunkID == nbIterations-1 && remainingIterations > 0 {
-				for j := 0; j < remainingIterations; j++ {
-					colId := chunkID*tileWidth + j
-					it := sis.NewLimbIterator(newColumnIterator(v[start:end], colId), s.LogTwoBound/8)
-					s.gnarkInternal.InnerHash(it, res[colId*N:colId*N+N], k, polID)
-				}
-			}
-		})
+		}
 	}
 
 	// now for each subslice in results, we do the FFT inverse to reduce mod Xᵈ+1
 	parallel.Execute(nbCols, func(start, stop int) {
 		for j := start; j < stop; j++ {
+			vRes := field.Vector(res[j*N : (j+1)*N])
+			vRes.Add(vRes, constPoly)
 			s.gnarkInternal.Domain.FFTInverse(res[j*N:(j+1)*N], fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
 		}
 	})
@@ -333,11 +352,17 @@ func newColumnIterator(v []smartvectors.SmartVector, colIndex int) *columnIterat
 	return &columnIterator{v: v, colIndex: colIndex}
 }
 
-func (vi *columnIterator) Next() (field.Element, bool) {
-	if vi.rowIndex == len(vi.v) {
+func (it *columnIterator) Reset(v []smartvectors.SmartVector, colIndex int) {
+	it.v = v
+	it.colIndex = colIndex
+	it.rowIndex = 0
+}
+
+func (it *columnIterator) Next() (field.Element, bool) {
+	if it.rowIndex == len(it.v) {
 		return field.Element{}, false
 	}
-	row := vi.v[vi.rowIndex]
-	vi.rowIndex++
-	return row.Get(vi.colIndex), true
+	row := it.v[it.rowIndex]
+	it.rowIndex++
+	return row.Get(it.colIndex), true
 }

@@ -17,6 +17,9 @@ import (
 // `field.Element(1, 0, 0, 0)` represent valid field elements.
 type Element = fr.Element
 
+// Vector aliases [fr.Vector] and represents a slice of field elements.
+type Vector = fr.Vector
+
 const (
 	// RootOfUnityOrder is the smallest integer such that
 	// 		[RootOfUnity] ** (2 ** RootOfUnityOrder) == 1
