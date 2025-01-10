@@ -22,9 +22,14 @@ dependencies {
 }
 
 ext.groupsToIncludeInShadow = [
-  "build.linea..*",
-  "io.micrometer..*",
-  "org.jetbrains.kotlin..*",
+  "build.linea.*",
+  "io.micrometer.*",
+  "org.jetbrains.kotlin:kotlin-reflect.*",
+  "org.jetbrains.kotlinx:kotlinx-datetime.*",
+  "tech.pegasys.teku.internal:async",
+  "io.vertx.*",
+  // this can be removed once Besu updates to Vertx 4.12+
+  "com.michael-bull.kotlin-result:kotlin-result.*",
   "com.fasterxml.jackson.module:jackson-module-kotlin",
 ]
 
@@ -38,7 +43,7 @@ def canIncludeLib(String lib) {
 tasks.create("testLibsInclusion", Task) {
   //  def lib = "build.linea.internal:kotlin-extensions"
   doLast {
-    def lib = "com.fasterxml.jackson.module:jackson-module-kotlin"
+    def lib = "com.michael-bull.kotlin-result:kotlin-result"
     println("Can include $lib: ${canIncludeLib(lib)}")
   }
 }
@@ -49,12 +54,16 @@ shadowJar {
     archiveVersion.set("${project.version}")
   }
 
-  //  dependencies {
-  //    exclude {dependency ->
-  //      def shallExclude = !canIncludeLib("${dependency.moduleGroup}:${dependency.moduleName}")
-  //      shallExclude
-  //    }
-  //  }
+  dependencies {
+    exclude { dependency ->
+//      if (dependency.moduleGroup.startsWith("com.michael-bull")) {
+//        println("${dependency.moduleGroup}:${dependency.moduleName}")
+//        println(dependency)
+//      }
+      def shallExclude = !canIncludeLib("${dependency.moduleGroup}:${dependency.moduleName}")
+      shallExclude
+    }
+  }
 
   manifest {
     attributes(
