@@ -703,6 +703,7 @@ services:
       - "9145:8545" # http
       - "9146:8546" # websockets
       - "9150:8550"
+      - "10545:9545"
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
       interval: 1s
@@ -722,14 +723,6 @@ services:
       - -c
       - |
         chown -R besu:besu /opt/besu/plugins && \
-        rm -fr /opt/besu/plugins/finalized-tag-updater-v0.0.3.jar && \
-        rm -fr /opt/besu/plugins/jackson-annotations-2.18.0.jar && \
-        rm -fr /opt/besu/plugins/jackson-core-2.18.0.jar && \
-        rm -fr /opt/besu/plugins/jackson-databind-2.18.0.jar && \
-        rm -fr /opt/besu/plugins/jackson-dataformat-yaml-2.18.0.jar && \
-        rm -fr /opt/besu/plugins/linea-sequencer-v0.8.0-rc8.5.jar && \
-        rm -fr /opt/besu/plugins/linea-tracer-v0.8.0-rc8.jar && \
-        rm -fr /opt/besu/plugins/snakeyaml-2.0.jar && \
         ls -lh /opt/besu/plugins && \
         sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*' /opt/besu/bin/besu && \
         /opt/besu/bin/besu \
@@ -738,6 +731,8 @@ services:
         --plugins=BesuShomeiRpcPlugin,ZkTrieLogPlugin,LineaStateRecoverPlugin \
         --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,MINER,SHOMEI \
         --Xbonsai-limit-trie-logs-enabled=false \
+        --plugin-shomei-http-host="11.11.11.117" \
+        --plugin-shomei-http-port=8888 \
         --plugin-staterecovery-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
         --plugin-staterecovery-l1-rpc-endpoint=http://l1-el-node:8545 \
         --plugin-staterecovery-shomei-endpoint=http://shomei-sr:8888 \

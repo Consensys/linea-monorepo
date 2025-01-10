@@ -7,6 +7,7 @@ import linea.staterecover.InMemoryRecoveryStatus
 import linea.staterecover.RecoveryStatusPersistence
 import linea.staterecover.StateRecoverApp
 import linea.staterecover.clients.ExecutionLayerInProcessClient
+import net.consensys.linea.async.get
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.BesuPlugin
@@ -66,7 +67,7 @@ open class LineaStateRecoverPlugin : BesuPlugin {
     )
     this.stateRecoverApp = createAppAllInProcess(
       vertx = vertx,
-      // FIXME: check latter on if metrics are exported
+      // Metrics won't be exposed. Needs proper integration with Besu Metrics, not priority now.
       meterRegistry = SimpleMeterRegistry(),
       elClient = executionLayerClient,
       stateManagerClientEndpoint = config.shomeiEndpoint,
@@ -93,6 +94,13 @@ open class LineaStateRecoverPlugin : BesuPlugin {
   }
 
   override fun stop() {
-    // no-op
+    stateRecoverApp.stop()
+      .whenComplete { _, throwable ->
+        vertx.close().get()
+        if (throwable != null) {
+          throw throwable
+        }
+      }
+      .get()
   }
 }

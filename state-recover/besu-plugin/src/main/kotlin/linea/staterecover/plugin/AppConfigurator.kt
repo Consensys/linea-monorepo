@@ -58,23 +58,12 @@ fun createAppAllInProcess(
   )
 
   val jsonRpcClientFactory = VertxHttpJsonRpcClientFactory(vertx, meterRegistry)
-//  val elClient = ExecutionLayerJsonRpcClient.create(
-//    rpcClientFactory = jsonRpcClientFactory,
-//    requestRetryConfig = RequestRetryConfig(
-//      backoffDelay = 1.seconds,
-//    ),
-//    endpoint = executionLayerClientEndpoint,
-//    logger = LogManager.getLogger("linea.plugin.staterecover.clients.execution-layer")
-//  )
-
-  // FIXME: check retry config later
   val stateManagerClient: StateManagerClientV1 = StateManagerV1JsonRpcClient.create(
     rpcClientFactory = jsonRpcClientFactory,
     endpoints = listOf(stateManagerClientEndpoint),
     maxInflightRequestsPerClient = 10u,
     requestRetry = RequestRetryConfig(
-      backoffDelay = 1.seconds,
-      maxRetries = 1u
+      backoffDelay = 1.seconds
     ),
     zkStateManagerVersion = "2.3.0",
     logger = LogManager.getLogger("linea.plugin.staterecover.clients.state-manager")
@@ -84,8 +73,7 @@ fun createAppAllInProcess(
     jsonRpcClientFactory = jsonRpcClientFactory,
     endpoint = l1RpcEndpoint,
     retryConfig = RequestRetryConfig(
-      backoffDelay = 1.seconds,
-      maxRetries = 1u
+      backoffDelay = 1.seconds
     ),
     logger = LogManager.getLogger("linea.plugin.staterecover.clients.l1.transaction-details")
   )
