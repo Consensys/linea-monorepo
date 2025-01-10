@@ -26,7 +26,6 @@ dependencies {
   implementation(project(':state-recover:clients:blobscan-client'))
   implementation(testFixtures(project(':state-recover:clients:blobscan-client')))
   implementation(project(':state-recover:clients:execution-layer-json-rpc-client'))
-  implementation(testFixtures(project(':state-recover:clients:execution-layer-json-rpc-client')))
   implementation(project(':coordinator:clients:smart-contract-client'))
   implementation(project(':jvm-libs:linea:linea-contracts:l1-rollup'))
   implementation('build.linea:l1-rollup-contract-client:6.0.0')
