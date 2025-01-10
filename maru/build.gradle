@@ -46,6 +46,8 @@ allprojects {
     kotlin {
       // by default the target is every '.kt' and '.kts` file in the java sourcesets
       ktlint().setEditorConfigPath("$rootDir/.editorconfig")
+      licenseHeaderFile("${rootDir}/gradle/spotless/java-kotlin.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*." +
+        "*ConsenSys AG\\.)")
     }
     java {
       // This path needs to be relative to each project
@@ -56,7 +58,8 @@ allprojects {
       trimTrailingWhitespace()
       endWithNewline()
       // apply appropriate license header files.
-      licenseHeaderFile("${rootDir}/gradle/spotless/java.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*.*ConsenSys AG\\.)")
+      licenseHeaderFile("${rootDir}/gradle/spotless/java-kotlin.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*." +
+        "*ConsenSys AG\\.)")
     }
     // spotless check applied to build.gradle (groovy) files
     groovyGradle {
