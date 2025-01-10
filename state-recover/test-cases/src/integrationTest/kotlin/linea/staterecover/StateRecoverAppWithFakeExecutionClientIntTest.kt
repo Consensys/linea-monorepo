@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.build.staterecover.clients.VertxTransactionDetailsClient
+import linea.log4j.configureLoggers
 import linea.staterecover.clients.blobscan.BlobScanClient
 import linea.staterecover.test.FakeExecutionLayerClient
 import linea.staterecover.test.FakeStateManagerClient
@@ -48,7 +49,10 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
   private lateinit var lineaContractClient: LineaRollupSmartContractClientReadOnly
 
   private lateinit var contractClientForSubmittions: LineaRollupSmartContractClient
-  private val testDataDir = "testdata/coordinator/prover/v3/"
+  private val testDataDir = run {
+//    "testdata/coordinator/prover/v3/"
+    "tmp/local/prover/v3/"
+  }
 
   private val l1RpcUrl = "http://localhost:8445"
   private val blobScanUrl = "http://localhost:4001"
@@ -129,6 +133,18 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
         executionClientPollingInterval = 1.seconds,
         smartContractAddress = lineaContractClient.getAddress()
       )
+    )
+
+    configureLoggers(
+      rootLevel = Level.INFO,
+      "test.clients.l1.executionlayer" to Level.TRACE,
+      "test.clients.l1.web3j-default" to Level.INFO,
+      "test.clients.l1.state-manager" to Level.INFO,
+      "test.clients.l1.transaction-details" to Level.INFO,
+      "test.clients.l1.linea-contract" to Level.INFO,
+      "test.clients.l1.events-fetcher" to Level.INFO,
+      "test.clients.l1.blobscan" to Level.INFO,
+      "net.consensys.linea.contract.l1" to Level.INFO
     )
   }
 

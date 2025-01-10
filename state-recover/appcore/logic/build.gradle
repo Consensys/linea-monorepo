@@ -5,7 +5,7 @@ plugins {
 group = 'build.linea.staterecover'
 
 dependencies {
-  implementation("io.vertx:vertx-core:${libs.versions.vertx.get()}")
+  api("io.vertx:vertx-core:${libs.versions.vertx.get()}")
   api(project(':jvm-libs:generic:extensions:kotlin'))
   api(project(':jvm-libs:generic:logging'))
   api(project(':jvm-libs:linea:core:domain-models'))
