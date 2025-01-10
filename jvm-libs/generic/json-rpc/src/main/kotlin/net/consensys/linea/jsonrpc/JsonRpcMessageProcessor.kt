@@ -72,7 +72,7 @@ class JsonRpcMessageProcessor(
         name = "jsonrpc.processing.whole",
         description = "Processing of JSON-RPC message: Deserialization + Business Logic + Serialization",
         tagKey = "method",
-        tagValueExtractorOnError = { "METHOD_PARSE_ERROR" }
+        tagValueExtractorOnError = { "METHOD_PROCESSING_ERROR" }
       ) {
         it.first
       }
@@ -105,13 +105,6 @@ class JsonRpcMessageProcessor(
     val jsonArray = if (isBulkRequest) json as JsonArray else JsonArray().add(json)
     val requestParsingResults: List<Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse>> =
       jsonArray.map(::measureRequestParsing)
-    val methodTag =
-      if (isBulkRequest) {
-        "bulk_request"
-      } else {
-        requestParsingResults.first()
-          .unwrap().first.method
-      }
 
     // all or nothing: if any of the requests has a parsing error, return before execution
     requestParsingResults.forEach {
@@ -120,6 +113,14 @@ class JsonRpcMessageProcessor(
         is Ok -> Unit
       }
     }
+
+    val methodTag =
+      if (isBulkRequest) {
+        "bulk_request"
+      } else {
+        requestParsingResults.first()
+          .unwrap().first.method
+      }
 
     return handleMessageRequests(
       user = user,
