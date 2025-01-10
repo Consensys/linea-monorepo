@@ -88,6 +88,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		dstIndex        = common.NewVectorBuilder(ec.UnalignedPairingData.Index)
 		dstIsFirstPrev  = common.NewVectorBuilder(ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator)
 		dstIsFirstCurr  = common.NewVectorBuilder(ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator)
+		dstIsResult     = common.NewVectorBuilder(ec.UnalignedPairingData.IsResultOfInstance)
 	)
 
 	for currPos := 0; currPos < len(srcLimbs); {
@@ -194,6 +195,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 				dstToFinalExp.PushZero()
 				dstPairId.PushInt(ii + 1)
 				dstTotalPairs.PushInt(nbActualTotalPairs)
+				dstIsResult.PushZero()
 			}
 		}
 		for j := 0; j < nbGtLimbs; j++ {
@@ -209,6 +211,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 				dstIsFirstPrev.PushZero()
 			}
 			dstIsFirstCurr.PushZero()
+			dstIsResult.PushZero()
 		}
 		for j := nbGtLimbs; j < nbGtLimbs+nbG1Limbs+nbG2Limbs; j++ {
 			dstIsPulling.PushOne()
@@ -219,6 +222,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			dstIsAccCurr.PushZero()
 			dstIsFirstPrev.PushZero()
 			dstIsFirstCurr.PushZero()
+			dstIsResult.PushZero()
 		}
 		for j := nbGtLimbs + nbG1Limbs + nbG2Limbs; j < nbGtLimbs+nbG1Limbs+nbG2Limbs+2; j++ {
 			dstIsPulling.PushOne()
@@ -229,6 +233,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			dstIsAccCurr.PushZero()
 			dstIsFirstPrev.PushZero()
 			dstIsFirstCurr.PushZero()
+			dstIsResult.PushOne()
 		}
 		for j := 0; j < nbG1Limbs+nbG2Limbs+nbGtLimbs+2; j++ {
 			dstToFinalExp.PushOne()
@@ -253,6 +258,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 	dstIndex.PadAndAssign(run, field.Zero())
 	dstIsFirstPrev.PadAndAssign(run, field.Zero())
 	dstIsFirstCurr.PadAndAssign(run, field.Zero())
+	dstIsResult.PadAndAssign(run, field.Zero())
 }
 
 func processPairingData(pairingInG1 [][nbG1Limbs]field.Element, pairingInG2 [][nbG2Limbs]field.Element, inputResult [2]field.Element) []field.Element {

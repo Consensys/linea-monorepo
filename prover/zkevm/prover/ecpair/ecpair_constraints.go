@@ -55,8 +55,8 @@ func (ec *ECPair) csProjections(comp *wizard.CompiledIOP) {
 	// we project data from the arithmetization correctly to the unaligned part of the circuit
 	projection.InsertProjection(
 		comp, ifaces.QueryIDf("%v_PROJECTION_PAIRING", nameECPair),
-		[]ifaces.Column{ec.ECPairSource.Limb, ec.ECPairSource.ID},
-		[]ifaces.Column{ec.UnalignedPairingData.Limb, ec.UnalignedPairingData.InstanceID},
+		[]ifaces.Column{ec.ECPairSource.Limb, ec.ECPairSource.ID, ec.ECPairSource.IsEcPairingResult},
+		[]ifaces.Column{ec.UnalignedPairingData.Limb, ec.UnalignedPairingData.InstanceID, ec.UnalignedPairingData.IsResultOfInstance},
 		ec.ECPairSource.CsEcpairing,
 		ec.UnalignedPairingData.IsPulling,
 	)
@@ -156,6 +156,23 @@ func (ec *ECPair) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
 		ifaces.QueryIDf("%v_ACCUMULATOR_CONSISTENCY", nameECPair),
 		[]ifaces.Column{ec.UnalignedPairingData.Limb}, []ifaces.Column{ec.UnalignedPairingData.Limb},
 		ec.UnalignedPairingData.IsAccumulatorCurr, ec.UnalignedPairingData.IsAccumulatorPrev,
+	)
+}
+
+func (ec *ECPair) csTotalPairs(comp *wizard.CompiledIOP) {
+	// total pairs corresponds to the number of pairs in the instance. for this
+	// we check that when the limb corresponds to the result, then the PairID of
+	// the shifted by two corresponds to the total pairs. the limb corresponds
+	// to the result when its PairID is 0 (for input pairs the indexing starts
+	// from 1).
+	comp.InsertGlobal(
+		roundNr,
+		ifaces.QueryIDf("%v_TOTAL_PAIRS", nameECPair),
+		sym.Mul(
+			ec.UnalignedPairingData.IsActive,
+			ec.UnalignedPairingData.IsResultOfInstance,
+			sym.Sub(ec.UnalignedPairingData.TotalPairs, column.Shift(ec.UnalignedPairingData.PairID, -2)), // we have two limbs for the result, shift by two gets to the input
+		),
 	)
 }
 
