@@ -41,16 +41,20 @@ class GoBackedBlobCompressorTest {
 
   @Test
   fun `test compression data limit exceeded`() {
-    val blocks = TEST_DATA.iterator()
+    var blocks = TEST_DATA.iterator()
     var result = compressor.appendBlock(blocks.next())
     // at least one block should be appended
     assertThat(result.blockAppended).isTrue()
-    while (result.blockAppended && blocks.hasNext()) {
+    while (result.blockAppended) {
       val blockRlp = blocks.next()
       val canAppend = compressor.canAppendBlock(blockRlp)
       result = compressor.appendBlock(blockRlp)
       // assert consistency between canAppendBlock and appendBlock
       assertThat(canAppend).isEqualTo(result.blockAppended)
+      if (!blocks.hasNext()) {
+        // recompress again, until the limit is reached
+        blocks = TEST_DATA.iterator()
+      }
     }
     assertThat(result.blockAppended).isFalse()
     assertThat(result.compressedSizeBefore).isGreaterThan(0)
