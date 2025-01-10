@@ -7,7 +7,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -222,10 +222,10 @@ func PowerVec(x fext.Element, n int) []fext.Element {
 // IntoGnarkAssignment converts an array of field.Element into an array of
 // frontend.Variable that can be used to assign a vector of frontend.Variable
 // in a circuit or to generate a vector of constant in the circuit definition.
-func IntoGnarkAssignment(msgData []fext.Element) []frontend.Variable {
-	assignedMsg := []frontend.Variable{}
+func IntoGnarkAssignment(msgData []fext.Element) []gnarkfext.E2 {
+	assignedMsg := []gnarkfext.E2{}
 	for _, x := range msgData {
-		assignedMsg = append(assignedMsg, frontend.Variable(x))
+		assignedMsg = append(assignedMsg, gnarkfext.E2{frontend.Variable(x.A0), frontend.Variable(x.A1)})
 	}
 	return assignedMsg
 }

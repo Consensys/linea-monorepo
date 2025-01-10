@@ -1,10 +1,9 @@
 package gnarkfext
 
 import (
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 )
 
 // API is a wrapper of [frontend.API] with methods specialized for field
@@ -38,6 +37,10 @@ func (api *API) IsZero(e E2) frontend.Variable {
 	return api.Inner.And(api.Inner.IsZero(e.A0), api.Inner.IsZero(e.A1))
 }
 
+func (api *API) IsEqual(a, b E2) frontend.Variable {
+	return api.Inner.Sub(1, api.IsZero(api.Sub(a, b)))
+}
+
 // Neg negates a e2 elmt
 func (api *API) Neg(e1 E2) E2 {
 	return E2{
@@ -47,10 +50,17 @@ func (api *API) Neg(e1 E2) E2 {
 }
 
 // Add e2 elmts
-func (api *API) Add(e1, e2 E2) E2 {
+func (api *API) Add(e1, e2 E2, in ...E2) E2 {
+	A0 := api.Inner.Add(e1.A0, e2.A0)
+	A1 := api.Inner.Add(e1.A1, e2.A1)
+
+	for i := 0; i < len(in); i++ {
+		A0 = api.Inner.Add(A0, in[i].A0)
+		A1 = api.Inner.Add(A1, in[i].A1)
+	}
 	return E2{
-		A0: api.Inner.Add(e1.A0, e2.A0),
-		A1: api.Inner.Add(e1.A1, e2.A1),
+		A0: A0,
+		A1: A1,
 	}
 }
 
@@ -162,6 +172,12 @@ func (api *API) AssertIsEqual(e, other E2) {
 	api.Inner.AssertIsEqual(e.A1, other.A1)
 }
 
+// AssertIsEqual constraint self to be equal to other into the given constraint system
+func (api *API) AssertIsEqualToField(other fext.E2, e E2) {
+	api.Inner.AssertIsEqual(e.A0, other.A0)
+	api.Inner.AssertIsEqual(e.A1, other.A1)
+}
+
 // Select sets e to r1 if b=1, r2 otherwise
 func (api *API) Select(b frontend.Variable, r1, r2 E2) E2 {
 	return E2{
@@ -180,4 +196,13 @@ func (api *API) Lookup2(b1, b2 frontend.Variable, r1, r2, r3, r4 E2) E2 {
 		A0: api.Inner.Lookup2(b1, b2, r1.A0, r2.A0, r3.A0, r4.A0),
 		A1: api.Inner.Lookup2(b1, b2, r1.A1, r2.A1, r3.A1, r4.A1),
 	}
+}
+
+func (api *API) AssertIsDifferent(i1, i2 E2) {
+	mustBeOne := api.IsEqual(i1, i2)
+	api.Inner.AssertIsEqual(mustBeOne, 1)
+}
+
+func ExtToVariable(origin fext.Element) E2 {
+	return E2{origin.A0, origin.A1}
 }
