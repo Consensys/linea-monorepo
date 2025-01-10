@@ -456,7 +456,7 @@ public class CreateSection extends TraceSection
       case CREATE_FAILURE_CONDITION_WONT_REVERT, CREATE_EMPTY_INIT_CODE_WONT_REVERT -> {
         hub.defers().scheduleForContextReEntry(this, currentFrame);
         hub.defers().scheduleForPostRollback(this, currentFrame);
-        hub.defers().scheduleForPostTransaction(this);
+        hub.defers().scheduleForEndTransaction(this);
       }
       case CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WONT_REVERT -> {
         // The current execution context pays (63/64)ths of it current gas to the child context
@@ -464,7 +464,7 @@ public class CreateSection extends TraceSection
         hub.defers().scheduleForContextEntry(this);
         hub.defers().scheduleForContextReEntry(this, currentFrame);
         hub.defers().scheduleForPostRollback(this, currentFrame);
-        hub.defers().scheduleForPostTransaction(this);
+        hub.defers().scheduleForEndTransaction(this);
 
         // we capture revert information about the child context: CCSR and CCRS
         hub.defers().scheduleForContextReEntry(imcFragment, hub.currentFrame());
@@ -496,7 +496,7 @@ public class CreateSection extends TraceSection
   }
 
   @Override
-  public void resolvePostTransaction(
+  public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     addFragment(finalContextFragment);
   }

@@ -156,7 +156,7 @@ public class SelfdestructSection extends TraceSection
     }
 
     hub.defers().scheduleForPostRollback(this, hub.currentFrame());
-    hub.defers().scheduleForPostTransaction(this);
+    hub.defers().scheduleForEndTransaction(this);
 
     // Modify the current account and the recipient account
     // - The current account has its balance reduced to 0 (i+2)
@@ -238,7 +238,7 @@ public class SelfdestructSection extends TraceSection
   }
 
   @Override
-  public void resolvePostTransaction(
+  public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
 
     if (selfDestructWasReverted) {
@@ -259,6 +259,8 @@ public class SelfdestructSection extends TraceSection
 
     checkArgument(hubStamp >= hubStampOfTheActionableSelfDestruct);
 
+    // This grabs the accounts right after the coinbase and sender got their gas money back
+    // in particular this will get the coinbase address post gas reward.
     accountWiping =
         transactionProcessingMetadata.getDestructedAccountsSnapshot().stream()
             .filter(

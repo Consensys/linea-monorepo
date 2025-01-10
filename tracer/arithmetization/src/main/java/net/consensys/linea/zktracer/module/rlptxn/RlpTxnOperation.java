@@ -31,9 +31,9 @@ public final class RlpTxnOperation extends ModuleOperation {
   private final Transaction tx;
   private final boolean requireEvmExecution;
 
-  public RlpTxnOperation(Transaction tx, boolean requireEvmExecution) {
+  public RlpTxnOperation(Transaction tx, boolean requiresEvmExecution) {
     this.tx = tx;
-    this.requireEvmExecution = requireEvmExecution;
+    this.requireEvmExecution = requiresEvmExecution;
   }
 
   @Override

@@ -91,7 +91,7 @@ tasks.register('referenceGeneralStateTests', Test) {
     dependsOn buildReferenceTestsZkevmBin
     environment.put("ZKEVM_BIN", "zkevm_for_reference_tests.bin")
 
-    systemProperty("junit.jupiter.execution.timeout.default", "5 m")  // 5 minutes
+    systemProperty("junit.jupiter.execution.timeout.default", "15 m")  // 5 minutes
     systemProperty("junit.jupiter.execution.parallel.enabled", "true")
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")

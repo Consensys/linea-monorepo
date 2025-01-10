@@ -14,21 +14,26 @@
  */
 package net.consensys.linea.zktracer.precompiles;
 
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.keyPair;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.userAccount;
 import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.MODEXP_COMPONENT_BYTE_SIZE;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BASE_MIN_OFFSET;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BBS_MIN_OFFSET;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.EBS_MIN_OFFSET;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.MBS_MIN_OFFSET;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
-import net.consensys.linea.testing.BytecodeCompiler;
-import net.consensys.linea.testing.BytecodeRunner;
+import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -227,6 +232,53 @@ public class ModexpTests {
     }
 
     BytecodeRunner.of(program.compile()).run();
+  }
+
+  /**
+   * This test was extracted from {@link BlockchainReferenceTest_339}, specifically {@link
+   * modexp_modsize0_returndatasize_d4g0v0_London}. It <b>FAILS</b> as our tests don't have a
+   * popping mechanism.
+   */
+  @Disabled
+  @Test
+  void hugeMbsShortCdsModexpCallPlusReturnDataSize() {
+
+    Bytes compiledCode =
+        Bytes.fromHexString(
+            "36600060003760206103e8366000600060055af26001556103e8516002553d60035500");
+    Bytes transactionCallData =
+        Bytes.fromHexString(
+            "0x0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000f3f140101010000000000000000000000000000000000000000000000000000000000");
+
+    final ToyAccount recipientAccount =
+        ToyAccount.builder()
+            .nonce(59)
+            .code(compiledCode)
+            .balance(Wei.fromEth(1))
+            .address(Address.fromHexString("dddddddddddddddddddddddddddddddddddddddd"))
+            .build();
+
+    final Transaction transaction =
+        ToyTransaction.builder()
+            .sender(userAccount)
+            .to(recipientAccount)
+            .keyPair(keyPair)
+            .payload(transactionCallData)
+            .gasPrice(Wei.of(8))
+            .value(Wei.of(123))
+            .build();
+
+    List<Transaction> transactions = new ArrayList<>();
+    transactions.add(transaction);
+
+    List<ToyAccount> accounts = List.of(userAccount, recipientAccount);
+
+    ToyExecutionEnvironmentV2.builder()
+        .accounts(accounts)
+        .transactions(transactions)
+        .zkTracerValidator(zkTracer -> {})
+        .build()
+        .run();
   }
 
   void appendAllZeroCallDataModexpCalls(BytecodeCompiler program, int callDataSize) {

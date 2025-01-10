@@ -15,7 +15,8 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -47,47 +48,48 @@ public final class SStore extends GasProjection {
     if (frame.getWarmedUpStorage().contains(frame.getRecipientAddress(), key)) {
       return 0L;
     } else {
-      return GlobalConstants.GAS_CONST_G_COLD_SLOAD;
+      return GAS_CONST_G_COLD_SLOAD;
     }
   }
 
   @Override
   public long sStoreValue() {
     if (newValue.equals(currentValue) || !originalValue.equals(currentValue)) {
-      return GlobalConstants.GAS_CONST_G_WARM_ACCESS;
+      return GAS_CONST_G_WARM_ACCESS;
     } else {
-      return originalValue.isZero()
-          ? GlobalConstants.GAS_CONST_G_SSET
-          : GlobalConstants.GAS_CONST_G_SRESET;
+      return originalValue.isZero() ? GAS_CONST_G_SSET : GAS_CONST_G_SRESET;
     }
   }
 
   @Override
   public long refund() {
+
+    if (currentValue.equals(newValue)) {
+      return 0;
+    }
+    // beyond this point, v ≠ v'
+
+    if (originalValue.equals(currentValue)) {
+      return newValue.isZero() ? REFUND_CONST_R_SCLEAR : 0;
+    }
+    // beyond this point, v ≠ v' and v0 ≠ v
+
     long rDirtyClear = 0;
     if (!originalValue.isZero() && currentValue.isZero()) {
-      rDirtyClear = -GlobalConstants.REFUND_CONST_R_SCLEAR;
+      rDirtyClear = -REFUND_CONST_R_SCLEAR;
     }
     if (!originalValue.isZero() && newValue.isZero()) {
-      rDirtyClear = GlobalConstants.REFUND_CONST_R_SCLEAR;
+      rDirtyClear = REFUND_CONST_R_SCLEAR;
     }
 
     long rDirtyReset = 0;
     if (originalValue.equals(newValue) && originalValue.isZero()) {
-      rDirtyReset = GlobalConstants.GAS_CONST_G_SSET - GlobalConstants.GAS_CONST_G_WARM_ACCESS;
+      rDirtyReset = GAS_CONST_G_SSET - GAS_CONST_G_WARM_ACCESS;
     }
     if (originalValue.equals(newValue) && !originalValue.isZero()) {
-      rDirtyReset = GlobalConstants.GAS_CONST_G_SRESET - GlobalConstants.GAS_CONST_G_WARM_ACCESS;
+      rDirtyReset = GAS_CONST_G_SRESET - GAS_CONST_G_WARM_ACCESS;
     }
 
-    long r = 0;
-    if (!currentValue.equals(newValue) && currentValue.equals(originalValue) && newValue.isZero()) {
-      r = GlobalConstants.REFUND_CONST_R_SCLEAR;
-    }
-    if (!currentValue.equals(newValue) && !currentValue.equals(originalValue)) {
-      r = rDirtyClear + rDirtyReset;
-    }
-
-    return r;
+    return rDirtyClear + rDirtyReset;
   }
 }

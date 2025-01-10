@@ -55,7 +55,7 @@ public class StopSection extends TraceSection implements PostRollbackDefer, Post
         "STOP is incapable of triggering an exception but "
             + Exceptions.prettyStringOf(OpCode.STOP, exceptions));
 
-    hub.defers().scheduleForPostTransaction(this); // always
+    hub.defers().scheduleForEndTransaction(this); // always
 
     hubStamp = hub.stamp();
     address = hub.messageFrame().getContractAddress();
@@ -142,7 +142,7 @@ public class StopSection extends TraceSection implements PostRollbackDefer, Post
    * @param isSuccessful
    */
   @Override
-  public void resolvePostTransaction(
+  public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     this.addFragments(this.parentContextReturnDataReset);
   }

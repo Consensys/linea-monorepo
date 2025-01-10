@@ -140,7 +140,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
   }
 
   public MmuCall(final Hub hub, final int instruction) {
-    hub.defers().scheduleForPostTransaction(this);
+    hub.defers().scheduleForEndTransaction(this);
     this.instruction = instruction;
   }
 
@@ -805,7 +805,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
   }
 
   @Override
-  public void resolvePostTransaction(
+  public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     if (traceMe) {
       hub.mmu().call(this);

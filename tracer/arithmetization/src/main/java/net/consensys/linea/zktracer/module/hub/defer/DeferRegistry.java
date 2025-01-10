@@ -81,7 +81,7 @@ public class DeferRegistry
   }
 
   /** Schedule an action to be executed at the end of the current transaction. */
-  public void scheduleForPostTransaction(PostTransactionDefer defer) {
+  public void scheduleForEndTransaction(PostTransactionDefer defer) {
     postTransactionDefers.add(defer);
   }
 
@@ -117,16 +117,16 @@ public class DeferRegistry
   // TODO add docs to understand why we do two rounds of resolving (due to AccountFragment created
   // at endTx which are too deferEndTx), maybe no more the case, so not needed anymore
   @Override
-  public void resolvePostTransaction(
+  public void resolveAtEndTransaction(
       Hub hub, WorldView world, Transaction tx, boolean isSuccessful) {
     final List<PostTransactionDefer> postTransactionDefersFirstRound =
         new ArrayList<>(postTransactionDefers);
     postTransactionDefers.clear();
     for (PostTransactionDefer defer : postTransactionDefersFirstRound) {
-      defer.resolvePostTransaction(hub, world, tx, isSuccessful);
+      defer.resolveAtEndTransaction(hub, world, tx, isSuccessful);
     }
     for (PostTransactionDefer defer : postTransactionDefers) {
-      defer.resolvePostTransaction(hub, world, tx, isSuccessful);
+      defer.resolveAtEndTransaction(hub, world, tx, isSuccessful);
     }
     postTransactionDefers.clear();
   }
