@@ -3,7 +3,7 @@ package linea.staterecover.plugin
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import linea.staterecover.BlockHeaderStaticFields
-import linea.staterecover.InMemoryRecoveryStatus
+import linea.staterecover.FileBasedRecoveryStatusPersistence
 import linea.staterecover.RecoveryStatusPersistence
 import linea.staterecover.StateRecoverApp
 import linea.staterecover.clients.ExecutionLayerInProcessClient
@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.BesuPlugin
 import org.hyperledger.besu.plugin.ServiceManager
+import org.hyperledger.besu.plugin.services.BesuConfiguration
 import org.hyperledger.besu.plugin.services.BesuEvents
 import org.hyperledger.besu.plugin.services.BesuService
 import org.hyperledger.besu.plugin.services.BlockSimulationService
@@ -38,7 +39,7 @@ open class LineaStateRecoverPlugin : BesuPlugin {
   override fun register(serviceManager: ServiceManager) {
     log.info("LineaStateRecoverPlugin Registering")
     this.serviceManager = serviceManager
-    this.recoveryStatusPersistence = InMemoryRecoveryStatus()
+
     serviceManager
       .getServiceOrThrow(PicoCLIOptions::class.java)
       .addPicoCLIOptions(PluginCliOptions.cliOptionsPrefix, cliOptions)
@@ -48,9 +49,13 @@ open class LineaStateRecoverPlugin : BesuPlugin {
   override fun start() {
     val config = cliOptions.getConfig()
     log.info("LineaStateRecoverPlugin starting: config={}", config)
-
     val blockchainService = serviceManager.getServiceOrThrow(BlockchainService::class.java)
     val synchronizationService = serviceManager.getServiceOrThrow(SynchronizationService::class.java)
+    this.recoveryStatusPersistence = FileBasedRecoveryStatusPersistence(
+      serviceManager.getServiceOrThrow(BesuConfiguration::class.java)
+        .dataPath
+        .resolve("plugin-staterecovery-status.json")
+    )
     this.recoveryModeManager = RecoveryModeManager(
       p2pService = serviceManager.getServiceOrThrow(P2PService::class.java),
       miningService = serviceManager.getServiceOrThrow(MiningService::class.java),
