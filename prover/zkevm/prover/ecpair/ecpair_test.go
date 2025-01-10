@@ -1,10 +1,12 @@
 package ecpair
 
 import (
+	"os"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
@@ -204,4 +206,59 @@ func TestMembership(t *testing.T) {
 	for _, tc := range membershipTestCases {
 		testModule(t, tc, false, false, false, true)
 	}
+}
+
+func writeModule(t *testing.T, run *wizard.ProverRuntime, outFile string, mod *ECPair) {
+	// this is utility function for being able to write the module output to a
+	// file. it is useful for testcase generation. NB! when generating testcase
+	// then manually check the correctness of the file before committing it.
+	w, err := os.Create(outFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	csvtraces.FmtCsv(w, run, []ifaces.Column{
+		// // module activation
+		// mod.IsActive,
+
+		// // source
+		// mod.ECPairSource.ID,
+		// mod.ECPairSource.Index,
+		// mod.ECPairSource.Limb,
+		// mod.ECPairSource.SuccessBit,
+		// mod.ECPairSource.AccPairings,
+		// mod.ECPairSource.TotalPairings,
+		// mod.ECPairSource.IsEcPairingData,
+		// mod.ECPairSource.IsEcPairingResult,
+		// mod.ECPairSource.CsEcpairing,
+		// mod.ECPairSource.CsG2Membership,
+
+		// // for pairing module test
+		// mod.UnalignedPairingData.IsActive,
+		// mod.UnalignedPairingData.Index,
+		// mod.UnalignedPairingData.InstanceID,
+		// mod.UnalignedPairingData.IsFirstLineOfInstance,
+		// mod.UnalignedPairingData.IsAccumulatorInit,
+		// mod.UnalignedPairingData.IsFirstLineOfPrevAccumulator,
+		// mod.UnalignedPairingData.IsAccumulatorPrev,
+		// mod.UnalignedPairingData.IsFirstLineOfCurrAccumulator,
+		// mod.UnalignedPairingData.IsAccumulatorCurr,
+		// mod.UnalignedPairingData.IsResultOfInstance,
+		// mod.UnalignedPairingData.IsComputed,
+		// mod.UnalignedPairingData.IsPulling,
+		// mod.UnalignedPairingData.PairID,
+		// mod.UnalignedPairingData.TotalPairs,
+		// mod.UnalignedPairingData.Limb,
+		// mod.UnalignedPairingData.ToMillerLoopCircuitMask,
+		// mod.UnalignedPairingData.ToFinalExpCircuitMask,
+
+		// // for subgroup module module test
+		// mod.UnalignedG2MembershipData.IsComputed,
+		// mod.UnalignedG2MembershipData.IsPulling,
+		// mod.UnalignedG2MembershipData.Limb,
+		// mod.UnalignedG2MembershipData.SuccessBit,
+		// mod.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
+	},
+		[]csvtraces.Option{csvtraces.InHex},
+	)
 }
