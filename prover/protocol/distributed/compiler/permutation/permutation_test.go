@@ -9,6 +9,7 @@ import (
 	modulediscoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPermutation(t *testing.T) {
@@ -161,7 +162,9 @@ func TestPermutation(t *testing.T) {
 				}
 			}
 
-			_ = wizard.Prove(moduleAComp, moduleAProve)
+			proof := wizard.Prove(moduleAComp, moduleAProve)
+			valid := wizard.Verify(moduleAComp, proof)
+			require.NoError(t, valid)
 
 		})
 
