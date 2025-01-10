@@ -35,7 +35,10 @@ abstract contract L1MessageManager is L1MessageManagerV1, IL1MessageManager {
    */
   function _addRollingHash(uint256 _messageNumber, bytes32 _messageHash) internal {
     unchecked {
-      bytes32 newRollingHash = EfficientLeftRightKeccak._efficientKeccak(rollingHashes[_messageNumber - 1], _messageHash);
+      bytes32 newRollingHash = EfficientLeftRightKeccak._efficientKeccak(
+        rollingHashes[_messageNumber - 1],
+        _messageHash
+      );
 
       rollingHashes[_messageNumber] = newRollingHash;
       emit RollingHashUpdated(_messageNumber, newRollingHash, _messageHash);

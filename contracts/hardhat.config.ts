@@ -1,6 +1,7 @@
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-foundry";
 import "@openzeppelin/hardhat-upgrades";
+import "@nomicfoundation/hardhat-foundry";
 import * as dotenv from "dotenv";
 import "hardhat-deploy";
 import "hardhat-storage-layout";
@@ -155,7 +156,16 @@ const config: HardhatUserConfig = {
     ],
   },
   docgen: {
-    exclude: ["tokens", "_testing", "proxies", "recovery", "verifiers"],
+    exclude: [
+      "token",
+      "test-contracts",
+      "proxies",
+      "tools",
+      "interfaces/tools",
+      "tokenBridge/mocks",
+      "tokenBridge/lib/StorageFiller39.sol",
+      "verifiers",
+    ],
     pages: "files",
     outputDir: "docs/api/",
     // For compatibility with docs.linea.build

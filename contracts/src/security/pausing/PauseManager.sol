@@ -176,7 +176,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     bytes32 _newRole
   ) external onlyUsedPausedTypes(_pauseType) onlyRole(PAUSE_ALL_ROLE) {
     bytes32 previousRole = _pauseTypeRoles[_pauseType];
-    if(previousRole == _newRole){
+    if (previousRole == _newRole) {
       revert RolesNotDifferent();
     }
 
@@ -197,7 +197,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     bytes32 _newRole
   ) external onlyUsedPausedTypes(_pauseType) onlyRole(UNPAUSE_ALL_ROLE) {
     bytes32 previousRole = _unPauseTypeRoles[_pauseType];
-    if(previousRole == _newRole){
+    if (previousRole == _newRole) {
       revert RolesNotDifferent();
     }
 
