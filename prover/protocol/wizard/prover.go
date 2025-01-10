@@ -143,22 +143,8 @@ type ProverRuntime struct {
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
 func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
-	runtime := c.createProver()
-	/*
-		Run the user provided assignment function. We can't expect it
-		to run all the rounds, because the compilation could have added
-		extra-rounds.
-	*/
-	highLevelprover(&runtime)
 
-	/*
-		Then, run the compiled prover steps
-	*/
-	runtime.runProverSteps()
-	for runtime.currRound+1 < runtime.NumRounds() {
-		runtime.goNextRound()
-		runtime.runProverSteps()
-	}
+	runtime := RunProver(c, highLevelprover)
 
 	/*
 		Pass all the prover message columns as part of the proof
@@ -179,8 +165,32 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 	return Proof{
 		Messages:      messages,
 		QueriesParams: runtime.QueriesParams,
-		RunTime:       &runtime,
+		RunTime:       runtime,
 	}
+}
+
+// RunProver initializes a [ProverRuntime], runs the prover and returns the final
+// runtime. It does not returns the [Proof] however.
+func RunProver(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
+
+	runtime := c.createProver()
+	/*
+		Run the user provided assignment function. We can't expect it
+		to run all the rounds, because the compilation could have added
+		extra-rounds.
+	*/
+	highLevelprover(&runtime)
+
+	/*
+		Then, run the compiled prover steps
+	*/
+	runtime.runProverSteps()
+	for runtime.currRound+1 < runtime.NumRounds() {
+		runtime.goNextRound()
+		runtime.runProverSteps()
+	}
+
+	return &runtime
 }
 
 // NumRounds returns the total number of rounds in the corresponding WizardIOP.
