@@ -62,6 +62,14 @@ var pairingDataTestCases = []pairingDataTestCase{
 		NbMillerLoops: 2,
 		NbFinalExps:   1,
 	},
+	{
+		// regression test in Linea Sepolia transaction 0x7afcf5eddbe09d85c8d0b1e3608b755b9baed1a59d8589ebcaf50e7603074139
+		InputFName:       "testdata/ecpair_regression_1_input.csv",
+		ModuleFName:      "testdata/ecpair_regression_1_module.csv",
+		NbMillerLoops:    2,
+		NbFinalExps:      1,
+		NbSubgroupChecks: 1,
+	},
 }
 
 func testModule(t *testing.T, tc pairingDataTestCase, withPairingCircuit, withG2MembershipCircuit bool, checkPairingModule, checkSubgroupModule bool) {
