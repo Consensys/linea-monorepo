@@ -15,16 +15,15 @@
  */
 package org.hyperledger.consensus.qbft.config;
 
-import org.hyperledger.besu.config.JsonBftConfigOptions;
-import org.hyperledger.besu.config.JsonUtil;
-import org.hyperledger.besu.config.QbftConfigOptions;
-
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
+import org.hyperledger.besu.config.JsonBftConfigOptions;
+import org.hyperledger.besu.config.JsonUtil;
+import org.hyperledger.besu.config.QbftConfigOptions;
 
 /** The Json QBFT config options. */
 public class JsonQbftConfigOptions extends JsonBftConfigOptions implements QbftConfigOptions {
