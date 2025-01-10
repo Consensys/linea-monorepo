@@ -13,11 +13,35 @@ repositories {
   }
 }
 
+ext.groupsToIncludeInShadow = [
+  "build.linea..*",
+  "io.micrometer..*",
+  "org.jetbrains.kotlin..*",
+  "com.fasterxml.jackson.module:jackson-module-kotlin",
+  "tech.pegasys.teku.internal:async"
+]
+
+def canIncludeLib(String lib) {
+  def allowed = groupsToIncludeInShadow.find { libAllowed ->
+    lib.matches(libAllowed)
+  } != null
+  allowed
+}
+
+
 shadowJar {
   if ("${project.version}" != 'unspecified') {
     archiveClassifier.set('')
     archiveVersion.set("${project.version}")
   }
+
+  dependencies {
+    exclude {dependency ->
+      def shallExclude = !canIncludeLib("${dependency.moduleGroup}:${dependency.moduleName}")
+      shallExclude
+    }
+  }
+
   manifest {
     attributes(
         'Specification-Title': archiveBaseName,
