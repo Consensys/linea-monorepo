@@ -26,9 +26,6 @@ type DistributionInputs struct {
 	ModuleName distributed.ModuleName
 	// query is supposed to be the global LogDerivativeSum.
 	Query query.LogDerivativeSum
-	// it contains the whole witness,
-	// and also the witness for the auxiliary columns such as multiplicity column for Inclusion.
-	InitialProver *wizard.ProverRuntime
 }
 
 // DistributeLogDerivativeSum distributes a  share from a global [query.LogDerivativeSum] query to the given module.
@@ -36,7 +33,7 @@ func DistributeLogDerivativeSum(
 	initialComp, moduleComp *wizard.CompiledIOP,
 	moduleName distributed.ModuleName,
 	disc distributed.ModuleDiscoverer,
-	initialProver *wizard.ProverRuntime) {
+) {
 
 	var (
 		queryID ifaces.QueryID
@@ -59,12 +56,11 @@ func DistributeLogDerivativeSum(
 
 	// get the share of the module from the LogDerivativeSum query
 	GetShareOfLogDerivativeSum(DistributionInputs{
-		ModuleComp:    moduleComp,
-		InitialComp:   initialComp,
-		Disc:          disc,
-		ModuleName:    moduleName,
-		Query:         initialComp.QueriesParams.Data(queryID).(query.LogDerivativeSum),
-		InitialProver: initialProver,
+		ModuleComp:  moduleComp,
+		InitialComp: initialComp,
+		Disc:        disc,
+		ModuleName:  moduleName,
+		Query:       initialComp.QueriesParams.Data(queryID).(query.LogDerivativeSum),
 	})
 
 }
@@ -76,7 +72,6 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 	var (
 		initialComp   = in.InitialComp
 		moduleComp    = in.ModuleComp
-		initialProver = in.InitialProver
 		numerator     []*symbolic.Expression
 		denominator   []*symbolic.Expression
 		keyIsInModule bool
@@ -95,7 +90,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 			if in.Disc.ExpressionIsInModule(logDeriv.Inputs[size].Denominator[i], in.ModuleName) {
 
 				if !in.Disc.ExpressionIsInModule(logDeriv.Inputs[size].Numerator[i], in.ModuleName) {
-					distributed.PassColumnToModule(initialComp, moduleComp, initialProver, logDeriv.Inputs[size].Numerator[i])
+					utils.Panic("Denominator is in the module but not Numerator")
 				}
 
 				denominator = append(denominator, logDeriv.Inputs[size].Denominator[i])

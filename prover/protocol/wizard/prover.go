@@ -354,7 +354,7 @@ func (run *ProverRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 //   - the column assignment occurs at the wrong round. If this error happens,
 //     it is likely that the [ifaces.Column] was created in the wrong round to
 //     begin with.
-func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssignment) {
+func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssignment, round ...int) {
 
 	// global prover's lock before accessing the witnesses. This makes the
 	// function thread-safe
@@ -376,7 +376,14 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 
 	// Sanity-check: Make sure, it is done at the right round
 	handle := run.Spec.Columns.GetHandle(name)
-	ifaces.MustBeInRound(handle, run.currRound)
+	// if round is empty, we expect it to assign the column at the current round,
+	// otherwise it assigns it in the round the column was declared.
+	// This is useful when we have for loop over rounds.
+	if len(round) == 0 {
+		ifaces.MustBeInRound(handle, run.currRound)
+	} else {
+		ifaces.MustBeInRound(handle, round[0])
+	}
 
 	if witness.Len() != handle.Size() {
 		utils.Panic("Bad length for %v, expected %v got %v\n", handle, handle.Size(), witness.Len())

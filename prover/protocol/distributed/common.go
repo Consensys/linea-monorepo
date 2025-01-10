@@ -34,43 +34,66 @@ func ReplaceExternalCoins(initialComp, moduleComp *wizard.CompiledIOP, expr *sym
 	}
 }
 
-// PassColumnToModule passes the column, underlying the expression, from initialComp to moduleComp.
-// It also handles the prover steps to assign the passed column in the moduleColumn.
-// It also check that the expression is a single column.
-// It panics if the column is not in the initialComp.
-func PassColumnToModule(
-	initComp, moduleComp *wizard.CompiledIOP,
-	initialProver *wizard.ProverRuntime,
-	expr *symbolic.Expression) {
+// GetFreshModuleComp creates a [wizard.CompiledIOP] object including only the columns relevant to the module.
+// It also contains the prover steps for assigning the module column
+func GetFreshModuleComp(
+	initialComp *wizard.CompiledIOP,
+	disc ModuleDiscoverer,
+	initialProver wizard.ProverStep,
+	moduleName ModuleName,
+) *wizard.CompiledIOP {
 
 	var (
-		board    = expr.Board()
-		metadata = board.ListVariableMetadata()
+		// initialize the moduleComp
+		moduleComp     = wizard.NewCompiledIOP()
+		initialRunTime = wizard.RunProver(initialComp, initialProver)
 	)
-	// check that the expression is a single column
-	if len(metadata) != 1 {
-		utils.Panic("expected a single metadata")
-	}
-	for _, m := range metadata {
-		switch v := m.(type) {
-		case ifaces.Column:
-			// check that the column is in the initComp
-			if !initComp.Columns.Exists(v.GetColID()) {
-				utils.Panic("Expected to find column %v in the initialComp", v.GetColID())
+
+	for round := 0; round < initialComp.NumRounds(); round++ {
+		var columnsInRound []ifaces.Column
+		// get the columns per round
+		for _, colName := range initialComp.Columns.AllKeysAt(round) {
+
+			col := initialComp.Columns.GetHandle(colName)
+			if !disc.ColumnIsInModule(col, moduleName) {
+				continue
 			}
 
-			// commit to the column in the moduleComp
-			moduleComp.InsertCommit(0, v.GetColID(), v.Size())
-
-			// assign the column in the moduleComp
-			moduleComp.SubProvers.AppendToInner(v.Round(), func(run *wizard.ProverRuntime) {
-				run.AssignColumn(v.GetColID(), initialProver.GetColumn(v.GetColID()))
-
-			})
-
-		default:
-			utils.Panic("expected only column type in the expression")
+			moduleComp.InsertCommit(col.Round(), col.GetColID(), col.Size())
+			columnsInRound = append(columnsInRound, col)
 		}
 
+		// create a new  moduleProver
+		moduleProver := moduleProver{
+			cols:    columnsInRound,
+			initRun: initialRunTime,
+			round:   round,
+		}
+
+		// register Prover action for the module to assign columns per round
+		moduleComp.RegisterProverAction(round, moduleProver)
+
 	}
+
+	return moduleComp
+}
+
+// it stores the input for the module prover
+type moduleProver struct {
+	round int
+	// columns for a specific round
+	cols []ifaces.Column
+	// runtime of the initial Prover that is parent to the module.
+	initRun *wizard.ProverRuntime
+}
+
+// It implements [wizard.ProverAction] for the module prover.
+func (p moduleProver) Run(run *wizard.ProverRuntime) {
+	for _, col := range p.cols {
+		// get the witness from the initialProver
+		colWitness := p.initRun.GetColumn(col.GetColID())
+		// assign it in the module in the round col was declared
+		run.AssignColumn(col.GetColID(), colWitness, col.Round())
+	}
+
 }
