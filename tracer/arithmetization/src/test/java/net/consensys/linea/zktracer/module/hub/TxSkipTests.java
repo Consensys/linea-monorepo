@@ -224,7 +224,9 @@ public class TxSkipTests {
             .sender(senderAccount)
             .to(coinbaseAccount)
             .keyPair(senderKeyPair)
-            .value(Wei.of(123))
+            .value(Wei.of(100))
+            .gasPrice(Wei.of(8))
+            .gasLimit(100000L)
             .build();
 
     ToyExecutionEnvironmentV2.builder()

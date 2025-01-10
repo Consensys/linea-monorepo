@@ -99,7 +99,9 @@ public class CallScenarioFragment implements TraceFragment {
   }
 
   public Trace trace(Trace trace) {
-    checkArgument(scenario.noLongerUndefined(), "Final Scenario hasn't been set");
+    checkArgument(
+        scenario.noLongerUndefined(),
+        "Final " + CallScenario.class.getSimpleName() + ", " + scenario + ", is still undefined");
     return trace
         .peekAtScenario(true)
         // // CALL scenarios

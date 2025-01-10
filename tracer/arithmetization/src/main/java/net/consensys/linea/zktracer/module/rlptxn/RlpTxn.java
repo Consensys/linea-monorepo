@@ -111,7 +111,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     final Transaction tx = txMetaData.getBesuTransaction();
     // Contract Creation
     if (tx.getTo().isEmpty() && !tx.getInit().get().isEmpty()) {
-      this.operations.add(new RlpTxnOperation(tx, true));
+      operations.add(new RlpTxnOperation(tx, true));
     }
 
     // Call to a non-empty smart contract
@@ -126,29 +126,30 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     }
   }
 
-  public void traceOperation(RlpTxnOperation chunk, int absTxNum, Trace trace) {
+  public void traceOperation(RlpTxnOperation operation, int absTxNum, Trace trace) {
     // Create the local row storage and specify transaction constant columns
     RlpTxnColumnsValue traceValue = new RlpTxnColumnsValue();
     traceValue.resetDataHiLo();
     traceValue.addrHi = bigIntegerToBytes(BigInteger.ZERO);
     traceValue.addrLo = bigIntegerToBytes(BigInteger.ZERO);
     traceValue.absTxNum = absTxNum;
-    traceValue.requiresEvmExecution = chunk.requireEvmExecution();
+    traceValue.requiresEvmExecution = operation.requireEvmExecution();
     traceValue.codeFragmentIndex =
-        chunk.tx().getTo().isEmpty() && chunk.requireEvmExecution()
+        operation.tx().getTo().isEmpty() && operation.requireEvmExecution()
             ? this.romLex.getCodeFragmentIndexByMetadata(
                 ContractMetadata.make(
-                    Address.contractAddress(chunk.tx().getSender(), chunk.tx().getNonce()),
+                    Address.contractAddress(operation.tx().getSender(), operation.tx().getNonce()),
                     1,
                     true))
             : 0;
-    traceValue.txType = getTxTypeAsInt(chunk.tx().getType());
+    traceValue.txType = getTxTypeAsInt(operation.tx().getType());
 
     // Initialise RLP_LT and RLP_LX byte size + verify that we construct the right RLP
     this.reconstructedRlpLt = Bytes.EMPTY;
     this.reconstructedRlpLx = Bytes.EMPTY;
     Bytes besuRlpLt =
-        encodeOpaqueBytes((org.hyperledger.besu.ethereum.core.Transaction) chunk.tx(), BLOCK_BODY);
+        encodeOpaqueBytes(
+            (org.hyperledger.besu.ethereum.core.Transaction) operation.tx(), BLOCK_BODY);
     // the encodeOpaqueBytes method already concatenate with the first byte "transaction  type"
     if (traceValue.txType == 0) {
       traceValue.rlpLtByteSize = innerRlpSize(besuRlpLt.size());
@@ -161,45 +162,45 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
       case 0 -> {
         besuRlpLx =
             frontierPreimage(
-                chunk.tx().getNonce(),
-                (Wei) chunk.tx().getGasPrice().orElseThrow(),
-                chunk.tx().getGasLimit(),
-                chunk.tx().getTo().map(x -> (Address) x),
-                (Wei) chunk.tx().getValue(),
-                chunk.tx().getPayload(),
-                chunk.tx().getChainId());
+                operation.tx().getNonce(),
+                (Wei) operation.tx().getGasPrice().orElseThrow(),
+                operation.tx().getGasLimit(),
+                operation.tx().getTo().map(x -> (Address) x),
+                (Wei) operation.tx().getValue(),
+                operation.tx().getPayload(),
+                operation.tx().getChainId());
         traceValue.rlpLxByteSize = innerRlpSize(besuRlpLx.size());
       }
       case 1 -> {
         List<AccessListEntry> accessList = null;
-        if (chunk.tx().getAccessList().isPresent()) {
-          accessList = chunk.tx().getAccessList().orElseThrow();
+        if (operation.tx().getAccessList().isPresent()) {
+          accessList = operation.tx().getAccessList().orElseThrow();
         }
         besuRlpLx =
             accessListPreimage(
-                chunk.tx().getNonce(),
-                (Wei) chunk.tx().getGasPrice().orElseThrow(),
-                chunk.tx().getGasLimit(),
-                chunk.tx().getTo().map(x -> (Address) x),
-                (Wei) chunk.tx().getValue(),
-                chunk.tx().getPayload(),
+                operation.tx().getNonce(),
+                (Wei) operation.tx().getGasPrice().orElseThrow(),
+                operation.tx().getGasLimit(),
+                operation.tx().getTo().map(x -> (Address) x),
+                (Wei) operation.tx().getValue(),
+                operation.tx().getPayload(),
                 accessList,
-                chunk.tx().getChainId());
+                operation.tx().getChainId());
         // the innerRlp method already concatenate with the first byte "transaction  type"
         traceValue.rlpLxByteSize = innerRlpSize(besuRlpLx.size() - 1);
       }
       case 2 -> {
         besuRlpLx =
             eip1559Preimage(
-                chunk.tx().getNonce(),
-                (Wei) chunk.tx().getMaxPriorityFeePerGas().orElseThrow(),
-                (Wei) chunk.tx().getMaxFeePerGas().orElseThrow(),
-                chunk.tx().getGasLimit(),
-                chunk.tx().getTo().map(x -> (Address) x),
-                (Wei) chunk.tx().getValue(),
-                chunk.tx().getPayload(),
-                chunk.tx().getChainId(),
-                chunk.tx().getAccessList());
+                operation.tx().getNonce(),
+                (Wei) operation.tx().getMaxPriorityFeePerGas().orElseThrow(),
+                (Wei) operation.tx().getMaxFeePerGas().orElseThrow(),
+                operation.tx().getGasLimit(),
+                operation.tx().getTo().map(x -> (Address) x),
+                (Wei) operation.tx().getValue(),
+                operation.tx().getPayload(),
+                operation.tx().getChainId(),
+                operation.tx().getAccessList());
         // the innerRlp method already concatenate with the first byte "transaction  type"
         traceValue.rlpLxByteSize = innerRlpSize(besuRlpLx.size() - 1);
       }
@@ -214,20 +215,20 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     // Phase ChainId
     if (traceValue.txType == 1 || traceValue.txType == 2) {
       checkArgument(
-          bigIntegerToBytes(chunk.tx().getChainId().orElseThrow()).size() <= 8,
+          bigIntegerToBytes(operation.tx().getChainId().orElseThrow()).size() <= 8,
           "ChainId is longer than 8 bytes");
       handlePhaseInteger(
-          traceValue, RLP_TXN_PHASE_CHAIN_ID, chunk.tx().getChainId().get(), 8, trace);
+          traceValue, RLP_TXN_PHASE_CHAIN_ID, operation.tx().getChainId().get(), 8, trace);
     }
 
     // Phase Nonce
-    BigInteger nonce = longToUnsignedBigInteger(chunk.tx().getNonce());
+    BigInteger nonce = longToUnsignedBigInteger(operation.tx().getNonce());
     traceValue.dataLo = nonce;
     handlePhaseInteger(traceValue, RLP_TXN_PHASE_NONCE, nonce, 8, trace);
 
     // Phase GasPrice
     if (traceValue.txType == 0 || traceValue.txType == 1) {
-      BigInteger gasPrice = chunk.tx().getGasPrice().orElseThrow().getAsBigInteger();
+      BigInteger gasPrice = operation.tx().getGasPrice().orElseThrow().getAsBigInteger();
       checkArgument(bigIntegerToBytes(gasPrice).size() <= 8, "GasPrice is longer than 8 bytes");
       traceValue.dataLo = gasPrice;
       handlePhaseInteger(traceValue, RLP_TXN_PHASE_GAS_PRICE, gasPrice, 8, trace);
@@ -236,7 +237,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     // Phase Max priority fee per gas (GasTipCap)
     if (traceValue.txType == 2) {
       BigInteger maxPriorityFeePerGas =
-          chunk.tx().getMaxPriorityFeePerGas().orElseThrow().getAsBigInteger();
+          operation.tx().getMaxPriorityFeePerGas().orElseThrow().getAsBigInteger();
       checkArgument(
           bigIntegerToBytes(maxPriorityFeePerGas).size() <= 8,
           "Max Priority Fee per Gas is longer than 8 bytes");
@@ -246,8 +247,8 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
 
     // Phase Max fee per gas (GasFeeCap)
     if (traceValue.txType == 2) {
-      traceValue.dataHi = chunk.tx().getMaxPriorityFeePerGas().orElseThrow().getAsBigInteger();
-      BigInteger maxFeePerGas = chunk.tx().getMaxFeePerGas().orElseThrow().getAsBigInteger();
+      traceValue.dataHi = operation.tx().getMaxPriorityFeePerGas().orElseThrow().getAsBigInteger();
+      BigInteger maxFeePerGas = operation.tx().getMaxFeePerGas().orElseThrow().getAsBigInteger();
       checkArgument(
           bigIntegerToBytes(maxFeePerGas).size() <= 8, "Max Fee per Gas is longer than 8 bytes");
       traceValue.dataLo = maxFeePerGas;
@@ -255,24 +256,24 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     }
 
     // Phase GasLimit
-    BigInteger gasLimit = BigInteger.valueOf(chunk.tx().getGasLimit());
+    BigInteger gasLimit = BigInteger.valueOf(operation.tx().getGasLimit());
     traceValue.dataLo = gasLimit;
     handlePhaseInteger(traceValue, RLP_TXN_PHASE_GAS_LIMIT, gasLimit, 8, trace);
 
     // Phase To
-    if (chunk.tx().getTo().isPresent()) {
-      traceValue.dataHi = chunk.tx().getTo().orElseThrow().slice(0, 4).toUnsignedBigInteger();
-      traceValue.dataLo = chunk.tx().getTo().orElseThrow().slice(4, 16).toUnsignedBigInteger();
+    if (operation.tx().getTo().isPresent()) {
+      traceValue.dataHi = operation.tx().getTo().orElseThrow().slice(0, 4).toUnsignedBigInteger();
+      traceValue.dataLo = operation.tx().getTo().orElseThrow().slice(4, 16).toUnsignedBigInteger();
     } else {
       traceValue.dataHi = BigInteger.ZERO;
       traceValue.dataLo = BigInteger.ZERO;
     }
-    handlePhaseTo(traceValue, chunk.tx(), trace);
+    handlePhaseTo(traceValue, operation.tx(), trace);
 
     // Phase Value
-    BigInteger value = chunk.tx().getValue().getAsBigInteger();
+    BigInteger value = operation.tx().getValue().getAsBigInteger();
     traceValue.dataLo = value;
-    if (chunk.tx().getTo().isEmpty()) {
+    if (operation.tx().getTo().isEmpty()) {
       traceValue.dataHi = BigInteger.ONE;
     } else {
       traceValue.dataHi = BigInteger.ZERO;
@@ -280,28 +281,28 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     handlePhaseInteger(traceValue, RLP_TXN_PHASE_VALUE, value, LLARGE, trace);
 
     // Phase Data
-    handlePhaseData(traceValue, chunk.tx(), trace);
+    handlePhaseData(traceValue, operation.tx(), trace);
 
     // Phase AccessList
     if (traceValue.txType == 1 || traceValue.txType == 2) {
-      handlePhaseAccessList(traceValue, chunk.tx(), trace);
+      handlePhaseAccessList(traceValue, operation.tx(), trace);
     }
 
     // Phase Beta / w
     if (traceValue.txType == 0) {
-      handlePhaseBeta(traceValue, chunk.tx(), trace);
+      handlePhaseBeta(traceValue, operation.tx(), trace);
     }
 
     // Phase y
     if (traceValue.txType == 1 || traceValue.txType == 2) {
-      handlePhaseY(traceValue, chunk.tx(), trace);
+      handlePhaseY(traceValue, operation.tx(), trace);
     }
 
     // Phase R
-    handle32BytesInteger(traceValue, RLP_TXN_PHASE_R, chunk.tx().getR(), trace);
+    handle32BytesInteger(traceValue, RLP_TXN_PHASE_R, operation.tx().getR(), trace);
 
     // Phase S
-    handle32BytesInteger(traceValue, RLP_TXN_PHASE_S, chunk.tx().getS(), trace);
+    handle32BytesInteger(traceValue, RLP_TXN_PHASE_S, operation.tx().getS(), trace);
 
     checkArgument(
         this.reconstructedRlpLt.equals(besuRlpLt), "Reconstructed RLP LT and Besu RLP LT differ");

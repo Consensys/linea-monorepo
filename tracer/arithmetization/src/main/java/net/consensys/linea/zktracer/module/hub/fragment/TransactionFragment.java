@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import lombok.Setter;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -29,16 +30,21 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
 
 public final class TransactionFragment implements TraceFragment {
+  private final Hub hub;
+  private final Address coinbaseAddress;
   private final TransactionProcessingMetadata transactionProcessingMetadata;
   @Setter private TraceSection parentSection;
 
-  private TransactionFragment(TransactionProcessingMetadata transactionProcessingMetadata) {
+  private TransactionFragment(
+      Hub hub, TransactionProcessingMetadata transactionProcessingMetadata) {
+    this.hub = hub;
+    this.coinbaseAddress = Address.wrap(hub.coinbaseAddress.copy());
     this.transactionProcessingMetadata = transactionProcessingMetadata;
   }
 
   public static TransactionFragment prepare(
-      TransactionProcessingMetadata transactionProcessingMetadata) {
-    return new TransactionFragment(transactionProcessingMetadata);
+      Hub hub, TransactionProcessingMetadata transactionProcessingMetadata) {
+    return new TransactionFragment(hub, transactionProcessingMetadata);
   }
 
   @Override
@@ -46,7 +52,6 @@ public final class TransactionFragment implements TraceFragment {
     final Transaction tx = transactionProcessingMetadata.getBesuTransaction();
     final Address to = transactionProcessingMetadata.getEffectiveRecipient();
     final Address from = transactionProcessingMetadata.getSender();
-    final Address coinbase = transactionProcessingMetadata.getCoinbase();
 
     return trace
         .peekAtTransaction(true)
@@ -78,7 +83,7 @@ public final class TransactionFragment implements TraceFragment {
             Bytes.minimalBytes(transactionProcessingMetadata.getRefundCounterMax()))
         .pTransactionRefundEffective(
             Bytes.minimalBytes(transactionProcessingMetadata.getGasRefunded()))
-        .pTransactionCoinbaseAddressHi(highPart(coinbase))
-        .pTransactionCoinbaseAddressLo(lowPart(coinbase));
+        .pTransactionCoinbaseAddressHi(highPart(coinbaseAddress))
+        .pTransactionCoinbaseAddressLo(lowPart(coinbaseAddress));
   }
 }

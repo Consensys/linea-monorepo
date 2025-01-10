@@ -51,7 +51,7 @@ jobs:
   # ==================================================================
   corset-unit-tests:
     needs: [ build ]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -80,7 +80,7 @@ jobs:
 
   go-corset-unit-tests:
     needs: [ build ]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     continue-on-error: true
     steps:
       - name: Checkout repository
@@ -114,7 +114,7 @@ jobs:
   # ==================================================================
   corset-replay-tests:
     needs: [ build ]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -143,7 +143,7 @@ jobs:
 
   go-corset-replay-tests:
     needs: [ build ]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     continue-on-error: true
     steps:
       - name: Checkout repository

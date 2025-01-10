@@ -16,7 +16,10 @@
 package net.consensys.linea.zktracer.module.hub.section;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
+
+import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -29,6 +32,7 @@ import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
@@ -39,9 +43,18 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 public class TxSkipSection extends TraceSection implements PostTransactionDefer {
 
   final TransactionProcessingMetadata txMetadata;
-  final AccountSnapshot senderAccountSnapshotBefore;
-  final AccountSnapshot recipientAccountSnapshotBefore;
-  final AccountSnapshot coinbaseAccountSnapshotBefore;
+
+  Address senderAddress;
+  AccountSnapshot sender;
+  AccountSnapshot senderNew;
+
+  Address recipientAddress;
+  AccountSnapshot recipient;
+  AccountSnapshot recipientNew;
+
+  Address coinbaseAddress;
+  AccountSnapshot coinbase;
+  AccountSnapshot coinbaseNew;
 
   public TxSkipSection(
       Hub hub,
@@ -49,21 +62,14 @@ public class TxSkipSection extends TraceSection implements PostTransactionDefer 
       TransactionProcessingMetadata transactionProcessingMetadata,
       Transients transients) {
     super(hub, (short) 4);
-    hub.defers().scheduleForPostTransaction(this);
+    hub.defers().scheduleForEndTransaction(this);
 
     txMetadata = transactionProcessingMetadata;
-    final Address senderAddress = txMetadata.getBesuTransaction().getSender();
-    final Address recipientAddress = txMetadata.getEffectiveRecipient();
-    final Address coinbaseAddress = txMetadata.getCoinbase();
+    senderAddress = txMetadata.getBesuTransaction().getSender();
+    recipientAddress = txMetadata.getEffectiveRecipient();
 
-    senderAccountSnapshotBefore =
-        AccountSnapshot.canonical(hub, world, senderAddress, isPrecompile(senderAddress))
-            .turnOnWarmth();
-    recipientAccountSnapshotBefore =
-        AccountSnapshot.canonical(hub, world, recipientAddress, isPrecompile(recipientAddress))
-            .turnOnWarmth();
-    coinbaseAccountSnapshotBefore =
-        AccountSnapshot.canonical(hub, world, coinbaseAddress, isPrecompile(coinbaseAddress));
+    sender = canonical(hub, world, senderAddress, isPrecompile(senderAddress));
+    recipient = canonical(hub, world, recipientAddress, isPrecompile(recipientAddress));
 
     // arithmetization restriction
     checkArgument(
@@ -78,7 +84,6 @@ public class TxSkipSection extends TraceSection implements PostTransactionDefer 
     // at the start of every transaction
     checkArgument(!hub.deploymentStatusOf(senderAddress));
     checkArgument(!hub.deploymentStatusOf(recipientAddress));
-    checkArgument(!hub.deploymentStatusOf(coinbaseAddress));
 
     // the updated deployment info appears in the "updated" account fragment
     if (txMetadata.isDeployment()) {
@@ -86,120 +91,126 @@ public class TxSkipSection extends TraceSection implements PostTransactionDefer 
     }
   }
 
+  /**
+   * The coinbase address isn't necessarily that of the block. We do, however, obtain it via the
+   * {@link MessageFrame} of the hub.
+   */
+  public void coinbaseSnapshots(Hub hub, MessageFrame frame) {
+    coinbaseAddress = frame.getMiningBeneficiary();
+    coinbase =
+        canonical(hub, frame.getWorldUpdater(), coinbaseAddress, isPrecompile(coinbaseAddress));
+    checkArgument(!hub.deploymentStatusOf(coinbaseAddress));
+  }
+
   @Override
-  public void resolvePostTransaction(Hub hub, WorldView world, Transaction tx, boolean statusCode) {
+  public void resolveAtEndTransaction(
+      Hub hub, WorldView world, Transaction tx, boolean statusCode) {
+
     checkArgument(statusCode, "TX_SKIP transactions should be successful");
     checkArgument(txMetadata.statusCode(), "meta data suggests an unsuccessful TX_SKIP");
 
-    if (txMetadata.noAddressCollisions()) {
+    // may have to be modified in case of address collision
+    senderNew = canonical(hub, world, sender.address(), isPrecompile(sender.address()));
+    recipientNew = canonical(hub, world, recipient.address(), isPrecompile(recipient.address()));
+    coinbaseNew = canonical(hub, world, coinbase.address(), isPrecompile(recipient.address()));
 
-      final AccountSnapshot senderAccountSnapshotAfter =
-          AccountSnapshot.canonical(hub, world, senderAccountSnapshotBefore.address());
+    final Wei value = (Wei) txMetadata.getBesuTransaction().getValue();
 
-      final AccountSnapshot recipientAccountSnapshotAfter =
-          AccountSnapshot.canonical(hub, world, recipientAccountSnapshotBefore.address());
-
-      final AccountSnapshot coinbaseAccountSnapshotAfter =
-          AccountSnapshot.canonical(hub, world, coinbaseAccountSnapshotBefore.address());
-
-      // sender account fragment
-      final AccountFragment senderAccountFragment =
-          hub.factories()
-              .accountFragment()
-              .makeWithTrm(
-                  senderAccountSnapshotBefore,
-                  senderAccountSnapshotAfter,
-                  senderAccountSnapshotBefore.address(),
-                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
-
-      // recipient account fragment
-      final AccountFragment recipientAccountFragment =
-          hub.factories()
-              .accountFragment()
-              .makeWithTrm(
-                  recipientAccountSnapshotBefore,
-                  recipientAccountSnapshotAfter,
-                  recipientAccountSnapshotBefore.address(),
-                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
-
-      // coinbase account fragment
-      final AccountFragment coinbaseAccountFragment =
-          hub.factories()
-              .accountFragment()
-              .makeWithTrm(
-                  coinbaseAccountSnapshotBefore,
-                  coinbaseAccountSnapshotAfter,
-                  coinbaseAccountSnapshotBefore.address(),
-                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2));
-
-      this.addFragments(senderAccountFragment, recipientAccountFragment, coinbaseAccountFragment);
-    } else {
-      final Wei value = (Wei) txMetadata.getBesuTransaction().getValue();
-
-      final AccountSnapshot firstAccountFragmentSnapshotAfter =
-          txMetadata.senderAddressCollision()
-              ? senderAccountSnapshotBefore
-                  .deepCopy()
-                  .decrementBalanceBy(
-                      value.add(txMetadata.getGasUsed() * txMetadata.getEffectiveGasPrice()))
-                  .raiseNonceByOne()
-              : AccountSnapshot.canonical(hub, world, senderAccountSnapshotBefore.address());
-
-      final AccountSnapshot secondAccountFragmentSnapshotBefore =
-          txMetadata.senderIsRecipient()
-              ? firstAccountFragmentSnapshotAfter.deepCopy()
-              : recipientAccountSnapshotBefore;
-
-      final AccountSnapshot secondAccountFragmentSnapshotAfter =
-          secondAccountFragmentSnapshotBefore.deepCopy().incrementBalanceBy(value);
-
-      final AccountSnapshot coinbaseAccountSnapshotAfter =
-          AccountSnapshot.canonical(hub, world, coinbaseAccountSnapshotBefore.address());
-
-      final AccountSnapshot thirdAccountFragmentSnapshotBefore =
-          txMetadata.coinbaseAddressCollision()
-              ? coinbaseAccountSnapshotAfter
-                  .deepCopy()
-                  .decrementBalanceBy(txMetadata.getCoinbaseReward())
-              : coinbaseAccountSnapshotBefore;
-
-      // "sender" account fragment
-      final AccountFragment firstAccountFragment =
-          hub.factories()
-              .accountFragment()
-              .makeWithTrm(
-                  senderAccountSnapshotBefore,
-                  firstAccountFragmentSnapshotAfter,
-                  senderAccountSnapshotBefore.address(),
-                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
-
-      // "recipient" account fragment
-      final AccountFragment secondAccountFragment =
-          hub.factories()
-              .accountFragment()
-              .makeWithTrm(
-                  secondAccountFragmentSnapshotBefore,
-                  secondAccountFragmentSnapshotAfter,
-                  recipientAccountSnapshotBefore.address(),
-                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
-
-      // "coinbase" account fragment
-      final AccountFragment thirdAccountFragment =
-          hub.factories()
-              .accountFragment()
-              .makeWithTrm(
-                  thirdAccountFragmentSnapshotBefore,
-                  coinbaseAccountSnapshotAfter,
-                  coinbaseAccountSnapshotBefore.address(),
-                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2));
-
-      this.addFragments(firstAccountFragment, secondAccountFragment, thirdAccountFragment);
+    if (senderAddressCollision()) {
+      BigInteger gasUsed = BigInteger.valueOf(txMetadata.getGasUsed());
+      BigInteger gasPrice = BigInteger.valueOf(txMetadata.getEffectiveGasPrice());
+      BigInteger gasCost = gasUsed.multiply(gasPrice);
+      senderNew =
+          sender
+              .deepCopy()
+              .decrementBalanceBy(value)
+              .decrementBalanceBy(Wei.of(gasCost))
+              .raiseNonceByOne();
     }
+
+    if (senderIsRecipient()) {
+      recipient = senderNew.deepCopy();
+      recipientNew = recipient.deepCopy().incrementBalanceBy(value);
+    } else {
+      if (recipientIsCoinbase()) {
+        recipientNew = coinbaseNew.deepCopy().decrementBalanceBy(txMetadata.getCoinbaseReward());
+        recipient = recipientNew.deepCopy().decrementBalanceBy(value);
+      }
+    }
+
+    if (coinbaseAddressCollision()) {
+      coinbase = coinbaseNew.deepCopy().decrementBalanceBy(txMetadata.getCoinbaseReward());
+    }
+
+    // "sender" account fragment
+    final AccountFragment senderAccountFragment =
+        hub.factories()
+            .accountFragment()
+            .makeWithTrm(
+                sender,
+                senderNew,
+                sender.address(),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
+
+    // "recipient" account fragment
+    final AccountFragment recipientAccountFragment =
+        hub.factories()
+            .accountFragment()
+            .makeWithTrm(
+                recipient,
+                recipientNew,
+                recipient.address(),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
+
+    // "coinbase" account fragment
+    final AccountFragment coinbaseAccountFragment =
+        hub.factories()
+            .accountFragment()
+            .makeWithTrm(
+                coinbase,
+                coinbaseNew,
+                coinbase.address(),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2));
 
     // transaction fragment
     final TransactionFragment transactionFragment =
-        TransactionFragment.prepare(hub.txStack().current());
+        TransactionFragment.prepare(hub, hub.txStack().current());
 
+    this.addFragment(senderAccountFragment);
+    this.addFragment(recipientAccountFragment);
+    this.addFragment(coinbaseAccountFragment);
     this.addFragment(transactionFragment);
+  }
+
+  public boolean senderIsRecipient() {
+    return senderAddress.equals(recipientAddress);
+  }
+
+  public boolean senderIsCoinbase() {
+    return senderAddress.equals(coinbaseAddress);
+  }
+
+  public boolean recipientIsCoinbase() {
+    return recipientAddress.equals(coinbaseAddress);
+  }
+
+  public boolean senderAddressCollision() {
+    return senderIsRecipient() || senderIsCoinbase();
+  }
+
+  public boolean recipientAddressCollision() {
+    return senderIsRecipient() || recipientIsCoinbase();
+  }
+
+  public boolean coinbaseAddressCollision() {
+    return senderIsCoinbase() || recipientIsCoinbase();
+  }
+
+  public boolean addressCollision() {
+    return senderIsRecipient() || senderIsCoinbase() || recipientIsCoinbase();
+  }
+
+  public boolean noAddressCollisions() {
+    return !addressCollision();
   }
 }

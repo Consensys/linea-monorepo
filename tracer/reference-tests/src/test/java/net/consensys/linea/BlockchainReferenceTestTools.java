@@ -88,7 +88,7 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("dynamicAccountOverwriteEmpty_d0g0v0_London\\[London\\]");
 
     // ignore tests that are failing because there is an account with nonce 0 and
-    // non empty code which can't happen in Linea since we are post LONDON only.
+    // non empty code which can't happen in Linea since we are post LONDON
     PARAMS.ignore("InitCollision_d0g0v0_London\\[London\\]");
     PARAMS.ignore("InitCollision_d1g0v0_London\\[London\\]");
     PARAMS.ignore("InitCollision_d2g0v0_London\\[London\\]");
@@ -120,14 +120,87 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("randomStatetest94_\\w+");
 
     // Balance is more than 128 bits
+    PARAMS.ignore("CALLCODE_Bounds2_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CALLCODE_Bounds2_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CALLCODE_Bounds3_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CALLCODE_Bounds3_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CALLCODE_Bounds4_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CALLCODE_Bounds4_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CALLCODE_Bounds4_d0g2v0_London\\[London\\]");
+    PARAMS.ignore("CALLCODE_Bounds_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CALLCODE_Bounds_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CALL_Bounds2_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CALL_Bounds2_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CALL_Bounds2a_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CALL_Bounds2a_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CALL_Bounds3_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CALL_Bounds3_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CALL_Bounds3_d0g2v0_London\\[London\\]");
+    PARAMS.ignore("CALL_Bounds_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CALL_Bounds_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CREATE2_Bounds2_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CREATE2_Bounds2_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CREATE2_Bounds3_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CREATE2_Bounds3_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CREATE2_Bounds3_d0g2v0_London\\[London\\]");
+    PARAMS.ignore("CREATE2_Bounds_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CREATE2_Bounds_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CREATE_Bounds2_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CREATE_Bounds2_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CREATE_Bounds3_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CREATE_Bounds3_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("CREATE_Bounds3_d0g2v0_London\\[London\\]");
+    PARAMS.ignore("CREATE_Bounds_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("CREATE_Bounds_d0g1v0_London\\[London\\]");
     PARAMS.ignore("Call1024PreCalls_d0g0v0_London\\[London\\]");
     PARAMS.ignore("Call1024PreCalls_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("Call1024PreCalls_d0g2v0_London\\[London\\]");
+    PARAMS.ignore("Create2OnDepth1023_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("Create2OnDepth1024_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("Create2Recursive_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("Create2Recursive_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("DELEGATECALL_Bounds2_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("DELEGATECALL_Bounds2_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("DELEGATECALL_Bounds3_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("DELEGATECALL_Bounds3_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("DELEGATECALL_Bounds3_d0g2v0_London\\[London\\]");
+    PARAMS.ignore("DELEGATECALL_Bounds_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("DELEGATECALL_Bounds_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("DelegateCallSpam_London\\[London\\]");
+    PARAMS.ignore("HighGasLimit_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("MSTORE_Bounds2_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("MSTORE_Bounds2_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("MSTORE_Bounds2a_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("MSTORE_Bounds2a_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("MSTORE_Bounds_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("MSTORE_Bounds_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("OutOfGasContractCreation_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("OutOfGasContractCreation_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("OutOfGasContractCreation_d1g0v0_London\\[London\\]");
+    PARAMS.ignore("OutOfGasContractCreation_d1g1v0_London\\[London\\]");
+    PARAMS.ignore("OverflowGasRequire2_d0g0v0_London\\[London\\]");
     PARAMS.ignore("OverflowGasRequire_London\\[London\\]");
+    PARAMS.ignore("RETURN_Bounds_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("RETURN_Bounds_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("RETURN_Bounds_d0g2v0_London\\[London\\]");
     PARAMS.ignore("StrangeContractCreation_London\\[London\\]");
     PARAMS.ignore("SuicideIssue_London\\[London\\]");
-    PARAMS.ignore("DelegateCallSpam_London\\[London\\]");
-    PARAMS.ignore("OverflowGasRequire2_d0g0v0_London\\[London\\]");
-    PARAMS.ignore("HighGasLimit_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("static_CALL_Bounds2_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("static_CALL_Bounds2_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("static_CALL_Bounds2a_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("static_CALL_Bounds2a_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("static_CALL_Bounds3_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("static_CALL_Bounds3_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("static_CALL_Bounds_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("static_CALL_Bounds_d0g1v0_London\\[London\\]");
+    PARAMS.ignore("static_Call1024PreCalls2_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("static_Call1024PreCalls2_d1g0v0_London\\[London\\]");
+    PARAMS.ignore("static_Call1024PreCalls3_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("static_Call1024PreCalls3_d1g0v0_London\\[London\\]");
+    PARAMS.ignore("static_Call1024PreCalls_d1g0v0_London\\[London\\]");
+    PARAMS.ignore("static_RETURN_BoundsOOG_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("static_RETURN_BoundsOOG_d1g0v0_London\\[London\\]");
+    PARAMS.ignore("static_RETURN_Bounds_d0g0v0_London\\[London\\]");
 
     // Deployment transaction to an account with nonce / code
     PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g0v0_London\\[London\\]");
@@ -139,18 +212,85 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g1v0_London\\[London\\]");
     PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g1v1_London\\[London\\]");
     PARAMS.ignore("createJS_ExampleContract_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("initCollidingWithNonEmptyAccount_d0g0v0_London\\[London\\]");
+    PARAMS.ignore("initCollidingWithNonEmptyAccount_d1g0v0_London\\[London\\]");
+    PARAMS.ignore("initCollidingWithNonEmptyAccount_d2g0v0_London\\[London\\]");
+    PARAMS.ignore("initCollidingWithNonEmptyAccount_d3g0v0_London\\[London\\]");
+    PARAMS.ignore("initCollidingWithNonEmptyAccount_d4g0v0_London\\[London\\]");
+
+    // Deployment transaction to an account with zero nonce, empty code (and zero balance) but
+    // nonempty storage. Given [EIP-7610](https://github.com/ethereum/EIPs/pull/8161), no Besu
+    // execution takes place, which means that no TraceSection's are created beyond the
+    // {@link TxInitializationSection}. This triggers a NPE when tracing, as at some point
+    // {@link TraceSection#nextSection} is null in {@link TraceSection#computeContextNumberNew()}.
+    PARAMS.ignore("FailedCreateRevertsDeletion_d0g0v0_London\\[London\\]");
+
+    // Ignore the following test as it is not supported in Linea.
+    // See [issue #1678](https://github.com/Consensys/linea-tracer/issues/1678)
+    PARAMS.ignore("suicideStorageCheck_London\\[London\\]");
 
     // Don't do time-consuming tests.
     PARAMS.ignore("CALLBlake2f_MaxRounds.*");
     PARAMS.ignore("loopMul_*");
 
     // Inconclusive fork choice rule, since in merge CL should be choosing forks and setting the
-    // chain head.
-    // Perfectly valid test pre-merge.
+    // chain head. Perfectly valid test pre-merge.
     PARAMS.ignore("UncleFromSideChain_(Merge|Shanghai|Cancun|Prague|Osaka|Bogota)");
 
     // EOF tests are written against an older version of the spec.
     PARAMS.ignore("/stEOF/");
+
+    // We ignore the following tests because they satisfy one of the following:
+    // - bbs > 512, bbs ≡ base byte size
+    // - ebs > 512, ebs ≡ exponent byte size
+    // - mbs > 512, mbs ≡ modulus byte size
+    PARAMS.ignore("modexp_d28g0v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d28g1v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d28g2v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d28g3v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d29g0v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d29g1v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d29g2v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d29g3v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d2g0v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d2g1v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d2g2v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d2g3v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d30g0v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d30g1v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d30g2v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d30g3v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d36g0v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d36g1v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d36g2v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d36g3v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d37g0v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d37g1v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d37g2v0_London\\[London\\]");
+    PARAMS.ignore("modexp_d37g3v0_London\\[London\\]");
+    PARAMS.ignore("idPrecomps_d4g0v0_London\\[London\\]");
+    PARAMS.ignore("modexp_modsize0_returndatasize_d4g0v0_London\\[London\\]");
+    PARAMS.ignore("randomStatetest650_d0g0v0_London\\[London\\]");
+
+    // unsupported behaviour: uncle blocks, re-orgs, forks, side chain (?)
+    PARAMS.ignore("ChainAtoChainBCallContractFormA_London\\[London\\]");
+    PARAMS.ignore("ChainAtoChainB_London\\[London\\]");
+    PARAMS.ignore("ChainAtoChainB_difficultyB_London\\[London\\]");
+    PARAMS.ignore("ChainAtoChainBtoChainA_London\\[London\\]");
+    PARAMS.ignore("ForkStressTest_London\\[London\\]");
+    PARAMS.ignore("newChainFrom4Block_London\\[London\\]");
+    PARAMS.ignore("newChainFrom5Block_London\\[London\\]");
+    PARAMS.ignore("newChainFrom6Block_London\\[London\\]");
+    PARAMS.ignore("sideChainWithMoreTransactions2_London\\[London\\]");
+    PARAMS.ignore("sideChainWithMoreTransactions_London\\[London\\]");
+    PARAMS.ignore("sideChainWithNewMaxDifficultyStartingFromBlock3AfterBlock4_London\\[London\\]");
+    PARAMS.ignore("uncleBlockAtBlock3AfterBlock3_London\\[London\\]");
+    PARAMS.ignore("uncleBlockAtBlock3afterBlock4_London\\[London\\]");
+
+    // not sure what these tests are doing, but they blow up BLOCK_DATA, which is the simplest
+    // module in existence
+    PARAMS.ignore("CallContractFromNotBestBlock_London\\[London\\]");
+    PARAMS.ignore("RPC_API_Test_London\\[London\\]");
   }
 
   private BlockchainReferenceTestTools() {

@@ -202,7 +202,7 @@ public class ReturnSection extends TraceSection
           .scheduleForContextReEntry(
               this, hub.callStack().parentCallFrame()); // post deployment account snapshot
       hub.defers().scheduleForPostRollback(this, callFrame); // undo deployment
-      hub.defers().scheduleForPostTransaction(this); // inserting the final context row;
+      hub.defers().scheduleForEndTransaction(this); // inserting the final context row;
 
       squashParentContextReturnData = ContextFragment.executionProvidesEmptyReturnData(hub);
       deploymentAddress = frame.getRecipientAddress();
@@ -307,7 +307,7 @@ public class ReturnSection extends TraceSection
   }
 
   @Override
-  public void resolvePostTransaction(
+  public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
 
     checkArgument(returnFromDeployment);

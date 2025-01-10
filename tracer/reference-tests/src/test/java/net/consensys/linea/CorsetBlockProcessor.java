@@ -177,7 +177,6 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       return new BlockProcessingResult(Optional.empty(), e);
     }
     zkTracer.traceEndBlock(blockHeader, blockBody);
-    zkTracer.traceEndConflation(worldState);
 
     return new BlockProcessingResult(Optional.of(new BlockProcessingOutputs(worldState, receipts)));
   }

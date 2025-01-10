@@ -20,6 +20,7 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.module.hub.defer.ContextEntryDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ContextReEntryDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
@@ -28,12 +29,13 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /**
  * IMCFragments embed data required for Inter-Module Communication, i.e. data that are required to
  * correctly trigger other modules from the Hub.
  */
-public class ImcFragment implements TraceFragment, ContextReEntryDefer {
+public class ImcFragment implements TraceFragment, ContextReEntryDefer, ContextEntryDefer {
   /** the list of modules to trigger withing this fragment. */
   private final List<TraceSubFragment> moduleCalls = new ArrayList<>(5);
 
@@ -158,6 +160,11 @@ public class ImcFragment implements TraceFragment, ContextReEntryDefer {
   @Override
   public void resolveAtContextReEntry(Hub hub, CallFrame frame) {
     childFrame = hub.callStack().getById(frame.childFrameIds().getLast());
+  }
+
+  @Override
+  public void resolveUponContextEntry(Hub hub, MessageFrame frame) {
+    childFrame = hub.currentFrame();
   }
 
   /**

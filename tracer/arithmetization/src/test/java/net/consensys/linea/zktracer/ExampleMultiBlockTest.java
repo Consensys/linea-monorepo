@@ -62,7 +62,7 @@ class ExampleMultiBlockTest {
         ToyAccount.builder()
             .balance(Wei.fromEth(1))
             .nonce(116)
-            .address(Address.fromHexString("0xdead000000000000000000000000000beef"))
+            .address(Address.fromHexString("0xdeadbeef0000000000000000000deadbeef"))
             .build();
 
     final KeyPair senderKeyPair1 = new SECP256K1().generateKeyPair();

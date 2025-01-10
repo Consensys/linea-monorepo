@@ -69,7 +69,7 @@ public class LogSection extends TraceSection implements PostTransactionDefer {
     // the unexceptional case
     checkArgument(Exceptions.none(exceptions));
 
-    hub.defers().scheduleForPostTransaction(this);
+    hub.defers().scheduleForEndTransaction(this);
 
     final LogData logData = new LogData(hub);
     checkArgument(logData.nontrivialLog() == mxpCall.mayTriggerNontrivialMmuOperation);
@@ -87,7 +87,7 @@ public class LogSection extends TraceSection implements PostTransactionDefer {
   }
 
   @Override
-  public void resolvePostTransaction(
+  public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     final boolean logReverted = commonValues.callFrame().willRevert();
     if (logReverted) {

@@ -26,6 +26,7 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.euc.Euc;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.plugin.data.BlockBody;
@@ -39,6 +40,7 @@ public class TxnData implements OperationListModule<TxndataOperation> {
   private final ModuleOperationStackedList<TxndataOperation> operations =
       new ModuleOperationStackedList<>();
 
+  @Getter private final Hub hub;
   private final Wcp wcp;
   private final Euc euc;
 
@@ -61,7 +63,7 @@ public class TxnData implements OperationListModule<TxndataOperation> {
 
   @Override
   public void traceEndTx(TransactionProcessingMetadata tx) {
-    operations.add(new TxndataOperation(wcp, euc, tx));
+    operations.add(new TxndataOperation(hub, wcp, euc, tx));
   }
 
   @Override

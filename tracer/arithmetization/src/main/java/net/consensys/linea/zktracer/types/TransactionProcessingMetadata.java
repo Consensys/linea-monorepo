@@ -51,7 +51,6 @@ public class TransactionProcessingMetadata {
   final int relativeBlockNumber;
 
   final Transaction besuTransaction;
-  final Address coinbase;
   final long baseFee;
 
   final boolean isDeployment;
@@ -131,7 +130,6 @@ public class TransactionProcessingMetadata {
       final int absoluteTransactionNumber) {
     this.absoluteTransactionNumber = absoluteTransactionNumber;
     relativeBlockNumber = block.blockNumber();
-    coinbase = block.coinbaseAddress();
     baseFee = block.baseFee().toLong();
 
     besuTransaction = transaction;
@@ -327,38 +325,5 @@ public class TransactionProcessingMetadata {
 
   public Bytes getTransactionCallData() {
     return besuTransaction.getData().orElse(Bytes.EMPTY);
-  }
-
-  public boolean senderIsRecipient() {
-    return besuTransaction.getTo().isPresent()
-        && besuTransaction.getTo().get().equals(besuTransaction.getSender());
-  }
-
-  public boolean senderIsCoinbase() {
-    return besuTransaction.getSender().equals(coinbase);
-  }
-
-  public boolean recipientIsCoinbase() {
-    return besuTransaction.getTo().isPresent() && besuTransaction.getTo().get().equals(coinbase);
-  }
-
-  public boolean senderAddressCollision() {
-    return senderIsRecipient() || senderIsCoinbase();
-  }
-
-  public boolean recipientAddressCollision() {
-    return senderIsRecipient() || recipientIsCoinbase();
-  }
-
-  public boolean coinbaseAddressCollision() {
-    return senderIsCoinbase() || recipientIsCoinbase();
-  }
-
-  public boolean addressCollision() {
-    return senderIsRecipient() || senderIsCoinbase() || recipientIsCoinbase();
-  }
-
-  public boolean noAddressCollisions() {
-    return !addressCollision();
   }
 }

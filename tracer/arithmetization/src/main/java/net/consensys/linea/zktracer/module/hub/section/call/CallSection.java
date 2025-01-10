@@ -225,7 +225,7 @@ public class CallSection extends TraceSection
     checkArgument(oobCall.isAbortingCondition() == aborts);
 
     hub.defers().scheduleForPostRollback(this, currentFrame);
-    hub.defers().scheduleForPostTransaction(this);
+    hub.defers().scheduleForEndTransaction(this);
 
     // The CALL is now unexceptional and un-aborted
     refineUndefinedScenario(hub, frame);
@@ -370,6 +370,13 @@ public class CallSection extends TraceSection
         && ((ModexpSubsection) precompileSubsection).transactionWillBePopped) {
       hub.defers().unscheduleForContextReEntry(this, hub.currentFrame());
       hub.defers().unscheduleForPostTransaction(this);
+      System.out.println(
+          "WARNING: Illegal MODEXP arguments at"
+              + "\n\tHUB_STAMP  = "
+              + hubStamp()
+              + "\n\tABS_TX_NUM = "
+              + hub.txStack().getCurrentAbsNumber()
+              + "\nTransaction must be popped!");
     }
   }
 
@@ -532,7 +539,7 @@ public class CallSection extends TraceSection
   }
 
   @Override
-  public void resolvePostTransaction(
+  public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
 
     final CallScenarioFragment.CallScenario scenario = scenarioFragment.getScenario();

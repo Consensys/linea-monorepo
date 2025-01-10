@@ -45,6 +45,8 @@ public class Trace {
       new BigInteger("302652579918965577886386472538583578916");
   public static final BigInteger EMPTY_SHA2_LO =
       new BigInteger("52744687940778649747319168982913824853");
+  public static final long ETHEREUM_GAS_LIMIT_MAXIMUM = 0xffffffffffffffffL;
+  public static final int ETHEREUM_GAS_LIMIT_MINIMUM = 0x1388;
   public static final int EVM_INST_ADD = 0x1;
   public static final int EVM_INST_ADDMOD = 0x8;
   public static final int EVM_INST_ADDRESS = 0x30;

@@ -37,7 +37,6 @@ import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
-import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
@@ -111,7 +110,7 @@ public final class AccountFragment
 
     // This allows us to properly fill MARKED_FOR_SELFDESTRUCT and MARKED_FOR_SELFDESTRUCT_NEW,
     // among other things
-    hub.defers().scheduleForPostTransaction(this);
+    hub.defers().scheduleForEndTransaction(this);
   }
 
   @Override
@@ -166,7 +165,7 @@ public final class AccountFragment
   }
 
   @Override
-  public void resolvePostTransaction(
+  public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     final Map<EphemeralAccount, Integer> effectiveSelfDestructMap =
         transactionProcessingMetadata.getEffectiveSelfDestructMap();
@@ -189,12 +188,8 @@ public final class AccountFragment
     existsInfinity = world.get(newState.address()) != null;
     codeFragmentIndex =
         requiresRomlex
-            ? hub.romLex()
-                .getCodeFragmentIndexByMetadata(
-                    ContractMetadata.make(
-                        newState.address(),
-                        newState.deploymentNumber(),
-                        newState.deploymentStatus()))
+            ? hub.getCfiByMetaData(
+                newState.address(), newState.deploymentNumber(), newState.deploymentStatus())
             : 0;
   }
 }

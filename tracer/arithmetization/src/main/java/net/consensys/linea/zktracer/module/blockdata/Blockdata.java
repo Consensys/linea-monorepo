@@ -46,6 +46,7 @@ public class Blockdata implements Module {
   private int traceCounter = 0;
   private long firstBlockNumber;
   private Bytes chainId;
+  private boolean shouldBeTraced = true;
 
   final OpCode[] opCodes = {
     OpCode.COINBASE,
@@ -75,29 +76,35 @@ public class Blockdata implements Module {
   public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
     final long blockNumber = blockHeader.getNumber();
     firstBlockNumber = (traceCounter < opCodes.length) ? blockNumber : firstBlockNumber;
-    for (OpCode opCode : opCodes) {
-      BlockdataOperation operation =
-          new BlockdataOperation(
-              blockHeader,
-              prevBlockHeader,
-              txnData.currentBlock().getNbOfTxsInBlock(),
-              wcp,
-              euc,
-              chainId,
-              opCode,
-              firstBlockNumber);
-      operations.addLast(operation);
-      // Increase counter to track where we are in the conflation
-      traceCounter++;
+    if (shouldBeTraced) {
+      for (OpCode opCode : opCodes) {
+        BlockdataOperation operation =
+            new BlockdataOperation(
+                txnData.hub(),
+                blockHeader,
+                prevBlockHeader,
+                txnData.currentBlock().getNbOfTxsInBlock(),
+                wcp,
+                euc,
+                chainId,
+                opCode,
+                firstBlockNumber);
+        operations.addLast(operation);
+        // Increase counter to track where we are in the conflation
+        traceCounter++;
+      }
     }
     prevBlockHeader = blockHeader;
+    shouldBeTraced = false;
   }
 
   @Override
   public void traceEndConflation(final WorldView state) {}
 
   @Override
-  public void enterTransaction() {}
+  public void enterTransaction() {
+    shouldBeTraced = true;
+  }
 
   @Override
   public void popTransaction() {}
