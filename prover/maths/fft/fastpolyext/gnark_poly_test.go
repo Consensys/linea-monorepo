@@ -25,7 +25,7 @@ func TestGnarkInterpolate(t *testing.T) {
 		t.Run(fmt.Sprintf("test-cases-%v", i), func(t *testing.T) {
 
 			def := func(api frontend.API) error {
-				outerApi := gnarkfext.API{api}
+				outerApi := gnarkfext.API{Inner: api}
 				var (
 					x         = fext.NewElement(42, 0)
 					vec       = vectorext.IntoGnarkAssignment(testCases[i])
