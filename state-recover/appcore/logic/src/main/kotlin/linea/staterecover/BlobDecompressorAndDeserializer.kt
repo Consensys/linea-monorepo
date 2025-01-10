@@ -50,7 +50,6 @@ data class BlockHeaderStaticFields(
 
 class BlobDecompressorToDomainV1(
   val decompressor: BlobDecompressor,
-//  val chainId: ULong,
   val staticFields: BlockHeaderStaticFields,
   val vertx: Vertx,
   val decoder: BinaryDecoder<Block> = BesuRlpBlobDecoder,
@@ -102,7 +101,7 @@ class BlobDecompressorToDomainV1(
       }.thenPeek {
         val endTime = Clock.System.now()
         logger.debug(
-          "blobs decompressed and serialized: duration={} {} blobs, blocks={}",
+          "blobs decompressed and serialized: duration={}ms blobsCount={} blocks={}",
           endTime - startTime,
           blobs.size,
           CommonDomainFunctions.blockIntervalString(startBlockNumber, blockNumber - 1UL)
