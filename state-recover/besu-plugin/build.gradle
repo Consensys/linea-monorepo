@@ -56,12 +56,7 @@ shadowJar {
 
   dependencies {
     exclude { dependency ->
-//      if (dependency.moduleGroup.startsWith("com.michael-bull")) {
-//        println("${dependency.moduleGroup}:${dependency.moduleName}")
-//        println(dependency)
-//      }
-      def shallExclude = !canIncludeLib("${dependency.moduleGroup}:${dependency.moduleName}")
-      shallExclude
+      !canIncludeLib("${dependency.moduleGroup}:${dependency.moduleName}")
     }
   }
 
