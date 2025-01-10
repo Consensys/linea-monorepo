@@ -1,6 +1,8 @@
 package dist_permutation
 
+import modulediscoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
+
 type Settings struct {
-	// Maximum number of permutation queries per module
-	MaxNumOfQueryPerModule int
+	// Name of the target module
+	TargetModuleName modulediscoverer.ModuleName
 }

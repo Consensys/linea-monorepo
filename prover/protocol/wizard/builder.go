@@ -69,6 +69,12 @@ func Compile(define DefineFunc, compilers ...func(*CompiledIOP)) *CompiledIOP {
 		builder.equalizeRounds(numRounds)
 	}
 
+	if comp.SubProvers.Len() < comp.NumRounds() {
+		utils.Panic("There are coin sampling rounds that are not followed by an action of the prover. numRoundProver=%v numRoundCoins=%v",
+			comp.SubProvers.Len(), comp.NumRounds(),
+		)
+	}
+
 	return builder.CompiledIOP
 }
 
