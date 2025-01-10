@@ -51,14 +51,14 @@ var pairingDataTestCases = []pairingDataTestCase{
 	{
 		// empty input to test edge case and input fillers
 		InputFName:    "testdata/ecpair_empty.csv",
-		ModuleFName:   "",
+		ModuleFName:   "testdata/ecpair_empty_module.csv",
 		NbMillerLoops: 2,
 		NbFinalExps:   2,
 	},
 	{
 		// trace test
 		InputFName:    "testdata/ecpair_trace_input.csv",
-		ModuleFName:   "",
+		ModuleFName:   "testdata/ecpair_trace_module.csv",
 		NbMillerLoops: 2,
 		NbFinalExps:   1,
 	},
