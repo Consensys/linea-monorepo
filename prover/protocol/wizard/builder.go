@@ -78,18 +78,24 @@ func Compile(define DefineFunc, compilers ...func(*CompiledIOP)) *CompiledIOP {
 	return builder.CompiledIOP
 }
 
+// NewCompiledIOP initializes a CompiledIOP object.
+func NewCompiledIOP() *CompiledIOP {
+	CompiledIOP := &CompiledIOP{
+		Columns:         column.NewStore(),
+		QueriesParams:   NewRegister[ifaces.QueryID, ifaces.Query](),
+		QueriesNoParams: NewRegister[ifaces.QueryID, ifaces.Query](),
+		Coins:           NewRegister[coin.Name, coin.Info](),
+		Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
+	}
+	return CompiledIOP
+}
+
 /*
 Creates a new builder for a new IOP
 */
 func newBuilder() Builder {
 	return Builder{
-		CompiledIOP: &CompiledIOP{
-			Columns:         column.NewStore(),
-			QueriesParams:   NewRegister[ifaces.QueryID, ifaces.Query](),
-			QueriesNoParams: NewRegister[ifaces.QueryID, ifaces.Query](),
-			Coins:           NewRegister[coin.Name, coin.Info](),
-			Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
-		},
+		CompiledIOP:    NewCompiledIOP(),
 		currRound:      0,
 		fsStateIsDirty: true,
 	}

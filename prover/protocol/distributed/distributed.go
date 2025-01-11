@@ -36,6 +36,7 @@ type ModuleDiscoverer interface {
 	// given a query and a module name it checks if the query is inside the module
 	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
 	QueryIsInModule(ifaces.Query, ModuleName) bool
+	ColumnIsInModule(col ifaces.Column, name ModuleName) bool
 }
 
 // This transforms the initial wizard. So it is not really the initial

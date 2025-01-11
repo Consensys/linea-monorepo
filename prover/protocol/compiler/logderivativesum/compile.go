@@ -27,12 +27,20 @@ func CompileLogDerivSum(comp *wizard.CompiledIOP) {
 		// compilation process. We know that the query was already ignored at
 		// the beginning because we are iterating over the unignored keys.
 		comp.QueriesParams.MarkAsIgnored(qName)
-		// get the Numerator and Denominator from the input and prepare their compilation.
-		zEntries := logDeriv.Inputs
-		va := FinalEvaluationCheck{}
+
+		var (
+			zEntries = logDeriv.Inputs
+			va       = FinalEvaluationCheck{
+				LogDerivSumID: qName,
+			}
+			lastRound = logDeriv.Round
+		)
+
 		for _, entry := range zEntries {
+
+			// get the Numerator and Denominator from the input and prepare their compilation.
 			zC := &lookup.ZCtx{
-				Round:            entry.Round,
+				Round:            lastRound,
 				Size:             entry.Size,
 				SigmaNumerator:   entry.Numerator,
 				SigmaDenominator: entry.Denominator,
@@ -40,18 +48,18 @@ func CompileLogDerivSum(comp *wizard.CompiledIOP) {
 
 			// z-packing compile; it imposes the correct accumulation over Numerator and Denominator.
 			zC.Compile(comp)
+
 			// prover step; Z assignments
 			zAssignmentTask := lookup.ZAssignmentTask(*zC)
 			comp.SubProvers.AppendToInner(zC.Round, func(run *wizard.ProverRuntime) {
 				zAssignmentTask.Run(run)
 			})
+
 			// collect all the zOpening for all the z columns
 			va.ZOpenings = append(va.ZOpenings, zC.ZOpenings...)
 		}
 
 		// verifer step
-		va.LogDerivSumID = qName
-		lastRound := comp.NumRounds() - 1
 		comp.RegisterVerifierAction(lastRound, &va)
 	}
 

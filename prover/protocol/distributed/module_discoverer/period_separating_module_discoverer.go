@@ -34,7 +34,13 @@ func (p *PeriodSeperatingModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 func periodLogicToDetermineModule(col ifaces.Column) ModuleName {
 	colName := col.GetColID()
-	return ModuleName(periodSeparator(string(colName)))
+	// for multiplicity Column it is "TABLE_moduleName." So we should separate the ModuleName from this.
+	name := ModuleName(periodSeparator(string(colName)))
+	index := strings.Index(name, "_")
+	if index != -1 {
+		name = name[index+1:]
+	}
+	return name
 }
 
 func periodSeparator(name string) string {

@@ -15,7 +15,7 @@ import (
 
 // LogDerivativeSumInput stores the input to the query
 type LogDerivativeSumInput struct {
-	Round, Size int
+	Size        int
 	Numerator   []*sym.Expression // T -> -M, S -> +Filter
 	Denominator []*sym.Expression // S or T -> ({S,T} + X)
 }
@@ -27,7 +27,8 @@ type LogDerivativeSumInput struct {
 // N_{i,j} is  the i-th element of the underlying column of  j-th Numerator
 // D_{i,j} is  the i-th element of the underlying column of  j-th Denominator
 type LogDerivativeSum struct {
-	Inputs map[[2]int]*LogDerivativeSumInput
+	Round  int
+	Inputs map[int]*LogDerivativeSumInput
 	ID     ifaces.QueryID
 }
 
@@ -42,7 +43,7 @@ func (l LogDerivSumParams) UpdateFS(fs *fiatshamir.State) {
 }
 
 // NewLogDerivativeSum creates the new context LogDerivativeSum.
-func NewLogDerivativeSum(inp map[[2]int]*LogDerivativeSumInput, id ifaces.QueryID) LogDerivativeSum {
+func NewLogDerivativeSum(round int, inp map[int]*LogDerivativeSumInput, id ifaces.QueryID) LogDerivativeSum {
 
 	// check the length consistency
 	for key := range inp {
@@ -50,9 +51,11 @@ func NewLogDerivativeSum(inp map[[2]int]*LogDerivativeSumInput, id ifaces.QueryI
 			utils.Panic("Numerator and Denominator should have the same (no-zero) length, %v , %v", len(inp[key].Numerator), len(inp[key].Denominator))
 		}
 		for i := range inp[key].Numerator {
+
 			if err := inp[key].Numerator[i].Validate(); err != nil {
 				utils.Panic(" Numerator[%v] is not a valid expression", i)
 			}
+
 			if err := inp[key].Denominator[i].Validate(); err != nil {
 				utils.Panic(" Denominator[%v] is not a valid expression", i)
 			}
@@ -60,6 +63,7 @@ func NewLogDerivativeSum(inp map[[2]int]*LogDerivativeSumInput, id ifaces.QueryI
 	}
 
 	return LogDerivativeSum{
+		Round:  round,
 		Inputs: inp,
 		ID:     id,
 	}
