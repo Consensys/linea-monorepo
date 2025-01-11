@@ -1,6 +1,9 @@
 package fext
 
-import "github.com/consensys/linea-monorepo/prover/maths/field"
+import (
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+)
 
 // SetUint64 sets z to v and returns z
 func (z *Element) SetUint64(v uint64) *Element {
@@ -25,4 +28,10 @@ func (z *Element) Uint64() (uint64, uint64) {
 func Butterfly(a, b *Element) {
 	field.Butterfly(&a.A0, &b.A0)
 	field.Butterfly(&a.A1, &b.A1)
+}
+
+func (z *Element) MulByBase(first *Element, second *fr.Element) *Element {
+	z.A0.Mul(&first.A0, second)
+	z.A1.Mul(&first.A1, second)
+	return z
 }
