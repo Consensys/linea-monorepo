@@ -312,7 +312,7 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 	type worker struct {
 		k   []field.Element
 		it  columnIterator
-		lit sis.LimbIterator
+		lit *sis.LimbIterator
 	}
 
 	nbPolys := utils.DivCeil(len(v), nbFieldPerPoly)
@@ -349,7 +349,7 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 				v: v,
 			},
 		}
-		w.lit = *sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
+		w.lit = sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
 
 		for rowStart := 0; rowStart < len(v); rowStart += nbFieldPerPoly {
 			rowEnd := rowStart + nbFieldPerPoly
@@ -364,9 +364,9 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 				w.it.rowEnd = rowEnd
 				w.it.isConstIT = true
 				w.it.colIndex = 0
-				w.lit = *sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
+				w.lit = sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
 
-				s.gnarkInternal.InnerHash(&w.lit, constPoly, w.k, polID)
+				s.gnarkInternal.InnerHash(w.lit, constPoly, w.k, polID)
 			}
 
 			// if it's a constant block, we are done.
@@ -382,7 +382,7 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 				w.it.colIndex = colID
 				w.it.rowStart = rowStart
 				w.lit.Reset(&w.it)
-				s.gnarkInternal.InnerHash(&w.lit, res[colID*N:colID*N+N], w.k, polID)
+				s.gnarkInternal.InnerHash(w.lit, res[colID*N:colID*N+N], w.k, polID)
 			}
 		}
 
