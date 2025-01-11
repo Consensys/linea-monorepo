@@ -89,7 +89,7 @@ func (gp GrandProductParams) UpdateFS(fs *fiatshamir.State) {
 //
 // Returns:
 // - An error if the grand product query is not satisfied, or nil if it is satisfied.
-func (g *GrandProduct) Check(run ifaces.Runtime) error {
+func (g GrandProduct) Check(run ifaces.Runtime) error {
 	params := run.GetParams(g.ID).(GrandProductParams)
 	actualProd := field.One()
 	for key := range g.Inputs {

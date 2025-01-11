@@ -5,10 +5,12 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/grandproduct"
 	dist_permutation "github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/permutation"
 	modulediscoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPermutation(t *testing.T) {
@@ -128,7 +130,7 @@ func TestPermutation(t *testing.T) {
 
 					build.RegisterCommit(col.GetColID(), col.Size())
 				}
-			}, dummy.CompileAtProverLvl)
+			}, grandproduct.CompileGrandProductDist, dummy.CompileAtProverLvl)
 
 			var (
 				_ = dist_permutation.NewPermutationIntoGrandProductCtx(
@@ -161,7 +163,9 @@ func TestPermutation(t *testing.T) {
 				}
 			}
 
-			_ = wizard.Prove(moduleAComp, moduleAProve)
+			proof := wizard.Prove(moduleAComp, moduleAProve)
+			valid := wizard.Verify(moduleAComp, proof)
+			require.NoError(t, valid)
 
 		})
 
