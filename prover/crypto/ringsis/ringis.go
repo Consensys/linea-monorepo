@@ -1,13 +1,15 @@
 package ringsis
 
 import (
+	"runtime"
+
+	"github.com/bits-and-blooms/bitset"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/sis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 )
 
 const (
@@ -279,15 +281,42 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 		tileWidth = nbCols
 	}
 	// ensure that the tile width divides the number of columns
-	nbIterations := nbCols / tileWidth
-	remainingIterations := nbCols % tileWidth
+	// nbIterations := nbCols / tileWidth
 
 	N := s.OutputSize()
 
 	constPoly := make(field.Vector, N)
 	res := make(field.Vector, nbCols*N)
 
-	k := make([]field.Element, N)
+	nbCpus := runtime.GOMAXPROCS(0)
+
+	if nbCpus >= nbCols {
+		// 1 cpu per col is fine.
+		tileWidth = 1
+	} else {
+		// we want to have at least 1 tile width per cpu;
+		for tileWidth*nbCpus > nbCols {
+			tileWidth--
+		}
+	}
+
+	// block is the number of tiles processed concurrently by all cpus
+	blockWidth := tileWidth * nbCpus
+	// nbBlocks := nbCols / blockWidth
+	remainingIterations := nbCols % blockWidth
+	rn := nbCols
+	if remainingIterations > 0 {
+		rn -= remainingIterations
+	}
+
+	type worker struct {
+		k   []field.Element
+		it  columnIterator
+		lit sis.LimbIterator
+	}
+
+	nbPolys := utils.DivCeil(len(v), nbFieldPerPoly)
+	constBlock := bitset.New(uint(nbPolys))
 	for start := 0; start < len(v); start += nbFieldPerPoly {
 		end := start + nbFieldPerPoly
 		if end > len(v) {
@@ -297,36 +326,67 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 
 		// first, we iterate over the lines; if all are smartvectors.Constant, we contribute the contribution
 		// once only, and add it at the end before reducing
-		isConstant := true
+		constantBlock := true
 		for row := start; row < end; row++ {
 			if _, ok := v[row].(*smartvectors.Constant); !ok {
-				isConstant = false
+				constantBlock = false
 				break
 			}
 		}
-		if isConstant {
-			it := sis.NewLimbIterator(newColumnIterator(v[start:end], 0), s.LogTwoBound/8)
-			s.gnarkInternal.InnerHash(it, constPoly, k, polID)
-			continue
-		}
 
-		pool.ExecutePoolChunky(nbIterations, func(chunkID int) {
-			for j := 0; j < tileWidth; j++ {
-				colID := chunkID*tileWidth + j
-				it := sis.NewLimbIterator(newColumnIterator(v[start:end], colID), s.LogTwoBound/8)
-				s.gnarkInternal.InnerHash(it, res[colID*N:colID*N+N], k, polID)
-			}
-		})
-
-		if remainingIterations > 0 {
-			chunkID := nbIterations - 1
-			for j := 0; j < remainingIterations; j++ {
-				colId := chunkID*tileWidth + j
-				it := sis.NewLimbIterator(newColumnIterator(v[start:end], colId), s.LogTwoBound/8)
-				s.gnarkInternal.InnerHash(it, res[colId*N:colId*N+N], k, polID)
-			}
+		if constantBlock {
+			constBlock.Set(uint(polID))
 		}
 	}
+
+	// TODO @gbotrel use go routines directly so that we don't process the full row at once
+	// but chunk it for larger matrices to fit in L2 - L3 cache.
+	parallel.Execute(nbCols, func(colStart, colEnd int) {
+
+		w := worker{
+			k: make([]field.Element, N),
+			it: columnIterator{
+				v: v,
+			},
+		}
+		w.lit = *sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
+
+		for rowStart := 0; rowStart < len(v); rowStart += nbFieldPerPoly {
+			rowEnd := rowStart + nbFieldPerPoly
+			if rowEnd > len(v) {
+				rowEnd = len(v)
+			}
+			polID := rowStart / nbFieldPerPoly
+
+			if colStart == 0 {
+				// first worker process the constants;
+				w.it.rowStart = rowStart
+				w.it.rowEnd = rowEnd
+				w.it.isConstIT = true
+				w.it.colIndex = 0
+				w.lit = *sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
+
+				s.gnarkInternal.InnerHash(&w.lit, constPoly, w.k, polID)
+			}
+
+			// if it's a constant block, we are done.
+			if constBlock.Test(uint(polID)) {
+				continue
+			}
+
+			w.it.isConstIT = false
+			w.it.rowStart = rowStart
+			w.it.rowEnd = rowEnd
+
+			for colID := colStart; colID < colEnd; colID++ {
+				w.it.colIndex = colID
+				w.it.rowStart = rowStart
+				w.lit.Reset(&w.it)
+				s.gnarkInternal.InnerHash(&w.lit, res[colID*N:colID*N+N], w.k, polID)
+			}
+		}
+
+	})
 
 	// now for each subslice in results, we do the FFT inverse to reduce mod Xᵈ+1
 	parallel.Execute(nbCols, func(start, stop int) {
@@ -343,26 +403,25 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 // columnIterator is a helper struct to iterate over the columns of a matrix
 // it implements the SIS.ElementIterator interface
 type columnIterator struct {
-	v        []smartvectors.SmartVector
-	rowIndex int
-	colIndex int
+	v                []smartvectors.SmartVector
+	rowStart, rowEnd int
+	colIndex         int
+	isConstIT        bool
 }
 
-func newColumnIterator(v []smartvectors.SmartVector, colIndex int) *columnIterator {
-	return &columnIterator{v: v, colIndex: colIndex}
-}
-
-func (it *columnIterator) Reset(v []smartvectors.SmartVector, colIndex int) {
-	it.v = v
-	it.colIndex = colIndex
-	it.rowIndex = 0
-}
+// func newColumnIterator(v []smartvectors.SmartVector, colIndex int, constIT bool) *columnIterator {
+// 	return &columnIterator{v: v, colIndex: colIndex, isConstIT: constIT}
+// }
 
 func (it *columnIterator) Next() (field.Element, bool) {
-	if it.rowIndex == len(it.v) {
+	if it.rowEnd == it.rowStart {
 		return field.Element{}, false
 	}
-	row := it.v[it.rowIndex]
-	it.rowIndex++
-	return row.Get(it.colIndex), true
+	row := it.v[it.rowStart]
+	_, constRow := row.(*smartvectors.Constant)
+	it.rowStart++
+	if (it.isConstIT && constRow) || (!it.isConstIT && !constRow) {
+		return row.Get(it.colIndex), true
+	}
+	return field.Element{}, true
 }
