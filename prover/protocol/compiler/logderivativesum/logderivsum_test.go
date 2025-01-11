@@ -42,11 +42,10 @@ func TestLogDerivSum(t *testing.T) {
 			ifaces.ColumnAsVariable(q2),
 		}
 
-		key := [2]int{0, 4}
-		zCat1 := map[[2]int]*query.LogDerivativeSumInput{}
-		zCat1[key] = &query.LogDerivativeSumInput{
-			Round:       0,
-			Size:        4,
+		size := 4
+		zCat1 := map[int]*query.LogDerivativeSumInput{}
+		zCat1[size] = &query.LogDerivativeSumInput{
+			Size:        size,
 			Numerator:   numerators,
 			Denominator: denominators,
 		}
