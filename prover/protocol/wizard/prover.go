@@ -162,29 +162,8 @@ type ProverRuntime struct {
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
 func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
-	runtime := c.createProver()
-	/*
-		Run the user provided assignment function. We can't expect it
-		to run all the rounds, because the compilation could have added
-		extra-rounds.
-	*/
 
-	runtime.exec("high-level-prover", highLevelprover)
-
-	/*
-		Then, run the compiled prover steps
-	*/
-
-	// Initial prover step
-	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
-
-	for runtime.currRound+1 < runtime.NumRounds() {
-		// Next round
-		runtime.exec(fmt.Sprintf("next-after-round%d", runtime.currRound), runtime.goNextRound)
-
-		// Prover steps for the next round
-		runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
-	}
+	runtime := RunProver(c, highLevelprover)
 
 	/*
 		Pass all the prover message columns as part of the proof
@@ -212,7 +191,24 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 	return Proof{
 		Messages:      messages,
 		QueriesParams: runtime.QueriesParams,
+		RunTime:       runtime,
 	}
+}
+
+// RunProver initializes a [ProverRuntime], runs the prover and returns the final
+// runtime. It does not returns the [Proof] however.
+func RunProver(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
+
+	runtime := c.createProver()
+	runtime.exec("high-level-prover", highLevelprover)
+	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
+
+	for runtime.currRound+1 < runtime.NumRounds() {
+		runtime.exec(fmt.Sprintf("next-after-round%d", runtime.currRound), runtime.goNextRound)
+		runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
+	}
+
+	return &runtime
 }
 
 // NumRounds returns the total number of rounds in the corresponding WizardIOP.
@@ -383,7 +379,7 @@ func (run *ProverRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 //   - the column assignment occurs at the wrong round. If this error happens,
 //     it is likely that the [ifaces.Column] was created in the wrong round to
 //     begin with.
-func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssignment) {
+func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssignment, round ...int) {
 
 	// global prover's lock before accessing the witnesses. This makes the
 	// function thread-safe
@@ -405,7 +401,14 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 
 	// Sanity-check: Make sure, it is done at the right round
 	handle := run.Spec.Columns.GetHandle(name)
-	ifaces.MustBeInRound(handle, run.currRound)
+	// if round is empty, we expect it to assign the column at the current round,
+	// otherwise it assigns it in the round the column was declared.
+	// This is useful when we have for loop over rounds.
+	if len(round) == 0 {
+		ifaces.MustBeInRound(handle, run.currRound)
+	} else {
+		ifaces.MustBeInRound(handle, round[0])
+	}
 
 	if witness.Len() != handle.Size() {
 		utils.Panic("Bad length for %v, expected %v got %v\n", handle, handle.Size(), witness.Len())

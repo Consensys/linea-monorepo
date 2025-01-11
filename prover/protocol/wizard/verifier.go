@@ -31,6 +31,9 @@ type Proof struct {
 	// QueriesParams stores all the query parameters (i.e) the messages of the
 	// oracle to the verifier.
 	QueriesParams collection.Mapping[ifaces.QueryID, ifaces.QueryParams]
+
+	// RunTime is the run time of the prover during the proof generation
+	RunTime *ProverRuntime
 }
 
 // VerifierStep specifies a single step of verifier for a single subprotocol.
