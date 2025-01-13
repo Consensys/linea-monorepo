@@ -15,9 +15,15 @@ func (z *Element) SetUint64(v uint64) *Element {
 
 // SetInt64 sets z to v and returns z
 func (z *Element) SetInt64(v int64) *Element {
-
 	z.A0.SetInt64(v)
 	z.A1.SetZero()
+	return z // z.toMont()
+}
+
+// SetInt64Pair sets z to the int64 pair corresponding to (v1, v2) and returns z
+func (z *Element) SetInt64Pair(v1, v2 int64) *Element {
+	z.A0.SetInt64(v1)
+	z.A1.SetInt64(v2)
 	return z // z.toMont()
 }
 
