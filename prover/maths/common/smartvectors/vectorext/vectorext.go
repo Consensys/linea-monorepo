@@ -4,9 +4,10 @@ package vectorext
 
 import (
 	"fmt"
+	"math/rand"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
-	"math/rand"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -109,10 +110,9 @@ func ForTestFromPairs(xs ...int) []fext.Element {
 	if len(xs)%2 != 0 {
 		panic("ForTestFromPairs must receive an even-length input vector")
 	}
-	res := make([]fext.Element, len(xs))
+	res := make([]fext.Element, len(xs)/2)
 	for i := 0; i < len(res); i++ {
-		res[i].SetInt64Pair(int64(xs[i]), int64(xs[i+1]))
-		i++ //skip to the next pair
+		res[i].SetInt64Pair(int64(xs[2*i]), int64(xs[2*i+1]))
 	}
 	return res
 }

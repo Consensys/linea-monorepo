@@ -6,6 +6,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 )
 
+const ExtensionDegree int = 2
+
 // E2 is a degree two finite field extension of fr.Element
 type E2 struct {
 	A0, A1 fr.Element
