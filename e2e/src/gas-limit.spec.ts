@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { pollForContractMethodReturnValueExceedTarget, wait } from "./common/utils";
+import { pollForContractMethodReturnValueExceedTarget } from "./common/utils";
 import { config } from "./config/tests-config";
 import { ContractTransactionReceipt, Wallet } from "ethers";
 
