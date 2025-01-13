@@ -31,11 +31,11 @@ fs-responses-directory = "/data/prover/v2/aggregation/responses"
 #fs-responses-directory = "/data/prover/v3/aggregation/responses"
 
 [blob-compression]
-blob-size-limit=102400 # 100KB
+blob-size-limit=130048 # must be greater than Sequencer blockMaxCalldataSize=109000. Max is 128*1024=131072, leaving 1024B safety margin
 handler-polling-interval="PT1S"
 # default batches limit is  aggregation-proofs-limit -1
 # batches-limit must be less than or equal to aggregation-proofs-limit-1
-batches-limit=1
+#batches-limit=1
 
 [zk-traces]
 eth-api="http://traces-node:8545"
@@ -152,8 +152,9 @@ max-aggregations-to-finalize-per-tick=1
 proof-submission-delay="PT1S"
 
 [proof-aggregation]
-aggregation-proofs-limit=3
-aggregation-deadline="PT1M"
+aggregation-proofs-limit=100
+aggregation-deadline="PT10M"
+polling-interval="PT30S"
 aggregation-coordinator-polling-interval="PT2S"
 deadline-check-interval="PT8S"
 target-end-blocks=[]
@@ -267,15 +268,15 @@ num-of-blocks-before-latest=4
 storage-period="PT2M"
 
 [conflation]
-blocks-limit=2
-conflation-deadline="PT6S" # =3*l2_block_time
-conflation-deadline-check-interval="PT3S"
-conflation-deadline-last-block-confirmation-delay="PT2S" # recommended: at least 2 * blockInterval
+blocks-limit=200
 
-# This is to prevent inflight trasactions that may change Smart contract state while coordinator is restarted.
+# This is to prevent inflight transactions that may change Smart contract state while the coordinator is restarted.
 # Queries SMC for last finalised block, and keeps polling until this number of blocks observe the same state.
 # If state is updated meanwhile, it resets counter and restarts the polling.
-consistent-number-of-blocks-on-l1-to-wait=1
+consistent-number-of-blocks-on-l1-to-wait=8
+conflation-deadline="PT10M"
+conflation-deadline-check-interval="PT30S"
+conflation-deadline-last-block-confirmation-delay="PT2S" # recommended: at least 2 * blockInterval
 fetch-blocks-limit=4000
 
 [database]

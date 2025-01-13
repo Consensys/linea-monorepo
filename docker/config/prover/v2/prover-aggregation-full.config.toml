@@ -4,7 +4,7 @@ exec_proof_dir = "/data/prover/v2/execution/responses"
 decompress_proof_dir = "/data/prover/v2/compression/responses"
 
 [bn254_circuit]
-verifier_id = 3
+verifier_id = 0
 files = {out_folder = "/opt/linea/prover/prover-assets/2.0.0/prover-aggregation/regular/895c049", pkey_file = "proving_key.bin", vkey_file = "verifying_key.bin", circuit_file = "circuit.bin"}
 
 [[bw6_circuits]]
