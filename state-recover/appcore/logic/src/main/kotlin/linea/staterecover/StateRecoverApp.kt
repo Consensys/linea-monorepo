@@ -27,7 +27,6 @@ class StateRecoverApp(
   private val elClient: ExecutionLayerClient,
   private val stateManagerClient: StateManagerClientV1,
   private val transactionDetailsClient: TransactionDetailsClient,
-  private val l1EventsPollingInterval: Duration,
   private val blockHeaderStaticFields: BlockHeaderStaticFields,
   // configs
   private val config: Config = Config.lineaMainnet
@@ -42,7 +41,7 @@ class StateRecoverApp(
     val logsBlockChunkSize: UInt = 1000u,
     /**
      * The block number at which the recovery mode will start overriding the recovery start block number
-     * this is mean for testing purposes, not production
+     * this is meant for testing purposes, not production
      */
     val overridingRecoveryStartBlockNumber: ULong? = null
   ) {
@@ -97,7 +96,7 @@ class StateRecoverApp(
     transactionDetailsClient = transactionDetailsClient,
     blobDecompressor = blobDecompressor,
     blockImporterAndStateVerifier = blockImporterAndStateVerifier,
-    pollingInterval = l1EventsPollingInterval
+    pollingInterval = config.l1PollingInterval
   )
   val lastProcessedFinalization: EthLogEvent<DataFinalizedV3>?
     get() = stateSynchronizerService.lastProcessedFinalization

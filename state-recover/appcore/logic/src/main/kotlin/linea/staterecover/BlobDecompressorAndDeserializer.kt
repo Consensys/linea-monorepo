@@ -9,6 +9,7 @@ import linea.domain.BinaryDecoder
 import linea.rlp.BesuRlpBlobDecoder
 import linea.rlp.RLP
 import net.consensys.decodeHex
+import net.consensys.encodeHex
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.blob.BlobDecompressor
@@ -46,6 +47,30 @@ data class BlockHeaderStaticFields(
       coinbase = "0x6d976c9b8ceee705d4fe8699b44e5eb58242f484".decodeHex()
     )
   }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as BlockHeaderStaticFields
+
+    if (!coinbase.contentEquals(other.coinbase)) return false
+    if (gasLimit != other.gasLimit) return false
+    if (difficulty != other.difficulty) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = coinbase.contentHashCode()
+    result = 31 * result + gasLimit.hashCode()
+    result = 31 * result + difficulty.hashCode()
+    return result
+  }
+
+  override fun toString(): String {
+    return "BlockHeaderStaticFields(coinbase=${coinbase.encodeHex()}, gasLimit=$gasLimit, difficulty=$difficulty)"
+  }
 }
 
 class BlobDecompressorToDomainV1(
@@ -55,7 +80,6 @@ class BlobDecompressorToDomainV1(
   val decoder: BinaryDecoder<Block> = BesuRlpBlobDecoder,
   val logger: Logger = LogManager.getLogger(BlobDecompressorToDomainV1::class.java)
 ) : BlobDecompressorAndDeserializer {
-
   override fun decompress(
     startBlockNumber: ULong,
     blobs: List<ByteArray>

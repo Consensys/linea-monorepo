@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="INFO" monitorInterval="2">
+<Configuration level="INFO" monitorInterval="2">
   <Properties>
     <Property name="root.log.level">INFO</Property>
   </Properties>
@@ -37,7 +37,7 @@
     <Logger name="linea.staterecover" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Logger name="linea.plugin.staterecover.clients.l1.blob-scan" level="TRACE" additivity="false">
+    <Logger name="linea.plugin.staterecover.clients.l1" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
     <Logger name="linea.plugin.staterecover.clients.l1.transaction-details" level="TRACE" additivity="false">

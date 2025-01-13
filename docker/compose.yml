@@ -737,7 +737,7 @@ services:
         --plugin-staterecovery-l1-rpc-endpoint=http://l1-el-node:8545 \
         --plugin-staterecovery-shomei-endpoint=http://shomei-sr:8888 \
         --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \
-        --plugin-staterecovery-overriding-recovery-start-block-number=1 \
+        --plugin-staterecovery-overriding-recovery-start-block-number=1
     volumes:
       - ./config/zkbesu-shomei/all-permissions.policy:/var/lib/besu/all-permissions.policy:ro
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
@@ -745,7 +745,6 @@ services:
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ../state-recover/besu-plugin/build/libs/linea-staterecover-plugin-0.0.1-rc2.jar:/opt/besu/lib/linea-staterecover-plugin-0.0.1-rc2.jar
       - ../state-recover/besu-plugin/build/libs/linea-staterecover-plugin-0.0.1-rc2.jar:/opt/besu/plugins/linea-staterecover-plugin-0.0.1-rc2.jar
-      - ./scripts/file-downloader.sh:/file-downloader.sh:ro
 
   shomei-sr:
     image: consensys/linea-shomei:2.3.0

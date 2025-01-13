@@ -20,6 +20,7 @@ import org.hyperledger.besu.plugin.services.BlockchainService
 import org.hyperledger.besu.plugin.services.PicoCLIOptions
 import org.hyperledger.besu.plugin.services.mining.MiningService
 import org.hyperledger.besu.plugin.services.p2p.P2PService
+import org.hyperledger.besu.plugin.services.query.PoaQueryService
 import org.hyperledger.besu.plugin.services.sync.SynchronizationService
 
 fun <T : BesuService> ServiceManager.getServiceOrThrow(clazz: Class<T>): T {
@@ -70,21 +71,33 @@ open class LineaStateRecoverPlugin : BesuPlugin {
       simulatorService = simulatorService,
       synchronizationService = synchronizationService
     )
-    this.stateRecoverApp = createAppAllInProcess(
-      vertx = vertx,
-      // Metrics won't be exposed. Needs proper integration with Besu Metrics, not priority now.
-      meterRegistry = SimpleMeterRegistry(),
-      elClient = executionLayerClient,
-      stateManagerClientEndpoint = config.shomeiEndpoint,
-      l1RpcEndpoint = config.l1RpcEndpoint,
-      blobScanEndpoint = config.blobscanEndpoint,
-      blockHeaderStaticFields = BlockHeaderStaticFields.localDev,
-      appConfig = StateRecoverApp.Config(
-        smartContractAddress = config.l1SmartContractAddress.toString(),
-        l1LatestSearchBlock = net.consensys.linea.BlockParameter.Tag.LATEST,
-        overridingRecoveryStartBlockNumber = config.overridingRecoveryStartBlockNumber
+
+    this.stateRecoverApp = run {
+      val blockHeaderStaticFields = BlockHeaderStaticFields(
+        coinbase = serviceManager.getServiceOrThrow(PoaQueryService::class.java)
+          .localSignerAddress.toArray(),
+        gasLimit = blockchainService.chainHeadHeader.gasLimit.toULong(),
+        difficulty = 2UL // Note, this need to change once we move to QBFT
       )
-    )
+      log.debug("chainBlockHeaderStaticFields={}", blockHeaderStaticFields)
+      createAppAllInProcess(
+        vertx = vertx,
+        // Metrics won't be exposed. Needs proper integration with Besu Metrics, not priority now.
+        meterRegistry = SimpleMeterRegistry(),
+        elClient = executionLayerClient,
+        stateManagerClientEndpoint = config.shomeiEndpoint,
+        l1RpcEndpoint = config.l1RpcEndpoint,
+        blobScanEndpoint = config.blobscanEndpoint,
+        blockHeaderStaticFields = blockHeaderStaticFields,
+        appConfig = StateRecoverApp.Config(
+          smartContractAddress = config.l1SmartContractAddress.toString(),
+          l1LatestSearchBlock = net.consensys.linea.BlockParameter.Tag.LATEST,
+          overridingRecoveryStartBlockNumber = config.overridingRecoveryStartBlockNumber
+        )
+      )
+    }
+    // add recoverty mode manager as listener to block added events
+    // so it stops P2P sync when it got target block
     serviceManager
       .getServiceOrThrow(BesuEvents::class.java)
       .addBlockAddedListener(recoveryModeManager)

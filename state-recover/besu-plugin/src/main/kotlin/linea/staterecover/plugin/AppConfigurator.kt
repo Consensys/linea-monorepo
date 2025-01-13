@@ -28,7 +28,7 @@ fun createAppAllInProcess(
   l1RpcEndpoint: URI,
   blobScanEndpoint: URI,
   blockHeaderStaticFields: BlockHeaderStaticFields,
-  appConfig: StateRecoverApp.Config = StateRecoverApp.Config.lineaMainnet
+  appConfig: StateRecoverApp.Config
 ): StateRecoverApp {
   val lineaContractClient = Web3JLineaRollupSmartContractClientReadOnly(
     contractAddress = appConfig.smartContractAddress,
@@ -56,7 +56,6 @@ fun createAppAllInProcess(
     ),
     logger = LogManager.getLogger("linea.plugin.staterecover.clients.l1.blob-scan")
   )
-
   val jsonRpcClientFactory = VertxHttpJsonRpcClientFactory(vertx, meterRegistry)
   val stateManagerClient: StateManagerClientV1 = StateManagerV1JsonRpcClient.create(
     rpcClientFactory = jsonRpcClientFactory,
@@ -87,8 +86,7 @@ fun createAppAllInProcess(
     stateManagerClient = stateManagerClient,
     transactionDetailsClient = transactionDetailsClient,
     blockHeaderStaticFields = blockHeaderStaticFields,
-    config = appConfig,
-    l1EventsPollingInterval = 12.seconds
+    config = appConfig
   )
 
   return app
