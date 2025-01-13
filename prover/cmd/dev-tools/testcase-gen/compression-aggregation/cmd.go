@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand/v2"
+	"math/rand"
 	"os"
 	"path"
 	"path/filepath"
@@ -71,7 +71,7 @@ func genFiles(cmd *cobra.Command, args []string) {
 	var (
 		// Create a reproducible RNG
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-		rng = rand.New(rand.NewChaCha8([32]byte{}))
+		rng = rand.New(rand.NewSource(seed))
 		// Running spec object that accumulate all the intermediate results
 		runningSpec = &AggregationSpec{}
 		// List of the generated blob submission responses

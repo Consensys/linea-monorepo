@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"math/rand/v2"
+	"math/rand"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
@@ -180,11 +180,11 @@ func (rdg *RandDataGen) Base64RandLen(from, to int) string {
 	n := from
 	if to > from {
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-		n = from + rand.IntN(to-from)
+		n = from + rand.Intn(to-from)
 	}
 	n = utils.DivCeil(n, 32) * 32 // round up to the next multiple of 32
 	res := make([]byte, n)
-	utils.ReadPseudoRand(rdg.Rand, res)
+	rdg.Read(res)
 
 	// Also zeroize all the bytes that are at position multiples of 32. This
 	// ensures that we will not have overflow when casting to the bls12 scalar
@@ -200,7 +200,7 @@ func (rdg *RandDataGen) Base64RandLen(from, to int) string {
 // and the returned hex string is 0x prefixed.
 func (rdg *RandDataGen) HexString(n int) string {
 	res := make([]byte, n)
-	utils.ReadPseudoRand(rdg.Rand, res)
+	rdg.Read(res)
 	return "0x" + hex.EncodeToString(res)
 }
 
@@ -213,7 +213,7 @@ func (rdg *RandDataGen) AscendingSeq(startFrom, nTerms, maxInc int) []int {
 		// It needs to increase at least by one.
 		incBy := 1
 		if maxInc > incBy {
-			incBy += rdg.IntN(maxInc - incBy)
+			incBy += rdg.Intn(maxInc - incBy)
 		}
 		// Increments s0 and assigns it
 		s0 = s0 + incBy
