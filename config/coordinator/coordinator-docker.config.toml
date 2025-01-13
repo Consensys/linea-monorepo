@@ -7,8 +7,8 @@ eip4844-switch-l2-block-number=0
 [prover]
 fs-inprogress-request-writing-suffix = ".inprogress_coordinator_writing"
 fs-inprogress-proving-suffix-pattern = ".*\\.inprogress\\.prover.*"
-fs-polling-interval = "PT1S"
-fs-polling-timeout = "PT10M"
+fs-polling-interval="PT20S"
+fs-polling-timeout="P5D"
 [prover.execution]
 fs-requests-directory = "/data/prover/v2/execution/requests"
 fs-responses-directory = "/data/prover/v2/execution/responses"
