@@ -9,5 +9,5 @@ func fieldPadding() field.Element {
 }
 
 func fieldPaddingInt() uint64 {
-	return 0
+	return 1
 }
