@@ -139,6 +139,11 @@ type ProverRuntime struct {
 
 	// PerformanceLogs stores performance metrics for each major operation
 	PerformanceLogs []*profiling.PerformanceLog
+	// ParentRuntime stores an external runtime that can be accessed by the
+	// prover steps to retrieve data from a parent runtime. This can be used
+	// in the distributed prover by the module runtimes to access the initial
+	// wizard runtime.
+	ParentRuntime *ProverRuntime
 }
 
 // Prove is the top-level function that runs the Prover on the user's side. It
@@ -191,7 +196,6 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 	return Proof{
 		Messages:      messages,
 		QueriesParams: runtime.QueriesParams,
-		RunTime:       runtime,
 	}
 }
 

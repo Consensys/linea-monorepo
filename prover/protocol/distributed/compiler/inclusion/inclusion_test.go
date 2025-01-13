@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	logderiv "github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
-	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/module_discoverer"
+	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -50,22 +51,35 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	disc.Analyze(initialComp)
 
 	// distribute the columns among modules; this includes also multiplicity columns
-	moduleComp0 := distributed.GetFreshModuleComp(initialComp, disc, prover, "module0")
-	moduleComp1 := distributed.GetFreshModuleComp(initialComp, disc, prover, "module1")
+	moduleComp0 := distributed.GetFreshModuleComp(initialComp, disc, "module0")
+	moduleComp1 := distributed.GetFreshModuleComp(initialComp, disc, "module1")
 
 	// distribute the query LogDerivativeSum among modules.
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc)
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc)
 
-	// Compile and prove for module0
+	// This compiles the log-derivative queries into global/local queries.
 	logderiv.CompileLogDerivSum(moduleComp0)
-	proof0 := wizard.Prove(moduleComp0, func(run *wizard.ProverRuntime) {})
+	logderiv.CompileLogDerivSum(moduleComp1)
+
+	// This adds a dummy compilation step to control that all passes
+	dummy.CompileAtProverLvl(moduleComp0)
+	dummy.CompileAtProverLvl(moduleComp1)
+
+	// run the initial runtime
+	initialRuntime := wizard.RunProver(initialComp, prover)
+
+	// Compile and prove for module0
+	proof0 := wizard.Prove(moduleComp0, func(run *wizard.ProverRuntime) {
+		run.ParentRuntime = initialRuntime
+	})
 	valid := wizard.Verify(moduleComp0, proof0)
 	require.NoError(t, valid)
 
 	// Compile and prove for module1
-	logderiv.CompileLogDerivSum(moduleComp1)
-	proof1 := wizard.Prove(moduleComp1, func(run *wizard.ProverRuntime) {})
+	proof1 := wizard.Prove(moduleComp1, func(run *wizard.ProverRuntime) {
+		run.ParentRuntime = initialRuntime
+	})
 	valid1 := wizard.Verify(moduleComp1, proof1)
 	require.NoError(t, valid1)
 }

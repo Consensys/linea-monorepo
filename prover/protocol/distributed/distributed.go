@@ -31,7 +31,7 @@ type ModuleDiscoverer interface {
 	// group best the columns into modules.
 	Analyze(comp *wizard.CompiledIOP)
 	NbModules() int
-	ModuleList(comp *wizard.CompiledIOP) []ModuleName
+	ModuleList() []ModuleName
 	FindModule(col ifaces.Column) ModuleName
 	// given a query and a module name it checks if the query is inside the module
 	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
@@ -50,7 +50,7 @@ func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxSeg
 	// analyze the initialWizard to split it to modules.
 	disc.Analyze(initialWizard)
 
-	moduleLs := disc.ModuleList(initialWizard)
+	moduleLs := disc.ModuleList()
 	distModules := []DistributedModule{}
 
 	for _, modName := range moduleLs {
