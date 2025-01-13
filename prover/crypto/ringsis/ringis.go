@@ -307,19 +307,28 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 	}
 
 	nbPolys := utils.DivCeil(len(v), nbFieldPerPoly)
-	constBlock := make([]bool, nbPolys)
-	constPoly := make(field.Vector, N)
-	constLock := sync.Mutex{}
 	res := make(field.Vector, nbCols*N)
 
+	// First we take care of the constant rows;
+	// since they repeat the same value, we can compute them once for the matrix (instead of once per column)
+	// and accumulate in res
+
+	// indicates if a block of N rows is constant: in that case we can skip the computation
+	// of all the columns sub-hashes in that block.
+	constBlock := make([]bool, nbPolys)
+
+	// we will accumulate the constant rows in a separate vector
+	constPoly := make(field.Vector, N)
+	constLock := sync.Mutex{}
+
+	// we parallelize by the "height" of the matrix here, since we only care about the constants
 	parallel.Execute(nbPolys, func(start, stop int) {
-		// take care of the constants first, we split by rows here.
 		startRow := start * nbFieldPerPoly
 		stopRow := stop * nbFieldPerPoly
 		if stopRow > len(v) {
 			stopRow = len(v)
 		}
-		res := make([]field.Element, N)
+		localRes := make([]field.Element, N)
 
 		w := s.newWorker(v)
 
@@ -334,18 +343,17 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 			constBlock[polID] = constantBlock
 
 			w.reset(startRow, stopRow, 0, true)
-			s.gnarkInternal.InnerHash(w.lit, res, w.k, polID)
+			s.gnarkInternal.InnerHash(w.lit, localRes, w.k, polID)
 		}
 
 		constLock.Lock()
-		// add w.res to constPoly
-		constPoly.Add(constPoly, res)
+		constPoly.Add(constPoly, localRes)
 		constLock.Unlock()
-
 	})
 
-	// TODO @gbotrel use go routines directly so that we don't process the full row at once
-	// but chunk it for larger matrices to fit in L2 - L3 cache.
+	// Here each worker is responsible for a set of columns in a way that attempt to avoid cache trashing,
+	// fills L2 and L3 caches and minimize the number of cache misses.
+	// (and no need to protect the res vector with a mutex since each worker is responsible for a disjoint set of columns)
 	parallel.Execute(nbCols, func(colStart, colEnd int) {
 
 		w := s.newWorker(v)
@@ -353,7 +361,7 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 		for rowStart := 0; rowStart < len(v); rowStart += nbFieldPerPoly {
 			polID := rowStart / nbFieldPerPoly
 
-			// if it's a constant block, we are done.
+			// if it's a constant block, we can skip.
 			if constBlock[polID] {
 				continue
 			}
@@ -363,6 +371,7 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 				rowEnd = len(v)
 			}
 
+			// hash the subcolumns.
 			for colID := colStart; colID < colEnd; colID++ {
 				w.reset(rowStart, rowEnd, colID, false)
 				s.gnarkInternal.InnerHash(w.lit, res[colID*N:colID*N+N], w.k, polID)
