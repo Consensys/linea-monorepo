@@ -155,7 +155,6 @@ class StateRecoverAppIntTest {
       ethLogsSearcher = logsSearcher,
       stateManagerClient = stateManagerClient,
       transactionDetailsClient = transactionDetailsClient,
-      l1EventsPollingInterval = 5.seconds,
       blockHeaderStaticFields = BlockHeaderStaticFields.localDev,
       lineaContractClient = lineaContractClient,
       config = StateRecoverApp.Config(

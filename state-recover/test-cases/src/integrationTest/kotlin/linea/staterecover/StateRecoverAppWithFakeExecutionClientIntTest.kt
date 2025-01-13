@@ -50,8 +50,7 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
 
   private lateinit var contractClientForSubmittions: LineaRollupSmartContractClient
   private val testDataDir = run {
-//    "testdata/coordinator/prover/v3/"
-    "tmp/local/prover/v3/"
+    "testdata/coordinator/prover/v3"
   }
 
   private val l1RpcUrl = "http://localhost:8445"
@@ -124,7 +123,6 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
       ethLogsSearcher = logsSearcher,
       stateManagerClient = fakeStateManagerClient,
       transactionDetailsClient = transactionDetailsClient,
-      l1EventsPollingInterval = 5.seconds,
       blockHeaderStaticFields = BlockHeaderStaticFields.localDev,
       lineaContractClient = lineaContractClient,
       config = StateRecoverApp.Config(

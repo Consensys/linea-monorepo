@@ -18,18 +18,15 @@ class FakeExecutionLayerClient(
     ?.let { LogManager.getLogger(loggerName) }
     ?: LogManager.getLogger(FakeExecutionLayerClient::class.java)
 
+  @get:Synchronized @set:Synchronized
   var lastImportedBlock: BlockNumberAndHash = headBlock
-    @Synchronized get
 
-    @Synchronized set
-
+  @get:Synchronized @set:Synchronized
   var stateRecoverStartBlockNumber = initialStateRecoverStartBlockNumber
-    @Synchronized get
 
-    @Synchronized set
-
+  @get:Synchronized
   val stateRecoverStatus: StateRecoveryStatus
-    @Synchronized get() = StateRecoveryStatus(
+    get() = StateRecoveryStatus(
       headBlockNumber = lastImportedBlock.number,
       stateRecoverStartBlockNumber = stateRecoverStartBlockNumber
     )

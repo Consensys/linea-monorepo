@@ -27,16 +27,10 @@ class FakeStateManagerClient(
   override fun rollupGetStateMerkleProofWithTypedError(
     blockInterval: BlockInterval
   ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
-    val parentStateRootHash = blobRecords.find { it.startBlockNumber == blockInterval.startBlockNumber }
-      ?.blobCompressionProof?.parentStateRootHash
-    val finalStateRootHash = blobRecords.find { it.endBlockNumber == blockInterval.endBlockNumber }
-      ?.blobCompressionProof?.finalStateRootHash
+    // For state recovery, we just need the endStateRootHash
+    val targetBlockRecord = blobRecords.find { it.endBlockNumber == blockInterval.endBlockNumber }
     return when {
-      parentStateRootHash == null ->
-        SafeFuture
-          .failedFuture(RuntimeException("Blob record not found for block: ${blockInterval.startBlockNumber}"))
-
-      finalStateRootHash == null ->
+      targetBlockRecord == null ->
         SafeFuture
           .failedFuture(RuntimeException("Blob record not found for block: ${blockInterval.endBlockNumber}"))
 
@@ -45,8 +39,8 @@ class FakeStateManagerClient(
           Ok(
             GetZkEVMStateMerkleProofResponse(
               zkStateMerkleProof = ArrayNode(null),
-              zkParentStateRootHash = parentStateRootHash,
-              zkEndStateRootHash = finalStateRootHash,
+              zkParentStateRootHash = ByteArray(32),
+              zkEndStateRootHash = targetBlockRecord.blobCompressionProof!!.finalStateRootHash,
               zkStateManagerVersion = "fake-version"
             )
           )

@@ -113,7 +113,6 @@ class StateRecoverSepoliaWithFakeExecutionClientIntTest {
       ethLogsSearcher = logsSearcher,
       stateManagerClient = fakeStateManagerClient,
       transactionDetailsClient = transactionDetailsClient,
-      l1EventsPollingInterval = 5.seconds,
       blockHeaderStaticFields = BlockHeaderStaticFields.localDev,
       lineaContractClient = lineaContractClient,
       config = StateRecoverApp.Config(
