@@ -273,7 +273,7 @@ export async function waitForFile(
 
 export async function sendTransactionsToGenerateTrafficWithInterval(
   signer: AbstractSigner,
-  pollingInterval: number = 1_000,
+  pollingInterval: number = 100,
 ) {
   const { maxPriorityFeePerGas, maxFeePerGas } = await signer.provider!.getFeeData();
   const transactionRequest = {
@@ -290,8 +290,8 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
     if (!isRunning) return;
 
     try {
-      const tx = await signer.sendTransaction(transactionRequest);
-      await tx.wait();
+      await signer.sendTransaction(transactionRequest);
+      //await tx.wait();
     } catch (error) {
       console.error("Error sending transaction:", error);
     } finally {
