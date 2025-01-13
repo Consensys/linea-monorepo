@@ -53,36 +53,40 @@ describe("Gas limit test suite", () => {
   });
 
   // One-time test to test block gas limit increase from 61M -> 2B
-  it.concurrent("Should successfully reach the target gas limit, and finalize the corresponding transaction", async () => {
-    const targetBlockGasLimit = 2_000_000_000n;
-    let isTargetBlockGasLimitReached = false;
-    let blockNumberToCheckFinalization = 0;
-    const account = await l2AccountManager.generateAccount();
-    const lineaRollupV6 = config.getLineaRollupContract();
+  it.concurrent(
+    "Should successfully reach the target gas limit, and finalize the corresponding transaction",
+    async () => {
+      const targetBlockGasLimit = 2_000_000_000n;
+      let isTargetBlockGasLimitReached = false;
+      let blockNumberToCheckFinalization = 0;
+      const account = await l2AccountManager.generateAccount();
+      const lineaRollupV6 = config.getLineaRollupContract();
 
-    console.log(`Target block gas limit: ${targetBlockGasLimit}`);
+      console.log(`Target block gas limit: ${targetBlockGasLimit}`);
 
-    while (!isTargetBlockGasLimitReached) {
-      const txReceipt = await setGasLimit(account);
-      expect(txReceipt?.status).toEqual(1);
-      const blockGasLimit = await getGasLimit();
-      console.log("blockGasLimit: ", blockGasLimit);
-      if (blockGasLimit === targetBlockGasLimit) {
-        isTargetBlockGasLimitReached = true;
-        // Ok to type assertion here, because txReceipt won't be null if it passed above assertion.
-        blockNumberToCheckFinalization = <number>txReceipt?.blockNumber;
+      while (!isTargetBlockGasLimitReached) {
+        const txReceipt = await setGasLimit(account);
+        expect(txReceipt?.status).toEqual(1);
+        const blockGasLimit = await getGasLimit();
+        console.log("blockGasLimit: ", blockGasLimit);
+        if (blockGasLimit === targetBlockGasLimit) {
+          isTargetBlockGasLimitReached = true;
+          // Ok to type assertion here, because txReceipt won't be null if it passed above assertion.
+          blockNumberToCheckFinalization = <number>txReceipt?.blockNumber;
+        }
+        //await wait(1000);
       }
-      //await wait(1000);
-    }
 
-    console.log(`Waiting for ${blockNumberToCheckFinalization} to be finalized...`);
+      console.log(`Waiting for ${blockNumberToCheckFinalization} to be finalized...`);
 
-    const isBlockFinalized = await pollForContractMethodReturnValueExceedTarget(
-      lineaRollupV6.currentL2BlockNumber,
-      BigInt(blockNumberToCheckFinalization),
-    );
+      const isBlockFinalized = await pollForContractMethodReturnValueExceedTarget(
+        lineaRollupV6.currentL2BlockNumber,
+        BigInt(blockNumberToCheckFinalization),
+      );
 
-    expect(isBlockFinalized).toEqual(true);
-    // Timeout of 6 hrs
-  }, 21_600_000);
+      expect(isBlockFinalized).toEqual(true);
+      // Timeout of 6 hrs
+    },
+    21_600_000,
+  );
 });
