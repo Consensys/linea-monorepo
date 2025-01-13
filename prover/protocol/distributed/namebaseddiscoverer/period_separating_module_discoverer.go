@@ -1,4 +1,4 @@
-package distributed
+package namebaseddiscoverer
 
 import (
 	"strings"
@@ -60,7 +60,7 @@ func (p *PeriodSeperatingModuleDiscoverer) NbModules() int {
 }
 
 // ModuleList returns the list of module names
-func (p *PeriodSeperatingModuleDiscoverer) ModuleList(comp *wizard.CompiledIOP) []ModuleName {
+func (p *PeriodSeperatingModuleDiscoverer) ModuleList() []ModuleName {
 	moduleNames := make([]ModuleName, 0, len(p.modules))
 	for moduleName := range p.modules {
 		moduleNames = append(moduleNames, moduleName)
