@@ -4,8 +4,17 @@ import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, Transaction
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageService, TokenBridge, LineaRollupV6 } from "../typechain";
-import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
+import {
+  PayableOverrides,
+  TypedContractEvent,
+  TypedDeferredTopicFilter,
+  TypedEventLog,
+  TypedContractMethod,
+} from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
+import { createTestLogger } from "../config/logger";
+
+const logger = createTestLogger();
 
 export function etherToWei(amount: string): bigint {
   return ethers.parseEther(amount.toString());
@@ -191,6 +200,44 @@ export async function waitForEvents<
   return events;
 }
 
+// Currently only handle simple single return types - uint256 | bytesX | string | bool
+export async function pollForContractMethodReturnValue<
+  ExpectedReturnType extends bigint | string | boolean,
+  R extends [ExpectedReturnType],
+>(
+  method: TypedContractMethod<[], R, "view">,
+  expectedReturnValue: ExpectedReturnType,
+  compareFunction: (a: ExpectedReturnType, b: ExpectedReturnType) => boolean = (a, b) => a === b,
+  pollingInterval: number = 500,
+  timeout: number = 2 * 60 * 1000,
+): Promise<boolean> {
+  let isExceedTimeOut = false;
+  setTimeout(() => {
+    isExceedTimeOut = true;
+  }, timeout);
+
+  while (!isExceedTimeOut) {
+    const returnValue = await method();
+    if (compareFunction(returnValue, expectedReturnValue)) return true;
+    await wait(pollingInterval);
+  }
+
+  return false;
+}
+
+// Currently only handle single uint256 return type
+export async function pollForContractMethodReturnValueExceedTarget<
+  ExpectedReturnType extends bigint,
+  R extends [ExpectedReturnType],
+>(
+  method: TypedContractMethod<[], R, "view">,
+  targetReturnValue: ExpectedReturnType,
+  pollingInterval: number = 500,
+  timeout: number = 2 * 60 * 1000,
+): Promise<boolean> {
+  return pollForContractMethodReturnValue(method, targetReturnValue, (a, b) => a >= b, pollingInterval, timeout);
+}
+
 export function getFiles(directory: string, fileRegex: RegExp[]): string[] {
   const files = fs.readdirSync(directory, { withFileTypes: true });
   const filteredFiles = files.filter((file) => fileRegex.map((regex) => regex.test(file.name)).includes(true));
@@ -249,7 +296,7 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
       const tx = await signer.sendTransaction(transactionRequest);
       await tx.wait();
     } catch (error) {
-      console.error("Error sending transaction:", error);
+      logger.error(`Error sending transaction. error=${JSON.stringify(error)}`);
     } finally {
       if (isRunning) {
         timeoutId = setTimeout(sendTransaction, pollingInterval);
@@ -263,7 +310,7 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
       clearTimeout(timeoutId);
       timeoutId = null;
     }
-    console.log("Transaction loop stopped.");
+    logger.info("Stopped generating traffic on L2");
   };
 
   sendTransaction();
@@ -320,14 +367,14 @@ export const sendMessage = async <T extends LineaRollupV6 | L2MessageService>(
 
 export async function execDockerCommand(command: string, containerName: string): Promise<string> {
   const dockerCommand = `docker ${command} ${containerName}`;
-  console.log(`Executing: ${dockerCommand}...`);
+  logger.info(`Executing ${dockerCommand}...`);
   return new Promise((resolve, reject) => {
     exec(dockerCommand, (error, stdout, stderr) => {
       if (error) {
-        console.error(`Error executing (${dockerCommand}): ${stderr}`);
+        logger.error(`Error executing (${dockerCommand}). error=${stderr}`);
         reject(error);
       }
-      console.log(`Execution success (${dockerCommand}): ${stdout}`);
+      logger.info(`Execution success (${dockerCommand}). output=${stdout}`);
       resolve(stdout);
     });
   });
