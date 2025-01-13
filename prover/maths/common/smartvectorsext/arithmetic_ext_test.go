@@ -4,14 +4,15 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"math/big"
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
 )
 
 func TestFuzzProduct(t *testing.T) {
@@ -283,7 +284,12 @@ func TestScalarMul(t *testing.T) {
 	}{
 		{
 			a: ForTestExt(1, 2, 1, 2, 1),
-			b: fext.NewElement(3, fieldPaddingInt()),
+			b: fext.NewElement(3, 1),
+			y: ForTestFromPairs(3, 1, 6, 2, 3, 1, 6, 2, 3, 1),
+		},
+		{
+			a: ForTestExt(1, 2, 1, 2, 1),
+			b: fext.NewElement(3, 0),
 			y: ForTestExt(3, 6, 3, 6, 3),
 		},
 	}
