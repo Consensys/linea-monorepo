@@ -33,7 +33,11 @@ class BlockImporter(
   private fun executeBlockWithTransactionsWithoutSignature(
     block: BlockL1RecoveredData
   ): PluginBlockSimulationResult {
-    log.debug("simulating import block={}", block.blockNumber)
+    log.debug(
+      "simulating import block={} blockHash={}",
+      block.blockNumber,
+      block.blockHash.encodeHex()
+    )
     val transactions = TransactionMapper.mapToBesu(
       block.transactions,
       chainId
@@ -69,7 +73,11 @@ class BlockImporter(
   }
 
   fun importBlock(context: BlockContext): PluginBlockSimulationResult {
-    log.debug("simulateAndPersistWorldState block={} blockHeader={}", context.blockHeader.number, context.blockHeader)
+    log.debug(
+      "calling simulateAndPersistWorldState block={} blockHeader={}",
+      context.blockHeader.number,
+      context.blockHeader
+    )
     val parentBlockNumber = context.blockHeader.number - 1
     val importedBlockResult =
       simulatorService.simulateAndPersistWorldState(
