@@ -151,11 +151,11 @@ max-aggregations-to-finalize-per-tick=1
 proof-submission-delay="PT1S"
 
 [proof-aggregation]
-aggregation-proofs-limit=302
+aggregation-proofs-limit=3
 aggregation-deadline="PT5M"
 aggregation-coordinator-polling-interval="PT2S"
 deadline-check-interval="PT8S"
-target-end-blocks=[33, 90, 93]
+#target-end-blocks=[33, 90, 93]
 
 [finalization-signer]
 # Web3j/Web3signer
