@@ -32,14 +32,17 @@ class StateSynchronizerService(
     val blobs: List<ByteArray>
   )
 
-  var lastProcessedFinalization: EthLogEvent<DataFinalizedV3>? = null
-  private var stateRootMismatchFound: Boolean = false
+  var lastSuccessfullyProcessedFinalization: EthLogEvent<DataFinalizedV3>? = null
+  var stateRootMismatchFound: Boolean = false
+    private set(value) {
+      field = value
+    }
 
   private fun findNextFinalization(): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
-    return if (lastProcessedFinalization != null) {
+    return if (lastSuccessfullyProcessedFinalization != null) {
       submissionEventsClient
         .findDataFinalizedEventByStartBlockNumber(
-          l2BlockNumber = lastProcessedFinalization!!.event.endBlockNumber + 1UL
+          l2BlockNumber = lastSuccessfullyProcessedFinalization!!.event.endBlockNumber + 1UL
         )
     } else {
       elClient.getBlockNumberAndHash(blockParameter = BlockParameter.Tag.LATEST)
@@ -62,6 +65,10 @@ class StateSynchronizerService(
   }
 
   override fun action(): SafeFuture<Any?> {
+    if (stateRootMismatchFound) {
+      return SafeFuture.failedFuture(IllegalStateException("state root mismatch found cannot continue"))
+    }
+
     return findNextFinalization()
       .thenCompose { nextFinalization ->
         if (nextFinalization == null) {
@@ -83,7 +90,7 @@ class StateSynchronizerService(
               updateNodeWithBlobsAndVerifyState(dataSubmissionsWithBlobs, submissionEvents.dataFinalizedEvent.event)
             }
             .thenApply {
-              lastProcessedFinalization = submissionEvents.dataFinalizedEvent
+              lastSuccessfullyProcessedFinalization = submissionEvents.dataFinalizedEvent
             }
         }
       }
@@ -142,15 +149,16 @@ class StateSynchronizerService(
       SafeFuture.completedFuture(Unit)
     } else {
       log.error(
-        "stateRootHash mismatch: finalization={} recoveredStateRootHash={}  but expected l1StateRootHash={} " +
-          "for l2 block={}",
+        "stopping data recovery from L1, stateRootHash mismatch: " +
+          "finalization={} recoveredStateRootHash={} expected block={} to have l1 proven stateRootHash={}",
         finalizedV3.intervalString(),
         finalizedV3.finalStateRootHash.encodeHex(),
         importResult.zkStateRootHash.encodeHex(),
         finalizedV3.endBlockNumber
       )
       stateRootMismatchFound = true
-      SafeFuture.failedFuture(IllegalStateException("stateRootHash mismatch"))
+      this.stop()
+      SafeFuture.completedFuture(Unit)
     }
   }
 }

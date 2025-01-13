@@ -49,9 +49,7 @@ class StateRecoverAppIntTest {
 
   private lateinit var contractClientForSubmittions: LineaRollupSmartContractClient
 
-  //  private val testDataDir = "testdata/coordinator/prover/v3/"
-  private val testDataDir = "testdata/coordinator/prover/v3-unrecoverable-state-minimal-sample"
-  //  private val testDataDir = "tmp/local/prover/v3/"
+  private val testDataDir = "testdata/coordinator/prover/v3/"
 
   private val l1RpcUrl = "http://localhost:8445"
   private val blobScanUrl = "http://localhost:4001"
@@ -84,7 +82,7 @@ class StateRecoverAppIntTest {
         backoffDelay = 10.milliseconds,
         timeout = 2.seconds
       ),
-      zkStateManagerVersion = "2.2.0",
+      zkStateManagerVersion = "2.3.0",
       logger = LogManager.getLogger("test.clients.l1.state-manager")
     )
     transactionDetailsClient = VertxTransactionDetailsClient.create(
@@ -194,7 +192,7 @@ class StateRecoverAppIntTest {
     await()
       .atMost(4.minutes.toJavaDuration())
       .untilAsserted {
-        assertThat(stateRecoverApp.lastProcessedFinalization?.event?.endBlockNumber)
+        assertThat(stateRecoverApp.lastSuccessfullyRecoveredFinalization?.event?.endBlockNumber)
           .isEqualTo(lastAggregation.endBlockNumber)
       }
 

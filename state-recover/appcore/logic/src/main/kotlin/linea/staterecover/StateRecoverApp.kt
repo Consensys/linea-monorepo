@@ -98,8 +98,10 @@ class StateRecoverApp(
     blockImporterAndStateVerifier = blockImporterAndStateVerifier,
     pollingInterval = config.l1PollingInterval
   )
-  val lastProcessedFinalization: EthLogEvent<DataFinalizedV3>?
-    get() = stateSynchronizerService.lastProcessedFinalization
+  val lastSuccessfullyRecoveredFinalization: EthLogEvent<DataFinalizedV3>?
+    get() = stateSynchronizerService.lastSuccessfullyProcessedFinalization
+  val stateRootMismatchFound: Boolean
+    get() = stateSynchronizerService.stateRootMismatchFound
 
   fun trySetRecoveryModeAtBlockHeight(stateRecoverStartBlockNumber: ULong): SafeFuture<StateRecoveryStatus> {
     return elClient

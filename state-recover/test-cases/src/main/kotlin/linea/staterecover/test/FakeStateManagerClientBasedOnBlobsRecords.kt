@@ -15,10 +15,15 @@ import net.consensys.toHexStringUInt256
 import net.consensys.zkevm.domain.BlobRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class FakeStateManagerClient(
-  val blobRecords: List<BlobRecord>,
-  var headBlockNumber: ULong = blobRecords.last().endBlockNumber
+open class FakeStateManagerClient(
+  private val blocksStateRootHashes: MutableMap<ULong, ByteArray> = mutableMapOf<ULong, ByteArray>(),
+  var headBlockNumber: ULong = blocksStateRootHashes.keys.maxOrNull() ?: 0UL
 ) : StateManagerClientV1 {
+
+  fun setBlockStateRootHash(blockNumber: ULong, stateRootHash: ByteArray) {
+    blocksStateRootHashes[blockNumber] = stateRootHash
+    headBlockNumber = blocksStateRootHashes.keys.maxOrNull() ?: 0UL
+  }
 
   override fun rollupGetHeadBlockNumber(): SafeFuture<ULong> {
     return SafeFuture.completedFuture(headBlockNumber)
@@ -28,11 +33,15 @@ class FakeStateManagerClient(
     blockInterval: BlockInterval
   ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
     // For state recovery, we just need the endStateRootHash
-    val targetBlockRecord = blobRecords.find { it.endBlockNumber == blockInterval.endBlockNumber }
+    val blockZkStateRootHash = blocksStateRootHashes[blockInterval.endBlockNumber]
     return when {
-      targetBlockRecord == null ->
+      blockZkStateRootHash == null ->
         SafeFuture
-          .failedFuture(RuntimeException("Blob record not found for block: ${blockInterval.endBlockNumber}"))
+          .failedFuture(
+            RuntimeException(
+              "SateRootHash found for block=${blockInterval.endBlockNumber} headBlockNumber=$headBlockNumber"
+            )
+          )
 
       else ->
         return SafeFuture.completedFuture(
@@ -40,7 +49,7 @@ class FakeStateManagerClient(
             GetZkEVMStateMerkleProofResponse(
               zkStateMerkleProof = ArrayNode(null),
               zkParentStateRootHash = ByteArray(32),
-              zkEndStateRootHash = targetBlockRecord.blobCompressionProof!!.finalStateRootHash,
+              zkEndStateRootHash = blockZkStateRootHash,
               zkStateManagerVersion = "fake-version"
             )
           )
@@ -48,6 +57,13 @@ class FakeStateManagerClient(
     }
   }
 }
+
+class FakeStateManagerClientBasedOnBlobsRecords(
+  val blobRecords: List<BlobRecord>
+) : FakeStateManagerClient(
+  blocksStateRootHashes = blobRecords
+    .associate { it.endBlockNumber to it.blobCompressionProof!!.finalStateRootHash }.toMutableMap()
+)
 
 class FakeStateManagerClientReadFromL1(
   val headBlockNumber: ULong,
