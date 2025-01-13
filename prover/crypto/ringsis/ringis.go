@@ -2,8 +2,8 @@ package ringsis
 
 import (
 	"runtime"
+	"sync"
 
-	"github.com/bits-and-blooms/bitset"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/sis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -285,9 +285,6 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 
 	N := s.OutputSize()
 
-	constPoly := make(field.Vector, N)
-	res := make(field.Vector, nbCols*N)
-
 	nbCpus := runtime.GOMAXPROCS(0)
 
 	if nbCpus >= nbCols {
@@ -310,38 +307,25 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 	}
 
 	type worker struct {
-		k   []field.Element
+		k   field.Vector
 		it  columnIterator
 		lit *sis.LimbIterator
 	}
 
 	nbPolys := utils.DivCeil(len(v), nbFieldPerPoly)
-	constBlock := bitset.New(uint(nbPolys))
-	for start := 0; start < len(v); start += nbFieldPerPoly {
-		end := start + nbFieldPerPoly
-		if end > len(v) {
-			end = len(v)
-		}
-		polID := start / nbFieldPerPoly
+	constBlock := make([]bool, nbPolys)
+	constPoly := make(field.Vector, N)
+	constLock := sync.Mutex{}
+	res := make(field.Vector, nbCols*N)
 
-		// first, we iterate over the lines; if all are smartvectors.Constant, we contribute the contribution
-		// once only, and add it at the end before reducing
-		constantBlock := true
-		for row := start; row < end; row++ {
-			if _, ok := v[row].(*smartvectors.Constant); !ok {
-				constantBlock = false
-				break
-			}
+	parallel.Execute(nbPolys, func(start, stop int) {
+		// take care of the constants first, we split by rows here.
+		startRow := start * nbFieldPerPoly
+		stopRow := stop * nbFieldPerPoly
+		if stopRow > len(v) {
+			stopRow = len(v)
 		}
-
-		if constantBlock {
-			constBlock.Set(uint(polID))
-		}
-	}
-
-	// TODO @gbotrel use go routines directly so that we don't process the full row at once
-	// but chunk it for larger matrices to fit in L2 - L3 cache.
-	parallel.Execute(nbCols, func(colStart, colEnd int) {
+		res := make([]field.Element, N)
 
 		w := worker{
 			k: make([]field.Element, N),
@@ -349,32 +333,59 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 				v: v,
 			},
 		}
+
+		for polID := start; polID < stop; polID++ {
+			constantBlock := true
+			for row := startRow; row < stopRow; row++ {
+				if _, ok := v[row].(*smartvectors.Constant); !ok {
+					constantBlock = false
+					break
+				}
+			}
+			constBlock[polID] = constantBlock
+
+			w.it.rowStart = startRow
+			w.it.rowEnd = stopRow
+			w.it.isConstIT = true
+			w.it.colIndex = 0
+			w.lit = sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
+
+			s.gnarkInternal.InnerHash(w.lit, res, w.k, polID)
+		}
+
+		constLock.Lock()
+		// add w.res to constPoly
+		constPoly.Add(constPoly, res)
+		constLock.Unlock()
+
+	})
+
+	// TODO @gbotrel use go routines directly so that we don't process the full row at once
+	// but chunk it for larger matrices to fit in L2 - L3 cache.
+	parallel.Execute(nbCols, func(colStart, colEnd int) {
+
+		w := worker{
+			k: make([]field.Element, N),
+			// res: make([]field.Element, N),
+			it: columnIterator{
+				v: v,
+			},
+		}
 		w.lit = sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
 
 		for rowStart := 0; rowStart < len(v); rowStart += nbFieldPerPoly {
+			polID := rowStart / nbFieldPerPoly
+
+			// if it's a constant block, we are done.
+			if constBlock[polID] {
+				continue
+			}
+
 			rowEnd := rowStart + nbFieldPerPoly
 			if rowEnd > len(v) {
 				rowEnd = len(v)
 			}
-			polID := rowStart / nbFieldPerPoly
 
-			if colStart == 0 {
-				// first worker process the constants;
-				w.it.rowStart = rowStart
-				w.it.rowEnd = rowEnd
-				w.it.isConstIT = true
-				w.it.colIndex = 0
-				w.lit = sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
-
-				s.gnarkInternal.InnerHash(w.lit, constPoly, w.k, polID)
-			}
-
-			// if it's a constant block, we are done.
-			if constBlock.Test(uint(polID)) {
-				continue
-			}
-
-			w.it.isConstIT = false
 			w.it.rowStart = rowStart
 			w.it.rowEnd = rowEnd
 
@@ -386,15 +397,13 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 			}
 		}
 
-	})
-
-	// now for each subslice in results, we do the FFT inverse to reduce mod Xᵈ+1
-	parallel.Execute(nbCols, func(start, stop int) {
-		for j := start; j < stop; j++ {
-			vRes := field.Vector(res[j*N : (j+1)*N])
+		// add the const poly to the columns handled by this worker
+		for colID := colStart; colID < colEnd; colID++ {
+			vRes := field.Vector(res[colID*N : (colID+1)*N])
 			vRes.Add(vRes, constPoly)
-			s.gnarkInternal.Domain.FFTInverse(res[j*N:(j+1)*N], fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+			s.gnarkInternal.Domain.FFTInverse(vRes, fft.DIT, fft.OnCoset())
 		}
+
 	})
 
 	return res
