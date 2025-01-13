@@ -306,12 +306,6 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 		rn -= remainingIterations
 	}
 
-	type worker struct {
-		k   field.Vector
-		it  columnIterator
-		lit *sis.LimbIterator
-	}
-
 	nbPolys := utils.DivCeil(len(v), nbFieldPerPoly)
 	constBlock := make([]bool, nbPolys)
 	constPoly := make(field.Vector, N)
@@ -327,12 +321,7 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 		}
 		res := make([]field.Element, N)
 
-		w := worker{
-			k: make([]field.Element, N),
-			it: columnIterator{
-				v: v,
-			},
-		}
+		w := s.newWorker(v)
 
 		for polID := start; polID < stop; polID++ {
 			constantBlock := true
@@ -344,12 +333,7 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 			}
 			constBlock[polID] = constantBlock
 
-			w.it.rowStart = startRow
-			w.it.rowEnd = stopRow
-			w.it.isConstIT = true
-			w.it.colIndex = 0
-			w.lit = sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
-
+			w.reset(startRow, stopRow, 0, true)
 			s.gnarkInternal.InnerHash(w.lit, res, w.k, polID)
 		}
 
@@ -364,14 +348,7 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 	// but chunk it for larger matrices to fit in L2 - L3 cache.
 	parallel.Execute(nbCols, func(colStart, colEnd int) {
 
-		w := worker{
-			k: make([]field.Element, N),
-			// res: make([]field.Element, N),
-			it: columnIterator{
-				v: v,
-			},
-		}
-		w.lit = sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
+		w := s.newWorker(v)
 
 		for rowStart := 0; rowStart < len(v); rowStart += nbFieldPerPoly {
 			polID := rowStart / nbFieldPerPoly
@@ -386,13 +363,8 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 				rowEnd = len(v)
 			}
 
-			w.it.rowStart = rowStart
-			w.it.rowEnd = rowEnd
-
 			for colID := colStart; colID < colEnd; colID++ {
-				w.it.colIndex = colID
-				w.it.rowStart = rowStart
-				w.lit.Reset(&w.it)
+				w.reset(rowStart, rowEnd, colID, false)
 				s.gnarkInternal.InnerHash(w.lit, res[colID*N:colID*N+N], w.k, polID)
 			}
 		}
@@ -401,7 +373,7 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 		for colID := colStart; colID < colEnd; colID++ {
 			vRes := field.Vector(res[colID*N : (colID+1)*N])
 			vRes.Add(vRes, constPoly)
-			s.gnarkInternal.Domain.FFTInverse(vRes, fft.DIT, fft.OnCoset())
+			s.gnarkInternal.Domain.FFTInverse(vRes, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
 		}
 
 	})
@@ -409,26 +381,52 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 	return res
 }
 
+// worker helps allocate resources per go routine
+type worker struct {
+	k   field.Vector
+	it  columnIterator
+	lit *sis.LimbIterator
+}
+
+func (s *Key) newWorker(v []smartvectors.SmartVector) worker {
+	N := s.OutputSize()
+	w := worker{
+		k: make([]field.Element, N),
+		it: columnIterator{
+			v: v,
+		},
+	}
+	w.lit = sis.NewLimbIterator(&w.it, s.LogTwoBound/8)
+	return w
+}
+
+func (w *worker) reset(rowStart, rowEnd, colIndex int, constIT bool) {
+	w.it.startRow = rowStart
+	w.it.endRow = rowEnd
+	w.it.colIndex = colIndex
+	w.it.isConstIT = constIT
+	w.lit.Reset(&w.it)
+}
+
 // columnIterator is a helper struct to iterate over the columns of a matrix
-// it implements the SIS.ElementIterator interface
+// it implements the sis.ElementIterator interface
 type columnIterator struct {
 	v                []smartvectors.SmartVector
-	rowStart, rowEnd int
+	startRow, endRow int
 	colIndex         int
 	isConstIT        bool
 }
 
-// func newColumnIterator(v []smartvectors.SmartVector, colIndex int, constIT bool) *columnIterator {
-// 	return &columnIterator{v: v, colIndex: colIndex, isConstIT: constIT}
-// }
-
 func (it *columnIterator) Next() (field.Element, bool) {
-	if it.rowEnd == it.rowStart {
+	if it.endRow == it.startRow {
 		return field.Element{}, false
 	}
-	row := it.v[it.rowStart]
+	row := it.v[it.startRow]
 	_, constRow := row.(*smartvectors.Constant)
-	it.rowStart++
+	it.startRow++
+
+	// for a const iterator; we only return constant rows.
+	// for a non-const iterator; we filter out constant rows.
 	if (it.isConstIT && constRow) || (!it.isConstIT && !constRow) {
 		return row.Get(it.colIndex), true
 	}
