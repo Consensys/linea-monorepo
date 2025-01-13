@@ -200,7 +200,7 @@ services:
       - ./config/prover/v2/prover-aggregation-full.config.toml:/opt/linea/prover/config/executor/aggregation.config.toml
       - ../config/common/traces-limits-v1.toml:/opt/linea/prover/config/executor/traces-limits-M.toml
       # full-prover assets
-      - ../prover/prover-assets:/opt/linea/prover/prover-assets
+      - /tmp/prover/prover-assets:/opt/linea/prover/prover-assets
     networks:
       linea:
         ipv4_address: 11.11.11.108
