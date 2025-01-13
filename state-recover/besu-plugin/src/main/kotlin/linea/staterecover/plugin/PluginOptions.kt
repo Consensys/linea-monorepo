@@ -29,7 +29,8 @@ class PluginCliOptions {
     names = ["--plugin-$cliOptionsPrefix-l1-smart-contract-address"],
     description = ["L1 smart contract address"],
     required = true,
-    converter = [AddressConverter::class]
+    converter = [AddressConverter::class],
+    defaultValue = "\${env:L1_ROLLUP_CONTRACT_ADDRESS}"
   )
   lateinit var l1SmartContractAddress: Address
 

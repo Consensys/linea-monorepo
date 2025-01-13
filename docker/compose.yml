@@ -717,7 +717,7 @@ services:
         ipv4_address: 11.11.11.116
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
-      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+      L1_ROLLUP_CONTRACT_ADDRESS: ${L1_ROLLUP_CONTRACT_ADDRESS:-0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9}
     entrypoint:
       - /bin/bash
       - -c
@@ -733,7 +733,6 @@ services:
         --Xbonsai-limit-trie-logs-enabled=false \
         --plugin-shomei-http-host="11.11.11.117" \
         --plugin-shomei-http-port=8888 \
-        --plugin-staterecovery-l1-smart-contract-address=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
         --plugin-staterecovery-l1-rpc-endpoint=http://l1-el-node:8545 \
         --plugin-staterecovery-shomei-endpoint=http://shomei-sr:8888 \
         --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \
