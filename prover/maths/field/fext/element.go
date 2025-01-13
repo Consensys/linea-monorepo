@@ -33,6 +33,8 @@ const (
 	frBytes = 32 // number of bytes needed to represent a Element
 )
 
+var RootPowers = []int{1, -11}
+
 type Element = E2 // type alias
 
 func NewElement(v1 uint64, v2 uint64) Element {

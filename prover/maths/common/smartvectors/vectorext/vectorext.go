@@ -104,6 +104,19 @@ func ForTest(xs ...int) []fext.Element {
 	return res
 }
 
+// ForTestFromPairs returns a vector instantiated from a list of integers.
+func ForTestFromPairs(xs ...int) []fext.Element {
+	if len(xs)%2 != 0 {
+		panic("ForTestFromPairs must receive an even-length input vector")
+	}
+	res := make([]fext.Element, len(xs))
+	for i := 0; i < len(res); i++ {
+		res[i].SetInt64Pair(int64(xs[i]), int64(xs[i+1]))
+		i++ //skip to the next pair
+	}
+	return res
+}
+
 // Add adds two vectors `a` and `b` and put the result in `res`
 // `res` must be pre-allocated by the caller and res, a and b must all have
 // the same size.

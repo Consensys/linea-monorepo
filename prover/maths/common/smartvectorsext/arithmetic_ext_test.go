@@ -246,13 +246,14 @@ func TestOpBasicEdgeCases(t *testing.T) {
 }
 
 func TestInnerProduct(t *testing.T) {
+	pad := int(fieldPaddingInt())
 	testCases := []struct {
 		a, b smartvectors.SmartVector
 		y    fext.Element
 	}{
 		{
-			a: ForTestExt(1, 2, 1, 2, 1),
-			b: ForTestExt(1, -1, 2, -1, 2),
+			a: ForTestFromPairs(1, pad, 2, pad, 1, pad, 2, pad, 1, pad),
+			b: ForTestFromPairs(1, pad, -1, pad, 2, pad, -1, pad, 2, pad),
 			y: fext.NewElement(1, fieldPaddingInt()),
 		},
 	}

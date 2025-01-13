@@ -15,6 +15,10 @@ func ForTestExt(xs ...int) smartvectors.SmartVector {
 	return NewRegularExt(vectorext.ForTest(xs...))
 }
 
+func ForTestFromPairs(xs ...int) smartvectors.SmartVector {
+	return NewRegularExt(vectorext.ForTestFromPairs(xs...))
+}
+
 // IntoRegVec converts a smart-vector into a normal vec. The resulting vector
 // is always reallocated and can be safely mutated without side-effects
 // on s.
