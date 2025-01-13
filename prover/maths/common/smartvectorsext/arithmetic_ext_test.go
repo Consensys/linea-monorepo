@@ -247,14 +247,23 @@ func TestOpBasicEdgeCases(t *testing.T) {
 
 func TestInnerProduct(t *testing.T) {
 	pad := int(fieldPaddingInt())
+	a := ForTestFromPairs(1, pad, 2, pad, 1, pad, 2, pad, 1, pad)
+	b := ForTestFromPairs(1, pad, -1, pad, 2, pad, -1, pad, 2, pad)
+	sum := fext.Zero()
+	sum.Add(&sum, new(fext.Element).SetInt64Pair(int64(1+fext.RootPowers[1]), 2))
+	sum.Add(&sum, new(fext.Element).SetInt64Pair(int64(-2+fext.RootPowers[1]), 1))
+	sum.Add(&sum, new(fext.Element).SetInt64Pair(int64(2+fext.RootPowers[1]), 3))
+	sum.Add(&sum, new(fext.Element).SetInt64Pair(int64(-2+fext.RootPowers[1]), 1))
+	sum.Add(&sum, new(fext.Element).SetInt64Pair(int64(2+fext.RootPowers[1]), 3))
+
 	testCases := []struct {
 		a, b smartvectors.SmartVector
 		y    fext.Element
 	}{
 		{
-			a: ForTestFromPairs(1, pad, 2, pad, 1, pad, 2, pad, 1, pad),
-			b: ForTestFromPairs(1, pad, -1, pad, 2, pad, -1, pad, 2, pad),
-			y: fext.NewElement(1, fieldPaddingInt()),
+			a: a,
+			b: b,
+			y: sum,
 		},
 	}
 
