@@ -8,7 +8,7 @@ eip4844-switch-l2-block-number=0
 fs-inprogress-request-writing-suffix = ".inprogress_coordinator_writing"
 fs-inprogress-proving-suffix-pattern = ".*\\.inprogress\\.prover.*"
 fs-polling-interval = "PT20S"
-fs-polling-timeout = "P5D"
+fs-polling-timeout = "P1D"
 [prover.execution]
 fs-requests-directory = "/data/prover/v2/execution/requests"
 fs-responses-directory = "/data/prover/v2/execution/responses"
@@ -35,7 +35,7 @@ blob-size-limit=130048 # must be greater than Sequencer blockMaxCalldataSize=109
 handler-polling-interval="PT1S"
 # default batches limit is  aggregation-proofs-limit -1
 # batches-limit must be less than or equal to aggregation-proofs-limit-1
-#batches-limit=1
+batches-limit=5
 
 [zk-traces]
 eth-api="http://traces-node:8545"
@@ -152,8 +152,8 @@ max-aggregations-to-finalize-per-tick=1
 proof-submission-delay="PT1S"
 
 [proof-aggregation]
-aggregation-proofs-limit=100
-aggregation-deadline="PT10M"
+aggregation-proofs-limit=6
+aggregation-deadline="PT1H"
 polling-interval="PT30S"
 aggregation-coordinator-polling-interval="PT2S"
 deadline-check-interval="PT8S"
