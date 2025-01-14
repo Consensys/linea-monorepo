@@ -18,10 +18,13 @@ func TestGnarkEval(t *testing.T) {
 		def := func(api frontend.API) error {
 			outerAPI := gnarkfext.API{Inner: api}
 			var (
-				pol      = vectorext.IntoGnarkAssignment(vectorext.ForTest(1, 2, 3, 4))
-				x        = gnarkfext.E2{2, 0}
-				expected = gnarkfext.E2{49, 0}
-				res      = EvaluateUnivariateGnark(api, pol, x)
+				pol      = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(1, 2, 3, 4, -1, -2))
+				x        = gnarkfext.E2{2, 1}
+				expected = gnarkfext.E2{
+					-5*fext.RootPowers[1] + 3,
+					-2*fext.RootPowers[1] + 1,
+				}
+				res = EvaluateUnivariateGnark(api, pol, x)
 			)
 			outerAPI.AssertIsEqual(expected, res)
 			return nil
@@ -35,7 +38,7 @@ func TestGnarkEval(t *testing.T) {
 			outerAPI := gnarkfext.API{Inner: api}
 			var (
 				pol      = vectorext.IntoGnarkAssignment([]fext.Element{})
-				x        = gnarkfext.E2{2, 0}
+				x        = gnarkfext.E2{2, 3}
 				expected = gnarkfext.NewZero()
 				res      = EvaluateUnivariateGnark(api, pol, x)
 			)
@@ -54,9 +57,9 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 		def := func(api frontend.API) error {
 			outerAPI := gnarkfext.API{Inner: api}
 			var (
-				domain   = vectorext.IntoGnarkAssignment(vectorext.ForTest(0))
+				domain   = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(0, 0))
 				x        = gnarkfext.E2{42, 0}
-				expected = vectorext.IntoGnarkAssignment(vectorext.ForTest(1))
+				expected = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(1, 0))
 				res      = EvaluateLagrangeAnyDomainGnark(api, domain, x)
 			)
 
@@ -76,9 +79,9 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 		def := func(api frontend.API) error {
 			outerAPI := gnarkfext.API{Inner: api}
 			var (
-				domain   = vectorext.IntoGnarkAssignment(vectorext.ForTest(0, 1))
+				domain   = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(0, 0, 1, 0))
 				x        = gnarkfext.E2{42, 0}
-				expected = vectorext.IntoGnarkAssignment(vectorext.ForTest(-41, 42))
+				expected = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(-41, 0, 42, 0))
 				res      = EvaluateLagrangeAnyDomainGnark(api, domain, x)
 			)
 
