@@ -29,19 +29,19 @@ env:
 
 jobs:
   run-contract-tests:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Run smart contracts tests
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a #v5.2.0
         with:
           go-version: 1.23.x
           cache: false
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 #v4.2.0
         with:
           path: |
             ~/go/pkg/mod
@@ -60,7 +60,7 @@ jobs:
 
       # Required for hardhat commands due to @nomicfoundation/hardhat-foundry package
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: foundry-rs/foundry-toolchain@de808b1eea699e761c404bda44ba8f21aba30b2c #v1.3.1
 
       - name: Compile kzg.node
         run: npx node-gyp --directory=contracts/node_modules/c-kzg rebuild # explicitly running rebuild to get the .node file
@@ -69,7 +69,7 @@ jobs:
         run: pnpm -F contracts run coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v5.1.2 #1e68e06f1dbfde0e4cefc87efeba9e4643565303
         with:
           fail_ci_if_error: true
           files: ./contracts/coverage/coverage-final.json
@@ -80,11 +80,11 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   solidity-format-check:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Solidity format check
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs

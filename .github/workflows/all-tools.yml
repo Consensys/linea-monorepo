@@ -16,15 +16,15 @@ on:
 
 jobs:
   changes:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Filter commit changes
     outputs:
       all-tools: ${{ steps.filter.outputs['all-tools'] }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
       - name: Filter commit changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 #v3.0.2
         id: filter
         with:
           base: ${{ github.ref }}
@@ -39,13 +39,13 @@ jobs:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
 
   check_image_tags_exist:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Check image tags exist
     needs: [ changes, store_image_name_and_tags ]
     if: ${{ needs.changes.outputs['all-tools'] == 'false' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
       - name: Check image tags exist
         uses: ./.github/actions/check-image-tags-exist
         with:
@@ -53,7 +53,7 @@ jobs:
           image_name: consensys/linea-alltools
 
   all-tools-tag-only:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: All tools tag only
     needs: [ changes, store_image_name_and_tags, check_image_tags_exist ]
     if: ${{ github.event_name != 'pull_request' && needs.changes.outputs['all-tools'] == 'false' }}
@@ -61,7 +61,7 @@ jobs:
       image_tagged: ${{ steps.image_tag_push.outputs.image_tagged }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
       - name: Tag and push image
         id: image_tag_push
         uses: ./.github/actions/image-tag-and-push
@@ -77,7 +77,7 @@ jobs:
   build-and-publish:
     needs: [ changes, store_image_name_and_tags, all-tools-tag-only ]
     if: ${{ always() && (needs.changes.outputs['all-tools'] == 'true' || needs.all-tools-tag-only.result != 'success' || needs.all-tools-tag-only.outputs.image_tagged != 'true') }}
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     env:
       COMMIT_TAG: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
       DEVELOP_TAG: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
@@ -85,13 +85,13 @@ jobs:
     name: All tools build and push
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
         with:
           ssh-key: ${{ secrets.SELF_GITHUB_SSH_KEY }}
           submodules: true
           persist-credentials: false
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #v3.3.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -101,17 +101,17 @@ jobs:
       # cases. We can later set up self-hosted arm64 github runners if we
       # want arm* based images back.
       # - name: Set up QEMU
-      #   uses: docker/setup-qemu-action@v3
+      #   uses: docker/setup-qemu-action@53851d14592bedcffcf25ea515637cff71ef929a #v3.3.0
       #   with:
       #     platforms: 'arm64,arm'
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 #v3.8.0
       - name: Show the "version" build argument
         run: |
           echo "We inject the commit tag in the docker image ${{ env.COMMIT_TAG }}"
           echo COMMIT_TAG=${{ env.COMMIT_TAG }} >> GITHUB_ENV
       - name: Build and push all tools image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc #v6.11.0
         with:
           context: .
           file: ./operations/Dockerfile

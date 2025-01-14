@@ -25,7 +25,7 @@ on:
 jobs:
   analyze:
     name: Analyze
-    runs-on: [self-hosted, ubuntu-20.04, X64, medium]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     permissions:
       actions: read
       contents: read
@@ -42,11 +42,11 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@b6a472f63d85b9c78a3ac5e89422239fc15e9b3c #v3.28.1
       with:
         languages: ${{ matrix.language }}
         # If you wish to specify custom queries, you can do so here or in a config file.
@@ -57,7 +57,7 @@ jobs:
         # queries: security-extended,security-and-quality
 
 
-    - uses: actions/setup-java@v4
+    - uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b #v4.6.0
       with:
         distribution: temurin
         java-version: 21
@@ -85,7 +85,7 @@ jobs:
         output: sarif-results
         sarif-file: ${{ matrix.language }}-results.sarif
     - name: Upload CodeQL Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 #v4.6.0
       with:
         name: codeql-results-${{ matrix.language }}
         path: sarif-results
