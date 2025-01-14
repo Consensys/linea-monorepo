@@ -235,7 +235,7 @@ class CoordinatorConfigTest {
 
     private val aggregationConfig = AggregationConfig(
       aggregationProofsLimit = 3,
-      aggregationDeadline = Duration.parse("PT1M"),
+      aggregationDeadline = Duration.parse("PT10S"),
       aggregationCoordinatorPollingInterval = Duration.parse("PT2S"),
       deadlineCheckInterval = Duration.parse("PT8S")
     )
