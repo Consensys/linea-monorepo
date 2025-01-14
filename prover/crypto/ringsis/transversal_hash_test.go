@@ -72,29 +72,29 @@ func TestSmartVectorTransversalSisHash(t *testing.T) {
 	}
 
 	for _, c := range testCases {
-		// t.Run(fmt.Sprintf("testcase-%v", i), func(t *testing.T) {
-		assert := require.New(t)
-		var (
-			nbRows = len(c)
-			nbCols = c[0].Len()
-			key    = GenerateKey(params, nbRows)
-			result = key.TransversalHash(c)
-		)
+		t.Run(fmt.Sprintf("testcase-%v", i), func(t *testing.T) {
+			assert := require.New(t)
+			var (
+				nbRows = len(c)
+				nbCols = c[0].Len()
+				key    = GenerateKey(params, nbRows)
+				result = key.TransversalHash(c)
+			)
 
-		offset := key.modulusDegree()
+			offset := key.modulusDegree()
 
-		for col := 0; col < nbCols; col++ {
-			column := make([]field.Element, nbRows)
-			for r := 0; r < nbRows; r++ {
-				column[r] = c[r].Get(col)
+			for col := 0; col < nbCols; col++ {
+				column := make([]field.Element, nbRows)
+				for r := 0; r < nbRows; r++ {
+					column[r] = c[r].Get(col)
+				}
+
+				colHash := key.Hash(column)
+				for j := 0; j < len(colHash); j++ {
+					assert.True(colHash[j].Equal(&result[offset*col+j]), "transversal hash does not match col hash")
+				}
 			}
-
-			colHash := key.Hash(column)
-			for j := 0; j < len(colHash); j++ {
-				assert.True(colHash[j].Equal(&result[offset*col+j]), "transversal hash does not match col hash")
-			}
-		}
-		// })
+		})
 	}
 }
 
