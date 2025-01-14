@@ -80,16 +80,16 @@ jobs:
     steps:
       - name: Setup upterm session
         if: ${{ inputs.e2e-tests-with-ssh }}
-        uses: lhotari/action-upterm@v1
+        uses: lhotari/action-upterm@b0357f23233f5ea6d58947c0c402e0631bab7334 #v1
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
           pnpm-install-options: '-F contracts -F e2e --frozen-lockfile --prefer-offline'
       - name: Login to Docker Hub
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #v3.3.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -99,14 +99,14 @@ jobs:
           chmod -R a+w tmp/local/traces/v2/conflated
       - name: Restore cached images
         id: restore-cached-images
-        uses: actions/cache/restore@v4.0.2
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 #v4.2.0
         with:
           path: ~/docker-images
           key: cached-images
           restore-keys: |
             cached-
       - name: Pull all images with retry
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@7152eba30c6575329ac0576536151aca5a72780e #v3.0.0
         with:
           max_attempts: 10
           retry_on: error
@@ -115,7 +115,7 @@ jobs:
           command: |
             make pull-images-external-to-monorepo
       - name: Download local docker image artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 #v4.1.8
         with:
           pattern: linea-*
       - name: Load Docker images
@@ -129,7 +129,7 @@ jobs:
         shell: bash
       - name: Spin up fresh environment with geth tracing with retry
         if: ${{ inputs.tracing-engine == 'geth' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@7152eba30c6575329ac0576536151aca5a72780e #v3.0.0
         with:
           max_attempts: 10
           retry_on: error
@@ -141,7 +141,7 @@ jobs:
             make clean-environment
       - name: Spin up fresh environment with besu tracing with retry
         if: ${{ inputs.tracing-engine == 'besu' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@7152eba30c6575329ac0576536151aca5a72780e #v3.0.0
         with:
           max_attempts: 10
           retry_on: error
@@ -184,7 +184,7 @@ jobs:
           docker logs transaction-exclusion-api --since 1h &>> docker_logs/transaction-exclusion-api.txt
           docker logs sequencer --since 1h &>> docker_logs/sequencer.txt
       - name: Archive debug logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 #v4.6.0
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}
         with:
           name: end-2-end-debug-logs

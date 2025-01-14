@@ -9,11 +9,11 @@ on:
 
 jobs:
   check:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
       with:
         fetch-depth: 0
 

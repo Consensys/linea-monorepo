@@ -2,12 +2,12 @@ name: Export Security Report to CSV
 on: workflow_dispatch
 jobs:
   data_gathering:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
       - name: CSV export
-        uses: advanced-security/ghas-to-csv@v2
+        uses: advanced-security/ghas-to-csv@3dc93f177ef97ce1623129977dc568589529a318 #v2.1.0
       - name: Upload CSV
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 #v4.6.0
         with:
           name: ghas-data
           path: ${{ github.workspace }}/*.csv

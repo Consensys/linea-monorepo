@@ -9,11 +9,11 @@ concurrency:
 
 jobs:
   run-tests:
-    runs-on: [self-hosted, ubuntu-22.04, X64, large]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     name: Postman & SDK tests
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs

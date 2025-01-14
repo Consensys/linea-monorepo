@@ -30,7 +30,7 @@ jobs:
     name: Coordinator tests
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
       - uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b #v4.5.0
         with:
           distribution: temurin
@@ -41,7 +41,7 @@ jobs:
         uses: gradle/actions/setup-gradle@cc4fc85e6b35bafd578d5ffbc76a5518407e1af0 #v4.2.1
       - name: Restore cached images
         id: restore-cached-images
-        uses: actions/cache/restore@v4.0.2
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 #v4.2.0
         with:
           path: ~/docker-images
           key: cached-images
@@ -57,7 +57,7 @@ jobs:
           ./gradlew -V coordinator:app:buildNeeded
       - name: Login to Docker Hub
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #v3.3.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -69,14 +69,14 @@ jobs:
         run: |
           ./gradlew jacocoRootReport
       - name: Upload Jacoco test coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 #v4.6.0
         with:
           name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
           if-no-files-found: error
           path: |
             ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v5.1.2 #1e68e06f1dbfde0e4cefc87efeba9e4643565303
         with:
           fail_ci_if_error: true
           files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
