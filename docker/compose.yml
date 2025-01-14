@@ -649,6 +649,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      l1-cl-node:
+        condition: service_healthy
+      l1-el-node:
+        condition: service_healthy
 
   blobscan-indexer:
     container_name: blobscan-indexer
@@ -668,6 +672,8 @@ services:
       blobscan-api:
         condition: service_started
       l1-cl-node:
+        condition: service_healthy
+      l1-el-node:
         condition: service_healthy
 
   redis:
