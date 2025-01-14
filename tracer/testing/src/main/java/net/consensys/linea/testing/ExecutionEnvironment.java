@@ -38,6 +38,7 @@ import org.hyperledger.besu.crypto.SignatureAlgorithm;
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory;
 import org.hyperledger.besu.cryptoservices.KeyPairSecurityModule;
 import org.hyperledger.besu.cryptoservices.NodeKey;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.chain.BadBlockManager;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
@@ -58,6 +59,14 @@ public class ExecutionEnvironment {
 
   static GenesisConfigFile GENESIS_CONFIG =
       GenesisConfigFile.fromSource(GenesisConfigFile.class.getResource("/linea.json"));
+
+  static final BlockHeaderBuilder DEFAULT_BLOCK_HEADER_BUILDER =
+      BlockHeaderBuilder.createDefault()
+          .number(ToyExecutionEnvironmentV2.DEFAULT_BLOCK_NUMBER)
+          .timestamp(123456789)
+          .parentHash(Hash.EMPTY_TRIE_HASH)
+          .nonce(0)
+          .blockHeaderFunctions(new CliqueBlockHeaderFunctions());
 
   public static void checkTracer(
       ZkTracer zkTracer, CorsetValidator corsetValidator, Optional<Logger> logger) {
@@ -90,6 +99,7 @@ public class ExecutionEnvironment {
 
   public static BlockHeaderBuilder getLineaBlockHeaderBuilder(
       Optional<BlockHeader> parentBlockHeader) {
+
     BlockHeaderBuilder blockHeaderBuilder =
         parentBlockHeader.isPresent()
             ? BlockHeaderBuilder.fromHeader(parentBlockHeader.get())
@@ -98,7 +108,7 @@ public class ExecutionEnvironment {
                 .parentHash(parentBlockHeader.get().getHash())
                 .nonce(parentBlockHeader.get().getNonce() + 1)
                 .blockHeaderFunctions(new CliqueBlockHeaderFunctions())
-            : BlockHeaderBuilder.createDefault();
+            : DEFAULT_BLOCK_HEADER_BUILDER;
 
     return blockHeaderBuilder
         .baseFee(Wei.of(LINEA_BASE_FEE))

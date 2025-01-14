@@ -40,6 +40,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 @Accessors(fluent = true)
@@ -51,6 +52,7 @@ public class BlockdataOperation extends ModuleOperation {
   private final Bytes chainId;
   private final BlockHeader blockHeader;
   private final BlockHeader prevBlockHeader;
+  private final Address coinbaseAddress;
   private final EWord POWER_256_20 = EWord.of(BigInteger.ONE.shiftLeft(20 * 8));
   private final EWord POWER_256_6 = EWord.of(BigInteger.ONE.shiftLeft(6 * 8));
 
@@ -83,6 +85,7 @@ public class BlockdataOperation extends ModuleOperation {
     this.hub = hub;
     this.blockHeader = blockHeader;
     this.prevBlockHeader = prevBlockHeader;
+    this.coinbaseAddress = hub.coinbaseAddress;
 
     this.chainId = chainId;
     this.ctMax = ctMax(opCode);
@@ -172,9 +175,11 @@ public class BlockdataOperation extends ModuleOperation {
     data = EWord.of(blockHeader.getGasLimit());
 
     // row i
+    // comparison to minimum
     wcpCallToGEQ(0, data, EWord.of(LINEA_GAS_LIMIT_MINIMUM));
 
     // row i + 1
+    // comparison to maximum
     wcpCallToLEQ(1, data, EWord.of(Bytes.ofUnsignedLong(LINEA_GAS_LIMIT_MAXIMUM)));
 
     if (!firstBlockInConflation) {
@@ -227,8 +232,8 @@ public class BlockdataOperation extends ModuleOperation {
           .isChainid(opCode == OpCode.CHAINID)
           .isBasefee(opCode == OpCode.BASEFEE)
           .inst(UnsignedByte.of(opCode.byteValue()))
-          .coinbaseHi(hub.coinbaseAddress.slice(0, 4).toLong())
-          .coinbaseLo(hub.coinbaseAddress.slice(4, LLARGE))
+          .coinbaseHi(coinbaseAddress.slice(0, 4).toLong())
+          .coinbaseLo(coinbaseAddress.slice(4, LLARGE))
           .blockGasLimit(Bytes.ofUnsignedLong(blockHeader.getGasLimit()))
           .basefee(
               Bytes.ofUnsignedLong(blockHeader.getBaseFee().get().getAsBigInteger().longValue()))

@@ -21,12 +21,12 @@ public class BlockhashComparator implements Comparator<BlockhashOperation> {
   @Override
   public int compare(BlockhashOperation o1, BlockhashOperation o2) {
     // First, sort by BLOCK_NUMBER
-    final int blockNumberComparison = o1.opcodeArgument().compareTo(o2.opcodeArgument());
+    final int blockNumberComparison = o1.blockhashArg().compareTo(o2.blockhashArg());
     if (blockNumberComparison != 0) {
       return blockNumberComparison;
     } else {
       // Second, sort by RELATIVE_BLOCK
-      return o1.relativeBlock() - o2.relativeBlock();
+      return o1.relBlock() - o2.relBlock();
     }
   }
 }
