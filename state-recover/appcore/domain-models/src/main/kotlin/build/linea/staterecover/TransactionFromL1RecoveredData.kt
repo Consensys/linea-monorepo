@@ -3,7 +3,7 @@ package build.linea.staterecover
 import net.consensys.encodeHex
 import java.math.BigInteger
 
-data class TransactionL1RecoveredData(
+data class TransactionFromL1RecoveredData(
   val type: UByte,
   val nonce: ULong,
   val maxPriorityFeePerGas: BigInteger?,
@@ -48,7 +48,7 @@ data class TransactionL1RecoveredData(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as TransactionL1RecoveredData
+    other as TransactionFromL1RecoveredData
 
     if (type != other.type) return false
     if (nonce != other.nonce) return false

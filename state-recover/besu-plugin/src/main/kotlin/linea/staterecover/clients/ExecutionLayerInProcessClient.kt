@@ -1,6 +1,6 @@
 package linea.staterecover.clients
 
-import build.linea.staterecover.BlockL1RecoveredData
+import build.linea.staterecover.BlockFromL1RecoveredData
 import linea.staterecover.ExecutionLayerClient
 import linea.staterecover.RecoveryStatusPersistence
 import linea.staterecover.StateRecoveryStatus
@@ -71,8 +71,8 @@ class ExecutionLayerInProcessClient(
       ?: SafeFuture.failedFuture(IllegalArgumentException("Block not found for parameter: $blockParameter"))
   }
 
-  override fun lineaEngineImportBlocksFromBlob(blocks: List<BlockL1RecoveredData>): SafeFuture<Unit> {
-    log.debug("Importing blocks from blob: blocks={}", blocks.map { it.blockNumber })
+  override fun lineaEngineImportBlocksFromBlob(blocks: List<BlockFromL1RecoveredData>): SafeFuture<Unit> {
+    log.debug("Importing blocks from blob: blocks={}", blocks.map { it.header.blockNumber })
     return kotlin.runCatching {
       blocks.map { blockImporter.importBlock(it) }
       SafeFuture.completedFuture(Unit)

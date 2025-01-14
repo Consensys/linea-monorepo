@@ -1,7 +1,8 @@
 package build.linea.staterecover.clients.el
 
-import build.linea.staterecover.BlockL1RecoveredData
-import build.linea.staterecover.TransactionL1RecoveredData
+import build.linea.staterecover.BlockFromL1RecoveredData
+import build.linea.staterecover.BlockHeaderFromL1RecoveredData
+import build.linea.staterecover.TransactionFromL1RecoveredData
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.containing
 import com.github.tomakehurst.wiremock.client.WireMock.post
@@ -120,15 +121,17 @@ class ExecutionLayerJsonRpcClientTest {
       """.trimIndent()
     )
 
-    val block1 = BlockL1RecoveredData(
-      blockNumber = 0xa001u,
-      blockHash = "0xa011".decodeHex(),
-      coinbase = "0x6265617665726275696c642e6f7267".decodeHex(),
-      blockTimestamp = Instant.fromEpochSeconds(1719828000), // 2024-07-01T11:00:00Z UTC
-      gasLimit = 0x1c9c380u,
-      difficulty = 0u,
+    val block1 = BlockFromL1RecoveredData(
+      header = BlockHeaderFromL1RecoveredData(
+        blockNumber = 0xa001u,
+        blockHash = "0xa011".decodeHex(),
+        coinbase = "0x6265617665726275696c642e6f7267".decodeHex(),
+        blockTimestamp = Instant.fromEpochSeconds(1719828000), // 2024-07-01T11:00:00Z UTC
+        gasLimit = 0x1c9c380u,
+        difficulty = 0u
+      ),
       transactions = listOf(
-        TransactionL1RecoveredData(
+        TransactionFromL1RecoveredData(
           type = 0x01u,
           nonce = 0xb010u,
           gasPrice = null,
@@ -140,13 +143,13 @@ class ExecutionLayerJsonRpcClientTest {
           value = 123.toBigInteger(),
           data = "0xb013".decodeHex(),
           accessList = listOf(
-            TransactionL1RecoveredData.AccessTuple(
+            TransactionFromL1RecoveredData.AccessTuple(
               address = "0xb014".decodeHex(),
               storageKeys = listOf("0xb015".decodeHex(), "0xb015".decodeHex())
             )
           )
         ),
-        TransactionL1RecoveredData(
+        TransactionFromL1RecoveredData(
           type = 0x0u,
           nonce = 0xb020u,
           gasPrice = "b0100ff".toBigInteger(16),
@@ -172,12 +175,14 @@ class ExecutionLayerJsonRpcClientTest {
         "id":"${'$'}{json-unit.any-number}",
         "method":"linea_importBlocksFromBlob",
         "params":[{
-          "blockNumber": "0xa001",
-          "blockHash": "0xa011",
-          "coinbase": "0x6265617665726275696c642e6f7267",
-          "blockTimestamp": "0x66827e20",
-          "gasLimit": "0x1c9c380",
-          "difficulty": "0x0",
+          "header": {
+            "blockNumber": "0xa001",
+            "blockHash": "0xa011",
+            "coinbase": "0x6265617665726275696c642e6f7267",
+            "blockTimestamp": "0x66827e20",
+            "gasLimit": "0x1c9c380",
+            "difficulty": "0x0"
+          },
           "transactions": [{
             "type": "0x01",
             "nonce": "0xb010",

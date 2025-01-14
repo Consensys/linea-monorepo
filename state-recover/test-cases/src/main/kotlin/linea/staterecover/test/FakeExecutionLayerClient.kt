@@ -1,6 +1,6 @@
 package linea.staterecover.test
 
-import build.linea.staterecover.BlockL1RecoveredData
+import build.linea.staterecover.BlockFromL1RecoveredData
 import linea.staterecover.ExecutionLayerClient
 import linea.staterecover.StateRecoveryStatus
 import net.consensys.linea.BlockNumberAndHash
@@ -33,15 +33,18 @@ class FakeExecutionLayerClient(
 
   @Synchronized
   override fun lineaEngineImportBlocksFromBlob(
-    blocks: List<BlockL1RecoveredData>
+    blocks: List<BlockFromL1RecoveredData>
   ): SafeFuture<Unit> {
     if (log.isTraceEnabled) {
       log.trace("lineaEngineImportBlocksFromBlob($blocks)")
     } else {
-      val interval = CommonDomainFunctions.blockIntervalString(blocks.first().blockNumber, blocks.last().blockNumber)
+      val interval = CommonDomainFunctions.blockIntervalString(
+        blocks.first().header.blockNumber,
+        blocks.last().header.blockNumber
+      )
       log.debug("lineaEngineImportBlocksFromBlob(interval=$interval)")
     }
-    lastImportedBlock = blocks.last().let { BlockNumberAndHash(it.blockNumber, it.blockHash) }
+    lastImportedBlock = blocks.last().let { BlockNumberAndHash(it.header.blockNumber, it.header.blockHash) }
     return SafeFuture.completedFuture(Unit)
   }
 

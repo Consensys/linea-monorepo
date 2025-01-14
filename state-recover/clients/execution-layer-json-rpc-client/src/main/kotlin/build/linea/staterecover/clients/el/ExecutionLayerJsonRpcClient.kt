@@ -3,7 +3,7 @@ package build.linea.staterecover.clients.el
 import build.linea.s11n.jackson.InstantAsHexNumberDeserializer
 import build.linea.s11n.jackson.InstantAsHexNumberSerializer
 import build.linea.s11n.jackson.ethApiObjectMapper
-import build.linea.staterecover.BlockL1RecoveredData
+import build.linea.staterecover.BlockFromL1RecoveredData
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
@@ -40,7 +40,7 @@ class ExecutionLayerJsonRpcClient internal constructor(
       }
   }
 
-  override fun lineaEngineImportBlocksFromBlob(blocks: List<BlockL1RecoveredData>): SafeFuture<Unit> {
+  override fun lineaEngineImportBlocksFromBlob(blocks: List<BlockFromL1RecoveredData>): SafeFuture<Unit> {
     return rpcClient
       .makeRequest(
         method = "linea_importBlocksFromBlob",

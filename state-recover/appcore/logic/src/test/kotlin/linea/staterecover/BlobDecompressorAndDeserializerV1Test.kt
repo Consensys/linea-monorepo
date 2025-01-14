@@ -1,7 +1,7 @@
 package linea.staterecover
 
-import build.linea.staterecover.BlockL1RecoveredData
-import build.linea.staterecover.TransactionL1RecoveredData
+import build.linea.staterecover.BlockFromL1RecoveredData
+import build.linea.staterecover.TransactionFromL1RecoveredData
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
 import linea.blob.BlobCompressor
@@ -70,7 +70,7 @@ class BlobDecompressorAndDeserializerV1Test {
       startBlockNumber = startingBlockNumber,
       blobs = blobs
     ).get()
-    assertThat(recoveredBlocks[0].blockNumber).isEqualTo(startingBlockNumber)
+    assertThat(recoveredBlocks[0].header.blockNumber).isEqualTo(startingBlockNumber)
 
     recoveredBlocks.zip(blocks) { recoveredBlock, originalBlock ->
       assertBlockData(recoveredBlock, originalBlock)
@@ -78,16 +78,16 @@ class BlobDecompressorAndDeserializerV1Test {
   }
 
   private fun assertBlockData(
-    uncompressed: BlockL1RecoveredData,
+    uncompressed: BlockFromL1RecoveredData,
     original: Block
   ) {
     try {
-      assertThat(uncompressed.blockNumber).isEqualTo(original.header.number.toULong())
-      assertThat(uncompressed.blockHash.encodeHex()).isEqualTo(original.header.hash.toArray().encodeHex())
-      assertThat(uncompressed.coinbase).isEqualTo(blockStaticFields.coinbase)
-      assertThat(uncompressed.blockTimestamp).isEqualTo(Instant.fromEpochSeconds(original.header.timestamp))
-      assertThat(uncompressed.gasLimit).isEqualTo(blockStaticFields.gasLimit)
-      assertThat(uncompressed.difficulty).isEqualTo(blockStaticFields.difficulty)
+      assertThat(uncompressed.header.blockNumber).isEqualTo(original.header.number.toULong())
+      assertThat(uncompressed.header.blockHash.encodeHex()).isEqualTo(original.header.hash.toArray().encodeHex())
+      assertThat(uncompressed.header.coinbase).isEqualTo(blockStaticFields.coinbase)
+      assertThat(uncompressed.header.blockTimestamp).isEqualTo(Instant.fromEpochSeconds(original.header.timestamp))
+      assertThat(uncompressed.header.gasLimit).isEqualTo(blockStaticFields.gasLimit)
+      assertThat(uncompressed.header.difficulty).isEqualTo(blockStaticFields.difficulty)
       uncompressed.transactions.zip(original.body.transactions) { uncompressedTransaction, originalTransaction ->
         assertTransactionData(uncompressedTransaction, originalTransaction)
       }
@@ -102,7 +102,7 @@ class BlobDecompressorAndDeserializerV1Test {
   }
 
   private fun assertTransactionData(
-    uncompressed: TransactionL1RecoveredData,
+    uncompressed: TransactionFromL1RecoveredData,
     original: Transaction
   ) {
     assertThat(uncompressed.type).isEqualTo(original.type.serializedType.toUByte())

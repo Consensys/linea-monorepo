@@ -1,7 +1,7 @@
 package linea.staterecover
 
 import build.linea.domain.EthLogEvent
-import build.linea.staterecover.BlockL1RecoveredData
+import build.linea.staterecover.BlockFromL1RecoveredData
 import io.vertx.core.Vertx
 import net.consensys.encodeHex
 import net.consensys.linea.BlockNumberAndHash
@@ -118,7 +118,7 @@ class StateSynchronizerService(
       .decompress(
         startBlockNumber = dataFinalizedV3.startBlockNumber,
         blobs = dataSubmissions.flatMap { it.blobs }
-      ).thenCompose { decompressedBlocks: List<BlockL1RecoveredData> ->
+      ).thenCompose { decompressedBlocks: List<BlockFromL1RecoveredData> ->
         log.debug("importing blocks={}", dataFinalizedV3.intervalString())
         blockImporterAndStateVerifier
           .importBlocks(decompressedBlocks)
@@ -128,8 +128,8 @@ class StateSynchronizerService(
           }
           .thenApply {
             BlockNumberAndHash(
-              number = decompressedBlocks.last().blockNumber,
-              hash = decompressedBlocks.last().blockHash
+              number = decompressedBlocks.last().header.blockNumber,
+              hash = decompressedBlocks.last().header.blockHash
             )
           }
       }

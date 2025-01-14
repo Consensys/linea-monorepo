@@ -1,6 +1,6 @@
 package linea.staterecover.plugin
 
-import build.linea.staterecover.BlockL1RecoveredData
+import build.linea.staterecover.BlockFromL1RecoveredData
 import net.consensys.encodeHex
 import net.consensys.toBigInteger
 import net.consensys.toULong
@@ -25,24 +25,24 @@ class BlockImporter(
   private val log = LogManager.getLogger(BlockImporter::class.java)
   private val chainId = blockchainService.chainId.orElseThrow().toULong()
 
-  fun importBlock(block: BlockL1RecoveredData): PluginBlockSimulationResult {
+  fun importBlock(block: BlockFromL1RecoveredData): PluginBlockSimulationResult {
     val executedBlockResult = executeBlockWithTransactionsWithoutSignature(block)
     return importBlock(BlockContextData(executedBlockResult.blockHeader, executedBlockResult.blockBody))
   }
 
   private fun executeBlockWithTransactionsWithoutSignature(
-    block: BlockL1RecoveredData
+    block: BlockFromL1RecoveredData
   ): PluginBlockSimulationResult {
     log.debug(
       "simulating import block={} blockHash={}",
-      block.blockNumber,
-      block.blockHash.encodeHex()
+      block.header.blockNumber,
+      block.header.blockHash.encodeHex()
     )
     val transactions = TransactionMapper.mapToBesu(
       block.transactions,
       chainId
     )
-    val parentBlockNumber = block.blockNumber.toLong() - 1
+    val parentBlockNumber = block.header.blockNumber.toLong() - 1
 
     val executedBlockResult =
       simulatorService.simulate(
@@ -60,14 +60,14 @@ class BlockImporter(
     return executedBlockResult
   }
 
-  private fun createOverrides(blockFromBlob: BlockL1RecoveredData): BlockOverrides {
+  private fun createOverrides(blockFromBlob: BlockFromL1RecoveredData): BlockOverrides {
     return BlockOverrides.builder()
-      .blockHash(Hash.wrap(Bytes32.wrap(blockFromBlob.blockHash)))
-      .feeRecipient(Address.fromHexString(blockFromBlob.coinbase.encodeHex()))
-      .blockNumber(blockFromBlob.blockNumber.toLong())
-      .gasLimit(blockFromBlob.gasLimit.toLong())
-      .timestamp(blockFromBlob.blockTimestamp.epochSeconds)
-      .difficulty(blockFromBlob.difficulty.toBigInteger())
+      .blockHash(Hash.wrap(Bytes32.wrap(blockFromBlob.header.blockHash)))
+      .feeRecipient(Address.fromHexString(blockFromBlob.header.coinbase.encodeHex()))
+      .blockNumber(blockFromBlob.header.blockNumber.toLong())
+      .gasLimit(blockFromBlob.header.gasLimit.toLong())
+      .timestamp(blockFromBlob.header.blockTimestamp.epochSeconds)
+      .difficulty(blockFromBlob.header.difficulty.toBigInteger())
       .mixHashOrPrevRandao(Hash.ZERO)
       .build()
   }

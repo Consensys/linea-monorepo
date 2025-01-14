@@ -1,7 +1,8 @@
 package linea.staterecover
 
-import build.linea.staterecover.BlockL1RecoveredData
-import build.linea.staterecover.TransactionL1RecoveredData
+import build.linea.staterecover.BlockFromL1RecoveredData
+import build.linea.staterecover.BlockHeaderFromL1RecoveredData
+import build.linea.staterecover.TransactionFromL1RecoveredData
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -13,7 +14,6 @@ import net.consensys.encodeHex
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.blob.BlobDecompressor
-import net.consensys.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.ethereum.core.Block
@@ -28,7 +28,7 @@ interface BlobDecompressorAndDeserializer {
   fun decompress(
     startBlockNumber: ULong,
     blobs: List<ByteArray>
-  ): SafeFuture<List<BlockL1RecoveredData>>
+  ): SafeFuture<List<BlockFromL1RecoveredData>>
 }
 
 data class BlockHeaderStaticFields(
@@ -83,43 +83,46 @@ class BlobDecompressorToDomainV1(
   override fun decompress(
     startBlockNumber: ULong,
     blobs: List<ByteArray>
-  ): SafeFuture<List<BlockL1RecoveredData>> {
+  ): SafeFuture<List<BlockFromL1RecoveredData>> {
     var blockNumber = startBlockNumber
     val startTime = Clock.System.now()
     logger.debug("start decompressing blobs: startBlockNumber={} {} blobs", startBlockNumber, blobs.size)
     val decompressedBlobs = blobs.map { decompressor.decompress(it) }
-
     return SafeFuture
       .collectAll(decompressedBlobs.map(::decodeBlocksAsync).stream())
       .thenApply { blobsBlocks: List<List<Block>> ->
         blobsBlocks.flatten().map { block ->
-          BlockL1RecoveredData(
+          val header = BlockHeaderFromL1RecoveredData(
             blockNumber = blockNumber++,
             blockHash = block.header.hash.toArray(),
             coinbase = staticFields.coinbase,
             blockTimestamp = Instant.fromEpochSeconds(block.header.timestamp),
             gasLimit = this.staticFields.gasLimit,
-            difficulty = this.staticFields.difficulty,
-            transactions = block.body.transactions.map { transaction ->
-              TransactionL1RecoveredData(
-                type = transaction.type.serializedType.toUByte(),
-                from = transaction.sender.toArray(),
-                nonce = transaction.nonce.toULong(),
-                gasLimit = transaction.gasLimit.toULong(),
-                maxFeePerGas = transaction.maxFeePerGas.getOrNull()?.asBigInteger,
-                maxPriorityFeePerGas = transaction.maxPriorityFeePerGas.getOrNull()?.asBigInteger,
-                gasPrice = transaction.gasPrice.getOrNull()?.asBigInteger,
-                to = transaction.to.getOrNull()?.toArray(),
-                value = transaction.value.asBigInteger,
-                data = transaction.payload.toArray(),
-                accessList = transaction.accessList.getOrNull()?.map { accessTuple ->
-                  TransactionL1RecoveredData.AccessTuple(
-                    address = accessTuple.address.toArray(),
-                    storageKeys = accessTuple.storageKeys.map { it.toArray() }
-                  )
-                }
-              )
-            }
+            difficulty = this.staticFields.difficulty
+          )
+          val transactions = block.body.transactions.map { transaction ->
+            TransactionFromL1RecoveredData(
+              type = transaction.type.serializedType.toUByte(),
+              from = transaction.sender.toArray(),
+              nonce = transaction.nonce.toULong(),
+              gasLimit = transaction.gasLimit.toULong(),
+              maxFeePerGas = transaction.maxFeePerGas.getOrNull()?.asBigInteger,
+              maxPriorityFeePerGas = transaction.maxPriorityFeePerGas.getOrNull()?.asBigInteger,
+              gasPrice = transaction.gasPrice.getOrNull()?.asBigInteger,
+              to = transaction.to.getOrNull()?.toArray(),
+              value = transaction.value.asBigInteger,
+              data = transaction.payload.toArray(),
+              accessList = transaction.accessList.getOrNull()?.map { accessTuple ->
+                TransactionFromL1RecoveredData.AccessTuple(
+                  address = accessTuple.address.toArray(),
+                  storageKeys = accessTuple.storageKeys.map { it.toArray() }
+                )
+              }
+            )
+          }
+          BlockFromL1RecoveredData(
+            header = header,
+            transactions = transactions
           )
         }
       }.thenPeek {

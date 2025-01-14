@@ -2,7 +2,7 @@ package linea.staterecover
 
 import build.linea.clients.StateManagerClientV1
 import build.linea.domain.BlockInterval
-import build.linea.staterecover.BlockL1RecoveredData
+import build.linea.staterecover.BlockFromL1RecoveredData
 import io.vertx.core.Vertx
 import net.consensys.linea.async.AsyncRetryer
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -33,7 +33,7 @@ data class ImportResult(
 }
 
 interface BlockImporterAndStateVerifier {
-  fun importBlocks(blocks: List<BlockL1RecoveredData>): SafeFuture<ImportResult>
+  fun importBlocks(blocks: List<BlockFromL1RecoveredData>): SafeFuture<ImportResult>
 }
 
 class BlockImporterAndStateVerifierV1(
@@ -42,18 +42,18 @@ class BlockImporterAndStateVerifierV1(
   private val stateManagerClient: StateManagerClientV1,
   private val stateManagerImportTimeoutPerBlock: Duration
 ) : BlockImporterAndStateVerifier {
-  override fun importBlocks(blocks: List<BlockL1RecoveredData>): SafeFuture<ImportResult> {
+  override fun importBlocks(blocks: List<BlockFromL1RecoveredData>): SafeFuture<ImportResult> {
     return elClient
       .lineaEngineImportBlocksFromBlob(blocks)
       .thenCompose {
         getBlockStateRootHash(
-          blockNumber = blocks.last().blockNumber,
+          blockNumber = blocks.last().header.blockNumber,
           timeout = stateManagerImportTimeoutPerBlock.times(blocks.size)
         )
       }
       .thenApply { stateRootHash ->
         ImportResult(
-          blockNumber = blocks.last().blockNumber,
+          blockNumber = blocks.last().header.blockNumber,
           zkStateRootHash = stateRootHash
         )
       }

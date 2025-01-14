@@ -1,7 +1,7 @@
 package linea.staterecover.plugin
 
-import build.linea.staterecover.TransactionL1RecoveredData
-import build.linea.staterecover.TransactionL1RecoveredData.AccessTuple
+import build.linea.staterecover.TransactionFromL1RecoveredData
+import build.linea.staterecover.TransactionFromL1RecoveredData.AccessTuple
 import net.consensys.encodeHex
 import net.consensys.toBigInteger
 import org.apache.tuweni.bytes.Bytes
@@ -24,7 +24,7 @@ object TransactionMapper {
    * @return a constructed Transaction object
    */
   fun mapToBesu(
-    transaction: TransactionL1RecoveredData,
+    transaction: TransactionFromL1RecoveredData,
     chainId: ULong
   ): Transaction {
     val builder = Transaction.builder()
@@ -67,7 +67,7 @@ object TransactionMapper {
    * @return a list of constructed Transaction objects
    */
   fun mapToBesu(
-    transactions: List<TransactionL1RecoveredData>,
+    transactions: List<TransactionFromL1RecoveredData>,
     defaultChainId: ULong
   ): List<Transaction> {
     return transactions.map { tx -> mapToBesu(tx, defaultChainId) }
