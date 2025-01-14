@@ -104,6 +104,14 @@ func ForTest(xs ...int) []fext.Element {
 	return res
 }
 
+func ForTestFromVect(xs ...[fext.ExtensionDegree]int) []fext.Element {
+	res := make([]fext.Element, len(xs))
+	for i, x := range xs {
+		res[i].SetFromVector(x)
+	}
+	return res
+}
+
 // ForTestFromPairs returns a vector instantiated from a list of integers.
 func ForTestFromPairs(xs ...int) []fext.Element {
 	if len(xs)%2 != 0 {

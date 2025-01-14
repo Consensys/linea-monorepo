@@ -25,17 +25,26 @@ func TestRuffini(t *testing.T) {
 		expectedRem fext.Element
 	}{
 		{
-			q:           fext.NewElement(1, fieldPaddingInt()),
-			p:           ForTestExt(3, 0, 1),
-			expectedQuo: ForTestExt(1, 1),
-			expectedRem: fext.NewElement(4, fieldPaddingInt()),
+			q:           fext.NewElement(1, 0),
+			p:           ForTestFromPairs(3, 0, 0, 0, 1, 0),
+			expectedQuo: ForTestFromPairs(1, 0, 1, 0),
+			expectedRem: fext.NewElement(4, 0),
 		},
 		{
 			// 3 = 0 * (X - 1) + 3
-			q:           fext.NewElement(1, fieldPaddingInt()),
-			p:           ForTestExt(3),
+			q:           fext.NewElement(1, 0),
+			p:           ForTestFromPairs(3, 0),
 			expectedQuo: NewConstantExt(fext.Zero(), 1),
-			expectedRem: fext.NewElement(3, fieldPaddingInt()),
+			expectedRem: fext.NewElement(3, 0),
+		},
+		{
+			// -α^2 - 3 α + α x^3 + x^3 - α^2 x^2 - 2 α x^2 - x^2 + α x + 2 x + 3 =
+			// (x-(1+alpha))(x^2*(1+alpha)+(2+alpha))+5
+			// alpha is a square root used to build the extension field, i.e. alpha^2=fext.RootPowers[1]
+			q:           fext.NewElement(1, 1),
+			p:           ForTestFromPairs(-fext.RootPowers[1]+3, -3, 2, 1, -1-fext.RootPowers[1], -2, 1, 1),
+			expectedQuo: ForTestFromPairs(2, 1, 0, 0, 1, 1),
+			expectedRem: fext.NewElement(5, 0),
 		},
 	}
 

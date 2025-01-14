@@ -15,6 +15,10 @@ func ForTestExt(xs ...int) smartvectors.SmartVector {
 	return NewRegularExt(vectorext.ForTest(xs...))
 }
 
+func ForTestFromVect(xs ...[fext.ExtensionDegree]int) smartvectors.SmartVector {
+	return NewRegularExt(vectorext.ForTestFromVect(xs...))
+}
+
 func ForTestFromPairs(xs ...int) smartvectors.SmartVector {
 	return NewRegularExt(vectorext.ForTestFromPairs(xs...))
 }
