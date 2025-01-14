@@ -6,9 +6,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// SegmentModuleInputs stores the inputs for both vertical and horizontal splitting
-// of a [wizard.CompiledIOP] object.
+// SegmentModuleInputs stores the inputs for both
+// vertical and horizontal splitting of a [wizard.CompiledIOP] object.
 type SegmentModuleInputs struct {
+	// InitialComp subject to the splitting
 	InitialComp *wizard.CompiledIOP
 	// inputs for horizontal splitting
 	Disc       ModuleDiscoverer
@@ -20,8 +21,8 @@ type SegmentModuleInputs struct {
 // GetFreshSegmentModuleComp returns a [wizard.DefineFunc] that creates
 // a [wizard.CompiledIOP] object including only the columns relevant to the module.
 // It splits the columns to the segments and assign them to the relevant CompiledIOP.
-// It also contains the prover steps
-// for assigning the module column
+// It also contains the prover steps for assigning the module column.
+// For all the segments from the same module, compiledIOP object is the same.
 func GetFreshSegmentModuleComp(in SegmentModuleInputs) *wizard.CompiledIOP {
 
 	var (

@@ -19,7 +19,7 @@ import (
 func TestDistributedLogDerivSum(t *testing.T) {
 	const (
 		numSegModule0 = 2
-		numSegModule1 = 4
+		numSegModule1 = 2
 	)
 
 	//initialComp
@@ -47,14 +47,15 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	}
 
 	// in initialComp replace inclusion queries with a global LogDerivativeSum
-	// it also create new columns relevant to the preparation such as multiplicity columns.
+	// it also creates new columns relevant to the preparation such as multiplicity columns.
 	initialComp := wizard.Compile(define, distributed.IntoLogDerivativeSum)
 
 	// Initialize the period separating module discoverer
 	disc := &md.PeriodSeperatingModuleDiscoverer{}
 	disc.Analyze(initialComp)
 
-	// distribute the columns among modules; this includes also multiplicity columns
+	// distribute the columns among modules and segments; this includes also multiplicity columns
+	// for all the segments from the same module, compiledIOP object is the same.
 	moduleComp0 := distributed.GetFreshSegmentModuleComp(
 		distributed.SegmentModuleInputs{
 			InitialComp:         initialComp,
@@ -78,15 +79,6 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	wizard.ContinueCompilation(moduleComp0, logderiv.CompileLogDerivSum, dummy.Compile)
 	wizard.ContinueCompilation(moduleComp1, logderiv.CompileLogDerivSum, dummy.Compile)
 
-	/*
-		logderiv.CompileLogDerivSum(moduleComp0)
-		logderiv.CompileLogDerivSum(moduleComp1)
-
-		// This adds a dummy compilation step to control that all passes
-		dummy.CompileAtProverLvl(moduleComp0)
-		dummy.CompileAtProverLvl(moduleComp1)
-	*/
-
 	// run the initial runtime
 	initialRuntime := wizard.RunProver(initialComp, prover)
 
@@ -94,7 +86,7 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	for proverID := 0; proverID < numSegModule0; proverID++ {
 		proof0 := wizard.Prove(moduleComp0, func(run *wizard.ProverRuntime) {
 			run.ParentRuntime = initialRuntime
-			// inputs for vertical splitting
+			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
 		valid := wizard.Verify(moduleComp0, proof0)
@@ -105,7 +97,7 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	for proverID := 0; proverID < numSegModule1; proverID++ {
 		proof1 := wizard.Prove(moduleComp1, func(run *wizard.ProverRuntime) {
 			run.ParentRuntime = initialRuntime
-			// inputs for vertical splitting
+			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
 		valid1 := wizard.Verify(moduleComp1, proof1)

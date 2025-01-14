@@ -6,13 +6,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
 // ReplaceExternalCoins replaces the external coins with local coins, for a given expression.
 // It does not check if all the columns from the expression are in the module.
 // If this is required should be check before calling ReplaceExternalCoins.
 // If the Coin does not exist in the initialComp it panics.
-func ReplaceExternalCoins(initialComp, moduleComp *wizard.CompiledIOP, expr *symbolic.Expression) {
+// It adds the coins to the translationMap.
+func ReplaceExternalCoins(
+	initialComp, moduleComp *wizard.CompiledIOP,
+	expr *symbolic.Expression,
+	translationMap collection.Mapping[string, *symbolic.Expression],
+) {
 	var (
 		board    = expr.Board()
 		metadata = board.ListVariableMetadata()
@@ -29,6 +35,7 @@ func ReplaceExternalCoins(initialComp, moduleComp *wizard.CompiledIOP, expr *sym
 			}
 			if !moduleComp.Coins.Exists(v.Name) {
 				moduleComp.InsertCoin(v.Round, v.Name, coin.Field)
+				translationMap.InsertNew(v.String(), symbolic.NewVariable(v))
 			}
 		}
 	}

@@ -36,7 +36,7 @@ func periodLogicToDetermineModule(col ifaces.Column) ModuleName {
 	colName := col.GetColID()
 	// for multiplicity Column it is "TABLE_moduleName." So we should separate the ModuleName from this.
 	name := ModuleName(periodSeparator(string(colName)))
-	index := strings.Index(name, "_")
+	index := strings.LastIndex(name, "_")
 	if index != -1 {
 		name = name[index+1:]
 	}
