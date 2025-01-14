@@ -202,11 +202,20 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			dstIsComputed.PushOne()
 			dstIsPulling.PushZero()
 			dstPairId.PushInt(nbActualTotalPairs)
-			dstIsAccInit.PushZero()
-			dstIsAccPrev.PushOne()
+			if nbActualTotalPairs == 1 {
+				dstIsAccInit.PushOne()
+				dstIsAccPrev.PushZero()
+			} else {
+				dstIsAccInit.PushZero()
+				dstIsAccPrev.PushOne()
+			}
 			dstIsAccCurr.PushZero()
 			if j == 0 {
-				dstIsFirstPrev.PushOne()
+				if nbActualTotalPairs == 1 {
+					dstIsFirstPrev.PushZero()
+				} else {
+					dstIsFirstPrev.PushOne()
+				}
 			} else {
 				dstIsFirstPrev.PushZero()
 			}
