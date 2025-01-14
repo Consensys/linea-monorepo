@@ -17,6 +17,10 @@ import (
 
 // It tests DistributedLogDerivSum.
 func TestDistributedLogDerivSum(t *testing.T) {
+	const (
+		numSegModule0 = 2
+		numSegModule1 = 4
+	)
 
 	//initialComp
 	define := func(b *wizard.Builder) {
@@ -51,35 +55,60 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	disc.Analyze(initialComp)
 
 	// distribute the columns among modules; this includes also multiplicity columns
-	moduleComp0 := distributed.GetFreshModuleComp(initialComp, disc, "module0")
-	moduleComp1 := distributed.GetFreshModuleComp(initialComp, disc, "module1")
+	moduleComp0 := distributed.GetFreshSegmentModuleComp(
+		distributed.SegmentModuleInputs{
+			InitialComp:         initialComp,
+			Disc:                disc,
+			ModuleName:          "module0",
+			NumSegmentsInModule: numSegModule0,
+		},
+	)
+	moduleComp1 := distributed.GetFreshSegmentModuleComp(distributed.SegmentModuleInputs{
+		InitialComp:         initialComp,
+		Disc:                disc,
+		ModuleName:          "module1",
+		NumSegmentsInModule: numSegModule1,
+	})
 
 	// distribute the query LogDerivativeSum among modules.
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc)
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc)
 
 	// This compiles the log-derivative queries into global/local queries.
-	logderiv.CompileLogDerivSum(moduleComp0)
-	logderiv.CompileLogDerivSum(moduleComp1)
+	wizard.ContinueCompilation(moduleComp0, logderiv.CompileLogDerivSum, dummy.Compile)
+	wizard.ContinueCompilation(moduleComp1, logderiv.CompileLogDerivSum, dummy.Compile)
 
-	// This adds a dummy compilation step to control that all passes
-	dummy.CompileAtProverLvl(moduleComp0)
-	dummy.CompileAtProverLvl(moduleComp1)
+	/*
+		logderiv.CompileLogDerivSum(moduleComp0)
+		logderiv.CompileLogDerivSum(moduleComp1)
+
+		// This adds a dummy compilation step to control that all passes
+		dummy.CompileAtProverLvl(moduleComp0)
+		dummy.CompileAtProverLvl(moduleComp1)
+	*/
 
 	// run the initial runtime
 	initialRuntime := wizard.RunProver(initialComp, prover)
 
 	// Compile and prove for module0
-	proof0 := wizard.Prove(moduleComp0, func(run *wizard.ProverRuntime) {
-		run.ParentRuntime = initialRuntime
-	})
-	valid := wizard.Verify(moduleComp0, proof0)
-	require.NoError(t, valid)
+	for proverID := 0; proverID < numSegModule0; proverID++ {
+		proof0 := wizard.Prove(moduleComp0, func(run *wizard.ProverRuntime) {
+			run.ParentRuntime = initialRuntime
+			// inputs for vertical splitting
+			run.ProverID = proverID
+		})
+		valid := wizard.Verify(moduleComp0, proof0)
+		require.NoError(t, valid)
+	}
 
 	// Compile and prove for module1
-	proof1 := wizard.Prove(moduleComp1, func(run *wizard.ProverRuntime) {
-		run.ParentRuntime = initialRuntime
-	})
-	valid1 := wizard.Verify(moduleComp1, proof1)
-	require.NoError(t, valid1)
+	for proverID := 0; proverID < numSegModule1; proverID++ {
+		proof1 := wizard.Prove(moduleComp1, func(run *wizard.ProverRuntime) {
+			run.ParentRuntime = initialRuntime
+			// inputs for vertical splitting
+			run.ProverID = proverID
+		})
+		valid1 := wizard.Verify(moduleComp1, proof1)
+		require.NoError(t, valid1)
+	}
 }
