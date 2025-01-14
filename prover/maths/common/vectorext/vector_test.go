@@ -2,6 +2,7 @@ package vectorext_test
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
 
@@ -137,15 +138,16 @@ func TestVectors(t *testing.T) {
 		assert.Equal(t, vectorext.ForTest(1, 2, 4, 8, 16), c)
 	})
 
-	/*
-		t.Run("IntoGnarkAssignment", func(t *testing.T) {
-			c := vectorext.IntoGnarkAssignment(a)
-			for i := range c {
-				ci := c[i].(fext.Element)
-				assert.Equal(t, a[i].String(), ci.String())
-			}
-			aBAndXMustNotChange(t)
-		})*/
+	t.Run("IntoGnarkAssignment", func(t *testing.T) {
+		c := vectorext.IntoGnarkAssignment(a)
+		for i := range c {
+			first := c[i].A0.(field.Element)
+			second := c[i].A1.(field.Element)
+			assert.Equal(t, a[i].A0.String(), first.String())
+			assert.Equal(t, a[i].A1.String(), second.String())
+		}
+		aBAndXMustNotChange(t)
+	})
 
 }
 
