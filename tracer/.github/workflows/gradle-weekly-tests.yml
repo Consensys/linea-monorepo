@@ -5,6 +5,11 @@ on:
     - cron: "0 4 * * 1"
   workflow_dispatch:
 
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+  
 jobs:
   tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
