@@ -4,12 +4,12 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"math/big"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
