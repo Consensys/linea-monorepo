@@ -19,8 +19,8 @@ func TestGnarkEval(t *testing.T) {
 			outerAPI := gnarkfext.API{Inner: api}
 			var (
 				pol      = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(1, 2, 3, 4, -1, -2))
-				x        = gnarkfext.E2{2, 1}
-				expected = gnarkfext.E2{
+				x        = gnarkfext.Variable{2, 1}
+				expected = gnarkfext.Variable{
 					-5*fext.RootPowers[1] + 3,
 					-2*fext.RootPowers[1] + 1,
 				}
@@ -38,7 +38,7 @@ func TestGnarkEval(t *testing.T) {
 			outerAPI := gnarkfext.API{Inner: api}
 			var (
 				pol      = vectorext.IntoGnarkAssignment([]fext.Element{})
-				x        = gnarkfext.E2{2, 3}
+				x        = gnarkfext.Variable{2, 3}
 				expected = gnarkfext.NewZero()
 				res      = EvaluateUnivariateGnark(api, pol, x)
 			)
@@ -58,7 +58,7 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 			outerAPI := gnarkfext.API{Inner: api}
 			var (
 				domain   = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(0, 0))
-				x        = gnarkfext.E2{42, 0}
+				x        = gnarkfext.Variable{42, 0}
 				expected = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(1, 0))
 				res      = EvaluateLagrangeAnyDomainGnark(api, domain, x)
 			)
@@ -80,7 +80,7 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 			outerAPI := gnarkfext.API{Inner: api}
 			var (
 				domain   = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(0, 0, 1, 0))
-				x        = gnarkfext.E2{42, 0}
+				x        = gnarkfext.Variable{42, 0}
 				expected = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(-41, 0, 42, 0))
 				res      = EvaluateLagrangeAnyDomainGnark(api, domain, x)
 			)
