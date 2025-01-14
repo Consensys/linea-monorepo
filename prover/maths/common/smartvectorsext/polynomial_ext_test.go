@@ -130,11 +130,23 @@ func TestBivariatePolynomial(t *testing.T) {
 		res       fext.Element
 	}{
 		{
+			// P(X) = P1(X)+Y*P2(X) = (1+4)+(3+8)Y = 5+11Y = 5+33 = 38
 			v:         ForTestExt(1, 2, 3, 4),
-			x:         fext.NewElement(2, fieldPaddingInt()),
-			y:         fext.NewElement(3, fieldPaddingInt()),
+			x:         fext.NewElement(2, 0),
+			y:         fext.NewElement(3, 0),
 			numCoeffX: 2,
-			res:       fext.NewElement(38, fieldPaddingInt()),
+			res:       fext.NewElement(38, 0),
+		},
+		{
+			// P(X) = P1(X)+Y*P2(X)
+			v:         ForTestFromPairs(1, 1, 2, 2, 3, 3, 4, 4),
+			x:         fext.NewElement(2, 1),
+			y:         fext.NewElement(3, 2),
+			numCoeffX: 2,
+			res: *new(fext.Element).
+				SetInt64Pair(
+					int64(44*fext.RootPowers[1]+38),
+					int64(8*fext.RootPowers[1]+74)),
 		},
 	}
 
