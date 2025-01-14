@@ -7,6 +7,26 @@ import org.junit.jupiter.api.Test
 class SearchCursorTest {
 
   @Test
+  fun `should calculate range chunks correctly`() {
+    assertThat(rangeChunks(0uL, 50uL, 10)).containsExactly(
+      0UL..9UL,
+      10UL..19UL,
+      20UL..29UL,
+      30UL..39UL,
+      40UL..49UL,
+      50UL..50UL
+    )
+
+    assertThat(rangeChunks(0uL, 45uL, 10)).containsExactly(
+      0UL..9UL,
+      10UL..19UL,
+      20UL..29UL,
+      30UL..39UL,
+      40UL..45UL
+    )
+  }
+
+  @Test
   fun `next starts in the middle regardless of direction`() {
     assertThat(
       SearchCursor(

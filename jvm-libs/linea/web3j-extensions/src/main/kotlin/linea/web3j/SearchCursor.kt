@@ -2,6 +2,18 @@ package linea.web3j
 
 import linea.SearchDirection
 
+internal fun rangeChunks(
+  start: ULong,
+  end: ULong,
+  chunkSize: Int
+): List<ULongRange> {
+  return (start..end step chunkSize.toLong())
+    .map { chunkStart ->
+      val chunkEnd = (chunkStart + chunkSize.toUInt() - 1u).coerceAtMost(end)
+      ULongRange(chunkStart, chunkEnd)
+    }
+}
+
 /**
  * SearchCursor is a helper class to iterate over a range of ULong values in a binary search manner.
  * When search is not provided returns the next unsearched chunk without moving left or right cursors because
@@ -11,17 +23,15 @@ import linea.SearchDirection
  * so the search predicate cannot tell what direction to go next, so we need to flag the chunk as searched and try the
  * next chunk.
  */
-class SearchCursor(
+internal class SearchCursor(
   val from: ULong,
   val to: ULong,
   val chunkSize: Int
 ) {
   private data class Chunk(val interval: Pair<ULong, ULong>, var searched: Boolean = false)
 
-  private val searchChunks = (from..to)
-    .chunked(chunkSize)
-    .map { Chunk(it.first() to it.last(), searched = false) }
-    .toMutableList()
+  private val searchChunks = rangeChunks(from, to, chunkSize)
+    .map { chunkInterval -> Chunk(chunkInterval.first to chunkInterval.endInclusive, searched = false) }
   private var left = 0
   private var right = searchChunks.size - 1
   private var prevCursor: Int? = null

@@ -14,7 +14,6 @@ import linea.jsonrpc.TestingJsonRpcServer
 import net.consensys.encodeHex
 import net.consensys.fromHexString
 import net.consensys.linea.BlockParameter.Companion.toBlockParameter
-import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.jsonrpc.JsonRpcError
 import net.consensys.linea.jsonrpc.JsonRpcRequest
 import net.consensys.toHexString
@@ -416,11 +415,11 @@ class Web3JLogsSearcherIntTest {
       filter: EthGetLogsRequest
     ): List<Map<String, Any>> {
       return generateEffectiveIntervals(blocksWithLogs, filter.fromBlock, filter.toBlock)
-        .also {
-          println(
-            "filter=${CommonDomainFunctions.blockIntervalString(filter.fromBlock, filter.toBlock)} logs=$it"
-          )
-        }
+        // .also {
+        // println(
+        // "filter=${CommonDomainFunctions.blockIntervalString(filter.fromBlock, filter.toBlock)} logs=$it"
+        // )
+        // }
         .flatMap {
           generateLogsForBlockRange(it.first.toInt(), it.last.toInt(), topic = filter.topics[0])
         }
