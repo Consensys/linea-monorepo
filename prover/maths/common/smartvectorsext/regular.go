@@ -13,10 +13,10 @@ import (
 
 const conversionError = "smartvector holds field extensions, but a base element was requested"
 
-// It's normal vector in a nutshell
+// RegularExt is s normal vector in a nutshell
 type RegularExt []fext.Element
 
-// Instanstiate a new regular from a slice. Returns a pointer so that the result
+// NewRegularExt instanstiate a new regular from a slice. Returns a pointer so that the result
 // can be reused without referencing as a SmartVector.
 func NewRegularExt(v []fext.Element) *RegularExt {
 	assertStrictPositiveLen(len(v))
@@ -24,10 +24,10 @@ func NewRegularExt(v []fext.Element) *RegularExt {
 	return &res
 }
 
-// Returns the length of the regular vector
+// Len returns the length of the regular vector
 func (r *RegularExt) Len() int { return len(*r) }
 
-// Returns a particular element of the vector
+// GetBase returns a particular element of the vector
 func (r *RegularExt) GetBase(n int) (field.Element, error) {
 	return field.Zero(), fmt.Errorf(conversionError)
 }
@@ -44,7 +44,7 @@ func (r *RegularExt) Get(n int) field.Element {
 	return res
 }
 
-// Returns a subvector of the regular
+// SubVector returns a subvector of the regular type
 func (r *RegularExt) SubVector(start, stop int) smartvectors.SmartVector {
 	if start > stop {
 		utils.Panic("Negative length are not allowed")
@@ -56,7 +56,7 @@ func (r *RegularExt) SubVector(start, stop int) smartvectors.SmartVector {
 	return &res
 }
 
-// Rotates the vector into a new one
+// RotateRight rotates the vector into a new one
 func (r *RegularExt) RotateRight(offset int) smartvectors.SmartVector {
 	resSlice := make(RegularExt, r.Len())
 
@@ -87,7 +87,7 @@ func (r *RegularExt) RotateRight(offset int) smartvectors.SmartVector {
 }
 
 func (r *RegularExt) WriteInSlice(s []field.Element) {
-	panic("conversionError")
+	panic(conversionError)
 }
 
 func (r *RegularExt) WriteInSliceExt(s []fext.Element) {
