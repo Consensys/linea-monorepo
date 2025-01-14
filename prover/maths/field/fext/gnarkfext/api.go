@@ -81,7 +81,7 @@ func (api *API) Sub(e1, e2 E2) E2 {
 }
 
 // Mul e2 elmts
-func (api *API) Mul(x, y E2) E2 {
+func (api *API) Mul(x, y E2, in ...E2) E2 {
 
 	a := api.Inner.Add(x.A0, x.A1)
 	b := api.Inner.Add(y.A0, y.A1)
@@ -90,9 +90,14 @@ func (api *API) Mul(x, y E2) E2 {
 	b = api.Inner.Mul(x.A0, y.A0)
 	c := api.Inner.Mul(x.A1, y.A1)
 
-	return E2{
+	res := E2{
 		A0: api.Inner.Sub(b, api.Inner.Mul(11, c)),
 		A1: api.Inner.Sub(a, b, c),
+	}
+	if len(in) > 0 {
+		return api.Mul(res, in[0], in[1:]...)
+	} else {
+		return res
 	}
 }
 
