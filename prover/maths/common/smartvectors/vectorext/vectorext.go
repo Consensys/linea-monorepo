@@ -104,6 +104,8 @@ func ForTest(xs ...int) []fext.Element {
 	return res
 }
 
+// ForTestFromVect computes a vector of field extensions,
+// where each field extension is populated using one vector of size [fext.ExtensionDegree]
 func ForTestFromVect(xs ...[fext.ExtensionDegree]int) []fext.Element {
 	res := make([]fext.Element, len(xs))
 	for i, x := range xs {
@@ -112,7 +114,9 @@ func ForTestFromVect(xs ...[fext.ExtensionDegree]int) []fext.Element {
 	return res
 }
 
-// ForTestFromPairs returns a vector instantiated from a list of integers.
+// ForTestFromPairs groups the input into pairs. Each pair populates the first two
+// coordinates of a field extension, and the function then
+// returns a vector instantiated these field extension elements.
 func ForTestFromPairs(xs ...int) []fext.Element {
 	if len(xs)%2 != 0 {
 		panic("ForTestFromPairs must receive an even-length input vector")
