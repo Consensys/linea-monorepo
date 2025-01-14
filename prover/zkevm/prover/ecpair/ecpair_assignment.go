@@ -124,12 +124,12 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		// now, we have continous chunk of data that is for the pairing. Prepare it for processing.
 		pairingInG1 = make([][nbG1Limbs]field.Element, nbActualTotalPairs)
 		pairingInG2 = make([][nbG2Limbs]field.Element, nbActualTotalPairs)
-		for _, i := range actualInputs {
+		for ii, i := range actualInputs {
 			for j := 0; j < nbG1Limbs; j++ {
-				pairingInG1[i][j] = srcLimbs[currPos+i*(nbG1Limbs+nbG2Limbs)+j]
+				pairingInG1[ii][j] = srcLimbs[currPos+i*(nbG1Limbs+nbG2Limbs)+j]
 			}
 			for j := 0; j < nbG2Limbs; j++ {
-				pairingInG2[i][j] = srcLimbs[currPos+i*(nbG1Limbs+nbG2Limbs)+nbG1Limbs+j]
+				pairingInG2[ii][j] = srcLimbs[currPos+i*(nbG1Limbs+nbG2Limbs)+nbG1Limbs+j]
 			}
 		}
 		inputResult[0] = srcLimbs[currPos+nbInputs*(nbG1Limbs+nbG2Limbs)]
