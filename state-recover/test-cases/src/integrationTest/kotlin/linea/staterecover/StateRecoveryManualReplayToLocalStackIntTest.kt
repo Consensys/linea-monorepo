@@ -7,16 +7,20 @@ import build.linea.domain.BlockInterval
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.log4j.configureLoggers
+import linea.web3j.createWeb3jHttpClient
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.testing.submission.AggregationAndBlobs
 import net.consensys.linea.testing.submission.loadBlobsAndAggregationsSortedAndGrouped
 import net.consensys.linea.testing.submission.submitBlobsAndAggregations
+import net.consensys.toULong
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.LineaRollupDeploymentResult
 import net.consensys.zkevm.ethereum.Web3jClientManager
 import net.consensys.zkevm.ethereum.waitForTxReceipt
+import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
@@ -63,6 +67,18 @@ class StateRecoveryManualReplayToLocalStackIntTest {
 
   @Test
   fun setupDeployContractForL2L1StateReplay() {
+    configureLoggers(
+      rootLevel = Level.INFO,
+      "test.clients.l1.executionlayer" to Level.INFO,
+      "test.clients.l1.web3j-default" to Level.INFO,
+      "test.clients.l1.state-manager" to Level.DEBUG,
+      "test.clients.l1.transaction-details" to Level.INFO,
+      "test.clients.l1.linea-contract" to Level.INFO,
+      "test.clients.l1.events-fetcher" to Level.INFO,
+      "test.clients.l1.blobscan" to Level.INFO,
+      "net.consensys.linea.contract.l1" to Level.INFO
+    )
+
     this.rollupDeploymentResult = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6).get()
     log.info("""LineaRollup address=${rollupDeploymentResult.contractAddress}""")
@@ -75,14 +91,15 @@ class StateRecoveryManualReplayToLocalStackIntTest {
       """.trimIndent()
     )
 
+    val web3jElClient = createWeb3jHttpClient("http://localhost:9145")
+
     // wait for statemanager to be up and running
     await()
       .pollInterval(1.seconds.toJavaDuration())
       .atMost(5.minutes.toJavaDuration())
       .untilAsserted {
         kotlin.runCatching {
-          assertThat(stateManagerClient.rollupGetHeadBlockNumber().get())
-            .isGreaterThanOrEqualTo(0UL)
+          assertThat(web3jElClient.ethBlockNumber().send().blockNumber.toLong()).isGreaterThanOrEqualTo(0L)
         }.getOrElse {
           log.info("could not connect to stateManager $stateManagerUrl")
           throw AssertionError("could not connect to stateManager $stateManagerUrl", it)
@@ -124,7 +141,7 @@ class StateRecoveryManualReplayToLocalStackIntTest {
     await()
       .atMost(5.minutes.toJavaDuration())
       .untilAsserted {
-        assertThat(stateManagerClient.rollupGetHeadBlockNumber().get())
+        assertThat(web3jElClient.ethBlockNumber().send().blockNumber.toULong())
           .isGreaterThanOrEqualTo(lastAggregation.endBlockNumber)
         val blockInterval = BlockInterval(lastAggregation.endBlockNumber, lastAggregation.endBlockNumber)
         assertThat(stateManagerClient.rollupGetStateMerkleProof(blockInterval).get().zkEndStateRootHash)
