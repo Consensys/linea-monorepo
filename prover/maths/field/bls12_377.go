@@ -129,3 +129,7 @@ func PseudoRand(rng *rand.Rand) Element {
 	res.SetBigInt(bigInt)
 	return res
 }
+
+func Generator(m uint64) (Element, error) {
+	return fr.Generator(m)
+}

@@ -102,7 +102,7 @@ func BenchmarkTransversalHash(b *testing.B) {
 
 	var (
 		numRow          = 1024
-		numCols         = 1024
+		numCols         = 1024 * 24
 		rng             = rand.New(rand.NewSource(786868)) // nolint
 		params          = Params{LogTwoBound: 16, LogTwoDegree: 6}
 		numInputPerPoly = params.OutputSize() / (field.Bytes * 8 / params.LogTwoBound)
