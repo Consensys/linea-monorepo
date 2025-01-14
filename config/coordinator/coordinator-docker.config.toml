@@ -152,7 +152,7 @@ proof-submission-delay="PT1S"
 
 [proof-aggregation]
 aggregation-proofs-limit=3
-aggregation-deadline="PT5M"
+aggregation-deadline="PT10S"
 aggregation-coordinator-polling-interval="PT2S"
 deadline-check-interval="PT8S"
 #target-end-blocks=[33, 90, 93]
@@ -267,7 +267,7 @@ storage-period="PT2M"
 
 [conflation]
 blocks-limit=3
-conflation-deadline="PT60S" # =3*l2_block_time
+conflation-deadline="PT6S" # =3*l2_block_time
 conflation-deadline-check-interval="PT3S"
 conflation-deadline-last-block-confirmation-delay="PT2S" # recommended: at least 2 * blockInterval
 
