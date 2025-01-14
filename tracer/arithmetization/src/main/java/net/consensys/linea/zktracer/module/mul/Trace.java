@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.mul;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -88,62 +89,62 @@ public class Trace {
   private final MappedByteBuffer tinyExponent;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("mul.ACC_A_0", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_A_1", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_A_2", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_A_3", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_B_0", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_B_1", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_B_2", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_B_3", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_C_0", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_C_1", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_C_2", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_C_3", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_H_0", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_H_1", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_H_2", 8, length));
-    headers.add(new ColumnHeader("mul.ACC_H_3", 8, length));
-    headers.add(new ColumnHeader("mul.ARG_1_HI", 16, length));
-    headers.add(new ColumnHeader("mul.ARG_1_LO", 16, length));
-    headers.add(new ColumnHeader("mul.ARG_2_HI", 16, length));
-    headers.add(new ColumnHeader("mul.ARG_2_LO", 16, length));
-    headers.add(new ColumnHeader("mul.BIT_NUM", 1, length));
-    headers.add(new ColumnHeader("mul.BITS", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_A_0", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_A_1", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_A_2", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_A_3", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_B_0", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_B_1", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_B_2", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_B_3", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_C_0", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_C_1", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_C_2", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_C_3", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_H_0", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_H_1", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_H_2", 1, length));
-    headers.add(new ColumnHeader("mul.BYTE_H_3", 1, length));
-    headers.add(new ColumnHeader("mul.COUNTER", 1, length));
-    headers.add(new ColumnHeader("mul.EXPONENT_BIT", 1, length));
-    headers.add(new ColumnHeader("mul.EXPONENT_BIT_ACCUMULATOR", 16, length));
-    headers.add(new ColumnHeader("mul.EXPONENT_BIT_SOURCE", 1, length));
-    headers.add(new ColumnHeader("mul.INSTRUCTION", 1, length));
-    headers.add(new ColumnHeader("mul.MUL_STAMP", 4, length));
-    headers.add(new ColumnHeader("mul.OLI", 1, length));
-    headers.add(new ColumnHeader("mul.RES_HI", 16, length));
-    headers.add(new ColumnHeader("mul.RES_LO", 16, length));
-    headers.add(new ColumnHeader("mul.RESULT_VANISHES", 1, length));
-    headers.add(new ColumnHeader("mul.SQUARE_AND_MULTIPLY", 1, length));
-    headers.add(new ColumnHeader("mul.TINY_BASE", 1, length));
-    headers.add(new ColumnHeader("mul.TINY_EXPONENT", 1, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("mul.ACC_A_0", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_A_1", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_A_2", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_A_3", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_B_0", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_B_1", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_B_2", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_B_3", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_C_0", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_C_1", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_C_2", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_C_3", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_H_0", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_H_1", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_H_2", 8, length));
+      headers.add(new ColumnHeader("mul.ACC_H_3", 8, length));
+      headers.add(new ColumnHeader("mul.ARG_1_HI", 16, length));
+      headers.add(new ColumnHeader("mul.ARG_1_LO", 16, length));
+      headers.add(new ColumnHeader("mul.ARG_2_HI", 16, length));
+      headers.add(new ColumnHeader("mul.ARG_2_LO", 16, length));
+      headers.add(new ColumnHeader("mul.BIT_NUM", 1, length));
+      headers.add(new ColumnHeader("mul.BITS", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_A_0", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_A_1", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_A_2", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_A_3", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_B_0", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_B_1", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_B_2", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_B_3", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_C_0", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_C_1", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_C_2", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_C_3", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_H_0", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_H_1", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_H_2", 1, length));
+      headers.add(new ColumnHeader("mul.BYTE_H_3", 1, length));
+      headers.add(new ColumnHeader("mul.COUNTER", 1, length));
+      headers.add(new ColumnHeader("mul.EXPONENT_BIT", 1, length));
+      headers.add(new ColumnHeader("mul.EXPONENT_BIT_ACCUMULATOR", 16, length));
+      headers.add(new ColumnHeader("mul.EXPONENT_BIT_SOURCE", 1, length));
+      headers.add(new ColumnHeader("mul.INSTRUCTION", 1, length));
+      headers.add(new ColumnHeader("mul.MUL_STAMP", 4, length));
+      headers.add(new ColumnHeader("mul.OLI", 1, length));
+      headers.add(new ColumnHeader("mul.RES_HI", 16, length));
+      headers.add(new ColumnHeader("mul.RES_LO", 16, length));
+      headers.add(new ColumnHeader("mul.RESULT_VANISHES", 1, length));
+      headers.add(new ColumnHeader("mul.SQUARE_AND_MULTIPLY", 1, length));
+      headers.add(new ColumnHeader("mul.TINY_BASE", 1, length));
+      headers.add(new ColumnHeader("mul.TINY_EXPONENT", 1, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.accA0 = buffers.get(0);
     this.accA1 = buffers.get(1);
     this.accA2 = buffers.get(2);
@@ -215,18 +216,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_A_0 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_A_0 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accA0.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accA0.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accA0.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accA0.put(bs.get(j)); }
 
     return this;
   }
@@ -241,18 +235,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_A_1 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_A_1 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accA1.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accA1.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accA1.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accA1.put(bs.get(j)); }
 
     return this;
   }
@@ -267,18 +254,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_A_2 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_A_2 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accA2.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accA2.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accA2.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accA2.put(bs.get(j)); }
 
     return this;
   }
@@ -293,18 +273,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_A_3 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_A_3 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accA3.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accA3.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accA3.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accA3.put(bs.get(j)); }
 
     return this;
   }
@@ -319,18 +292,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_B_0 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_B_0 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accB0.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accB0.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accB0.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accB0.put(bs.get(j)); }
 
     return this;
   }
@@ -345,18 +311,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_B_1 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_B_1 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accB1.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accB1.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accB1.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accB1.put(bs.get(j)); }
 
     return this;
   }
@@ -371,18 +330,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_B_2 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_B_2 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accB2.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accB2.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accB2.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accB2.put(bs.get(j)); }
 
     return this;
   }
@@ -397,18 +349,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_B_3 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_B_3 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accB3.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accB3.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accB3.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accB3.put(bs.get(j)); }
 
     return this;
   }
@@ -423,18 +368,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_C_0 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_C_0 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accC0.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accC0.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accC0.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accC0.put(bs.get(j)); }
 
     return this;
   }
@@ -449,18 +387,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_C_1 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_C_1 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accC1.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accC1.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accC1.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accC1.put(bs.get(j)); }
 
     return this;
   }
@@ -475,18 +406,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_C_2 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_C_2 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accC2.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accC2.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accC2.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accC2.put(bs.get(j)); }
 
     return this;
   }
@@ -501,18 +425,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_C_3 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_C_3 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accC3.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accC3.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accC3.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accC3.put(bs.get(j)); }
 
     return this;
   }
@@ -527,18 +444,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_H_0 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_H_0 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accH0.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accH0.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accH0.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accH0.put(bs.get(j)); }
 
     return this;
   }
@@ -553,18 +463,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_H_1 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_H_1 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accH1.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accH1.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accH1.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accH1.put(bs.get(j)); }
 
     return this;
   }
@@ -579,18 +482,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_H_2 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_H_2 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accH2.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accH2.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accH2.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accH2.put(bs.get(j)); }
 
     return this;
   }
@@ -605,18 +501,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mul.ACC_H_3 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mul.ACC_H_3 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      accH3.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { accH3.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accH3.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accH3.put(bs.get(j)); }
 
     return this;
   }
@@ -631,18 +520,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mul.ARG_1_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mul.ARG_1_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      arg1Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { arg1Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      arg1Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { arg1Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -657,18 +539,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mul.ARG_1_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mul.ARG_1_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      arg1Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { arg1Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      arg1Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { arg1Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -683,18 +558,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mul.ARG_2_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mul.ARG_2_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      arg2Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { arg2Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      arg2Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { arg2Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -709,18 +577,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mul.ARG_2_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mul.ARG_2_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      arg2Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { arg2Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      arg2Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { arg2Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -732,10 +593,9 @@ public class Trace {
       filled.set(21);
     }
 
-    if (b >= 128L) {
-      throw new IllegalArgumentException("mul.BIT_NUM has invalid value (" + b + ")");
-    }
+    if(b >= 128L) { throw new IllegalArgumentException("mul.BIT_NUM has invalid value (" + b + ")"); }
     bitNum.put((byte) b);
+
 
     return this;
   }
@@ -978,18 +838,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mul.EXPONENT_BIT_ACCUMULATOR has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mul.EXPONENT_BIT_ACCUMULATOR has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      exponentBitAccumulator.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { exponentBitAccumulator.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      exponentBitAccumulator.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { exponentBitAccumulator.put(bs.get(j)); }
 
     return this;
   }
@@ -1025,13 +878,12 @@ public class Trace {
       filled.set(43);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mul.MUL_STAMP has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mul.MUL_STAMP has invalid value (" + b + ")"); }
     mulStamp.put((byte) (b >> 24));
     mulStamp.put((byte) (b >> 16));
     mulStamp.put((byte) (b >> 8));
     mulStamp.put((byte) b);
+
 
     return this;
   }
@@ -1058,18 +910,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mul.RES_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mul.RES_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      resHi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { resHi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      resHi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { resHi.put(bs.get(j)); }
 
     return this;
   }
@@ -1084,18 +929,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mul.RES_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mul.RES_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      resLo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { resLo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      resLo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { resLo.put(bs.get(j)); }
 
     return this;
   }

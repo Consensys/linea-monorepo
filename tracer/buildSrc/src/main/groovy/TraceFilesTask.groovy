@@ -24,12 +24,9 @@ abstract class TraceFilesTask extends Exec {
   protected void exec() {
     def arguments = ["besu",
                      "-P", "${moduleDir.getOrElse(module.get()).replaceAll('/','.')}",
-                     "-o", "${project.projectDir}/src/main/java/net/consensys/linea/zktracer/module/${moduleDir.getOrElse(module.get())}"
+                     "-o", "${project.projectDir}/src/main/java/net/consensys/linea/zktracer/module/${moduleDir.getOrElse(module.get())}",
+                     "-c", "${className.getOrElse('Trace')}"
     ]
-    if(project.hasProperty("className")) {
-      arguments.add("-c")
-      arguments.add("${className.get()}")
-    }
     arguments.addAll(files.get().collect({"linea-constraints/${it}"}))
 
     workingDir project.rootDir

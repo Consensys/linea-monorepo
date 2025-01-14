@@ -20,10 +20,12 @@ import static net.consensys.linea.zktracer.module.blockdata.Trace.*;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_GT;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_ISZERO;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_LIMIT_ADJUSTMENT_FACTOR;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_GAS_LIMIT_MAXIMUM;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_GAS_LIMIT_MINIMUM;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_GEQ;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_LEQ;
-import static net.consensys.linea.zktracer.module.constants.Trace.*;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import java.math.BigInteger;

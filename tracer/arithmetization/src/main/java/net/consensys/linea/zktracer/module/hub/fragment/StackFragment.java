@@ -239,7 +239,7 @@ public final class StackFragment implements TraceFragment {
         // Instruction details
         .pStackAlpha(UnsignedByte.of(stack.getCurrentOpcodeData().stackSettings().alpha()))
         .pStackDelta(UnsignedByte.of(stack.getCurrentOpcodeData().stackSettings().delta()))
-        .pStackInstruction(Bytes.of(rawOpCode))
+        .pStackInstruction(UnsignedByte.of(rawOpCode))
         .pStackStaticGas(staticGas)
         // Opcode families
         .pStackAccFlag(currentInstFamily == ACCOUNT)

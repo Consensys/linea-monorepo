@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.shakiradata;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -56,29 +57,29 @@ public class Trace {
   private final MappedByteBuffer totalSize;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("shakiradata.ID", 4, length));
-    headers.add(new ColumnHeader("shakiradata.INDEX", 4, length));
-    headers.add(new ColumnHeader("shakiradata.INDEX_MAX", 4, length));
-    headers.add(new ColumnHeader("shakiradata.IS_KECCAK_DATA", 1, length));
-    headers.add(new ColumnHeader("shakiradata.IS_KECCAK_RESULT", 1, length));
-    headers.add(new ColumnHeader("shakiradata.IS_RIPEMD_DATA", 1, length));
-    headers.add(new ColumnHeader("shakiradata.IS_RIPEMD_RESULT", 1, length));
-    headers.add(new ColumnHeader("shakiradata.IS_SHA2_DATA", 1, length));
-    headers.add(new ColumnHeader("shakiradata.IS_SHA2_RESULT", 1, length));
-    headers.add(new ColumnHeader("shakiradata.LIMB", 16, length));
-    headers.add(new ColumnHeader("shakiradata.nBYTES", 1, length));
-    headers.add(new ColumnHeader("shakiradata.nBYTES_ACC", 4, length));
-    headers.add(new ColumnHeader("shakiradata.PHASE", 1, length));
-    headers.add(new ColumnHeader("shakiradata.SELECTOR_KECCAK_RES_HI", 1, length));
-    headers.add(new ColumnHeader("shakiradata.SELECTOR_RIPEMD_RES_HI", 1, length));
-    headers.add(new ColumnHeader("shakiradata.SELECTOR_SHA2_RES_HI", 1, length));
-    headers.add(new ColumnHeader("shakiradata.SHAKIRA_STAMP", 4, length));
-    headers.add(new ColumnHeader("shakiradata.TOTAL_SIZE", 4, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("shakiradata.ID", 4, length));
+      headers.add(new ColumnHeader("shakiradata.INDEX", 4, length));
+      headers.add(new ColumnHeader("shakiradata.INDEX_MAX", 4, length));
+      headers.add(new ColumnHeader("shakiradata.IS_KECCAK_DATA", 1, length));
+      headers.add(new ColumnHeader("shakiradata.IS_KECCAK_RESULT", 1, length));
+      headers.add(new ColumnHeader("shakiradata.IS_RIPEMD_DATA", 1, length));
+      headers.add(new ColumnHeader("shakiradata.IS_RIPEMD_RESULT", 1, length));
+      headers.add(new ColumnHeader("shakiradata.IS_SHA2_DATA", 1, length));
+      headers.add(new ColumnHeader("shakiradata.IS_SHA2_RESULT", 1, length));
+      headers.add(new ColumnHeader("shakiradata.LIMB", 16, length));
+      headers.add(new ColumnHeader("shakiradata.nBYTES", 1, length));
+      headers.add(new ColumnHeader("shakiradata.nBYTES_ACC", 4, length));
+      headers.add(new ColumnHeader("shakiradata.PHASE", 1, length));
+      headers.add(new ColumnHeader("shakiradata.SELECTOR_KECCAK_RES_HI", 1, length));
+      headers.add(new ColumnHeader("shakiradata.SELECTOR_RIPEMD_RES_HI", 1, length));
+      headers.add(new ColumnHeader("shakiradata.SELECTOR_SHA2_RES_HI", 1, length));
+      headers.add(new ColumnHeader("shakiradata.SHAKIRA_STAMP", 4, length));
+      headers.add(new ColumnHeader("shakiradata.TOTAL_SIZE", 4, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.id = buffers.get(0);
     this.index = buffers.get(1);
     this.indexMax = buffers.get(2);
@@ -114,13 +115,12 @@ public class Trace {
       filled.set(0);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("shakiradata.ID has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("shakiradata.ID has invalid value (" + b + ")"); }
     id.put((byte) (b >> 24));
     id.put((byte) (b >> 16));
     id.put((byte) (b >> 8));
     id.put((byte) b);
+
 
     return this;
   }
@@ -132,13 +132,12 @@ public class Trace {
       filled.set(1);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("shakiradata.INDEX has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("shakiradata.INDEX has invalid value (" + b + ")"); }
     index.put((byte) (b >> 24));
     index.put((byte) (b >> 16));
     index.put((byte) (b >> 8));
     index.put((byte) b);
+
 
     return this;
   }
@@ -150,13 +149,12 @@ public class Trace {
       filled.set(2);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("shakiradata.INDEX_MAX has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("shakiradata.INDEX_MAX has invalid value (" + b + ")"); }
     indexMax.put((byte) (b >> 24));
     indexMax.put((byte) (b >> 16));
     indexMax.put((byte) (b >> 8));
     indexMax.put((byte) b);
+
 
     return this;
   }
@@ -243,18 +241,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shakiradata.LIMB has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shakiradata.LIMB has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      limb.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { limb.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      limb.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { limb.put(bs.get(j)); }
 
     return this;
   }
@@ -266,10 +257,9 @@ public class Trace {
       filled.set(16);
     }
 
-    if (b >= 32L) {
-      throw new IllegalArgumentException("shakiradata.nBYTES has invalid value (" + b + ")");
-    }
+    if(b >= 32L) { throw new IllegalArgumentException("shakiradata.nBYTES has invalid value (" + b + ")"); }
     nBytes.put((byte) b);
+
 
     return this;
   }
@@ -281,13 +271,12 @@ public class Trace {
       filled.set(17);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("shakiradata.nBYTES_ACC has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("shakiradata.nBYTES_ACC has invalid value (" + b + ")"); }
     nBytesAcc.put((byte) (b >> 24));
     nBytesAcc.put((byte) (b >> 16));
     nBytesAcc.put((byte) (b >> 8));
     nBytesAcc.put((byte) b);
+
 
     return this;
   }
@@ -347,13 +336,12 @@ public class Trace {
       filled.set(14);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("shakiradata.SHAKIRA_STAMP has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("shakiradata.SHAKIRA_STAMP has invalid value (" + b + ")"); }
     shakiraStamp.put((byte) (b >> 24));
     shakiraStamp.put((byte) (b >> 16));
     shakiraStamp.put((byte) (b >> 8));
     shakiraStamp.put((byte) b);
+
 
     return this;
   }
@@ -365,13 +353,12 @@ public class Trace {
       filled.set(15);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("shakiradata.TOTAL_SIZE has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("shakiradata.TOTAL_SIZE has invalid value (" + b + ")"); }
     totalSize.put((byte) (b >> 24));
     totalSize.put((byte) (b >> 16));
     totalSize.put((byte) (b >> 8));
     totalSize.put((byte) b);
+
 
     return this;
   }

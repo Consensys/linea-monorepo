@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -88,62 +89,62 @@ public class Trace {
   private final MappedByteBuffer shiftStamp;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("shf.ACC_1", 16, length));
-    headers.add(new ColumnHeader("shf.ACC_2", 16, length));
-    headers.add(new ColumnHeader("shf.ACC_3", 16, length));
-    headers.add(new ColumnHeader("shf.ACC_4", 16, length));
-    headers.add(new ColumnHeader("shf.ACC_5", 16, length));
-    headers.add(new ColumnHeader("shf.ARG_1_HI", 16, length));
-    headers.add(new ColumnHeader("shf.ARG_1_LO", 16, length));
-    headers.add(new ColumnHeader("shf.ARG_2_HI", 16, length));
-    headers.add(new ColumnHeader("shf.ARG_2_LO", 16, length));
-    headers.add(new ColumnHeader("shf.BIT_1", 1, length));
-    headers.add(new ColumnHeader("shf.BIT_2", 1, length));
-    headers.add(new ColumnHeader("shf.BIT_3", 1, length));
-    headers.add(new ColumnHeader("shf.BIT_4", 1, length));
-    headers.add(new ColumnHeader("shf.BIT_B_3", 1, length));
-    headers.add(new ColumnHeader("shf.BIT_B_4", 1, length));
-    headers.add(new ColumnHeader("shf.BIT_B_5", 1, length));
-    headers.add(new ColumnHeader("shf.BIT_B_6", 1, length));
-    headers.add(new ColumnHeader("shf.BIT_B_7", 1, length));
-    headers.add(new ColumnHeader("shf.BITS", 1, length));
-    headers.add(new ColumnHeader("shf.BYTE_1", 1, length));
-    headers.add(new ColumnHeader("shf.BYTE_2", 1, length));
-    headers.add(new ColumnHeader("shf.BYTE_3", 1, length));
-    headers.add(new ColumnHeader("shf.BYTE_4", 1, length));
-    headers.add(new ColumnHeader("shf.BYTE_5", 1, length));
-    headers.add(new ColumnHeader("shf.COUNTER", 1, length));
-    headers.add(new ColumnHeader("shf.INST", 1, length));
-    headers.add(new ColumnHeader("shf.IOMF", 1, length));
-    headers.add(new ColumnHeader("shf.KNOWN", 1, length));
-    headers.add(new ColumnHeader("shf.LEFT_ALIGNED_SUFFIX_HIGH", 1, length));
-    headers.add(new ColumnHeader("shf.LEFT_ALIGNED_SUFFIX_LOW", 1, length));
-    headers.add(new ColumnHeader("shf.LOW_3", 16, length));
-    headers.add(new ColumnHeader("shf.MICRO_SHIFT_PARAMETER", 1, length));
-    headers.add(new ColumnHeader("shf.NEG", 1, length));
-    headers.add(new ColumnHeader("shf.ONE_LINE_INSTRUCTION", 1, length));
-    headers.add(new ColumnHeader("shf.ONES", 1, length));
-    headers.add(new ColumnHeader("shf.RES_HI", 16, length));
-    headers.add(new ColumnHeader("shf.RES_LO", 16, length));
-    headers.add(new ColumnHeader("shf.RIGHT_ALIGNED_PREFIX_HIGH", 1, length));
-    headers.add(new ColumnHeader("shf.RIGHT_ALIGNED_PREFIX_LOW", 1, length));
-    headers.add(new ColumnHeader("shf.SHB_3_HI", 1, length));
-    headers.add(new ColumnHeader("shf.SHB_3_LO", 1, length));
-    headers.add(new ColumnHeader("shf.SHB_4_HI", 1, length));
-    headers.add(new ColumnHeader("shf.SHB_4_LO", 1, length));
-    headers.add(new ColumnHeader("shf.SHB_5_HI", 1, length));
-    headers.add(new ColumnHeader("shf.SHB_5_LO", 1, length));
-    headers.add(new ColumnHeader("shf.SHB_6_HI", 1, length));
-    headers.add(new ColumnHeader("shf.SHB_6_LO", 1, length));
-    headers.add(new ColumnHeader("shf.SHB_7_HI", 1, length));
-    headers.add(new ColumnHeader("shf.SHB_7_LO", 1, length));
-    headers.add(new ColumnHeader("shf.SHIFT_DIRECTION", 1, length));
-    headers.add(new ColumnHeader("shf.SHIFT_STAMP", 4, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("shf.ACC_1", 16, length));
+      headers.add(new ColumnHeader("shf.ACC_2", 16, length));
+      headers.add(new ColumnHeader("shf.ACC_3", 16, length));
+      headers.add(new ColumnHeader("shf.ACC_4", 16, length));
+      headers.add(new ColumnHeader("shf.ACC_5", 16, length));
+      headers.add(new ColumnHeader("shf.ARG_1_HI", 16, length));
+      headers.add(new ColumnHeader("shf.ARG_1_LO", 16, length));
+      headers.add(new ColumnHeader("shf.ARG_2_HI", 16, length));
+      headers.add(new ColumnHeader("shf.ARG_2_LO", 16, length));
+      headers.add(new ColumnHeader("shf.BIT_1", 1, length));
+      headers.add(new ColumnHeader("shf.BIT_2", 1, length));
+      headers.add(new ColumnHeader("shf.BIT_3", 1, length));
+      headers.add(new ColumnHeader("shf.BIT_4", 1, length));
+      headers.add(new ColumnHeader("shf.BIT_B_3", 1, length));
+      headers.add(new ColumnHeader("shf.BIT_B_4", 1, length));
+      headers.add(new ColumnHeader("shf.BIT_B_5", 1, length));
+      headers.add(new ColumnHeader("shf.BIT_B_6", 1, length));
+      headers.add(new ColumnHeader("shf.BIT_B_7", 1, length));
+      headers.add(new ColumnHeader("shf.BITS", 1, length));
+      headers.add(new ColumnHeader("shf.BYTE_1", 1, length));
+      headers.add(new ColumnHeader("shf.BYTE_2", 1, length));
+      headers.add(new ColumnHeader("shf.BYTE_3", 1, length));
+      headers.add(new ColumnHeader("shf.BYTE_4", 1, length));
+      headers.add(new ColumnHeader("shf.BYTE_5", 1, length));
+      headers.add(new ColumnHeader("shf.COUNTER", 1, length));
+      headers.add(new ColumnHeader("shf.INST", 1, length));
+      headers.add(new ColumnHeader("shf.IOMF", 1, length));
+      headers.add(new ColumnHeader("shf.KNOWN", 1, length));
+      headers.add(new ColumnHeader("shf.LEFT_ALIGNED_SUFFIX_HIGH", 1, length));
+      headers.add(new ColumnHeader("shf.LEFT_ALIGNED_SUFFIX_LOW", 1, length));
+      headers.add(new ColumnHeader("shf.LOW_3", 16, length));
+      headers.add(new ColumnHeader("shf.MICRO_SHIFT_PARAMETER", 1, length));
+      headers.add(new ColumnHeader("shf.NEG", 1, length));
+      headers.add(new ColumnHeader("shf.ONE_LINE_INSTRUCTION", 1, length));
+      headers.add(new ColumnHeader("shf.ONES", 1, length));
+      headers.add(new ColumnHeader("shf.RES_HI", 16, length));
+      headers.add(new ColumnHeader("shf.RES_LO", 16, length));
+      headers.add(new ColumnHeader("shf.RIGHT_ALIGNED_PREFIX_HIGH", 1, length));
+      headers.add(new ColumnHeader("shf.RIGHT_ALIGNED_PREFIX_LOW", 1, length));
+      headers.add(new ColumnHeader("shf.SHB_3_HI", 1, length));
+      headers.add(new ColumnHeader("shf.SHB_3_LO", 1, length));
+      headers.add(new ColumnHeader("shf.SHB_4_HI", 1, length));
+      headers.add(new ColumnHeader("shf.SHB_4_LO", 1, length));
+      headers.add(new ColumnHeader("shf.SHB_5_HI", 1, length));
+      headers.add(new ColumnHeader("shf.SHB_5_LO", 1, length));
+      headers.add(new ColumnHeader("shf.SHB_6_HI", 1, length));
+      headers.add(new ColumnHeader("shf.SHB_6_LO", 1, length));
+      headers.add(new ColumnHeader("shf.SHB_7_HI", 1, length));
+      headers.add(new ColumnHeader("shf.SHB_7_LO", 1, length));
+      headers.add(new ColumnHeader("shf.SHIFT_DIRECTION", 1, length));
+      headers.add(new ColumnHeader("shf.SHIFT_STAMP", 4, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.acc1 = buffers.get(0);
     this.acc2 = buffers.get(1);
     this.acc3 = buffers.get(2);
@@ -215,18 +216,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.ACC_1 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.ACC_1 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      acc1.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { acc1.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      acc1.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { acc1.put(bs.get(j)); }
 
     return this;
   }
@@ -241,18 +235,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.ACC_2 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.ACC_2 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      acc2.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { acc2.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      acc2.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { acc2.put(bs.get(j)); }
 
     return this;
   }
@@ -267,18 +254,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.ACC_3 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.ACC_3 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      acc3.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { acc3.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      acc3.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { acc3.put(bs.get(j)); }
 
     return this;
   }
@@ -293,18 +273,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.ACC_4 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.ACC_4 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      acc4.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { acc4.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      acc4.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { acc4.put(bs.get(j)); }
 
     return this;
   }
@@ -319,18 +292,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.ACC_5 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.ACC_5 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      acc5.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { acc5.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      acc5.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { acc5.put(bs.get(j)); }
 
     return this;
   }
@@ -345,18 +311,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.ARG_1_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.ARG_1_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      arg1Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { arg1Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      arg1Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { arg1Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -371,18 +330,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.ARG_1_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.ARG_1_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      arg1Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { arg1Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      arg1Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { arg1Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -397,18 +349,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.ARG_2_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.ARG_2_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      arg2Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { arg2Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      arg2Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { arg2Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -423,18 +368,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.ARG_2_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.ARG_2_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      arg2Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { arg2Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      arg2Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { arg2Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -626,10 +564,9 @@ public class Trace {
       filled.set(24);
     }
 
-    if (b >= 256L) {
-      throw new IllegalArgumentException("shf.COUNTER has invalid value (" + b + ")");
-    }
+    if(b >= 256L) { throw new IllegalArgumentException("shf.COUNTER has invalid value (" + b + ")"); }
     counter.put((byte) b);
+
 
     return this;
   }
@@ -704,18 +641,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.LOW_3 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.LOW_3 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      low3.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { low3.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      low3.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { low3.put(bs.get(j)); }
 
     return this;
   }
@@ -727,10 +657,9 @@ public class Trace {
       filled.set(31);
     }
 
-    if (b >= 256L) {
-      throw new IllegalArgumentException("shf.MICRO_SHIFT_PARAMETER has invalid value (" + b + ")");
-    }
+    if(b >= 256L) { throw new IllegalArgumentException("shf.MICRO_SHIFT_PARAMETER has invalid value (" + b + ")"); }
     microShiftParameter.put((byte) b);
+
 
     return this;
   }
@@ -781,18 +710,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.RES_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.RES_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      resHi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { resHi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      resHi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { resHi.put(bs.get(j)); }
 
     return this;
   }
@@ -807,18 +729,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "shf.RES_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("shf.RES_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      resLo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { resLo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      resLo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { resLo.put(bs.get(j)); }
 
     return this;
   }
@@ -986,13 +901,12 @@ public class Trace {
       filled.set(50);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("shf.SHIFT_STAMP has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("shf.SHIFT_STAMP has invalid value (" + b + ")"); }
     shiftStamp.put((byte) (b >> 24));
     shiftStamp.put((byte) (b >> 16));
     shiftStamp.put((byte) (b >> 8));
     shiftStamp.put((byte) b);
+
 
     return this;
   }

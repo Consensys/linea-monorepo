@@ -15,12 +15,14 @@
 
 package net.consensys.linea.zktracer.module.blockhash;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
 /**
@@ -60,26 +62,26 @@ public class Trace {
   private final MappedByteBuffer relBlock;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("blockhash.ABS_BLOCK", 6, length));
-    headers.add(new ColumnHeader("blockhash.BLOCKHASH_ARG_HI_xor_EXO_ARG_1_HI", 16, length));
-    headers.add(new ColumnHeader("blockhash.BLOCKHASH_ARG_LO_xor_EXO_ARG_1_LO", 16, length));
-    headers.add(new ColumnHeader("blockhash.BLOCKHASH_RES_HI_xor_EXO_ARG_2_HI", 16, length));
-    headers.add(new ColumnHeader("blockhash.BLOCKHASH_RES_LO_xor_EXO_ARG_2_LO", 16, length));
-    headers.add(new ColumnHeader("blockhash.BLOCKHASH_VAL_HI", 16, length));
-    headers.add(new ColumnHeader("blockhash.BLOCKHASH_VAL_LO", 16, length));
-    headers.add(new ColumnHeader("blockhash.CT", 1, length));
-    headers.add(new ColumnHeader("blockhash.CT_MAX", 1, length));
-    headers.add(new ColumnHeader("blockhash.EXO_INST", 1, length));
-    headers.add(new ColumnHeader("blockhash.EXO_RES", 1, length));
-    headers.add(new ColumnHeader("blockhash.IOMF", 1, length));
-    headers.add(new ColumnHeader("blockhash.MACRO", 1, length));
-    headers.add(new ColumnHeader("blockhash.PRPRC", 1, length));
-    headers.add(new ColumnHeader("blockhash.REL_BLOCK", 2, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("blockhash.ABS_BLOCK", 6, length));
+      headers.add(new ColumnHeader("blockhash.BLOCKHASH_ARG_HI_xor_EXO_ARG_1_HI", 16, length));
+      headers.add(new ColumnHeader("blockhash.BLOCKHASH_ARG_LO_xor_EXO_ARG_1_LO", 16, length));
+      headers.add(new ColumnHeader("blockhash.BLOCKHASH_RES_HI_xor_EXO_ARG_2_HI", 16, length));
+      headers.add(new ColumnHeader("blockhash.BLOCKHASH_RES_LO_xor_EXO_ARG_2_LO", 16, length));
+      headers.add(new ColumnHeader("blockhash.BLOCKHASH_VAL_HI", 16, length));
+      headers.add(new ColumnHeader("blockhash.BLOCKHASH_VAL_LO", 16, length));
+      headers.add(new ColumnHeader("blockhash.CT", 1, length));
+      headers.add(new ColumnHeader("blockhash.CT_MAX", 1, length));
+      headers.add(new ColumnHeader("blockhash.EXO_INST", 1, length));
+      headers.add(new ColumnHeader("blockhash.EXO_RES", 1, length));
+      headers.add(new ColumnHeader("blockhash.IOMF", 1, length));
+      headers.add(new ColumnHeader("blockhash.MACRO", 1, length));
+      headers.add(new ColumnHeader("blockhash.PRPRC", 1, length));
+      headers.add(new ColumnHeader("blockhash.REL_BLOCK", 2, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.absBlock = buffers.get(0);
     this.blockhashArgHiXorExoArg1Hi = buffers.get(1);
     this.blockhashArgLoXorExoArg1Lo = buffers.get(2);
@@ -112,10 +114,9 @@ public class Trace {
       filled.set(0);
     }
 
-    if (b >= 256L) {
-      throw new IllegalArgumentException("blockhash.CT has invalid value (" + b + ")");
-    }
+    if(b >= 256L) { throw new IllegalArgumentException("blockhash.CT has invalid value (" + b + ")"); }
     ct.put((byte) b);
+
 
     return this;
   }
@@ -127,10 +128,9 @@ public class Trace {
       filled.set(1);
     }
 
-    if (b >= 256L) {
-      throw new IllegalArgumentException("blockhash.CT_MAX has invalid value (" + b + ")");
-    }
+    if(b >= 256L) { throw new IllegalArgumentException("blockhash.CT_MAX has invalid value (" + b + ")"); }
     ctMax.put((byte) b);
+
 
     return this;
   }
@@ -166,15 +166,14 @@ public class Trace {
       filled.set(8);
     }
 
-    if (b >= 281474976710656L) {
-      throw new IllegalArgumentException("blockhash.macro/ABS_BLOCK has invalid value (" + b + ")");
-    }
+    if(b >= 281474976710656L) { throw new IllegalArgumentException("blockhash.macro/ABS_BLOCK has invalid value (" + b + ")"); }
     absBlock.put((byte) (b >> 40));
     absBlock.put((byte) (b >> 32));
     absBlock.put((byte) (b >> 24));
     absBlock.put((byte) (b >> 16));
     absBlock.put((byte) (b >> 8));
     absBlock.put((byte) b);
+
 
     return this;
   }
@@ -189,18 +188,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blockhash.macro/BLOCKHASH_ARG_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blockhash.macro/BLOCKHASH_ARG_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      blockhashArgHiXorExoArg1Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { blockhashArgHiXorExoArg1Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      blockhashArgHiXorExoArg1Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { blockhashArgHiXorExoArg1Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -215,18 +207,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blockhash.macro/BLOCKHASH_ARG_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blockhash.macro/BLOCKHASH_ARG_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      blockhashArgLoXorExoArg1Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { blockhashArgLoXorExoArg1Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      blockhashArgLoXorExoArg1Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { blockhashArgLoXorExoArg1Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -241,18 +226,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blockhash.macro/BLOCKHASH_RES_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blockhash.macro/BLOCKHASH_RES_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      blockhashResHiXorExoArg2Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { blockhashResHiXorExoArg2Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      blockhashResHiXorExoArg2Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { blockhashResHiXorExoArg2Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -267,18 +245,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blockhash.macro/BLOCKHASH_RES_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blockhash.macro/BLOCKHASH_RES_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      blockhashResLoXorExoArg2Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { blockhashResLoXorExoArg2Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      blockhashResLoXorExoArg2Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { blockhashResLoXorExoArg2Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -293,18 +264,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blockhash.macro/BLOCKHASH_VAL_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blockhash.macro/BLOCKHASH_VAL_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      blockhashValHi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { blockhashValHi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      blockhashValHi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { blockhashValHi.put(bs.get(j)); }
 
     return this;
   }
@@ -319,18 +283,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blockhash.macro/BLOCKHASH_VAL_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blockhash.macro/BLOCKHASH_VAL_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      blockhashValLo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { blockhashValLo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      blockhashValLo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { blockhashValLo.put(bs.get(j)); }
 
     return this;
   }
@@ -342,11 +299,10 @@ public class Trace {
       filled.set(7);
     }
 
-    if (b >= 65536L) {
-      throw new IllegalArgumentException("blockhash.macro/REL_BLOCK has invalid value (" + b + ")");
-    }
+    if(b >= 65536L) { throw new IllegalArgumentException("blockhash.macro/REL_BLOCK has invalid value (" + b + ")"); }
     relBlock.put((byte) (b >> 8));
     relBlock.put((byte) b);
+
 
     return this;
   }
@@ -361,18 +317,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blockhash.preprocessing/EXO_ARG_1_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blockhash.preprocessing/EXO_ARG_1_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      blockhashArgHiXorExoArg1Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { blockhashArgHiXorExoArg1Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      blockhashArgHiXorExoArg1Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { blockhashArgHiXorExoArg1Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -387,18 +336,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blockhash.preprocessing/EXO_ARG_1_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blockhash.preprocessing/EXO_ARG_1_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      blockhashArgLoXorExoArg1Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { blockhashArgLoXorExoArg1Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      blockhashArgLoXorExoArg1Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { blockhashArgLoXorExoArg1Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -413,18 +355,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blockhash.preprocessing/EXO_ARG_2_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blockhash.preprocessing/EXO_ARG_2_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      blockhashResHiXorExoArg2Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { blockhashResHiXorExoArg2Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      blockhashResHiXorExoArg2Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { blockhashResHiXorExoArg2Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -439,18 +374,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blockhash.preprocessing/EXO_ARG_2_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blockhash.preprocessing/EXO_ARG_2_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      blockhashResLoXorExoArg2Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { blockhashResLoXorExoArg2Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      blockhashResLoXorExoArg2Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { blockhashResLoXorExoArg2Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -462,11 +390,9 @@ public class Trace {
       filled.set(6);
     }
 
-    if (b >= 256L) {
-      throw new IllegalArgumentException(
-          "blockhash.preprocessing/EXO_INST has invalid value (" + b + ")");
-    }
+    if(b >= 256L) { throw new IllegalArgumentException("blockhash.preprocessing/EXO_INST has invalid value (" + b + ")"); }
     exoInst.put((byte) b);
+
 
     return this;
   }
@@ -501,23 +427,19 @@ public class Trace {
     }
 
     if (!filled.get(9)) {
-      throw new IllegalStateException(
-          "blockhash.BLOCKHASH_ARG_HI_xor_EXO_ARG_1_HI has not been filled");
+      throw new IllegalStateException("blockhash.BLOCKHASH_ARG_HI_xor_EXO_ARG_1_HI has not been filled");
     }
 
     if (!filled.get(10)) {
-      throw new IllegalStateException(
-          "blockhash.BLOCKHASH_ARG_LO_xor_EXO_ARG_1_LO has not been filled");
+      throw new IllegalStateException("blockhash.BLOCKHASH_ARG_LO_xor_EXO_ARG_1_LO has not been filled");
     }
 
     if (!filled.get(11)) {
-      throw new IllegalStateException(
-          "blockhash.BLOCKHASH_RES_HI_xor_EXO_ARG_2_HI has not been filled");
+      throw new IllegalStateException("blockhash.BLOCKHASH_RES_HI_xor_EXO_ARG_2_HI has not been filled");
     }
 
     if (!filled.get(12)) {
-      throw new IllegalStateException(
-          "blockhash.BLOCKHASH_RES_LO_xor_EXO_ARG_2_LO has not been filled");
+      throw new IllegalStateException("blockhash.BLOCKHASH_RES_LO_xor_EXO_ARG_2_LO has not been filled");
     }
 
     if (!filled.get(13)) {

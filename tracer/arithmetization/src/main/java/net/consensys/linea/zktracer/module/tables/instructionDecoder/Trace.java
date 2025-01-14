@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -82,56 +83,56 @@ public class Trace {
   private final MappedByteBuffer twoLineInstruction;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("instdecoder.ALPHA", 1, length));
-    headers.add(new ColumnHeader("instdecoder.BILLING_PER_BYTE", 1, length));
-    headers.add(new ColumnHeader("instdecoder.BILLING_PER_WORD", 1, length));
-    headers.add(new ColumnHeader("instdecoder.DELTA", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_ACCOUNT", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_ADD", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_BATCH", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_BIN", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_CALL", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_CONTEXT", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_COPY", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_CREATE", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_DUP", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_EXT", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_HALT", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_INVALID", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_JUMP", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_KEC", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_LOG", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_MACHINE_STATE", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_MOD", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_MUL", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_PUSH_POP", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_SHF", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_STACK_RAM", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_STORAGE", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_SWAP", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_TRANSACTION", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FAMILY_WCP", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FLAG_1", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FLAG_2", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FLAG_3", 1, length));
-    headers.add(new ColumnHeader("instdecoder.FLAG_4", 1, length));
-    headers.add(new ColumnHeader("instdecoder.IS_JUMPDEST", 1, length));
-    headers.add(new ColumnHeader("instdecoder.IS_PUSH", 1, length));
-    headers.add(new ColumnHeader("instdecoder.MXP_FLAG", 1, length));
-    headers.add(new ColumnHeader("instdecoder.MXP_TYPE_1", 1, length));
-    headers.add(new ColumnHeader("instdecoder.MXP_TYPE_2", 1, length));
-    headers.add(new ColumnHeader("instdecoder.MXP_TYPE_3", 1, length));
-    headers.add(new ColumnHeader("instdecoder.MXP_TYPE_4", 1, length));
-    headers.add(new ColumnHeader("instdecoder.MXP_TYPE_5", 1, length));
-    headers.add(new ColumnHeader("instdecoder.OPCODE", 32, length));
-    headers.add(new ColumnHeader("instdecoder.STATIC_FLAG", 1, length));
-    headers.add(new ColumnHeader("instdecoder.STATIC_GAS", 4, length));
-    headers.add(new ColumnHeader("instdecoder.TWO_LINE_INSTRUCTION", 1, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("instdecoder.ALPHA", 1, length));
+      headers.add(new ColumnHeader("instdecoder.BILLING_PER_BYTE", 1, length));
+      headers.add(new ColumnHeader("instdecoder.BILLING_PER_WORD", 1, length));
+      headers.add(new ColumnHeader("instdecoder.DELTA", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_ACCOUNT", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_ADD", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_BATCH", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_BIN", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_CALL", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_CONTEXT", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_COPY", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_CREATE", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_DUP", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_EXT", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_HALT", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_INVALID", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_JUMP", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_KEC", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_LOG", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_MACHINE_STATE", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_MOD", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_MUL", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_PUSH_POP", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_SHF", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_STACK_RAM", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_STORAGE", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_SWAP", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_TRANSACTION", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FAMILY_WCP", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FLAG_1", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FLAG_2", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FLAG_3", 1, length));
+      headers.add(new ColumnHeader("instdecoder.FLAG_4", 1, length));
+      headers.add(new ColumnHeader("instdecoder.IS_JUMPDEST", 1, length));
+      headers.add(new ColumnHeader("instdecoder.IS_PUSH", 1, length));
+      headers.add(new ColumnHeader("instdecoder.MXP_FLAG", 1, length));
+      headers.add(new ColumnHeader("instdecoder.MXP_TYPE_1", 1, length));
+      headers.add(new ColumnHeader("instdecoder.MXP_TYPE_2", 1, length));
+      headers.add(new ColumnHeader("instdecoder.MXP_TYPE_3", 1, length));
+      headers.add(new ColumnHeader("instdecoder.MXP_TYPE_4", 1, length));
+      headers.add(new ColumnHeader("instdecoder.MXP_TYPE_5", 1, length));
+      headers.add(new ColumnHeader("instdecoder.OPCODE", 32, length));
+      headers.add(new ColumnHeader("instdecoder.STATIC_FLAG", 1, length));
+      headers.add(new ColumnHeader("instdecoder.STATIC_GAS", 4, length));
+      headers.add(new ColumnHeader("instdecoder.TWO_LINE_INSTRUCTION", 1, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.alpha = buffers.get(0);
     this.billingPerByte = buffers.get(1);
     this.billingPerWord = buffers.get(2);
@@ -689,18 +690,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 256) {
-      throw new IllegalArgumentException(
-          "instdecoder.OPCODE has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 256) { throw new IllegalArgumentException("instdecoder.OPCODE has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 32; i++) {
-      opcode.put((byte) 0);
-    }
+    for(int i=bs.size(); i<32; i++) { opcode.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      opcode.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { opcode.put(bs.get(j)); }
 
     return this;
   }
@@ -724,13 +718,12 @@ public class Trace {
       filled.set(43);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("instdecoder.STATIC_GAS has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("instdecoder.STATIC_GAS has invalid value (" + b + ")"); }
     staticGas.put((byte) (b >> 24));
     staticGas.put((byte) (b >> 16));
     staticGas.put((byte) (b >> 8));
     staticGas.put((byte) b);
+
 
     return this;
   }

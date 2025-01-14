@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -58,24 +59,24 @@ public class Trace {
   private final MappedByteBuffer stamp;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("blake2fmodexpdata.ID", 4, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.INDEX", 1, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.INDEX_MAX", 1, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.IS_BLAKE_DATA", 1, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.IS_BLAKE_PARAMS", 1, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.IS_BLAKE_RESULT", 1, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.IS_MODEXP_BASE", 1, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.IS_MODEXP_EXPONENT", 1, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.IS_MODEXP_MODULUS", 1, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.IS_MODEXP_RESULT", 1, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.LIMB", 16, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.PHASE", 1, length));
-    headers.add(new ColumnHeader("blake2fmodexpdata.STAMP", 2, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("blake2fmodexpdata.ID", 4, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.INDEX", 1, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.INDEX_MAX", 1, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.IS_BLAKE_DATA", 1, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.IS_BLAKE_PARAMS", 1, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.IS_BLAKE_RESULT", 1, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.IS_MODEXP_BASE", 1, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.IS_MODEXP_EXPONENT", 1, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.IS_MODEXP_MODULUS", 1, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.IS_MODEXP_RESULT", 1, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.LIMB", 16, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.PHASE", 1, length));
+      headers.add(new ColumnHeader("blake2fmodexpdata.STAMP", 2, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.id = buffers.get(0);
     this.index = buffers.get(1);
     this.indexMax = buffers.get(2);
@@ -106,13 +107,12 @@ public class Trace {
       filled.set(0);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("blake2fmodexpdata.ID has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("blake2fmodexpdata.ID has invalid value (" + b + ")"); }
     id.put((byte) (b >> 24));
     id.put((byte) (b >> 16));
     id.put((byte) (b >> 8));
     id.put((byte) b);
+
 
     return this;
   }
@@ -235,18 +235,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "blake2fmodexpdata.LIMB has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("blake2fmodexpdata.LIMB has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      limb.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { limb.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      limb.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { limb.put(bs.get(j)); }
 
     return this;
   }
@@ -270,11 +263,10 @@ public class Trace {
       filled.set(12);
     }
 
-    if (b >= 1024L) {
-      throw new IllegalArgumentException("blake2fmodexpdata.STAMP has invalid value (" + b + ")");
-    }
+    if(b >= 1024L) { throw new IllegalArgumentException("blake2fmodexpdata.STAMP has invalid value (" + b + ")"); }
     stamp.put((byte) (b >> 8));
     stamp.put((byte) b);
+
 
     return this;
   }

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -50,24 +51,24 @@ public class Trace {
   private final MappedByteBuffer trmAddressHi;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("trm.ACC_HI", 16, length));
-    headers.add(new ColumnHeader("trm.ACC_LO", 16, length));
-    headers.add(new ColumnHeader("trm.ACC_T", 4, length));
-    headers.add(new ColumnHeader("trm.BYTE_HI", 1, length));
-    headers.add(new ColumnHeader("trm.BYTE_LO", 1, length));
-    headers.add(new ColumnHeader("trm.CT", 1, length));
-    headers.add(new ColumnHeader("trm.IS_PRECOMPILE", 1, length));
-    headers.add(new ColumnHeader("trm.ONE", 1, length));
-    headers.add(new ColumnHeader("trm.PLATEAU_BIT", 1, length));
-    headers.add(new ColumnHeader("trm.RAW_ADDRESS_HI", 16, length));
-    headers.add(new ColumnHeader("trm.RAW_ADDRESS_LO", 16, length));
-    headers.add(new ColumnHeader("trm.STAMP", 3, length));
-    headers.add(new ColumnHeader("trm.TRM_ADDRESS_HI", 4, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("trm.ACC_HI", 16, length));
+      headers.add(new ColumnHeader("trm.ACC_LO", 16, length));
+      headers.add(new ColumnHeader("trm.ACC_T", 4, length));
+      headers.add(new ColumnHeader("trm.BYTE_HI", 1, length));
+      headers.add(new ColumnHeader("trm.BYTE_LO", 1, length));
+      headers.add(new ColumnHeader("trm.CT", 1, length));
+      headers.add(new ColumnHeader("trm.IS_PRECOMPILE", 1, length));
+      headers.add(new ColumnHeader("trm.ONE", 1, length));
+      headers.add(new ColumnHeader("trm.PLATEAU_BIT", 1, length));
+      headers.add(new ColumnHeader("trm.RAW_ADDRESS_HI", 16, length));
+      headers.add(new ColumnHeader("trm.RAW_ADDRESS_LO", 16, length));
+      headers.add(new ColumnHeader("trm.STAMP", 3, length));
+      headers.add(new ColumnHeader("trm.TRM_ADDRESS_HI", 4, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.accHi = buffers.get(0);
     this.accLo = buffers.get(1);
     this.accT = buffers.get(2);
@@ -101,18 +102,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "trm.ACC_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("trm.ACC_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      accHi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { accHi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accHi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accHi.put(bs.get(j)); }
 
     return this;
   }
@@ -127,18 +121,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "trm.ACC_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("trm.ACC_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      accLo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { accLo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      accLo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { accLo.put(bs.get(j)); }
 
     return this;
   }
@@ -150,13 +137,12 @@ public class Trace {
       filled.set(2);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("trm.ACC_T has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("trm.ACC_T has invalid value (" + b + ")"); }
     accT.put((byte) (b >> 24));
     accT.put((byte) (b >> 16));
     accT.put((byte) (b >> 8));
     accT.put((byte) b);
+
 
     return this;
   }
@@ -192,10 +178,9 @@ public class Trace {
       filled.set(5);
     }
 
-    if (b >= 16L) {
-      throw new IllegalArgumentException("trm.CT has invalid value (" + b + ")");
-    }
+    if(b >= 16L) { throw new IllegalArgumentException("trm.CT has invalid value (" + b + ")"); }
     ct.put((byte) b);
+
 
     return this;
   }
@@ -246,18 +231,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "trm.RAW_ADDRESS_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("trm.RAW_ADDRESS_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      rawAddressHi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { rawAddressHi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      rawAddressHi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { rawAddressHi.put(bs.get(j)); }
 
     return this;
   }
@@ -272,18 +250,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "trm.RAW_ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("trm.RAW_ADDRESS_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      rawAddressLo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { rawAddressLo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      rawAddressLo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { rawAddressLo.put(bs.get(j)); }
 
     return this;
   }
@@ -295,12 +266,11 @@ public class Trace {
       filled.set(11);
     }
 
-    if (b >= 16777216L) {
-      throw new IllegalArgumentException("trm.STAMP has invalid value (" + b + ")");
-    }
+    if(b >= 16777216L) { throw new IllegalArgumentException("trm.STAMP has invalid value (" + b + ")"); }
     stamp.put((byte) (b >> 16));
     stamp.put((byte) (b >> 8));
     stamp.put((byte) b);
+
 
     return this;
   }
@@ -312,13 +282,12 @@ public class Trace {
       filled.set(12);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("trm.TRM_ADDRESS_HI has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("trm.TRM_ADDRESS_HI has invalid value (" + b + ")"); }
     trmAddressHi.put((byte) (b >> 24));
     trmAddressHi.put((byte) (b >> 16));
     trmAddressHi.put((byte) (b >> 8));
     trmAddressHi.put((byte) b);
+
 
     return this;
   }

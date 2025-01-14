@@ -107,5 +107,26 @@ tasks.register('binreftable', TraceFilesTask) {
 	className = "GlobalConstants"
         module = moduleName
         files = [ "${moduleName}/constants.lisp"]
+
+        doFirst {
+            // Create constants directory (corset doesn't do this for us)
+            mkdir "src/main/java/net/consensys/linea/zktracer/module/constants"
+        }
     }
 }
+
+tasks.register('buildTracer') {
+    group "Trace files generation"
+    dependsOn 'add', 'ext', 'mul', 'mod'
+    dependsOn 'hub'
+    dependsOn 'instdecoder'
+    dependsOn 'shfreftable'
+    dependsOn 'binreftable'
+    dependsOn 'bin', 'blockhash', 'euc', 'mmio', 'shf', 'wcp', 'rlptxn', 'rom', 'romlex', 'trm', 'stp', 'loginfo', 'logdata', 'gas'
+    dependsOn 'mmu', 'blake2fmodexpdata', 'blockdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata'
+    dependsOn 'txndata'
+    dependsOn 'constants'
+}
+
+// Configure default build task to require the tracer is built first.
+compileJava.dependsOn 'buildTracer'

@@ -16,7 +16,7 @@ package net.consensys.linea.zktracer.module.blockdata;
 
 import static net.consensys.linea.zktracer.MultiBlockUtils.multiBlocksTest;
 import static net.consensys.linea.zktracer.module.blockdata.NextGasLimitScenario.*;
-import static net.consensys.linea.zktracer.module.constants.Trace.*;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
 
 import java.util.ArrayList;
 import java.util.List;

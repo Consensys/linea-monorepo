@@ -27,9 +27,10 @@ version = rootProject.version
 apply from: rootProject.file("gradle/java.gradle")
 apply from: rootProject.file("gradle/dependency-management.gradle")
 apply from: rootProject.file('gradle/common-dependencies.gradle')
-apply from: rootProject.file("gradle/corset.gradle")
-apply from: rootProject.file("gradle/tests.gradle")
-apply from: rootProject.file("gradle/build-aliases.gradle")
+//apply from: rootProject.file("gradle/corset.gradle")
+//apply from: rootProject.file("gradle/tests.gradle")
+//apply from: rootProject.file("gradle/trace-files.gradle")
+//apply from: rootProject.file("gradle/build-aliases.gradle")
 apply from: rootProject.file("gradle/check-licenses.gradle")
 apply from: rootProject.file("gradle/lint.gradle")
 
