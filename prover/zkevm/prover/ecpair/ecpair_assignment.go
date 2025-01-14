@@ -137,6 +137,13 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		limbs := processPairingData(pairingInG1, pairingInG2, inputResult)
 		instanceId := srcID[currPos]
 		// processed data has the input limbs, but we have entered the intermediate Gt accumulator values
+
+		// generic assignment. We push the static values for the current instance:
+		// - the limbs (interleaved with accumulator values)
+		// - indicator for the first row of the whole pairingcheck instance
+		// - the instance id
+		// - the index of the current limb
+		// - activeness of the submodule
 		for i := 0; i < len(limbs); i++ {
 			dstLimb.PushField(limbs[i])
 			if i == 0 {
@@ -148,15 +155,24 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			dstIndex.PushInt(i)
 			dstIsActive.PushOne()
 		}
+		// now we push the dynamic values per Miller loop. We send all valid
+		// pairs except the last to Miller loop (not Miller loop + finalexp!)
+		// circuit. Keep in mind if there is only a single valid pair then this
+		// loop is skipped.
 		for ii := range actualInputs[:len(actualInputs)-1] {
+			// first we indicate for the accumulator if it is the first one, previous or current
 			for j := 0; j < nbGtLimbs; j++ {
 				dstIsComputed.PushOne()
 				dstIsPulling.PushZero()
 				if ii == 0 {
+					// we handle first accumulator separately to be able to
+					// constrain that the initial accumulator value is correct.
 					dstIsAccInit.PushOne()
 					dstIsAccPrev.PushZero()
 					dstIsFirstPrev.PushZero()
 				} else {
+					// we're not in the first pair of points, so we indicate
+					// that the accumulator consistency needs to be checked.
 					dstIsAccInit.PushZero()
 					if j == 0 {
 						dstIsFirstPrev.PushOne()
@@ -168,6 +184,8 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 				dstIsAccCurr.PushZero()
 				dstIsFirstCurr.PushZero()
 			}
+			// now we push the dynamic values for the actual inputs to the pairing check circuit (coming from the arithmetization).
+			// essentially we only mark that this limb came directly from arithmetization.
 			for j := nbGtLimbs; j < nbGtLimbs+nbG1Limbs+nbG2Limbs; j++ {
 				dstIsPulling.PushOne()
 				dstIsComputed.PushZero()
@@ -177,6 +195,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 				dstIsFirstPrev.PushZero()
 				dstIsFirstCurr.PushZero()
 			}
+			// finally, we need to indicate that the next limbs are for the current accumulator
 			for j := nbGtLimbs + nbG1Limbs + nbG2Limbs; j < 2*nbGtLimbs+nbG1Limbs+nbG2Limbs; j++ {
 				dstIsComputed.PushOne()
 				dstIsPulling.PushZero()
@@ -190,6 +209,12 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 				}
 				dstIsAccCurr.PushOne()
 			}
+			// we also set the static values for all limbs in this pairs of points. These are:
+			// - true mark for miller loop circuit
+			// - false mark for the ML+finalexp circuit
+			// - the pair ID
+			// - the total number of pairs
+			// - false mark that current limb is for the result
 			for j := 0; j < nbG1Limbs+nbG2Limbs+2*nbGtLimbs; j++ {
 				dstToMillerLoop.PushOne()
 				dstToFinalExp.PushZero()
@@ -198,10 +223,18 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 				dstIsResult.PushZero()
 			}
 		}
+		// we need to handle the final pair of points separately. The
+		// ML+finalexp circuit does not take the current accumulator as an
+		// input, but rather the expected pairing check result.
+		//
+		// first we set the masks for the accumulator limbs.
 		for j := 0; j < nbGtLimbs; j++ {
 			dstIsComputed.PushOne()
 			dstIsPulling.PushZero()
 			dstPairId.PushInt(nbActualTotalPairs)
+			// handle separately the case when there is only one valid input
+			// pair. In this case, the first valid pair also includes the
+			// accumulator initialization.
 			if nbActualTotalPairs == 1 {
 				dstIsAccInit.PushOne()
 				dstIsAccPrev.PushZero()
@@ -211,6 +244,8 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			}
 			dstIsAccCurr.PushZero()
 			if j == 0 {
+				// handle separately the case when there is only one valid
+				// input. In this case we don't have the previous accumulator.
 				if nbActualTotalPairs == 1 {
 					dstIsFirstPrev.PushZero()
 				} else {
@@ -222,6 +257,8 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			dstIsFirstCurr.PushZero()
 			dstIsResult.PushZero()
 		}
+		// similarly for the final pair of points, we need to indicate that the
+		// G1/G2 points come directly from the arithmetization.
 		for j := nbGtLimbs; j < nbGtLimbs+nbG1Limbs+nbG2Limbs; j++ {
 			dstIsPulling.PushOne()
 			dstIsComputed.PushZero()
@@ -233,9 +270,14 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			dstIsFirstCurr.PushZero()
 			dstIsResult.PushZero()
 		}
+		// finally, we need to indicate that the result of the pairing check
+		// comes directly from the arithmetization. this is a bit explicit loop,
+		// but it's easier to understand.
 		for j := nbGtLimbs + nbG1Limbs + nbG2Limbs; j < nbGtLimbs+nbG1Limbs+nbG2Limbs+2; j++ {
 			dstIsPulling.PushOne()
 			dstIsComputed.PushZero()
+			// NB! for the result the Pair ID is 0. This is important to keep in
+			// mind as we set some constraints based on this.
 			dstPairId.PushZero()
 			dstIsAccInit.PushZero()
 			dstIsAccPrev.PushZero()
@@ -244,6 +286,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 			dstIsFirstCurr.PushZero()
 			dstIsResult.PushOne()
 		}
+		// finally we set the static masks for the final pair of points.
 		for j := 0; j < nbG1Limbs+nbG2Limbs+nbGtLimbs+2; j++ {
 			dstToFinalExp.PushOne()
 			dstToMillerLoop.PushZero()
@@ -251,6 +294,7 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		}
 		currPos += nbInputs*(nbG1Limbs+nbG2Limbs) + 2
 	}
+	// Finally, we pad and assign the assigned data.
 	dstIsActive.PadAndAssign(run, field.Zero())
 	dstLimb.PadAndAssign(run, field.Zero())
 	dstPairId.PadAndAssign(run, field.Zero())
