@@ -51,10 +51,19 @@ func TestMul(t *testing.T) {
 
 	t.Run("a-is-smaller", func(t *testing.T) {
 		var (
-			a        = vectorext.ForTest(1, 1)
-			b        = vectorext.ForTest(-1, 0, 1)
-			expected = vectorext.ForTest(-1, -1, 1, 1)
-			res      = polyext.Mul(a, b)
+			a        = vectorext.ForTestFromPairs(1, 1, -1, -2)        // (1+a)+(-1-2a)*X
+			b        = vectorext.ForTestFromPairs(-1, -2, 0, 1, 2, -2) // (-1-2a)+aX+(2-2a)X^2
+			expected = vectorext.ForTestFromPairs(
+				-2*fext.RootPowers[1]-1,
+				-3,
+				5*fext.RootPowers[1]+1,
+				5,
+				-4*fext.RootPowers[1]+2,
+				-1,
+				4*fext.RootPowers[1]-2,
+				-2,
+			) // (4a^2-2a-2)X^3+(-4a^2-a+2) X^2+(5a^2+5a+1)X-2a^2-3a-1
+			res = polyext.Mul(a, b)
 		)
 		require.Equal(t, vectorext.Prettify(expected), vectorext.Prettify(res))
 	})
