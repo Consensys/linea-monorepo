@@ -38,7 +38,11 @@ class ProofGeneratingConflationHandlerImpl(
         vertx = vertx,
         backoffDelay = config.conflationAndProofGenerationRetryInterval,
         exceptionConsumer = {
-          log.error("Conflation and proof creation flow failed batch={}", blockIntervalString, it)
+          log.info(
+            "conflation and proof creation flow failed batch={} errorMessage={}",
+            blockIntervalString,
+            it.message
+          )
         }
       ) {
         conflationToProofCreation(conflation)
