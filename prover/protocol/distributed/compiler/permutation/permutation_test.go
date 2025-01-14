@@ -130,7 +130,7 @@ func TestPermutation(t *testing.T) {
 
 					build.RegisterCommit(col.GetColID(), col.Size())
 				}
-			}, grandproduct.CompileGrandProductDist, dummy.CompileAtProverLvl)
+			}, dummy.CompileAtProverLvl)
 
 			var (
 				_ = dist_permutation.NewPermutationIntoGrandProductCtx(
@@ -139,6 +139,8 @@ func TestPermutation(t *testing.T) {
 				)
 				initialRun *wizard.ProverRuntime
 			)
+			// Compile the grand product query
+			grandproduct.CompileGrandProductDist(moduleAComp)
 
 			initialProve := func(run *wizard.ProverRuntime) {
 				for _, colName := range run.Spec.Columns.AllKeys() {
