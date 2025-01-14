@@ -63,7 +63,7 @@ tasks.register('binreftable', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp naming scheme.
 //
-['bin', 'blockhash', 'euc', 'mmio', 'shf', 'wcp', 'rlptxn', 'rom', 'romlex', 'trm', 'stp', 'loginfo', 'logdata', 'gas'].each {moduleName ->
+['bin', 'euc', 'mmio', 'shf', 'wcp', 'rlptxn', 'rom', 'romlex', 'trm', 'stp', 'loginfo', 'logdata', 'gas'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
@@ -75,7 +75,7 @@ tasks.register('binreftable', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp, MODULE/constants.lisp naming scheme.
 //
-['mmu', 'blake2fmodexpdata', 'blockdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata'].each {moduleName ->
+['mmu', 'blake2fmodexpdata', 'blockdata', 'blockhash', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists

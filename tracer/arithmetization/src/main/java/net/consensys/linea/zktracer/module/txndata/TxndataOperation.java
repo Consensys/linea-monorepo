@@ -54,6 +54,7 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.TransactionType;
 
 public class TxndataOperation extends ModuleOperation {
@@ -61,6 +62,7 @@ public class TxndataOperation extends ModuleOperation {
   private final Wcp wcp;
   private final Euc euc;
   @Getter public final TransactionProcessingMetadata tx;
+  private final Address coinbaseAddress;
 
   private static final Bytes EIP_2681_MAX_NONCE = Bytes.minimalBytes(EIP2681_MAX_NONCE);
   private static final int N_ROWS_TX_MAX =
@@ -77,6 +79,7 @@ public class TxndataOperation extends ModuleOperation {
     this.wcp = wcp;
     this.euc = euc;
     this.tx = tx;
+    this.coinbaseAddress = hub.coinbaseAddress;
 
     this.setCallsToEucAndWcp();
   }
@@ -340,8 +343,8 @@ public class TxndataOperation extends ModuleOperation {
     final Bytes gasPrice = Bytes.minimalBytes(tx.getEffectiveGasPrice());
     final Bytes priorityFeePerGas = Bytes.minimalBytes(tx.feeRateForCoinbase());
     final Bytes baseFee = block.getBaseFee().get().toMinimalBytes();
-    final long coinbaseHi = highPart(hub.coinbaseAddress);
-    final Bytes coinbaseLo = lowPart(hub.coinbaseAddress);
+    final long coinbaseHi = highPart(coinbaseAddress);
+    final Bytes coinbaseLo = lowPart(coinbaseAddress);
     final int callDataSize = tx.isDeployment() ? 0 : tx.getBesuTransaction().getPayload().size();
     final int initCodeSize = tx.isDeployment() ? tx.getBesuTransaction().getPayload().size() : 0;
     final Bytes gasLeftOver = Bytes.minimalBytes(tx.getLeftoverGas());

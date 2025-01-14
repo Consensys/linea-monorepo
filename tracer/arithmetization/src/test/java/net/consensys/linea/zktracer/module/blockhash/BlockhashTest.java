@@ -15,7 +15,13 @@
 
 package net.consensys.linea.zktracer.module.blockhash;
 
+import static net.consensys.linea.zktracer.MultiBlockUtils.multiBlocksTest;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.BLOCKHASH_MAX_HISTORY;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
@@ -29,7 +35,100 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class BlockhashTest {
 
   @Test
-  void someBlockhash() {
+  void severalBlockhash() {
+    BytecodeRunner.of(
+            BytecodeCompiler.newProgram()
+
+                // arg is NUMBER - 1
+                .push(1)
+                .op(OpCode.NUMBER)
+                .op(OpCode.SUB)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg is NUMBER
+                .op(OpCode.NUMBER)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg is NUMBER + 1
+                .op(OpCode.NUMBER)
+                .push(1)
+                .op(OpCode.ADD)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg is ridiculously big
+                .push(256)
+                .op(OpCode.NUMBER)
+                .op(OpCode.MUL)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg is NUMBER / 256 << NUMBER
+                .push(256)
+                .op(OpCode.NUMBER)
+                .op(OpCode.DIV)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg is 0 << NUMBER
+                .push(0)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg is 1 << NUMBER
+                .push(1)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg is ridiculously big
+                .push(
+                    Bytes.fromHexString(
+                        "0x123456789012345678901234567890123456789012345678901234567890ffff"))
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg of BlockHash is NUMBER - (256 + 2)
+                .push(BLOCKHASH_MAX_HISTORY + 2)
+                .op(OpCode.NUMBER)
+                .op(OpCode.SUB)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg of BlockHash is NUMBER - (256 + 1)
+                .push(BLOCKHASH_MAX_HISTORY + 1)
+                .op(OpCode.NUMBER)
+                .op(OpCode.SUB)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg of BlockHash is NUMBER - 256
+                .push(BLOCKHASH_MAX_HISTORY)
+                .op(OpCode.NUMBER)
+                .op(OpCode.SUB)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg of BlockHash is NUMBER - (256 - 1)
+                .push(BLOCKHASH_MAX_HISTORY - 1)
+                .op(OpCode.NUMBER)
+                .op(OpCode.SUB)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+
+                // arg of BlockHash is NUMBER - (256 - 2)
+                .push(BLOCKHASH_MAX_HISTORY - 2)
+                .op(OpCode.NUMBER)
+                .op(OpCode.SUB)
+                .op(OpCode.BLOCKHASH)
+                .op(OpCode.POP)
+                .compile())
+        .run();
+  }
+
+  @Test
+  void singleBlockhash() {
     BytecodeRunner.of(
             BytecodeCompiler.newProgram()
 
@@ -39,109 +138,70 @@ public class BlockhashTest {
                 .op(OpCode.ADD)
                 .op(OpCode.BLOCKHASH)
                 .op(OpCode.POP)
-
-                // arg of BlockHash is Blocknumber
-                .op(OpCode.NUMBER)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is ridiculously big
-                .push(256)
-                .op(OpCode.NUMBER)
-                .op(OpCode.MUL)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is ridiculously small
-                .push(256)
-                .op(OpCode.NUMBER)
-                .op(OpCode.DIV)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is 0
-                .push(0)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is 1 (ie ridiculously small)
-                .push(1)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // another arg of BlockHash is ridiculously big
-                .push(
-                    Bytes.fromHexString(
-                        "0x123456789012345678901234567890123456789012345678901234567890"))
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is Blocknumber -256 -2
-                .push(BLOCKHASH_MAX_HISTORY + 2)
-                .op(OpCode.NUMBER)
-                .op(OpCode.SUB)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is Blocknumber -256 -1
-                .push(BLOCKHASH_MAX_HISTORY + 1)
-                .op(OpCode.NUMBER)
-                .op(OpCode.SUB)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is Blocknumber -256
-                .push(BLOCKHASH_MAX_HISTORY)
-                .op(OpCode.NUMBER)
-                .op(OpCode.SUB)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is Blocknumber -256 +1
-                .push(BLOCKHASH_MAX_HISTORY - 1)
-                .op(OpCode.NUMBER)
-                .op(OpCode.SUB)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is Blocknumber -256 +2
-                .push(BLOCKHASH_MAX_HISTORY - 2)
-                .op(OpCode.NUMBER)
-                .op(OpCode.SUB)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is Blocknumber  -1
-                .push(1)
-                .op(OpCode.NUMBER)
-                .op(OpCode.ADD)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // Duplicate of arg of BlockHash is Blocknumber  -1
-                .push(1)
-                .op(OpCode.NUMBER)
-                .op(OpCode.ADD)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // Truplicate of arg of BlockHash is Blocknumber  -1
-                .push(1)
-                .op(OpCode.NUMBER)
-                .op(OpCode.ADD)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // arg of BlockHash is Blocknumber  -2
-                .push(2)
-                .op(OpCode.NUMBER)
-                .op(OpCode.ADD)
-                .op(OpCode.BLOCKHASH)
-                .op(OpCode.POP)
-
-                // TODO: add test with different block in the conflated batch
-
                 .compile())
         .run();
+  }
+
+  @Test
+  void blockhashArgumentUpperRangeCheckMultiBlockTest() {
+    // Block 1
+    Bytes program1 = BytecodeCompiler.newProgram().op(OpCode.NUMBER).op(OpCode.BLOCKHASH).compile();
+
+    // Block 2
+    Bytes program2 =
+        BytecodeCompiler.newProgram()
+            .push(1)
+            .op(OpCode.NUMBER)
+            .op(OpCode.SUB)
+            .op(OpCode.BLOCKHASH)
+            .compile();
+
+    multiBlocksTest(List.of(program1, program2));
+  }
+
+  @Test
+  void blockhashArgumentLowerRangeCheckMultiBlockTest() {
+    Bytes fillerProgram = BytecodeCompiler.newProgram().op(OpCode.COINBASE).compile();
+
+    Bytes program0 =
+        BytecodeCompiler.newProgram()
+            .push(1)
+            .op(OpCode.NUMBER)
+            .op(OpCode.SUB)
+            .op(OpCode.BLOCKHASH)
+            .compile();
+
+    // Block no longer available
+    // Block 1
+    Bytes program1 =
+        BytecodeCompiler.newProgram()
+            .push(256)
+            .op(OpCode.NUMBER)
+            .op(OpCode.SUB)
+            .op(OpCode.BLOCKHASH)
+            .compile();
+
+    // Block 2
+    Bytes program2 =
+        BytecodeCompiler.newProgram()
+            .push(257)
+            .op(OpCode.NUMBER)
+            .op(OpCode.SUB)
+            .op(OpCode.BLOCKHASH)
+            .compile();
+
+    Bytes program3 =
+        BytecodeCompiler.newProgram()
+            .push(16)
+            .op(OpCode.NUMBER)
+            .op(OpCode.SUB)
+            .op(OpCode.BLOCKHASH)
+            .compile();
+
+    multiBlocksTest(
+        Stream.concat(
+                Collections.nCopies(256, fillerProgram).stream(),
+                List.of(program0, program1, program2, program3).stream())
+            .collect(Collectors.toList()));
   }
 }

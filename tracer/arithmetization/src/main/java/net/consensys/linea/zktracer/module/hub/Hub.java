@@ -743,9 +743,12 @@ public class Hub implements Module {
       this.unlatchStack(frame, currentSection);
     }
 
-    if (frame.getDepth() == 0 && (isExceptional() || opCode() == REVERT)) {
+    if (frame.getDepth() == 0 && (isExceptional() || opCode().isHalt())) {
       this.state.setProcessingPhase(TX_FINL);
       coinbaseWarmthAtTransactionEnd = frame.isAddressWarm(coinbaseAddress);
+    }
+
+    if (frame.getDepth() == 0 && (isExceptional() || opCode() == REVERT)) {
       new TxFinalizationSection(this, frame.getWorldUpdater(), true);
     }
   }

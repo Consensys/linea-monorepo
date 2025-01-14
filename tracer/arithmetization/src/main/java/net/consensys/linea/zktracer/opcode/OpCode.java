@@ -237,6 +237,10 @@ public enum OpCode {
     return getData().isCall();
   }
 
+  public boolean isHalt() {
+    return getData().isHalt();
+  }
+
   public boolean isCallOrCreate() {
     return isCall() || isCreate();
   }
