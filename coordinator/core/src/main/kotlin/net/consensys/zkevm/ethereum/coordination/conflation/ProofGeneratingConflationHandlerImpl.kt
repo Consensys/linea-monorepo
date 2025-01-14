@@ -38,7 +38,8 @@ class ProofGeneratingConflationHandlerImpl(
         vertx = vertx,
         backoffDelay = config.conflationAndProofGenerationRetryInterval,
         exceptionConsumer = {
-          log.info(
+          // log failure as warning, but keeps on retrying...
+          log.warn(
             "conflation and proof creation flow failed batch={} errorMessage={}",
             blockIntervalString,
             it.message
