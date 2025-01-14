@@ -72,7 +72,7 @@ jobs:
         run: mv ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests.json ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests-input.json
 
       - name: Run reference blockchain tests
-        run: GOMEMLIMIT=32GiB ./gradlew referenceBlockchainTests -x spotlessCheck --tests "${{ inputs.test_filter }}"
+        run: GOMEMLIMIT=32GiB ./gradlew referenceBlockchainTests -x spotlessCheck --tests "${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}"
         timeout-minutes: 360
         env:
           REFERENCE_TESTS_PARALLELISM: 2
