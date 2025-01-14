@@ -1,6 +1,7 @@
 package ringsis
 
 import (
+	"runtime"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
@@ -10,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 )
 
 // TransversalHash evaluates SIS hashes transversally over a list of smart-vectors.
@@ -128,10 +130,33 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 		constLock.Unlock()
 	})
 
-	// Now we take care of the non-constant rows and iterate over the columns
-	parallel.Execute(nbCols, func(colStart, colEnd int) {
+	nbCpus := runtime.NumCPU()
+
+	nbColPerTile := 16
+	nbJobs := utils.DivCeil(nbCols, nbColPerTile)
+
+	if nbCols < nbCpus {
+		nbJobs = nbCols
+		nbColPerTile = 1
+	}
+
+	for nbJobs < nbCpus && nbColPerTile > 1 {
+		nbColPerTile--
+		nbJobs = utils.DivCeil(nbCols, nbColPerTile)
+	}
+
+	pool.ExecutePoolChunky(nbJobs, func(jobID int) {
+		startCol := jobID * nbColPerTile
+		stopCol := startCol + nbColPerTile
+		stopCol = min(stopCol, nbCols)
+
 		// each go routine will iterate over a range of columns; we will hash the columns in parallel
 		// and accumulate the result in res (no conflict since each go routine writes to a different range of res)
+
+		// init res with const poly
+		for colID := startCol; colID < stopCol; colID++ {
+			copy(res[colID*N:(colID+1)*N], constPoly)
+		}
 
 		itM := s.newMatrixIterator(v)
 		k := make([]field.Element, N)
@@ -146,22 +171,19 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 			}
 
 			stopRow := startRow + nbFieldPerPoly
-			if stopRow > len(v) {
-				stopRow = len(v)
-			}
+			stopRow = min(stopRow, len(v))
 
 			// hash the subcolumns.
-			for colID := colStart; colID < colEnd; colID++ {
+			for colID := startCol; colID < stopCol; colID++ {
 				itM.reset(startRow, stopRow, colID, false)
 				s.gnarkInternal.InnerHash(itM.lit, res[colID*N:colID*N+N], k, kz, polID, masks[polID])
 			}
+
 		}
 
-		// add the const poly to the columns handled by this worker
-		for colID := colStart; colID < colEnd; colID++ {
-			vRes := field.Vector(res[colID*N : (colID+1)*N])
-			vRes.Add(vRes, constPoly)
-			s.gnarkInternal.Domain.FFTInverse(vRes, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+		// mod X^n - 1
+		for colID := startCol; colID < stopCol; colID++ {
+			s.gnarkInternal.Domain.FFTInverse(res[colID*N:(colID+1)*N], fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
 		}
 
 	})
