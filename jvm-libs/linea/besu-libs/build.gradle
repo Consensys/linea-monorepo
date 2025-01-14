@@ -38,10 +38,10 @@ dependencies {
     transitive = false
   }
 
-  implementation("org.bouncycastle:bcpkix-jdk18on:1.79") {
+  implementation("org.bouncycastle:bcpkix-jdk18on:${libs.versions.bouncycastle.get()}") {
     because "necessary for besu Transaction object that verifies signatures"
   }
-  implementation("org.bouncycastle:bcprov-jdk18on:1.79") {
+  implementation("org.bouncycastle:bcprov-jdk18on:${libs.versions.bouncycastle.get()}") {
     because "necessary for besu Transaction object that verifies signatures"
   }
 }
