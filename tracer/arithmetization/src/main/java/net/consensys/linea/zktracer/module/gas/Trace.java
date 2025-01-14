@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.gas;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -49,23 +50,23 @@ public class Trace {
   private final MappedByteBuffer wcpRes;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("gas.CT", 1, length));
-    headers.add(new ColumnHeader("gas.CT_MAX", 1, length));
-    headers.add(new ColumnHeader("gas.EXCEPTIONS_AHOY", 1, length));
-    headers.add(new ColumnHeader("gas.FIRST", 1, length));
-    headers.add(new ColumnHeader("gas.GAS_ACTUAL", 8, length));
-    headers.add(new ColumnHeader("gas.GAS_COST", 8, length));
-    headers.add(new ColumnHeader("gas.INPUTS_AND_OUTPUTS_ARE_MEANINGFUL", 1, length));
-    headers.add(new ColumnHeader("gas.OUT_OF_GAS_EXCEPTION", 1, length));
-    headers.add(new ColumnHeader("gas.WCP_ARG1_LO", 16, length));
-    headers.add(new ColumnHeader("gas.WCP_ARG2_LO", 16, length));
-    headers.add(new ColumnHeader("gas.WCP_INST", 1, length));
-    headers.add(new ColumnHeader("gas.WCP_RES", 1, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("gas.CT", 1, length));
+      headers.add(new ColumnHeader("gas.CT_MAX", 1, length));
+      headers.add(new ColumnHeader("gas.EXCEPTIONS_AHOY", 1, length));
+      headers.add(new ColumnHeader("gas.FIRST", 1, length));
+      headers.add(new ColumnHeader("gas.GAS_ACTUAL", 8, length));
+      headers.add(new ColumnHeader("gas.GAS_COST", 8, length));
+      headers.add(new ColumnHeader("gas.INPUTS_AND_OUTPUTS_ARE_MEANINGFUL", 1, length));
+      headers.add(new ColumnHeader("gas.OUT_OF_GAS_EXCEPTION", 1, length));
+      headers.add(new ColumnHeader("gas.WCP_ARG1_LO", 16, length));
+      headers.add(new ColumnHeader("gas.WCP_ARG2_LO", 16, length));
+      headers.add(new ColumnHeader("gas.WCP_INST", 1, length));
+      headers.add(new ColumnHeader("gas.WCP_RES", 1, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.ct = buffers.get(0);
     this.ctMax = buffers.get(1);
     this.exceptionsAhoy = buffers.get(2);
@@ -95,10 +96,9 @@ public class Trace {
       filled.set(0);
     }
 
-    if (b >= 8L) {
-      throw new IllegalArgumentException("gas.CT has invalid value (" + b + ")");
-    }
+    if(b >= 8L) { throw new IllegalArgumentException("gas.CT has invalid value (" + b + ")"); }
     ct.put((byte) b);
+
 
     return this;
   }
@@ -110,10 +110,9 @@ public class Trace {
       filled.set(1);
     }
 
-    if (b >= 8L) {
-      throw new IllegalArgumentException("gas.CT_MAX has invalid value (" + b + ")");
-    }
+    if(b >= 8L) { throw new IllegalArgumentException("gas.CT_MAX has invalid value (" + b + ")"); }
     ctMax.put((byte) b);
+
 
     return this;
   }
@@ -152,18 +151,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "gas.GAS_ACTUAL has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("gas.GAS_ACTUAL has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      gasActual.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { gasActual.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      gasActual.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { gasActual.put(bs.get(j)); }
 
     return this;
   }
@@ -178,18 +170,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "gas.GAS_COST has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("gas.GAS_COST has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      gasCost.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { gasCost.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      gasCost.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { gasCost.put(bs.get(j)); }
 
     return this;
   }
@@ -228,18 +213,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "gas.WCP_ARG1_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("gas.WCP_ARG1_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      wcpArg1Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { wcpArg1Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      wcpArg1Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { wcpArg1Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -254,18 +232,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "gas.WCP_ARG2_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("gas.WCP_ARG2_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      wcpArg2Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { wcpArg2Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      wcpArg2Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { wcpArg2Lo.put(bs.get(j)); }
 
     return this;
   }

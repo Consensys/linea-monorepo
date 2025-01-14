@@ -49,12 +49,9 @@ public class Trace {
   public static final int INDEX_MAX_ECRECOVER_RESULT = 0x1;
   public static final int MULMOD = 0x9;
   public static final BigInteger P_BN_HI = new BigInteger("64323764613183177041862057485226039389");
-  public static final BigInteger P_BN_LO =
-      new BigInteger("201385395114098847380338600778089168199");
-  public static final BigInteger SECP256K1N_HI =
-      new BigInteger("340282366920938463463374607431768211455");
-  public static final BigInteger SECP256K1N_LO =
-      new BigInteger("340282366920938463463374607427473243183");
+  public static final BigInteger P_BN_LO = new BigInteger("201385395114098847380338600778089168199");
+  public static final BigInteger SECP256K1N_HI = new BigInteger("340282366920938463463374607431768211455");
+  public static final BigInteger SECP256K1N_LO = new BigInteger("340282366920938463463374607427473243183");
   public static final int TOTAL_SIZE_ECADD_DATA = 0x80;
   public static final int TOTAL_SIZE_ECADD_RESULT = 0x40;
   public static final int TOTAL_SIZE_ECMUL_DATA = 0x60;
@@ -123,66 +120,65 @@ public class Trace {
   private final MappedByteBuffer wcpRes;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("ecdata.ACC_PAIRINGS", 2, length));
-    headers.add(
-        new ColumnHeader("ecdata.ACCEPTABLE_PAIR_OF_POINTS_FOR_PAIRING_CIRCUIT", 1, length));
-    headers.add(new ColumnHeader("ecdata.BYTE_DELTA", 1, length));
-    headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECADD", 1, length));
-    headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECMUL", 1, length));
-    headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECPAIRING", 1, length));
-    headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECRECOVER", 1, length));
-    headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_G2_MEMBERSHIP", 1, length));
-    headers.add(new ColumnHeader("ecdata.CT", 1, length));
-    headers.add(new ColumnHeader("ecdata.CT_MAX", 1, length));
-    headers.add(new ColumnHeader("ecdata.EXT_ARG1_HI", 16, length));
-    headers.add(new ColumnHeader("ecdata.EXT_ARG1_LO", 16, length));
-    headers.add(new ColumnHeader("ecdata.EXT_ARG2_HI", 16, length));
-    headers.add(new ColumnHeader("ecdata.EXT_ARG2_LO", 16, length));
-    headers.add(new ColumnHeader("ecdata.EXT_ARG3_HI", 16, length));
-    headers.add(new ColumnHeader("ecdata.EXT_ARG3_LO", 16, length));
-    headers.add(new ColumnHeader("ecdata.EXT_FLAG", 1, length));
-    headers.add(new ColumnHeader("ecdata.EXT_INST", 1, length));
-    headers.add(new ColumnHeader("ecdata.EXT_RES_HI", 16, length));
-    headers.add(new ColumnHeader("ecdata.EXT_RES_LO", 16, length));
-    headers.add(new ColumnHeader("ecdata.G2_MEMBERSHIP_TEST_REQUIRED", 1, length));
-    headers.add(new ColumnHeader("ecdata.HURDLE", 1, length));
-    headers.add(new ColumnHeader("ecdata.ID", 4, length));
-    headers.add(new ColumnHeader("ecdata.INDEX", 2, length));
-    headers.add(new ColumnHeader("ecdata.INDEX_MAX", 2, length));
-    headers.add(new ColumnHeader("ecdata.INTERNAL_CHECKS_PASSED", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_ECADD_DATA", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_ECADD_RESULT", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_ECMUL_DATA", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_ECMUL_RESULT", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_ECPAIRING_DATA", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_ECPAIRING_RESULT", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_ECRECOVER_DATA", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_ECRECOVER_RESULT", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_INFINITY", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_LARGE_POINT", 1, length));
-    headers.add(new ColumnHeader("ecdata.IS_SMALL_POINT", 1, length));
-    headers.add(new ColumnHeader("ecdata.LIMB", 16, length));
-    headers.add(new ColumnHeader("ecdata.NOT_ON_G2", 1, length));
-    headers.add(new ColumnHeader("ecdata.NOT_ON_G2_ACC", 1, length));
-    headers.add(new ColumnHeader("ecdata.NOT_ON_G2_ACC_MAX", 1, length));
-    headers.add(new ColumnHeader("ecdata.OVERALL_TRIVIAL_PAIRING", 1, length));
-    headers.add(new ColumnHeader("ecdata.PHASE", 2, length));
-    headers.add(new ColumnHeader("ecdata.STAMP", 4, length));
-    headers.add(new ColumnHeader("ecdata.SUCCESS_BIT", 1, length));
-    headers.add(new ColumnHeader("ecdata.TOTAL_PAIRINGS", 2, length));
-    headers.add(new ColumnHeader("ecdata.TOTAL_SIZE", 2, length));
-    headers.add(new ColumnHeader("ecdata.WCP_ARG1_HI", 16, length));
-    headers.add(new ColumnHeader("ecdata.WCP_ARG1_LO", 16, length));
-    headers.add(new ColumnHeader("ecdata.WCP_ARG2_HI", 16, length));
-    headers.add(new ColumnHeader("ecdata.WCP_ARG2_LO", 16, length));
-    headers.add(new ColumnHeader("ecdata.WCP_FLAG", 1, length));
-    headers.add(new ColumnHeader("ecdata.WCP_INST", 1, length));
-    headers.add(new ColumnHeader("ecdata.WCP_RES", 1, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("ecdata.ACC_PAIRINGS", 2, length));
+      headers.add(new ColumnHeader("ecdata.ACCEPTABLE_PAIR_OF_POINTS_FOR_PAIRING_CIRCUIT", 1, length));
+      headers.add(new ColumnHeader("ecdata.BYTE_DELTA", 1, length));
+      headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECADD", 1, length));
+      headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECMUL", 1, length));
+      headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECPAIRING", 1, length));
+      headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_ECRECOVER", 1, length));
+      headers.add(new ColumnHeader("ecdata.CIRCUIT_SELECTOR_G2_MEMBERSHIP", 1, length));
+      headers.add(new ColumnHeader("ecdata.CT", 1, length));
+      headers.add(new ColumnHeader("ecdata.CT_MAX", 1, length));
+      headers.add(new ColumnHeader("ecdata.EXT_ARG1_HI", 16, length));
+      headers.add(new ColumnHeader("ecdata.EXT_ARG1_LO", 16, length));
+      headers.add(new ColumnHeader("ecdata.EXT_ARG2_HI", 16, length));
+      headers.add(new ColumnHeader("ecdata.EXT_ARG2_LO", 16, length));
+      headers.add(new ColumnHeader("ecdata.EXT_ARG3_HI", 16, length));
+      headers.add(new ColumnHeader("ecdata.EXT_ARG3_LO", 16, length));
+      headers.add(new ColumnHeader("ecdata.EXT_FLAG", 1, length));
+      headers.add(new ColumnHeader("ecdata.EXT_INST", 1, length));
+      headers.add(new ColumnHeader("ecdata.EXT_RES_HI", 16, length));
+      headers.add(new ColumnHeader("ecdata.EXT_RES_LO", 16, length));
+      headers.add(new ColumnHeader("ecdata.G2_MEMBERSHIP_TEST_REQUIRED", 1, length));
+      headers.add(new ColumnHeader("ecdata.HURDLE", 1, length));
+      headers.add(new ColumnHeader("ecdata.ID", 4, length));
+      headers.add(new ColumnHeader("ecdata.INDEX", 2, length));
+      headers.add(new ColumnHeader("ecdata.INDEX_MAX", 2, length));
+      headers.add(new ColumnHeader("ecdata.INTERNAL_CHECKS_PASSED", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_ECADD_DATA", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_ECADD_RESULT", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_ECMUL_DATA", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_ECMUL_RESULT", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_ECPAIRING_DATA", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_ECPAIRING_RESULT", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_ECRECOVER_DATA", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_ECRECOVER_RESULT", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_INFINITY", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_LARGE_POINT", 1, length));
+      headers.add(new ColumnHeader("ecdata.IS_SMALL_POINT", 1, length));
+      headers.add(new ColumnHeader("ecdata.LIMB", 16, length));
+      headers.add(new ColumnHeader("ecdata.NOT_ON_G2", 1, length));
+      headers.add(new ColumnHeader("ecdata.NOT_ON_G2_ACC", 1, length));
+      headers.add(new ColumnHeader("ecdata.NOT_ON_G2_ACC_MAX", 1, length));
+      headers.add(new ColumnHeader("ecdata.OVERALL_TRIVIAL_PAIRING", 1, length));
+      headers.add(new ColumnHeader("ecdata.PHASE", 2, length));
+      headers.add(new ColumnHeader("ecdata.STAMP", 4, length));
+      headers.add(new ColumnHeader("ecdata.SUCCESS_BIT", 1, length));
+      headers.add(new ColumnHeader("ecdata.TOTAL_PAIRINGS", 2, length));
+      headers.add(new ColumnHeader("ecdata.TOTAL_SIZE", 2, length));
+      headers.add(new ColumnHeader("ecdata.WCP_ARG1_HI", 16, length));
+      headers.add(new ColumnHeader("ecdata.WCP_ARG1_LO", 16, length));
+      headers.add(new ColumnHeader("ecdata.WCP_ARG2_HI", 16, length));
+      headers.add(new ColumnHeader("ecdata.WCP_ARG2_LO", 16, length));
+      headers.add(new ColumnHeader("ecdata.WCP_FLAG", 1, length));
+      headers.add(new ColumnHeader("ecdata.WCP_INST", 1, length));
+      headers.add(new ColumnHeader("ecdata.WCP_RES", 1, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.accPairings = buffers.get(0);
     this.acceptablePairOfPointsForPairingCircuit = buffers.get(1);
     this.byteDelta = buffers.get(2);
@@ -254,19 +250,17 @@ public class Trace {
       filled.set(1);
     }
 
-    if (b >= 65536L) {
-      throw new IllegalArgumentException("ecdata.ACC_PAIRINGS has invalid value (" + b + ")");
-    }
+    if(b >= 65536L) { throw new IllegalArgumentException("ecdata.ACC_PAIRINGS has invalid value (" + b + ")"); }
     accPairings.put((byte) (b >> 8));
     accPairings.put((byte) b);
+
 
     return this;
   }
 
   public Trace acceptablePairOfPointsForPairingCircuit(final Boolean b) {
     if (filled.get(0)) {
-      throw new IllegalStateException(
-          "ecdata.ACCEPTABLE_PAIR_OF_POINTS_FOR_PAIRING_CIRCUIT already set");
+      throw new IllegalStateException("ecdata.ACCEPTABLE_PAIR_OF_POINTS_FOR_PAIRING_CIRCUIT already set");
     } else {
       filled.set(0);
     }
@@ -355,10 +349,9 @@ public class Trace {
       filled.set(8);
     }
 
-    if (b >= 8L) {
-      throw new IllegalArgumentException("ecdata.CT has invalid value (" + b + ")");
-    }
+    if(b >= 8L) { throw new IllegalArgumentException("ecdata.CT has invalid value (" + b + ")"); }
     ct.put((byte) b);
+
 
     return this;
   }
@@ -370,10 +363,9 @@ public class Trace {
       filled.set(9);
     }
 
-    if (b >= 8L) {
-      throw new IllegalArgumentException("ecdata.CT_MAX has invalid value (" + b + ")");
-    }
+    if(b >= 8L) { throw new IllegalArgumentException("ecdata.CT_MAX has invalid value (" + b + ")"); }
     ctMax.put((byte) b);
+
 
     return this;
   }
@@ -388,18 +380,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.EXT_ARG1_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.EXT_ARG1_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      extArg1Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { extArg1Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      extArg1Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { extArg1Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -414,18 +399,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.EXT_ARG1_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.EXT_ARG1_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      extArg1Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { extArg1Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      extArg1Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { extArg1Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -440,18 +418,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.EXT_ARG2_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.EXT_ARG2_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      extArg2Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { extArg2Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      extArg2Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { extArg2Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -466,18 +437,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.EXT_ARG2_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.EXT_ARG2_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      extArg2Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { extArg2Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      extArg2Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { extArg2Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -492,18 +456,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.EXT_ARG3_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.EXT_ARG3_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      extArg3Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { extArg3Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      extArg3Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { extArg3Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -518,18 +475,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.EXT_ARG3_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.EXT_ARG3_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      extArg3Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { extArg3Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      extArg3Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { extArg3Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -568,18 +518,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.EXT_RES_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.EXT_RES_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      extResHi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { extResHi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      extResHi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { extResHi.put(bs.get(j)); }
 
     return this;
   }
@@ -594,18 +537,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.EXT_RES_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.EXT_RES_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      extResLo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { extResLo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      extResLo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { extResLo.put(bs.get(j)); }
 
     return this;
   }
@@ -641,13 +577,12 @@ public class Trace {
       filled.set(22);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("ecdata.ID has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("ecdata.ID has invalid value (" + b + ")"); }
     id.put((byte) (b >> 24));
     id.put((byte) (b >> 16));
     id.put((byte) (b >> 8));
     id.put((byte) b);
+
 
     return this;
   }
@@ -659,11 +594,10 @@ public class Trace {
       filled.set(23);
     }
 
-    if (b >= 65536L) {
-      throw new IllegalArgumentException("ecdata.INDEX has invalid value (" + b + ")");
-    }
+    if(b >= 65536L) { throw new IllegalArgumentException("ecdata.INDEX has invalid value (" + b + ")"); }
     index.put((byte) (b >> 8));
     index.put((byte) b);
+
 
     return this;
   }
@@ -675,11 +609,10 @@ public class Trace {
       filled.set(24);
     }
 
-    if (b >= 65536L) {
-      throw new IllegalArgumentException("ecdata.INDEX_MAX has invalid value (" + b + ")");
-    }
+    if(b >= 65536L) { throw new IllegalArgumentException("ecdata.INDEX_MAX has invalid value (" + b + ")"); }
     indexMax.put((byte) (b >> 8));
     indexMax.put((byte) b);
+
 
     return this;
   }
@@ -838,18 +771,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.LIMB has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.LIMB has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      limb.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { limb.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      limb.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { limb.put(bs.get(j)); }
 
     return this;
   }
@@ -909,11 +835,10 @@ public class Trace {
       filled.set(42);
     }
 
-    if (b >= 65536L) {
-      throw new IllegalArgumentException("ecdata.PHASE has invalid value (" + b + ")");
-    }
+    if(b >= 65536L) { throw new IllegalArgumentException("ecdata.PHASE has invalid value (" + b + ")"); }
     phase.put((byte) (b >> 8));
     phase.put((byte) b);
+
 
     return this;
   }
@@ -925,13 +850,12 @@ public class Trace {
       filled.set(43);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("ecdata.STAMP has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("ecdata.STAMP has invalid value (" + b + ")"); }
     stamp.put((byte) (b >> 24));
     stamp.put((byte) (b >> 16));
     stamp.put((byte) (b >> 8));
     stamp.put((byte) b);
+
 
     return this;
   }
@@ -955,11 +879,10 @@ public class Trace {
       filled.set(45);
     }
 
-    if (b >= 65536L) {
-      throw new IllegalArgumentException("ecdata.TOTAL_PAIRINGS has invalid value (" + b + ")");
-    }
+    if(b >= 65536L) { throw new IllegalArgumentException("ecdata.TOTAL_PAIRINGS has invalid value (" + b + ")"); }
     totalPairings.put((byte) (b >> 8));
     totalPairings.put((byte) b);
+
 
     return this;
   }
@@ -971,11 +894,10 @@ public class Trace {
       filled.set(46);
     }
 
-    if (b >= 65536L) {
-      throw new IllegalArgumentException("ecdata.TOTAL_SIZE has invalid value (" + b + ")");
-    }
+    if(b >= 65536L) { throw new IllegalArgumentException("ecdata.TOTAL_SIZE has invalid value (" + b + ")"); }
     totalSize.put((byte) (b >> 8));
     totalSize.put((byte) b);
+
 
     return this;
   }
@@ -990,18 +912,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.WCP_ARG1_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.WCP_ARG1_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      wcpArg1Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { wcpArg1Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      wcpArg1Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { wcpArg1Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -1016,18 +931,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.WCP_ARG1_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.WCP_ARG1_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      wcpArg1Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { wcpArg1Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      wcpArg1Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { wcpArg1Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -1042,18 +950,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.WCP_ARG2_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.WCP_ARG2_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      wcpArg2Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { wcpArg2Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      wcpArg2Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { wcpArg2Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -1068,18 +969,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "ecdata.WCP_ARG2_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("ecdata.WCP_ARG2_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      wcpArg2Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { wcpArg2Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      wcpArg2Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { wcpArg2Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -1126,8 +1020,7 @@ public class Trace {
     }
 
     if (!filled.get(0)) {
-      throw new IllegalStateException(
-          "ecdata.ACCEPTABLE_PAIR_OF_POINTS_FOR_PAIRING_CIRCUIT has not been filled");
+      throw new IllegalStateException("ecdata.ACCEPTABLE_PAIR_OF_POINTS_FOR_PAIRING_CIRCUIT has not been filled");
     }
 
     if (!filled.get(2)) {
@@ -1350,8 +1243,7 @@ public class Trace {
     }
 
     if (!filled.get(0)) {
-      acceptablePairOfPointsForPairingCircuit.position(
-          acceptablePairOfPointsForPairingCircuit.position() + 1);
+      acceptablePairOfPointsForPairingCircuit.position(acceptablePairOfPointsForPairingCircuit.position() + 1);
     }
 
     if (!filled.get(2)) {

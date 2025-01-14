@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.euc;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -49,23 +50,23 @@ public class Trace {
   private final MappedByteBuffer remainderByte;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("euc.CEIL", 8, length));
-    headers.add(new ColumnHeader("euc.CT", 1, length));
-    headers.add(new ColumnHeader("euc.CT_MAX", 1, length));
-    headers.add(new ColumnHeader("euc.DIVIDEND", 8, length));
-    headers.add(new ColumnHeader("euc.DIVISOR", 8, length));
-    headers.add(new ColumnHeader("euc.DIVISOR_BYTE", 1, length));
-    headers.add(new ColumnHeader("euc.DONE", 1, length));
-    headers.add(new ColumnHeader("euc.IOMF", 1, length));
-    headers.add(new ColumnHeader("euc.QUOTIENT", 8, length));
-    headers.add(new ColumnHeader("euc.QUOTIENT_BYTE", 1, length));
-    headers.add(new ColumnHeader("euc.REMAINDER", 8, length));
-    headers.add(new ColumnHeader("euc.REMAINDER_BYTE", 1, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("euc.CEIL", 8, length));
+      headers.add(new ColumnHeader("euc.CT", 1, length));
+      headers.add(new ColumnHeader("euc.CT_MAX", 1, length));
+      headers.add(new ColumnHeader("euc.DIVIDEND", 8, length));
+      headers.add(new ColumnHeader("euc.DIVISOR", 8, length));
+      headers.add(new ColumnHeader("euc.DIVISOR_BYTE", 1, length));
+      headers.add(new ColumnHeader("euc.DONE", 1, length));
+      headers.add(new ColumnHeader("euc.IOMF", 1, length));
+      headers.add(new ColumnHeader("euc.QUOTIENT", 8, length));
+      headers.add(new ColumnHeader("euc.QUOTIENT_BYTE", 1, length));
+      headers.add(new ColumnHeader("euc.REMAINDER", 8, length));
+      headers.add(new ColumnHeader("euc.REMAINDER_BYTE", 1, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.ceil = buffers.get(0);
     this.ct = buffers.get(1);
     this.ctMax = buffers.get(2);
@@ -98,17 +99,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("euc.CEIL has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("euc.CEIL has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      ceil.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { ceil.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      ceil.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { ceil.put(bs.get(j)); }
 
     return this;
   }
@@ -120,10 +115,9 @@ public class Trace {
       filled.set(1);
     }
 
-    if (b >= 256L) {
-      throw new IllegalArgumentException("euc.CT has invalid value (" + b + ")");
-    }
+    if(b >= 256L) { throw new IllegalArgumentException("euc.CT has invalid value (" + b + ")"); }
     ct.put((byte) b);
+
 
     return this;
   }
@@ -135,10 +129,9 @@ public class Trace {
       filled.set(2);
     }
 
-    if (b >= 256L) {
-      throw new IllegalArgumentException("euc.CT_MAX has invalid value (" + b + ")");
-    }
+    if(b >= 256L) { throw new IllegalArgumentException("euc.CT_MAX has invalid value (" + b + ")"); }
     ctMax.put((byte) b);
+
 
     return this;
   }
@@ -153,18 +146,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "euc.DIVIDEND has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("euc.DIVIDEND has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      dividend.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { dividend.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      dividend.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { dividend.put(bs.get(j)); }
 
     return this;
   }
@@ -179,18 +165,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "euc.DIVISOR has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("euc.DIVISOR has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      divisor.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { divisor.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      divisor.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { divisor.put(bs.get(j)); }
 
     return this;
   }
@@ -241,18 +220,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "euc.QUOTIENT has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("euc.QUOTIENT has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      quotient.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { quotient.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      quotient.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { quotient.put(bs.get(j)); }
 
     return this;
   }
@@ -279,18 +251,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "euc.REMAINDER has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("euc.REMAINDER has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      remainder.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { remainder.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      remainder.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { remainder.put(bs.get(j)); }
 
     return this;
   }

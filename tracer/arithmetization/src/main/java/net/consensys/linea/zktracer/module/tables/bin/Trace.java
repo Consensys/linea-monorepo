@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.tables.bin;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -22,6 +23,7 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * WARNING: This code is generated automatically.
@@ -40,15 +42,15 @@ public class Trace {
   private final MappedByteBuffer resultByte;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("binreftable.INPUT_BYTE_1", 1, length));
-    headers.add(new ColumnHeader("binreftable.INPUT_BYTE_2", 1, length));
-    headers.add(new ColumnHeader("binreftable.INST", 1, length));
-    headers.add(new ColumnHeader("binreftable.RESULT_BYTE", 1, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("binreftable.INPUT_BYTE_1", 1, length));
+      headers.add(new ColumnHeader("binreftable.INPUT_BYTE_2", 1, length));
+      headers.add(new ColumnHeader("binreftable.INST", 1, length));
+      headers.add(new ColumnHeader("binreftable.RESULT_BYTE", 1, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.inputByte1 = buffers.get(0);
     this.inputByte2 = buffers.get(1);
     this.inst = buffers.get(2);

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.tables.shf;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -22,6 +23,7 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * WARNING: This code is generated automatically.
@@ -42,17 +44,17 @@ public class Trace {
   private final MappedByteBuffer rap;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("shfreftable.BYTE1", 1, length));
-    headers.add(new ColumnHeader("shfreftable.IOMF", 1, length));
-    headers.add(new ColumnHeader("shfreftable.LAS", 1, length));
-    headers.add(new ColumnHeader("shfreftable.MSHP", 1, length));
-    headers.add(new ColumnHeader("shfreftable.ONES", 1, length));
-    headers.add(new ColumnHeader("shfreftable.RAP", 1, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("shfreftable.BYTE1", 1, length));
+      headers.add(new ColumnHeader("shfreftable.IOMF", 1, length));
+      headers.add(new ColumnHeader("shfreftable.LAS", 1, length));
+      headers.add(new ColumnHeader("shfreftable.MSHP", 1, length));
+      headers.add(new ColumnHeader("shfreftable.ONES", 1, length));
+      headers.add(new ColumnHeader("shfreftable.RAP", 1, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.byte1 = buffers.get(0);
     this.iomf = buffers.get(1);
     this.las = buffers.get(2);

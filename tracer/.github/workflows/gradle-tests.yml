@@ -28,7 +28,9 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-environment
-
+        with:
+          rust-corset: true
+          
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
 

@@ -40,7 +40,8 @@ spotless {
   java {
     // This path needs to be relative to each project
     target 'src/**/*.java'
-    targetExclude '**/src/main/**/generated/**', '**/src/test/**/generated/**', '**/src/jmh/**/generated/**'
+    targetExclude '**/Trace.java', '**/GlobalConstants.java'
+        
     removeUnusedImports()
     googleJavaFormat('1.17.0')
     importOrder '\\#', 'java', 'javax', ''
@@ -81,15 +82,3 @@ task checkSpdxHeader(type: CheckSpdxHeader) {
 }
 
 tasks.check.dependsOn(checkSpdxHeader)
-
-// Enable running spotlessCheck after code compilation.
-//allprojects {
-//  afterEvaluate {
-//    def spotless = tasks.named('spotlessCheck')
-//    tasks.withType(JavaCompile).tap {
-//      configureEach {
-//        finalizedBy(spotless, checkSpdxHeader)
-//      }
-//    }
-//  }
-//}

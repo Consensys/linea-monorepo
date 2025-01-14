@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.mmu;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -138,74 +139,74 @@ public class Trace {
   private final MappedByteBuffer wcpRes;
 
   static List<ColumnHeader> headers(int length) {
-    List<ColumnHeader> headers = new ArrayList<>();
-    headers.add(new ColumnHeader("mmu.AUX_ID_xor_CN_S_xor_EUC_A", 8, length));
-    headers.add(new ColumnHeader("mmu.BIN_1", 1, length));
-    headers.add(new ColumnHeader("mmu.BIN_2", 1, length));
-    headers.add(new ColumnHeader("mmu.BIN_3", 1, length));
-    headers.add(new ColumnHeader("mmu.BIN_4", 1, length));
-    headers.add(new ColumnHeader("mmu.BIN_5", 1, length));
-    headers.add(new ColumnHeader("mmu.EXO_SUM_xor_EXO_ID", 4, length));
-    headers.add(new ColumnHeader("mmu.INST_xor_INST_xor_CT", 2, length));
-    headers.add(new ColumnHeader("mmu.IS_ANY_TO_RAM_WITH_PADDING_PURE_PADDING", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_ANY_TO_RAM_WITH_PADDING_SOME_DATA", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_BLAKE", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_EXO_TO_RAM_TRANSPLANTS", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_INVALID_CODE_PREFIX", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_MLOAD", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_MODEXP_DATA", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_MODEXP_ZERO", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_MSTORE", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_MSTORE8", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_RAM_TO_EXO_WITH_PADDING", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_RAM_TO_RAM_SANS_PADDING", 1, length));
-    headers.add(new ColumnHeader("mmu.IS_RIGHT_PADDED_WORD_EXTRACTION", 1, length));
-    headers.add(new ColumnHeader("mmu.KEC_ID", 4, length));
-    headers.add(new ColumnHeader("mmu.LIMB_1_xor_LIMB_xor_WCP_ARG_1_HI", 16, length));
-    headers.add(new ColumnHeader("mmu.LIMB_2_xor_WCP_ARG_1_LO", 16, length));
-    headers.add(new ColumnHeader("mmu.LZRO", 1, length));
-    headers.add(new ColumnHeader("mmu.MACRO", 1, length));
-    headers.add(new ColumnHeader("mmu.MICRO", 1, length));
-    headers.add(new ColumnHeader("mmu.MMIO_STAMP", 4, length));
-    headers.add(new ColumnHeader("mmu.NT_FIRST", 1, length));
-    headers.add(new ColumnHeader("mmu.NT_LAST", 1, length));
-    headers.add(new ColumnHeader("mmu.NT_MDDL", 1, length));
-    headers.add(new ColumnHeader("mmu.NT_ONLY", 1, length));
-    headers.add(new ColumnHeader("mmu.OUT_1", 8, length));
-    headers.add(new ColumnHeader("mmu.OUT_2", 8, length));
-    headers.add(new ColumnHeader("mmu.OUT_3", 8, length));
-    headers.add(new ColumnHeader("mmu.OUT_4", 8, length));
-    headers.add(new ColumnHeader("mmu.OUT_5", 8, length));
-    headers.add(new ColumnHeader("mmu.PHASE", 4, length));
-    headers.add(new ColumnHeader("mmu.PHASE_xor_EXO_SUM", 4, length));
-    headers.add(new ColumnHeader("mmu.PRPRC", 1, length));
-    headers.add(new ColumnHeader("mmu.REF_OFFSET_xor_CN_T_xor_EUC_B", 8, length));
-    headers.add(new ColumnHeader("mmu.REF_SIZE_xor_SLO_xor_EUC_CEIL", 8, length));
-    headers.add(new ColumnHeader("mmu.RZ_FIRST", 1, length));
-    headers.add(new ColumnHeader("mmu.RZ_LAST", 1, length));
-    headers.add(new ColumnHeader("mmu.RZ_MDDL", 1, length));
-    headers.add(new ColumnHeader("mmu.RZ_ONLY", 1, length));
-    headers.add(new ColumnHeader("mmu.SBO_xor_WCP_INST", 1, length));
-    headers.add(new ColumnHeader("mmu.SIZE", 1, length));
-    headers.add(new ColumnHeader("mmu.SIZE_xor_TLO_xor_EUC_QUOT", 8, length));
-    headers.add(new ColumnHeader("mmu.SRC_ID_xor_TOTAL_SIZE_xor_EUC_REM", 8, length));
-    headers.add(new ColumnHeader("mmu.SRC_OFFSET_HI_xor_WCP_ARG_2_LO", 16, length));
-    headers.add(new ColumnHeader("mmu.SRC_OFFSET_LO", 16, length));
-    headers.add(new ColumnHeader("mmu.STAMP", 4, length));
-    headers.add(new ColumnHeader("mmu.SUCCESS_BIT_xor_SUCCESS_BIT_xor_EUC_FLAG", 1, length));
-    headers.add(new ColumnHeader("mmu.TBO", 1, length));
-    headers.add(new ColumnHeader("mmu.TGT_ID", 8, length));
-    headers.add(new ColumnHeader("mmu.TGT_OFFSET_LO", 8, length));
-    headers.add(new ColumnHeader("mmu.TOT", 4, length));
-    headers.add(new ColumnHeader("mmu.TOTLZ", 4, length));
-    headers.add(new ColumnHeader("mmu.TOTNT", 4, length));
-    headers.add(new ColumnHeader("mmu.TOTRZ", 4, length));
-    headers.add(new ColumnHeader("mmu.WCP_FLAG", 1, length));
-    headers.add(new ColumnHeader("mmu.WCP_RES", 1, length));
-    return headers;
+      List<ColumnHeader> headers = new ArrayList<>();
+      headers.add(new ColumnHeader("mmu.AUX_ID_xor_CN_S_xor_EUC_A", 8, length));
+      headers.add(new ColumnHeader("mmu.BIN_1", 1, length));
+      headers.add(new ColumnHeader("mmu.BIN_2", 1, length));
+      headers.add(new ColumnHeader("mmu.BIN_3", 1, length));
+      headers.add(new ColumnHeader("mmu.BIN_4", 1, length));
+      headers.add(new ColumnHeader("mmu.BIN_5", 1, length));
+      headers.add(new ColumnHeader("mmu.EXO_SUM_xor_EXO_ID", 4, length));
+      headers.add(new ColumnHeader("mmu.INST_xor_INST_xor_CT", 2, length));
+      headers.add(new ColumnHeader("mmu.IS_ANY_TO_RAM_WITH_PADDING_PURE_PADDING", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_ANY_TO_RAM_WITH_PADDING_SOME_DATA", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_BLAKE", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_EXO_TO_RAM_TRANSPLANTS", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_INVALID_CODE_PREFIX", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_MLOAD", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_MODEXP_DATA", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_MODEXP_ZERO", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_MSTORE", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_MSTORE8", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_RAM_TO_EXO_WITH_PADDING", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_RAM_TO_RAM_SANS_PADDING", 1, length));
+      headers.add(new ColumnHeader("mmu.IS_RIGHT_PADDED_WORD_EXTRACTION", 1, length));
+      headers.add(new ColumnHeader("mmu.KEC_ID", 4, length));
+      headers.add(new ColumnHeader("mmu.LIMB_1_xor_LIMB_xor_WCP_ARG_1_HI", 16, length));
+      headers.add(new ColumnHeader("mmu.LIMB_2_xor_WCP_ARG_1_LO", 16, length));
+      headers.add(new ColumnHeader("mmu.LZRO", 1, length));
+      headers.add(new ColumnHeader("mmu.MACRO", 1, length));
+      headers.add(new ColumnHeader("mmu.MICRO", 1, length));
+      headers.add(new ColumnHeader("mmu.MMIO_STAMP", 4, length));
+      headers.add(new ColumnHeader("mmu.NT_FIRST", 1, length));
+      headers.add(new ColumnHeader("mmu.NT_LAST", 1, length));
+      headers.add(new ColumnHeader("mmu.NT_MDDL", 1, length));
+      headers.add(new ColumnHeader("mmu.NT_ONLY", 1, length));
+      headers.add(new ColumnHeader("mmu.OUT_1", 8, length));
+      headers.add(new ColumnHeader("mmu.OUT_2", 8, length));
+      headers.add(new ColumnHeader("mmu.OUT_3", 8, length));
+      headers.add(new ColumnHeader("mmu.OUT_4", 8, length));
+      headers.add(new ColumnHeader("mmu.OUT_5", 8, length));
+      headers.add(new ColumnHeader("mmu.PHASE", 4, length));
+      headers.add(new ColumnHeader("mmu.PHASE_xor_EXO_SUM", 4, length));
+      headers.add(new ColumnHeader("mmu.PRPRC", 1, length));
+      headers.add(new ColumnHeader("mmu.REF_OFFSET_xor_CN_T_xor_EUC_B", 8, length));
+      headers.add(new ColumnHeader("mmu.REF_SIZE_xor_SLO_xor_EUC_CEIL", 8, length));
+      headers.add(new ColumnHeader("mmu.RZ_FIRST", 1, length));
+      headers.add(new ColumnHeader("mmu.RZ_LAST", 1, length));
+      headers.add(new ColumnHeader("mmu.RZ_MDDL", 1, length));
+      headers.add(new ColumnHeader("mmu.RZ_ONLY", 1, length));
+      headers.add(new ColumnHeader("mmu.SBO_xor_WCP_INST", 1, length));
+      headers.add(new ColumnHeader("mmu.SIZE", 1, length));
+      headers.add(new ColumnHeader("mmu.SIZE_xor_TLO_xor_EUC_QUOT", 8, length));
+      headers.add(new ColumnHeader("mmu.SRC_ID_xor_TOTAL_SIZE_xor_EUC_REM", 8, length));
+      headers.add(new ColumnHeader("mmu.SRC_OFFSET_HI_xor_WCP_ARG_2_LO", 16, length));
+      headers.add(new ColumnHeader("mmu.SRC_OFFSET_LO", 16, length));
+      headers.add(new ColumnHeader("mmu.STAMP", 4, length));
+      headers.add(new ColumnHeader("mmu.SUCCESS_BIT_xor_SUCCESS_BIT_xor_EUC_FLAG", 1, length));
+      headers.add(new ColumnHeader("mmu.TBO", 1, length));
+      headers.add(new ColumnHeader("mmu.TGT_ID", 8, length));
+      headers.add(new ColumnHeader("mmu.TGT_OFFSET_LO", 8, length));
+      headers.add(new ColumnHeader("mmu.TOT", 4, length));
+      headers.add(new ColumnHeader("mmu.TOTLZ", 4, length));
+      headers.add(new ColumnHeader("mmu.TOTNT", 4, length));
+      headers.add(new ColumnHeader("mmu.TOTRZ", 4, length));
+      headers.add(new ColumnHeader("mmu.WCP_FLAG", 1, length));
+      headers.add(new ColumnHeader("mmu.WCP_RES", 1, length));
+      return headers;
   }
 
-  public Trace(List<MappedByteBuffer> buffers) {
+  public Trace (List<MappedByteBuffer> buffers) {
     this.auxIdXorCnSXorEucA = buffers.get(0);
     this.bin1 = buffers.get(1);
     this.bin2 = buffers.get(2);
@@ -538,13 +539,12 @@ public class Trace {
       filled.set(21);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.MMIO_STAMP has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.MMIO_STAMP has invalid value (" + b + ")"); }
     mmioStamp.put((byte) (b >> 24));
     mmioStamp.put((byte) (b >> 16));
     mmioStamp.put((byte) (b >> 8));
     mmioStamp.put((byte) b);
+
 
     return this;
   }
@@ -607,18 +607,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.OUT_1 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.OUT_1 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      out1.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { out1.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      out1.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { out1.put(bs.get(j)); }
 
     return this;
   }
@@ -633,18 +626,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.OUT_2 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.OUT_2 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      out2.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { out2.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      out2.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { out2.put(bs.get(j)); }
 
     return this;
   }
@@ -659,18 +645,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.OUT_3 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.OUT_3 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      out3.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { out3.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      out3.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { out3.put(bs.get(j)); }
 
     return this;
   }
@@ -685,18 +664,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.OUT_4 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.OUT_4 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      out4.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { out4.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      out4.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { out4.put(bs.get(j)); }
 
     return this;
   }
@@ -711,18 +683,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.OUT_5 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.OUT_5 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      out5.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { out5.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      out5.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { out5.put(bs.get(j)); }
 
     return this;
   }
@@ -737,18 +702,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.macro/AUX_ID has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.macro/AUX_ID has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      auxIdXorCnSXorEucA.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { auxIdXorCnSXorEucA.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      auxIdXorCnSXorEucA.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { auxIdXorCnSXorEucA.put(bs.get(j)); }
 
     return this;
   }
@@ -760,13 +718,12 @@ public class Trace {
       filled.set(48);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.macro/EXO_SUM has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.macro/EXO_SUM has invalid value (" + b + ")"); }
     exoSumXorExoId.put((byte) (b >> 24));
     exoSumXorExoId.put((byte) (b >> 16));
     exoSumXorExoId.put((byte) (b >> 8));
     exoSumXorExoId.put((byte) b);
+
 
     return this;
   }
@@ -778,11 +735,10 @@ public class Trace {
       filled.set(47);
     }
 
-    if (b >= 65536L) {
-      throw new IllegalArgumentException("mmu.macro/INST has invalid value (" + b + ")");
-    }
+    if(b >= 65536L) { throw new IllegalArgumentException("mmu.macro/INST has invalid value (" + b + ")"); }
     instXorInstXorCt.put((byte) (b >> 8));
     instXorInstXorCt.put((byte) b);
+
 
     return this;
   }
@@ -797,18 +753,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mmu.macro/LIMB_1 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mmu.macro/LIMB_1 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      limb1XorLimbXorWcpArg1Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { limb1XorLimbXorWcpArg1Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      limb1XorLimbXorWcpArg1Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { limb1XorLimbXorWcpArg1Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -823,18 +772,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mmu.macro/LIMB_2 has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mmu.macro/LIMB_2 has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      limb2XorWcpArg1Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { limb2XorWcpArg1Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      limb2XorWcpArg1Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { limb2XorWcpArg1Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -846,13 +788,12 @@ public class Trace {
       filled.set(49);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.macro/PHASE has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.macro/PHASE has invalid value (" + b + ")"); }
     phaseXorExoSum.put((byte) (b >> 24));
     phaseXorExoSum.put((byte) (b >> 16));
     phaseXorExoSum.put((byte) (b >> 8));
     phaseXorExoSum.put((byte) b);
+
 
     return this;
   }
@@ -867,18 +808,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.macro/REF_OFFSET has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.macro/REF_OFFSET has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      refOffsetXorCnTXorEucB.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { refOffsetXorCnTXorEucB.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      refOffsetXorCnTXorEucB.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { refOffsetXorCnTXorEucB.put(bs.get(j)); }
 
     return this;
   }
@@ -893,18 +827,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.macro/REF_SIZE has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.macro/REF_SIZE has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      refSizeXorSloXorEucCeil.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { refSizeXorSloXorEucCeil.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      refSizeXorSloXorEucCeil.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { refSizeXorSloXorEucCeil.put(bs.get(j)); }
 
     return this;
   }
@@ -919,18 +846,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.macro/SIZE has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.macro/SIZE has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      sizeXorTloXorEucQuot.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { sizeXorTloXorEucQuot.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      sizeXorTloXorEucQuot.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { sizeXorTloXorEucQuot.put(bs.get(j)); }
 
     return this;
   }
@@ -945,18 +865,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.macro/SRC_ID has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.macro/SRC_ID has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      srcIdXorTotalSizeXorEucRem.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { srcIdXorTotalSizeXorEucRem.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      srcIdXorTotalSizeXorEucRem.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { srcIdXorTotalSizeXorEucRem.put(bs.get(j)); }
 
     return this;
   }
@@ -971,18 +884,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mmu.macro/SRC_OFFSET_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mmu.macro/SRC_OFFSET_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      srcOffsetHiXorWcpArg2Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { srcOffsetHiXorWcpArg2Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      srcOffsetHiXorWcpArg2Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { srcOffsetHiXorWcpArg2Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -997,18 +903,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mmu.macro/SRC_OFFSET_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mmu.macro/SRC_OFFSET_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      srcOffsetLo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { srcOffsetLo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      srcOffsetLo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { srcOffsetLo.put(bs.get(j)); }
 
     return this;
   }
@@ -1035,18 +934,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.macro/TGT_ID has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.macro/TGT_ID has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      tgtId.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { tgtId.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      tgtId.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { tgtId.put(bs.get(j)); }
 
     return this;
   }
@@ -1061,18 +953,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.macro/TGT_OFFSET_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.macro/TGT_OFFSET_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      tgtOffsetLo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { tgtOffsetLo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      tgtOffsetLo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { tgtOffsetLo.put(bs.get(j)); }
 
     return this;
   }
@@ -1087,18 +972,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.micro/CN_S has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.micro/CN_S has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      auxIdXorCnSXorEucA.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { auxIdXorCnSXorEucA.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      auxIdXorCnSXorEucA.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { auxIdXorCnSXorEucA.put(bs.get(j)); }
 
     return this;
   }
@@ -1113,18 +991,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.micro/CN_T has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.micro/CN_T has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      refOffsetXorCnTXorEucB.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { refOffsetXorCnTXorEucB.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      refOffsetXorCnTXorEucB.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { refOffsetXorCnTXorEucB.put(bs.get(j)); }
 
     return this;
   }
@@ -1136,13 +1007,12 @@ public class Trace {
       filled.set(48);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.micro/EXO_ID has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.micro/EXO_ID has invalid value (" + b + ")"); }
     exoSumXorExoId.put((byte) (b >> 24));
     exoSumXorExoId.put((byte) (b >> 16));
     exoSumXorExoId.put((byte) (b >> 8));
     exoSumXorExoId.put((byte) b);
+
 
     return this;
   }
@@ -1154,13 +1024,12 @@ public class Trace {
       filled.set(49);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.micro/EXO_SUM has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.micro/EXO_SUM has invalid value (" + b + ")"); }
     phaseXorExoSum.put((byte) (b >> 24));
     phaseXorExoSum.put((byte) (b >> 16));
     phaseXorExoSum.put((byte) (b >> 8));
     phaseXorExoSum.put((byte) b);
+
 
     return this;
   }
@@ -1172,11 +1041,10 @@ public class Trace {
       filled.set(47);
     }
 
-    if (b >= 65536L) {
-      throw new IllegalArgumentException("mmu.micro/INST has invalid value (" + b + ")");
-    }
+    if(b >= 65536L) { throw new IllegalArgumentException("mmu.micro/INST has invalid value (" + b + ")"); }
     instXorInstXorCt.put((byte) (b >> 8));
     instXorInstXorCt.put((byte) b);
+
 
     return this;
   }
@@ -1188,13 +1056,12 @@ public class Trace {
       filled.set(50);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.micro/KEC_ID has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.micro/KEC_ID has invalid value (" + b + ")"); }
     kecId.put((byte) (b >> 24));
     kecId.put((byte) (b >> 16));
     kecId.put((byte) (b >> 8));
     kecId.put((byte) b);
+
 
     return this;
   }
@@ -1209,18 +1076,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mmu.micro/LIMB has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mmu.micro/LIMB has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      limb1XorLimbXorWcpArg1Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { limb1XorLimbXorWcpArg1Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      limb1XorLimbXorWcpArg1Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { limb1XorLimbXorWcpArg1Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -1232,13 +1092,12 @@ public class Trace {
       filled.set(51);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.micro/PHASE has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.micro/PHASE has invalid value (" + b + ")"); }
     phase.put((byte) (b >> 24));
     phase.put((byte) (b >> 16));
     phase.put((byte) (b >> 8));
     phase.put((byte) b);
+
 
     return this;
   }
@@ -1277,18 +1136,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.micro/SLO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.micro/SLO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      refSizeXorSloXorEucCeil.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { refSizeXorSloXorEucCeil.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      refSizeXorSloXorEucCeil.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { refSizeXorSloXorEucCeil.put(bs.get(j)); }
 
     return this;
   }
@@ -1327,18 +1179,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.micro/TLO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.micro/TLO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      sizeXorTloXorEucQuot.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { sizeXorTloXorEucQuot.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      sizeXorTloXorEucQuot.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { sizeXorTloXorEucQuot.put(bs.get(j)); }
 
     return this;
   }
@@ -1353,18 +1198,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.micro/TOTAL_SIZE has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.micro/TOTAL_SIZE has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      srcIdXorTotalSizeXorEucRem.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { srcIdXorTotalSizeXorEucRem.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      srcIdXorTotalSizeXorEucRem.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { srcIdXorTotalSizeXorEucRem.put(bs.get(j)); }
 
     return this;
   }
@@ -1376,11 +1214,10 @@ public class Trace {
       filled.set(47);
     }
 
-    if (b >= 65536L) {
-      throw new IllegalArgumentException("mmu.prprc/CT has invalid value (" + b + ")");
-    }
+    if(b >= 65536L) { throw new IllegalArgumentException("mmu.prprc/CT has invalid value (" + b + ")"); }
     instXorInstXorCt.put((byte) (b >> 8));
     instXorInstXorCt.put((byte) b);
+
 
     return this;
   }
@@ -1395,18 +1232,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.prprc/EUC_A has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.prprc/EUC_A has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      auxIdXorCnSXorEucA.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { auxIdXorCnSXorEucA.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      auxIdXorCnSXorEucA.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { auxIdXorCnSXorEucA.put(bs.get(j)); }
 
     return this;
   }
@@ -1421,18 +1251,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.prprc/EUC_B has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.prprc/EUC_B has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      refOffsetXorCnTXorEucB.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { refOffsetXorCnTXorEucB.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      refOffsetXorCnTXorEucB.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { refOffsetXorCnTXorEucB.put(bs.get(j)); }
 
     return this;
   }
@@ -1447,18 +1270,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.prprc/EUC_CEIL has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.prprc/EUC_CEIL has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      refSizeXorSloXorEucCeil.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { refSizeXorSloXorEucCeil.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      refSizeXorSloXorEucCeil.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { refSizeXorSloXorEucCeil.put(bs.get(j)); }
 
     return this;
   }
@@ -1485,18 +1301,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.prprc/EUC_QUOT has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.prprc/EUC_QUOT has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      sizeXorTloXorEucQuot.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { sizeXorTloXorEucQuot.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      sizeXorTloXorEucQuot.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { sizeXorTloXorEucQuot.put(bs.get(j)); }
 
     return this;
   }
@@ -1511,18 +1320,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException(
-          "mmu.prprc/EUC_REM has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 64) { throw new IllegalArgumentException("mmu.prprc/EUC_REM has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      srcIdXorTotalSizeXorEucRem.put((byte) 0);
-    }
+    for(int i=bs.size(); i<8; i++) { srcIdXorTotalSizeXorEucRem.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      srcIdXorTotalSizeXorEucRem.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { srcIdXorTotalSizeXorEucRem.put(bs.get(j)); }
 
     return this;
   }
@@ -1537,18 +1339,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mmu.prprc/WCP_ARG_1_HI has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mmu.prprc/WCP_ARG_1_HI has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      limb1XorLimbXorWcpArg1Hi.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { limb1XorLimbXorWcpArg1Hi.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      limb1XorLimbXorWcpArg1Hi.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { limb1XorLimbXorWcpArg1Hi.put(bs.get(j)); }
 
     return this;
   }
@@ -1563,18 +1358,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mmu.prprc/WCP_ARG_1_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mmu.prprc/WCP_ARG_1_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      limb2XorWcpArg1Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { limb2XorWcpArg1Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      limb2XorWcpArg1Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { limb2XorWcpArg1Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -1589,18 +1377,11 @@ public class Trace {
     // Trim array to size
     Bytes bs = b.trimLeadingZeros();
     // Sanity check against expected width
-    if (bs.bitLength() > 128) {
-      throw new IllegalArgumentException(
-          "mmu.prprc/WCP_ARG_2_LO has invalid width (" + bs.bitLength() + "bits)");
-    }
+    if(bs.bitLength() > 128) { throw new IllegalArgumentException("mmu.prprc/WCP_ARG_2_LO has invalid width (" + bs.bitLength() + "bits)"); }
     // Write padding (if necessary)
-    for (int i = bs.size(); i < 16; i++) {
-      srcOffsetHiXorWcpArg2Lo.put((byte) 0);
-    }
+    for(int i=bs.size(); i<16; i++) { srcOffsetHiXorWcpArg2Lo.put((byte) 0); }
     // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      srcOffsetHiXorWcpArg2Lo.put(bs.get(j));
-    }
+    for(int j=0; j<bs.size(); j++) { srcOffsetHiXorWcpArg2Lo.put(bs.get(j)); }
 
     return this;
   }
@@ -1708,13 +1489,12 @@ public class Trace {
       filled.set(36);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.STAMP has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.STAMP has invalid value (" + b + ")"); }
     stamp.put((byte) (b >> 24));
     stamp.put((byte) (b >> 16));
     stamp.put((byte) (b >> 8));
     stamp.put((byte) b);
+
 
     return this;
   }
@@ -1726,13 +1506,12 @@ public class Trace {
       filled.set(37);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.TOT has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.TOT has invalid value (" + b + ")"); }
     tot.put((byte) (b >> 24));
     tot.put((byte) (b >> 16));
     tot.put((byte) (b >> 8));
     tot.put((byte) b);
+
 
     return this;
   }
@@ -1744,13 +1523,12 @@ public class Trace {
       filled.set(38);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.TOTLZ has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.TOTLZ has invalid value (" + b + ")"); }
     totlz.put((byte) (b >> 24));
     totlz.put((byte) (b >> 16));
     totlz.put((byte) (b >> 8));
     totlz.put((byte) b);
+
 
     return this;
   }
@@ -1762,13 +1540,12 @@ public class Trace {
       filled.set(39);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.TOTNT has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.TOTNT has invalid value (" + b + ")"); }
     totnt.put((byte) (b >> 24));
     totnt.put((byte) (b >> 16));
     totnt.put((byte) (b >> 8));
     totnt.put((byte) b);
+
 
     return this;
   }
@@ -1780,13 +1557,12 @@ public class Trace {
       filled.set(40);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("mmu.TOTRZ has invalid value (" + b + ")");
-    }
+    if(b >= 4294967296L) { throw new IllegalArgumentException("mmu.TOTRZ has invalid value (" + b + ")"); }
     totrz.put((byte) (b >> 24));
     totrz.put((byte) (b >> 16));
     totrz.put((byte) (b >> 8));
     totrz.put((byte) b);
+
 
     return this;
   }
@@ -1825,13 +1601,11 @@ public class Trace {
     }
 
     if (!filled.get(5)) {
-      throw new IllegalStateException(
-          "mmu.IS_ANY_TO_RAM_WITH_PADDING_PURE_PADDING has not been filled");
+      throw new IllegalStateException("mmu.IS_ANY_TO_RAM_WITH_PADDING_PURE_PADDING has not been filled");
     }
 
     if (!filled.get(6)) {
-      throw new IllegalStateException(
-          "mmu.IS_ANY_TO_RAM_WITH_PADDING_SOME_DATA has not been filled");
+      throw new IllegalStateException("mmu.IS_ANY_TO_RAM_WITH_PADDING_SOME_DATA has not been filled");
     }
 
     if (!filled.get(7)) {
@@ -2007,8 +1781,7 @@ public class Trace {
     }
 
     if (!filled.get(41)) {
-      throw new IllegalStateException(
-          "mmu.SUCCESS_BIT_xor_SUCCESS_BIT_xor_EUC_FLAG has not been filled");
+      throw new IllegalStateException("mmu.SUCCESS_BIT_xor_SUCCESS_BIT_xor_EUC_FLAG has not been filled");
     }
 
     if (!filled.get(46)) {

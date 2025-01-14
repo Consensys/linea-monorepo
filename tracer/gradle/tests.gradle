@@ -41,7 +41,8 @@ apply plugin: 'com.adarshr.test-logger'
   * - 'root.log.level' and 'evm.log.level': allow to control the log level used during the tests.
   */
 tasks.withType(Test).configureEach {
-  dependsOn(buildZkevmBin)
+    dependsOn 'buildZkevmBin'
+    dependsOn 'buildTracer'
 
   minHeapSize = "4g"
   maxHeapSize = "8g"
