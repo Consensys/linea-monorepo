@@ -13,29 +13,38 @@ import (
 
 func TestEvalUnivariate(t *testing.T) {
 	// Just a simple test vector
+	// (1+a)+(2+2a)X+(5+a)X^2+(12+2a)X^3
 	testVec := []fext.Element{
-		fext.NewElement(1, 0),
-		fext.NewElement(2, 0),
-		fext.NewElement(5, 0),
-		fext.NewElement(12, 0),
+		fext.NewElement(1, 1),
+		fext.NewElement(2, 2),
+		fext.NewElement(5, 1),
+		fext.NewElement(12, 2),
 	}
 
-	x := fext.NewElement(17, 0)
+	x := fext.NewElement(3, 4)
 
 	y := polyext.EvalUnivariate(testVec, x)
-
-	require.Equal(t, y, fext.NewElement(60436, 0))
-
+	// expanded form of the polynomial 128 a^4 + 1072 a^3 + 2056 a^2 + 1494 a + 376
+	first := 128*fext.RootPowers[1]*fext.RootPowers[1] + 2056*fext.RootPowers[1] + 376
+	second := 1072*fext.RootPowers[1] + 1494
+	require.Equal(t, y, *new(fext.Element).SetInt64Pair(int64(first), int64(second)))
 }
 
 func TestMul(t *testing.T) {
 
 	t.Run("same-size", func(t *testing.T) {
 		var (
-			a        = vectorext.ForTest(1, 1)
-			b        = vectorext.ForTest(-1, 1)
-			expected = vectorext.ForTest(-1, 0, 1)
-			res      = polyext.Mul(a, b)
+			a        = vectorext.ForTestFromPairs(1, 1, 2, 3)    // (1+a)+(2+3a)*X
+			b        = vectorext.ForTestFromPairs(-1, -1, 1, -2) // (-1-a)+(1-2a)*X
+			expected = vectorext.ForTestFromPairs(
+				-fext.RootPowers[1]-1,
+				-2,
+				-5*fext.RootPowers[1]-1,
+				-6,
+				-6*fext.RootPowers[1]+2,
+				-1,
+			) // (-6a^2-a+2) X^2 + (-5a^2-6a-1)X - a^2 - 2a - 1
+			res = polyext.Mul(a, b)
 		)
 		require.Equal(t, vectorext.Prettify(expected), vectorext.Prettify(res))
 	})
