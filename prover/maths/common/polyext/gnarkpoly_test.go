@@ -1,7 +1,7 @@
 package polyext
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"testing"
