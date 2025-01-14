@@ -1,6 +1,7 @@
 package vectorext_test
 
 import (
+	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -14,15 +15,15 @@ func TestVectors(t *testing.T) {
 
 	var (
 		// a, b and x are very common vectors in all the tests
-		a = vectorext.ForTest(1, 2, 3, 4, 5)
-		b = vectorext.ForTest(3, 4, 5, 6, 7)
+		a = vectorext.ForTestFromPairs(1, 2, 3, 4, 5, 6)
+		b = vectorext.ForTestFromPairs(3, 4, 5, 6, 7, 8)
 		x = fext.NewElement(2, 0)
 
 		// aBAndXMustNotChange asserts that a and b did not change as this is
 		// a very common check in all the sub-tests.
 		aBAndXMustNotChange = func(t *testing.T) {
-			require.Equal(t, vectorext.ForTest(1, 2, 3, 4, 5), a, "a must not change")
-			require.Equal(t, vectorext.ForTest(3, 4, 5, 6, 7), b, "b must not change")
+			require.Equal(t, vectorext.ForTestFromPairs(1, 2, 3, 4, 5, 6), a, "a must not change")
+			require.Equal(t, vectorext.ForTestFromPairs(3, 4, 5, 6, 7, 8), b, "b must not change")
 			require.Equal(t, "2+0*u", x.String(), "x must not change")
 		}
 	)
@@ -37,15 +38,15 @@ func TestVectors(t *testing.T) {
 	t.Run("ScalarMul", func(t *testing.T) {
 		c := vectorext.DeepCopy(a)
 		vectorext.ScalarMul(c, b, x)
-		assert.Equal(t, vectorext.ForTest(6, 8, 10, 12, 14), c, "c must be equal to 2*b")
+		assert.Equal(t, vectorext.ForTestFromPairs(6, 8, 10, 12, 14, 16), c, "c must be equal to 2*b")
 		vectorext.ScalarMul(c, c, x)
-		assert.Equal(t, vectorext.ForTest(12, 16, 20, 24, 28), c, "c must be equal to 2*b")
+		assert.Equal(t, vectorext.ForTestFromPairs(12, 16, 20, 24, 28, 32), c, "c must be equal to 4*b")
 		aBAndXMustNotChange(t)
 	})
 
 	t.Run("ScalarProd", func(t *testing.T) {
 		c := vectorext.ScalarProd(a, b)
-		assert.Equal(t, "85+0*u", c.String())
+		assert.Equal(t, fmt.Sprintf("%d+%d*u", 80*fext.RootPowers[1]+53, 130), c.String())
 		aBAndXMustNotChange(t)
 	})
 
@@ -57,85 +58,102 @@ func TestVectors(t *testing.T) {
 	t.Run("MulElementWise", func(t *testing.T) {
 		c := vectorext.DeepCopy(b)
 		vectorext.MulElementWise(c, b, a)
-		assert.Equal(t, vectorext.ForTest(3, 8, 15, 24, 35), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(
+			3+8*fext.RootPowers[1],
+			10,
+			24*fext.RootPowers[1]+15,
+			38,
+			35+48*fext.RootPowers[1],
+			82,
+		), c)
 
 		c = vectorext.DeepCopy(b)
 		vectorext.MulElementWise(c, c, a)
-		assert.Equal(t, vectorext.ForTest(3, 8, 15, 24, 35), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(
+			3+8*fext.RootPowers[1],
+			10,
+			24*fext.RootPowers[1]+15,
+			38,
+			35+48*fext.RootPowers[1],
+			82,
+		), c)
 
 		aBAndXMustNotChange(t)
 	})
 
 	t.Run("Prettify", func(t *testing.T) {
-		assert.Equal(t, "[1+0*u, 2+0*u, 3+0*u, 4+0*u, 5+0*u]", vectorext.Prettify(a))
+		assert.Equal(t, "[1+2*u, 3+4*u, 5+6*u]", vectorext.Prettify(a))
 		aBAndXMustNotChange(t)
 	})
 
 	t.Run("Reverse", func(t *testing.T) {
 		c := vectorext.DeepCopy(a)
 		vectorext.Reverse(c)
-		assert.Equal(t, vectorext.ForTest(5, 4, 3, 2, 1), c)
+		// we invert the order of the pairs, but not the order inside the pairs as that
+		// would lead to different field extensions
+		assert.Equal(t, vectorext.ForTestFromPairs(5, 6, 3, 4, 1, 2), c)
 		aBAndXMustNotChange(t)
 	})
 
 	t.Run("Repeat", func(t *testing.T) {
-		c := vectorext.Repeat(x, 5)
-		assert.Equal(t, vectorext.ForTest(2, 2, 2, 2, 2), c)
+		y := fext.NewElement(1, 2)
+		c := vectorext.Repeat(y, 4)
+		assert.Equal(t, vectorext.ForTestFromPairs(1, 2, 1, 2, 1, 2, 1, 2), c)
 		aBAndXMustNotChange(t)
 	})
 
 	t.Run("Add", func(t *testing.T) {
 		c := vectorext.DeepCopy(a)
 		vectorext.Add(c, a, b)
-		assert.Equal(t, vectorext.ForTest(4, 6, 8, 10, 12), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(4, 6, 8, 10, 12, 14), c)
 
 		c = vectorext.DeepCopy(a)
 		vectorext.Add(c, c, b)
-		assert.Equal(t, vectorext.ForTest(4, 6, 8, 10, 12), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(4, 6, 8, 10, 12, 14), c)
 
 		c = vectorext.DeepCopy(a)
 		vectorext.Add(c, a, b, a)
-		assert.Equal(t, vectorext.ForTest(5, 8, 11, 14, 17), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(5, 8, 11, 14, 17, 20), c)
 		aBAndXMustNotChange(t)
 	})
 
 	t.Run("Sub", func(t *testing.T) {
 		c := vectorext.DeepCopy(a)
 		vectorext.Sub(c, b, a)
-		assert.Equal(t, vectorext.ForTest(2, 2, 2, 2, 2), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(2, 2, 2, 2, 2, 2), c)
 
 		c = vectorext.DeepCopy(a)
 		vectorext.Sub(c, b, c)
-		assert.Equal(t, vectorext.ForTest(2, 2, 2, 2, 2), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(2, 2, 2, 2, 2, 2), c)
 
 		c = vectorext.DeepCopy(b)
 		vectorext.Sub(c, c, a)
-		assert.Equal(t, vectorext.ForTest(2, 2, 2, 2, 2), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(2, 2, 2, 2, 2, 2), c)
 		aBAndXMustNotChange(t)
 	})
 
 	t.Run("ZeroPad", func(t *testing.T) {
-		c := vectorext.ZeroPad(a, 7)
-		assert.Equal(t, vectorext.ForTest(1, 2, 3, 4, 5, 0, 0), c)
+		c := vectorext.ZeroPad(a, 5)
+		assert.Equal(t, vectorext.ForTestFromPairs(1, 2, 3, 4, 5, 6, 0, 0, 0, 0), c)
 		aBAndXMustNotChange(t)
 	})
 
 	t.Run("Interleave", func(t *testing.T) {
 		c := vectorext.Interleave(a, b)
-		assert.Equal(t, vectorext.ForTest(1, 3, 2, 4, 3, 5, 4, 6, 5, 7), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(1, 2, 3, 4, 3, 4, 5, 6, 5, 6, 7, 8), c)
 		aBAndXMustNotChange(t)
 	})
 
 	t.Run("Fill", func(t *testing.T) {
 		c := vectorext.DeepCopy(a)
 		vectorext.Fill(c, x)
-		assert.Equal(t, vectorext.ForTest(2, 2, 2, 2, 2), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(2, 0, 2, 0, 2, 0), c)
 		aBAndXMustNotChange(t)
 	})
 
 	t.Run("PowerVec", func(t *testing.T) {
 		c := vectorext.PowerVec(x, 5)
-		assert.Equal(t, vectorext.ForTest(1, 2, 4, 8, 16), c)
+		assert.Equal(t, vectorext.ForTestFromPairs(1, 0, 2, 0, 4, 0, 8, 0, 16, 0), c)
 	})
 
 	t.Run("IntoGnarkAssignment", func(t *testing.T) {
