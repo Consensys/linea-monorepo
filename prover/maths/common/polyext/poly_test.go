@@ -196,7 +196,7 @@ func TestEvaluateLagrangeAnyDomain(t *testing.T) {
 
 	t.Run("single-point-domain", func(t *testing.T) {
 		var (
-			domain   = []fext.Element{fext.Element{field.Zero(), field.Zero()}}
+			domain   = []fext.Element{{field.Zero(), field.Zero()}}
 			x        = fext.NewElement(42, 42)
 			ys       = polyext.EvaluateLagrangesAnyDomain(domain, x)
 			expected = vectorext.ForTestFromPairs(1, 0)
