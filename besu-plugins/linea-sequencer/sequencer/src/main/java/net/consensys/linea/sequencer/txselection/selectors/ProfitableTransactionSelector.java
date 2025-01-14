@@ -280,14 +280,13 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
       final Transaction tx,
       final Wei profitablePriorityFeePerGas) {
 
+    final var effectivePriorityFee = evaluationContext.getTransactionGasPrice().subtract(baseFee);
+    final var ratio =
+        effectivePriorityFee.getValue().doubleValue()
+            / profitablePriorityFeePerGas.getValue().doubleValue();
+
     maybeProfitabilityMetrics.ifPresent(
         histogramMetrics -> {
-          final var effectivePriorityFee =
-              evaluationContext.getTransactionGasPrice().subtract(baseFee);
-          final var ratio =
-              effectivePriorityFee.getValue().doubleValue()
-                  / profitablePriorityFeePerGas.getValue().doubleValue();
-
           histogramMetrics.track(ratio, label.value());
 
           if (ratio < lastBlockMinRatios.get(label)) {
@@ -296,19 +295,20 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
           if (ratio > lastBlockMaxRatios.get(label)) {
             lastBlockMaxRatios.put(label, ratio);
           }
-
-          log.atTrace()
-              .setMessage(
-                  "POST_PROCESSING: block[{}] tx {} , baseFee {}, effectiveGasPrice {}, ratio (effectivePayingPriorityFee {} / calculatedProfitablePriorityFee {}) {}")
-              .addArgument(evaluationContext.getPendingBlockHeader().getNumber())
-              .addArgument(tx.getHash())
-              .addArgument(baseFee::toHumanReadableString)
-              .addArgument(evaluationContext.getTransactionGasPrice()::toHumanReadableString)
-              .addArgument(effectivePriorityFee::toHumanReadableString)
-              .addArgument(profitablePriorityFeePerGas::toHumanReadableString)
-              .addArgument(ratio)
-              .log();
         });
+
+    log.atTrace()
+        .setMessage(
+            "{}: block[{}] tx {} , baseFee {}, effectiveGasPrice {}, ratio (effectivePayingPriorityFee {} / calculatedProfitablePriorityFee {}) {}")
+        .addArgument(label.name())
+        .addArgument(evaluationContext.getPendingBlockHeader().getNumber())
+        .addArgument(tx.getHash())
+        .addArgument(baseFee::toHumanReadableString)
+        .addArgument(evaluationContext.getTransactionGasPrice()::toHumanReadableString)
+        .addArgument(effectivePriorityFee::toHumanReadableString)
+        .addArgument(profitablePriorityFeePerGas::toHumanReadableString)
+        .addArgument(ratio)
+        .log();
   }
 
   private static void resetMinMaxRatios() {
