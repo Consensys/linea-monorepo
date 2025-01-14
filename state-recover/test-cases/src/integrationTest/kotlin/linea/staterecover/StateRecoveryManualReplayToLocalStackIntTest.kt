@@ -36,7 +36,6 @@ import kotlin.time.toJavaDuration
 @ExtendWith(VertxExtension::class)
 class StateRecoveryManualReplayToLocalStackIntTest {
   private val log = LogManager.getLogger("test.case.StateRecoverAppWithLocalStackIntTest")
-  private lateinit var aggregationsAndBlobs: List<AggregationAndBlobs>
   private lateinit var stateManagerClient: StateManagerClientV1
   private val testDataDir = "testdata/coordinator/prover/v3"
 
@@ -44,10 +43,6 @@ class StateRecoveryManualReplayToLocalStackIntTest {
 
   @BeforeEach
   fun beforeEach(vertx: Vertx) {
-    aggregationsAndBlobs = loadBlobsAndAggregationsSortedAndGrouped(
-      blobsResponsesDir = "$testDataDir/compression/responses",
-      aggregationsResponsesDir = "$testDataDir/aggregation/responses"
-    )
     val jsonRpcFactory = VertxHttpJsonRpcClientFactory(vertx = vertx, meterRegistry = SimpleMeterRegistry())
 
     stateManagerClient = StateManagerV1JsonRpcClient.create(
@@ -78,6 +73,10 @@ class StateRecoveryManualReplayToLocalStackIntTest {
       "test.clients.l1.blobscan" to Level.INFO,
       "net.consensys.linea.contract.l1" to Level.INFO
     )
+    val aggregationsAndBlobs: List<AggregationAndBlobs> = loadBlobsAndAggregationsSortedAndGrouped(
+      blobsResponsesDir = "$testDataDir/compression/responses",
+      aggregationsResponsesDir = "$testDataDir/aggregation/responses"
+    )
 
     this.rollupDeploymentResult = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6).get()
@@ -85,9 +84,11 @@ class StateRecoveryManualReplayToLocalStackIntTest {
     log.info(
       """
       Start state recovery besu and shomei with the following configuration:
+
        ./gradlew state-recover:besu-plugin:shadowJar \
        && docker compose -f docker/compose.yml down zkbesu-shomei-sr shomei-sr \
        && L1_ROLLUP_CONTRACT_ADDRESS=${rollupDeploymentResult.contractAddress} docker compose -f docker/compose.yml up zkbesu-shomei-sr shomei-sr
+
       """.trimIndent()
     )
 
