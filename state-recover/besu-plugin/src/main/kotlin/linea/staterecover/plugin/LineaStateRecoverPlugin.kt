@@ -98,7 +98,7 @@ open class LineaStateRecoverPlugin : BesuPlugin {
           smartContractAddress = config.l1SmartContractAddress.toString(),
           l1LatestSearchBlock = net.consensys.linea.BlockParameter.Tag.LATEST,
           overridingRecoveryStartBlockNumber = config.overridingRecoveryStartBlockNumber,
-          l1PollingInterval = 1.seconds,
+          l1PollingInterval = 1.seconds
         )
       )
     }
