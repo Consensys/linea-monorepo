@@ -7,7 +7,7 @@ import (
 /*
 exponentiation in gnark circuit, using the fast exponentiation
 */
-func Exp(api gnarkfext.API, x gnarkfext.E2, n int) gnarkfext.E2 {
+func Exp(api gnarkfext.API, x gnarkfext.Variable, n int) gnarkfext.Variable {
 
 	if n < 0 {
 		x = api.Inverse(x)

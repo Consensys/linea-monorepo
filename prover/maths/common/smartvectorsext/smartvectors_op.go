@@ -46,11 +46,11 @@ func IntoRegVecExt(s smartvectors.SmartVector) []fext.Element {
 }
 
 // IntoGnarkAssignment converts a smart-vector into a gnark assignment
-func IntoGnarkAssignment(sv smartvectors.SmartVector) []gnarkfext.E2 {
-	res := make([]gnarkfext.E2, sv.Len())
+func IntoGnarkAssignment(sv smartvectors.SmartVector) []gnarkfext.Variable {
+	res := make([]gnarkfext.Variable, sv.Len())
 	for i := range res {
 		elem := sv.GetExt(i)
-		res[i] = gnarkfext.E2{
+		res[i] = gnarkfext.Variable{
 			A0: frontend.Variable(elem.A0),
 			A1: frontend.Variable(elem.A1),
 		}
