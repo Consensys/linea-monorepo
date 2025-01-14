@@ -22,11 +22,6 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-sealed interface SearchResultT<T> {
-  data class ItemFound<T>(val log: T) : SearchResultT<T>
-  data class KeepSearching<T>(val direction: SearchDirection) : SearchResultT<T>
-}
-
 private sealed interface SearchResult {
   data class ItemFound(val log: build.linea.domain.EthLog) : SearchResult
   data class KeepSearching(val direction: SearchDirection) : SearchResult
@@ -78,21 +73,21 @@ class Web3JLogsSearcher(
     val cursor = SearchCursor(fromBlock, toBlock, chunkSize)
     log.trace("searching between blocks={}", CommonDomainFunctions.blockIntervalString(fromBlock, toBlock))
 
-    var nexChunkToSearch: Pair<ULong, ULong>? = cursor.next(searchDirection = SearchDirection.FORWARD)
+    var nextChunkToSearch: Pair<ULong, ULong>? = cursor.next(searchDirection = SearchDirection.FORWARD)
     return AsyncRetryer.retry(
       vertx,
       backoffDelay = config.backoffDelay,
-      stopRetriesPredicate = { it is SearchResult.ItemFound || nexChunkToSearch == null }
+      stopRetriesPredicate = { it is SearchResult.ItemFound || nextChunkToSearch == null }
     ) {
-      val (chunkStart, chunkEnd) = nexChunkToSearch!!
+      val (chunkStart, chunkEnd) = nextChunkToSearch!!
       log.trace("searching in chunk={}", CommonDomainFunctions.blockIntervalString(chunkStart, chunkEnd))
       findLogInInterval(chunkStart, chunkEnd, address, topics, shallContinueToSearchPredicate)
         .thenPeek { result ->
           if (result is SearchResult.NoResultsInInterval) {
-            nexChunkToSearch = cursor.next(searchDirection = null)
+            nextChunkToSearch = cursor.next(searchDirection = null)
           } else if (result is SearchResult.KeepSearching) {
             // need to search in the same chunk
-            nexChunkToSearch = cursor.next(searchDirection = result.direction)
+            nextChunkToSearch = cursor.next(searchDirection = result.direction)
           }
         }
     }.thenApply { either ->
