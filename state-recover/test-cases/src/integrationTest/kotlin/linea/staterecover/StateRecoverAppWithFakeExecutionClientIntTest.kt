@@ -48,7 +48,7 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
   private lateinit var transactionDetailsClient: TransactionDetailsClient
   private lateinit var lineaContractClient: LineaRollupSmartContractClientReadOnly
 
-  private lateinit var contractClientForSubmittions: LineaRollupSmartContractClient
+  private lateinit var contractClientForSubmissions: LineaRollupSmartContractClient
   private val testDataDir = run {
     "testdata/coordinator/prover/v3"
   }
@@ -105,7 +105,7 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
       log = LogManager.getLogger("test.clients.l1.events-fetcher")
     )
 
-    contractClientForSubmittions = rollupDeploymentResult.rollupOperatorClient
+    contractClientForSubmissions = rollupDeploymentResult.rollupOperatorClient
     val blobScanClient = BlobScanClient.create(
       vertx = vertx,
       endpoint = URI(blobScanUrl),
@@ -149,7 +149,7 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
   }
 
   private fun submitDataToL1ContactAndWaitExecution(
-    contractClient: LineaRollupSmartContractClient = contractClientForSubmittions,
+    contractClient: LineaRollupSmartContractClient = contractClientForSubmissions,
     aggregationsAndBlobs: List<AggregationAndBlobs> = this.aggregationsAndBlobs,
     blobChunksSize: Int = 6
   ) {

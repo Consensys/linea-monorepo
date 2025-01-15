@@ -47,7 +47,7 @@ class StateRecoverAppIntTest {
   private lateinit var transactionDetailsClient: TransactionDetailsClient
   private lateinit var lineaContractClient: LineaRollupSmartContractClientReadOnly
 
-  private lateinit var contractClientForSubmittions: LineaRollupSmartContractClient
+  private lateinit var contractClientForSubmissions: LineaRollupSmartContractClient
 
   private val testDataDir = "testdata/coordinator/prover/v3/"
 
@@ -123,7 +123,7 @@ class StateRecoverAppIntTest {
       )
     }
 
-    contractClientForSubmittions = rollupDeploymentResult.rollupOperatorClient
+    contractClientForSubmissions = rollupDeploymentResult.rollupOperatorClient
     val blobScanClient = BlobScanClient.create(
       vertx = vertx,
       endpoint = URI(blobScanUrl),
@@ -170,7 +170,7 @@ class StateRecoverAppIntTest {
     stateRecoverApp.start().get()
 
     val submissionTxHashes = submitBlobsAndAggregations(
-      contractClient = contractClientForSubmittions,
+      contractClient = contractClientForSubmissions,
       aggregationsAndBlobs = aggregationsAndBlobs,
       blobChunksSize = 6
     )
