@@ -73,7 +73,6 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 	logrus.Infof("Size of ser : %.6f GB", serSizeGB)
 
 	// Step 2: Parallelize CBOR serialization by chunking `ser`
-	start = time.Now()
 	chunkSize := (len(ser) + numChunks - 1) / numChunks // Calculate the size of each chunk
 	var serializedChunks = make([]json.RawMessage, numChunks)
 	var wg sync.WaitGroup
@@ -109,7 +108,6 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 		}(i)
 	}
 	wg.Wait()
-	logrus.Infof("Time taken for CBOR serialization in chunks: %v", time.Since(start))
 
 	return serializedChunks
 }

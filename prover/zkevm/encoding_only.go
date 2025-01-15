@@ -41,9 +41,10 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 	logrus.Infof("ProverOnlyFirstRound complete, took %.2f seconds", firstRoundOnlyDuration)
 
 	// Start serialization
+	serializationStart := time.Now()
 	serializedChunks := serialization.SerializeAssignment(run.Columns, numChunks)
-	serializationDuration := time.Since(encodingStart).Seconds()
-	logrus.Infof("Serialization complete, took %.2f seconds", serializationDuration)
+	serializationDuration := time.Since(serializationStart).Seconds()
+	logrus.Infof("CBOR serialization complete, took %.2f seconds", serializationDuration)
 
 	// Calculate total size of serialized data
 	totalSerializedSize := 0
