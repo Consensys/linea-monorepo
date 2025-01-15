@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"math/rand"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -211,6 +212,35 @@ func TestEvaluateLagrangeAnyDomain(t *testing.T) {
 			x        = fext.NewElement(42, 0)
 			ys       = polyext.EvaluateLagrangesAnyDomain(domain, x)
 			expected = vectorext.ForTestFromPairs(-41, 0, 42, 0)
+		)
+		require.Equal(t, expected, ys)
+	})
+
+	t.Run("many-point-domain-random", func(t *testing.T) {
+		// #nosec G404 -- we don't need a cryptographic PRNG for testing purposes
+		rng := rand.New(rand.NewSource(43))
+		rand := []fext.Element{fext.PseudoRand(rng), fext.PseudoRand(rng), fext.PseudoRand(rng)}
+		randX := fext.PseudoRand(rng)
+		expectedYs := []fext.Element{}
+		for i, coord := range rand {
+			var term1, term2, aux, y fext.Element
+			// compute the first term
+			term1.Sub(&randX, &rand[(i+3+1)%3])
+			aux.Sub(&coord, &rand[(i+3+1)%3])
+			term1.Div(&term1, &aux)
+			// compute the second term
+			term2.Sub(&randX, &rand[(i+3-1)%3])
+			aux.Sub(&coord, &rand[(i+3-1)%3])
+			term2.Div(&term2, &aux)
+			// add the expected y term to expectedYs
+			y.Mul(&term1, &term2)
+			expectedYs = append(expectedYs, y)
+		}
+		var (
+			domain   = rand
+			x        = randX
+			ys       = polyext.EvaluateLagrangesAnyDomain(domain, x)
+			expected = expectedYs
 		)
 		require.Equal(t, expected, ys)
 	})
