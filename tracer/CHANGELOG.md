@@ -1,5 +1,46 @@
 # Changelog
 
+## beta-v1.2.0-rc0
+* Fix: ignore `Trace.java` files and `GlobalConstants.java` + recognize 'beta*' as release tag (#1703)
+* init chain id in zktracer. (#1702)
+* Feat/multi transaction with create tests (#1615)
+* feat: update to delivery-25.1-develop-1be83c5 (#1694)
+* 1444 call corner cases testing (#1700)
+* Feat/blockdata unique gas limit constant (#1699)
+* support default filter for cron job (#1698)
+* CHANGED - use github actions concurrency to reduce outdated runs (#1691)
+* feat: always rebuild `Trace.java` files (#1696)
+* 1679 blockhash update (#1681)
+* fix: constraints update --- back to master (#1687)
+* Fix for TX_INIT + TX_FINL + TX_SKIP + some bug fixing + coinbase shenanigans (#1657)
+* feat: improve slack report for daily blockchain tests (#1677)
+* feat: use informative names for temporary lt files (#1673)
+* fix: constraints commit catch up (#1675)
+* 1627 blockdata redesign (#1630)
+* fix: use self hosted runner for blockchain tests (#1620)
+* Update Linea Besu to 24.12-delivery41 (#1668)
+* Update constraints to latest master (#1666)
+* fix: `EXTCODECOPY` requires the `CFI` as its `MMU_SRC_ID` only for addresses not currently under deployment (#1665)
+* Various `SELFDESTRUCT` related fixes (#1661)
+* Fix inherited `REVERT_STAMP` of context that `GET_REVERTED` but don't `SELF_REVERT` + some `SSTORE` and `SLOAD` fixes for the `DOM/SUB` stamps (#1659)
+* `PUSHVALUE` fix for exceptional `PUSH`es (#1658)
+* test: program invoking all OpCodes (#1647)
+* test: extend INVALID opcode (#1645)
+* fix: constraints commit update (#1656)
+* fix: `TX_WARM` fix for addresses which don't exist in the state (#1655)
+* fix: converting from long to int may reveal unintended valid jump destinations (#1654)
+* Fine tune dependencies (#1653)
+* Remove extra `MISC` row for calls to the `IDENTITY` precompile of the `FAILURE_KNOWN_TO_HUB` variety
+* Fixing the 3rd account rows for CREATE's of the FAILURE_WILL_REVERT variety (#1649)
+* Move plugins into a separate project (#1637)
+* ras: constraints update (#1641)
+* CREATE debugging continued (#1635)
+* `HUB -> ROM` lookup fix (#1640)
+* test(mxp): improving naming (#1606)
+* add trivial change clause to contributing md (#1633)
+* upgrade version only (#1634)
+* update to 24.12 besu (#1624)
+    
 ## 0.8.0-rc8
 * upgrade linea-besu dependency
 * deactivate MMIO constraints
