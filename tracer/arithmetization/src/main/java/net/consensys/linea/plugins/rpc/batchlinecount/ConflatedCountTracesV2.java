@@ -28,6 +28,7 @@ import net.consensys.linea.plugins.rpc.tracegeneration.TraceRequestParams;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.json.JsonConverter;
 import org.hyperledger.besu.plugin.ServiceManager;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -85,7 +86,11 @@ public class ConflatedCountTracesV2 {
 
     final long fromBlock = params.startBlockNumber();
     final long toBlock = params.endBlockNumber();
-    final ZkTracer tracer = new ZkTracer();
+    final ZkTracer tracer =
+        new ZkTracer(
+            BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
+                .getChainId()
+                .orElseThrow());
 
     traceService.trace(
         fromBlock,
