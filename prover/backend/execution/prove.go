@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -185,14 +186,15 @@ func mustProveAndPass(
 			filepath := "/tmp/wizard-assignment/blob-" + strconv.Itoa(rand.Int()) + ".bin"
 
 			encodeOnlyZkEvm := zkevm.EncodeOnlyZkEvm(traces)
+			numChunks := runtime.GOMAXPROCS(0)
 
 			// Serialize the assignment
 			encodingDuration := time.Now()
-			encodeOnlyZkEvm.AssignAndEncodeInChunks(filepath, w.ZkEVM, 50)
+			encodeOnlyZkEvm.AssignAndEncodeInChunks(filepath, w.ZkEVM, numChunks)
 
 			// Deserialize the assignment
 			decodingDuration := time.Now()
-			_, errDec := serialization.DeserializeAssignment(filepath, 50)
+			_, errDec := serialization.DeserializeAssignment(filepath, numChunks)
 			if errDec != nil {
 				panic(fmt.Sprintf("Error during deserialization: %v", errDec))
 			}
