@@ -110,15 +110,6 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 	wg.Wait()
 	logrus.Infof("Time taken for CBOR serialization in chunks: %v", time.Since(start))
 
-	// Calculate the combined size of `serializedChunks` in GB
-	totalCBORSize := 0
-	for i, chunk := range serializedChunks {
-		totalCBORSize += len(chunk)
-		logrus.Infof("Serialized chunk %d, size: %d bytes", i, len(chunk))
-	}
-	cborDataSizeGB := float64(totalCBORSize) / (1024 * 1024 * 1024)
-	logrus.Infof("Total size of CBOR serialized data: %.6f GB", cborDataSizeGB)
-
 	return serializedChunks
 }
 
