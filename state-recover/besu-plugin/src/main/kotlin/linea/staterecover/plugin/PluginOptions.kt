@@ -43,21 +43,21 @@ class PluginCliOptions {
 
   @CommandLine.Option(
     names = ["--plugin-$cliOptionsPrefix-shomei-endpoint"],
-    description = ["L1 RPC endpoint"],
+    description = ["shomei (state manager) endpoint"],
     required = true
   )
   lateinit var shomeiEndpoint: URI
 
   @CommandLine.Option(
     names = ["--plugin-$cliOptionsPrefix-blobscan-endpoint"],
-    description = ["L1 RPC endpoint"],
+    description = ["blobscan api endpoint"],
     required = true
   )
   lateinit var blobscanEndpoint: URI
 
   @CommandLine.Option(
     names = ["--plugin-$cliOptionsPrefix-l1-polling-interval"],
-    description = ["L1 polling interval"],
+    description = ["L1 polling interval for new finalized blobs"],
     required = false
   )
   var l1PollingInterval: Duration = Duration.ofSeconds(12)

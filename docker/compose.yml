@@ -742,7 +742,8 @@ services:
         --plugin-staterecovery-l1-rpc-endpoint=http://l1-el-node:8545 \
         --plugin-staterecovery-shomei-endpoint=http://shomei-sr:8888 \
         --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \
-        --plugin-staterecovery-overriding-recovery-start-block-number=1
+        --plugin-staterecovery-overriding-recovery-start-block-number=1 \
+        --plugin-staterecovery-l1-polling-interval=PT1S
     volumes:
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
       - ./config/zkbesu-shomei/log4j-staterecovery.xml:/var/lib/besu/log4j.xml:ro

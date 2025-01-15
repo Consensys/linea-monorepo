@@ -22,7 +22,6 @@ import org.hyperledger.besu.plugin.services.mining.MiningService
 import org.hyperledger.besu.plugin.services.p2p.P2PService
 import org.hyperledger.besu.plugin.services.query.PoaQueryService
 import org.hyperledger.besu.plugin.services.sync.SynchronizationService
-import kotlin.time.Duration.Companion.seconds
 
 fun <T : BesuService> ServiceManager.getServiceOrThrow(clazz: Class<T>): T {
   return this.getService(clazz)
@@ -98,7 +97,7 @@ open class LineaStateRecoverPlugin : BesuPlugin {
           smartContractAddress = config.l1SmartContractAddress.toString(),
           l1LatestSearchBlock = net.consensys.linea.BlockParameter.Tag.LATEST,
           overridingRecoveryStartBlockNumber = config.overridingRecoveryStartBlockNumber,
-          l1PollingInterval = 1.seconds
+          l1PollingInterval = config.l1PollingInterval
         )
       )
     }
