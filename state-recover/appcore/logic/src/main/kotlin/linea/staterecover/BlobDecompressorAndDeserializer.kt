@@ -128,7 +128,7 @@ class BlobDecompressorToDomainV1(
       }.thenPeek {
         val endTime = Clock.System.now()
         logger.debug(
-          "blobs decompressed and serialized: duration={}ms blobsCount={} blocks={}",
+          "blobs decompressed and serialized: duration={} blobsCount={} blocks={}",
           endTime - startTime,
           blobs.size,
           CommonDomainFunctions.blockIntervalString(startBlockNumber, blockNumber - 1UL)

@@ -9,6 +9,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.EthLogsSearcher
 import linea.build.staterecover.clients.VertxTransactionDetailsClient
+import linea.log4j.configureLoggers
 import linea.staterecover.clients.blobscan.BlobScanClient
 import linea.staterecover.test.FakeExecutionLayerClient
 import linea.staterecover.test.FakeStateManagerClientReadFromL1
@@ -23,6 +24,7 @@ import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.net.URI
 import kotlin.time.Duration.Companion.milliseconds
@@ -55,7 +57,7 @@ class StateRecoverSepoliaWithFakeExecutionClientIntTest {
     executionLayerClient = FakeExecutionLayerClient(
       headBlock = BlockNumberAndHash(number = 0uL, hash = ByteArray(32) { 0 }),
       initialStateRecoverStartBlockNumber = null,
-      loggerName = "test.fake.clients.l1.fake-execution-layer"
+      loggerName = "test.fake.clients.execution-layer"
     )
     blobFetcher = BlobScanClient.create(
       vertx = vertx,
@@ -73,25 +75,26 @@ class StateRecoverSepoliaWithFakeExecutionClientIntTest {
         rpcUrl = l1RpcUrl,
         log = LogManager.getLogger("test.clients.l1.events-fetcher"),
         requestResponseLogLevel = Level.TRACE,
-        failuresLogLevel = Level.WARN
+        failuresLogLevel = Level.DEBUG
       ),
       Web3JLogsSearcher.Config(
-        backoffDelay = 1.milliseconds,
-        requestRetryConfig = RetryConfig.noRetries
+        backoffDelay = 400.milliseconds,
+        requestRetryConfig = RetryConfig(
+          backoffDelay = 1.seconds
+        )
       ),
       log = LogManager.getLogger("test.clients.l1.events-fetcher")
     )
     fakeStateManagerClient = FakeStateManagerClientReadFromL1(
       headBlockNumber = ULong.MAX_VALUE,
       logsSearcher = logsSearcher,
-      contracAddress = StateRecoverApp.Config.lineaSepolia.smartContractAddress
+      contractAddress = StateRecoverApp.Config.lineaSepolia.smartContractAddress
     )
     transactionDetailsClient = VertxTransactionDetailsClient.create(
       jsonRpcClientFactory = jsonRpcFactory,
       endpoint = URI(l1RpcUrl),
       retryConfig = RequestRetryConfig(
-        backoffDelay = 10.milliseconds,
-        timeout = 2.seconds
+        backoffDelay = 1.seconds
       ),
       logger = LogManager.getLogger("test.clients.l1.transaction-details")
     )
@@ -101,7 +104,7 @@ class StateRecoverSepoliaWithFakeExecutionClientIntTest {
         rpcUrl = l1RpcUrl,
         log = LogManager.getLogger("test.clients.l1.linea-contract"),
         requestResponseLogLevel = Level.INFO,
-        failuresLogLevel = Level.WARN
+        failuresLogLevel = Level.DEBUG
       ),
       contractAddress = StateRecoverApp.Config.lineaSepolia.smartContractAddress
     )
@@ -119,14 +122,26 @@ class StateRecoverSepoliaWithFakeExecutionClientIntTest {
         l1LatestSearchBlock = BlockParameter.Tag.LATEST,
         l1PollingInterval = 5.seconds,
         executionClientPollingInterval = 1.seconds,
-        smartContractAddress = lineaContractClient.getAddress()
+        smartContractAddress = lineaContractClient.getAddress(),
+        logsBlockChunkSize = 5000u
       )
+    )
+    configureLoggers(
+      rootLevel = Level.INFO,
+      "test.clients.l1.execution-layer" to Level.INFO,
+      "test.clients.l1.web3j-default" to Level.DEBUG,
+      "test.clients.l1.transaction-details" to Level.INFO,
+      "test.clients.l1.linea-contract" to Level.INFO,
+      "test.clients.l1.events-fetcher" to Level.DEBUG,
+      "test.clients.l1.blobscan" to Level.INFO,
+      "net.consensys.linea.contract.l1" to Level.DEBUG
     )
   }
 
-  // "Disabled because it is mean for local testing and debug purposes"
-  // @Test
+  // "Disabled because it is for local testing and debug purposes"
+  @Test
   fun `simulate recovery from given point`() {
+//    println("L1 is $l1RpcUrl")
     val finalizationEvents = logsSearcher
       .getLogs(
         fromBlock = BlockParameter.Tag.EARLIEST,

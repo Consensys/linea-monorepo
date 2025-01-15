@@ -25,6 +25,12 @@ open class FakeStateManagerClient(
     headBlockNumber = blocksStateRootHashes.keys.maxOrNull() ?: 0UL
   }
 
+  open fun getStateRootHash(blockNumber: ULong): SafeFuture<ByteArray> {
+    return blocksStateRootHashes[blockNumber]
+      ?.let { SafeFuture.completedFuture(it) }
+      ?: SafeFuture.failedFuture(RuntimeException("StateRootHash not found for block=$blockNumber"))
+  }
+
   override fun rollupGetHeadBlockNumber(): SafeFuture<ULong> {
     return SafeFuture.completedFuture(headBlockNumber)
   }
@@ -33,28 +39,17 @@ open class FakeStateManagerClient(
     blockInterval: BlockInterval
   ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
     // For state recovery, we just need the endStateRootHash
-    val blockZkStateRootHash = blocksStateRootHashes[blockInterval.endBlockNumber]
-    return when {
-      blockZkStateRootHash == null ->
-        SafeFuture
-          .failedFuture(
-            RuntimeException(
-              "SateRootHash found for block=${blockInterval.endBlockNumber} headBlockNumber=$headBlockNumber"
-            )
-          )
-
-      else ->
-        return SafeFuture.completedFuture(
-          Ok(
-            GetZkEVMStateMerkleProofResponse(
-              zkStateMerkleProof = ArrayNode(null),
-              zkParentStateRootHash = ByteArray(32),
-              zkEndStateRootHash = blockZkStateRootHash,
-              zkStateManagerVersion = "fake-version"
-            )
+    return getStateRootHash(blockInterval.endBlockNumber)
+      .thenApply { stateRootHash ->
+        Ok(
+          GetZkEVMStateMerkleProofResponse(
+            zkStateMerkleProof = ArrayNode(null),
+            zkParentStateRootHash = ByteArray(32),
+            zkEndStateRootHash = stateRootHash,
+            zkStateManagerVersion = "fake-version"
           )
         )
-    }
+      }
   }
 }
 
@@ -66,46 +61,31 @@ class FakeStateManagerClientBasedOnBlobsRecords(
 )
 
 class FakeStateManagerClientReadFromL1(
-  val headBlockNumber: ULong,
+  headBlockNumber: ULong,
   val logsSearcher: EthLogsSearcher,
-  val contracAddress: String
-) : StateManagerClientV1 {
+  val contractAddress: String
+) : FakeStateManagerClient(
+  headBlockNumber = headBlockNumber
+) {
 
-  override fun rollupGetHeadBlockNumber(): SafeFuture<ULong> {
-    return SafeFuture.completedFuture(headBlockNumber)
-  }
-
-  override fun rollupGetStateMerkleProofWithTypedError(
-    blockInterval: BlockInterval
-  ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
-    return logsSearcher
-      .getLogs(
-        fromBlock = BlockParameter.Tag.EARLIEST,
-        toBlock = BlockParameter.Tag.FINALIZED,
-        address = contracAddress,
-        topics = listOf(
-          DataFinalizedV3.topic,
-          null,
-//          blockInterval.startBlockNumber.toHexStringUInt256()
-          blockInterval.endBlockNumber.toHexStringUInt256()
-        )
-      )
-      .thenCompose { logs ->
-        if (logs.isEmpty()) {
-          SafeFuture.failedFuture(RuntimeException("No logs found for l2 blocks=$blockInterval"))
-        } else {
-          val logEvent = DataFinalizedV3.fromEthLog(logs.first())
-          SafeFuture.completedFuture(
-            Ok(
-              GetZkEVMStateMerkleProofResponse(
-                zkStateMerkleProof = ArrayNode(null),
-                zkParentStateRootHash = logEvent.event.parentStateRootHash,
-                zkEndStateRootHash = logEvent.event.finalStateRootHash,
-                zkStateManagerVersion = "fake-version"
-              )
+  override fun getStateRootHash(blockNumber: ULong): SafeFuture<ByteArray> {
+    return super
+      .getStateRootHash(blockNumber)
+      .exceptionallyCompose {
+        logsSearcher
+          .getLogs(
+            fromBlock = BlockParameter.Tag.EARLIEST,
+            toBlock = BlockParameter.Tag.FINALIZED,
+            address = contractAddress,
+            topics = listOf(
+              DataFinalizedV3.topic,
+              null,
+              blockNumber.toHexStringUInt256()
             )
-          )
-        }
+          ).thenApply { logs ->
+            val logEvent = DataFinalizedV3.fromEthLog(logs.first())
+            logEvent.event.finalStateRootHash
+          }
       }
   }
 }
