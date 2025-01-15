@@ -49,6 +49,8 @@ type WizardVerifierCircuit struct {
 	localOpeningIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
 	// Same for logDerivativeSum query
 	logDerivSumIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
+	// Same for grand-product query
+	grandProductIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
 
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
@@ -68,6 +70,9 @@ type WizardVerifierCircuit struct {
 	// LogDerivSumParams stores an assignment for each [query.LogDerivSumParams]
 	// from the proof. It is part of the witness of the gnark circuit.
 	LogDerivSumParams []query.GnarkLogDerivSumParams `gnark:",secret"`
+	// GrandProductParams stores an assignment for each [query.GrandProductParams]
+	// from the proof. It is part of the witness of the gnark circuit.
+	GrandProductParams []query.GnarkGrandProductParams `gnark:",secret"`
 
 	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
@@ -322,6 +327,14 @@ func (c *WizardVerifierCircuit) GetLocalPointEvalParams(name ifaces.QueryID) que
 func (c *WizardVerifierCircuit) GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams {
 	qID := c.logDerivSumIDs.MustGet(name)
 	return c.LogDerivSumParams[qID]
+}
+
+// GetGrandProductParams returns the parameters for the requested
+// [query.GrandProduct] query. Its work mirrors the function
+// [VerifierRuntime.GetGrandProductParams]
+func (c *WizardVerifierCircuit) GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams {
+	qID := c.grandProductIDs.MustGet(name)
+	return c.GrandProductParams[qID]
 }
 
 // GetColumns returns the gnark assignment of a column in a gnark circuit. It

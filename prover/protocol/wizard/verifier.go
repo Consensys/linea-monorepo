@@ -313,6 +313,11 @@ func (run *VerifierRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogD
 	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams)
 }
 
+// GetGrandProductParams returns the parameters of a [query.GrandProduct]
+func (run *VerifierRuntime) GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams {
+	return run.QueriesParams.MustGet(name).(query.GrandProductParams)
+}
+
 /*
 CopyColumnInto implements `column.GetWitness`
 Copies the witness into a slice
