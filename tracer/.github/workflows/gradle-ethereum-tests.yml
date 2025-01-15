@@ -23,9 +23,6 @@ jobs:
         with:
           rust-corset: true
 
-      - name: Generate zkevm_for_reference_tests.bin
-        run: cd ./linea-constraints; make zkevm_for_reference_tests.bin -B; cd ..
-
       - name: Generate General State Reference Tests
         run:  ./gradlew generateGeneralStateReferenceTests -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
         env:
@@ -33,7 +30,7 @@ jobs:
           CORSET_FLAGS: fields,expand,expand,expand
 
       - name: Run General State Reference Tests
-        run: ./gradlew referenceGeneralStateTests
+        run: ./gradlew -Dblockchain=Ethereum referenceGeneralStateTests
         env:
           REFERENCE_TESTS_PARALLELISM: 10
           JAVA_OPTS: -Dorg.gradle.daemon=false
@@ -71,9 +68,6 @@ jobs:
         with:
           go-corset: true
 
-      - name: Generate zkevm_for_reference_tests.bin
-        run: cd ./linea-constraints; make zkevm_for_reference_tests.bin -B; cd ..
-
       - name: Generate General State Reference Tests
         run: ./gradlew generateGeneralStateReferenceTests -Dorg.gradle.caching=true
         env:
@@ -81,7 +75,7 @@ jobs:
           CORSET_FLAGS: fields,expand,expand,expand
 
       - name: Run General State Reference Tests
-        run: GOMEMLIMIT=196GiB ./gradlew referenceGeneralStateTests
+        run: GOMEMLIMIT=64GiB ./gradlew -Dblockchain=Ethereum referenceGeneralStateTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable

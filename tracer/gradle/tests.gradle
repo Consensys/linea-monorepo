@@ -42,7 +42,6 @@ apply plugin: 'com.adarshr.test-logger'
   */
 tasks.withType(Test).configureEach {
     dependsOn 'buildZkevmBin'
-    dependsOn 'buildTracer'
 
   minHeapSize = "4g"
   maxHeapSize = "8g"

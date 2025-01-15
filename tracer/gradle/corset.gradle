@@ -25,11 +25,16 @@ tasks.register('corsetExists') {
 }
 
 tasks.register('buildZkevmBin', Exec) {
-//    dependsOn corsetExists
     workingDir "${project.rootDir}/linea-constraints/"
     commandLine 'make', 'zkevm.bin'
-
-    //store the output instead of printing to the console
+    // sanity check target chain
+    def chain = System.getProperty('blockchain')
+    // note: null indicates the default (which is Linea).
+    if(chain != null && chain != "Linea") {
+        println("*** incorrect target chain (expected 'Linea' was '" + chain + "')\n\n")
+        assert false
+    }
+    // store the output instead of printing to the console
     standardOutput = new ByteArrayOutputStream()
     ext.output = {
         return standardOutput.toString()
@@ -37,11 +42,16 @@ tasks.register('buildZkevmBin', Exec) {
 }
 
 tasks.register('buildReferenceTestsZkevmBin', Exec) {
-//    dependsOn corsetExists
     workingDir "${project.rootDir}/linea-constraints/"
     commandLine 'make', 'zkevm_for_reference_tests.bin'
-
-    //store the output instead of printing to the console
+    // sanity check target chain
+    def chain = System.getProperty('blockchain')
+    //
+    if(chain != "Ethereum") {
+        println("*** incorrect target chain (expected 'Ethereum' was '" + chain + "')\n\n")
+        assert false
+    }    
+    // Store the output instead of printing to the console
     standardOutput = new ByteArrayOutputStream()
     ext.output = {
         return standardOutput.toString()

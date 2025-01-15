@@ -63,7 +63,7 @@ jobs:
           go-corset: true
 
       - name: Run Weekly tests
-        run: GOMEMLIMIT=196GiB ./gradlew weeklyTests
+        run: GOMEMLIMIT=96GiB ./gradlew weeklyTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
