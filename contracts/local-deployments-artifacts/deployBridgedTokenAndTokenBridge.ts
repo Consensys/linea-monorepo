@@ -1,7 +1,20 @@
-import { abi as ProxyAdminAbi, bytecode as ProxyAdminBytecode } from "./static-artifacts/ProxyAdmin.json";
-import { abi as BridgedTokenAbi, bytecode as BridgedTokenBytecode } from "./dynamic-artifacts/BridgedToken.json";
-import { abi as TokenBridgeAbi, bytecode as TokenBridgeBytecode } from "./dynamic-artifacts/TokenBridge.json";
 import {
+  contractName as ProxyAdminContractName,
+  abi as ProxyAdminAbi,
+  bytecode as ProxyAdminBytecode,
+} from "./static-artifacts/ProxyAdmin.json";
+import {
+  contractName as BridgedTokenContractName,
+  abi as BridgedTokenAbi,
+  bytecode as BridgedTokenBytecode,
+} from "./dynamic-artifacts/BridgedToken.json";
+import {
+  contractName as TokenBridgeContractName,
+  abi as TokenBridgeAbi,
+  bytecode as TokenBridgeBytecode,
+} from "./dynamic-artifacts/TokenBridge.json";
+import {
+  contractName as UpgradeableBeaconContractName,
   abi as UpgradeableBeaconAbi,
   bytecode as UpgradeableBeaconBytecode,
 } from "./static-artifacts/UpgradeableBeacon.json";
@@ -23,18 +36,23 @@ import { deployContractFromArtifacts, getInitializerData } from "../common/helpe
 async function main() {
   const ORDERED_NONCE_POST_L2MESSAGESERVICE = 3;
   const ORDERED_NONCE_POST_LINEAROLLUP = 4;
-  const bridgedTokenName = "BridgedToken";
-  const tokenBridgeName = "TokenBridge";
+
+  let securityCouncilAddress;
+
+  if (process.env.TOKEN_BRIDGE_L1 === "true") {
+    securityCouncilAddress = getRequiredEnvVar("L1_TOKEN_BRIDGE_SECURITY_COUNCIL");
+  } else {
+    securityCouncilAddress = getRequiredEnvVar("L2_TOKEN_BRIDGE_SECURITY_COUNCIL");
+  }
 
   const l2MessageServiceAddress = process.env.L2MESSAGESERVICE_ADDRESS;
   const lineaRollupAddress = process.env.LINEA_ROLLUP_ADDRESS;
 
   const remoteChainId = getRequiredEnvVar("REMOTE_CHAIN_ID");
-  const tokenBridgeSecurityCouncil = getRequiredEnvVar("TOKEN_BRIDGE_SECURITY_COUNCIL");
 
   const pauseTypeRoles = getEnvVarOrDefault("TOKEN_BRIDGE_PAUSE_TYPES_ROLES", TOKEN_BRIDGE_PAUSE_TYPES_ROLES);
   const unpauseTypeRoles = getEnvVarOrDefault("TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES", TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES);
-  const defaultRoleAddresses = generateRoleAssignments(TOKEN_BRIDGE_ROLES, tokenBridgeSecurityCouncil, []);
+  const defaultRoleAddresses = generateRoleAssignments(TOKEN_BRIDGE_ROLES, securityCouncilAddress, []);
   const roleAddresses = getEnvVarOrDefault("TOKEN_BRIDGE_ROLE_ADDRESSES", defaultRoleAddresses);
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
@@ -42,23 +60,31 @@ async function main() {
   let walletNonce;
 
   if (process.env.TOKEN_BRIDGE_L1 === "true") {
-    if (process.env.L1_NONCE === undefined) {
+    if (!process.env.L1_NONCE) {
       walletNonce = await wallet.getNonce();
     } else {
       walletNonce = parseInt(process.env.L1_NONCE) + ORDERED_NONCE_POST_LINEAROLLUP;
     }
   } else {
-    if (process.env.L2_NONCE === undefined) {
+    if (!process.env.L2_NONCE) {
       walletNonce = await wallet.getNonce();
     } else {
       walletNonce = parseInt(process.env.L2_NONCE) + ORDERED_NONCE_POST_L2MESSAGESERVICE;
     }
   }
 
+  const tokenBridgeContractImplementationName = "tokenBridgeContractImplementation";
+
   const [bridgedToken, tokenBridgeImplementation, proxyAdmin] = await Promise.all([
-    deployContractFromArtifacts(BridgedTokenAbi, BridgedTokenBytecode, wallet, { nonce: walletNonce }),
-    deployContractFromArtifacts(TokenBridgeAbi, TokenBridgeBytecode, wallet, { nonce: walletNonce + 1 }),
-    deployContractFromArtifacts(ProxyAdminAbi, ProxyAdminBytecode, wallet, { nonce: walletNonce + 2 }),
+    deployContractFromArtifacts(BridgedTokenContractName, BridgedTokenAbi, BridgedTokenBytecode, wallet, {
+      nonce: walletNonce,
+    }),
+    deployContractFromArtifacts(tokenBridgeContractImplementationName, TokenBridgeAbi, TokenBridgeBytecode, wallet, {
+      nonce: walletNonce + 1,
+    }),
+    deployContractFromArtifacts(ProxyAdminContractName, ProxyAdminAbi, ProxyAdminBytecode, wallet, {
+      nonce: walletNonce + 2,
+    }),
   ]);
 
   const bridgedTokenAddress = await bridgedToken.getAddress();
@@ -67,12 +93,10 @@ async function main() {
 
   const chainId = (await provider.getNetwork()).chainId;
 
-  console.log(`${bridgedTokenName} contract deployed at ${bridgedTokenAddress}`);
-  console.log(`${tokenBridgeName} Implementation contract deployed at ${tokenBridgeImplementationAddress}`);
-  console.log(`L1 ProxyAdmin deployed: address=${proxyAdminAddress}`);
   console.log(`Deploying UpgradeableBeacon: chainId=${chainId} bridgedTokenAddress=${bridgedTokenAddress}`);
 
   const beaconProxy = await deployContractFromArtifacts(
+    UpgradeableBeaconContractName,
     UpgradeableBeaconAbi,
     UpgradeableBeaconBytecode,
     wallet,
@@ -102,7 +126,7 @@ async function main() {
 
   const initializer = getInitializerData(TokenBridgeAbi, "initialize", [
     {
-      defaultAdmin: tokenBridgeSecurityCouncil,
+      defaultAdmin: securityCouncilAddress,
       messageService: deployingChainMessageService,
       tokenBeacon: beaconProxyAddress,
       sourceChainId: chainId,
@@ -114,24 +138,14 @@ async function main() {
     },
   ]);
 
-  const proxyContract = await deployContractFromArtifacts(
+  await deployContractFromArtifacts(
+    TokenBridgeContractName,
     TransparentUpgradeableProxyAbi,
     TransparentUpgradeableProxyBytecode,
     wallet,
     tokenBridgeImplementationAddress,
     proxyAdminAddress,
     initializer,
-  );
-
-  const proxyContractAddress = await proxyContract.getAddress();
-  const txReceipt = await proxyContract.deploymentTransaction()?.wait();
-
-  if (!txReceipt) {
-    throw "Contract deployment transaction receipt not found.";
-  }
-
-  console.log(
-    `${tokenBridgeName} deployed: chainId=${chainId} address=${proxyContractAddress} blockNumber=${txReceipt.blockNumber}`,
   );
 }
 

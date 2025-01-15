@@ -69,7 +69,7 @@ compile-contracts-no-cache:
 		cd contracts/; \
 		make force-compile
 
-deploy-linea-rollup: L1_CONTRACT_VERSION:=5
+deploy-linea-rollup: L1_CONTRACT_VERSION:=6
 deploy-linea-rollup:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
@@ -111,7 +111,7 @@ deploy-token-bridge-l1:
 		RPC_URL=http:\\localhost:8445/ \
 		REMOTE_CHAIN_ID=1337 \
 		TOKEN_BRIDGE_L1=true \
-		TOKEN_BRIDGE_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
+		L1_TOKEN_BRIDGE_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
 		L2MESSAGESERVICE_ADDRESS=0xe537D669CA013d86EBeF1D64e40fC74CADC91987 \
 		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
 		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridge.ts
@@ -124,7 +124,7 @@ deploy-token-bridge-l2:
 		RPC_URL=http:\\localhost:8545/ \
 		REMOTE_CHAIN_ID=31648428 \
 		TOKEN_BRIDGE_L1=false \
-		TOKEN_BRIDGE_SECURITY_COUNCIL=0xf17f52151EbEF6C7334FAD080c5704D77216b732 \
+		L2_TOKEN_BRIDGE_SECURITY_COUNCIL=0xf17f52151EbEF6C7334FAD080c5704D77216b732 \
 		L2MESSAGESERVICE_ADDRESS=0xe537D669CA013d86EBeF1D64e40fC74CADC91987 \
 		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
 		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridge.ts
@@ -151,6 +151,22 @@ deploy-l2-test-erc20:
 		TEST_ERC20_INITIAL_SUPPLY=100000 \
 		npx ts-node local-deployments-artifacts/deployTestERC20.ts
 
+deploy-l2-evm-opcode-tester:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		RPC_URL=http:\\localhost:8545/ \
+		npx ts-node local-deployments-artifacts/deployLondonEvmTestingFramework.ts
+
+execute-all-opcodes:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		OPCODE_TEST_CONTRACT_ADDRESS=0x997FC3aF1F193Cbdc013060076c67A13e218980e \
+		NUMBER_OF_RUNS=3 \
+		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		RPC_URL=http:\\localhost:8545/ \
+		npx ts-node local-deployments-artifacts/executeAllOpcodes.ts
+
 fresh-start-l2-blockchain-only:
 		make clean-environment
 		make start-l2-blockchain-only
@@ -161,30 +177,30 @@ restart-shomei:
 		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml up zkbesu-shomei shomei -d
 
 fresh-start-all: COMPOSE_PROFILES:="l1,l2"
-fresh-start-all: L1_CONTRACT_VERSION:=5
+fresh-start-all: L1_CONTRACT_VERSION:=6
 fresh-start-all:
 		make clean-environment
 		make start-all L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
 fresh-start-all-traces-v2: COMPOSE_PROFILES:="l1,l2"
-fresh-start-all-traces-v2: L1_CONTRACT_VERSION:=5
+fresh-start-all-traces-v2: L1_CONTRACT_VERSION:=6
 fresh-start-all-traces-v2:
 		make clean-environment
 		$(MAKE) start-all-traces-v2 L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
 start-all: COMPOSE_PROFILES:=l1,l2
-start-all: L1_CONTRACT_VERSION:=5
+start-all: L1_CONTRACT_VERSION:=6
 start-all:
 		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 		make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
 start-all-traces-v2: COMPOSE_PROFILES:="l1,l2"
-start-all-traces-v2: L1_CONTRACT_VERSION:=5
+start-all-traces-v2: L1_CONTRACT_VERSION:=6
 start-all-traces-v2:
 		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 		$(MAKE) deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
-deploy-contracts: L1_CONTRACT_VERSION:=5
+deploy-contracts: L1_CONTRACT_VERSION:=6
 deploy-contracts:
 	cd contracts/; \
 	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
@@ -192,7 +208,7 @@ deploy-contracts:
 	cd .. && \
 	$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20
 
-deploy-contracts-minimal: L1_CONTRACT_VERSION:=5
+deploy-contracts-minimal: L1_CONTRACT_VERSION:=6
 deploy-contracts-minimal:
 	cd contracts/; \
 	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
