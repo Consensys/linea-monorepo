@@ -2,14 +2,19 @@ package serialization
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"math/big"
 	"sync"
+	"time"
+	"unsafe"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/pierrec/lz4/v4"
 )
 
 // WAssignment is an alias for the mapping type used to represent the assignment
@@ -18,8 +23,8 @@ type WAssignment = collection.Mapping[ifaces.ColID, smartvectors.SmartVector]
 
 // SerializeAssignment serializes map representing the column assignment of a
 // wizard protocol.
-func SerializeAssignment(a WAssignment) []byte {
 
+func SerializeAssignment(a WAssignment) []byte {
 	var (
 		as    = a.InnerMap()
 		ser   = map[string]*CompressedSmartVector{}
@@ -27,16 +32,190 @@ func SerializeAssignment(a WAssignment) []byte {
 		lock  = &sync.Mutex{}
 	)
 
+	// Step 1: Measure time for parallel.ExecuteChunky
+	start := time.Now()
 	parallel.ExecuteChunky(len(names), func(start, stop int) {
 		for i := start; i < stop; i++ {
 			v := CompressSmartVector(as[names[i]])
 			lock.Lock()
-			ser[string(names[i])] = v
+			// Convert names[i] to string using fmt.Sprintf or another method
+			ser[fmt.Sprintf("%v", names[i])] = v
 			lock.Unlock()
 		}
 	})
+	fmt.Printf("Time taken for parallel.ExecuteChunky: %v\n", time.Since(start))
 
-	return serializeAnyWithCborPkg(ser)
+	// Log approximate size of `ser` in GB
+	serSizeGB := float64(unsafe.Sizeof(ser)) / (1024 * 1024 * 1024)
+	fmt.Printf("Size of ser (approximate): %.6f GB\n", serSizeGB)
+
+	// Step 2: Parallelize CBOR serialization by chunking `ser`
+	start = time.Now()
+	chunkSize := (len(ser) + 49) / 50 // Calculate the size of each chunk
+	var serializedChunks = make([]json.RawMessage, 50)
+	var wg sync.WaitGroup
+	var m sync.Mutex
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(chunkIndex int) {
+			defer wg.Done()
+
+			// Select chunk of data for this goroutine
+			start := chunkIndex * chunkSize
+			stop := start + chunkSize
+			if stop > len(names) {
+				stop = len(names)
+			}
+
+			// Prepare chunk map for serialization
+			chunk := make(map[string]*CompressedSmartVector)
+			for j := start; j < stop; j++ {
+				// Convert names[j] to string
+				key := fmt.Sprintf("%v", names[j])
+				chunk[key] = ser[key]
+			}
+
+			// Serialize the chunk with CBOR
+			serializedChunk := serializeAnyWithCborPkg(chunk)
+
+			// Store the result in the slice
+			m.Lock()
+			serializedChunks[chunkIndex] = serializedChunk
+			m.Unlock()
+		}(i)
+	}
+	wg.Wait()
+	fmt.Printf("Time taken for CBOR serialization in chunks: %v\n", time.Since(start))
+
+	// Calculate the combined size of `serializedChunks` in GB
+	totalCBORSize := 0
+	for _, chunk := range serializedChunks {
+		totalCBORSize += len(chunk)
+	}
+	cborDataSizeGB := float64(totalCBORSize) / (1024 * 1024 * 1024)
+	fmt.Printf("Total size of CBOR serialized data: %.6f GB\n", cborDataSizeGB)
+
+	// Step 3: Concatenate all serialized chunks and compress with LZ4
+	start = time.Now()
+	var compressedData bytes.Buffer
+	lz4Writer := lz4.NewWriter(&compressedData)
+	for _, chunk := range serializedChunks {
+		_, err := lz4Writer.Write(chunk)
+		if err != nil {
+			panic(err) // handle error as needed
+		}
+	}
+	lz4Writer.Close() // finalize the LZ4 stream
+	fmt.Printf("Time taken for LZ4 compression: %v\n", time.Since(start))
+
+	// Log size of `compressedData.Bytes()` in GB
+	compressedDataSizeGB := float64(compressedData.Len()) / (1024 * 1024 * 1024)
+	fmt.Printf("Size of compressedData.Bytes(): %.6f GB\n", compressedDataSizeGB)
+
+	return compressedData.Bytes()
+}
+
+func SerializeAssignmentWithoutCompression(a WAssignment) []byte {
+	var (
+		as    = a.InnerMap()
+		ser   = map[string]*CompressedSmartVector{}
+		names = a.ListAllKeys()
+		lock  = &sync.Mutex{}
+	)
+
+	// Step 1: Measure time for parallel.ExecuteChunky
+	start := time.Now()
+	parallel.ExecuteChunky(len(names), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			v := CompressSmartVector(as[names[i]])
+			lock.Lock()
+			ser[fmt.Sprintf("%v", names[i])] = v
+			lock.Unlock()
+		}
+	})
+	fmt.Printf("Time taken for parallel.ExecuteChunky: %v\n", time.Since(start))
+
+	// Log approximate size of `ser` in GB
+	serSizeGB := float64(unsafe.Sizeof(ser)) / (1024 * 1024 * 1024)
+	fmt.Printf("Size of ser (approximate): %.6f GB\n", serSizeGB)
+
+	// Step 2: Parallelize CBOR serialization by chunking `ser`
+	start = time.Now()
+	chunkSize := (len(ser) + 49) / 50
+	var serializedChunks = make([]json.RawMessage, 50)
+	var wg sync.WaitGroup
+	var m sync.Mutex
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(chunkIndex int) {
+			defer wg.Done()
+
+			start := chunkIndex * chunkSize
+			stop := start + chunkSize
+			if stop > len(names) {
+				stop = len(names)
+			}
+
+			chunk := make(map[string]*CompressedSmartVector)
+			for j := start; j < stop; j++ {
+				key := fmt.Sprintf("%v", names[j])
+				chunk[key] = ser[key]
+			}
+
+			serializedChunk := serializeAnyWithCborPkg(chunk)
+
+			m.Lock()
+			serializedChunks[chunkIndex] = serializedChunk
+			m.Unlock()
+		}(i)
+	}
+	wg.Wait()
+	fmt.Printf("Time taken for CBOR serialization in chunks: %v\n", time.Since(start))
+
+	// Calculate the combined size of `serializedChunks` in GB
+	totalCBORSize := 0
+	for _, chunk := range serializedChunks {
+		totalCBORSize += len(chunk)
+	}
+	cborDataSizeGB := float64(totalCBORSize) / (1024 * 1024 * 1024)
+	fmt.Printf("Total size of CBOR serialized data: %.6f GB\n", cborDataSizeGB)
+
+	// Step 3: Parallel concatenation of all serialized chunks
+	start = time.Now()
+	numConcatenators := 50
+	chunksPerGroup := (len(serializedChunks) + numConcatenators - 1) / numConcatenators
+	subResults := make([][]byte, numConcatenators)
+	var concatWg sync.WaitGroup
+
+	for i := 0; i < numConcatenators; i++ {
+		concatWg.Add(1)
+		go func(groupIndex int) {
+			defer concatWg.Done()
+
+			// Concatenate this group of chunks
+			start := groupIndex * chunksPerGroup
+			stop := start + chunksPerGroup
+			if stop > len(serializedChunks) {
+				stop = len(serializedChunks)
+			}
+
+			var groupResult []byte
+			for _, chunk := range serializedChunks[start:stop] {
+				groupResult = append(groupResult, chunk...)
+			}
+			subResults[groupIndex] = groupResult
+		}(i)
+	}
+	concatWg.Wait()
+
+	// Final concatenation of subResults
+	var finalResult []byte
+	for _, subResult := range subResults {
+		finalResult = append(finalResult, subResult...)
+	}
+	fmt.Printf("Time taken for parallel concatenation: %v\n", time.Since(start))
+
+	return finalResult
 }
 
 // DeserializeAssignment deserialize a blob of bytes into a set of column
