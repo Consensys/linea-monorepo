@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
@@ -33,39 +32,32 @@ func EncodeOnlyZkEvm(tl *config.TracesLimits) *ZkEvm {
 	return encodeOnlyZkevm
 }
 
-func (z *ZkEvm) AssignAndEncodeInFile(filepath string, input *Witness) {
-	// Start encoding and measure time
-	encodingStart := time.Now()
-	run := wizard.ProverOnlyFirstRound(z.WizardIOP, z.prove(input))
-	b := serialization.SerializeAssignment(run.Columns)
-	encodingDuration := time.Since(encodingStart).Seconds()
-	fmt.Printf("[%v] encoding complete, total size: %d bytes, took %.2f seconds\n", time.Now(), len(b), encodingDuration)
-
-	// Start writing and measure time
-	writingStart := time.Now()
-	f := files.MustOverwrite(filepath)
-	f.Write(b)
-	f.Close()
-	writingDuration := time.Since(writingStart).Seconds()
-	fmt.Printf("[%v] writing complete, took %.2f seconds\n", time.Now(), writingDuration)
-
-	// Summary of total time
-	totalDuration := encodingDuration + writingDuration
-	fmt.Printf("[%v] blob total size %v bytes, took %.2f sec total (encode + write)\n", time.Now(), len(b), totalDuration)
-}
 
 func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChunks int) {
-	// Start encoding and measure time
+	// Start serialization and measure time
 	encodingStart := time.Now()
 	run := wizard.ProverOnlyFirstRound(z.WizardIOP, z.prove(input))
-	b := serialization.SerializeAssignment(run.Columns)
-	// b := serialization.SerializeAssignmentWithoutCompression(run.Columns)
+	serializedChunks := serialization.SerializeAssignment(run.Columns, numChunks)
 	encodingDuration := time.Since(encodingStart).Seconds()
-	fmt.Printf("[%v] encoding complete, total size: %d bytes, took %.2f seconds\n", time.Now(), len(b), encodingDuration)
 
-	// Determine the size of each chunk
-	chunkSize := (len(b) + numChunks - 1) / numChunks // Round up to ensure all data is included
-	fmt.Printf("[%v] calculated chunk size: %d bytes for %d chunks\n", time.Now(), chunkSize, numChunks)
+	// Calculate total size of serialized data
+	totalSerializedSize := 0
+	for _, chunk := range serializedChunks {
+		totalSerializedSize += len(chunk)
+	}
+	fmt.Printf("[%v] encoding complete, total serialized size: %d bytes, took %.2f seconds\n", time.Now(), totalSerializedSize, encodingDuration)
+
+	// Start compression and measure time
+	compressionStart := time.Now()
+	compressedSerializedChunks := serialization.CompressChunks(serializedChunks)
+	compressionDuration := time.Since(compressionStart).Seconds()
+
+	// Calculate total size of compressed data
+	totalCompressedSize := 0
+	for _, chunk := range compressedSerializedChunks {
+		totalCompressedSize += len(chunk)
+	}
+	fmt.Printf("[%v] compression complete, total compressed size: %d bytes, took %.2f seconds\n", time.Now(), totalCompressedSize, compressionDuration)
 
 	// Start writing process timing
 	writingStart := time.Now()
@@ -74,13 +66,7 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			// Calculate chunk boundaries
-			start := i * chunkSize
-			end := start + chunkSize
-			if end > len(b) {
-				end = len(b) // Adjust for the last chunk
-			}
-			chunk := b[start:end]
+			chunk := compressedSerializedChunks[i]
 			chunkPath := fmt.Sprintf("%s_chunk_%d", filepath, i)
 
 			// Measure writing time for each chunk
@@ -92,6 +78,7 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 			}
 			defer f.Close()
 
+			fmt.Printf("Writing chunk %d to %s, size: %d bytes\n", i, chunkPath, len(chunk))
 			_, err = f.Write(chunk)
 			if err != nil {
 				fmt.Printf("[%v] error writing to file %s: %v\n", time.Now(), chunkPath, err)
@@ -104,8 +91,8 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 	wg.Wait()
 	writingDuration := time.Since(writingStart).Seconds() // Total writing time
 
-	// Total encoding and writing summary
-	totalDuration := encodingDuration + writingDuration
-	fmt.Printf("[%v] blob total size %v bytes, took %.2f sec total (encode + write)\n", time.Now(), len(b), totalDuration)
-	fmt.Printf("[%v] total encoding time: %.2f seconds, total writing time: %.2f seconds\n", time.Now(), encodingDuration, writingDuration)
+	// Total process summary
+	totalDuration := encodingDuration + compressionDuration + writingDuration
+	fmt.Printf("[%v] blob total serialized size %d bytes, total compressed size %d bytes, took %.2f sec total (encoding + compression + write)\n", time.Now(), totalSerializedSize, totalCompressedSize, totalDuration)
+	fmt.Printf("[%v] total encoding time: %.2f seconds, total compression time: %.2f seconds, total writing time: %.2f seconds\n", time.Now(), encodingDuration, compressionDuration, writingDuration)
 }
