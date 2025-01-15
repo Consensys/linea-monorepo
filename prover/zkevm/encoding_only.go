@@ -79,14 +79,13 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 			}
 			defer f.Close()
 
-			logrus.Infof("Writing chunk %d to %s, size: %d bytes", i, chunkPath, len(chunk))
 			_, err = f.Write(chunk)
 			if err != nil {
 				logrus.Errorf("[%v] error writing to file %s: %v", time.Now(), chunkPath, err)
 				return
 			}
 			writeDuration := time.Since(writeStart).Seconds()
-			logrus.Infof("[%v] completed writing chunk %d to %s, took %.2f seconds", time.Now(), i, chunkPath, writeDuration)
+			logrus.Infof("Completed writing chunk %d to %s, took %.2f seconds", i, chunkPath, writeDuration)
 		}(i)
 	}
 	wg.Wait()

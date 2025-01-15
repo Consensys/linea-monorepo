@@ -124,7 +124,6 @@ func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
 			defer wg.Done()
 			var compressedData bytes.Buffer
 			lz4Writer := lz4.NewWriter(&compressedData)
-			logrus.Infof("Compressing chunk %d, size: %d bytes", i, len(chunk))
 			_, err := lz4Writer.Write(chunk)
 			if err != nil {
 				logrus.Errorf("Error compressing chunk %d: %v", i, err)
