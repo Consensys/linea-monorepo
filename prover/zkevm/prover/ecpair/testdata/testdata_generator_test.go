@@ -543,7 +543,10 @@ func generateTestCases(length int) []testCase {
 }
 
 func TestGenerateECPairTestCases(t *testing.T) {
-	generatedCases := generateTestCases(3)
+	var generatedCases []testCase
+	for i := 1; i <= 5; i++ {
+		generatedCases = append(generatedCases, generateTestCases(i)...)
+	}
 	for i, tc := range generatedCases {
 		f, err := os.Create(fmt.Sprintf("generated/case-%06d_input.csv", i+1))
 		if err != nil {
