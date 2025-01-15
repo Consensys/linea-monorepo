@@ -59,11 +59,12 @@ func SerializeAssignment(a WAssignment) []byte {
 
 	// Step 2: Parallelize CBOR serialization by chunking `ser`
 	start = time.Now()
-	chunkSize := (len(ser) + 49) / 50 // Calculate the size of each chunk
-	var serializedChunks = make([]json.RawMessage, 50)
+	numChunks := 50
+	chunkSize := (len(ser) + numChunks - 1) / numChunks // Calculate the size of each chunk
+	var serializedChunks = make([]json.RawMessage, numChunks)
 	var wg sync.WaitGroup
 	var m sync.Mutex
-	for i := 0; i < 50; i++ {
+	for i := 0; i < numChunks; i++ {
 		wg.Add(1)
 		go func(chunkIndex int) {
 			defer wg.Done()
@@ -178,7 +179,7 @@ func SerializeAssignmentWithoutCompression(a WAssignment) []byte {
 		}(i)
 	}
 	wg.Wait()
-	fmt.Printf("Time taken for CBOR serialization in chunks: %v\n", time.Since(start))
+	fmt.Printf("Time taken for CBOR serialization in chunks : %v\n", time.Since(start))
 
 	// Calculate the combined size of `serializedChunks` in GB
 	totalCBORSize := 0
