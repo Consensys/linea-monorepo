@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/grandproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	dist_permutation "github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
@@ -134,6 +136,12 @@ func TestPermutation(t *testing.T) {
 				dist_permutation.Settings{TargetModuleName: moduleAName},
 				initialComp, moduleAComp, &disc,
 			)
+
+			// Compile the grand product query
+			grandproduct.CompileGrandProductDist(moduleAComp)
+
+			// This adds a dummy compilation step
+			dummy.CompileAtProverLvl(moduleAComp)
 
 			// This runs the initial prover
 			initialRuntime := wizard.RunProver(initialComp, initialProve)

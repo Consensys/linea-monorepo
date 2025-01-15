@@ -195,7 +195,7 @@ func computeFactor(aOrB []ifaces.Column, alpha, beta coin.Info) *symbolic.Expres
 // - A pointer to the PermutationIntoGrandProductCtx instance with the updated ParamY field.
 func (p *PermutationIntoGrandProductCtx) computeQueryParam(run *wizard.ProverRuntime) field.Element {
 
-	var y field.Element
+	var y = field.One()
 
 	for _, ce := range p.GdProdInputs {
 
