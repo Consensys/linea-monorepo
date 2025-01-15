@@ -45,8 +45,16 @@ func SerializeAssignment(a WAssignment) []byte {
 	})
 	fmt.Printf("Time taken for parallel.ExecuteChunky: %v\n", time.Since(start))
 
-	// Log approximate size of `ser` in GB
-	serSizeGB := float64(unsafe.Sizeof(ser)) / (1024 * 1024 * 1024)
+	// Calculate the approximate size of `ser` in bytes
+	var serSizeBytes uintptr
+	lock.Lock()
+	for k, v := range ser {
+		serSizeBytes += unsafe.Sizeof(k) + unsafe.Sizeof(*v)
+	}
+	lock.Unlock()
+
+	// Convert size to GB
+	serSizeGB := float64(serSizeBytes) / (1024 * 1024 * 1024)
 	fmt.Printf("Size of ser (approximate): %.6f GB\n", serSizeGB)
 
 	// Step 2: Parallelize CBOR serialization by chunking `ser`
