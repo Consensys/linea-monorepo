@@ -3,11 +3,11 @@ package linea.staterecover
 import build.linea.contract.l1.LineaContractVersion
 import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import build.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
-import build.linea.domain.RetryConfig
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.build.staterecover.clients.VertxTransactionDetailsClient
+import linea.domain.RetryConfig
 import linea.log4j.configureLoggers
 import linea.staterecover.clients.blobscan.BlobScanClient
 import linea.staterecover.test.FakeExecutionLayerClient

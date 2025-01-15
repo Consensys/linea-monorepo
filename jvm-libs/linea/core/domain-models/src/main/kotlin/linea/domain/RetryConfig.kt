@@ -1,4 +1,4 @@
-package build.linea.domain
+package linea.domain
 
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -9,8 +9,8 @@ data class RetryConfig(
   val backoffDelay: Duration = 100.milliseconds,
   val failuresWarningThreshold: UInt = 0u
 ) {
-  val isRetryEnabled: Boolean
-    get() = maxRetries != null && maxRetries > 0u || timeout != null && timeout > 0.milliseconds
+  val isRetryDisabled = maxRetries == 0u || timeout == 0.milliseconds
+  val isRetryEnabled: Boolean = !isRetryDisabled
 
   init {
     maxRetries?.also {

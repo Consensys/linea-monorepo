@@ -1,11 +1,11 @@
 package linea.web3j
 
-import build.linea.domain.RetryConfig
 import build.linea.web3j.domain.toDomain
 import build.linea.web3j.domain.toWeb3j
 import io.vertx.core.Vertx
 import linea.EthLogsSearcher
 import linea.SearchDirection
+import linea.domain.RetryConfig
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.BlockParameter.Companion.toBlockParameter
 import net.consensys.linea.CommonDomainFunctions
