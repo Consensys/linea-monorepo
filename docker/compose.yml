@@ -744,7 +744,6 @@ services:
         --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \
         --plugin-staterecovery-overriding-recovery-start-block-number=1
     volumes:
-      - ./config/zkbesu-shomei/all-permissions.policy:/var/lib/besu/all-permissions.policy:ro
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
       - ./config/zkbesu-shomei/log4j-staterecovery.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
@@ -781,9 +780,7 @@ services:
       - --rpc-http-port=8888
       - --min-confirmations-before-importing=0
       - --trace-start-block-number=0
-      - --data-path=/data/shomei-sr
     volumes:
-      - local-dev:/data/
       - ./config/shomei/log4j.xml:/log4j.xml:ro
   #      - ../tmp/local/shomei:/data/shomei/:z
 

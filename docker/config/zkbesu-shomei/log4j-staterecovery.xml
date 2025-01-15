@@ -40,7 +40,7 @@
     <Logger name="linea.plugin.staterecover.clients.l1" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Logger name="linea.plugin.staterecover.clients.l1.transaction-details" level="TRACE" additivity="false">
+    <Logger name="linea.plugin.staterecover.clients.l1.transaction-details" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
     <Root level="${sys:root.log.level}">
