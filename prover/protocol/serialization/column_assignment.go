@@ -145,6 +145,8 @@ func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) 
 		lock = &sync.Mutex{}
 	)
 
+	logrus.Infof("Reading the assignment files")
+
 	// Read and decompress each chunk individually
 	var wg sync.WaitGroup
 	for i := 0; i < numChunks; i++ {

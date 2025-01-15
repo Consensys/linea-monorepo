@@ -183,21 +183,20 @@ func mustProveAndPass(
 
 		profiling.ProfileTrace("encode-decode-no-circuit", true, false, func() {
 			filepath := "/tmp/wizard-assignment/blob-" + strconv.Itoa(rand.Int()) + ".bin"
+
+			// Serialize the assignment
+			encodingDuration := time.Now()
 			encodeOnlyZkEvm := zkevm.EncodeOnlyZkEvm(traces)
-			// encodeOnlyZkEvm.AssignAndEncodeInFile(filepath, w.ZkEVM)
 			encodeOnlyZkEvm.AssignAndEncodeInChunks(filepath, w.ZkEVM, 50)
 
-			t := time.Now()
-
-			fmt.Printf("[%v] reading the assignment file\n", time.Now())
-
-			// Deserialize the assignment from chunks
+			// Deserialize the assignment
+			decodingDuration := time.Now()
 			_, errDec := serialization.DeserializeAssignment(filepath, 50)
 			if errDec != nil {
 				panic(fmt.Sprintf("Error during deserialization: %v", errDec))
 			}
-
-			fmt.Printf("[%v] took %v sec to read the file and decode it into an assignment\n", time.Now(), time.Since(t).Seconds())
+			fmt.Printf("[Encoding Summary] took %v sec to encode an assignmente and write it into the files \n", time.Since(encodingDuration).Seconds())
+			fmt.Printf("[Decoding Summary] took %v sec to read the files and decode it into an assignment\n", time.Since(decodingDuration).Seconds())
 		})
 
 		os.Exit(0)

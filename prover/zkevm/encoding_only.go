@@ -100,6 +100,6 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 
 	// Total process summary
 	totalDuration := encodingDuration + compressionDuration + writingDuration
-	logrus.Infof("[Summary] total serialized size %d bytes, total compressed size %d bytes, took %.2f sec total (encoding + compression + writing)", totalSerializedSize, totalCompressedSize, totalDuration)
+	logrus.Infof("total serialized size %d bytes, total compressed size %d bytes, took %.2f sec total (encoding + compression + writing)", totalSerializedSize, totalCompressedSize, totalDuration)
 	
 }
