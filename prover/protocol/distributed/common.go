@@ -34,19 +34,19 @@ func ReplaceExternalCoins(initialComp, moduleComp *wizard.CompiledIOP, expr *sym
 	}
 }
 
-// GetFreshModuleComp creates a [wizard.CompiledIOP] object including only the columns relevant to the module.
-// It also contains the prover steps for assigning the module column
+// GetFreshModuleComp returns a [wizard.DefineFunc] that creates
+// a [wizard.CompiledIOP] object including only the columns
+// relevant to the module. It also contains the prover steps
+// for assigning the module column
 func GetFreshModuleComp(
 	initialComp *wizard.CompiledIOP,
 	disc ModuleDiscoverer,
-	initialProver wizard.ProverStep,
 	moduleName ModuleName,
 ) *wizard.CompiledIOP {
 
 	var (
 		// initialize the moduleComp
-		moduleComp     = wizard.NewCompiledIOP()
-		initialRunTime = wizard.RunProver(initialComp, initialProver)
+		moduleComp = wizard.NewCompiledIOP()
 	)
 
 	for round := 0; round < initialComp.NumRounds(); round++ {
@@ -65,14 +65,12 @@ func GetFreshModuleComp(
 
 		// create a new  moduleProver
 		moduleProver := moduleProver{
-			cols:    columnsInRound,
-			initRun: initialRunTime,
-			round:   round,
+			cols:  columnsInRound,
+			round: round,
 		}
 
 		// register Prover action for the module to assign columns per round
 		moduleComp.RegisterProverAction(round, moduleProver)
-
 	}
 
 	return moduleComp
@@ -83,17 +81,19 @@ type moduleProver struct {
 	round int
 	// columns for a specific round
 	cols []ifaces.Column
-	// runtime of the initial Prover that is parent to the module.
-	initRun *wizard.ProverRuntime
 }
 
 // It implements [wizard.ProverAction] for the module prover.
 func (p moduleProver) Run(run *wizard.ProverRuntime) {
+
+	if run.ParentRuntime == nil {
+		utils.Panic("invalid call: the runtime does not have a [ParentRuntime]")
+	}
+
 	for _, col := range p.cols {
 		// get the witness from the initialProver
-		colWitness := p.initRun.GetColumn(col.GetColID())
+		colWitness := run.ParentRuntime.GetColumn(col.GetColID())
 		// assign it in the module in the round col was declared
 		run.AssignColumn(col.GetColID(), colWitness, col.Round())
 	}
-
 }

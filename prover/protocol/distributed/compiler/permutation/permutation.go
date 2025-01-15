@@ -76,6 +76,7 @@ func NewPermutationIntoGrandProductCtx(
 	for round := 0; round < numRounds; round++ {
 		queries := initialComp.QueriesNoParams.AllKeysAt(round)
 		for queryInRound, qName := range queries {
+
 			// Skip if it was already compiled
 			if initialComp.QueriesNoParams.IsIgnored(qName) {
 				continue
@@ -99,6 +100,7 @@ func NewPermutationIntoGrandProductCtx(
 			}
 		}
 	}
+
 	// We register the grand product query in round one because
 	// alphas, betas, and the query param are assigned in round one
 	p.Query = moduleComp.InsertGrandProduct(p.LastRoundPerm+1, qId, p.GdProdInputs)
