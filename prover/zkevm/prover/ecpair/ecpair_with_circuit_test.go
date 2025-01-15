@@ -3,6 +3,9 @@
 package ecpair
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
