@@ -11,6 +11,11 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: false
+
       - name: Setup Environment
         uses: ./.github/actions/setup-environment
         with:
