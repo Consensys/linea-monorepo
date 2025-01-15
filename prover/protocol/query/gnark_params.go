@@ -15,8 +15,14 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 	return GnarkLocalOpeningParams{Y: p.Y}
 }
 
+// A gnark circuit version of LogDerivSumParams
 type GnarkLogDerivSumParams struct {
 	Sum frontend.Variable
+}
+
+// A gnark circuit version of GrandProductParams
+type GnarkGrandProductParams struct {
+	Prod frontend.Variable
 }
 
 func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {

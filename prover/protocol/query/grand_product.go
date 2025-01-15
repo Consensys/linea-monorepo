@@ -45,7 +45,7 @@ type GrandProductParams struct {
 //
 // Returns:
 // - A pointer to a new instance of GrandProduct.
-func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryID) *GrandProduct {
+func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryID) GrandProduct {
 	// check the length consistency
 	for key := range inp {
 		for i := range inp[key].Numerators {
@@ -58,7 +58,7 @@ func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryI
 		}
 	}
 
-	return &GrandProduct{
+	return GrandProduct{
 		Round:  round,
 		Inputs: inp,
 		ID:     id,
@@ -89,7 +89,7 @@ func (gp GrandProductParams) UpdateFS(fs *fiatshamir.State) {
 //
 // Returns:
 // - An error if the grand product query is not satisfied, or nil if it is satisfied.
-func (g *GrandProduct) Check(run ifaces.Runtime) error {
+func (g GrandProduct) Check(run ifaces.Runtime) error {
 	params := run.GetParams(g.ID).(GrandProductParams)
 	actualProd := field.One()
 	for key := range g.Inputs {
