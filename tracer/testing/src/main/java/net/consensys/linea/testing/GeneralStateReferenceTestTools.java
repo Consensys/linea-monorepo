@@ -126,6 +126,7 @@ public class GeneralStateReferenceTestTools {
 
       transactionProcessingResultValidator.accept(transaction, result);
       zkTracerValidator.accept(tracer);
+      worldStateUpdater.commit();
     }
 
     tracer.traceEndBlock(blockHeader, blockBody);
@@ -139,7 +140,6 @@ public class GeneralStateReferenceTestTools {
     if (coinbase != null && coinbase.isEmpty() && shouldClearEmptyAccounts(spec.getFork())) {
       worldStateUpdater.deleteAccount(coinbase.getAddress());
     }
-    worldStateUpdater.commit();
     worldState.persist(blockHeader);
 
     // Check the world state root hash.
