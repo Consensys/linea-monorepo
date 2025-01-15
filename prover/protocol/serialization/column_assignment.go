@@ -138,52 +138,51 @@ func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) 
 		lock = &sync.Mutex{}
 	)
 
-	// Read and decompress the data
-	var decompressedData bytes.Buffer
+	// Read and decompress each chunk individually
+	var wg sync.WaitGroup
 	for i := 0; i < numChunks; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
 		chunkPath := fmt.Sprintf("%s_chunk_%d", filepath, i)
 		chunkData, err := ioutil.ReadFile(chunkPath)
 		if err != nil {
-			return WAssignment{}, fmt.Errorf("failed to read chunk %d: %w", i, err)
+				fmt.Printf("Failed to read chunk %d: %v\n", i, err)
+				return
 		}
 
 		fmt.Printf("Reading chunk %d from %s, size: %d bytes\n", i, chunkPath, len(chunkData))
 		lz4Reader := lz4.NewReader(bytes.NewReader(chunkData))
+			var decompressedData bytes.Buffer
 		n, err := decompressedData.ReadFrom(lz4Reader)
 		if err != nil {
 			fmt.Printf("Error decompressing chunk %d: %v\n", i, err)
-			return WAssignment{}, fmt.Errorf("failed to decompress chunk %d: %w", i, err)
+				return
 		}
 		fmt.Printf("Decompressed chunk %d, size: %d bytes\n", i, n)
-	}
 
-	// Deserialize the decompressed data
-	var serializedChunks []map[string]*CompressedSmartVector
-	if err := deserializeAnyWithCborPkg(decompressedData.Bytes(), &serializedChunks); err != nil {
-		return WAssignment{}, fmt.Errorf("failed to deserialize decompressed data: %w", err)
+			// Deserialize the decompressed chunk
+			var chunkMap map[string]*CompressedSmartVector
+			if err := deserializeAnyWithCborPkg(decompressedData.Bytes(), &chunkMap); err != nil {
+				fmt.Printf("Error deserializing chunk %d: %v\n", i, err)
+				return
 	}
 
 	// Reconstruct the WAssignment
-	var wg sync.WaitGroup
-	for _, chunk := range serializedChunks {
-		wg.Add(1)
-		go func(chunk map[string]*CompressedSmartVector) {
-			defer wg.Done()
-
-			for k, v := range chunk {
+			for k, v := range chunkMap {
 				decompressed := v.Decompress()
 				lock.Lock()
 				res.InsertNew(ifaces.ColID(k), decompressed)
 				lock.Unlock()
 			}
-		}(chunk)
+		}(i)
 	}
 	wg.Wait()
 
+	fmt.Printf("Hash of WAssignment after deserialization: %s\n", hashWAssignment(res))
+
 	return res, nil
 }
-
-
 
 // CompressedSmartVector represents a [smartvectors.SmartVector] in a more
 // space-efficient manner.
