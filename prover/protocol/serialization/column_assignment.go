@@ -103,27 +103,32 @@ func SerializeAssignment(a WAssignment) []byte {
 	cborDataSizeGB := float64(totalCBORSize) / (1024 * 1024 * 1024)
 	fmt.Printf("Total size of CBOR serialized data: %.6f GB\n", cborDataSizeGB)
 
-	// Step 3: Concatenate all serialized chunks and compress with LZ4
-	start = time.Now()
+// CompressChunks compresses each chunk.
+func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
+	compressedChunks := make([]json.RawMessage, len(chunks))
+	var wg sync.WaitGroup
+
+	for i, chunk := range chunks {
+		wg.Add(1)
+		go func(i int, chunk json.RawMessage) {
+			defer wg.Done()
 	var compressedData bytes.Buffer
 	lz4Writer := lz4.NewWriter(&compressedData)
-	for i, chunk := range serializedChunks {
+			fmt.Printf("Compressing chunk %d, size: %d bytes\n", i, len(chunk))
 		_, err := lz4Writer.Write(chunk)
 		if err != nil {
 			fmt.Printf("Error compressing chunk %d: %v\n", i, err)
 			panic(err) // handle error as needed
 		}
-	}
 	lz4Writer.Close() // finalize the LZ4 stream
-	fmt.Printf("Time taken for LZ4 compression: %v\n", time.Since(start))
+			compressedChunks[i] = compressedData.Bytes()
+			fmt.Printf("Compressed chunk %d, size: %d bytes\n", i, len(compressedChunks[i]))
+		}(i, chunk)
+	}
+	wg.Wait()
 
-	// Log size of `compressedData.Bytes()` in GB
-	compressedDataSizeGB := float64(compressedData.Len()) / (1024 * 1024 * 1024)
-	fmt.Printf("Size of compressedData.Bytes(): %.6f GB\n", compressedDataSizeGB)
-
-	return compressedData.Bytes()
+	return compressedChunks
 }
-
 
 // DeserializeAssignment deserializes a blob of bytes into a set of column
 // assignments representing assigned columns of a Wizard protocol.
