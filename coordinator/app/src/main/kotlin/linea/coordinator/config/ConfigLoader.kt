@@ -130,7 +130,7 @@ fun loadConfigs(
   ).let {
     return it
       .getOrElse {
-        throw RuntimeException("Invalid configurations. error=$it")
+        throw RuntimeException("Invalid configurations: $it")
       }.reified()
   }
 }
