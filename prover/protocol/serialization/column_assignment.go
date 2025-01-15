@@ -2,6 +2,8 @@ package serialization
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -22,6 +24,7 @@ import (
 // of a column in a [wizard.ProverRuntime]
 type WAssignment = collection.Mapping[ifaces.ColID, smartvectors.SmartVector]
 
+
 // hashWAssignment computes a hash of the serialized WAssignment structure.
 func hashWAssignment(a WAssignment) string {
 	serialized, err := json.Marshal(a)
@@ -36,8 +39,9 @@ func hashWAssignment(a WAssignment) string {
 
 // SerializeAssignment serializes map representing the column assignment of a
 // wizard protocol.
+func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
+	fmt.Printf("Hash of WAssignment before serialization: %s\n", hashWAssignment(a))
 
-func SerializeAssignment(a WAssignment) []byte {
 	var (
 		as    = a.InnerMap()
 		ser   = map[string]*CompressedSmartVector{}
@@ -70,7 +74,6 @@ func SerializeAssignment(a WAssignment) []byte {
 
 	// Step 2: Parallelize CBOR serialization by chunking `ser`
 	start = time.Now()
-	numChunks := 50
 	chunkSize := (len(ser) + numChunks - 1) / numChunks // Calculate the size of each chunk
 	var serializedChunks = make([]json.RawMessage, numChunks)
 	var wg sync.WaitGroup
@@ -109,11 +112,15 @@ func SerializeAssignment(a WAssignment) []byte {
 
 	// Calculate the combined size of `serializedChunks` in GB
 	totalCBORSize := 0
-	for _, chunk := range serializedChunks {
+	for i, chunk := range serializedChunks {
 		totalCBORSize += len(chunk)
+		fmt.Printf("Serialized chunk %d, size: %d bytes\n", i, len(chunk))
 	}
 	cborDataSizeGB := float64(totalCBORSize) / (1024 * 1024 * 1024)
 	fmt.Printf("Total size of CBOR serialized data: %.6f GB\n", cborDataSizeGB)
+
+	return serializedChunks
+}
 
 // CompressChunks compresses each chunk.
 func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
@@ -124,15 +131,15 @@ func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
 		wg.Add(1)
 		go func(i int, chunk json.RawMessage) {
 			defer wg.Done()
-	var compressedData bytes.Buffer
-	lz4Writer := lz4.NewWriter(&compressedData)
+			var compressedData bytes.Buffer
+			lz4Writer := lz4.NewWriter(&compressedData)
 			fmt.Printf("Compressing chunk %d, size: %d bytes\n", i, len(chunk))
-		_, err := lz4Writer.Write(chunk)
-		if err != nil {
-			fmt.Printf("Error compressing chunk %d: %v\n", i, err)
-			panic(err) // handle error as needed
-		}
-	lz4Writer.Close() // finalize the LZ4 stream
+			_, err := lz4Writer.Write(chunk)
+			if err != nil {
+				fmt.Printf("Error compressing chunk %d: %v\n", i, err)
+				panic(err) // handle error as needed
+			}
+			lz4Writer.Close() // finalize the LZ4 stream
 			compressedChunks[i] = compressedData.Bytes()
 			fmt.Printf("Compressed chunk %d, size: %d bytes\n", i, len(compressedChunks[i]))
 		}(i, chunk)
@@ -156,31 +163,31 @@ func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) 
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-		chunkPath := fmt.Sprintf("%s_chunk_%d", filepath, i)
-		chunkData, err := ioutil.ReadFile(chunkPath)
-		if err != nil {
+			chunkPath := fmt.Sprintf("%s_chunk_%d", filepath, i)
+			chunkData, err := ioutil.ReadFile(chunkPath)
+			if err != nil {
 				fmt.Printf("Failed to read chunk %d: %v\n", i, err)
 				return
-		}
+			}
 
-		fmt.Printf("Reading chunk %d from %s, size: %d bytes\n", i, chunkPath, len(chunkData))
-		lz4Reader := lz4.NewReader(bytes.NewReader(chunkData))
+			fmt.Printf("Reading chunk %d from %s, size: %d bytes\n", i, chunkPath, len(chunkData))
+			lz4Reader := lz4.NewReader(bytes.NewReader(chunkData))
 			var decompressedData bytes.Buffer
-		n, err := decompressedData.ReadFrom(lz4Reader)
-		if err != nil {
-			fmt.Printf("Error decompressing chunk %d: %v\n", i, err)
+			n, err := decompressedData.ReadFrom(lz4Reader)
+			if err != nil {
+				fmt.Printf("Error decompressing chunk %d: %v\n", i, err)
 				return
-		}
-		fmt.Printf("Decompressed chunk %d, size: %d bytes\n", i, n)
+			}
+			fmt.Printf("Decompressed chunk %d, size: %d bytes\n", i, n)
 
 			// Deserialize the decompressed chunk
 			var chunkMap map[string]*CompressedSmartVector
 			if err := deserializeAnyWithCborPkg(decompressedData.Bytes(), &chunkMap); err != nil {
 				fmt.Printf("Error deserializing chunk %d: %v\n", i, err)
 				return
-	}
+			}
 
-	// Reconstruct the WAssignment
+			// Reconstruct the WAssignment
 			for k, v := range chunkMap {
 				decompressed := v.Decompress()
 				lock.Lock()
