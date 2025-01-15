@@ -37,12 +37,12 @@ class LineaSubmissionEventsClientImpl(
   }
 
   override fun findDataFinalizedEventByStartBlockNumber(
-    l2BlockNumber: ULong
+    l2StartBlockNumberInclusive: ULong
   ): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
     return findDataFinalizedV3Event(
       fromL1BlockNumber = l1EarliestSearchBlock,
       toL1BlockNumber = l1LatestSearchBlock,
-      startBlockNumber = l2BlockNumber
+      startBlockNumber = l2StartBlockNumberInclusive
     )
   }
 

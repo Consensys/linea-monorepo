@@ -42,7 +42,7 @@ class StateSynchronizerService(
     return if (lastSuccessfullyProcessedFinalization != null) {
       submissionEventsClient
         .findDataFinalizedEventByStartBlockNumber(
-          l2BlockNumber = lastSuccessfullyProcessedFinalization!!.event.endBlockNumber + 1UL
+          l2StartBlockNumberInclusive = lastSuccessfullyProcessedFinalization!!.event.endBlockNumber + 1UL
         )
     } else {
       elClient.getBlockNumberAndHash(blockParameter = BlockParameter.Tag.LATEST)
@@ -50,7 +50,7 @@ class StateSynchronizerService(
           // 1st, assuming head matches a prev finalization,
           val nextBlockToImport = headBlock.number + 1UL
           submissionEventsClient
-            .findDataFinalizedEventByStartBlockNumber(l2BlockNumber = nextBlockToImport)
+            .findDataFinalizedEventByStartBlockNumber(l2StartBlockNumberInclusive = nextBlockToImport)
             .thenCompose { finalizationEvent ->
               if (finalizationEvent != null) {
                 SafeFuture.completedFuture(finalizationEvent)

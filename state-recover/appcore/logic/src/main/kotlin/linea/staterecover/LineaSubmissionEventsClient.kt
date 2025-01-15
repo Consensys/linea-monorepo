@@ -128,7 +128,7 @@ data class FinalizationAndDataEventsV3(
 
 interface LineaRollupSubmissionEventsClient {
   fun findDataFinalizedEventByStartBlockNumber(
-    l2BlockNumber: ULong
+    l2StartBlockNumberInclusive: ULong
   ): SafeFuture<EthLogEvent<DataFinalizedV3>?>
 
   fun findDataFinalizedEventContainingBlock(

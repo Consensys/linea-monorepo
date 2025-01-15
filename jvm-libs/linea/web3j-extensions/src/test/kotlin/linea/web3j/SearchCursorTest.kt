@@ -108,7 +108,7 @@ class SearchCursorTest {
     assertThat(searchCursor.next(searchDirection = null)).isEqualTo(11UL to 20UL)
     // This backward is not technically valid in a typical binary search,
     // but it is a valid use case for this cursor because when searching for logs
-    // the predicate can try to go back but search chunks are exauhsted
+    // the predicate can try to go back but search chunks are exhausted
     assertThat(searchCursor.next(searchDirection = SearchDirection.BACKWARD)).isNull()
   }
 
