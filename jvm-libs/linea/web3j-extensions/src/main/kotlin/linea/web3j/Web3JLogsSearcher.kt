@@ -45,7 +45,7 @@ class Web3JLogsSearcher(
     chunkSize: Int,
     address: String,
     topics: List<String>,
-    shallContinueToSearchPredicate: (build.linea.domain.EthLog) -> SearchDirection?
+    shallContinueToSearch: (build.linea.domain.EthLog) -> SearchDirection?
   ): SafeFuture<build.linea.domain.EthLog?> {
     require(chunkSize > 0) { "chunkSize=$chunkSize must be greater than 0" }
 
@@ -57,7 +57,7 @@ class Web3JLogsSearcher(
           chunkSize,
           address,
           topics,
-          shallContinueToSearchPredicate
+          shallContinueToSearch
         )
       }
   }

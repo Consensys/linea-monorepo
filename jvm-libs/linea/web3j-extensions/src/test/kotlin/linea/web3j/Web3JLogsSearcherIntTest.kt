@@ -274,7 +274,7 @@ class Web3JLogsSearcherIntTest {
           address = address,
           topics = listOf("0xffaabbcc"),
           chunkSize = 10,
-          shallContinueToSearchPredicate = { ethLog ->
+          shallContinueToSearch = { ethLog ->
             shallContinueToSearch(ethLog, targetNumber = number.toULong())
           }
         )
@@ -296,7 +296,7 @@ class Web3JLogsSearcherIntTest {
       address = address,
       topics = listOf("0xffaabbcc"),
       chunkSize = 10,
-      shallContinueToSearchPredicate = { ethLog ->
+      shallContinueToSearch = { ethLog ->
         shallContinueToSearch(ethLog, targetNumber = 89UL)
       }
     )
@@ -319,7 +319,7 @@ class Web3JLogsSearcherIntTest {
       address = address,
       topics = listOf("0xffaabbcc"),
       chunkSize = 10,
-      shallContinueToSearchPredicate = { ethLog ->
+      shallContinueToSearch = { ethLog ->
         shallContinueToSearch(ethLog, targetNumber = 89UL)
       }
     )
@@ -338,7 +338,7 @@ class Web3JLogsSearcherIntTest {
       address = address,
       topics = listOf("0xffaabbcc"),
       chunkSize = 10,
-      shallContinueToSearchPredicate = { ethLog ->
+      shallContinueToSearch = { ethLog ->
         shallContinueToSearch(ethLog, targetNumber = 250UL)
       }
     )
@@ -360,7 +360,7 @@ class Web3JLogsSearcherIntTest {
       address = address,
       topics = listOf("0xffaabbcc"),
       chunkSize = 5,
-      shallContinueToSearchPredicate = { ethLog ->
+      shallContinueToSearch = { ethLog ->
         shallContinueToSearch(ethLog, targetNumber = 35UL)
           .also { println("log=${ethLog.blockNumber} direction=$it") }
       }

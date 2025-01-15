@@ -42,7 +42,6 @@ class FileRecoveryStatusPersistenceTest {
       .also { persistence ->
         assertThat(persistence.getRecoveryStartBlockNumber()).isEqualTo(11UL)
       }
-    println(Files.readString(tempDir.resolve("recovery-status.json")))
   }
 
   @Test

@@ -261,7 +261,6 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
       .untilAsserted {
         assertThat(
           executionLayerClient.lineaGetStateRecoveryStatus().get()
-            .also { println(it) }
         )
           .isEqualTo(
             StateRecoveryStatus(

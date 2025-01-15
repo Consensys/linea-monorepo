@@ -25,7 +25,7 @@ class LineaSubmissionEventsClientImpl(
       address = smartContractAddress,
       topics = listOf(DataFinalizedV3.topic),
       chunkSize = logsBlockChunkSize,
-      shallContinueToSearchPredicate = { log ->
+      shallContinueToSearch = { log ->
         val (event) = DataFinalizedV3.fromEthLog(log)
         when {
           l2BlockNumber < event.startBlockNumber -> SearchDirection.BACKWARD

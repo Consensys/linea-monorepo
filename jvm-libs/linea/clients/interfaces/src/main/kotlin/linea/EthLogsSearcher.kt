@@ -10,7 +10,7 @@ enum class SearchDirection {
 
 interface EthLogsSearcher {
   /**
-   * Shall search for the Log until shallContinueToSearchPredicate return null.
+   * Shall search for the Log until shallContinueToSearchPredicate returns null.
    * if fromBlock..toBlock range is too large, it shall break into smaller chunks
    * and perform a binary search;
    */
@@ -20,7 +20,7 @@ interface EthLogsSearcher {
     chunkSize: Int = 1000,
     address: String,
     topics: List<String>,
-    shallContinueToSearchPredicate: (build.linea.domain.EthLog) -> SearchDirection? // null means stop searching
+    shallContinueToSearch: (build.linea.domain.EthLog) -> SearchDirection? // null means stop searching
   ): SafeFuture<build.linea.domain.EthLog?>
 
   fun getLogs(
