@@ -15,7 +15,7 @@ var (
 
 	checkerCompilationSuite = compilationSuite{
 		// The dummy compiler returns the witness as the proof and manually
-		// checks it as the verifier. It is essentially the trivial proof
+		// checks it as the verifier . It is essentially the trivial proof
 		// system.
 		dummy.Compile,
 	}
