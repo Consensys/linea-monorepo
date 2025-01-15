@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"math/big"
 	"sync"
-	"time"
 	"unsafe"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -49,8 +48,6 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 		lock  = &sync.Mutex{}
 	)
 
-	// Step 1: Measure time for parallel.ExecuteChunky
-	start := time.Now()
 	parallel.ExecuteChunky(len(names), func(start, stop int) {
 		for i := start; i < stop; i++ {
 			v := CompressSmartVector(as[names[i]])
@@ -60,7 +57,6 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 			lock.Unlock()
 		}
 	})
-	logrus.Infof("Time taken for parallel.ExecuteChunky: %v", time.Since(start))
 
 	// Calculate the size of `ser` in bytes
 	var serSizeBytes uintptr
@@ -72,7 +68,7 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 	serSizeGB := float64(serSizeBytes) / (1024 * 1024 * 1024)
 	logrus.Infof("Size of ser : %.6f GB", serSizeGB)
 
-	// Step 2: Parallelize CBOR serialization by chunking `ser`
+	// Parallelize CBOR serialization by chunking `ser`
 	chunkSize := (len(ser) + numChunks - 1) / numChunks // Calculate the size of each chunk
 	var serializedChunks = make([]json.RawMessage, numChunks)
 	var wg sync.WaitGroup
@@ -112,7 +108,7 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 	return serializedChunks
 }
 
-// CompressChunks compresses each chunk.
+// CompressChunks compresses each serialized chunk
 func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
 	compressedChunks := make([]json.RawMessage, len(chunks))
 	var wg sync.WaitGroup

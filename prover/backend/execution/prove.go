@@ -184,9 +184,10 @@ func mustProveAndPass(
 		profiling.ProfileTrace("encode-decode-no-circuit", true, false, func() {
 			filepath := "/tmp/wizard-assignment/blob-" + strconv.Itoa(rand.Int()) + ".bin"
 
+			encodeOnlyZkEvm := zkevm.EncodeOnlyZkEvm(traces)
+
 			// Serialize the assignment
 			encodingDuration := time.Now()
-			encodeOnlyZkEvm := zkevm.EncodeOnlyZkEvm(traces)
 			encodeOnlyZkEvm.AssignAndEncodeInChunks(filepath, w.ZkEVM, 50)
 
 			// Deserialize the assignment
