@@ -20,7 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.evm.operation.BlockHashOperation.BlockHashLookup;
+import org.hyperledger.besu.evm.blockhash.BlockHashLookup;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /**
  * Contain the minimal set of information to replay a conflation as a unit test without requiring
@@ -64,7 +65,7 @@ public record ConflationSnapshot(
     private final Map<Long, Hash> blockHashCache = new HashMap<>();
 
     @Override
-    public Hash apply(Long blockNumber) {
+    public Hash apply(MessageFrame frame, Long blockNumber) {
       // Sanity check we found the hash
       if (!this.blockHashCache.containsKey(blockNumber)) {
         // Missing for some reason

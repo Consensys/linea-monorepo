@@ -173,7 +173,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
             // Sanity check block within last 256 blocks.
             if (blockNumber < currentBlockNumber && (currentBlockNumber - blockNumber) <= 256) {
               // Use enclosing frame to determine hash
-              Hash blockHash = frame.getBlockHashLookup().apply(blockNumber);
+              Hash blockHash = frame.getBlockHashLookup().apply(frame, blockNumber);
               // Record it was seen
               this.reaper.touchBlockHash(blockNumber, blockHash);
             }

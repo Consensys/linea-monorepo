@@ -40,8 +40,8 @@ import org.hyperledger.besu.ethereum.privacy.storage.PrivateMetadataUpdater;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.trie.diffbased.bonsai.worldview.BonsaiWorldState;
 import org.hyperledger.besu.ethereum.trie.diffbased.bonsai.worldview.BonsaiWorldStateUpdateAccumulator;
-import org.hyperledger.besu.ethereum.vm.CachingBlockHashLookup;
-import org.hyperledger.besu.evm.operation.BlockHashOperation;
+import org.hyperledger.besu.ethereum.vm.BlockchainBasedBlockHashLookup;
+import org.hyperledger.besu.evm.blockhash.BlockHashLookup;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 @Slf4j
@@ -96,8 +96,8 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
 
       final WorldUpdater worldStateUpdater = worldState.updater();
 
-      final BlockHashOperation.BlockHashLookup blockHashLookup =
-          new CachingBlockHashLookup(blockHeader, blockchain);
+      final BlockHashLookup blockHashLookup =
+          new BlockchainBasedBlockHashLookup(blockHeader, blockchain);
       final Address miningBeneficiary =
           miningBeneficiaryCalculator.calculateBeneficiary(blockHeader);
 

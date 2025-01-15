@@ -49,9 +49,9 @@ import org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 import org.hyperledger.besu.evm.account.MutableAccount;
+import org.hyperledger.besu.evm.blockhash.BlockHashLookup;
 import org.hyperledger.besu.evm.internal.EvmConfiguration;
 import org.hyperledger.besu.evm.internal.Words;
-import org.hyperledger.besu.evm.operation.BlockHashOperation;
 import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
@@ -187,7 +187,7 @@ public class ReplayExecutionEnvironment {
       final boolean txResultChecking,
       final boolean useCoinbaseAddressFromBlockHeader,
       final TransactionProcessingResultValidator resultValidator) {
-    BlockHashOperation.BlockHashLookup blockHashLookup = conflation.toBlockHashLookup();
+    BlockHashLookup blockHashLookup = conflation.toBlockHashLookup();
     // Initialise world state from conflation
     MutableWorldState world = initWorld(conflation);
     // Construct the transaction processor
@@ -203,7 +203,11 @@ public class ReplayExecutionEnvironment {
           new BlockBody(
               blockSnapshot.txs().stream().map(TransactionSnapshot::toTransaction).toList(),
               new ArrayList<>());
-      tracer.traceStartBlock(header, body);
+      final Address miningBeneficiary =
+          useCoinbaseAddressFromBlockHeader
+              ? header.getCoinbase()
+              : CliqueHelpers.getProposerOfBlock(header);
+      tracer.traceStartBlock(header, miningBeneficiary);
 
       for (TransactionSnapshot txs : blockSnapshot.txs()) {
         final Transaction tx = txs.toTransaction();
@@ -214,9 +218,7 @@ public class ReplayExecutionEnvironment {
                 updater,
                 header,
                 tx,
-                useCoinbaseAddressFromBlockHeader
-                    ? header.getCoinbase()
-                    : CliqueHelpers.getProposerOfBlock(header),
+                miningBeneficiary,
                 buildOperationTracer(tx, txs.getOutcome(), tracer, txResultChecking),
                 blockHashLookup,
                 false,

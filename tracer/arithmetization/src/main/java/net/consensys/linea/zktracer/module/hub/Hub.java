@@ -473,12 +473,14 @@ public class Hub implements Module {
   }
 
   @Override
-  public void traceStartBlock(final ProcessableBlockHeader processableBlockHeader) {
+  public void traceStartBlock(
+      final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {
+    this.coinbaseAddress = miningBeneficiary;
     state.firstAndLastStorageSlotOccurrences.add(new HashMap<>());
-    this.transients().block().update(processableBlockHeader);
+    this.transients().block().update(processableBlockHeader, miningBeneficiary);
     txStack.resetBlock();
     for (Module m : modules) {
-      m.traceStartBlock(processableBlockHeader);
+      m.traceStartBlock(processableBlockHeader, miningBeneficiary);
     }
   }
 
@@ -499,7 +501,6 @@ public class Hub implements Module {
 
     if (!transactionProcessingMetadata.requiresEvmExecution()) {
       state.setProcessingPhase(TX_SKIP);
-      Address coinbaseAddress = Address.fromHexString("8f81e2e3f8b46467523463835f965ffe476e1c9e");
       new TxSkipSection(this, world, transactionProcessingMetadata, transients);
     } else {
       if (transactionProcessingMetadata.requiresPrewarming()) {
@@ -552,7 +553,6 @@ public class Hub implements Module {
 
     // root and transaction call data context's
     if (frame.getDepth() == 0) {
-      coinbaseAddress = frame.getMiningBeneficiary();
       if (state.getProcessingPhase() == TX_SKIP) {
         checkState(currentTraceSection() instanceof TxSkipSection);
         ((TxSkipSection) currentTraceSection()).coinbaseSnapshots(this, frame);

@@ -47,6 +47,7 @@ public class ToyExecutionEnvironmentV2 {
 
   @Builder.Default private final List<ToyAccount> accounts = Collections.emptyList();
   @Builder.Default private final Address coinbase = DEFAULT_COINBASE_ADDRESS;
+  @Builder.Default public static final Wei DEFAULT_BASE_FEE = Wei.of(7);
 
   @Singular private final List<Transaction> transactions;
 
@@ -98,6 +99,7 @@ public class ToyExecutionEnvironmentV2 {
             .coinbase(coinbase)
             .timestamp(DEFAULT_TIME_STAMP)
             .parentHash(DEFAULT_HASH)
+            .baseFee(DEFAULT_BASE_FEE)
             .buildBlockHeader();
 
     List<Supplier<Transaction>> txSuppliers = new ArrayList<>();
