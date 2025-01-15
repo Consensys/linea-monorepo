@@ -27,6 +27,8 @@ type DistributionInputs struct {
 	ModuleName distributed.ModuleName
 	// query is supposed to be the global LogDerivativeSum.
 	Query query.LogDerivativeSum
+	// number of segments for the module
+	NumSegments int
 }
 
 // DistributeLogDerivativeSum distributes a  share from a global [query.LogDerivativeSum] query to the given module.
@@ -34,6 +36,7 @@ func DistributeLogDerivativeSum(
 	initialComp, moduleComp *wizard.CompiledIOP,
 	moduleName distributed.ModuleName,
 	disc distributed.ModuleDiscoverer,
+	numSegments int,
 ) {
 
 	var (
@@ -62,6 +65,7 @@ func DistributeLogDerivativeSum(
 		Disc:        disc,
 		ModuleName:  moduleName,
 		Query:       initialComp.QueriesParams.Data(queryID).(query.LogDerivativeSum),
+		NumSegments: numSegments,
 	})
 
 }
@@ -77,6 +81,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 		logDeriv      = in.Query
 		round         = logDeriv.Round
 		// create a translation map from the columns of moduleComp.
+		// this does not include verifier columns.
 		translationMap = createTranslationMap(moduleComp)
 	)
 
@@ -92,6 +97,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 
 			// if Denominator is in the module pass the numerator from initialComp to moduleComp
 			// Particularly, T might be in the module and needs to take M from initialComp.
+
 			if in.Disc.ExpressionIsInModule(logDeriv.Inputs[size].Denominator[i], in.ModuleName) {
 
 				if !in.Disc.ExpressionIsInModule(logDeriv.Inputs[size].Numerator[i], in.ModuleName) {
@@ -101,7 +107,8 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 				// the previous check guarantees that all the columns
 				// from the expression  are in the module
 				// Thus we can add the coins locally (i.e., without [distributed.ModuleDiscoverer]).
-				distributed.ReplaceExternalCoins(in.InitialComp, moduleComp, logDeriv.Inputs[size].Denominator[i], translationMap)
+				distributed.ReplaceExternalCoinsVerifCols(in.InitialComp, moduleComp,
+					logDeriv.Inputs[size].Denominator[i], translationMap, in.NumSegments)
 
 				denominator = append(denominator,
 					// get the corresponding expression from the module
@@ -114,6 +121,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 
 				keyIsInModule = true
 			}
+
 		}
 
 		// if there in any expression relevant to the current key, add them to zCatalog

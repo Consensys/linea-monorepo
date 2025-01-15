@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -96,7 +97,7 @@ func (p *PeriodSeperatingModuleDiscoverer) ColumnIsInModule(col ifaces.Column, n
 	return false
 }
 
-//	ExpressionIsInModule checks that all the columns in the expression are from the given module.
+//	ExpressionIsInModule checks that all the columns  (except verifiercol) in the expression are from the given module.
 //
 // It does not check the presence of the coins and other metadata in the module.
 func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr *symbolic.Expression, name ModuleName) bool {
@@ -115,10 +116,12 @@ func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr *symbolic.E
 	for _, m := range metadata {
 		switch v := m.(type) {
 		case ifaces.Column:
-			if !p.ColumnIsInModule(v, name) {
-				b = b && false
+			if _, ok := v.(verifiercol.VerifierCol); !ok {
+				if !p.ColumnIsInModule(v, name) {
+					b = b && false
+				}
+				nCols++
 			}
-			nCols++
 			// The expression can involve random coins
 		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor:
 			// Do nothing
