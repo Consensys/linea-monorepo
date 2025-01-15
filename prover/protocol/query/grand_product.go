@@ -45,7 +45,7 @@ type GrandProductParams struct {
 //
 // Returns:
 // - A pointer to a new instance of GrandProduct.
-func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryID) *GrandProduct {
+func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryID) GrandProduct {
 	// check the length consistency
 	for key := range inp {
 		for i := range inp[key].Numerators {
@@ -58,7 +58,7 @@ func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryI
 		}
 	}
 
-	return &GrandProduct{
+	return GrandProduct{
 		Round:  round,
 		Inputs: inp,
 		ID:     id,
