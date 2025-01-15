@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -45,7 +46,7 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 	for _, chunk := range serializedChunks {
 		totalSerializedSize += len(chunk)
 	}
-	fmt.Printf("[%v] encoding complete, total serialized size: %d bytes, took %.2f seconds\n", time.Now(), totalSerializedSize, encodingDuration)
+	logrus.Infof("[%v] encoding complete, total serialized size: %d bytes, took %.2f seconds", time.Now(), totalSerializedSize, encodingDuration)
 
 	// Start compression and measure time
 	compressionStart := time.Now()
@@ -57,7 +58,7 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 	for _, chunk := range compressedSerializedChunks {
 		totalCompressedSize += len(chunk)
 	}
-	fmt.Printf("[%v] compression complete, total compressed size: %d bytes, took %.2f seconds\n", time.Now(), totalCompressedSize, compressionDuration)
+	logrus.Infof("[%v] compression complete, total compressed size: %d bytes, took %.2f seconds", time.Now(), totalCompressedSize, compressionDuration)
 
 	// Start writing process timing
 	writingStart := time.Now()
@@ -73,19 +74,19 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 			writeStart := time.Now()
 			f, err := os.Create(chunkPath)
 			if err != nil {
-				fmt.Printf("[%v] error creating file %s: %v\n", time.Now(), chunkPath, err)
+				logrus.Errorf("[%v] error creating file %s: %v", time.Now(), chunkPath, err)
 				return
 			}
 			defer f.Close()
 
-			fmt.Printf("Writing chunk %d to %s, size: %d bytes\n", i, chunkPath, len(chunk))
+			logrus.Infof("Writing chunk %d to %s, size: %d bytes", i, chunkPath, len(chunk))
 			_, err = f.Write(chunk)
 			if err != nil {
-				fmt.Printf("[%v] error writing to file %s: %v\n", time.Now(), chunkPath, err)
+				logrus.Errorf("[%v] error writing to file %s: %v", time.Now(), chunkPath, err)
 				return
 			}
 			writeDuration := time.Since(writeStart).Seconds()
-			fmt.Printf("[%v] completed writing chunk %d to %s, took %.2f seconds\n", time.Now(), i, chunkPath, writeDuration)
+			logrus.Infof("[%v] completed writing chunk %d to %s, took %.2f seconds", time.Now(), i, chunkPath, writeDuration)
 		}(i)
 	}
 	wg.Wait()
@@ -93,6 +94,6 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 
 	// Total process summary
 	totalDuration := encodingDuration + compressionDuration + writingDuration
-	fmt.Printf("[%v] blob total serialized size %d bytes, total compressed size %d bytes, took %.2f sec total (encoding + compression + write)\n", time.Now(), totalSerializedSize, totalCompressedSize, totalDuration)
-	fmt.Printf("[%v] total encoding time: %.2f seconds, total compression time: %.2f seconds, total writing time: %.2f seconds\n", time.Now(), encodingDuration, compressionDuration, writingDuration)
+	logrus.Infof("[%v] blob total serialized size %d bytes, total compressed size %d bytes, took %.2f sec total (encoding + compression + write)", time.Now(), totalSerializedSize, totalCompressedSize, totalDuration)
+	logrus.Infof("[%v] total encoding time: %.2f seconds, total compression time: %.2f seconds, total writing time: %.2f seconds", time.Now(), encodingDuration, compressionDuration, writingDuration)
 }

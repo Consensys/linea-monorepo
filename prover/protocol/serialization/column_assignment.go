@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/pierrec/lz4/v4"
+	"github.com/sirupsen/logrus"
 )
 
 // WAssignment is an alias for the mapping type used to represent the assignment
@@ -29,18 +30,17 @@ type WAssignment = collection.Mapping[ifaces.ColID, smartvectors.SmartVector]
 func hashWAssignment(a WAssignment) string {
 	serialized, err := json.Marshal(a)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to serialize WAssignment for hashing: %v", err))
+		panic("Failed to serialize WAssignment for hashing: " + err.Error())
 	}
 	h := sha256.New()
 	h.Write(serialized)
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-
 // SerializeAssignment serializes map representing the column assignment of a
 // wizard protocol.
 func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
-	fmt.Printf("Hash of WAssignment before serialization: %s\n", hashWAssignment(a))
+	logrus.Infof("Hash of WAssignment before serialization: %s", hashWAssignment(a))
 
 	var (
 		as    = a.InnerMap()
@@ -60,7 +60,7 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 			lock.Unlock()
 		}
 	})
-	fmt.Printf("Time taken for parallel.ExecuteChunky: %v\n", time.Since(start))
+	logrus.Infof("Time taken for parallel.ExecuteChunky: %v", time.Since(start))
 
 	// Calculate the size of `ser` in bytes
 	var serSizeBytes uintptr
@@ -70,7 +70,7 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 
 	// Convert size to GB
 	serSizeGB := float64(serSizeBytes) / (1024 * 1024 * 1024)
-	fmt.Printf("Size of ser : %.6f GB\n", serSizeGB)
+	logrus.Infof("Size of ser : %.6f GB", serSizeGB)
 
 	// Step 2: Parallelize CBOR serialization by chunking `ser`
 	start = time.Now()
@@ -108,16 +108,16 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 		}(i)
 	}
 	wg.Wait()
-	fmt.Printf("Time taken for CBOR serialization in chunks: %v\n", time.Since(start))
+	logrus.Infof("Time taken for CBOR serialization in chunks: %v", time.Since(start))
 
 	// Calculate the combined size of `serializedChunks` in GB
 	totalCBORSize := 0
 	for i, chunk := range serializedChunks {
 		totalCBORSize += len(chunk)
-		fmt.Printf("Serialized chunk %d, size: %d bytes\n", i, len(chunk))
+		logrus.Infof("Serialized chunk %d, size: %d bytes", i, len(chunk))
 	}
 	cborDataSizeGB := float64(totalCBORSize) / (1024 * 1024 * 1024)
-	fmt.Printf("Total size of CBOR serialized data: %.6f GB\n", cborDataSizeGB)
+	logrus.Infof("Total size of CBOR serialized data: %.6f GB", cborDataSizeGB)
 
 	return serializedChunks
 }
@@ -133,22 +133,21 @@ func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
 			defer wg.Done()
 			var compressedData bytes.Buffer
 			lz4Writer := lz4.NewWriter(&compressedData)
-			fmt.Printf("Compressing chunk %d, size: %d bytes\n", i, len(chunk))
+			logrus.Infof("Compressing chunk %d, size: %d bytes", i, len(chunk))
 			_, err := lz4Writer.Write(chunk)
 			if err != nil {
-				fmt.Printf("Error compressing chunk %d: %v\n", i, err)
+				logrus.Errorf("Error compressing chunk %d: %v", i, err)
 				panic(err) // handle error as needed
 			}
 			lz4Writer.Close() // finalize the LZ4 stream
 			compressedChunks[i] = compressedData.Bytes()
-			fmt.Printf("Compressed chunk %d, size: %d bytes\n", i, len(compressedChunks[i]))
+			logrus.Infof("Compressed chunk %d, size: %d bytes", i, len(compressedChunks[i]))
 		}(i, chunk)
 	}
 	wg.Wait()
 
 	return compressedChunks
 }
-
 // DeserializeAssignment deserializes a blob of bytes into a set of column
 // assignments representing assigned columns of a Wizard protocol.
 func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) {
@@ -166,24 +165,24 @@ func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) 
 			chunkPath := fmt.Sprintf("%s_chunk_%d", filepath, i)
 			chunkData, err := ioutil.ReadFile(chunkPath)
 			if err != nil {
-				fmt.Printf("Failed to read chunk %d: %v\n", i, err)
+				logrus.Errorf("Failed to read chunk %d: %v", i, err)
 				return
 			}
 
-			fmt.Printf("Reading chunk %d from %s, size: %d bytes\n", i, chunkPath, len(chunkData))
+			logrus.Infof("Reading chunk %d from %s, size: %d bytes", i, chunkPath, len(chunkData))
 			lz4Reader := lz4.NewReader(bytes.NewReader(chunkData))
 			var decompressedData bytes.Buffer
 			n, err := decompressedData.ReadFrom(lz4Reader)
 			if err != nil {
-				fmt.Printf("Error decompressing chunk %d: %v\n", i, err)
+				logrus.Errorf("Error decompressing chunk %d: %v", i, err)
 				return
 			}
-			fmt.Printf("Decompressed chunk %d, size: %d bytes\n", i, n)
+			logrus.Infof("Decompressed chunk %d, size: %d bytes", i, n)
 
 			// Deserialize the decompressed chunk
 			var chunkMap map[string]*CompressedSmartVector
 			if err := deserializeAnyWithCborPkg(decompressedData.Bytes(), &chunkMap); err != nil {
-				fmt.Printf("Error deserializing chunk %d: %v\n", i, err)
+				logrus.Errorf("Error deserializing chunk %d: %v", i, err)
 				return
 			}
 
@@ -198,7 +197,7 @@ func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) 
 	}
 	wg.Wait()
 
-	fmt.Printf("Hash of WAssignment after deserialization: %s\n", hashWAssignment(res))
+	logrus.Infof("Hash of WAssignment after deserialization: %s", hashWAssignment(res))
 
 	return res, nil
 }
