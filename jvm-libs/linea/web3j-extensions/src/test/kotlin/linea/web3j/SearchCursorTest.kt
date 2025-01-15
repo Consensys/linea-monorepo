@@ -52,13 +52,22 @@ class SearchCursorTest {
   }
 
   @Test
-  fun `next follows binary search when direction is provided`() {
+  fun `next follows binary search when direction is FORWARD`() {
     val searchCursor = SearchCursor(from = 1uL, to = 100uL, chunkSize = 10)
 
     assertThat(searchCursor.next(SearchDirection.FORWARD)).isEqualTo(41UL to 50UL)
     assertThat(searchCursor.next(SearchDirection.FORWARD)).isEqualTo(71UL to 80UL)
     assertThat(searchCursor.next(SearchDirection.FORWARD)).isEqualTo(81UL to 90UL)
     assertThat(searchCursor.next(SearchDirection.FORWARD)).isEqualTo(91UL to 100UL)
+  }
+
+  @Test
+  fun `next follows binary search when direction is BACKWARD`() {
+    val searchCursor = SearchCursor(from = 1uL, to = 100uL, chunkSize = 10)
+
+    assertThat(searchCursor.next(SearchDirection.BACKWARD)).isEqualTo(41UL to 50UL)
+    assertThat(searchCursor.next(SearchDirection.BACKWARD)).isEqualTo(11UL to 20UL)
+    assertThat(searchCursor.next(SearchDirection.BACKWARD)).isEqualTo(1UL to 10UL)
   }
 
   @Test
