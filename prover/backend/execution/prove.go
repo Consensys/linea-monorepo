@@ -186,7 +186,8 @@ func mustProveAndPass(
 		profiling.ProfileTrace("encode-decode-no-circuit", true, false, func() {
 			filepath := "/tmp/wizard-assignment/blob-" + strconv.Itoa(rand.Int()) + ".bin"
 			encodeOnlyZkEvm := zkevm.EncodeOnlyZkEvm(traces)
-			encodeOnlyZkEvm.AssignAndEncodeInFile(filepath, w.ZkEVM)
+			// encodeOnlyZkEvm.AssignAndEncodeInFile(filepath, w.ZkEVM)
+			encodeOnlyZkEvm.AssignAndEncodeInChunks(filepath, w.ZkEVM, 50)
 
 			t := time.Now()
 			f := files.MustRead(filepath)

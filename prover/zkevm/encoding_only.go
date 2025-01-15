@@ -33,13 +33,72 @@ func EncodeOnlyZkEvm(tl *config.TracesLimits) *ZkEvm {
 }
 
 func (z *ZkEvm) AssignAndEncodeInFile(filepath string, input *Witness) {
+	// Start encoding and measure time
+	encodingStart := time.Now()
 	run := wizard.ProverOnlyFirstRound(z.WizardIOP, z.prove(input))
-	t := time.Now()
-	f := files.MustOverwrite(filepath)
-	fmt.Printf("[%v] encoding the assignment\n", time.Now())
 	b := serialization.SerializeAssignment(run.Columns)
-	fmt.Printf("[%v] writing the encoded assignment\n", time.Now())
+	encodingDuration := time.Since(encodingStart).Seconds()
+	fmt.Printf("[%v] encoding complete, total size: %d bytes, took %.2f seconds\n", time.Now(), len(b), encodingDuration)
+
+	// Start writing and measure time
+	writingStart := time.Now()
+	f := files.MustOverwrite(filepath)
 	f.Write(b)
 	f.Close()
-	fmt.Printf("[%v] blob total size %v bytes, took %v sec to encode and write\n", time.Now(), len(b), time.Since(t).Seconds())
+	writingDuration := time.Since(writingStart).Seconds()
+	fmt.Printf("[%v] writing complete, took %.2f seconds\n", time.Now(), writingDuration)
+
+	// Summary of total time
+	totalDuration := encodingDuration + writingDuration
+	fmt.Printf("[%v] blob total size %v bytes, took %.2f sec total (encode + write)\n", time.Now(), len(b), totalDuration)
+}
+
+func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChunks int) {
+	// Start encoding and measure time
+	encodingStart := time.Now()
+	run := wizard.ProverOnlyFirstRound(z.WizardIOP, z.prove(input))
+	b := serialization.SerializeAssignment(run.Columns)
+	// b := serialization.SerializeAssignmentWithoutCompression(run.Columns)
+	encodingDuration := time.Since(encodingStart).Seconds()
+	fmt.Printf("[%v] encoding complete, total size: %d bytes, took %.2f seconds\n", time.Now(), len(b), encodingDuration)
+
+	// Determine the size of each chunk
+	chunkSize := len(b) / numChunks
+	if len(b)%numChunks != 0 {
+		chunkSize++ // Adjust if not evenly divisible
+	}
+	fmt.Printf("[%v] calculated chunk size: %d bytes for %d chunks\n", time.Now(), chunkSize, numChunks)
+
+	// Start writing process timing
+	writingStart := time.Now()
+	var wg sync.WaitGroup
+	for i := 0; i < numChunks; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			// Calculate chunk boundaries
+			start := i * chunkSize
+			end := start + chunkSize
+			if end > len(b) {
+				end = len(b) // Adjust for the last chunk
+			}
+			chunk := b[start:end]
+			chunkPath := fmt.Sprintf("%s_chunk_%d", filepath, i)
+
+			// Measure writing time for each chunk
+			writeStart := time.Now()
+			f := files.MustOverwrite(chunkPath)
+			f.Write(chunk)
+			f.Close()
+			writeDuration := time.Since(writeStart).Seconds()
+			fmt.Printf("[%v] completed writing chunk %d to %s, took %.2f seconds\n", time.Now(), i, chunkPath, writeDuration)
+		}(i)
+	}
+	wg.Wait()
+	writingDuration := time.Since(writingStart).Seconds() // Total writing time
+
+	// Total encoding and writing summary
+	totalDuration := encodingDuration + writingDuration
+	fmt.Printf("[%v] blob total size %v bytes, took %.2f sec total (encode + write)\n", time.Now(), len(b), totalDuration)
+	fmt.Printf("[%v] total encoding time: %.2f seconds, total writing time: %.2f seconds\n", time.Now(), encodingDuration, writingDuration)
 }
