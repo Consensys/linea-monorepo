@@ -33,20 +33,25 @@ func EncodeOnlyZkEvm(tl *config.TracesLimits) *ZkEvm {
 	return encodeOnlyZkevm
 }
 
-
 func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChunks int) {
-	// Start serialization and measure time
+	// Start encoding and measure time
 	encodingStart := time.Now()
 	run := wizard.ProverOnlyFirstRound(z.WizardIOP, z.prove(input))
+	firstRoundOnlyDuration := time.Since(encodingStart).Seconds()
+	logrus.Infof("ProverOnlyFirstRound complete, took %.2f seconds", firstRoundOnlyDuration)
+
+	// Start serialization
 	serializedChunks := serialization.SerializeAssignment(run.Columns, numChunks)
-	encodingDuration := time.Since(encodingStart).Seconds()
+	serializationDuration := time.Since(encodingStart).Seconds()
+	logrus.Infof("Serialization complete, took %.2f seconds", serializationDuration)
 
 	// Calculate total size of serialized data
 	totalSerializedSize := 0
 	for _, chunk := range serializedChunks {
 		totalSerializedSize += len(chunk)
 	}
-	logrus.Infof("[%v] encoding complete, total serialized size: %d bytes, took %.2f seconds", time.Now(), totalSerializedSize, encodingDuration)
+	encodingDuration := time.Since(encodingStart).Seconds()
+	logrus.Infof("Encoding (ProverOnlyFirstRound + Serialization) complete, total serialized size: %d bytes, took %.2f seconds", totalSerializedSize, encodingDuration)
 
 	// Start compression and measure time
 	compressionStart := time.Now()
@@ -58,7 +63,7 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 	for _, chunk := range compressedSerializedChunks {
 		totalCompressedSize += len(chunk)
 	}
-	logrus.Infof("[%v] compression complete, total compressed size: %d bytes, took %.2f seconds", time.Now(), totalCompressedSize, compressionDuration)
+	logrus.Infof("Compression complete, total compressed size: %d bytes, took %.2f seconds", totalCompressedSize, compressionDuration)
 
 	// Start writing process timing
 	writingStart := time.Now()
@@ -90,9 +95,10 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 	}
 	wg.Wait()
 	writingDuration := time.Since(writingStart).Seconds() // Total writing time
+	logrus.Infof("Writing complete, total compressed size: %d bytes, took %.2f seconds", totalCompressedSize, writingDuration)
 
 	// Total process summary
 	totalDuration := encodingDuration + compressionDuration + writingDuration
-	logrus.Infof("[%v] blob total serialized size %d bytes, total compressed size %d bytes, took %.2f sec total (encoding + compression + write)", time.Now(), totalSerializedSize, totalCompressedSize, totalDuration)
-	logrus.Infof("[%v] total encoding time: %.2f seconds, total compression time: %.2f seconds, total writing time: %.2f seconds", time.Now(), encodingDuration, compressionDuration, writingDuration)
+	logrus.Infof("[Summary] total serialized size %d bytes, total compressed size %d bytes, took %.2f sec total (encoding + compression + writing)", totalSerializedSize, totalCompressedSize, totalDuration)
+	
 }

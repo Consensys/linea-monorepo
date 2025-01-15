@@ -100,6 +100,7 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 
 			// Serialize the chunk with CBOR
 			serializedChunk := serializeAnyWithCborPkg(chunk)
+			logrus.Infof("Serialized chunk %d, size: %d bytes", i, len(serializedChunk))
 
 			// Store the result in the slice
 			m.Lock()
