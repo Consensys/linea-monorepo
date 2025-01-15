@@ -20,7 +20,6 @@ import org.hyperledger.besu.plugin.services.BlockchainService
 import org.hyperledger.besu.plugin.services.PicoCLIOptions
 import org.hyperledger.besu.plugin.services.mining.MiningService
 import org.hyperledger.besu.plugin.services.p2p.P2PService
-import org.hyperledger.besu.plugin.services.query.PoaQueryService
 import org.hyperledger.besu.plugin.services.sync.SynchronizationService
 
 fun <T : BesuService> ServiceManager.getServiceOrThrow(clazz: Class<T>): T {
@@ -50,10 +49,9 @@ open class LineaStateRecoverPlugin : BesuPlugin {
     val config = cliOptions.getConfig()
     val blockchainService = serviceManager.getServiceOrThrow(BlockchainService::class.java)
     val blockHeaderStaticFields = BlockHeaderStaticFields(
-      coinbase = serviceManager.getServiceOrThrow(PoaQueryService::class.java)
-        .localSignerAddress.toArray(),
+      coinbase = config.lineaSequencerBeneficiaryAddress.toArray(),
       gasLimit = blockchainService.chainHeadHeader.gasLimit.toULong(),
-      difficulty = 2UL // Note, this need to change once we move to QBFT
+      difficulty = 2UL // Note, this will need to change once we move to QBFT
     )
     this.recoveryStatusPersistence = FileBasedRecoveryStatusPersistence(
       serviceManager.getServiceOrThrow(BesuConfiguration::class.java)

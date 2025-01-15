@@ -8,6 +8,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinDuration
 
 data class PluginConfig(
+  val lineaSequencerBeneficiaryAddress: Address,
   val l1SmartContractAddress: Address,
   val l1RpcEndpoint: URI,
   val blobscanEndpoint: URI,
@@ -33,6 +34,15 @@ class PluginCliOptions {
     defaultValue = "\${env:L1_ROLLUP_CONTRACT_ADDRESS}"
   )
   lateinit var l1SmartContractAddress: Address
+
+  @CommandLine.Option(
+    names = ["--plugin-$cliOptionsPrefix-linea-sequencer-beneficiary-address"],
+    description = ["Linea sequencer beneficiary address"],
+    required = true,
+    converter = [AddressConverter::class],
+    defaultValue = "\${env:LINEA_SEQUENCER_BENEFICIARY_ADDRESS}"
+  )
+  lateinit var lineaSequencerBeneficiaryAddress: Address
 
   @CommandLine.Option(
     names = ["--plugin-$cliOptionsPrefix-l1-rpc-endpoint"],
@@ -77,6 +87,7 @@ class PluginCliOptions {
       "overridingRecoveryStartBlockNumber=$overridingRecoveryStartBlockNumber must be greater than or equal to 1"
     }
     return PluginConfig(
+      lineaSequencerBeneficiaryAddress = lineaSequencerBeneficiaryAddress,
       l1SmartContractAddress = l1SmartContractAddress,
       l1RpcEndpoint = l1RpcEndpoint,
       blobscanEndpoint = blobscanEndpoint,
