@@ -649,7 +649,7 @@ func (c *CompiledIOP) RegisterVerifierAction(round int, action VerifierAction) {
 }
 
 // Register a GrandProduct query
-func (c *CompiledIOP) InsertGrandProduct(round int, id ifaces.QueryID, in map[int]*query.GrandProductInput) *query.GrandProduct {
+func (c *CompiledIOP) InsertGrandProduct(round int, id ifaces.QueryID, in map[int]*query.GrandProductInput) query.GrandProduct {
 	c.assertConsistentRound(round)
 	q := query.NewGrandProduct(round, in, id)
 	// Finally registers the query

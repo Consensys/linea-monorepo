@@ -19,7 +19,7 @@ import (
 func CompileGrandProduct(comp *wizard.CompiledIOP) {
 
 	var (
-		allProverActions = make([]proverTaskAtRound, comp.NumRounds()+1)
+		allProverActions = make([]ProverTaskAtRound, comp.NumRounds()+1)
 		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
 		// which Z context should be used to handle a part of a given permutation
 		// query.
@@ -52,7 +52,7 @@ func CompileGrandProduct(comp *wizard.CompiledIOP) {
 			round = zCEntriesOrdered[i][0]
 		)
 
-		zC.compile(comp)
+		zC.Compile(comp)
 		allProverActions[round] = append(allProverActions[round], zC)
 	}
 
