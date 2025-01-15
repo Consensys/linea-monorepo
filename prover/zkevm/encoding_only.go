@@ -2,6 +2,7 @@ package zkevm
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -63,10 +64,7 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 	fmt.Printf("[%v] encoding complete, total size: %d bytes, took %.2f seconds\n", time.Now(), len(b), encodingDuration)
 
 	// Determine the size of each chunk
-	chunkSize := len(b) / numChunks
-	if len(b)%numChunks != 0 {
-		chunkSize++ // Adjust if not evenly divisible
-	}
+	chunkSize := (len(b) + numChunks - 1) / numChunks // Round up to ensure all data is included
 	fmt.Printf("[%v] calculated chunk size: %d bytes for %d chunks\n", time.Now(), chunkSize, numChunks)
 
 	// Start writing process timing
@@ -87,9 +85,18 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 
 			// Measure writing time for each chunk
 			writeStart := time.Now()
-			f := files.MustOverwrite(chunkPath)
-			f.Write(chunk)
-			f.Close()
+			f, err := os.Create(chunkPath)
+			if err != nil {
+				fmt.Printf("[%v] error creating file %s: %v\n", time.Now(), chunkPath, err)
+				return
+			}
+			defer f.Close()
+
+			_, err = f.Write(chunk)
+			if err != nil {
+				fmt.Printf("[%v] error writing to file %s: %v\n", time.Now(), chunkPath, err)
+				return
+			}
 			writeDuration := time.Since(writeStart).Seconds()
 			fmt.Printf("[%v] completed writing chunk %d to %s, took %.2f seconds\n", time.Now(), i, chunkPath, writeDuration)
 		}(i)
