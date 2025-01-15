@@ -22,6 +22,18 @@ import (
 // of a column in a [wizard.ProverRuntime]
 type WAssignment = collection.Mapping[ifaces.ColID, smartvectors.SmartVector]
 
+// hashWAssignment computes a hash of the serialized WAssignment structure.
+func hashWAssignment(a WAssignment) string {
+	serialized, err := json.Marshal(a)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to serialize WAssignment for hashing: %v", err))
+	}
+	h := sha256.New()
+	h.Write(serialized)
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+
 // SerializeAssignment serializes map representing the column assignment of a
 // wizard protocol.
 
