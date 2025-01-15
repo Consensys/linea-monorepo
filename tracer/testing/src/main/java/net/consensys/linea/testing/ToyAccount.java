@@ -202,9 +202,4 @@ public class ToyAccount implements MutableAccount {
     return new ReferenceTestWorldState.AccountMock(
         Long.toHexString(nonce), balance.toHexString(), accountMockStorage, code.toHexString());
   }
-
-  public ToyAccount raiseNonceBy(long k) {
-    long updatedNonce = this.getNonce() + k;
-    return new ToyAccount(this.parent, this.getAddress(), updatedNonce, this.balance, this.balance);
-  }
 }

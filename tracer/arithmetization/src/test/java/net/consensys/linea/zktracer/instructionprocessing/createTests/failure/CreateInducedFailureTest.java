@@ -14,6 +14,7 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.createTests.failure;
 
+import static net.consensys.linea.testing.ToyTransaction.ToyTransactionBuilder;
 import static net.consensys.linea.zktracer.instructionprocessing.createTests.trivial.RootLevel.salt01;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.keyPair;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.userAccount;
@@ -27,6 +28,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
+import net.consensys.linea.testing.ToyMultiTransaction;
 import net.consensys.linea.testing.ToyTransaction;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -41,26 +43,27 @@ import org.junit.jupiter.api.extension.ExtendWith;
  *
  * <p>- we start with an account {@link #entryPoint};
  *
- * <p>- in {@link #transactionDeployingDelegateCaller} we call {@link #entryPoint} with empty call
- * data which leads to the deployment of {@link #delegateCaller};
+ * <p>- in {@link #transactionBuilderDeployingDelegateCaller} we call {@link #entryPoint} with empty
+ * call data which leads to the deployment of {@link #delegateCaller};
  *
- * <p>- in {@link #transactionLeadingDelegateCallerToCreateAnAccount} we call {@link #entryPoint}
- * with nonempty call data which leads it calling {@link #delegateCaller} which leads to it doing a
- * <b>DELEGATECALL</b> to {@link #simpleCreator} thus deploying a new account with {@link
- * #delegateCaller}'s nonce =1;
+ * <p>- in {@link #transactionBuilderLeadingDelegateCallerToCreateAnAccount} we call {@link
+ * #entryPoint} with nonempty call data which leads it calling {@link #delegateCaller} which leads
+ * to it doing a <b>DELEGATECALL</b> to {@link #simpleCreator} thus deploying a new account with
+ * {@link #delegateCaller}'s nonce =1;
  *
- * <p>- in {@link #transactionLeadingDelegateCallerToSelfDestruct} we call {@link #entryPoint} with
- * nonempty call data which leads it calling {@link #delegateCaller} which leads to it doing a
- * <b>DELEGATECALL</b> to {@link #simpleSelfDestructor} self destructing;
+ * <p>- in {@link #transactionBuilderLeadingDelegateCallerToSelfDestruct} we call {@link
+ * #entryPoint} with nonempty call data which leads it calling {@link #delegateCaller} which leads
+ * to it doing a <b>DELEGATECALL</b> to {@link #simpleSelfDestructor} self destructing;
  *
- * <p>- in {@link #transactionDeployingDelegateCallerAgain} we call {@link #entryPoint} with empty
- * call data again which leads to the deployment of {@link #delegateCaller} <i>again</i>;
+ * <p>- in {@link #transactionBuilderDeployingDelegateCallerAgain} we call {@link #entryPoint} with
+ * empty call data again which leads to the deployment of {@link #delegateCaller} <i>again</i>;
  *
- * <p>- in {@link #transactionLeadingDelegateCallerToAttemptCreateAgainThusRaisingFailureConditionF}
- * we call {@link #entryPoint} with nonempty call data which leads it calling {@link
- * #delegateCaller} which leads to it doing a <b>DELEGATECALL</b> to {@link #simpleCreator} thus
- * <i>attempting</i> to redeploy at the same address where it did the first deployment; indeed
- * {@link #delegateCaller}'s nonce is again =1; deploying a new account at nonce 1;
+ * <p>- in {@link
+ * #transactionBuilderLeadingDelegateCallerToAttemptCreateAgainThusRaisingFailureConditionF} we call
+ * {@link #entryPoint} with nonempty call data which leads it calling {@link #delegateCaller} which
+ * leads to it doing a <b>DELEGATECALL</b> to {@link #simpleCreator} thus <i>attempting</i> to
+ * redeploy at the same address where it did the first deployment; indeed {@link #delegateCaller}'s
+ * nonce is again =1; deploying a new account at nonce 1;
  */
 @ExtendWith(UnitTestWatcher.class)
 public class CreateInducedFailureTest {
@@ -201,67 +204,60 @@ public class CreateInducedFailureTest {
           .address(targetAddress)
           .build();
 
-  final Transaction transactionDeployingDelegateCaller =
+  final ToyTransactionBuilder transactionBuilderDeployingDelegateCaller =
       ToyTransaction.builder()
-          .sender(userAccount)
           .to(entryPoint)
           .keyPair(keyPair)
           .value(Wei.of(0xffff))
           .gasLimit(1_000_000L)
-          .gasPrice(Wei.of(8))
-          .build();
+          .gasPrice(Wei.of(8));
 
-  final Transaction transactionLeadingDelegateCallerToCreateAnAccount =
+  final ToyTransactionBuilder transactionBuilderLeadingDelegateCallerToCreateAnAccount =
       ToyTransaction.builder()
-          .sender(userAccount.raiseNonceBy(1))
           .to(entryPoint)
           .keyPair(keyPair)
           .value(Wei.of(0xeeee))
           .gasLimit(1_000_000L)
           .gasPrice(Wei.of(8))
-          .payload(leftPaddedAddress1)
-          .build();
+          .payload(leftPaddedAddress1);
 
-  final Transaction transactionLeadingDelegateCallerToSelfDestruct =
+  final ToyTransactionBuilder transactionBuilderLeadingDelegateCallerToSelfDestruct =
       ToyTransaction.builder()
-          .sender(userAccount.raiseNonceBy(2))
           .to(entryPoint)
           .keyPair(keyPair)
           .value(Wei.of(0xdddd))
           .gasLimit(1_000_000L)
           .gasPrice(Wei.of(8))
-          .payload(leftPaddedAddress2)
-          .build();
+          .payload(leftPaddedAddress2);
 
-  final Transaction transactionDeployingDelegateCallerAgain =
+  final ToyTransactionBuilder transactionBuilderDeployingDelegateCallerAgain =
       ToyTransaction.builder()
-          .sender(userAccount.raiseNonceBy(3))
           .to(entryPoint)
           .keyPair(keyPair)
           .value(Wei.of(0xcccc))
           .gasLimit(1_000_000L)
-          .gasPrice(Wei.of(8))
-          .build();
+          .gasPrice(Wei.of(8));
 
-  final Transaction
-      transactionLeadingDelegateCallerToAttemptCreateAgainThusRaisingFailureConditionF =
+  final ToyTransactionBuilder
+      transactionBuilderLeadingDelegateCallerToAttemptCreateAgainThusRaisingFailureConditionF =
           ToyTransaction.builder()
-              .sender(userAccount.raiseNonceBy(4))
               .to(entryPoint)
               .keyPair(keyPair)
               .value(Wei.of(0xbbbb))
               .gasLimit(1_000_000L)
               .gasPrice(Wei.of(8))
-              .payload(leftPaddedAddress1)
-              .build();
+              .payload(leftPaddedAddress1);
+
+  final ToyTransactionBuilder[] toyTransactionBuilders = {
+    transactionBuilderDeployingDelegateCaller,
+    transactionBuilderLeadingDelegateCallerToCreateAnAccount,
+    transactionBuilderLeadingDelegateCallerToSelfDestruct,
+    transactionBuilderDeployingDelegateCallerAgain,
+    transactionBuilderLeadingDelegateCallerToAttemptCreateAgainThusRaisingFailureConditionF
+  };
 
   final List<Transaction> transactions =
-      List.of(
-          transactionDeployingDelegateCaller,
-          transactionLeadingDelegateCallerToCreateAnAccount,
-          transactionLeadingDelegateCallerToSelfDestruct,
-          transactionDeployingDelegateCallerAgain,
-          transactionLeadingDelegateCallerToAttemptCreateAgainThusRaisingFailureConditionF);
+      ToyMultiTransaction.builder().build(toyTransactionBuilders, userAccount);
 
   final List<ToyAccount> accounts =
       List.of(userAccount, entryPoint, simpleSelfDestructor, simpleCreator);
