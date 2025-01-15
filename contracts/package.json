@@ -19,11 +19,13 @@
     "lint:ts:fix": "npx eslint --fix '**/*.{js,ts}'",
     "lint": "pnpm run lint:sol && npm run lint:ts && npm run prettier",
     "lint:fix": "pnpm run lint:sol:fix && npm run lint:ts:fix && npm run prettier:fix",
-    "clean": "rimraf .openzeppelin build cache node_modules typechain-types coverage coverage.json"
+    "clean": "rimraf .openzeppelin build cache node_modules typechain-types coverage coverage.json",
+    "solidity:docgen": "command -v forge && npx hardhat docgen || echo 'Foundry installation required for Solidity docgen, skipping...'"
   },
   "devDependencies": {
     "@ethereumjs/util": "9.0.3",
     "@nomicfoundation/hardhat-ethers": "3.0.5",
+    "@nomicfoundation/hardhat-foundry": "1.1.3",
     "@nomicfoundation/hardhat-network-helpers": "1.0.10",
     "@nomicfoundation/hardhat-toolbox": "4.0.0",
     "@nomicfoundation/hardhat-verify": "1.1.1",
@@ -42,7 +44,7 @@
     "dotenv": "16.4.5",
     "edit-json-file": "1.8.0",
     "ethers": "6.12.0",
-    "hardhat": "2.22.10",
+    "hardhat": "2.22.17",
     "hardhat-deploy": "0.12.4",
     "hardhat-storage-layout": "0.1.7",
     "hardhat-tracer": "2.8.2",
@@ -50,5 +52,8 @@
     "prettier-plugin-solidity": "1.3.1",
     "solhint": "4.5.4",
     "yargs": "17.7.2"
+  },
+  "dependencies": {
+    "solidity-docgen": "0.6.0-beta.36"
   }
 }

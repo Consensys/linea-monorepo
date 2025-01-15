@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.26;
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { LineaRollupPauseManager } from "../../../lib/LineaRollupPauseManager.sol";
 import { RateLimiter } from "../../lib/RateLimiter.sol";
 import { L1MessageManagerV1 } from "./L1MessageManagerV1.sol";
@@ -16,7 +15,6 @@ import { MessageHashing } from "../../lib/MessageHashing.sol";
  * @custom:security-contact security-report@linea.build
  */
 abstract contract L1MessageServiceV1 is
-  Initializable,
   RateLimiter,
   L1MessageManagerV1,
   TransientStorageReentrancyGuardUpgradeable,
@@ -38,9 +36,11 @@ abstract contract L1MessageServiceV1 is
   /// @dev adding these should not affect storage as they are constants and are stored in bytecode.
   uint256 internal constant REFUND_OVERHEAD_IN_GAS = 48252;
 
+  /// @dev The transient storage key to set the message sender against while claiming.
   bytes32 internal constant MESSAGE_SENDER_TRANSIENT_KEY =
     bytes32(uint256(keccak256("eip1967.message.sender.transient.key")) - 1);
 
+  /// @notice The default value for the message sender reset to post claiming using the MESSAGE_SENDER_TRANSIENT_KEY.
   address internal constant DEFAULT_MESSAGE_SENDER_TRANSIENT_VALUE = address(0);
 
   /**

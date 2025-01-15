@@ -1,0 +1,37 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-minimal-conventions'
+  id 'java-library'
+}
+
+def besuArtifactGroup="org.hyperledger.besu"
+
+dependencies {
+  api("${besuArtifactGroup}:besu-datatypes:${libs.versions.besu.get()}") {
+    transitive = false
+  }
+  api("${besuArtifactGroup}:evm:${libs.versions.besu.get()}") {
+    transitive = false
+  }
+  api("${besuArtifactGroup}.internal:core:${libs.versions.besu.get()}") {
+    transitive = false
+  }
+  api("${besuArtifactGroup}.internal:algorithms:${libs.versions.besu.get()}") {
+    transitive = false
+  }
+
+  api("${besuArtifactGroup}:plugin-api:${libs.versions.besu.get()}") {
+    transitive = false
+  }
+
+  api("${besuArtifactGroup}.internal:rlp:${libs.versions.besu.get()}") {
+    transitive = false
+  }
+
+  api("io.tmio:tuweni-bytes:${libs.versions.tuweni.get()}") {
+    transitive = false
+  }
+
+  api("io.tmio:tuweni-units:${libs.versions.tuweni.get()}") {
+    transitive = false
+  }
+}

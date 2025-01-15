@@ -69,7 +69,7 @@ class RejectedTransactionsPostgresDao(
         transactionInfo = TransactionInfo(
           hash = record.getBuffer("tx_hash").bytes,
           from = record.getBuffer("tx_from").bytes,
-          to = record.getBuffer("tx_to").bytes,
+          to = record.getBuffer("tx_to")?.bytes,
           nonce = record.getLong("tx_nonce").toULong()
         )
       )
@@ -123,7 +123,7 @@ class RejectedTransactionsPostgresDao(
   private val deleteFullTransactionsSql =
     """
       delete from $fullTransactionsTable
-      where tx_hash not in (select x.tx_hash from $rejectedTransactionsTable x)
+      f where not exists (select null from $rejectedTransactionsTable x where f.tx_hash = x.tx_hash)
     """
       .trimIndent()
 

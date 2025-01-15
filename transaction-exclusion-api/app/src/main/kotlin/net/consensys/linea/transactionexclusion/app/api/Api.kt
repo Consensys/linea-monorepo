@@ -8,6 +8,7 @@ import net.consensys.linea.jsonrpc.HttpRequestHandler
 import net.consensys.linea.jsonrpc.JsonRpcMessageHandler
 import net.consensys.linea.jsonrpc.JsonRpcMessageProcessor
 import net.consensys.linea.jsonrpc.JsonRpcRequestRouter
+import net.consensys.linea.jsonrpc.httpserver.HttpJsonRpcServer
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.vertx.ObservabilityServer
 
@@ -77,7 +78,7 @@ class Api(
       )
       .compose { verticleId: String ->
         jsonRpcServerId = verticleId
-        serverPort = httpServer!!.bindedPort
+        serverPort = httpServer!!.boundPort
         vertx.deployVerticle(observabilityServer).onSuccess { monitorVerticleId ->
           this.observabilityServerId = monitorVerticleId
         }

@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	v0 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0"
@@ -26,70 +27,51 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
-	"github.com/consensys/gnark/backend/plonk"
 )
 
-var (
-	fForce     bool
-	fCircuits  string
-	fDictPath  string
-	fAssetsDir string
-)
-
-// setupCmd represents the setup command
-var setupCmd = &cobra.Command{
-	Use:   "setup",
-	Short: "pre compute assets for Linea circuits",
-	RunE:  cmdSetup,
+type SetupArgs struct {
+	Force      bool
+	Circuits   string
+	DictPath   string
+	AssetsDir  string
+	ConfigFile string
 }
 
-var allCircuits = []string{
-	string(circuits.ExecutionCircuitID),
-	string(circuits.ExecutionLargeCircuitID),
-	string(circuits.BlobDecompressionV0CircuitID),
-	string(circuits.BlobDecompressionV1CircuitID),
-	string(circuits.PublicInputInterconnectionCircuitID),
-	string(circuits.AggregationCircuitID),
-	string(circuits.EmulationCircuitID),
-	string(circuits.EmulationDummyCircuitID), // we want to generate Verifier.sol for this one
+var AllCircuits = []circuits.CircuitID{
+	circuits.ExecutionCircuitID,
+	circuits.ExecutionLargeCircuitID,
+	circuits.BlobDecompressionV0CircuitID,
+	circuits.BlobDecompressionV1CircuitID,
+	circuits.PublicInputInterconnectionCircuitID,
+	circuits.AggregationCircuitID,
+	circuits.EmulationCircuitID,
+	circuits.EmulationDummyCircuitID, // we want to generate Verifier.sol for this one
 }
 
-func init() {
-	rootCmd.AddCommand(setupCmd)
-	setupCmd.Flags().BoolVar(&fForce, "force", false, "overwrites existing files")
-	setupCmd.Flags().StringVar(&fCircuits, "circuits", strings.Join(allCircuits, ","), "comma separated list of circuits to setup")
-	setupCmd.Flags().StringVar(&fDictPath, "dict", "", "path to the dictionary file used in blob (de)compression")
-	setupCmd.Flags().StringVar(&fAssetsDir, "assets-dir", "", "path to the directory where the assets are stored (override conf)")
-
-	viper.BindPFlag("assets_dir", setupCmd.Flags().Lookup("assets-dir"))
-}
-
-func cmdSetup(cmd *cobra.Command, args []string) error {
+func Setup(context context.Context, args SetupArgs) error {
+	const cmdName = "setup"
 	// read config
-	cfg, err := config.NewConfigFromFile(fConfigFile)
+	cfg, err := config.NewConfigFromFile(args.ConfigFile)
 	if err != nil {
-		return fmt.Errorf("%s failed to read config file: %w", cmd.Name(), err)
+		return fmt.Errorf("%s failed to read config file: %w", cmdName, err)
 	}
 
-	if fDictPath != "" {
+	if args.DictPath != "" {
 		// fail early if the dictionary file is not found but was specified.
-		if _, err := os.Stat(fDictPath); err != nil {
-			return fmt.Errorf("%s dictionary file not found: %w", cmd.Name(), err)
+		if _, err := os.Stat(args.DictPath); err != nil {
+			return fmt.Errorf("%s dictionary file not found: %w", cmdName, err)
 		}
 	}
 
 	// parse inCircuits
 	inCircuits := make(map[circuits.CircuitID]bool)
-	for _, c := range allCircuits {
+	for _, c := range AllCircuits {
 		inCircuits[circuits.CircuitID(c)] = false
 	}
-	_inCircuits := strings.Split(fCircuits, ",")
+	_inCircuits := strings.Split(args.Circuits, ",")
 	for _, c := range _inCircuits {
 		if _, ok := inCircuits[circuits.CircuitID(c)]; !ok {
-			return fmt.Errorf("%s unknown circuit: %s", cmd.Name(), c)
+			return fmt.Errorf("%s unknown circuit: %s", cmdName, c)
 		}
 		inCircuits[circuits.CircuitID(c)] = true
 	}
@@ -101,12 +83,14 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	var srsProvider circuits.SRSProvider
 	srsProvider, err = circuits.NewSRSStore(cfg.PathForSRS())
 	if err != nil {
-		return fmt.Errorf("%s failed to create SRS provider: %w", cmd.Name(), err)
+		return fmt.Errorf("%s failed to create SRS provider: %w", cmdName, err)
 	}
 
 	// for each circuit, we start by compiling the circuit
 	// then we do a sha sum and compare against the one in the manifest.json
-	for c, setup := range inCircuits {
+	for _, c := range AllCircuits {
+
+		setup := inCircuits[c]
 		if !setup {
 			// we skip aggregation in this first loop since the setup is more complex
 			continue
@@ -128,9 +112,9 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 			zkEvm := zkevm.FullZkEvm(&limits)
 			builder = execution.NewBuilder(zkEvm)
 		case circuits.BlobDecompressionV0CircuitID, circuits.BlobDecompressionV1CircuitID:
-			dict, err = os.ReadFile(fDictPath)
+			dict, err = os.ReadFile(args.DictPath)
 			if err != nil {
-				return fmt.Errorf("%s failed to read dictionary file: %w", cmd.Name(), err)
+				return fmt.Errorf("%s failed to read dictionary file: %w", cmdName, err)
 			}
 
 			if c == circuits.BlobDecompressionV0CircuitID {
@@ -151,14 +135,14 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 			continue // dummy, aggregation, emulation or public input circuits are handled later
 		}
 
-		if err := updateSetup(cmd.Context(), cfg, srsProvider, c, builder, extraFlags); err != nil {
+		if err := updateSetup(context, cfg, args.Force, srsProvider, c, builder, extraFlags); err != nil {
 			return err
 		}
 		if dict != nil {
 			// we save the dictionary to disk
-			dictPath := filepath.Join(cfg.PathForSetup(string(c)), config.DictionaryFileName)
+			dictPath := cfg.BlobDecompressionDictPath(string(c))
 			if err := os.WriteFile(dictPath, dict, 0600); err != nil {
-				return fmt.Errorf("%s failed to write dictionary file: %w", cmd.Name(), err)
+				return fmt.Errorf("%s failed to write dictionary file: %w", cmdName, err)
 			}
 		}
 
@@ -172,11 +156,11 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	// get verifying key for public-input circuit
 	piSetup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
 	if err != nil {
-		return fmt.Errorf("%s failed to load public input interconnection setup: %w", cmd.Name(), err)
+		return fmt.Errorf("%s failed to load public input interconnection setup: %w", cmdName, err)
 	}
 
 	// first, we need to collect the verifying keys
-	var allowedVkForAggregation []plonk.VerifyingKey
+	allowedVkForAggregation := make([]plonk.VerifyingKey, 0, len(cfg.Aggregation.AllowedInputs))
 	for _, allowedInput := range cfg.Aggregation.AllowedInputs {
 		// first if it's a dummy circuit, we just run the setup here, we don't need to persist it.
 		if isDummyCircuit(allowedInput) {
@@ -196,7 +180,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("unknown dummy circuit: %s", allowedInput)
 			}
 
-			vk, err := getDummyCircuitVK(cmd.Context(), cfg, srsProvider, circuits.CircuitID(allowedInput), dummy.NewBuilder(mockID, curveID.ScalarField()))
+			vk, err := getDummyCircuitVK(context, cfg, srsProvider, circuits.CircuitID(allowedInput), dummy.NewBuilder(mockID, curveID.ScalarField()))
 			if err != nil {
 				return err
 			}
@@ -209,7 +193,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 		vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
 		vk := plonk.NewVerifyingKey(ecc.BLS12_377)
 		if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
-			return fmt.Errorf("%s failed to read verifying key for circuit %s: %w", cmd.Name(), allowedInput, err)
+			return fmt.Errorf("%s failed to read verifying key for circuit %s: %w", cmdName, allowedInput, err)
 		}
 
 		allowedVkForAggregation = append(allowedVkForAggregation, vk)
@@ -217,19 +201,19 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 
 	// we need to compute the digest of the verifying keys & store them in the manifest
 	// for the aggregation circuits to be able to check compatibility at run time with the proofs
-	allowedVkForAggregationDigests := listOfCheckum(allowedVkForAggregation)
+	allowedVkForAggregationDigests := listOfChecksums(allowedVkForAggregation)
 	extraFlagsForAggregationCircuit := map[string]any{
 		"allowedVkForAggregationDigests": allowedVkForAggregationDigests,
 	}
 
 	// now for each aggregation circuit, we update the setup if needed, and collect the verifying keys
-	var allowedVkForEmulation []plonk.VerifyingKey
+	allowedVkForEmulation := make([]plonk.VerifyingKey, 0, len(cfg.Aggregation.NumProofs))
 	for _, numProofs := range cfg.Aggregation.NumProofs {
 		c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), numProofs))
 		logrus.Infof("setting up %s (numProofs=%d)", c, numProofs)
 
 		builder := aggregation.NewBuilder(numProofs, cfg.Aggregation.AllowedInputs, piSetup, allowedVkForAggregation)
-		if err := updateSetup(cmd.Context(), cfg, srsProvider, c, builder, extraFlagsForAggregationCircuit); err != nil {
+		if err := updateSetup(context, cfg, args.Force, srsProvider, c, builder, extraFlagsForAggregationCircuit); err != nil {
 			return err
 		}
 
@@ -238,7 +222,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 		vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
 		vk := plonk.NewVerifyingKey(ecc.BW6_761)
 		if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
-			return fmt.Errorf("%s failed to read verifying key for circuit %s: %w", cmd.Name(), c, err)
+			return fmt.Errorf("%s failed to read verifying key for circuit %s: %w", cmdName, c, err)
 		}
 
 		allowedVkForEmulation = append(allowedVkForEmulation, vk)
@@ -248,7 +232,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	c := circuits.EmulationCircuitID
 	logrus.Infof("setting up %s", c)
 	builder := emulation.NewBuilder(allowedVkForEmulation)
-	return updateSetup(cmd.Context(), cfg, srsProvider, c, builder, nil)
+	return updateSetup(context, cfg, args.Force, srsProvider, c, builder, nil)
 
 }
 
@@ -281,7 +265,7 @@ func getDummyCircuitVK(ctx context.Context, cfg *config.Config, srsProvider circ
 // and if so, if the checksums match.
 // if the files already exist and the checksums match, it skips the setup.
 // else it does the setup and writes the assets to disk.
-func updateSetup(ctx context.Context, cfg *config.Config, srsProvider circuits.SRSProvider, circuit circuits.CircuitID, builder circuits.Builder, extraFlags map[string]any) error {
+func updateSetup(ctx context.Context, cfg *config.Config, force bool, srsProvider circuits.SRSProvider, circuit circuits.CircuitID, builder circuits.Builder, extraFlags map[string]any) error {
 	if extraFlags == nil {
 		extraFlags = make(map[string]any)
 	}
@@ -297,7 +281,7 @@ func updateSetup(ctx context.Context, cfg *config.Config, srsProvider circuits.S
 	setupPath := cfg.PathForSetup(string(circuit))
 	manifestPath := filepath.Join(setupPath, config.ManifestFileName)
 
-	if !fForce {
+	if !force {
 		// we may want to skip setup if the files already exist
 		// and the checksums match
 		// read manifest if already exists
@@ -325,12 +309,13 @@ func updateSetup(ctx context.Context, cfg *config.Config, srsProvider circuits.S
 	return setup.WriteTo(setupPath)
 }
 
-// listOfCheckum Computes a list of SHA256 checksums for a list of assets, the result is given
+// listOfChecksums Computes a list of SHA256 checksums for a list of assets, the result is given
 // in hexstring.
-func listOfCheckum[T io.WriterTo](assets []T) []string {
+func listOfChecksums[T io.WriterTo](assets []T) []string {
 	res := make([]string, len(assets))
+	h := sha256.New()
 	for i := range assets {
-		h := sha256.New()
+		h.Reset()
 		_, err := assets[i].WriteTo(h)
 		if err != nil {
 			// It is unexpected that writing in a hasher could possibly fail.

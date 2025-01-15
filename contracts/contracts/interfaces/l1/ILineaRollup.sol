@@ -67,7 +67,7 @@ interface ILineaRollup {
   }
 
   /**
-   * @notice Data stucture for compressed blob data submission.
+   * @notice Data structure for compressed blob data submission.
    * @dev submissionData The supporting data for blob data submission excluding the compressed data.
    * @dev dataEvaluationClaim The data evaluation claim.
    * @dev kzgCommitment The blob KZG commitment.
@@ -233,11 +233,6 @@ interface ILineaRollup {
   error FinalizationStateIncorrect(bytes32 expected, bytes32 value);
 
   /**
-   * @dev Thrown when the final block number in finalization data is less than or equal to the last finalized block during finalization.
-   */
-  error FinalBlockNumberLessThanOrEqualToLastFinalizedBlock(uint256 finalBlockNumber, uint256 lastFinalizedBlock);
-
-  /**
    * @dev Thrown when the final block state equals the zero hash during finalization.
    */
   error FinalBlockStateEqualsZeroHash();
@@ -282,6 +277,11 @@ interface ILineaRollup {
    * @dev Thrown when a shnarf does not exist for the final blob being finalized.
    */
   error FinalBlobNotSubmitted(bytes32 shnarf);
+
+  /**
+   * @dev Thrown when the fallback operator tries to renounce their operator role.
+   */
+  error OnlyNonFallbackOperator();
 
   /**
    * @notice Adds or updates the verifier contract address for a proof type.

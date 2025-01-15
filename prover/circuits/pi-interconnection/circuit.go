@@ -2,10 +2,10 @@ package pi_interconnection
 
 import (
 	"errors"
-	"fmt"
-	"math"
 	"math/big"
 	"slices"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
@@ -25,6 +26,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	mimcComp "github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -45,12 +52,23 @@ type Circuit struct {
 	L2MessageMerkleDepth int
 	L2MessageMaxNbMerkle int
 
-	MaxNbCircuits    int // possibly useless TODO consider removing
-	UseGkrMimc       bool
-	MockKeccakWizard bool // for testing purposes, bypass expensive keccak verification
+	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
+	L2MessageServiceAddr types.EthAddress
+	ChainID              uint64
+
+	MaxNbCircuits int // possibly useless TODO consider removing
+	UseGkrMimc    bool
 }
 
+// type alias to denote a wizard-compilation suite. This is used when calling
+// compile and provides internal parameters for the wizard package.
+type compilationSuite = []func(*wizard.CompiledIOP)
+
 func (c *Circuit) Define(api frontend.API) error {
+	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
+	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)
+	api.AssertIsEqual(c.L2MessageServiceAddr[:], c.AggregationFPIQSnark.L2MessageServiceAddr)
+
 	maxNbDecompression, maxNbExecution := len(c.DecompressionPublicInput), len(c.ExecutionPublicInput)
 	if len(c.DecompressionFPIQ) != maxNbDecompression || len(c.ExecutionFPIQ) != maxNbExecution {
 		return errors.New("public / functional public input length mismatch")
@@ -58,14 +76,21 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	c.AggregationFPIQSnark.RangeCheck(api)
 
+	// implicit: CHECK_DECOMP_LIMIT
 	rDecompression := internal.NewRange(api, c.NbDecompression, len(c.DecompressionPublicInput))
 	hshK := c.Keccak.NewHasher(api)
 
 	// equivalently, nbBatchesSums[i] is the index of the first execution circuit associated with the i+1-st decompression circuit
 	nbBatchesSums := rDecompression.PartialSumsF(func(i int) frontend.Variable { return c.DecompressionFPIQ[i].NbBatches })
-	nbExecution := nbBatchesSums[len(nbBatchesSums)-1]
+	nbExecution := nbBatchesSums[len(nbBatchesSums)-1] // implicit: CHECK_NB_EXEC
 
-	if c.MaxNbCircuits > 0 {
+	// These two checks prevents constructing a proof where no execution or no
+	// compression proofs are provided. This is to prevent corner cases from
+	// arising.
+	api.AssertIsDifferent(c.NbDecompression, 0)
+	api.AssertIsDifferent(nbExecution, 0)
+
+	if c.MaxNbCircuits > 0 { // CHECK_CIRCUIT_LIMIT
 		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDecompression), c.MaxNbCircuits)
 	}
 
@@ -73,8 +98,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		hshM hash.FieldHasher
 	)
 	if c.UseGkrMimc {
-		hsh := gkrmimc.NewHasherFactory(api).NewHasher()
-		hshM = &hsh
+		hshM = gkrmimc.NewHasherFactory(api).NewHasher()
 	} else {
 		if hsh, err := mimc.NewMiMC(api); err != nil {
 			return err
@@ -107,17 +131,20 @@ func (c *Circuit) Define(api frontend.API) error {
 			EvaluationClaimBytes: fr377EncodedFr381ToBytes(api, piq.Y),
 		}
 
-		rDecompression.AssertEqualI(i, c.DecompressionPublicInput[i],
-			piq.Sum(api, hshM, blobBatchHashes[i])) // "open" decompression circuit public input
+		// "open" decompression circuit public input
+		api.AssertIsEqual(c.DecompressionPublicInput[i], api.Mul(rDecompression.InRange[i], piq.Sum(api, hshM, blobBatchHashes[i])))
 	}
 
 	shnarfs := ComputeShnarfs(&hshK, c.ParentShnarf, shnarfParams)
+	// The circuit only has the last shnarf as input, therefore we do not perform
+	// CHECK_SHNARF. However, since they are chained, the passing of CHECK_FINAL_SHNARF
+	// implies that all shnarfs are correct.
 
+	// implicit: CHECK_EXEC_LIMIT
 	rExecution := internal.NewRange(api, nbExecution, maxNbExecution)
 
-	initBlockNum, initHashNum, initHash := c.InitialBlockNumber, c.InitialRollingHashNumber, c.InitialRollingHash
-	initBlockTime, initState := c.InitialBlockTimestamp, c.InitialStateRootHash
-	finalRollingHash, finalRollingHashNum := c.InitialRollingHash, c.InitialRollingHashNumber
+	finalBlockNum, finalRollingHashMsgNum, finalRollingHash := c.LastFinalizedBlockNumber, c.LastFinalizedRollingHashNumber, c.LastFinalizedRollingHash
+	finalBlockTime, finalState := c.LastFinalizedBlockTimestamp, c.InitialStateRootHash
 	var l2MessagesByByte [32][]internal.VarSlice
 
 	execMaxNbL2Msg := len(c.ExecutionFPIQ[0].L2MessageHashes.Values)
@@ -129,37 +156,44 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	comparator := cmp.NewBoundedComparator(api, new(big.Int).Lsh(big.NewInt(1), 64), false) // TODO does the "false" mean that the deltas are range checked?
+	// we can "allow non-deterministic behavior" because all compared values have been range-checked
+	comparator := cmp.NewBoundedComparator(api, new(big.Int).Lsh(big.NewInt(1), 65), true)
 	// TODO try using lookups or crumb decomposition to make comparisons more efficient
 	for i, piq := range c.ExecutionFPIQ {
-		piq.RangeCheck(api)
+		piq.RangeCheck(api) // CHECK_MSG_LIMIT
 
+		// inRange is a binary value indicating that the current execution
+		// being looked at in the current iteration is an actual execution and
+		// not some padding.
 		inRange := rExecution.InRange[i]
-		rollingHashNotUpdated := api.Select(inRange, api.IsZero(piq.FinalRollingHashNumber), 1) // padded input past nbExecutions is not required to be 0. So we multiply by inRange
-
-		newFinalRollingHashNum := api.Select(rollingHashNotUpdated, finalRollingHashNum, piq.FinalRollingHashNumber)
-
-		api.AssertIsEqual(comparator.IsLess(initBlockTime, api.Select(inRange, piq.FinalBlockTimestamp, uint64(math.MaxUint64))), 1) // don't compare if not updating
-		api.AssertIsEqual(comparator.IsLess(initBlockNum, api.Select(inRange, piq.FinalBlockNumber, uint64(math.MaxUint64))), 1)
-		api.AssertIsEqual(comparator.IsLess(finalRollingHashNum, api.Add(newFinalRollingHashNum, rollingHashNotUpdated)), 1) // if the rolling hash is updated, check that it has increased
-
-		finalRollingHashNum = newFinalRollingHashNum
-		copy(finalRollingHash[:], internal.SelectMany(api, rollingHashNotUpdated, finalRollingHash[:], piq.FinalRollingHash[:]))
 
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
-			InitialStateRootHash:        initState,
-			InitialBlockNumber:          initBlockNum,
-			InitialBlockTimestamp:       initBlockTime,
-			InitialRollingHash:          initHash,
-			InitialRollingHashNumber:    initHashNum,
-			ChainID:                     c.ChainID,
-			L2MessageServiceAddr:        c.L2MessageServiceAddr,
+			InitialStateRootHash:        finalState,                // implicit CHECK_STATE_CONSEC
+			InitialBlockNumber:          api.Add(finalBlockNum, 1), // implicit CHECK_NUM_CONSEC
+			ChainID:                     c.ChainID,                 // implicit CHECK_CHAIN_ID
+			L2MessageServiceAddr:        c.L2MessageServiceAddr[:], // implicit CHECK_SVC_ADDR
 		}
-		initBlockNum, initHashNum, initHash = pi.FinalBlockNumber, pi.FinalRollingHashNumber, pi.FinalRollingHash
-		initBlockTime, initState = pi.FinalBlockTimestamp, pi.FinalStateRootHash
 
-		api.AssertIsEqual(c.ExecutionPublicInput[i], pi.Sum(api, hshM)) // "open" execution circuit public input
+		comparator.AssertIsLessEq(pi.InitialBlockTimestamp, pi.FinalBlockTimestamp)                // CHECK_TIME_NODECREASE
+		comparator.AssertIsLessEq(pi.InitialBlockNumber, pi.FinalBlockNumber)                      // CHECK_NUM_NODECREASE
+		comparator.AssertIsLess(finalBlockTime, pi.InitialBlockTimestamp)                          // CHECK_TIME_INCREASE
+		comparator.AssertIsLessEq(pi.FirstRollingHashUpdateNumber, pi.LastRollingHashUpdateNumber) // CHECK_RHASH_NODECREASE
+
+		finalRhMsgNumZero := api.IsZero(piq.LastRollingHashUpdateNumber)
+		api.AssertIsEqual(finalRhMsgNumZero, api.IsZero(piq.FirstRollingHashUpdateNumber)) // CHECK_RHASH_FIRSTLAST
+		rollingHashUpdated := api.Mul(inRange, api.Sub(1, finalRhMsgNumZero))
+
+		// CHECK_RHASH_CONSEC
+		internal.AssertIsLessIf(api, rollingHashUpdated, finalRollingHashMsgNum, pi.FirstRollingHashUpdateNumber)
+		finalRollingHashMsgNum = api.Select(rollingHashUpdated, pi.LastRollingHashUpdateNumber, finalRollingHashMsgNum)
+		copy(finalRollingHash[:], internal.SelectMany(api, rollingHashUpdated, pi.FinalRollingHashUpdate[:], finalRollingHash[:]))
+
+		finalBlockTime = pi.FinalBlockTimestamp
+		finalBlockNum = pi.FinalBlockNumber
+		finalState = pi.FinalStateRootHash
+
+		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hshM))) // "open" execution circuit public input
 
 		if len(pi.L2MessageHashes.Values) != execMaxNbL2Msg {
 			return errors.New("number of L2 messages must be the same for all executions")
@@ -184,20 +218,23 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	pi := public_input.AggregationFPISnark{
-		AggregationFPIQSnark:   c.AggregationFPIQSnark,
-		NbL2Messages:           merkleLeavesConcat.Length,
-		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, c.L2MessageMaxNbMerkle),
-		FinalBlockNumber:       rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
+		AggregationFPIQSnark: c.AggregationFPIQSnark,
+		NbL2Messages:         merkleLeavesConcat.Length,
+		L2MsgMerkleTreeRoots: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle), // implicit CHECK_MERKLE_CAP1
+		// implicit CHECK_FINAL_NUM
+		FinalBlockNumber: rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
+		// implicit CHECK_FINAL_TIME
 		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
-		FinalShnarf:            rDecompression.LastArray32(shnarfs),
-		FinalRollingHash:       finalRollingHash,
-		FinalRollingHashNumber: finalRollingHashNum,
+		FinalShnarf:            rDecompression.LastArray32(shnarfs), // implicit CHECK_FINAL_SHNARF
+		FinalRollingHash:       finalRollingHash,                    // implicit CHECK_FINAL_RHASH
+		FinalRollingHashNumber: finalRollingHashMsgNum,              // implicit CHECK_FINAL_RHASH_NUM
 		L2MsgMerkleTreeDepth:   c.L2MessageMerkleDepth,
 	}
 
 	quotient, remainder := internal.DivEuclidean(api, merkleLeavesConcat.Length, merkleNbLeaves)
 	pi.NbL2MsgMerkleTreeRoots = api.Add(quotient, api.Sub(1, api.IsZero(remainder)))
-
+	comparator.AssertIsLessEq(pi.NbL2MsgMerkleTreeRoots, c.L2MessageMaxNbMerkle) // CHECK_MERKLE_CAP0
+	// implicit CHECK_MERKLE
 	for i := range pi.L2MsgMerkleTreeRoots {
 		pi.L2MsgMerkleTreeRoots[i] = MerkleRootSnark(&hshK, merkleLeavesConcat.Values[i*merkleNbLeaves:(i+1)*merkleNbLeaves])
 	}
@@ -208,11 +245,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
 	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
 
-	if c.MockKeccakWizard {
-		return nil
-	} else {
-		return hshK.Finalize()
-	}
+	return hshK.Finalize()
 }
 
 func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
@@ -243,6 +276,10 @@ func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.Com
 		c.L2MsgMaxNbMerkle = (c.MaxNbExecution*c.ExecutionMaxNbMsg + merkleNbLeaves - 1) / merkleNbLeaves
 	}
 
+	if c.MockKeccakWizard {
+		wizardCompilationOpts = nil
+		logrus.Warn("KECCAK HASH RESULTS WILL NOT BE CHECKED. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
+	}
 	sh := newKeccakCompiler(c).Compile(wizardCompilationOpts...)
 	shc, err := sh.GetCircuit()
 	if err != nil {
@@ -251,9 +288,6 @@ func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.Com
 
 	circuit := allocateCircuit(c)
 	circuit.Keccak = shc
-	for i := range circuit.ExecutionFPIQ {
-		circuit.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]frontend.Variable, c.ExecutionMaxNbMsg)
-	}
 
 	return &Compiled{
 		Circuit: &circuit,
@@ -282,18 +316,25 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 	}, nil
 }
 
-func allocateCircuit(c config.PublicInput) Circuit {
-	return Circuit{
-		DecompressionPublicInput: make([]frontend.Variable, c.MaxNbDecompression),
-		ExecutionPublicInput:     make([]frontend.Variable, c.MaxNbExecution),
-		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, c.MaxNbDecompression),
-		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, c.MaxNbExecution),
-		L2MessageMerkleDepth:     c.L2MsgMerkleDepth,
-		L2MessageMaxNbMerkle:     c.L2MsgMaxNbMerkle,
-		MaxNbCircuits:            c.MaxNbCircuits,
-		MockKeccakWizard:         c.MockKeccakWizard,
+func allocateCircuit(cfg config.PublicInput) Circuit {
+	res := Circuit{
+		DecompressionPublicInput: make([]frontend.Variable, cfg.MaxNbDecompression),
+		ExecutionPublicInput:     make([]frontend.Variable, cfg.MaxNbExecution),
+		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, cfg.MaxNbDecompression),
+		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
+		L2MessageMerkleDepth:     cfg.L2MsgMerkleDepth,
+		L2MessageMaxNbMerkle:     cfg.L2MsgMaxNbMerkle,
+		MaxNbCircuits:            cfg.MaxNbCircuits,
+		L2MessageServiceAddr:     types.EthAddress(cfg.L2MsgServiceAddr),
+		ChainID:                  cfg.ChainID,
 		UseGkrMimc:               true,
 	}
+
+	for i := range res.ExecutionFPIQ {
+		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]frontend.Variable, cfg.ExecutionMaxNbMsg)
+	}
+
+	return res
 }
 
 func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
@@ -328,19 +369,52 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 	if err != nil {
 		return nil, err
 	}
-	const estimatedNbConstraints = 35_000_000
+	const estimatedNbConstraints = 1 << 27
 	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit, frontend.WithCapacity(estimatedNbConstraints))
 	if err != nil {
 		return nil, err
 	}
-	if nbC := cs.GetNbConstraints(); nbC > estimatedNbConstraints || estimatedNbConstraints-nbC > 5_000_000 {
-		return nil, fmt.Errorf("constraint estimate is off; got %d", nbC)
-	}
+
 	return cs, nil
 }
 
 func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
-	panic("implement me") // TODO @alexandre.belling
+	var (
+		sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+
+		fullCompilationSuite = compilationSuite{
+
+			compiler.Arcane(1<<10, 1<<18, false),
+			vortex.Compile(
+				2,
+				vortex.ForceNumOpenedColumns(256),
+				vortex.WithSISParams(&sisInstance),
+			),
+
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			mimcComp.CompileMiMC,
+			compiler.Arcane(1<<10, 1<<16, false),
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.WithSISParams(&sisInstance),
+			),
+
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			mimcComp.CompileMiMC,
+			compiler.Arcane(1<<10, 1<<13, false),
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.ReplaceSisByMimc(),
+			),
+		}
+	)
+
+	return fullCompilationSuite
+
 }
 
 // GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution from the compiled constraint system

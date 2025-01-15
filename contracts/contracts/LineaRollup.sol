@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.26;
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageService } from "./messageService/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
@@ -14,40 +13,38 @@ import { Utils } from "./lib/Utils.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is
-  Initializable,
-  AccessControlUpgradeable,
-  ZkEvmV2,
-  L1MessageService,
-  PermissionsManager,
-  ILineaRollup
-{
+contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, PermissionsManager, ILineaRollup {
   using Utils for *;
 
-  /// @dev This is the ABI version and not the reinitialize version.
+  /// @notice This is the ABI version and not the reinitialize version.
   string public constant CONTRACT_VERSION = "6.0";
 
+  /// @notice The role required to set/add  proof verifiers by type.
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
-  bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
-  bytes32 public constant GENESIS_SHNARF =
-    keccak256(
-      abi.encode(
-        EMPTY_HASH,
-        EMPTY_HASH,
-        0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd,
-        EMPTY_HASH,
-        EMPTY_HASH
-      )
-    );
 
+  /// @notice The role required to set/remove  proof verifiers by type.
+  bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
+
+  /// @dev Value indicating a shnarf exists.
   uint256 internal constant SHNARF_EXISTS_DEFAULT_VALUE = 1;
+
+  /// @dev The default hash value.
   bytes32 internal constant EMPTY_HASH = 0x0;
+
+  /// @dev The BLS Curve modulus value used.
   uint256 internal constant BLS_CURVE_MODULUS =
     52435875175126190479447740508185965837690552500527637822603658699938581184513;
+
+  /// @dev The well-known precompile address for point evaluation.
   address internal constant POINT_EVALUATION_PRECOMPILE_ADDRESS = address(0x0a);
+
+  /// @dev The expected point evaluation return data length.
   uint256 internal constant POINT_EVALUATION_RETURN_DATA_LENGTH = 64;
+
+  /// @dev The expected point evaluation field element length returned.
   uint256 internal constant POINT_EVALUATION_FIELD_ELEMENTS_LENGTH = 4096;
 
+  /// @dev In practice, when used, this is expected to be a close approximation to 6 months, and is intentional.
   uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
@@ -66,18 +63,19 @@ contract LineaRollup is
   /// @dev DEPRECATED in favor of currentFinalizedState hash.
   bytes32 public currentL2StoredL1RollingHash;
 
+  /// @notice Contains the most recent finalized shnarf.
   bytes32 public currentFinalizedShnarf;
 
   /**
    * @dev NB: THIS IS THE ONLY MAPPING BEING USED FOR DATA SUBMISSION TRACKING.
-   * @dev NB: NB: This was shnarfFinalBlockNumbers and is replaced to indicate only that a shnarf exists with a value of 1.
+   * @dev NB: This was shnarfFinalBlockNumbers and is replaced to indicate only that a shnarf exists with a value of 1.
    */
   mapping(bytes32 shnarf => uint256 exists) public blobShnarfExists;
 
-  /// @dev Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
+  /// @notice Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
   bytes32 public currentFinalizedState;
 
-  /// @dev The address of the fallback operator.
+  /// @notice The address of the fallback operator.
   /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
   address public fallbackOperator;
 
@@ -104,6 +102,10 @@ contract LineaRollup is
 
     __MessageService_init(_initializationData.rateLimitPeriodInSeconds, _initializationData.rateLimitAmountInWei);
 
+    if (_initializationData.defaultAdmin == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     /**
      * @dev DEFAULT_ADMIN_ROLE is set for the security council explicitly,
      * as the permissions init purposefully does not allow DEFAULT_ADMIN_ROLE to be set.
@@ -114,15 +116,26 @@ contract LineaRollup is
 
     verifiers[0] = _initializationData.defaultVerifier;
 
+    if (_initializationData.fallbackOperator == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     fallbackOperator = _initializationData.fallbackOperator;
     emit FallbackOperatorAddressSet(msg.sender, _initializationData.fallbackOperator);
 
     currentL2BlockNumber = _initializationData.initialL2BlockNumber;
     stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
-    blobShnarfExists[GENESIS_SHNARF] = SHNARF_EXISTS_DEFAULT_VALUE;
+    bytes32 genesisShnarf = _computeShnarf(
+      EMPTY_HASH,
+      EMPTY_HASH,
+      _initializationData.initialStateRootHash,
+      EMPTY_HASH,
+      EMPTY_HASH
+    );
 
-    currentFinalizedShnarf = GENESIS_SHNARF;
+    blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
+    currentFinalizedShnarf = genesisShnarf;
     currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
   }
 
@@ -143,11 +156,29 @@ contract LineaRollup is
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
+    if (_fallbackOperator == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     fallbackOperator = _fallbackOperator;
     emit FallbackOperatorAddressSet(msg.sender, _fallbackOperator);
 
     /// @dev using the constants requires string memory and more complex code.
     emit LineaRollupVersionChanged(bytes8("5.0"), bytes8("6.0"));
+  }
+
+  /**
+   * @notice Revokes `role` from the calling account.
+   * @dev Fallback operator cannot renounce role. Reverts with OnlyNonFallbackOperator.
+   * @param _role The role to renounce.
+   * @param _account The account to renounce - can only be the _msgSender().
+   */
+  function renounceRole(bytes32 _role, address _account) public override {
+    if (_account == fallbackOperator) {
+      revert OnlyNonFallbackOperator();
+    }
+
+    super.renounceRole(_role, _account);
   }
 
   /**
@@ -412,7 +443,7 @@ contract LineaRollup is
     uint256 fieldElements;
     uint256 blsCurveModulus;
     assembly {
-      fieldElements := mload(add(returnData, 32))
+      fieldElements := mload(add(returnData, 0x20))
       blsCurveModulus := mload(add(returnData, POINT_EVALUATION_RETURN_DATA_LENGTH))
     }
     if (fieldElements != POINT_EVALUATION_FIELD_ELEMENTS_LENGTH || blsCurveModulus != BLS_CURVE_MODULUS) {
@@ -451,8 +482,7 @@ contract LineaRollup is
       _finalizationData,
       lastFinalizedShnarf,
       finalShnarf,
-      lastFinalizedBlockNumber,
-      _finalizationData.endBlockNumber
+      lastFinalizedBlockNumber
     );
 
     _verifyProof(publicInput, _proofType, _aggregatedProof);
@@ -468,10 +498,6 @@ contract LineaRollup is
     FinalizationDataV3 calldata _finalizationData,
     uint256 _lastFinalizedBlock
   ) internal returns (bytes32 finalShnarf) {
-    if (_finalizationData.endBlockNumber <= _lastFinalizedBlock) {
-      revert FinalBlockNumberLessThanOrEqualToLastFinalizedBlock(_finalizationData.endBlockNumber, _lastFinalizedBlock);
-    }
-
     _validateL2ComputedRollingHash(_finalizationData.l1RollingHashMessageNumber, _finalizationData.l1RollingHash);
 
     if (
@@ -642,14 +668,12 @@ contract LineaRollup is
    * @param _finalizationData The full finalization data.
    * @param _finalShnarf The final shnarf in the finalization.
    * @param _lastFinalizedBlockNumber The last finalized block number.
-   * @param _endBlockNumber End block number being finalized.
    */
   function _computePublicInput(
     FinalizationDataV3 calldata _finalizationData,
     bytes32 _lastFinalizedShnarf,
     bytes32 _finalShnarf,
-    uint256 _lastFinalizedBlockNumber,
-    uint256 _endBlockNumber
+    uint256 _lastFinalizedBlockNumber
   ) private pure returns (uint256 publicInput) {
     assembly {
       let mPtr := mload(0x40)
@@ -665,7 +689,7 @@ contract LineaRollup is
       mstore(add(mPtr, 0x80), _lastFinalizedBlockNumber)
 
       // _finalizationData.endBlockNumber
-      mstore(add(mPtr, 0xA0), _endBlockNumber)
+      calldatacopy(add(mPtr, 0xA0), add(_finalizationData, 0x20), 0x20)
 
       /**
        * _finalizationData.lastFinalizedL1RollingHash

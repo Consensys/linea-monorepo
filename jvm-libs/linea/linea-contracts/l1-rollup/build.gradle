@@ -1,7 +1,6 @@
 plugins {
   id 'java-library'
   id 'linea.web3j-codegen'
-  alias(libs.plugins.jreleaser)
 }
 java {
   toolchain {
@@ -10,7 +9,6 @@ java {
 }
 description = 'Web3J Java client for Linea L1 Rollup Smart Contract'
 ext.artifactId = 'l1-rollup-contract-client'
-apply from: rootProject.file("gradle/publishing.gradle")
 
 dependencies {
   // this shall be very lightweight dependency, just export the generated sources
@@ -20,9 +18,13 @@ dependencies {
 }
 
 web3jContractWrappers {
-  def contractAbi = layout.buildDirectory.dir("${rootProject.projectDir}/contracts/abi").get()
-    .file("LineaRollupV6.0.abi").asFile.absolutePath
+  def contractsDir = layout.buildDirectory.dir("${rootProject.projectDir}/contracts/abi").get()
+  def contractV6Abi = contractsDir.file("LineaRollupV6.0.abi").asFile.absolutePath
+  def contractV5Abi = contractsDir.file("LineaRollupV5.0.abi").asFile.absolutePath
 
   contractsPackage = "build.linea.contract"
-  contracts = ["$contractAbi": "LineaRollupV6"]
+  contracts = [
+    "$contractV5Abi": "LineaRollupV5",
+    "$contractV6Abi": "LineaRollupV6"
+  ]
 }

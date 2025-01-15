@@ -9,6 +9,7 @@ export type BaseConfig = {
 
 export type L1Config = BaseConfig & {
   lineaRollupAddress: string;
+  lineaRollupProxyAdminAddress: string;
   tokenBridgeAddress: string;
   l1TokenAddress: string;
 };
@@ -23,6 +24,7 @@ export type BaseL2Config = BaseConfig & {
   shomeiFrontendEndpoint?: URL;
   sequencerEndpoint?: URL;
   transactionExclusionEndpoint?: URL;
+  opcodeTestContractAddress: string;
 };
 
 export type LocalL2Config = BaseL2Config & {
