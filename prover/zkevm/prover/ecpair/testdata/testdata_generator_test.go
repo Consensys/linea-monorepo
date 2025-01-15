@@ -543,6 +543,7 @@ func generateTestCases(length int) []testCase {
 }
 
 func TestGenerateECPairTestCases(t *testing.T) {
+	t.Skip("long test, run manually when needed")
 	var generatedCases []testCase
 	for i := 1; i <= 5; i++ {
 		generatedCases = append(generatedCases, generateTestCases(i)...)
@@ -566,6 +567,7 @@ func TestGenerateECPairTestCases(t *testing.T) {
 }
 
 func TestWriteTestCase(t *testing.T) {
+	// sanity test that nothing fails/panics etc
 	input := inputs{nonTrivial, nonTrivial, nonTrivial}
 	w := csv.NewWriter(os.Stdout)
 	if err := writeHeader(w); err != nil {
