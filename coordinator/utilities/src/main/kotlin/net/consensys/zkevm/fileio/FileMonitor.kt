@@ -32,7 +32,7 @@ class FileMonitor(
   }
 
   /**
-   * Monitors a list of files and completes when the first file is available on the file system 
+   * Monitors a list of files and completes when the first file is available on the file sytem
    */
   fun monitorFiles(filePaths: List<Path>): SafeFuture<Result<Path, ErrorType>> {
     return asyncRetryer.retry(stopRetriesPredicate = { filePathsFound -> filePathsFound.contains(true) }) {
