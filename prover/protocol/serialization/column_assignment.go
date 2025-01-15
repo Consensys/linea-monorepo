@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"sync"
 	"time"
@@ -106,9 +107,10 @@ func SerializeAssignment(a WAssignment) []byte {
 	start = time.Now()
 	var compressedData bytes.Buffer
 	lz4Writer := lz4.NewWriter(&compressedData)
-	for _, chunk := range serializedChunks {
+	for i, chunk := range serializedChunks {
 		_, err := lz4Writer.Write(chunk)
 		if err != nil {
+			fmt.Printf("Error compressing chunk %d: %v\n", i, err)
 			panic(err) // handle error as needed
 		}
 	}
@@ -122,139 +124,61 @@ func SerializeAssignment(a WAssignment) []byte {
 	return compressedData.Bytes()
 }
 
-func SerializeAssignmentWithoutCompression(a WAssignment) []byte {
+
+// DeserializeAssignment deserializes a blob of bytes into a set of column
+// assignments representing assigned columns of a Wizard protocol.
+func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) {
 	var (
-		as    = a.InnerMap()
-		ser   = map[string]*CompressedSmartVector{}
-		names = a.ListAllKeys()
-		lock  = &sync.Mutex{}
-	)
-
-	// Step 1: Measure time for parallel.ExecuteChunky
-	start := time.Now()
-	parallel.ExecuteChunky(len(names), func(start, stop int) {
-		for i := start; i < stop; i++ {
-			v := CompressSmartVector(as[names[i]])
-			lock.Lock()
-			ser[fmt.Sprintf("%v", names[i])] = v
-			lock.Unlock()
-		}
-	})
-	fmt.Printf("Time taken for parallel.ExecuteChunky: %v\n", time.Since(start))
-
-	// Log approximate size of `ser` in GB
-	serSizeGB := float64(unsafe.Sizeof(ser)) / (1024 * 1024 * 1024)
-	fmt.Printf("Size of ser (approximate): %.6f GB\n", serSizeGB)
-
-	// Step 2: Parallelize CBOR serialization by chunking `ser`
-	start = time.Now()
-	chunkSize := (len(ser) + 49) / 50
-	var serializedChunks = make([]json.RawMessage, 50)
-	var wg sync.WaitGroup
-	var m sync.Mutex
-	for i := 0; i < 50; i++ {
-		wg.Add(1)
-		go func(chunkIndex int) {
-			defer wg.Done()
-
-			start := chunkIndex * chunkSize
-			stop := start + chunkSize
-			if stop > len(names) {
-				stop = len(names)
-			}
-
-			chunk := make(map[string]*CompressedSmartVector)
-			for j := start; j < stop; j++ {
-				key := fmt.Sprintf("%v", names[j])
-				chunk[key] = ser[key]
-			}
-
-			serializedChunk := serializeAnyWithCborPkg(chunk)
-
-			m.Lock()
-			serializedChunks[chunkIndex] = serializedChunk
-			m.Unlock()
-		}(i)
-	}
-	wg.Wait()
-	fmt.Printf("Time taken for CBOR serialization in chunks : %v\n", time.Since(start))
-
-	// Calculate the combined size of `serializedChunks` in GB
-	totalCBORSize := 0
-	for _, chunk := range serializedChunks {
-		totalCBORSize += len(chunk)
-	}
-	cborDataSizeGB := float64(totalCBORSize) / (1024 * 1024 * 1024)
-	fmt.Printf("Total size of CBOR serialized data: %.6f GB\n", cborDataSizeGB)
-
-	// Step 3: Parallel concatenation of all serialized chunks
-	start = time.Now()
-	numConcatenators := 50
-	chunksPerGroup := (len(serializedChunks) + numConcatenators - 1) / numConcatenators
-	subResults := make([][]byte, numConcatenators)
-	var concatWg sync.WaitGroup
-
-	for i := 0; i < numConcatenators; i++ {
-		concatWg.Add(1)
-		go func(groupIndex int) {
-			defer concatWg.Done()
-
-			// Concatenate this group of chunks
-			start := groupIndex * chunksPerGroup
-			stop := start + chunksPerGroup
-			if stop > len(serializedChunks) {
-				stop = len(serializedChunks)
-			}
-
-			var groupResult []byte
-			for _, chunk := range serializedChunks[start:stop] {
-				groupResult = append(groupResult, chunk...)
-			}
-			subResults[groupIndex] = groupResult
-		}(i)
-	}
-	concatWg.Wait()
-
-	// Final concatenation of subResults
-	var finalResult []byte
-	for _, subResult := range subResults {
-		finalResult = append(finalResult, subResult...)
-	}
-	fmt.Printf("Time taken for parallel concatenation: %v\n", time.Since(start))
-
-	return finalResult
-}
-
-// DeserializeAssignment deserialize a blob of bytes into a set of column
-// assignment representing assigned columns of a Wizard protocol.
-func DeserializeAssignment(data []byte) (WAssignment, error) {
-
-	var (
-		ser  = map[string]*CompressedSmartVector{}
 		res  = collection.NewMapping[ifaces.ColID, smartvectors.SmartVector]()
 		lock = &sync.Mutex{}
 	)
 
-	if err := deserializeAnyWithCborPkg(data, &ser); err != nil {
-		return WAssignment{}, err
-	}
-
-	names := make([]string, 0, len(ser))
-	for n := range ser {
-		names = append(names, n)
-	}
-
-	parallel.ExecuteChunky(len(names), func(start, stop int) {
-		for i := start; i < stop; i++ {
-			v := ser[names[i]].Decompress()
-			lock.Lock()
-			res.InsertNew(ifaces.ColID(names[i]), v)
-			lock.Unlock()
+	// Read and decompress the data
+	var decompressedData bytes.Buffer
+	for i := 0; i < numChunks; i++ {
+		chunkPath := fmt.Sprintf("%s_chunk_%d", filepath, i)
+		chunkData, err := ioutil.ReadFile(chunkPath)
+		if err != nil {
+			return WAssignment{}, fmt.Errorf("failed to read chunk %d: %w", i, err)
 		}
-	})
+
+		fmt.Printf("Reading chunk %d from %s, size: %d bytes\n", i, chunkPath, len(chunkData))
+		lz4Reader := lz4.NewReader(bytes.NewReader(chunkData))
+		n, err := decompressedData.ReadFrom(lz4Reader)
+		if err != nil {
+			fmt.Printf("Error decompressing chunk %d: %v\n", i, err)
+			return WAssignment{}, fmt.Errorf("failed to decompress chunk %d: %w", i, err)
+		}
+		fmt.Printf("Decompressed chunk %d, size: %d bytes\n", i, n)
+	}
+
+	// Deserialize the decompressed data
+	var serializedChunks []map[string]*CompressedSmartVector
+	if err := deserializeAnyWithCborPkg(decompressedData.Bytes(), &serializedChunks); err != nil {
+		return WAssignment{}, fmt.Errorf("failed to deserialize decompressed data: %w", err)
+	}
+
+	// Reconstruct the WAssignment
+	var wg sync.WaitGroup
+	for _, chunk := range serializedChunks {
+		wg.Add(1)
+		go func(chunk map[string]*CompressedSmartVector) {
+			defer wg.Done()
+
+			for k, v := range chunk {
+				decompressed := v.Decompress()
+				lock.Lock()
+				res.InsertNew(ifaces.ColID(k), decompressed)
+				lock.Unlock()
+			}
+		}(chunk)
+	}
+	wg.Wait()
 
 	return res, nil
 }
+
+
 
 // CompressedSmartVector represents a [smartvectors.SmartVector] in a more
 // space-efficient manner.

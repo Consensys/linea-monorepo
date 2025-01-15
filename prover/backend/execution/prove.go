@@ -2,14 +2,12 @@ package execution
 
 import (
 	"fmt"
-	"io"
 	"math/rand/v2"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
@@ -190,21 +188,15 @@ func mustProveAndPass(
 			encodeOnlyZkEvm.AssignAndEncodeInChunks(filepath, w.ZkEVM, 50)
 
 			t := time.Now()
-			f := files.MustRead(filepath)
 
 			fmt.Printf("[%v] reading the assignment file\n", time.Now())
-			b, errRead := io.ReadAll(f)
-			if errRead != nil {
-				panic(errRead)
-			}
 
-			fmt.Printf("[%v] decoding the assignment\n", time.Now())
-			_, errDec := serialization.DeserializeAssignment(b)
+			// Deserialize the assignment from chunks
+			_, errDec := serialization.DeserializeAssignment(filepath, 50)
 			if errDec != nil {
-				panic(errDec)
+				panic(fmt.Sprintf("Error during deserialization: %v", errDec))
 			}
 
-			f.Close()
 			fmt.Printf("[%v] took %v sec to read the file and decode it into an assignment\n", time.Now(), time.Since(t).Seconds())
 		})
 
