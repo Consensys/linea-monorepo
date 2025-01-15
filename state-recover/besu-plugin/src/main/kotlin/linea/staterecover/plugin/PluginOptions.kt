@@ -23,11 +23,11 @@ data class PluginConfig(
 
 class PluginCliOptions {
   companion object {
-    const val cliOptionsPrefix = "staterecovery"
+    const val cliOptionsPrefix = "plugin-staterecovery"
   }
 
   @CommandLine.Option(
-    names = ["--plugin-$cliOptionsPrefix-l1-smart-contract-address"],
+    names = ["--$cliOptionsPrefix-l1-smart-contract-address"],
     description = ["L1 smart contract address"],
     required = true,
     converter = [AddressConverter::class],
@@ -36,7 +36,7 @@ class PluginCliOptions {
   lateinit var l1SmartContractAddress: Address
 
   @CommandLine.Option(
-    names = ["--plugin-$cliOptionsPrefix-linea-sequencer-beneficiary-address"],
+    names = ["--$cliOptionsPrefix-linea-sequencer-beneficiary-address"],
     description = ["Linea sequencer beneficiary address"],
     required = true,
     converter = [AddressConverter::class],
@@ -45,35 +45,35 @@ class PluginCliOptions {
   lateinit var lineaSequencerBeneficiaryAddress: Address
 
   @CommandLine.Option(
-    names = ["--plugin-$cliOptionsPrefix-l1-rpc-endpoint"],
+    names = ["--$cliOptionsPrefix-l1-rpc-endpoint"],
     description = ["L1 RPC endpoint"],
     required = true
   )
   lateinit var l1RpcEndpoint: URI
 
   @CommandLine.Option(
-    names = ["--plugin-$cliOptionsPrefix-shomei-endpoint"],
+    names = ["--$cliOptionsPrefix-shomei-endpoint"],
     description = ["shomei (state manager) endpoint"],
     required = true
   )
   lateinit var shomeiEndpoint: URI
 
   @CommandLine.Option(
-    names = ["--plugin-$cliOptionsPrefix-blobscan-endpoint"],
+    names = ["--$cliOptionsPrefix-blobscan-endpoint"],
     description = ["blobscan api endpoint"],
     required = true
   )
   lateinit var blobscanEndpoint: URI
 
   @CommandLine.Option(
-    names = ["--plugin-$cliOptionsPrefix-l1-polling-interval"],
+    names = ["--$cliOptionsPrefix-l1-polling-interval"],
     description = ["L1 polling interval for new finalized blobs"],
     required = false
   )
   var l1PollingInterval: Duration = Duration.ofSeconds(12)
 
   @CommandLine.Option(
-    names = ["--plugin-$cliOptionsPrefix-overriding-recovery-start-block-number"],
+    names = ["--$cliOptionsPrefix-overriding-recovery-start-block-number"],
     description = [
       "Tries to force the recovery start block number to the given value. " +
         "This is mean for testing purposes, not production. Must be greater than or equal to 1."
