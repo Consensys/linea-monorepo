@@ -46,10 +46,10 @@ func CompileGrandProductDist(comp *wizard.CompiledIOP) {
 			// z-packing compile; it imposes the correct accumulation over Numerator and Denominator.
 			zC.Compile(comp)
 			zRound := entry[0]
-			
+
 			// append prover action for the given zCatalog specific to a grand product query
 			allProverActions[zRound] = append(allProverActions[zRound], zC)
-			
+
 			// collect all the zOpening for all the z columns for the specific grand product query
 			verAction.ZOpenings = append(verAction.ZOpenings, zC.ZOpenings...)
 		}
