@@ -72,7 +72,7 @@ class ExecutionLayerInProcessClient(
   }
 
   override fun lineaEngineImportBlocksFromBlob(blocks: List<BlockFromL1RecoveredData>): SafeFuture<Unit> {
-    log.debug("Importing blocks from blob: blocks={}", blocks.map { it.header.blockNumber })
+    logBlockImport(blocks)
     return kotlin.runCatching {
       blocks.map { blockImporter.importBlock(it) }
       SafeFuture.completedFuture(Unit)
@@ -98,5 +98,13 @@ class ExecutionLayerInProcessClient(
         stateRecoverStartBlockNumber = stateRecoveryStatusPersistence.getRecoveryStartBlockNumber()
       )
     )
+  }
+
+  private fun logBlockImport(blocks: List<BlockFromL1RecoveredData>) {
+    if (log.isTraceEnabled) {
+      log.trace("importing blocks from blob: blocks={}", blocks)
+    } else {
+      log.debug("importing blocks from blob: blocks={}", blocks.map { it.header.blockNumber })
+    }
   }
 }
