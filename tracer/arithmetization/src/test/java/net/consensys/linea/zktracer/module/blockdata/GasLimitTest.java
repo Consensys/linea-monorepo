@@ -16,6 +16,7 @@ package net.consensys.linea.zktracer.module.blockdata;
 
 import static net.consensys.linea.zktracer.MultiBlockUtils.multiBlocksTest;
 import static net.consensys.linea.zktracer.module.blockdata.NextGasLimitScenario.*;
+import static net.consensys.linea.zktracer.module.blockdata.Trace.*;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
 
 import java.util.ArrayList;
@@ -40,7 +41,7 @@ public class GasLimitTest {
   void legalGasLimitVariationsTest() {
     Bytes p = BytecodeCompiler.newProgram().push(1).compile();
 
-    long gasLimit = LINEA_GAS_LIMIT_MINIMUM;
+    long gasLimit = GAS_LIMIT_MINIMUM;
     multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_SAME)));
     multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_INCREMENT)));
     multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MAX)));
@@ -52,7 +53,7 @@ public class GasLimitTest {
     multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MAX)));
     multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MIN)));
 
-    gasLimit = LINEA_GAS_LIMIT_MAXIMUM;
+    gasLimit = GAS_LIMIT_MAXIMUM;
     multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_SAME)));
     multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_DECREMENT)));
     multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_MIN)));
@@ -83,9 +84,9 @@ public class GasLimitTest {
         List.of(
             0L,
             (long) ETHEREUM_GAS_LIMIT_MINIMUM,
-            (long) LINEA_GAS_LIMIT_MINIMUM,
+            (long) GAS_LIMIT_MINIMUM,
             100_000_000L,
-            (long) LINEA_GAS_LIMIT_MAXIMUM,
+            (long) GAS_LIMIT_MAXIMUM,
             Long.MAX_VALUE);
     for (Long gasLimit : gasLimits) {
       for (NextGasLimitScenario scenario : values()) {

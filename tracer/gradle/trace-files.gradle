@@ -35,6 +35,23 @@ tasks.register("hub", TraceFilesTask) {
 }
 
 //
+// Special case: blockdata - trace file differ between Ethereum and Linea for gas limit purposes
+//
+tasks.register("blockdataEthereum", TraceFilesTask) {
+    group "Trace files generation"
+    dependsOn corsetExists
+    module = 'blockdata'
+    files = ['blockdata/constants.lisp', 'blockdata/columns.lisp', 'blockdata/processing/gaslimit/constants-ethereum.lisp']
+}
+
+tasks.register("blockdataLinea", TraceFilesTask) {
+    group "Trace files generation"
+    dependsOn corsetExists
+    module = 'blockdata'
+    files = ['blockdata/constants.lisp', 'blockdata/columns.lisp', 'blockdata/processing/gaslimit/constants-linea.lisp']
+}
+
+//
 // Reference table
 //
 tasks.register('instdecoder', TraceFilesTask) {
@@ -75,7 +92,7 @@ tasks.register('binreftable', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp, MODULE/constants.lisp naming scheme.
 //
-['mmu', 'blake2fmodexpdata', 'blockdata', 'blockhash', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata'].each {moduleName ->
+['mmu', 'blake2fmodexpdata', 'blockhash', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
@@ -115,6 +132,8 @@ tasks.register('binreftable', TraceFilesTask) {
     }
 }
 
+// Task which generates all Trace.java (and related) files using
+// corset.
 tasks.register('buildTracer') {
     group "Trace files generation"
     dependsOn 'add', 'ext', 'mul', 'mod'
@@ -123,9 +142,23 @@ tasks.register('buildTracer') {
     dependsOn 'shfreftable'
     dependsOn 'binreftable'
     dependsOn 'bin', 'blockhash', 'euc', 'mmio', 'shf', 'wcp', 'rlptxn', 'rom', 'romlex', 'trm', 'stp', 'loginfo', 'logdata', 'gas'
-    dependsOn 'mmu', 'blake2fmodexpdata', 'blockdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata'
+    dependsOn 'mmu', 'blake2fmodexpdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata'
     dependsOn 'txndata'
     dependsOn 'constants'
+    
+    def chain = System.getProperty('blockchain')
+    // Conditional dependsOn
+    if(chain == null || chain == "Linea") {
+        print("Building for Linea...\n")
+        dependsOn 'blockdataLinea'        
+    } else if(chain == "Ethereum") {
+        dependsOn 'blockdataEthereum'
+        print("Building for Ethereum...\n")        
+    } else {
+        // Force build failure if unknown chain.
+        println("*** unknown target chain.  Try '-Dblockchain=Linea' or '-Dblockchain=Ethereum'\n\n")
+        assert false
+    }
 }
 
 // Configure default build task to require the tracer is built first.
