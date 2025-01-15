@@ -2,7 +2,7 @@ name: upload-codecov
 
 on:
   workflow_run:
-    workflows: [coordinator-testing]
+    workflows: [main]
     types:
       - completed
 
