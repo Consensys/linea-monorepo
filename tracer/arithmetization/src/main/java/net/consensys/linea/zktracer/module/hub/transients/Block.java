@@ -34,9 +34,10 @@ public class Block {
    *
    * @param processableBlockHeader the processable block header
    */
-  public void update(final ProcessableBlockHeader processableBlockHeader) {
+  public void update(
+      final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {
     this.blockNumber++;
-    this.coinbaseAddress = processableBlockHeader.getCoinbase();
+    this.coinbaseAddress = miningBeneficiary;
     this.baseFee = Wei.fromQuantity(processableBlockHeader.getBaseFee().orElseThrow());
   }
 }

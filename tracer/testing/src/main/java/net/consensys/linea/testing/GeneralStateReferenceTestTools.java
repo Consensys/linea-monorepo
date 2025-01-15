@@ -40,7 +40,7 @@ import org.hyperledger.besu.ethereum.referencetests.GeneralStateTestCaseEipSpec;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestBlockchain;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 import org.hyperledger.besu.ethereum.rlp.RLP;
-import org.hyperledger.besu.ethereum.vm.CachingBlockHashLookup;
+import org.hyperledger.besu.ethereum.vm.BlockchainBasedBlockHashLookup;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
@@ -93,7 +93,7 @@ public class GeneralStateReferenceTestTools {
             .blobGasPricePerGas(blockHeader.getExcessBlobGas().orElse(BlobGas.ZERO));
 
     tracer.traceStartConflation(1);
-    tracer.traceStartBlock(blockHeader, blockBody);
+    tracer.traceStartBlock(blockHeader, blockHeader.getCoinbase());
     TransactionProcessingResult result = null;
     for (Transaction transaction : blockBody.getTransactions()) {
       // Several of the GeneralStateTests check if the transaction could potentially
@@ -111,7 +111,7 @@ public class GeneralStateReferenceTestTools {
               transaction,
               blockHeader.getCoinbase(),
               tracer,
-              new CachingBlockHashLookup(blockHeader, blockchain),
+              new BlockchainBasedBlockHashLookup(blockHeader, blockchain),
               false,
               TransactionValidationParams.processingBlock(),
               blobGasPrice);

@@ -400,7 +400,7 @@ public class BlockchainReferenceTestTools {
       try {
         final Block block = candidateBlock.getBlock();
 
-        zkTracer.traceStartBlock(block.getHeader());
+        zkTracer.traceStartBlock(block.getHeader(), block.getHeader().getCoinbase());
 
         final ProtocolSpec protocolSpec = schedule.getByBlockHeader(block.getHeader());
 

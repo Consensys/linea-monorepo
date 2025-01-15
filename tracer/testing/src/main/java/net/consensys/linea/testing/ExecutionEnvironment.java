@@ -28,7 +28,7 @@ import java.util.OptionalLong;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.config.GenesisConfigFile;
+import org.hyperledger.besu.config.GenesisConfig;
 import org.hyperledger.besu.config.GenesisConfigOptions;
 import org.hyperledger.besu.consensus.clique.CliqueBlockHeaderFunctions;
 import org.hyperledger.besu.consensus.clique.CliqueForksSchedulesFactory;
@@ -57,14 +57,15 @@ import org.slf4j.Logger;
 public class ExecutionEnvironment {
   public static final String CORSET_VALIDATION_RESULT = "Corset validation result: ";
 
-  static GenesisConfigFile GENESIS_CONFIG =
-      GenesisConfigFile.fromSource(GenesisConfigFile.class.getResource("/linea.json"));
+  static GenesisConfig GENESIS_CONFIG =
+      GenesisConfig.fromSource(GenesisConfig.class.getResource("/linea.json"));
 
   static final BlockHeaderBuilder DEFAULT_BLOCK_HEADER_BUILDER =
       BlockHeaderBuilder.createDefault()
           .number(ToyExecutionEnvironmentV2.DEFAULT_BLOCK_NUMBER)
           .timestamp(123456789)
           .parentHash(Hash.EMPTY_TRIE_HASH)
+          .baseFee(ToyExecutionEnvironmentV2.DEFAULT_BASE_FEE)
           .nonce(0)
           .blockHeaderFunctions(new CliqueBlockHeaderFunctions());
 

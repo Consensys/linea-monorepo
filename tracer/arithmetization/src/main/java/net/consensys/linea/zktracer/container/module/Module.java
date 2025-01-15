@@ -20,6 +20,7 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
@@ -33,7 +34,8 @@ public interface Module {
 
   default void traceEndConflation(final WorldView state) {}
 
-  default void traceStartBlock(final ProcessableBlockHeader processableBlockHeader) {}
+  default void traceStartBlock(
+      final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {}
 
   default void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {}
 

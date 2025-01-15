@@ -80,12 +80,10 @@ public interface ConflationAwareOperationTracer extends BlockAwareOperationTrace
       this.tracers.forEach(tracer -> tracer.traceEndConflation(state));
     }
 
-    public void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
-      this.tracers.forEach(tracer -> tracer.traceStartBlock(blockHeader, blockBody));
-    }
-
-    public void traceStartBlock(final ProcessableBlockHeader processableBlockHeader) {
-      this.tracers.forEach(tracer -> tracer.traceStartBlock(processableBlockHeader));
+    public void traceStartBlock(
+        final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {
+      this.tracers.forEach(
+          tracer -> tracer.traceStartBlock(processableBlockHeader, miningBeneficiary));
     }
 
     public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {

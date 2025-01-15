@@ -43,7 +43,7 @@ import org.hyperledger.besu.ethereum.referencetests.ReferenceTestBlockchain;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestProtocolSchedules;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 import org.hyperledger.besu.ethereum.rlp.RLP;
-import org.hyperledger.besu.ethereum.vm.CachingBlockHashLookup;
+import org.hyperledger.besu.ethereum.vm.BlockchainBasedBlockHashLookup;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
@@ -178,7 +178,7 @@ public class GeneralStateReferenceTestTools {
 
     final ZkTracer zkTracer = new ZkTracer();
     zkTracer.traceStartConflation(1);
-    zkTracer.traceStartBlock(blockHeader, blockBody);
+    zkTracer.traceStartBlock(blockHeader, blockHeader.getCoinbase());
 
     final TransactionProcessingResult result =
         processor.processTransaction(
@@ -187,7 +187,7 @@ public class GeneralStateReferenceTestTools {
             transaction,
             blockHeader.getCoinbase(),
             zkTracer,
-            new CachingBlockHashLookup(blockHeader, blockchain),
+            new BlockchainBasedBlockHashLookup(blockHeader, blockchain),
             false,
             TransactionValidationParams.processingBlock(),
             blobGasPrice);
