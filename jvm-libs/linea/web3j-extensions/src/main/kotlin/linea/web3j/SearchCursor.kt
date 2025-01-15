@@ -47,7 +47,7 @@ internal class SearchCursor(
         searchChunks[mid] to mid
       } else {
         if (searchDirection == null) {
-          findNextUnsearchedChunk()
+          findLeftNextUnsearchedChunkAndUpdateLeftLimit()
         } else {
           if (searchDirection == SearchDirection.FORWARD) {
             left = prevCursor!! + 1
@@ -61,7 +61,7 @@ internal class SearchCursor(
             val chunk = searchChunks[mid]
             if (chunk.searched) {
               // we have already searched this chunk, lets find next unsearched
-              findNextUnsearchedChunk()
+              findLeftNextUnsearchedChunkAndUpdateLeftLimit()
             } else {
               chunk to mid
             }
@@ -75,9 +75,10 @@ internal class SearchCursor(
     }
   }
 
-  private fun findNextUnsearchedChunk(): Pair<Chunk, Int>? {
+  private fun findLeftNextUnsearchedChunkAndUpdateLeftLimit(): Pair<Chunk, Int>? {
     for (i in left..right) {
       if (!searchChunks[i].searched) {
+        left = i
         return searchChunks[i] to i
       }
     }

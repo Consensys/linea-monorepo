@@ -71,6 +71,22 @@ class SearchCursorTest {
   }
 
   @Test
+  fun `next follows binary search when direction is null`() {
+    val searchCursor = SearchCursor(from = 1uL, to = 100uL, chunkSize = 10)
+
+    assertThat(searchCursor.next(null)).isEqualTo(41UL to 50UL)
+    assertThat(searchCursor.next(null)).isEqualTo(1UL to 10UL)
+    assertThat(searchCursor.next(null)).isEqualTo(11UL to 20UL)
+    assertThat(searchCursor.next(null)).isEqualTo(21UL to 30UL)
+    assertThat(searchCursor.next(null)).isEqualTo(31UL to 40UL)
+    assertThat(searchCursor.next(null)).isEqualTo(51UL to 60UL)
+    assertThat(searchCursor.next(null)).isEqualTo(61UL to 70UL)
+    assertThat(searchCursor.next(null)).isEqualTo(71UL to 80UL)
+    assertThat(searchCursor.next(null)).isEqualTo(81UL to 90UL)
+    assertThat(searchCursor.next(null)).isEqualTo(91UL to 100UL)
+  }
+
+  @Test
   fun `next iterates over chunks when no direction is provided`() {
     val searchCursor = SearchCursor(from = 1uL, to = 100uL, chunkSize = 10)
     val chunks = mutableListOf<Pair<ULong, ULong>>()
