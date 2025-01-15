@@ -1,0 +1,45 @@
+name: upload-codecov
+
+on:
+  workflow_run:
+    workflows: [coordinator-testing]
+    types:
+      - completed
+
+jobs:
+  upload-codecov-coverage-report:
+    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    name: upload-codecov-coverage-report
+    steps:
+      # Workaround to make `workflow_run` run on a branch that is not main - https://stackoverflow.com/a/65081720
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Download saved .env values from workflow run for this commit
+        uses: actions/download-artifact@v4
+        with:
+          name: COMMIT_TAG_${{ github.sha }}
+          path: COMMIT_TAG.txt
+
+      - name: Load .env values
+        run: |
+          source COMMIT_TAG.txt
+
+      - name: Download Codecov coverage report from coordinator-testing
+        uses: actions/download-artifact@v4
+        with:
+          name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
+          path: ${{ github.workspace }}/jacocoRootReport.xml
+          
+      - name: Upload Codecov coverage report from coordinator-testing
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          files: ${{ github.workspace }}/jacocoRootReport.xml
+          flags: kotlin
+          os: linux
+          name: codecov-coordinator
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+

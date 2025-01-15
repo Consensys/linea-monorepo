@@ -20,6 +20,7 @@ class FileMonitor(
     vertx = vertx,
     backoffDelay = config.pollingInterval,
     timeout = config.timeout
+    
   )
 
   data class Config(

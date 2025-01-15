@@ -40,3 +40,11 @@ jobs:
           echo "LAST_COMMIT_TAG: ${{ steps.step1.outputs.LAST_COMMIT_TAG }}"
           echo "DEVELOP_TAG: ${{ steps.step1.outputs.DEVELOP_TAG }}"
           echo "github.ref: ${{ github.ref }}"
+      # Persist this value for 'disconnected' subsequent workflows - i.e. `upload-codecov` that runs on `workflow_run`
+      - name: Save COMMIT_TAG to local .txt. file
+        run: echo "COMMIT_TAG=${{ steps.step1.outputs.COMMIT_TAG }}" > COMMIT_TAG.txt
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: COMMIT_TAG_${{ github.sha }}
+          path: COMMIT_TAG.txt
