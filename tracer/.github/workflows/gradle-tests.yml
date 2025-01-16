@@ -44,7 +44,7 @@ jobs:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: Store distribution artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: distributions
           path: arithmetization/build/libs
@@ -79,7 +79,7 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: corset-unit-test-report
           path: arithmetization/build/reports/tests/**/*
@@ -110,7 +110,7 @@ jobs:
 
       - name: Upload test report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: go-corset-unit-tests-report
           path: arithmetization/build/reports/tests/**/*
@@ -142,7 +142,7 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: replay-test-report
           path: arithmetization/build/reports/tests/**/*
@@ -172,7 +172,7 @@ jobs:
 
       - name: Upload test report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: go-corset-replay-tests-report
           path: arithmetization/build/reports/tests/**/*
