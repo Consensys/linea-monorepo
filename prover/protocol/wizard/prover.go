@@ -125,6 +125,11 @@ type ProverRuntime struct {
 	// in the distributed prover by the module runtimes to access the initial
 	// wizard runtime.
 	ParentRuntime *ProverRuntime
+
+	// ProverID indicates the id of the prover among its siblings.
+	// It is merely in the context of the distributed prover;
+	// for vertical splitting to extract the relevant segment of a witness.
+	ProverID int
 	
 	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
 	// round. The first entry is the initial state, the final entry is the final
