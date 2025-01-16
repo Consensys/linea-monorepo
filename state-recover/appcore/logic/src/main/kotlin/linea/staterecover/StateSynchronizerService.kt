@@ -125,7 +125,7 @@ class StateSynchronizerService(
           decompressedBlocks.first().header.blockNumber,
           decompressedBlocks.last().header.blockNumber
         )
-        log.debug("importing blocks={} form finalization={}", blockInterval, dataFinalizedV3.intervalString())
+        log.debug("importing blocks={} from finalization={}", blockInterval, dataFinalizedV3.intervalString())
         blockImporterAndStateVerifier
           .importBlocks(decompressedBlocks)
           .thenCompose { importResult ->
