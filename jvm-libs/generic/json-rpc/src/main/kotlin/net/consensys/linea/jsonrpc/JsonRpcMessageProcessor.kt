@@ -68,13 +68,13 @@ class JsonRpcMessageProcessor(
     requestJsonStr: String
   ): Future<String> {
     return Future.fromCompletionStage(
-      metricsFacade.createDynamicTagTimer<Triple<String, String, Boolean>>(
+      metricsFacade.createDynamicTagTimer<Triple<String?, String, Boolean>>(
         name = "jsonrpc.processing.whole",
         description = "Processing of JSON-RPC message: Deserialization + Business Logic + Serialization",
         tagKey = "method",
         tagValueExtractorOnError = { "METHOD_PROCESSING_ERROR" }
       ) {
-        it.first
+        it.first!!
       }
         .captureTime(
           handleMessage(
@@ -86,18 +86,15 @@ class JsonRpcMessageProcessor(
           logResponse(it.third, it.second, requestJsonStr)
           it.second
         }
-        .exceptionally {
-          it.cause?.message
-        }
     )
   }
 
-  private fun handleMessage(user: User?, requestJsonStr: String): Future<Triple<String, String, Boolean>> {
+  private fun handleMessage(user: User?, requestJsonStr: String): Future<Triple<String?, String, Boolean>> {
     val json: Any =
       when (val result = decodeMessage(requestJsonStr)) {
         is Ok -> result.value
         is Err -> {
-          return Future.failedFuture(Json.encode(result.error))
+          return Future.succeededFuture(Triple(null, Json.encode(result.error), false))
         }
       }
     log.trace(json)
@@ -109,7 +106,7 @@ class JsonRpcMessageProcessor(
     // all or nothing: if any of the requests has a parsing error, return before execution
     requestParsingResults.forEach {
       when (it) {
-        is Err -> return Future.failedFuture(Json.encode(it.error))
+        is Err -> return Future.succeededFuture(Triple(null, Json.encode(it.error), false))
         is Ok -> Unit
       }
     }
@@ -133,7 +130,7 @@ class JsonRpcMessageProcessor(
     user: User?,
     parsingResults: List<Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse>>,
     methodTag: String
-  ): Future<Triple<String, String, Boolean>> {
+  ): Future<Triple<String?, String, Boolean>> {
     var allSuccessful = true
     val executionFutures: List<Future<RequestContext>> =
       parsingResults.map { result ->
