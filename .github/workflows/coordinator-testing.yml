@@ -26,6 +26,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     name: Coordinator tests
     steps:
@@ -75,14 +76,6 @@ jobs:
           if-no-files-found: error
           path: |
             ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
-      - name: Test 1
-        if: ${{ env.GITHUB_TOKEN != '' }}
-        run: |
-          echo "HELLO1"
-      - name: Test 2
-        if: ${{ secrets.GITHUB_TOKEN != '' }}
-        run: |
-          echo "HELLO2"
       - name: Upload coverage to Codecov
         if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v5

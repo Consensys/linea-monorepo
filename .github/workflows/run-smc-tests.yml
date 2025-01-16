@@ -31,6 +31,8 @@ jobs:
   run-contract-tests:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Run smart contracts tests
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
