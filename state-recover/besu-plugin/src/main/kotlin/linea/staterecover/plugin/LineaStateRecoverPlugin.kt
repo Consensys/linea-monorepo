@@ -41,7 +41,7 @@ open class LineaStateRecoverPlugin : BesuPlugin {
     this.serviceManager = serviceManager
     serviceManager
       .getServiceOrThrow(PicoCLIOptions::class.java)
-      .addPicoCLIOptions(PluginCliOptions.cliOptionsPrefix, cliOptions)
+      .addPicoCLIOptions(PluginCliOptions.cliPluginPrefixName, cliOptions)
     log.debug("registered")
   }
 

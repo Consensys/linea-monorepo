@@ -37,7 +37,7 @@
     <Logger name="linea.staterecover" level="INFO" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Logger name="linea.staterecover.clients.ExecutionLayerInProcessClient" level="TRACE" additivity="false">
+    <Logger name="linea.staterecover.clients.ExecutionLayerInProcessClient" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
     <Logger name="linea.plugin.staterecover.clients.l1" level="DEBUG" additivity="false">

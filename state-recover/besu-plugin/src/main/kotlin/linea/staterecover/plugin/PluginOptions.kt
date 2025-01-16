@@ -23,7 +23,8 @@ data class PluginConfig(
 
 class PluginCliOptions {
   companion object {
-    const val cliOptionsPrefix = "plugin-staterecovery"
+    const val cliPluginPrefixName = "staterecovery"
+    private const val cliOptionsPrefix = "plugin-$cliPluginPrefixName"
   }
 
   @CommandLine.Option(

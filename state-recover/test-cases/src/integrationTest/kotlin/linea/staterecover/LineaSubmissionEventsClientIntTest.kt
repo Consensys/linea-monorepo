@@ -10,12 +10,11 @@ import linea.web3j.Web3JLogsSearcher
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.testing.submission.AggregationAndBlobs
 import net.consensys.linea.testing.submission.loadBlobsAndAggregationsSortedAndGrouped
-import net.consensys.linea.testing.submission.submitBlobsAndAggregations
+import net.consensys.linea.testing.submission.submitBlobsAndAggregationsAndWaitExecution
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.Web3jClientManager
-import net.consensys.zkevm.ethereum.waitForTxReceipt
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -87,16 +86,11 @@ class LineaSubmissionEventsClientIntTest {
   ) {
     setupTest(vertx)
 
-    val submissionTxHashes = submitBlobsAndAggregations(
+    submitBlobsAndAggregationsAndWaitExecution(
       contractClient = contractClient,
       aggregationsAndBlobs = aggregationsAndBlobs,
-      blobChunksSize = 6
-    )
-
-    // wait for all finalizations Txs to be mined
-    Web3jClientManager.l1Client.waitForTxReceipt(
-      txHash = submissionTxHashes.aggregationTxHashes.last(),
-      timeout = 2.minutes
+      blobChunksSize = 6,
+      l1Web3jClient = Web3jClientManager.l1Client
     )
 
     val expectedSubmissionEventsToFind: List<Pair<DataFinalizedV3, List<DataSubmittedV3>>> =
