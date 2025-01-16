@@ -2,7 +2,6 @@ package net.consensys.linea.testing.submission
 
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.Aggregation
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 /**
  * Submits blobs respecting aggregation boundaries
@@ -18,10 +17,9 @@ fun submitBlobs(
   return aggregationsAndBlobs
     .map { (_, aggBlobs) ->
       val blobChunks = aggBlobs.chunked(blobChunksSize)
-      blobChunks.map { blobs -> contractClient.submitBlobs(blobs, gasPriceCaps = null) }
+      blobChunks.map { blobs -> contractClient.submitBlobs(blobs, gasPriceCaps = null).get() }
     }
     .flatten()
-    .let { SafeFuture.collectAll(it.stream()).get() }
 }
 
 /**
@@ -40,7 +38,6 @@ fun submitBlobsAndAggregations(
   blobChunksSize: Int = 6
 ): SubmissionTxHashes {
   val blobSubmissionTxHashes = submitBlobs(contractClient, aggregationsAndBlobs, blobChunksSize)
-
   return aggregationsAndBlobs
     .filter { it.aggregation != null }
     .mapIndexed { index, (aggregation, aggBlobs) ->
@@ -53,8 +50,7 @@ fun submitBlobsAndAggregations(
         parentL1RollingHash = parentAgg?.aggregationProof?.l1RollingHash ?: ByteArray(32),
         parentL1RollingHashMessageNumber = parentAgg?.aggregationProof?.l1RollingHashMessageNumber ?: 0L,
         gasPriceCaps = null
-      )
+      ).get()
     }
-    .let { SafeFuture.collectAll(it.stream()).get() }
     .let { SubmissionTxHashes(blobSubmissionTxHashes, it) }
 }
