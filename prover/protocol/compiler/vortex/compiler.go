@@ -119,7 +119,7 @@ type Ctx struct {
 	VortexParams       *vortex.Params
 	SisParams          *ringsis.Params
 	// Optional parameter
-	numOpenedCol int
+	NumOpenedCol int
 
 	// By rounds commitments : if a round is dried we make an empty sublist.
 	// Inversely, for the `driedByRounds` which track the dried commitments.
@@ -140,7 +140,7 @@ type Ctx struct {
 			// Committed matrix (rs encoded) of the precomputed columns
 			CommittedMatrix vortex.EncodedMatrix
 			// Tree in case of Merkle mode
-			tree *smt.Tree
+			Tree *smt.Tree
 			// colHashes used in self recursion
 			DhWithMerkle []field.Element
 		}
@@ -437,8 +437,8 @@ func (ctx *Ctx) NbColsToOpen() int {
 
 	// If the context was created with the relevant option,
 	// we return the instructed value
-	if ctx.numOpenedCol > 0 {
-		return ctx.numOpenedCol
+	if ctx.NumOpenedCol > 0 {
+		return ctx.NumOpenedCol
 	}
 
 	if !utils.IsPowerOfTwo(ctx.BlowUpFactor) {
@@ -710,7 +710,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 	committedMatrix, tree, colHashes := ctx.VortexParams.CommitMerkle(pols)
 	ctx.Items.Precomputeds.DhWithMerkle = colHashes
 	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
-	ctx.Items.Precomputeds.tree = tree
+	ctx.Items.Precomputeds.Tree = tree
 
 	// And assign the 1-sized column to contain the root
 	var root field.Element

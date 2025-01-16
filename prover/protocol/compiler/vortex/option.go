@@ -11,7 +11,7 @@ type VortexOp func(ctx *Ctx)
 // not be used in production)
 func ForceNumOpenedColumns(nbCol int) VortexOp {
 	return func(ctx *Ctx) {
-		ctx.numOpenedCol = nbCol
+		ctx.NumOpenedCol = nbCol
 	}
 }
 
