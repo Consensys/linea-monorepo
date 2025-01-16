@@ -73,7 +73,7 @@ class RecoveryModeManager(
 
   /** Switches the node to recovery mode.  */
   private fun switchToRecoveryMode() {
-    check(recoveryModeTriggered.get()) {
+    check(!recoveryModeTriggered.get()) {
       "cannot enable already enabled recovery mode"
     }
     log.warn("Stopping synchronization service")
