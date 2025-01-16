@@ -36,6 +36,7 @@ func init() {
 	RegisterImplementation(verifiercol.ConstCol{})
 	RegisterImplementation(verifiercol.FromYs{})
 	RegisterImplementation(verifiercol.FromAccessors{})
+	RegisterImplementation(verifiercol.ExpandedVerifCol{})
 	RegisterImplementation(query.FixedPermutation{})
 	RegisterImplementation(query.GlobalConstraint{})
 	RegisterImplementation(query.Inclusion{})

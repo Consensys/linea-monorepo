@@ -28,6 +28,7 @@ func TestSerializeValue(t *testing.T) {
 	RegisterImplementation(verifiercol.ConstCol{})
 	RegisterImplementation(verifiercol.FromYs{})
 	RegisterImplementation(verifiercol.FromAccessors{})
+	RegisterImplementation(verifiercol.ExpandedVerifCol{})
 	RegisterImplementation(accessors.FromPublicColumn{})
 	RegisterImplementation(accessors.FromConstAccessor{})
 	RegisterImplementation(query.UnivariateEval{})
