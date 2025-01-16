@@ -14,11 +14,15 @@ repositories {
 }
 
 ext.groupsToIncludeInShadow = [
-  "build.linea..*",
-  "io.micrometer..*",
-  "org.jetbrains.kotlin..*",
+  "build.linea.*",
+  "io.micrometer.*",
+  "org.jetbrains.kotlin:kotlin-reflect.*",
+  "org.jetbrains.kotlinx:kotlinx-datetime.*",
+  "tech.pegasys.teku.internal:async",
+  "io.vertx.*",
+  // this can be removed once Besu updates to Vertx 4.12+
+  "com.michael-bull.kotlin-result:kotlin-result.*",
   "com.fasterxml.jackson.module:jackson-module-kotlin",
-  "tech.pegasys.teku.internal:async"
 ]
 
 def canIncludeLib(String lib) {
