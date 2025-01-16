@@ -1,6 +1,8 @@
 package conglomeration
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -33,9 +35,13 @@ func Conglomerate(
 }
 
 func addVerifierToComp(
+	id int,
 	comp *wizard.CompiledIOP,
 	tmpl *wizard.CompiledIOP,
 ) {
+	ctx := initRecursionCtx(fmt.Sprintf("verifier-%v", id), comp)
+	ctx.captureCompPreVortex(tmpl)
+	ctx.captureVortexCtx(tmpl)
 }
 
 // initCtx initializes a new context
@@ -175,7 +181,6 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 	dstVortexCtx.Items.Precomputeds.MerkleRoot = ctx.Translator.GetColumn(srcVortexCtx.Items.Precomputeds.MerkleRoot.GetColID())
 	dstVortexCtx.Items.Precomputeds.Dh = ctx.Translator.GetColumn(srcVortexCtx.Items.Precomputeds.Dh.GetColID())
 	dstVortexCtx.Items.Precomputeds.CommittedMatrix = srcVortexCtx.Items.Precomputeds.CommittedMatrix
-	dstVortexCtx.Items.Precomputeds.Tree = srcVortexCtx.Items.Precomputeds.Tree
 	dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
 
 	dstVortexCtx.Items.Dh = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.Dh)
@@ -185,18 +190,6 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 	dstVortexCtx.Items.OpenedColumns = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.OpenedColumns)
 	dstVortexCtx.Items.MerkleProofs = ctx.Translator.GetColumn(srcVortexCtx.Items.MerkleProofs.GetColID())
 	dstVortexCtx.Items.MerkleRoots = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.MerkleRoots)
-}
 
-// TranslateUniEval returns a copied UnivariateEval query with the columns translated
-// and the names translated. The returned query is registered in the translator comp.
-func (comp *compTranslator) TranslateUniEval(round int, q query.UnivariateEval) query.UnivariateEval {
-	var (
-		res = query.NewUnivariateEval(q.QueryID, q.Pols...)
-	)
-
-	for i := range res.Pols {
-		res.Pols[i] = comp.GetColumn(res.Pols[i].GetColID())
-	}
-
-	return comp.InsertQueryParams(round, res).(query.UnivariateEval)
+	ctx.PcsCtx = dstVortexCtx
 }

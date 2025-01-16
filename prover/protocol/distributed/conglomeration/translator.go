@@ -1,6 +1,10 @@
 package conglomeration
 
 import (
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -9,12 +13,30 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
+var (
+	_ wizard.Runtime      = &runtimeTranslator{}
+	_ wizard.GnarkRuntime = &gnarkRuntimeTranslator{}
+)
+
 // compTranslator is a builder struct for building a target [wizard.CompiledIOP]
 // instances from another source [wizard.CompiledIOP]. All items in the built
 // compiled IOP are prefixed with an identifier.
 type compTranslator struct {
 	Prefix string
 	Target *wizard.CompiledIOP
+}
+
+// runtimeTranslator is an adapter structure prefixing every ColID and QueryID and
+// coin.Name with a prefix string.
+type runtimeTranslator struct {
+	Prefix string
+	Rt     wizard.Runtime
+}
+
+// gnarkRuntimeTranslator is as [runtimeTranslator] but for [wizard.GnarkRuntime]
+type gnarkRuntimeTranslator struct {
+	Prefix string
+	Rt     wizard.GnarkRuntime
 }
 
 // InsertColumn inserts a new column in the target compiled IOP. The column name
@@ -100,4 +122,192 @@ func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) m
 		res[comp.GetColumn(col).GetColID()] = struct{}{}
 	}
 	return res
+}
+
+// TranslateUniEval returns a copied UnivariateEval query with the columns translated
+// and the names translated. The returned query is registered in the translator comp.
+func (comp *compTranslator) TranslateUniEval(round int, q query.UnivariateEval) query.UnivariateEval {
+	var res = query.NewUnivariateEval(q.QueryID, q.Pols...)
+	for i := range res.Pols {
+		res.Pols[i] = comp.GetColumn(res.Pols[i].GetColID())
+	}
+	return comp.InsertQueryParams(round, res).(query.UnivariateEval)
+}
+
+func (run *runtimeTranslator) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
+	name = ifaces.ColID(run.Prefix) + "." + name
+	return run.Rt.GetColumn(name)
+}
+
+func (run *runtimeTranslator) GetColumnAt(name ifaces.ColID, pos int) field.Element {
+	name = ifaces.ColID(run.Prefix) + "." + name
+	return run.Rt.GetColumnAt(name, pos)
+}
+
+func (run *runtimeTranslator) GetRandomCoinField(name coin.Name) field.Element {
+	name = coin.Name(run.Prefix) + "." + name
+	return run.Rt.GetRandomCoinField(name)
+}
+
+func (run *runtimeTranslator) GetRandomCoinIntegerVec(name coin.Name) []int {
+	name = coin.Name(run.Prefix) + "." + name
+	return run.Rt.GetRandomCoinIntegerVec(name)
+}
+
+func (run *runtimeTranslator) GetParams(id ifaces.QueryID) ifaces.QueryParams {
+	id = ifaces.QueryID(run.Prefix) + "." + id
+	return run.Rt.GetParams(id)
+}
+
+func (run *runtimeTranslator) GetSpec() *wizard.CompiledIOP {
+	return run.Rt.GetSpec()
+}
+
+func (run *runtimeTranslator) GetPublicInput(name string) field.Element {
+	name = run.Prefix + "." + name
+	return run.Rt.GetPublicInput(name)
+}
+
+func (run *runtimeTranslator) GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetGrandProductParams(name)
+}
+
+func (run *runtimeTranslator) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetLogDerivSumParams(name)
+}
+
+func (run *runtimeTranslator) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetLocalPointEvalParams(name)
+}
+
+func (run *runtimeTranslator) GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetInnerProductParams(name)
+}
+
+func (run *runtimeTranslator) GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetUnivariateEval(name)
+}
+
+func (run *runtimeTranslator) GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetUnivariateParams(name)
+}
+
+func (run *runtimeTranslator) Fs() *fiatshamir.State {
+	return run.Rt.Fs()
+}
+
+func (run *runtimeTranslator) FsHistory() [][2][]field.Element {
+	return run.Rt.FsHistory()
+}
+
+func (run *runtimeTranslator) InsertCoin(name coin.Name, value any) {
+	name = coin.Name(run.Prefix) + "." + name
+	run.Rt.InsertCoin(name, value)
+}
+
+func (run *runtimeTranslator) GetState(name string) (any, bool) {
+	name = run.Prefix + "." + name
+	return run.Rt.GetState(name)
+}
+
+func (run *runtimeTranslator) SetState(name string, value any) {
+	name = run.Prefix + "." + name
+	run.Rt.SetState(name, value)
+}
+
+func (run *gnarkRuntimeTranslator) GetColumn(name ifaces.ColID) []frontend.Variable {
+	name = ifaces.ColID(run.Prefix) + "." + name
+	return run.Rt.GetColumn(name)
+}
+
+func (run *gnarkRuntimeTranslator) GetColumnAt(name ifaces.ColID, at int) frontend.Variable {
+	name = ifaces.ColID(run.Prefix) + "." + name
+	return run.Rt.GetColumnAt(name, at)
+}
+
+func (run *gnarkRuntimeTranslator) GetRandomCoinField(name coin.Name) frontend.Variable {
+	name = coin.Name(run.Prefix) + "." + name
+	return run.Rt.GetRandomCoinField(name)
+}
+
+func (run *gnarkRuntimeTranslator) GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable {
+	name = coin.Name(run.Prefix) + "." + name
+	return run.Rt.GetRandomCoinIntegerVec(name)
+}
+
+func (run *gnarkRuntimeTranslator) GetParams(id ifaces.QueryID) ifaces.GnarkQueryParams {
+	id = ifaces.QueryID(run.Prefix) + "." + id
+	return run.Rt.GetParams(id)
+}
+
+func (run *gnarkRuntimeTranslator) GetSpec() *wizard.CompiledIOP {
+	return run.Rt.GetSpec()
+}
+
+func (run *gnarkRuntimeTranslator) GetPublicInput(api frontend.API, name string) frontend.Variable {
+	name = run.Prefix + "." + name
+	return run.Rt.GetPublicInput(api, name)
+}
+
+func (run *gnarkRuntimeTranslator) GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetGrandProductParams(name)
+}
+
+func (run *gnarkRuntimeTranslator) GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetLogDerivSumParams(name)
+}
+
+func (run *gnarkRuntimeTranslator) GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetLocalPointEvalParams(name)
+}
+
+func (run *gnarkRuntimeTranslator) GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetInnerProductParams(name)
+}
+
+func (run *gnarkRuntimeTranslator) GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetUnivariateEval(name)
+}
+
+func (run *gnarkRuntimeTranslator) GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetUnivariateParams(name)
+}
+
+func (run *gnarkRuntimeTranslator) Fs() *fiatshamir.GnarkFiatShamir {
+	return run.Rt.Fs()
+}
+
+func (run *gnarkRuntimeTranslator) FsHistory() [][2][]frontend.Variable {
+	return run.Rt.FsHistory()
+}
+
+func (run *gnarkRuntimeTranslator) GetHasherFactory() *gkrmimc.HasherFactory {
+	return run.Rt.GetHasherFactory()
+}
+
+func (run *gnarkRuntimeTranslator) InsertCoin(name coin.Name, value any) {
+	name = coin.Name(run.Prefix) + "." + name
+	run.Rt.InsertCoin(name, value)
+}
+
+func (run *gnarkRuntimeTranslator) GetState(name string) (any, bool) {
+	name = run.Prefix + "." + name
+	return run.Rt.GetState(name)
+}
+
+func (run *gnarkRuntimeTranslator) SetState(name string, value any) {
+	name = run.Prefix + "." + name
+	run.Rt.SetState(name, value)
 }
