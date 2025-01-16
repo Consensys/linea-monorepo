@@ -1,6 +1,5 @@
 package linea.staterecover
 
-import build.linea.staterecover.BlockFromL1RecoveredData
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.BlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture

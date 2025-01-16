@@ -1,7 +1,6 @@
 package linea.staterecover
 
 import build.linea.domain.EthLogEvent
-import build.linea.staterecover.BlockFromL1RecoveredData
 import io.vertx.core.Vertx
 import net.consensys.encodeHex
 import net.consensys.linea.BlockNumberAndHash

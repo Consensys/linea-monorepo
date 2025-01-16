@@ -1,6 +1,6 @@
 package linea.staterecover.test
 
-import build.linea.staterecover.BlockFromL1RecoveredData
+import linea.staterecover.BlockFromL1RecoveredData
 import linea.staterecover.ExecutionLayerClient
 import linea.staterecover.StateRecoveryStatus
 import net.consensys.linea.BlockNumberAndHash

@@ -1,4 +1,4 @@
-package build.linea.staterecover
+package linea.staterecover
 
 import net.consensys.encodeHex
 import java.math.BigInteger

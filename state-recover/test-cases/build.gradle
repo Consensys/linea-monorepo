@@ -24,7 +24,6 @@ dependencies {
   implementation(testFixtures(project(':jvm-libs:generic:json-rpc')))
   implementation(project(':state-recover:clients:eth-api'))
   implementation(project(':state-recover:clients:blobscan-client'))
-  implementation(testFixtures(project(':state-recover:clients:blobscan-client')))
   implementation(project(':state-recover:clients:execution-layer-json-rpc-client'))
   implementation(project(':coordinator:clients:smart-contract-client'))
   implementation(project(':jvm-libs:linea:linea-contracts:l1-rollup'))

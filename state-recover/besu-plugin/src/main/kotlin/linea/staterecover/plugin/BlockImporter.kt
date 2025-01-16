@@ -1,6 +1,6 @@
 package linea.staterecover.plugin
 
-import build.linea.staterecover.BlockFromL1RecoveredData
+import linea.staterecover.BlockFromL1RecoveredData
 import net.consensys.encodeHex
 import net.consensys.toBigInteger
 import net.consensys.toULong

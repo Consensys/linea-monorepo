@@ -2,7 +2,6 @@ package linea.staterecover
 
 import build.linea.clients.StateManagerClientV1
 import build.linea.domain.BlockInterval
-import build.linea.staterecover.BlockFromL1RecoveredData
 import io.vertx.core.Vertx
 import net.consensys.linea.async.AsyncRetryer
 import tech.pegasys.teku.infrastructure.async.SafeFuture

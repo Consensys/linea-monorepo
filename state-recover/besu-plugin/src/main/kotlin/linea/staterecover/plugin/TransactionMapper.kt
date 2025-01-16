@@ -1,7 +1,7 @@
 package linea.staterecover.plugin
 
-import build.linea.staterecover.TransactionFromL1RecoveredData
-import build.linea.staterecover.TransactionFromL1RecoveredData.AccessTuple
+import linea.staterecover.TransactionFromL1RecoveredData
+import linea.staterecover.TransactionFromL1RecoveredData.AccessTuple
 import net.consensys.encodeHex
 import net.consensys.toBigInteger
 import org.apache.tuweni.bytes.Bytes

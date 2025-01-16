@@ -1,6 +1,6 @@
 package linea.staterecover.clients
 
-import build.linea.staterecover.BlockFromL1RecoveredData
+import linea.staterecover.BlockFromL1RecoveredData
 import linea.staterecover.ExecutionLayerClient
 import linea.staterecover.RecoveryStatusPersistence
 import linea.staterecover.StateRecoveryStatus

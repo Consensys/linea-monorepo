@@ -1,7 +1,5 @@
 package linea.staterecover
 
-import build.linea.staterecover.BlockFromL1RecoveredData
-import build.linea.staterecover.TransactionFromL1RecoveredData
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
 import linea.blob.BlobCompressor

@@ -1,4 +1,4 @@
-package build.linea.staterecover
+package linea.staterecover
 
 import kotlinx.datetime.Instant
 import net.consensys.encodeHex
