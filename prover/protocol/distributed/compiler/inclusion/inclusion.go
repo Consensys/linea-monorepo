@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
 const (
@@ -26,6 +27,8 @@ type DistributionInputs struct {
 	ModuleName distributed.ModuleName
 	// query is supposed to be the global LogDerivativeSum.
 	Query query.LogDerivativeSum
+	// number of segments for the module
+	NumSegments int
 }
 
 // DistributeLogDerivativeSum distributes a  share from a global [query.LogDerivativeSum] query to the given module.
@@ -33,6 +36,7 @@ func DistributeLogDerivativeSum(
 	initialComp, moduleComp *wizard.CompiledIOP,
 	moduleName distributed.ModuleName,
 	disc distributed.ModuleDiscoverer,
+	numSegments int,
 ) {
 
 	var (
@@ -61,6 +65,7 @@ func DistributeLogDerivativeSum(
 		Disc:        disc,
 		ModuleName:  moduleName,
 		Query:       initialComp.QueriesParams.Data(queryID).(query.LogDerivativeSum),
+		NumSegments: numSegments,
 	})
 
 }
@@ -70,44 +75,66 @@ func DistributeLogDerivativeSum(
 func GetShareOfLogDerivativeSum(in DistributionInputs) {
 
 	var (
-		initialComp   = in.InitialComp
 		moduleComp    = in.ModuleComp
-		numerator     []*symbolic.Expression
-		denominator   []*symbolic.Expression
 		keyIsInModule bool
 		zCatalog      = make(map[int]*query.LogDerivativeSumInput)
 		logDeriv      = in.Query
 		round         = logDeriv.Round
+		// create a translation map from the columns of moduleComp.
+		// this does not include verifier columns.
+		translationMap = createTranslationMap(moduleComp)
 	)
 
 	// extract the share of the module from the global sum.
 	for size := range logDeriv.Inputs {
 
-		for i := range logDeriv.Inputs[size].Numerator {
+		var (
+			numerator   []*symbolic.Expression
+			denominator []*symbolic.Expression
+		)
+
+		for i, num := range logDeriv.Inputs[size].Numerator {
 
 			// if Denominator is in the module pass the numerator from initialComp to moduleComp
 			// Particularly, T might be in the module and needs to take M from initialComp.
+
 			if in.Disc.ExpressionIsInModule(logDeriv.Inputs[size].Denominator[i], in.ModuleName) {
 
 				if !in.Disc.ExpressionIsInModule(logDeriv.Inputs[size].Numerator[i], in.ModuleName) {
 					utils.Panic("Denominator is in the module but not Numerator")
 				}
+				// update translationMap by adding local coins
+				// the previous check guarantees that all the columns
+				// from the expression  are in the module
+				// Thus we can add the coins locally (i.e., without [distributed.ModuleDiscoverer]).
+				distributed.ReplaceExternalCoinsVerifCols(in.InitialComp, moduleComp,
+					logDeriv.Inputs[size].Denominator[i], translationMap, in.NumSegments)
 
-				denominator = append(denominator, logDeriv.Inputs[size].Denominator[i])
-				numerator = append(numerator, logDeriv.Inputs[size].Numerator[i])
+				denominator = append(denominator,
+					// get the corresponding expression from the module
+					// this is mainly for adjusting the size of expressions
+					// in the module-segments.
+					logDeriv.Inputs[size].Denominator[i].Replay(translationMap),
+				)
 
-				// replaces the external coins with local coins
-				// note that they just appear in the denominator.
-				distributed.ReplaceExternalCoins(initialComp, moduleComp, logDeriv.Inputs[size].Denominator[i])
+				numerator = append(numerator, num.Replay(translationMap))
+
 				keyIsInModule = true
 			}
+
 		}
 
 		// if there in any expression relevant to the current key, add them to zCatalog
 		if keyIsInModule {
+
+			board := denominator[0].Board()
+			// size of the expressions in the module
+			sizeInModule := column.ExprIsOnSameLengthHandles(&board)
+
 			// zCatalog specific to the module
-			zCatalog[size] = &query.LogDerivativeSumInput{
-				Size:        size,
+			// due to vertical splitting size in module-segments may be different from size in the initialComp.
+			zCatalog[sizeInModule] = &query.LogDerivativeSumInput{
+				Size:        sizeInModule,
 				Numerator:   numerator,
 				Denominator: denominator,
 			}
@@ -168,4 +195,22 @@ func getLogDerivativeSumResult(zCatalog map[int]*query.LogDerivativeSumInput, ru
 		}
 	}
 	return actualSum
+}
+
+func createTranslationMap(comp *wizard.CompiledIOP) collection.Mapping[string, *symbolic.Expression] {
+
+	var (
+		exprMap = collection.NewMapping[string, *symbolic.Expression]()
+		expr    *symbolic.Expression
+	)
+
+	for _, colID := range comp.Columns.AllKeys() {
+		expr = ifaces.ColumnAsVariable(comp.Columns.GetHandle(colID))
+		exprMap.InsertNew(string(colID), expr)
+	}
+	for _, coinID := range comp.Coins.AllKeys() {
+		expr = symbolic.NewVariable(comp.Coins.Data(coinID))
+		exprMap.InsertNew(string(coinID), expr)
+	}
+	return exprMap
 }
