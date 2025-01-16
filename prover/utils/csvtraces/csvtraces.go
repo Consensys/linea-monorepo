@@ -256,7 +256,7 @@ func (c *CsvTrace) LenPadded() int {
 // WritesExplicit format value-provided columns into a csv file. Unlike [FmtCsv]
 // it does not need the columns to be registered as the assignmet of a wizard.
 // It is suitable for test-case generation.
-func WriteExplicit(w io.Writer, names []string, cols [][]field.Element) {
+func WriteExplicit(w io.Writer, names []string, cols [][]field.Element, inHex bool) {
 
 	fmt.Fprintf(w, "%v\n", strings.Join(names, ","))
 
@@ -264,7 +264,7 @@ func WriteExplicit(w io.Writer, names []string, cols [][]field.Element) {
 
 		row := []string{}
 		for j := range cols {
-			row = append(row, fmtFieldElement(cols[j][i]))
+			row = append(row, fmtFieldElement(inHex, cols[j][i]))
 		}
 
 		fmt.Fprintf(w, "%v\n", strings.Join(row, ","))
