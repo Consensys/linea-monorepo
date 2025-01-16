@@ -11,7 +11,7 @@ interface GoNativeBlobCompressor {
    *
    * @param dataLimit Size limit for compressed data in bytes
    * @param dictPath Path to the compression dictionary
-   * @return returns true if the compressor was successfully intialized else false
+   * @return returns true if the compressor was successfully initialized else false
    */
   fun Init(dataLimit: Int, dictPath: String): Boolean
 
