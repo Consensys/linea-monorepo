@@ -115,12 +115,15 @@ class Web3JLogsSearcher(
         if (logs.isEmpty()) {
           SearchResult.NoResultsInInterval
         } else {
-          val item = logs.find { shallContinueToSearchPredicate(it) == null }
+          var nextSearchDirection: SearchDirection? = null
+          val item = logs.find {
+            nextSearchDirection = shallContinueToSearchPredicate(it)
+            nextSearchDirection == null
+          }
           if (item != null) {
             SearchResult.ItemFound(item)
           } else {
-            val nextSearchDirection = shallContinueToSearchPredicate(logs.first())!!
-            SearchResult.KeepSearching(nextSearchDirection)
+            SearchResult.KeepSearching(nextSearchDirection!!)
           }
         }
       }
