@@ -75,6 +75,14 @@ jobs:
           if-no-files-found: error
           path: |
             ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
+      - name: Test 1
+        if: ${{ env.GITHUB_TOKEN != '' }}
+        run: |
+          echo "HELLO1"
+      - name: Test 2
+        if: ${{ secrets.GITHUB_TOKEN != '' }}
+        run: |
+          echo "HELLO2"
       - name: Upload coverage to Codecov
         if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v5
