@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -21,6 +20,7 @@ type cfg struct {
 	nbRows             int
 	skipPrePaddingZero bool
 	filterOn           ifaces.Column
+	inHex              bool
 }
 
 type Option func(*cfg) error
@@ -46,6 +46,12 @@ func FilterOn(col ifaces.Column) Option {
 		c.filterOn = col
 		return nil
 	}
+}
+
+// InHex sets the CSV printer to print the values in hexadecimal
+func InHex(c *cfg) error {
+	c.inHex = true
+	return nil
 }
 
 type CsvTrace struct {
@@ -110,7 +116,7 @@ func FmtCsv(w io.Writer, run *wizard.ProverRuntime, cols []ifaces.Column, option
 				allZeroes = false
 			}
 
-			fmtVals = append(fmtVals, fmtFieldElement(assignment[c][r]))
+			fmtVals = append(fmtVals, fmtFieldElement(cfg.inHex, assignment[c][r]))
 		}
 
 		if !allZeroes {
@@ -266,11 +272,10 @@ func WriteExplicit(w io.Writer, names []string, cols [][]field.Element) {
 
 }
 
-func fmtFieldElement(x field.Element) string {
+func fmtFieldElement(inHex bool, x field.Element) string {
 
-	if x.IsUint64() && x.Uint64() < 1<<10 {
-		xInt := x.Uint64()
-		return strconv.Itoa(int(xInt))
+	if inHex || (x.IsUint64() && x.Uint64() < 1<<10) {
+		return x.String()
 	}
 
 	return "0x" + x.Text(16)
