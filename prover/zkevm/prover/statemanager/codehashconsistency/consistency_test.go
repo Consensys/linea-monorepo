@@ -173,6 +173,7 @@ func TestCaseGeneration(t *testing.T) {
 		files.MustOverwrite("./testdata/state-summary.csv"),
 		[]string{"IS_ACTIVE", "IS_STORAGE", "INITIAL_MIMC", "INITIAL_KECCAK_HI", "INITIAL_KECCAK_LO", "FINAL_MIMC", "FINAL_KECCAK_HI", "FINAL_KECCAK_LO"},
 		[][]field.Element{ssIsActive, ssIsStorage, ssInitMimc, ssInitKeccakHi, ssInitKeccakLo, ssFinalMimc, ssFinalKeccakHi, ssFinalKeccakLo},
+		false,
 	)
 
 	/*
@@ -230,6 +231,7 @@ func TestCaseGeneration(t *testing.T) {
 		files.MustOverwrite("./testdata/mimc-codehash.csv"),
 		[]string{"IS_ACTIVE", "IS_HASH_END", "NEW_STATE", "KECCAK_HI", "KECCAK_LO"},
 		[][]field.Element{romIsActive, romIsHashEnd, romNewState, romKeccakHi, romKeccakLo},
+		false,
 	)
 }
 
