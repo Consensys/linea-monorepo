@@ -70,7 +70,7 @@ jobs:
       - name: Run smart contracts tests and generate coverage report
         run: pnpm -F contracts run coverage
 
-      - name: Upload coverage to 
+      - name: Upload coverage to Codecov
         if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v5
         with:
