@@ -48,6 +48,9 @@ type Runtime interface {
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	Fs() *fiatshamir.State
 	FsHistory() [][2][]field.Element
+	InsertCoin(name coin.Name, value any)
+	GetState(name string) (any, bool)
+	SetState(name string, value any)
 }
 
 // VerifierStep specifies a single step of verifier for a single subprotocol.
@@ -90,6 +93,10 @@ type VerifierRuntime struct {
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
 	FiatShamirHistory [][2][]field.Element
+
+	// State stores arbitrary data that can be used by the verifier. This
+	// can be used to communicate values between verifier states.
+	State map[string]interface{}
 }
 
 // Verify verifies a wizard proof. The caller specifies a [CompiledIOP] that
@@ -432,4 +439,22 @@ func (run *VerifierRuntime) FsHistory() [][2][]field.Element {
 // GetSpec returns the compiled IOP
 func (run *VerifierRuntime) GetSpec() *CompiledIOP {
 	return run.Spec
+}
+
+// InsertCoin inserts a coin into the runtime. It should not be
+// used by usual verifier action but is useful when implementing
+// recursion utilities.
+func (run *VerifierRuntime) InsertCoin(name coin.Name, value any) {
+	run.Coins.InsertNew(name, value)
+}
+
+// GetState returns an arbitrary value stored in the runtime
+func (run *VerifierRuntime) GetState(name string) (any, bool) {
+	res, ok := run.State[name]
+	return res, ok
+}
+
+// SetState sets an arbitrary value in the runtime
+func (run *VerifierRuntime) SetState(name string, value any) {
+	run.State[name] = value
 }

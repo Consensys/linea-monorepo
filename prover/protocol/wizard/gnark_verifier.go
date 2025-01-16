@@ -31,6 +31,9 @@ type GnarkRuntime interface {
 	Fs() *fiatshamir.GnarkFiatShamir
 	FsHistory() [][2][]frontend.Variable
 	GetHasherFactory() *gkrmimc.HasherFactory
+	InsertCoin(name coin.Name, value interface{})
+	GetState(name string) (any, bool)
+	SetState(name string, value any)
 }
 
 // GnarkVerifierStep functions that can be registered in the CompiledIOP by the successive
@@ -113,6 +116,10 @@ type WizardVerifierCircuit struct {
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
 	FiatShamirHistory [][2][]frontend.Variable `gnark:"-"`
+
+	// State is a generic-purpose data store that the verifier steps can use to
+	// communicate with each other across rounds.
+	State map[string]interface{} `gnark:"-"`
 }
 
 // AllocateWizardCircuit allocates the inner-slices of the verifier struct from a precompiled IOP. It
@@ -601,4 +608,21 @@ func (c *WizardVerifierCircuit) SetHasherFactory(hf *gkrmimc.HasherFactory) {
 // GetSpec returns the compiled IOP of the verifier circuit
 func (c *WizardVerifierCircuit) GetSpec() *CompiledIOP {
 	return c.Spec
+}
+
+// InsertCoin inserts a coin in the verifier circuit. This has
+// a use for implementing recursive application.
+func (c *WizardVerifierCircuit) InsertCoin(name coin.Name, value interface{}) {
+	c.Coins.InsertNew(name, value)
+}
+
+// GetState returns the value of a state variable in the verifier circuit
+func (c *WizardVerifierCircuit) GetState(name string) (any, bool) {
+	res, ok := c.State[name]
+	return res, ok
+}
+
+// SetState sets the value of a state variable in the verifier circuit
+func (c *WizardVerifierCircuit) SetState(name string, value any) {
+	c.State[name] = value
 }
