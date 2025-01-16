@@ -73,12 +73,3 @@ publishing {
   }
 }
 
-tasks.register('cloudsmithUpload') {
-  doLast {
-    exec {
-      executable rootProject.file("scripts/cloudsmith-upload.sh")
-      args rootProject.version, project.layout.buildDirectory.get()
-    }
-  }
-}
-
