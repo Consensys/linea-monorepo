@@ -20,11 +20,10 @@ import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.testing.submission.AggregationAndBlobs
 import net.consensys.linea.testing.submission.loadBlobsAndAggregationsSortedAndGrouped
-import net.consensys.linea.testing.submission.submitBlobsAndAggregations
+import net.consensys.linea.testing.submission.submitBlobsAndAggregationsAndWaitExecution
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.Web3jClientManager
-import net.consensys.zkevm.ethereum.waitForTxReceipt
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -157,23 +156,13 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
     blobChunksSize: Int = 6,
     waitTimeout: Duration = 2.minutes
   ) {
-    val submissionTxHashes = submitBlobsAndAggregations(
+    submitBlobsAndAggregationsAndWaitExecution(
       contractClient = contractClient,
       aggregationsAndBlobs = aggregationsAndBlobs,
-      blobChunksSize = blobChunksSize
+      blobChunksSize = blobChunksSize,
+      waitTimeout = waitTimeout,
+      l1Web3jClient = Web3jClientManager.l1Client
     )
-
-    Web3jClientManager.l1Client.waitForTxReceipt(
-      txHash = submissionTxHashes.aggregationTxHashes.last(),
-      timeout = waitTimeout
-    ).also { txReceipt ->
-      assertThat(txReceipt.status)
-        .withFailMessage {
-          val lastAggregation = aggregationsAndBlobs.findLast { it.aggregation != null }!!.aggregation!!
-          "latest finalization=${lastAggregation.intervalString()} failed on L1. receipt=$txReceipt"
-        }
-        .isEqualTo("0x1")
-    }
   }
 
   /*
