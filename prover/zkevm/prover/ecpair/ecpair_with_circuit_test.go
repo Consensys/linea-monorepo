@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 func TestPairingDataCircuit(t *testing.T) {
@@ -40,7 +42,9 @@ func TestGeneratedData(t *testing.T) {
 		}
 		return nil
 	})
-	for _, tc := range generatedData {
-		testModule(t, tc, true, true, true, true)
-	}
+	parallel.Execute(len(generatedData), func(start, end int) {
+		for i := start; i < end; i++ {
+			testModule(t, generatedData[i], true, true, true, true)
+		}
+	})
 }
