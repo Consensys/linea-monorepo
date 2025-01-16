@@ -435,7 +435,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 
 		ctx.comp.InsertVerifier(
 			left.Round(),
-			func(run *wizard.VerifierRuntime) error {
+			func(run wizard.Runtime) error {
 				if left.GetVal(run) != right.GetVal(run) {
 					l, r := left.GetVal(run), right.GetVal(run)
 					return fmt.Errorf("consistency between u_alpha and the preimage: "+
@@ -445,7 +445,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 				}
 				return nil
 			},
-			func(api frontend.API, run *wizard.WizardVerifierCircuit) {
+			func(api frontend.API, run wizard.GnarkRuntime) {
 				api.AssertIsEqual(
 					left.GetFrontendVariable(api, run),
 					right.GetFrontendVariable(api, run),
@@ -621,7 +621,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 
 	// And the final check
 	// check the folding of the polynomial is correct
-	ctx.comp.InsertVerifier(round, func(run *wizard.VerifierRuntime) error {
+	ctx.comp.InsertVerifier(round, func(run wizard.Runtime) error {
 
 		// fetch the assignments to edual and dcollapse
 		edual := ctx.Columns.Edual.GetColAssignment(run)
@@ -666,7 +666,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 		}
 
 		return nil
-	}, func(api frontend.API, run *wizard.WizardVerifierCircuit) {
+	}, func(api frontend.API, run wizard.GnarkRuntime) {
 
 		// fetch the assignments to edual and dcollapse
 		edual := ctx.Columns.Edual.GetColAssignmentGnark(run)

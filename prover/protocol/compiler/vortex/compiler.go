@@ -140,7 +140,7 @@ type Ctx struct {
 			// Committed matrix (rs encoded) of the precomputed columns
 			CommittedMatrix vortex.EncodedMatrix
 			// Tree in case of Merkle mode
-			Tree *smt.Tree
+			tree *smt.Tree
 			// colHashes used in self recursion
 			DhWithMerkle []field.Element
 		}
@@ -710,7 +710,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 	committedMatrix, tree, colHashes := ctx.VortexParams.CommitMerkle(pols)
 	ctx.Items.Precomputeds.DhWithMerkle = colHashes
 	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
-	ctx.Items.Precomputeds.Tree = tree
+	ctx.Items.Precomputeds.tree = tree
 
 	// And assign the 1-sized column to contain the root
 	var root field.Element

@@ -16,9 +16,26 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// GnarkRuntime is the interface implemented by the struct [WizardVerifierCircuit]
+// and is used to interact with the GnarkVerifierStep.
+type GnarkRuntime interface {
+	ifaces.GnarkRuntime
+	GetSpec() *CompiledIOP
+	GetPublicInput(api frontend.API, name string) frontend.Variable
+	GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams
+	GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams
+	GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams
+	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
+	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
+	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
+	Fs() *fiatshamir.GnarkFiatShamir
+	FsHistory() [][2][]frontend.Variable
+	GetHasherFactory() *gkrmimc.HasherFactory
+}
+
 // GnarkVerifierStep functions that can be registered in the CompiledIOP by the successive
 // compilation steps. They correspond to "precompiled" verification steps.
-type GnarkVerifierStep func(frontend.API, *WizardVerifierCircuit)
+type GnarkVerifierStep func(frontend.API, GnarkRuntime)
 
 // WizardVerifierCircuit the [VerifierRuntime] in a gnark circuit. The complete
 // implementation follows this mirror logic.
@@ -553,4 +570,35 @@ func (c *WizardVerifierCircuit) GetPublicInput(api frontend.API, name string) fr
 	}
 	utils.Panic("could not find public input nb %v", name)
 	return field.Element{}
+}
+
+// Fs returns the Fiat-Shamir state of the verifier circuit
+func (c *WizardVerifierCircuit) Fs() *fiatshamir.GnarkFiatShamir {
+	return c.FS
+}
+
+// FsHistory returns the Fiat-Shamir state history of the verifier circuit
+func (c *WizardVerifierCircuit) FsHistory() [][2][]frontend.Variable {
+	return c.FiatShamirHistory
+}
+
+// SetFs sets the Fiat-Shamir state of the verifier circuit
+func (c *WizardVerifierCircuit) SetFs(fs *fiatshamir.GnarkFiatShamir) {
+	c.FS = fs
+}
+
+// GetHasherFactory returns the hasher factory of the verifier circuit; nil
+// if none is set.
+func (c *WizardVerifierCircuit) GetHasherFactory() *gkrmimc.HasherFactory {
+	return c.HasherFactory
+}
+
+// SetHasherFactory sets the hasher factory of the verifier circuit
+func (c *WizardVerifierCircuit) SetHasherFactory(hf *gkrmimc.HasherFactory) {
+	c.HasherFactory = hf
+}
+
+// GetSpec returns the compiled IOP of the verifier circuit
+func (c *WizardVerifierCircuit) GetSpec() *CompiledIOP {
+	return c.Spec
 }

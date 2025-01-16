@@ -33,11 +33,28 @@ type Proof struct {
 	QueriesParams collection.Mapping[ifaces.QueryID, ifaces.QueryParams]
 }
 
+// Runtime is a generic interface extending the [ifaces.Runtime] interface
+// with all methods of [wizard.VerifierRuntime]. This is used to allow the
+// writing of adapters for the verifier runtime.
+type Runtime interface {
+	ifaces.Runtime
+	GetSpec() *CompiledIOP
+	GetPublicInput(name string) field.Element
+	GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams
+	GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams
+	GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams
+	GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams
+	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
+	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
+	Fs() *fiatshamir.State
+	FsHistory() [][2][]field.Element
+}
+
 // VerifierStep specifies a single step of verifier for a single subprotocol.
 // This can be used to specify verifier checks involving user-provided
 // columns for relations that cannot be automatically enforced via a
 // [ifaces.Query]
-type VerifierStep func(a *VerifierRuntime) error
+type VerifierStep func(a Runtime) error
 
 // VerifierRuntime runtime collects all data that visible or computed by the
 // verifier of the wizard protocol. This includes the prover's messages, the
@@ -400,4 +417,19 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 	}
 	utils.Panic("could not find public input nb %v", name)
 	return field.Element{}
+}
+
+// Fs returns the Fiat-Shamir state
+func (run *VerifierRuntime) Fs() *fiatshamir.State {
+	return run.FS
+}
+
+// FsHistory returns the Fiat-Shamir state history
+func (run *VerifierRuntime) FsHistory() [][2][]field.Element {
+	return run.FiatShamirHistory
+}
+
+// GetSpec returns the compiled IOP
+func (run *VerifierRuntime) GetSpec() *CompiledIOP {
+	return run.Spec
 }

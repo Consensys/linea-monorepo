@@ -20,7 +20,7 @@ type gnarkCircuit struct {
 	X              frontend.Variable   `gnark:",public"`
 	Ys             []frontend.Variable `gnark:",public"`
 	Pubs           []frontend.Variable `gnark:",public"`
-	WizardVerifier *wizard.WizardVerifierCircuit
+	WizardVerifier wizard.GnarkRuntime
 	comp           *wizard.CompiledIOP `gnark:"-"`
 	ctx            *fullRecursionCtx   `gnark:"-"`
 	withoutGkr     bool                `gnark:"-"`
@@ -66,7 +66,7 @@ func allocateGnarkCircuit(comp *wizard.CompiledIOP, ctx *fullRecursionCtx) *gnar
 
 func (c *gnarkCircuit) Define(api frontend.API) error {
 
-	w := c.WizardVerifier
+	w := c.WizardVerifier.(*wizard.WizardVerifierCircuit)
 
 	if c.withoutGkr {
 		w.FS = fiatshamir.NewGnarkFiatShamir(api, nil)
@@ -116,7 +116,7 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 
 	var (
 		ctx = c.ctx
-		w   = c.WizardVerifier
+		w   = c.WizardVerifier.(*wizard.WizardVerifierCircuit)
 	)
 
 	w.FS.SetState([]frontend.Variable{c.InitialFsState})
