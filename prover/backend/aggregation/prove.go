@@ -2,7 +2,6 @@ package aggregation
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"math"
 	"path/filepath"
 
@@ -109,7 +108,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		Decompressions: cf.DecompressionPI,
 		Executions:     cf.ExecutionPI,
 		Aggregation:    cf.AggregationPublicInput(cfg),
-	}, dictionary.NewStore(cfg.BlobDecompression.DictPaths...))
+	}, cfg.BlobDecompressionDictStore(string(circuits.PublicInputInterconnectionCircuitID))) // TODO: Should we use aggregation or decompression ID instead?
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not assign the public input circuit: %w", err)
 	}
