@@ -96,6 +96,8 @@ type FinalProductCheck struct {
 	ZOpenings []query.LocalOpening
 	// query ID
 	GrandProductID ifaces.QueryID
+	// skip the verifer action
+	skipped bool
 }
 
 // Run implements the [wizard.VerifierAction]
@@ -131,4 +133,12 @@ func (f *FinalProductCheck) RunGnark(api frontend.API, run *wizard.WizardVerifie
 	}
 
 	api.AssertIsEqual(zProd, claimedProd)
+}
+
+func (f *FinalProductCheck) Skip() {
+	f.skipped = true
+}
+
+func (f *FinalProductCheck) IsSkipped() bool {
+	return f.skipped
 }

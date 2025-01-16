@@ -52,21 +52,27 @@ Compile an IOP from a protocol definition
 func Compile(define DefineFunc, compilers ...func(*CompiledIOP)) *CompiledIOP {
 	builder := newBuilder()
 	define(&builder)
+	comp := builder.CompiledIOP
+	return ContinueCompilation(comp, compilers...)
+}
+
+// ContinueCompilation continues a set of compilation steps over a initial CompiledIOP object.
+func ContinueCompilation(rootComp *CompiledIOP, compilers ...func(*CompiledIOP)) *CompiledIOP {
 	/*
 		For sanity, we need to ensure the protocol is well formed. All
 		registers should have the same number of rounds. The simplest to
 		iron this out after the define function. We still make sure than
 		no more rounds are allocated anywhere.
 	*/
-	comp := builder.CompiledIOP
+	comp := rootComp
 	numRounds := comp.NumRounds()
 
-	builder.equalizeRounds(numRounds)
+	comp.equalizeRounds(numRounds)
 
 	for _, compiler := range compilers {
 		compiler(comp)
 		numRounds := comp.NumRounds()
-		builder.equalizeRounds(numRounds)
+		comp.equalizeRounds(numRounds)
 	}
 
 	if comp.SubProvers.Len() < comp.NumRounds() {
@@ -75,7 +81,7 @@ func Compile(define DefineFunc, compilers ...func(*CompiledIOP)) *CompiledIOP {
 		)
 	}
 
-	return builder.CompiledIOP
+	return comp
 }
 
 // NewCompiledIOP initializes a CompiledIOP object.
@@ -258,8 +264,7 @@ func (b *Builder) LocalOpening(name ifaces.QueryID, pol ifaces.Column) query.Loc
 Equalizes the length of all the structure so that they all have the same
 numbers of rounds
 */
-func (b *Builder) equalizeRounds(numRounds int) {
-	comp := b.CompiledIOP
+func (comp *CompiledIOP) equalizeRounds(numRounds int) {
 
 	helpMsg := "If you are seeing this message it's probably because you insert queries one round too late."
 
