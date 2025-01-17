@@ -10,8 +10,8 @@ dependencies {
   implementation(project(':jvm-libs:generic:vertx-helper'))
   implementation(project(':jvm-libs:generic:serialization:jackson'))
   implementation(project(':jvm-libs:linea:core:domain-models'))
-  implementation(project(':state-recover:appcore:clients-interfaces'))
-  implementation(project(':state-recover:appcore:domain-models'))
+  implementation(project(':state-recovery:appcore:clients-interfaces'))
+  implementation(project(':state-recovery:appcore:domain-models'))
 
 
   testImplementation project(':jvm-libs:linea:core:metrics')

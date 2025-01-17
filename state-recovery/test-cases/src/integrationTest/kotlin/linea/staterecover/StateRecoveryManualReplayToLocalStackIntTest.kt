@@ -88,7 +88,7 @@ class StateRecoveryManualReplayToLocalStackIntTest {
       """
       Start state recovery besu and shomei with the following configuration:
 
-       ./gradlew state-recover:besu-plugin:shadowJar \
+       ./gradlew state-recovery:besu-plugin:shadowJar \
        && docker compose -f docker/compose.yml down zkbesu-shomei-sr shomei-sr \
        && L1_ROLLUP_CONTRACT_ADDRESS=${rollupDeploymentResult.contractAddress} docker compose -f docker/compose.yml up zkbesu-shomei-sr shomei-sr
 
