@@ -24,6 +24,8 @@ import net.consensys.linea.testing.submission.loadBlobsAndAggregationsSortedAndG
 import net.consensys.linea.testing.submission.submitBlobsAndAggregationsAndWaitExecution
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.ethereum.ContractsManager
+import net.consensys.zkevm.ethereum.MakeFileDelegatedContractsManager.connectToLineaRollupContract
+import net.consensys.zkevm.ethereum.MakeFileDelegatedContractsManager.lineaRollupContractErrors
 import net.consensys.zkevm.ethereum.Web3jClientManager
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
@@ -49,7 +51,8 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
   private lateinit var transactionDetailsClient: TransactionDetailsClient
   private lateinit var lineaContractClient: LineaRollupSmartContractClientReadOnly
 
-  private lateinit var contractClientForSubmissions: LineaRollupSmartContractClient
+  private lateinit var contractClientForBlobSubmissions: LineaRollupSmartContractClient
+  private lateinit var contractClientForAggregationSubmissions: LineaRollupSmartContractClient
   private val testDataDir = run {
     "testdata/coordinator/prover/v3"
   }
@@ -109,7 +112,12 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
       log = LogManager.getLogger("test.clients.l1.events-fetcher")
     )
 
-    contractClientForSubmissions = rollupDeploymentResult.rollupOperatorClient
+    contractClientForBlobSubmissions = rollupDeploymentResult.rollupOperatorClient
+    contractClientForAggregationSubmissions = connectToLineaRollupContract(
+      rollupDeploymentResult.contractAddress,
+      rollupDeploymentResult.rollupOperators[1].txManager,
+      smartContractErrors = lineaRollupContractErrors
+    )
     val blobScanClient = BlobScanClient.create(
       vertx = vertx,
       endpoint = URI(blobScanUrl),
@@ -155,13 +163,13 @@ class StateRecoverAppWithFakeExecutionClientIntTest {
   }
 
   private fun submitDataToL1ContactAndWaitExecution(
-    contractClient: LineaRollupSmartContractClient = contractClientForSubmissions,
     aggregationsAndBlobs: List<AggregationAndBlobs> = this.aggregationsAndBlobs,
     blobChunksSize: Int = 6,
-    waitTimeout: Duration = 2.minutes
+    waitTimeout: Duration = 4.minutes
   ) {
     submitBlobsAndAggregationsAndWaitExecution(
-      contractClient = contractClient,
+      contractClientForBlobSubmission = contractClientForBlobSubmissions,
+      contractClientForAggregationSubmission = contractClientForAggregationSubmissions,
       aggregationsAndBlobs = aggregationsAndBlobs,
       blobChunksSize = blobChunksSize,
       waitTimeout = waitTimeout,
