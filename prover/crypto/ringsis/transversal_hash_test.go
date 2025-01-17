@@ -2,7 +2,7 @@ package ringsis
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -24,7 +24,7 @@ func randomRegularRow(rng *rand.Rand, size int) smartvectors.SmartVector {
 func fullyRandomTestVector(rng *rand.Rand, numRow, numCols int) []smartvectors.SmartVector {
 	list := make([]smartvectors.SmartVector, numRow)
 	for i := range list {
-		coin := rng.Intn(2)
+		coin := rng.IntN(2)
 		switch {
 		case coin == 0:
 			list[i] = randomConstRow(rng, numCols)
