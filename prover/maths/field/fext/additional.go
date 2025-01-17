@@ -47,3 +47,9 @@ func (z *Element) MulByBase(first *Element, second *fr.Element) *Element {
 	z.A1.Mul(&first.A1, second)
 	return z
 }
+
+func (z *Element) DivByBase(first *Element, second *fr.Element) *Element {
+	z.A0.Div(&first.A0, second)
+	z.A1.Div(&first.A1, second)
+	return z
+}
