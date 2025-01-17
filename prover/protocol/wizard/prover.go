@@ -220,6 +220,25 @@ func RunProver(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
 	return &runtime
 }
 
+// ProveOnlyFirstRound computes the first round of the prover and returns the
+// resulting ProverRuntime containing all the generated assignments.
+func ProverOnlyFirstRound(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
+	runtime := c.createProver()
+
+	// Run the user provided assignment function. We can't expect it
+	// to run all the rounds, because the compilation could have added
+	// extra-rounds.
+	//
+	highLevelprover(&runtime)
+
+	// Then, run the compiled prover steps. This will only run thoses of the
+	// first round.
+	//
+	runtime.runProverSteps()
+
+	return &runtime
+}
+
 // NumRounds returns the total number of rounds in the corresponding WizardIOP.
 //
 // Deprecated: this method does not bring anything useful as its already easy
