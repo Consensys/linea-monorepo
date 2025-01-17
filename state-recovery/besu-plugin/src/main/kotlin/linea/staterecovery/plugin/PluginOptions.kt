@@ -4,7 +4,7 @@ import org.hyperledger.besu.datatypes.Address
 import picocli.CommandLine
 import java.net.URI
 import java.time.Duration
-import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toKotlinDuration
 
 data class PluginConfig(
@@ -17,7 +17,7 @@ data class PluginConfig(
   val overridingRecoveryStartBlockNumber: ULong? = null
 ) {
   init {
-    require(l1PollingInterval >= 1.seconds) { "Polling interval=$l1PollingInterval must be greater that 1s." }
+    require(l1PollingInterval >= 1.milliseconds) { "Polling interval=$l1PollingInterval must be greater than 1ms." }
   }
 }
 
