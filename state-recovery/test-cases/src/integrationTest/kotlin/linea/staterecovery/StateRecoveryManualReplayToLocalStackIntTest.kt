@@ -25,6 +25,7 @@ import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.net.URI
@@ -34,6 +35,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
+// For faster feedback loop
+@Disabled("This test is for manual replay of state recovery, useful for debugging validating new datasets etc")
 class StateRecoveryManualReplayToLocalStackIntTest {
   private val log = LogManager.getLogger("test.case.StateRecoverAppWithLocalStackIntTest")
   private lateinit var stateManagerClient: StateManagerClientV1
