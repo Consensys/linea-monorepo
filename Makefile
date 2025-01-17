@@ -28,6 +28,7 @@ clean-testnet-folders:
 		rm -rf tmp/testnet/*
 
 clean-environment:
+		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 --profile debug --profile staterecover kill -s 9 || true
 		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 --profile debug --profile staterecover down || true
 		make clean-local-folders
 		docker network prune -f
@@ -227,8 +228,14 @@ fresh-start-all-staterecover:
 
 fresh-start-staterecover-for-replay-only: COMPOSE_PROFILES:=l1,staterecover
 fresh-start-staterecover-for-replay-only:
-		make clean-environment
-		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
+	make clean-environment
+	L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
+
+
+staterecovery-replay-from-genesis: L1_ROLLUP_CONTRACT_ADDRESS:=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+staterecovery-replay-from-genesis:
+	docker compose -f docker/compose.yml down zkbesu-shomei-sr shomei-sr
+	L1_ROLLUP_CONTRACT_ADDRESS=$(L1_ROLLUP_CONTRACT_ADDRESS) docker compose -f docker/compose.yml up zkbesu-shomei-sr shomei-sr -d
 
 testnet-start-l2:
 		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml --profile l2 up -d
@@ -291,14 +298,3 @@ restart-coordinator:
 		make stop-coordinator
 		make start-coordinator
 
-start-traces-api:
-		mkdir -p  tmp/local/logs
-		mkdir -p  tmp/local/traces/raw
-		./gradlew traces-api:app:run > tmp/local/logs/traces-app.log & echo "$$!" > tmp/local/traces-app.pid
-
-stop-traces-api:
-		make stop_pid PID_FILE=tmp/local/traces-app.pid
-
-restart-traces-api:
-		make stop-traces-api
-		make start-traces-api
