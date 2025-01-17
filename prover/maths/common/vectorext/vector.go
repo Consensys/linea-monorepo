@@ -122,10 +122,10 @@ func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) {
 		var cptErrors uint64
 		// process the elements in parallel
 		execute(int(sliceLen), func(start, end int) {
-			readFrElem := func(i int, offset int) {
+			for i := start; i < end; i++ {
 				var z fr.Element
-				bstart := i*frBytes + offset
-				bend := bstart + frBytes + offset
+				bstart := i * 2 * frBytes
+				bend := bstart + frBytes
 				b := bSlice[bstart:bend]
 				z[0] = binary.BigEndian.Uint64(b[24:32])
 				z[1] = binary.BigEndian.Uint64(b[16:24])
@@ -137,18 +137,23 @@ func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) {
 					return
 				}
 				fext.ToMont(&z)
+				(*vector)[i].A0.Set(&z)
+				// set second coordinate
+				var w fr.Element
+				cstart := (i*2 + 1) * frBytes
+				cend := cstart + frBytes
+				c := bSlice[cstart:cend]
+				w[0] = binary.BigEndian.Uint64(c[24:32])
+				w[1] = binary.BigEndian.Uint64(c[16:24])
+				w[2] = binary.BigEndian.Uint64(c[8:16])
+				w[3] = binary.BigEndian.Uint64(c[0:8])
 
-				fmt.Println("c ", z.Uint64(), " ")
-				if offset == 0 {
-					(*vector)[i].A0.Set(&z)
-				} else {
-					(*vector)[i].A1.Set(&z)
+				if !fext.SmallerThanModulus(&w) {
+					atomic.AddUint64(&cptErrors, 1)
+					return
 				}
-
-			}
-			for i := start; i < end; i++ {
-				readFrElem(i, 0)
-				readFrElem(i, frBytes)
+				fext.ToMont(&w)
+				(*vector)[i].A1.Set(&w)
 			}
 		})
 
