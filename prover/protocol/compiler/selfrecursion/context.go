@@ -197,12 +197,10 @@ type SelfRecursionCtx struct {
 	}
 }
 
-// Initializes a context for the self recursion
-func NewSelfRecursionCxt(comp *wizard.CompiledIOP) SelfRecursionCtx {
-
-	// Extract the vortex context from the compiledIOP though
-	// the "CryptographicCompilerCtx"
-	vortexCtx := assertVortexCompiled(comp)
+// NewRecursionCtx returns a new recursion context taking a specified
+// [vortex.Ctx] and SelfRecursionCount. It can be used for custom use
+// of the recursion wizard.
+func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx) SelfRecursionCtx {
 
 	ctx := SelfRecursionCtx{
 		comp:             comp,
@@ -278,6 +276,13 @@ func NewSelfRecursionCxt(comp *wizard.CompiledIOP) SelfRecursionCtx {
 	comp.Columns.SetStatus(ctx.Columns.MerkleProofs.GetColID(), column.Committed)
 
 	return ctx
+}
+
+// Initializes a context for the self recursion
+func NewSelfRecursionCxt(comp *wizard.CompiledIOP) SelfRecursionCtx {
+	// Extract the vortex context from the compiledIOP though the "Pcs"
+	vortexCtx := assertVortexCompiled(comp)
+	return NewRecursionCtx(comp, vortexCtx)
 }
 
 // Asserts that the compiled IOP has the appropriate cryptographic context

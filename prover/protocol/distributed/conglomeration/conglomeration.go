@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -42,6 +43,7 @@ func Conglomerate(
 		ctx := initRecursionCtx(prefix, comp)
 		ctx.captureCompPreVortex(tmpl)
 		ctx.captureVortexCtx(tmpl)
+		selfrecursion.RecurseOverCustomCtx(comp, ctx.PcsCtx)
 		ctxs = append(ctxs, ctx)
 	}
 
@@ -65,7 +67,6 @@ func Conglomerate(
 	}
 
 	return comp
-
 }
 
 // initCtx initializes a new context
