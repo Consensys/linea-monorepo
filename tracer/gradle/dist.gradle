@@ -15,35 +15,39 @@
 import de.undercouch.gradle.tasks.download.Download
 
 def lineaBesuDistTar = new File(new File(buildDir, "downloads"), rootProject.besuFilename)
-tasks.register('downloadLineaBesu', Download) {
-  src rootProject.besuUrl
-  dest lineaBesuDistTar
-  onlyIfModified true
-}
+task downloadLineaBesu {
+  outputs.file(lineaBesuDistTar)
+  doLast {
+    try {
+      download.run {
+        src rootProject.besuUrl
+        dest lineaBesuDistTar
+        onlyIfModified true
+      }
+    } catch (Exception e) {
+      def localLineaBesuDir =
+              project.hasProperty('useLocalLineaBesuDir')
+                      ? file("${findProperty('useLocalLineaBesuDir')}".replaceFirst('^~', System.getProperty('user.home')))
+                      : new File(projectDir, "../../linea-besu")
 
-tasks.register('copyLocalLineaBesu', Copy) {
-  onlyIf {
-    downloadLineaBesu.state.failure
-  }
-  def localLineaBesuDir =
-          project.hasProperty('useLocalLineaBesuDir')
-                  ? file("${findProperty('useLocalLineaBesuDir')}".replaceFirst('^~', System.getProperty('user.home')))
-                  : new File(projectDir, "../../linea-besu")
+      def localLineaBesuFile = new File("${localLineaBesuDir.canonicalPath}/build/distributions/${rootProject.besuFilename}")
 
-  def localLineaBesuFile = new File("${localLineaBesuDir.absoluteFile}/build/distributions/${rootProject.besuFilename}")
-  doFirst {
-    if (!file(localLineaBesuFile).exists()) {
-      throw new GradleException("Could not download Linea Besu distribution from: " + rootProject.besuUrl +
-              ", and could not find it locally at ${localLineaBesuFile} either")
+      logger.warn("Could not download " + rootProject.besuUrl + " trying local copy from " + localLineaBesuFile + " as fallback")
+      if (!file(localLineaBesuFile).exists()) {
+        throw new GradleException("Could not download Linea Besu distribution from: " + rootProject.besuUrl +
+                ", and could not find it locally at ${localLineaBesuFile} either")
+      }
+
+      copy {
+        from localLineaBesuFile
+        into lineaBesuDistTar.parentFile
+      }
     }
   }
-  from localLineaBesuFile
-  into lineaBesuDistTar.parentFile
 }
 
 task unTarLineaBesu(type: Copy) {
   dependsOn downloadLineaBesu
-  dependsOn copyLocalLineaBesu
 
   from tarTree(lineaBesuDistTar)
   into lineaBesuDistTar.parentFile
