@@ -21,6 +21,7 @@ type recursionCtx struct {
 	NonEmptyMerkleRootPositions []int
 	FirstRound, LastRound       int
 	Columns                     [][]ifaces.Column
+	ColumnsIgnored              [][]ifaces.Column
 	QueryParams                 [][]ifaces.Query
 	VerifierActions             [][]wizard.VerifierAction
 	Coins                       [][]coin.Info
@@ -181,20 +182,31 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 
 	var (
 		srcVortexCtx = tmpl.PcsCtxs.(*vortex.Ctx)
-		dstVortexCtx = &vortex.Ctx{
-			BlowUpFactor:                 srcVortexCtx.BlowUpFactor,
-			DryTreshold:                  srcVortexCtx.DryTreshold,
-			CommittedRowsCount:           srcVortexCtx.CommittedRowsCount,
-			NumCols:                      srcVortexCtx.NumCols,
-			MaxCommittedRound:            srcVortexCtx.MaxCommittedRound,
-			NumOpenedCol:                 srcVortexCtx.NumOpenedCol,
-			CommitmentsByRounds:          ctx.Translator.TranslateColumnVecVec(srcVortexCtx.CommitmentsByRounds),
-			DriedByRounds:                ctx.Translator.TranslateColumnVecVec(srcVortexCtx.DriedByRounds),
-			PolynomialsTouchedByTheQuery: ctx.Translator.TranslateColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
-			ShadowCols:                   ctx.Translator.TranslateColumnSet(srcVortexCtx.ShadowCols),
-			Query:                        ctx.Translator.TranslateUniEval(ctx.LastRound, srcVortexCtx.Query),
-		}
+		comsByRound  = srcVortexCtx.CommitmentsByRounds.Inner()
 	)
+
+	for _, coms := range comsByRound {
+		ctx.ColumnsIgnored = append(ctx.ColumnsIgnored, nil)
+		for _, comID := range coms {
+			com := tmpl.Columns.GetHandle(comID)
+			ctx.Translator.InsertColumn(com.(column.Natural))
+		}
+	}
+
+	dstVortexCtx := &vortex.Ctx{
+		RunStateNamePrefix:           ctx.Translator.Prefix,
+		BlowUpFactor:                 srcVortexCtx.BlowUpFactor,
+		DryTreshold:                  srcVortexCtx.DryTreshold,
+		CommittedRowsCount:           srcVortexCtx.CommittedRowsCount,
+		NumCols:                      srcVortexCtx.NumCols,
+		MaxCommittedRound:            srcVortexCtx.MaxCommittedRound,
+		NumOpenedCol:                 srcVortexCtx.NumOpenedCol,
+		CommitmentsByRounds:          ctx.Translator.TranslateColumnVecVec(srcVortexCtx.CommitmentsByRounds),
+		DriedByRounds:                ctx.Translator.TranslateColumnVecVec(srcVortexCtx.DriedByRounds),
+		PolynomialsTouchedByTheQuery: ctx.Translator.TranslateColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
+		ShadowCols:                   ctx.Translator.TranslateColumnSet(srcVortexCtx.ShadowCols),
+		Query:                        ctx.Translator.TranslateUniEval(ctx.LastRound, srcVortexCtx.Query),
+	}
 
 	if srcVortexCtx.ReplaceSisByMimc {
 		panic("it should not replace by MiMC")

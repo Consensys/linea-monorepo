@@ -126,6 +126,10 @@ type Ctx struct {
 	CommitmentsByRounds collection.VecVec[ifaces.ColID]
 	DriedByRounds       collection.VecVec[ifaces.ColID]
 
+	// RunStateNamePrefix is used to prefix some of the names of components of the
+	// compilation context. Mainly state objects.
+	RunStateNamePrefix string
+
 	// Items created by Vortex, includes the proof message and the coins
 	Items struct {
 		// List of items used only if the CommitPrecomputed flag is set

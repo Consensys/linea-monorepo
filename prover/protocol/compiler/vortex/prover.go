@@ -33,7 +33,7 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 
 		// Only to be read by the self-recursion compiler.
 		if ctx.IsSelfrecursed {
-			pr.State.InsertNew(string(ctx.CommitmentName(round)), sisDigest)
+			pr.State.InsertNew(ctx.SisHashName(round), sisDigest)
 		}
 
 		// And assign the 1-sized column to contain the root

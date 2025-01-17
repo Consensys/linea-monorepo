@@ -255,8 +255,8 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 		}
 
 		for round := 0; round <= totalNumRounds; round++ {
-			colSisHashName := ctx.VortexCtx.CommitmentName(round)
-			colSisHashSV, found := run.State.TryGet(string(colSisHashName))
+			colSisHashName := ctx.VortexCtx.SisHashName(round)
+			colSisHashSV, found := run.State.TryGet(colSisHashName)
 			if !found {
 				// continue with the same committedRound until we meet a non-dry
 				// round or we  reach the total number of committed rounds
@@ -291,7 +291,7 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 			}
 
 			// Frees the colSisHash
-			run.State.TryDel(string(colSisHashName))
+			run.State.TryDel(colSisHashName)
 
 			// Increment only if the committedRound is non-dry
 			committedRound++
