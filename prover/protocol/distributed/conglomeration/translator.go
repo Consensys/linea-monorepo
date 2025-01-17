@@ -41,9 +41,21 @@ type gnarkRuntimeTranslator struct {
 
 // InsertColumn inserts a new column in the target compiled IOP. The column name
 // is prefixed with comp.Prefix.
-func (comp *compTranslator) InsertColumn(round int, name ifaces.ColID, size int, status column.Status) ifaces.Column {
-	name = ifaces.ColID(comp.Prefix) + "." + name
-	return comp.Target.InsertColumn(round, name, size, status)
+func (comp *compTranslator) InsertColumn(col column.Natural) ifaces.Column {
+	name := ifaces.ColID(comp.Prefix) + "." + col.ID
+	return comp.Target.InsertColumn(col.Round(), name, col.Size(), col.Status())
+}
+
+// InsertColumns inserts a list of columns in the target compiled IOP by adding
+// a prefix to their names. The inputs columns are expected to be of type
+// Natural or this will lead to a panic.
+func (comp *compTranslator) InsertColumns(cols []ifaces.Column) []ifaces.Column {
+	res := make([]ifaces.Column, 0, len(cols))
+	for i := range cols {
+		r := comp.InsertColumn(cols[i].(column.Natural))
+		res = append(res, r)
+	}
+	return res
 }
 
 // GetColumn returns a column from the target compiled IOP.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -33,21 +34,37 @@ func Conglomerate(
 ) (comp *wizard.CompiledIOP) {
 
 	comp = wizard.NewCompiledIOP()
+	var ctxs []*recursionCtx
 
 	for id := 0; id < maxNumSegment; id++ {
-		addVerifierToComp(id, comp, tmpl)
+		prefix := fmt.Sprintf("verifier-%v", id)
+		ctx := initRecursionCtx(prefix, comp)
+		ctx.captureCompPreVortex(tmpl)
+		ctx.captureVortexCtx(tmpl)
+		ctxs = append(ctxs, ctx)
 	}
 
-}
+	for round := 0; round <= ctxs[0].LastRound; round++ {
 
-func addVerifierToComp(
-	id int,
-	comp *wizard.CompiledIOP,
-	tmpl *wizard.CompiledIOP,
-) {
-	ctx := initRecursionCtx(fmt.Sprintf("verifier-%v", id), comp)
-	ctx.captureCompPreVortex(tmpl)
-	ctx.captureVortexCtx(tmpl)
+		var (
+			hasCoin    = len(ctxs[0].Coins[round]) > 0
+			hasVAction = len(ctxs[0].VerifierActions[round]) > 0
+			hasFsHook  = len(ctxs[0].FsHooks[round]) > 0
+			hasColumn  = len(ctxs[0].Columns[round]) > 0
+			hasQParams = len(ctxs[0].QueryParams[round]) > 0
+		)
+
+		if hasCoin || hasVAction || hasFsHook {
+			comp.RegisterVerifierAction(round, &PreVortexVerifierStep{Ctxs: ctxs, Round: round})
+		}
+
+		if hasColumn || hasQParams {
+			comp.RegisterProverAction(round, &PreVortexProverStep{Ctxs: ctxs, Round: round})
+		}
+	}
+
+	return comp
+
 }
 
 // initCtx initializes a new context
@@ -84,8 +101,8 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 
 			// filter the columns by status
 			var (
-				status = tmpl.Columns.Status(colName)
-				size   = tmpl.Columns.GetSize(colName)
+				col    = tmpl.Columns.GetHandle(colName).(column.Natural)
+				status = col.Status()
 			)
 
 			if !status.IsPublic() {
@@ -93,7 +110,7 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 				continue
 			}
 
-			newCol := ctx.Translator.InsertColumn(round, colName, size, status)
+			newCol := ctx.Translator.InsertColumn(col)
 			ctx.Columns[round] = append(ctx.Columns[round], newCol)
 			ctx.Translator.Target.Columns.IgnoreButKeepInProverTranscript(newCol.GetColID())
 		}
@@ -185,16 +202,14 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 
 	dstVortexCtx.Items.Precomputeds.PrecomputedColums = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.Precomputeds.PrecomputedColums)
 	dstVortexCtx.Items.Precomputeds.MerkleRoot = ctx.Translator.GetColumn(srcVortexCtx.Items.Precomputeds.MerkleRoot.GetColID())
-	dstVortexCtx.Items.Precomputeds.Dh = ctx.Translator.GetColumn(srcVortexCtx.Items.Precomputeds.Dh.GetColID())
 	dstVortexCtx.Items.Precomputeds.CommittedMatrix = srcVortexCtx.Items.Precomputeds.CommittedMatrix
 	dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
 
-	dstVortexCtx.Items.Dh = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.Dh)
 	dstVortexCtx.Items.Alpha = ctx.Translator.GetCoin(srcVortexCtx.Items.Alpha.Name)
-	dstVortexCtx.Items.Ualpha = ctx.Translator.GetColumn(srcVortexCtx.Items.Ualpha.GetColID())
+	dstVortexCtx.Items.Ualpha = ctx.Translator.InsertColumn(srcVortexCtx.Items.Ualpha.(column.Natural))
 	dstVortexCtx.Items.Q = ctx.Translator.GetCoin(srcVortexCtx.Items.Q.Name)
-	dstVortexCtx.Items.OpenedColumns = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.OpenedColumns)
-	dstVortexCtx.Items.MerkleProofs = ctx.Translator.GetColumn(srcVortexCtx.Items.MerkleProofs.GetColID())
+	dstVortexCtx.Items.OpenedColumns = ctx.Translator.InsertColumns(srcVortexCtx.Items.OpenedColumns)
+	dstVortexCtx.Items.MerkleProofs = ctx.Translator.InsertColumn(srcVortexCtx.Items.MerkleProofs.(column.Natural))
 	dstVortexCtx.Items.MerkleRoots = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.MerkleRoots)
 
 	ctx.PcsCtx = dstVortexCtx
