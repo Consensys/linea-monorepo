@@ -23,7 +23,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"math/big"
 	"math/bits"
-	"math/rand"
+	"math/rand/v2"
+
 	"strings"
 
 	"github.com/bits-and-blooms/bitset"

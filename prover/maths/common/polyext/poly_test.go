@@ -4,7 +4,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"math/rand"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -218,7 +219,7 @@ func TestEvaluateLagrangeAnyDomain(t *testing.T) {
 
 	t.Run("many-point-domain-random", func(t *testing.T) {
 		// #nosec G404 -- we don't need a cryptographic PRNG for testing purposes
-		rng := rand.New(rand.NewSource(43))
+		rng := rand.New(utils.NewRandSource((43)))
 		rand := []fext.Element{fext.PseudoRand(rng), fext.PseudoRand(rng), fext.PseudoRand(rng)}
 		randX := fext.PseudoRand(rng)
 		expectedYs := []fext.Element{}
