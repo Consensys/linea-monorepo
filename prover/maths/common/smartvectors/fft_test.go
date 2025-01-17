@@ -15,7 +15,7 @@ import (
 
 func TestFFTFuzzyDIFDIT(t *testing.T) {
 
-	for i := 0; i < fuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
 		builder := newTestBuilder(i)
@@ -54,7 +54,7 @@ func TestFFTFuzzyDIFDIT(t *testing.T) {
 
 func TestFFTFuzzyDITDIF(t *testing.T) {
 
-	for i := 0; i < fuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
 		builder := newTestBuilder(i)
@@ -93,7 +93,7 @@ func TestFFTFuzzyDITDIF(t *testing.T) {
 
 func TestFFTFuzzyDIFDITBitReverse(t *testing.T) {
 
-	for i := 0; i < fuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
 		builder := newTestBuilder(i)
@@ -132,7 +132,7 @@ func TestFFTFuzzyDIFDITBitReverse(t *testing.T) {
 
 func TestFFTFuzzyDITDIFBitReverse(t *testing.T) {
 
-	for i := 0; i < fuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
 		builder := newTestBuilder(i)
@@ -171,7 +171,7 @@ func TestFFTFuzzyDITDIFBitReverse(t *testing.T) {
 
 func TestFFTFuzzyEvaluation(t *testing.T) {
 
-	for i := 0; i < fuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
 		builder := newTestBuilder(i)
@@ -223,7 +223,7 @@ func TestFFTFuzzyEvaluation(t *testing.T) {
 
 func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 
-	for i := 0; i < fuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
 		builder := newTestBuilder(i)
