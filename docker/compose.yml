@@ -23,7 +23,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu-package:${SEQUENCER_TAG:-mainnet-2af649e}
+    image: consensys/linea-besu-package:${SEQUENCER_TAG:-mainnet-b297345}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     ports:
       - "8545:8545"
@@ -100,7 +100,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: consensys/linea-besu-package:${SEQUENCER_TAG:-mainnet-2af649e}
+    image: consensys/linea-besu-package:${SEQUENCER_TAG:-mainnet-811f30b}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -215,48 +215,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    environment:
-      L1_RPC_URL: "http://l1-el-node:8545"
-      L1_CONTRACT_ADDRESS: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
-      # WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-      L1_SIGNER_PRIVATE_KEY: "0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba"
-      L1_LISTENER_INTERVAL: 2000
-      L1_LISTENER_INITIAL_FROM_BLOCK: 0
-      L1_LISTENER_BLOCK_CONFIRMATION: 1
-      L1_MAX_BLOCKS_TO_FETCH_LOGS: 1000
-      L1_MAX_GAS_FEE_ENFORCED: "true"
-      L2_RPC_URL: "http://l2-node:8545"
-      L2_CONTRACT_ADDRESS: "0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
-      # WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-      L2_SIGNER_PRIVATE_KEY: "0xfcf854e0a0bc6fd7e97d7050e61a362c915cecd6767a32267b22e8b7af572e58"
-      L2_LISTENER_INTERVAL: 2000
-      L2_LISTENER_INITIAL_FROM_BLOCK: 0
-      L2_LISTENER_BLOCK_CONFIRMATION: 0 # set confirmation as zero since L2 block won't auto increase
-      L2_MAX_BLOCKS_TO_FETCH_LOGS: 1000
-      L2_MAX_GAS_FEE_ENFORCED: "false"
-      L2_MESSAGE_TREE_DEPTH: 5
-      MESSAGE_SUBMISSION_TIMEOUT: 300000
-      MAX_FETCH_MESSAGES_FROM_DB: 1000
-      MAX_NONCE_DIFF: 10000
-      MAX_FEE_PER_GAS_CAP: 100000000000
-      GAS_ESTIMATION_PERCENTILE: 50
-      PROFIT_MARGIN: 0.0
-      MAX_NUMBER_OF_RETRIES: 100
-      RETRY_DELAY_IN_SECONDS: 30
-      MAX_CLAIM_GAS_LIMIT: 2560000
-      L1_L2_EOA_ENABLED: "true"
-      L1_L2_CALLDATA_ENABLED: "true"
-      L1_L2_AUTO_CLAIM_ENABLED: "true"
-      L2_L1_EOA_ENABLED: "true"
-      L2_L1_CALLDATA_ENABLED: "true"
-      L2_L1_AUTO_CLAIM_ENABLED: "true"
-      POSTGRES_HOST: "postgres"
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "postgres"
-      POSTGRES_DB: "postman_db"
-      DB_CLEANER_ENABLED: "false"
-      ENABLE_LINEA_ESTIMATE_GAS: "false"
+    env_file: "./config/postman/env"
     networks:
       l1network:
         ipv4_address: 10.10.10.222
@@ -308,7 +267,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-bb7cd3d}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-a5119c4}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     depends_on:
@@ -449,6 +408,11 @@ services:
         condition: service_healthy
       l1-node-genesis-generator:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/eth/v1/node/health || exit 1"]
+      interval: 1s
+      timeout: 1s
+      retries: 120
     command: [ "--config-file=/config/config-file.yaml" ]
     volumes:
       - ./config/l1-node/cl/teku.key:/config/keys/teku.key:ro
@@ -508,13 +472,11 @@ services:
       - l1network
 
   zkbesu-shomei:
-    image: consensys/linea-besu:linea-delivery-27
+    image: consensys/linea-besu-package:${SEQUENCER_TAG:-devnet-811f30b}
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
-      shomei-plugin-downloader:
-        condition: service_completed_successfully
       sequencer:
         condition: service_healthy
     privileged: true
@@ -552,10 +514,9 @@ services:
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
       - ./config/zkbesu-shomei/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
-      - ../tmp/zkbesu-shomei/plugins:/opt/besu/plugins/
 
   shomei:
-    image: consensys/linea-shomei:2.2.0
+    image: consensys/linea-shomei:2.3.0
     hostname: shomei
     container_name: shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -633,15 +594,6 @@ services:
       - local-dev:/data/
       - ./config/shomei/log4j.xml:/log4j.xml:ro
 
-  shomei-plugin-downloader:
-    container_name: shomei-plugin-downloader
-    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
-    image: busybox:1.36.1
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/besu-shomei-plugin/releases/download/v0.3.1/besu-shomei-plugin-v0.3.1.jar",  "/shomei-plugin" ]
-    volumes:
-      - ./scripts/file-downloader.sh:/file-downloader.sh:ro
-      - ../tmp/zkbesu-shomei/plugins:/shomei-plugin/
-
   l2-blockscout:
     container_name: l2-blockscout
     hostname: l2-blockscout
@@ -697,6 +649,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      l1-cl-node:
+        condition: service_healthy
+      l1-el-node:
+        condition: service_healthy
 
   blobscan-indexer:
     container_name: blobscan-indexer
@@ -715,6 +671,10 @@ services:
         condition: service_healthy
       blobscan-api:
         condition: service_started
+      l1-cl-node:
+        condition: service_healthy
+      l1-el-node:
+        condition: service_healthy
 
   redis:
     container_name: redis
@@ -736,6 +696,95 @@ services:
     networks:
       l1network:
         ipv4_address: 10.10.10.205
+
+  zkbesu-shomei-sr:
+    image: consensys/linea-besu-package:${SEQUENCER_TAG:-devnet-811f30b}
+    hostname: zkbesu-shomei-sr
+    container_name: zkbesu-shomei-sr
+    profiles: [ "external-to-monorepo", "staterecover" ]
+    privileged: true
+#    restart: none
+    user: root
+    ports:
+      - "9145:8545" # http
+      - "9146:8546" # websockets
+      - "9150:8550"
+      - "10545:9545"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    networks:
+      l1network:
+        ipv4_address: 10.10.10.206
+      linea:
+        ipv4_address: 11.11.11.116
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      L1_ROLLUP_CONTRACT_ADDRESS: ${L1_ROLLUP_CONTRACT_ADDRESS:-0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9}
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        chown -R besu:besu /opt/besu/plugins && \
+        ls -lh /opt/besu/plugins && \
+        sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*' /opt/besu/bin/besu && \
+        /opt/besu/bin/besu \
+        --config-file=/var/lib/besu/zkbesu-config.toml \
+        --genesis-file=/var/lib/besu/genesis.json \
+        --plugins=BesuShomeiRpcPlugin,ZkTrieLogPlugin,LineaStateRecoverPlugin \
+        --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,MINER,SHOMEI \
+        --Xbonsai-limit-trie-logs-enabled=false \
+        --plugin-shomei-http-host="11.11.11.117" \
+        --plugin-shomei-http-port=8888 \
+        --plugin-staterecovery-l1-rpc-endpoint=http://l1-el-node:8545 \
+        --plugin-staterecovery-shomei-endpoint=http://shomei-sr:8888 \
+        --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \
+        --plugin-staterecovery-linea-sequencer-beneficiary-address=0x6d976c9b8ceee705d4fe8699b44e5eb58242f484 \
+        --plugin-staterecovery-overriding-recovery-start-block-number=1 \
+        --plugin-staterecovery-l1-polling-interval=PT1S
+    volumes:
+      - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
+      - ./config/zkbesu-shomei/log4j-staterecovery.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+      - ../state-recover/besu-plugin/build/libs/linea-staterecover-plugin-0.0.1-rc2.jar:/opt/besu/lib/linea-staterecover-plugin-0.0.1-rc2.jar
+      - ../state-recover/besu-plugin/build/libs/linea-staterecover-plugin-0.0.1-rc2.jar:/opt/besu/plugins/linea-staterecover-plugin-0.0.1-rc2.jar
+
+  shomei-sr:
+    image: consensys/linea-shomei:2.3.0
+    hostname: shomei-sr
+    container_name: shomei-sr
+    profiles: [ "external-to-monorepo", "staterecover" ]
+    depends_on:
+      zkbesu-shomei-sr:
+        condition: service_started
+    privileged: true
+    user: root
+    ports:
+      - "8890:8888"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /data/shomei/LOCK ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 60
+    networks:
+      linea:
+        ipv4_address: 11.11.11.117
+    environment:
+      LOG4J_CONFIGURATION_FILE: /log4j.xml
+    command:
+      - --besu-rpc-http-host=11.11.11.116
+      - --besu-rpc-http-port=8545
+      - --rpc-http-host=11.11.11.117
+      - --rpc-http-host-allow-list=*
+      - --rpc-http-port=8888
+      - --min-confirmations-before-importing=0
+      - --trace-start-block-number=0
+    volumes:
+      - ./config/shomei/log4j.xml:/log4j.xml:ro
+  #      - ../tmp/local/shomei:/data/shomei/:z
 
   ########################
   # Observability stack

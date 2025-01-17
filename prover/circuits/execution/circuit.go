@@ -1,9 +1,10 @@
 package execution
 
 import (
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
@@ -11,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark/std/hash/mimc"
@@ -22,11 +22,6 @@ import (
 type CircuitExecution struct {
 	// The wizard verifier circuit
 	WizardVerifier wizard.WizardVerifierCircuit `gnark:",secret"`
-	// The extractor is not part of the circuit per se, but hold informations
-	// that is used to extract the public inputs from the the WizardVerifier.
-	// The extractor only needs to be provided during the definition of the
-	// circuit and is omitted during the assignment of the circuit.
-	extractor publicInput.FunctionalInputExtractor `gnark:"-"`
 	// The functional public inputs are the "actual" statement made by the
 	// circuit. They are not part of the public input of the circuit for
 	// a number of reasons involving efficiency and simplicity in the aggregation
@@ -44,7 +39,6 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 	}
 	return CircuitExecution{
 		WizardVerifier: *wverifier,
-		extractor:      zkevm.PublicInput.Extractor,
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 				L2MessageHashes: L2MessageHashes{
@@ -63,17 +57,23 @@ func assign(
 	proof wizard.Proof,
 	funcInputs public_input.Execution,
 ) CircuitExecution {
-	wizardVerifier := wizard.GetWizardVerifierCircuitAssignment(comp, proof)
 
-	return CircuitExecution{
-		WizardVerifier: *wizardVerifier,
-		FuncInputs: FunctionalPublicInputSnark{
-			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-				L2MessageHashes: L2MessageHashes{Values: make([][32]frontend.Variable, limits.BlockL2L1Logs)}, // TODO use a maximum from config
+	var (
+		wizardVerifier = wizard.GetWizardVerifierCircuitAssignment(comp, proof)
+		res            = CircuitExecution{
+			WizardVerifier: *wizardVerifier,
+			FuncInputs: FunctionalPublicInputSnark{
+				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
+					L2MessageHashes: L2MessageHashes{Values: make([][32]frontend.Variable, limits.BlockL2L1Logs)}, // TODO use a maximum from config
+				},
 			},
-		},
-		PublicInput: new(big.Int).SetBytes(funcInputs.Sum(nil)),
-	}
+			PublicInput: new(big.Int).SetBytes(funcInputs.Sum(nil)),
+		}
+	)
+
+	res.FuncInputs.Assign(&funcInputs)
+
+	return res
 }
 
 // Define of the wizard circuit
@@ -83,7 +83,6 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 		api,
 		&c.WizardVerifier,
 		c.FuncInputs,
-		c.extractor,
 	)
 
 	// Add missing public input check

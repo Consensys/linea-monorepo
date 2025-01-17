@@ -3,12 +3,10 @@ package net.consensys.zkevm.ethereum.coordination.conflation
 import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.runCatching
 import io.vertx.core.Vertx
-import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandler
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinator
-import net.consensys.zkevm.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -40,7 +38,12 @@ class ProofGeneratingConflationHandlerImpl(
         vertx = vertx,
         backoffDelay = config.conflationAndProofGenerationRetryInterval,
         exceptionConsumer = {
-          log.error("Conflation and proof creation flow failed!", it)
+          // log failure as warning, but keeps on retrying...
+          log.warn(
+            "conflation and proof creation flow failed batch={} errorMessage={}",
+            blockIntervalString,
+            it.message
+          )
         }
       ) {
         conflationToProofCreation(conflation)
@@ -48,7 +51,7 @@ class ProofGeneratingConflationHandlerImpl(
     }.getOrElse { error -> SafeFuture.failedFuture<Unit>(error) }
       .whenException { th ->
         log.error(
-          "Traces conflation or proof failed: batch={} errorMessage={}",
+          "traces conflation or proof request failed: batch={} errorMessage={}",
           blockIntervalString,
           th.message,
           th
@@ -57,15 +60,13 @@ class ProofGeneratingConflationHandlerImpl(
   }
 
   private fun conflationToProofCreation(conflation: BlocksConflation): SafeFuture<*> {
-    val blockNumbersAndHash = conflation.blocks.map {
-      BlockNumberAndHash(it.blockNumber.toULong(), it.blockHash.toArray())
-    }
+    val blockNumbersAndHash = conflation.blocks.map { it.numberAndHash }
     val blockIntervalString = conflation.conflationResult.intervalString()
     return tracesProductionCoordinator
       .conflateExecutionTraces(blockNumbersAndHash)
       .whenException { th ->
-        log.error(
-          "Traces conflation failed: batch={} errorMessage={}",
+        log.debug(
+          "traces conflation failed: batch={} errorMessage={}",
           conflation.conflationResult.intervalString(),
           th.message,
           th
@@ -83,7 +84,7 @@ class ProofGeneratingConflationHandlerImpl(
             log.info("execution proof generated: batch={}", blockIntervalString)
           }
           .whenException { th ->
-            log.error(
+            log.debug(
               "execution proof failure: batch={} errorMessage={}",
               blockIntervalString,
               th.message,

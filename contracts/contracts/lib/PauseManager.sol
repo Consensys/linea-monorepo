@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity >=0.8.19 <=0.8.26;
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { IPauseManager } from "../interfaces/IPauseManager.sol";
 
@@ -10,7 +9,7 @@ import { IPauseManager } from "../interfaces/IPauseManager.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpgradeable {
+abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /// @notice This is used to pause all pausable functions.
   bytes32 public constant PAUSE_ALL_ROLE = keccak256("PAUSE_ALL_ROLE");
 
@@ -33,6 +32,20 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
   /// @dev Keep 7 free storage slots for future implementation updates to avoid storage collision.
   /// @dev Note: This was reduced previously to cater for new functionality.
   uint256[7] private __gap;
+
+  /**
+   * @dev Modifier to prevent usage of unused PauseType.
+   * @param _pauseType The PauseType value being checked.
+   * Requirements:
+   *
+   * - The type must not be UNUSED.
+   */
+  modifier onlyUsedPausedTypes(PauseType _pauseType) {
+    if (_pauseType == PauseType.UNUSED) {
+      revert PauseTypeNotUsed();
+    }
+    _;
+  }
 
   /**
    * @dev Modifier to make a function callable only when the specific and general types are not paused.
@@ -109,10 +122,13 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
 
   /**
    * @notice Pauses functionality by specific type.
+   * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_pauseTypeRoles` for the pauseType.
    * @param _pauseType The pause type value.
    */
-  function pauseByType(PauseType _pauseType) external onlyRole(_pauseTypeRoles[_pauseType]) {
+  function pauseByType(
+    PauseType _pauseType
+  ) external onlyUsedPausedTypes(_pauseType) onlyRole(_pauseTypeRoles[_pauseType]) {
     if (isPaused(_pauseType)) {
       revert IsPaused(_pauseType);
     }
@@ -123,10 +139,13 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
 
   /**
    * @notice Unpauses functionality by specific type.
+   * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_unPauseTypeRoles` for the pauseType.
    * @param _pauseType The pause type value.
    */
-  function unPauseByType(PauseType _pauseType) external onlyRole(_unPauseTypeRoles[_pauseType]) {
+  function unPauseByType(
+    PauseType _pauseType
+  ) external onlyUsedPausedTypes(_pauseType) onlyRole(_unPauseTypeRoles[_pauseType]) {
     if (!isPaused(_pauseType)) {
       revert IsNotPaused(_pauseType);
     }
@@ -142,5 +161,47 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
    */
   function isPaused(PauseType _pauseType) public view returns (bool pauseTypeIsPaused) {
     pauseTypeIsPaused = (_pauseTypeStatusesBitMap & (1 << uint256(_pauseType))) != 0;
+  }
+
+  /**
+   * @notice Update the pause type role mapping.
+   * @dev Throws if UNUSED pause type is used.
+   * @dev Throws if role not different.
+   * @dev PAUSE_ALL_ROLE role is required to execute this function.
+   * @param _pauseType The pause type value to update.
+   * @param _newRole The role to update to.
+   */
+  function updatePauseTypeRole(
+    PauseType _pauseType,
+    bytes32 _newRole
+  ) external onlyUsedPausedTypes(_pauseType) onlyRole(PAUSE_ALL_ROLE) {
+    bytes32 previousRole = _pauseTypeRoles[_pauseType];
+    if(previousRole == _newRole){
+      revert RolesNotDifferent();
+    }
+
+    _pauseTypeRoles[_pauseType] = _newRole;
+    emit PauseTypeRoleUpdated(_pauseType, _newRole, previousRole);
+  }
+
+  /**
+   * @notice Update the unpause type role mapping.
+   * @dev Throws if UNUSED pause type is used.
+   * @dev Throws if role not different.
+   * @dev UNPAUSE_ALL_ROLE role is required to execute this function.
+   * @param _pauseType The pause type value to update.
+   * @param _newRole The role to update to.
+   */
+  function updateUnpauseTypeRole(
+    PauseType _pauseType,
+    bytes32 _newRole
+  ) external onlyUsedPausedTypes(_pauseType) onlyRole(UNPAUSE_ALL_ROLE) {
+    bytes32 previousRole = _unPauseTypeRoles[_pauseType];
+    if(previousRole == _newRole){
+      revert RolesNotDifferent();
+    }
+
+    _unPauseTypeRoles[_pauseType] = _newRole;
+    emit UnPauseTypeRoleUpdated(_pauseType, _newRole, previousRole);
   }
 }
