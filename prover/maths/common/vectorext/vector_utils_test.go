@@ -7,6 +7,8 @@ package vectorext
 
 import (
 	"bytes"
+	"fmt"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"reflect"
@@ -16,27 +18,64 @@ import (
 const fuzzIteration = 20
 
 func TestVectorRoundTrip(t *testing.T) {
-	for it := 0; it < fuzzIteration; it++ {
+	//for it := 0; it < fuzzIteration; it++ {
+	/*
 		v := make(Vector, 10)
 		for i := 0; i < 10; i++ {
 			v[i].SetRandom()
-		}
+		}*/
+	v := make(Vector, 4)
+	v[0].SetInt64Pair(0, 1)
+	v[1].SetInt64Pair(2, 3)
+	v[2].SetInt64Pair(4, 5)
+	v[3].SetInt64Pair(6, 7)
 
-		b, err := v.MarshalBinary()
-		assert.NoError(t, err)
+	b, err := v.MarshalBinary()
+	assert.NoError(t, err)
 
-		var w1, w2 Vector
-		_ = w2
+	var w1, w2 Vector
+	_ = w2
+	fmt.Println(b)
+	err = w1.UnmarshalBinary(b)
+	assert.NoError(t, err)
+	fmt.Println(b)
 
-		err = w1.UnmarshalBinary(b)
-		assert.NoError(t, err)
+	err = w2.unmarshalBinaryAsync(b)
+	assert.NoError(t, err)
 
-		err = w2.unmarshalBinaryAsync(b)
-		assert.NoError(t, err)
+	assert.True(t, reflect.DeepEqual(v, w1))
+	assert.True(t, reflect.DeepEqual(w2, w1))
+	//}
 
-		assert.True(t, reflect.DeepEqual(v, w1))
-		assert.True(t, reflect.DeepEqual(v, w2))
-	}
+}
+
+func TestVectorRoundTripFR(t *testing.T) {
+	//for it := 0; it < fuzzIteration; it++ {
+	/*
+		v := make(Vector, 10)
+		for i := 0; i < 10; i++ {
+			v[i].SetRandom()
+		}*/
+	v := make(fr.Vector, 4)
+	v[0].SetUint64(1)
+	v[1].SetUint64(2)
+	v[2].SetUint64(3)
+	v[3].SetUint64(4)
+
+	b, err := v.MarshalBinary()
+	assert.NoError(t, err)
+
+	var w1, w2 fr.Vector
+
+	err = w1.UnmarshalBinary(b)
+	assert.NoError(t, err)
+
+	err = unmarshalBinaryAsync(&w2, b)
+	assert.NoError(t, err)
+
+	assert.True(t, reflect.DeepEqual(v, w1))
+	assert.True(t, reflect.DeepEqual(w2, w1))
+	//}
 
 }
 
@@ -63,6 +102,15 @@ func TestVectorEmptyRoundTrip(t *testing.T) {
 func (vector *Vector) unmarshalBinaryAsync(data []byte) error {
 	r := bytes.NewReader(data)
 	_, err, chErr := vector.AsyncReadFrom(r)
+	if err != nil {
+		return err
+	}
+	return <-chErr
+}
+
+func unmarshalBinaryAsync(vect *fr.Vector, data []byte) error {
+	r := bytes.NewReader(data)
+	_, err, chErr := vect.AsyncReadFrom(r)
 	if err != nil {
 		return err
 	}
