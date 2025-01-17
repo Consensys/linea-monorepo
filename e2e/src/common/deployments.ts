@@ -1,5 +1,8 @@
-import { AbiCoder, BaseContract, ContractFactory, Wallet, ethers } from "ethers";
+import { AbiCoder, AbstractSigner, BaseContract, ContractFactory, Wallet, ethers } from "ethers";
 import { ProxyAdmin__factory, TransparentUpgradeableProxy__factory, ProxyAdmin } from "../typechain";
+import { createTestLogger } from "../config/logger";
+
+const logger = createTestLogger();
 
 export const encodeData = (types: string[], values: unknown[], packed?: boolean) => {
   if (packed) {
@@ -21,7 +24,7 @@ export const encodeLibraryName = (libraryName: string) => {
 
 export const deployContract = async <T extends ContractFactory>(
   contractFactory: T,
-  deployer: Wallet,
+  deployer: AbstractSigner,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args?: any[],
 ): Promise<BaseContract> => {
@@ -56,7 +59,7 @@ export async function deployUpgradableContractWithProxyAdmin<T extends ContractF
   const proxyFactory = new ProxyAdmin__factory(deployer);
   const proxyAdmin = await proxyFactory.connect(deployer).deploy();
   await proxyAdmin.waitForDeployment();
-  console.log(`ProxyAdmin contract deployed at address: ${await proxyAdmin.getAddress()}`);
+  logger.info(`ProxyAdmin contract deployed. address=${await proxyAdmin.getAddress()}`);
 
   const contract = await deployUpgradableContract(
     contractFactory,
@@ -64,6 +67,6 @@ export async function deployUpgradableContractWithProxyAdmin<T extends ContractF
     proxyAdmin,
     getInitializerData(contractFactory.interface, args),
   );
-  console.log(`Contract deployed at address: ${await contract.getAddress()}`);
+  logger.info(`Contract deployed. address=${await contract.getAddress()}`);
   return contract;
 }

@@ -3,16 +3,17 @@
 
 services:
   sequencer:
-    environment:
-      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+    image: consensys/linea-besu-package:devnet-811f30b
     volumes:
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
 
-  linea-besu-sequencer-plugin-downloader:
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.8.0-rc1.1/linea-sequencer-v0.8.0-rc1.1.jar",  "/linea-besu-sequencer" ]
+  l2-node-besu:
+    image: consensys/linea-besu-package:devnet-811f30b
+    volumes:
+      - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
 
   traces-node:
-    command: ['echo', 'forced exit as replaced by traces-node-v2']
+    entrypoint: ['echo', 'forced exit as replaced by traces-node-v2']
 
   traces-api:
     command: ['echo', 'forced exit as replaced by traces-node-v2']
@@ -20,11 +21,9 @@ services:
   traces-node-v2:
     hostname: traces-node-v2
     container_name: traces-node-v2
-    image: consensys/linea-besu:24.9-delivery32
-    profiles: [ "l2", "l2-bc", "debug" ]
+    image: consensys/linea-besu-package:devnet-811f30b
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
-      traces-node-v2-plugin-downloader:
-        condition: service_completed_successfully
       sequencer:
         condition: service_healthy
     ports:
@@ -40,6 +39,7 @@ services:
       retries: 120
     restart: "no"
     environment:
+      JAVA_OPTS: -Xmx1g -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
     entrypoint:
       - /bin/bash
@@ -51,10 +51,8 @@ services:
         --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
     volumes:
       - ./config/traces-node-v2/traces-node-v2-config.toml:/var/lib/besu/traces-node-v2.config.toml:ro
-      - ./config/traces-node-v2/key:/var/lib/besu/key:ro
       - ./config/traces-node-v2/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
-      - ../tmp/traces-node-v2/plugins:/opt/besu/plugins/
       - ../tmp/local/:/data/:rw
     networks:
       linea:
@@ -66,7 +64,7 @@ services:
   prover-v3: # prover compatible with the traces from zkbesu
     container_name: prover-v3
     hostname: prover-v3
-    image: consensys/linea-prover:${PROVER_TAG:-bba9677}
+    image: consensys/linea-prover:${PROVER_TAG:-31389b1}
     platform: linux/amd64
     # to avoid spinning up on CI for now
     profiles: [ "l2" ]
@@ -84,14 +82,6 @@ services:
       linea:
         ipv4_address: 11.11.11.109
 
-  traces-node-v2-plugin-downloader:
-    image: busybox:1.36.1
-    # profiles: ["l2", "l2-bc"] this works locally but breakes on CI, maybe Docker compose version issue
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-tracer/releases/download/v0.8.0-rc3/linea-tracer-v0.8.0-rc3.jar",  "/traces-node-v2" ]
-    volumes:
-      - ./scripts/file-downloader.sh:/file-downloader.sh:ro
-      - ../tmp/traces-node-v2/plugins:/traces-node-v2/
-
   coordinator:
     # ./gradlew :coordinator:app:shadowJar
     # docker build coordinator --build-context=jar=./coordinator/app/build/libs/ -t local/linea-coordinator:latest
@@ -105,11 +95,3 @@ services:
       - ../config/common/traces-limits-v2.toml:/opt/consensys/linea/coordinator/config/traces-limits-v2.toml:ro
       - ../config/coordinator/coordinator-docker-traces-v2-override.config.toml:/opt/consensys/linea/coordinator/config/coordinator-docker-traces-v2-override.config.toml:ro
       - ../tmp/local/:/data/
-
-  zkbesu-shomei:
-    environment:
-      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
-
-  l1-el-node:
-    environment:
-      JAVA_OPTS: -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC

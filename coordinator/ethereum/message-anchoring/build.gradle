@@ -5,9 +5,9 @@ plugins {
 dependencies {
   // TODO: review dependencies
   implementation "io.vertx:vertx-core"
-  implementation project(':jvm-libs:vertx-helper')
-  implementation project(':jvm-libs:future-extensions')
-  implementation project(':jvm-libs:web3j-extensions')
+  implementation project(':jvm-libs:generic:vertx-helper')
+  implementation project(':jvm-libs:generic:extensions:futures')
+  implementation project(':jvm-libs:linea:web3j-extensions')
   implementation project(':coordinator:utilities')
   implementation project(':coordinator:core')
   implementation project(':coordinator:clients:smart-contract-client')
@@ -34,14 +34,12 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
+task integrationTest(type: Test) { test ->
+  description = "Runs integration tests."
+  group = "verification"
+  useJUnitPlatform()
 
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    dependsOn(":localStackComposeUp")
-    dependsOn(rootProject.tasks.compileContracts)
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  dependsOn(":localStackComposeUp")
 }

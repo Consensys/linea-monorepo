@@ -60,7 +60,7 @@ class ProofToFinalizeJsonResponseTest {
       val jsonParser = jsonNode.traverse()
       while (!jsonParser.isClosed) {
         if (jsonParser.nextToken() == JsonToken.FIELD_NAME) {
-          keys.add(jsonParser.currentName)
+          keys.add(jsonParser.currentName())
         }
       }
       return keys

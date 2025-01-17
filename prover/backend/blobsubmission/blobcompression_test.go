@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -270,7 +270,7 @@ func TestKZGWithPoint(t *testing.T) {
 	}
 
 	// Compute all the prover fields
-	snarkHash, err := blob.MiMCChecksumPackedData(blobBytes[:], fr381.Bits-1, blob.NoTerminalSymbol())
+	snarkHash, err := encode.MiMCChecksumPackedData(blobBytes[:], fr381.Bits-1, encode.NoTerminalSymbol())
 	assert.NoError(t, err)
 
 	xUnreduced := evaluationChallenge(snarkHash, blobHash[:])

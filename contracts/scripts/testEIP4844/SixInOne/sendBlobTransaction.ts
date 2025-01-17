@@ -146,7 +146,7 @@ async function main() {
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const wallet = new Wallet(privateKey, provider);
 
-  kzg.loadTrustedSetup(`${__dirname}/../trusted_setup.txt`);
+  kzg.loadTrustedSetup(`${__dirname}/trusted_setup.txt`);
 
   const parentSubmissionData1 = generateParentSubmissionData(
     "0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd",
@@ -209,23 +209,21 @@ async function main() {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapToTuple(blobSubmissionDataItems: BlobSubmissionData[]): any {
   return blobSubmissionDataItems.map((blobSubmissionData) => [
-    [
-      blobSubmissionData.submissionData.finalStateRootHash,
-      blobSubmissionData.submissionData.firstBlockInData,
-      blobSubmissionData.submissionData.finalBlockInData,
-      blobSubmissionData.submissionData.snarkHash,
-    ],
     blobSubmissionData.dataEvaluationClaim,
     blobSubmissionData.kzgCommitment,
     blobSubmissionData.kzgProof,
+    blobSubmissionData.submissionData.finalStateRootHash,
+    blobSubmissionData.submissionData.snarkHash,
   ]);
 }
 
 function encodeCall(submissionData: BlobSubmissionData[]): DataHexString {
+  //submitBlobs((uint256,bytes,bytes,bytes32,bytes32)[],bytes32,bytes32)": "99467a35"
+
   const encodedCall = ethers.concat([
-    "0x42fbe842",
+    "0x99467a35",
     ethers.AbiCoder.defaultAbiCoder().encode(
-      ["tuple(tuple(bytes32,uint256,uint256,bytes32),uint256,bytes,bytes)[]", "bytes32", "bytes32"],
+      ["tuple(uint256,bytes,bytes,bytes32,bytes32)[]", "bytes32", "bytes32"],
       [
         mapToTuple(submissionData),
         submissionData[0].parentSubmissionData.shnarf,
@@ -354,9 +352,10 @@ async function sendProof(
   ];
 
   console.log(proofData);
-
+  //finalizeBlocks(bytes,uint256,(bytes32,uint256,(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,bytes32[],bytes))": "5603c65f"
+  //finalizeBlocks(bytes,uint256,(bytes32,uint256,(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,bytes32[],bytes))": "5603c65f"
   const encodedCall = ethers.concat([
-    "0x227be0dc",
+    "0x5603c65f",
     ethers.AbiCoder.defaultAbiCoder().encode(
       [
         "bytes",

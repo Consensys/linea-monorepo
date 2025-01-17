@@ -1,7 +1,7 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
+import build.linea.domain.BlockInterval
 import net.consensys.zkevm.coordinator.clients.ProverClient
-import net.consensys.zkevm.domain.BlockInterval
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class StartBlockNumberBasedSwitchPredicate<ProofRequest>(

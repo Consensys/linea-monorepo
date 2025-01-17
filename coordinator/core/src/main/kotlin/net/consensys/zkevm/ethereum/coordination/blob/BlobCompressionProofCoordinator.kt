@@ -1,5 +1,8 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
+import build.linea.domain.BlockInterval
+import build.linea.domain.BlockIntervals
+import build.linea.domain.toBlockIntervalsString
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
@@ -10,11 +13,7 @@ import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.BlobStatus
-import net.consensys.zkevm.domain.BlockInterval
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ConflationCalculationResult
-import net.consensys.zkevm.domain.toBlockIntervalsString
 import net.consensys.zkevm.ethereum.coordination.conflation.BlobCreationHandler
 import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
@@ -141,7 +140,6 @@ class BlobCompressionProofCoordinator(
           startBlockTime = blobStartBlockTime,
           endBlockTime = blobEndBlockTime,
           batchesCount = conflations.size.toUInt(),
-          status = BlobStatus.COMPRESSION_PROVEN,
           expectedShnarf = expectedShnarfResult.expectedShnarf,
           blobCompressionProof = blobCompressionProof
         )

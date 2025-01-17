@@ -20,11 +20,11 @@ shadowJar {
   }
   manifest {
     attributes(
-      'Specification-Title': archiveBaseName,
-      'Specification-Version': project.version,
-      'Implementation-Title': archiveBaseName,
-      'Implementation-Version': project.version,
-    )
+        'Specification-Title': archiveBaseName,
+        'Specification-Version': project.version,
+        'Implementation-Title': archiveBaseName,
+        'Implementation-Version': project.version,
+        )
   }
 }
 
@@ -32,31 +32,31 @@ dependencies {
   annotationProcessor 'com.google.auto.service:auto-service:1.1.1'
   compileOnly 'com.google.auto.service:auto-service:1.1.1'
   compileOnly 'com.google.auto.service:auto-service-annotations:1.1.1'
-  compileOnly 'io.consensys.linea-besu:plugin-api:24.7-develop-c0029e6'
+  compileOnly 'io.consensys.linea-besu:plugin-api:24.11-delivery39'
   compileOnly 'info.picocli:picocli:4.7.6'
   compileOnly 'io.vertx:vertx-core'
 
-  implementation project(":jvm-libs:kotlin-extensions")
-  implementation project(':jvm-libs:core:long-running-service')
-  implementation project(':jvm-libs:future-extensions')
-  implementation project(':jvm-libs:web3j-extensions')
-  implementation 'build.linea:l1-rollup-contract-client:0.0.1'
+  implementation project(":jvm-libs:generic:extensions:kotlin")
+  implementation project(':jvm-libs:linea:core:long-running-service')
+  implementation project(':jvm-libs:generic:extensions:futures')
+  implementation project(':jvm-libs:linea:web3j-extensions')
+  implementation project(':jvm-libs:linea:clients:linea-l1-contract-client')
   implementation ("org.web3j:core:${libs.versions.web3j.get()}") {
     exclude group: 'org.slf4j', module: 'slf4j-nop'
   }
-  testImplementation 'io.consensys.linea-besu:plugin-api:24.7-develop-c0029e6'
+  testImplementation 'io.consensys.linea-besu:plugin-api:24.11-delivery39'
   testImplementation 'info.picocli:picocli:4.7.6'
   testImplementation 'io.vertx:vertx-core'
-  testImplementation "org.hyperledger.besu:besu-datatypes:${libs.versions.besu.get()}"
 }
 
 tasks.register('copyShadowJarToLocalBesu', Copy) {
   def jarFileSuffix = "${project.version}" != 'unspecified' ? "${project.version}" : "all"
-  def jarFile = project.getLayout().buildDirectory.dir("libs").get()
-    .asFileTree
-    .filter { it.name.endsWith("-${jarFileSuffix}.jar") }
-    .singleFile
-
-  from jarFile
-  into file("$rootDir/tmp/linea-besu-sequencer/plugins")
+  def jarFiles = project.getLayout().buildDirectory.dir("libs").get()
+      .asFileTree
+      .filter { it.name.endsWith("-${jarFileSuffix}.jar") }
+      .files
+  if (jarFiles.size() > 0) {
+    from jarFiles[0]
+    into file("$rootDir/tmp/linea-besu-sequencer/plugins")
+  }
 }

@@ -14,14 +14,10 @@ dependencies {
     exclude group: "org.slf4j", module: "slf4j-nop"
   }
   implementation(project(":coordinator:clients:smart-contract-client"))
-  implementation(project(":jvm-libs:future-extensions"))
+  implementation(project(":jvm-libs:generic:extensions:futures"))
 
   testImplementation(project(":coordinator:ethereum:test-utils"))
-  testImplementation(project(":jvm-libs:web3j-extensions"))
-  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation(project(":jvm-libs:linea:web3j-extensions"))
+  testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
   testImplementation("io.vertx:vertx-junit5")
-}
-
-test {
-  useJUnitPlatform()
 }

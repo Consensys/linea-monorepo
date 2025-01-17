@@ -24,8 +24,8 @@ contract TestLineaRollup is LineaRollup {
     return _calculateY(_data, _x);
   }
 
-  function setupParentShnarf(bytes32 _shnarf, uint256 _finalBlockNumber) external {
-    shnarfFinalBlockNumbers[_shnarf] = _finalBlockNumber;
+  function setupParentShnarf(bytes32 _shnarf) external {
+    blobShnarfExists[_shnarf] = 1;
   }
 
   function setupParentDataShnarf(bytes32 _parentDataHash, bytes32 _shnarf) external {
@@ -49,6 +49,10 @@ contract TestLineaRollup is LineaRollup {
   }
 
   function setShnarfFinalBlockNumber(bytes32 _shnarf, uint256 _finalBlockNumber) external {
-    shnarfFinalBlockNumbers[_shnarf] = _finalBlockNumber;
+    blobShnarfExists[_shnarf] = _finalBlockNumber;
+  }
+
+  function setLastFinalizedState(uint256 _messageNumber, bytes32 _rollingHash, uint256 _timestamp) external {
+    currentFinalizedState = _computeLastFinalizedState(_messageNumber, _rollingHash, _timestamp);
   }
 }

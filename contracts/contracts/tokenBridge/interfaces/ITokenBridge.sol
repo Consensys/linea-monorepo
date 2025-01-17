@@ -5,7 +5,7 @@ import { IPauseManager } from "../../interfaces/IPauseManager.sol";
 import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
 
 /**
- * @title Interface declaring Canonical Token Bridge functions, events and errors.
+ * @title Interface declaring Canonical Token Bridge struct, functions, events and errors.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
@@ -34,49 +34,200 @@ interface ITokenBridge {
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
   }
 
+  /**
+   * @notice Emitted when the token address is reserved.
+   * @param token The indexed token address.
+   */
   event TokenReserved(address indexed token);
+
+  /**
+   * @notice Emitted when the token address reservation is removed.
+   * @param token The indexed token address.
+   */
   event ReservationRemoved(address indexed token);
+
+  /**
+   * @notice Emitted when the custom token address is set.
+   * @param nativeToken The indexed nativeToken token address.
+   * @param customContract The indexed custom contract address.
+   * @param setBy The indexed address of who set the custom contract.
+   */
   event CustomContractSet(address indexed nativeToken, address indexed customContract, address indexed setBy);
-  /// @dev DEPRECATED in favor of BridgingInitiatedV2.
+
+  /**
+   * @notice Emitted when token bridging is initiated.
+   * @dev DEPRECATED in favor of BridgingInitiatedV2.
+   * @param sender The indexed sender address.
+   * @param recipient The recipient address.
+   * @param token The indexed token address.
+   * @param amount The indexed token amount.
+   */
   event BridgingInitiated(address indexed sender, address recipient, address indexed token, uint256 indexed amount);
+
+  /**
+   * @notice Emitted when token bridging is initiated.
+   * @param sender The indexed sender address.
+   * @param recipient The indexed recipient address.
+   * @param token The indexed token address.
+   * @param amount The token amount.
+   */
   event BridgingInitiatedV2(address indexed sender, address indexed recipient, address indexed token, uint256 amount);
-  /// @dev DEPRECATED in favor of BridgingFinalizedV2.
+
+  /**
+   * @notice Emitted when token bridging is finalized.
+   * @dev DEPRECATED in favor of BridgingFinalizedV2.
+   * @param nativeToken The indexed native token address.
+   * @param bridgedToken The indexed bridged token address.
+   * @param amount The indexed token amount.
+   * @param recipient The recipient address.
+   */
   event BridgingFinalized(
     address indexed nativeToken,
     address indexed bridgedToken,
     uint256 indexed amount,
     address recipient
   );
+
+  /**
+   * @notice Emitted when token bridging is finalized.
+   * @param nativeToken The indexed native token address.
+   * @param bridgedToken The indexed bridged token address.
+   * @param amount The token amount.
+   * @param recipient The indexed recipient address.
+   */
   event BridgingFinalizedV2(
     address indexed nativeToken,
     address indexed bridgedToken,
     uint256 amount,
     address indexed recipient
   );
+
+  /**
+   * @notice Emitted when a new token is seen being bridged on the origin chain for the first time.
+   * @param token The indexed token address.
+   */
   event NewToken(address indexed token);
+
+  /**
+   * @notice Emitted when a new token is deployed.
+   * @param bridgedToken The indexed bridged token address.
+   * @param nativeToken The indexed native token address.
+   */
   event NewTokenDeployed(address indexed bridgedToken, address indexed nativeToken);
+
+  /**
+   * @notice Emitted when the remote token bridge is set.
+   * @param remoteTokenBridge The indexed remote token bridge address.
+   * @param setBy The indexed address that set the remote token bridge.
+   */
   event RemoteTokenBridgeSet(address indexed remoteTokenBridge, address indexed setBy);
+
+  /**
+   * @notice Emitted when the token is set as deployed.
+   * @dev This can be triggered by anyone calling confirmDeployment on the alternate chain.
+   * @param token The indexed token address.
+   */
   event TokenDeployed(address indexed token);
+
+  /**
+   * @notice Emitted when the token deployment is confirmed.
+   * @dev This can be triggered by anyone provided there is correctly mapped token data.
+   * @param tokens The token address list.
+   * @param confirmedBy The indexed address confirming deployment.
+   */
   event DeploymentConfirmed(address[] tokens, address indexed confirmedBy);
+
+  /**
+   * @notice Emitted when the message service address is set.
+   * @param newMessageService The indexed new message service address.
+   * @param oldMessageService The indexed old message service address.
+   * @param setBy The indexed address setting the new message service address.
+   */
   event MessageServiceUpdated(
     address indexed newMessageService,
     address indexed oldMessageService,
     address indexed setBy
   );
 
+  /**
+   * @dev Thrown when attempting to bridge a reserved token.
+   */
   error ReservedToken(address token);
+
+  /**
+   * @dev Thrown when the remote token bridge is already set.
+   */
   error RemoteTokenBridgeAlreadySet(address remoteTokenBridge);
+
+  /**
+   * @dev Thrown when attempting to reserve an already bridged token.
+   */
   error AlreadyBridgedToken(address token);
+
+  /**
+   * @dev Thrown when the permit data is invalid.
+   */
   error InvalidPermitData(bytes4 permitData, bytes4 permitSelector);
+
+  /**
+   * @dev Thrown when the permit is not from the sender.
+   */
   error PermitNotFromSender(address owner);
+
+  /**
+   * @dev Thrown when the permit does not grant spending to the bridge.
+   */
   error PermitNotAllowingBridge(address spender);
+
+  /**
+   * @dev Thrown when the amount being bridged is zero.
+   */
   error ZeroAmountNotAllowed(uint256 amount);
+
+  /**
+   * @dev Thrown when trying to unreserve a non-reserved token.
+   */
   error NotReserved(address token);
+
+  /**
+   * @dev Thrown when trying to confirm deployment of a non-deployed token.
+   */
   error TokenNotDeployed(address token);
+
+  /**
+   * @dev Thrown when trying to set a custom contract on a bridged token.
+   */
   error AlreadyBrigedToNativeTokenSet(address token);
+
+  /**
+   * @dev Thrown when trying to set a custom contract on an already set token.
+   */
   error NativeToBridgedTokenAlreadySet(address token);
+
+  /**
+   * @dev Thrown when trying to set a token that is already either native, deployed or reserved.
+   */
   error StatusAddressNotAllowed(address token);
+
+  /**
+   * @dev Thrown when the decimals for a token cannot be determined.
+   */
   error DecimalsAreUnknown(address token);
+
+  /**
+   * @dev Thrown when the token list is empty.
+   */
+  error TokenListEmpty();
+
+  /**
+   * @dev Thrown when a chainId provided during initialization is zero.
+   */
+  error ZeroChainIdNotAllowed();
+
+  /**
+   * @dev Thrown when sourceChainId is the same as targetChainId during initialization.
+   */
+  error SourceChainSameAsTargetChain();
 
   /**
    * @notice Similar to `bridgeToken` function but allows to pass additional

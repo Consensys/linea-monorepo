@@ -4,25 +4,30 @@ plugins {
 
 configurations.configureEach {
   exclude group: "org.rocksdb", module: "rocksdbjni"
-  exclude group: "it.unimi.dsi", module: "fastutil"
   exclude group: "org.hyperledger.besu", module: "bls12-381"
   exclude group: "org.hyperledger.besu", module: "secp256r1"
 }
 
+configurations {
+  runtimeClasspath.exclude group: "it.unimi.dsi", module: "fastutil"
+  runtimeClasspath.exclude group: "org.hyperledger.besu", module: "gnark"
+}
+
 dependencies {
-  implementation project(':jvm-libs:json-rpc')
-  implementation project(':jvm-libs:http-rest')
-  implementation project(':jvm-libs:vertx-helper')
-  implementation project(':jvm-libs:future-extensions')
-  implementation project(':jvm-libs:web3j-extensions')
-  implementation project(':jvm-libs:core:metrics')
-  implementation project(':jvm-libs:metrics:micrometer')
-  implementation project(':jvm-libs:core:domain-models')
+  implementation project(':jvm-libs:generic:json-rpc')
+  implementation project(':jvm-libs:generic:http-rest')
+  implementation project(':jvm-libs:generic:vertx-helper')
+  implementation project(':jvm-libs:generic:extensions:futures')
+  implementation project(':jvm-libs:generic:persistence:db')
+  implementation project(':jvm-libs:linea:web3j-extensions')
+  implementation project(':jvm-libs:linea:core:metrics')
+  implementation project(':jvm-libs:linea:metrics:micrometer')
+  implementation project(':jvm-libs:linea:core:domain-models')
+  implementation project(':jvm-libs:linea:clients:linea-state-manager')
   implementation project(':coordinator:utilities')
   implementation project(':coordinator:core')
   implementation project(':coordinator:clients:shomei-client')
   implementation project(':coordinator:clients:traces-generator-api-client')
-  implementation project(':coordinator:clients:type2-state-manager-client')
   implementation project(':coordinator:clients:prover-client:file-based-client')
   implementation project(':coordinator:clients:smart-contract-client')
   implementation project(':coordinator:ethereum:finalization-monitor')
@@ -31,13 +36,11 @@ dependencies {
   implementation project(':coordinator:ethereum:blob-submitter')
   implementation project(':coordinator:ethereum:message-anchoring')
   implementation project(':coordinator:clients:web3signer-client')
-  implementation project(':coordinator:persistence:db')
   implementation project(':coordinator:persistence:blob')
   implementation project(':coordinator:persistence:aggregation')
   implementation project(':coordinator:persistence:batch')
   implementation project(':coordinator:persistence:feehistory')
-  implementation project(":jvm-libs:teku-execution-client")
-  implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
+  implementation project(':coordinator:persistence:db-common')
 
   implementation project(':coordinator:ethereum:gas-pricing:static-cap')
   implementation project(':coordinator:ethereum:gas-pricing:dynamic-cap')
@@ -61,6 +64,9 @@ dependencies {
   implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
   implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
   testImplementation "org.apache.logging.log4j:log4j-slf4j2-impl:${libs.versions.log4j.get()}"
+  testImplementation project(':jvm-libs:generic:serialization:jackson')
+  testImplementation testFixtures(project(':jvm-libs:linea:core:domain-models'))
+  testImplementation testFixtures(project(':jvm-libs:generic:json-rpc'))
   testImplementation project(':coordinator:ethereum:test-utils')
   testImplementation "io.vertx:vertx-junit5"
 }
@@ -73,10 +79,10 @@ jar {
   archiveBaseName = 'coordinator'
   manifest {
     attributes(
-      'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
-      'Main-Class': 'net.consensys.zkevm.coordinator.app.CoordinatorAppMain',
-      'Multi-Release': 'true'
-    )
+        'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
+        'Main-Class': 'net.consensys.zkevm.coordinator.app.CoordinatorAppMain',
+        'Multi-Release': 'true'
+        )
   }
 }
 
@@ -86,13 +92,45 @@ distributions {
   }
 }
 
+tasks.distTar {
+  // we don't need the tar distribution
+  onlyIf { false }
+}
+
 run {
   workingDir = rootProject.projectDir
   jvmArgs = [
     "-Dvertx.configurationFile=config/coordinator/vertx-options.json",
     "-Dlog4j2.configurationFile=config/coordinator/log4j2-dev.xml"
   ] + System.properties.entrySet()
-    .findAll { it.key.startsWith("config") }
-    .collect { "-D${it.key}=${it.value}" }
-  args = ["--traces-limits", "config/common/traces-limits-v1.toml", "--smart-contract-errors", "config/common/smart-contract-errors.toml", "--gas-price-cap-time-of-day-multipliers", "config/common/gas-price-cap-time-of-day-multipliers.toml", "config/coordinator/coordinator-docker.config.toml", "config/coordinator/coordinator-local-dev.config.overrides.toml"]
+  .findAll { it.key.startsWith("config") }
+  .collect { "-D${it.key}=${it.value}" }
+  args = [
+    "--traces-limits",
+    "config/common/traces-limits-v1.toml",
+    "--smart-contract-errors",
+    "config/common/smart-contract-errors.toml",
+    "--gas-price-cap-time-of-day-multipliers",
+    "config/common/gas-price-cap-time-of-day-multipliers.toml",
+    "config/coordinator/coordinator-docker.config.toml",
+    "config/coordinator/coordinator-local-dev.config.overrides.toml"
+  ]
+}
+
+test {
+  inputs.dir("$rootDir/config/coordinator/")
+}
+
+task integrationTestAllNeeded {
+  description = "Runs integration tests of all dependencies of coordinator:app"
+  group = "verification"
+
+  def projectDependencies = configurations.implementation.getAllDependencies().withType(ProjectDependency)
+  def dependentProjects = projectDependencies.dependencyProject
+  dependentProjects.each { dependency ->
+    if (dependency.project.tasks.findByName("integrationTest")) {
+      def integrationTestTask = "${dependency.path}:integrationTest"
+      dependsOn integrationTestTask
+    }
+  }
 }

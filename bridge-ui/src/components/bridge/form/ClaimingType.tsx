@@ -9,10 +9,8 @@ import ManualClaimModal from "../modals/ManualClaimModal";
 
 export function ClaimingType() {
   const { handleShow, handleClose } = useContext(ModalContext);
-  const { token, networkLayer } = useChainStore((state) => ({
-    token: state.token,
-    networkLayer: state.networkLayer,
-  }));
+  const token = useChainStore((state) => state.token);
+  const networkLayer = useChainStore((state) => state.networkLayer);
 
   const { isConnected } = useAccount();
   const { setValue, register, watch } = useFormContext();
@@ -57,7 +55,7 @@ export function ClaimingType() {
   }, [isManualConfirmed, setValue]);
 
   return (
-    <div className="form-control grid grid-flow-row gap-2 rounded-lg bg-[#2D2D2D] p-2 sm:grid-flow-col sm:rounded-full">
+    <div className="form-control grid grid-flow-row gap-2 rounded-lg bg-backgroundColor p-2 sm:grid-flow-col sm:rounded-full">
       <ClaimingTypeOption
         id="claim-auto"
         value="auto"

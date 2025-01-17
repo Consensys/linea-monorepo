@@ -8,6 +8,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.function.Consumer
 
 class L1ShnarfBasedAlreadySubmittedBlobsFilterTest {
   @Test
@@ -26,21 +27,27 @@ class L1ShnarfBasedAlreadySubmittedBlobsFilterTest {
     val blobs = listOf(blob1, blob2, blob3, blob4, blob5, blob6, blob7)
 
     val l1SmcClient = mock<LineaRollupSmartContractClient>()
-    whenever(l1SmcClient.findBlobFinalBlockNumberByShnarf(any(), any()))
+    whenever(l1SmcClient.isBlobShnarfPresent(any(), any()))
       .thenAnswer { invocation ->
         val shnarfQueried = invocation.getArgument<ByteArray>(1)
         val endBlockNumber = when {
-          shnarfQueried.contentEquals(blob3.expectedShnarf) -> blob3.endBlockNumber
-          shnarfQueried.contentEquals(blob5.expectedShnarf) -> blob5.endBlockNumber
-          else -> null
+          shnarfQueried.contentEquals(blob3.expectedShnarf) -> true
+          shnarfQueried.contentEquals(blob5.expectedShnarf) -> true
+          else -> false
         }
         SafeFuture.completedFuture(endBlockNumber)
       }
 
-    val blobsFilter = L1ShnarfBasedAlreadySubmittedBlobsFilter(l1SmcClient)
+    var acceptedBlob = 0UL
+    val acceptedBlobEndBlockNumberConsumer = Consumer<ULong> { acceptedBlob = it }
+    val blobsFilter = L1ShnarfBasedAlreadySubmittedBlobsFilter(
+      lineaRollup = l1SmcClient,
+      acceptedBlobEndBlockNumberConsumer = acceptedBlobEndBlockNumberConsumer
+    )
 
     val filteredBlobs = blobsFilter.invoke(blobs).get()
 
     assertThat(filteredBlobs).isEqualTo(listOf(blob6, blob7))
+    assertThat(acceptedBlob).isEqualTo(blob5.endBlockNumber)
   }
 }

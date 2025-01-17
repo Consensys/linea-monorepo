@@ -1,0 +1,10 @@
+{
+  "metricsOptions": {
+    "enabled": true,
+    "jvmMetricsEnabled": true,
+    "prometheusOptions": {
+      "publishQuantiles": true,
+      "enabled": true
+    }
+  }
+}

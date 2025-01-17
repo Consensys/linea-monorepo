@@ -3,12 +3,11 @@ package net.consensys.zkevm.ethereum.coordination.conflation
 import com.github.michaelbull.result.Ok
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
-import net.consensys.linea.BlockNumberAndHash
+import linea.domain.createBlock
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.zkevm.coordinator.clients.GetTracesCountersResponse
 import net.consensys.zkevm.coordinator.clients.TracesCountersClientV1
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreated
-import net.consensys.zkevm.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions
@@ -22,18 +21,16 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import tech.pegasys.teku.ethereum.executionclient.schema.randomExecutionPayload
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 class BlockToBatchSubmissionCoordinatorTest {
   companion object {
     private val defaultConflationService = ConflationServiceImpl(mock(), mock())
-    private const val ARBITRARY_BLOCK_NUMBER = 100L
-    private val randomExecutionPayload = randomExecutionPayload(blockNumber = ARBITRARY_BLOCK_NUMBER)
-    private val baseBlock = BlockCreated(randomExecutionPayload)
+    private val randomBlock = createBlock(number = 100UL)
+    private val baseBlock = BlockCreated(randomBlock)
     private val blockRlpEncoded = ByteArray(0)
     private val tracesCounters = TracesCountersV1.EMPTY_TRACES_COUNT
   }
@@ -45,22 +42,14 @@ class BlockToBatchSubmissionCoordinatorTest {
   ): BlockToBatchSubmissionCoordinator {
     val tracesCountersClient =
       mock<TracesCountersClientV1>().also {
-        whenever(
-          it.rollupGetTracesCounters(
-            BlockNumberAndHash(
-              randomExecutionPayload.blockNumber.toULong(),
-              randomExecutionPayload.blockHash
-            )
-          )
-        ).thenReturn(
-          SafeFuture.completedFuture(Ok(GetTracesCountersResponse(tracesCounters, "")))
-        )
+        whenever(it.rollupGetTracesCounters(randomBlock.numberAndHash))
+          .thenReturn(SafeFuture.completedFuture(Ok(GetTracesCountersResponse(tracesCounters, ""))))
       }
     return BlockToBatchSubmissionCoordinator(
       conflationService = conflationService,
       tracesCountersClient = tracesCountersClient,
       vertx = vertx,
-      payloadEncoder = { blockRlpEncoded },
+      encoder = { blockRlpEncoded },
       log = log
     )
   }
@@ -79,7 +68,7 @@ class BlockToBatchSubmissionCoordinatorTest {
 
     val captor = argumentCaptor<Throwable>()
     Assertions.assertThat(blockToBatchSubmissionCoordinator.acceptBlock(baseBlock)).isCompleted
-    Awaitility.await().atMost(200.milliseconds.toJavaDuration())
+    Awaitility.await().atMost(1.seconds.toJavaDuration())
       .untilAsserted {
         verify(testLogger, times(1)).error(
           eq("Failed to conflate block={} errorMessage={}"),

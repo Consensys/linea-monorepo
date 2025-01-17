@@ -1,23 +1,22 @@
 plugins {
   id "net.consensys.zkevm.kotlin-library-conventions"
   id "net.consensys.zkevm.linea-contracts-helper"
-  id 'java-test-fixtures'
 }
 
 dependencies {
   api(project(":coordinator:core"))
-  implementation(project(":coordinator:persistence:db"))
-  implementation(project(":jvm-libs:core:metrics"))
+  implementation(project(":jvm-libs:generic:persistence:db"))
+  implementation(project(":jvm-libs:linea:core:metrics"))
   implementation(project(":coordinator:clients:prover-client:file-based-client")) {
     because "ProverResponseIndex is a part of it"
   }
 
+  testImplementation(project(":coordinator:persistence:db-common"))
   testImplementation(testFixtures(project(":coordinator:core")))
-  testImplementation(testFixtures(project(":coordinator:persistence:db")))
-  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation(testFixtures(project(":coordinator:persistence:db-common")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
   testImplementation("io.vertx:vertx-junit5")
-
-  testFixturesImplementation(testFixtures(project(":coordinator:persistence:db")))
 }
 
 sourceSets {
@@ -31,16 +30,13 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
+task integrationTest(type: Test) { test ->
+  description = "Runs integration tests."
+  group = "verification"
+  useJUnitPlatform()
 
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
+  dependsOn(":localStackPostgresDbOnlyComposeUp")
 }
-
-

@@ -8,17 +8,14 @@ import kotlinx.datetime.Clock
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.setFirstByteToZero
 import net.consensys.trimToMillisecondPrecision
 import net.consensys.trimToSecondPrecision
-import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobStatus
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.createBlobRecord
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
-import net.consensys.zkevm.persistence.test.CleanDbTestSuiteParallel
+import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -32,6 +29,10 @@ import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+  }
+
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-blobs-dao")
   private val maxBlobsToReturn = 6u
   private fun blobsContentQuery(): PreparedQuery<RowSet<Row>> =
@@ -71,7 +72,9 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
       .isEqualTo(blobRecord.startBlockNumber.toLong())
     assertThat(newlyInsertedRow.getLong("end_block_number"))
       .isEqualTo(blobRecord.endBlockNumber.toLong())
-    assertThat(newlyInsertedRow.getInteger("status")).isEqualTo(BlobsPostgresDao.blobStatusToDbValue(blobRecord.status))
+    assertThat(newlyInsertedRow.getInteger("status")).isEqualTo(
+      BlobsPostgresDao.blobStatusToDbValue(BlobStatus.COMPRESSION_PROVEN)
+    )
 
     return dbContent
   }
@@ -81,8 +84,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val blobRecord1 = createBlobRecord(
       startBlockNumber = expectedStartBlock,
       endBlockNumber = expectedEndBlock,
-      startBlockTime = expectedStartBlockTime,
-      status = BlobStatus.COMPRESSION_PROVING
+      startBlockTime = expectedStartBlockTime
     )
     fakeClock.setTimeTo(Clock.System.now())
 
@@ -92,8 +94,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val blobRecord2 = createBlobRecord(
       startBlockNumber = expectedEndBlock + 1UL,
       endBlockNumber = expectedEndBlock + 100UL,
-      startBlockTime = expectedStartBlockTime,
-      status = BlobStatus.COMPRESSION_PROVING
+      startBlockTime = expectedStartBlockTime
     )
     fakeClock.advanceBy(1.seconds)
 
@@ -106,8 +107,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val blobRecord1 = createBlobRecord(
       startBlockNumber = expectedStartBlock,
       endBlockNumber = expectedEndBlock,
-      startBlockTime = expectedStartBlockTime,
-      status = BlobStatus.COMPRESSION_PROVING
+      startBlockTime = expectedStartBlockTime
     )
 
     val dbContent1 =
@@ -267,85 +267,6 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   @Test
-  fun `updateBlobAsProven updates the target record correctly`() {
-    val blobRecord1 = createBlobRecord(
-      startBlockNumber = 1UL,
-      endBlockNumber = 40UL,
-      startBlockTime = expectedStartBlockTime
-    )
-    val blobRecord2 = createBlobRecord(
-      startBlockNumber = 41UL,
-      endBlockNumber = 60UL,
-      blobHash = ByteArray(32),
-      status = BlobStatus.COMPRESSION_PROVING,
-      shnarf = expectedShnarf,
-      blobCompressionProof = null,
-      startBlockTime = expectedStartBlockTime
-    )
-    val blobRecord3 = createBlobRecord(
-      startBlockNumber = 61UL,
-      endBlockNumber = 100UL,
-      startBlockTime = expectedStartBlockTime
-    )
-    val expectedBlobHash = Random.nextBytes(32).setFirstByteToZero()
-    val expectedCompressionProof = BlobCompressionProof(
-      compressedData = Random.nextBytes(32).setFirstByteToZero(),
-      conflationOrder = BlockIntervals(41U, listOf(60U)),
-      prevShnarf = Random.nextBytes(32),
-      parentStateRootHash = Random.nextBytes(32).setFirstByteToZero(),
-      finalStateRootHash = Random.nextBytes(32).setFirstByteToZero(),
-      parentDataHash = Random.nextBytes(32).setFirstByteToZero(),
-      dataHash = expectedBlobHash,
-      snarkHash = Random.nextBytes(32),
-      expectedX = Random.nextBytes(32),
-      expectedY = Random.nextBytes(32),
-      expectedShnarf = expectedShnarf,
-      decompressionProof = Random.nextBytes(512),
-      proverVersion = "mock-0.0.0",
-      verifierID = 6789,
-      commitment = ByteArray(0),
-      kzgProofContract = ByteArray(0),
-      kzgProofSidecar = ByteArray(0)
-    )
-
-    val blobRecord2Expected = createBlobRecord(
-      41UL,
-      60UL,
-      status = BlobStatus.COMPRESSION_PROVEN,
-      shnarf = expectedShnarf,
-      startBlockTime = expectedStartBlockTime,
-      blobHash = expectedBlobHash,
-      blobCompressionProof = expectedCompressionProof
-    )
-    val insertedBlobs = listOf(
-      blobRecord1,
-      blobRecord2,
-      blobRecord3
-    )
-    val expectedBlobs = listOf(
-      blobRecord1,
-      blobRecord2Expected,
-      blobRecord3
-    )
-
-    insertedBlobs.forEach { blobsPostgresDao.saveNewBlob(it).get() }
-    blobsPostgresDao.updateBlob(
-      blobRecord2.startBlockNumber,
-      blobRecord2.endBlockNumber,
-      BlobStatus.COMPRESSION_PROVEN,
-      blobRecord2Expected.blobCompressionProof!!
-    ).get()
-
-    val actualBlobs =
-      blobsPostgresDao
-        .getConsecutiveBlobsFromBlockNumber(
-          expectedBlobs.first().startBlockNumber,
-          blobRecord3.endBlockTime.plus(1.seconds)
-        ).get()
-    assertThat(actualBlobs).hasSameElementsAs(expectedBlobs)
-  }
-
-  @Test
   fun `deleteBlobsUpToEndBlockNumber deletes the target record correctly`() {
     val blobRecord1 = createBlobRecord(
       startBlockNumber = 1UL,
@@ -445,8 +366,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val blobRecord7 = createBlobRecord(
       startBlockNumber = 157UL,
       endBlockNumber = 189UL,
-      startBlockTime = expectedStartBlockTime,
-      status = BlobStatus.COMPRESSION_PROVING
+      startBlockTime = expectedStartBlockTime
     )
     val deletedBlobs = listOf(
       blobRecord4,
@@ -475,8 +395,6 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     assertThat(existedBlobRecords).hasSameElementsAs(expectedBlobs)
   }
-
-  private fun saveBlob(blobRecord: BlobRecord) = saveBlobs(listOf(blobRecord))
 
   private fun saveBlobs(blobRecords: List<BlobRecord>) {
     SafeFuture.collectAll(blobRecords.map(blobsPostgresDao::saveNewBlob).stream()).get()

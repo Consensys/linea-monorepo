@@ -22,9 +22,9 @@ jobs:
       all-tools: ${{ steps.filter.outputs['all-tools'] }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Filter commit changes
-        uses: dorny/paths-filter@v2
+        uses: dorny/paths-filter@v3
         id: filter
         with:
           base: ${{ github.ref }}
@@ -50,10 +50,7 @@ jobs:
         uses: ./.github/actions/check-image-tags-exist
         with:
           last_commit_tag: ${{ needs.store_image_name_and_tags.outputs.last_commit_tag }}
-          common_ancestor_tag: ${{ needs.store_image_name_and_tags.outputs.common_ancestor_tag }}
           image_name: consensys/linea-alltools
-          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   all-tools-tag-only:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
@@ -71,12 +68,9 @@ jobs:
         with:
           commit_tag: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
           last_commit_tag: ${{ needs.store_image_name_and_tags.outputs.last_commit_tag }}
-          common_ancestor_tag: ${{ needs.store_image_name_and_tags.outputs.common_ancestor_tag }}
           develop_tag: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
-          untested_tag_suffix: ${{ needs.store_image_name_and_tags.outputs.untested_tag_suffix }}
           image_name: consensys/linea-alltools
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists }}
-          common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -91,7 +85,7 @@ jobs:
     name: All tools build and push
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ssh-key: ${{ secrets.SELF_GITHUB_SSH_KEY }}
           submodules: true

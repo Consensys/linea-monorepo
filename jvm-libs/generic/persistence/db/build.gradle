@@ -1,0 +1,28 @@
+plugins {
+  id "net.consensys.zkevm.kotlin-library-conventions"
+  id 'java-test-fixtures'
+}
+
+description = "Vertx + Postgres backed persistence utilities"
+
+dependencies {
+  implementation(project(":jvm-libs:generic:extensions:futures"))
+  implementation(project(":jvm-libs:generic:extensions:kotlin"))
+  api("io.vertx:vertx-pg-client:${libs.versions.vertx.get()}")
+  api("com.ongres.scram:common:2.1") {
+    because("Vertx pg client fails without it")
+  }
+  api("com.ongres.scram:client:2.1") {
+    because("Vertx pg client fails without it")
+  }
+  api("org.postgresql:postgresql:42.6.0")
+  api("org.flywaydb:flyway-core:8.4.3")
+  api("org.slf4j:slf4j-api:1.7.30") {
+    because("Flyway DB and other dependencies use SLF4J")
+  }
+
+  testImplementation testFixtures(project(':jvm-libs:generic:extensions:kotlin'))
+
+  testFixturesImplementation(platform("org.junit:junit-bom:${libs.versions.junit.get()}"))
+  testFixturesImplementation("io.vertx:vertx-junit5:${libs.versions.vertx.get()}")
+}

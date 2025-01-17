@@ -1,11 +1,20 @@
 import * as fs from "fs";
 import assert from "assert";
-import { BaseContract, BlockTag, TransactionReceipt, Wallet, ethers } from "ethers";
+import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
-import { L2MessageService, LineaRollup } from "../typechain";
-import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
+import { L2MessageService, TokenBridge, LineaRollupV6 } from "../typechain";
+import {
+  PayableOverrides,
+  TypedContractEvent,
+  TypedDeferredTopicFilter,
+  TypedEventLog,
+  TypedContractMethod,
+} from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
+import { createTestLogger } from "../config/logger";
+
+const logger = createTestLogger();
 
 export function etherToWei(amount: string): bigint {
   return ethers.parseEther(amount.toString());
@@ -72,6 +81,71 @@ export class RollupGetZkEVMBlockNumberClient {
   }
 }
 
+export class TransactionExclusionClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async getTransactionExclusionStatusV1(txHash: string): Promise<any> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_getTransactionExclusionStatusV1",
+        params: [txHash],
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    return await response.json();
+  }
+
+  public async saveRejectedTransactionV1(
+    txRejectionStage: string,
+    timestamp: string, // ISO-8601
+    blockNumber: number | null,
+    transactionRLP: string,
+    reasonMessage: string,
+    overflows: { module: string; count: number; limit: number }[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): Promise<any> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let params: any = {
+      txRejectionStage,
+      timestamp,
+      transactionRLP,
+      reasonMessage,
+      overflows,
+    };
+    if (blockNumber != null) {
+      params = {
+        ...params,
+        blockNumber,
+      };
+    }
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_saveRejectedTransactionV1",
+        params: params,
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    return await response.json();
+  }
+}
+
+export async function getTransactionHash(txRequest: TransactionRequest, signer: Wallet): Promise<string> {
+  const rawTransaction = await signer.populateTransaction(txRequest);
+  const signature = await signer.signTransaction(rawTransaction);
+  return ethers.keccak256(signature);
+}
+
 export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag): Promise<ethers.Block | null> {
   const provider = new ethers.JsonRpcProvider(rpcUrl.href);
   try {
@@ -82,7 +156,10 @@ export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag
   }
 }
 
-export async function getEvents<TContract extends LineaRollup | L2MessageService, TEvent extends TypedContractEvent>(
+export async function getEvents<
+  TContract extends LineaRollupV6 | L2MessageService | TokenBridge,
+  TEvent extends TypedContractEvent,
+>(
   contract: TContract,
   eventFilter: TypedDeferredTopicFilter<TEvent>,
   fromBlock?: BlockTag,
@@ -103,7 +180,7 @@ export async function getEvents<TContract extends LineaRollup | L2MessageService
 }
 
 export async function waitForEvents<
-  TContract extends LineaRollup | L2MessageService,
+  TContract extends LineaRollupV6 | L2MessageService | TokenBridge,
   TEvent extends TypedContractEvent,
 >(
   contract: TContract,
@@ -121,6 +198,44 @@ export async function waitForEvents<
   }
 
   return events;
+}
+
+// Currently only handle simple single return types - uint256 | bytesX | string | bool
+export async function pollForContractMethodReturnValue<
+  ExpectedReturnType extends bigint | string | boolean,
+  R extends [ExpectedReturnType],
+>(
+  method: TypedContractMethod<[], R, "view">,
+  expectedReturnValue: ExpectedReturnType,
+  compareFunction: (a: ExpectedReturnType, b: ExpectedReturnType) => boolean = (a, b) => a === b,
+  pollingInterval: number = 500,
+  timeout: number = 2 * 60 * 1000,
+): Promise<boolean> {
+  let isExceedTimeOut = false;
+  setTimeout(() => {
+    isExceedTimeOut = true;
+  }, timeout);
+
+  while (!isExceedTimeOut) {
+    const returnValue = await method();
+    if (compareFunction(returnValue, expectedReturnValue)) return true;
+    await wait(pollingInterval);
+  }
+
+  return false;
+}
+
+// Currently only handle single uint256 return type
+export async function pollForContractMethodReturnValueExceedTarget<
+  ExpectedReturnType extends bigint,
+  R extends [ExpectedReturnType],
+>(
+  method: TypedContractMethod<[], R, "view">,
+  targetReturnValue: ExpectedReturnType,
+  pollingInterval: number = 500,
+  timeout: number = 2 * 60 * 1000,
+): Promise<boolean> {
+  return pollForContractMethodReturnValue(method, targetReturnValue, (a, b) => a >= b, pollingInterval, timeout);
 }
 
 export function getFiles(directory: string, fileRegex: RegExp[]): string[] {
@@ -159,10 +274,13 @@ export async function waitForFile(
   throw new Error("File check timed out");
 }
 
-export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wallet, pollingInterval: number = 1_000) {
+export async function sendTransactionsToGenerateTrafficWithInterval(
+  signer: AbstractSigner,
+  pollingInterval: number = 1_000,
+) {
   const { maxPriorityFeePerGas, maxFeePerGas } = await signer.provider!.getFeeData();
   const transactionRequest = {
-    to: signer.address,
+    to: await signer.getAddress(),
     value: etherToWei("0.000001"),
     maxPriorityFeePerGas: maxPriorityFeePerGas,
     maxFeePerGas: maxFeePerGas,
@@ -178,7 +296,7 @@ export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wall
       const tx = await signer.sendTransaction(transactionRequest);
       await tx.wait();
     } catch (error) {
-      console.error("Error sending transaction:", error);
+      logger.error(`Error sending transaction. error=${JSON.stringify(error)}`);
     } finally {
       if (isRunning) {
         timeoutId = setTimeout(sendTransaction, pollingInterval);
@@ -192,7 +310,7 @@ export async function sendTransactionsToGenerateTrafficWithInterval(signer: Wall
       clearTimeout(timeoutId);
       timeoutId = null;
     }
-    console.log("Transaction loop stopped.");
+    logger.info("Stopped generating traffic on L2");
   };
 
   sendTransaction();
@@ -226,8 +344,8 @@ export function getMessageSentEventFromLogs<T extends BaseContract>(
     });
 }
 
-export const sendMessage = async <T extends LineaRollup | L2MessageService>(
-  signer: Wallet,
+export const sendMessage = async <T extends LineaRollupV6 | L2MessageService>(
+  signer: AbstractSigner,
   contract: T,
   args: SendMessageArgs,
   overrides?: PayableOverrides,
@@ -249,15 +367,61 @@ export const sendMessage = async <T extends LineaRollup | L2MessageService>(
 
 export async function execDockerCommand(command: string, containerName: string): Promise<string> {
   const dockerCommand = `docker ${command} ${containerName}`;
-  console.log(`Executing: ${dockerCommand}...`);
+  logger.info(`Executing ${dockerCommand}...`);
   return new Promise((resolve, reject) => {
     exec(dockerCommand, (error, stdout, stderr) => {
       if (error) {
-        console.error(`Error executing (${dockerCommand}): ${stderr}`);
+        logger.error(`Error executing (${dockerCommand}). error=${stderr}`);
         reject(error);
       }
-      console.log(`Execution success (${dockerCommand}): ${stdout}`);
+      logger.info(`Execution success (${dockerCommand}). output=${stdout}`);
       resolve(stdout);
     });
   });
+}
+
+export function generateRoleAssignments(
+  roles: string[],
+  defaultAddress: string,
+  overrides: { role: string; addresses: string[] }[],
+): { role: string; addressWithRole: string }[] {
+  const roleAssignments: { role: string; addressWithRole: string }[] = [];
+
+  const overridesMap = new Map<string, string[]>();
+  for (const override of overrides) {
+    overridesMap.set(override.role, override.addresses);
+  }
+
+  const allRolesSet = new Set<string>(roles);
+  for (const override of overrides) {
+    allRolesSet.add(override.role);
+  }
+
+  for (const role of allRolesSet) {
+    if (overridesMap.has(role)) {
+      const addresses = overridesMap.get(role);
+
+      if (addresses && addresses.length > 0) {
+        for (const addressWithRole of addresses) {
+          roleAssignments.push({ role, addressWithRole });
+        }
+      }
+    } else {
+      roleAssignments.push({ role, addressWithRole: defaultAddress });
+    }
+  }
+
+  return roleAssignments;
+}
+
+export function convertStringToPaddedHexBytes(strVal: string, paddedSize: number): string {
+  if (strVal.length > paddedSize) {
+    throw "Length is longer than padded size!";
+  }
+
+  const strBytes = ethers.toUtf8Bytes(strVal);
+  const bytes = ethers.zeroPadBytes(strBytes, paddedSize);
+  const bytes8Hex = ethers.hexlify(bytes);
+
+  return bytes8Hex;
 }

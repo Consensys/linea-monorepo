@@ -1,0 +1,26 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+description = "Vertx utilities"
+
+dependencies {
+  implementation project(':jvm-libs:generic:extensions:kotlin')
+  implementation project(':jvm-libs:generic:extensions:futures')
+  implementation "io.vertx:vertx-core"
+  implementation "io.vertx:vertx-web"
+  implementation "io.vertx:vertx-lang-kotlin"
+  implementation "io.vertx:vertx-config"
+  implementation "io.vertx:vertx-micrometer-metrics"
+  implementation "io.micrometer:micrometer-registry-prometheus:${libs.versions.micrometer.get()}"
+  api "io.vertx:vertx-health-check"
+
+  testImplementation "io.vertx:vertx-junit5"
+  testImplementation "io.rest-assured:rest-assured:${libs.versions.restassured.get()}"
+  testImplementation "io.rest-assured:kotlin-extensions:${libs.versions.restassured.get()}"
+  testImplementation "io.rest-assured:json-schema-validator:${libs.versions.restassured.get()}"
+}
+
+test {
+  systemProperty "vertx.parameter.filename", "/vertx-options.json"
+}

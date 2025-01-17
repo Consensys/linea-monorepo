@@ -8,12 +8,14 @@ plugins {
 dependencies {
   implementation(project(":coordinator:core"))
   implementation(project(":coordinator:clients:smart-contract-client"))
-  implementation(project(":jvm-libs:web3j-extensions"))
+  implementation(project(":jvm-libs:linea:web3j-extensions"))
   implementation(project(":coordinator:ethereum:common"))
-  implementation(project(":jvm-libs:testing:file-system"))
+  implementation(project(":jvm-libs:linea:testing:file-system"))
   implementation("org.web3j:core:${libs.versions.web3j.get()}") {
     exclude group: 'org.slf4j', module: 'slf4j-nop'
   }
+  implementation "com.sksamuel.hoplite:hoplite-core:${libs.versions.hoplite.get()}"
+  implementation "com.sksamuel.hoplite:hoplite-toml:${libs.versions.hoplite.get()}"
   implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
@@ -32,28 +34,26 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
+task integrationTest(type: Test) { test ->
+  description = "Runs integration tests."
+  group = "verification"
+  useJUnitPlatform()
 
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
-    dependsOn(rootProject.tasks.compileContracts)
-    testLogging {
-      events TestLogEvent.FAILED,
+  dependsOn(":localStackComposeUp")
+  testLogging {
+    events TestLogEvent.FAILED,
         TestLogEvent.SKIPPED,
         TestLogEvent.STANDARD_ERROR,
         TestLogEvent.STARTED,
         TestLogEvent.PASSED
-      exceptionFormat TestExceptionFormat.FULL
-      showCauses true
-      showExceptions true
-      showStackTraces true
-      // set showStandardStreams if you need to see test logs
-      showStandardStreams true
-    }
+    exceptionFormat TestExceptionFormat.FULL
+    showCauses true
+    showExceptions true
+    showStackTraces true
+    // set showStandardStreams if you need to see test logs
+    showStandardStreams true
+  }
 }

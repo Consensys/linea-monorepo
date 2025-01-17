@@ -1,10 +1,10 @@
 plugins {
-    id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
 }
 
 dependencies {
-  implementation project(':jvm-libs:future-extensions')
-  implementation project(':jvm-libs:errors')
+  implementation project(':jvm-libs:generic:extensions:futures')
+  implementation project(':jvm-libs:generic:errors')
   implementation "org.jetbrains.kotlinx:kotlinx-datetime:${libs.versions.kotlinxDatetime.get()}"
   implementation "io.vertx:vertx-core"
   implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
@@ -14,9 +14,5 @@ dependencies {
 
   testImplementation "org.junit.jupiter:junit-jupiter"
   testImplementation "io.vertx:vertx-junit5"
-  testImplementation testFixtures(project(':jvm-libs:kotlin-extensions'))
-}
-
-test {
-  useJUnitPlatform()
+  testImplementation testFixtures(project(':jvm-libs:generic:extensions:kotlin'))
 }

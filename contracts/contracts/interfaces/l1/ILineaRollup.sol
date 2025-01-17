@@ -12,9 +12,9 @@ import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
 interface ILineaRollup {
   /**
    * @notice Initialization data structure for the LineaRollup contract.
-   * @param initialStateRootHash The initial state root hash at migration used for proof verification.
-   * @param initialL2BlockNumber The initial block number at migration.
-   * @param genesisTimestamp The L2 genesis timestamp for first finalization.
+   * @param initialStateRootHash The initial state root hash at initialization used for proof verification.
+   * @param initialL2BlockNumber The initial block number at initialization.
+   * @param genesisTimestamp The L2 genesis timestamp for first initialization.
    * @param defaultVerifier The default verifier for rollup proofs.
    * @param rateLimitPeriodInSeconds The period in which withdrawal amounts and fees will be accumulated.
    * @param rateLimitAmountInWei The limit allowed for withdrawing in the rate limit period.
@@ -41,31 +41,13 @@ interface ILineaRollup {
   /**
    * @notice Supporting data for compressed calldata submission including compressed data.
    * @dev finalStateRootHash is used to set state root at the end of the data.
-   * @dev firstBlockInData is the first block that is included in the data submitted.
-   * @dev finalBlockInData is the last block that is included in the data submitted.
    * @dev snarkHash is the computed hash for compressed data (using a SNARK-friendly hash function) that aggregates per data submission to be used in public input.
-   * @dev compressedData is the compressed transaction data. It contains ordered data for each L2 block - l2Timestamps, the encoded txData.
+   * @dev compressedData is the compressed transaction data. It contains ordered data for each L2 block - l2Timestamps, the encoded transaction data.
    */
-  struct SubmissionDataV2 {
+  struct CompressedCalldataSubmission {
     bytes32 finalStateRootHash;
-    uint256 firstBlockInData;
-    uint256 finalBlockInData;
     bytes32 snarkHash;
     bytes compressedData;
-  }
-
-  /**
-   * @notice Supporting data for compressed blob data submission.
-   * @dev finalStateRootHash is used to set state root at the end of the data.
-   * @dev firstBlockInData is the first block that is included in the data submitted.
-   * @dev finalBlockInData is the last block that is included in the data submitted.
-   * @dev snarkHash is the computed hash for compressed data (using a SNARK-friendly hash function) that aggregates per data submission to be used in public input.
-   */
-  struct SupportingSubmissionDataV2 {
-    bytes32 finalStateRootHash;
-    uint256 firstBlockInData;
-    uint256 finalBlockInData;
-    bytes32 snarkHash;
   }
 
   /**
@@ -85,24 +67,25 @@ interface ILineaRollup {
   }
 
   /**
-   * @notice Data stucture for compressed blob data submission.
+   * @notice Data structure for compressed blob data submission.
    * @dev submissionData The supporting data for blob data submission excluding the compressed data.
    * @dev dataEvaluationClaim The data evaluation claim.
    * @dev kzgCommitment The blob KZG commitment.
    * @dev kzgProof The blob KZG point proof.
    */
-  struct BlobSubmissionData {
-    SupportingSubmissionDataV2 submissionData;
+  struct BlobSubmission {
     uint256 dataEvaluationClaim;
     bytes kzgCommitment;
     bytes kzgProof;
+    bytes32 finalStateRootHash;
+    bytes32 snarkHash;
   }
 
   /**
    * @notice Supporting data for finalization with proof.
    * @dev NB: the dynamic sized fields are placed last on purpose for efficient keccaking on public input.
    * @dev parentStateRootHash is the expected last state root hash finalized.
-   * @dev finalBlockInData is the final block finalizing until.
+   * @dev endBlockNumber is the end block finalizing until.
    * @dev shnarfData contains data about the last data submission's shnarf used in finalization.
    * @dev lastFinalizedTimestamp is the expected last finalized block's timestamp.
    * @dev finalTimestamp is the timestamp of the last block being finalized.
@@ -113,12 +96,12 @@ interface ILineaRollup {
    * @dev l1RollingHashMessageNumber is the calculated message number on L2 that is expected to match the existing L1 rolling hash.
    * This value will be used along with the stored last finalized L2 calculated message number in the public input.
    * @dev l2MerkleTreesDepth is the depth of all l2MerkleRoots.
-   * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockInData.
+   * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockNumber.
    * @dev l2MessagingBlocksOffsets indicates by offset from currentL2BlockNumber which L2 blocks contain MessageSent events.
    */
   struct FinalizationDataV3 {
     bytes32 parentStateRootHash;
-    uint256 finalBlockInData;
+    uint256 endBlockNumber;
     ShnarfData shnarfData;
     uint256 lastFinalizedTimestamp;
     uint256 finalTimestamp;
@@ -172,27 +155,19 @@ interface ILineaRollup {
   /**
    * @notice Emitted when compressed data is being submitted and verified succesfully on L1.
    * @dev The block range is indexed and parent shnarf included for state reconstruction simplicity.
-   * @param startBlock The indexed L2 block number indicating which block the data starts from.
-   * @param endBlock The indexed L2 block number indicating which block the data ends on.
    * @param parentShnarf The parent shnarf for the data being submitted.
    * @param shnarf The indexed shnarf for the data being submitted.
    * @param finalStateRootHash The L2 state root hash that the current blob submission ends on. NB: The last blob in the collection.
    */
-  event DataSubmittedV3(
-    uint256 indexed startBlock,
-    uint256 indexed endBlock,
-    bytes32 parentShnarf,
-    bytes32 indexed shnarf,
-    bytes32 finalStateRootHash
-  );
+  event DataSubmittedV3(bytes32 parentShnarf, bytes32 indexed shnarf, bytes32 finalStateRootHash);
 
   /**
    * @notice Emitted when L2 blocks have been finalized on L1.
    * @param startBlockNumber The indexed L2 block number indicating which block the finalization the data starts from.
    * @param endBlockNumber The indexed L2 block number indicating which block the finalization the data ends on.
-   * @param shnarf The shnarf being set as currentFinalizedShnarf in the current finalization.
-   * @param parentStateRootHash The indexed parent L2 state root hash that the current finalization starts from.
-   * @param finalStateRootHash The indexed L2 state root hash that the current finalization ends on.
+   * @param shnarf The indexed shnarf being set as currentFinalizedShnarf in the current finalization.
+   * @param parentStateRootHash The parent L2 state root hash that the current finalization starts from.
+   * @param finalStateRootHash The L2 state root hash that the current finalization ends on.
    */
   event DataFinalizedV3(
     uint256 indexed startBlockNumber,
@@ -223,11 +198,6 @@ interface ILineaRollup {
   error PointEvaluationFailed();
 
   /**
-   * @dev Thrown when the blobhash equals the zero hash.
-   */
-  error EmptyBlobData();
-
-  /**
    * @dev Thrown when the blobhash at an index equals to the zero hash.
    */
   error EmptyBlobDataAtIndex(uint256 index);
@@ -243,19 +213,9 @@ interface ILineaRollup {
   error BlobSubmissionDataEmpty(uint256 emptyBlobIndex);
 
   /**
-   * @dev Thrown when the starting block in the data item is out of sequence with the last block number.
-   */
-  error DataStartingBlockDoesNotMatch(uint256 expected, uint256 actual);
-
-  /**
    * @dev Thrown when the current data was already submitted.
    */
   error DataAlreadySubmitted(bytes32 currentDataHash);
-
-  /**
-   * @dev Thrown when the last finalized shnarf does not match the parent finalizing from.
-   */
-  error LastFinalizedShnarfWrong(bytes32 expected, bytes32 actual);
 
   /**
    * @dev Thrown when submissionData is empty.
@@ -271,21 +231,6 @@ interface ILineaRollup {
    * @dev Thrown when finalization state does not match.
    */
   error FinalizationStateIncorrect(bytes32 expected, bytes32 value);
-
-  /**
-   * @dev Thrown when the first block is greater than final block in submission data.
-   */
-  error FirstBlockGreaterThanFinalBlock(uint256 firstBlockNumber, uint256 finalBlockNumber);
-
-  /**
-   * @dev Thrown when the first block in data is less than or equal to the last finalized block during data submission.
-   */
-  error FirstBlockLessThanOrEqualToLastFinalizedBlock(uint256 firstBlockNumber, uint256 lastFinalizedBlock);
-
-  /**
-   * @dev Thrown when the final block number in finalization data is less than or equal to the last finalized block during finalization.
-   */
-  error FinalBlockNumberLessThanOrEqualToLastFinalizedBlock(uint256 finalBlockNumber, uint256 lastFinalizedBlock);
 
   /**
    * @dev Thrown when the final block state equals the zero hash during finalization.
@@ -319,14 +264,24 @@ interface ILineaRollup {
   error BytesLengthNotMultipleOf32();
 
   /**
-   * @dev Thrown when the snarkhash is the zero hash.
-   */
-  error SnarkHashIsZeroHash();
-
-  /**
    * @dev Thrown when the computed shnarf does not match what is expected.
    */
   error FinalShnarfWrong(bytes32 expected, bytes32 value);
+
+  /**
+   * @dev Thrown when a shnarf does not exist for a parent blob.
+   */
+  error ParentBlobNotSubmitted(bytes32 shnarf);
+
+  /**
+   * @dev Thrown when a shnarf does not exist for the final blob being finalized.
+   */
+  error FinalBlobNotSubmitted(bytes32 shnarf);
+
+  /**
+   * @dev Thrown when the fallback operator tries to renounce their operator role.
+   */
+  error OnlyNonFallbackOperator();
 
   /**
    * @notice Adds or updates the verifier contract address for a proof type.
@@ -356,12 +311,12 @@ interface ILineaRollup {
    * @notice Submit one or more EIP-4844 blobs.
    * @dev OPERATOR_ROLE is required to execute.
    * @dev This should be a blob carrying transaction.
-   * @param _blobSubmissionData The data for blob submission including proofs and required polynomials.
+   * @param _blobSubmissions The data for blob submission including proofs and required polynomials.
    * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
    * @param _finalBlobShnarf The expected final shnarf post computation of all the blob shnarfs.
    */
   function submitBlobs(
-    BlobSubmissionData[] calldata _blobSubmissionData,
+    BlobSubmission[] calldata _blobSubmissions,
     bytes32 _parentShnarf,
     bytes32 _finalBlobShnarf
   ) external;
@@ -369,12 +324,12 @@ interface ILineaRollup {
   /**
    * @notice Submit blobs using compressed data via calldata.
    * @dev OPERATOR_ROLE is required to execute.
-   * @param _submissionData The supporting data for compressed data submission including compressed data.
+   * @param _submission The supporting data for compressed data submission including compressed data.
    * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
    * @param _expectedShnarf The expected shnarf post computation of all the submission.
    */
   function submitDataAsCalldata(
-    SubmissionDataV2 calldata _submissionData,
+    CompressedCalldataSubmission calldata _submission,
     bytes32 _parentShnarf,
     bytes32 _expectedShnarf
   ) external;

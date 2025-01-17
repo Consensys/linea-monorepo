@@ -4,10 +4,10 @@ plugins {
 
 dependencies {
   implementation project(':coordinator:core')
-  implementation project(':jvm-libs:future-extensions')
-  implementation project(':jvm-libs:json-rpc')
-  implementation project(':jvm-libs:metrics:micrometer')
-  implementation project(':jvm-libs:traces')
+  implementation project(':jvm-libs:generic:extensions:futures')
+  implementation project(':jvm-libs:generic:json-rpc')
+  implementation project(':jvm-libs:linea:metrics:micrometer')
+  implementation project(':jvm-libs:linea:core:traces')
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
 
   api "io.vertx:vertx-core"

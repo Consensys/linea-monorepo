@@ -2,11 +2,11 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import linea.domain.BlockHeaderSummary
+import net.consensys.ByteArrayExt
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
-import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockHeaderSummary
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
-import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
@@ -36,7 +36,7 @@ class AggregationTriggerCalculatorByDeadlineTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = latestBlockNumber,
-            hash = Bytes32.random(),
+            hash = ByteArrayExt.random32(),
             timestamp = latestBlockTimestamp
           )
         )
@@ -184,7 +184,7 @@ class AggregationTriggerCalculatorByDeadlineTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = 15u,
-            hash = Bytes32.random(),
+            hash = ByteArrayExt.random32(),
             timestamp = firstBlobEndBlockTimeStamp
           )
         )
@@ -217,7 +217,7 @@ class AggregationTriggerCalculatorByDeadlineTest {
         SafeFuture.completedFuture(
           BlockHeaderSummary(
             number = latestBlockNumber,
-            hash = Bytes32.random(),
+            hash = ByteArrayExt.random32(),
             timestamp = latestBlockTimestamp
           )
         )

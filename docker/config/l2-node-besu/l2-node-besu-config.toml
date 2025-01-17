@@ -1,0 +1,51 @@
+data-path="/opt/besu/data"
+host-allowlist=["*"]
+sync-mode="FULL"
+p2p-port=30303
+
+min-gas-price=0
+
+# engine
+engine-host-allowlist=["*"]
+engine-rpc-port=8550
+
+# rpc
+rpc-http-enabled=true
+rpc-http-host="0.0.0.0"
+rpc-http-port=8545
+rpc-http-cors-origins=["*"]
+rpc-http-api=["ADMIN","DEBUG","NET","ETH","WEB3","PLUGINS","LINEA"]
+rpc-http-max-active-connections=200
+
+# ws
+rpc-ws-enabled=true
+rpc-ws-host="0.0.0.0"
+rpc-ws-port=8546
+rpc-ws-api=["ADMIN","TXPOOL","WEB3","ETH","NET","PERM"]
+rpc-ws-max-active-connections=200
+
+# graphql
+graphql-http-enabled=false
+
+# metrics
+metrics-enabled=true
+metrics-host="0.0.0.0"
+metrics-port=9545
+
+# database
+data-storage-format="BONSAI"
+
+# plugins
+plugins=["LineaEstimateGasEndpointPlugin","L1FinalizationTagUpdaterPlugin","LineaExtraDataPlugin", "LineaTransactionPoolValidatorPlugin"]
+plugin-linea-module-limit-file-path="/var/lib/besu/traces-limits.toml"
+plugin-linea-deny-list-path="/var/lib/besu/deny-list.txt"
+plugin-linea-l1l2-bridge-contract="0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
+plugin-linea-l1l2-bridge-topic="e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c"
+plugin-linea-tx-pool-profitability-check-p2p-enabled=false
+plugin-linea-tx-pool-profitability-check-api-enabled=false
+plugin-linea-tx-pool-simulation-check-api-enabled=true
+plugin-linea-tx-pool-simulation-check-p2p-enabled=false
+plugin-linea-estimate-gas-compatibility-mode-enabled=false
+
+Xbonsai-limit-trie-logs-enabled=false
+bonsai-historical-block-limit=1024

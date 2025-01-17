@@ -10,15 +10,14 @@ import {
 import {
   FinalizationData,
   CalldataSubmissionData,
-  SubmissionAndCompressedData,
-  BlobSubmissionData,
   ShnarfData,
   ParentSubmissionData,
   ParentAndExpectedShnarf,
-  SubmissionData,
+  BlobSubmission,
 } from "../types";
 import { generateRandomBytes, range } from "./general";
 import { generateKeccak256 } from "./hashing";
+import * as fs from "fs";
 
 export const generateL2MessagingBlocksOffsets = (start: number, end: number) =>
   `0x${range(start, end)
@@ -28,7 +27,7 @@ export const generateL2MessagingBlocksOffsets = (start: number, end: number) =>
 export async function generateFinalizationData(overrides?: Partial<FinalizationData>): Promise<FinalizationData> {
   return {
     aggregatedProof: generateRandomBytes(928),
-    finalBlockInData: 99n,
+    endBlockNumber: 99n,
     shnarfData: generateParentShnarfData(1),
     parentStateRootHash: generateRandomBytes(32),
     lastFinalizedTimestamp: BigInt((await networkTime.latest()) - 2),
@@ -48,8 +47,6 @@ export function generateCallDataSubmission(startDataIndex: number, finalDataInde
   return COMPRESSED_SUBMISSION_DATA.slice(startDataIndex, finalDataIndex).map((data) => {
     const returnData = {
       finalStateRootHash: data.finalStateRootHash,
-      firstBlockInData: BigInt(data.conflationOrder.startingBlockNumber),
-      finalBlockInData: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
       snarkHash: data.snarkHash,
       compressedData: ethers.hexlify(ethers.decodeBase64(data.compressedData)),
     };
@@ -61,26 +58,60 @@ export function generateBlobDataSubmission(
   startDataIndex: number,
   finalDataIndex: number,
   isMultiple: boolean = false,
-): { blobDataSubmission: BlobSubmissionData[]; compressedBlobs: string[]; parentShnarf: string; finalShnarf: string } {
+): {
+  blobDataSubmission: BlobSubmission[];
+  compressedBlobs: string[];
+  parentShnarf: string;
+  finalShnarf: string;
+} {
   const dataSet = isMultiple ? BLOB_SUBMISSION_DATA_MULTIPLE_PROOF : BLOB_SUBMISSION_DATA;
   const compressedBlobs: string[] = [];
   const parentShnarf = dataSet[startDataIndex].prevShnarf;
   const finalShnarf = dataSet[finalDataIndex - 1].expectedShnarf;
+
   const blobDataSubmission = dataSet.slice(startDataIndex, finalDataIndex).map((data) => {
     compressedBlobs.push(ethers.hexlify(ethers.decodeBase64(data.compressedData)));
-    const returnData: BlobSubmissionData = {
-      submissionData: {
-        finalStateRootHash: data.finalStateRootHash,
-        firstBlockInData: BigInt(data.conflationOrder.startingBlockNumber),
-        finalBlockInData: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
-        snarkHash: data.snarkHash,
-      },
+    const returnData: BlobSubmission = {
       dataEvaluationClaim: data.expectedY,
       kzgCommitment: data.commitment,
       kzgProof: data.kzgProofContract,
+      finalStateRootHash: data.finalStateRootHash,
+      snarkHash: data.snarkHash,
     };
     return returnData;
   });
+  return {
+    compressedBlobs,
+    blobDataSubmission,
+    parentShnarf,
+    finalShnarf,
+  };
+}
+
+export function generateBlobDataSubmissionFromFile(filePath: string): {
+  blobDataSubmission: BlobSubmission[];
+  compressedBlobs: string[];
+  parentShnarf: string;
+  finalShnarf: string;
+} {
+  const fileContents = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+
+  const compressedBlobs: string[] = [];
+  const parentShnarf = fileContents.prevShnarf;
+  const finalShnarf = fileContents.expectedShnarf;
+
+  compressedBlobs.push(ethers.hexlify(ethers.decodeBase64(fileContents.compressedData)));
+
+  const blobDataSubmission = [
+    {
+      dataEvaluationClaim: fileContents.expectedY,
+      kzgCommitment: fileContents.commitment,
+      kzgProof: fileContents.kzgProofContract,
+      finalStateRootHash: fileContents.finalStateRootHash,
+      snarkHash: fileContents.snarkHash,
+    },
+  ];
+
   return {
     compressedBlobs,
     blobDataSubmission,
@@ -140,15 +171,15 @@ export function generateBlobParentShnarfData(index: number, multiple?: boolean):
 }
 
 export function generateExpectedParentSubmissionHash(
-  firstBlockInData: bigint,
-  finalBlockInData: bigint,
+  firstBlockNumber: bigint,
+  endBlockNumber: bigint,
   finalStateRootHash: string,
   shnarf: string,
   dataParentHash: string,
 ): string {
   return generateKeccak256(
     ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
-    [firstBlockInData, finalBlockInData, finalStateRootHash, shnarf, dataParentHash],
+    [firstBlockNumber, endBlockNumber, finalStateRootHash, shnarf, dataParentHash],
   );
 }
 
@@ -156,8 +187,8 @@ export function generateParentSubmissionDataForIndex(index: number): ParentSubmi
   if (index === 0) {
     return {
       finalStateRootHash: COMPRESSED_SUBMISSION_DATA[0].parentStateRootHash,
-      firstBlockInData: 0n,
-      finalBlockInData: 0n,
+      firstBlockNumber: 0n,
+      endBlockNumber: 0n,
       shnarf: generateKeccak256(
         ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
         [HASH_ZERO, HASH_ZERO, COMPRESSED_SUBMISSION_DATA[0].parentStateRootHash, HASH_ZERO, HASH_ZERO],
@@ -167,8 +198,8 @@ export function generateParentSubmissionDataForIndex(index: number): ParentSubmi
 
   return {
     finalStateRootHash: COMPRESSED_SUBMISSION_DATA[index - 1].finalStateRootHash,
-    firstBlockInData: BigInt(COMPRESSED_SUBMISSION_DATA[index - 1].conflationOrder.startingBlockNumber),
-    finalBlockInData: BigInt(COMPRESSED_SUBMISSION_DATA[index - 1].conflationOrder.upperBoundaries.slice(-1)[0]),
+    firstBlockNumber: BigInt(COMPRESSED_SUBMISSION_DATA[index - 1].conflationOrder.startingBlockNumber),
+    endBlockNumber: BigInt(COMPRESSED_SUBMISSION_DATA[index - 1].conflationOrder.upperBoundaries.slice(-1)[0]),
     shnarf: COMPRESSED_SUBMISSION_DATA[index - 1].expectedShnarf,
   };
 }
@@ -191,8 +222,8 @@ export function generateParentSubmissionDataForIndexForMultiple(index: number): 
   if (index === 0) {
     return {
       finalStateRootHash: COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[0].parentStateRootHash,
-      firstBlockInData: 0n,
-      finalBlockInData: 0n,
+      firstBlockNumber: 0n,
+      endBlockNumber: 0n,
       shnarf: generateKeccak256(
         ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
         [HASH_ZERO, HASH_ZERO, COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[0].parentStateRootHash, HASH_ZERO, HASH_ZERO],
@@ -201,8 +232,8 @@ export function generateParentSubmissionDataForIndexForMultiple(index: number): 
   }
   return {
     finalStateRootHash: COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[index - 1].finalStateRootHash,
-    firstBlockInData: BigInt(COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[index - 1].conflationOrder.startingBlockNumber),
-    finalBlockInData: BigInt(
+    firstBlockNumber: BigInt(COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[index - 1].conflationOrder.startingBlockNumber),
+    endBlockNumber: BigInt(
       COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[index - 1].conflationOrder.upperBoundaries.slice(-1)[0],
     ),
     shnarf: COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF[index - 1].expectedShnarf,
@@ -216,8 +247,8 @@ export function generateSubmissionData(startDataIndex: number, finalDataIndex: n
         parentStateRootHash: data.parentStateRootHash,
         dataParentHash: data.parentDataHash,
         finalStateRootHash: data.finalStateRootHash,
-        firstBlockInData: BigInt(data.conflationOrder.startingBlockNumber),
-        finalBlockInData: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
+        firstBlockNumber: BigInt(data.conflationOrder.startingBlockNumber),
+        endBlockNumber: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
         snarkHash: data.snarkHash,
       },
       compressedData: ethers.hexlify(ethers.decodeBase64(data.compressedData)),
@@ -236,8 +267,8 @@ export function generateSubmissionDataMultipleProofs(
         parentStateRootHash: data.parentStateRootHash,
         dataParentHash: data.parentDataHash,
         finalStateRootHash: data.finalStateRootHash,
-        firstBlockInData: BigInt(data.conflationOrder.startingBlockNumber),
-        finalBlockInData: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
+        firstBlockNumber: BigInt(data.conflationOrder.startingBlockNumber),
+        endBlockNumber: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
         snarkHash: data.snarkHash,
       },
       compressedData: ethers.hexlify(ethers.decodeBase64(data.compressedData)),
@@ -254,8 +285,8 @@ export function generateCallDataSubmissionMultipleProofs(
       parentStateRootHash: data.parentStateRootHash,
       dataParentHash: data.parentDataHash,
       finalStateRootHash: data.finalStateRootHash,
-      firstBlockInData: BigInt(data.conflationOrder.startingBlockNumber),
-      finalBlockInData: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
+      firstBlockNumber: BigInt(data.conflationOrder.startingBlockNumber),
+      endBlockNumber: BigInt(data.conflationOrder.upperBoundaries.slice(-1)[0]),
       snarkHash: data.snarkHash,
       compressedData: ethers.hexlify(ethers.decodeBase64(data.compressedData)),
       parentShnarf: data.prevShnarf,
@@ -274,8 +305,8 @@ export function generateSubmissionDataFromJSON(
     parentStateRootHash: parsedJSONData.parentStateRootHash,
     dataParentHash: parsedJSONData.parentDataHash,
     finalStateRootHash: parsedJSONData.finalStateRootHash,
-    firstBlockInData: BigInt(startingBlockNumber),
-    finalBlockInData: BigInt(endingBlockNumber),
+    firstBlockNumber: BigInt(startingBlockNumber),
+    endBlockNumber: BigInt(endingBlockNumber),
     snarkHash: parsedJSONData.snarkHash,
     compressedData: ethers.hexlify(ethers.decodeBase64(parsedJSONData.compressedData)),
   };
@@ -289,7 +320,7 @@ export function generateFinalizationDataFromJSON(parsedJSONData: any): Finalizat
   const { aggregatedProverVersion, aggregatedVerifierIndex, aggregatedProofPublicInput, ...data } = parsedJSONData;
   return {
     ...data,
-    finalBlockNumber: BigInt(data.finalBlockNumber),
+    endBlockNumber: BigInt(data.endBlockNumber),
     l1RollingHashMessageNumber: BigInt(data.l1RollingHashMessageNumber),
     l2MerkleTreesDepth: BigInt(data.l2MerkleTreesDepth),
     l2MessagingBlocksOffsets: data.l2MessagingBlocksOffsets,

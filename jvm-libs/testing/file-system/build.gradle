@@ -1,7 +1,0 @@
-plugins {
-  id 'net.consensys.zkevm.kotlin-library-conventions'
-}
-
-dependencies {
-  testImplementation(project(':jvm-libs:kotlin-extensions'))
-}

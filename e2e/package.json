@@ -11,7 +11,7 @@
     "test:e2e:local": "TEST_ENV=local npx jest",
     "test:e2e:dev": "TEST_ENV=dev npx jest --config ./jest.testnet.config.ts --bail --runInBand --testPathIgnorePatterns=restart.spec.ts",
     "test:e2e:sepolia": "TEST_ENV=sepolia npx jest --config ./jest.testnet.config.ts --bail --runInBand --testPathIgnorePatterns=restart.spec.ts",
-    "postinstall": "typechain --target ethers-v6 --out-dir ./src/typechain './src/abi/*.json'",
+    "postinstall": "typechain --target ethers-v6 --out-dir ./src/typechain '../contracts/local-deployments-artifacts/**/*.json'",
     "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix",
     "clean": "rimraf node_modules src/typechain"
   },
@@ -22,11 +22,13 @@
     "@openzeppelin/upgrades-core": "1.33.1",
     "@typechain/ethers-v6": "0.5.1",
     "@types/jest": "29.5.13",
+    "async-mutex": "^0.5.0",
     "child_process": "1.0.2",
     "dotenv": "16.4.5",
     "ethers": "6.13.3",
     "jest": "29.7.0",
     "ts-jest": "29.2.5",
-    "typechain": "8.3.2"
+    "typechain": "8.3.2",
+    "winston": "3.17.0"
   }
 }

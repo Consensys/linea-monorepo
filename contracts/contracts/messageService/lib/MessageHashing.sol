@@ -2,14 +2,14 @@
 pragma solidity >=0.8.19 <=0.8.26;
 
 /**
- * @title Library to hash messages.
+ * @title Library to hash cross-chain messages.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 library MessageHashing {
   /**
    * @notice Hashes messages using assembly for efficiency.
-   * @dev Adding 0x00000000000000000000000000000000000000000000000000000000000000c0 is to indicate the calldata offset.
+   * @dev Adding 0xc0 is to indicate the calldata offset relative to the memory being added to.
    * @dev If the calldata is not modulus 32, the extra bit needs to be added on at the end else the hash is wrong.
    * @param _from The from address.
    * @param _to The to address.
@@ -33,7 +33,7 @@ library MessageHashing {
       mstore(add(mPtr, 0x40), _fee)
       mstore(add(mPtr, 0x60), _valueSent)
       mstore(add(mPtr, 0x80), _messageNumber)
-      mstore(add(mPtr, 0xa0), 0x00000000000000000000000000000000000000000000000000000000000000c0)
+      mstore(add(mPtr, 0xa0), 0xc0)
       mstore(add(mPtr, 0xc0), _calldata.length)
       let rem := mod(_calldata.length, 0x20)
       let extra := 0

@@ -1,0 +1,10 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'java-test-fixtures'
+}
+
+dependencies {
+  implementation project(":jvm-libs:generic:extensions:kotlin")
+
+  testFixturesImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
+}

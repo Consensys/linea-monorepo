@@ -2,7 +2,9 @@ package net.consensys.zkevm.ethereum.coordination
 
 import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.Blob
+import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.domain.BlocksConflation
+import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofUpdate
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.function.Supplier
@@ -32,7 +34,7 @@ class HighestProvenBatchTracker(initialProvenBlockNumber: ULong) :
 class HighestConflationTracker(initialProvenBlockNumber: ULong) :
   MaxLongTracker<BlocksConflation>(initialProvenBlockNumber.toLong()) {
   override fun convertToLong(trackable: BlocksConflation): Long {
-    return trackable.blocks.last().blockNumber.longValue()
+    return trackable.blocks.last().number.toLong()
   }
 }
 
@@ -43,7 +45,7 @@ class HighestProvenBlobTracker(initialProvenBlockNumber: ULong) :
   }
 }
 
-class HighestAggregationTracker(initialProvenBlockNumber: ULong) :
+class HighestULongTracker(initialProvenBlockNumber: ULong) :
   MaxLongTracker<ULong>(initialProvenBlockNumber.toLong()) {
   override fun convertToLong(trackable: ULong): Long {
     return trackable.toLong()
@@ -54,5 +56,19 @@ class HighestUnprovenBlobTracker(initialProvenBlockNumber: ULong) :
   MaxLongTracker<Blob>(initialProvenBlockNumber.toLong()) {
   override fun convertToLong(trackable: Blob): Long {
     return trackable.endBlockNumber.toLong()
+  }
+}
+
+class LatestBlobSubmittedBlockNumberTracker(initialLatestBlockNumber: ULong) :
+  MaxLongTracker<BlobSubmittedEvent>(initialLatestBlockNumber.toLong()) {
+  override fun convertToLong(trackable: BlobSubmittedEvent): Long {
+    return trackable.blobs.last().endBlockNumber.toLong()
+  }
+}
+
+class LatestFinalizationSubmittedBlockNumberTracker(initialLatestBlockNumber: ULong) :
+  MaxLongTracker<FinalizationSubmittedEvent>(initialLatestBlockNumber.toLong()) {
+  override fun convertToLong(trackable: FinalizationSubmittedEvent): Long {
+    return trackable.aggregationProof.finalBlockNumber
   }
 }

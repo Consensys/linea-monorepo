@@ -1,9 +1,9 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
+import build.linea.domain.BlockIntervals
 import kotlinx.datetime.Instant
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobCounters
-import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.persistence.AggregationsRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test

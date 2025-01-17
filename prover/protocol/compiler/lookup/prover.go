@@ -7,6 +7,7 @@ import (
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
@@ -27,11 +28,11 @@ type proverTaskAtRound struct {
 
 	// MAssignmentTasks lists all the tasks consisting of assigning the column
 	// M related to table that are scheduled in the current interaction round.
-	MAssignmentTasks []mAssignmentTask
+	MAssignmentTasks []MAssignmentTask
 
 	// ZAssignmentTasks lists all the tasks consisting of assigning the
 	// columns SigmaS and SigmaT for the given round.
-	ZAssignmentTasks []zAssignmentTask
+	ZAssignmentTasks []ZAssignmentTask
 }
 
 // Run implements the [wizard.ProverAction interface]. The tasks will spawn
@@ -69,7 +70,7 @@ func (p proverTaskAtRound) Run(run *wizard.ProverRuntime) {
 				wg.Done()
 			}()
 
-			p.MAssignmentTasks[i].run(run)
+			p.MAssignmentTasks[i].Run(run)
 		}(i)
 	}
 
@@ -93,7 +94,7 @@ func (p proverTaskAtRound) Run(run *wizard.ProverRuntime) {
 				wg.Done()
 			}()
 
-			p.ZAssignmentTasks[i].run(run)
+			p.ZAssignmentTasks[i].Run(run)
 		}(i)
 	}
 
@@ -105,12 +106,12 @@ func (p proverTaskAtRound) Run(run *wizard.ProverRuntime) {
 }
 
 // pushMAssignment appends an [mAssignmentTask] to the list of tasks
-func (p *proverTaskAtRound) pushMAssignment(m mAssignmentTask) {
+func (p *proverTaskAtRound) pushMAssignment(m MAssignmentTask) {
 	p.MAssignmentTasks = append(p.MAssignmentTasks, m)
 }
 
 // pushZAssignment appends an [sigmaAssignmentTask] to the list of tasks
-func (p *proverTaskAtRound) pushZAssignment(s zAssignmentTask) {
+func (p *proverTaskAtRound) pushZAssignment(s ZAssignmentTask) {
 	p.ZAssignmentTasks = append(p.ZAssignmentTasks, s)
 }
 
@@ -123,7 +124,7 @@ func (p *proverTaskAtRound) numTasks() int {
 // mAssignmentWork specifically represent the prover task of computing and
 // assigning the [singleTableCtx.M] for a particular table. M is computing the
 // appearance of the rows of T in the rows of S.
-type mAssignmentTask struct {
+type MAssignmentTask struct {
 
 	// M is the column that the assignMWork
 	M []ifaces.Column
@@ -139,7 +140,7 @@ type mAssignmentTask struct {
 	SFilter []ifaces.Column
 }
 
-// run executes the task represented by the receiver of the method. Namely, it
+// Run executes the task represented by the receiver of the method. Namely, it
 // actually computes the value of M.
 //
 // In the case where the table has a single column, the execution path is
@@ -159,7 +160,7 @@ type mAssignmentTask struct {
 // In case one of the Ss contains an entry that does not appear in T, the
 // function panics. This aims at early detecting that the lookup query is not
 // satisfied.
-func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
+func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 	var (
 		// isMultiColumn flags whether the table have multiple column and
@@ -171,7 +172,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 		// otherwise.
 		tCollapsed = make([]sv.SmartVector, len(a.T))
 
-		// tCollapsed contains either the assignment of the Ss if the table is a
+		// sCollapsed contains either the assignment of the Ss if the table is a
 		// single column (e.g. isMultiColumn=false) or their collapsed version
 		// otherwise.
 		sCollapsed = make([]sv.SmartVector, len(a.S))
@@ -211,6 +212,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 	}
 
 	var (
+		// m  is associated with tCollapsed
 		// m stores the assignment to the column M as we build it.
 		m = make([][]field.Element, len(a.T))
 
@@ -280,7 +282,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 				}
 				utils.Panic(
 					"entry %v of the table %v is not included in the table. tableRow=%v",
-					k, nameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow),
+					k, NameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow),
 				)
 			}
 
@@ -296,18 +298,18 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 
 }
 
-// zAssignmentTask represents a prover task of assignming the columns
+// ZAssignmentTask represents a prover task of assignming the columns
 // SigmaS and SigmaT for a specific lookup table.
 // sigmaAssignment
-type zAssignmentTask zCtx
+type ZAssignmentTask ZCtx
 
-func (z zAssignmentTask) run(run *wizard.ProverRuntime) {
+func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
 		for frag := start; frag < stop; frag++ {
 
 			var (
 				numeratorMetadata = z.ZNumeratorBoarded[frag].ListVariableMetadata()
-				denominator       = wizardutils.EvalExprColumn(run, z.ZDenominatorBoarded[frag]).IntoRegVecSaveAlloc()
+				denominator       = column.EvalExprColumn(run, z.ZDenominatorBoarded[frag]).IntoRegVecSaveAlloc()
 				numerator         []field.Element
 				packedZ           = field.BatchInvert(denominator)
 			)
@@ -317,7 +319,7 @@ func (z zAssignmentTask) run(run *wizard.ProverRuntime) {
 			}
 
 			if len(numeratorMetadata) > 0 {
-				numerator = wizardutils.EvalExprColumn(run, z.ZNumeratorBoarded[frag]).IntoRegVecSaveAlloc()
+				numerator = column.EvalExprColumn(run, z.ZNumeratorBoarded[frag]).IntoRegVecSaveAlloc()
 			}
 
 			for k := range packedZ {

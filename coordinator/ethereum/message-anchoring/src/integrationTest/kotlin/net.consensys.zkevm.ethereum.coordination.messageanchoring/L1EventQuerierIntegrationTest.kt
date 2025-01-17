@@ -1,10 +1,11 @@
 package net.consensys.zkevm.ethereum.coordination.messageanchoring
 
+import build.linea.contract.LineaRollupV5
+import build.linea.contract.l1.LineaContractVersion
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import net.consensys.linea.contract.LineaRollup
 import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.toBigInteger
 import net.consensys.toULong
@@ -35,7 +36,9 @@ class L1EventQuerierIntegrationTest {
 
   @BeforeEach
   fun beforeEach() {
-    val deploymentResult = ContractsManager.get().deployLineaRollup().get()
+    val deploymentResult = ContractsManager.get()
+      .deployLineaRollup(contractVersion = LineaContractVersion.V5)
+      .get()
     testLineaRollupContractAddress = deploymentResult.contractAddress
     web3Client = Web3jClientManager.l1Client
     @Suppress("DEPRECATION")
@@ -79,9 +82,9 @@ class L1EventQuerierIntegrationTest {
       contract.sendMessage(it.recipient, it.fee, it.calldata, it.value).sendAsync()
         .thenApply { receipt ->
           Pair(
-            LineaRollup.getMessageSentEventFromLog(
+            LineaRollupV5.getMessageSentEventFromLog(
               receipt.logs.first { log ->
-                log.topics.contains(EventEncoder.encode(LineaRollup.MESSAGESENT_EVENT))
+                log.topics.contains(EventEncoder.encode(LineaRollupV5.MESSAGESENT_EVENT))
               }
             ),
             receipt
@@ -100,9 +103,9 @@ class L1EventQuerierIntegrationTest {
       contract.sendMessage(it.recipient, it.fee, it.calldata, it.value).sendAsync()
         .thenApply { receipt ->
           Pair(
-            LineaRollup.getMessageSentEventFromLog(
+            LineaRollupV5.getMessageSentEventFromLog(
               receipt.logs.first { log ->
-                log.topics.contains(EventEncoder.encode(LineaRollup.MESSAGESENT_EVENT))
+                log.topics.contains(EventEncoder.encode(LineaRollupV5.MESSAGESENT_EVENT))
               }
             ),
             receipt
@@ -156,10 +159,10 @@ class L1EventQuerierIntegrationTest {
       contract.sendMessage(it.recipient, it.fee, it.calldata, it.value).sendAsync()
         .thenApply { receipt ->
           Pair(
-            LineaRollup.staticExtractEventParameters(
-              LineaRollup.MESSAGESENT_EVENT,
+            LineaRollupV5.staticExtractEventParameters(
+              LineaRollupV5.MESSAGESENT_EVENT,
               receipt.logs.first { log ->
-                log.topics.contains(EventEncoder.encode(LineaRollup.MESSAGESENT_EVENT))
+                log.topics.contains(EventEncoder.encode(LineaRollupV5.MESSAGESENT_EVENT))
               }
             ),
             receipt

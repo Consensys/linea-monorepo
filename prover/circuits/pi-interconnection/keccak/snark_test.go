@@ -2,6 +2,7 @@ package keccak
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	"math/big"
 	"testing"
 
@@ -302,4 +303,11 @@ func (c *testCreateColsBoundaryChecks) Define(api frontend.API) error {
 
 	hsh.createColumns()
 	return nil
+}
+
+func TestPadDirtyLanes(t *testing.T) {
+	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+		padded, _ := pad(api, []frontend.Variable{1, 0x123456}, 1)
+		return padded
+	}, 1, 0x100000000000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x80)(t)
 }

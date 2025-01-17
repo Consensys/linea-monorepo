@@ -9,19 +9,23 @@ import { IL1MessageManagerV1 } from "../../../interfaces/l1/IL1MessageManagerV1.
  * @custom:security-contact security-report@linea.build
  */
 abstract contract L1MessageManagerV1 is IL1MessageManagerV1 {
+  /// @notice The 2 legacy status constants for message statuses.
   uint8 public constant INBOX_STATUS_UNKNOWN = 0;
   uint8 public constant INBOX_STATUS_RECEIVED = 1;
 
+  /// @notice The 3 legacy status constants for message statuses.
   uint8 public constant OUTBOX_STATUS_UNKNOWN = 0;
   uint8 public constant OUTBOX_STATUS_SENT = 1;
   uint8 public constant OUTBOX_STATUS_RECEIVED = 2;
 
-  /// @dev Mapping to store L1->L2 message hashes status.
-  /// @dev messageHash => messageStatus (0: unknown, 1: sent, 2: received).
+  /// @dev DEPRECATED in favor of the rollingHashes mapping on the L1MessageManager for L1 to L2 messaging.
   mapping(bytes32 messageHash => uint256 messageStatus) public outboxL1L2MessageStatus;
 
-  /// @dev Mapping to store L2->L1 message hashes status.
-  /// @dev messageHash => messageStatus (0: unknown, 1: received).
+  /**
+   * @dev Mapping to store L2->L1 message hashes status.
+   * @dev messageHash => messageStatus (0: unknown, 1: received).
+   * @dev For the most part this has been deprecated. This is only used for messages received pre-AlphaV2.
+   */
   mapping(bytes32 messageHash => uint256 messageStatus) public inboxL2L1MessageStatus;
 
   /// @dev Keep free storage slots for future implementation updates to avoid storage collision.

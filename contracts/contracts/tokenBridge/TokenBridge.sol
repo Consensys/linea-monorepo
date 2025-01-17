@@ -11,8 +11,6 @@ import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
 import { BridgedToken } from "./BridgedToken.sol";
 import { MessageServiceBase } from "../messageService/MessageServiceBase.sol";
 
@@ -30,7 +28,6 @@ import { Utils } from "../lib/Utils.sol";
  */
 contract TokenBridge is
   ITokenBridge,
-  Initializable,
   ReentrancyGuardUpgradeable,
   AccessControlUpgradeable,
   MessageServiceBase,
@@ -44,30 +41,20 @@ contract TokenBridge is
   /// @dev This is the ABI version and not the reinitialize version.
   string public constant CONTRACT_VERSION = "1.0";
 
+  /// @notice Role used for setting the message service address.
   bytes32 public constant SET_MESSAGE_SERVICE_ROLE = keccak256("SET_MESSAGE_SERVICE_ROLE");
+
+  /// @notice Role used for setting the remote token bridge address.
   bytes32 public constant SET_REMOTE_TOKENBRIDGE_ROLE = keccak256("SET_REMOTE_TOKENBRIDGE_ROLE");
+
+  /// @notice Role used for setting a reserved token address.
   bytes32 public constant SET_RESERVED_TOKEN_ROLE = keccak256("SET_RESERVED_TOKEN_ROLE");
+
+  /// @notice Role used for removing a reserved token address.
   bytes32 public constant REMOVE_RESERVED_TOKEN_ROLE = keccak256("REMOVE_RESERVED_TOKEN_ROLE");
+
+  /// @notice Role used for setting a custom token contract address.
   bytes32 public constant SET_CUSTOM_CONTRACT_ROLE = keccak256("SET_CUSTOM_CONTRACT_ROLE");
-
-  // solhint-disable-next-line var-name-mixedcase
-  bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
-
-  /// @notice used for the token metadata
-  bytes private constant METADATA_NAME = abi.encodeCall(IERC20MetadataUpgradeable.name, ());
-  bytes private constant METADATA_SYMBOL = abi.encodeCall(IERC20MetadataUpgradeable.symbol, ());
-  bytes private constant METADATA_DECIMALS = abi.encodeCall(IERC20MetadataUpgradeable.decimals, ());
-
-  address public tokenBeacon;
-  /// @notice mapping (chainId => nativeTokenAddress => brigedTokenAddress)
-  mapping(uint256 => mapping(address => address)) public nativeToBridgedToken;
-  /// @notice mapping (brigedTokenAddress => nativeTokenAddress)
-  mapping(address => address) public bridgedToNativeToken;
-
-  /// @notice The current layer chainId from where the bridging is triggered
-  uint256 public sourceChainId;
-  /// @notice The targeted layer chainId where the bridging is received
-  uint256 public targetChainId;
 
   // Special addresses used in the mappings to mark specific states for tokens.
   /// @notice EMPTY means a token is not present in the mapping.
@@ -78,6 +65,35 @@ contract TokenBridge is
   address internal constant NATIVE_STATUS = address(0x222);
   /// @notice DEPLOYED means the bridged token contract has been deployed on the remote chain.
   address internal constant DEPLOYED_STATUS = address(0x333);
+
+  // solhint-disable-next-line var-name-mixedcase
+  /// @dev The permit selector to be used when decoding the permit.
+  bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
+
+  /// @notice These 3 variables are used for the token metadata.
+  bytes private constant METADATA_NAME = abi.encodeCall(IERC20MetadataUpgradeable.name, ());
+  bytes private constant METADATA_SYMBOL = abi.encodeCall(IERC20MetadataUpgradeable.symbol, ());
+  bytes private constant METADATA_DECIMALS = abi.encodeCall(IERC20MetadataUpgradeable.decimals, ());
+
+  /// @dev These 3 values are used when checking for token decimals and string values.
+  uint256 private constant VALID_DECIMALS_ENCODING_LENGTH = 32;
+  uint256 private constant SHORT_STRING_ENCODING_LENGTH = 32;
+  uint256 private constant MINIMUM_STRING_ABI_DECODE_LENGTH = 64;
+
+  /// @notice The token beacon for deployed tokens.
+  address public tokenBeacon;
+
+  /// @notice The chainId mapped to a native token address which is then mapped to the bridged token address.
+  mapping(uint256 chainId => mapping(address native => address bridged)) public nativeToBridgedToken;
+
+  /// @notice The bridged token address mapped to the native token address.
+  mapping(address bridged => address native) public bridgedToNativeToken;
+
+  /// @notice The current layer's chainId from where the bridging is triggered.
+  uint256 public sourceChainId;
+
+  /// @notice The targeted layer's chainId where the bridging is received.
+  uint256 public targetChainId;
 
   /// @dev Keep free storage slots for future implementation updates to avoid storage collision.
   uint256[50] private __gap;
@@ -97,12 +113,22 @@ contract TokenBridge is
     if (_addr == EMPTY) revert ZeroAddressNotAllowed();
     _;
   }
+
   /**
    * @dev Ensures the amount is not 0.
    * @param _amount amount to check.
    */
   modifier nonZeroAmount(uint256 _amount) {
     if (_amount == 0) revert ZeroAmountNotAllowed(_amount);
+    _;
+  }
+
+  /**
+   * @dev Ensures the chainId is not 0.
+   * @param _chainId chainId to check.
+   */
+  modifier nonZeroChainId(uint256 _chainId) {
+    if (_chainId == 0) revert ZeroChainIdNotAllowed();
     _;
   }
 
@@ -123,11 +149,17 @@ contract TokenBridge is
     external
     nonZeroAddress(_initializationData.messageService)
     nonZeroAddress(_initializationData.tokenBeacon)
+    nonZeroChainId(_initializationData.sourceChainId)
+    nonZeroChainId(_initializationData.targetChainId)
     initializer
   {
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
     __MessageServiceBase_init(_initializationData.messageService);
     __ReentrancyGuard_init();
+
+    if (_initializationData.defaultAdmin == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
 
     /**
      * @dev DEFAULT_ADMIN_ROLE is set for the security council explicitly,
@@ -138,13 +170,16 @@ contract TokenBridge is
     __Permissions_init(_initializationData.roleAddresses);
 
     tokenBeacon = _initializationData.tokenBeacon;
+    if (_initializationData.sourceChainId == _initializationData.targetChainId) revert SourceChainSameAsTargetChain();
     sourceChainId = _initializationData.sourceChainId;
     targetChainId = _initializationData.targetChainId;
 
     unchecked {
       for (uint256 i; i < _initializationData.reservedTokens.length; ) {
         if (_initializationData.reservedTokens[i] == EMPTY) revert ZeroAddressNotAllowed();
-        nativeToBridgedToken[sourceChainId][_initializationData.reservedTokens[i]] = RESERVED_STATUS;
+        nativeToBridgedToken[_initializationData.sourceChainId][
+          _initializationData.reservedTokens[i]
+        ] = RESERVED_STATUS;
         emit TokenReserved(_initializationData.reservedTokens[i]);
         ++i;
       }
@@ -154,21 +189,30 @@ contract TokenBridge is
   /**
    * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
+   * @param _defaultAdmin The default admin account's address.
    * @param _roleAddresses The list of addresses and roles to assign permissions to.
    * @param _pauseTypeRoles The list of pause types to associate with roles.
    * @param _unpauseTypeRoles The list of unpause types to associate with roles.
    */
   function reinitializePauseTypesAndPermissions(
+    address _defaultAdmin,
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles
   ) external reinitializer(2) {
+    if (_defaultAdmin == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
+    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+
     assembly {
       /// @dev Wiping the storage slot 101 of _owner as it is replaced by AccessControl and there is now the ERC165 __gap in its place.
-      /// @dev Wiping the storage slot 213 of _status as it is replaced by ReentrancyGuardUpgradeable at slot 1.
       sstore(101, 0)
+      /// @dev Wiping the storage slot 213 of _status as it is replaced by ReentrancyGuardUpgradeable at slot 1.
       sstore(213, 0)
     }
+
     __ReentrancyGuard_init();
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
     __Permissions_init(_roleAddresses);
@@ -319,7 +363,7 @@ contract TokenBridge is
    */
   function setMessageService(
     address _messageService
-  ) public nonZeroAddress(_messageService) onlyRole(SET_MESSAGE_SERVICE_ROLE) {
+  ) external nonZeroAddress(_messageService) onlyRole(SET_MESSAGE_SERVICE_ROLE) {
     address oldMessageService = address(messageService);
     messageService = IMessageService(_messageService);
     emit MessageServiceUpdated(_messageService, oldMessageService, msg.sender);
@@ -331,8 +375,13 @@ contract TokenBridge is
    * @param _tokens Array of bridged tokens that have been deployed.
    */
   function confirmDeployment(address[] memory _tokens) external payable {
+    uint256 tokensLength = _tokens.length;
+    if (tokensLength == 0) {
+      revert TokenListEmpty();
+    }
+
     // Check that the tokens have actually been deployed
-    for (uint256 i; i < _tokens.length; i++) {
+    for (uint256 i; i < tokensLength; i++) {
       address nativeToken = bridgedToNativeToken[_tokens[i]];
       if (nativeToken == EMPTY) {
         revert TokenNotDeployed(_tokens[i]);
@@ -358,8 +407,9 @@ contract TokenBridge is
    */
   function setDeployed(address[] calldata _nativeTokens) external onlyMessagingService onlyAuthorizedRemoteSender {
     unchecked {
+      uint256 cachedSourceChainId = sourceChainId;
       for (uint256 i; i < _nativeTokens.length; ) {
-        nativeToBridgedToken[sourceChainId][_nativeTokens[i]] = DEPLOYED_STATUS;
+        nativeToBridgedToken[cachedSourceChainId][_nativeTokens[i]] = DEPLOYED_STATUS;
         emit TokenDeployed(_nativeTokens[i]);
         ++i;
       }
@@ -412,7 +462,7 @@ contract TokenBridge is
    */
   function setReserved(
     address _token
-  ) public nonZeroAddress(_token) isNewToken(_token) onlyRole(SET_RESERVED_TOKEN_ROLE) {
+  ) external nonZeroAddress(_token) isNewToken(_token) onlyRole(SET_RESERVED_TOKEN_ROLE) {
     nativeToBridgedToken[sourceChainId][_token] = RESERVED_STATUS;
     emit TokenReserved(_token);
   }
@@ -473,30 +523,33 @@ contract TokenBridge is
   /**
    * @dev Provides a safe ERC20.name version which returns 'NO_NAME' as fallback string.
    * @param _token The address of the ERC-20 token contract
+   * @return tokenName Returns the string of the token name.
    */
-  function _safeName(address _token) internal view returns (string memory) {
+  function _safeName(address _token) internal view returns (string memory tokenName) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_NAME);
-    return success ? _returnDataToString(data) : "NO_NAME";
+    tokenName = success ? _returnDataToString(data) : "NO_NAME";
   }
 
   /**
    * @dev Provides a safe ERC20.symbol version which returns 'NO_SYMBOL' as fallback string
    * @param _token The address of the ERC-20 token contract
+   * @return symbol Returns the string of the symbol.
    */
-  function _safeSymbol(address _token) internal view returns (string memory) {
+  function _safeSymbol(address _token) internal view returns (string memory symbol) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_SYMBOL);
-    return success ? _returnDataToString(data) : "NO_SYMBOL";
+    symbol = success ? _returnDataToString(data) : "NO_SYMBOL";
   }
 
   /**
    * @notice Provides a safe ERC20.decimals version which reverts when decimals are unknown
    *   Note Tokens with (decimals > 255) are not supported
    * @param _token The address of the ERC-20 token contract
+   * @return Returns the token's decimals value.
    */
   function _safeDecimals(address _token) internal view returns (uint8) {
     (bool success, bytes memory data) = _token.staticcall(METADATA_DECIMALS);
 
-    if (success && data.length == 32) {
+    if (success && data.length == VALID_DECIMALS_ENCODING_LENGTH) {
       return abi.decode(data, (uint8));
     }
 
@@ -505,19 +558,20 @@ contract TokenBridge is
 
   /**
    * @dev Converts returned data to string. Returns 'NOT_VALID_ENCODING' as fallback value.
-   * @param _data returned data
+   * @param _data returned data.
+   * @return decodedString The decoded string data.
    */
-  function _returnDataToString(bytes memory _data) internal pure returns (string memory) {
-    if (_data.length >= 64) {
+  function _returnDataToString(bytes memory _data) internal pure returns (string memory decodedString) {
+    if (_data.length >= MINIMUM_STRING_ABI_DECODE_LENGTH) {
       return abi.decode(_data, (string));
-    } else if (_data.length != 32) {
+    } else if (_data.length != SHORT_STRING_ENCODING_LENGTH) {
       return "NOT_VALID_ENCODING";
     }
 
     // Since the strings on bytes32 are encoded left-right, check the first zero in the data
     uint256 nonZeroBytes;
     unchecked {
-      while (nonZeroBytes < 32 && _data[nonZeroBytes] != 0) {
+      while (nonZeroBytes < SHORT_STRING_ENCODING_LENGTH && _data[nonZeroBytes] != 0) {
         nonZeroBytes++;
       }
     }
@@ -534,7 +588,7 @@ contract TokenBridge is
         ++i;
       }
     }
-    return string(bytesArray);
+    decodedString = string(bytesArray);
   }
 
   /**
@@ -561,6 +615,9 @@ contract TokenBridge is
     );
     if (owner != msg.sender) revert PermitNotFromSender(owner);
     if (spender != address(this)) revert PermitNotAllowingBridge(spender);
-    IERC20PermitUpgradeable(_token).permit(msg.sender, address(this), amount, deadline, v, r, s);
+
+    if (IERC20Upgradeable(_token).allowance(owner, spender) < amount) {
+      IERC20PermitUpgradeable(_token).permit(msg.sender, address(this), amount, deadline, v, r, s);
+    }
   }
 }

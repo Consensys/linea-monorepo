@@ -12,6 +12,32 @@ java {
 
 repositories {
   mavenCentral()
+  maven {
+    url 'https://artifacts.consensys.net/public/teku/maven/'
+    content { includeGroupAndSubgroups('tech.pegasys') }
+  }
+  maven {
+    url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
+    content { includeGroupAndSubgroups('org.hyperledger.besu') }
+  }
+  maven {
+    url "https://artifacts.consensys.net/public/linea-besu/maven/"
+    content {
+      includeGroupAndSubgroups('io.consensys')
+    }
+  }
+  maven {
+    url "https://artifacts.consensys.net/public/maven/maven/"
+  }
+  // to allow locally published artifacts to be resolved uncomment enable mavenLocal() below
+  // build.linea:blob-compressor:2.0.0-SNAPSHOT
+  // useful to test WIP development versions
+  //mavenLocal() {
+  //  content {
+  //    includeModule('build.linea', 'blob-compressor')
+  //    includeModule('build.linea', 'shnarf-calculator')
+  //  }
+  //}
 }
 
 dependencies {

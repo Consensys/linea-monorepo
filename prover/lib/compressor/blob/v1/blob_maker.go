@@ -2,24 +2,19 @@ package v1
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"slices"
 	"strings"
 
-	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/sirupsen/logrus"
-
-	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/hash"
-	"github.com/icza/bitio"
-
 	"github.com/consensys/compress/lzss"
+	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -29,8 +24,8 @@ const (
 	NbElemsEncodingBytes = 2
 
 	// These also impact the circuit constraints (compile / setup time)
-	MaxUncompressedBytes = 740 * 1024 // defines the max size we can handle for a blob (uncompressed) input
-	MaxUsableBytes       = 32 * 4096  // defines the number of bytes available in a blob
+	MaxUncompressedBytes = 756240    // ~738.5KB defines the max size we can handle for a blob (uncompressed) input
+	MaxUsableBytes       = 32 * 4096 // defines the number of bytes available in a blob
 )
 
 // BlobMaker is a bm for RLP encoded blocks (see EIP-4844).
@@ -40,8 +35,9 @@ type BlobMaker struct {
 	Limit      int              // maximum size of the compressed data
 	compressor *lzss.Compressor // compressor used to compress the blob body
 	dict       []byte           // dictionary used for compression
+	dictStore  dictionary.Store // dictionary store comprising only dict, used for decompression sanity checks
 
-	Header Header
+	header Header
 
 	// contains currentBlob data from latest **valid** call to Write
 	// that is the header (uncompressed) and the body (compressed)
@@ -68,12 +64,15 @@ func NewBlobMaker(dataLimit int, dictPath string) (*BlobMaker, error) {
 	}
 	dict = lzss.AugmentDict(dict)
 	blobMaker.dict = dict
+	if blobMaker.dictStore, err = dictionary.SingletonStore(dict, 1); err != nil {
+		return nil, err
+	}
 
-	dictChecksum, err := MiMCChecksumPackedData(dict, 8)
+	dictChecksum, err := encode.MiMCChecksumPackedData(dict, 8)
 	if err != nil {
 		return nil, err
 	}
-	copy(blobMaker.Header.DictChecksum[:], dictChecksum)
+	copy(blobMaker.header.DictChecksum[:], dictChecksum)
 
 	blobMaker.compressor, err = lzss.NewCompressor(dict)
 	if err != nil {
@@ -88,18 +87,18 @@ func NewBlobMaker(dataLimit int, dictPath string) (*BlobMaker, error) {
 
 // StartNewBatch starts a new batch of blocks.
 func (bm *BlobMaker) StartNewBatch() {
-	bm.Header.sealBatch()
+	bm.header.sealBatch()
 }
 
 // Reset resets the bm to its initial state.
 func (bm *BlobMaker) Reset() {
-	bm.Header.resetTable()
+	bm.header.resetTable()
 	bm.currentBlobLength = 0
 	bm.buf.Reset()
 	bm.packBuffer.Reset()
 	bm.compressor.Reset()
 
-	bm.StartNewBatch()
+	bm.header.sealBatch()
 }
 
 // Len returns the length of the compressed data, which includes the header.
@@ -116,18 +115,18 @@ func (bm *BlobMaker) Written() int {
 func (bm *BlobMaker) Bytes() []byte {
 	if bm.currentBlobLength > 0 {
 		// sanity check that we can always decompress.
-		header, rawBlocks, _, err := DecompressBlob(bm.currentBlob[:bm.currentBlobLength], bm.dict)
+		header, rawBlocks, _, err := DecompressBlob(bm.currentBlob[:bm.currentBlobLength], bm.dictStore)
 		if err != nil {
 			var sbb strings.Builder
 			fmt.Fprintf(&sbb, "invalid blob: %v\n", err)
-			fmt.Fprintf(&sbb, "header: %v\n", bm.Header)
+			fmt.Fprintf(&sbb, "header: %v\n", bm.header)
 			fmt.Fprintf(&sbb, "bm.currentBlobLength: %v\n", bm.currentBlobLength)
 			fmt.Fprintf(&sbb, "bm.currentBlob: %x\n", bm.currentBlob[:bm.currentBlobLength])
 
 			panic(sbb.String())
 		}
 		// compare the header
-		if !header.Equals(&bm.Header) {
+		if !header.Equals(&bm.header) {
 			panic("invalid blob: header mismatch")
 		}
 		if !bytes.Equal(rawBlocks, bm.compressor.WrittenBytes()) {
@@ -140,6 +139,7 @@ func (bm *BlobMaker) Bytes() []byte {
 // Write attempts to append the RLP block to the current batch.
 // if forceReset is set; this will NOT append the bytes but still returns true if the chunk could have been appended
 func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error) {
+	prevLen := bm.compressor.Written()
 
 	// decode the RLP block.
 	var block types.Block
@@ -165,16 +165,19 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 		// 1. underlying writer error (shouldn't happen we use a simple in memory buffer)
 		// 2. we exceed the maximum input size of 2Mb (shouldn't happen either)
 		// In both cases, we can't do anything, so we reset the state.
+		if innerErr := bm.compressor.Revert(); innerErr != nil {
+			return false, fmt.Errorf("when reverting compressor because writing failed: %w\noriginal error: %w", innerErr, err)
+		}
 		return false, fmt.Errorf("when writing block to compressor: %w", err)
 	}
 
 	// increment length of the current batch
-	bm.Header.addBlock(blockLen)
+	bm.header.addBlock(blockLen)
 	// write the header to get its length.
 	bm.buf.Reset()
-	if _, err = bm.Header.WriteTo(&bm.buf); err != nil {
+	if _, err = bm.header.WriteTo(&bm.buf); err != nil {
 		// only possible error is an underlying writer error (shouldn't happen we use a simple in-memory buffer)
-		bm.Header.removeLastBlock()
+		bm.header.removeLastBlock()
 		return false, fmt.Errorf("when writing header to buffer: %w", err)
 	}
 
@@ -186,45 +189,80 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 		if err := bm.compressor.Revert(); err != nil {
 			return false, fmt.Errorf("when reverting compressor because uncompressed blob is > maxUncompressedSize: %w", err)
 		}
-		bm.Header.removeLastBlock()
+		bm.header.removeLastBlock()
 		return false, nil
 	}
 
+	fitsInBlob := func() bool {
+		return encode.PackAlignSize(bm.buf.Len()+bm.compressor.Len(), fr381.Bits-1) <= bm.Limit
+	}
+
+	payload := bm.compressor.WrittenBytes()
+	recompressionAttempted := false
+	revert := func() error { // from this point on, we may have recompressed the entire payload in one go
+		// that makes the compressor's own Revert method unusable.
+		bm.header.removeLastBlock()
+		if !recompressionAttempted { // fast path for most "CanWrite" calls
+			return bm.compressor.Revert()
+		}
+		// we can't use the compressor's own Revert method because we tried to compress in one go.
+		bm.compressor.Reset()
+		_, err := bm.compressor.Write(payload[:prevLen])
+		return wrapError(err, "reverting the compressor")
+	}
+
 	// check that the header + the compressed data fits in the blob
-	fitsInBlob := PackAlignSize(bm.buf.Len()+bm.compressor.Len(), fr381.Bits-1) <= bm.Limit
-	if !fitsInBlob {
-		// first thing to check is if we bypass compression, would that fit?
+	if !fitsInBlob() {
+		recompressionAttempted = true
+
+		// first thing to check is whether we can fit the block if we recompress everything in one go, known to achieve a higher ratio.
+		bm.compressor.Reset()
+		if _, err = bm.compressor.Write(payload); err != nil {
+			err = fmt.Errorf("when recompressing the blob: %w", err)
+
+			if innerErr := revert(); innerErr != nil {
+				err = fmt.Errorf("%w\n\tto recover from write failure: %w", innerErr, err)
+			}
+
+			return false, err
+		}
+		if fitsInBlob() {
+			goto bypass
+		}
+
+		// that didn't work. a "desperate" attempt is not to compress at all.
 		if bm.compressor.ConsiderBypassing() {
 			// we can bypass compression and get a better ratio.
 			// let's check if now we fit in the blob.
-			if PackAlignSize(bm.buf.Len()+bm.compressor.Len(), fr381.Bits-1) <= bm.Limit {
+			if fitsInBlob() {
 				goto bypass
 			}
 		}
 
 		// discard.
-		if err = bm.compressor.Revert(); err != nil {
+		if err = revert(); err != nil {
 			return false, fmt.Errorf("when reverting compressor because blob is full: %w", err)
 		}
-		bm.Header.removeLastBlock()
 		return false, nil
 	}
 bypass:
 	if forceReset {
 		// we don't want to append the data, but we could have.
-		if err = bm.compressor.Revert(); err != nil {
-			return false, fmt.Errorf("when reverting compressor (blob is not full but forceReset == true): %w", err)
+		if err = revert(); err != nil {
+			return false, fmt.Errorf("%w\nreverting because forceReset == true even though the blob isn't full", err)
 		}
-		bm.Header.removeLastBlock()
 		return true, nil
 	}
 
 	// copy the compressed data to the blob
 	bm.packBuffer.Reset()
-	n2, err := PackAlign(&bm.packBuffer, bm.buf.Bytes(), fr381.Bits-1, WithAdditionalInput(bm.compressor.Bytes()))
+	n2, err := encode.PackAlign(&bm.packBuffer, bm.buf.Bytes(), fr381.Bits-1, encode.WithAdditionalInput(bm.compressor.Bytes()))
 	if err != nil {
-		bm.compressor.Revert()
-		bm.Header.removeLastBlock()
+		err = fmt.Errorf("when packing blob: %w", err)
+		innerErr := revert()
+		if innerErr != nil {
+			err = fmt.Errorf("%w\n\twhen attempting to recover from: %w", innerErr, err)
+		}
 		return false, fmt.Errorf("when packing blob: %w", err)
 	}
 	bm.currentBlobLength = int(n2)
@@ -236,9 +274,9 @@ bypass:
 // Clone returns a (almost) deep copy of the bm -- this is used for test purposes.
 func (bm *BlobMaker) Clone() *BlobMaker {
 	deepCopy := *bm
-	deepCopy.Header.BatchSizes = make([]int, len(bm.Header.BatchSizes))
+	deepCopy.header.BatchSizes = make([]int, len(bm.header.BatchSizes))
 
-	copy(deepCopy.Header.BatchSizes, bm.Header.BatchSizes)
+	copy(deepCopy.header.BatchSizes, bm.header.BatchSizes)
 
 	return &deepCopy
 }
@@ -254,19 +292,19 @@ func (bm *BlobMaker) Equals(other *BlobMaker) bool {
 	if !bytes.Equal(bm.currentBlob[:bm.currentBlobLength], other.currentBlob[:other.currentBlobLength]) {
 		return false
 	}
-	if len(bm.Header.BatchSizes) != len(other.Header.BatchSizes) {
+	if len(bm.header.BatchSizes) != len(other.header.BatchSizes) {
 		return false
 	}
-	if !slices.Equal(bm.Header.BatchSizes, other.Header.BatchSizes) {
+	if !slices.Equal(bm.header.BatchSizes, other.header.BatchSizes) {
 		return false
 	}
 	return true
 }
 
 // DecompressBlob decompresses a blob and returns the header and the blocks as they were compressed.
-func DecompressBlob(b, dict []byte) (blobHeader *Header, rawPayload []byte, blocks [][]byte, err error) {
+func DecompressBlob(b []byte, dictStore dictionary.Store) (blobHeader *Header, rawPayload []byte, blocks [][]byte, err error) {
 	// UnpackAlign the blob
-	b, err = UnpackAlign(b, fr381.Bits-1, false)
+	b, err = encode.UnpackAlign(b, fr381.Bits-1, false)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -277,15 +315,10 @@ func DecompressBlob(b, dict []byte) (blobHeader *Header, rawPayload []byte, bloc
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to read blob header: %w", err)
 	}
-	// ensure the dict hash matches
-	{
-		expectedDictChecksum, err := MiMCChecksumPackedData(dict, 8)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		if !bytes.Equal(expectedDictChecksum, blobHeader.DictChecksum[:]) {
-			return nil, nil, nil, errors.New("invalid dict hash")
-		}
+	// retrieve dict
+	dict, err := dictStore.Get(blobHeader.DictChecksum[:], 1)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	b = b[read:]
@@ -315,210 +348,6 @@ func DecompressBlob(b, dict []byte) (blobHeader *Header, rawPayload []byte, bloc
 	}
 
 	return blobHeader, rawPayload, blocks, nil
-}
-
-// PackAlignSize returns the size of the data when packed with PackAlign.
-func PackAlignSize(length0, packingSize int, options ...packAlignOption) (n int) {
-	var s packAlignSettings
-	s.initialize(length0, options...)
-
-	// we may need to add some bits to a and b to ensure we can process some blocks of 248 bits
-	extraBits := (packingSize - s.dataNbBits%packingSize) % packingSize
-	nbBits := s.dataNbBits + extraBits
-
-	return (nbBits / packingSize) * ((packingSize + 7) / 8)
-}
-
-type packAlignSettings struct {
-	dataNbBits           int
-	lastByteNbUnusedBits uint8
-	noTerminalSymbol     bool
-	additionalInput      [][]byte
-}
-
-type packAlignOption func(*packAlignSettings)
-
-func NoTerminalSymbol() packAlignOption {
-	return func(o *packAlignSettings) {
-		o.noTerminalSymbol = true
-	}
-}
-
-func WithAdditionalInput(data ...[]byte) packAlignOption {
-	return func(o *packAlignSettings) {
-		o.additionalInput = append(o.additionalInput, data...)
-	}
-}
-
-func WithLastByteNbUnusedBits(n uint8) packAlignOption {
-	if n > 7 {
-		panic("only 8 bits to a byte")
-	}
-	return func(o *packAlignSettings) {
-		o.lastByteNbUnusedBits = n
-	}
-}
-
-func (s *packAlignSettings) initialize(length int, options ...packAlignOption) {
-
-	for _, opt := range options {
-		opt(s)
-	}
-
-	nbBytes := length
-	for _, data := range s.additionalInput {
-		nbBytes += len(data)
-	}
-
-	if !s.noTerminalSymbol {
-		nbBytes++
-	}
-
-	s.dataNbBits = nbBytes*8 - int(s.lastByteNbUnusedBits)
-}
-
-// PackAlign writes a and b to w, aligned to fr.Element (bls12-377) boundary.
-// It returns the length of the data written to w.
-func PackAlign(w io.Writer, a []byte, packingSize int, options ...packAlignOption) (n int64, err error) {
-
-	var s packAlignSettings
-	s.initialize(len(a), options...)
-	if !s.noTerminalSymbol && s.lastByteNbUnusedBits != 0 {
-		return 0, errors.New("terminal symbols with byte aligned input not yet supported")
-	}
-
-	// we may need to add some bits to a and b to ensure we can process some blocks of packingSize bits
-	nbBits := (s.dataNbBits + (packingSize - 1)) / packingSize * packingSize
-	extraBits := nbBits - s.dataNbBits
-
-	// padding will always be less than bytesPerElem bytes
-	bytesPerElem := (packingSize + 7) / 8
-	packingSizeLastU64 := uint8(packingSize % 64)
-	if packingSizeLastU64 == 0 {
-		packingSizeLastU64 = 64
-	}
-	bytePadding := (extraBits + 7) / 8
-	buf := make([]byte, bytesPerElem, bytesPerElem+1)
-
-	// the last nonzero byte is 0xff
-	if !s.noTerminalSymbol {
-		buf = append(buf, 0)
-		buf[0] = 0xff
-	}
-
-	inReaders := make([]io.Reader, 2+len(s.additionalInput))
-	inReaders[0] = bytes.NewReader(a)
-	for i, data := range s.additionalInput {
-		inReaders[i+1] = bytes.NewReader(data)
-	}
-	inReaders[len(inReaders)-1] = bytes.NewReader(buf[:bytePadding+1])
-
-	r := bitio.NewReader(io.MultiReader(inReaders...))
-
-	var tryWriteErr error
-	tryWrite := func(v uint64) {
-		if tryWriteErr == nil {
-			tryWriteErr = binary.Write(w, binary.BigEndian, v)
-		}
-	}
-
-	for i := 0; i < nbBits/packingSize; i++ {
-		tryWrite(r.TryReadBits(packingSizeLastU64))
-		for j := int(packingSizeLastU64); j < packingSize; j += 64 {
-			tryWrite(r.TryReadBits(64))
-		}
-	}
-
-	if tryWriteErr != nil {
-		return 0, fmt.Errorf("when writing to w: %w", tryWriteErr)
-	}
-
-	if r.TryError != nil {
-		return 0, fmt.Errorf("when reading from multi-reader: %w", r.TryError)
-	}
-
-	n1 := (nbBits / packingSize) * bytesPerElem
-	if n1 != PackAlignSize(len(a), packingSize, options...) {
-		return 0, errors.New("inconsistent PackAlignSize")
-	}
-	return int64(n1), nil
-}
-
-// UnpackAlign unpacks r (packed with PackAlign) and returns the unpacked data.
-func UnpackAlign(r []byte, packingSize int, noTerminalSymbol bool) ([]byte, error) {
-	bytesPerElem := (packingSize + 7) / 8
-	packingSizeLastU64 := uint8(packingSize % 64)
-	if packingSizeLastU64 == 0 {
-		packingSizeLastU64 = 64
-	}
-
-	n := len(r) / bytesPerElem
-	if n*bytesPerElem != len(r) {
-		return nil, fmt.Errorf("invalid data length; expected multiple of %d", bytesPerElem)
-	}
-
-	var out bytes.Buffer
-	w := bitio.NewWriter(&out)
-	for i := 0; i < n; i++ {
-		// read bytes
-		element := r[bytesPerElem*i : bytesPerElem*(i+1)]
-		// write bits
-		w.TryWriteBits(binary.BigEndian.Uint64(element[0:8]), packingSizeLastU64)
-		for j := 8; j < bytesPerElem; j += 8 {
-			w.TryWriteBits(binary.BigEndian.Uint64(element[j:j+8]), 64)
-		}
-	}
-	if w.TryError != nil {
-		return nil, fmt.Errorf("when writing to bitio.Writer: %w", w.TryError)
-	}
-	if err := w.Close(); err != nil {
-		return nil, fmt.Errorf("when closing bitio.Writer: %w", err)
-	}
-
-	if !noTerminalSymbol {
-		// the last nonzero byte should be 0xff
-		outLen := out.Len() - 1
-		for out.Bytes()[outLen] == 0 {
-			outLen--
-		}
-		if out.Bytes()[outLen] != 0xff {
-			return nil, errors.New("invalid terminal symbol")
-		}
-		out.Truncate(outLen)
-	}
-
-	return out.Bytes(), nil
-}
-
-// MiMCChecksumPackedData re-packs the data tightly into bls12-377 elements and computes the MiMC checksum.
-// only supporting packing without a terminal symbol. Input with a terminal symbol will be interpreted in full padded length.
-func MiMCChecksumPackedData(data []byte, inputPackingSize int, hashPackingOptions ...packAlignOption) ([]byte, error) {
-	dataNbBits := len(data) * 8
-	if inputPackingSize%8 != 0 {
-		inputBytesPerElem := (inputPackingSize + 7) / 8
-		dataNbBits = dataNbBits / inputBytesPerElem * inputPackingSize
-		var err error
-		if data, err = UnpackAlign(data, inputPackingSize, true); err != nil {
-			return nil, err
-		}
-	}
-
-	lastByteNbUnusedBits := 8 - dataNbBits%8
-	if lastByteNbUnusedBits == 8 {
-		lastByteNbUnusedBits = 0
-	}
-
-	var bb bytes.Buffer
-	packingOptions := make([]packAlignOption, len(hashPackingOptions)+1)
-	copy(packingOptions, hashPackingOptions)
-	packingOptions[len(packingOptions)-1] = WithLastByteNbUnusedBits(uint8(lastByteNbUnusedBits))
-	if _, err := PackAlign(&bb, data, fr377.Bits-1, packingOptions...); err != nil {
-		return nil, err
-	}
-
-	hsh := hash.MIMC_BLS12_377.New()
-	hsh.Write(bb.Bytes())
-	return hsh.Sum(nil), nil
 }
 
 // WorstCompressedBlockSize returns the size of the given block, as compressed by an "empty" blob maker.
@@ -557,7 +386,7 @@ func (bm *BlobMaker) WorstCompressedBlockSize(rlpBlock []byte) (bool, int, error
 	}
 
 	// account for the padding
-	n = PackAlignSize(n, fr381.Bits-1, NoTerminalSymbol())
+	n = encode.PackAlignSize(n, fr381.Bits-1, encode.NoTerminalSymbol())
 
 	return expandingBlock, n, nil
 }
@@ -581,7 +410,7 @@ func (bm *BlobMaker) WorstCompressedTxSize(rlpTx []byte) (int, error) {
 
 	// encode the transaction in Linea format.
 	var buf bytes.Buffer
-	if err := encodeTxForCompression(&tx, &buf); err != nil {
+	if err := EncodeTxForCompression(&tx, &buf); err != nil {
 		return -1, fmt.Errorf("failed to encode transaction: %w", err)
 	}
 
@@ -610,7 +439,14 @@ func (bm *BlobMaker) RawCompressedSize(data []byte) (int, error) {
 	}
 
 	// account for the padding
-	n = PackAlignSize(n, fr381.Bits-1, NoTerminalSymbol())
+	n = encode.PackAlignSize(n, fr381.Bits-1, encode.NoTerminalSymbol())
 
 	return n, nil
+}
+
+func wrapError(err error, format string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf(format+": %w", append(args, err)...)
 }

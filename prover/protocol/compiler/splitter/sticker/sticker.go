@@ -1,8 +1,10 @@
 package sticker
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -403,7 +405,7 @@ func (ctx *stickContext) compileFixedEvaluation() {
 		// Filters out only the
 		q, ok := ctx.comp.QueriesParams.Data(qName).(query.LocalOpening)
 		if !ok {
-			utils.Panic("got an uncompilable query %v", qName)
+			utils.Panic("got an uncompilable query name=%v type=%T", qName, q)
 		}
 
 		// Assumption, the query is not over an interleaved column
@@ -433,6 +435,22 @@ func (ctx *stickContext) compileFixedEvaluation() {
 		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
 			y := run.QueriesParams.MustGet(q.ID).(query.LocalOpeningParams).Y
 			run.AssignLocalPoint(newQ.ID, y)
+		})
+
+		// The verifier ensures that the old and new queries have the same assignement
+		ctx.comp.InsertVerifier(round, func(run *wizard.VerifierRuntime) error {
+			oldParams := run.GetLocalPointEvalParams(q.ID)
+			newParams := run.GetLocalPointEvalParams(queryName(q.ID))
+
+			if oldParams != newParams {
+				return fmt.Errorf("sticker verifier failed for local opening %v - %v", q.ID, queryName(q.ID))
+			}
+
+			return nil
+		}, func(api frontend.API, run *wizard.WizardVerifierCircuit) {
+			oldParams := run.GetLocalPointEvalParams(q.ID)
+			newParams := run.GetLocalPointEvalParams(queryName(q.ID))
+			api.AssertIsEqual(oldParams.Y, newParams.Y)
 		})
 	}
 

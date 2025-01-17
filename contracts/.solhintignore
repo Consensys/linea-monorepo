@@ -1,2 +1,6 @@
 node_modules
+lib/forge-std
 contracts/test-contracts
+test/foundry
+/contracts/proxies
+/contracts/tokenBridge/mocks

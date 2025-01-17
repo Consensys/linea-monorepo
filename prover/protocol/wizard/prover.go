@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/sirupsen/logrus"
 )
 
 // ProverStep represents an operation to be performed by the prover of a
@@ -120,6 +119,22 @@ type ProverRuntime struct {
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
+
+	// ParentRuntime stores an external runtime that can be accessed by the
+	// prover steps to retrieve data from a parent runtime. This can be used
+	// in the distributed prover by the module runtimes to access the initial
+	// wizard runtime.
+	ParentRuntime *ProverRuntime
+
+	// ProverID indicates the id of the prover among its siblings.
+	// It is merely in the context of the distributed prover;
+	// for vertical splitting to extract the relevant segment of a witness.
+	ProverID int
+
+	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
+	// round. The first entry is the initial state, the final entry is the final
+	// state.
+	FiatShamirHistory [][2][]field.Element
 }
 
 // Prove is the top-level function that runs the Prover on the user's side. It
@@ -143,22 +158,8 @@ type ProverRuntime struct {
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
 func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
-	runtime := c.createProver()
-	/*
-		Run the user provided assignment function. We can't expect it
-		to run all the rounds, because the compilation could have added
-		extra-rounds.
-	*/
-	highLevelprover(&runtime)
 
-	/*
-		Then, run the compiled prover steps
-	*/
-	runtime.runProverSteps()
-	for runtime.currRound+1 < runtime.NumRounds() {
-		runtime.goNextRound()
-		runtime.runProverSteps()
-	}
+	runtime := RunProver(c, highLevelprover)
 
 	/*
 		Pass all the prover message columns as part of the proof
@@ -180,6 +181,30 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 		Messages:      messages,
 		QueriesParams: runtime.QueriesParams,
 	}
+}
+
+// RunProver initializes a [ProverRuntime], runs the prover and returns the final
+// runtime. It does not returns the [Proof] however.
+func RunProver(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
+
+	runtime := c.createProver()
+	/*
+		Run the user provided assignment function. We can't expect it
+		to run all the rounds, because the compilation could have added
+		extra-rounds.
+	*/
+	highLevelprover(&runtime)
+
+	/*
+		Then, run the compiled prover steps
+	*/
+	runtime.runProverSteps()
+	for runtime.currRound+1 < runtime.NumRounds() {
+		runtime.goNextRound()
+		runtime.runProverSteps()
+	}
+
+	return &runtime
 }
 
 // ProveOnlyFirstRound computes the first round of the prover and returns the
@@ -223,14 +248,20 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
-		Spec:          c,
-		Columns:       collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
-		QueriesParams: collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
-		Coins:         collection.NewMapping[coin.Name, interface{}](),
-		State:         collection.NewMapping[string, interface{}](),
-		FS:            fs,
-		currRound:     0,
-		lock:          &sync.Mutex{},
+		Spec:              c,
+		Columns:           collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
+		QueriesParams:     collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
+		Coins:             collection.NewMapping[coin.Name, interface{}](),
+		State:             collection.NewMapping[string, interface{}](),
+		FS:                fs,
+		currRound:         0,
+		lock:              &sync.Mutex{},
+		FiatShamirHistory: make([][2][]field.Element, c.NumRounds()),
+	}
+
+	runtime.FiatShamirHistory[0] = [2][]field.Element{
+		fs.State(),
+		fs.State(),
 	}
 
 	// Pass the precomputed polynomials
@@ -362,7 +393,7 @@ func (run *ProverRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 //   - the column assignment occurs at the wrong round. If this error happens,
 //     it is likely that the [ifaces.Column] was created in the wrong round to
 //     begin with.
-func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssignment) {
+func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssignment, round ...int) {
 
 	// global prover's lock before accessing the witnesses. This makes the
 	// function thread-safe
@@ -384,7 +415,14 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 
 	// Sanity-check: Make sure, it is done at the right round
 	handle := run.Spec.Columns.GetHandle(name)
-	ifaces.MustBeInRound(handle, run.currRound)
+	// if round is empty, we expect it to assign the column at the current round,
+	// otherwise it assigns it in the round the column was declared.
+	// This is useful when we have for loop over rounds.
+	if len(round) == 0 {
+		ifaces.MustBeInRound(handle, run.currRound)
+	} else {
+		ifaces.MustBeInRound(handle, round[0])
+	}
 
 	if witness.Len() != handle.Size() {
 		utils.Panic("Bad length for %v, expected %v got %v\n", handle, handle.Size(), witness.Len())
@@ -471,6 +509,8 @@ func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coi
 // parameters. This makes all the new coins available in the prover runtime.
 func (run *ProverRuntime) goNextRound() {
 
+	initialState := run.FS.State()
+
 	/*
 		Make sure all issued random coin have been "consumed" by all the prover
 		steps, in the round we are closing. An error occuring here is more likely
@@ -492,11 +532,6 @@ func (run *ProverRuntime) goNextRound() {
 	toBeParametrized := run.Spec.QueriesParams.AllKeysAt(run.currRound)
 	run.QueriesParams.MustExists(toBeParametrized...)
 
-	// Counts the transcript size of the round and the number of field
-	// element generated.
-	initialTranscriptSize := run.FS.TranscriptSize
-	initialNumCoinsGenerated := run.FS.NumCoinGenerated
-
 	if !run.Spec.DummyCompiled {
 
 		/*
@@ -505,13 +540,11 @@ func (run *ProverRuntime) goNextRound() {
 			FS using the last round of the prover because he is always
 			the last one to "talk" in the protocol.
 		*/
-		start := run.FS.TranscriptSize
-		msgsToFS := run.Spec.Columns.AllKeysProofAt(run.currRound)
+		msgsToFS := run.Spec.Columns.AllKeysProofsOrIgnoredButKeptInProverTranscript(run.currRound)
 		for _, msgName := range msgsToFS {
 			instance := run.GetMessage(msgName)
 			run.FS.UpdateSV(instance)
 		}
-		logrus.Debugf("Fiat-shamir round %v - %v proof elements in the transcript", run.currRound, run.FS.TranscriptSize-start)
 
 		/*
 			Make sure that all messages have been written and use them
@@ -519,26 +552,26 @@ func (run *ProverRuntime) goNextRound() {
 			FS using the last round of the prover because he is always
 			the last one to "talk" in the protocol.
 		*/
-		start = run.FS.TranscriptSize
 		msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(run.currRound)
 		for _, msgName := range msgsToFS {
 			instance := run.GetMessage(msgName)
 			run.FS.UpdateSV(instance)
 		}
-		logrus.Debugf("Fiat-shamir round %v - %v public inputs in the transcript", run.currRound, run.FS.TranscriptSize-start)
 
 		/*
 			Also include the prover's allegations for all evaluations
 		*/
-		start = run.FS.TranscriptSize
 		paramsToFS := run.Spec.QueriesParams.AllKeysAt(run.currRound)
 		for _, qName := range paramsToFS {
+			if run.Spec.QueriesParams.IsSkippedFromProverTranscript(qName) {
+				continue
+			}
+
 			// Implicitly, this will panic whenever we start supporting
 			// a new type of query params
 			params := run.QueriesParams.MustGet(qName)
 			params.UpdateFS(run.FS)
 		}
-		logrus.Debugf("Fiat-shamir round %v - %v query params in the transcript", run.currRound, run.FS.TranscriptSize-start)
 	}
 
 	// Increment the number of rounds
@@ -556,9 +589,12 @@ func (run *ProverRuntime) goNextRound() {
 		run.Coins.InsertNew(coin, value)
 	}
 
-	logrus.Debugf("Ran Fiat-Shamir for round %v, transcript size %v (field element), generated %v field elements, total-transcript %v, total-generated %v",
-		run.currRound, run.FS.TranscriptSize-initialTranscriptSize, run.FS.NumCoinGenerated-initialNumCoinsGenerated, run.FS.TranscriptSize, run.FS.NumCoinGenerated,
-	)
+	finalState := run.FS.State()
+
+	run.FiatShamirHistory[run.currRound] = [2][]field.Element{
+		initialState,
+		finalState,
+	}
 }
 
 // runProverSteps runs all the [ProverStep] specified in the underlying
@@ -710,8 +746,64 @@ func (run *ProverRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.Loc
 	return run.QueriesParams.MustGet(name).(query.LocalOpeningParams)
 }
 
+// AssignLogDerivSum assign the claimed values for a logDeriveSum
+// The function will panic if:
+//   - the parameters were already assigned
+//   - the specified query is not registered
+//   - the assignment round is incorrect
+func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y field.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewLogDerivSumParams(y)
+	run.QueriesParams.InsertNew(name, params)
+}
+
+// GetLogDeriveSum gets the metadata of a [query.LogDerivativeSum] query. Panic if not found.
+func (run *ProverRuntime) GetLogDeriveSum(name ifaces.QueryID) query.LogDerivativeSum {
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+	return run.Spec.QueriesParams.Data(name).(query.LogDerivativeSum)
+}
+
+// GetLogDerivSumParams returns the parameters of [query.LogDerivativeSum]
+func (run *ProverRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
+
+	// Global prover's lock for accessing params
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams)
+}
+
 // GetParams generically extracts the parameters of a query. Will panic if no
 // parameters are found
 func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 	return run.QueriesParams.MustGet(name)
+}
+
+// AssignGrandProduct assigns the value \prod(num)/\prod(den)
+// The function will panic if:
+//   - the parameters were already assigned
+//   - the specified query is not registered
+//   - the assignment round is incorrect
+func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewGrandProductParams(y)
+	run.QueriesParams.InsertNew(name, params)
 }

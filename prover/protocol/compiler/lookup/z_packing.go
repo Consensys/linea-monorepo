@@ -26,7 +26,7 @@ const (
 // T:       lookupTable,
 // SFilter: includedFilters,
 
-type zCtx struct {
+type ZCtx struct {
 	Round, Size      int
 	SigmaNumerator   []*sym.Expression // T -> -M, S -> +Filter
 	SigmaDenominator []*sym.Expression // S or T -> ({S,T} + X)
@@ -36,14 +36,15 @@ type zCtx struct {
 	Zs []ifaces.Column
 	// ZOpenings are the opening queries to the end of each Z.
 	ZOpenings []query.LocalOpening
+	Name      string
 }
 
-// check permutation and see how/where compile is called (see how to constracut z there)
+// check permutation and see how/where Compile is called (see how to constracut z there)
 // when constructing z, check if z is T or S
 // and change T -> -M, S -> +Filter
 // S or T -> ({S,T} + X)
-// compile should be called inside CompileGrandSum
-func (z *zCtx) compile(comp *wizard.CompiledIOP) {
+// Compile should be called inside CompileGrandSum
+func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
 
 	var (
 		numZs = utils.DivCeil(
@@ -80,28 +81,15 @@ func (z *zCtx) compile(comp *wizard.CompiledIOP) {
 		z.ZDenominatorBoarded[i] = zDenominator.Board()
 
 		z.Zs[i] = comp.InsertCommit(
-			z.Round+1,
-			deriveName[ifaces.ColID]("Z", comp.SelfRecursionCount, z.Round, z.Size, i),
+			z.Round,
+			DeriveName[ifaces.ColID]("Z", comp.SelfRecursionCount, z.Round, z.Size, i),
 			z.Size,
 		)
 
-		// consistency check
-		comp.InsertGlobal(
-			z.Round+1,
-			deriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
-			sym.Sub(
-				zNumerator,
-				sym.Mul(
-					sym.Sub(z.Zs[i], column.Shift(z.Zs[i], -1)),
-					zDenominator,
-				),
-			),
-		)
-
-		// complete the consistency by adding the edge-case at position 0
+		// initial condition
 		comp.InsertLocal(
-			z.Round+1,
-			deriveName[ifaces.QueryID]("Z_CONSISTENCY_START", comp.SelfRecursionCount, z.Round, z.Size, i),
+			z.Round,
+			DeriveName[ifaces.QueryID]("Z_CONSISTENCY_START", comp.SelfRecursionCount, z.Round, z.Size, i),
 			sym.Sub(
 				zNumerator,
 				sym.Mul(
@@ -111,10 +99,23 @@ func (z *zCtx) compile(comp *wizard.CompiledIOP) {
 			),
 		)
 
+		// consistency check
+		comp.InsertGlobal(
+			z.Round,
+			DeriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
+			sym.Sub(
+				zNumerator,
+				sym.Mul(
+					sym.Sub(z.Zs[i], column.Shift(z.Zs[i], -1)),
+					zDenominator,
+				),
+			),
+		)
+
 		// local opening of the final value of the Z polynomial
 		z.ZOpenings[i] = comp.InsertLocalOpening(
-			z.Round+1,
-			deriveName[ifaces.QueryID]("Z_FINAL", comp.SelfRecursionCount, z.Round, z.Size, i),
+			z.Round,
+			DeriveName[ifaces.QueryID]("Z_FINAL", comp.SelfRecursionCount, z.Round, z.Size, i),
 			column.Shift(z.Zs[i], -1),
 		)
 	}

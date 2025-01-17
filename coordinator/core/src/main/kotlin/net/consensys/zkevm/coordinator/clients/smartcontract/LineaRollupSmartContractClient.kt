@@ -1,50 +1,10 @@
 package net.consensys.zkevm.coordinator.clients.smartcontract
 
-import net.consensys.linea.BlockParameter
+import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCaps
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-
-enum class LineaContractVersion : Comparable<LineaContractVersion> {
-  V5 // "EIP4844 multiple blobs per tx support - version in all networks",
-}
-
-interface LineaRollupSmartContractClientReadOnly : ContractVersionProvider<LineaContractVersion> {
-
-  fun getAddress(): String
-
-  /**
-   * Get the current L2 block number
-   */
-  fun finalizedL2BlockNumber(blockParameter: BlockParameter = BlockParameter.Tag.LATEST): SafeFuture<ULong>
-
-  /**
-   * Get the current L2 block timestamp
-   */
-  fun finalizedL2BlockTimestamp(blockParameter: BlockParameter = BlockParameter.Tag.LATEST): SafeFuture<ULong>
-
-  fun getMessageRollingHash(
-    blockParameter: BlockParameter = BlockParameter.Tag.LATEST,
-    messageNumber: Long
-  ): SafeFuture<ByteArray>
-
-  /**
-   * Get the final block number of a shnarf
-   */
-  fun findBlobFinalBlockNumberByShnarf(
-    blockParameter: BlockParameter = BlockParameter.Tag.LATEST,
-    shnarf: ByteArray
-  ): SafeFuture<ULong?>
-
-  /**
-   * Gets Type 2 StateRootHash for Linea Block
-   */
-  fun blockStateRootHash(
-    blockParameter: BlockParameter,
-    lineaL2BlockNumber: ULong
-  ): SafeFuture<ByteArray>
-}
 
 data class BlockAndNonce(
   val blockNumber: ULong,

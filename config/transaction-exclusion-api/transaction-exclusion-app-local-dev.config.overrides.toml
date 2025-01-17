@@ -1,0 +1,9 @@
+[database]
+[database.read]
+host="localhost"
+[database.write]
+host="localhost"
+
+[api]
+port=8082
+number-of-verticles=1

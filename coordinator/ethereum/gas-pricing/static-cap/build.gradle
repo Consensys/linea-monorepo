@@ -5,11 +5,11 @@ plugins {
 dependencies {
   implementation(project(":coordinator:core"))
   implementation(project(":coordinator:ethereum:gas-pricing"))
-  implementation project(':jvm-libs:kotlin-extensions')
-  implementation project(':jvm-libs:core:domain-models')
-  implementation project(':jvm-libs:vertx-helper')
-  implementation project(':jvm-libs:web3j-extensions')
-  implementation project(':jvm-libs:json-rpc')
+  implementation project(':jvm-libs:generic:extensions:kotlin')
+  implementation project(':jvm-libs:linea:core:domain-models')
+  implementation project(':jvm-libs:generic:vertx-helper')
+  implementation project(':jvm-libs:linea:web3j-extensions')
+  implementation project(':jvm-libs:generic:json-rpc')
 
   testImplementation("io.vertx:vertx-junit5")
   testImplementation "com.github.tomakehurst:wiremock-jre8:${libs.versions.wiremock.get()}"
@@ -32,20 +32,12 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
-
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    dependsOn(":localStackComposeUp")
-    dependsOn(rootProject.tasks.compileContracts)
-}
-
-
-
-test {
+task integrationTest(type: Test) { test ->
+  description = "Runs integration tests."
+  group = "verification"
   useJUnitPlatform()
+
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  dependsOn(":localStackComposeUp")
 }

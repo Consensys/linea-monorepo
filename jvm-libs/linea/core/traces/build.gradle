@@ -1,0 +1,18 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-common-conventions'
+  id 'java-test-fixtures'
+}
+
+description="Linea Tracing utilities"
+
+dependencies {
+  implementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
+  implementation project(':jvm-libs:generic:extensions:kotlin')
+  testImplementation project(':jvm-libs:linea:testing:file-system')
+  testImplementation "com.sksamuel.hoplite:hoplite-core:${libs.versions.hoplite.get()}"
+  testImplementation "com.sksamuel.hoplite:hoplite-toml:${libs.versions.hoplite.get()}"
+}
+
+jar {
+  dependsOn configurations.runtimeClasspath
+}

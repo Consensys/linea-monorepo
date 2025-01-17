@@ -17,12 +17,11 @@ import (
 //
 // The current implementation is for packed Zs
 type finalEvaluationCheck struct {
-	// Name is a string repr of the verifier action. It is used to format errors
-	// so that we can easily know which verifier action is at fault during the
-	// verification is at fault.
+	// the name of a lookupTable in the pack, this can help for debugging.
 	Name string
 	// ZOpenings lists all the openings of all the zCtx
 	ZOpenings []query.LocalOpening
+	skipped   bool
 }
 
 // Run implements the [wizard.VerifierAction]
@@ -37,7 +36,7 @@ func (f *finalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
 	}
 
 	if zSum != field.Zero() {
-		return fmt.Errorf("log-derivate lookup, the final evaluation check failed")
+		return fmt.Errorf("log-derivate lookup, the final evaluation check failed for %v,", f.Name)
 	}
 
 	return nil
@@ -55,4 +54,12 @@ func (f *finalEvaluationCheck) RunGnark(api frontend.API, run *wizard.WizardVeri
 	}
 
 	api.AssertIsEqual(zSum, 0)
+}
+
+func (f *finalEvaluationCheck) Skip() {
+	f.skipped = true
+}
+
+func (f *finalEvaluationCheck) IsSkipped() bool {
+	return f.skipped
 }

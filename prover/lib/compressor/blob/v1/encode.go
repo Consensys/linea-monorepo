@@ -8,6 +8,8 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -41,7 +43,7 @@ func EncodeBlockForCompression(block *types.Block, w io.Writer) error {
 	w.Write(blockHash[:])
 
 	for i, tx := range transactions {
-		if err := encodeTxForCompression(tx, w); err != nil {
+		if err := EncodeTxForCompression(tx, w); err != nil {
 			return fmt.Errorf("could not encode transaction #%v: %w", i, err)
 		}
 	}
@@ -50,7 +52,7 @@ func EncodeBlockForCompression(block *types.Block, w io.Writer) error {
 }
 
 // encodeTransaction encodes a single transaction
-func encodeTxForCompression(tx *types.Transaction, w io.Writer) error {
+func EncodeTxForCompression(tx *types.Transaction, w io.Writer) error {
 	if tx == nil {
 		return fmt.Errorf("transactions is nil")
 	}
@@ -158,4 +160,52 @@ func PassRlpList(r *bytes.Reader) error {
 	}
 
 	return nil
+}
+
+// DecodeBlockFromUncompressed inverts [EncodeBlockForCompression]. It is primarily meant for
+// testing and ensuring the encoding is bijective.
+func DecodeBlockFromUncompressed(r *bytes.Reader) (encode.DecodedBlockData, error) {
+
+	var (
+		decNumTxs    uint16
+		decTimestamp uint32
+		blockHash    common.Hash
+	)
+
+	if err := binary.Read(r, binary.BigEndian, &decNumTxs); err != nil {
+		return encode.DecodedBlockData{}, fmt.Errorf("could not decode nb txs: %w", err)
+	}
+
+	if err := binary.Read(r, binary.BigEndian, &decTimestamp); err != nil {
+		return encode.DecodedBlockData{}, fmt.Errorf("could not decode timestamp: %w", err)
+	}
+
+	if _, err := r.Read(blockHash[:]); err != nil {
+		return encode.DecodedBlockData{}, fmt.Errorf("could not read the block hash: %w", err)
+	}
+
+	numTxs := int(decNumTxs)
+	decodedBlk := encode.DecodedBlockData{
+		Froms:     make([]common.Address, numTxs),
+		Txs:       make([]types.TxData, numTxs),
+		Timestamp: uint64(decTimestamp),
+		BlockHash: blockHash,
+	}
+
+	var err error
+	for i := 0; i < int(decNumTxs); i++ {
+		if decodedBlk.Txs[i], err = DecodeTxFromUncompressed(r, &decodedBlk.Froms[i]); err != nil {
+			return encode.DecodedBlockData{}, fmt.Errorf("could not decode transaction #%v: %w", i, err)
+		}
+	}
+
+	return decodedBlk, nil
+}
+
+func DecodeTxFromUncompressed(r *bytes.Reader, from *common.Address) (types.TxData, error) {
+	if _, err := r.Read(from[:]); err != nil {
+		return nil, fmt.Errorf("could not read from address: %w", err)
+	}
+
+	return ethereum.DecodeTxFromBytes(r)
 }

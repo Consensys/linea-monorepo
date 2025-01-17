@@ -1,7 +1,0 @@
-plugins {
-  id 'net.consensys.zkevm.kotlin-library-conventions'
-}
-
-dependencies {
-  implementation "io.vertx:vertx-core"
-}

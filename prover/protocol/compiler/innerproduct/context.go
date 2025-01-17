@@ -34,6 +34,9 @@ type contextForSize struct {
 	// entry of [Summation]. It is compared to the alleged inner-product values
 	// by the verifier to finalize the compilation step.s
 	SummationOpening query.LocalOpening
+
+	//  round after compilation
+	round int
 }
 
 // compileForSize applies the compilation step on a range of queries such that
@@ -41,6 +44,7 @@ type contextForSize struct {
 // list of queries.
 //
 // It returns the compilation context of the query
+// the round indicate the round of the last inner-product query, independent of its size.
 func compileForSize(
 	comp *wizard.CompiledIOP,
 	round int,
@@ -60,10 +64,12 @@ func compileForSize(
 	if hasMoreThan1Pair {
 		round = round + 1
 	}
+	//set the round
+	ctx.round = round
 
 	ctx.Summation = comp.InsertCommit(
-		round+1,
-		deriveName[ifaces.ColID]("SUMMATION", comp.SelfRecursionCount),
+		round,
+		deriveName[ifaces.ColID]("SUMMATION", size, comp.SelfRecursionCount),
 		size,
 	)
 
@@ -74,8 +80,8 @@ func compileForSize(
 		)
 
 		batchingCoin = comp.InsertCoin(
-			round+1,
-			deriveName[coin.Name]("BATCHING_COIN", comp.SelfRecursionCount),
+			round,
+			deriveName[coin.Name]("BATCHING_COIN", size, comp.SelfRecursionCount),
 			coin.Field,
 		)
 
@@ -85,8 +91,11 @@ func compileForSize(
 			}
 		}
 
-		ctx.Collapsed = symbolic.NewPolyEval(batchingCoin.AsVariable(), pairProduct)
-		ctx.Collapsed.Board()
+		// random linear combination over the pairs of inner-product.
+		res := symbolic.NewPolyEval(batchingCoin.AsVariable(), pairProduct)
+
+		ctx.Collapsed = res
+		ctx.CollapsedBoard = ctx.Collapsed.Board()
 	}
 
 	if !hasMoreThan1Pair {
@@ -96,8 +105,8 @@ func compileForSize(
 
 	// This constraints set the recurrent property of summation
 	comp.InsertGlobal(
-		round+1,
-		deriveName[ifaces.QueryID]("SUMMATION_CONSISTENCY", comp.SelfRecursionCount),
+		round,
+		deriveName[ifaces.QueryID]("SUMMATION_CONSISTENCY", size, comp.SelfRecursionCount),
 		symbolic.Sub(
 			ctx.Summation,
 			column.Shift(ctx.Summation, -1),
@@ -107,20 +116,21 @@ func compileForSize(
 
 	// This constraint ensures that summation has the correct initial value
 	comp.InsertLocal(
-		round+1,
-		deriveName[ifaces.QueryID]("SUMMATION_INIT", comp.SelfRecursionCount),
+		round,
+		deriveName[ifaces.QueryID]("SUMMATION_INIT", size, comp.SelfRecursionCount),
 		symbolic.Sub(ctx.Collapsed, ctx.Summation),
 	)
 
 	// The opening of the final position of ctx.Summation should be equal to
 	// the linear combinations of the alleged openings of the inner-products.
 	ctx.SummationOpening = comp.InsertLocalOpening(
-		round+1,
-		deriveName[ifaces.QueryID]("SUMMATION_END", comp.SelfRecursionCount),
+		round,
+		deriveName[ifaces.QueryID]("SUMMATION_END", size, comp.SelfRecursionCount),
 		column.Shift(ctx.Summation, -1),
 	)
 
-	comp.RegisterVerifierAction(round+1, &verifierForSize{
+	lastRound := comp.NumRounds() - 1
+	comp.RegisterVerifierAction(lastRound, &verifierForSize{
 		Queries:          queries,
 		SummationOpening: ctx.SummationOpening,
 		BatchOpening:     batchingCoin,

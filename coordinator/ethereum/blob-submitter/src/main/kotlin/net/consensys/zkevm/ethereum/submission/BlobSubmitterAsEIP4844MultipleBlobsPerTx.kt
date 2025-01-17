@@ -1,16 +1,22 @@
 package net.consensys.zkevm.ethereum.submission
 
+import build.linea.domain.BlockIntervalData
+import build.linea.domain.toBlockIntervalsString
+import kotlinx.datetime.Clock
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.toBlockIntervalsString
+import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.function.Consumer
 
 class BlobSubmitterAsEIP4844MultipleBlobsPerTx(
   private val contract: LineaRollupSmartContractClient,
-  private val gasPriceCapProvider: GasPriceCapProvider?
+  private val gasPriceCapProvider: GasPriceCapProvider?,
+  private val blobSubmittedEventConsumer: Consumer<BlobSubmittedEvent> = Consumer<BlobSubmittedEvent> { },
+  private val clock: Clock = Clock.System
 ) : BlobSubmitter {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -60,6 +66,14 @@ class BlobSubmitterAsEIP4844MultipleBlobsPerTx(
               nonce,
               gasPriceCaps
             )
+            val blobSubmittedEvent = BlobSubmittedEvent(
+              blobs = blobs.map { BlockIntervalData(it.startBlockNumber, it.endBlockNumber) },
+              endBlockTime = blobs.last().endBlockTime,
+              lastShnarf = blobs.last().expectedShnarf,
+              submissionTimestamp = clock.now(),
+              transactionHash = transactionHash.toByteArray()
+            )
+            blobSubmittedEventConsumer.accept(blobSubmittedEvent)
           }
       }
   }

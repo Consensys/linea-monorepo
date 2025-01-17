@@ -8,10 +8,6 @@ on:
         value: ${{ jobs.store_image_name_and_tags.outputs.last_commit_tag }}
       develop_tag:
         value: ${{ jobs.store_image_name_and_tags.outputs.develop_tag }}
-      common_ancestor_tag:
-        value: ${{ jobs.store_image_name_and_tags.outputs.common_ancestor_tag }}
-      untested_tag_suffix:
-        value: ${{ jobs.store_image_name_and_tags.outputs.untested_tag_suffix }}
 
 concurrency:
   group: store-image-name-and-tags-${{ github.workflow }}-${{ github.ref }}
@@ -23,35 +19,24 @@ jobs:
     name: Compute version tags
     env:
       # REF_NAME: ${{ github.ref_name }}
-      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       EVENT_BEFORE: ${{ github.event.before }}
     outputs:
-      commit_tag: ${{ steps.step2.outputs.COMMIT_TAG }}
-      last_commit_tag: ${{ steps.step2.outputs.LAST_COMMIT_TAG }}
-      common_ancestor_tag: ${{ steps.step2.outputs.COMMON_ANCESTOR_TAG }}
-      develop_tag: ${{ steps.step2.outputs.DEVELOP_TAG }}
-      untested_tag_suffix: ${{ steps.step2.outputs.UNTESTED_TAG_SUFFIX }}
+      commit_tag: ${{ steps.step1.outputs.COMMIT_TAG }}
+      last_commit_tag: ${{ steps.step1.outputs.LAST_COMMIT_TAG }}
+      develop_tag: ${{ steps.step1.outputs.DEVELOP_TAG }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-      - name: Get common ancestor commit
-        id: step1
-        run: |
-          git fetch --no-tags --depth=100 origin main ${{ env.BRANCH_NAME }}
-          echo COMMON_ANCESTOR=$(git merge-base refs/remotes/origin/main refs/remotes/origin/${{ env.BRANCH_NAME }}) >> $GITHUB_ENV
+        uses: actions/checkout@v4
       - name: Compute version tags
-        id: step2
+        id: step1
         run: |
           echo COMMIT_TAG=$(git rev-parse --short "$GITHUB_SHA") >> $GITHUB_OUTPUT
           echo LAST_COMMIT_TAG=$(git rev-parse --short "${{ env.EVENT_BEFORE }}") >> $GITHUB_OUTPUT
           echo DEVELOP_TAG=develop >> $GITHUB_OUTPUT
-          echo COMMON_ANCESTOR_TAG=$(git rev-parse --short "${{ env.COMMON_ANCESTOR }}") >> $GITHUB_OUTPUT
-          echo UNTESTED_TAG_SUFFIX=untested >> $GITHUB_OUTPUT
       - name: Show version tags
-        id: step3
+        id: step2
         run: |
-          echo "COMMIT_TAG: ${{ steps.step2.outputs.COMMIT_TAG }}"
-          echo "LAST_COMMIT_TAG: ${{ steps.step2.outputs.LAST_COMMIT_TAG }}"
-          echo "DEVELOP_TAG: ${{ steps.step2.outputs.DEVELOP_TAG }}"
-          echo "COMMON_ANCESTOR_TAG: ${{ steps.step2.outputs.COMMON_ANCESTOR_TAG }}"
-          echo "UNTESTED_TAG_SUFFIX: ${{ steps.step2.outputs.UNTESTED_TAG_SUFFIX }}"
+          echo "COMMIT_TAG: ${{ steps.step1.outputs.COMMIT_TAG }}"
+          echo "LAST_COMMIT_TAG: ${{ steps.step1.outputs.LAST_COMMIT_TAG }}"
+          echo "DEVELOP_TAG: ${{ steps.step1.outputs.DEVELOP_TAG }}"
+          echo "github.ref: ${{ github.ref }}"

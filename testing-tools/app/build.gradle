@@ -14,7 +14,6 @@ openApiGenerate {
   configOptions.set([
     dateLibrary: "java8"
   ])
-
 }
 
 application {
@@ -22,7 +21,7 @@ application {
 }
 
 dependencies {
-  implementation project(':jvm-libs:core:domain-models')
+  implementation project(':jvm-libs:linea:core:domain-models')
   implementation "org.openapitools:openapi-generator-gradle-plugin:5.4.0"
   implementation 'commons-cli:commons-cli:1.6.0'
   implementation "org.apache.logging.log4j:log4j-slf4j2-impl:2.20.0"

@@ -4,15 +4,18 @@ plugins {
 
 dependencies {
   api(project(":coordinator:core"))
-  api project(':coordinator:clients:prover-client:serialization')
-  implementation(project(":coordinator:persistence:db"))
+  api(project(":coordinator:clients:prover-client:serialization"))
+  implementation(project(":jvm-libs:generic:persistence:db"))
   implementation(project(":coordinator:persistence:batch"))
 
   testImplementation(project(":coordinator:persistence:batch"))
   testImplementation(project(":coordinator:persistence:blob"))
-  testImplementation(testFixtures(project(":coordinator:persistence:db")))
+  testImplementation(project(":coordinator:persistence:db-common"))
+  testImplementation "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
   testImplementation(testFixtures(project(":coordinator:core")))
-  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation(testFixtures(project(":coordinator:persistence:db-common")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
   testImplementation("io.vertx:vertx-junit5")
 }
 
@@ -27,16 +30,13 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
+task integrationTest(type: Test) { test ->
+  description = "Runs integration tests."
+  group = "verification"
+  useJUnitPlatform()
 
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
+  dependsOn(":localStackPostgresDbOnlyComposeUp")
 }
-
-

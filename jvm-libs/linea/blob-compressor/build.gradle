@@ -1,0 +1,39 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
+  id 'net.consensys.zkevm.linea-native-libs-helper'
+  id 'java-test-fixtures'
+}
+
+description = 'Java JNA wrapper for Linea Blob Compressor Library implemented in GO Lang'
+
+dependencies {
+  implementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"
+  implementation project(":jvm-libs:generic:extensions:kotlin")
+  implementation "org.apache.logging.log4j:log4j-api:${libs.versions.log4j.get()}"
+  implementation "org.apache.logging.log4j:log4j-core:${libs.versions.log4j.get()}"
+  testImplementation project(":jvm-libs:linea:blob-shnarf-calculator")
+}
+
+jar {
+  dependsOn configurations.runtimeClasspath
+}
+
+test {
+  // we cannot have more 1 compressor per JVM, hence we disable parallel execution
+  // because multiple threads would cause issues with the native library
+  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
+  maxParallelForks = 1
+}
+
+def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get().absolutePath
+
+task downloadNativeLibs {
+  doLast {
+    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v0.1.0/linea-blob-libs-v0.1.0.zip", "blob_compressor", libsZipDownloadOutputDir)
+    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.0.1/linea-blob-libs-v1.0.1.zip", "blob_compressor", libsZipDownloadOutputDir)
+  }
+}
+
+compileKotlin {
+  dependsOn tasks.downloadNativeLibs
+}

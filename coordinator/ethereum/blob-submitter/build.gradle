@@ -12,7 +12,6 @@ dependencies {
   implementation(project(':coordinator:ethereum:gas-pricing'))
   implementation(project(':coordinator:ethereum:test-utils'))
   implementation(project(":coordinator:persistence:blob"))
-  implementation(project(":coordinator:persistence:db"))
   implementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
   implementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
@@ -21,24 +20,20 @@ dependencies {
   implementation("org.web3j:core:${libs.versions.web3j.get()}") {
     exclude group: "org.slf4j", module: "slf4j-nop"
   }
-  implementation project(":jvm-libs:teku-execution-client")
 
-  testImplementation(project(":jvm-libs:testing:l1-blob-and-proof-submission"))
+  testImplementation(project(":jvm-libs:linea:testing:l1-blob-and-proof-submission"))
   testImplementation(project(":coordinator:persistence:aggregation"))
-  testImplementation(testFixtures(project(":coordinator:persistence:db")))
+  testImplementation(project(":coordinator:persistence:db-common"))
   testImplementation(testFixtures(project(":coordinator:ethereum:gas-pricing")))
   testImplementation(testFixtures(project(":coordinator:core")))
-  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
   testImplementation("io.vertx:vertx-junit5")
   testImplementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
   testImplementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.20.0")
-}
-
-test {
-  useJUnitPlatform()
 }
 
 sourceSets {
@@ -52,31 +47,27 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
+task integrationTest(type: Test) { test ->
+  description = "Runs integration tests."
+  group = "verification"
+  useJUnitPlatform()
 
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
-    dependsOn(rootProject.tasks.compileContracts)
+  dependsOn(":localStackComposeUp")
 
-    testLogging {
-      events TestLogEvent.FAILED,
+  testLogging {
+    events TestLogEvent.FAILED,
         TestLogEvent.SKIPPED,
         TestLogEvent.STANDARD_ERROR,
         TestLogEvent.STARTED,
         TestLogEvent.PASSED
-      exceptionFormat TestExceptionFormat.FULL
-      showCauses true
-      showExceptions true
-      showStackTraces true
-      // set showStandardStreams if you need to see test logs
-      showStandardStreams false
-    }
+    exceptionFormat TestExceptionFormat.FULL
+    showCauses true
+    showExceptions true
+    showStackTraces true
+    // set showStandardStreams if you need to see test logs
+    showStandardStreams false
+  }
 }
-
-

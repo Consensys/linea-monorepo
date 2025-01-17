@@ -49,7 +49,7 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 		// The polynomial is the constant polynomial, response does not depends on the decimation
 		// or bitReverse
 		interval := x.interval()
-		if interval.intervalLen == 1 && interval.start() == 0 && x.paddingVal.IsZero() {
+		if interval.IntervalLen == 1 && interval.Start() == 0 && x.paddingVal.IsZero() {
 			// In this case, the response is a constant vector
 			return NewConstant(x.window[0], x.Len())
 		}
@@ -66,10 +66,10 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 	v.WriteInSlice(res.Regular)
 
 	domain := fft.NewDomain(v.Len())
-	oncoset := false
+	opt := fft.EmptyOption()
 
 	if cosetID != 0 || cosetRatio != 0 {
-		oncoset = true
+		opt = fft.OnCoset()
 		domain = domain.WithCustomCoset(cosetRatio, cosetID)
 	}
 
@@ -78,10 +78,10 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
-		domain.FFT(res.Regular, fft.DIT, oncoset)
+		domain.FFT(res.Regular, fft.DIT, opt)
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
-		domain.FFT(res.Regular, fft.DIF, oncoset)
+		domain.FFT(res.Regular, fft.DIF, opt)
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
@@ -130,7 +130,7 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 		// It's a multiple of the first Lagrange polynomial c * (1 + x + x^2 + x^3 + ...)
 		// The response is (c) = (c/N, c/N, c/N, ...)
 		interval := x.interval()
-		if interval.intervalLen == 1 && interval.start() == 0 && x.paddingVal.IsZero() {
+		if interval.IntervalLen == 1 && interval.Start() == 0 && x.paddingVal.IsZero() {
 			constTerm := field.NewElement(uint64(x.Len()))
 			constTerm.Inverse(&constTerm)
 			constTerm.Mul(&constTerm, &x.window[0])
@@ -147,19 +147,19 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 		res = &Pooled{Regular: make([]field.Element, v.Len())}
 	}
 
-	oncoset := false
+	opt := fft.EmptyOption()
 	v.WriteInSlice(res.Regular)
 
 	domain := fft.NewDomain(v.Len())
 	if cosetID != 0 || cosetRatio != 0 {
 		// Optionally equip the domain with a coset
-		oncoset = true
+		opt = fft.OnCoset()
 		domain = domain.WithCustomCoset(cosetRatio, cosetID)
 	}
 
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
-		domain.FFTInverse(res.Regular, fft.DIF, oncoset)
+		domain.FFTInverse(res.Regular, fft.DIF, opt)
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
@@ -168,7 +168,7 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 		if bitReverse {
 			fft.BitReverse(res.Regular)
 		}
-		domain.FFTInverse(res.Regular, fft.DIT, oncoset)
+		domain.FFTInverse(res.Regular, fft.DIT, opt)
 	}
 	return res
 }

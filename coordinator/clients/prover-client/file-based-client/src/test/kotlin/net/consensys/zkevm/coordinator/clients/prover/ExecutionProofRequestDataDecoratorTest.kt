@@ -1,14 +1,16 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
+import build.linea.clients.GetZkEVMStateMerkleProofResponse
 import com.fasterxml.jackson.databind.node.ArrayNode
+import linea.domain.Block
+import linea.domain.createBlock
+import net.consensys.ByteArrayExt
 import net.consensys.encodeHex
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
 import net.consensys.zkevm.coordinator.clients.GenerateTracesResponse
-import net.consensys.zkevm.coordinator.clients.GetZkEVMStateMerkleProofResponse
 import net.consensys.zkevm.coordinator.clients.L2MessageServiceLogsClient
 import net.consensys.zkevm.domain.RlpBridgeLogsData
-import net.consensys.zkevm.encoding.ExecutionPayloadV1Encoder
-import org.apache.tuweni.bytes.Bytes32
+import net.consensys.zkevm.encoding.BlockEncoder
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -21,8 +23,6 @@ import org.mockito.kotlin.spy
 import org.mockito.kotlin.whenever
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.methods.response.EthBlock
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
-import tech.pegasys.teku.ethereum.executionclient.schema.executionPayloadV1
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.random.Random
 
@@ -30,11 +30,11 @@ class ExecutionProofRequestDataDecoratorTest {
 
   private lateinit var l2MessageServiceLogsClient: L2MessageServiceLogsClient
   private lateinit var l2Web3jClient: Web3j
-  private lateinit var encoder: ExecutionPayloadV1Encoder
+  private lateinit var encoder: BlockEncoder
   private lateinit var requestDatDecorator: ExecutionProofRequestDataDecorator
-  private val fakeEncoder: ExecutionPayloadV1Encoder = object : ExecutionPayloadV1Encoder {
-    override fun encode(payload: ExecutionPayloadV1): ByteArray {
-      return payload.blockNumber.toString().toByteArray()
+  private val fakeEncoder: BlockEncoder = object : BlockEncoder {
+    override fun encode(block: Block): ByteArray {
+      return block.number.toString().toByteArray()
     }
   }
 
@@ -48,12 +48,12 @@ class ExecutionProofRequestDataDecoratorTest {
 
   @Test
   fun `should decorate data with bridge logs and parent stateRootHash`() {
-    val executionPayload1 = executionPayloadV1(blockNumber = 123)
-    val executionPayload2 = executionPayloadV1(blockNumber = 124)
+    val block1 = createBlock(number = 123UL)
+    val block2 = createBlock(number = 124UL)
     val type2StateResponse = GetZkEVMStateMerkleProofResponse(
       zkStateMerkleProof = ArrayNode(null),
-      zkParentStateRootHash = Bytes32.random(),
-      zkEndStateRootHash = Bytes32.random(),
+      zkParentStateRootHash = ByteArrayExt.random32(),
+      zkEndStateRootHash = ByteArrayExt.random32(),
       zkStateManagerVersion = "2.0.0"
     )
     val generateTracesResponse = GenerateTracesResponse(
@@ -61,7 +61,7 @@ class ExecutionProofRequestDataDecoratorTest {
       tracesEngineVersion = "1.0.0"
     )
     val request = BatchExecutionProofRequestV1(
-      blocks = listOf(executionPayload1, executionPayload2),
+      blocks = listOf(block1, block2),
       tracesResponse = generateTracesResponse,
       type2StateData = type2StateResponse
     )
@@ -74,15 +74,15 @@ class ExecutionProofRequestDataDecoratorTest {
         SafeFuture.completedFuture(mockedEthBlock)
       }
 
-    whenever(l2MessageServiceLogsClient.getBridgeLogs(eq(executionPayload1.blockNumber.longValue())))
+    whenever(l2MessageServiceLogsClient.getBridgeLogs(eq(block1.number.toLong())))
       .thenReturn(SafeFuture.completedFuture(listOf(CommonTestData.bridgeLogs[0])))
-    whenever(l2MessageServiceLogsClient.getBridgeLogs(eq(executionPayload2.blockNumber.longValue())))
+    whenever(l2MessageServiceLogsClient.getBridgeLogs(eq(block2.number.toLong())))
       .thenReturn(SafeFuture.completedFuture(listOf(CommonTestData.bridgeLogs[1])))
 
     val requestDto = requestDatDecorator.invoke(request).get()
 
     assertThat(requestDto.keccakParentStateRootHash).isEqualTo(stateRoot)
-    assertThat(requestDto.zkParentStateRootHash).isEqualTo(type2StateResponse.zkParentStateRootHash.toHexString())
+    assertThat(requestDto.zkParentStateRootHash).isEqualTo(type2StateResponse.zkParentStateRootHash.encodeHex())
     assertThat(requestDto.conflatedExecutionTracesFile).isEqualTo("123-114-conflated-traces.json")
     assertThat(requestDto.tracesEngineVersion).isEqualTo("1.0.0")
     assertThat(requestDto.type2StateManagerVersion).isEqualTo("2.0.0")

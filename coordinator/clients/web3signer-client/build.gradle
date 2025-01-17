@@ -3,12 +3,12 @@
  */
 
 plugins {
-    id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
 }
 
 dependencies {
   implementation project(':coordinator:core')
-  implementation project(':jvm-libs:http-rest')
+  implementation project(':jvm-libs:generic:http-rest')
 
   implementation "io.vertx:vertx-core"
   implementation "io.vertx:vertx-web-client"

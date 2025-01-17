@@ -6,16 +6,18 @@ plugins {
 }
 
 dependencies {
-  api project(':coordinator:clients:prover-client:serialization')
-  implementation(project(":coordinator:persistence:db"))
   implementation(project(":coordinator:ethereum:gas-pricing:dynamic-cap"))
+  implementation(project(":jvm-libs:generic:extensions:futures"))
+  implementation(project(":jvm-libs:generic:extensions:kotlin"))
+  implementation(project(":jvm-libs:generic:persistence:db"))
+  implementation(project(":jvm-libs:linea:core:domain-models"))
 
+  testImplementation(project(":coordinator:persistence:db-common"))
   testImplementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
-  testImplementation("tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}")
-  testImplementation(testFixtures(project(":coordinator:persistence:db")))
-  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
   testImplementation("io.vertx:vertx-junit5")
 }
 
@@ -30,27 +32,24 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    testLogging {
-      events TestLogEvent.FAILED,
+task integrationTest(type: Test) { test ->
+  testLogging {
+    events TestLogEvent.FAILED,
         TestLogEvent.SKIPPED,
         TestLogEvent.STANDARD_ERROR,
         TestLogEvent.STANDARD_OUT
-      exceptionFormat TestExceptionFormat.FULL
-      showCauses true
-      showExceptions true
-      showStackTraces true
-      showStandardStreams false
-    }
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
+    exceptionFormat TestExceptionFormat.FULL
+    showCauses true
+    showExceptions true
+    showStackTraces true
+    showStandardStreams false
+  }
+  description = "Runs integration tests."
+  group = "verification"
+  useJUnitPlatform()
 
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
+  dependsOn(":localStackComposeUp")
 }
-
-
