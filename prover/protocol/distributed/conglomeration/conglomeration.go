@@ -31,7 +31,13 @@ func Conglomerate(
 	tmpl *wizard.CompiledIOP,
 	maxNumSegment int,
 ) (comp *wizard.CompiledIOP) {
-	return nil
+
+	comp = wizard.NewCompiledIOP()
+
+	for id := 0; id < maxNumSegment; id++ {
+		addVerifierToComp(id, comp, tmpl)
+	}
+
 }
 
 func addVerifierToComp(
