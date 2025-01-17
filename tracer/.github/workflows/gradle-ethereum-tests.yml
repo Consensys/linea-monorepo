@@ -72,14 +72,15 @@ jobs:
         run: ./gradlew generateGeneralStateReferenceTests -Dorg.gradle.caching=true
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: fields,expand,expand,expand
+          ZKEVM_BIN: "zkevm_for_reference_tests.go.bin"
 
       - name: Run General State Reference Tests
         run: GOMEMLIMIT=64GiB ./gradlew -Dblockchain=Ethereum referenceGeneralStateTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -wd --ansi-escapes=false --report --air
+          GOCORSET_FLAGS: -vw --ansi-escapes=false --report --air
+          ZKEVM_BIN: "zkevm_for_reference_tests.go.bin"
 
       - name: Upload test report
         if: always()

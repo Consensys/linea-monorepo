@@ -19,7 +19,6 @@ plugins {
 
 apply from: rootProject.file("gradle/corset.gradle")
 apply from: rootProject.file("gradle/java.gradle")
-apply from: rootProject.file("gradle/trace-files.gradle")
 apply from: rootProject.file("gradle/dependency-management.gradle")
 apply from: rootProject.file('gradle/common-dependencies.gradle')
 apply from: rootProject.file("gradle/lint.gradle")
@@ -55,6 +54,7 @@ tasks.register("generateGeneralStateReferenceTests", RefTestGenerationTask) {
 }
 
 tasks.register('referenceBlockchainTests', Test) {
+  dependsOn(buildReferenceTestsZkevmBin)
   description = 'Runs ETH reference blockchain tests.'
   dependsOn generateBlockchainReferenceTests
   environment.put("REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "BlockchainReferenceTestOutcome.json")
@@ -69,9 +69,10 @@ tasks.register('referenceBlockchainTests', Test) {
 }
 
 tasks.register('referenceGeneralStateTests', Test) {
+  dependsOn(buildReferenceTestsZkevmBin)
   description = 'Runs ETH reference general state tests.'
   dependsOn generateGeneralStateReferenceTests
-
+  // Record zkevm.bin for CorsetValidator
   environment.put("REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "GeneralStateReferenceTestOutcome.json")
 
   useJUnitPlatform {
@@ -88,9 +89,9 @@ tasks.register('referenceGeneralStateTests', Test) {
   tasks.named("referenceBlockchainTests"),
 ].forEach {
   it.configure {
-    dependsOn buildReferenceTestsZkevmBin
-    environment.put("ZKEVM_BIN", "zkevm_for_reference_tests.bin")
-
+    // Record zkevm.bin for CorsetValidator
+    environment.put("ZKEVM_BIN", System.getenv("ZKEVM_BIN") ?: "zkevm_for_reference_tests.bin")
+    // Configure parallelism
     systemProperty("junit.jupiter.execution.timeout.default", "15 m")  // 5 minutes
     systemProperty("junit.jupiter.execution.parallel.enabled", "true")
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")

@@ -108,7 +108,7 @@ tasks.register('binreftable', TraceFilesTask) {
 ['txndata'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
-         dependsOn corsetExists
+        dependsOn corsetExists
         module = moduleName
         files = ["${moduleName}/columns.lisp", "constants/constants.lisp", "${moduleName}/constants.lisp"]
     }

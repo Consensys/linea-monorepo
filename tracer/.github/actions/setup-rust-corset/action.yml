@@ -9,7 +9,7 @@ inputs:
     # Corresponds to the corset release tag for the desired version.
     description: 'Corset tag to use'
     required: false
-    default: 'v9.7.17'
+    default: 'v9.7.18'
   asset_id:
     # Corresponds to the Github asset id for the asset published as part
     # of the release.  Specifically, it should be the id for the asset

@@ -39,20 +39,16 @@ jobs:
         id: extract_branch
         run: |
             echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-      - name: Set up JDK 21
-        uses: actions/setup-java@v3
-        with:
-          java-version: 21
-          distribution: temurin
 
-      - name: Setup Go Corset
-        uses: ./.github/actions/setup-go-corset
+      - name: Setup Test Environment
+        uses: ./.github/actions/setup-environment
+        with:
+          go-corset: true
 
       - name: Generate block chain reference tests
         run: ./gradlew :reference-tests:generateBlockchainReferenceTests -Dorg.gradle.caching=true
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: fields,expand,expand,expand
 
       - name: Download artifact
         uses: dawidd6/action-download-artifact@v6
@@ -75,7 +71,8 @@ jobs:
           REFERENCE_TESTS_PARALLELISM: 2
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -wd --ansi-escapes=false --report --air
+          GOCORSET_FLAGS: -vw --ansi-escapes=false --report --air
+          ZKEVM_BIN: "zkevm_for_reference_tests.go.bin"
           FAILED_TEST_JSON_DIRECTORY: ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/
           FAILED_MODULE: ${{ inputs.failed_module || '' }}
           FAILED_CONSTRAINT: ${{ inputs.failed_constraint || '' }}
