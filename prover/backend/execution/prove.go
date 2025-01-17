@@ -1,11 +1,19 @@
 package execution
 
 import (
+	"fmt"
+	"math/rand/v2"
+	"os"
+	"runtime"
+	"strconv"
+	"time"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
@@ -177,6 +185,31 @@ func mustProveAndPass(
 		logrus.Infof("Prover starting the prover")
 		_ = fullZkEvm.ProveInner(w.ZkEVM)
 		logrus.Infof("Prover checks passed")
+		return "", ""
+
+	case config.ProverModeEncodeOnly:
+
+		profiling.ProfileTrace("encode-decode-no-circuit", true, false, func() {
+			filepath := "/tmp/wizard-assignment/blob-" + strconv.Itoa(rand.Int()) + ".bin"
+
+			encodeOnlyZkEvm := zkevm.EncodeOnlyZkEvm(traces)
+			numChunks := runtime.GOMAXPROCS(0)
+
+			// Serialize the assignment
+			encodingDuration := time.Now()
+			encodeOnlyZkEvm.AssignAndEncodeInChunks(filepath, w.ZkEVM, numChunks)
+
+			// Deserialize the assignment
+			decodingDuration := time.Now()
+			_, errDec := serialization.DeserializeAssignment(filepath, numChunks)
+			if errDec != nil {
+				panic(fmt.Sprintf("Error during deserialization: %v", errDec))
+			}
+			fmt.Printf("[Encoding Summary] took %v sec to encode an assignmente and write it into the files \n", time.Since(encodingDuration).Seconds())
+			fmt.Printf("[Decoding Summary] took %v sec to read the files and decode it into an assignment\n", time.Since(decodingDuration).Seconds())
+		})
+
+		os.Exit(0)
 		return "", ""
 
 	default:
