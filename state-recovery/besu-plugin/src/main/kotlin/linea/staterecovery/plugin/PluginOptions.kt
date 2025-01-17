@@ -100,7 +100,7 @@ class PluginCliOptions {
 
   class AddressConverter : CommandLine.ITypeConverter<Address> {
     override fun convert(value: String): Address {
-      return Address.fromHexString(value) ?: throw CommandLine.TypeConversionException(
+      return Address.fromHexStringStrict(value) ?: throw CommandLine.TypeConversionException(
         "Invalid address: $value"
       )
     }
