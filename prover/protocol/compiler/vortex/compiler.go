@@ -135,8 +135,6 @@ type Ctx struct {
 			PrecomputedColums []ifaces.Column
 			// Merkle Root of the precomputeds columns
 			MerkleRoot ifaces.Column
-			// List of the column hashes for the precomputed columns
-			Dh ifaces.Column
 			// Committed matrix (rs encoded) of the precomputed columns
 			CommittedMatrix vortex.EncodedMatrix
 			// Tree in case of Merkle mode
@@ -144,8 +142,6 @@ type Ctx struct {
 			// colHashes used in self recursion
 			DhWithMerkle []field.Element
 		}
-		// (not used in the Merkle proof version)
-		Dh []ifaces.Column
 		// Alpha is a random combination linear coin
 		Alpha coin.Info
 		// Linear combination of the row-encoded matrix
@@ -185,12 +181,10 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			Precomputeds struct {
 				PrecomputedColums []ifaces.Column
 				MerkleRoot        ifaces.Column
-				Dh                ifaces.Column
 				CommittedMatrix   vortex.EncodedMatrix
 				tree              *smt.Tree
 				DhWithMerkle      []field.Element
 			}
-			Dh            []ifaces.Column
 			Alpha         coin.Info
 			Ualpha        ifaces.Column
 			Q             coin.Info
