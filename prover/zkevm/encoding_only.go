@@ -66,7 +66,7 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 	}
 	logrus.Infof("Compression complete, total compressed size: %d bytes, took %.2f seconds", totalCompressedSize, compressionDuration)
 
-	// Start writing process timing
+	// Start writing to files
 	writingStart := time.Now()
 	var wg sync.WaitGroup
 	for i := 0; i < numChunks; i++ {
@@ -98,7 +98,7 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 	writingDuration := time.Since(writingStart).Seconds() // Total writing time
 	logrus.Infof("Writing complete, total compressed size: %d bytes, took %.2f seconds", totalCompressedSize, writingDuration)
 
-	// Total process summary
+	// Total summary
 	totalDuration := encodingDuration + compressionDuration + writingDuration
 	logrus.Infof("Total serialized size %d bytes, total compressed size %d bytes, took %.2f sec total (encoding + compression + writing)", totalSerializedSize, totalCompressedSize, totalDuration)
 	logrus.Infof("Compression Ratio: %.2f", float64(totalSerializedSize)/float64(totalCompressedSize))

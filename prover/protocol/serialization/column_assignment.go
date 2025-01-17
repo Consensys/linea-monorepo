@@ -24,7 +24,6 @@ import (
 // of a column in a [wizard.ProverRuntime]
 type WAssignment = collection.Mapping[ifaces.ColID, smartvectors.SmartVector]
 
-
 // hashWAssignment computes a hash of the serialized WAssignment structure.
 func hashWAssignment(a WAssignment) string {
 	serialized, err := json.Marshal(a)
@@ -122,9 +121,9 @@ func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
 			_, err := lz4Writer.Write(chunk)
 			if err != nil {
 				logrus.Errorf("Error compressing chunk %d: %v", i, err)
-				panic(err) // handle error as needed
+				panic(err)
 			}
-			lz4Writer.Close() // finalize the LZ4 stream
+			lz4Writer.Close()
 			compressedChunks[i] = compressedData.Bytes()
 			logrus.Infof("Compressed chunk %d, size: %d bytes", i, len(compressedChunks[i]))
 		}(i, chunk)
@@ -133,6 +132,7 @@ func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
 
 	return compressedChunks
 }
+
 // DeserializeAssignment deserializes a blob of bytes into a set of column
 // assignments representing assigned columns of a Wizard protocol.
 func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) {
