@@ -743,7 +743,7 @@ services:
         --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \
         --plugin-staterecovery-linea-sequencer-beneficiary-address=0x6d976c9b8ceee705d4fe8699b44e5eb58242f484 \
         --plugin-staterecovery-overriding-recovery-start-block-number=1 \
-        --plugin-staterecovery-l1-polling-interval=PT1S
+        --plugin-staterecovery-l1-polling-interval=PT0.1S
     volumes:
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
       - ./config/zkbesu-shomei/log4j-staterecovery.xml:/var/lib/besu/log4j.xml:ro
