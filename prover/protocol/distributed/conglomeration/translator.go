@@ -66,9 +66,16 @@ func (comp *compTranslator) GetColumn(name ifaces.ColID) ifaces.Column {
 
 // InsertCoin inserts a new coin in the target compiled IOP. The coin name
 // is prefixed with the comp.Prefix.
-func (comp *compTranslator) InsertCoin(round int, name coin.Name, type_ coin.Type, size ...int) coin.Info {
-	name = coin.Name(comp.Prefix) + "." + name
-	return comp.Target.InsertCoin(round, name, type_, size...)
+func (comp *compTranslator) InsertCoin(info coin.Info) coin.Info {
+	name := coin.Name(comp.Prefix) + "." + info.Name
+	switch info.Type {
+	case coin.IntegerVec:
+		return comp.Target.InsertCoin(info.Round, name, info.Type, info.Size, info.UpperBound)
+	case coin.Field:
+		return comp.Target.InsertCoin(info.Round, name, info.Type)
+	default:
+		panic("unknown coin type")
+	}
 }
 
 // GetCoin returns a coin with the prefixed name in the target compiled IOP.

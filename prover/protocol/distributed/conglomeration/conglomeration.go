@@ -146,10 +146,10 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 				continue
 			}
 
-			coin := tmpl.Coins.Data(cName)
-			coin = ctx.Translator.InsertCoin(round, cName, coin.Type, coin.Size)
-			ctx.Coins[round] = append(ctx.Coins[round], coin)
-			ctx.Translator.Target.Coins.MarkAsSkippedFromVerifierTranscript(coin.Name)
+			coinInfo := tmpl.Coins.Data(cName)
+			coinInfo = ctx.Translator.InsertCoin(coinInfo)
+			ctx.Coins[round] = append(ctx.Coins[round], coinInfo)
+			ctx.Translator.Target.Coins.MarkAsSkippedFromVerifierTranscript(coinInfo.Name)
 		}
 
 		verifierActions := tmpl.SubVerifiers.Inner()
@@ -205,9 +205,9 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 	dstVortexCtx.Items.Precomputeds.CommittedMatrix = srcVortexCtx.Items.Precomputeds.CommittedMatrix
 	dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
 
-	dstVortexCtx.Items.Alpha = ctx.Translator.GetCoin(srcVortexCtx.Items.Alpha.Name)
+	dstVortexCtx.Items.Alpha = ctx.Translator.InsertCoin(srcVortexCtx.Items.Alpha)
 	dstVortexCtx.Items.Ualpha = ctx.Translator.InsertColumn(srcVortexCtx.Items.Ualpha.(column.Natural))
-	dstVortexCtx.Items.Q = ctx.Translator.GetCoin(srcVortexCtx.Items.Q.Name)
+	dstVortexCtx.Items.Q = ctx.Translator.InsertCoin(srcVortexCtx.Items.Q)
 	dstVortexCtx.Items.OpenedColumns = ctx.Translator.InsertColumns(srcVortexCtx.Items.OpenedColumns)
 	dstVortexCtx.Items.MerkleProofs = ctx.Translator.InsertColumn(srcVortexCtx.Items.MerkleProofs.(column.Natural))
 	dstVortexCtx.Items.MerkleRoots = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.MerkleRoots)
