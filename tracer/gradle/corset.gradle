@@ -19,21 +19,30 @@ tasks.register('corsetExists') {
             commandLine "corset", "-V"
         }
         if (result.getExitValue() != 0){
-            throw new GradleException('Corset not found, skipping corsetTests')
+            throw new GradleException('Corset not found!')
         }
     }
 }
 
+// Allowing overriding the default zkevm.bin file.
+def ZKEVM_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm.bin"
+
 tasks.register('buildZkevmBin', Exec) {
     workingDir "${project.rootDir}/linea-constraints/"
-    commandLine 'make', 'zkevm.bin'
-    // sanity check target chain
-    def chain = System.getProperty('blockchain')
-    // note: null indicates the default (which is Linea).
-    if(chain != null && chain != "Linea") {
-        println("*** incorrect target chain (expected 'Linea' was '" + chain + "')\n\n")
-        assert false
+    // Sanity check executing this makes sense.
+    doFirst {    
+        // Record zkevm.bin for CorsetValidator
+        environment.put("ZKEVM_BIN", ZKEVM_BIN)
+        // sanity check target chain
+        def chain = System.getProperty('blockchain')
+        // note: null indicates the default (which is Linea).
+        if(chain != null && chain != "Linea") {
+            println("*** incorrect target chain (expected 'Linea' was '" + chain + "')\n\n")
+            assert false
+        }
     }
+    //
+    commandLine 'make', ZKEVM_BIN        
     // store the output instead of printing to the console
     standardOutput = new ByteArrayOutputStream()
     ext.output = {
@@ -41,16 +50,23 @@ tasks.register('buildZkevmBin', Exec) {
     }
 }
 
+// Allowing overriding the default zkevm.bin file.
+def ZKEVM_REFTESTS_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm_for_reference_tests.bin"
+
 tasks.register('buildReferenceTestsZkevmBin', Exec) {
     workingDir "${project.rootDir}/linea-constraints/"
-    commandLine 'make', 'zkevm_for_reference_tests.bin'
-    // sanity check target chain
-    def chain = System.getProperty('blockchain')
+    // Sanity check executing this makes sense.
+    doFirst {
+        // sanity check target chain
+        def chain = System.getProperty('blockchain')
+        //
+        if(chain != "Ethereum") {
+            println("*** incorrect target chain (expected 'Ethereum' was '" + chain + "')\n\n")
+            assert false
+        }
+    }
     //
-    if(chain != "Ethereum") {
-        println("*** incorrect target chain (expected 'Ethereum' was '" + chain + "')\n\n")
-        assert false
-    }    
+    commandLine 'make', ZKEVM_REFTESTS_BIN    
     // Store the output instead of printing to the console
     standardOutput = new ByteArrayOutputStream()
     ext.output = {

@@ -67,7 +67,8 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -wd --ansi-escapes=false --report --air
+          GOCORSET_FLAGS: -vw --ansi-escapes=false --report --air
+          ZKEVM_BIN: "zkevm.go.bin"
 
       - name: Failure Notification
         if: ${{ failure() || cancelled() }}

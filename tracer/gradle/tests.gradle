@@ -41,8 +41,6 @@ apply plugin: 'com.adarshr.test-logger'
   * - 'root.log.level' and 'evm.log.level': allow to control the log level used during the tests.
   */
 tasks.withType(Test).configureEach {
-    dependsOn 'buildZkevmBin'
-
   minHeapSize = "4g"
   maxHeapSize = "8g"
 
@@ -118,6 +116,8 @@ tasks.withType(Test).configureEach {
 }
 
 tasks.test.configure {
+  dependsOn(buildZkevmBin)
+
   systemProperty("junit.jupiter.execution.parallel.enabled", true)
   systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
   systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
@@ -133,6 +133,8 @@ tasks.test.configure {
 }
 
 tasks.register("fastReplayTests", Test) {
+  dependsOn(buildZkevmBin)
+
   if (System.getenv().containsKey("REPLAY_TESTS_PARALLELISM")) {
     systemProperty("junit.jupiter.execution.parallel.enabled", true)
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
@@ -149,6 +151,8 @@ tasks.register("fastReplayTests", Test) {
 }
 
 tasks.register("nightlyReplayTests", Test) {
+  dependsOn(buildZkevmBin)
+
   boolean isCiServer = System.getenv().containsKey("CI")
   maxHeapSize = isCiServer ? "32g" : "8g"
 
@@ -168,6 +172,8 @@ tasks.register("nightlyReplayTests", Test) {
 }
 
 tasks.register("nightlyTests", Test) {
+  dependsOn(buildZkevmBin)
+
   boolean isCiServer = System.getenv().containsKey("CI")
   maxHeapSize = isCiServer ? "32g" : "8g"
 
@@ -184,6 +190,8 @@ tasks.register("nightlyTests", Test) {
 }
 
 tasks.register("weeklyTests", Test) {
+  dependsOn(buildZkevmBin)
+
   systemProperty("junit.jupiter.execution.parallel.enabled", true)
   systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
   systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")

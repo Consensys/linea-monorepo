@@ -105,8 +105,9 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -b1024 -wd --ansi-escapes=false --report --air
+          GOCORSET_FLAGS: -b1024 -vw --ansi-escapes=false --report --air
           UNIT_TESTS_PARALLELISM: 1
+          ZKEVM_BIN: "zkevm.go.bin"
 
       - name: Upload test report
         if: ${{ always() }}
@@ -168,7 +169,8 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -b1024 -wd --ansi-escapes=false --report --air
+          GOCORSET_FLAGS: -b1024 -vw --ansi-escapes=false --report --air
+          ZKEVM_BIN: "zkevm.go.bin"
 
       - name: Upload test report
         if: ${{ always() }}
