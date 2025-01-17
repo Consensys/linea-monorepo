@@ -7,6 +7,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,7 +56,7 @@ func TestSmartVectorTransversalSisHash(t *testing.T) {
 	var (
 		numReps   = 64
 		nbCols    = 16
-		rng       = rand.New(rand.NewSource(786868))
+		rng       = rand.New(utils.NewRandSource(77442)) // nolint
 		params    = Params{LogTwoBound: 16, LogTwoDegree: 6}
 		testCases = [][]smartvectors.SmartVector{
 			constantRandomTestVector(rng, 4, nbCols),
@@ -71,7 +72,7 @@ func TestSmartVectorTransversalSisHash(t *testing.T) {
 		testCases = append(testCases, fullyRandomTestVector(rng, 8, nbCols))
 	}
 
-	for _, c := range testCases {
+	for i, c := range testCases {
 		t.Run(fmt.Sprintf("testcase-%v", i), func(t *testing.T) {
 			assert := require.New(t)
 			var (
@@ -103,7 +104,7 @@ func BenchmarkTransversalHash(b *testing.B) {
 	var (
 		numRow          = 1024
 		numCols         = 1024
-		rng             = rand.New(rand.NewSource(786868)) // nolint
+		rng             = rand.New(utils.NewRandSource(77442)) // nolint
 		params          = Params{LogTwoBound: 16, LogTwoDegree: 6}
 		numInputPerPoly = params.OutputSize() / (field.Bytes * 8 / params.LogTwoBound)
 		key             = GenerateKey(params, numRow)
