@@ -10,13 +10,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
+const (
+	fiatShamirHistoryStr    = "fiat-shamir-history"
+	fiatShamirTranscriptStr = "fiat-shamir-transcript"
+)
+
 var _ wizard.Runtime = &RuntimeWithReplacedFS{}
 
 // PreVortexVerifierStep is a step replicating the verifier of the tmpl at round
 // `Round` before the Vortex compilation step.
 type PreVortexVerifierStep struct {
-	Ctx   *recursionCtx
-	Round int
+	Ctxs      []*recursionCtx
+	Round     int
+	isSkipped bool
 }
 
 // RuntimeWithReplacedFS is a runtime that wraps another runtime and replaces
@@ -37,17 +43,20 @@ type GnarkRuntimeWithReplacedFS struct {
 
 func (pa PreVortexVerifierStep) Run(run wizard.Runtime) error {
 
-	pa.generateRandomCoins(run)
+	var err error
 
-	// Wraps the runtime into a translation adapter
-	var (
-		err        error
-		wrappedRun = &runtimeTranslator{Prefix: pa.Ctx.Translator.Prefix, Rt: run}
-	)
+	for _, ctx := range pa.Ctxs {
+		generateRandomCoins(run, ctx, pa.Round)
 
-	// Copy the verifier actions of the template into the target
-	for _, va := range pa.Ctx.VerifierActions[pa.Round] {
-		err = errors.Join(err, va.Run(wrappedRun))
+		// Wraps the runtime into a translation adapter
+		var (
+			wrappedRun = &runtimeTranslator{Prefix: ctx.Translator.Prefix, Rt: run}
+		)
+
+		// Copy the verifier actions of the template into the target
+		for _, va := range ctx.VerifierActions[pa.Round] {
+			err = errors.Join(err, va.Run(wrappedRun))
+		}
 	}
 
 	return err
@@ -55,18 +64,10 @@ func (pa PreVortexVerifierStep) Run(run wizard.Runtime) error {
 
 // generateRandomCoins generates all the coins for the current round
 // so that they are made available to the forthcoming verifier actions.
-func (pa PreVortexVerifierStep) generateRandomCoins(run wizard.Runtime) {
-
-	const (
-		fiatShamirHistoryStr    = "fiat-shamir-history"
-		fiatShamirTranscriptStr = "fiat-shamir-transcript"
-	)
+func generateRandomCoins(run wizard.Runtime, ctx *recursionCtx, currRound int) {
 
 	var (
-		currRound    = pa.Round
-		initialState = run.Fs().State()
-		ctx          = pa.Ctx
-		spec         = run.GetSpec()
+		spec = run.GetSpec()
 		// Wraps the runtime into a translation adapter, first to get the FS state
 		// and history.
 		wrappedRun      wizard.Runtime = &runtimeTranslator{Prefix: ctx.Translator.Prefix, Rt: run}
@@ -74,6 +75,7 @@ func (pa PreVortexVerifierStep) generateRandomCoins(run wizard.Runtime) {
 		fs                             = fsAny.(*fiatshamir.State)
 		fsHistoryAny, _                = wrappedRun.GetState(fiatShamirHistoryStr)
 		fsHistory                      = fsHistoryAny.([][2][]field.Element)
+		initialState                   = fs.State()
 	)
 
 	if fs == nil {
@@ -136,27 +138,25 @@ func (run *RuntimeWithReplacedFS) FsHistory() [][2][]field.Element {
 	return run.FiatShamirHistory
 }
 
-func (pa PreVortexVerifierStep) RunGnark(api frontend.API, run wizard.GnarkRuntime) error {
+func (pa PreVortexVerifierStep) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
-	pa.generateRandomCoinsGnark(api, run)
+	for _, ctx := range pa.Ctxs {
 
-	// Wraps the runtime into a translation adapter
-	var (
-		err        error
-		wrappedRun = &gnarkRuntimeTranslator{Prefix: pa.Ctx.Translator.Prefix, Rt: run}
-	)
+		pa.generateRandomCoinsGnark(api, run, ctx, pa.Round)
 
-	// Copy the verifier actions of the template into the target
-	for _, va := range pa.Ctx.VerifierActions[pa.Round] {
-		va.RunGnark(api, wrappedRun)
+		// Wraps the runtime into a translation adapter
+		var wrappedRun = &gnarkRuntimeTranslator{Prefix: ctx.Translator.Prefix, Rt: run}
+
+		// Copy the verifier actions of the template into the target
+		for _, va := range ctx.VerifierActions[pa.Round] {
+			va.RunGnark(api, wrappedRun)
+		}
 	}
-
-	return err
 }
 
 // generateRandomCoinsGnark generates all the coins for the current round
 // so that they are made available to the forthcoming verifier actions.
-func (pa PreVortexVerifierStep) generateRandomCoinsGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (pa PreVortexVerifierStep) generateRandomCoinsGnark(api frontend.API, run wizard.GnarkRuntime, ctx *recursionCtx, currRound int) {
 
 	const (
 		fiatShamirHistoryStr    = "fiat-shamir-history"
@@ -164,10 +164,7 @@ func (pa PreVortexVerifierStep) generateRandomCoinsGnark(api frontend.API, run w
 	)
 
 	var (
-		currRound    = pa.Round
-		initialState = run.Fs().State()
-		ctx          = pa.Ctx
-		spec         = run.GetSpec()
+		spec = run.GetSpec()
 		// Wraps the runtime into a translation adapter, first to get the FS state
 		// and history.
 		wrappedRun      wizard.GnarkRuntime = &gnarkRuntimeTranslator{Prefix: ctx.Translator.Prefix, Rt: run}
@@ -175,6 +172,7 @@ func (pa PreVortexVerifierStep) generateRandomCoinsGnark(api frontend.API, run w
 		fs                                  = fsAny.(*fiatshamir.GnarkFiatShamir)
 		fsHistoryAny, _                     = wrappedRun.GetState(fiatShamirHistoryStr)
 		fsHistory                           = fsHistoryAny.([][2][]frontend.Variable)
+		initialState                        = fs.State()
 	)
 
 	if fs == nil && run.GetHasherFactory() != nil {
@@ -241,4 +239,12 @@ func (run *GnarkRuntimeWithReplacedFS) Fs() *fiatshamir.GnarkFiatShamir {
 // FsHistory returns the Fiat-Shamir state history
 func (run *GnarkRuntimeWithReplacedFS) FsHistory() [][2][]frontend.Variable {
 	return run.FiatShamirHistory
+}
+
+func (pa *PreVortexVerifierStep) IsSkipped() bool {
+	return pa.isSkipped
+}
+
+func (pa *PreVortexVerifierStep) Skip() {
+	pa.isSkipped = true
 }
