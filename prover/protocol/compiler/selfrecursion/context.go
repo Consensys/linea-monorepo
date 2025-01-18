@@ -324,10 +324,3 @@ func assertVortexCompiled(comp *wizard.CompiledIOP) *vortex.Ctx {
 func (ctx *SelfRecursionCtx) SisKey() *ringsis.Key {
 	return &ctx.VortexCtx.VortexParams.Key
 }
-
-// isPrefixed returns whether a prefix is attached to the inner
-// vortex Ctx. If defined, the prefix is used to prefix the
-// column names.
-func (ctx *SelfRecursionCtx) isPrefixed() bool {
-	return len(ctx.VortexCtx.RunStateNamePrefix) > 0
-}
