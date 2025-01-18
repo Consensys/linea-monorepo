@@ -405,7 +405,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 
 	// Consistency check between the collapsed preimage and UalphaQ
 	{
-		left := functionals.CoeffEval(
+		uAlphaQEval := functionals.CoeffEval(
 			ctx.comp,
 			ctx.constencyUalphaQPreimageLeft(),
 			ctx.Coins.Collapse,
@@ -424,7 +424,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			  evaluation point, we get a bivariate polynomial evaluation
 		*/
 
-		right := functionals.EvalCoeffBivariate(
+		preImageEval := functionals.EvalCoeffBivariate(
 			ctx.comp,
 			ctx.constencyUalphaQPreimageRight(),
 			ctx.Columns.PreimagesCollapse,
@@ -435,12 +435,12 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 		)
 
 		ctx.comp.InsertVerifier(
-			left.Round(),
+			uAlphaQEval.Round(),
 			func(run wizard.Runtime) error {
-				if left.GetVal(run) != right.GetVal(run) {
-					l, r := left.GetVal(run), right.GetVal(run)
+				if uAlphaQEval.GetVal(run) != preImageEval.GetVal(run) {
+					l, r := uAlphaQEval.GetVal(run), preImageEval.GetVal(run)
 					return fmt.Errorf("consistency between u_alpha and the preimage: "+
-						"mismatch between left and right %v != %v",
+						"mismatch between uAlphaQEval=%v preimages=%v",
 						l.String(), r.String(),
 					)
 				}
@@ -448,8 +448,8 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			},
 			func(api frontend.API, run wizard.GnarkRuntime) {
 				api.AssertIsEqual(
-					left.GetFrontendVariable(api, run),
-					right.GetFrontendVariable(api, run),
+					uAlphaQEval.GetFrontendVariable(api, run),
+					preImageEval.GetFrontendVariable(api, run),
 				)
 			},
 		)
