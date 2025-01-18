@@ -31,13 +31,16 @@ type recursionCtx struct {
 	LocalOpenings               []query.LocalOpening
 }
 
-func Conglomerate(
-	tmpl *wizard.CompiledIOP,
-	maxNumSegment int,
-) (comp *wizard.CompiledIOP) {
+// ConglomerateDefineFunc returns a function that defines a conglomerate
+// comp and a placeholder pointer for the recursion context. On return
+// of the function, the pointer points to an empty slice and is populated
+// once [wizard.Compile] has been called with def.
+func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def func(*wizard.Builder), ctxsPlaceHolder *[]*recursionCtx) {
 
-	comp = wizard.NewCompiledIOP()
 	var ctxs []*recursionCtx
+	def = func(b *wizard.Builder) {
+
+		comp := b.CompiledIOP
 
 	for id := 0; id < maxNumSegment; id++ {
 		prefix := fmt.Sprintf("verifier-%v", id)
@@ -66,8 +69,9 @@ func Conglomerate(
 			comp.RegisterProverAction(round, &PreVortexProverStep{Ctxs: ctxs, Round: round})
 		}
 	}
+	}
 
-	return comp
+	return def, &ctxs
 }
 
 // initRecursionCtx initializes a new context
