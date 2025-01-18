@@ -144,11 +144,16 @@ func (pa PreVortexProverStep) Run(run *wizard.ProverRuntime) {
 			proof         = run.State.MustGet(prefix + subProofInStatePrefixStr).(wizard.Proof)
 			queriesParams = ctx.QueryParams[pa.Round]
 			colums        = ctx.Columns[pa.Round]
+			columnIgnored = ctx.ColumnsIgnored[pa.Round]
 		)
 
 		for _, col := range colums {
 			name := unprefix(prefix, col.GetColID())
 			run.AssignColumn(col.GetColID(), proof.Messages.MustGet(name))
+		}
+
+		for _, col := range columnIgnored {
+			run.AssignColumn(col.GetColID(), smartvectors.NewConstant(field.Zero(), col.Size()))
 		}
 
 		for _, param := range queriesParams {
