@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -34,20 +35,23 @@ type PreVortexProverStep struct {
 	Round int
 }
 
+// AssignVortexQuery assigns the query for all the subproofs.
+type AssignVortexQuery struct {
+	Ctxs []*recursionCtx
+}
+
 // AssignVortexUAlpha assigns the UAlpha column for all the subproofs. As
 // for [PreVortexVerifierStep], this step should be run after the corresponding
 // proofs have been added to the runtime states.
 type AssignVortexUAlpha struct {
-	Ctxs  []*recursionCtx
-	Round int
+	Ctxs []*recursionCtx
 }
 
 // AssignVortexOpenedCols assigns the OpenedCols for all the subproofs. As
 // for [PreVortexVerifierStep], this step should be run after the corresponding
 // proofs have been added to the runtime states.
 type AssignVortexOpenedCols struct {
-	Ctxs  []*recursionCtx
-	Round int
+	Ctxs []*recursionCtx
 }
 
 // ProveConglomeration returns the main prover step of the conglomeration wizard.
@@ -163,6 +167,19 @@ func (pa PreVortexProverStep) Run(run *wizard.ProverRuntime) {
 	}
 }
 
+func (pa AssignVortexQuery) Run(run *wizard.ProverRuntime) {
+	for _, ctx := range pa.Ctxs {
+
+		var (
+			prefix = ctx.Translator.Prefix
+			proof  = run.State.MustGet(prefix + subProofInStatePrefixStr).(wizard.Proof)
+			name   = unprefix(prefix, ctx.PcsCtx.Query.QueryID)
+		)
+
+		run.QueriesParams.InsertNew(ctx.PcsCtx.Query.QueryID, proof.QueriesParams.MustGet(name))
+	}
+}
+
 func (pa AssignVortexUAlpha) Run(run *wizard.ProverRuntime) {
 	for _, ctx := range pa.Ctxs {
 		// Since all the context of the pcs is translated, this does not
@@ -180,7 +197,7 @@ func (pa AssignVortexOpenedCols) Run(run *wizard.ProverRuntime) {
 }
 
 func unprefix[T ~string](prefix string, name T) T {
-	p, n := string(prefix), string(name)
+	p, n := string(prefix)+".", string(name)
 	r := strings.TrimPrefix(n, p)
 	return T(r)
 }
