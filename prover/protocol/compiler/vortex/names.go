@@ -36,7 +36,7 @@ func (ctx *Ctx) CommitmentName(round int) ifaces.ColID {
 // for each round that we store in the state.
 func (ctx *Ctx) SisHashName(round int) string {
 	name := fmt.Sprintf("VORTEX_%v_SIS_HASH_%v", ctx.SelfRecursionCount, round)
-	if len(ctx.RunStateNamePrefix) > 0 {
+	if len(ctx.RunStateNamePrefix) == 0 {
 		return name
 	}
 	return ctx.RunStateNamePrefix + "." + name
@@ -45,7 +45,7 @@ func (ctx *Ctx) SisHashName(round int) string {
 // returns the name of a prover state for a given round of Vortex
 func (ctx *Ctx) VortexProverStateName(round int) string {
 	name := fmt.Sprintf("VORTEX_%v_PROVER_STATE_%v", ctx.SelfRecursionCount, round)
-	if len(ctx.RunStateNamePrefix) > 0 {
+	if len(ctx.RunStateNamePrefix) == 0 {
 		return name
 	}
 	return ctx.RunStateNamePrefix + "." + name
@@ -54,7 +54,7 @@ func (ctx *Ctx) VortexProverStateName(round int) string {
 // returns the name of a prover state for a given round of Vortex
 func (ctx *Ctx) MerkleTreeName(round int) string {
 	name := fmt.Sprintf("VORTEX_%v_MERKLE_TREE_%v", ctx.SelfRecursionCount, round)
-	if len(ctx.RunStateNamePrefix) > 0 {
+	if len(ctx.RunStateNamePrefix) == 0 {
 		return name
 	}
 	return ctx.RunStateNamePrefix + "." + name
