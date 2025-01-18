@@ -115,9 +115,17 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 			tree, _            = run.State.TryGet(pcs.MerkleTreeName(round))
 		)
 
-		committedMatrices = append(committedMatrices, committedMatrix.(vCom.EncodedMatrix))
-		sisHashes = append(sisHashes, sisHash.([]field.Element))
-		trees = append(trees, tree.(*smt.Tree))
+		if committedMatrix != nil {
+			committedMatrices = append(committedMatrices, committedMatrix.(vCom.EncodedMatrix))
+		}
+
+		if sisHash != nil {
+			sisHashes = append(sisHashes, sisHash.([]field.Element))
+		}
+
+		if tree != nil {
+			trees = append(trees, tree.(*smt.Tree))
+		}
 	}
 
 	return Witness{
