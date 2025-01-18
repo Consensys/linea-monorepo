@@ -42,33 +42,33 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 
 		comp := b.CompiledIOP
 
-	for id := 0; id < maxNumSegment; id++ {
-		prefix := fmt.Sprintf("verifier-%v", id)
+		for id := 0; id < maxNumSegment; id++ {
+			prefix := fmt.Sprintf("verifier-%v", id)
 			ctx := initRecursionCtx(prefix, comp, tmpl)
-		ctx.captureCompPreVortex(tmpl)
-		ctx.captureVortexCtx(tmpl)
-		selfrecursion.RecurseOverCustomCtx(comp, ctx.PcsCtx)
-		ctxs = append(ctxs, ctx)
-	}
-
-	for round := 0; round <= ctxs[0].LastRound; round++ {
-
-		var (
-			hasCoin    = len(ctxs[0].Coins[round]) > 0
-			hasVAction = len(ctxs[0].VerifierActions[round]) > 0
-			hasFsHook  = len(ctxs[0].FsHooks[round]) > 0
-			hasColumn  = len(ctxs[0].Columns[round]) > 0
-			hasQParams = len(ctxs[0].QueryParams[round]) > 0
-		)
-
-		if hasCoin || hasVAction || hasFsHook {
-			comp.RegisterVerifierAction(round, &PreVortexVerifierStep{Ctxs: ctxs, Round: round})
+			ctx.captureCompPreVortex(tmpl)
+			ctx.captureVortexCtx(tmpl)
+			selfrecursion.RecurseOverCustomCtx(comp, ctx.PcsCtx)
+			ctxs = append(ctxs, ctx)
 		}
 
-		if hasColumn || hasQParams {
-			comp.RegisterProverAction(round, &PreVortexProverStep{Ctxs: ctxs, Round: round})
+		for round := 0; round <= ctxs[0].LastRound; round++ {
+
+			var (
+				hasCoin    = len(ctxs[0].Coins[round]) > 0
+				hasVAction = len(ctxs[0].VerifierActions[round]) > 0
+				hasFsHook  = len(ctxs[0].FsHooks[round]) > 0
+				hasColumn  = len(ctxs[0].Columns[round]) > 0
+				hasQParams = len(ctxs[0].QueryParams[round]) > 0
+			)
+
+			if hasCoin || hasVAction || hasFsHook {
+				comp.RegisterVerifierAction(round, &PreVortexVerifierStep{Ctxs: ctxs, Round: round})
+			}
+
+			if hasColumn || hasQParams {
+				comp.RegisterProverAction(round, &PreVortexProverStep{Ctxs: ctxs, Round: round})
+			}
 		}
-	}
 	}
 
 	return def, &ctxs
@@ -205,6 +205,8 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 		NumCols:                      srcVortexCtx.NumCols,
 		MaxCommittedRound:            srcVortexCtx.MaxCommittedRound,
 		NumOpenedCol:                 srcVortexCtx.NumOpenedCol,
+		VortexParams:                 srcVortexCtx.VortexParams,
+		SisParams:                    srcVortexCtx.SisParams,
 		CommitmentsByRounds:          ctx.Translator.TranslateColumnVecVec(srcVortexCtx.CommitmentsByRounds),
 		DriedByRounds:                ctx.Translator.TranslateColumnVecVec(srcVortexCtx.DriedByRounds),
 		PolynomialsTouchedByTheQuery: ctx.Translator.TranslateColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
@@ -216,10 +218,12 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 		panic("it should not replace by MiMC")
 	}
 
-	dstVortexCtx.Items.Precomputeds.PrecomputedColums = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.Precomputeds.PrecomputedColums)
-	dstVortexCtx.Items.Precomputeds.MerkleRoot = ctx.Translator.GetColumn(srcVortexCtx.Items.Precomputeds.MerkleRoot.GetColID())
-	dstVortexCtx.Items.Precomputeds.CommittedMatrix = srcVortexCtx.Items.Precomputeds.CommittedMatrix
-	dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
+	if srcVortexCtx.IsCommitToPrecomputed() {
+		dstVortexCtx.Items.Precomputeds.PrecomputedColums = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.Precomputeds.PrecomputedColums)
+		dstVortexCtx.Items.Precomputeds.MerkleRoot = ctx.Translator.GetColumn(srcVortexCtx.Items.Precomputeds.MerkleRoot.GetColID())
+		dstVortexCtx.Items.Precomputeds.CommittedMatrix = srcVortexCtx.Items.Precomputeds.CommittedMatrix
+		dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
+	}
 
 	dstVortexCtx.Items.Alpha = ctx.Translator.InsertCoin(srcVortexCtx.Items.Alpha)
 	dstVortexCtx.Items.Ualpha = ctx.Translator.InsertColumn(srcVortexCtx.Items.Ualpha.(column.Natural))
