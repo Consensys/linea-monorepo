@@ -23,12 +23,11 @@ type recursionCtx struct {
 	NonEmptyMerkleRootPositions []int
 	FirstRound, LastRound       int
 	Columns                     [][]ifaces.Column
-	ColumnsIgnored              [][]ifaces.Column
-	QueryParams                 [][]ifaces.Query
-	VerifierActions             [][]wizard.VerifierAction
-	Coins                       [][]coin.Info
-	FsHooks                     [][]wizard.VerifierAction
-	LocalOpenings               []query.LocalOpening
+	// The columns ignored are the one that are compiled by the vortex context.
+	// They are added in the target 'comp' but are assigned to zero. Although,
+	// they do not directly play a role in the protocol anymore, they are still
+	// referenced by the self-recursion compiler.
+	ColumnsIgnored  [][]ifaces.Column
 }
 
 // ConglomerateDefineFunc returns a function that defines a conglomerate
