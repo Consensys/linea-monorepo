@@ -35,7 +35,7 @@ func TestConglomerationPureVortex(t *testing.T) {
 
 	prover := func(k int) func(run *wizard.ProverRuntime) {
 		return func(run *wizard.ProverRuntime) {
-			ys := make([]field.Element, len(a))
+			ys := make([]field.Element, 0, len(a))
 			for i := range a {
 				y := field.NewElement(uint64(i + k))
 				run.AssignColumn(a[i].GetColID(), smartvectors.NewConstant(y, numCol))
