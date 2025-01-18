@@ -16,6 +16,7 @@ import (
 type recursionCtx struct {
 	// A pointer to the compiled-IOP over which the compilation step has run
 	Translator *compTranslator
+	Tmpl       *wizard.CompiledIOP
 	// The Vortex compilation context
 	PcsCtx                      *vortex.Ctx
 	PublicInputs                []wizard.PublicInput
@@ -40,7 +41,7 @@ func Conglomerate(
 
 	for id := 0; id < maxNumSegment; id++ {
 		prefix := fmt.Sprintf("verifier-%v", id)
-		ctx := initRecursionCtx(prefix, comp)
+			ctx := initRecursionCtx(prefix, comp, tmpl)
 		ctx.captureCompPreVortex(tmpl)
 		ctx.captureVortexCtx(tmpl)
 		selfrecursion.RecurseOverCustomCtx(comp, ctx.PcsCtx)
@@ -69,13 +70,11 @@ func Conglomerate(
 	return comp
 }
 
-// initCtx initializes a new context
-func initRecursionCtx(
-	id string,
-	target *wizard.CompiledIOP,
-) *recursionCtx {
+// initRecursionCtx initializes a new context
+func initRecursionCtx(id string, target *wizard.CompiledIOP, tmpl *wizard.CompiledIOP) *recursionCtx {
 	return &recursionCtx{
 		Translator: &compTranslator{Prefix: id, Target: target},
+		Tmpl:       tmpl,
 	}
 }
 
@@ -114,7 +113,7 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 
 			newCol := ctx.Translator.InsertColumn(col)
 			ctx.Columns[round] = append(ctx.Columns[round], newCol)
-			ctx.Translator.Target.Columns.IgnoreButKeepInProverTranscript(newCol.GetColID())
+			ctx.Translator.Target.Columns.ExcludeFromProverFS(newCol.GetColID())
 		}
 
 		for _, qName := range tmpl.QueriesParams.AllKeysAt(round) {
@@ -139,7 +138,7 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 			qInfo := tmpl.QueriesParams.Data(qName)
 			qInfo = ctx.Translator.InsertQueryParams(round, qInfo)
 			ctx.QueryParams[round] = append(ctx.QueryParams[round], qInfo)
-			ctx.Translator.Target.QueriesParams.MarkAsSkippedFromVerifierTranscript(qInfo.Name())
+			ctx.Translator.Target.QueriesParams.MarkAsSkippedFromProverTranscript(qInfo.Name())
 		}
 
 		for _, cName := range tmpl.Coins.AllKeysAt(round) {
