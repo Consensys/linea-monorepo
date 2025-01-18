@@ -82,15 +82,15 @@ func storeWitnessInState(run *wizard.ProverRuntime, ctx *recursionCtx, witness W
 
 	for round := 0; round <= lastRound; round++ {
 
-		if witness.CommittedMatrices[round] != nil {
+		if len(witness.CommittedMatrices) > round && witness.CommittedMatrices[round] != nil {
 			run.State.InsertNew(ctx.PcsCtx.VortexProverStateName(round), witness.CommittedMatrices[round])
 		}
 
-		if witness.SisHashes[round] != nil {
+		if len(witness.SisHashes) > round && witness.SisHashes[round] != nil {
 			run.State.InsertNew(ctx.PcsCtx.SisHashName(round), witness.SisHashes[round])
 		}
 
-		if witness.Trees[round] != nil {
+		if len(witness.Trees) > round && witness.Trees[round] != nil {
 			run.State.InsertNew(ctx.PcsCtx.MerkleTreeName(round), witness.Trees[round])
 		}
 	}
