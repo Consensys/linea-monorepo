@@ -236,7 +236,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx) SelfRecurs
 		// Assume that the rounds commitments have a `Proof` status
 		if comp.Columns.Status(rooth.GetColID()) != column.Proof {
 			utils.Panic(
-				"Assumed the Dh to be %v but status is %v",
+				"Assumed the rootH to be %v but status is %v",
 				column.Proof.String(),
 				comp.Columns.Status(rooth.GetColID()),
 			)
