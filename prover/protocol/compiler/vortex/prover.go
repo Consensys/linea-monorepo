@@ -135,7 +135,7 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 	}
 
 	packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
-	pr.AssignColumn(ctx.MerkleProofName(), packedMProofs)
+	pr.AssignColumn(ctx.Items.MerkleProofs.GetColID(), packedMProofs)
 }
 
 // returns true if the round is dry (i.e, there is nothing to commit to)
