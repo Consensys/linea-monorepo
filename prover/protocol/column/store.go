@@ -467,9 +467,9 @@ func (s *Store) IsIgnoredAndNotKeptInTranscript(colName ifaces.ColID) bool {
 	return in.Status == Ignored && !in.IncludeInProverFS
 }
 
-// AllKeysProofsOrIgnoredButKeptInProverTranscript returns the list of the
-// columns to be used as part of the FS transcript.
-func (s *Store) AllKeysProofsOrIgnoredButKeptInProverTranscript(round int) []ifaces.ColID {
+// AllKeysInProverTranscript returns the list of the columns to
+// be used as part of the FS transcript.
+func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := s.byRounds.MustGet(round) // precomputed are always at round zero
 

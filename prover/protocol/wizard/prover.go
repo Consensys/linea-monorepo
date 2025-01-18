@@ -531,7 +531,7 @@ func (run *ProverRuntime) goNextRound() {
 			FS using the last round of the prover because he is always
 			the last one to "talk" in the protocol.
 		*/
-		msgsToFS := run.Spec.Columns.AllKeysProofsOrIgnoredButKeptInProverTranscript(run.currRound)
+		msgsToFS := run.Spec.Columns.AllKeysInProverTranscript(run.currRound)
 		for _, msgName := range msgsToFS {
 			instance := run.GetMessage(msgName)
 			run.FS.UpdateSV(instance)
