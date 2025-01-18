@@ -23,8 +23,8 @@ func SelfRecurse(comp *wizard.CompiledIOP) {
 
 // RecurseOverCustomCtx applies the same compilation steps as [SelfRecurse]
 // over a specified vortex compilation context.
-func RecurseOverCustomCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx) {
-	ctx := NewRecursionCtx(comp, vortexCtx)
+func RecurseOverCustomCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix string) {
+	ctx := NewRecursionCtx(comp, vortexCtx, prefix)
 	ctx.Precomputations()
 	ctx.RowLinearCombinationPhase()
 	ctx.ColumnOpeningPhase()

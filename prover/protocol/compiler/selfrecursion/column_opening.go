@@ -366,6 +366,7 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	// And the linear hashing
 	mimcW.CheckLinearHash(
 		ctx.comp,
+		ctx.linearHashVerificationName(),
 		ctx.Columns.ConcatenatedDhQ,
 		ctx.VortexCtx.SisParams.OutputSize(),
 		leavesSizeUnpadded,

@@ -47,7 +47,7 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 			ctx := initRecursionCtx(prefix, comp, tmpl)
 			ctx.captureCompPreVortex(tmpl)
 			ctx.captureVortexCtx(tmpl)
-			selfrecursion.RecurseOverCustomCtx(comp, ctx.PcsCtx)
+			selfrecursion.RecurseOverCustomCtx(comp, ctx.PcsCtx, ctx.Translator.Prefix)
 			ctxs = append(ctxs, ctx)
 		}
 
