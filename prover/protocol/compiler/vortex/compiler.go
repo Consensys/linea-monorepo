@@ -528,7 +528,9 @@ func (ctx *Ctx) NumEncodedCols() int {
 	return res
 }
 
-// Create a method to decide when to commit to the precomputed
+// IsCommitToPrecomputed returns true if the current compilation step
+// commits to the precomputed columns. This is detected by checking if
+// the number of precomputed columns is greater than the dry treshold.
 func (ctx *Ctx) IsCommitToPrecomputed() bool {
 	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.DryTreshold
 }
