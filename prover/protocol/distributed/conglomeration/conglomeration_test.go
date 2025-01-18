@@ -23,7 +23,7 @@ func TestConglomerationPureVortex(t *testing.T) {
 		a              []ifaces.Column
 		u              query.UnivariateEval
 		sisParams      = &ringsis.Params{LogTwoBound: 16, LogTwoDegree: 1}
-		vortexCompFunc = vortex.Compile(2, vortex.WithSISParams(sisParams), vortex.ForceNumOpenedColumns(2))
+		vortexCompFunc = vortex.Compile(2, vortex.WithSISParams(sisParams), vortex.ForceNumOpenedColumns(2), vortex.PremarkAsSelfRecursed())
 	)
 
 	define := func(builder *wizard.Builder) {

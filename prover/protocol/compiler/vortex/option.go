@@ -36,3 +36,12 @@ func ReplaceSisByMimc() VortexOp {
 		ctx.SisParams = nil
 	}
 }
+
+// PremarkAsSelfRecursed marks the ctx as selfrecursed. This is useful
+// toward conglomerating the receiver comp but is not needed for
+// self-recursion or full-recursion.
+func PremarkAsSelfRecursed() VortexOp {
+	return func(ctx *Ctx) {
+		ctx.IsSelfrecursed = true
+	}
+}

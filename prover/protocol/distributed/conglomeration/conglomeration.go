@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // recursionCtx holds compilation context informations about the wizard
@@ -211,16 +212,22 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 		}
 	}
 
+	if !srcVortexCtx.IsSelfrecursed || srcVortexCtx.ReplaceSisByMimc {
+		utils.Panic("the input vortex ctx is expected to be selfrecursed or having SIS replaced by MiMC. Please sure the input comp has been last compiled by Vortex with the option [vortex.MarkAsSelfRecursed]")
+	}
+
 	dstVortexCtx := &vortex.Ctx{
-		RunStateNamePrefix:           ctx.Translator.Prefix,
-		BlowUpFactor:                 srcVortexCtx.BlowUpFactor,
-		DryTreshold:                  srcVortexCtx.DryTreshold,
-		CommittedRowsCount:           srcVortexCtx.CommittedRowsCount,
-		NumCols:                      srcVortexCtx.NumCols,
-		MaxCommittedRound:            srcVortexCtx.MaxCommittedRound,
-		NumOpenedCol:                 srcVortexCtx.NumOpenedCol,
-		VortexParams:                 srcVortexCtx.VortexParams,
-		SisParams:                    srcVortexCtx.SisParams,
+		RunStateNamePrefix: ctx.Translator.Prefix,
+		BlowUpFactor:       srcVortexCtx.BlowUpFactor,
+		DryTreshold:        srcVortexCtx.DryTreshold,
+		CommittedRowsCount: srcVortexCtx.CommittedRowsCount,
+		NumCols:            srcVortexCtx.NumCols,
+		MaxCommittedRound:  srcVortexCtx.MaxCommittedRound,
+		NumOpenedCol:       srcVortexCtx.NumOpenedCol,
+		VortexParams:       srcVortexCtx.VortexParams,
+		SisParams:          srcVortexCtx.SisParams,
+		// Although the srcVor
+		IsSelfrecursed:               true,
 		CommitmentsByRounds:          ctx.Translator.TranslateColumnVecVec(srcVortexCtx.CommitmentsByRounds),
 		DriedByRounds:                ctx.Translator.TranslateColumnVecVec(srcVortexCtx.DriedByRounds),
 		PolynomialsTouchedByTheQuery: ctx.Translator.TranslateColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
@@ -231,6 +238,8 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 	if srcVortexCtx.ReplaceSisByMimc {
 		panic("it should not replace by MiMC")
 	}
+
+	ctx.Translator.Target.QueriesParams.MarkAsIgnored(dstVortexCtx.Query.QueryID)
 
 	if srcVortexCtx.IsCommitToPrecomputed() {
 		dstVortexCtx.Items.Precomputeds.PrecomputedColums = ctx.Translator.TranslateColumnList(srcVortexCtx.Items.Precomputeds.PrecomputedColums)
