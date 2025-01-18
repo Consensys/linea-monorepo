@@ -125,7 +125,7 @@ type ProverRuntime struct {
 	// in the distributed prover by the module runtimes to access the initial
 	// wizard runtime.
 	ParentRuntime *ProverRuntime
-	
+
 	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
@@ -153,29 +153,7 @@ type ProverRuntime struct {
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
 func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
-
-	runtime := RunProver(c, highLevelprover)
-
-	/*
-		Pass all the prover message columns as part of the proof
-	*/
-	messages := collection.NewMapping[ifaces.ColID, ifaces.ColAssignment]()
-
-	for _, name := range runtime.Spec.Columns.AllKeysProof() {
-		messageValue := runtime.Columns.MustGet(name)
-		messages.InsertNew(name, messageValue)
-	}
-
-	// And also the public inputs
-	for _, name := range runtime.Spec.Columns.AllKeysPublicInput() {
-		messageValue := runtime.Columns.MustGet(name)
-		messages.InsertNew(name, messageValue)
-	}
-
-	return Proof{
-		Messages:      messages,
-		QueriesParams: runtime.QueriesParams,
-	}
+	return RunProver(c, highLevelprover).ExtractProof()
 }
 
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
@@ -200,6 +178,43 @@ func RunProver(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
 	}
 
 	return &runtime
+}
+
+// RunProverUntilRound runs the prover until the specified round
+func RunProverUntilRound(c *CompiledIOP, highLevelprover ProverStep, round int) *ProverRuntime {
+
+	runtime := c.createProver()
+
+	highLevelprover(&runtime)
+	runtime.runProverSteps()
+
+	for runtime.currRound+1 < round {
+		runtime.goNextRound()
+		runtime.runProverSteps()
+	}
+
+	return &runtime
+}
+
+// ExtractProof extracts the proof from a [ProverRuntime]
+func (run *ProverRuntime) ExtractProof() Proof {
+	messages := collection.NewMapping[ifaces.ColID, ifaces.ColAssignment]()
+
+	for _, name := range run.Spec.Columns.AllKeysProof() {
+		messageValue := run.Columns.MustGet(name)
+		messages.InsertNew(name, messageValue)
+	}
+
+	// And also the public inputs
+	for _, name := range run.Spec.Columns.AllKeysPublicInput() {
+		messageValue := run.Columns.MustGet(name)
+		messages.InsertNew(name, messageValue)
+	}
+
+	return Proof{
+		Messages:      messages,
+		QueriesParams: run.QueriesParams,
+	}
 }
 
 // NumRounds returns the total number of rounds in the corresponding WizardIOP.
