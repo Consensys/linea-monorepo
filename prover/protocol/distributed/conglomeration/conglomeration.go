@@ -28,6 +28,11 @@ type recursionCtx struct {
 	// they do not directly play a role in the protocol anymore, they are still
 	// referenced by the self-recursion compiler.
 	ColumnsIgnored  [][]ifaces.Column
+	QueryParams     [][]ifaces.Query
+	VerifierActions [][]wizard.VerifierAction
+	Coins           [][]coin.Info
+	FsHooks         [][]wizard.VerifierAction
+	LocalOpenings   []query.LocalOpening
 }
 
 // ConglomerateDefineFunc returns a function that defines a conglomerate
@@ -46,7 +51,6 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 			ctx := initRecursionCtx(prefix, comp, tmpl)
 			ctx.captureCompPreVortex(tmpl)
 			ctx.captureVortexCtx(tmpl)
-			selfrecursion.RecurseOverCustomCtx(comp, ctx.PcsCtx, ctx.Translator.Prefix)
 			ctxs = append(ctxs, ctx)
 		}
 
@@ -67,6 +71,16 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 			if hasColumn || hasQParams {
 				comp.RegisterProverAction(round, &PreVortexProverStep{Ctxs: ctxs, Round: round})
 			}
+		}
+
+		comp.RegisterProverAction(ctxs[0].LastRound, &AssignVortexQuery{Ctxs: ctxs})
+		comp.RegisterProverAction(ctxs[0].LastRound+1, &AssignVortexUAlpha{Ctxs: ctxs})
+		comp.RegisterProverAction(ctxs[0].LastRound+2, &AssignVortexOpenedCols{Ctxs: ctxs})
+
+		// Importantly, the recursion compilation should happen after we added the vortex
+		// columns as they depends on the later.
+		for _, ctx := range ctxs {
+			selfrecursion.RecurseOverCustomCtx(comp, ctx.PcsCtx, ctx.Translator.Prefix)
 		}
 	}
 
@@ -192,7 +206,8 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 		ctx.ColumnsIgnored = append(ctx.ColumnsIgnored, nil)
 		for _, comID := range coms {
 			com := tmpl.Columns.GetHandle(comID)
-			ctx.Translator.InsertColumn(com.(column.Natural))
+			com = ctx.Translator.InsertColumn(com.(column.Natural))
+			ctx.ColumnsIgnored[len(ctx.ColumnsIgnored)-1] = append(ctx.ColumnsIgnored[len(ctx.ColumnsIgnored)-1], com)
 		}
 	}
 
