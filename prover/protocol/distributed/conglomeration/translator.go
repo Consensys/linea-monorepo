@@ -146,10 +146,11 @@ func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) m
 // TranslateUniEval returns a copied UnivariateEval query with the columns translated
 // and the names translated. The returned query is registered in the translator comp.
 func (comp *compTranslator) TranslateUniEval(round int, q query.UnivariateEval) query.UnivariateEval {
-	var res = query.NewUnivariateEval(q.QueryID, q.Pols...)
-	for i := range res.Pols {
-		res.Pols[i] = comp.GetColumn(res.Pols[i].GetColID())
+	newPols := make([]ifaces.Column, len(q.Pols))
+	for i := range newPols {
+		newPols[i] = comp.GetColumn(q.Pols[i].GetColID())
 	}
+	var res = query.NewUnivariateEval(q.QueryID, newPols...)
 	return comp.InsertQueryParams(round, res).(query.UnivariateEval)
 }
 
