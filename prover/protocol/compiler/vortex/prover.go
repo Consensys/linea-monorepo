@@ -67,11 +67,11 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 	}
 
 	// And get the randomness
-	randomCoinLC := pr.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoinLC := pr.GetRandomCoinField(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
 	proof := ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
-	pr.AssignColumn(ctx.LinCombName(), proof.LinearCombination)
+	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
 
 // Prover steps of Vortex where he opens the columns selected by the verifier
@@ -107,7 +107,7 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 		trees = append(trees, tree)
 	}
 
-	entryList := pr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
+	entryList := pr.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
 	proof := vortex.OpeningProof{}
 
 	// Merkle mode only:
@@ -131,7 +131,7 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 			assignable = smartvectors.RightZeroPadded(fullCol, utils.NextPowerOfTwo(len(fullCol)))
 		}
 
-		pr.AssignColumn(ctx.SelectedColName(j), assignable)
+		pr.AssignColumn(ctx.Items.OpenedColumns[j].GetColID(), assignable)
 	}
 
 	packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
