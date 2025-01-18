@@ -196,24 +196,39 @@ func RunProverUntilRound(c *CompiledIOP, highLevelprover ProverStep, round int) 
 	return &runtime
 }
 
-// ExtractProof extracts the proof from a [ProverRuntime]
+// ExtractProof extracts the proof from a [ProverRuntime]. If the runtime has
+// been obtained via a [RunProverUntilRound], then it may be the case that
+// some columns have not been assigned at all. Those won't be included in the
+// returned proof.
 func (run *ProverRuntime) ExtractProof() Proof {
 	messages := collection.NewMapping[ifaces.ColID, ifaces.ColAssignment]()
 
 	for _, name := range run.Spec.Columns.AllKeysProof() {
+
+		cols := run.Spec.Columns.GetHandle(name)
+		if run.currRound < cols.Round() {
+			continue
+		}
+
 		messageValue := run.Columns.MustGet(name)
 		messages.InsertNew(name, messageValue)
 	}
 
-	// And also the public inputs
 	for _, name := range run.Spec.Columns.AllKeysPublicInput() {
 		messageValue := run.Columns.MustGet(name)
 		messages.InsertNew(name, messageValue)
 	}
 
+	queriesParams := collection.NewMapping[ifaces.QueryID, ifaces.QueryParams]()
+	for round := 0; round <= run.currRound; round++ {
+		for _, name := range run.Spec.QueriesParams.AllKeysAt(round) {
+			queriesParams.InsertNew(name, run.QueriesParams.MustGet(name))
+		}
+	}
+
 	return Proof{
 		Messages:      messages,
-		QueriesParams: run.QueriesParams,
+		QueriesParams: queriesParams,
 	}
 }
 
