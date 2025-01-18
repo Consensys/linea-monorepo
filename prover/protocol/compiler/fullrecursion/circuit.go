@@ -129,6 +129,11 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 
 			toUpdateFS := ctx.Columns[currRound-1]
 			for _, msg := range toUpdateFS {
+
+				if c.comp.Columns.IsExplicitlyExcludedFromProverFS(msg.GetColID()) {
+					continue
+				}
+
 				val := w.GetColumn(msg.GetColID())
 				w.FS.UpdateVec(val)
 			}

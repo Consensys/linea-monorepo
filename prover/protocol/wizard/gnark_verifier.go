@@ -214,6 +214,11 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 			// the last one to "talk" in the protocol.
 			toUpdateFS := c.Spec.Columns.AllKeysProofAt(currRound - 1)
 			for _, msg := range toUpdateFS {
+
+				if c.Spec.Columns.IsExplicitlyExcludedFromProverFS(msg) {
+					continue
+				}
+
 				msgContent := c.GetColumn(msg)
 				c.FS.UpdateVec(msgContent)
 			}

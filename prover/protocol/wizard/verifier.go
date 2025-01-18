@@ -192,6 +192,11 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 				*/
 				msgsToFS := run.Spec.Columns.AllKeysProofAt(currRound - 1)
 				for _, msgName := range msgsToFS {
+
+					if run.Spec.Columns.IsExplicitlyExcludedFromProverFS(msgName) {
+						continue
+					}
+
 					instance := run.GetColumn(msgName)
 					run.FS.UpdateSV(instance)
 				}

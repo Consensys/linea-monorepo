@@ -97,6 +97,12 @@ func generateRandomCoins(run wizard.Runtime, ctx *recursionCtx, currRound int) {
 
 		cols := ctx.Columns[currRound-1]
 		for _, col := range cols {
+
+			name := unprefix(ctx.Translator.Prefix, col.GetColID())
+			if ctx.Tmpl.Columns.IsExplicitlyExcludedFromProverFS(name) {
+				continue
+			}
+
 			instance := run.GetColumn(col.GetColID())
 			fs.UpdateSV(instance)
 		}
@@ -194,6 +200,12 @@ func (pa PreVortexVerifierStep) generateRandomCoinsGnark(api frontend.API, run w
 
 		cols := ctx.Columns[currRound-1]
 		for _, col := range cols {
+
+			name := unprefix(ctx.Translator.Prefix, col.GetColID())
+			if ctx.Tmpl.Columns.IsExplicitlyExcludedFromProverFS(name) {
+				continue
+			}
+
 			instance := run.GetColumn(col.GetColID())
 			fs.UpdateVec(instance)
 		}

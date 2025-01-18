@@ -533,6 +533,11 @@ func (run *ProverRuntime) goNextRound() {
 		*/
 		msgsToFS := run.Spec.Columns.AllKeysInProverTranscript(run.currRound)
 		for _, msgName := range msgsToFS {
+
+			if run.Spec.Columns.IsExplicitlyExcludedFromProverFS(msgName) {
+				continue
+			}
+
 			instance := run.GetMessage(msgName)
 			run.FS.UpdateSV(instance)
 		}
