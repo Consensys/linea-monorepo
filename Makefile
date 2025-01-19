@@ -48,7 +48,7 @@ start-l2-blockchain-only:
 start-whole-environment: COMPOSE_PROFILES:=l1,l2
 start-whole-environment:
 		# docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml build prover
-		COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml up -d
+		L1_GENESIS_TIME=$(get_future_time) COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml up -d
 
 
 start-whole-environment-traces-v2: COMPOSE_PROFILES:=l1,l2
@@ -219,18 +219,17 @@ deploy-contracts-minimal:
 	cd .. && \
 	$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-l2messageservice
 
-fresh-start-all-staterecover: COMPOSE_PROFILES:=l1,l2,staterecover
-fresh-start-all-staterecover: L1_CONTRACT_VERSION:=6
-fresh-start-all-staterecover:
+fresh-start-all-staterecovery: COMPOSE_PROFILES:=l1,l2,staterecovery
+fresh-start-all-staterecovery: L1_CONTRACT_VERSION:=6
+fresh-start-all-staterecovery:
 	make clean-environment
 	L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 	$(MAKE) deploy-contracts-minimal L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
-fresh-start-staterecover-for-replay-only: COMPOSE_PROFILES:=l1,staterecover
-fresh-start-staterecover-for-replay-only:
+fresh-start-staterecovery-for-replay-only: COMPOSE_PROFILES:=l1,staterecovery
+fresh-start-staterecovery-for-replay-only:
 	make clean-environment
 	L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
-
 
 staterecovery-replay-from-genesis: L1_ROLLUP_CONTRACT_ADDRESS:=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
 staterecovery-replay-from-genesis:

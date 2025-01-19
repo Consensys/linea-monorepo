@@ -334,7 +334,7 @@ services:
     image: postgres:16.0
     hostname: postgres
     container_name: postgres
-    profiles: [ "l2", "debug", "external-to-monorepo", "staterecover" ]
+    profiles: [ "l2", "debug", "external-to-monorepo", "staterecovery" ]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -627,7 +627,7 @@ services:
     hostname: blobscan-api
     image: blossomlabs/blobscan-api:1.1.0
     platform: linux/amd64 # only linux available
-    profiles: [ "staterecover" ]
+    profiles: [ "staterecovery" ]
     ports:
       - "4001:4001"
     env_file: "./config/blobscan/env"
@@ -658,7 +658,7 @@ services:
     hostname: blobscan-indexer
     image: blossomlabs/blobscan-indexer:0.2.1
     platform: linux/amd64 # only linux available
-    profiles: [ "staterecover" ]
+    profiles: [ "staterecovery" ]
     env_file: "./config/blobscan/env"
     networks:
       linea:
@@ -679,7 +679,7 @@ services:
     container_name: redis
     hostname: redis
     image: "redis:7.4.1-alpine"
-    profiles: [ "staterecover" ]
+    profiles: [ "staterecovery" ]
     ports:
       - "6379:6379"
     environment:
@@ -700,7 +700,7 @@ services:
     image: consensys/linea-besu-package:${SEQUENCER_TAG:-devnet-811f30b}
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
-    profiles: [ "external-to-monorepo", "staterecover" ]
+    profiles: [ "external-to-monorepo", "staterecovery" ]
     privileged: true
 #    restart: none
     user: root
@@ -755,7 +755,7 @@ services:
     image: consensys/linea-shomei:2.3.0
     hostname: shomei-sr
     container_name: shomei-sr
-    profiles: [ "external-to-monorepo", "staterecover" ]
+    profiles: [ "external-to-monorepo", "staterecovery" ]
     depends_on:
       zkbesu-shomei-sr:
         condition: service_started
