@@ -509,7 +509,9 @@ func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
 			continue
 		}
 
-		res = append(res, rnd[i].ID)
+		if info.Status.IsPublic() || info.IncludeInProverFS {
+			res = append(res, rnd[i].ID)
+		}
 	}
 
 	return res

@@ -185,7 +185,7 @@ func AllocateWizardCircuit(comp *CompiledIOP) (*WizardVerifierCircuit, error) {
 func (c *WizardVerifierCircuit) Verify(api frontend.API) {
 	c.HasherFactory = gkrmimc.NewHasherFactory(api)
 	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
-	c.FS.Update(c.Spec.fiatShamirSetup)
+	c.FS.Update(c.Spec.FiatShamirSetup)
 	c.FiatShamirHistory = make([][2][]frontend.Variable, c.Spec.NumRounds())
 	c.generateAllRandomCoins(api)
 

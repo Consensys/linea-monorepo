@@ -77,7 +77,7 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 			ysAlpha := smartvectors.EvalCoeff(ys, alpha)
 			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetVal(run)
 			if uAlphaX != ysAlpha {
-				return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass")
+				return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass, ysAlphaX=%v uAlphaX=%v", ysAlpha.String(), uAlphaX.String())
 			}
 			return nil
 		},

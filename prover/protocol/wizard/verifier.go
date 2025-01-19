@@ -153,9 +153,10 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		QueriesParams:     proof.QueriesParams,
 		FS:                fiatshamir.NewMiMCFiatShamir(),
 		FiatShamirHistory: make([][2][]field.Element, c.NumRounds()),
+		State:             make(map[string]interface{}),
 	}
 
-	runtime.FS.Update(c.fiatShamirSetup)
+	runtime.FS.Update(c.FiatShamirSetup)
 
 	/*
 		Insert the verifying key into the messages
@@ -228,6 +229,7 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 		*/
 		toCompute := run.Spec.Coins.AllKeysAt(currRound)
 		for _, coin := range toCompute {
+
 			if run.Spec.Coins.IsSkippedFromVerifierTranscript(coin) {
 				continue
 			}

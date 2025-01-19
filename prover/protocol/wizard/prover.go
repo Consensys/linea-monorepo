@@ -250,7 +250,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
 	fs := fiatshamir.NewMiMCFiatShamir()
-	fs.Update(c.fiatShamirSetup)
+	fs.Update(c.FiatShamirSetup)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
@@ -595,6 +595,11 @@ func (run *ProverRuntime) goNextRound() {
 	*/
 	toCompute := run.Spec.Coins.AllKeysAt(run.currRound)
 	for _, coin := range toCompute {
+
+		if run.Spec.Coins.IsSkippedFromVerifierTranscript(coin) {
+			continue
+		}
+
 		info := run.Spec.Coins.Data(coin)
 		value := info.Sample(run.FS)
 		run.Coins.InsertNew(coin, value)

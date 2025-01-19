@@ -111,13 +111,13 @@ type CompiledIOP struct {
 	// process. An artefact must satisfy the io.ReadWriteTo interface.
 	Artefacts artefactCache
 
-	// fiatShamirSetup stores an initial value to use to bootstrap the Fiat-Shamir
+	// FiatShamirSetup stores an initial value to use to bootstrap the Fiat-Shamir
 	// transcript. This value is obtained by hashing diverse meta-data of the
 	// describing the wizard: a version number, the description of the field,
 	// a description of all the columns and all the queries etc...
 	//
-	// For efficiency reasons, the fiatShamirSetup is derived using SHA2.
-	fiatShamirSetup field.Element
+	// For efficiency reasons, the FiatShamirSetup is derived using SHA2.
+	FiatShamirSetup field.Element
 
 	// FunctionalPublic inputs lists the queries representing a public inputs
 	// and their identifiers

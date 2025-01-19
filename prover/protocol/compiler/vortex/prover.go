@@ -74,6 +74,39 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
 
+// ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
+// the RS encoded matrix instead of using the basic one. It is slower than
+// the later but is recommended.
+func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
+
+	committedSV := []smartvectors.SmartVector{}
+
+	// Add the precomputed columns to commitedSV if IsCommitToPrecomputed is true
+	if ctx.IsCommitToPrecomputed() {
+		committedSV = append(committedSV, ctx.Items.Precomputeds.CommittedMatrix...)
+	}
+
+	// Collect all the committed polynomials : round by round
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// There are not included in the commitments so there
+		// is no need to compute their linear combination.
+		if ctx.isDry(round) {
+			continue
+		}
+
+		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
+		committedSV = append(committedSV, committedMatrix...)
+	}
+
+	// And get the randomness
+	randomCoinLC := pr.GetRandomCoinField(ctx.Items.Alpha.Name)
+
+	// and compute and assign the random linear combination of the rows
+	proof := ctx.VortexParams.InitOpeningFromAlreadyEncodedLC(committedSV, randomCoinLC)
+
+	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+}
+
 // Prover steps of Vortex where he opens the columns selected by the verifier
 func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 

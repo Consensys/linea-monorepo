@@ -184,7 +184,7 @@ func (pa AssignVortexUAlpha) Run(run *wizard.ProverRuntime) {
 	for _, ctx := range pa.Ctxs {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.
-		ctx.PcsCtx.ComputeLinearComb(run)
+		ctx.PcsCtx.ComputeLinearCombFromRsMatrix(run)
 	}
 }
 

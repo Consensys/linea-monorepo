@@ -72,19 +72,24 @@ func generateRandomCoins(run wizard.Runtime, ctx *recursionCtx, currRound int) {
 		// and history.
 		wrappedRun      wizard.Runtime = &runtimeTranslator{Prefix: ctx.Translator.Prefix, Rt: run}
 		fsAny, _                       = wrappedRun.GetState(fiatShamirTranscriptStr)
-		fs                             = fsAny.(*fiatshamir.State)
 		fsHistoryAny, _                = wrappedRun.GetState(fiatShamirHistoryStr)
-		fsHistory                      = fsHistoryAny.([][2][]field.Element)
-		initialState                   = fs.State()
+		fs              *fiatshamir.State
+		fsHistory       [][2][]field.Element
 	)
 
-	if fs == nil {
+	if fsAny == nil {
 		fs = fiatshamir.NewMiMCFiatShamir()
+	} else {
+		fs = fsAny.(*fiatshamir.State)
 	}
 
-	if fsHistory == nil {
+	if fsHistoryAny == nil {
 		fsHistory = make([][2][]field.Element, ctx.LastRound+1)
+	} else {
+		fsHistory = fsHistoryAny.([][2][]field.Element)
 	}
+
+	initialState := fs.State()
 
 	// Wraps it a second time
 	wrappedRun = &RuntimeWithReplacedFS{
@@ -239,8 +244,8 @@ func (pa PreVortexVerifierStep) generateRandomCoinsGnark(api frontend.API, run w
 		fs.State(),
 	}
 
-	run.SetState(fiatShamirHistoryStr, fsHistory)
-	run.SetState(fiatShamirTranscriptStr, fs)
+	wrappedRun.SetState(fiatShamirHistoryStr, fsHistory)
+	wrappedRun.SetState(fiatShamirTranscriptStr, fs)
 }
 
 // Fs returns the Fiat-Shamir state
