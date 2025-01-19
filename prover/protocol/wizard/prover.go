@@ -126,6 +126,11 @@ type ProverRuntime struct {
 	// wizard runtime.
 	ParentRuntime *ProverRuntime
 
+	// ProverID indicates the id of the prover among its siblings.
+	// It is merely in the context of the distributed prover;
+	// for vertical splitting to extract the relevant segment of a witness.
+	ProverID int
+
 	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
@@ -192,6 +197,25 @@ func RunProverUntilRound(c *CompiledIOP, highLevelprover ProverStep, round int) 
 		runtime.goNextRound()
 		runtime.runProverSteps()
 	}
+
+	return &runtime
+}
+
+// ProveOnlyFirstRound computes the first round of the prover and returns the
+// resulting ProverRuntime containing all the generated assignments.
+func ProverOnlyFirstRound(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
+	runtime := c.createProver()
+
+	// Run the user provided assignment function. We can't expect it
+	// to run all the rounds, because the compilation could have added
+	// extra-rounds.
+	//
+	highLevelprover(&runtime)
+
+	// Then, run the compiled prover steps. This will only run thoses of the
+	// first round.
+	//
+	runtime.runProverSteps()
 
 	return &runtime
 }

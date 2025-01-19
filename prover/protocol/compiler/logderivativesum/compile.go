@@ -70,6 +70,8 @@ type FinalEvaluationCheck struct {
 	ZOpenings []query.LocalOpening
 	// query ID
 	LogDerivSumID ifaces.QueryID
+	// skip verifier action
+	skipped bool
 }
 
 // Run implements the [wizard.VerifierAction]
@@ -106,4 +108,12 @@ func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntim
 	}
 
 	api.AssertIsEqual(zSum, claimedSum)
+}
+
+func (f *FinalEvaluationCheck) Skip() {
+	f.skipped = true
+}
+
+func (f *FinalEvaluationCheck) IsSkipped() bool {
+	return f.skipped
 }
