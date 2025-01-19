@@ -152,7 +152,7 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 				continue
 			}
 
-			// Not that we do not filter the already compiled queries
+			// Note that we do not filter the already compiled queries
 			qInfo := tmpl.QueriesParams.Data(qName)
 			qInfo = ctx.Translator.InsertQueryParams(round, qInfo)
 			ctx.QueryParams[round] = append(ctx.QueryParams[round], qInfo)
