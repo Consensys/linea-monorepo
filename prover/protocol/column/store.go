@@ -483,11 +483,15 @@ func (in *storedColumnInfo) isExcludedFromProverFS() bool {
 		return true
 	}
 
-	if in.Status == Ignored && in.IncludeInProverFS {
-		return true
+	if in.Status.IsPublic() {
+		return false
 	}
 
-	return in.Status.IsPublic()
+	if in.IncludeInProverFS {
+		return false
+	}
+
+	return true
 }
 
 // IsExplicitlyExcludedFromProverFS returns true if the passed column ID relates to
@@ -509,9 +513,7 @@ func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
 			continue
 		}
 
-		if info.Status.IsPublic() || info.IncludeInProverFS {
-			res = append(res, rnd[i].ID)
-		}
+		res = append(res, rnd[i].ID)
 	}
 
 	return res
