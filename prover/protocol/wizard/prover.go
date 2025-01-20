@@ -541,27 +541,6 @@ func (run *ProverRuntime) goNextRound() {
 
 	initialState := run.FS.State()
 
-	/*
-		Make sure all issued random coin have been "consumed" by all the prover
-		steps, in the round we are closing. An error occuring here is more likely
-		an error in the compiler than an error from the user because it is not
-		responsible for setting the coin. Thus, this is more a sanity check.
-	*/
-	toBeConsumed := run.Spec.Coins.AllKeysAt(run.currRound)
-	run.Coins.MustExists(toBeConsumed...)
-
-	/*
-		We do not make this check for the columns, the reason is that we delete
-		the columns that we do not use anymore.
-	*/
-
-	/*
-		Then, make sure all the query parameters have been set
-		during the rounds we are closing
-	*/
-	toBeParametrized := run.Spec.QueriesParams.AllKeysAt(run.currRound)
-	run.QueriesParams.MustExists(toBeParametrized...)
-
 	if !run.Spec.DummyCompiled {
 
 		/*
