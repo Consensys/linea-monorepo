@@ -57,6 +57,9 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           pnpm-install-options: '--frozen-lockfile --prefer-offline --filter contracts --ignore-scripts'
+      - name: Staterecovery - Build plugin shadowJar
+        run: |
+          ./gradlew state-recovery:besu-plugin:shadowJar
       - name: Run integration tests
         timeout-minutes: 15
         run: |
