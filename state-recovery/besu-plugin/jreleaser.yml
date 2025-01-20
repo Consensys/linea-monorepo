@@ -17,7 +17,7 @@ project:
 release:
   github:
     overwrite: true
-    releaseName: 'State Recovery'
+    releaseName: 'State Recovery {{version}}'
     changelog:
       enabled: false
     commitAuthor:

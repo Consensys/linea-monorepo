@@ -53,6 +53,8 @@ shadowJar {
   if ("${project.version}" != 'unspecified') {
     archiveClassifier.set('')
     archiveVersion.set("${project.version}")
+  } else {
+    archiveClassifier.set('SNAPSHOT')
   }
 
   dependencies {
