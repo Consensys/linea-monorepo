@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useAccount, useBlockNumber, useEstimateFeesPerGas, useReadContract } from "wagmi";
-import { Address, concat, encodeFunctionData, keccak256, parseUnits, toHex, zeroAddress } from "viem";
+import { Address, encodeAbiParameters, encodeFunctionData, keccak256, parseUnits, zeroAddress } from "viem";
 import { config, NetworkLayer, TokenType, wagmiConfig } from "@/config";
 import { useChainStore } from "@/stores/chainStore";
 import { getPublicClient } from "@wagmi/core";
@@ -22,6 +22,7 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
   const fromChain = useChainStore((state) => state.fromChain);
   const fromMessageServiceAddress = useChainStore((state) => state.messageServiceAddress);
   const tokenBridgeAddress = useChainStore((state) => state.tokenBridgeAddress);
+
   const networkType = useChainStore((state) => state.networkType);
 
   const queryClient = useQueryClient();
@@ -61,11 +62,11 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
           return 0n;
         }
 
-        const publicClient = getPublicClient(wagmiConfig, {
+        const destinationChainPublicClient = getPublicClient(wagmiConfig, {
           chainId: toChain?.id,
         });
 
-        if (!publicClient) {
+        if (!destinationChainPublicClient) {
           return 0n;
         }
 
@@ -89,22 +90,43 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
             args: [toAddress, amountBigInt],
           });
 
-          const storageSlot = keccak256(
-            concat([
-              address,
-              toUSDCBridgeAddress,
-              toHex(0n),
-              toHex(0n),
-              toHex(nextMessageNumber as bigint),
-              encodedData,
-            ]),
+          const messageHash = keccak256(
+            encodeAbiParameters(
+              [
+                { name: "from", type: "address" },
+                { name: "to", type: "address" },
+                { name: "fee", type: "uint256" },
+                { name: "value", type: "uint256" },
+                { name: "nonce", type: "uint256" },
+                { name: "calldata", type: "bytes" },
+              ],
+              [tokenBridgeAddress, toUSDCBridgeAddress, 0n, 0n, nextMessageNumber as bigint, encodedData],
+            ),
           );
 
-          estimatedGasFee = await publicClient.estimateContractGas({
+          const storageSlot = keccak256(
+            encodeAbiParameters(
+              [
+                { name: "messagehash", type: "bytes32" },
+                { name: "mappingSlot", type: "uint256" },
+              ],
+              [messageHash, 176n],
+            ),
+          );
+
+          estimatedGasFee = await destinationChainPublicClient.estimateContractGas({
             abi: MessageService.abi,
             functionName: "claimMessage",
             address: toMessageServiceAddress,
-            args: [address, toUSDCBridgeAddress, 0n, 0n, zeroAddress, encodedData, nextMessageNumber as bigint],
+            args: [
+              tokenBridgeAddress,
+              toUSDCBridgeAddress,
+              0n,
+              0n,
+              zeroAddress,
+              encodedData,
+              nextMessageNumber as bigint,
+            ],
             value: 0n,
             account: address,
             stateOverride: [
@@ -120,29 +142,82 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
             ],
           });
         } else if (token.type === TokenType.ERC20) {
-          // TODO: fix encoded data
+          const originChainPublicClient = getPublicClient(wagmiConfig, {
+            chainId: fromChain?.id,
+          });
+
+          if (!originChainPublicClient) {
+            return 0n;
+          }
+
+          const nativeToken = (await originChainPublicClient.readContract({
+            account: address,
+            address: tokenBridgeAddress,
+            abi: TokenBridge.abi,
+            functionName: "bridgedToNativeToken",
+            args: [token[currentLayer]],
+          })) as Address;
+
+          let tokenAddress = token[currentLayer];
+          let chainId = fromChain?.id;
+          let tokenMetadata = encodeAbiParameters(
+            [
+              { name: "tokenName", type: "string" },
+              { name: "tokenSymbol", type: "string" },
+              { name: "tokenDecimals", type: "uint8" },
+            ],
+            [token.name, token.symbol, token.decimals],
+          );
+
+          if (nativeToken !== zeroAddress) {
+            tokenAddress = nativeToken;
+            chainId = toChain?.id;
+            tokenMetadata = "0x";
+          }
+
           const encodedData = encodeFunctionData({
             abi: TokenBridge.abi,
             functionName: "completeBridging",
-            args: [toAddress, amountBigInt],
+            args: [tokenAddress, amountBigInt, toAddress, chainId, tokenMetadata],
           });
 
-          const storageSlot = keccak256(
-            concat([
-              address,
-              toTokenBridgeAddress,
-              toHex(0n),
-              toHex(0n),
-              toHex(nextMessageNumber as bigint),
-              encodedData,
-            ]),
+          const messageHash = keccak256(
+            encodeAbiParameters(
+              [
+                { name: "from", type: "address" },
+                { name: "to", type: "address" },
+                { name: "fee", type: "uint256" },
+                { name: "value", type: "uint256" },
+                { name: "nonce", type: "uint256" },
+                { name: "calldata", type: "bytes" },
+              ],
+              [tokenBridgeAddress, toTokenBridgeAddress, 0n, 0n, nextMessageNumber as bigint, encodedData],
+            ),
           );
 
-          estimatedGasFee = await publicClient.estimateContractGas({
+          const storageSlot = keccak256(
+            encodeAbiParameters(
+              [
+                { name: "messageHash", type: "bytes32" },
+                { name: "mappingSlot", type: "uint256" },
+              ],
+              [messageHash, 176n],
+            ),
+          );
+
+          estimatedGasFee = await destinationChainPublicClient.estimateContractGas({
             abi: MessageService.abi,
             functionName: "claimMessage",
             address: toMessageServiceAddress,
-            args: [address, toUSDCBridgeAddress, 0n, 0n, zeroAddress, encodedData, nextMessageNumber as bigint],
+            args: [
+              tokenBridgeAddress,
+              toTokenBridgeAddress,
+              0n,
+              0n,
+              zeroAddress,
+              encodedData,
+              nextMessageNumber as bigint,
+            ],
             value: 0n,
             account: address,
             stateOverride: [
@@ -158,11 +233,31 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
             ],
           });
         } else if (token.type === TokenType.ETH) {
-          const storageSlot = keccak256(
-            concat([address, toAddress, toHex(0n), toHex(amountBigInt), toHex(nextMessageNumber as bigint), "0x"]),
+          const messageHash = keccak256(
+            encodeAbiParameters(
+              [
+                { name: "from", type: "address" },
+                { name: "to", type: "address" },
+                { name: "fee", type: "uint256" },
+                { name: "value", type: "uint256" },
+                { name: "nonce", type: "uint256" },
+                { name: "calldata", type: "bytes" },
+              ],
+              [address, toAddress, 0n, amountBigInt, nextMessageNumber as bigint, "0x"],
+            ),
           );
 
-          estimatedGasFee = await publicClient.estimateContractGas({
+          const storageSlot = keccak256(
+            encodeAbiParameters(
+              [
+                { name: "messageHash", type: "bytes32" },
+                { name: "mappingSlot", type: "uint256" },
+              ],
+              [messageHash, 176n],
+            ),
+          );
+
+          estimatedGasFee = await destinationChainPublicClient.estimateContractGas({
             abi: MessageService.abi,
             functionName: "claimMessage",
             address: toMessageServiceAddress,
