@@ -59,6 +59,7 @@ jobs:
           GRAGLE_PATH=:$(echo "${{inputs.workspaceModulePath}}" | sed 's/\//:/g')
           echo $GRAGLE_PATH
           ./gradlew $GRAGLE_PATH:shadowJar -Pversion=v${{inputs.version}}
+          ls -lh ${{inputs.workspaceModulePath}}/build/libs
 
       - name: Release to GitHub
         uses: jreleaser/release-action@v2
