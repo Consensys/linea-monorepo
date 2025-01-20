@@ -18,11 +18,16 @@ contract DeploymentConfig is Script {
 
     address private deployer;
 
+    // solhint-disable-next-line var-name-mixedcase
+    address internal SNT_ADDRESS_SEPOLIA = 0xE452027cdEF746c7Cd3DB31CB700428b16cD8E51;
+
     constructor(address _broadcaster) {
         if (_broadcaster == address(0)) revert DeploymentConfig_InvalidDeployerAddress();
         deployer = _broadcaster;
         if (block.chainid == 31_337) {
             activeNetworkConfig = getOrCreateAnvilEthConfig();
+        } else if (block.chainid == 11_155_111) {
+            activeNetworkConfig = getSepoliaConfig();
         } else {
             revert DeploymentConfig_NoConfigForChain(block.chainid);
         }
@@ -31,6 +36,10 @@ contract DeploymentConfig is Script {
     function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory) {
         MockToken stakingToken = new MockToken("Staking Token", "ST");
         return NetworkConfig({ deployer: deployer, stakingToken: address(stakingToken) });
+    }
+
+    function getSepoliaConfig() public view returns (NetworkConfig memory) {
+        return NetworkConfig({ deployer: deployer, stakingToken: SNT_ADDRESS_SEPOLIA });
     }
 
     // This function is a hack to have it excluded by `forge coverage` until
