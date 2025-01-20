@@ -141,7 +141,6 @@ jobs:
       last_commit_tag: ${{ needs.store-image-name-and-tags.outputs.last_commit_tag }}
       develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
-      staterecovery_changed: ${{ needs.filter-commit-changes.outputs.staterecovery }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
