@@ -41,7 +41,8 @@ type PreVortexProverStep struct {
 // FsJoinProverStep is prover step setting the fiat-shamir state of the main
 // transcript to the hash of the final states of the subproofs.
 type FsJoinProverStep struct {
-	Ctxs []*recursionCtx
+	Ctxs  []*recursionCtx
+	Round int
 }
 
 // AssignVortexQuery assigns the query for all the subproofs.
@@ -227,5 +228,8 @@ func (pa *FsJoinProverStep) Run(run *wizard.ProverRuntime) {
 		mainState = mimc.BlockCompression(mainState, fsState[0])
 	}
 
-	run.FS.SetState([]field.Element{mainState})
+	newState := []field.Element{mainState}
+
+	run.FS.SetState(newState)
+	run.FiatShamirHistory[pa.Round][1] = newState
 }
