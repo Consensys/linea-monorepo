@@ -1,7 +1,6 @@
 package conglomeration
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
@@ -227,8 +226,6 @@ func (pa *FsJoinProverStep) Run(run *wizard.ProverRuntime) {
 
 		mainState = mimc.BlockCompression(mainState, fsState[0])
 	}
-
-	fmt.Printf("[join-fs-prover] mainState: %v\n", mainState.String())
 
 	run.FS.SetState([]field.Element{mainState})
 }

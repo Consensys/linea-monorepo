@@ -2,7 +2,6 @@ package conglomeration
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -279,8 +278,6 @@ func (fs *FsJoinHook) Run(run wizard.Runtime) error {
 
 		mainState = mimc.BlockCompression(mainState, fs.State()[0])
 	}
-
-	fmt.Printf("[join-fs-hook] mainState: %v\n", mainState.String())
 
 	run.Fs().SetState([]field.Element{mainState})
 
