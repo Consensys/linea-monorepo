@@ -70,17 +70,17 @@ jobs:
         timeout-minutes: 15
         run: |
           ./gradlew state-recovery:test-cases:integrationTest
-      - name: Run Jacoco
+      - name: Run Jacoco Staterecovery
         run: |
           ./gradlew jacocoRootReport
-      - name: Upload Jacoco test coverage report
+      - name: Upload Jacoco report Staterecovery
         uses: actions/upload-artifact@v4
         with:
           name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
           if-no-files-found: error
           path: |
             ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
-      - name: Upload coverage to Codecov
+      - name: Upload coverage to Codecov Staterecovery
         if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v5
         with:
