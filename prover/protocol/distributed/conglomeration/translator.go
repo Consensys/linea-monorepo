@@ -116,7 +116,7 @@ func copyQueryWithName(name ifaces.QueryID, q ifaces.Query) ifaces.Query {
 
 // TranslateColumnList translates a collection of pre-inserted columns
 func (comp *compTranslator) TranslateColumnList(cols []ifaces.Column) []ifaces.Column {
-	var res []ifaces.Column
+	res := make([]ifaces.Column, 0, len(cols))
 	for _, col := range cols {
 		res = append(res, comp.GetColumn(col.GetColID()))
 	}
