@@ -38,7 +38,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
-class StateRecoveryManualReplayToLocalStackIntTest {
+class StateRecoveryWithRealBesuAndStateManagerIntTest {
   private val log = LogManager.getLogger("test.case.StateRecoverAppWithLocalStackIntTest")
   private lateinit var stateManagerClient: StateManagerClientV1
   private val testDataDir = "testdata/coordinator/prover/v3"

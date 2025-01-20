@@ -42,7 +42,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
-class StateRecoverAppWithFakeExecutionClientIntTest {
+class StateRecoveryAppWithFakeExecutionClientIntTest {
   private val log = LogManager.getLogger("test.case.StateRecoverAppWithFakeExecutionClientIntTest")
   private lateinit var stateRecoverApp: StateRecoverApp
   private lateinit var aggregationsAndBlobs: List<AggregationAndBlobs>
