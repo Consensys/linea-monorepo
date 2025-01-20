@@ -73,21 +73,22 @@ jobs:
       - name: Run Jacoco Staterecovery
         run: |
           ./gradlew jacocoRootReport
-      - name: Upload Jacoco report Staterecovery
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
-          if-no-files-found: error
-          path: |
-            ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
-      - name: Upload coverage to Codecov Staterecovery
-        if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v5
-        with:
-          fail_ci_if_error: true
-          files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
-          flags: kotlin
-          os: linux
-          name: codecov-staterecovery
-          verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+# TMP disable as it conflicts with coordinator report
+#      - name: Upload Jacoco report Staterecovery
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
+#          if-no-files-found: error
+#          path: |
+#            ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
+#      - name: Upload coverage to Codecov Staterecovery
+#        if: ${{ env.CODECOV_TOKEN != '' }}
+#        uses: codecov/codecov-action@v5
+#        with:
+#          fail_ci_if_error: true
+#          files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
+#          flags: kotlin
+#          os: linux
+#          name: codecov-staterecovery
+#          verbose: true
+#          token: ${{ secrets.CODECOV_TOKEN }}
