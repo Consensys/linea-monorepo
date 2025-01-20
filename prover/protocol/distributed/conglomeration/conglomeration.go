@@ -66,7 +66,12 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 			)
 
 			if hasCoin || hasVAction || hasFsHook {
-				comp.RegisterVerifierAction(round, &PreVortexVerifierStep{Ctxs: ctxs, Round: round})
+				// The way the verifier runtime is that it will generate all the random coins at once and
+				// then, it runs all the verifier actions in parallel. What this action from the verifier
+				// is trying to do is to prepare a ctx-local FS state that can be later used in a join to
+				// derive a sound global FS state. Thus, we need it to run along side the "main" fs random
+				// coin generation. This is why this is declared as an FS hook and not as a VerifierAction.
+				comp.FiatShamirHooks.AppendToInner(round, &PreVortexVerifierStep{Ctxs: ctxs, Round: round})
 			}
 
 			if hasColumn || hasQParams {
@@ -119,6 +124,20 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 		ctx.Coins = append(ctx.Coins, []coin.Info{})
 		ctx.FsHooks = append(ctx.FsHooks, []wizard.VerifierAction{})
 
+		// Importantly, the coins are added before. Otherwise the 'assertConsistentRound'
+		// clause would not accept inserting columns or queries.
+		for _, cName := range tmpl.Coins.AllKeysAt(round) {
+
+			if tmpl.Coins.IsSkippedFromVerifierTranscript(cName) {
+				continue
+			}
+
+			coinInfo := tmpl.Coins.Data(cName)
+			coinInfo = ctx.Translator.InsertCoin(coinInfo)
+			ctx.Coins[round] = append(ctx.Coins[round], coinInfo)
+			ctx.Translator.Target.Coins.MarkAsSkippedFromVerifierTranscript(coinInfo.Name)
+		}
+
 		for _, colName := range tmpl.Columns.AllKeysAt(round) {
 
 			// filter the columns by status
@@ -160,18 +179,6 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 			qInfo = ctx.Translator.InsertQueryParams(round, qInfo)
 			ctx.QueryParams[round] = append(ctx.QueryParams[round], qInfo)
 			ctx.Translator.Target.QueriesParams.MarkAsSkippedFromProverTranscript(qInfo.Name())
-		}
-
-		for _, cName := range tmpl.Coins.AllKeysAt(round) {
-
-			if tmpl.Coins.IsSkippedFromVerifierTranscript(cName) {
-				continue
-			}
-
-			coinInfo := tmpl.Coins.Data(cName)
-			coinInfo = ctx.Translator.InsertCoin(coinInfo)
-			ctx.Coins[round] = append(ctx.Coins[round], coinInfo)
-			ctx.Translator.Target.Coins.MarkAsSkippedFromVerifierTranscript(coinInfo.Name)
 		}
 
 		verifierActions := tmpl.SubVerifiers.Inner()
