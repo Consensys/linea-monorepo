@@ -7,12 +7,14 @@ on:
     paths:
       - 'operations/'
       - '.github/workflows/all-tools.yml'
+      - '!operations/**/*.md'
   pull_request:
     branches:
       - main
     paths:
       - 'operations/'
       - '.github/workflows/all-tools.yml'
+      - '!operations/**/*.md'
 
 jobs:
   changes:
