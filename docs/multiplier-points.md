@@ -1,27 +1,41 @@
-# Understanding Multiplier Points and XP Rewards
+# Understanding Multiplier Points
 
-## Overview
+This document details the the internal accounting for what are called "Multiplier Points" ("MP"), which are used to
+ensure that participants in the staking system are rewarded fairly based on their stake amount and time staked.
 
-The staking system uses Multiplier Points (MP) to enhance staking power and influence the rewards participants earn.
-This document explains:
+We'll cover how MP are calculated, how the stake amount and lock-up duration affect MP, and how MP influences the
+rewards participants earn.
 
-1. How MP determines XP rewards.
-2. How stake amount and lock-up duration affect MP.
-3. The role of Initial MP and Accrued MP.
-4. The relationship between XP tokens and the StakeManager.
-5. Examples illustrating how MP is calculated and accumulated over time.
+## What and why
 
-## Key Concepts
+Generally, accounts can freely participate in the staking system by depositing funds into a staking vault. The longer
+they keep their funds staked, the more rewards they earn. In addition, accounts can lock up their funds for a certain
+period which significantly increases the amount of rewards they receive.
 
-1. **Initial MP**: Multiplier Points issued immediately based on the stake amount and lock-up duration.
-2. **Accrued MP**: MP that accumulate over time as a function of the stake amount, elapsed time, and annual percentage
-   yield (APY).
-3. **XP Tokens**: The token rewarded by the system.
-4. **XP Rewards**: Determined by the total MP a user holds relative to the total MP in the system.
+To ensure rewards are distributed fairly, the system uses MP for internal accounting. Accounts that stake longer, stake
+more, or lock up their stake in the vault, accrue more MP than accounts that participate not as long, with less stake,
+or a shorter lock-up period.
 
-## Formula for Multiplier Points
+This enables use cases where accounts can have a significant increase in voting power, even though they might not have
+as much stake as others, but they have still committed to the system for a longer period of time.
 
-### Initial MP
+That being said, MP are not transferable and are only used for internal accounting purposes. End users will only see the
+effect of MP in the rewards they receive.
+
+## Initial MP and Accrued MP
+
+First of all, it's important to understand that the MP, that vaults accumulate, are divided into two parts: **Initial
+MP** and **Accrued MP**.
+
+- **Initial MP** is the MP that are issued immediately when tokens are staked (with or without a lock-up period). It is
+  based on the stake amount and lock-up duration.
+- **Accrued MP** are the MP that accumulate over time as a function of the stake amount, elapsed time, and annual
+  percentage yield (APY).
+
+Furthermore, the initial MP could be divided into "initial" and "bonus" MP, as locking up the stake is rewarded with a
+bonus on top of the initial MP. For simplicity's sake, we treat it as one value in this document.
+
+### Initial MP formula
 
 The formula for Initial MP is derived as follows:
 
@@ -36,9 +50,37 @@ Where:
 - $T_{lock}$: Lock-up duration in seconds.
 - $T_{year}$: Total seconds in a year.
 
-This formula calculates the MP issued immediately when tokens are staked with a lock-up period.
+This formula calculates the MP issued immediately when tokens are staked with a lock-up period. The longer the lock-up
+period, the more MP are issued.
 
-### Accrued MP
+Here are some examples.
+
+#### Alice stakes 100 tokens with no lock-up time
+
+$$
+\text{MP}_ \text{Initial} = 100 \times \left( 1 + \frac{100 \times 0}{100 \times 365} \right)
+$$
+
+$$
+\text{MP}_ \text{Initial} = 100 \times \left( 1 + 0\right) = 100
+$$
+
+Alice receives 100 MP.
+
+#### Alice stakes 100 tokens with a 30 days lock-up period
+
+$$
+\text{MP}_ \text{Initial} = 100 \times \left( 1 + \frac{100 \times 30}{100 \times 365} \right)
+$$
+
+$$
+\text{MP}_ \text{Initial} = 100 \times \left( 1 + 0.082 \right) = 108.2
+$$
+
+Alice receives 108.2 MP. Notice how, just by locking up the stake for 30 days, Alice receives an additional 8.2 MP right
+away. In return, she cannot access her funds until the lock-up period has passed.
+
+### Accrued MP formula
 
 Accrued MP is calculated for time elapsed as:
 
@@ -50,7 +92,36 @@ Where:
 
 - $T_{elapsed}$: Time elapsed since staking began, measured in seconds.
 
-This formula adds MP as a function of time, rewarding users who keep their stake locked.
+This formula adds MP as a function of time, rewarding users who keep their stake locked. Notice that the accrued MP are
+always calculated based on the stake amount. Already accrued MP do not affect the calculation of new accrued MP.
+
+Here are some examples.
+
+#### Alice stakes 100 tokens for 15 days
+
+$$
+\text{MP}_ \text{Accrued} = 100 \times \frac{100 \times 15}{100 \times 365} = 4.1
+$$
+
+Alice receives 4.1 MP for the 15 days she has staked. This is exactly half of the MP she would have received if she had
+locked her stake for 30 days as in the previous example.
+
+#### Alice stakes 100 tokens for 30 days
+
+$$
+\text{MP}_ \text{Accrued} = 100 \times \frac{100 \times 30}{100 \times 365} = 8.2
+$$
+
+Alice receives 8.2 MP for the 30 days she has staked.
+
+### On real-time MP accrual
+
+As mentioned a couple of times above, the more time has elapsed, the more MP are accrued. In fact, MP are increase every
+second and can be monitored in real-time via the smart contracts. Whenever a state changing action is performed by an
+account (eg. staking, unstaking), the accrued MP are updated in storage.
+
+This means that, unless the maximum amount of MP has been reached (more on that below), the AMP amount in storage will
+likely be different from the real-time value.
 
 ### Total MP
 
@@ -60,133 +131,43 @@ $$
 \text{MP}_ \text{Total} = \text{MP}_ \text{Initial} + \text{MP}_ \text{Accrued}
 $$
 
-This total is used to calculate the user’s share of rewards.
+This total is used to calculate the user’s share of rewards, which we'll cover in another chapter.
 
-## How MP Affects XP Rewards
+## Maximum MP
 
-The rewards distributed in the system are proportional to each user’s MP. The formula for reward share is:
+One additional concept we need to be aware of is the total maximum amount of MP an account can accrue. This is important
+to prevent accounts to accumulated massive amounts of MP over time, making it impossible for other participants to catch
+up.
 
-$$
-\text{Reward}_ \text{user} = \text{Rewards}_ \text{Total} \times \frac{\text{MP}_ \text{user}}{\text{MP}_ \text{total}}
-$$
-
-This ensures rewards are allocated based on the user’s contribution to the total MP.
-
-## Examples
-
-Let’s consider three participants: Alice, Bob, and Charlie. The total reward pool is set at 10,000 XP tokens.
-
-### Example 1: Alice
-
-- **Stake**: 100 tokens
-- **Lock-Up Time**: 30 days
-- **Elapsed Time**: 15 days
-
-#### Initial MP
-
-Using the formula:
+Generally, the maximum amount of MP an account can accrue is capped at:
 
 $$
-\text{MP}_ \text{Initial} = 100 \times \left( 1 + \frac{100 \times 30}{100 \times 365} \right)
+\text{MP}_\text{Maximum} = \text{MP}_ \text{Initial} + \text{MP}_ \text{Potential}
 $$
 
-$$
-\text{MP}_ \text{Initial} = 100 \times \left( 1 + 0.082 \right) = 108.2
-$$
+- $\text{MP}_ \text{Initial}$: The initial MP an account receives when staking, \*_including the bonus MP_.
+- $\text{MP}_ \text{Potential}$: The initial MP amount multiplied by a $MAX\_MULTIPLIER$ factor.
+- $MAX\_MULTIPLIER$: A constant that determines the multiplier for the maximum amount of MP in the system.
 
-#### Accrued MP
-
-$$
-\text{MP}_ \text{Accrued} = 100 \times \frac{100 \times 15}{100 \times 365} = 4.1
-$$
-
-#### Total MP
+For example, assuming a $MAX\_MULTIPLIER$ of `4`, an account that stakes 100 tokens would have a maximum of:
 
 $$
-\text{MP}_ \text{Total} = 108.2 + 4.1 = 112.3
+\text{MP}_\text{Maximum} = 100 + {100 \times 4} = 500
 $$
 
-#### Reward Share
+This means that the account can never have more than 500 MP, no matter how long they stake. Also notice that the
 
-$$
-\text{Reward}_ \text{Alice} = 10,000 \times \frac{112.3}{1,146.7} \approx 978.9
-$$
-
-### Example 2: Bob
-
-- **Stake**: 500 tokens
-- **Lock-Up Time**: 90 days
-- **Elapsed Time**: 45 days
-
-#### Initial MP
-
-$$
-\text{MP}_ \text{Initial} = 500 \times \left( 1 + \frac{100 \times 90}{100 \times 365} \right)
-$$
-
-$$
-\text{MP}_ \text{Initial} = 500 \times \left( 1 + 0.247 \right) = 623.5
-$$
-
-#### Accrued MP
-
-$$
-\text{MP}_ \text{Accrued} = 500 \times \frac{100 \times 45}{100 \times 365} = 61.6
-$$
-
-#### Total MP
-
-$$
-\text{MP}_ \text{Total} = 623.5 + 61.6 = 685.1
-$$
-
-#### Reward Share
-
-$$
-\text{Reward}_ \text{Bob} = 10,000 \times \frac{685.1}{1,146.7} \approx 5,975.2
-$$
-
-### Example 3: Charlie
-
-- **Stake**: 300 tokens
-- **Lock-Up Time**: 0 days
-- **Elapsed Time**: 60 days
-
-#### Initial MP
-
-$$
-\text{MP}_ \text{Initial} = 300 \times \left( 1 + \frac{100 \times 0}{100 \times 365} \right) = 300
-$$
-
-#### Accrued MP
-
-$$
-\text{MP}_ \text{Accrued} = 300 \times \frac{100 \times 60}{100 \times 365} = 49.3
-$$
-
-#### Total MP
-
-$$
-\text{MP}_ \text{Total} = 300 + 49.3 = 349.3
-$$
-
-#### Reward Share
-
-$$
-\text{Reward}_ \text{Charlie} = 10,000 \times \frac{349.3}{1,146.7} \approx 3,045.9
-$$
-
-### Total MP Calculation
-
-The total MP for all participants is:
-
-$$
-\text{MP}_ \text{Total All} = 112.3 + 685.1 + 349.3 = 1,146.7
-$$
+Another interesting characteristic is that, if the $MAX\_MULTIPLIER$ is equal to the maximum amount of years an account
+can lock up their stake, the account will reach the maximum amount of MP right after staking if they lock up their stake
+for the maximum amount of time.
 
 ## Summary
 
-- **Initial MP** is based on the stake amount and lock-up time.
+In this document, we've covered the concept of Multiplier Points (MP) and how they are used to reward participants in
+the staking system. Here's a quick recap:
+
+- **Initial MP** is based on the stake amount and lock-up time. Having a lock-up time increases the amount of MP, which
+  can also be considered "bonus" MP.
 - **Accrued MP** grows over time and adds to the staking power.
-- XP tokens rewards are proportional to their MP.
-- Total MP determines the share of XP rewards a participant earns.
+- **Total MP** is the sum of Initial MP and Accrued MP.
+- **Maximum MP** is the maximum amount of MP an account can accrue.
