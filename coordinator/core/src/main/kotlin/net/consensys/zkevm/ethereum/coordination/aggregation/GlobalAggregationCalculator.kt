@@ -8,6 +8,7 @@ import net.consensys.zkevm.domain.BlobsToAggregate
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.util.PriorityQueue
+import java.util.concurrent.atomic.AtomicInteger
 
 class GlobalAggregationCalculator(
   private var lastBlockNumber: ULong,
@@ -23,6 +24,9 @@ class GlobalAggregationCalculator(
     b1.startBlockNumber.compareTo(b2.startBlockNumber)
   }
 
+  private val aggregationSizeInBlocks = AtomicInteger(0)
+  private val aggregationSizeInBatches = AtomicInteger(0)
+  private val aggregationSizeInBlobs = AtomicInteger(0)
   private val blobsCounter: Counter = metricsFacade.createCounter(
     category = LineaMetricsCategory.AGGREGATION,
     name = "calculator.blobs.accepted",
@@ -59,6 +63,30 @@ class GlobalAggregationCalculator(
       description = "Number of blobs pending for aggregation",
       measurementSupplier = {
         pendingBlobs.size
+      }
+    )
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.AGGREGATION,
+      name = "blocks.size",
+      description = "Number of blocks in each aggregation",
+      measurementSupplier = {
+        aggregationSizeInBlocks.get()
+      }
+    )
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.AGGREGATION,
+      name = "batches.size",
+      description = "Number of batches in each aggregation",
+      measurementSupplier = {
+        aggregationSizeInBatches.get()
+      }
+    )
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.AGGREGATION,
+      name = "blobs.size",
+      description = "Number of blobs in each aggregation",
+      measurementSupplier = {
+        aggregationSizeInBlobs.get()
       }
     )
   }
@@ -144,17 +172,25 @@ class GlobalAggregationCalculator(
       endBlockNumber = blobsInUpdatedAggregation.last().endBlockNumber
     )
 
+    val blocksCount = updatedAggregation.blocksRange.count()
+    val batchesCount = blobsInUpdatedAggregation.sumOf { it.numberOfBatches }.toInt()
+    val blobsCount = blobsInUpdatedAggregation.size
+
     log.info(
       "aggregation: trigger={} aggregation={} updatedAggregation={} " +
         "blobsCount={} batchesCount={} blobs={} aggregationSizeMultiple={}",
       aggregationTrigger.aggregationTriggerType.name,
       aggregation.intervalString(),
       updatedAggregation.intervalString(),
-      blobsInUpdatedAggregation.size,
-      blobsInUpdatedAggregation.sumOf { it.numberOfBatches },
+      blobsCount,
+      batchesCount,
       blobsInUpdatedAggregation.map { it.intervalString() },
       aggregationSizeMultipleOf
     )
+
+    aggregationSizeInBlocks.set(blocksCount)
+    aggregationSizeInBatches.set(batchesCount)
+    aggregationSizeInBlobs.set(blobsCount)
 
     // Reset the trigger calculators now that we have a valid aggregation to handle
     resetTriggerCalculators()
