@@ -1,8 +1,10 @@
 package conglomeration
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -14,6 +16,7 @@ import (
 
 const (
 	subProofInStatePrefixStr = ".subProof"
+	finalFsStateInStateStr   = ".finalFsState"
 )
 
 // Witness is a collection of inputs corresponding to a segment proof to provide
@@ -23,6 +26,7 @@ type Witness struct {
 	CommittedMatrices []vCom.EncodedMatrix
 	SisHashes         [][]field.Element
 	Trees             []*smt.Tree
+	FinalFsState      []field.Element
 }
 
 // PreVortexProverStep is a step replicating the prover of the tmpl at round
@@ -33,6 +37,12 @@ type Witness struct {
 type PreVortexProverStep struct {
 	Ctxs  []*recursionCtx
 	Round int
+}
+
+// FsJoinProverStep is prover step setting the fiat-shamir state of the main
+// transcript to the hash of the final states of the subproofs.
+type FsJoinProverStep struct {
+	Ctxs []*recursionCtx
 }
 
 // AssignVortexQuery assigns the query for all the subproofs.
@@ -83,6 +93,7 @@ func storeWitnessInState(run *wizard.ProverRuntime, ctx *recursionCtx, witness W
 	)
 
 	run.State.InsertNew(prefix+subProofInStatePrefixStr, witness.Proof)
+	run.State.InsertNew(prefix+finalFsStateInStateStr, witness.FinalFsState)
 
 	for round := 0; round <= lastRound; round++ {
 
@@ -137,6 +148,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		CommittedMatrices: committedMatrices,
 		SisHashes:         sisHashes,
 		Trees:             trees,
+		FinalFsState:      run.FS.State(),
 	}
 }
 
@@ -200,4 +212,23 @@ func unprefix[T ~string](prefix string, name T) T {
 	p, n := string(prefix)+".", string(name)
 	r := strings.TrimPrefix(n, p)
 	return T(r)
+}
+
+func (pa *FsJoinProverStep) Run(run *wizard.ProverRuntime) {
+
+	mainState := field.NewElement(0)
+
+	for _, ctx := range pa.Ctxs {
+
+		var (
+			prefix  = ctx.Translator.Prefix
+			fsState = run.State.MustGet(prefix + finalFsStateInStateStr).([]field.Element)
+		)
+
+		mainState = mimc.BlockCompression(mainState, fsState[0])
+	}
+
+	fmt.Printf("[join-fs-prover] mainState: %v\n", mainState.String())
+
+	run.FS.SetState([]field.Element{mainState})
 }

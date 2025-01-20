@@ -74,6 +74,9 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 			}
 		}
 
+		comp.FiatShamirHooks.AppendToInner(0, &SubFsInitialize{Ctxs: ctxs})
+		comp.FiatShamirHooks.AppendToInner(ctxs[0].LastRound, &FsJoinHook{Ctxs: ctxs})
+		comp.RegisterProverAction(ctxs[0].LastRound+1, &FsJoinProverStep{Ctxs: ctxs})
 		comp.RegisterProverAction(ctxs[0].LastRound, &AssignVortexQuery{Ctxs: ctxs})
 		comp.RegisterProverAction(ctxs[0].LastRound+1, &AssignVortexUAlpha{Ctxs: ctxs})
 		comp.RegisterProverAction(ctxs[0].LastRound+2, &AssignVortexOpenedCols{Ctxs: ctxs})
