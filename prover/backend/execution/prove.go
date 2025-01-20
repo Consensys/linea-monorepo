@@ -190,7 +190,7 @@ func mustProveAndPass(
 	case config.ProverModeEncodeOnly:
 
 		profiling.ProfileTrace("encode-decode-no-circuit", true, false, func() {
-			filepath := "/tmp/wizard-assignment/blob-" + strconv.Itoa(rand.Int()) + ".bin"
+			filepath := "/tmp/wizard-assignment/blob-" + strconv.Itoa(rand.Int()) + ".bin" //nolint
 
 			encodeOnlyZkEvm := zkevm.EncodeOnlyZkEvm(traces)
 			numChunks := runtime.GOMAXPROCS(0)
