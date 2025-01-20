@@ -48,12 +48,8 @@ class LineaSubmissionEventsClientIntTest {
       "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN,
       "test.clients.l1.executionlayer" to Level.INFO,
       "test.clients.l1.web3j-default" to Level.INFO,
-      "test.clients.l1.state-manager" to Level.DEBUG,
-      "test.clients.l1.transaction-details" to Level.INFO,
       "test.clients.l1.linea-contract" to Level.INFO,
-      "test.clients.l1.events-fetcher" to Level.INFO,
-      "test.clients.l1.blobscan" to Level.INFO,
-      "net.consensys.linea.contract.l1" to Level.INFO
+      "test.clients.l1.events-fetcher" to Level.INFO
     )
     val rollupDeploymentFuture = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6)
@@ -66,7 +62,7 @@ class LineaSubmissionEventsClientIntTest {
     rollupDeploymentResult = rollupDeploymentFuture.get()
     val eventsFetcherWeb3jClient = Web3jClientManager.buildL1Client(
       log = LogManager.getLogger("test.clients.l1.events-fetcher"),
-      requestResponseLogLevel = Level.INFO,
+      requestResponseLogLevel = Level.DEBUG,
       failuresLogLevel = Level.WARN
     )
     submissionEventsFetcher = LineaSubmissionEventsClientImpl(
