@@ -56,7 +56,7 @@ class VertxHttpJsonRpcClientTest {
     HttpClientOptions()
       .setKeepAlive(true)
       .setProtocolVersion(HttpVersion.HTTP_1_1)
-      .setMaxPoolSize(10)
+      .setMaxPoolSize(100)
   private lateinit var endpoint: URL
 
   @BeforeEach
