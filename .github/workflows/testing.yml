@@ -9,6 +9,9 @@ on:
       coordinator_changed:
         required: true
         type: string
+      staterecovery_changed:
+        required: true
+        type: string
       postman_changed:
         required: true
         type: string
@@ -49,7 +52,7 @@ jobs:
     if: ${{ inputs.transaction_exclusion_api_changed == 'true' }}
 
   staterecovery:
-    uses: ./.github/workflows/staterecovery.yml
+    uses: ./.github/workflows/staterecovery-testing.yml
     if: ${{ inputs.staterecovery_changed == 'true' }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
