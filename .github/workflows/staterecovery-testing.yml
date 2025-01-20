@@ -13,7 +13,7 @@ on:
         required: false
 
 concurrency:
-  group: coordinator-testing-${{ github.workflow }}-${{ github.ref }}
+  group: staterecovery-testing-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
@@ -48,7 +48,6 @@ jobs:
           key: cached-images
           restore-keys: |
             cached-images
-      # Install pnpm to compile smart contracts
       - name: Staterecovery - Build and Unit tests
         run: |
           ./gradlew state-recovery:besu-plugin:buildNeeded
@@ -58,6 +57,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # Install pnpm to deploy smart contracts
+      # FIXME: use web3j to deploy contracts and remove this.
+      - name: Setup nodejs environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          pnpm-install-options: '--frozen-lockfile --prefer-offline --filter contracts --ignore-scripts'
       - name: Run integration tests
         timeout-minutes: 15
         run: |
