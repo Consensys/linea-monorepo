@@ -285,7 +285,7 @@ data class L1Config(
 
   val genesisStateRootHash: ByteArray
     get() = _genesisStateRootHash.decodeHex().assertIs32Bytes("genesisStateRootHash")
-  val _genesisShnarfV6: ByteArray
+  val genesisShnarfV6: ByteArray
     get() = _genesisShnarfV6.decodeHex().assertIs32Bytes("genesisShnarfV6")
 
   val l1QueryBlockTag: BlockParameter.Tag
