@@ -63,7 +63,7 @@ jobs:
       - name: Release to GitHub
         uses: jreleaser/release-action@v2
         with:
-          arguments: full-release --git-root-search --basedir=${{ github.workspace }}/${{inputs.workspaceModulePath}}
+          arguments: full-release --git-root-search --basedir=${{ github.workspace }}/${{inputs.workspaceModulePath}} --version=${{inputs.version}}
         env:
           GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
           JRELEASER_TAG_NAME: ${{inputs.pluginName}}-v${{inputs.version}}
