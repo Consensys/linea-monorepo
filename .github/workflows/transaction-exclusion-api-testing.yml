@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   run-tests:
+    # ~1.5 mins saved vs small
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: Transaction exclusion api tests
     steps:

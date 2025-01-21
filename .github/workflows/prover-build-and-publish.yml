@@ -54,6 +54,7 @@ env:
 
 jobs:
   build-and-publish:
+    # ~1 min saved vs small
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: Prover build
     env:

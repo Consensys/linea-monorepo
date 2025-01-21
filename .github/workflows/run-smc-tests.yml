@@ -3,6 +3,7 @@ name: Smart contracts test
 on:
   pull_request:
     paths:
+      - '.github/workflows/run-smc-tests.yml'
       - 'contracts/**'
       - 'testdata/**'
       - 'prover/**'
@@ -15,6 +16,7 @@ on:
     branches:
       - main
     paths:
+      - '.github/workflows/run-smc-tests.yml'
       - 'contracts/**'
       - 'testdata/**'
       - 'prover/**'

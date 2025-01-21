@@ -5,12 +5,14 @@ on:
     branches:
       - main
     paths:
+      - '.github/workflows/bridge-ui-publish.yml'
       - 'bridge-ui/**'
       - '!bridge-ui/**/*.md'
   push:
     branches:
       - main
     paths:
+      - '.github/workflows/bridge-ui-publish.yml'
       - 'bridge-ui/**'
       - '!bridge-ui/**/*.md'
 
