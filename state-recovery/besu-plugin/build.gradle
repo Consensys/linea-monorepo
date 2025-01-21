@@ -4,8 +4,7 @@ plugins {
 }
 
 group = 'build.linea.staterecovery'
-archivesBaseName = 'linea-staterecovery-plugin'
-version = '0.0.1-rc2'
+archivesBaseName = 'linea-staterecovery-besu-plugin'
 
 dependencies {
   compileOnly("info.picocli:picocli:${libs.versions.picoli.get()}") {
@@ -28,8 +27,6 @@ ext.groupsToIncludeInShadow = [
   "org.jetbrains.kotlin:kotlin-reflect.*",
   "org.jetbrains.kotlinx:kotlinx-datetime.*",
   "tech.pegasys.teku.internal:async",
-  "io.vertx.*",
-  // this can be removed once Besu updates to Vertx 4.12+
   "com.michael-bull.kotlin-result:kotlin-result.*",
   "com.fasterxml.jackson.module:jackson-module-kotlin",
 ]
@@ -53,6 +50,8 @@ shadowJar {
   if ("${project.version}" != 'unspecified') {
     archiveClassifier.set('')
     archiveVersion.set("${project.version}")
+  } else {
+    archiveClassifier.set('SNAPSHOT')
   }
 
   dependencies {
