@@ -99,7 +99,7 @@ jobs:
           chmod -R a+w tmp/local/traces/v2/conflated
       - name: Restore cached images
         id: restore-cached-images
-        uses: ./.github/workflows/restore-docker-images.yml
+        uses: ./.github/actions/restore-docker-images
       - name: Pull all images with retry
         uses: nick-fields/retry@v3
         with:

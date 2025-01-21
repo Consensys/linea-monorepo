@@ -55,12 +55,14 @@ jobs:
         run: |
           docker_images=$(docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 config 2>/dev/null | grep "image:" | awk '{print $2}')
           docker_images_unique=$(echo $docker_images | sort -u | xargs)
-          echo DOCKER_IMAGES=$(echo -n $docker_images_unique) >> $GITHUB_OUTPUT
+          echo DOCKER_IMAGES=$(echo $docker_images) >> $GITHUB_OUTPUT
+          echo DOCKER_IMAGES_UNIQUE=$(echo -n $docker_images_unique) >> $GITHUB_OUTPUT
           echo DOCKER_IMAGES_HASH=$(echo -n $docker_images_unique | sha256sum | awk '{print $1}') >> $GITHUB_OUTPUT
       - name: Show docker images hash
         id: show-docker-images-hash
         run: |
           echo "DOCKER_IMAGES: ${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES }}"
+          echo "DOCKER_IMAGES_UNIQUE: ${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES_UNIQUE }}"
           echo "DOCKER_IMAGES_HASH: ${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES_HASH }}"
       - name: Create cached docker images folder
         run: |
@@ -83,7 +85,7 @@ jobs:
         run: |
           docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 pull
           docker save ${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES }} -o  ~/docker-images-cache/docker-images.tar
-          
+
       # - name: Login to Docker Hub
       #   uses: docker/login-action@v3
       #   with:

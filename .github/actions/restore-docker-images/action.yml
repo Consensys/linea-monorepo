@@ -1,0 +1,38 @@
+name: 'Restore Cached Docker Images'
+description: 'Restore Cached Docker Images'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Compute docker images hash
+      id: compute-docker-images-hash
+      shell: bash
+      run: |
+        docker_images=$(docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 config 2>/dev/null | grep "image:" | awk '{print $2}')
+        docker_images_unique=$(echo $docker_images | sort -u | xargs)
+        echo DOCKER_IMAGES=$(echo $docker_images) >> $GITHUB_OUTPUT
+        echo DOCKER_IMAGES_UNIQUE=$(echo -n $docker_images_unique) >> $GITHUB_OUTPUT
+        echo DOCKER_IMAGES_HASH=$(echo -n $docker_images_unique | sha256sum | awk '{print $1}') >> $GITHUB_OUTPUT
+    - name: Show docker images hash
+      shell: bash
+      id: show-docker-images-hash
+      run: |
+        echo "DOCKER_IMAGES: ${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES }}"
+        echo "DOCKER_IMAGES_UNIQUE: ${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES_UNIQUE }}"
+        echo "DOCKER_IMAGES_HASH: ${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES_HASH }}"
+    - name: Create cached docker images folder
+      shell: bash
+      run: |
+        mkdir -p ~/docker-images-cache
+    - name: Cache common docker images
+      id: cache-common-docker-images
+      continue-on-error: true
+      uses: actions/cache@v4
+      with:
+        path: ~/docker-images-cache
+        key: docker-images-cache-${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES_HASH }}
+    - name: Load docker images
+      shell: bash
+      if: steps.cache-common-docker-images.outputs.cache-hit == 'true'
+      run: |
+        docker load -i ~/docker-images-cache/docker-images.tar
