@@ -50,6 +50,7 @@ jobs:
   transaction-exclusion-api:
     uses: ./.github/workflows/transaction-exclusion-api-testing.yml
     if: ${{ inputs.transaction_exclusion_api_changed == 'true' }}
+    secrets: inherit
 
   staterecovery:
     uses: ./.github/workflows/staterecovery-testing.yml
