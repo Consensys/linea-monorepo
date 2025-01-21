@@ -36,6 +36,11 @@ dependencyManagement {
     dependencySet(group: 'info.picocli', version: '4.7.6') {
       entry 'picocli'
     }
+    dependencySet(group: 'com.sksamuel.hoplite', version: '2.9.0') {
+      entry 'hoplite-core'
+      entry 'hoplite-toml'
+      entry 'hoplite-json'
+    }
 
 //    dependency 'io.netty:netty-all:4.1.110.Final'
 //    dependency 'io.netty:netty-tcnative-boringssl-static:2.0.62.Final'

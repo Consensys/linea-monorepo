@@ -56,7 +56,7 @@ import tech.pegasys.teku.infrastructure.unsigned.UInt64
 
 class CliqueToPosTest {
   companion object {
-    val qbftCluster =
+    private val qbftCluster =
       DockerComposeRule.Builder()
         .file(Path.of("./../docker/compose.yaml").toString())
         .projectName(ProjectName.random())
