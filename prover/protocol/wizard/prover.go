@@ -369,6 +369,11 @@ func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	return run.getRandomCoinGeneric(name, coin.Field).(field.Element)
 }
 
+// GetRandomCoinFromSeed generates a field element based on the seed.
+func (run *ProverRuntime) GetRandomCoinFromSeed(name coin.Name) field.Element {
+	return run.getRandomCoinGeneric(name, coin.FromSeed).(field.Element)
+}
+
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin. The
 // coin should be issued at the same round as it was registered. The same coin
 // can't be retrieved more than once. The coin should also have been registered
@@ -583,10 +588,23 @@ func (run *ProverRuntime) goNextRound() {
 		a next round.
 	*/
 	toCompute := run.Spec.Coins.AllKeysAt(run.currRound)
-	for _, coin := range toCompute {
-		info := run.Spec.Coins.Data(coin)
-		value := info.Sample(run.FS)
-		run.Coins.InsertNew(coin, value)
+	for _, myCoin := range toCompute {
+
+		var (
+			info  = run.Spec.Coins.Data(myCoin)
+			value interface{}
+		)
+
+		if info.Type == coin.FromSeed {
+			// if it is of type FromSeed, sample a coin based on the seed
+			if seed, ok := run.ParentRuntime.Coins.MustGet("SEED").(field.Element); ok {
+				value = info.SampleFromSeed(seed, run.FS)
+			}
+		} else {
+			// otherwise sample based on the transcript.
+			value = info.Sample(run.FS)
+		}
+		run.Coins.InsertNew(myCoin, value)
 	}
 
 	finalState := run.FS.State()

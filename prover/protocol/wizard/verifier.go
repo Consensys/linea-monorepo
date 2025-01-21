@@ -245,6 +245,20 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	return run.Coins.MustGet(name).(field.Element)
 }
 
+// GetRandomCoinFromSeed returns a field element random based on the seed.
+func (run *VerifierRuntime) GetRandomCoinFromSeed(name coin.Name) field.Element {
+	/*
+		Early check, ensures the coin has been registered at all
+		and that it has the correct type
+	*/
+	infos := run.Spec.Coins.Data(name)
+	if infos.Type != coin.FromSeed {
+		utils.Panic("Coin was registered as %v but expected %v", infos.Type, coin.FromSeed)
+	}
+	// If this panics, it means we generates the coins wrongly
+	return run.Coins.MustGet(name).(field.Element)
+}
+
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin. The
 // coin should be issued at the same round as it was registered. The same coin
 // can't be retrieved more than once. The coin should also have been registered
