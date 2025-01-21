@@ -17,6 +17,9 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  cache-docker-images:
+    uses: ./.github/workflows/cache-docker-images.yml
+    secrets: inherit
   run-tests:
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
