@@ -52,7 +52,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.23.x]
-    runs-on: [self-hosted, ubuntu-22.04, X64, large]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     name: Prover testing
     needs:
       - staticcheck
