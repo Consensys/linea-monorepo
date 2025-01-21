@@ -9,6 +9,43 @@ import USDCBridge from "@/abis/USDCBridge.json";
 import TokenBridge from "@/abis/TokenBridge.json";
 import MessageService from "@/abis/MessageService.json";
 
+function commputeMessageHash(
+  from: Address,
+  to: Address,
+  fee: bigint,
+  value: bigint,
+  nonce: bigint,
+  calldata: `0x${string}` = "0x",
+) {
+  return keccak256(
+    encodeAbiParameters(
+      [
+        { name: "from", type: "address" },
+        { name: "to", type: "address" },
+        { name: "fee", type: "uint256" },
+        { name: "value", type: "uint256" },
+        { name: "nonce", type: "uint256" },
+        { name: "calldata", type: "bytes" },
+      ],
+      [from, to, fee, value, nonce, calldata],
+    ),
+  );
+}
+
+function computeMessageStorageSlot(messageHash: `0x${string}`) {
+  const mappingSlot = 176n;
+
+  return keccak256(
+    encodeAbiParameters(
+      [
+        { name: "messageHash", type: "bytes32" },
+        { name: "mappingSlot", type: "uint256" },
+      ],
+      [messageHash, mappingSlot],
+    ),
+  );
+}
+
 type UsePostmanFeeProps = {
   currentLayer: NetworkLayer;
   claimingType?: string;
@@ -90,29 +127,16 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
             args: [toAddress, amountBigInt],
           });
 
-          const messageHash = keccak256(
-            encodeAbiParameters(
-              [
-                { name: "from", type: "address" },
-                { name: "to", type: "address" },
-                { name: "fee", type: "uint256" },
-                { name: "value", type: "uint256" },
-                { name: "nonce", type: "uint256" },
-                { name: "calldata", type: "bytes" },
-              ],
-              [tokenBridgeAddress, toUSDCBridgeAddress, 0n, 0n, nextMessageNumber as bigint, encodedData],
-            ),
+          const messageHash = commputeMessageHash(
+            tokenBridgeAddress,
+            toUSDCBridgeAddress,
+            0n,
+            0n,
+            nextMessageNumber as bigint,
+            encodedData,
           );
 
-          const storageSlot = keccak256(
-            encodeAbiParameters(
-              [
-                { name: "messagehash", type: "bytes32" },
-                { name: "mappingSlot", type: "uint256" },
-              ],
-              [messageHash, 176n],
-            ),
-          );
+          const storageSlot = computeMessageStorageSlot(messageHash);
 
           estimatedGasFee = await destinationChainPublicClient.estimateContractGas({
             abi: MessageService.abi,
@@ -181,29 +205,16 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
             args: [tokenAddress, amountBigInt, toAddress, chainId, tokenMetadata],
           });
 
-          const messageHash = keccak256(
-            encodeAbiParameters(
-              [
-                { name: "from", type: "address" },
-                { name: "to", type: "address" },
-                { name: "fee", type: "uint256" },
-                { name: "value", type: "uint256" },
-                { name: "nonce", type: "uint256" },
-                { name: "calldata", type: "bytes" },
-              ],
-              [tokenBridgeAddress, toTokenBridgeAddress, 0n, 0n, nextMessageNumber as bigint, encodedData],
-            ),
+          const messageHash = commputeMessageHash(
+            tokenBridgeAddress,
+            toTokenBridgeAddress,
+            0n,
+            0n,
+            nextMessageNumber as bigint,
+            encodedData,
           );
 
-          const storageSlot = keccak256(
-            encodeAbiParameters(
-              [
-                { name: "messageHash", type: "bytes32" },
-                { name: "mappingSlot", type: "uint256" },
-              ],
-              [messageHash, 176n],
-            ),
-          );
+          const storageSlot = computeMessageStorageSlot(messageHash);
 
           estimatedGasFee = await destinationChainPublicClient.estimateContractGas({
             abi: MessageService.abi,
@@ -233,29 +244,16 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
             ],
           });
         } else if (token.type === TokenType.ETH) {
-          const messageHash = keccak256(
-            encodeAbiParameters(
-              [
-                { name: "from", type: "address" },
-                { name: "to", type: "address" },
-                { name: "fee", type: "uint256" },
-                { name: "value", type: "uint256" },
-                { name: "nonce", type: "uint256" },
-                { name: "calldata", type: "bytes" },
-              ],
-              [address, toAddress, 0n, amountBigInt, nextMessageNumber as bigint, "0x"],
-            ),
+          const messageHash = commputeMessageHash(
+            address,
+            toAddress,
+            0n,
+            amountBigInt,
+            nextMessageNumber as bigint,
+            "0x",
           );
 
-          const storageSlot = keccak256(
-            encodeAbiParameters(
-              [
-                { name: "messageHash", type: "bytes32" },
-                { name: "mappingSlot", type: "uint256" },
-              ],
-              [messageHash, 176n],
-            ),
-          );
+          const storageSlot = computeMessageStorageSlot(messageHash);
 
           estimatedGasFee = await destinationChainPublicClient.estimateContractGas({
             abi: MessageService.abi,
