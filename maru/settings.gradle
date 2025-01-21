@@ -4,6 +4,5 @@ plugins {
 rootProject.name = 'maru'
 
 include ':app'
-include ':config'
 include ':core'
 include ':e2e'
