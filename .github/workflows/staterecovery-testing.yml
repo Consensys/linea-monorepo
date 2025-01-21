@@ -42,12 +42,12 @@ jobs:
           mkdir -p ./docker-images
       - name: Restore cached images
         id: restore-cached-images
-        uses: actions/cache/restore@v4.2.0
+        uses: actions/cache/restore@v4
         with:
-          path: ./docker-images
-          key: cached-images
+          path: ./cached-docker-images
+          key: cached-docker-images
           restore-keys: |
-            cached-images
+            cached-docker-images
       - name: Staterecovery - Build and Unit tests
         run: |
           ./gradlew state-recovery:besu-plugin:buildNeeded
