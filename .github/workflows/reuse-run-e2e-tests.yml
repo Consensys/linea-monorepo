@@ -104,7 +104,7 @@ jobs:
           path: ~/docker-images
           key: cached-images
           restore-keys: |
-            cached-
+            cached-images
       - name: Pull all images with retry
         uses: nick-fields/retry@v3
         with:
