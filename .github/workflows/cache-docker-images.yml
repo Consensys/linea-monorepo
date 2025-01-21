@@ -61,16 +61,16 @@ jobs:
           docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 pull
       - name: Save Docker images
         run: |
-          mkdir -p ~/docker-images
+          mkdir -p ./docker-images
           images=$(docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 config | grep "image:" | awk '{print $2}')
           for image in $images; do
             imageFileName=$(echo $image | sed -e 's|.*/||' -e 's|:|-|' -e 's/\./_/g')
             echo $image - ${imageFileName}
-            docker save $image > ~/docker-images/${imageFileName}.tar
+            docker save $image > ./docker-images/${imageFileName}.tar
           done
       - name: Cache common docker images
         continue-on-error: true
         uses: actions/cache/save@v4.2.0
         with:
-          path: ~/docker-images
+          path: ./docker-images
           key: cached-images
