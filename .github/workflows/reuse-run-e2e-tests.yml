@@ -97,17 +97,9 @@ jobs:
         run: |
           mkdir -p tmp/local/traces/v2/conflated
           chmod -R a+w tmp/local/traces/v2/conflated
-      - name: Create directory for cached docker images
-        run: |
-          mkdir -p ./cached-docker-images
       - name: Restore cached images
         id: restore-cached-images
-        uses: actions/cache/restore@v4
-        with:
-          path: ./cached-docker-images
-          key: cached-docker-images
-          restore-keys: |
-            cached-docker-images
+        uses: ./.github/workflows/restore-docker-images.yml
       - name: Pull all images with retry
         uses: nick-fields/retry@v3
         with:
