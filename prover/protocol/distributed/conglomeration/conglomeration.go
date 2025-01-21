@@ -55,6 +55,11 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 			ctxs = append(ctxs, ctx)
 		}
 
+		// This FS hook has to be defined before we add the pre-vortex verifier
+		// hooks to ensure that the FS state is properly initialize the verifier
+		// runtime.
+		comp.FiatShamirHooks.AppendToInner(0, &SubFsInitialize{Ctxs: ctxs})
+
 		for round := 0; round <= ctxs[0].LastRound; round++ {
 
 			var (
@@ -79,7 +84,6 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 			}
 		}
 
-		comp.FiatShamirHooks.AppendToInner(0, &SubFsInitialize{Ctxs: ctxs})
 		comp.FiatShamirHooks.AppendToInner(ctxs[0].LastRound, &FsJoinHook{Ctxs: ctxs})
 		comp.RegisterProverAction(ctxs[0].LastRound, &FsJoinProverStep{Ctxs: ctxs})
 		comp.RegisterProverAction(ctxs[0].LastRound, &AssignVortexQuery{Ctxs: ctxs})
