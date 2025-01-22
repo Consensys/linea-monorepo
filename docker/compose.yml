@@ -206,7 +206,7 @@ services:
   postman:
     container_name: postman
     hostname: postman
-    image: consensys/linea-postman:${POSTMAN_TAG:-f58c12a}
+    image: consensys/linea-postman:${POSTMAN_TAG:-1f8647e}
     profiles: [ "l2", "debug" ]
     platform: linux/amd64
     restart: on-failure
@@ -225,7 +225,7 @@ services:
   traces-api:
     hostname: traces-api
     container_name: traces-api
-    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-e9f2bcc}
+    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-1f8647e}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -246,7 +246,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-8749f92}
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-1f8647e}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -267,7 +267,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-a5119c4}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-1f8647e}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     depends_on:
