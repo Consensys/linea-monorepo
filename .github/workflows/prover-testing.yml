@@ -13,14 +13,14 @@ jobs:
     runs-on: [self-hosted, ubuntu-20.04, X64, small]
     name: Prover static check
     steps:
-    - name: install Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.23.x
     - name: checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+    - name: install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.23.x
     - uses: actions/cache@v4.2.0
       with:
         path: |
@@ -57,12 +57,12 @@ jobs:
     needs:
       - staticcheck
     steps:
+    - name: checkout code
+      uses: actions/checkout@v4
     - name: install Go
       uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go-version }}
-    - name: checkout code
-      uses: actions/checkout@v4
     - uses: actions/cache@v4.2.0
       with:
         path: |
