@@ -23,16 +23,16 @@ runs:
     - name: Create cached docker images folder
       shell: bash
       run: |
-        mkdir -p ~/docker-images-cache
+        mkdir -p ~/docker-images-cached
     - name: Cache common docker images
       id: cache-common-docker-images
       continue-on-error: true
       uses: actions/cache@v4
       with:
-        path: ~/docker-images-cache
+        path: ~/docker-images-cached
         key: docker-images-cache-${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES_HASH }}
     - name: Load docker images
       shell: bash
       if: steps.cache-common-docker-images.outputs.cache-hit == 'true'
       run: |
-        docker load -i ~/docker-images-cache/docker-images.tar
+        docker load -i ~/docker-images-cached/docker-images.tar

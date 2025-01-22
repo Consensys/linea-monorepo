@@ -7,6 +7,12 @@ on:
       DOCKERHUB_TOKEN:
         required: false
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
 jobs:
   check-dockerhub-secrets-present:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
@@ -66,13 +72,13 @@ jobs:
           echo "DOCKER_IMAGES_HASH: ${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES_HASH }}"
       - name: Create cached docker images folder
         run: |
-          mkdir -p ~/docker-images-cache
+          mkdir -p ~/docker-images-cached
       - name: Cache common docker images
         id: cache-common-docker-images
         # continue-on-error: true
         uses: actions/cache@v4
         with:
-          path: ~/docker-images-cache
+          path: ~/docker-images-cached
           key: docker-images-cache-${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES_HASH }}
           lookup-only: true
       - name: Login to Docker Hub
@@ -81,11 +87,14 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Pull and save docker images
+      - name: Pull docker images
         if: steps.cache-common-docker-images.outputs.cache-hit != 'true'
         run: |
           docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 pull
-          docker save ${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES }} -o  ~/docker-images-cache/docker-images.tar
+      - name: Save docker images
+        if: steps.cache-common-docker-images.outputs.cache-hit != 'true'
+        run: |
+          docker save ${{ steps.compute-docker-images-hash.outputs.DOCKER_IMAGES_UNIQUE }} -o  ~/docker-images-cached/docker-images.tar
 
       # - name: Login to Docker Hub
       #   uses: docker/login-action@v3
