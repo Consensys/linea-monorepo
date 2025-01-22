@@ -21,7 +21,6 @@ import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.LinkedBlockingDeque
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 
 class BlobCompressionProofCoordinator(
@@ -62,18 +61,6 @@ class BlobCompressionProofCoordinator(
       name = "compression.queue.size",
       description = "Size of blob compression proving queue",
       measurementSupplier = { blobsToHandle.size }
-    )
-    metricsFacade.createGauge(
-      category = LineaMetricsCategory.BLOB,
-      name = "blocks.size",
-      description = "Number of blocks in each blob",
-      measurementSupplier = { blobSizeInBlocks.get() }
-    )
-    metricsFacade.createGauge(
-      category = LineaMetricsCategory.BLOB,
-      name = "batches.size",
-      description = "Number of batches in each blob",
-      measurementSupplier = { blobSizeInBatches.get() }
     )
   }
 
