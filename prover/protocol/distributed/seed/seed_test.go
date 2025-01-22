@@ -121,7 +121,7 @@ func TestSeedGeneration(t *testing.T) {
 	wizard.ContinueCompilation(moduleComp2, logderiv.CompileLogDerivSum, dummy.Compile)
 
 	// run the initial runtime
-	initialRuntime := wizard.RunProverAtRound0(initialComp, prover)
+	initialRuntime := wizard.ProverOnlyFirstRound(initialComp, prover)
 
 	// compile and verify for lpp-Prover
 	lppProof := wizard.Prove(lppComp, func(run *wizard.ProverRuntime) {
