@@ -40,6 +40,7 @@ jobs:
       - name: Restore cached images
         id: restore-cached-images
         uses: ./.github/actions/restore-docker-images
+        continue-on-error: true
       # Install pnpm to compile smart contracts
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
