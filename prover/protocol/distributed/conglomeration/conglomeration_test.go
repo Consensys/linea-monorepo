@@ -1,4 +1,4 @@
-package conglomeration
+package conglomeration_test
 
 import (
 	"testing"
@@ -7,8 +7,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/conglomeration"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -18,12 +20,31 @@ import (
 type (
 	defineFuncType func(*wizard.Builder)
 	proverFuncType func(int) func(*wizard.ProverRuntime)
+	compilerSuite  []func(*wizard.CompiledIOP)
+)
+
+var (
+	commonSisParams  = &ringsis.Params{LogTwoBound: 16, LogTwoDegree: 1}
+	commonVortexStep = vortex.Compile(
+		2, // the inverse-rate of the RS code
+		vortex.WithSISParams(commonSisParams),
+		vortex.ForceNumOpenedColumns(2),
+		vortex.PremarkAsSelfRecursed(),
+	)
+	vortexOnlyCompilationSuite = []func(*wizard.CompiledIOP){
+		commonVortexStep,
+	}
+	arcaneCompilationSuite = []func(*wizard.CompiledIOP){
+		compiler.Arcane(1<<8, 1<<10, false),
+		commonVortexStep,
+	}
 )
 
 type conglomerationTestCase struct {
 	define   defineFuncType
 	prove    proverFuncType
 	numProof int
+	suite    compilerSuite
 }
 
 func TestConglomerationPureVortexSingleRound(t *testing.T) {
@@ -59,6 +80,7 @@ func TestConglomerationPureVortexSingleRound(t *testing.T) {
 		define:   define,
 		prove:    prover,
 		numProof: numProof,
+		suite:    vortexOnlyCompilationSuite,
 	})
 }
 
@@ -123,11 +145,9 @@ func TestConglomerationPureVortexMultiRound(t *testing.T) {
 
 	prover := func(k int) func(run *wizard.ProverRuntime) {
 		return func(run *wizard.ProverRuntime) {
-			ys := make([]field.Element, 0, len(a))
 			for i := range a {
 				y := field.NewElement(uint64(i + k))
 				run.AssignColumn(a[i].GetColID(), smartvectors.NewConstant(y, numRow))
-				ys = append(ys, y)
 			}
 		}
 	}
@@ -136,29 +156,61 @@ func TestConglomerationPureVortexMultiRound(t *testing.T) {
 		define:   define,
 		prove:    prover,
 		numProof: numProof,
+		suite:    vortexOnlyCompilationSuite,
+	})
+}
+
+func TestConglomerationLookup(t *testing.T) {
+
+	var (
+		numCol   = 16
+		numRow   = 16
+		numProof = 16
+		a        []ifaces.Column
+	)
+
+	define := func(builder *wizard.Builder) {
+		for i := 0; i < numCol; i++ {
+			a = append(a, builder.RegisterCommit(ifaces.ColIDf("a-%v", i), numRow))
+			builder.Range(ifaces.QueryIDf("range-%v", i), a[i], 1<<16)
+		}
+	}
+
+	prover := func(k int) func(run *wizard.ProverRuntime) {
+		return func(run *wizard.ProverRuntime) {
+			for i := range a {
+				y := field.NewElement(uint64(i + k))
+				run.AssignColumn(a[i].GetColID(), smartvectors.NewConstant(y, numRow))
+			}
+		}
+	}
+
+	runConglomerationTestCase(t, conglomerationTestCase{
+		define:   define,
+		prove:    prover,
+		numProof: numProof,
+		suite:    arcaneCompilationSuite,
 	})
 }
 
 func runConglomerationTestCase(t *testing.T, tc conglomerationTestCase) {
 
 	var (
-		sisParams            = &ringsis.Params{LogTwoBound: 16, LogTwoDegree: 1}
-		vortexCompFunc       = vortex.Compile(2, vortex.WithSISParams(sisParams), vortex.ForceNumOpenedColumns(2), vortex.PremarkAsSelfRecursed())
 		numProof             = tc.numProof
-		tmpl                 = wizard.Compile(wizard.DefineFunc(tc.define), vortexCompFunc)
-		congDef, ctxsPHolder = ConglomerateDefineFunc(tmpl, numProof)
+		tmpl                 = wizard.Compile(wizard.DefineFunc(tc.define), tc.suite...)
+		congDef, ctxsPHolder = conglomeration.ConglomerateDefineFunc(tmpl, numProof)
 		cong                 = wizard.Compile(congDef, dummy.CompileAtProverLvl)
 		ctxs                 = *ctxsPHolder
 		lastRound            = ctxs[0].LastRound
 	)
 
-	witnesses := make([]Witness, numProof)
+	witnesses := make([]conglomeration.Witness, numProof)
 	for i := range witnesses {
 		runtime := wizard.RunProverUntilRound(tmpl, tc.prove(i), lastRound+1)
-		witnesses[i] = ExtractWitness(runtime)
+		witnesses[i] = conglomeration.ExtractWitness(runtime)
 	}
 
-	proof := wizard.Prove(cong, ProveConglomeration(ctxs, witnesses))
+	proof := wizard.Prove(cong, conglomeration.ProveConglomeration(ctxs, witnesses))
 	err := wizard.Verify(cong, proof)
 
 	require.NoError(t, err)
