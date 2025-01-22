@@ -118,7 +118,7 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 	// Append the precomputed committedMatrices and trees when IsCommitToPrecomputed is true
 	if ctx.IsCommitToPrecomputed() {
 		committedMatrices = append(committedMatrices, ctx.Items.Precomputeds.CommittedMatrix)
-		trees = append(trees, ctx.Items.Precomputeds.tree)
+		trees = append(trees, ctx.Items.Precomputeds.Tree)
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {

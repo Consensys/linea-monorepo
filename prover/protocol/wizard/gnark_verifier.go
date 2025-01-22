@@ -34,6 +34,7 @@ type GnarkRuntime interface {
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
+	GetQuery(name ifaces.QueryID) ifaces.Query
 }
 
 // GnarkVerifierStep functions that can be registered in the CompiledIOP by the successive
@@ -630,4 +631,16 @@ func (c *WizardVerifierCircuit) GetState(name string) (any, bool) {
 // SetState sets the value of a state variable in the verifier circuit
 func (c *WizardVerifierCircuit) SetState(name string, value any) {
 	c.State[name] = value
+}
+
+// GetQuery returns a query from its name
+func (c *WizardVerifierCircuit) GetQuery(name ifaces.QueryID) ifaces.Query {
+	if c.Spec.QueriesParams.Exists(name) {
+		return c.Spec.QueriesParams.Data(name)
+	}
+	if c.Spec.QueriesNoParams.Exists(name) {
+		return c.Spec.QueriesNoParams.Data(name)
+	}
+	utils.Panic("could not find query nb %v", name)
+	return nil
 }

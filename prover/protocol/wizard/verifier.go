@@ -46,6 +46,7 @@ type Runtime interface {
 	GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
+	GetQuery(name ifaces.QueryID) ifaces.Query
 	Fs() *fiatshamir.State
 	FsHistory() [][2][]field.Element
 	InsertCoin(name coin.Name, value any)
@@ -464,4 +465,19 @@ func (run *VerifierRuntime) GetState(name string) (any, bool) {
 // SetState sets an arbitrary value in the runtime
 func (run *VerifierRuntime) SetState(name string, value any) {
 	run.State[name] = value
+}
+
+// GetQuery returns a query from its name
+func (run *VerifierRuntime) GetQuery(name ifaces.QueryID) ifaces.Query {
+
+	if run.Spec.QueriesParams.Exists(name) {
+		return run.Spec.QueriesParams.Data(name)
+	}
+
+	if run.Spec.QueriesNoParams.Exists(name) {
+		return run.Spec.QueriesNoParams.Data(name)
+	}
+
+	utils.Panic("could not find query nb %v", name)
+	return nil
 }

@@ -8,6 +8,7 @@ import (
 	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -132,14 +133,12 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 
 		if committedMatrix != nil {
 			committedMatrices = append(committedMatrices, committedMatrix.(vCom.EncodedMatrix))
-		}
-
-		if sisHash != nil {
 			sisHashes = append(sisHashes, sisHash.([]field.Element))
-		}
-
-		if tree != nil {
 			trees = append(trees, tree.(*smt.Tree))
+		} else {
+			committedMatrices = append(committedMatrices, nil)
+			sisHashes = append(sisHashes, nil)
+			trees = append(trees, nil)
 		}
 	}
 
@@ -165,6 +164,13 @@ func (pa PreVortexProverStep) Run(run *wizard.ProverRuntime) {
 
 		for _, col := range colums {
 			name := unprefix(prefix, col.GetColID())
+
+			if col.(column.Natural).Status() == column.VerifyingKey {
+				// those don't need to be assigned and not included in the
+				// proof either.
+				continue
+			}
+
 			run.AssignColumn(col.GetColID(), proof.Messages.MustGet(name))
 		}
 

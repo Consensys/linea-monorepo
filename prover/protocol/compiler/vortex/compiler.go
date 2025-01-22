@@ -142,7 +142,7 @@ type Ctx struct {
 			// Committed matrix (rs encoded) of the precomputed columns
 			CommittedMatrix vortex.EncodedMatrix
 			// Tree in case of Merkle mode
-			tree *smt.Tree
+			Tree *smt.Tree
 			// colHashes used in self recursion
 			DhWithMerkle []field.Element
 		}
@@ -186,7 +186,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 				PrecomputedColums []ifaces.Column
 				MerkleRoot        ifaces.Column
 				CommittedMatrix   vortex.EncodedMatrix
-				tree              *smt.Tree
+				Tree              *smt.Tree
 				DhWithMerkle      []field.Element
 			}
 			Alpha         coin.Info
@@ -710,7 +710,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 	committedMatrix, tree, colHashes := ctx.VortexParams.CommitMerkle(pols)
 	ctx.Items.Precomputeds.DhWithMerkle = colHashes
 	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
-	ctx.Items.Precomputeds.tree = tree
+	ctx.Items.Precomputeds.Tree = tree
 
 	// And assign the 1-sized column to contain the root
 	var root field.Element

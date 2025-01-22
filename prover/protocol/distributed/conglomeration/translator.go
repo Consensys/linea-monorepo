@@ -1,6 +1,8 @@
 package conglomeration
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
@@ -40,10 +42,35 @@ type gnarkRuntimeTranslator struct {
 }
 
 // InsertColumn inserts a new column in the target compiled IOP. The column name
-// is prefixed with comp.Prefix.
+// is prefixed with comp.Prefix. The function checks that the passed column does
+// not have a precomputed status (e.g. either precomputed or verifying key).
 func (comp *compTranslator) InsertColumn(col column.Natural) ifaces.Column {
+
+	switch col.Status() {
+	case column.Precomputed, column.VerifyingKey:
+		panic("cannot insert a precomputed or verifying key column as normal column. Use [InsertPrecomputed] instead")
+	}
 	name := ifaces.ColID(comp.Prefix) + "." + col.ID
 	return comp.Target.InsertColumn(col.Round(), name, col.Size(), col.Status())
+}
+
+// InsertPrecomputed inserts a new column as a precomputed column to the target
+// compiled IOP. To differ with [InsertColumn], this method does also add the
+// column to the list of precomputed columns.
+func (comp *compTranslator) InsertPrecomputed(col column.Natural, ass ifaces.ColAssignment) ifaces.Column {
+	name := ifaces.ColID(comp.Prefix) + "." + col.ID
+
+	switch col.Status() {
+	case column.VerifyingKey:
+		// assertedly, the round of a precomputed column is always 0
+		col := comp.Target.InsertColumn(0, name, col.Size(), col.Status())
+		comp.Target.Precomputed.InsertNew(name, ass)
+		return col
+	case column.Precomputed, column.Ignored:
+		return comp.Target.InsertPrecomputed(name, ass)
+	default:
+		panic(fmt.Sprintf("not a precomputed column: status=%v name=%v", col.Status().String(), col.ID))
+	}
 }
 
 // InsertColumns inserts a list of columns in the target compiled IOP by adding
@@ -91,33 +118,41 @@ func (comp *compTranslator) GetCoin(name coin.Name) coin.Info {
 // the inserted query will be invalid.
 func (comp *compTranslator) InsertQueryParams(round int, q ifaces.Query) ifaces.Query {
 	name := ifaces.QueryID(comp.Prefix) + "." + q.Name()
-	q = copyQueryWithName(name, q)
-	comp.Target.QueriesParams.AddToRound(round, name, q)
-	return q
-}
 
-// copyQueryWithName returns a copy of the query with a new name.
-func copyQueryWithName(name ifaces.QueryID, q ifaces.Query) ifaces.Query {
+	var q2 ifaces.Query
 	switch q := q.(type) {
 	case query.UnivariateEval:
-		return query.NewUnivariateEval(name, q.Pols...)
+		q2 = query.NewUnivariateEval(name, q.Pols...)
 	case query.LocalOpening:
-		return query.NewLocalOpening(name, q.Pol)
+		q2 = query.NewLocalOpening(name, q.Pol)
 	case query.InnerProduct:
-		return query.NewInnerProduct(name, q.A, q.Bs...)
+		q2 = query.NewInnerProduct(name, q.A, q.Bs...)
 	case query.GrandProduct:
-		return query.NewGrandProduct(q.Round, q.Inputs, name)
+		q2 = query.NewGrandProduct(q.Round, q.Inputs, name)
 	case query.LogDerivativeSum:
-		return query.NewLogDerivativeSum(q.Round, q.Inputs, name)
+		q2 = query.NewLogDerivativeSum(q.Round, q.Inputs, name)
 	default:
 		panic("unknown query type")
 	}
+
+	comp.Target.QueriesParams.AddToRound(round, name, q2)
+	comp.Target.QueriesParams.MarkAsIgnored(q2.Name())
+	return q2
 }
 
-// TranslateColumnList translates a collection of pre-inserted columns
+// TranslateColumnList translates a collection of pre-inserted columns.
+// If one of the columns provided in the list is nil, it will be ignored
+// and the function will return nil at the same position in the returned
+// list of column.
 func (comp *compTranslator) TranslateColumnList(cols []ifaces.Column) []ifaces.Column {
 	res := make([]ifaces.Column, 0, len(cols))
 	for _, col := range cols {
+
+		if col == nil {
+			res = append(res, nil)
+			continue
+		}
+
 		res = append(res, comp.GetColumn(col.GetColID()))
 	}
 	return res
@@ -241,6 +276,11 @@ func (run *runtimeTranslator) SetState(name string, value any) {
 	run.Rt.SetState(name, value)
 }
 
+func (run *runtimeTranslator) GetQuery(name ifaces.QueryID) ifaces.Query {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetQuery(name)
+}
+
 func (run *gnarkRuntimeTranslator) GetColumn(name ifaces.ColID) []frontend.Variable {
 	name = ifaces.ColID(run.Prefix) + "." + name
 	return run.Rt.GetColumn(name)
@@ -330,4 +370,9 @@ func (run *gnarkRuntimeTranslator) GetState(name string) (any, bool) {
 func (run *gnarkRuntimeTranslator) SetState(name string, value any) {
 	name = run.Prefix + "." + name
 	run.Rt.SetState(name, value)
+}
+
+func (run *gnarkRuntimeTranslator) GetQuery(name ifaces.QueryID) ifaces.Query {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetQuery(name)
 }

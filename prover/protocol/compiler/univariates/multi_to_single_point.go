@@ -402,7 +402,7 @@ func (ctx mptsCtx) verifier(run wizard.Runtime) error {
 	ys, hs := ctx.getYsHs(
 		run.GetUnivariateParams,
 		func(qName ifaces.QueryID) query.UnivariateEval {
-			return run.GetSpec().QueriesParams.Data(qName).(query.UnivariateEval)
+			return run.GetQuery(qName).(query.UnivariateEval)
 		},
 	)
 

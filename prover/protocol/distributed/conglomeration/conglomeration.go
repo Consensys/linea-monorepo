@@ -28,12 +28,13 @@ type recursionCtx struct {
 	// They are added in the target 'comp' but are assigned to zero. Although,
 	// they do not directly play a role in the protocol anymore, they are still
 	// referenced by the self-recursion compiler.
-	ColumnsIgnored  [][]ifaces.Column
-	QueryParams     [][]ifaces.Query
-	VerifierActions [][]wizard.VerifierAction
-	Coins           [][]coin.Info
-	FsHooks         [][]wizard.VerifierAction
-	LocalOpenings   []query.LocalOpening
+	ColumnIgnoredPrecomputed []ifaces.Column
+	ColumnsIgnored           [][]ifaces.Column
+	QueryParams              [][]ifaces.Query
+	VerifierActions          [][]wizard.VerifierAction
+	Coins                    [][]coin.Info
+	FsHooks                  [][]wizard.VerifierAction
+	LocalOpenings            []query.LocalOpening
 }
 
 // ConglomerateDefineFunc returns a function that defines a conglomerate
@@ -155,7 +156,14 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 				continue
 			}
 
-			newCol := ctx.Translator.InsertColumn(col)
+			var newCol ifaces.Column
+
+			if tmpl.Precomputed.Exists(colName) {
+				newCol = ctx.Translator.InsertPrecomputed(col, tmpl.Precomputed.MustGet(colName))
+			} else {
+				newCol = ctx.Translator.InsertColumn(col)
+			}
+
 			ctx.Columns[round] = append(ctx.Columns[round], newCol)
 			ctx.Translator.Target.Columns.ExcludeFromProverFS(newCol.GetColID())
 		}
@@ -213,9 +221,18 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 
 	var (
-		srcVortexCtx = tmpl.PcsCtxs.(*vortex.Ctx)
-		comsByRound  = srcVortexCtx.CommitmentsByRounds.Inner()
+		srcVortexCtx   = tmpl.PcsCtxs.(*vortex.Ctx)
+		comsByRound    = srcVortexCtx.CommitmentsByRounds.Inner()
+		srcPrecomputed = srcVortexCtx.Items.Precomputeds.PrecomputedColums
 	)
+
+	ctx.ColumnIgnoredPrecomputed = make([]ifaces.Column, len(srcPrecomputed))
+	for i := range srcPrecomputed {
+		ctx.ColumnIgnoredPrecomputed[i] = ctx.Translator.InsertPrecomputed(
+			srcPrecomputed[i].(column.Natural),
+			tmpl.Precomputed.MustGet(srcPrecomputed[i].GetColID()),
+		)
+	}
 
 	for _, coms := range comsByRound {
 		ctx.ColumnsIgnored = append(ctx.ColumnsIgnored, nil)
@@ -260,6 +277,7 @@ func (ctx *recursionCtx) captureVortexCtx(tmpl *wizard.CompiledIOP) {
 		dstVortexCtx.Items.Precomputeds.MerkleRoot = ctx.Translator.GetColumn(srcVortexCtx.Items.Precomputeds.MerkleRoot.GetColID())
 		dstVortexCtx.Items.Precomputeds.CommittedMatrix = srcVortexCtx.Items.Precomputeds.CommittedMatrix
 		dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
+		dstVortexCtx.Items.Precomputeds.Tree = srcVortexCtx.Items.Precomputeds.Tree
 	}
 
 	dstVortexCtx.Items.Alpha = ctx.Translator.InsertCoin(srcVortexCtx.Items.Alpha)
