@@ -77,5 +77,5 @@ jobs:
       - name: Cache docker images
         if: steps.cache-common-docker-images.outputs.cache-hit != 'true'
         run: |
-          docker save ${{ steps.compute-docker-images-hash.outputs.docker_images_unique }} -o  ~/docker-images-cached/docker-images.tar
+          docker save ${{ steps.compute-docker-images-hash.outputs.docker_images_trimmed }} -o  ~/docker-images-cached/docker-images.tar
           echo docker-images.tar=$(ls -lh ~/docker-images-cached/docker-images.tar)
