@@ -63,7 +63,7 @@ jobs:
           docker_images_unique=$(echo $docker_images | xargs -n1 | sort -u | xargs)
           echo DOCKER_IMAGES=$(echo $docker_images) >> $GITHUB_OUTPUT
           echo DOCKER_IMAGES_UNIQUE=$(echo -n $docker_images_unique) >> $GITHUB_OUTPUT
-          echo DOCKER_IMAGES_HASH=$(echo -n $docker_images_unique | sha256sum | awk '{print $1}') >> $GITHUB_OUTPUT
+          echo DOCKER_IMAGES_HASH=$(echo $docker_images_unique | sha256sum | awk '{print $1}') >> $GITHUB_OUTPUT
       - name: Show docker images hash
         id: show-docker-images-hash
         run: |
