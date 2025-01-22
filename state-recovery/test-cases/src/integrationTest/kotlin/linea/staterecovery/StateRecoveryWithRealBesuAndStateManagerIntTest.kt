@@ -42,6 +42,10 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
   private val log = LogManager.getLogger("test.case.StateRecoverAppWithLocalStackIntTest")
   private lateinit var stateManagerClient: StateManagerClientV1
   private val testDataDir = "testdata/coordinator/prover/v3"
+  private val aggregationsAndBlobs: List<AggregationAndBlobs> = loadBlobsAndAggregationsSortedAndGrouped(
+    blobsResponsesDir = "$testDataDir/compression/responses",
+    aggregationsResponsesDir = "$testDataDir/aggregation/responses"
+  )
 
   private val executionLayerUrl = "http://localhost:9145"
   private val stateManagerUrl = "http://localhost:8890"
@@ -64,12 +68,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
       zkStateManagerVersion = "2.3.0",
       logger = LogManager.getLogger("test.clients.l1.state-manager")
     )
-  }
 
-  private lateinit var rollupDeploymentResult: LineaRollupDeploymentResult
-
-  @Test
-  fun setupDeployContractForL2L1StateReplay() {
     configureLoggers(
       rootLevel = Level.INFO,
       "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN,
@@ -82,16 +81,17 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
       "test.clients.l1.blobscan" to Level.INFO,
       "net.consensys.linea.contract.l1" to Level.INFO
     )
-    val aggregationsAndBlobs: List<AggregationAndBlobs> = loadBlobsAndAggregationsSortedAndGrouped(
-      blobsResponsesDir = "$testDataDir/compression/responses",
-      aggregationsResponsesDir = "$testDataDir/aggregation/responses"
-    )
+  }
 
+  private lateinit var rollupDeploymentResult: LineaRollupDeploymentResult
+
+  @Test
+  fun `should recover status from genesis`() {
     this.rollupDeploymentResult = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6).get()
-    log.info("""LineaRollup address=${rollupDeploymentResult.contractAddress}""")
-    log.info("starting stack for recovery of state pushed to L1")
+    log.info("LineaRollup address={}", rollupDeploymentResult.contractAddress)
     val staterecoveryNodesStartFuture = SafeFuture.supplyAsync {
+      log.info("starting stack for recovery of state pushed to L1")
       Runner.executeCommand(
         "make staterecovery-replay-from-genesis L1_ROLLUP_CONTRACT_ADDRESS=${rollupDeploymentResult.contractAddress}"
       )
