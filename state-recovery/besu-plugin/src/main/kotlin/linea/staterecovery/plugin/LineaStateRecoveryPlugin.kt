@@ -27,8 +27,8 @@ fun <T : BesuService> ServiceManager.getServiceOrThrow(clazz: Class<T>): T {
     .orElseThrow { IllegalStateException("${clazz.name} is not present in BesuContext") }
 }
 
-open class LineaStateRecoverPlugin : BesuPlugin {
-  private val log: Logger = LogManager.getLogger(LineaStateRecoverPlugin::class.java)
+open class LineaStateRecoveryPlugin : BesuPlugin {
+  private val log: Logger = LogManager.getLogger(LineaStateRecoveryPlugin::class.java)
   private val vertx = Vertx.vertx()
   private val cliOptions = PluginCliOptions()
   private lateinit var serviceManager: ServiceManager
