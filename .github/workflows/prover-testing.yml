@@ -21,7 +21,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - uses: actions/cache@v4
+    - uses: actions/cache@v4.2.0
       with:
         path: |
           ~/go/pkg/mod
@@ -63,7 +63,7 @@ jobs:
         go-version: ${{ matrix.go-version }}
     - name: checkout code
       uses: actions/checkout@v4
-    - uses: actions/cache@v4
+    - uses: actions/cache@v4.2.0
       with:
         path: |
           ~/go/pkg/mod
