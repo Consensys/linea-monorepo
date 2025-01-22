@@ -47,6 +47,7 @@ jobs:
     needs: [ check-dockerhub-secrets-present, changes ]
     if: ${{ always() && needs.check-dockerhub-secrets-present.outputs.secrets_present == 'true' && needs.changes.outputs.cache_images == 'true' }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    name: Pull and cache images
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,7 +74,7 @@ jobs:
         if: steps.cache-common-docker-images.outputs.cache-hit != 'true'
         run: |
           docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 pull
-      - name: Save docker images
+      - name: Cache docker images
         if: steps.cache-common-docker-images.outputs.cache-hit != 'true'
         run: |
           docker save ${{ steps.compute-docker-images-hash.outputs.docker_images_unique }} -o  ~/docker-images-cached/docker-images.tar
