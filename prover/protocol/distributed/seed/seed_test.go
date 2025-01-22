@@ -78,7 +78,7 @@ func TestSeedGeneration(t *testing.T) {
 	// initial compiledIOP is the parent to LPPComp and all the SegmentModuleComp objects.
 	initialComp := wizard.Compile(define)
 	// apply the LPP relevant compilers and generate the seed for initialComp
-	seed.CompileLPPAndGetSeed(initialComp, distributed.IntoLogDerivativeSum)
+	lppComp := seed.CompileLPPAndGetSeed(initialComp, distributed.IntoLogDerivativeSum)
 
 	// Initialize the period separating module discoverer
 	disc := &md.PeriodSeperatingModuleDiscoverer{}
@@ -121,7 +121,14 @@ func TestSeedGeneration(t *testing.T) {
 	wizard.ContinueCompilation(moduleComp2, logderiv.CompileLogDerivSum, dummy.Compile)
 
 	// run the initial runtime
-	initialRuntime := wizard.RunProver(initialComp, prover)
+	initialRuntime := wizard.RunProverAtRound0(initialComp, prover)
+
+	// compile and verify for lpp-Prover
+	lppProof := wizard.Prove(lppComp, func(run *wizard.ProverRuntime) {
+		run.ParentRuntime = initialRuntime
+	})
+	valid, lppVerifierRuntime := wizard.VerifierWithRuntime(lppComp, lppProof)
+	require.NoError(t, valid)
 
 	// Compile and prove for module0
 	for proverID := 0; proverID < numSegModule0; proverID++ {
@@ -130,7 +137,7 @@ func TestSeedGeneration(t *testing.T) {
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid := wizard.Verify(moduleComp0, proof0)
+		valid := wizard.Verify(moduleComp0, proof0, lppVerifierRuntime)
 		require.NoError(t, valid)
 	}
 
@@ -141,7 +148,7 @@ func TestSeedGeneration(t *testing.T) {
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid1 := wizard.Verify(moduleComp1, proof1)
+		valid1 := wizard.Verify(moduleComp1, proof1, lppVerifierRuntime)
 		require.NoError(t, valid1)
 	}
 
@@ -152,7 +159,7 @@ func TestSeedGeneration(t *testing.T) {
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid2 := wizard.Verify(moduleComp2, proof2)
+		valid2 := wizard.Verify(moduleComp2, proof2, lppVerifierRuntime)
 		require.NoError(t, valid2)
 	}
 }

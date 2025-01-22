@@ -588,7 +588,33 @@ func (run *ProverRuntime) goNextRound() {
 		a next round.
 	*/
 	toCompute := run.Spec.Coins.AllKeysAt(run.currRound)
+
 	for _, myCoin := range toCompute {
+		var (
+			info  = run.Spec.Coins.Data(myCoin)
+			value interface{}
+		)
+
+		if info.Type == coin.FromSeed {
+			// if it is of type FromSeed, sample a coin based on the seed
+			if seed, ok := run.ParentRuntime.Coins.MustGet("SEED").(field.Element); ok {
+				value = info.SampleFromSeed( run.FS,seed)
+			}
+		} else {
+			// otherwise sample based on the transcript.
+			value = info.Sample(run.FS)
+		}
+		run.Coins.InsertNew(myCoin, value)
+	}
+
+	finalState := run.FS.State()
+
+	run.FiatShamirHistory[run.currRound] = [2][]field.Element{
+		initialState,
+		finalState,
+	}
+}
+
 
 		var (
 			info  = run.Spec.Coins.Data(myCoin)

@@ -9,36 +9,47 @@ import (
 
 // It applies the Compilation steps concerning the LPP queries over comp.
 // It generates a LPP-CompiledIOP object internally, that is used for seed generation.
-func CompileLPPAndGetSeed(comp *wizard.CompiledIOP, lppCompilers ...func(*wizard.CompiledIOP)) {
+func CompileLPPAndGetSeed(comp *wizard.CompiledIOP, lppCompilers ...func(*wizard.CompiledIOP)) *wizard.CompiledIOP {
 
 	var (
-		lppComp     = wizard.NewCompiledIOP()
-		updatedComp = comp
-		lppCols     = []ifaces.Column{}
+		lppComp    = wizard.NewCompiledIOP()
+		oldColumns = []ifaces.Column{}
+		lppCols    = []ifaces.Column{}
 	)
 
 	// get the LPP columns from comp.
 	lppCols = append(lppCols, getLPPColumns(comp)...)
 
+	for _, col := range comp.Columns.AllHandlesAtRound(0) {
+		oldColumns = append(oldColumns, col)
+	}
+
 	// applies lppCompiler; this  would add a new round and probably new columns to the current round
 	//  but no new column to the new round.
 	for _, lppCompiler := range lppCompilers {
-		lppCompiler(updatedComp)
+		lppCompiler(comp)
 
-		if updatedComp.NumRounds() != 2 || updatedComp.Columns.NumRounds() != 1 {
+		if comp.NumRounds() != 2 || comp.Columns.NumRounds() != 1 {
 			panic("we expect to have new round while no column is yet registered for the new round")
 		}
 
-		for _, col := range updatedComp.Columns.AllHandlesAtRound(0) {
-
-			if !comp.Columns.Exists(col.GetColID()) {
-				// if it is not in the comp it is a new lpp column.
-				lppCols = append(lppCols, col)
-			}
-		}
-		comp = updatedComp
 		numRounds := comp.NumRounds()
 		comp.EqualizeRounds(numRounds)
+	}
+
+	// filter the new lpp columns.
+	for _, col := range comp.Columns.AllHandlesAtRound(0) {
+		isOld := false
+		for _, oldCol := range oldColumns {
+			if col.GetColID() == oldCol.GetColID() {
+				isOld = true
+				break
+			}
+		}
+		if !isOld {
+			// if it is not in the oldColumns it is a new lpp column.
+			lppCols = append(lppCols, col)
+		}
 	}
 
 	// add the LPP columns to the lppComp.
@@ -56,7 +67,9 @@ func CompileLPPAndGetSeed(comp *wizard.CompiledIOP, lppCompilers ...func(*wizard
 		cols: lppCols,
 	}
 
-	lppComp.RegisterProverAction(0, lppProver)
+	lppComp.RegisterProverAction(1, lppProver)
+
+	return lppComp
 
 }
 
@@ -65,10 +78,12 @@ type lppProver struct {
 }
 
 func (p *lppProver) Run(run *wizard.ProverRuntime) {
+
 	for _, col := range p.cols {
 		colWitness := run.ParentRuntime.GetColumn(col.GetColID())
 		run.AssignColumn(col.GetColID(), colWitness, col.Round())
 	}
+
 	// generate the seed based on LPP run time.
 	seed := run.GetRandomCoinField("SEED")
 
