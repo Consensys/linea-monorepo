@@ -129,7 +129,7 @@ jobs:
               - '!**/*.mdx'
               - '!**/docs/**'
               - '!docs/**'
-          # Enables us to exclude changes in multiple file types if required
+          # This enables us to exclude changes in multiple file types if required
           predicate-quantifier: 'every'
 
   check-and-tag-images:
