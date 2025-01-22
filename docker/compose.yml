@@ -552,7 +552,7 @@ services:
   #      - ../tmp/local/shomei:/data/shomei/:z
 
   shomei-frontend:
-    image: consensys/linea-shomei:2.2.0
+    image: consensys/linea-shomei:2.3.0
     hostname: shomei-frontend
     container_name: shomei-frontend
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
