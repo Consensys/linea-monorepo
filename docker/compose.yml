@@ -555,7 +555,7 @@ services:
   #      - ../tmp/local/shomei:/data/shomei/:z
 
   shomei-frontend:
-    image: consensys/linea-shomei:2.3.0
+    image: consensys/linea-shomei:2.2.0
     hostname: shomei-frontend
     container_name: shomei-frontend
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -730,7 +730,7 @@ services:
       - /bin/bash
       - -c
       - |
-        rm /opt/besu/plugins/linea-staterecovery-besu-plugin-v* && \
+        (rm /opt/besu/plugins/linea-staterecovery-besu-plugin-v* || true) && \
         ls -lh /opt/besu/plugins && \
         sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu && \
         /opt/besu/bin/besu \
@@ -745,8 +745,9 @@ services:
         --plugin-staterecovery-shomei-endpoint=http://shomei-sr:8888 \
         --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \
         --plugin-staterecovery-linea-sequencer-beneficiary-address=0x6d976c9b8ceee705d4fe8699b44e5eb58242f484 \
-        --plugin-staterecovery-overriding-recovery-start-block-number=1 \
-        --plugin-staterecovery-l1-polling-interval=PT0.1S
+        --plugin-staterecovery-overriding-recovery-start-block-number=20 \
+        --plugin-staterecovery-l1-polling-interval=PT0.1S \
+        --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
     volumes:
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
       - ./config/zkbesu-shomei/log4j-staterecovery.xml:/var/lib/besu/log4j.xml:ro
