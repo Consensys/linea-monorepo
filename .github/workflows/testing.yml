@@ -26,10 +26,6 @@ on:
         type: string
 
 jobs:
-  cache-docker-images:
-    uses: ./.github/workflows/cache-docker-images.yml
-    secrets: inherit
-  
   coordinator:
     uses: ./.github/workflows/coordinator-testing.yml
     if: ${{ inputs.coordinator_changed == 'true' }}
