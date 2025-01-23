@@ -59,14 +59,14 @@ func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 	// projection among providers and stitched module
 	for i, gbm := range info.Inputs.ProvidersInfo {
 
-		projection.InsertProjection(comp, ifaces.QueryIDf("Stitch_Modules_Hi_%v", i),
+		projection.RegisterProjection(comp, ifaces.QueryIDf("Stitch_Modules_Hi_%v", i),
 			[]ifaces.Column{gbm.HashHi},
 			[]ifaces.Column{info.Provider.HashHi},
 			gbm.IsHashHi,
 			info.sFilters[i],
 		)
 
-		projection.InsertProjection(comp, ifaces.QueryIDf("Stitch_Modules_Lo_%v", i),
+		projection.RegisterProjection(comp, ifaces.QueryIDf("Stitch_Modules_Lo_%v", i),
 			[]ifaces.Column{gbm.HashLo},
 			[]ifaces.Column{info.Provider.HashLo},
 			gbm.IsHashLo,

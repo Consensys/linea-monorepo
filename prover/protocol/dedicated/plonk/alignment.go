@@ -273,7 +273,7 @@ func (a *Alignment) csIsActive(comp *wizard.CompiledIOP) {
 // csProjection ensures the data in the [Alignment.Data] column is the same as
 // the data provided by the [Alignment.CircuitInput].
 func (a *Alignment) csProjection(comp *wizard.CompiledIOP) {
-	projection.InsertProjection(comp, ifaces.QueryIDf("%v_PROJECTION", a.Name), []ifaces.Column{a.DataToCircuit}, []ifaces.Column{a.CircuitInput}, a.DataToCircuitMask, a.ActualCircuitInputMask)
+	projection.RegisterProjection(comp, ifaces.QueryIDf("%v_PROJECTION", a.Name), []ifaces.Column{a.DataToCircuit}, []ifaces.Column{a.CircuitInput}, a.DataToCircuitMask, a.ActualCircuitInputMask)
 }
 
 // csProjectionSelector constraints that the projection selection

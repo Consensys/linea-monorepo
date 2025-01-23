@@ -27,7 +27,7 @@ func (mch *Module) ConnectToRom(comp *wizard.CompiledIOP,
 	romInput.complete(comp)
 
 	// Projection query between romInput and MiMCCodeHash module
-	projection.InsertProjection(comp, ifaces.QueryIDf("PROJECTION_ROM_MIMC_CODE_HASH_%v", mch.inputs.Name),
+	projection.RegisterProjection(comp, ifaces.QueryIDf("PROJECTION_ROM_MIMC_CODE_HASH_%v", mch.inputs.Name),
 		[]ifaces.Column{romInput.CFI, romInput.Acc, romInput.CodeSize},
 		[]ifaces.Column{mch.CFI, mch.Limb, mch.CodeSize},
 		romInput.CounterIsEqualToNBytesMinusOne,

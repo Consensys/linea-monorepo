@@ -657,7 +657,7 @@ func (c *CompiledIOP) InsertGrandProduct(round int, id ifaces.QueryID, in map[in
 // Register a Projection query
 func (c *CompiledIOP) InsertProjection(round int, id ifaces.QueryID, in query.ProjectionInput) query.Projection {
 	c.assertConsistentRound(round)
-	q := query.NewProjection(round,id, in)
+	q := query.NewProjection(round, id, in)
 	// Finally registers the query
 	c.QueriesNoParams.AddToRound(round, q.Name(), q)
 	return q

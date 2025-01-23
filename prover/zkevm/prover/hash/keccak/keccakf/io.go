@@ -229,7 +229,7 @@ func (io *InputOutput) csHashOutput(comp *wizard.CompiledIOP) {
 	colB = append(colB, io.HashOutputSlicesBaseB[2][:]...)
 	colB = append(colB, io.HashOutputSlicesBaseB[3][:]...)
 
-	projection.InsertProjection(comp, ifaces.QueryIDf("HashOutput_Projection"),
+	projection.RegisterProjection(comp, ifaces.QueryIDf("HashOutput_Projection"),
 		colB, colA,
 		io.IsActive,
 		io.IsHashOutPut,

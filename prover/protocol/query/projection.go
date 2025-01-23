@@ -52,16 +52,16 @@ func (p Projection) Name() ifaces.QueryID {
 // Check implements the [ifaces.Query] interface
 func (p Projection) Check(run ifaces.Runtime) error {
 	var (
-		numCols     = len(p.Inp.ColumnA)
-		sizeA       = p.Inp.ColumnA[0].Size()
-		sizeB       = p.Inp.ColumnB[0].Size()
+		numCols               = len(p.Inp.ColumnA)
+		sizeA                 = p.Inp.ColumnA[0].Size()
+		sizeB                 = p.Inp.ColumnB[0].Size()
 		linCombRand, evalRand field.Element
-		a           = make([]ifaces.ColAssignment, numCols)
-		b           = make([]ifaces.ColAssignment, numCols)
-		fA          = p.Inp.FilterA.GetColAssignment(run).IntoRegVecSaveAlloc()
-		fB          = p.Inp.FilterB.GetColAssignment(run).IntoRegVecSaveAlloc()
-		aLinComb    = make([]field.Element, sizeA)
-		bLinComb    = make([]field.Element, sizeB)
+		a                     = make([]ifaces.ColAssignment, numCols)
+		b                     = make([]ifaces.ColAssignment, numCols)
+		fA                    = p.Inp.FilterA.GetColAssignment(run).IntoRegVecSaveAlloc()
+		fB                    = p.Inp.FilterB.GetColAssignment(run).IntoRegVecSaveAlloc()
+		aLinComb              = make([]field.Element, sizeA)
+		bLinComb              = make([]field.Element, sizeB)
 	)
 	_, errAlpha := linCombRand.SetRandom()
 	_, errBeta := evalRand.SetRandom()

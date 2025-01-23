@@ -99,23 +99,23 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 
 	// projection from ecRecover to address columns
 	// ecdata is already projected over our ecRecover. Thus, we only project from our ecrecover.
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_EcRec"),
+	projection.RegisterProjection(comp, ifaces.QueryIDf("Project_AddressHi_EcRec"),
 		[]ifaces.Column{ecRec.Limb}, []ifaces.Column{addr.addressHi},
 		addr.isAddressHiEcRec, addr.isAddressFromEcRec,
 	)
 
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLo_EcRec"),
+	projection.RegisterProjection(comp, ifaces.QueryIDf("Project_AddressLo_EcRec"),
 		[]ifaces.Column{ecRec.Limb}, []ifaces.Column{addr.addressLo},
 		column.Shift(addr.isAddressHiEcRec, -1), addr.isAddressFromEcRec,
 	)
 
 	// projection from txn-data to address columns
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
+	projection.RegisterProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
 		[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
 		td.isFrom, addr.isAddressFromTxnData,
 	)
 
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
+	projection.RegisterProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
 		[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
 		td.isFrom, addr.isAddressFromTxnData,
 	)

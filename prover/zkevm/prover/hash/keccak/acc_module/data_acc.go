@@ -70,7 +70,7 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 	// projection among providers and stitched module
 	for i, gbm := range d.Inputs.ProvidersData {
 
-		projection.InsertProjection(comp, ifaces.QueryIDf("Stitch_Modules_%v", i),
+		projection.RegisterProjection(comp, ifaces.QueryIDf("Stitch_Modules_%v", i),
 			[]ifaces.Column{gbm.HashNum, gbm.Limb, gbm.NBytes, gbm.Index},
 			[]ifaces.Column{d.Provider.HashNum, d.Provider.Limb, d.Provider.NBytes, d.Provider.Index},
 			gbm.ToHash,

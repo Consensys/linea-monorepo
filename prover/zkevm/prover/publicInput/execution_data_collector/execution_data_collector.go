@@ -808,7 +808,7 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.LastAbsTxIDBlock,
 	}
 
-	projection.InsertProjection(comp,
+	projection.RegisterProjection(comp,
 		ifaces.QueryIDf("%s_BLOCK_METADATA_PROJECTION", name),
 		edcMetadataTable,
 		metadataTable,
@@ -833,7 +833,7 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.UnalignedLimb,
 	}
 
-	projection.InsertProjection(comp,
+	projection.RegisterProjection(comp,
 		ifaces.QueryIDf("%s_TIMESTAMP_PROJECTION", name),
 		edcTimestamps,
 		timestampTable,
@@ -855,7 +855,7 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.UnalignedLimb,
 	}
 
-	projection.InsertProjection(comp,
+	projection.RegisterProjection(comp,
 		ifaces.QueryIDf("%s_SENDER_ADDRESS_HI_PROJECTION", name),
 		edcTxnSenderAddressTableHi,
 		txnDataTableHi,
@@ -877,7 +877,7 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.UnalignedLimb,
 	}
 
-	projection.InsertProjection(comp,
+	projection.RegisterProjection(comp,
 		ifaces.QueryIDf("%s_SENDER_ADDRESS_LO_PROJECTION", name),
 		edcTxnSenderAddressTableLo,
 		txnDataTableLo,
@@ -906,7 +906,7 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		// EndOfRlpSegment is also constrained in DefineZeroizationConstraints, with respect to IsActive.
 	}
 
-	projection.InsertProjection(comp,
+	projection.RegisterProjection(comp,
 		ifaces.QueryIDf("%s_RLP_LIMB_DATA_PROJECTION", name),
 		edcRlpDataTable,
 		rlpDataTable,

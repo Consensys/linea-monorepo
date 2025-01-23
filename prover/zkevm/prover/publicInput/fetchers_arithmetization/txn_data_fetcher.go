@@ -81,7 +81,7 @@ func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, nam
 	}
 
 	// a projection query to check that the sender addresses are fetched correctly
-	projection.InsertProjection(comp,
+	projection.RegisterProjection(comp,
 		ifaces.QueryIDf("%s_TXN_DATA_FETCHER_PROJECTION", name),
 		fetcherTable,
 		arithTable,

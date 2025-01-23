@@ -290,7 +290,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 	// The following query ensures that the data in limbs corresponding to
 	// limbs are exactly those provided by the input module.
 
-	projection.InsertProjection(
+	projection.RegisterProjection(
 		comp,
 		ifaces.QueryIDf("%v_PROJECTION_INPUT", inp.Name),
 		[]ifaces.Column{

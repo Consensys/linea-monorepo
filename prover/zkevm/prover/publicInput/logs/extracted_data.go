@@ -92,7 +92,7 @@ func DefineExtractedData(comp *wizard.CompiledIOP, logCols LogColumns, sel Selec
 		),
 	)
 	// a projection query to check that the messages are fetched correctly
-	projection.InsertProjection(comp, ifaces.QueryIDf("%s_LOGS_PROJECTION", GetName(logType)), fetchedTable, logsTable, fetched.filterFetched, fetched.filterArith)
+	projection.RegisterProjection(comp, ifaces.QueryIDf("%s_LOGS_PROJECTION", GetName(logType)), fetchedTable, logsTable, fetched.filterFetched, fetched.filterArith)
 }
 
 // CheckBridgeAddress checks if a row does indeed contain the data corresponding to a the bridge address

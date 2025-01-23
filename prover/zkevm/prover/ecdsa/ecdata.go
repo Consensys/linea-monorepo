@@ -166,7 +166,7 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 }
 
 func (ec *EcRecover) csEcDataProjection(comp *wizard.CompiledIOP, src *ecDataSource) {
-	projection.InsertProjection(comp, ifaces.QueryIDf("%v_PROJECT_ECDATA", NAME_ECRECOVER),
+	projection.RegisterProjection(comp, ifaces.QueryIDf("%v_PROJECT_ECDATA", NAME_ECRECOVER),
 		[]ifaces.Column{ec.EcRecoverID, ec.Limb, ec.SuccessBit, ec.EcRecoverIndex, ec.EcRecoverIsData, ec.EcRecoverIsRes},
 		[]ifaces.Column{src.ID, src.Limb, src.SuccessBit, src.Index, src.IsData, src.IsRes},
 		ec.AuxProjectionMask, src.CsEcrecover,

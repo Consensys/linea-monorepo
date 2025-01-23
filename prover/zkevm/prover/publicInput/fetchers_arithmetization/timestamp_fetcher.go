@@ -182,7 +182,7 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 	}
 
 	// a projection query to check that the timestamp data is fetched correctly
-	projection.InsertProjection(comp,
+	projection.RegisterProjection(comp,
 		ifaces.QueryIDf("%s_TIMESTAMP_PROJECTION", name),
 		fetcherTable,
 		arithTable,

@@ -44,7 +44,7 @@ import (
 )
 
 // projectionProverAction is a compilation artefact generated during the
-// execution of the [InsertProjection] and which implements the
+// execution of the [RegisterProjection] and which implements the
 // [wizard.ProverAction]. It is meant to compute to assign the "Horner" columns
 // and their respective local opening queries.
 type projectionProverAction struct {
@@ -58,7 +58,7 @@ type projectionProverAction struct {
 }
 
 // projectionVerifierAction is a compilation artifact generated during the
-// execution of the [InsertProjection] and which implements the [wizard.VerifierAction]
+// execution of the [RegisterProjection] and which implements the [wizard.VerifierAction]
 // interface. It is meant to perform the verifier checks that the first values
 // of the two Horner are equals.
 type projectionVerifierAction struct {
@@ -67,7 +67,7 @@ type projectionVerifierAction struct {
 	skipped            bool
 }
 
-// InsertProjection applies a projection query between sets (columnsA, filterA)
+// RegisterProjection applies a projection query between sets (columnsA, filterA)
 // and (columnsB,filterB).
 //
 // Note: The filters are supposed to be binary.

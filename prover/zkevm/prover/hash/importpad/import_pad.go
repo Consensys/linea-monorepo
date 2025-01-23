@@ -184,7 +184,7 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		res.IsPadded,
 	)
 
-	projection.InsertProjection(
+	projection.RegisterProjection(
 		comp,
 		ifaces.QueryIDf("%v_IMPORT_PAD_PROJECTION", inp.Name),
 		[]ifaces.Column{inp.Src.Data.HashNum, inp.Src.Data.Limb, inp.Src.Data.NBytes, inp.Src.Data.Index},

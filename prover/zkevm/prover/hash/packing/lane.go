@@ -81,7 +81,7 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 
 	// constraints over isFirstLaneOfNewHash
 	// Project the isFirstLaneOfNewHash from isFirstSliceOfNewHash
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_IsFirstLaneOfHash_"+pckInp.Name),
+	projection.RegisterProjection(comp, ifaces.QueryIDf("Project_IsFirstLaneOfHash_"+pckInp.Name),
 		[]ifaces.Column{isFirstSliceOfNewHash},
 		[]ifaces.Column{l.IsFirstLaneOfNewHash},
 		l.isLaneComplete, l.IsLaneActive)
@@ -135,7 +135,7 @@ func (l *laneRepacking) csRecomposeToLanes(comp *wizard.CompiledIOP, s spaghetti
 	)
 
 	// Project the lanes from ipTracker over the Lane column.
-	projection.InsertProjection(comp, ifaces.QueryIDf("%v_ProjectOverLanes", l.Inputs.pckInp.Name),
+	projection.RegisterProjection(comp, ifaces.QueryIDf("%v_ProjectOverLanes", l.Inputs.pckInp.Name),
 		[]ifaces.Column{ipTracker},
 		[]ifaces.Column{l.Lanes},
 		l.isLaneComplete, l.IsLaneActive,

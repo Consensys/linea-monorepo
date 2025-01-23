@@ -349,7 +349,7 @@ func (d *UnalignedGnarkData) csProjectionEcRecover(comp *wizard.CompiledIOP, src
 		)),
 	)
 	// that we have projected correctly ecrecover
-	projection.InsertProjection(
+	projection.RegisterProjection(
 		comp,
 		ifaces.QueryIDf("%v_PROJECT_ECRECOVER", NAME_UNALIGNED_GNARKDATA),
 		[]ifaces.Column{src.Limb},

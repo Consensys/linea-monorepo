@@ -96,7 +96,7 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 	mod.csIsSmallAndLarge(comp)
 	mod.csToCirc(comp)
 
-	projection.InsertProjection(
+	projection.RegisterProjection(
 		comp,
 		"MODEXP_BLKMDXP_PROJECTION",
 		[]ifaces.Column{mod.Input.Limbs},

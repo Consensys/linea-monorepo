@@ -32,7 +32,7 @@ func CompileProjection(comp *wizard.CompiledIOP) {
 
 func compile(comp *wizard.CompiledIOP, round int, projection query.Projection) {
 	var (
-		compRound = round
+		compRound    = round
 		sizeA        = projection.Inp.FilterA.Size()
 		sizeB        = projection.Inp.FilterB.Size()
 		numCol       = len(projection.Inp.ColumnA)

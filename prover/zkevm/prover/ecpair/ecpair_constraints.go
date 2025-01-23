@@ -53,14 +53,14 @@ func (ec *ECPair) csOffWhenInactive(comp *wizard.CompiledIOP) {
 
 func (ec *ECPair) csProjections(comp *wizard.CompiledIOP) {
 	// we project data from the arithmetization correctly to the unaligned part of the circuit
-	projection.InsertProjection(
+	projection.RegisterProjection(
 		comp, ifaces.QueryIDf("%v_PROJECTION_PAIRING", nameECPair),
 		[]ifaces.Column{ec.ECPairSource.Limb, ec.ECPairSource.AccPairings, ec.ECPairSource.TotalPairings, ec.ECPairSource.ID},
 		[]ifaces.Column{ec.UnalignedPairingData.Limb, ec.UnalignedPairingData.PairID, ec.UnalignedPairingData.TotalPairs, ec.UnalignedPairingData.InstanceID},
 		ec.ECPairSource.CsEcpairing,
 		ec.UnalignedPairingData.IsPulling,
 	)
-	projection.InsertProjection(
+	projection.RegisterProjection(
 		comp, ifaces.QueryIDf("%v_PROJECTION_MEMBERSHIP", nameECPair),
 		[]ifaces.Column{ec.ECPairSource.Limb, ec.ECPairSource.SuccessBit},
 		[]ifaces.Column{ec.UnalignedG2MembershipData.Limb, ec.UnalignedG2MembershipData.SuccessBit},
@@ -151,7 +151,7 @@ func (ec *ECPair) csAccumulatorInit(comp *wizard.CompiledIOP) {
 
 func (ec *ECPair) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
 	// that the accumulator between pairs is consistent
-	projection.InsertProjection(
+	projection.RegisterProjection(
 		comp,
 		ifaces.QueryIDf("%v_ACCUMULATOR_CONSISTENCY", nameECPair),
 		[]ifaces.Column{ec.UnalignedPairingData.Limb}, []ifaces.Column{ec.UnalignedPairingData.Limb},

@@ -130,7 +130,7 @@ func DefineBlockTxnMetaData(comp *wizard.CompiledIOP, btm *BlockTxnMetadata, nam
 	}
 
 	// a projection query to check that the sender addresses are fetched correctly
-	projection.InsertProjection(comp,
+	projection.RegisterProjection(comp,
 		ifaces.QueryIDf("%s_PROJECTION", name),
 		fetcherTable,
 		arithTable,

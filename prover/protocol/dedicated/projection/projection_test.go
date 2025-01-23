@@ -25,7 +25,7 @@ func makeTestCaseProjection() (
 		flagB = comp.InsertCommit(round, ifaces.ColID("FliterB"), flagSizeB)
 		columnA = comp.InsertCommit(round, ifaces.ColID("ColumnA"), flagSizeA)
 		columnB = comp.InsertCommit(round, ifaces.ColID("ColumnB"), flagSizeB)
-		InsertProjection(comp, ifaces.QueryIDf("OrderPreserving"),
+		RegisterProjection(comp, ifaces.QueryIDf("OrderPreserving"),
 			[]ifaces.Column{columnA}, []ifaces.Column{columnB}, flagA, flagB)
 
 	}

@@ -148,7 +148,7 @@ func DefineRlpTxnFetcher(comp *wizard.CompiledIOP, fetcher *RlpTxnFetcher, name 
 	}
 
 	// a projection query to check that the timestamp data is fetched correctly
-	projection.InsertProjection(comp,
+	projection.RegisterProjection(comp,
 		ifaces.QueryIDf("%s_RLP_TXN_PROJECTION", name),
 		fetcherTable,
 		arithTable,

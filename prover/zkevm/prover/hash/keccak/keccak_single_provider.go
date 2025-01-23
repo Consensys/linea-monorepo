@@ -82,13 +82,13 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 		cKeccak = NewKeccakOverBlocks(comp, cKeccakInp)
 	)
 
-	projection.InsertProjection(comp, "KECCAK_RES_HI",
+	projection.RegisterProjection(comp, "KECCAK_RES_HI",
 		[]ifaces.Column{cKeccak.HashHi},
 		[]ifaces.Column{inp.Provider.Info.HashHi},
 		cKeccak.IsActive,
 		inp.Provider.Info.IsHashHi,
 	)
-	projection.InsertProjection(comp, "KECCAK_RES_LO",
+	projection.RegisterProjection(comp, "KECCAK_RES_LO",
 		[]ifaces.Column{cKeccak.HashLo},
 		[]ifaces.Column{inp.Provider.Info.HashLo},
 		cKeccak.IsActive,
