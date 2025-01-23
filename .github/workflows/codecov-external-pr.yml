@@ -21,8 +21,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
+          path: |
+            ${{ github.workspace }}/jacocoRootReport.xml
 
-      - name: Upload smart contract coverage report (from run-smc.tests.yml)
+      - name: Download smart contract coverage report (from run-smc.tests.yml)
         uses: actions/download-artifact@v4
         with:
           name: smart-contract-coverage-${{ env.COMMIT_TAG }}.json
