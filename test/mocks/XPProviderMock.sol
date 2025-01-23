@@ -20,7 +20,7 @@ contract XPProviderMock is IRewardProvider {
         revert("Not implemented");
     }
 
-    function rewardsBalanceOfUser(address account) external view override returns (uint256) {
+    function rewardsBalanceOfAccount(address account) external view override returns (uint256) {
         return userXPShare[account];
     }
 

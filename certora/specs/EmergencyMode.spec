@@ -19,12 +19,12 @@ definition isViewFunction(method f) returns bool = (
   f.selector == sig:streamer.totalStaked().selector ||
   f.selector == sig:streamer.totalMaxMP().selector ||
   f.selector == sig:streamer.totalMPAccrued().selector ||
-  f.selector == sig:streamer.accounts(address).selector ||
+  f.selector == sig:streamer.vaultData(address).selector ||
   f.selector == sig:streamer.emergencyModeEnabled().selector ||
   f.selector == sig:streamer.getStakedBalance(address).selector ||
-  f.selector == sig:streamer.getAccount(address).selector ||
+  f.selector == sig:streamer.getVault(address).selector ||
   f.selector == sig:streamer.rewardsBalanceOf(address).selector ||
-  f.selector == sig:streamer.rewardsBalanceOfUser(address).selector ||
+  f.selector == sig:streamer.rewardsBalanceOfAccount(address).selector ||
   f.selector == sig:streamer.pendingRewardIndex().selector ||
   f.selector == sig:streamer.totalRewardsSupply().selector ||
   f.selector == sig:streamer.lastRewardTime().selector ||
@@ -33,13 +33,13 @@ definition isViewFunction(method f) returns bool = (
   f.selector == sig:streamer.rewardStartTime().selector ||
   f.selector == sig:streamer.rewardEndTime().selector ||
   f.selector == sig:streamer.mpBalanceOf(address).selector ||
-  f.selector == sig:streamer.mpBalanceOfUser(address).selector ||
-  f.selector == sig:streamer.getUserTotalMaxMP(address).selector ||
-  f.selector == sig:streamer.getUserTotalStakedBalance(address).selector ||
+  f.selector == sig:streamer.mpBalanceOfAccount(address).selector ||
+  f.selector == sig:streamer.getAccountTotalMaxMP(address).selector ||
+  f.selector == sig:streamer.getAccountTotalStakedBalance(address).selector ||
   f.selector == sig:streamer.vaults(address,uint256).selector ||
   f.selector == sig:streamer.vaultOwners(address).selector ||
   f.selector == sig:streamer.registerVault().selector ||
-  f.selector == sig:streamer.getUserVaults(address).selector
+  f.selector == sig:streamer.getAccountVaults(address).selector
 );
 
 definition isOwnableFunction(method f) returns bool = (

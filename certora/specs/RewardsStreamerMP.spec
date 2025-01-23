@@ -7,10 +7,10 @@ methods {
     function ERC20A.allowance(address, address) external returns(uint256) envfree;
     function ERC20A.totalSupply() external returns(uint256) envfree;
     function totalStaked() external returns (uint256) envfree;
-    function accounts(address) external returns (uint256, uint256, uint256, uint256, uint256, uint256) envfree;
+    function vaultData(address) external returns (uint256, uint256, uint256, uint256, uint256, uint256) envfree;
     function lastMPUpdatedTime() external returns (uint256) envfree;
     function updateGlobalState() external;
-    function updateAccountMP(address accountAddress) external;
+    function updateVaultMP(address vaultAddress) external;
     function emergencyModeEnabled() external returns (bool) envfree;
     function leave() external;
     function Math.mulDiv(uint256 a, uint256 b, uint256 c) internal returns uint256 => mulDivSummary(a,b,c);
@@ -25,25 +25,25 @@ ghost mathint sumOfBalances {
 	init_state axiom sumOfBalances == 0;
 }
 
-hook Sstore accounts[KEY address account].stakedBalance uint256 newValue (uint256 oldValue) {
+hook Sstore vaultData[KEY address vault].stakedBalance uint256 newValue (uint256 oldValue) {
     sumOfBalances = sumOfBalances - oldValue + newValue;
 }
 
-function getAccountMaxMP(address account) returns uint256 {
+function getVaultMaxMP(address vault) returns uint256 {
     uint256 maxMP;
-    _, _, _, maxMP, _, _ = streamer.accounts(account);
+    _, _, _, maxMP, _, _ = streamer.vaultData(vault);
     return maxMP;
 }
 
-function getAccountMP(address account) returns uint256 {
-    uint256 accountMP;
-    _, _, accountMP, _, _, _ = streamer.accounts(account);
-    return accountMP;
+function getVaultMPAccrued(address vault) returns uint256 {
+    uint256 vaultMPAccrued;
+    _, _, vaultMPAccrued, _, _, _ = streamer.vaultData(vault);
+    return vaultMPAccrued;
 }
 
-function getAccountLockUntil(address account) returns uint256 {
+function getVaultLockUntil(address vault) returns uint256 {
     uint256 lockUntil;
-    _, _, _, _, _, lockUntil = streamer.accounts(account);
+    _, _, _, _, _, lockUntil = streamer.vaultData(vault);
     return lockUntil;
 }
 
@@ -53,14 +53,14 @@ invariant sumOfBalancesIsTotalStaked()
     f -> f.selector != sig:upgradeToAndCall(address,bytes).selector
   }
 
-invariant accountMPLessEqualAccountMaxMP(address account)
-  to_mathint(getAccountMP(account)) <= to_mathint(getAccountMaxMP(account))
+invariant vaultMPLessEqualVaultMaxMP(address vault)
+  to_mathint(getVaultMPAccrued(vault)) <= to_mathint(getVaultMaxMP(vault))
   filtered {
     f -> f.selector != sig:upgradeToAndCall(address,bytes).selector
   }
 
-invariant accountMPGreaterEqualAccountStakedBalance(address account)
-  to_mathint(getAccountMP(account)) >= to_mathint(getAccountStakedBalance(account))
+invariant vaultMPGreaterEqualVaultStakedBalance(address vault)
+  to_mathint(getVaultMPAccrued(vault)) >= to_mathint(getVaultStakedBalance(vault))
   filtered {
     f -> f.selector != sig:upgradeToAndCall(address,bytes).selector
   }
@@ -73,15 +73,15 @@ rule stakingMintsMultiplierPoints1To1Ratio {
   uint256 multiplierPointsBefore;
   uint256 multiplierPointsAfter;
 
-  requireInvariant accountMPGreaterEqualAccountStakedBalance(e.msg.sender);
+  requireInvariant vaultMPGreaterEqualVaultStakedBalance(e.msg.sender);
 
-  require getAccountLockUntil(e.msg.sender) <= e.block.timestamp;
+  require getVaultLockUntil(e.msg.sender) <= e.block.timestamp;
 
   updateGlobalState(e);
-  updateAccountMP(e, e.msg.sender);
+  updateVaultMP(e, e.msg.sender);
   uint256 t = lastMPUpdatedTime();
 
-  multiplierPointsBefore = getAccountMP(e.msg.sender);
+  multiplierPointsBefore = getVaultMPAccrued(e.msg.sender);
 
   stake(e, amount, lockupTime);
 
@@ -89,7 +89,7 @@ rule stakingMintsMultiplierPoints1To1Ratio {
   // which makes it harder to proof this rule
   require lastMPUpdatedTime() == t;
 
-  multiplierPointsAfter = getAccountMP(e.msg.sender);
+  multiplierPointsAfter = getVaultMPAccrued(e.msg.sender);
 
   assert lockupTime == 0 => to_mathint(multiplierPointsAfter) == multiplierPointsBefore + amount;
   assert to_mathint(multiplierPointsAfter) >= multiplierPointsBefore + amount;
@@ -107,10 +107,10 @@ rule stakingGreaterLockupTimeMeansGreaterMPs {
   storage initalStorage = lastStorage;
 
   stake(e, amount, lockupTime1);
-  multiplierPointsAfter1 = getAccountMP(e.msg.sender);
+  multiplierPointsAfter1 = getVaultMPAccrued(e.msg.sender);
 
   stake(e, amount, lockupTime2) at initalStorage;
-  multiplierPointsAfter2 = getAccountMP(e.msg.sender);
+  multiplierPointsAfter2 = getVaultMPAccrued(e.msg.sender);
 
   assert lockupTime1 >= lockupTime2 => to_mathint(multiplierPointsAfter1) >= to_mathint(multiplierPointsAfter2);
   satisfy to_mathint(multiplierPointsAfter1) > to_mathint(multiplierPointsAfter2);

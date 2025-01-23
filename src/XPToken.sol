@@ -80,7 +80,7 @@ contract XPToken is ERC20, Ownable2Step {
 
         for (uint256 i = 0; i < rewardProviders.length; i++) {
             IRewardProvider provider = rewardProviders[i];
-            externalBalance += provider.rewardsBalanceOfUser(account);
+            externalBalance += provider.rewardsBalanceOfAccount(account);
         }
 
         return super.balanceOf(account) + externalBalance;
