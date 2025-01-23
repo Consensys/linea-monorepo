@@ -32,6 +32,7 @@ dependencies {
   implementation(project(":coordinator:ethereum:test-utils"))
   implementation(project(":jvm-libs:linea:testing:l1-blob-and-proof-submission"))
   implementation(testFixtures(project(":jvm-libs:linea:blob-compressor")))
+  implementation(testFixtures(project(':jvm-libs:linea:web3j-extensions')))
   testImplementation("io.vertx:vertx-junit5")
   testImplementation(project(":jvm-libs:linea:metrics:micrometer"))
 }
@@ -65,7 +66,7 @@ task integrationTest(type: Test) { test ->
   classpath = sourceSets.integrationTest.runtimeClasspath
   testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-  dependsOn(":localStackForStateRecoverComposeUp")
+  dependsOn(":localStackForStateRecoveryComposeUp")
 
   testLogging {
     events TestLogEvent.FAILED,
