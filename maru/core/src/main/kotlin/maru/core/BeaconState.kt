@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.core
+package maru.core
 
 /**
  * After every BeaconBlock there is a transition in the BeaconState by applying the operations from

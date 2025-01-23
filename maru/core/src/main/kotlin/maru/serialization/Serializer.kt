@@ -13,10 +13,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.serialization
 
-/** BeaconBlock will be part of the QBFT Proposal payload */
-data class BeaconBlock(
-  val beaconBlockHeader: BeaconBlockHeader,
-  val beaconBlockBody: BeaconBlockBody,
-)
+interface Serializer<T> {
+  fun serialize(value: T): ByteArray
+
+  fun deserialize(bytes: ByteArray): T
+}
