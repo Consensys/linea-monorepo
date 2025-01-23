@@ -9,7 +9,7 @@ import USDCBridge from "@/abis/USDCBridge.json";
 import TokenBridge from "@/abis/TokenBridge.json";
 import MessageService from "@/abis/MessageService.json";
 
-function commputeMessageHash(
+function computeMessageHash(
   from: Address,
   to: Address,
   fee: bigint,
@@ -127,7 +127,7 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
             args: [toAddress, amountBigInt],
           });
 
-          const messageHash = commputeMessageHash(
+          const messageHash = computeMessageHash(
             tokenBridgeAddress,
             toUSDCBridgeAddress,
             0n,
@@ -205,7 +205,7 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
             args: [tokenAddress, amountBigInt, toAddress, chainId, tokenMetadata],
           });
 
-          const messageHash = commputeMessageHash(
+          const messageHash = computeMessageHash(
             tokenBridgeAddress,
             toTokenBridgeAddress,
             0n,
@@ -244,7 +244,7 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
             ],
           });
         } else if (token.type === TokenType.ETH) {
-          const messageHash = commputeMessageHash(
+          const messageHash = computeMessageHash(
             address,
             toAddress,
             0n,
