@@ -7,7 +7,7 @@ package mock
 
 import "github.com/consensys/linea-monorepo/prover/backend/execution"
 
-// Specifies the number of segments
+// Specifies the number of segments ideally set in the config. file
 var segments int
 
 // MBootStrapper initializes the prover with the necessary data
@@ -49,13 +49,13 @@ type MGLResp struct {
 }
 
 // initBootstrap initializes the bootstrapping process
-func (b MBootStrapper) initBootstrap(req execution.Request) ([]MGLResp, MDistMetadata, error) {
-	resps := make([]MGLResp, segments)
-	return resps, MDistMetadata{}, nil
+// Outputs the submodule request for global-local prover for round 0
+func (b MBootStrapper) initBootstrap(req execution.Request) (MGLReq, MDistMetadata, error) {
+	return MGLReq{}, MDistMetadata{}, nil
 }
 
-// Beacon provides randomness for the proof generation process
-type Beacon struct {
+// RandomnessBeacon provides randomness for the proof generation process
+type RandomnessBeacon struct {
 }
 
 // MLPPBeaconReq represents a request for LPP beacon data
@@ -66,7 +66,7 @@ type MLPPBeaconReq struct {
 }
 
 // generateRandomness generates randomness for the proof generation process
-func (b Beacon) generateRandomness(req MLPPBeaconReq, metadata MDistMetadata) (MLPPRequest, error) {
+func (b RandomnessBeacon) generateLPPProofReq(req MLPPBeaconReq, metadata MDistMetadata) (MLPPRequest, error) {
 	return MLPPRequest{}, nil
 }
 
