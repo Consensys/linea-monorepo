@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useBlockNumber, useEstimateFeesPerGas } from "wagmi";
-import { NetworkLayer, TokenInfo, TokenType } from "@/config";
+import { NetworkLayer, TokenInfo } from "@/config";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChainStore } from "@/stores/chainStore";
 import usePostmanFee from "./usePostmanFee";
@@ -27,58 +27,33 @@ const useExecutionFee = ({ token, claim, networkLayer, minimumFee }: useExecutio
 
   const calculateFee = useCallback(
     async ({
-      token,
       claim,
       networkLayer,
       minimumFee,
       gasPrice,
     }: {
-      token: TokenInfo;
       claim: string | undefined;
       networkLayer: NetworkLayer | undefined;
       minimumFee: bigint;
       gasPrice: bigint | undefined;
     }): Promise<bigint | undefined> => {
-      const isETH = token.type === TokenType.ETH;
       const isL1 = networkLayer === NetworkLayer.L1;
       const isL2 = networkLayer === NetworkLayer.L2;
       const isAutoClaim = claim === "auto";
       const isManualClaim = claim === "manual";
-      const isERC20orUSDC = token.type === TokenType.ERC20 || token.type === TokenType.USDC;
 
       // postman fee
-      if (isETH && isL1 && isAutoClaim && gasPrice) {
+      if (isL1 && isAutoClaim && gasPrice) {
         return calculatePostmanFee(amount, recipient);
       }
 
       // 0
-      if (isETH && isL1 && isManualClaim) {
-        return BigInt(0);
-      }
-
-      // anti-DDoS fee + postman fee
-      if (isETH && isL2 && isAutoClaim && gasPrice) {
-        const postmanFee = await calculatePostmanFee(amount, recipient);
-        return postmanFee + minimumFee;
-      }
-
-      // anti-DDoS fee
-      if (isETH && isL2 && isManualClaim) {
-        return minimumFee;
-      }
-
-      // Postman fee
-      if (isERC20orUSDC && isL1 && isAutoClaim && gasPrice) {
-        return calculatePostmanFee(amount, recipient);
-      }
-
-      // 0
-      if (isERC20orUSDC && isL1 && isManualClaim) {
+      if (isL1 && isManualClaim) {
         return BigInt(0);
       }
 
       // anti-DDoS fee
-      if (isERC20orUSDC && isL2) {
+      if (isL2 && isManualClaim) {
         return minimumFee;
       }
 
@@ -98,9 +73,8 @@ const useExecutionFee = ({ token, claim, networkLayer, minimumFee }: useExecutio
     setMinFees(0n);
     if (!token) return;
 
-    async function calculateExecutionFee(token: TokenInfo) {
+    async function calculateExecutionFee() {
       const fee = await calculateFee({
-        token,
         claim,
         networkLayer,
         minimumFee,
@@ -112,7 +86,7 @@ const useExecutionFee = ({ token, claim, networkLayer, minimumFee }: useExecutio
       }
     }
 
-    calculateExecutionFee(token);
+    calculateExecutionFee();
   }, [claim, networkLayer, token, minimumFee, feeData?.gasPrice, calculateFee]);
 
   return minFees;
