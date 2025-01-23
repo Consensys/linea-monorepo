@@ -26,7 +26,12 @@ on:
         type: string
 
 jobs:
+  cache-docker-images:
+    uses: ./.github/workflows/cache-docker-images.yml
+    secrets: inherit
+
   coordinator:
+    needs: [ cache-docker-images ]
     uses: ./.github/workflows/coordinator-testing.yml
     if: ${{ inputs.coordinator_changed == 'true' }}
     with:
@@ -53,6 +58,7 @@ jobs:
     secrets: inherit
 
   staterecovery:
+    needs: [ cache-docker-images ]
     uses: ./.github/workflows/staterecovery-testing.yml
     if: ${{ inputs.staterecovery_changed == 'true' }}
     with:

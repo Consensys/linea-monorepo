@@ -178,14 +178,8 @@ jobs:
       transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
     secrets: inherit
 
-  cache-docker-images:
-    needs: [ filter-commit-changes, check-and-tag-images ]
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
-    uses: ./.github/workflows/cache-docker-images.yml
-    secrets: inherit
-
   testing:
-    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images, cache-docker-images ]
+    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
     if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/testing.yml
     with:
