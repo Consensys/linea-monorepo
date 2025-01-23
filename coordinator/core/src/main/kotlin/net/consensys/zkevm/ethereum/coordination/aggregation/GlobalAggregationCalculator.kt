@@ -151,7 +151,7 @@ class GlobalAggregationCalculator(
       aggregation.intervalString(),
       updatedAggregation.intervalString(),
       blobsInUpdatedAggregation.size,
-      blobsInUpdatedAggregation.sumOf { it.numberOfBatches }.toInt(),
+      blobsInUpdatedAggregation.sumOf { it.numberOfBatches },
       blobsInUpdatedAggregation.map { it.intervalString() },
       aggregationSizeMultipleOf
     )

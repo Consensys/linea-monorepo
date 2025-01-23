@@ -28,13 +28,13 @@ import kotlin.time.Duration
 class ProofAggregationCoordinatorService(
   private val vertx: Vertx,
   private val config: Config,
+  private val metricsFacade: MetricsFacade,
   private var nextBlockNumberToPoll: Long,
   private val aggregationCalculator: AggregationCalculator,
   private val aggregationsRepository: AggregationsRepository,
   private val consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
   private val proofAggregationClient: ProofAggregationProverClientV2,
   private val aggregationL2StateProvider: AggregationL2StateProvider,
-  private val metricsFacade: MetricsFacade,
   private val log: Logger = LogManager.getLogger(ProofAggregationCoordinatorService::class.java),
   private val provenAggregationEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { }
 ) : AggregationHandler, PeriodicPollingService(
@@ -271,11 +271,12 @@ class ProofAggregationCoordinatorService(
       )
 
       val proofAggregationService = ProofAggregationCoordinatorService(
-        vertx,
+        vertx = vertx,
         config = Config(
           pollingInterval = aggregationCoordinatorPollingInterval,
           proofsLimit = maxProofsPerAggregation
         ),
+        metricsFacade = metricsFacade,
         nextBlockNumberToPoll = startBlockNumberInclusive.toLong(),
         aggregationCalculator = globalAggregationCalculator,
         aggregationsRepository = aggregationsRepository,
@@ -286,7 +287,6 @@ class ProofAggregationCoordinatorService(
           l2web3jClient = l2web3jClient,
           l2MessageServiceClient = l2MessageServiceClient
         ),
-        metricsFacade = metricsFacade,
         provenAggregationEndBlockNumberConsumer = provenAggregationEndBlockNumberConsumer
       )
 
