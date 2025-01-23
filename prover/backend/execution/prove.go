@@ -1,3 +1,4 @@
+//nolint:gosec // Ignoring weak randomness error
 package execution
 
 import (
