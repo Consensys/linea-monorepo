@@ -21,7 +21,6 @@ import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.LinkedBlockingDeque
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 
 class BlobCompressionProofCoordinator(
@@ -40,12 +39,20 @@ class BlobCompressionProofCoordinator(
   private var timerId: Long? = null
   private lateinit var blobPollingAction: Handler<Long>
 
-  private val blobSizeInBlocks = AtomicInteger(0)
-  private val blobSizeInBatches = AtomicInteger(0)
   private val blobsCounter = metricsFacade.createCounter(
     category = LineaMetricsCategory.BLOB,
     name = "counter",
     description = "New blobs arriving to blob compression proof coordinator"
+  )
+  private val blobSizeInBlocksHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.BLOB,
+    name = "blocks.size",
+    description = "Number of blocks in each blob"
+  )
+  private val blobSizeInBatchesHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.BLOB,
+    name = "batches.size",
+    description = "Number of batches in each blob"
   )
 
   init {
@@ -54,18 +61,6 @@ class BlobCompressionProofCoordinator(
       name = "compression.queue.size",
       description = "Size of blob compression proving queue",
       measurementSupplier = { blobsToHandle.size }
-    )
-    metricsFacade.createGauge(
-      category = LineaMetricsCategory.BLOB,
-      name = "blocks.size",
-      description = "Number of blocks in each blob",
-      measurementSupplier = { blobSizeInBlocks.get() }
-    )
-    metricsFacade.createGauge(
-      category = LineaMetricsCategory.BLOB,
-      name = "batches.size",
-      description = "Number of batches in each blob",
-      measurementSupplier = { blobSizeInBatches.get() }
     )
   }
 
@@ -183,8 +178,8 @@ class BlobCompressionProofCoordinator(
       blobsToHandle.size,
       blob.conflations.toBlockIntervalsString()
     )
-    blobSizeInBlocks.set(blob.blocksRange.count())
-    blobSizeInBatches.set(blob.conflations.size)
+    blobSizeInBlocksHistogram.record(blob.blocksRange.count().toDouble())
+    blobSizeInBatchesHistogram.record(blob.conflations.size.toDouble())
     blobsToHandle.put(blob)
     log.trace("Blob was added to the handling queue {}", blob)
     return SafeFuture.completedFuture(Unit)

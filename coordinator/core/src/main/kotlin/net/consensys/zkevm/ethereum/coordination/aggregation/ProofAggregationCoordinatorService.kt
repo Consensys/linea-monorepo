@@ -4,6 +4,7 @@ import build.linea.domain.BlockIntervals
 import build.linea.domain.toBlockIntervalsString
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
+import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.PeriodicPollingService
@@ -33,6 +34,7 @@ class ProofAggregationCoordinatorService(
   private val consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
   private val proofAggregationClient: ProofAggregationProverClientV2,
   private val aggregationL2StateProvider: AggregationL2StateProvider,
+  private val metricsFacade: MetricsFacade,
   private val log: Logger = LogManager.getLogger(ProofAggregationCoordinatorService::class.java),
   private val provenAggregationEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { }
 ) : AggregationHandler, PeriodicPollingService(
@@ -46,6 +48,21 @@ class ProofAggregationCoordinatorService(
   )
 
   private val pendingBlobs = ConcurrentLinkedQueue<BlobAndBatchCounters>()
+  private val aggregationSizeInBlocksHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.AGGREGATION,
+    name = "blocks.size",
+    description = "Number of blocks in each aggregation"
+  )
+  private val aggregationSizeInBatchesHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.AGGREGATION,
+    name = "batches.size",
+    description = "Number of batches in each aggregation"
+  )
+  private val aggregationSizeInBlobsHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.AGGREGATION,
+    name = "blobs.size",
+    description = "Number of blobs in each aggregation"
+  )
 
   init {
     aggregationCalculator.onAggregation(this)
@@ -131,6 +148,10 @@ class ProofAggregationCoordinatorService(
     val batchCount = compressionBlobs.sumOf { blobCounters ->
       blobCounters.blobCounters.numberOfBatches
     }
+
+    aggregationSizeInBlocksHistogram.record(blobsToAggregate.blocksRange.count().toDouble())
+    aggregationSizeInBatchesHistogram.record(batchCount.toDouble())
+    aggregationSizeInBlobsHistogram.record(compressionBlobs.size.toDouble())
 
     val compressionProofIndexes = compressionBlobs.map {
       ProofIndex(
@@ -265,6 +286,7 @@ class ProofAggregationCoordinatorService(
           l2web3jClient = l2web3jClient,
           l2MessageServiceClient = l2MessageServiceClient
         ),
+        metricsFacade = metricsFacade,
         provenAggregationEndBlockNumberConsumer = provenAggregationEndBlockNumberConsumer
       )
 
