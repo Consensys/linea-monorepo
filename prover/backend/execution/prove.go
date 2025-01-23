@@ -158,7 +158,7 @@ func mustProveAndPass(
 			utils.Panic("traces checksum in the setup manifest does not match the one in the config")
 		}
 
-		// TODO: implements the collection of the functional inputs from the prover response
+		// TODO: implement the collection of the functional inputs from the prover response
 		return execution.MakeProof(traces, setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
 
 	case config.ProverModeBench:

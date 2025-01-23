@@ -73,7 +73,7 @@ func CraftProverOutput(
 			l2l1MessageHashes = bridge.L2L1MessageHashes(logs, l2BridgeAddress)
 		)
 
-		// This encodes the block as it will be by the compressor before running
+		// This encodes the block as it will be used by the compressor before running
 		// the compression algorithm.
 		blob.EncodeBlockForCompression(block, execDataBuf)
 
