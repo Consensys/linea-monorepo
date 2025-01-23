@@ -1,4 +1,4 @@
-package seed
+package lpp
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"

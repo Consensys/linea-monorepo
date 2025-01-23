@@ -120,11 +120,7 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 		case ifaces.Column:
 			inputs[i] = m.GetColAssignment(run)
 		case coin.Info:
-			if m.Type == coin.FromSeed {
-				v = run.GetRandomCoinFromSeed(m.Name)
-			} else {
-				v = run.GetRandomCoinField(m.Name)
-			}
+			v = run.GetRandomCoinField(m.Name)
 			inputs[i] = smartvectors.NewConstant(v, length)
 		case ifaces.Accessor:
 			v := m.GetVal(run)

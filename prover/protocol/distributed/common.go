@@ -41,9 +41,9 @@ func ReplaceExternalCoinsVerifCols(
 				if !initialComp.Coins.Exists("SEED") {
 					utils.Panic("Expect to find a seed in the initialComp")
 				}
-				// register a local coin of type FromSeed.
-				name := coin.Namef("%v_%v", v.Name, "FromSeed")
-				localV := moduleComp.InsertCoin(v.Round, name, coin.FromSeed)
+				// register a local coin of type FieldFromSeed.
+				name := coin.Namef("%v_%v", v.Name, "FieldFromSeed")
+				localV := moduleComp.InsertCoin(v.Round, name, coin.FieldFromSeed)
 				translationMap.InsertNew(v.String(), symbolic.NewVariable(localV))
 			}
 		case ifaces.Column:

@@ -118,7 +118,7 @@ func Verify(c *CompiledIOP, proof Proof, parentRuntime ...*VerifierRuntime) erro
 	return nil
 }
 
-func VerifierWithRuntime(c *CompiledIOP, proof Proof) (error, *VerifierRuntime) {
+func VerifierWithRuntime(c *CompiledIOP, proof Proof) (*VerifierRuntime, error) {
 	runtime := c.createVerifier(proof)
 
 	/*
@@ -144,10 +144,10 @@ func VerifierWithRuntime(c *CompiledIOP, proof Proof) (error, *VerifierRuntime) 
 	}
 
 	if len(errs) > 0 {
-		return utils.WrapErrsAlphabetically(errs), &runtime
+		return &runtime, utils.WrapErrsAlphabetically(errs)
 	}
 
-	return nil, &runtime
+	return &runtime, nil
 }
 
 // createVerifier is an internal constructor for a new empty [VerifierRuntime] runtime. It
@@ -246,10 +246,10 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 				value interface{}
 			)
 
-			if info.Type == coin.FromSeed {
+			if info.Type == coin.FieldFromSeed {
 				// if it is of type FromSeed, sample a coin based on the seed
 				if seed, ok := run.ParentRuntime.Coins.MustGet("SEED").(field.Element); ok {
-					value = info.SampleFromSeed(seed, run.FS)
+					value = info.Sample(run.FS, seed)
 				}
 			} else {
 				// otherwise sample based on the transcript.
@@ -288,7 +288,7 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 		and that it has the correct type
 	*/
 	infos := run.Spec.Coins.Data(name)
-	if infos.Type != coin.Field && infos.Type != coin.FromSeed {
+	if infos.Type != coin.Field && infos.Type != coin.FieldFromSeed {
 		utils.Panic("Coin %v was registered with type %v but got %v", name, infos.Type, coin.Field)
 	}
 	// If this panics, it means we generates the coins wrongly
@@ -302,8 +302,8 @@ func (run *VerifierRuntime) GetRandomCoinFromSeed(name coin.Name) field.Element 
 		and that it has the correct type
 	*/
 	infos := run.Spec.Coins.Data(name)
-	if infos.Type != coin.FromSeed {
-		utils.Panic("Coin was registered as %v but expected %v", infos.Type, coin.FromSeed)
+	if infos.Type != coin.FieldFromSeed {
+		utils.Panic("Coin was registered as %v but expected %v", infos.Type, coin.FieldFromSeed)
 	}
 	// If this panics, it means we generates the coins wrongly
 	return run.Coins.MustGet(name).(field.Element)

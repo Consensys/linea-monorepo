@@ -16,8 +16,6 @@ type Runtime interface {
 	GetColumnAt(ColID, int) field.Element
 	// GetRandomCoinField returns the value of a random challenge coin
 	GetRandomCoinField(name coin.Name) field.Element
-	// GetRandomCoinFromSeed returns the value of a random challenge coin generated from seed.
-	GetRandomCoinFromSeed(name coin.Name) field.Element
 	// GetRandomCoinIntegerVec returns the value of a coin.IntegerVec coin
 	GetRandomCoinIntegerVec(name coin.Name) []int
 	// GetParams returns the runtime parameters of a query

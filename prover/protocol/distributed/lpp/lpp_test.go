@@ -1,4 +1,4 @@
-package seed_test
+package lpp_test
 
 import (
 	"testing"
@@ -8,8 +8,8 @@ import (
 	logderiv "github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
 	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/seed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
@@ -78,7 +78,7 @@ func TestSeedGeneration(t *testing.T) {
 	// initial compiledIOP is the parent to LPPComp and all the SegmentModuleComp objects.
 	initialComp := wizard.Compile(define)
 	// apply the LPP relevant compilers and generate the seed for initialComp
-	lppComp := seed.CompileLPPAndGetSeed(initialComp, distributed.IntoLogDerivativeSum)
+	lppComp := lpp.CompileLPPAndGetSeed(initialComp, distributed.IntoLogDerivativeSum)
 
 	// Initialize the period separating module discoverer
 	disc := &md.PeriodSeperatingModuleDiscoverer{}
@@ -127,7 +127,7 @@ func TestSeedGeneration(t *testing.T) {
 	lppProof := wizard.Prove(lppComp, func(run *wizard.ProverRuntime) {
 		run.ParentRuntime = initialRuntime
 	})
-	valid, lppVerifierRuntime := wizard.VerifierWithRuntime(lppComp, lppProof)
+	lppVerifierRuntime, valid := wizard.VerifierWithRuntime(lppComp, lppProof)
 	require.NoError(t, valid)
 
 	// Compile and prove for module0

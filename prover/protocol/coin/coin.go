@@ -62,7 +62,7 @@ type Type int
 const (
 	Field Type = iota
 	IntegerVec
-	FromSeed
+	FieldFromSeed
 )
 
 // MarshalJSON implements [json.Marshaler] directly returning the Itoa of the
@@ -96,8 +96,11 @@ func (info *Info) Sample(fs *fiatshamir.State, seed ...field.Element) interface{
 		return fs.RandomField()
 	case IntegerVec:
 		return fs.RandomManyIntegers(info.Size, info.UpperBound)
-	case FromSeed:
-		panic("called the wrong sampling method for the coin type.")
+	case FieldFromSeed:
+		if len(seed) == 0 {
+			panic("expected a SEED as the input")
+		}
+		return fs.RandomFieldFromSeed(seed[0], string(info.Name))
 	}
 	panic("Unreachable")
 }
@@ -121,7 +124,7 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 		if len(size) > 0 {
 			utils.Panic("size for Field")
 		}
-	case FromSeed:
+	case FieldFromSeed:
 		if len(size) > 0 {
 			utils.Panic("size for Field")
 		}
@@ -130,15 +133,4 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 	}
 
 	return infos
-}
-
-/*
-SampleFromSeed a random coin, according to its seed.
-*/
-func (info *Info) SampleFromSeed(seed field.Element, fs *fiatshamir.State) interface{} {
-	switch info.Type {
-	case FromSeed:
-		return fs.RandomFieldFromSeed(seed, string(info.Name))
-	}
-	panic("Unreachable")
 }
