@@ -1,0 +1,41 @@
+.modal-inner {
+  padding: 0 1.6rem 1.6rem 1.6rem;
+  font-family: var(--font-atyp-text);
+}
+
+.text {
+  text-align: center;
+  line-height: 1.4;
+}
+
+.list {
+  background-color: var(--v2-color-smoke);
+  border-radius: 0.8rem;
+  margin: 1.6rem 0;
+  font-family: var(--font-atyp-text);
+
+  li {
+    padding: 1.2rem;
+    font-size: 1.4rem;
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    justify-content: space-between;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--v2-color-silver);
+    }
+
+    .two-fee {
+      display: flex;
+      gap: 0.8rem;
+
+      .fee1 {
+        font-weight: 500;
+      }
+      .fee2 {
+        color: var(--v2-color-darker-gray);
+      }
+    }
+  }
+}

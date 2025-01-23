@@ -1,0 +1,46 @@
+.modal-inner {
+  padding: 0 1.6rem 1.6rem 1.6rem;
+  font-family: var(--font-atyp-text);
+}
+
+.text {
+  text-align: center;
+  line-height: 1.4;
+  margin-bottom: 1.6rem;
+}
+
+.list-button {
+  display: flex;
+  justify-content: space-around;
+  gap: 1.6rem;
+  font-size: 1.4rem;
+  font-family: var(--font-atyp);
+
+  .primary-btn,
+  .secondary-btn {
+    text-transform: uppercase;
+    font-size: 1.4rem;
+
+    text-decoration: none;
+  }
+
+  .primary-btn {
+    padding: 1.2rem 2.4rem;
+    color: var(--v2-color-white);
+    background-color: var(--v2-color-indigo);
+    border-radius: 3rem;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
+
+    &:hover {
+      background-color: var(--v2-color-icterine);
+      color: var(--v2-color-black);
+    }
+  }
+  .secondary-btn {
+    padding: 1.2rem 0;
+    color: var(--v2-color-navy);
+    border-bottom: 1px solid var(--v2-color-indigo);
+  }
+}

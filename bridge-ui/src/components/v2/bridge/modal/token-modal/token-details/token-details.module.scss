@@ -1,0 +1,55 @@
+.token-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 1.6rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease-in-out;
+
+  &:hover {
+    background-color: var(--v2-color-light-pink);
+  }
+}
+
+.left {
+  display: flex;
+  gap: 0.8rem;
+  text-align: initial;
+  align-items: center;
+
+  img {
+    width: 3.2rem;
+    height: 3.2rem;
+  }
+}
+
+.text-left {
+  font-family: var(--font-atyp-text);
+  align-items: center;
+
+  .token-symbol {
+    font-size: 1.6rem;
+  }
+  .token-name {
+    font-size: 1.4rem;
+    color: var(--v2-color-darker-gray);
+  }
+}
+
+.rìght {
+  text-align: right;
+
+  .balance {
+    font-size: 1.6rem;
+  }
+  .price {
+    font-size: 1.4rem;
+    color: var(--v2-color-darker-gray);
+  }
+}
+
+.not-from-current-layer {
+  text-align: initial;
+  max-width: 19rem;
+}

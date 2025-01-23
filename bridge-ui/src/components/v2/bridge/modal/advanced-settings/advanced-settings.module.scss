@@ -1,0 +1,38 @@
+.modal-inner {
+  padding: 0 1.6rem 1.6rem 1.6rem;
+  font-family: var(--font-atyp-text);
+}
+
+.container {
+  background-color: var(--v2-color-smoke);
+  border-radius: 1rem;
+  padding: 1.2rem;
+  display: flex;
+  gap: 2.4rem;
+}
+
+.title {
+  font-weight: 500;
+  margin-bottom: 0.4rem;
+  font-size: 1.4rem;
+}
+
+.text {
+  color: var(--v2-color-darker-gray);
+  font-size: 1.2rem;
+}
+
+.icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+}
+
+.content {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.toggle {
+  flex-shrink: 0;
+}

@@ -1,0 +1,33 @@
+.modal-inner {
+  padding: 0 1.6rem 1.6rem 1.6rem;
+  font-family: var(--font-atyp-text);
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+
+  button {
+    text-transform: uppercase;
+  }
+
+  a {
+    display: flex;
+    align-self: center;
+    gap: 0.8rem;
+    align-items: center;
+    color: var(--v2-color-indigo);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    svg {
+      color: var(--v2-color-silver);
+    }
+  }
+}
+
+.text {
+  text-align: center;
+  line-height: 1.4;
+}

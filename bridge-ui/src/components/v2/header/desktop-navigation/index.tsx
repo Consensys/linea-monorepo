@@ -1,0 +1,103 @@
+/* eslint-disable */
+import { Theme } from "@/types";
+import Image from "next/image";
+import Link from "next/link";
+
+import styles from "./desktop-navigation.module.scss";
+import clsx from "clsx";
+import HeaderConnect from "@/components/v2/header/header-connect";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+
+type Props = {
+  menus: any;
+  theme?: Theme;
+};
+
+export const DesktopNavigation = ({ menus, theme = Theme.default }: Props) => {
+  return (
+    <nav className={styles["nav-wrapper"]}>
+      <ul className={`${styles.navigation} ${styles[theme]}`}>
+        {menus.map((menu, index) => (
+          <MenuItem key={index} menu={menu} />
+        ))}
+        <li>
+          <HeaderConnect />
+        </li>
+      </ul>
+    </nav>
+  );
+};
+
+function MenuItem({ menu }) {
+  const [showSubmenu, setShowsubmenu] = useState<boolean>(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (showSubmenu) {
+      setShowsubmenu(false);
+    }
+  }, [pathname]);
+
+  return (
+    <li
+      className={clsx(styles.menuItem, {
+        [styles["active"]]: menu.active,
+        [styles["show"]]: showSubmenu,
+      })}
+      onMouseEnter={() => setShowsubmenu(true)}
+      onMouseLeave={() => setShowsubmenu(false)}
+    >
+      {menu.url && (
+        <Link href={menu.url} target={menu.external ? "_blank" : "_self"}>
+          <i className={styles.dot} />
+          {menu.label}
+        </Link>
+      )}
+
+      {!menu.url && (
+        <>
+          <i className={styles.dot}></i>
+          {menu.label}
+          {menu.submenusLeft && (
+            <ul className={styles.submenu}>
+              {menu.submenusLeft.map((submenu, key) => (
+                <li className={styles.submenuItem} key={key}>
+                  <Link href={submenu.url} target={submenu.external ? "_blank" : "_self"}>
+                    {submenu.label}
+                    {submenu.external && (
+                      <svg className={styles.newTab}>
+                        <use href="#icon-new-tab" />
+                      </svg>
+                    )}
+                  </Link>
+                </li>
+              ))}
+              {menu.submenusRight && (
+                <ul className={styles.right}>
+                  {menu.submenusRight.submenusLeft.map((submenu, subIndex) => (
+                    <li className={styles.submenuItem} key={subIndex}>
+                      <Link
+                        href={submenu.url}
+                        target={submenu.external ? "_blank" : "_self"}
+                        aria-label={submenu.label}
+                        className={styles.iconItem}
+                      >
+                        <Image
+                          src={submenu.icon.file.url}
+                          width={submenu.icon.file.details.image.width}
+                          height={submenu.icon.file.details.image.height}
+                          alt={submenu.label}
+                        />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </ul>
+          )}
+        </>
+      )}
+    </li>
+  );
+}

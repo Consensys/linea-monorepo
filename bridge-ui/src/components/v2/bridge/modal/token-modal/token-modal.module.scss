@@ -1,0 +1,31 @@
+.input-wrapper {
+  position: relative;
+  padding: 0 1.6rem;
+  margin-bottom: 1.6rem;
+
+  input {
+    font-size: 1.4rem;
+    font-family: var(--font-atyp-text);
+    border: 1px solid var(--v2-color-silver);
+    border-radius: 1rem;
+    width: 100%;
+    padding: 1.6rem 1.2rem 1.6rem 3.8rem;
+  }
+
+  svg {
+    position: absolute;
+    pointer-events: none;
+    width: 1.2rem;
+    height: 1.2rem;
+    left: 3.2rem;
+    top: 2rem;
+  }
+}
+
+.list-token {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0.5rem;
+  overflow: auto;
+  height: 35rem;
+}

@@ -1,0 +1,73 @@
+.content-wrapper {
+  max-width: 46.8rem;
+  margin: 4.8rem auto 2.4rem;
+
+  width: calc(100% - 4.8rem);
+
+  @include bp("tablet") {
+    margin-top: 6rem;
+    width: 100%;
+  }
+}
+
+.title {
+  font-size: 3.2rem;
+  margin-top: 2.4rem;
+  margin-bottom: 2.4rem;
+}
+
+.home-link {
+  text-decoration: none;
+  color: var(--v2-color-indigo);
+  font-size: 1.4rem;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  svg {
+    width: 0.9rem;
+    height: 0.9rem;
+    margin-right: 0.8rem;
+  }
+}
+
+ul.list {
+  display: flex;
+  flex-direction: column;
+  row-gap: 2.4rem;
+}
+
+li.item {
+  border-radius: 1rem;
+  background-color: var(--v2-color-white);
+  padding: 1.6rem;
+
+  .item-title {
+    font-size: 1.6rem;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .button {
+    svg {
+      width: 1.6rem;
+      height: 1.6rem;
+    }
+  }
+
+  .content {
+    font-size: 1.4rem;
+    line-height: 1.4;
+
+    p:not(:last-child) {
+      margin-bottom: 1rem;
+    }
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}

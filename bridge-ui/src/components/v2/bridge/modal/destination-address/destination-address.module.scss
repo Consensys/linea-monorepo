@@ -1,0 +1,23 @@
+.modal-inner {
+  padding: 0 1.6rem 1.6rem 1.6rem;
+  font-family: var(--font-atyp-text);
+
+  label {
+    font-weight: 500;
+    color: var(--v2-color-black);
+  }
+
+  input {
+    margin-top: 0.4rem;
+    border-radius: 1rem;
+    box-shadow: 0 0 1px var(--v2-color-silver);
+    width: 100%;
+    padding: 1.2rem 1.6rem;
+    font-size: 1.6rem;
+    color: var(--v2-color-black);
+  }
+
+  button {
+    margin-top: 1.6rem;
+  }
+}

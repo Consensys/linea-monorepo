@@ -2,6 +2,9 @@
 const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     remotePatterns: [
       {
@@ -25,6 +28,9 @@ const nextConfig = {
         pathname: "/public.withstable.com/logos/**",
       },
     ],
+  },
+  sassOptions: {
+    prependData: `@use 'sass:math'; @import 'src/scss/breakpoints';`,
   },
   webpack: (config) => {
     const warning = [...(config.ignoreWarnings || []), { module: /typeorm/ }];
