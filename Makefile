@@ -229,10 +229,11 @@ fresh-start-staterecovery-for-replay-only:
 	make clean-environment
 	L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
-staterecovery-replay-from-genesis: L1_ROLLUP_CONTRACT_ADDRESS:=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
-staterecovery-replay-from-genesis:
+staterecovery-replay-from-block: L1_ROLLUP_CONTRACT_ADDRESS:=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+staterecovery-replay-from-block: STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER:=1
+staterecovery-replay-from-block:
 	docker compose -f docker/compose.yml down zkbesu-shomei-sr shomei-sr
-	L1_ROLLUP_CONTRACT_ADDRESS=$(L1_ROLLUP_CONTRACT_ADDRESS) docker compose -f docker/compose.yml up zkbesu-shomei-sr shomei-sr -d
+	L1_ROLLUP_CONTRACT_ADDRESS=$(L1_ROLLUP_CONTRACT_ADDRESS) STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=$(STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER) docker compose -f docker/compose.yml up zkbesu-shomei-sr shomei-sr -d
 
 testnet-start-l2:
 		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml --profile l2 up -d
