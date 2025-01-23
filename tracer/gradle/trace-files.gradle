@@ -41,14 +41,14 @@ tasks.register("blockdataEthereum", TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
     module = 'blockdata'
-    files = ['blockdata/constants.lisp', 'blockdata/columns.lisp', 'blockdata/processing/gaslimit/constants-ethereum.lisp']
+    files = ['constants/constants.lisp', 'blockdata/constants.lisp', 'blockdata/columns.lisp', 'blockdata/processing/gaslimit/ethereum.lisp']
 }
 
 tasks.register("blockdataLinea", TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
     module = 'blockdata'
-    files = ['blockdata/constants.lisp', 'blockdata/columns.lisp', 'blockdata/processing/gaslimit/constants-linea.lisp']
+    files = ['constants/constants.lisp', 'blockdata/constants.lisp', 'blockdata/columns.lisp', 'blockdata/processing/gaslimit/linea.lisp']
 }
 
 //
@@ -145,15 +145,15 @@ tasks.register('buildTracer') {
     dependsOn 'mmu', 'blake2fmodexpdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata'
     dependsOn 'txndata'
     dependsOn 'constants'
-    
+
     def chain = System.getProperty('blockchain')
     // Conditional dependsOn
     if(chain == null || chain == "Linea") {
         print("Building for Linea...\n")
-        dependsOn 'blockdataLinea'        
+        dependsOn 'blockdataLinea'
     } else if(chain == "Ethereum") {
         dependsOn 'blockdataEthereum'
-        print("Building for Ethereum...\n")        
+        print("Building for Ethereum...\n")
     } else {
         // Force build failure if unknown chain.
         println("*** unknown target chain.  Try '-Dblockchain=Linea' or '-Dblockchain=Ethereum'\n\n")
