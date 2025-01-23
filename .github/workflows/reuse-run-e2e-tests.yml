@@ -75,6 +75,7 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
+    # xl saves ~0 mins
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     steps:
       - name: Setup upterm session
@@ -98,7 +99,7 @@ jobs:
           chmod -R a+w tmp/local/traces/v2/conflated
       - name: Restore cached images
         id: restore-cached-images
-        uses: actions/cache/restore@v4.0.2
+        uses: actions/cache/restore@v4.2.0
         with:
           path: ~/docker-images
           key: cached-images
