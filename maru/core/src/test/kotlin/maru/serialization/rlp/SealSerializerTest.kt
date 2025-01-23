@@ -13,10 +13,22 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.serialization.rlp
 
-/** BeaconBlock will be part of the QBFT Proposal payload */
-data class BeaconBlock(
-  val beaconBlockHeader: BeaconBlockHeader,
-  val beaconBlockBody: BeaconBlockBody,
-)
+import kotlin.random.Random
+import maru.core.Seal
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+
+class SealSerializerTest {
+  private val serializer = SealSerializer()
+
+  @Test
+  fun `can serialize and deserialize same value`() {
+    val testValue = Seal(Random.nextBytes(128))
+    val serializedData = serializer.serialize(testValue)
+    val deserializedValue = serializer.deserialize(serializedData)
+
+    assertThat(deserializedValue).isEqualTo(testValue)
+  }
+}

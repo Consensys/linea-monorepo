@@ -13,19 +13,27 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.serialization.rlp
 
-data class Validator(val address: ByteArray) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
+import maru.core.Seal
+import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.ethereum.rlp.RLPInput
+import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-    other as Validator
-
-    return address.contentEquals(other.address)
+class SealSerializer : RLPSerializer<Seal> {
+  override fun writeTo(
+    value: Seal,
+    rlpOutput: RLPOutput,
+  ) {
+    rlpOutput.startList()
+    rlpOutput.writeBytes(Bytes.wrap(value.signature))
+    rlpOutput.endList()
   }
 
-  override fun hashCode(): Int {
-    return address.contentHashCode()
+  override fun readFrom(rlpInput: RLPInput): Seal {
+    rlpInput.enterList()
+    val signature = rlpInput.readBytes().toArray()
+    rlpInput.leaveList()
+    return Seal(signature)
   }
 }

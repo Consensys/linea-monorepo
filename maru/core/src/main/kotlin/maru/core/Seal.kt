@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.core
+package maru.core
 
 data class Seal(val signature: ByteArray) {
   override fun equals(other: Any?): Boolean {
