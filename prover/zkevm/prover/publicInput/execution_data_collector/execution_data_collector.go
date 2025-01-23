@@ -937,7 +937,7 @@ func LookupQueries(comp *wizard.CompiledIOP,
 	}
 
 	comp.InsertInclusionDoubleConditional(0,
-		ifaces.QueryIDf("%s_BLOCK_METADATA_PROJECTION", name),
+		ifaces.QueryIDf("%s_BLOCK_METADATA_DOUBLE_CONDITIONAL_LOOKUP", name),
 		metadataTable,    // including table
 		edcMetadataTable, // included table
 		metadata.FilterFetched,
