@@ -1,5 +1,22 @@
 # Changelog
 
+## beta-v1-2.0-rc2
+* Use both traceStartBlock method calls wherever suitable (#1711)
+* Fix/refacto blockdata files (#1724)
+* update `go-corset` to latest version (#1732)
+* Update Linea Besu to 25.1-develop-448d1a9 (#1722)
+* fix: update `go-corset` to latest (#1726)
+* feat: go-corset front end integration (#1689)
+* Improve the copy local Besu distribution archive when the download fails (#1720)
+* Fix Java jars publication and remove redundant upload to Cloudsmith (#1716)
+* Update actions/upload-artifact to v4 since v3 is deprecated and breaks CI (#1718)
+* Tweak publish task (#1713)
+* fix cloudsmith publish
+* fix location of distribution for release (#1710)
+* Add actions/checkout to release.yml (#1708)
+* update `release` action to install `corset` (#1706)
+
+
 ## beta-v1.2.0-rc0
 * Fix: ignore `Trace.java` files and `GlobalConstants.java` + recognize 'beta*' as release tag (#1703)
 * init chain id in zktracer. (#1702)
