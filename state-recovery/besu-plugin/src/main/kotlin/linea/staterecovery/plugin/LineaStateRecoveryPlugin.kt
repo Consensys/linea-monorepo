@@ -5,7 +5,7 @@ import io.vertx.core.Vertx
 import linea.staterecovery.BlockHeaderStaticFields
 import linea.staterecovery.FileBasedRecoveryStatusPersistence
 import linea.staterecovery.RecoveryStatusPersistence
-import linea.staterecovery.StateRecoverApp
+import linea.staterecovery.StateRecoveryApp
 import linea.staterecovery.clients.ExecutionLayerInProcessClient
 import net.consensys.linea.async.get
 import org.apache.logging.log4j.LogManager
@@ -34,7 +34,7 @@ open class LineaStateRecoveryPlugin : BesuPlugin {
   private lateinit var serviceManager: ServiceManager
   private lateinit var recoveryModeManager: RecoveryModeManager
   private lateinit var recoveryStatusPersistence: RecoveryStatusPersistence
-  private lateinit var stateRecoverApp: StateRecoverApp
+  private lateinit var stateRecoverApp: StateRecoveryApp
 
   override fun register(serviceManager: ServiceManager) {
     log.debug("registering")
@@ -92,7 +92,7 @@ open class LineaStateRecoveryPlugin : BesuPlugin {
         l1RpcEndpoint = config.l1RpcEndpoint,
         blobScanEndpoint = config.blobscanEndpoint,
         blockHeaderStaticFields = blockHeaderStaticFields,
-        appConfig = StateRecoverApp.Config(
+        appConfig = StateRecoveryApp.Config(
           smartContractAddress = config.l1SmartContractAddress.toString(),
           l1LatestSearchBlock = net.consensys.linea.BlockParameter.Tag.LATEST,
           overridingRecoveryStartBlockNumber = config.overridingRecoveryStartBlockNumber,
