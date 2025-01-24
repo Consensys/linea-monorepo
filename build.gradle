@@ -183,20 +183,12 @@ dockerCompose {
     startedServices = [
       "postgres",
       "sequencer",
-      "coordinator",
-      "prover-v3",
-      "traces-node-v2",
-      "zkbesu-shomei",
-      "shomei",
       "l1-node-genesis-generator",
       "l1-el-node",
       "l1-cl-node",
       "blobscan-api",
       "blobscan-indexer",
       "redis",
-      // For debug
-      // "l1-blockscout",
-      // "l2-blockscout"
     ]
     composeAdditionalArgs = [
       "--profile",
