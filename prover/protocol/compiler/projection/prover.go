@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -38,8 +39,8 @@ func (pa projectionProverAction) Run(run *wizard.ProverRuntime) {
 		fA      = pa.FilterA.GetColAssignment(run).IntoRegVecSaveAlloc()
 		fB      = pa.FilterB.GetColAssignment(run).IntoRegVecSaveAlloc()
 		x       = run.GetRandomCoinField(pa.EvalCoin.Name)
-		hornerA = cmptHorner(a, fA, x)
-		hornerB = cmptHorner(b, fB, x)
+		hornerA = poly.CmptHorner(a, fA, x)
+		hornerB = poly.CmptHorner(b, fB, x)
 	)
 
 	run.AssignColumn(pa.HornerA.GetColID(), smartvectors.NewRegular(hornerA))

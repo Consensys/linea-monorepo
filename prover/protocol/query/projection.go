@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -89,8 +90,8 @@ func (p Projection) Check(run ifaces.Runtime) error {
 		bLinComb[row] = rowLinComb(linCombRand, row, b)
 	}
 	var (
-		hornerA = cmptHorner(aLinComb, fA, evalRand)
-		hornerB = cmptHorner(bLinComb, fB, evalRand)
+		hornerA = poly.CmptHorner(aLinComb, fA, evalRand)
+		hornerB = poly.CmptHorner(bLinComb, fB, evalRand)
 	)
 	if hornerA[0] != hornerB[0] {
 		return fmt.Errorf("the projection query %v check is not satisfied", p.ID)
@@ -104,32 +105,4 @@ func (p Projection) Check(run ifaces.Runtime) error {
 // circuit
 func (i Projection) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an Projection query directly into the circuit")
-}
-
-// cmptHorner computes a random Horner accumulation of the filtered elements
-// starting from the last entry down to the first entry. The final value is
-// stored in the last entry of the returned slice.
-// Todo: send it to a common utility package
-func cmptHorner(c, fC []field.Element, x field.Element) []field.Element {
-
-	var (
-		horner = make([]field.Element, len(c))
-		prev   field.Element
-	)
-
-	for i := len(horner) - 1; i >= 0; i-- {
-
-		if !fC[i].IsZero() && !fC[i].IsOne() {
-			utils.Panic("we expected the filter to be binary")
-		}
-
-		if fC[i].IsOne() {
-			prev.Mul(&prev, &x)
-			prev.Add(&prev, &c[i])
-		}
-
-		horner[i] = prev
-	}
-
-	return horner
 }

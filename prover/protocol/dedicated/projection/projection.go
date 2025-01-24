@@ -1,4 +1,5 @@
 /*
+To be deprecated and replaced with projection as a query.
 Package projection implements the utilities for the projection query.
 
 A projection query between sets (columnsA,filterA) and (columnsB,filterB) asserts
