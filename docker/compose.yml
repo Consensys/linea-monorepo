@@ -413,6 +413,8 @@ services:
       interval: 1s
       timeout: 1s
       retries: 120
+    environment:
+      LOG4J_CONFIGURATION_FILE: /config/log4j.xml
     command: [ "--config-file=/config/config-file.yaml" ]
     volumes:
       - ./config/l1-node/cl/teku.key:/config/keys/teku.key:ro
@@ -420,6 +422,7 @@ services:
       - ./config/l1-node/cl/teku-secrets:/config/keys/teku-secrets:ro
       - ./config/l1-node/jwtsecret.txt:/config/jwtsecret.txt:ro
       - ./config/l1-node/cl/config.yaml:/config/config-file.yaml:ro
+      - ./config/l1-node/cl/log4j.xml:/config/log4j.xml:ro
       - local-dev:/data
     ports:
       - "9002:9000"
