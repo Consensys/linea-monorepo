@@ -174,8 +174,6 @@ func (c *CompiledIOP) InsertColumn(round int, name ifaces.ColID, size int, statu
 		utils.Panic("column %v has size %v", name, size)
 	}
 
-	c.assertConsistentRound(round)
-
 	if len(name) == 0 {
 		panic("Column with an empty name")
 	}
@@ -220,8 +218,6 @@ func (c *CompiledIOP) InsertCoin(round int, name coin.Name, type_ coin.Type, siz
 //   - the definition round is inconsistent with the expression
 func (c *CompiledIOP) InsertGlobal(round int, name ifaces.QueryID, expr *symbolic.Expression, noBoundCancel ...bool) query.GlobalConstraint {
 
-	c.assertConsistentRound(round)
-
 	// The constructor of the global constraint is assumed to perform all the
 	// well-formation checks of the constraint.
 	cs := query.NewGlobalConstraint(name, expr, noBoundCancel...)
@@ -264,8 +260,6 @@ func (c *CompiledIOP) InsertGlobal(round int, name ifaces.QueryID, expr *symboli
 //   - the definition round is inconsistent with the expression
 func (c *CompiledIOP) InsertLocal(round int, name ifaces.QueryID, cs_ *symbolic.Expression) query.LocalConstraint {
 
-	c.assertConsistentRound(round)
-
 	cs := query.NewLocalConstraint(name, cs_)
 	boarded := cs.Board()
 	metadatas := boarded.ListVariableMetadata()
@@ -300,7 +294,6 @@ func (c *CompiledIOP) InsertLocal(round int, name ifaces.QueryID, cs_ *symbolic.
 // - any column in `a` or `b“ is a not registered columns
 // - a constraint with the same name already exists in the CompiledIOP
 func (c *CompiledIOP) InsertPermutation(round int, name ifaces.QueryID, a, b []ifaces.Column) query.Permutation {
-	c.assertConsistentRound(round)
 	query_ := query.NewPermutation(name, [][]ifaces.Column{a}, [][]ifaces.Column{b})
 	c.QueriesNoParams.AddToRound(round, name, query_)
 	return query_
@@ -310,7 +303,6 @@ func (c *CompiledIOP) InsertPermutation(round int, name ifaces.QueryID, a, b []i
 // fragmented tables. Meanining that permutation operates over the union of
 // the rows of multiple tables.
 func (c *CompiledIOP) InsertFragmentedPermutation(round int, name ifaces.QueryID, a, b [][]ifaces.Column) query.Permutation {
-	c.assertConsistentRound(round)
 	query_ := query.NewPermutation(name, a, b)
 	c.QueriesNoParams.AddToRound(round, name, query_)
 	return query_
@@ -343,7 +335,6 @@ func (c *CompiledIOP) InsertFixedPermutation(round int, name ifaces.QueryID, p [
 // - the columns in `included` do not all have the same size
 // - a constraint with the same name already exists in the CompiledIOP
 func (c *CompiledIOP) InsertInclusion(round int, name ifaces.QueryID, including, included []ifaces.Column) {
-	c.assertConsistentRound(round)
 	query := query.NewInclusion(name, included, [][]ifaces.Column{including}, nil, nil)
 	c.QueriesNoParams.AddToRound(round, name, query)
 }
@@ -353,7 +344,6 @@ Creates an inclusion query. Both the including and the included tables are filte
 the filters should be columns containing only field elements for 0 and 1
 */
 func (c *CompiledIOP) InsertInclusionDoubleConditional(round int, name ifaces.QueryID, including, included []ifaces.Column, includingFilter, includedFilter ifaces.Column) {
-	c.assertConsistentRound(round)
 	query := query.NewInclusion(name, included, [][]ifaces.Column{including}, includedFilter, []ifaces.Column{includingFilter})
 	c.QueriesNoParams.AddToRound(round, name, query)
 }
@@ -363,7 +353,6 @@ Creates an inclusion query. Only the including table is filtered
 the filters should be columns containing only field elements for 0 and 1
 */
 func (c *CompiledIOP) InsertInclusionConditionalOnIncluding(round int, name ifaces.QueryID, including, included []ifaces.Column, includingFilter ifaces.Column) {
-	c.assertConsistentRound(round)
 	query := query.NewInclusion(name, included, [][]ifaces.Column{including}, nil, []ifaces.Column{includingFilter})
 	c.QueriesNoParams.AddToRound(round, name, query)
 }
@@ -373,7 +362,6 @@ Creates an inclusion query. Only the included table is filtered
 the filters should be columns containing only field elements for 0 and 1
 */
 func (c *CompiledIOP) InsertInclusionConditionalOnIncluded(round int, name ifaces.QueryID, including, included []ifaces.Column, includedFilter ifaces.Column) {
-	c.assertConsistentRound(round)
 	query := query.NewInclusion(name, included, [][]ifaces.Column{including}, includedFilter, nil)
 	c.QueriesNoParams.AddToRound(round, name, query)
 }
@@ -394,7 +382,6 @@ func (c *CompiledIOP) GenericFragmentedConditionalInclusion(
 	includingFilter []ifaces.Column,
 	includedFilter ifaces.Column,
 ) {
-	c.assertConsistentRound(round)
 	query := query.NewInclusion(name, included, including, includedFilter, includingFilter)
 	c.QueriesNoParams.AddToRound(round, name, query)
 }
@@ -437,7 +424,6 @@ func (c *CompiledIOP) InsertPrecomputed(name ifaces.ColID, v smartvectors.SmartV
 //
 // The name must be non-empty and unique and the size must be a power of 2.
 func (c *CompiledIOP) InsertProof(round int, name ifaces.ColID, size int) (msg ifaces.Column) {
-	c.assertConsistentRound(round)
 
 	// Common : No zero length
 	if size == 0 {
@@ -452,7 +438,6 @@ func (c *CompiledIOP) InsertProof(round int, name ifaces.ColID, size int) (msg i
 // Deprecated: we never really use this type of column to denote actual public
 // inputs. The plan is to resort to using [query.LocalOpeningParams] instead.
 func (c *CompiledIOP) InsertPublicInput(round int, name ifaces.ColID, size int) (msg ifaces.Column) {
-	c.assertConsistentRound(round)
 
 	// Common : No zero length
 	if size == 0 {
@@ -479,7 +464,6 @@ func (c *CompiledIOP) InsertPublicInput(round int, name ifaces.ColID, size int) 
 // not intend to run the verifier of the Wizard protocol in a gnark circuit,
 // passing `nil` is fine.
 func (c *CompiledIOP) InsertVerifier(round int, ver VerifierStep, gnarkVer GnarkVerifierStep) {
-	c.assertConsistentRound(round)
 	c.SubVerifiers.AppendToInner(round, &genVerifierAction{
 		run:      ver,
 		runGnark: gnarkVer,
@@ -510,7 +494,6 @@ func (c *CompiledIOP) InsertRange(round int, name ifaces.QueryID, h ifaces.Colum
 		panic("max is zero : perhaps an overflow")
 	}
 
-	c.assertConsistentRound(round)
 	/*
 		In case the range is applied over a composite handle.
 		We apply the range over each natural component of the handle.
@@ -531,7 +514,6 @@ func (c *CompiledIOP) InsertRange(round int, name ifaces.QueryID, h ifaces.Colum
 // - a query with the same name has already been registered in the Wizard
 // - the provided columns `a` and `bs` do not all have the same size
 func (c *CompiledIOP) InsertInnerProduct(round int, name ifaces.QueryID, a ifaces.Column, bs []ifaces.Column) query.InnerProduct {
-	c.assertConsistentRound(round)
 
 	// Also ensures that the query round does not predates the columns rounds
 	maxComRound := a.Round()
@@ -565,7 +547,6 @@ func (run *CompiledIOP) GetInnerProduct(name ifaces.QueryID) query.InnerProduct 
 // - the name is the empty string
 // - a query with the same name has already been registered in the Wizard
 func (c *CompiledIOP) InsertUnivariate(round int, name ifaces.QueryID, pols []ifaces.Column) query.UnivariateEval {
-	c.assertConsistentRound(round)
 	q := query.NewUnivariateEval(name, pols...)
 	// Finally registers the query
 	c.QueriesParams.AddToRound(round, name, q)
@@ -576,7 +557,6 @@ func (c *CompiledIOP) InsertUnivariate(round int, name ifaces.QueryID, pols []if
 // in the current CompiledIOP. A local opening query requires the prover of the
 // protocol to "open" the first position of the vector.
 func (c *CompiledIOP) InsertLocalOpening(round int, name ifaces.QueryID, pol ifaces.Column) query.LocalOpening {
-	c.assertConsistentRound(round)
 	q := query.NewLocalOpening(name, pol)
 	// Finally registers the query
 	c.QueriesParams.AddToRound(round, name, q)
@@ -587,19 +567,10 @@ func (c *CompiledIOP) InsertLocalOpening(round int, name ifaces.QueryID, pol ifa
 // It generates a single global summation for many Sigma Columns from Lookup compilation.
 // The sigma columns are categorized by [round,size].
 func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, in map[int]*query.LogDerivativeSumInput) query.LogDerivativeSum {
-	c.assertConsistentRound(lastRound)
 	q := query.NewLogDerivativeSum(lastRound, in, id)
 	// Finally registers the query
 	c.QueriesParams.AddToRound(lastRound, id, q)
 	return q
-}
-
-// assertConsistentRound compares the round passed as an argument and panic if it greater than
-// coin.Round. This helps ensuring that we do not have "useless" rounds.
-func (c *CompiledIOP) assertConsistentRound(round int) {
-	// if round > c.Coins.NumRounds() {
-	// 	utils.Panic("Inserted at round %v, but the max should be %v", round, c.Coins.NumRounds())
-	// }
 }
 
 // InsertMiMC declares a MiMC constraints query; a constraint that all the
@@ -611,7 +582,6 @@ func (c *CompiledIOP) assertConsistentRound(round int) {
 //   - the declaration round is anterior to the declaration round of the
 //     provided input columns.
 func (c *CompiledIOP) InsertMiMC(round int, id ifaces.QueryID, block, old, new ifaces.Column) query.MiMC {
-	c.assertConsistentRound(round)
 	q := query.NewMiMC(id, block, old, new)
 	c.QueriesNoParams.AddToRound(round, id, q)
 	return q
@@ -647,7 +617,6 @@ func (c *CompiledIOP) RegisterVerifierAction(round int, action VerifierAction) {
 
 // Register a GrandProduct query
 func (c *CompiledIOP) InsertGrandProduct(round int, id ifaces.QueryID, in map[int]*query.GrandProductInput) query.GrandProduct {
-	c.assertConsistentRound(round)
 	q := query.NewGrandProduct(round, in, id)
 	// Finally registers the query
 	c.QueriesParams.AddToRound(round, q.Name(), q)
