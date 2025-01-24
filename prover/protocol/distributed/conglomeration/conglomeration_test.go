@@ -9,6 +9,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/fullrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/conglomeration"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -35,6 +38,26 @@ var (
 		commonVortexStep,
 	}
 	arcaneCompilationSuite = []func(*wizard.CompiledIOP){
+		compiler.Arcane(1<<8, 1<<10, false),
+		commonVortexStep,
+	}
+	arcaneAndSelfRecCompilationSuite = []func(*wizard.CompiledIOP){
+		compiler.Arcane(1<<8, 1<<10, false),
+		commonVortexStep,
+		selfrecursion.SelfRecurse,
+		mimc.CompileMiMC,
+		compiler.Arcane(1<<8, 1<<10, false),
+		commonVortexStep,
+	}
+	arcaneFullRecSelfRecCompilationSuite = []func(*wizard.CompiledIOP){
+		compiler.Arcane(1<<8, 1<<10, false),
+		commonVortexStep,
+		selfrecursion.SelfRecurse,
+		mimc.CompileMiMC,
+		compiler.Arcane(1<<8, 1<<10, false),
+		commonVortexStep,
+		fullrecursion.FullRecursion(true),
+		mimc.CompileMiMC,
 		compiler.Arcane(1<<8, 1<<10, false),
 		commonVortexStep,
 	}
@@ -162,35 +185,58 @@ func TestConglomerationPureVortexMultiRound(t *testing.T) {
 
 func TestConglomerationLookup(t *testing.T) {
 
-	var (
-		numCol   = 16
-		numRow   = 16
-		numProof = 16
-		a        []ifaces.Column
-	)
-
-	define := func(builder *wizard.Builder) {
-		for i := 0; i < numCol; i++ {
-			a = append(a, builder.RegisterCommit(ifaces.ColIDf("a-%v", i), numRow))
-			builder.Range(ifaces.QueryIDf("range-%v", i), a[i], 1<<16)
-		}
+	tcs := []struct {
+		name  string
+		suite compilerSuite
+	}{
+		{
+			name:  "arcane",
+			suite: arcaneCompilationSuite,
+		},
+		{
+			name:  "arcane/self-recursion",
+			suite: arcaneAndSelfRecCompilationSuite,
+		},
+		{
+			name:  "arcane/full-recursion/self-recursion",
+			suite: arcaneFullRecSelfRecCompilationSuite,
+		},
 	}
 
-	prover := func(k int) func(run *wizard.ProverRuntime) {
-		return func(run *wizard.ProverRuntime) {
-			for i := range a {
-				y := field.NewElement(uint64(i + k))
-				run.AssignColumn(a[i].GetColID(), smartvectors.NewConstant(y, numRow))
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+
+			var (
+				numCol   = 16
+				numRow   = 16
+				numProof = 16
+				a        []ifaces.Column
+			)
+
+			define := func(builder *wizard.Builder) {
+				for i := 0; i < numCol; i++ {
+					a = append(a, builder.RegisterCommit(ifaces.ColIDf("a-%v", i), numRow))
+					builder.Range(ifaces.QueryIDf("range-%v", i), a[i], 1<<16)
+				}
 			}
-		}
-	}
 
-	runConglomerationTestCase(t, conglomerationTestCase{
-		define:   define,
-		prove:    prover,
-		numProof: numProof,
-		suite:    arcaneCompilationSuite,
-	})
+			prover := func(k int) func(run *wizard.ProverRuntime) {
+				return func(run *wizard.ProverRuntime) {
+					for i := range a {
+						y := field.NewElement(uint64(i + k))
+						run.AssignColumn(a[i].GetColID(), smartvectors.NewConstant(y, numRow))
+					}
+				}
+			}
+
+			runConglomerationTestCase(t, conglomerationTestCase{
+				define:   define,
+				prove:    prover,
+				numProof: numProof,
+				suite:    tc.suite,
+			})
+		})
+	}
 }
 
 func runConglomerationTestCase(t *testing.T, tc conglomerationTestCase) {

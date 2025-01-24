@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -163,6 +164,13 @@ func (comp *compTranslator) TranslateColumnVecVec(cols collection.VecVec[ifaces.
 	var res = collection.NewVecVec[ifaces.ColID]()
 	for r, vec := range cols.Inner() {
 		for _, c := range vec {
+
+			// If it does not exists, then it is a verifier column
+			if !comp.Target.Columns.Exists(c) {
+				res.AppendToInner(r, c)
+				continue
+			}
+
 			res.AppendToInner(r, comp.GetColumn(c).GetColID())
 		}
 	}
@@ -173,6 +181,13 @@ func (comp *compTranslator) TranslateColumnVecVec(cols collection.VecVec[ifaces.
 func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) map[ifaces.ColID]struct{} {
 	var res = make(map[ifaces.ColID]struct{})
 	for col := range cols {
+
+		// If it does not exists, then it is a verifier column
+		if !comp.Target.Columns.Exists(col) {
+			res[col] = struct{}{}
+			continue
+		}
+
 		res[comp.GetColumn(col).GetColID()] = struct{}{}
 	}
 	return res
@@ -183,6 +198,11 @@ func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) m
 func (comp *compTranslator) TranslateUniEval(round int, q query.UnivariateEval) query.UnivariateEval {
 	newPols := make([]ifaces.Column, len(q.Pols))
 	for i := range newPols {
+		if _, ok := q.Pols[i].(verifiercol.VerifierCol); ok {
+			newPols[i] = q.Pols[i]
+			continue
+		}
+
 		newPols[i] = comp.GetColumn(q.Pols[i].GetColID())
 	}
 	var res = query.NewUnivariateEval(q.QueryID, newPols...)

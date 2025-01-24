@@ -162,9 +162,9 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 				newCol = ctx.Translator.InsertPrecomputed(col, tmpl.Precomputed.MustGet(colName))
 			} else {
 				newCol = ctx.Translator.InsertColumn(col)
+				ctx.Columns[round] = append(ctx.Columns[round], newCol)
 			}
 
-			ctx.Columns[round] = append(ctx.Columns[round], newCol)
 			ctx.Translator.Target.Columns.ExcludeFromProverFS(newCol.GetColID())
 		}
 

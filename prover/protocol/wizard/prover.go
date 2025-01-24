@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -540,6 +541,7 @@ func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coi
 func (run *ProverRuntime) goNextRound() {
 
 	initialState := run.FS.State()
+	fmt.Printf("[prover-fs] round=%v initial-state=%v\n", run.currRound+1, initialState[0].String())
 
 	if !run.Spec.DummyCompiled {
 
@@ -553,6 +555,10 @@ func (run *ProverRuntime) goNextRound() {
 		for _, msgName := range msgsToFS {
 
 			if run.Spec.Columns.IsExplicitlyExcludedFromProverFS(msgName) {
+				continue
+			}
+
+			if run.Spec.Precomputed.Exists(msgName) {
 				continue
 			}
 
@@ -599,7 +605,7 @@ func (run *ProverRuntime) goNextRound() {
 	toCompute := run.Spec.Coins.AllKeysAt(run.currRound)
 	for _, coin := range toCompute {
 
-		if run.Spec.Coins.IsSkippedFromVerifierTranscript(coin) {
+		if run.Spec.Coins.IsSkippedFromProverTranscript(coin) {
 			continue
 		}
 

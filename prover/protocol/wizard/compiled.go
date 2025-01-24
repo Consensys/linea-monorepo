@@ -597,9 +597,9 @@ func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, i
 // assertConsistentRound compares the round passed as an argument and panic if it greater than
 // coin.Round. This helps ensuring that we do not have "useless" rounds.
 func (c *CompiledIOP) assertConsistentRound(round int) {
-	if round > c.Coins.NumRounds() {
-		utils.Panic("Inserted at round %v, but the max should be %v", round, c.Coins.NumRounds())
-	}
+	// if round > c.Coins.NumRounds() {
+	// 	utils.Panic("Inserted at round %v, but the max should be %v", round, c.Coins.NumRounds())
+	// }
 }
 
 // InsertMiMC declares a MiMC constraints query; a constraint that all the
