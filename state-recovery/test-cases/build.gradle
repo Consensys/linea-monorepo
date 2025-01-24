@@ -48,19 +48,13 @@ sourceSets {
   }
   e2eTest {
     kotlin {
-      compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
-      runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+      compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.output + sourceSets.test.compileClasspath
+      runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.output + sourceSets.test.runtimeClasspath
     }
-    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
-    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.output + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.output + sourceSets.test.runtimeClasspath
   }
 }
-
-//configurations {
-//  integrationTestImplementation.extendsFrom implementation
-//  integrationTestImplementation.extendsFrom testImplementation
-//  integrationTestRuntimeOnly.extendsFrom runtimeOnly
-//}
 
 test {
   systemProperty "vertx.parameter.filename", project.projectDir.toPath()
@@ -98,6 +92,7 @@ task integrationTest(type: Test) { test ->
 }
 
 task e2eTest(type: Test) { test ->
+  outputs.cacheIf { false }
   systemProperty "vertx.parameter.filename", project.projectDir.toPath()
       .resolve("src/test/resources/vertx-options.json")
       .toAbsolutePath().toString()

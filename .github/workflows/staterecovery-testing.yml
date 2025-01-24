@@ -71,10 +71,14 @@ jobs:
         timeout-minutes: 15
         run: |
           ./gradlew state-recovery:test-cases:integrationTest
-      - name: Run Jacoco Staterecovery
+      - name: Run integration tests
+        timeout-minutes: 15
         run: |
-          ./gradlew jacocoRootReport
+          ./gradlew state-recovery:test-cases:e2eTest
 # TMP disable as it conflicts with coordinator report
+#      - name: Run Jacoco Staterecovery
+#        run: |
+#          ./gradlew jacocoRootReport
 #      - name: Upload Jacoco report Staterecovery
 #        uses: actions/upload-artifact@v4
 #        with:
