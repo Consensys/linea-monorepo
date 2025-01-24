@@ -85,3 +85,4 @@ integration-testing/testdata/prover-requests/
 # Authorize the kzg srs folder
 prover-assets/**
 !prover-assets/kzgsrs/**
+jvm-libs/blob-compressor/src/test/resources/net/consensys/linea/nativecompressor/rlp_blocks.bin
