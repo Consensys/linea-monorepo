@@ -178,7 +178,7 @@ public class GeneralStateReferenceTestTools {
 
     final ZkTracer zkTracer = new ZkTracer();
     zkTracer.traceStartConflation(1);
-    zkTracer.traceStartBlock(blockHeader, blockHeader.getCoinbase());
+    zkTracer.traceStartBlock(blockHeader, blockBody, blockHeader.getCoinbase());
 
     final TransactionProcessingResult result =
         processor.processTransaction(

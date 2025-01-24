@@ -184,6 +184,17 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   }
 
   @Override
+  public void traceStartBlock(
+      final BlockHeader blockHeader, final BlockBody blockBody, final Address miningBeneficiary) {
+    try {
+      this.hub.traceStartBlock(blockHeader, miningBeneficiary);
+      this.debugMode.ifPresent(x -> x.traceStartBlock(blockHeader, blockBody, miningBeneficiary));
+    } catch (final Exception e) {
+      this.tracingExceptions.add(e);
+    }
+  }
+
+  @Override
   public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
     try {
       this.hub.traceEndBlock(blockHeader, blockBody);

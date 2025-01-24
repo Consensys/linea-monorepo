@@ -23,6 +23,7 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.DelegatingBytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Quantity;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -159,7 +160,10 @@ public class DebugMode {
     log.info("=== Stop conflation ===");
   }
 
-  public void traceStartBlock(ProcessableBlockHeader processableBlockHeader, final BlockBody body) {
+  public void traceStartBlock(
+      ProcessableBlockHeader processableBlockHeader,
+      final BlockBody body,
+      final Address miningBeneficiary) {
     if (!this.l.doBlock()) {
       return;
     }
