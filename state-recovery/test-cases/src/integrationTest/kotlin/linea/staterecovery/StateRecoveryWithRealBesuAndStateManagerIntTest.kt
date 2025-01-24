@@ -8,6 +8,7 @@ import build.linea.domain.EthLogEvent
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import kotlinx.datetime.Clock
 import linea.domain.RetryConfig
 import linea.log4j.configureLoggers
 import linea.testing.CommandResult
@@ -100,16 +101,20 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
     )
   }
 
-  fun freshStartOfStack() {
+  private fun freshStartOfStack() {
+    Runner.executeCommandFailOnNonZeroExitCode(
+      command = "make fresh-start-all-staterecovery",
+      envVars = mapOf(
+        "L1_GENESIS_TIME" to Clock.System.now().plus(5.seconds).epochSeconds.toString()
+      )
+    ).get()
+    log.debug("stack restarted")
   }
 
   @Test
   @Order(1)
   fun `should recover status from genesis`() {
-    Runner.executeCommandFailOnNonZeroExitCode(
-      "make fresh-start-all-staterecovery"
-    ).get()
-    log.debug("stack restarted")
+    freshStartOfStack()
 
     this.rollupDeploymentResult = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6)
@@ -185,10 +190,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
     // wait for at least 1 more finalization on L1
     // assert Besu and Shomei are in sync
 
-    Runner.executeCommandFailOnNonZeroExitCode(
-      "make fresh-start-all-staterecovery"
-    ).get()
-    log.debug("stack restarted")
+    freshStartOfStack()
 
     val localStackL1ContractAddress = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
     val logsSearcher = Web3JLogsSearcher(
