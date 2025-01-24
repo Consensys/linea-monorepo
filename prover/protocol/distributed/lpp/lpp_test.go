@@ -1,11 +1,10 @@
-package inclusion_test
+package lpp_test
 
 import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	logderiv "github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
@@ -21,6 +20,13 @@ func TestSeedGeneration(t *testing.T) {
 		numSegModule0 = 2
 		numSegModule1 = 2
 		numSegModule2 = 1
+	)
+
+	var (
+		coinLookup0Gamma field.Element
+		coinLookup1Gamma field.Element
+		coinLookup2Gamma field.Element
+		coinLookup2Alpha field.Element
 	)
 
 	//initialComp
@@ -115,11 +121,6 @@ func TestSeedGeneration(t *testing.T) {
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc, numSegModule1)
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp2, "module2", disc, numSegModule2)
 
-	// This compiles the log-derivative queries into global/local queries.
-	wizard.ContinueCompilation(moduleComp0, logderiv.CompileLogDerivSum, dummy.Compile)
-	wizard.ContinueCompilation(moduleComp1, logderiv.CompileLogDerivSum, dummy.Compile)
-	wizard.ContinueCompilation(moduleComp2, logderiv.CompileLogDerivSum, dummy.Compile)
-
 	// run the initial runtime
 	initialRuntime := wizard.ProverOnlyFirstRound(initialComp, prover)
 
@@ -127,39 +128,69 @@ func TestSeedGeneration(t *testing.T) {
 	lppProof := wizard.Prove(lppComp, func(run *wizard.ProverRuntime) {
 		run.ParentRuntime = initialRuntime
 	})
-	lppVerifierRuntime, valid := wizard.VerifierWithRuntime(lppComp, lppProof)
+	valid := wizard.Verify(lppComp, lppProof)
 	require.NoError(t, valid)
 
-	// Compile and prove for module0
+	// check that all the modules see the same randomness for the same coins.
 	for proverID := 0; proverID < numSegModule0; proverID++ {
-		proof0 := wizard.Prove(moduleComp0, func(run *wizard.ProverRuntime) {
+		// get prover run time for module0
+		runtime0 := wizard.RunProver(moduleComp0, func(run *wizard.ProverRuntime) {
 			run.ParentRuntime = initialRuntime
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid := wizard.Verify(moduleComp0, proof0, lppVerifierRuntime)
-		require.NoError(t, valid)
+
+		// get and compar the coins with the other segments/modules
+		coin1 := runtime0.Coins.MustGet("TABLE_module0.col2_LOGDERIVATIVE_GAMMA_FieldFromSeed").(field.Element)
+		coin0 := runtime0.Coins.MustGet("TABLE_module1.col0_LOGDERIVATIVE_GAMMA_FieldFromSeed").(field.Element)
+		if coinLookup1Gamma.IsZero() {
+			coinLookup0Gamma = coin0
+			coinLookup1Gamma = coin1
+		} else {
+			require.Equal(t, coin0, coinLookup0Gamma)
+			require.Equal(t, coin1, coinLookup1Gamma)
+		}
 	}
 
-	// Compile and prove for module1
+	// get prove  runtime for module1
 	for proverID := 0; proverID < numSegModule1; proverID++ {
-		proof1 := wizard.Prove(moduleComp1, func(run *wizard.ProverRuntime) {
+		runtime1 := wizard.RunProver(moduleComp1, func(run *wizard.ProverRuntime) {
 			run.ParentRuntime = initialRuntime
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid1 := wizard.Verify(moduleComp1, proof1, lppVerifierRuntime)
-		require.NoError(t, valid1)
+
+		// get and compar the coins with the other segments/modules
+		coin1 := runtime1.Coins.MustGet("TABLE_module0.col2_LOGDERIVATIVE_GAMMA_FieldFromSeed").(field.Element)
+		coin0 := runtime1.Coins.MustGet("TABLE_module1.col0_LOGDERIVATIVE_GAMMA_FieldFromSeed").(field.Element)
+		coin2Gamma := runtime1.Coins.MustGet("TABLE_module1.col5,module1.col1,module1.col4_LOGDERIVATIVE_GAMMA_FieldFromSeed").(field.Element)
+		coin2Alpha := runtime1.Coins.MustGet("TABLE_module1.col5,module1.col1,module1.col4_LOGDERIVATIVE_ALPHA_FieldFromSeed").(field.Element)
+
+		require.Equal(t, coin1, coinLookup1Gamma)
+		require.Equal(t, coin0, coinLookup0Gamma)
+
+		if coinLookup2Gamma.IsZero() {
+			coinLookup2Gamma = coin2Gamma
+			coinLookup2Alpha = coin2Alpha
+		} else {
+			require.Equal(t, coin2Gamma, coinLookup2Gamma)
+			require.Equal(t, coin2Alpha, coinLookup2Alpha)
+		}
 	}
 
-	// Compile and prove for module2
+	// get prove  run time for module2
 	for proverID := 0; proverID < numSegModule2; proverID++ {
-		proof2 := wizard.Prove(moduleComp2, func(run *wizard.ProverRuntime) {
+		runtime2 := wizard.RunProver(moduleComp2, func(run *wizard.ProverRuntime) {
 			run.ParentRuntime = initialRuntime
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid2 := wizard.Verify(moduleComp2, proof2, lppVerifierRuntime)
-		require.NoError(t, valid2)
+
+		// get and compar the coins with the other segments/modules
+		coin2Gamma := runtime2.Coins.MustGet("TABLE_module1.col5,module1.col1,module1.col4_LOGDERIVATIVE_GAMMA_FieldFromSeed").(field.Element)
+		coin2Alpha := runtime2.Coins.MustGet("TABLE_module1.col5,module1.col1,module1.col4_LOGDERIVATIVE_ALPHA_FieldFromSeed").(field.Element)
+
+		require.Equal(t, coin2Gamma, coinLookup2Gamma)
+		require.Equal(t, coin2Alpha, coinLookup2Alpha)
 	}
 }

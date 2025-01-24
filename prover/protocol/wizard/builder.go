@@ -67,12 +67,12 @@ func ContinueCompilation(rootComp *CompiledIOP, compilers ...func(*CompiledIOP))
 	comp := rootComp
 	numRounds := comp.NumRounds()
 
-	comp.equalizeRounds(numRounds)
+	comp.EqualizeRounds(numRounds)
 
 	for _, compiler := range compilers {
 		compiler(comp)
 		numRounds := comp.NumRounds()
-		comp.equalizeRounds(numRounds)
+		comp.EqualizeRounds(numRounds)
 	}
 
 	if comp.SubProvers.Len() < comp.NumRounds() {
@@ -264,7 +264,7 @@ func (b *Builder) LocalOpening(name ifaces.QueryID, pol ifaces.Column) query.Loc
 Equalizes the length of all the structure so that they all have the same
 numbers of rounds
 */
-func (comp *CompiledIOP) equalizeRounds(numRounds int) {
+func (comp *CompiledIOP) EqualizeRounds(numRounds int) {
 
 	helpMsg := "If you are seeing this message it's probably because you insert queries one round too late."
 
