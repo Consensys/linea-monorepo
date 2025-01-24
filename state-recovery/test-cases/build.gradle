@@ -66,7 +66,7 @@ task integrationTest(type: Test) { test ->
   classpath = sourceSets.integrationTest.runtimeClasspath
   testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-  dependsOn(":localStackForStateRecoveryComposeUp")
+  //  dependsOn(":localStackForStateRecoveryComposeUp")
 
   testLogging {
     events TestLogEvent.FAILED,
