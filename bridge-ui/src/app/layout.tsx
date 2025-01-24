@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import Script from "next/script";
 import usabillaBeScript from "@/scripts/usabilla";
 import { gtmScript, gtmNoScript } from "@/scripts/gtm";
@@ -10,17 +11,20 @@ import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
 import "../scss/app.scss";
 
-const metadata = {
+const metadata: Metadata = {
   title: "Linea Bridge",
   description: `Linea Bridge is a bridge solution, providing secure and efficient cross-chain transactions between Layer 1 and Linea networks.
   Discover the future of blockchain interaction with Linea Bridge.`,
+  icons: {
+    icon: "./favicon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="v2">
-      <title>{metadata.title}</title>
-      <meta name="description" content={metadata.description} key="desc" />
+    <html lang="en" data-theme="dark">
+      <title>{metadata.title?.toString()}</title>
+      <meta name="description" content={metadata.description?.toString()} key="desc" />
 
       <body className={cn(atypFont.variable, atypTextFont.variable, atypFont.className, atypTextFont.className)}>
         <noscript dangerouslySetInnerHTML={{ __html: gtmNoScript }} />
