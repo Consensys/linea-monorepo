@@ -51,10 +51,10 @@ start-whole-environment:
 
 start-whole-environment-traces-v2: COMPOSE_PROFILES:=l1,l2
 start-whole-environment-traces-v2:
-		@if [ -z "$(L1_GENESIS_TIME)" ]; then \
-				L1_GENESIS_TIME=$$(get_future_time); \
-			fi; \
-		L1_GENESIS_TIME=$(L1_GENESIS_TIME) COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml up -d
+	@if [ -z "$(L1_GENESIS_TIME)" ]; then \
+		L1_GENESIS_TIME=$(get_future_time); \
+	fi; \
+	L1_GENESIS_TIME=$$L1_GENESIS_TIME COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml up -d
 
 pull-all-images:
 		COMPOSE_PROFILES:=l1,l2 docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml pull
