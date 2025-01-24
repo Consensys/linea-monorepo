@@ -1,5 +1,3 @@
-/* eslint-disable */
-
 import Link from "next/link";
 import { LinkBlock } from "@/types";
 import { useEffect, useState } from "react";
@@ -11,7 +9,7 @@ import { LineaLogo } from "../logos/LineaLogo";
 import clsx from "clsx";
 
 type Props = {
-  menus: any;
+  menus: LinkBlock[];
   theme?: "default" | "navy" | "cyan" | "indigo" | "tangerine";
   isAssociation?: boolean;
 };
@@ -112,7 +110,7 @@ export const MobileNavigation = ({ menus, theme = "default" }: Props) => {
                                 key={subIndex}
                                 onClick={() => handleToggleMenu(submenu, -1)}
                               >
-                                <Link href={submenu.url} target={submenu.external ? "_blank" : "_self"}>
+                                <Link href={submenu.url as string} target={submenu.external ? "_blank" : "_self"}>
                                   {submenu.label}
                                   {submenu.external && (
                                     <svg className={styles.external}>
@@ -126,18 +124,18 @@ export const MobileNavigation = ({ menus, theme = "default" }: Props) => {
                         )}
                         {menu.submenusRight && (
                           <ul className={`${styles.submenu} ${styles.right}`}>
-                            {menu.submenusRight.submenusLeft.map((submenu, subIndex) => (
+                            {menu.submenusRight?.submenusLeft?.map((submenu, subIndex) => (
                               <li className={styles.submenuItem} key={subIndex}>
                                 <Link
-                                  href={submenu.url}
+                                  href={submenu.url as string}
                                   target={submenu.external ? "_blank" : "_self"}
                                   aria-label={submenu.label}
                                   className={styles.iconItem}
                                 >
                                   <Image
-                                    src={submenu.icon.file.url}
-                                    width={submenu.icon.file.details.image.width}
-                                    height={submenu.icon.file.details.image.height}
+                                    src={submenu.icon?.file.url as string}
+                                    width={submenu.icon?.file.details.image.width}
+                                    height={submenu.icon?.file.details.image.height}
                                     alt={submenu.label}
                                   />
                                 </Link>

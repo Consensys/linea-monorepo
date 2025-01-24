@@ -1,5 +1,4 @@
-/* eslint-disable */
-import { Theme } from "@/types";
+import { LinkBlock, Theme } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -10,7 +9,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 type Props = {
-  menus: any;
+  menus: LinkBlock[];
   theme?: Theme;
 };
 
@@ -29,7 +28,11 @@ export const DesktopNavigation = ({ menus, theme = Theme.default }: Props) => {
   );
 };
 
-function MenuItem({ menu }) {
+type MenuItemProps = {
+  menu: LinkBlock;
+};
+
+function MenuItem({ menu }: MenuItemProps) {
   const [showSubmenu, setShowsubmenu] = useState<boolean>(false);
   const pathname = usePathname();
 
@@ -63,7 +66,7 @@ function MenuItem({ menu }) {
             <ul className={styles.submenu}>
               {menu.submenusLeft.map((submenu, key) => (
                 <li className={styles.submenuItem} key={key}>
-                  <Link href={submenu.url} target={submenu.external ? "_blank" : "_self"}>
+                  <Link href={submenu.url as string} target={submenu.external ? "_blank" : "_self"}>
                     {submenu.label}
                     {submenu.external && (
                       <svg className={styles.newTab}>
@@ -75,18 +78,18 @@ function MenuItem({ menu }) {
               ))}
               {menu.submenusRight && (
                 <ul className={styles.right}>
-                  {menu.submenusRight.submenusLeft.map((submenu, subIndex) => (
+                  {menu.submenusRight?.submenusLeft?.map((submenu, subIndex) => (
                     <li className={styles.submenuItem} key={subIndex}>
                       <Link
-                        href={submenu.url}
+                        href={submenu.url as string}
                         target={submenu.external ? "_blank" : "_self"}
                         aria-label={submenu.label}
                         className={styles.iconItem}
                       >
                         <Image
-                          src={submenu.icon.file.url}
-                          width={submenu.icon.file.details.image.width}
-                          height={submenu.icon.file.details.image.height}
+                          src={submenu.icon?.file?.url as string}
+                          width={submenu.icon?.file.details.image.width}
+                          height={submenu.icon?.file.details.image.height}
                           alt={submenu.label}
                         />
                       </Link>

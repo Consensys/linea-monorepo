@@ -40,7 +40,7 @@ export default function TransactionsPage() {
   return (
     <>
       <TopBanner
-        href="/"
+        href="https://linea.build/ecosystem"
         text="⭐️ Stay ahead of the curve with the latest trending tokens - Discover trending tokens"
       />
       <div className={styles["content-wrapper"]}>

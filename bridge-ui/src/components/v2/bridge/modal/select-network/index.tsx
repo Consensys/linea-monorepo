@@ -73,7 +73,7 @@ export default function SelectNetwork({ isModalOpen, onCloseModal }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
-    <Modal title="Select a token" isOpen={isModalOpen} onClose={onCloseModal} isDrawer={isMobile}>
+    <Modal title="Select a network" isOpen={isModalOpen} onClose={onCloseModal} isDrawer={isMobile}>
       <div className={styles["modal-inner"]}>
         <div className={styles["input-wrapper"]}>
           <SearchIcon />
@@ -87,7 +87,14 @@ export default function SelectNetwork({ isModalOpen, onCloseModal }: Props) {
         <div className={styles["list-network"]}>
           {filteredNetworks.length > 0 ? (
             filteredNetworks.map((network, index: number) => {
-              return <NetworkDetails key={index} name={network.name} image="/images/logo/ethereum-rounded.svg" />;
+              return (
+                <NetworkDetails
+                  key={index}
+                  name={network.name}
+                  onClickNetwork={onCloseModal}
+                  image="/images/logo/ethereum-rounded.svg"
+                />
+              );
             })
           ) : (
             <p>No networks found</p>

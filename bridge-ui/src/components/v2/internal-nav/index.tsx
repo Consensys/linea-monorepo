@@ -6,6 +6,7 @@ import ConfigIcon from "@/assets/icons/config.svg";
 import NavItem from "./item";
 import ToggleSwitch from "@/components/v2/ui/toggle-switch";
 import { useEffect, useRef, useState } from "react";
+import CurrencyDropdown from "@/components/v2/bridge/currency-dropdown";
 
 const NavData = [
   {
@@ -65,6 +66,7 @@ export default function InternalNav() {
           <ul className={styles["dropdown-list"]}>
             <li className={clsx(styles["dropdown-item"])}>
               <span>Currency</span>
+              <CurrencyDropdown />
             </li>
             <li className={clsx(styles["dropdown-item"])}>
               <span>Show Test Networks</span>

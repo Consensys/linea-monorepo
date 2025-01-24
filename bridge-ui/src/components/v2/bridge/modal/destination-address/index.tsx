@@ -22,22 +22,6 @@ export default function DestinationAddress({ isModalOpen, onCloseModal, defaultA
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (address === "katie") {
-      setError("Invalid address");
-      setStatus(FormStatus.ERROR);
-      return;
-    }
-    if (address === "newaddress.linea.eth") {
-      setError("Editing the destination address can result in loss of your funds. Make sure you control this address.");
-      setStatus(FormStatus.WARNING);
-      return;
-    }
-    if (address === "katie.linea.eth" || address === defaultAddress) {
-      setError("");
-      setStatus(FormStatus.SUCCESS);
-      return;
-    }
-
     onCloseModal();
   };
   return (
@@ -45,7 +29,7 @@ export default function DestinationAddress({ isModalOpen, onCloseModal, defaultA
       <div className={styles["modal-inner"]}>
         <form onSubmit={handleSubmit}>
           <label htmlFor="address">To address</label>
-          <input type="text" id="address" onChange={(e) => setAddress(e.target.value)} />
+          <input type="text" id="address" value={address} onChange={(e) => setAddress(e.target.value)} />
           {error && <p className={styles["error-text"]}>{error}</p>}
           <Button type="submit" fullWidth>
             Save

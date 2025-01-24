@@ -1,4 +1,4 @@
-@media only screen and (max-width: 767px) {
+@include bp-max("tablet") {
   .header {
     width: calc(100% - 1.5rem);
     margin-top: 0.73rem;

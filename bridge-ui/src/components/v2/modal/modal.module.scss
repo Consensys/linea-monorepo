@@ -19,11 +19,9 @@
   color: var(--v2-color-black);
   background: var(--v2-color-white);
 
-  max-width: calc(100% - 4.8rem);
+  width: calc(100% - 4.8rem);
 
   @include bp("tablet") {
-    max-width: 100%;
-
     &.md {
       width: 42rem;
     }

@@ -6,10 +6,15 @@
   input {
     font-size: 1.4rem;
     font-family: var(--font-atyp-text);
-    border: 1px solid var(--v2-color-silver);
+    border: 0.2rem solid var(--v2-color-silver);
     border-radius: 1rem;
     width: 100%;
     padding: 1.6rem 1.2rem 1.6rem 3.8rem;
+    transition: 0.25s border-color ease-in-out;
+
+    &:focus {
+      border-color: var(--v2-color-icterine);
+    }
   }
 
   svg {
@@ -27,5 +32,10 @@
   flex-direction: column;
   padding: 0 0.5rem;
   overflow: auto;
-  height: 35rem;
+  height: 70vh;
+  margin-bottom: 1.6rem;
+
+  @include bp("tablet") {
+    height: 35rem;
+  }
 }

@@ -1,5 +1,3 @@
-/* eslint-disable */
-
 import styles from "./header.module.scss";
 import Link from "next/link";
 import { DesktopNavigation } from "./desktop-navigation";

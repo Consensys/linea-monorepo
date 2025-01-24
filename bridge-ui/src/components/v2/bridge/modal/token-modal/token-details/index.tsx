@@ -43,12 +43,6 @@ export default function TokenDetails({ token, onTokenClick, setValue, clearError
       id={`token-details-${token.symbol}-btn`}
       className={styles["token-wrapper"]}
       type="button"
-      // className={cn(
-      //   "flex items-center justify-between w-full px-4 py-3 bg-transparent border-0 hover:bg-primary-light",
-      //   {
-      //     "btn-disabled": tokenNotFromCurrentLayer,
-      //   },
-      // )}
       disabled={tokenNotFromCurrentLayer}
       onClick={() => {
         if (networkLayer !== NetworkLayer.UNKNOWN && token && networkType !== NetworkType.WRONG_NETWORK) {

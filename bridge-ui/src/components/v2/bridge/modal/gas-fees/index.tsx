@@ -5,10 +5,9 @@ import Button from "@/components/v2/ui/button";
 type Props = {
   isModalOpen: boolean;
   onCloseModal: () => void;
-  onClickOk: () => void;
 };
 
-export default function GasFees({ isModalOpen, onCloseModal, onClickOk }: Props) {
+export default function GasFees({ isModalOpen, onCloseModal }: Props) {
   const allFees = [
     {
       name: "Ethereum fee",
@@ -39,7 +38,7 @@ export default function GasFees({ isModalOpen, onCloseModal, onClickOk }: Props)
             </li>
           ))}
         </ul>
-        <Button fullWidth onClick={onClickOk}>
+        <Button fullWidth onClick={onCloseModal}>
           OK
         </Button>
       </div>

@@ -270,7 +270,7 @@ export const MENUS = [
             title: "x",
             description: "",
             file: {
-              url: "//images.ctfassets.net/64upluvbiuck/2DgMlc54Mv2yYX2ygBXkqs/318ede60500c57c628893255d692b803/x.svg",
+              url: "/images/logo/header/x.svg",
               details: {
                 size: 389,
                 image: {
@@ -296,7 +296,7 @@ export const MENUS = [
             title: "farcaster-final",
             description: "",
             file: {
-              url: "//images.ctfassets.net/64upluvbiuck/5tF4tbrjbN3qBJCuwgrdoF/619a5fe2502d23489030c1972d61e39e/farcaster-final.svg",
+              url: "/images/logo/header/farcaster-final.svg",
               details: {
                 size: 925,
                 image: {
@@ -322,7 +322,7 @@ export const MENUS = [
             title: "discord",
             description: "",
             file: {
-              url: "//images.ctfassets.net/64upluvbiuck/3QIUEvZ2GeZLIlOONOxf0L/98027667be920239eaffa431a0db1556/discord.svg",
+              url: "/images/logo/header/discord.svg",
               details: {
                 size: 1346,
                 image: {
@@ -348,7 +348,7 @@ export const MENUS = [
             title: "youtube",
             description: "",
             file: {
-              url: "//images.ctfassets.net/64upluvbiuck/4TJEyttUd01wblxnZBgi4r/b9a6422f2bc029fb4370c12782204ce5/youtube.svg",
+              url: "/images/logo/header/youtube.svg",
               details: {
                 size: 1031,
                 image: {

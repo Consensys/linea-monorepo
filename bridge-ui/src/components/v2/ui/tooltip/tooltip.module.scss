@@ -17,6 +17,7 @@
   white-space: nowrap;
   z-index: 1000;
   opacity: 0;
+  visibility: hidden;
   transform: scale(0.9);
   transition:
     opacity 0.2s ease,
@@ -24,6 +25,7 @@
 
   &.visible {
     opacity: 1;
+    visibility: visible;
     transform: scale(1);
   }
 

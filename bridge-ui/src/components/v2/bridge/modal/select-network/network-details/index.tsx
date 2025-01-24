@@ -4,13 +4,14 @@ import styles from "./network-details.module.scss";
 type Props = {
   name: string;
   image: string;
+  onClickNetwork: () => void;
 };
 
-export default function NetworkDetails({ name, image }: Props) {
+export default function NetworkDetails({ name, image, onClickNetwork }: Props) {
   return (
-    <div className={styles.wrapper}>
-      <Image className={styles.image} src={image} alt="" width={24} height={24} />
+    <button className={styles.wrapper} type="button" onClick={onClickNetwork}>
+      <Image className={styles.image} src={image} alt={name} width={24} height={24} />
       <p className={styles.name}>{name}</p>
-    </div>
+    </button>
   );
 }
