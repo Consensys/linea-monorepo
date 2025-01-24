@@ -401,11 +401,11 @@ services:
   l1-cl-node:
     container_name: l1-cl-node
     hostname: l1-cl-node
-    image: consensys/teku:24.12.1
+    image: consensys/teku:25.1.0
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-el-node:
-        condition: service_healthy
+        condition: service_started
       l1-node-genesis-generator:
         condition: service_completed_successfully
     healthcheck:
