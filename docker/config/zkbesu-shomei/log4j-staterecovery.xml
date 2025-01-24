@@ -15,7 +15,7 @@
     <Logger name="org.hyperledger.besu" level="WARN" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Logger name="net.consensys.shomei.trielog" level="TRACE" additivity="false">
+    <Logger name="net.consensys.shomei.trielog" level="INFO" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
     <!-- to avoid annoying message "INFO ... No sync target, waiting for peers. Current peers: 0" change to WARN-->
