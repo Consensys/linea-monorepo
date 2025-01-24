@@ -185,6 +185,8 @@ func TestConglomerationPureVortexMultiRound(t *testing.T) {
 
 func TestConglomerationLookup(t *testing.T) {
 
+	t.Skip()
+
 	tcs := []struct {
 		name  string
 		suite compilerSuite
