@@ -8,6 +8,7 @@ import (
 	logderiv "github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
 	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -15,7 +16,7 @@ import (
 )
 
 // It tests DistributedLogDerivSum.
-func TestDistributedLogDerivSum(t *testing.T) {
+func TestSeedGeneration(t *testing.T) {
 	const (
 		numSegModule0 = 2
 		numSegModule1 = 2
@@ -24,22 +25,25 @@ func TestDistributedLogDerivSum(t *testing.T) {
 
 	//initialComp
 	define := func(b *wizard.Builder) {
-		// columns from module0
-		col01 := b.CompiledIOP.InsertCommit(0, "module0.col1", 4)
-		col02 := b.CompiledIOP.InsertCommit(0, "module0.col2", 8)
 
-		// columns from module1
-		col10 := b.CompiledIOP.InsertCommit(0, "module1.col0", 8)
-		col11 := b.CompiledIOP.InsertCommit(0, "module1.col1", 16)
-		col12 := b.CompiledIOP.InsertCommit(0, "module1.col2", 4)
-		col13 := b.CompiledIOP.InsertCommit(0, "module1.col3", 4)
-		col14 := b.CompiledIOP.InsertCommit(0, "module1.col4", 16)
-		col15 := b.CompiledIOP.InsertCommit(0, "module1.col5", 16)
+		var (
+			// columns from module0
+			col01 = b.CompiledIOP.InsertCommit(0, "module0.col1", 4)
+			col02 = b.CompiledIOP.InsertCommit(0, "module0.col2", 8)
 
-		//  columns from module2
-		col20 := b.CompiledIOP.InsertCommit(0, "module2.col0", 4)
-		col21 := b.CompiledIOP.InsertCommit(0, "module2.col1", 4)
-		col22 := b.CompiledIOP.InsertCommit(0, "module2.col2", 4)
+			// columns from module1
+			col10 = b.CompiledIOP.InsertCommit(0, "module1.col0", 8)
+			col11 = b.CompiledIOP.InsertCommit(0, "module1.col1", 16)
+			col12 = b.CompiledIOP.InsertCommit(0, "module1.col2", 4)
+			col13 = b.CompiledIOP.InsertCommit(0, "module1.col3", 4)
+			col14 = b.CompiledIOP.InsertCommit(0, "module1.col4", 16)
+			col15 = b.CompiledIOP.InsertCommit(0, "module1.col5", 16)
+
+			//  columns from module2
+			col20 = b.CompiledIOP.InsertCommit(0, "module2.col0", 4)
+			col21 = b.CompiledIOP.InsertCommit(0, "module2.col1", 4)
+			col22 = b.CompiledIOP.InsertCommit(0, "module2.col2", 4)
+		)
 
 		// inclusion query: S \subset T , S in module0, T in module1.
 		b.CompiledIOP.InsertInclusion(0, "lookup0",
@@ -71,9 +75,10 @@ func TestDistributedLogDerivSum(t *testing.T) {
 		run.AssignColumn("module2.col2", smartvectors.ForTest(1, 1, 0, 1))
 	}
 
-	// in initialComp replace inclusion queries with a global LogDerivativeSum
-	// it also creates new columns relevant to the preparation such as multiplicity columns.
-	initialComp := wizard.Compile(define, distributed.IntoLogDerivativeSum)
+	// initial compiledIOP is the parent to LPPComp and all the SegmentModuleComp objects.
+	initialComp := wizard.Compile(define)
+	// apply the LPP relevant compilers and generate the seed for initialComp
+	lppComp := lpp.CompileLPPAndGetSeed(initialComp, distributed.IntoLogDerivativeSum)
 
 	// Initialize the period separating module discoverer
 	disc := &md.PeriodSeperatingModuleDiscoverer{}
@@ -105,6 +110,7 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	})
 
 	// distribute the query LogDerivativeSum among modules.
+	// The seed is used to generate randomness for each moduleComp.
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc, numSegModule0)
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc, numSegModule1)
 	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp2, "module2", disc, numSegModule2)
@@ -115,7 +121,14 @@ func TestDistributedLogDerivSum(t *testing.T) {
 	wizard.ContinueCompilation(moduleComp2, logderiv.CompileLogDerivSum, dummy.Compile)
 
 	// run the initial runtime
-	initialRuntime := wizard.RunProver(initialComp, prover)
+	initialRuntime := wizard.ProverOnlyFirstRound(initialComp, prover)
+
+	// compile and verify for lpp-Prover
+	lppProof := wizard.Prove(lppComp, func(run *wizard.ProverRuntime) {
+		run.ParentRuntime = initialRuntime
+	})
+	lppVerifierRuntime, valid := wizard.VerifierWithRuntime(lppComp, lppProof)
+	require.NoError(t, valid)
 
 	// Compile and prove for module0
 	for proverID := 0; proverID < numSegModule0; proverID++ {
@@ -124,7 +137,7 @@ func TestDistributedLogDerivSum(t *testing.T) {
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid := wizard.Verify(moduleComp0, proof0)
+		valid := wizard.Verify(moduleComp0, proof0, lppVerifierRuntime)
 		require.NoError(t, valid)
 	}
 
@@ -135,7 +148,7 @@ func TestDistributedLogDerivSum(t *testing.T) {
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid1 := wizard.Verify(moduleComp1, proof1)
+		valid1 := wizard.Verify(moduleComp1, proof1, lppVerifierRuntime)
 		require.NoError(t, valid1)
 	}
 
@@ -146,7 +159,7 @@ func TestDistributedLogDerivSum(t *testing.T) {
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid2 := wizard.Verify(moduleComp2, proof2)
+		valid2 := wizard.Verify(moduleComp2, proof2, lppVerifierRuntime)
 		require.NoError(t, valid2)
 	}
 }
