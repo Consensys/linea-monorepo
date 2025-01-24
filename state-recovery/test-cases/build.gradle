@@ -40,6 +40,14 @@ dependencies {
 sourceSets {
   integrationTest {
     kotlin {
+      compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.output + sourceSets.test.compileClasspath
+      runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.output + sourceSets.test.runtimeClasspath
+    }
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.output + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.output + sourceSets.test.runtimeClasspath
+  }
+  e2eTest {
+    kotlin {
       compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
       runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
     }
@@ -47,6 +55,12 @@ sourceSets {
     runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
   }
 }
+
+//configurations {
+//  integrationTestImplementation.extendsFrom implementation
+//  integrationTestImplementation.extendsFrom testImplementation
+//  integrationTestRuntimeOnly.extendsFrom runtimeOnly
+//}
 
 test {
   systemProperty "vertx.parameter.filename", project.projectDir.toPath()
@@ -66,7 +80,40 @@ task integrationTest(type: Test) { test ->
   classpath = sourceSets.integrationTest.runtimeClasspath
   testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-  //  dependsOn(":localStackForStateRecoveryComposeUp")
+  dependsOn(":localStackForStateRecoveryComposeUp")
+
+  testLogging {
+    events TestLogEvent.FAILED,
+        TestLogEvent.SKIPPED,
+        TestLogEvent.STANDARD_ERROR,
+        TestLogEvent.STARTED,
+        TestLogEvent.PASSED
+    exceptionFormat TestExceptionFormat.FULL
+    showCauses true
+    showExceptions true
+    showStackTraces true
+    // set showStandardStreams if you need to see test logs
+    showStandardStreams true
+  }
+}
+
+task e2eTest(type: Test) { test ->
+  systemProperty "vertx.parameter.filename", project.projectDir.toPath()
+      .resolve("src/test/resources/vertx-options.json")
+      .toAbsolutePath().toString()
+
+  description = "Runs e2e tests."
+  group = "verification"
+  useJUnitPlatform()
+
+  classpath = sourceSets.e2eTest.runtimeClasspath
+  testClassesDirs = sourceSets.e2eTest.output.classesDirs
+
+  systemProperties["junit.jupiter.execution.timeout.default"] = "5 m" // 5 minutes
+  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
+  systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
+  systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
+  maxParallelForks = Math.max(Runtime.runtime.availableProcessors(), 9)
 
   testLogging {
     events TestLogEvent.FAILED,
