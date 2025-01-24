@@ -70,7 +70,8 @@ open class LineaStateRecoveryPlugin : BesuPlugin {
       p2pService = serviceManager.getServiceOrThrow(P2PService::class.java),
       miningService = serviceManager.getServiceOrThrow(MiningService::class.java),
       recoveryStatePersistence = this.recoveryStatusPersistence,
-      synchronizationService = synchronizationService
+      synchronizationService = synchronizationService,
+      headBlockNumber = blockchainService.chainHeadHeader.number.toULong()
     )
     val simulatorService = serviceManager.getServiceOrThrow(BlockSimulationService::class.java)
     val executionLayerClient = ExecutionLayerInProcessClient.create(

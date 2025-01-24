@@ -37,6 +37,9 @@
     <Logger name="linea.staterecovery" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
+    <Logger name="linea.staterecovery.plugin.BlockImporter" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
     <Logger name="linea.staterecovery.clients.ExecutionLayerInProcessClient" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
