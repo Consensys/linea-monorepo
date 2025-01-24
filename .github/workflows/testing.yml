@@ -26,7 +26,8 @@ on:
         type: string
 
 jobs:
-  # Disable cache for pulling docker images
+  # Disable cache for pulling docker images as empirically found that this 
+  # (retrieving cache and loading docker images) actually increased test time-to-completion
   # cache-docker-images:
   #   uses: ./.github/workflows/cache-docker-images.yml
   #   secrets: inherit

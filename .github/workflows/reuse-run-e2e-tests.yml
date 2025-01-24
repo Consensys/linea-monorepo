@@ -97,7 +97,8 @@ jobs:
         run: |
           mkdir -p tmp/local/traces/v2/conflated
           chmod -R a+w tmp/local/traces/v2/conflated
-      # Disable cache for pulling docker images
+      # Disable cache for pulling docker images as empirically found that this 
+      # (retrieving cache and loading docker images) actually increased test time-to-completion
       # - name: Restore cached images
       #   id: restore-cached-images
       #   uses: ./.github/actions/restore-docker-images
