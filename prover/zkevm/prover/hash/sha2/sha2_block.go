@@ -6,8 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -290,20 +290,14 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 	// The following query ensures that the data in limbs corresponding to
 	// limbs are exactly those provided by the input module.
 
-	projection.RegisterProjection(
-		comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%v_PROJECTION_INPUT", inp.Name),
-		[]ifaces.Column{
-			res.Inputs.IsFirstLaneOfNewHash,
-			res.Inputs.PackedUint32,
-		},
-		[]ifaces.Column{
-			column.Shift(res.IsEffFirstLaneOfNewHash, -2),
-			res.Limbs,
-		},
-		res.Inputs.Selector,
-		res.IsEffBlock,
-	)
+		query.ProjectionInput{ColumnA: []ifaces.Column{res.Inputs.IsFirstLaneOfNewHash,
+			res.Inputs.PackedUint32},
+			ColumnB: []ifaces.Column{column.Shift(res.IsEffFirstLaneOfNewHash, -2),
+				res.Limbs},
+			FilterA: res.Inputs.Selector,
+			FilterB: res.IsEffBlock})
 
 	// As per the padding technique we use, the HashHi and HashLo should not
 	// be zero when isActive.

@@ -5,8 +5,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
@@ -130,13 +130,12 @@ func DefineBlockTxnMetaData(comp *wizard.CompiledIOP, btm *BlockTxnMetadata, nam
 	}
 
 	// a projection query to check that the sender addresses are fetched correctly
-	projection.RegisterProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_PROJECTION", name),
-		fetcherTable,
-		arithTable,
-		btm.FilterFetched,
-		btm.FilterArith,
-	)
+		query.ProjectionInput{ColumnA: fetcherTable,
+			ColumnB: arithTable,
+			FilterA: btm.FilterFetched,
+			FilterB: btm.FilterArith})
 }
 
 func AssignBlockTxnMetadata(run *wizard.ProverRuntime, btm BlockTxnMetadata, td *arith.TxnData) {

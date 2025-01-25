@@ -4,9 +4,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -63,7 +63,7 @@ func merkleProofCheck(
 	useNextProof bool,
 ) {
 
-	round := wizardutils.MaxRound(proofs, roots, leaves, pos)
+	round := column.MaxRound(proofs, roots, leaves, pos)
 	// define the compute module
 	cm := ComputeMod{}
 	cm.Cols.Proof = proofs

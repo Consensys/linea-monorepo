@@ -8,8 +8,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -99,26 +99,29 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 
 	// projection from ecRecover to address columns
 	// ecdata is already projected over our ecRecover. Thus, we only project from our ecrecover.
-	projection.RegisterProjection(comp, ifaces.QueryIDf("Project_AddressHi_EcRec"),
-		[]ifaces.Column{ecRec.Limb}, []ifaces.Column{addr.addressHi},
-		addr.isAddressHiEcRec, addr.isAddressFromEcRec,
-	)
+	comp.InsertProjection(ifaces.QueryIDf("Project_AddressHi_EcRec"), query.ProjectionInput{ColumnA: []ifaces.Column{ecRec.Limb},
+		ColumnB: []ifaces.Column{addr.addressHi},
+		FilterA: addr.isAddressHiEcRec,
+		FilterB: addr.isAddressFromEcRec})
 
-	projection.RegisterProjection(comp, ifaces.QueryIDf("Project_AddressLo_EcRec"),
-		[]ifaces.Column{ecRec.Limb}, []ifaces.Column{addr.addressLo},
-		column.Shift(addr.isAddressHiEcRec, -1), addr.isAddressFromEcRec,
-	)
+	comp.InsertProjection(ifaces.QueryIDf("Project_AddressLo_EcRec"),
+		query.ProjectionInput{ColumnA: []ifaces.Column{ecRec.Limb},
+			ColumnB: []ifaces.Column{addr.addressLo},
+			FilterA: column.Shift(addr.isAddressHiEcRec, -1),
+			FilterB: addr.isAddressFromEcRec})
 
 	// projection from txn-data to address columns
-	projection.RegisterProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
-		[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
-		td.isFrom, addr.isAddressFromTxnData,
-	)
+	comp.InsertProjection(ifaces.QueryIDf("Project_AddressHi_TxnData"),
+		query.ProjectionInput{ColumnA: []ifaces.Column{td.fromHi},
+			ColumnB: []ifaces.Column{addr.addressHi},
+			FilterA: td.isFrom,
+			FilterB: addr.isAddressFromTxnData})
 
-	projection.RegisterProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
-		[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
-		td.isFrom, addr.isAddressFromTxnData,
-	)
+	comp.InsertProjection(ifaces.QueryIDf("Project_AddressLO_TxnData"),
+		query.ProjectionInput{ColumnA: []ifaces.Column{td.fromLo},
+			ColumnB: []ifaces.Column{addr.addressLo},
+			FilterA: td.isFrom,
+			FilterB: addr.isAddressFromTxnData})
 
 	// impose that hashNum = ac.ID + 1
 	comp.InsertGlobal(0, ifaces.QueryIDf("Hash_NUM_IS_ID"),

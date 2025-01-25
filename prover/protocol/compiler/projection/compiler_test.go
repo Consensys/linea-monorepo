@@ -27,7 +27,7 @@ func makeTestCaseProjection() (
 		flagB = comp.InsertCommit(round, ifaces.ColID("FliterB"), flagSizeB)
 		columnA = comp.InsertCommit(round, ifaces.ColID("ColumnA"), flagSizeA)
 		columnB = comp.InsertCommit(round, ifaces.ColID("ColumnB"), flagSizeB)
-		comp.InsertProjection(round, "Projection_Compilation_Test", query.ProjectionInput{ColumnA: []ifaces.Column{columnA}, ColumnB: []ifaces.Column{columnB}, FilterA: flagA, FilterB: flagB})
+		comp.InsertProjection("Projection_Compilation_Test", query.ProjectionInput{ColumnA: []ifaces.Column{columnA}, ColumnB: []ifaces.Column{columnB}, FilterA: flagA, FilterB: flagB})
 
 	}
 	prover = func(run *wizard.ProverRuntime) {

@@ -6,8 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
@@ -182,13 +182,13 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 	}
 
 	// a projection query to check that the timestamp data is fetched correctly
-	projection.RegisterProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_TIMESTAMP_PROJECTION", name),
-		fetcherTable,
-		arithTable,
-		fetcher.FilterFetched,
-		fetcher.SelectorTimestamp, // filter lights up on the arithmetization's BlockDataCols rows that contain timestamp data
-	)
+		query.ProjectionInput{ColumnA: fetcherTable,
+			ColumnB: arithTable,
+			FilterA: fetcher.FilterFetched,
+			// filter lights up on the arithmetization's BlockDataCols rows that contain timestamp data
+			FilterB: fetcher.SelectorTimestamp})
 
 	// constrain the First/Last Block ID counters
 	ConstrainFirstAndLastBlockID(comp, fetcher, name, bdc)

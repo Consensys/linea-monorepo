@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -273,7 +272,7 @@ func (a *Alignment) csIsActive(comp *wizard.CompiledIOP) {
 // csProjection ensures the data in the [Alignment.Data] column is the same as
 // the data provided by the [Alignment.CircuitInput].
 func (a *Alignment) csProjection(comp *wizard.CompiledIOP) {
-	projection.RegisterProjection(comp, ifaces.QueryIDf("%v_PROJECTION", a.Name), []ifaces.Column{a.DataToCircuit}, []ifaces.Column{a.CircuitInput}, a.DataToCircuitMask, a.ActualCircuitInputMask)
+	comp.InsertProjection(ifaces.QueryIDf("%v_PROJECTION", a.Name), query.ProjectionInput{ColumnA: []ifaces.Column{a.DataToCircuit}, ColumnB: []ifaces.Column{a.CircuitInput}, FilterA: a.DataToCircuitMask, FilterB: a.ActualCircuitInputMask})
 }
 
 // csProjectionSelector constraints that the projection selection

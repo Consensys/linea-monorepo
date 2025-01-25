@@ -5,8 +5,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
@@ -81,13 +81,13 @@ func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, nam
 	}
 
 	// a projection query to check that the sender addresses are fetched correctly
-	projection.RegisterProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_TXN_DATA_FETCHER_PROJECTION", name),
-		fetcherTable,
-		arithTable,
-		fetcher.FilterFetched,
-		fetcher.SelectorFromAddress, // filter lights up on the arithmetization's TxnData rows that contain sender address data
-	)
+		query.ProjectionInput{ColumnA: fetcherTable,
+			ColumnB: arithTable,
+			FilterA: fetcher.FilterFetched,
+			// filter lights up on the arithmetization's TxnData rows that contain sender address data
+			FilterB: fetcher.SelectorFromAddress})
 }
 
 // AssignTxnDataFetcher assigns the data in the TxnDataFetcher using data fetched from the TxnData

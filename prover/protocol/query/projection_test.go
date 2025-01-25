@@ -26,7 +26,7 @@ func TestProjection(t *testing.T) {
 		flagB = comp.InsertCommit(round, ifaces.ColID("FliterB"), flagSizeB)
 		columnA = comp.InsertCommit(round, ifaces.ColID("ColumnA"), flagSizeA)
 		columnB = comp.InsertCommit(round, ifaces.ColID("ColumnB"), flagSizeB)
-		P = comp.InsertProjection(round, "ProjectionTest",
+		P = comp.InsertProjection("ProjectionTest",
 			query.ProjectionInput{ColumnA: []ifaces.Column{columnA}, ColumnB: []ifaces.Column{columnB}, FilterA: flagA, FilterB: flagB})
 
 	}

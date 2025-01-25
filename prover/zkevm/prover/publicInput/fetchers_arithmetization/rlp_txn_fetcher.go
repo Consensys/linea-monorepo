@@ -6,8 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
@@ -148,13 +148,13 @@ func DefineRlpTxnFetcher(comp *wizard.CompiledIOP, fetcher *RlpTxnFetcher, name 
 	}
 
 	// a projection query to check that the timestamp data is fetched correctly
-	projection.RegisterProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_RLP_TXN_PROJECTION", name),
-		fetcherTable,
-		arithTable,
-		fetcher.FilterFetched,
-		rlpTxnArith.ToHashByProver, // filter lights up on the arithmetization's RlpTxn rows that contain rlp transaction data
-	)
+		query.ProjectionInput{ColumnA: fetcherTable,
+			ColumnB: arithTable,
+			FilterA: fetcher.FilterFetched,
+			// filter lights up on the arithmetization's RlpTxn rows that contain rlp transaction data
+			FilterB: rlpTxnArith.ToHashByProver})
 }
 
 func AssignRlpTxnFetcher(run *wizard.ProverRuntime, fetcher *RlpTxnFetcher, rlpTxnArith *arith.RlpTxn) {

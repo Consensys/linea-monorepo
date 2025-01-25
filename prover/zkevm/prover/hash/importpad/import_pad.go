@@ -4,8 +4,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -184,14 +184,12 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		res.IsPadded,
 	)
 
-	projection.RegisterProjection(
-		comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%v_IMPORT_PAD_PROJECTION", inp.Name),
-		[]ifaces.Column{inp.Src.Data.HashNum, inp.Src.Data.Limb, inp.Src.Data.NBytes, inp.Src.Data.Index},
-		[]ifaces.Column{res.HashNum, res.Limbs, res.NBytes, res.Index},
-		inp.Src.Data.ToHash,
-		res.IsInserted,
-	)
+		query.ProjectionInput{ColumnA: []ifaces.Column{inp.Src.Data.HashNum, inp.Src.Data.Limb, inp.Src.Data.NBytes, inp.Src.Data.Index},
+			ColumnB: []ifaces.Column{res.HashNum, res.Limbs, res.NBytes, res.Index},
+			FilterA: inp.Src.Data.ToHash,
+			FilterB: res.IsInserted})
 
 	return res
 }
