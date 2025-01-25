@@ -111,6 +111,7 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 		metadata = board.ListVariableMetadata()
 		inputs   = make([]smartvectors.SmartVector, len(metadata))
 		length   = ExprIsOnSameLengthHandles(&board)
+		v        field.Element
 	)
 
 	// Attempt to recover the size of the
@@ -119,7 +120,7 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 		case ifaces.Column:
 			inputs[i] = m.GetColAssignment(run)
 		case coin.Info:
-			v := run.GetRandomCoinField(m.Name)
+			v = run.GetRandomCoinField(m.Name)
 			inputs[i] = smartvectors.NewConstant(v, length)
 		case ifaces.Accessor:
 			v := m.GetVal(run)
