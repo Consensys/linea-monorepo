@@ -22,7 +22,7 @@ const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="dark">
+    <html lang="en" data-theme="v2">
       <title>{metadata.title?.toString()}</title>
       <meta name="description" content={metadata.description?.toString()} key="desc" />
 
