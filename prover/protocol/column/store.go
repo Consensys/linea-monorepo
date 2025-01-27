@@ -69,10 +69,6 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 		size = adjustedSize
 	}
 
-	if !utils.IsPowerOfTwo(size) {
-		utils.Panic("can't register %v because it has a non-power of two size (%v)", name, size)
-	}
-
 	// Compute the location of the commitment in the store
 	position := columnPosition{
 		round:      round,
