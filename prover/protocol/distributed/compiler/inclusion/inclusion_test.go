@@ -139,6 +139,9 @@ func TestSeedGeneration(t *testing.T) {
 		})
 		valid := wizard.Verify(moduleComp0, proof0, lppVerifierRuntime)
 		require.NoError(t, valid)
+
+		// extract publicInputs of the module.
+		initialComp.PublicInputs = append(initialComp.PublicInputs, moduleComp0.PublicInputs...)
 	}
 
 	// Compile and prove for module1
@@ -150,6 +153,8 @@ func TestSeedGeneration(t *testing.T) {
 		})
 		valid1 := wizard.Verify(moduleComp1, proof1, lppVerifierRuntime)
 		require.NoError(t, valid1)
+		// extract publicInputs of the module.
+		initialComp.PublicInputs = append(initialComp.PublicInputs, moduleComp0.PublicInputs...)
 	}
 
 	// Compile and prove for module2
@@ -161,5 +166,15 @@ func TestSeedGeneration(t *testing.T) {
 		})
 		valid2 := wizard.Verify(moduleComp2, proof2, lppVerifierRuntime)
 		require.NoError(t, valid2)
+		// extract publicInputs of the module.
+		initialComp.PublicInputs = append(initialComp.PublicInputs, moduleComp0.PublicInputs...)
 	}
+
+	_ = max(moduleComp0.NumRounds(), moduleComp1.NumRounds(), moduleComp2.NumRounds())
+	va := distributed.GlobalVerifier{
+		PublicInputs: initialComp.PublicInputs,
+	}
+	// check that the global sum is zero.
+	initialComp.RegisterVerifierAction(1, &va)
+
 }

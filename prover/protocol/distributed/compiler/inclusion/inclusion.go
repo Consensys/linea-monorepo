@@ -3,6 +3,7 @@ package inclusion
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -144,7 +145,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 	}
 
 	// insert a  LogDerivativeSum specific to the module at round 1 (since initialComp has 2 rounds).
-	moduleComp.InsertLogDerivativeSum(
+	logDerivQuery := moduleComp.InsertLogDerivativeSum(
 		round,
 		ifaces.QueryIDf("%v_%v", LogDerivativeSum, in.ModuleName),
 		zCatalog,
@@ -157,6 +158,13 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 			getLogDerivativeSumResult(zCatalog, run),
 		)
 	})
+
+	// declare [query.LogDerivSumParams] as [wizard.PublicInput]
+	moduleComp.PublicInputs = append(moduleComp.PublicInputs,
+		wizard.PublicInput{
+			Name: accessors.LOGDERIVSUM_ACCESSOR,
+			Acc:  accessors.NewLogDerivSumAccessor(logDerivQuery),
+		})
 
 }
 
