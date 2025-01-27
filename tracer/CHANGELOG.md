@@ -1,5 +1,9 @@
 # Changelog
 
+## beta-v1.2.0-rc3
+* Update Linea Besu to 25.1-delivery44 (#1742)
+* clean: remove dead code (#1733)
+
 ## beta-v1-2.0-rc2
 * Use both traceStartBlock method calls wherever suitable (#1711)
 * Fix/refacto blockdata files (#1724)
