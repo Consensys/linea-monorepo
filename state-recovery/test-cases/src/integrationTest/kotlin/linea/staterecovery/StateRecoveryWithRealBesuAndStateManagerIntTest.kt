@@ -103,7 +103,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
     val staterecoveryNodesStartFuture = execCommandAndAssertSuccess(
       "make staterecovery-replay-from-block " +
         "L1_ROLLUP_CONTRACT_ADDRESS=${rollupDeploymentResult.contractAddress} " +
-        "STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=1",
+        "PLUGIN_STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=1",
       log = log
     )
     val lastAggregationAndBlobs = aggregationsAndBlobs.findLast { it.aggregation != null }!!

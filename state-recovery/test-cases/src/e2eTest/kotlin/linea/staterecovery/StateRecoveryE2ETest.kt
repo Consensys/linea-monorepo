@@ -161,7 +161,7 @@ class StateRecoveryE2ETest {
     execCommandAndAssertSuccess(
       command = "make staterecovery-replay-from-block " +
         "L1_ROLLUP_CONTRACT_ADDRESS=$localStackL1ContractAddress " +
-        "STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=$stateRecoveryStartBlockNumber",
+        "PLUGIN_STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=$stateRecoveryStartBlockNumber",
       log = log
     ).get()
     // No Errors should be logged in Besu
