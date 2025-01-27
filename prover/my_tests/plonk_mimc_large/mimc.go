@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	size = 16
+	size = 1024
 )
 
 // Circuit defines a pre-image knowledge proof
