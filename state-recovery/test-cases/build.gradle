@@ -21,6 +21,7 @@ dependencies {
   api(project(':state-recovery:appcore:logic'))
 
   implementation project(':jvm-libs:linea:besu-libs')
+  implementation project(':jvm-libs:linea:testing:file-system')
   implementation(testFixtures(project(':jvm-libs:generic:json-rpc')))
   implementation(project(':state-recovery:clients:eth-api'))
   implementation(project(':state-recovery:clients:blobscan-client'))

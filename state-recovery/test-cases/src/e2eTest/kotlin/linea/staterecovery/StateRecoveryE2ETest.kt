@@ -22,6 +22,7 @@ import net.consensys.gwei
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
+import net.consensys.linea.testing.filesystem.getPathTo
 import net.consensys.toBigInteger
 import net.consensys.toULong
 import net.consensys.zkevm.ethereum.L2AccountManager
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.net.URI
+import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -41,7 +43,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
-class StateRecoveryWithRealBesuAndStateManagerIntTest {
+class StateRecoveryE2ETest {
   private val log = LogManager.getLogger("test.case.StateRecoverAppWithLocalStackIntTest")
   private lateinit var stateManagerClient: StateManagerClientV1
   private val executionLayerUrl = "http://localhost:9145"
@@ -112,6 +114,8 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
     // assert Besu and Shomei are in sync
 
     freshStartOfStack()
+    // No Errors should be logged in Besu
+    assertThat(getBesuErrorLogs()).isEmpty()
 
     val localStackL1ContractAddress = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
     val logsSearcher = Web3JLogsSearcher(
@@ -158,7 +162,8 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
         "STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=$stateRecoveryStartBlockNumber",
       log = log
     ).get()
-
+    // No Errors should be logged in Besu
+    assertThat(getBesuErrorLogs()).isEmpty()
     // wait for Besu to be up and running
     waitExecutionLayerToBeUpAndRunning(executionLayerUrl, log = log)
     // assert besu and shomei could sync through P2P network
@@ -168,6 +173,8 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
       lastFinalizationA.event.endBlockNumber,
       lastFinalizationA.event.finalStateRootHash
     )
+    // No Errors should be logged in Besu
+    assertThat(getBesuErrorLogs()).isEmpty()
 
     // B
     // await for coordinator to finalize on L1 again
@@ -188,6 +195,8 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
       lastFinalizationB.event.endBlockNumber,
       lastFinalizationB.event.finalStateRootHash
     )
+    // No Errors should be logged in Besu
+    assertThat(getBesuErrorLogs()).isEmpty()
 
     // C.
     // restart besu node with non-graceful shutdown
@@ -196,6 +205,8 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
       command = "docker restart -s 9 zkbesu-shomei-sr",
       log = log
     ).get()
+    // No Errors should be logged in Besu
+    assertThat(getBesuErrorLogs()).isEmpty()
 
     waitExecutionLayerToBeUpAndRunning(executionLayerUrl, log = log)
     val lastRecoveredBlock = web3jElClient.ethBlockNumber().send().blockNumber.toULong()
@@ -221,6 +232,8 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
       lastFinalizationC.event.endBlockNumber,
       lastFinalizationC.event.finalStateRootHash
     )
+    // No Errors should be logged in Besu
+    assertThat(getBesuErrorLogs()).isEmpty()
   }
 
   private fun sendTxToL2(
@@ -245,5 +258,23 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
         )
       }
     }.start()
+  }
+
+  private fun getBesuErrorLogs(): List<String> {
+    val tmpLogDir = getPathTo("tmp/local").resolve("test-logs")
+    if (!Files.exists(tmpLogDir)) {
+      Files.createDirectory(tmpLogDir)
+    }
+    val tmpFile = tmpLogDir.resolve("zkbesu-shomei-sr-e2e-test.logs")
+    // We need this workaround because the Java native implementation hangs if STDOUT is too long
+    Runner
+      .executeCommandFailOnNonZeroExitCode("docker logs zkbesu-shomei-sr > ${tmpFile.toAbsolutePath()}")
+      .get()
+
+    val errorLogs = Files.readAllLines(tmpFile).filter { it.contains("ERROR", ignoreCase = true) }
+
+    Files.delete(tmpFile)
+
+    return errorLogs
   }
 }
