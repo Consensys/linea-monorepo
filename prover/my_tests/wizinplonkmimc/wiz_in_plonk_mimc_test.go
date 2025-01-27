@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	size = 16
+	size = 64
 )
 
 // In this example we show how to use PLONK with KZG commitments. The circuit that is
