@@ -1,5 +1,5 @@
 include:
-  - compose-tracing-v2.yml
+  - compose-tracing-v1.yml
 
 services:
   l2-node:
