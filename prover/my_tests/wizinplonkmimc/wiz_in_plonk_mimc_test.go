@@ -42,7 +42,7 @@ func (circuit *Circuit) Define(api frontend.API) error {
 	return nil
 }
 
-func BenchmarkPlonk(bench *testing.B) {
+func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 	bench.StopTimer()
 
 	define := func(b *wizard.Builder) {

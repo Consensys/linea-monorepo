@@ -18,7 +18,7 @@ import (
 	"testing"
 )
 
-func BenchmarkPreimage(b *testing.B) {
+func BenchmarkPlonkMiMC(b *testing.B) {
 	b.StopTimer()
 	data := make([]fr.Element, size)
 	for _, elem := range data {
