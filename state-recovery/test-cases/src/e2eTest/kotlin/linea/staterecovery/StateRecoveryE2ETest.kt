@@ -84,11 +84,13 @@ class StateRecoveryE2ETest {
   }
 
   private fun freshStartOfStack() {
+    log.debug("restarting the stack")
     Runner.executeCommandFailOnNonZeroExitCode(
       command = "make fresh-start-all-staterecovery",
       envVars = mapOf(
         "L1_GENESIS_TIME" to Clock.System.now().plus(5.seconds).epochSeconds.toString()
-      )
+      ),
+      timeout = 2.minutes
     ).get()
     log.debug("stack restarted")
   }
