@@ -105,7 +105,10 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
         "L1_ROLLUP_CONTRACT_ADDRESS=${rollupDeploymentResult.contractAddress} " +
         "PLUGIN_STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=1",
       log = log
-    )
+    ).thenPeek {
+      log.info("make staterecovery-replay-from-block executed")
+    }
+
     val lastAggregationAndBlobs = aggregationsAndBlobs.findLast { it.aggregation != null }!!
     val lastAggregation = lastAggregationAndBlobs.aggregation!!
 
@@ -125,7 +128,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
     val web3jElClient = createWeb3jHttpClient(executionLayerUrl)
 
     // wait for Besu to be up and running
-    waitExecutionLayerToBeUpAndRunning(executionLayerUrl, log = log)
+    waitExecutionLayerToBeUpAndRunning(executionLayerUrl, log = log, timeout = 30.seconds)
 
     assertBesuAndShomeiStateRootMatches(web3jElClient, stateManagerClient, lastAggregationAndBlobs)
   }

@@ -41,9 +41,23 @@ fun submitBlobsAndAggregations(
   contractClientForBlobSubmission: LineaRollupSmartContractClient,
   contractClientForAggregationSubmission: LineaRollupSmartContractClient = contractClientForBlobSubmission,
   aggregationsAndBlobs: List<AggregationAndBlobs>,
-  blobChunksSize: Int = 6
+  blobChunksSize: Int = 6,
+  l1Web3jClient: Web3j,
+  waitTimeout: Duration = 2.minutes
 ): SubmissionTxHashes {
   val blobSubmissionTxHashes = submitBlobs(contractClientForBlobSubmission, aggregationsAndBlobs, blobChunksSize)
+  l1Web3jClient.waitForTxReceipt(
+    txHash = blobSubmissionTxHashes.last(),
+    timeout = waitTimeout
+  ).also { txReceipt ->
+    if (txReceipt.status != "0x1") {
+      val lastBlob = aggregationsAndBlobs.last().blobs.last()
+      throw IllegalStateException(
+        "latest finalization=${lastBlob.intervalString()} failed on L1. receipt=$txReceipt"
+      )
+    }
+  }
+
   return aggregationsAndBlobs
     .filter { it.aggregation != null }
     .mapIndexed { index, (aggregation, aggBlobs) ->
@@ -73,7 +87,8 @@ fun submitBlobsAndAggregationsAndWaitExecution(
     contractClientForBlobSubmission = contractClientForAggregationSubmission,
     contractClientForAggregationSubmission = contractClientForAggregationSubmission,
     aggregationsAndBlobs = aggregationsAndBlobs,
-    blobChunksSize = blobChunksSize
+    blobChunksSize = blobChunksSize,
+    l1Web3jClient = l1Web3jClient
   )
 
   l1Web3jClient.waitForTxReceipt(
