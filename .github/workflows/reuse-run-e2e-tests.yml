@@ -134,7 +134,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make start-all
+            make start-tracing-v1-ci
           on_retry_command: |
             make clean-environment
       - name: Spin up fresh environment with besu tracing with retry
@@ -146,7 +146,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make start-all-traces-v2
+            make start-tracing-v2-ci
           on_retry_command: |
             make clean-environment
       - name: List docker containers/images

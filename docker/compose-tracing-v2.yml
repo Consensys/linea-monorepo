@@ -43,19 +43,6 @@ services:
     volumes:
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
 
-  l2-node:
-    extends:
-      file: compose.yml
-      service: l2-node
-
-  l2-node-besu:
-    extends:
-      file: compose.yml
-      service: l2-node-besu
-    image: consensys/linea-besu-package:devnet-811f30b
-    volumes:
-      - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
-
   traces-node-v2:
     extends:
       file: compose.yml
@@ -100,8 +87,3 @@ services:
     extends:
       file: compose.yml
       service: shomei
-
-  shomei-frontend:
-    extends:
-      file: compose.yml
-      service: shomei-frontend

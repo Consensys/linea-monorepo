@@ -44,9 +44,10 @@ start-l2-blockchain-only:
 		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml --profile l2-bc up -d
 
 start-whole-environment: COMPOSE_PROFILES:=l1,l2
+start-whole-environment: COMPOSE_FILE:=docker/compose-tracing-v2.yml
 start-whole-environment:
 		# docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml build prover
-	L1_GENESIS_TIME=$(get_future_time) COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f docker/compose-tracing-v1.yml up -d
+	L1_GENESIS_TIME=$(get_future_time) COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f $(COMPOSE_FILE) up -d
 
 
 start-whole-environment-traces-v2: COMPOSE_PROFILES:=l1,l2
@@ -190,6 +191,18 @@ fresh-start-all-traces-v2: L1_CONTRACT_VERSION:=6
 fresh-start-all-traces-v2:
 		make clean-environment
 		$(MAKE) start-all-traces-v2 L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
+
+start-tracing-v1-ci: COMPOSE_PROFILES:=l1,l2
+start-tracing-v1-ci: L1_CONTRACT_VERSION:=6
+start-tracing-v1-ci:
+		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment COMPOSE_FILE=docker/compose-tracing-v1-ci-extension.yml COMPOSE_PROFILES=$(COMPOSE_PROFILES)
+		make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
+
+start-tracing-v2-ci: COMPOSE_PROFILES:=l1,l2
+start-tracing-v2-ci: L1_CONTRACT_VERSION:=6
+start-tracing-v2-ci:
+		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment COMPOSE_FILE=docker/compose-tracing-v2-ci-extension.yml COMPOSE_PROFILES=$(COMPOSE_PROFILES)
+		make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
 start-all: COMPOSE_PROFILES:=l1,l2
 start-all: L1_CONTRACT_VERSION:=6
