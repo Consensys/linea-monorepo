@@ -20,6 +20,10 @@ services:
       file: compose.yml
       service: shomei-frontend
 
+  postman:
+    extends:
+      file: compose.yml
+      service: postman
 
   transaction-exclusion-api:
     extends:
