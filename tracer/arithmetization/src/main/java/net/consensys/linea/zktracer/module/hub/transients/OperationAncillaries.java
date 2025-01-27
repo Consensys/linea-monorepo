@@ -16,18 +16,13 @@
 package net.consensys.linea.zktracer.module.hub.transients;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.module.UtilCalculator.allButOneSixtyFourth;
-import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.Range;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -50,32 +45,6 @@ public class OperationAncillaries {
     }
 
     return frame.shadowReadMemory(span.offset(), span.size());
-  }
-
-  /**
-   * Compute the gas allowance for the child context if in a CALL, throws otherwise.
-   *
-   * @return the CALL gas allowance
-   */
-  public long gasAllowanceForCall() {
-    final OpCode opCode = hub.opCode();
-
-    if (opCode.isCall()) {
-      final long gas = Words.clampedToLong(hub.messageFrame().getStackItem(0));
-      EWord value = EWord.ZERO;
-      if (opCode == OpCode.CALL || opCode == OpCode.CALLCODE) {
-        value = EWord.of(hub.messageFrame().getStackItem(2));
-      }
-      final long stipend = value.isZero() ? 0 : GlobalConstants.GAS_CONST_G_CALL_STIPEND;
-      final long upfrontCost = Hub.GAS_PROJECTOR.of(hub.messageFrame(), opCode).upfrontGasCost();
-      return stipend
-          + Math.max(
-              Words.unsignedMin(
-                  allButOneSixtyFourth(hub.messageFrame().getRemainingGas() - upfrontCost), gas),
-              0);
-    }
-
-    throw new IllegalStateException("not a CALL");
   }
 
   /**
@@ -176,129 +145,5 @@ public class OperationAncillaries {
       default -> throw new IllegalArgumentException(
           "returnDataRequestedSegment called outside of a *CALL");
     }
-  }
-
-  /**
-   * Returns the RAM segment offered by the caller for the return data if the current operation is a
-   * call, throws otherwise.
-   *
-   * @return the return data target
-   */
-  public Range returnDataRequestedSegment() {
-    return returnDataRequestedSegment(hub.messageFrame());
-  }
-
-  /**
-   * Returns the RAM segment offered by the callee for the return data if the current operation is a
-   * RETURN/REVERT, throws otherwise.
-   *
-   * @param frame the execution context
-   * @return the return data segment
-   */
-  public static Range outputDataSpan(final MessageFrame frame) {
-
-    if (frame.getExceptionalHaltReason().isPresent()) {
-      return Range.empty();
-    }
-
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
-
-    if (opCode == OpCode.RETURN && frame.getType() == MessageFrame.Type.CONTRACT_CREATION) {
-      return Range.empty();
-    }
-
-    switch (opCode) {
-      case RETURN, REVERT -> {
-        long size = Words.clampedToLong(frame.getStackItem(1));
-
-        if (size == 0) {
-          return Range.empty();
-        }
-
-        long offset = Words.clampedToLong(frame.getStackItem(0));
-        return Range.fromOffsetAndSize(offset, size);
-      }
-      case STOP, SELFDESTRUCT -> {
-        return Range.empty();
-      }
-
-        // TODO: what the case below provides isn't output data, but the return data ...
-        //  We cannot use this method for that purpose.
-      case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
-        Address target = Words.toAddress(frame.getStackItem(1));
-        if (isPrecompile(target)) {
-          return Range.fromOffsetAndSize(0, 0);
-        }
-        checkArgument(isPrecompile(target)); // useless (?) sanity check
-        // TODO: this will not work for MODEXP as return data starts at offset
-        //  512 - modulusByteSize
-        return Range.fromOffsetAndSize(0, frame.getReturnData().size());
-      }
-      default -> throw new IllegalArgumentException(
-          "returnDataRequestedSegment called outside of a RETURN/REVERT");
-    }
-  }
-
-  /**
-   * Returns the RAM segment offered by the caller for the return data if the current operation is a
-   * call, throws otherwise.
-   *
-   * @return the return data target
-   */
-  public Range outputDataSpan() {
-    return outputDataSpan(hub.messageFrame());
-  }
-
-  /**
-   * Return the bytes of the return data if the current operation is a call, throws otherwise.
-   *
-   * @return the return data content
-   */
-  public Bytes outputData() {
-    final Range outputDataSpan = outputDataSpan();
-
-    // Accesses to huge offset with 0-size are valid
-    if (outputDataSpan.isEmpty()) {
-      return Bytes.EMPTY;
-    }
-
-    // Besu is limited to i32 for memory offset/size
-    if (outputDataSpan.besuOverflow()) {
-      log.warn("Overflowing memory access: {}", outputDataSpan);
-      return Bytes.EMPTY;
-    }
-
-    // TODO: this WON'T work for precompiles, they don't have memory.
-    return maybeShadowReadMemory(outputDataSpan, hub.messageFrame());
-  }
-
-  /**
-   * Return the bytes of the returndata if the current operation is a return/revert, throws
-   * otherwise.
-   *
-   * @param frame the execution context
-   * @return the returndata content
-   */
-  public static Bytes outputData(final MessageFrame frame) {
-    final Range returnDataSegment = outputDataSpan(frame);
-    return maybeShadowReadMemory(returnDataSegment, frame);
-  }
-
-  public static Range logDataSegment(final MessageFrame frame) {
-    long offset = Words.clampedToLong(frame.getStackItem(0));
-    long length = Words.clampedToLong(frame.getStackItem(1));
-    return Range.fromOffsetAndSize(offset, length);
-  }
-
-  public Range logDataSegment() {
-    return logDataSegment(this.hub.messageFrame());
-  }
-
-  public static Bytes logData(final MessageFrame frame) {
-    return maybeShadowReadMemory(logDataSegment(frame), frame);
-  }
-
-  public Bytes logData() {
-    return logData(this.hub.messageFrame());
   }
 }
