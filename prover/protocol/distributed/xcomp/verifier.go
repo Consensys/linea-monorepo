@@ -1,4 +1,4 @@
-package distributed
+package xcomp
 
 import (
 	"fmt"
