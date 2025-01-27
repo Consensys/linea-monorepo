@@ -103,7 +103,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
     val staterecoveryNodesStartFuture = execCommandAndAssertSuccess(
       "make staterecovery-replay-from-block " +
         "L1_ROLLUP_CONTRACT_ADDRESS=${rollupDeploymentResult.contractAddress} " +
-        "PLUGIN_STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=1",
+        "STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=1",
       log = log
     ).thenPeek {
       log.info("make staterecovery-replay-from-block executed")
