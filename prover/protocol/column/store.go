@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/sirupsen/logrus"
 )
 
 // Store registers [Natural] for structs that can return the infos given a name
@@ -60,6 +61,12 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 
 	if len(name) == 0 {
 		utils.Panic("given an empty name")
+	}
+
+	if !utils.IsPowerOfTwo(size) {
+		adjustedSize := utils.NextPowerOfTwo(size)
+		logrus.Infof("Can't register %v because it has a non-power of two size (%v). Adjusted size to next power of two: %v", name, size, adjustedSize)
+		size = adjustedSize
 	}
 
 	if !utils.IsPowerOfTwo(size) {
