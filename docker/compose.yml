@@ -16,14 +16,14 @@ networks:
       config:
         - subnet: 10.10.10.0/24
 
-# To debug inside the network and volumes
+# To debug inside the network and volumes:
 # docker run --rm -it --network=docker_linea -v=linea-local-dev:/data -v=linea-logs:/logs weibeld/ubuntu-networking bash
 
 services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu-package:${SEQUENCER_TAG:-mainnet-b297345}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-mainnet-fc27c01}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     ports:
       - "8545:8545"
@@ -100,7 +100,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: consensys/linea-besu-package:${SEQUENCER_TAG:-mainnet-811f30b}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-mainnet-fc27c01}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -206,7 +206,7 @@ services:
   postman:
     container_name: postman
     hostname: postman
-    image: consensys/linea-postman:${POSTMAN_TAG:-f58c12a}
+    image: consensys/linea-postman:${POSTMAN_TAG:-1f8647e}
     profiles: [ "l2", "debug" ]
     platform: linux/amd64
     restart: on-failure
@@ -225,7 +225,7 @@ services:
   traces-api:
     hostname: traces-api
     container_name: traces-api
-    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-e9f2bcc}
+    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-1f8647e}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -246,7 +246,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-8749f92}
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-1f8647e}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -267,7 +267,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-a5119c4}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-1f8647e}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     depends_on:
@@ -334,7 +334,7 @@ services:
     image: postgres:16.0
     hostname: postgres
     container_name: postgres
-    profiles: [ "l2", "debug", "external-to-monorepo", "staterecover" ]
+    profiles: [ "l2", "debug", "external-to-monorepo", "staterecovery" ]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -363,7 +363,7 @@ services:
   l1-el-node:
     container_name: l1-el-node
     hostname: l1-el-node
-    image: hyperledger/besu:24.10.0
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-mainnet-fc27c01}
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-node-genesis-generator:
@@ -380,6 +380,7 @@ services:
       - /bin/bash
       - -c
       - |
+        rm -fr /opt/besu/plugins && \
         /opt/besu/bin/besu --config-file=/config/config.toml
     volumes:
       - ./config/l1-node/el/besu.key:/config/keys/besu.key:ro
@@ -400,14 +401,20 @@ services:
   l1-cl-node:
     container_name: l1-cl-node
     hostname: l1-cl-node
-#    image: consensys/teku:24.2.0
-    image: consensys/teku:24.10.3
+    image: consensys/teku:25.1.0
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-el-node:
-        condition: service_healthy
+        condition: service_started
       l1-node-genesis-generator:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/eth/v1/node/health || exit 1"]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    environment:
+      LOG4J_CONFIGURATION_FILE: /config/log4j.xml
     command: [ "--config-file=/config/config-file.yaml" ]
     volumes:
       - ./config/l1-node/cl/teku.key:/config/keys/teku.key:ro
@@ -415,6 +422,7 @@ services:
       - ./config/l1-node/cl/teku-secrets:/config/keys/teku-secrets:ro
       - ./config/l1-node/jwtsecret.txt:/config/jwtsecret.txt:ro
       - ./config/l1-node/cl/config.yaml:/config/config-file.yaml:ro
+      - ./config/l1-node/cl/log4j.xml:/config/log4j.xml:ro
       - local-dev:/data
     ports:
       - "9002:9000"
@@ -467,7 +475,7 @@ services:
       - l1network
 
   zkbesu-shomei:
-    image: consensys/linea-besu-package:${SEQUENCER_TAG:-devnet-811f30b}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-devnet-fc27c01}
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -547,7 +555,7 @@ services:
   #      - ../tmp/local/shomei:/data/shomei/:z
 
   shomei-frontend:
-    image: consensys/linea-shomei:2.2.0
+    image: consensys/linea-shomei:2.3.0
     hostname: shomei-frontend
     container_name: shomei-frontend
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -623,7 +631,7 @@ services:
     hostname: blobscan-api
     image: blossomlabs/blobscan-api:1.1.0
     platform: linux/amd64 # only linux available
-    profiles: [ "staterecover" ]
+    profiles: [ "staterecovery" ]
     ports:
       - "4001:4001"
     env_file: "./config/blobscan/env"
@@ -644,13 +652,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      l1-cl-node:
+        condition: service_healthy
+      l1-el-node:
+        condition: service_healthy
 
   blobscan-indexer:
     container_name: blobscan-indexer
     hostname: blobscan-indexer
     image: blossomlabs/blobscan-indexer:0.2.1
     platform: linux/amd64 # only linux available
-    profiles: [ "staterecover" ]
+    profiles: [ "staterecovery" ]
     env_file: "./config/blobscan/env"
     networks:
       linea:
@@ -662,12 +674,16 @@ services:
         condition: service_healthy
       blobscan-api:
         condition: service_started
+      l1-cl-node:
+        condition: service_healthy
+      l1-el-node:
+        condition: service_healthy
 
   redis:
     container_name: redis
     hostname: redis
     image: "redis:7.4.1-alpine"
-    profiles: [ "staterecover" ]
+    profiles: [ "staterecovery" ]
     ports:
       - "6379:6379"
     environment:
@@ -683,6 +699,94 @@ services:
     networks:
       l1network:
         ipv4_address: 10.10.10.205
+
+  zkbesu-shomei-sr:
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-devnet-fc27c01}
+    hostname: zkbesu-shomei-sr
+    container_name: zkbesu-shomei-sr
+    profiles: [ "external-to-monorepo", "staterecovery" ]
+    privileged: true
+    user: root
+    ports:
+      - "9145:8545" # http
+      - "9146:8546" # websockets
+      - "9150:8550"
+      - "10545:9545"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    networks:
+      l1network:
+        ipv4_address: 10.10.10.206
+      linea:
+        ipv4_address: 11.11.11.116
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      L1_ROLLUP_CONTRACT_ADDRESS: ${L1_ROLLUP_CONTRACT_ADDRESS:-0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9}
+      PLUGIN_STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER: ${PLUGIN_STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER:-1}
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        (rm /opt/besu/plugins/linea-staterecovery-besu-plugin-v* || true) && \
+        ls -lh /opt/besu/plugins && \
+        sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu && \
+        /opt/besu/bin/besu \
+        --config-file=/var/lib/besu/zkbesu-config.toml \
+        --genesis-file=/var/lib/besu/genesis.json \
+        --plugins=BesuShomeiRpcPlugin,ZkTrieLogPlugin,LineaStateRecoveryPlugin \
+        --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,MINER,SHOMEI \
+        --Xbonsai-limit-trie-logs-enabled=false \
+        --plugin-shomei-http-host="11.11.11.117" \
+        --plugin-shomei-http-port=8888 \
+        --plugin-staterecovery-l1-rpc-endpoint=http://l1-el-node:8545 \
+        --plugin-staterecovery-shomei-endpoint=http://shomei-sr:8888 \
+        --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \
+        --plugin-staterecovery-linea-sequencer-beneficiary-address=0x6d976c9b8ceee705d4fe8699b44e5eb58242f484 \
+        --plugin-staterecovery-l1-polling-interval=PT0.1S \
+        --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+    volumes:
+      - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
+      - ./config/zkbesu-shomei/log4j-staterecovery.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+      - ../state-recovery/besu-plugin/build/libs/linea-staterecovery-besu-plugin-SNAPSHOT.jar:/opt/besu/plugins/linea-staterecovery-besu-plugin-SNAPSHOT.jar
+
+  shomei-sr:
+    image: consensys/linea-shomei:2.3.0
+    hostname: shomei-sr
+    container_name: shomei-sr
+    profiles: [ "external-to-monorepo", "staterecovery" ]
+    depends_on:
+      zkbesu-shomei-sr:
+        condition: service_started
+    privileged: true
+    user: root
+    ports:
+      - "8890:8888"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /data/shomei/LOCK ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 60
+    networks:
+      linea:
+        ipv4_address: 11.11.11.117
+    environment:
+      LOG4J_CONFIGURATION_FILE: /log4j.xml
+    command:
+      - --besu-rpc-http-host=11.11.11.116
+      - --besu-rpc-http-port=8545
+      - --rpc-http-host=11.11.11.117
+      - --rpc-http-host-allow-list=*
+      - --rpc-http-port=8888
+      - --min-confirmations-before-importing=0
+      - --trace-start-block-number=0
+    volumes:
+      - ./config/shomei/log4j.xml:/log4j.xml:ro
+  #      - ../tmp/local/shomei:/data/shomei/:z
 
   ########################
   # Observability stack
