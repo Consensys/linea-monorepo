@@ -71,9 +71,9 @@ func (s *schemaScanner) scanColumns() {
 			mult        = ctx.LengthMultiplier()
 		)
 
-		if _, isIL := s.InterleavedColumns[name]; isIL {
+		/*if _, isIL := s.InterleavedColumns[name]; isIL {
 			continue
-		}
+		}*/
 
 		// #nosec G115 -- this bound will not overflow
 		s.Comp.InsertCommit(0, ifaces.ColID(name), int(mult)*moduleLimit)
