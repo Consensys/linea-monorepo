@@ -105,6 +105,6 @@ type MExecConglomerator struct {
 }
 
 // prove combines GL and LPP responses into a final execution proof
-func (cong *MExecConglomerator) prove(glresp MGLResp, lppresp MLPPResponse) (execution.Response, error) {
+func (cong *MExecConglomerator) prove(glresp MGLResp, lppresp MLPPResponse, dmetadata MDistMetadata) (execution.Response, error) {
 	return execution.Response{}, nil
 }
