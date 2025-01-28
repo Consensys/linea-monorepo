@@ -117,7 +117,7 @@ fun main() {
     makeDeployLineaRollup(
       L1AccountManager.generateAccount().privateKey,
       listOf("03dfa322A95039BB679771346Ee2dBfEa0e2B773"),
-      LineaContractVersion.V5
+      LineaContractVersion.V6
     ),
     makeDeployL2MessageService(
       L2AccountManager.generateAccount().privateKey,
