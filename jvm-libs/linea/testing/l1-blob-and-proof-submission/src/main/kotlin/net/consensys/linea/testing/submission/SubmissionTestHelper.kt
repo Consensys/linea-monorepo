@@ -9,7 +9,6 @@ import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 fun assertTxSuccess(
   txHash: String,
