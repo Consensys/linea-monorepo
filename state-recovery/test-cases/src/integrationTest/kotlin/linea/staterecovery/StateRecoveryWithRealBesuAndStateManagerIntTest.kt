@@ -92,12 +92,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6)
       .get()
     log.info("LineaRollup address={}", rollupDeploymentResult.contractAddress)
-    contractClientForBlobSubmission = connectToLineaRollupContract(
-      rollupDeploymentResult.contractAddress,
-      // index 0 is the first operator in rollupOperatorClient
-      rollupDeploymentResult.rollupOperators[1].txManager,
-      smartContractErrors = lineaRollupContractErrors
-    )
+    contractClientForBlobSubmission = rollupDeploymentResult.rollupOperatorClient
     contractClientForAggregationSubmission = connectToLineaRollupContract(
       rollupDeploymentResult.contractAddress,
       // index 0 is the first operator in rollupOperatorClient
