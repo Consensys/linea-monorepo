@@ -17,10 +17,7 @@ package net.consensys.linea.zktracer.module.blockhash;
 
 import static net.consensys.linea.zktracer.module.blockhash.Trace.BLOCKHASH_DEPTH;
 import static net.consensys.linea.zktracer.module.blockhash.Trace.nROWS_PRPRC;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_EQ;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_LEQ;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -60,36 +57,30 @@ public class BlockhashOperation extends ModuleOperation {
   }
 
   void handlePreprocessing(Bytes32 prevBlockhashArg) {
-    final Bytes prevBHArgHi = prevBlockhashArg.slice(0, LLARGE);
-    final Bytes prevBHArgLo = prevBlockhashArg.slice(LLARGE, LLARGE);
-    final Bytes currBHArgHi = blockhashArg.slice(0, LLARGE);
-    final Bytes curBHArgLo = blockhashArg.slice(LLARGE, LLARGE);
 
     // NOTE: w goes from 0 to 4 because it refers to the array
     // however, rows go from i+1 to i+5 because it refers the MACRO row (index i)
     // row i + 1
-    wcpCallToLEQ(0, prevBHArgHi, prevBHArgLo, currBHArgHi, curBHArgLo);
+    wcpCallToLEQ(0, prevBlockhashArg, blockhashArg);
 
     // row i + 2
-    boolean sameBHArg = wcpCallToEQ(1, prevBHArgHi, prevBHArgLo, currBHArgHi, curBHArgLo);
+    wcpCallToEQ(1, prevBlockhashArg, blockhashArg);
 
     // row i + 3
-    boolean res3 =
+    final boolean blockNumberGreaterThan256 =
         wcpCallToLEQ(
-            2, Bytes.of(0), Bytes.ofUnsignedInt(256), Bytes.of(0), Bytes.ofUnsignedLong(absBlock));
-    long minimalReachable = 0;
-    if (res3) {
-      minimalReachable = absBlock - 256;
-    }
+            2,
+            Bytes32.leftPad(Bytes.minimalBytes(BLOCKHASH_MAX_HISTORY)),
+            Bytes32.leftPad(Bytes.ofUnsignedLong(absBlock)));
+    final long minimalReachable = blockNumberGreaterThan256 ? absBlock - BLOCKHASH_MAX_HISTORY : 0;
 
     // row i + 4
-    boolean upperBoundOk =
-        wcpCallToLT(3, currBHArgHi, curBHArgLo, Bytes.of(0), Bytes.ofUnsignedLong(absBlock));
+    final boolean upperBoundOk =
+        wcpCallToLT(3, blockhashArg, Bytes32.leftPad(Bytes.ofUnsignedLong(absBlock)));
 
     // row i + 5
-    boolean lowerBoundOk =
-        wcpCallToLEQ(
-            4, Bytes.of(0), Bytes.ofUnsignedLong(minimalReachable), currBHArgHi, curBHArgLo);
+    final boolean lowerBoundOk =
+        wcpCallToLEQ(4, Bytes32.leftPad(Bytes.ofUnsignedLong(minimalReachable)), blockhashArg);
   }
 
   @Override
@@ -132,42 +123,33 @@ public class BlockhashOperation extends ModuleOperation {
   }
 
   // WCP calls
-  private boolean wcpCallToLT(
-      int w, Bytes exoArg1Hi, Bytes exoArg1Lo, Bytes exoArg2Hi, Bytes exoArg2Lo) {
+  private boolean wcpCallToLT(int w, Bytes32 exoArg1, Bytes32 exoArg2) {
     this.exoInst[w] = EVM_INST_LT;
-    this.exoArg1Hi[w] = exoArg1Hi;
-    this.exoArg1Lo[w] = exoArg1Lo;
-    this.exoArg2Hi[w] = exoArg2Hi;
-    this.exoArg2Lo[w] = exoArg2Lo;
-    this.exoRes[w] =
-        wcp.callLT(
-            Bytes.concatenate(exoArg1Hi, exoArg1Lo), Bytes.concatenate(exoArg2Hi, exoArg2Lo));
+    this.exoArg1Hi[w] = exoArg1.slice(0, LLARGE);
+    this.exoArg1Lo[w] = exoArg1.slice(LLARGE, LLARGE);
+    this.exoArg2Hi[w] = exoArg2.slice(0, LLARGE);
+    this.exoArg2Lo[w] = exoArg2.slice(LLARGE, LLARGE);
+    this.exoRes[w] = wcp.callLT(exoArg1, exoArg2);
     return this.exoRes[w];
   }
 
-  private boolean wcpCallToLEQ(
-      int w, Bytes exoArg1Hi, Bytes exoArg1Lo, Bytes exoArg2Hi, Bytes exoArg2Lo) {
+  private boolean wcpCallToLEQ(int w, Bytes32 exoArg1, Bytes32 exoArg2) {
     this.exoInst[w] = WCP_INST_LEQ;
-    this.exoArg1Hi[w] = exoArg1Hi;
-    this.exoArg1Lo[w] = exoArg1Lo;
-    this.exoArg2Hi[w] = exoArg2Hi;
-    this.exoArg2Lo[w] = exoArg2Lo;
-    this.exoRes[w] =
-        wcp.callLEQ(
-            Bytes.concatenate(exoArg1Hi, exoArg1Lo), Bytes.concatenate(exoArg2Hi, exoArg2Lo));
+    this.exoArg1Hi[w] = exoArg1.slice(0, LLARGE);
+    this.exoArg1Lo[w] = exoArg1.slice(LLARGE, LLARGE);
+    this.exoArg2Hi[w] = exoArg2.slice(0, LLARGE);
+    this.exoArg2Lo[w] = exoArg2.slice(LLARGE, LLARGE);
+    this.exoRes[w] = wcp.callLEQ(exoArg1, exoArg2);
     return this.exoRes[w];
   }
 
-  private boolean wcpCallToEQ(
-      int w, Bytes exoArg1Hi, Bytes exoArg1Lo, Bytes exoArg2Hi, Bytes exoArg2Lo) {
+  private boolean wcpCallToEQ(int w, Bytes32 exoArg1, Bytes32 exoArg2) {
     this.exoInst[w] = EVM_INST_EQ;
-    this.exoArg1Hi[w] = exoArg1Hi;
-    this.exoArg1Lo[w] = exoArg1Lo;
-    this.exoArg2Hi[w] = exoArg2Hi;
-    this.exoArg2Lo[w] = exoArg2Lo;
-    this.exoRes[w] =
-        wcp.callEQ(
-            Bytes.concatenate(exoArg1Hi, exoArg1Lo), Bytes.concatenate(exoArg2Hi, exoArg2Lo));
+    this.exoArg1Hi[w] = exoArg1.slice(0, LLARGE);
+    this.exoArg1Lo[w] = exoArg1.slice(LLARGE, LLARGE);
+    this.exoArg2Hi[w] = exoArg2.slice(0, LLARGE);
+    this.exoArg2Lo[w] = exoArg2.slice(LLARGE, LLARGE);
+    this.exoRes[w] = wcp.callEQ(exoArg1, exoArg2);
     return this.exoRes[w];
   }
 }

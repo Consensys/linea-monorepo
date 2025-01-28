@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
@@ -39,9 +40,24 @@ public class Euc implements OperationSetModule<EucOperation> {
   private final ModuleOperationStackedSet<EucOperation> operations =
       new ModuleOperationStackedSet<>();
 
+  /** count the number of rows that could be added after the sequencer counts the number of line */
+  public final CountOnlyOperation additionalRows = new CountOnlyOperation();
+
   @Override
   public String moduleKey() {
     return "EUC";
+  }
+
+  @Override
+  public void enterTransaction() {
+    OperationSetModule.super.enterTransaction();
+    additionalRows.lineCount();
+  }
+
+  @Override
+  public void popTransaction() {
+    OperationSetModule.super.popTransaction();
+    additionalRows.pop();
   }
 
   @Override
@@ -55,6 +71,13 @@ public class Euc implements OperationSetModule<EucOperation> {
     for (EucOperation eucOperation : operations.sortOperations(new EucOperationComparator())) {
       eucOperation.trace(trace);
     }
+  }
+
+  @Override
+  public int lineCount() {
+    return operations.conflationFinished()
+        ? operations.lineCount()
+        : operations().lineCount() + additionalRows.lineCount();
   }
 
   public EucOperation callEUC(final Bytes dividend, final Bytes divisor) {

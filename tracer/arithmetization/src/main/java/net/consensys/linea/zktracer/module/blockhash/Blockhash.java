@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.blockhash;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import java.nio.MappedByteBuffer;
 import java.util.HashMap;
@@ -89,12 +90,14 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
       Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
 
     final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
-    if (opCode == OpCode.BLOCKHASH) {
-      final Bytes32 blockhashRes = Bytes32.leftPad(frame.getStackItem(0));
-      operations.add(new BlockhashOperation(relBlock, absBlock, blockhashArg, blockhashRes, wcp));
-      if (blockhashRes != Bytes32.ZERO) {
-        blockHashMap.put(blockhashArg, blockhashRes);
-      }
+    checkArgument(opCode == OpCode.BLOCKHASH);
+    final Bytes32 blockhashRes = Bytes32.leftPad(frame.getStackItem(0));
+    operations.add(new BlockhashOperation(relBlock, absBlock, blockhashArg, blockhashRes, wcp));
+    // We have 4 LLARGE and one OLI call to WCP, made at the end of the conflation, so we need to
+    // add line count to WCP
+    wcp.additionalRows.add(4 * LLARGE + 1);
+    if (blockhashRes != Bytes32.ZERO) {
+      blockHashMap.put(blockhashArg, blockhashRes);
     }
   }
 
