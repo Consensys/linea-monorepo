@@ -142,7 +142,7 @@ public class BlockdataOperation extends ModuleOperation {
 
   private void handleTimestamp() {
     data = EWord.of(blockHeader.getTimestamp());
-    EWord prevData =
+    final EWord prevData =
         prevBlockHeader == null ? EWord.ZERO : EWord.of(prevBlockHeader.getTimestamp());
 
     // row i
@@ -182,11 +182,11 @@ public class BlockdataOperation extends ModuleOperation {
     wcpCallToLEQ(1, data, EWord.of(Bytes.ofUnsignedLong(GAS_LIMIT_MAXIMUM)));
 
     if (!firstBlockInConflation) {
-      EWord prevGasLimit = EWord.of(prevBlockHeader.getGasLimit());
+      final EWord prevGasLimit = EWord.of(prevBlockHeader.getGasLimit());
       // row i + 2
-      Bytes maxDeviation = eucCall(2, prevGasLimit, EWord.of(GAS_LIMIT_ADJUSTMENT_FACTOR));
+      final Bytes maxDeviation = eucCall(2, prevGasLimit, EWord.of(GAS_LIMIT_ADJUSTMENT_FACTOR));
       // row i + 3
-      BigInteger safeGasLimitUpperBound =
+      final BigInteger safeGasLimitUpperBound =
           prevGasLimit.getAsBigInteger().add(maxDeviation.toUnsignedBigInteger());
       wcpCallToLT(3, data, EWord.of(safeGasLimitUpperBound));
 
@@ -303,9 +303,6 @@ public class BlockdataOperation extends ModuleOperation {
   }
 
   private Bytes eucCall(int w, EWord arg1, EWord arg2) {
-    checkArgument(arg1.bitLength() / 8 <= 16);
-    checkArgument(arg2.bitLength() / 8 <= 16);
-
     this.arg1[w] = arg1;
     this.arg2[w] = arg2;
 

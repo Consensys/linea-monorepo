@@ -15,7 +15,9 @@
 
 package net.consensys.linea.zktracer.module.blockdata;
 
+import static net.consensys.linea.zktracer.module.blockdata.Trace.GAS_LIMIT_MAXIMUM;
 import static net.consensys.linea.zktracer.module.blockdata.Trace.nROWS_DEPTH;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
@@ -30,7 +32,6 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
@@ -41,12 +42,8 @@ public class Blockdata implements Module {
   private final TxnData txnData;
 
   private final Deque<BlockdataOperation> operations = new ArrayDeque<>();
-  private static final int TIMESTAMP_BYTESIZE = 4;
-  private BlockHeader prevBlockHeader;
-  private int traceCounter = 0;
   private long firstBlockNumber;
   private Bytes chainId;
-  private boolean shouldBeTraced = true;
 
   final OpCode[] opCodes = {
     OpCode.COINBASE,
@@ -69,42 +66,47 @@ public class Blockdata implements Module {
 
   @Override
   public void traceStartConflation(final long blockCount) {
-    wcp.additionalRows.add(TIMESTAMP_BYTESIZE); // TODO: check
+    wcp.additionalRows.add(
+        LLARGE // for COINBASE
+            + 6
+            + 6 // for TIMESTAMP
+            + 1
+            + 6 // for NUMBER
+            + 1 // for DIFFICULTY
+            + Bytes.minimalBytes(GAS_LIMIT_MAXIMUM).size() * 4 // for GASLIMIT
+            + LLARGE // for CHAINID
+            + LLARGE // for BASEFEE
+        );
+
+    euc.additionalRows.add(8);
   }
 
   @Override
   public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
     final long blockNumber = blockHeader.getNumber();
-    firstBlockNumber = (traceCounter < opCodes.length) ? blockNumber : firstBlockNumber;
-    if (shouldBeTraced) {
-      for (OpCode opCode : opCodes) {
-        BlockdataOperation operation =
-            new BlockdataOperation(
-                txnData.hub(),
-                blockHeader,
-                prevBlockHeader,
-                txnData.currentBlock().getNbOfTxsInBlock(),
-                wcp,
-                euc,
-                chainId,
-                opCode,
-                firstBlockNumber);
-        operations.addLast(operation);
-        // Increase counter to track where we are in the conflation
-        traceCounter++;
-      }
+    if (operations.isEmpty()) {
+      firstBlockNumber = blockNumber;
     }
-    prevBlockHeader = blockHeader;
-    shouldBeTraced = false;
+    final BlockHeader previousBlockHeader =
+        operations.isEmpty() ? null : operations.getLast().blockHeader();
+    for (OpCode opCode : opCodes) {
+      final BlockdataOperation operation =
+          new BlockdataOperation(
+              txnData.hub(),
+              blockHeader,
+              previousBlockHeader,
+              txnData.currentBlock().getNbOfTxsInBlock(),
+              wcp,
+              euc,
+              chainId,
+              opCode,
+              firstBlockNumber);
+      operations.addLast(operation);
+    }
   }
 
   @Override
-  public void traceEndConflation(final WorldView state) {}
-
-  @Override
-  public void enterTransaction() {
-    shouldBeTraced = true;
-  }
+  public void enterTransaction() {}
 
   @Override
   public void popTransaction() {}
