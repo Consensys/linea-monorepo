@@ -39,7 +39,7 @@ fun assertTxsSuccess(
 ) {
   SafeFuture.supplyAsync {
     txsAndInterval.forEach { (txHash, interval) ->
-      assertTxSuccess(txHash, interval, submissionType, l1Web3jClient, 10.seconds)
+      assertTxSuccess(txHash, interval, submissionType, l1Web3jClient, timeout)
     }
   }
     .get(timeout.inWholeMilliseconds, java.util.concurrent.TimeUnit.MILLISECONDS)
