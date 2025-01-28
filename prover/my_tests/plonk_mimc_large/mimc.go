@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	size = 1024
+	size = 8
 )
 
 // Circuit defines a pre-image knowledge proof
@@ -17,7 +17,7 @@ const (
 type Circuit struct {
 	// struct tag on a variable is optional
 	// default uses variable name and secret visibility.
-	PreImage []frontend.Variable
+	PreImage []frontend.Variable `gnark:",public"`
 	Hash     []frontend.Variable `gnark:",public"`
 }
 

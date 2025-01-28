@@ -4,6 +4,7 @@
 package mymimc
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
@@ -99,6 +100,10 @@ func BenchmarkPlonkMiMC(b *testing.B) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		var buf bytes.Buffer
+		proof.WriteRawTo(&buf)
+		fmt.Println("Plonk proof size ", buf.Len())
+		b.ReportMetric(float64(buf.Len()), "Plonk-proof-size")
 	}
 
 	//ecc.BLS12_377
