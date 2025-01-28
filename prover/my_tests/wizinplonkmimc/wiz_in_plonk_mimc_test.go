@@ -4,12 +4,14 @@
 package wizinplonkmimc
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	mimcComp "github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +27,7 @@ import (
 )
 
 const (
-	size = 64
+	size = 8
 )
 
 // In this example we show how to use PLONK with KZG commitments. The circuit that is
@@ -88,7 +90,7 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 	//comp := wizard.Compile(define, globalcs.Compile, vortex.Compile(2, vortex.WithDryThreshold(0)))
 	//comp := wizard.Compile(define, compiler.Arcane(16, 64))
 	// comp := wizard.Compile(define, vortex.Compile(2, vortex.WithDryThreshold(0)))
-	comp := wizard.Compile(define, mimcComp.CompileMiMC, compiler.Arcane(16, 16))
+	comp := wizard.Compile(define, mimcComp.CompileMiMC, compiler.Arcane(size, size), vortex.Compile(2, vortex.WithDryThreshold(0)))
 	bench.StartTimer()
 	proof := wizard.Prove(comp, prover)
 	assert.NoErrorf(bench, wizard.Verify(comp, proof), "invalid proof")
@@ -149,16 +151,21 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 		}
 		bench.StartTimer()
 
-		proof, err := plonk.Prove(ccs, pk, witnessFull)
+		wizProof, err := plonk.Prove(ccs, pk, witnessFull)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		err = plonk.Verify(proof, vk, witnessPublic)
+		err = plonk.Verify(wizProof, vk, witnessPublic)
 		if err != nil {
 			log.Fatal(err)
 		}
 		bench.StopTimer()
+
+		var buf bytes.Buffer
+		wizProof.WriteRawTo(&buf)
+		fmt.Println("Plonk proof size ", buf.Len())
+
 	}
 
 }

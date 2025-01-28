@@ -4,11 +4,13 @@
 package wizmimc
 
 import (
+	"fmt"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	mimcComp "github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
@@ -69,20 +71,19 @@ func BenchmarkWizardMiMC(bench *testing.B) {
 	//comp := wizard.Compile(define, globalcs.Compile, vortex.Compile(2, vortex.WithDryThreshold(0)))
 	//comp := wizard.Compile(define, compiler.Arcane(16, 64))
 	// comp := wizard.Compile(define, vortex.Compile(2, vortex.WithDryThreshold(0)))
-	comp := wizard.Compile(define, mimcComp.CompileMiMC, compiler.Arcane(16, 16))
+	comp := wizard.Compile(define, mimcComp.CompileMiMC, compiler.Arcane(size, size), vortex.Compile(2, vortex.WithDryThreshold(0)))
 	bench.StartTimer()
 	proof := wizard.Prove(comp, prover)
 	checkErr := wizard.Verify(comp, proof)
 	assert.NoErrorf(bench, checkErr, "INVALID proof")
 	bench.StopTimer()
 
-	/*
-		proofSize := 0
-		allValues := proof.Messages.InnerMap()
-		for _, value := range allValues {
-			proofSize += value.Len() * field.Bytes
-		}
+	proofSize := 0
+	allValues := proof.Messages.InnerMap()
+	for _, value := range allValues {
+		proofSize += value.Len() * field.Bytes
+	}
 
-		fmt.Println("Wizard proof size ", proofSize)*/
+	fmt.Println("Wizard proof size ", proofSize)
 
 }
