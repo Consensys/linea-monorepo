@@ -80,7 +80,7 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 	if dp.Inp.IsAInModule && !dp.Inp.IsBInModule {
 		hornerA := poly.CmptHorner(colA, filterA, params.EvalRand)
 		actualHorner = hornerA[0]
-	} else if !dp.Inp.IsAInModule && !dp.Inp.IsBInModule {
+	} else if !dp.Inp.IsAInModule && dp.Inp.IsBInModule {
 		hornerB := poly.CmptHorner(colB, filterB, params.EvalRand)
 		actualHorner = hornerB[0]
 		actualHorner.Inverse(&actualHorner)
