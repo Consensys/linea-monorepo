@@ -14,15 +14,15 @@ import (
 )
 
 type DistributedProjectionInput struct {
-	ColumnA, ColumnB            *symbolic.Expression
-	FilterA, FilterB            *symbolic.Expression
+	ColumnA, ColumnB         *symbolic.Expression
+	FilterA, FilterB         *symbolic.Expression
 	IsAInModule, IsBInModule bool
 }
 
 type DistributedProjection struct {
 	Round int
 	ID    ifaces.QueryID
-	Inp   DistributedProjectionInput
+	Inp   []*DistributedProjectionInput
 }
 
 type DistributedProjectionParams struct {
@@ -30,21 +30,23 @@ type DistributedProjectionParams struct {
 	EvalRand  field.Element
 }
 
-func NewDistributedProjection(round int, id ifaces.QueryID, inp DistributedProjectionInput) DistributedProjection {
-	if err := inp.ColumnA.Validate(); err != nil {
-		utils.Panic("ColumnA for the distributed projection query %v is not a valid expression", id)
-	}
-	if err := inp.ColumnB.Validate(); err != nil {
-		utils.Panic("ColumnB for the distributed projection query %v is not a valid expression", id)
-	}
-	if err := inp.FilterA.Validate(); err != nil {
-		utils.Panic("FilterA for the distributed projection query %v is not a valid expression", id)
-	}
-	if err := inp.FilterB.Validate(); err != nil {
-		utils.Panic("FilterB for the distributed projection query %v is not a valid expression", id)
-	}
-	if !inp.IsAInModule && !inp.IsBInModule {
-		utils.Panic("Invalid distributed projection query %v, both A and B are not in the module", id)
+func NewDistributedProjection(round int, id ifaces.QueryID, inp []*DistributedProjectionInput) DistributedProjection {
+	for _, in := range inp {
+		if err := in.ColumnA.Validate(); err != nil {
+			utils.Panic("ColumnA for the distributed projection query %v is not a valid expression", id)
+		}
+		if err := in.ColumnB.Validate(); err != nil {
+			utils.Panic("ColumnB for the distributed projection query %v is not a valid expression", id)
+		}
+		if err := in.FilterA.Validate(); err != nil {
+			utils.Panic("FilterA for the distributed projection query %v is not a valid expression", id)
+		}
+		if err := in.FilterB.Validate(); err != nil {
+			utils.Panic("FilterB for the distributed projection query %v is not a valid expression", id)
+		}
+		if !in.IsAInModule && !in.IsBInModule {
+			utils.Panic("Invalid distributed projection query %v, both A and B are not in the module", id)
+		}
 	}
 	return DistributedProjection{Round: round, ID: id, Inp: inp}
 }
@@ -66,36 +68,43 @@ func (dpp DistributedProjectionParams) UpdateFS(fs *fiatshamir.State) {
 
 func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 	var (
+		actualParam = field.One()
 		params       = run.GetParams(dp.ID).(DistributedProjectionParams)
-		actualHorner = field.One()
-		colABoard    = dp.Inp.ColumnA.Board()
-		colBBoard    = dp.Inp.ColumnB.Board()
-		filterABorad = dp.Inp.FilterA.Board()
-		filterBBoard = dp.Inp.FilterB.Board()
-		colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
-		colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
-		filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
-		filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
 	)
-	if dp.Inp.IsAInModule && !dp.Inp.IsBInModule {
-		hornerA := poly.CmptHorner(colA, filterA, params.EvalRand)
-		actualHorner = hornerA[0]
-	} else if !dp.Inp.IsAInModule && dp.Inp.IsBInModule {
-		hornerB := poly.CmptHorner(colB, filterB, params.EvalRand)
-		actualHorner = hornerB[0]
-		actualHorner.Inverse(&actualHorner)
-	} else if dp.Inp.IsAInModule && dp.Inp.IsBInModule {
-		hornerA := poly.CmptHorner(colA, filterA, params.EvalRand)
-		hornerB := poly.CmptHorner(colB, filterB, params.EvalRand)
-		actualHorner = hornerB[0]
-		actualHorner.Inverse(&actualHorner)
-		actualHorner.Mul(&actualHorner, &hornerA[0])
-	} else {
-		utils.Panic("Invalid distributed projection query %v", dp.ID)
+	for _, inp := range dp.Inp {
+		var (
+			colABoard    = inp.ColumnA.Board()
+			colBBoard    = inp.ColumnB.Board()
+			filterABorad = inp.FilterA.Board()
+			filterBBoard = inp.FilterB.Board()
+			colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
+			colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
+			filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
+			filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
+			elemParam = field.One()
+		)
+		if inp.IsAInModule && !inp.IsBInModule {
+			hornerA := poly.CmptHorner(colA, filterA, params.EvalRand)
+			elemParam = hornerA[0]
+		} else if !inp.IsAInModule && inp.IsBInModule {
+			hornerB := poly.CmptHorner(colB, filterB, params.EvalRand)
+			elemParam = hornerB[0]
+			elemParam.Inverse(&elemParam)
+		} else if inp.IsAInModule && inp.IsBInModule {
+			hornerA := poly.CmptHorner(colA, filterA, params.EvalRand)
+			hornerB := poly.CmptHorner(colB, filterB, params.EvalRand)
+			elemParam = hornerB[0]
+			elemParam.Inverse(&elemParam)
+			elemParam.Mul(&elemParam, &hornerA[0])
+		} else {
+			utils.Panic("Invalid distributed projection query %v", dp.ID)
+		}
+		actualParam.Mul(&actualParam, &elemParam)
+
 	}
 
-	if actualHorner != params.HornerVal {
-		return fmt.Errorf("the distributed projection query %v is not satisfied, actualHorner = %v, param.HornerVal = %v", dp.ID, actualHorner, params.HornerVal)
+	if actualParam != params.HornerVal {
+		return fmt.Errorf("the distributed projection query %v is not satisfied, actualParam = %v, param.HornerVal = %v", dp.ID, actualParam, params.HornerVal)
 	}
 
 	return nil

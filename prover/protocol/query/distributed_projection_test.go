@@ -76,7 +76,9 @@ func TestDistributedProjection(t *testing.T) {
 					fB, _, _   = wizardutils.AsExpr(flagB)
 				)
 				DP = builder.CompiledIOP.InsertDistributedProjection(round, queryNameBothAAndB,
-					query.DistributedProjectionInput{ColumnA: colA, ColumnB: colB, FilterA: fA, FilterB: fB, IsAInModule: true, IsBInModule: true})
+					[]*query.DistributedProjectionInput{
+						{ColumnA: colA, ColumnB: colB, FilterA: fA, FilterB: fB, IsAInModule: true, IsBInModule: true},
+					})
 			},
 		},
 		{
@@ -95,7 +97,9 @@ func TestDistributedProjection(t *testing.T) {
 					fB, _, _   = wizardutils.AsExpr(flagB)
 				)
 				DP = builder.CompiledIOP.InsertDistributedProjection(round, queryNameOnlyA,
-					query.DistributedProjectionInput{ColumnA: colA, ColumnB: colB, FilterA: fA, FilterB: fB, IsAInModule: true, IsBInModule: false})
+					[]*query.DistributedProjectionInput{
+						{ColumnA: colA, ColumnB: colB, FilterA: fA, FilterB: fB, IsAInModule: true, IsBInModule: false},
+					})
 			},
 		},
 		{
@@ -114,7 +118,9 @@ func TestDistributedProjection(t *testing.T) {
 					fB, _, _   = wizardutils.AsExpr(flagB)
 				)
 				DP = builder.CompiledIOP.InsertDistributedProjection(round, queryNameOnlyB,
-					query.DistributedProjectionInput{ColumnA: colA, ColumnB: colB, FilterA: fA, FilterB: fB, IsAInModule: false, IsBInModule: true})
+					[]*query.DistributedProjectionInput{
+						{ColumnA: colA, ColumnB: colB, FilterA: fA, FilterB: fB, IsAInModule: false, IsBInModule: true},
+					})
 			},
 		},
 	}
