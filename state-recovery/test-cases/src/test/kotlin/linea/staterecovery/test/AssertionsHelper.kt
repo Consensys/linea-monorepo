@@ -29,15 +29,16 @@ fun execCommandAndAssertSuccess(
     }
 }
 
-fun assertBesuAndShomeiStateRootMatches(
+fun assertBesuAndShomeiRecoveredAsExpected(
   web3jElClient: Web3j,
   stateManagerClient: StateManagerClientV1,
   expectedBlockNumber: ULong,
-  expectedZkEndStateRootHash: ByteArray
+  expectedZkEndStateRootHash: ByteArray,
+  timeout: Duration = 60.seconds
 ) {
   await()
     .pollInterval(1.seconds.toJavaDuration())
-    .atMost(5.minutes.toJavaDuration())
+    .atMost(timeout.toJavaDuration())
     .untilAsserted {
       assertThat(web3jElClient.ethBlockNumber().send().blockNumber.toULong())
         .isGreaterThanOrEqualTo(expectedBlockNumber)

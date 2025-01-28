@@ -7,7 +7,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.log4j.configureLoggers
-import linea.staterecovery.test.assertBesuAndShomeiStateRootMatches
+import linea.staterecovery.test.assertBesuAndShomeiRecoveredAsExpected
 import linea.staterecovery.test.execCommandAndAssertSuccess
 import linea.staterecovery.test.waitExecutionLayerToBeUpAndRunning
 import linea.web3j.createWeb3jHttpClient
@@ -29,9 +29,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.net.URI
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -92,7 +92,12 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6)
       .get()
     log.info("LineaRollup address={}", rollupDeploymentResult.contractAddress)
-    contractClientForBlobSubmission = rollupDeploymentResult.rollupOperatorClient
+    contractClientForBlobSubmission = connectToLineaRollupContract(
+      rollupDeploymentResult.contractAddress,
+      // index 0 is the first operator in rollupOperatorClient
+      rollupDeploymentResult.rollupOperators[1].txManager,
+      smartContractErrors = lineaRollupContractErrors
+    )
     contractClientForAggregationSubmission = connectToLineaRollupContract(
       rollupDeploymentResult.contractAddress,
       // index 0 is the first operator in rollupOperatorClient
@@ -125,27 +130,28 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
     }
     SafeFuture.allOf(staterecoveryNodesStartFuture, blobsSubmissionFuture).get()
 
-    val web3jElClient = createWeb3jHttpClient(executionLayerUrl)
-
     // wait for Besu to be up and running
     waitExecutionLayerToBeUpAndRunning(executionLayerUrl, log = log, timeout = 30.seconds)
 
-    assertBesuAndShomeiStateRootMatches(web3jElClient, stateManagerClient, lastAggregationAndBlobs)
+    assertBesuAndShomeiRecoveredAsExpected(
+      lastAggregationAndBlobs,
+      timeout = 2.minutes
+    )
   }
 
-  private fun assertBesuAndShomeiStateRootMatches(
-    web3jElClient: Web3j,
-    stateManagerClient: StateManagerClientV1,
-    targetAggregationAndBlobs: AggregationAndBlobs
+  private fun assertBesuAndShomeiRecoveredAsExpected(
+    targetAggregationAndBlobs: AggregationAndBlobs,
+    timeout: Duration
   ) {
     val targetAggregation = targetAggregationAndBlobs.aggregation!!
     val expectedZkEndStateRootHash = targetAggregationAndBlobs.blobs.last().blobCompressionProof!!.finalStateRootHash
 
-    assertBesuAndShomeiStateRootMatches(
-      web3jElClient,
-      stateManagerClient,
+    assertBesuAndShomeiRecoveredAsExpected(
+      createWeb3jHttpClient(executionLayerUrl),
+      stateManagerClient = stateManagerClient,
       targetAggregation.endBlockNumber,
-      expectedZkEndStateRootHash
+      expectedZkEndStateRootHash,
+      timeout = timeout
     )
   }
 }
