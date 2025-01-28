@@ -371,7 +371,8 @@ public class EstimateGasTest extends LineaPluginTestBase {
                 null));
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
     assertThat(respLinea.getCode()).isEqualTo(-32000);
-    assertThat(respLinea.getMessage()).isEqualTo("Failed transaction, reason: INVALID_OPERATION");
+    assertThat(respLinea.getMessage())
+        .isEqualTo("Failed transaction, reason: Invalid opcode: 0xc8");
   }
 
   @Test

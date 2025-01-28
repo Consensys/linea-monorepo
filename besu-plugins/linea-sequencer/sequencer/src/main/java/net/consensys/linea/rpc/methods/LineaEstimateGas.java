@@ -44,7 +44,8 @@ import org.bouncycastle.asn1.sec.SECNamedCurves;
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.hyperledger.besu.crypto.SECPSignature;
-import org.hyperledger.besu.datatypes.AccountOverrideMap;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.StateOverrideMap;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.exception.InvalidJsonRpcParameters;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.exception.InvalidJsonRpcRequestException;
@@ -53,7 +54,7 @@ import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonRpcPara
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.evm.tracing.EstimateGasOperationTracer;
-import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
@@ -149,7 +150,7 @@ public class LineaEstimateGas {
       }
 
       final var callParameters = parseCallParameters(request.getParams());
-      final var maybeStateOverrides = getAddressAccountOverrideMap(request.getParams());
+      final var maybeStateOverrides = getStateOverrideMap(request.getParams());
       final var minGasPrice = besuConfiguration.getMinGasPrice();
       final var gasLimitUpperBound = calculateGasLimitUpperBound(callParameters, logId);
       final Wei baseFee =
@@ -160,7 +161,7 @@ public class LineaEstimateGas {
                       new PluginRpcEndpointException(
                           RpcErrorType.INVALID_REQUEST, "Not on a baseFee market"));
       final var transaction =
-          createTransactionForSimulation(callParameters, gasLimitUpperBound, baseFee);
+          createTransactionForSimulation(callParameters, gasLimitUpperBound, baseFee, logId);
       log.atDebug()
           .setMessage("[{}] Parsed call parameters: {}; Transaction: {}; Gas limit upper bound {}")
           .addArgument(logId)
@@ -194,6 +195,7 @@ public class LineaEstimateGas {
   private long calculateGasLimitUpperBound(
       final JsonCallParameter callParameters, final long logId) {
     if (callParameters.getFrom() != null) {
+      final var sender = callParameters.getFrom();
       final var maxGasPrice = calculateTxMaxGasPrice(callParameters);
       log.atTrace()
           .setMessage("[{}] Calculated max gas price {}")
@@ -201,21 +203,7 @@ public class LineaEstimateGas {
           .addArgument(maxGasPrice)
           .log();
       if (maxGasPrice != null) {
-        final var sender = callParameters.getFrom();
-        final var resp =
-            rpcEndpointService.call(
-                "eth_getBalance", new Object[] {sender.toHexString(), "latest"});
-        if (!resp.getType().equals(RpcResponseType.SUCCESS)) {
-          throw new PluginRpcEndpointException(new InternalError("Unable to query sender balance"));
-        }
-        final var balance = Wei.fromHexString((String) resp.getResult());
-        log.atTrace()
-            .setMessage("[{}] eth_getBalance response for {} is {}, balance {}")
-            .addArgument(logId)
-            .addArgument(sender)
-            .addArgument(resp::getResult)
-            .addArgument(balance::toHumanReadableString)
-            .log();
+        final Wei balance = getSenderBalance(sender, logId);
         if (balance.greaterThan(Wei.ZERO)) {
           final var value = callParameters.getValue();
           final var balanceForGas = value == null ? balance : balance.subtract(value);
@@ -240,6 +228,23 @@ public class LineaEstimateGas {
     }
 
     return txValidatorConf.maxTxGasLimit();
+  }
+
+  private Wei getSenderBalance(final Address sender, final long logId) {
+    final var resp =
+        rpcEndpointService.call("eth_getBalance", new Object[] {sender.toHexString(), "latest"});
+    if (!resp.getType().equals(RpcResponseType.SUCCESS)) {
+      throw new PluginRpcEndpointException(new InternalError("Unable to query sender balance"));
+    }
+    final Wei balance = Wei.fromHexString((String) resp.getResult());
+    log.atTrace()
+        .setMessage("[{}] eth_getBalance response for {} is {}, balance {}")
+        .addArgument(logId)
+        .addArgument(sender)
+        .addArgument(resp::getResult)
+        .addArgument(balance::toHumanReadableString)
+        .log();
+    return balance;
   }
 
   private Wei calculateTxMaxGasPrice(final JsonCallParameter callParameters) {
@@ -268,19 +273,19 @@ public class LineaEstimateGas {
 
   private Long estimateGasUsed(
       final JsonCallParameter callParameters,
-      final Optional<AccountOverrideMap> maybeStateOverrides,
+      final Optional<StateOverrideMap> maybeStateOverrides,
       final Transaction transaction,
       final Wei baseFee,
       final long logId) {
 
     final var estimateGasTracer = new EstimateGasOperationTracer();
-    final var chainHeadHeader = blockchainService.getChainHeadHeader();
-    final var zkTracer = createZkTracer(chainHeadHeader, blockchainService.getChainId().get());
+    final var pendingBlockHeader = transactionSimulationService.simulatePendingBlockHeader();
+    final var zkTracer = createZkTracer(pendingBlockHeader, blockchainService.getChainId().get());
     final TracerAggregator zkAndGasTracer = TracerAggregator.create(estimateGasTracer, zkTracer);
 
     final var maybeSimulationResults =
         transactionSimulationService.simulate(
-            transaction, maybeStateOverrides, Optional.empty(), zkAndGasTracer, false);
+            transaction, maybeStateOverrides, pendingBlockHeader, zkAndGasTracer, false, true);
 
     ModuleLimitsValidationResult moduleLimit =
         moduleLineCountValidator.validate(zkTracer.getModulesLineCount());
@@ -326,11 +331,13 @@ public class LineaEstimateGas {
               final var lowGasEstimation = r.result().getEstimateGasUsedByTransaction();
               final var lowResult =
                   transactionSimulationService.simulate(
-                      createTransactionForSimulation(callParameters, lowGasEstimation, baseFee),
+                      createTransactionForSimulation(
+                          callParameters, lowGasEstimation, baseFee, logId),
                       maybeStateOverrides,
-                      Optional.empty(),
+                      pendingBlockHeader,
                       estimateGasTracer,
-                      false);
+                      false,
+                      true);
 
               return lowResult
                   .map(
@@ -362,11 +369,13 @@ public class LineaEstimateGas {
 
                             final var binarySearchResult =
                                 transactionSimulationService.simulate(
-                                    createTransactionForSimulation(callParameters, mid, baseFee),
+                                    createTransactionForSimulation(
+                                        callParameters, mid, baseFee, logId),
                                     maybeStateOverrides,
-                                    Optional.empty(),
+                                    pendingBlockHeader,
                                     estimateGasTracer,
-                                    false);
+                                    false,
+                                    true);
 
                             if (binarySearchResult.isEmpty()
                                 || !binarySearchResult.get().isSuccessful()) {
@@ -444,9 +453,9 @@ public class LineaEstimateGas {
     }
   }
 
-  protected Optional<AccountOverrideMap> getAddressAccountOverrideMap(final Object[] params) {
+  protected Optional<StateOverrideMap> getStateOverrideMap(final Object[] params) {
     try {
-      return parameterParser.optional(params, 1, AccountOverrideMap.class);
+      return parameterParser.optional(params, 1, StateOverrideMap.class);
     } catch (JsonRpcParameter.JsonRpcParameterException e) {
       throw new InvalidJsonRpcRequestException(
           "Invalid account overrides parameter (index 1)", RpcErrorType.INVALID_CALL_PARAMS, e);
@@ -479,11 +488,15 @@ public class LineaEstimateGas {
   }
 
   private Transaction createTransactionForSimulation(
-      final JsonCallParameter callParameters, final long maxTxGasLimit, final Wei baseFee) {
+      final JsonCallParameter callParameters,
+      final long maxTxGasLimit,
+      final Wei baseFee,
+      final long logId) {
 
     final var txBuilder =
         Transaction.builder()
             .sender(callParameters.getFrom())
+            .nonce(callParameters.getNonce().orElseGet(() -> getSenderNonce(callParameters, logId)))
             .to(callParameters.getTo())
             .gasLimit(maxTxGasLimit)
             .payload(
@@ -520,10 +533,30 @@ public class LineaEstimateGas {
     return txBuilder.build();
   }
 
-  private ZkTracer createZkTracer(final BlockHeader chainHeadHeader, final BigInteger chainId) {
+  private Long getSenderNonce(final JsonCallParameter callParameters, final long logId) {
+    final var sender = callParameters.getFrom();
+    final var resp =
+        rpcEndpointService.call(
+            "eth_getTransactionCount", new Object[] {sender.toHexString(), "latest"});
+    if (!resp.getType().equals(RpcResponseType.SUCCESS)) {
+      throw new PluginRpcEndpointException(new InternalError("Unable to query sender nonce"));
+    }
+    final Long nonce = Long.decode((String) resp.getResult());
+    log.atTrace()
+        .setMessage("[{}] eth_getTransactionCount response for {} is {}, nonce {}")
+        .addArgument(logId)
+        .addArgument(sender)
+        .addArgument(resp::getResult)
+        .addArgument(nonce)
+        .log();
+    return nonce;
+  }
+
+  private ZkTracer createZkTracer(
+      final ProcessableBlockHeader pendingBlockHeader, final BigInteger chainId) {
     var zkTracer = new ZkTracer(l1L2BridgeConfiguration, chainId);
     zkTracer.traceStartConflation(1L);
-    zkTracer.traceStartBlock(chainHeadHeader);
+    zkTracer.traceStartBlock(pendingBlockHeader, pendingBlockHeader.getCoinbase());
     return zkTracer;
   }
 

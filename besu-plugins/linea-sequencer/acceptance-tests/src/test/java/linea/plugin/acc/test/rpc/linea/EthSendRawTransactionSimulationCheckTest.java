@@ -15,6 +15,7 @@
 package linea.plugin.acc.test.rpc.linea;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -23,7 +24,6 @@ import java.util.List;
 import linea.plugin.acc.test.LineaPluginTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import linea.plugin.acc.test.tests.web3j.generated.RevertExample;
-import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
@@ -54,33 +54,10 @@ public class EthSendRawTransactionSimulationCheckTest extends LineaPluginTestBas
 
   @Test
   public void transactionOverModuleLineCountNotAccepted() throws Exception {
-    final SimpleStorage simpleStorage = deploySimpleStorage();
-    final Web3j web3j = minerNode.nodeRequests().eth();
-    final String contractAddress = simpleStorage.getContractAddress();
-    final String txData = simpleStorage.add(BigInteger.valueOf(100)).encodeFunctionCall();
-
     // this tx will not be accepted since it goes above the line count limit
-    final RawTransaction txModuleLineCountTooBig =
-        RawTransaction.createTransaction(
-            CHAIN_ID,
-            BigInteger.valueOf(1),
-            GAS_LIMIT.divide(BigInteger.TEN),
-            contractAddress,
-            VALUE,
-            txData,
-            GAS_PRICE,
-            GAS_PRICE.multiply(BigInteger.TEN).add(BigInteger.ONE));
-    final byte[] signedTxContractInteraction =
-        TransactionEncoder.signMessage(
-            txModuleLineCountTooBig, Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY));
-
-    final EthSendTransaction signedTxContractInteractionResp =
-        web3j.ethSendRawTransaction(Numeric.toHexString(signedTxContractInteraction)).send();
-
-    assertThat(signedTxContractInteractionResp.hasError()).isTrue();
-    assertThat(signedTxContractInteractionResp.getError().getMessage())
-        .isEqualTo(
-            "Transaction 0xe813560d9a3aedff46be12fc32706d8fe9b6565dd7e2db47457a9c416f2d45d7 line count for module ADD=2017 is above the limit 70");
+    assertThatThrownBy(() -> deploySimpleStorage())
+        .hasMessage(
+            "JsonRpcError thrown with code -32000. Message: Transaction 0x63ea5c9ec0f0fae53683c1b5f1998fe806f1ad5b655a1d03a9771f1976be45a9 line count for module ROM=2369 is above the limit 2300");
 
     assertThat(getTxPoolContent()).isEmpty();
 
