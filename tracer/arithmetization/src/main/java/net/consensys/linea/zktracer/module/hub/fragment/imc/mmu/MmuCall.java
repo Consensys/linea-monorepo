@@ -783,8 +783,8 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
   }
 
   @Override
-  public Trace trace(Trace trace, State.TxState.Stamps stamps) {
-    stamps.incrementMmuStamp();
+  public Trace trace(Trace trace, State hubState) {
+    hubState.incrementMmuStamp();
     return trace
         .pMiscMmuFlag(true)
         .pMiscMmuInst(instruction)

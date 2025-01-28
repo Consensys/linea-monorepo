@@ -63,8 +63,8 @@ public class MxpCall implements TraceSubFragment {
     return !this.mxpx && !this.size2.isZero();
   }
 
-  public Trace trace(Trace trace, State.TxState.Stamps stamps) {
-    stamps.incrementMxpStamp();
+  public Trace trace(Trace trace, State hubState) {
+    hubState.incrementMxpStamp();
     return trace
         .pMiscMxpFlag(true)
         .pMiscMxpInst(this.opCodeData.value())
