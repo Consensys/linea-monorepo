@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	size = 16
+	size = 8
 )
 
 // In this example we show how to use PLONK with KZG commitments. The circuit that is
@@ -94,17 +94,30 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 	//comp := wizard.Compile(define, globalcs.Compile, vortex.Compile(2, vortex.WithDryThreshold(0)))
 	//comp := wizard.Compile(define, compiler.Arcane(16, 64))
 	// comp := wizard.Compile(define, vortex.Compile(2, vortex.WithDryThreshold(0)))
-	comp := wizard.Compile(define, mimcComp.CompileMiMC, compiler.Arcane(size, size), vortex.Compile(
-		2,
-		vortex.WithSISParams(&sisInstance),
-	),
-		selfrecursion.SelfRecurse)
+	comp := wizard.Compile(define, mimcComp.CompileMiMC,
+		compiler.Arcane(size, size),
+		vortex.Compile(
+			2,
+			vortex.WithSISParams(&sisInstance),
+		),
+		selfrecursion.SelfRecurse,
+	)
 	bench.StartTimer()
 	proof := wizard.Prove(comp, prover)
 	assert.NoErrorf(bench, wizard.Verify(comp, proof), "invalid proof")
 	bench.StopTimer()
 
 	// END OF WIZARD STUFF
+	// START ESTIMATING WIZARD PROOF SIZE
+	proofSize := 0
+	allValues := proof.Messages.InnerMap()
+	for _, value := range allValues {
+		proofSize += value.Len() * field.Bytes
+	}
+
+	fmt.Println("Wizard proof size ", proofSize)
+	bench.ReportMetric(float64(proofSize), "Wizard-proof-size")
+	// END OF WIZARD PROOF SIZE
 
 	var circ Circuit
 	// circ.wizardProof = proof
@@ -173,6 +186,7 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 		var buf bytes.Buffer
 		wizProof.WriteRawTo(&buf)
 		fmt.Println("Plonk proof size ", buf.Len())
+		bench.ReportMetric(float64(buf.Len()), "Plonk-proof-size")
 
 	}
 
