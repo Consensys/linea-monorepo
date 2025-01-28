@@ -111,6 +111,13 @@ type Config struct {
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 
+	// LIMITLESS PROVER STUFF
+	Bootstrap      Bootstrap
+	GLExecution    GLExecution
+	RandomBeacon   RandomBeacon
+	LPPExecution   LPPExecution
+	Conglomeration Conglomeration
+
 	Debug struct {
 		// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
 		// Profiles can later be read using the `go tool pprof` command.
@@ -210,6 +217,43 @@ type Execution struct {
 
 	// ConflatedTracesDir stores the directory where the conflation traces are stored.
 	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
+}
+
+// TODO: Add and define Limitless prover components
+type Bootstrap struct {
+	WithRequestDir `mapstructure:",squash"`
+
+	// ConflatedTracesDir stores the directory where the conflation traces are stored.
+	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
+}
+
+type GLExecution struct {
+	// Directory where the submodule request is stored
+	WithRequestDir `mapstructure:",squash"`
+
+	// ConflatedTracesDir stores the directory where the conflation traces are stored.
+	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
+}
+
+type RandomBeacon struct {
+	// Directory where LPP Beacon request is stored
+	WithRequestDir `mapstructure:",squash"`
+
+	// DistMetaData points to the directory where distributed metadata is stored
+	DistMetaData string `mapstructure:"distributed_metadata" validate:"required"`
+}
+
+type LPPExecution struct {
+	// Directory where LPP Proof request is stored
+	WithRequestDir `mapstructure:",squash"`
+}
+
+type Conglomeration struct {
+	// Directory where GL-sub prover response is stored
+	GLResp WithRequestDir `mapstructure:",squash"`
+
+	// Directory where LPP-sub prover response is stored
+	LPPResp WithRequestDir `mapstructure:",squash"`
 }
 
 type BlobDecompression struct {

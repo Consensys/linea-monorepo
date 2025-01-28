@@ -69,31 +69,61 @@ type JobDefinition struct {
 // Definition of an execution prover job. The function panics on any error since
 // it is called at start up.
 func ExecutionDefinition(conf *config.Config) JobDefinition {
-	// Format the extension part of the regexp if provided
+
+	// format the extension part of the regexp if provided
 	inpFileExt := ""
 	if conf.Execution.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
-	jobDef := commonExecJobDef(conf, jobNameExecution, 0)
+	return JobDefinition{
+		RequestsRootDir: conf.Execution.RequestsRootDir,
 
-	// Set the InputFileRegexp specific to ExecutionDefinition
-	jobDef.InputFileRegexp = regexp2.MustCompile(
-		fmt.Sprintf(
-			`^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json%v(\.failure\.%v_[0-9]+)*$`,
-			inpFileExt,
-			config.FailSuffix,
+		// Name of the job
+		Name: jobNameExecution,
+
+		// This will panic at startup if the regexp is invalid
+		InputFileRegexp: regexp2.MustCompile(
+			fmt.Sprintf(
+				`^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json%v(\.failure\.%v_[0-9]+)*$`,
+				inpFileExt,
+				config.FailSuffix,
+			),
+			regexp2.None,
 		),
-		regexp2.None,
-	)
 
-	// Set the OutputFileTmpl specific to ExecutionDefinition
-	jobDef.OutputFileTmpl = tmplMustCompile(
-		"exec-output-file",
-		"{{.Start}}-{{.End}}-getZkProof.json",
-	)
+		// This will panic at startup if the template is invalid
+		OutputFileTmpl: tmplMustCompile(
+			"exec-output-file",
+			"{{.Start}}-{{.End}}-getZkProof.json",
+		),
 
-	return jobDef
+		// Execution job are at utmost priority
+		Priority: 0,
+
+		// Parameters of the regexp, they can loose in the sense that these regexp
+		// are only called if the `InputFileRegexp` is matched.
+		ParamsRegexp: struct {
+			Start       *regexp2.Regexp
+			End         *regexp2.Regexp
+			Stv         *regexp2.Regexp
+			Etv         *regexp2.Regexp
+			Cv          *regexp2.Regexp
+			ContentHash *regexp2.Regexp
+		}{
+			// Match a string of digit at the beginning of the line
+			Start: regexp2.MustCompile(`^[0-9]+`, regexp2.None),
+			// Match a string of digit coming after the first string of digits that
+			// initiate the line and followed by a "-"
+			End: regexp2.MustCompile(`(?<=^[0-9]+-)[0-9]+`, regexp2.None),
+			// Match a sequence of digits and "." comining after (resp.) "etv" and
+			// "cv"
+			Etv: matchVersionWithPrefix("etv"),
+			Stv: matchVersionWithPrefix("stv"),
+		},
+
+		FailureSuffix: matchFailureSuffix(config.FailSuffix),
+	}
 }
 
 // Definition of an execution prover job.
@@ -148,7 +178,7 @@ func CompressionDefinition(conf *config.Config) JobDefinition {
 	}
 }
 
-// Definition of an execution prover job.
+// Definition of an aggregated prover job.
 func AggregatedDefinition(conf *config.Config) JobDefinition {
 
 	return JobDefinition{
@@ -200,27 +230,27 @@ func AggregatedDefinition(conf *config.Config) JobDefinition {
 
 // Helper function to set up common parts of execution JobDefinition
 // Used in Execution Definition and for Limitless prover Bootstrap and Conglomeration
-func commonExecJobDef(conf *config.Config, jobName string, priority int) JobDefinition {
-	return JobDefinition{
-		RequestsRootDir: conf.Execution.RequestsRootDir,
-		Name:            jobName,
-		Priority:        priority,
-		ParamsRegexp: struct {
-			Start       *regexp2.Regexp
-			End         *regexp2.Regexp
-			Stv         *regexp2.Regexp
-			Etv         *regexp2.Regexp
-			Cv          *regexp2.Regexp
-			ContentHash *regexp2.Regexp
-		}{
-			Start: regexp2.MustCompile(`^[0-9]+`, regexp2.None),
-			End:   regexp2.MustCompile(`(?<=^[0-9]+-)[0-9]+`, regexp2.None),
-			Etv:   matchVersionWithPrefix("etv"),
-			Stv:   matchVersionWithPrefix("stv"),
-		},
-		FailureSuffix: matchFailureSuffix(config.FailSuffix),
-	}
-}
+// func commonExecJobDef(reqRootDir string, jobName string, priority int) JobDefinition {
+// 	return JobDefinition{
+// 		RequestsRootDir: reqRootDir,
+// 		Name:            jobName,
+// 		Priority:        priority,
+// 		ParamsRegexp: struct {
+// 			Start       *regexp2.Regexp
+// 			End         *regexp2.Regexp
+// 			Stv         *regexp2.Regexp
+// 			Etv         *regexp2.Regexp
+// 			Cv          *regexp2.Regexp
+// 			ContentHash *regexp2.Regexp
+// 		}{
+// 			Start: regexp2.MustCompile(`^[0-9]+`, regexp2.None),
+// 			End:   regexp2.MustCompile(`(?<=^[0-9]+-)[0-9]+`, regexp2.None),
+// 			Etv:   matchVersionWithPrefix("etv"),
+// 			Stv:   matchVersionWithPrefix("stv"),
+// 		},
+// 		FailureSuffix: matchFailureSuffix(config.FailSuffix),
+// 	}
+// }
 
 // Version prefix template
 func matchVersionWithPrefix(pre string) *regexp2.Regexp {
