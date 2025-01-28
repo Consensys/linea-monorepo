@@ -5,6 +5,8 @@ import linea.web3j.waitForTxReceipt
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobRecord
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration
@@ -51,14 +53,25 @@ fun assertTxsSuccess(
 fun submitBlobs(
   contractClient: LineaRollupSmartContractClient,
   aggregationsAndBlobs: List<AggregationAndBlobs>,
-  blobChunksSize: Int = 6
+  blobChunksSize: Int = 6,
+  log: Logger
 ): List<Pair<String, List<BlobRecord>>> {
   require(blobChunksSize in 1..6) { "blobChunksSize must be between 1..6" }
 
   return aggregationsAndBlobs
-    .map { (_, aggBlobs) ->
+    .map { (agg, aggBlobs) ->
       val blobChunks = aggBlobs.chunked(blobChunksSize)
-      blobChunks.map { blobs -> contractClient.submitBlobs(blobs, gasPriceCaps = null).get() to blobs }
+      blobChunks.map { blobs ->
+        val txHash = contractClient.submitBlobs(blobs, gasPriceCaps = null).get()
+        log.info(
+          "submitting blobs: aggregation={} blobsChunk={} txHash={}",
+          agg?.intervalString(),
+          blobs.map { it.intervalString() },
+          txHash
+        )
+
+        txHash to blobs
+      }
     }
     .flatten()
 }
@@ -69,9 +82,10 @@ fun submitBlobsAndAggregationsAndWaitExecution(
   aggregationsAndBlobs: List<AggregationAndBlobs>,
   blobChunksSize: Int = 6,
   l1Web3jClient: Web3j,
-  waitTimeout: Duration = 2.minutes
+  waitTimeout: Duration = 2.minutes,
+  log: Logger = LogManager.getLogger("linea.testing.submission")
 ) {
-  val blobSubmissionTxHashes = submitBlobs(contractClientForBlobSubmission, aggregationsAndBlobs, blobChunksSize)
+  val blobSubmissionTxHashes = submitBlobs(contractClientForBlobSubmission, aggregationsAndBlobs, blobChunksSize, log)
 
   assertTxsSuccess(
     txsAndInterval = blobSubmissionTxHashes.map { (txHash, blobs) ->

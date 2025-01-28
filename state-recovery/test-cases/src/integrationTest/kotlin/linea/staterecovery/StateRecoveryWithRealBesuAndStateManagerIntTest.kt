@@ -119,7 +119,8 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
         aggregationsAndBlobs = aggregationsAndBlobs,
         blobChunksSize = 6,
         l1Web3jClient = Web3jClientManager.l1Client,
-        waitTimeout = 4.minutes
+        waitTimeout = 4.minutes,
+        log = log
       )
       log.info("finalization={} executed on l1", lastAggregation.intervalString())
     }
