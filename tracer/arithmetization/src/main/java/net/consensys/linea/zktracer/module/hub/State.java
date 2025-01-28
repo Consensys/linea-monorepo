@@ -46,6 +46,24 @@ public class State implements StackedContainer {
     return this.current().stamps;
   }
 
+  /** Increments at commit time */
+  @Getter
+  @Accessors(fluent = true)
+  private int mxpStamp = 0;
+
+  /** Increments at commit time */
+  @Getter
+  @Accessors(fluent = true)
+  private int mmuStamp = 0;
+
+  public void incrementMmuStamp() {
+    mmuStamp++;
+  }
+
+  public void incrementMxpStamp() {
+    mxpStamp++;
+  }
+
   @Getter @Setter HubProcessingPhase processingPhase;
 
   @RequiredArgsConstructor
@@ -149,14 +167,16 @@ public class State implements StackedContainer {
       return new TxState(stamps.snapshot());
     }
 
-    /** Stores all the stamps associated to the tracing of a transaction. */
+    /**
+     * Stores the HUB and LOG stamps associated to the tracing of a transaction. As the MMU and MXP
+     * stamps increment only at commit time and are not required during execution, they are not part
+     * of this class.
+     */
     @Accessors(fluent = true)
     @Getter
     public static class Stamps {
       private int hub = 0; // increments during execution
       private int log = 0; // increments at RunPostTx
-      private int mxp = 0; // increments only at commit time
-      private int mmu = 0; // increments only at commit time
 
       public Stamps() {}
 
@@ -171,14 +191,6 @@ public class State implements StackedContainer {
 
       public void incrementHubStamp() {
         hub++;
-      }
-
-      public void incrementMmuStamp() {
-        mmu++;
-      }
-
-      public void incrementMxpStamp() {
-        mxp++;
       }
 
       public int incrementLogStamp() {

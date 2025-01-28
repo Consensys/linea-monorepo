@@ -234,8 +234,8 @@ public class TraceSection {
               commonValues,
               stackLineCounter,
               nonStackLineCounter,
-              hub().state.stamps().mmu(),
-              hub().state.stamps().mxp());
+              hub().state.mmuStamp(),
+              hub().state.mxpStamp());
       commonFragment.trace(hubTrace);
       hubTrace.fillAndValidateRow();
     }

@@ -23,7 +23,7 @@ public interface TraceSubFragment {
     return trace;
   }
 
-  default Trace trace(Trace trace, State.TxState.Stamps stamps) {
+  default Trace trace(Trace trace, State hubState) {
     return trace(trace);
   }
 }

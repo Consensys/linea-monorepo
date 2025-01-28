@@ -140,12 +140,12 @@ public class ImcFragment implements TraceFragment, ContextReEntryDefer, ContextE
 
     for (TraceSubFragment subFragment : moduleCalls) {
       if (subFragment instanceof MmuCall) {
-        MmuCall mmuCall = (MmuCall) subFragment;
+        final MmuCall mmuCall = (MmuCall) subFragment;
         if (mmuCall.traceMe()) {
-          subFragment.trace(trace, hub.state.stamps());
+          subFragment.trace(trace, hub.state);
         }
       } else {
-        subFragment.trace(trace, hub.state.stamps());
+        subFragment.trace(trace, hub.state);
       }
     }
 
