@@ -75,7 +75,7 @@ describe("TokenBridge", function () {
   }
 
   describe("initialize", async function () {
-    it("Should revert if it has already been intialized", async function () {
+    it("Should revert if it has already been initialized", async function () {
       const { user, l1TokenBridge, chainIds } = await loadFixture(deployContractsFixture);
       await expectRevertWithReason(
         l1TokenBridge.connect(user).initialize({
