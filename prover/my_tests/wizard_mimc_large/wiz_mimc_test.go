@@ -91,9 +91,15 @@ func BenchmarkWizardMiMC(bench *testing.B) {
 	prover := outputProverFunc()
 	proof := wizard.Prove(comp, prover)
 
+	// copy wizard proof into a new one
+	secondProof := wizard.Proof{
+		Messages:      proof.Messages,
+		QueriesParams: proof.QueriesParams,
+	}
+
 	bench.StartTimer()
 	timeStart := time.Now()
-	checkErr := wizard.Verify(comp, proof)
+	checkErr := wizard.Verify(comp, secondProof)
 	assert.NoErrorf(bench, checkErr, "INVALID proof")
 	timeEnd := time.Now()
 	bench.StopTimer()

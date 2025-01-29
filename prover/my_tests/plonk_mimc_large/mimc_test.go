@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/backend/plonk"
+	plonk2 "github.com/consensys/gnark/backend/plonk/bls12-377"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/test/unsafekzg"
@@ -96,10 +97,14 @@ func BenchmarkPlonkMiMC(b *testing.B) {
 			log.Fatal(err)
 		}
 
+		var bufProof bytes.Buffer
+		proof.WriteTo(&bufProof)
+		plonkProof2 := new(plonk2.Proof)
+		plonkProof2.ReadFrom(&bufProof)
 		b.StartTimer()
 		timeStart := time.Now()
 
-		err = plonk.Verify(proof, vk, wPub)
+		err = plonk.Verify(plonkProof2, vk, wPub)
 		if err != nil {
 			log.Fatal(err)
 		}

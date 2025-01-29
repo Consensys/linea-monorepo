@@ -6,6 +6,7 @@ package combined
 import (
 	"bytes"
 	"fmt"
+	plonk2 "github.com/consensys/gnark/backend/plonk/bls12-377"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -171,15 +172,20 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 			log.Fatal(err)
 		}
 
-		wizProof, err := plonk.Prove(ccs, pk, witnessFull)
+		plonkProof, err := plonk.Prove(ccs, pk, witnessFull)
 		if err != nil {
 			log.Fatal(err)
 		}
 
+		var bufProof bytes.Buffer
+		plonkProof.WriteRawTo(&bufProof)
+		plonkProof2 := new(plonk2.Proof)
+		plonkProof2.ReadFrom(&bufProof)
+
 		bench.StartTimer()
 		startTime2 := time.Now()
-
-		err = plonk.Verify(wizProof, vk, witnessPublic)
+		
+		err = plonk.Verify(plonkProof2, vk, witnessPublic)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -187,7 +193,7 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 		bench.StopTimer()
 
 		var buf bytes.Buffer
-		wizProof.WriteRawTo(&buf)
+		plonkProof2.WriteRawTo(&buf)
 		fmt.Println("Plonk proof size ", buf.Len())
 		bench.ReportMetric(float64(buf.Len()), "Plonk-proof-size")
 
