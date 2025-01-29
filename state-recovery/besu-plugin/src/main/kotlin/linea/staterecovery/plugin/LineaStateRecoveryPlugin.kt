@@ -114,7 +114,7 @@ open class LineaStateRecoveryPlugin : BesuPlugin {
 
   override fun afterExternalServicePostMainLoop() {
     // we need to recall this again because Sync and Mining services
-    // bay have been started after the plugin start
+    // may have been started after the plugin start
     this.recoveryModeManager.enableRecoveryModeIfNecessary()
   }
 
