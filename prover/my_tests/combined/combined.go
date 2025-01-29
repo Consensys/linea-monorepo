@@ -1,7 +1,7 @@
 // Copyright 2020-2024 Consensys Software Inc.
 // Licensed under the Apache License, Version 2.0. See the LICENSE file for details.
 
-package wizinplonkmimc
+package combined
 
 import (
 	"bytes"
@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"log"
 	"testing"
+	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
@@ -103,8 +104,10 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 		selfrecursion.SelfRecurse,
 	)
 	bench.StartTimer()
+	startTime := time.Now()
 	proof := wizard.Prove(comp, prover)
 	assert.NoErrorf(bench, wizard.Verify(comp, proof), "invalid proof")
+	endTime := time.Now()
 	bench.StopTimer()
 
 	// END OF WIZARD STUFF
@@ -171,6 +174,7 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 			log.Fatal(err)
 		}
 		bench.StartTimer()
+		startTime2 := time.Now()
 
 		wizProof, err := plonk.Prove(ccs, pk, witnessFull)
 		if err != nil {
@@ -181,12 +185,19 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		endTime2 := time.Now()
 		bench.StopTimer()
 
 		var buf bytes.Buffer
 		wizProof.WriteRawTo(&buf)
 		fmt.Println("Plonk proof size ", buf.Len())
 		bench.ReportMetric(float64(buf.Len()), "Plonk-proof-size")
+
+		customTime := endTime.Sub(startTime).Nanoseconds()
+		customTime2 := endTime2.Sub(startTime2).Nanoseconds()
+		fmt.Println("Custom timings raw", customTime)
+		fmt.Println("Benchmark iterations", bench.N)
+		bench.ReportMetric(float64(customTime+customTime2), "Custom-Timing")
 
 	}
 

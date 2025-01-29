@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"log"
 	"testing"
+	"time"
 )
 
 func BenchmarkPlonkMiMC(b *testing.B) {
@@ -91,6 +92,7 @@ func BenchmarkPlonkMiMC(b *testing.B) {
 		wPub, err := frontend.NewWitness(&mimcCircuit, ecc.BLS12_377.ScalarField(), frontend.PublicOnly())
 
 		b.StartTimer()
+		timeStart := time.Now()
 		proof, err := plonk.Prove(ccs, pk, w)
 		if err != nil {
 			log.Fatal(err)
@@ -100,10 +102,18 @@ func BenchmarkPlonkMiMC(b *testing.B) {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		timeEnd := time.Now()
+		b.StopTimer()
+
 		var buf bytes.Buffer
 		proof.WriteRawTo(&buf)
 		fmt.Println("Plonk proof size ", buf.Len())
 		b.ReportMetric(float64(buf.Len()), "Plonk-proof-size")
+		customTime := timeEnd.Sub(timeStart).Nanoseconds()
+		fmt.Println("Custom timings raw", customTime)
+		fmt.Println("Benchmark iterations", b.N)
+		b.ReportMetric(float64(customTime), "Custom-Timing")
 	}
 
 	//ecc.BLS12_377
