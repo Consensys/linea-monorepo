@@ -15,10 +15,11 @@ const (
 	jobNameConglomeration = "conglomeration-execution"
 )
 
-func createJobDefinition(conf *config.Config, jobName, inputFilePattern, outputTmpl, outputFileName string, priority int, requestsRootDir string) JobDefinition {
-	return JobDefinition{
-		RequestsRootDir: requestsRootDir,
-		Name:            jobName,
+func createJobDefinition(name string, priority int, reqRootDir string, inputFilePattern string, optReqRootDir string, optInputFilePattern string, outputTmpl string, outputFileName string) JobDefinition {
+	jd := JobDefinition{
+		Name:            name,
+		Priority:        priority,
+		RequestsRootDir: reqRootDir,
 		InputFileRegexp: regexp2.MustCompile(
 			inputFilePattern,
 			regexp2.None,
@@ -27,7 +28,6 @@ func createJobDefinition(conf *config.Config, jobName, inputFilePattern, outputT
 			outputTmpl,
 			outputFileName,
 		),
-		Priority: priority,
 		ParamsRegexp: struct {
 			Start       *regexp2.Regexp
 			End         *regexp2.Regexp
@@ -43,6 +43,14 @@ func createJobDefinition(conf *config.Config, jobName, inputFilePattern, outputT
 		},
 		FailureSuffix: matchFailureSuffix(config.FailSuffix),
 	}
+
+	// Additional check for optional dirs => Congolomeration
+	if optInputFilePattern != "" && optReqRootDir != "" {
+		jd.OptReqRootDir = optReqRootDir
+		jd.OptInputFileRegexp = regexp2.MustCompile(optInputFilePattern, regexp2.None)
+	}
+
+	return jd
 }
 
 func BootstrapDefinition(conf *config.Config) JobDefinition {
@@ -55,7 +63,8 @@ func BootstrapDefinition(conf *config.Config) JobDefinition {
 		inpFileExt,
 		config.FailSuffix,
 	)
-	return createJobDefinition(conf, jobNameBootstrap, inputFilePattern, "bootstrap-exec-output-file", "{{.Start}}-{{.End}}-.getZKExecBootstrap.json", 0, conf.Bootstrap.RequestsRootDir)
+	return createJobDefinition(jobNameBootstrap, 0, conf.Bootstrap.RequestsRootDir, inputFilePattern, "",
+		"", "bootstrap-exec-output-file", "{{.Start}}-{{.End}}-.getZKExecBootstrap.json")
 }
 
 func GLExecutionDefinition(conf *config.Config) JobDefinition {
@@ -63,7 +72,8 @@ func GLExecutionDefinition(conf *config.Config) JobDefinition {
 		`^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZKExecBootstrap\.json(\.failure\.%v_[0-9]+)*$`,
 		config.FailSuffix,
 	)
-	return createJobDefinition(conf, jobNameGLExecution, inputFilePattern, "gl-exec-output-file", "{{.Start}}-{{.End}}-.getZKExecGLProof.json", 1, conf.GLExecution.RequestsRootDir)
+	return createJobDefinition(jobNameGLExecution, 1, conf.GLExecution.RequestsRootDir, inputFilePattern, "",
+		"", "gl-exec-output-file", "{{.Start}}-{{.End}}-.getZKExecGLProof.json")
 }
 
 func RandomBeaconDefinition(conf *config.Config) JobDefinition {
@@ -71,7 +81,8 @@ func RandomBeaconDefinition(conf *config.Config) JobDefinition {
 		`^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZKExecGLProof\.json(\.failure\.%v_[0-9]+)*$`,
 		config.FailSuffix,
 	)
-	return createJobDefinition(conf, jobNameRandomBeacon, inputFilePattern, "rnd-beacon-exec-output-file", "{{.Start}}-{{.End}}-.getZKExecRandBeacon.json", 2, conf.RandomBeacon.RequestsRootDir)
+	return createJobDefinition(jobNameRandomBeacon, 2, conf.RandomBeacon.RequestsRootDir, inputFilePattern, "",
+		"", "rnd-beacon-exec-output-file", "{{.Start}}-{{.End}}-.getZKExecRandBeacon.json")
 }
 
 func LPPExecutionDefinition(conf *config.Config) JobDefinition {
@@ -79,10 +90,22 @@ func LPPExecutionDefinition(conf *config.Config) JobDefinition {
 		`^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZKExecRandBeacon\.json(\.failure\.%v_[0-9]+)*$`,
 		config.FailSuffix,
 	)
-	return createJobDefinition(conf, jobNameLPPExecution, inputFilePattern, "lpp-exec-output-file", "{{.Start}}-{{.End}}-.getZKExecLPPProof.json", 3, conf.LPPExecution.RequestsRootDir)
+	return createJobDefinition(jobNameLPPExecution, 3, conf.LPPExecution.RequestsRootDir, inputFilePattern, "",
+		"", "lpp-exec-output-file", "{{.Start}}-{{.End}}-.getZKExecLPPProof.json")
 }
 
-// // TODO: Figure out: How will the request dir. work here?
-// // Are we combining the responses from GL and LPP in to one file
-// // Or We can set optional req dir. in the JobDefinition struct
-// func ConglomerationDefinition(conf *config.Config) JobDefinition { // return JobDefinition{} // }
+func ConglomerationDefinition(conf *config.Config) JobDefinition {
+	inputFilePattern := fmt.Sprintf(
+		`^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZKExecGLProof\.json(\.failure\.%v_[0-9]+)*$`,
+		config.FailSuffix,
+	)
+
+	optFilePattern := fmt.Sprintf(
+		`^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZKExecLPPProof\.json(\.failure\.%v_[0-9]+)*$`,
+		config.FailSuffix,
+	)
+
+	return createJobDefinition(jobNameConglomeration, 4, conf.Conglomeration.GLResp.RequestsRootDir,
+		inputFilePattern, conf.Conglomeration.LPPResp.RequestsRootDir, optFilePattern,
+		"exec-output-file", "{{.Start}}-{{.End}}-.getZKProof.json")
+}

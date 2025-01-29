@@ -111,7 +111,7 @@ type Config struct {
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 
-	// LIMITLESS PROVER STUFF
+	// LIMITLESS PROVER Components
 	Bootstrap      Bootstrap
 	GLExecution    GLExecution
 	RandomBeacon   RandomBeacon

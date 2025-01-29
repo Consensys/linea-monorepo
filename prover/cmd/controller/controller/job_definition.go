@@ -20,11 +20,18 @@ const (
 // a job.
 type JobDefinition struct {
 
-	// Parameters for the job definition provided by the user
-	RequestsRootDir string
-
 	// Name of the job
 	Name string
+
+	// Priority at which this type of job should be processed. The lower the
+	// more of a priority.
+	//
+	// Typically 0 for execution, 1 for compression and 2 for aggregation.
+	//
+	Priority int
+
+	// Parameters for the job definition provided by the user
+	RequestsRootDir string
 
 	// The regexp to use to match input files. For instance,
 	//
@@ -36,19 +43,19 @@ type JobDefinition struct {
 	//
 	InputFileRegexp *regexp2.Regexp
 
+	// Optional Request Root Dir. Some jobs might have multiple request files
+	// For eg: Conglomeration will have two requests files - responses from GL and LPP sub-prover
+	OptReqRootDir string
+
+	// Regex check for optional input files
+	OptInputFileRegexp *regexp2.Regexp
+
 	// Template to use to generate the output file. The template should have the
 	// form of a go template. For instance,
 	//
 	// 	`{{.From}}-{{.To}}-pv{{.Version}}-stv{{.Stv}}-etv{{.Etv}}-zkProof.json`
 	//
 	OutputFileTmpl *template.Template
-
-	// Priority at which this type of job should be processed. The lower the
-	// more of a priority.
-	//
-	// Typically 0 for execution, 1 for compression and 2 for aggregation.
-	//
-	Priority int
 
 	// The associated compiled regexp, this saves on recompiling the regexps
 	// everytime we want to use them. If a field is not needed, it can be left
@@ -227,30 +234,6 @@ func AggregatedDefinition(conf *config.Config) JobDefinition {
 		FailureSuffix: matchFailureSuffix(config.FailSuffix),
 	}
 }
-
-// Helper function to set up common parts of execution JobDefinition
-// Used in Execution Definition and for Limitless prover Bootstrap and Conglomeration
-// func commonExecJobDef(reqRootDir string, jobName string, priority int) JobDefinition {
-// 	return JobDefinition{
-// 		RequestsRootDir: reqRootDir,
-// 		Name:            jobName,
-// 		Priority:        priority,
-// 		ParamsRegexp: struct {
-// 			Start       *regexp2.Regexp
-// 			End         *regexp2.Regexp
-// 			Stv         *regexp2.Regexp
-// 			Etv         *regexp2.Regexp
-// 			Cv          *regexp2.Regexp
-// 			ContentHash *regexp2.Regexp
-// 		}{
-// 			Start: regexp2.MustCompile(`^[0-9]+`, regexp2.None),
-// 			End:   regexp2.MustCompile(`(?<=^[0-9]+-)[0-9]+`, regexp2.None),
-// 			Etv:   matchVersionWithPrefix("etv"),
-// 			Stv:   matchVersionWithPrefix("stv"),
-// 		},
-// 		FailureSuffix: matchFailureSuffix(config.FailSuffix),
-// 	}
-// }
 
 // Version prefix template
 func matchVersionWithPrefix(pre string) *regexp2.Regexp {
