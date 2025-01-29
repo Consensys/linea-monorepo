@@ -25,7 +25,7 @@ func TestConsistency(t *testing.T) {
 		mimcCodeHash     *mimccodehash.Module
 		consistency      Module
 		sizeStateSummary = 128
-		sizeMimcCodeHash = 128
+		sizeMimcCodeHash = 256
 	)
 
 	define := func(b *wizard.Builder) {
