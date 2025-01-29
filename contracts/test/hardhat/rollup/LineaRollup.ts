@@ -2264,7 +2264,7 @@ describe("Linea Rollup contract", () => {
 
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
-        "contracts/test-contracts/TestLineaRollup.sol:TestLineaRollup",
+        "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
       );
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
         unsafeAllowRenames: true,
