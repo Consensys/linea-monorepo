@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+import de.undercouch.gradle.tasks.download.Download
 
 tasks.register('sourcesJar', Jar) {
   dependsOn classes
@@ -25,40 +26,113 @@ tasks.register('javadocJar', Jar) {
   from javadoc.destinationDir
 }
 
-version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
+def lineaBesuDistTar = new File(new File(buildDir, "downloads"), rootProject.besuFilename)
+task downloadLineaBesu {
+    outputs.file(lineaBesuDistTar)
+    doLast {
+        try {
+            download.run {
+                src rootProject.besuUrl
+                dest lineaBesuDistTar
+                onlyIfModified true
+            }
+        } catch (Exception e) {
+            def localLineaBesuDir =
+                    project.hasProperty('useLocalLineaBesuDir')
+                            ? file("${findProperty('useLocalLineaBesuDir')}".replaceFirst('^~', System.getProperty('user.home')))
+                            : new File(projectDir, "../../linea-besu")
+
+            def localLineaBesuFile = new File("${localLineaBesuDir.canonicalPath}/build/distributions/${rootProject.besuFilename}")
+
+            logger.warn("Could not download " + rootProject.besuUrl + " trying local copy from " + localLineaBesuFile + " as fallback")
+            if (!file(localLineaBesuFile).exists()) {
+                throw new GradleException("Could not download Linea Besu distribution from: " + rootProject.besuUrl +
+                        ", and could not find it locally at ${localLineaBesuFile} either")
+            }
+
+            copy {
+                from localLineaBesuFile
+                into lineaBesuDistTar.parentFile
+            }
+        }
+    }
+}
+
+task unTarLineaBesu(type: Copy) {
+    dependsOn downloadLineaBesu
+
+    from tarTree(lineaBesuDistTar)
+    into lineaBesuDistTar.parentFile
+}
+
+def lineaBesuLibDir = new File(lineaBesuDistTar.parentFile, rootProject.besuIdentifier + '/lib')
+def lineaBesuLibs = []
+
+def excludeBesuProvidedDeps = {
+    if(lineaBesuLibs.isEmpty()) {
+        // Get all the dependencies that are provided by Besu
+        fileTree(dir: lineaBesuLibDir, include: '*.jar').visit {
+            FileVisitDetails details ->
+                lineaBesuLibs << details.file.name
+        }
+    }
+    // include the dependency in the jar only if it is not already provided by Besu
+    !lineaBesuLibs.any { artifactName ->
+        if(artifactName == it.name) {
+            return true
+        }
+        // exclude Besu group
+        if(it.toString().contains(besuArtifactGroup)) {
+            return true
+        }
+        // try ignoring the version
+        def libName = it.name =~ dependencyNamePattern()
+        def artName = artifactName =~ dependencyNamePattern()
+        libName[0][1] == artName[0][1]
+    }
+}
 
 jar {
+  dependsOn unTarLineaBesu
   archiveBaseName = distributionIdentifier
+  version = calculateVersion()
 
   manifest {
     attributes(
-      'Specification-Title': 'arithmetization',
-      'Specification-Version': "v${arithmetizationVersion}",
-      'Implementation-Title': 'arithmetization',
-      'Implementation-Version': "v${arithmetizationVersion}"
+      'Specification-Title': archiveBaseName.get(),
+      'Specification-Version': calculateVersion(),
+      'Implementation-Title': archiveBaseName.get(),
+      'Implementation-Version': calculateVersion()
     )
   }
 
- from {
-    configurations.runtimeClasspath.filter( {! (it.name =~ /log4j.*\.jar/ )} )
-            .collect {it.isDirectory() ? it : zipTree(it) }
-  }
-  exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA', 'ch.qos.logback'
-  duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+  from {
+        configurations.runtimeClasspath.filter(excludeBesuProvidedDeps).collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+
+    duplicatesStrategy('exclude')
 }
 
-// Takes the version, and if -SNAPSHOT is part of it replaces SNAPSHOT
-// with the git commit version.
-def calculateVersion() {
-  String version = rootProject.version
-  if (version.endsWith("-SNAPSHOT")) {
-    version = version.replace("-SNAPSHOT", "-dev-${getCheckedOutGitCommitHash()}")
-  }
+/**
+ * Create a distribution of the plugin, that only contains the plugin jar and the
+ * dependencies that are not provided by Besu itself, so that is can be simply
+ * extracted in the Besu plugins dir.
+ */
+tasks.register('distPlugin', Zip) {
+    dependsOn installDist
 
-  return version
+    archiveBaseName = distributionIdentifier
+
+    from("${buildDir}/libs/${distributionIdentifier}-${calculateVersion()}.jar")
+    from {
+        configurations.runtimeClasspath.filter(
+                excludeBesuProvidedDeps)
+
+    }
 }
 
-static def getCheckedOutGitCommitHash() {
-  def hashLength = 8
-  "git rev-parse HEAD".execute().text.take(hashLength)
+static def dependencyNamePattern() {
+    /(.*)(\-.*?)\.jar/
 }

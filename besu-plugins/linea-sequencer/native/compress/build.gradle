@@ -23,14 +23,7 @@ apply from: rootProject.file("gradle/dependency-management.gradle")
 apply from: rootProject.file('gradle/common-dependencies.gradle')
 apply from: rootProject.file("gradle/build-aliases.gradle")
 apply from: rootProject.file("gradle/lint.gradle")
-
-repositories {
-  mavenCentral()
-}
-
-test {
-  useJUnitPlatform()
-}
+apply from: rootProject.file("gradle/tests.gradle")
 
 tasks.register('buildJNI', Exec) {
   if(project.hasProperty("releaseNativeLibs")) {
@@ -52,11 +45,6 @@ compileJava{
 dependencies {
   implementation 'io.tmio:tuweni-bytes'
   implementation 'net.java.dev.jna:jna'
-
-  testImplementation 'org.assertj:assertj-core'
-  testImplementation 'org.junit.jupiter:junit-jupiter-api'
-  testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-  testImplementation 'org.mockito:mockito-core'
 }
 
 
@@ -92,16 +80,6 @@ processResources.dependsOn windowsLibCopy
 
 jar {
   archiveBaseName = 'linea-native-compress'
+  version = calculateVersion()
   includeEmptyDirs = false
-  manifest {
-    attributes(
-      'Specification-Title': archiveBaseName,
-      'Specification-Version': project.version,
-      'Implementation-Title': archiveBaseName,
-      'Implementation-Version': project.version,
-      'Automatic-Module-Name': 'net.consensys.nativelib.compress'
-      )
-  }
 }
-
-jar.dependsOn(buildJNI)
