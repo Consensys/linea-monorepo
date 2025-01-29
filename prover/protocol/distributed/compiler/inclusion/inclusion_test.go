@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
 	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/xcomp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,7 @@ func TestSeedGeneration(t *testing.T) {
 	)
 
 	var (
-		allComps = []*wizard.CompiledIOP{}
+		allVerfiers = []*wizard.VerifierRuntime{}
 	)
 	//initialComp
 	define := func(b *wizard.Builder) {
@@ -130,7 +131,7 @@ func TestSeedGeneration(t *testing.T) {
 	lppProof := wizard.Prove(lppComp, func(run *wizard.ProverRuntime) {
 		run.ParentRuntime = initialRuntime
 	})
-	lppVerifierRuntime, valid := wizard.VerifierWithRuntime(lppComp, lppProof)
+	lppVerifierRuntime, valid := wizard.VerifyWithRuntime(lppComp, lppProof)
 	require.NoError(t, valid)
 
 	// Compile and prove for module0
@@ -140,10 +141,10 @@ func TestSeedGeneration(t *testing.T) {
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid := wizard.Verify(moduleComp0, proof0, lppVerifierRuntime)
+		runtime0, valid := wizard.VerifyWithRuntime(moduleComp0, proof0, lppVerifierRuntime)
 		require.NoError(t, valid)
 
-		allComps = append(allComps, moduleComp0)
+		allVerfiers = append(allVerfiers, runtime0)
 
 	}
 
@@ -154,10 +155,10 @@ func TestSeedGeneration(t *testing.T) {
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid1 := wizard.Verify(moduleComp1, proof1, lppVerifierRuntime)
+		runtime1, valid1 := wizard.VerifyWithRuntime(moduleComp1, proof1, lppVerifierRuntime)
 		require.NoError(t, valid1)
 
-		allComps = append(allComps, moduleComp1)
+		allVerfiers = append(allVerfiers, runtime1)
 
 	}
 
@@ -168,16 +169,14 @@ func TestSeedGeneration(t *testing.T) {
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid2 := wizard.Verify(moduleComp2, proof2, lppVerifierRuntime)
+		runtime2, valid2 := wizard.VerifyWithRuntime(moduleComp2, proof2, lppVerifierRuntime)
 		require.NoError(t, valid2)
 
-		// extract publicInputs of the module.
-		rt, _ := wizard.VerifierWithRuntime(moduleComp2, proof2)
-		rt.QueriesParams.ListAllKeys()
-
-		allComps = append(allComps, moduleComp0)
+		allVerfiers = append(allVerfiers, runtime2)
 	}
 
-	
+	// apply the crosse checks over the public inputs.
+	xComp := xcomp.GetCrossComp(allVerfiers)
+	wizard.Verify(xComp, wizard.Proof{})
 
 }

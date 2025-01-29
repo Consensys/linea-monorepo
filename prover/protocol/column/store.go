@@ -263,7 +263,11 @@ func (r *Store) AllPrecomputed() []ifaces.ColID {
 // ordered by rounds and then by order of insertion.
 func (r *Store) AllVerifyingKey() []ifaces.ColID {
 	res := []ifaces.ColID{}
-	rnd := r.byRounds.MustGet(0) // precomputed are always at round zero
+
+	var rnd []*storedColumnInfo
+	if (r.byRounds.Len()) != 0 {
+		rnd = r.byRounds.MustGet(0) // precomputed are always at round zero
+	}
 
 	for i, info := range rnd {
 		if info.Status != VerifyingKey {
