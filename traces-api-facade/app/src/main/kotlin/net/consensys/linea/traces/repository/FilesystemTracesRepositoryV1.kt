@@ -21,8 +21,14 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
 
 internal fun tracesOnlyFromContent(content: String): String {
-  // TODO: filter out from the file objects that are not traces
-  return content
+  return try {
+    val jsonRegex = """"traces":\s*(\[.*?\])""".toRegex(RegexOption.DOT_MATCHES_ALL)
+    val match = jsonRegex.find(content)
+    match?.groupValues?.get(1) ?: content
+  } catch (e: Exception) {
+    // In case of an error, return the original content
+    content
+  }
 }
 
 class FilesystemTracesRepositoryV1(
