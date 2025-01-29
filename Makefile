@@ -294,3 +294,26 @@ restart-coordinator:
 		make stop-coordinator
 		make start-coordinator
 
+
+##
+## Creating new targets to avoid conflicts with existing targets
+## Redundant targets above will cleanup once this get's merged
+##
+start-env: COMPOSE_PROFILES:=l1,l2
+start-env: COMPOSE_FILE:=docker/compose-tracing-v2.yml
+start-env: L1_CONTRACT_VERSION:=6
+start-env:
+	L1_GENESIS_TIME=$(get_future_time) COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f $(COMPOSE_FILE) up -d
+	make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
+
+start-env-with-tracing-v1:
+	make start-env COMPOSE_FILE=docker/compose-tracing-v1.yml
+
+start-env-with-tracing-v1-ci:
+	make start-env COMPOSE_FILE=docker/compose-tracing-v1-ci-extension.yml
+
+start-env-with-tracing-v2:
+	make start-env COMPOSE_FILE=docker/compose-tracing-v2.yml
+
+start-env-with-tracing-v2-ci:
+	make start-env COMPOSE_FILE=docker/compose-tracing-v2-ci-extension.yml

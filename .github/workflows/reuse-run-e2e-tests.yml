@@ -97,7 +97,7 @@ jobs:
         run: |
           mkdir -p tmp/local/traces/v2/conflated
           chmod -R a+w tmp/local/traces/v2/conflated
-      # Disable cache for pulling docker images as empirically found that this 
+      # Disable cache for pulling docker images as empirically found that this
       # (retrieving cache and loading docker images) actually increased test time-to-completion
       # - name: Restore cached images
       #   id: restore-cached-images
@@ -134,7 +134,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make start-all
+            make start-env-with-tracing-v1-ci
           on_retry_command: |
             make clean-environment
       - name: Spin up fresh environment with besu tracing with retry
@@ -146,7 +146,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make start-all-traces-v2
+            make start-env-with-tracing-v2-ci
           on_retry_command: |
             make clean-environment
       - name: List docker containers/images
