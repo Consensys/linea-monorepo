@@ -263,7 +263,7 @@ class BlockCreationMonitorTest {
       .atMost(40.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(blockCreationListener.blocksReceived).isNotEmpty
-        assertThat(blockCreationListener.blocksReceived.last().number).isGreaterThanOrEqualTo(lastBlockReceived)
+        assertThat(blockCreationListener.blocksReceived.last().number).isGreaterThan(lastBlockReceived)
       }
   }
 
