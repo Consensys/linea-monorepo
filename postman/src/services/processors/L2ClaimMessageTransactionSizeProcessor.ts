@@ -1,7 +1,6 @@
 import {
   ContractTransactionResponse,
   ErrorDescription,
-  EthersError,
   Overrides,
   Signer,
   TransactionReceipt,
@@ -104,7 +103,7 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
    * @returns {Promise<void>} A promise that resolves when the error has been handled.
    */
   private async handleProcessingError(e: unknown, message: Message | null): Promise<void> {
-    const parsedError = ErrorParser.parseErrorWithMitigation(e as EthersError);
+    const parsedError = ErrorParser.parseErrorWithMitigation(e);
 
     if (parsedError?.mitigation && !parsedError.mitigation.shouldRetry && message) {
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
