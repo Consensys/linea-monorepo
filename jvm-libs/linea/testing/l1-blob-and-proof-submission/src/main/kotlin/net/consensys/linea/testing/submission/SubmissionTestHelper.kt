@@ -80,12 +80,17 @@ fun submitBlobsAndAggregationsAndWaitExecution(
   contractClientForBlobSubmission: LineaRollupSmartContractClient,
   contractClientForAggregationSubmission: LineaRollupSmartContractClient = contractClientForBlobSubmission,
   aggregationsAndBlobs: List<AggregationAndBlobs>,
-  blobChunksSize: Int = 6,
+  blobChunksMaxSize: Int = 6,
   l1Web3jClient: Web3j,
   waitTimeout: Duration = 2.minutes,
   log: Logger = LogManager.getLogger("linea.testing.submission")
 ) {
-  val blobSubmissionTxHashes = submitBlobs(contractClientForBlobSubmission, aggregationsAndBlobs, blobChunksSize, log)
+  val blobSubmissionTxHashes = submitBlobs(
+    contractClientForBlobSubmission,
+    aggregationsAndBlobs,
+    blobChunksMaxSize,
+    log
+  )
 
   assertTxsSuccess(
     txsAndInterval = blobSubmissionTxHashes.map { (txHash, blobs) ->

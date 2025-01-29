@@ -171,7 +171,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
       contractClientForBlobSubmission = contractClientForBlobSubmissions,
       contractClientForAggregationSubmission = contractClientForAggregationSubmissions,
       aggregationsAndBlobs = aggregationsAndBlobs,
-      blobChunksSize = blobChunksSize,
+      blobChunksMaxSize = blobChunksSize,
       waitTimeout = waitTimeout,
       l1Web3jClient = Web3jClientManager.l1Client,
       log = log
