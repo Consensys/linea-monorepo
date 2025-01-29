@@ -200,38 +200,29 @@ start-all-traces-v2:
 		$(MAKE) deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
 deploy-contracts: L1_CONTRACT_VERSION:=6
+deploy-contracts: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
 deploy-contracts:
 	cd contracts/; \
 	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
 	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
 	cd .. && \
-	$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20
-
-deploy-contracts-minimal: L1_CONTRACT_VERSION:=6
-deploy-contracts-minimal:
-	cd contracts/; \
-	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
-	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
-	cd .. && \
-	$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-l2messageservice
+	if [ "$(LINEA_PROTOCOL_CONTRACTS_ONLY)" = "false" ]; then \
+		$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20; \
+	else \
+		$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-l2messageservice; \
+	fi
 
 fresh-start-all-staterecovery: COMPOSE_PROFILES:=l1,l2,staterecovery
 fresh-start-all-staterecovery: L1_CONTRACT_VERSION:=6
 fresh-start-all-staterecovery:
 	make clean-environment
-	make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
-	$(MAKE) deploy-contracts-minimal L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
-
-fresh-start-staterecovery-for-replay-only: COMPOSE_PROFILES:=l1,staterecovery
-fresh-start-staterecovery-for-replay-only:
-	make clean-environment
-	make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
+	make start-env COMPOSE_FILE=docker/compose-tracing-v2-staterecovery-extension.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
 staterecovery-replay-from-block: L1_ROLLUP_CONTRACT_ADDRESS:=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
 staterecovery-replay-from-block: STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER:=1
 staterecovery-replay-from-block:
-	docker compose -f docker/compose.yml down zkbesu-shomei-sr shomei-sr
-	L1_ROLLUP_CONTRACT_ADDRESS=$(L1_ROLLUP_CONTRACT_ADDRESS) STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=$(STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER) docker compose -f docker/compose.yml up zkbesu-shomei-sr shomei-sr -d
+	docker compose -f docker/compose-tracing-v2-staterecovery-extension.yml down zkbesu-shomei-sr shomei-sr
+	L1_ROLLUP_CONTRACT_ADDRESS=$(L1_ROLLUP_CONTRACT_ADDRESS) STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=$(STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER) docker compose -f docker/compose-tracing-v2-staterecovery-extension.yml up zkbesu-shomei-sr shomei-sr -d
 
 testnet-start-l2:
 		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml --profile l2 up -d
@@ -302,18 +293,19 @@ restart-coordinator:
 start-env: COMPOSE_PROFILES:=l1,l2
 start-env: COMPOSE_FILE:=docker/compose-tracing-v2.yml
 start-env: L1_CONTRACT_VERSION:=6
+start-env: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
 start-env:
 	L1_GENESIS_TIME=$(get_future_time) COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f $(COMPOSE_FILE) up -d
-	make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
+	make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) LINEA_PROTOCOL_CONTRACTS_ONLY=$(LINEA_PROTOCOL_CONTRACTS_ONLY)
 
 start-env-with-tracing-v1:
-	make start-env COMPOSE_FILE=docker/compose-tracing-v1.yml
+	make start-env COMPOSE_FILE=docker/compose-tracing-v1.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
 
 start-env-with-tracing-v1-ci:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v1-ci-extension.yml
 
 start-env-with-tracing-v2:
-	make start-env COMPOSE_FILE=docker/compose-tracing-v2.yml
+	make start-env COMPOSE_FILE=docker/compose-tracing-v2.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
 
 start-env-with-tracing-v2-ci:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2-ci-extension.yml
