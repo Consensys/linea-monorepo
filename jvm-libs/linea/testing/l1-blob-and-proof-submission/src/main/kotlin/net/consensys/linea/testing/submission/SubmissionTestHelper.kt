@@ -7,6 +7,7 @@ import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobRecord
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.assertj.core.api.Assertions.assertThat
 import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration
@@ -23,12 +24,12 @@ fun assertTxSuccess(
     txHash = txHash,
     timeout = timeout
   ).also { txReceipt ->
-    if (txReceipt.status != "0x1") {
-      throw IllegalStateException(
+    assertThat(txReceipt.status)
+      .isEqualTo("0x1")
+      .withFailMessage(
         "submission of $submissionType=${interval.intervalString()}" +
           " failed on L1. receipt=$txReceipt"
       )
-    }
   }
 }
 
