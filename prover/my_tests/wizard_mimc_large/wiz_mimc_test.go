@@ -6,35 +6,25 @@ package wizmimc
 import (
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	mimcComp "github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
-
 	"testing"
+	"time"
 )
 
 const (
 	size = 8
 )
 
-// In this example we show how to use PLONK with KZG commitments. The circuit that is
-// showed here is the same as in ../exponentiate.
-
-func BenchmarkWizardMiMC(bench *testing.B) {
-	bench.StopTimer()
-
-	define := func(b *wizard.Builder) {
-		preimages := b.RegisterCommit("PRE_COL_1", size)
-		hash := b.RegisterCommit("COL_MIMC_1", size)
-		inter := b.RegisterCommit("COL_INTER_1", size)
-		b.CompiledIOP.InsertMiMC(0, ifaces.QueryIDf("%s_%s", "TEST", "MIMC_CONSTRAINT"), preimages, inter, hash)
-
-	}
+func outputProverFunc() func(run *wizard.ProverRuntime) {
 	prover := func(run *wizard.ProverRuntime) {
 		data := make([]field.Element, size)
 		for _, elem := range data {
@@ -66,16 +56,45 @@ func BenchmarkWizardMiMC(bench *testing.B) {
 		//run.GetRandomCoinField(coin.Namef("Coin"))
 
 	}
+	return prover
+}
+
+// In this example we show how to use PLONK with KZG commitments. The circuit that is
+// showed here is the same as in ../exponentiate.
+
+func BenchmarkWizardMiMC(bench *testing.B) {
+	bench.StopTimer()
+
+	define := func(b *wizard.Builder) {
+		preimages := b.RegisterCommit("PRE_COL_1", size)
+		hash := b.RegisterCommit("COL_MIMC_1", size)
+		inter := b.RegisterCommit("COL_INTER_1", size)
+		b.CompiledIOP.InsertMiMC(0, ifaces.QueryIDf("%s_%s", "TEST", "MIMC_CONSTRAINT"), preimages, inter, hash)
+
+	}
 
 	//vortex.Compile(2, vortex.WithDryThreshold(0))
 	//comp := wizard.Compile(define, globalcs.Compile, vortex.Compile(2, vortex.WithDryThreshold(0)))
 	//comp := wizard.Compile(define, compiler.Arcane(16, 64))
 	// comp := wizard.Compile(define, vortex.Compile(2, vortex.WithDryThreshold(0)))
-	comp := wizard.Compile(define, mimcComp.CompileMiMC, compiler.Arcane(size, size), vortex.Compile(2, vortex.WithDryThreshold(0)))
+	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+	comp := wizard.Compile(define, mimcComp.CompileMiMC,
+		compiler.Arcane(size, size),
+		vortex.Compile(
+			2,
+			vortex.WithSISParams(&sisInstance),
+		),
+		selfrecursion.SelfRecurse,
+	)
+
+	// START BENCHMARK
 	bench.StartTimer()
+	timeStart := time.Now()
+	prover := outputProverFunc()
 	proof := wizard.Prove(comp, prover)
 	checkErr := wizard.Verify(comp, proof)
 	assert.NoErrorf(bench, checkErr, "INVALID proof")
+	timeEnd := time.Now()
 	bench.StopTimer()
 
 	proofSize := 0
@@ -83,7 +102,18 @@ func BenchmarkWizardMiMC(bench *testing.B) {
 	for _, value := range allValues {
 		proofSize += value.Len() * field.Bytes
 	}
+	bench.ReportMetric(float64(proofSize), "Wizard-proof-size")
 
 	fmt.Println("Wizard proof size ", proofSize)
+	customTime := timeEnd.Sub(timeStart).Nanoseconds()
+	fmt.Println("Custom timings raw", customTime)
+	fmt.Println("Benchmark iterations", bench.N)
+	bench.ReportMetric(float64(customTime), "Custom-Timing")
+
+	/*bench.StartTimer()
+	proof2 := wizard.Prove(comp, prover)
+	checkErr2 := wizard.Verify(comp, proof2)
+	assert.NoErrorf(bench, checkErr2, "INVALID proof")
+	bench.StopTimer()*/
 
 }
