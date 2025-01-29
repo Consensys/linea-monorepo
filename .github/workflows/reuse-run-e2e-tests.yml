@@ -111,7 +111,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make pull-images-external-to-monorepo
+            make docker-pull-images-external-to-monorepo
       - name: Download local docker image artifacts
         uses: actions/download-artifact@v4
         with:
