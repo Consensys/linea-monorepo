@@ -26,7 +26,7 @@ const (
 // T:       lookupTable,
 // SFilter: includedFilters,
 
-type zCtx struct {
+type ZCtx struct {
 	Round, Size      int
 	SigmaNumerator   []*sym.Expression // T -> -M, S -> +Filter
 	SigmaDenominator []*sym.Expression // S or T -> ({S,T} + X)
@@ -39,12 +39,12 @@ type zCtx struct {
 	Name      string
 }
 
-// check permutation and see how/where compile is called (see how to constracut z there)
+// check permutation and see how/where Compile is called (see how to constracut z there)
 // when constructing z, check if z is T or S
 // and change T -> -M, S -> +Filter
 // S or T -> ({S,T} + X)
-// compile should be called inside CompileGrandSum
-func (z *zCtx) compile(comp *wizard.CompiledIOP) {
+// Compile should be called inside CompileGrandSum
+func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
 
 	var (
 		numZs = utils.DivCeil(
@@ -82,14 +82,14 @@ func (z *zCtx) compile(comp *wizard.CompiledIOP) {
 
 		z.Zs[i] = comp.InsertCommit(
 			z.Round,
-			deriveName[ifaces.ColID]("Z", comp.SelfRecursionCount, z.Round, z.Size, i),
+			DeriveName[ifaces.ColID]("Z", comp.SelfRecursionCount, z.Round, z.Size, i),
 			z.Size,
 		)
 
 		// initial condition
 		comp.InsertLocal(
 			z.Round,
-			deriveName[ifaces.QueryID]("Z_CONSISTENCY_START", comp.SelfRecursionCount, z.Round, z.Size, i),
+			DeriveName[ifaces.QueryID]("Z_CONSISTENCY_START", comp.SelfRecursionCount, z.Round, z.Size, i),
 			sym.Sub(
 				zNumerator,
 				sym.Mul(
@@ -102,7 +102,7 @@ func (z *zCtx) compile(comp *wizard.CompiledIOP) {
 		// consistency check
 		comp.InsertGlobal(
 			z.Round,
-			deriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
+			DeriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
 			sym.Sub(
 				zNumerator,
 				sym.Mul(
@@ -115,7 +115,7 @@ func (z *zCtx) compile(comp *wizard.CompiledIOP) {
 		// local opening of the final value of the Z polynomial
 		z.ZOpenings[i] = comp.InsertLocalOpening(
 			z.Round,
-			deriveName[ifaces.QueryID]("Z_FINAL", comp.SelfRecursionCount, z.Round, z.Size, i),
+			DeriveName[ifaces.QueryID]("Z_FINAL", comp.SelfRecursionCount, z.Round, z.Size, i),
 			column.Shift(z.Zs[i], -1),
 		)
 	}

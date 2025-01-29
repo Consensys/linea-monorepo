@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// The verifier gets all the query openings and multiple them together and
+// The verifier gets all the query openings and multiply them together and
 // expect them to be one. It is represented by an array of ZCtx holding for
 // the same round. (we have the guarantee that they come from the same query).
 type VerifierCtx struct {
