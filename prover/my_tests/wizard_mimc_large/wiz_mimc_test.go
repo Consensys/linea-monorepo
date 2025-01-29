@@ -88,10 +88,11 @@ func BenchmarkWizardMiMC(bench *testing.B) {
 	)
 
 	// START BENCHMARK
-	bench.StartTimer()
-	timeStart := time.Now()
 	prover := outputProverFunc()
 	proof := wizard.Prove(comp, prover)
+
+	bench.StartTimer()
+	timeStart := time.Now()
 	checkErr := wizard.Verify(comp, proof)
 	assert.NoErrorf(bench, checkErr, "INVALID proof")
 	timeEnd := time.Now()

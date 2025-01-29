@@ -91,12 +91,13 @@ func BenchmarkPlonkMiMC(b *testing.B) {
 
 		wPub, err := frontend.NewWitness(&mimcCircuit, ecc.BLS12_377.ScalarField(), frontend.PublicOnly())
 
-		b.StartTimer()
-		timeStart := time.Now()
 		proof, err := plonk.Prove(ccs, pk, w)
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		b.StartTimer()
+		timeStart := time.Now()
 
 		err = plonk.Verify(proof, vk, wPub)
 		if err != nil {

@@ -103,12 +103,9 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 		),
 		selfrecursion.SelfRecurse,
 	)
-	bench.StartTimer()
-	startTime := time.Now()
+
 	proof := wizard.Prove(comp, prover)
 	assert.NoErrorf(bench, wizard.Verify(comp, proof), "invalid proof")
-	endTime := time.Now()
-	bench.StopTimer()
 
 	// END OF WIZARD STUFF
 	// START ESTIMATING WIZARD PROOF SIZE
@@ -173,13 +170,14 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		bench.StartTimer()
-		startTime2 := time.Now()
 
 		wizProof, err := plonk.Prove(ccs, pk, witnessFull)
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		bench.StartTimer()
+		startTime2 := time.Now()
 
 		err = plonk.Verify(wizProof, vk, witnessPublic)
 		if err != nil {
@@ -193,11 +191,11 @@ func BenchmarkWizardInPlonkMiMC(bench *testing.B) {
 		fmt.Println("Plonk proof size ", buf.Len())
 		bench.ReportMetric(float64(buf.Len()), "Plonk-proof-size")
 
-		customTime := endTime.Sub(startTime).Nanoseconds()
+		//customTime := endTime.Sub(startTime).Nanoseconds()
 		customTime2 := endTime2.Sub(startTime2).Nanoseconds()
-		fmt.Println("Custom timings raw", customTime)
+		fmt.Println("Custom timings raw", customTime2)
 		fmt.Println("Benchmark iterations", bench.N)
-		bench.ReportMetric(float64(customTime+customTime2), "Custom-Timing")
+		bench.ReportMetric(float64(customTime2), "Custom-Timing")
 
 	}
 
