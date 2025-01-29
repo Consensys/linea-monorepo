@@ -69,17 +69,14 @@ func (s *schemaScanner) scanColumns() {
 			module      = s.Modules[ctx.Module()]
 			moduleLimit = s.LimitMap[module.Name]
 			mult        = ctx.LengthMultiplier()
-			size        = int(mult) * moduleLimit
 		)
 
-		// adjust the size , this adjusts the size for interleaved columns and their permuted version.
-		// Since these are the only columns from corset with non-power of two.
-		if !utils.IsPowerOfTwo(size) {
-			size = utils.NextPowerOfTwo(int(mult) * moduleLimit)
-		}
+		/*if _, isIL := s.InterleavedColumns[name]; isIL {
+			continue
+		}*/
 
 		// #nosec G115 -- this bound will not overflow
-		s.Comp.InsertCommit(0, ifaces.ColID(name), size)
+		s.Comp.InsertCommit(0, ifaces.ColID(name), int(mult)*moduleLimit)
 	}
 }
 
