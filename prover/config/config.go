@@ -112,11 +112,11 @@ type Config struct {
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 
 	// LIMITLESS PROVER Components
-	Bootstrap      Bootstrap
-	GLExecution    GLExecution
-	RandomBeacon   RandomBeacon
-	LPPExecution   LPPExecution
-	Conglomeration Conglomeration
+	Bootstrap      Bootstrap      `mapstructure:"execution_bootstrap"`
+	GLExecution    GLExecution    `mapstructure:"execution_gl"`
+	RandomBeacon   RandomBeacon   `mapstructure:"execution_rndbeacon"`
+	LPPExecution   LPPExecution   `mapstructure:"execution_lpp"`
+	Conglomeration Conglomeration `mapstructure:"execution_conglomeration"`
 
 	Debug struct {
 		// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
@@ -221,39 +221,25 @@ type Execution struct {
 
 // TODO: Add and define Limitless prover components
 type Bootstrap struct {
-	WithRequestDir `mapstructure:",squash"`
-
-	// ConflatedTracesDir stores the directory where the conflation traces are stored.
-	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
+	Execution
 }
 
 type GLExecution struct {
-	// Directory where the submodule request is stored
-	WithRequestDir `mapstructure:",squash"`
-
-	// ConflatedTracesDir stores the directory where the conflation traces are stored.
-	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
+	Execution
 }
 
+// Component with multiple input files
 type RandomBeacon struct {
-	// Directory where LPP Beacon request is stored
-	WithRequestDir `mapstructure:",squash"`
-
-	// DistMetaData points to the directory where distributed metadata is stored
-	DistMetaData string `mapstructure:"distributed_metadata" validate:"required"`
+	Bootstrap, GL Execution
 }
 
 type LPPExecution struct {
-	// Directory where LPP Proof request is stored
-	WithRequestDir `mapstructure:",squash"`
+	Execution
 }
 
+// Component with multiple input files
 type Conglomeration struct {
-	// Directory where GL-sub prover response is stored
-	GLResp WithRequestDir `mapstructure:",squash"`
-
-	// Directory where LPP-sub prover response is stored
-	LPPResp WithRequestDir `mapstructure:",squash"`
+	GL, LPP Execution
 }
 
 type BlobDecompression struct {

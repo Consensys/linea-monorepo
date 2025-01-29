@@ -43,13 +43,6 @@ type JobDefinition struct {
 	//
 	InputFileRegexp *regexp2.Regexp
 
-	// Optional Request Root Dir. Some jobs might have multiple request files
-	// For eg: Conglomeration will have two requests files - responses from GL and LPP sub-prover
-	OptReqRootDir string
-
-	// Regex check for optional input files
-	OptInputFileRegexp *regexp2.Regexp
-
 	// Template to use to generate the output file. The template should have the
 	// form of a go template. For instance,
 	//

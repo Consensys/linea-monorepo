@@ -35,6 +35,10 @@ func setDefaultPaths() {
 	viper.SetDefault("execution.requests_root_dir", "/shared/prover-execution")
 	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/prover-compression")
 	viper.SetDefault("aggregation.requests_root_dir", "/shared/prover-aggregation")
+
+	// TODO: @srinathLN7 Add Limitless prover default values
+	viper.SetDefault("execution_bootstrap.requests_root_dir", "/shared/prover-execution/limitless/bootstrap")
+
 }
 
 func setDefaultTracesLimit() {
