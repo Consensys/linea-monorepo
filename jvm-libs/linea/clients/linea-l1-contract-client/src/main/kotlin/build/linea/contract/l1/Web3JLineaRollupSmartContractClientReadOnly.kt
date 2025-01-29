@@ -101,7 +101,7 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
         if (error.cause is ContractCallException) {
           // means that contract does not have CONTRACT_VERSION method available yet
           // so it is still V5, so defaulting to V5
-          SafeFuture.completedFuture(LineaContractVersion.V5)
+          SafeFuture.completedFuture(LineaContractVersion.V6)
         } else {
           SafeFuture.failedFuture(error)
         }
@@ -134,10 +134,10 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
   override fun isBlobShnarfPresent(blockParameter: BlockParameter, shnarf: ByteArray): SafeFuture<Boolean> {
     return getVersion()
       .thenCompose { version ->
-        if (version == LineaContractVersion.V5) {
-          contractClientAtBlock(blockParameter, LineaRollupV5::class.java).shnarfFinalBlockNumbers(shnarf)
-        } else {
-          contractClientAtBlock(blockParameter, LineaRollupV6::class.java).blobShnarfExists(shnarf)
+        when (version!!) {
+          LineaContractVersion.V6 -> contractClientAtBlock(blockParameter, LineaRollupV6::class.java).blobShnarfExists(
+            shnarf
+          )
         }
           .sendAsync()
           .thenApply { it != BigInteger.ZERO }
