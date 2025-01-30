@@ -35,8 +35,6 @@ clean-environment:
 		docker volume rm linea-local-dev linea-logs || true # ignore failure if volumes do not exist already
 		docker system prune -f || true
 
-
-
 start-l1:
 		L1_GENESIS_TIME=$(get_future_time) docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml --profile l1 up -d
 
@@ -46,11 +44,9 @@ start-l2:
 start-l2-blockchain-only:
 		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml --profile l2-bc up -d
 
-
 fresh-start-l2-blockchain-only:
 		make clean-environment
 		make start-l2-blockchain-only
-
 
 ##
 ## Creating new targets to avoid conflicts with existing targets
