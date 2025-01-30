@@ -41,11 +41,9 @@ start-env: COMPOSE_FILE:=docker/compose-tracing-v2.yml
 start-env: L1_CONTRACT_VERSION:=6
 start-env: SKIP_CONTRACTS_DEPLOYMENT:=false
 start-env: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
-start-env: CLEAN_PREIVOUS_RUNS:=false
 start-env:
 	if [ "$(CLEAN_PREVIOUS_ENV)" = "true" ]; then \
   		make clean-environment; \
-	fi
 	else \
 		echo "Starting stack reusing previous state"; \
 	fi
