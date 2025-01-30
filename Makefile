@@ -11,14 +11,8 @@ $(shell \
 )
 endef
 
-docker-pull-all-images:
-		COMPOSE_PROFILES:=l1,l2 docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml pull
-
-docker-pull-develop:
-	L1_GENESIS_TIME=$(get_future_time) docker compose -f docker/compose.yml pull
-
 docker-pull-images-external-to-monorepo:
-		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile external-to-monorepo pull
+		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml --profile external-to-monorepo pull
 
 clean-local-folders:
 		make clean-smc-folders
@@ -29,8 +23,8 @@ clean-testnet-folders:
 		rm -rf tmp/testnet/*
 
 clean-environment:
-		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 --profile debug --profile staterecovery kill -s 9 || true
-		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 --profile debug --profile staterecovery down || true
+		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery kill -s 9 || true
+		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery down || true
 		make clean-local-folders
 		docker volume rm linea-local-dev linea-logs || true # ignore failure if volumes do not exist already
 		docker system prune -f || true
@@ -98,24 +92,24 @@ staterecovery-replay-from-block:
 # Testnet
 ##
 testnet-start-l2:
-		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml --profile l2 up -d
+		docker compose -f docker/compose-tracing-v2.yml -f docker/compose-testnet-sync.overrides.yml --profile l2 up -d
 
 testnet-start-l2-traces-node-only:
-		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overries.yml up traces-node -d
+		docker compose -f docker/compose-tracing-v2.yml -f docker/compose-testnet-sync.overries.yml up traces-node -d
 
 testnet-start: start-l1 deploy-linea-rollup-v6 testnet-start-l2
 testnet-restart-l2-keep-state:
-		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml rm -f -s -v sequencer traces-node coordinator
+		docker compose -f docker/compose-tracing-v2.yml -f docker/compose-testnet-sync.overrides.yml rm -f -s -v sequencer traces-node coordinator
 		make testnet-start-l2
 
 testnet-restart-l2-clean-state:
-		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml rm -f -s -v sequencer traces-node coordinator
+		docker compose -f docker/compose-tracing-v2.yml -f docker/compose-testnet-sync.overrides.yml rm -f -s -v sequencer traces-node coordinator
 		docker volume rm testnet-data
 		make clean-testnet-folders
 		make testnet-start-l2
 
 testnet-down:
-		docker compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml --profile l1 --profile l2 down -v
+		docker compose -f docker/compose-tracing-v2.yml -f docker/compose-testnet-sync.overrides.yml --profile l1 --profile l2 down -v
 		make clean-testnet-folders
 
 stop_pid:
