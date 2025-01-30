@@ -127,7 +127,7 @@ func (s *Header) WriteTo(w io.Writer) (int64, error) {
 		// write nbBlocksInBatch (uint16)
 		nbBlocksInBatch := uint16(len(batch))
 		if int(nbBlocksInBatch) != len(batch) {
-			return written, fmt.Errorf("nb blocks in batch too big: bigger than uint16")
+			return written, errors.New("nb blocks in batch too big: bigger than uint16")
 		}
 
 		if err := binary.Write(w, binary.LittleEndian, nbBlocksInBatch); err != nil {
@@ -139,7 +139,7 @@ func (s *Header) WriteTo(w io.Writer) (int64, error) {
 		for _, blockLength := range batch {
 			const maxUint24 = 1<<24 - 1
 			if blockLength > maxUint24 {
-				return written, fmt.Errorf("block length too big: bigger than uint24")
+				return written, errors.New("block length too big: bigger than uint24")
 			}
 
 			// write the blockLength on 3 bytes as a uint24 (LittleEndian)
