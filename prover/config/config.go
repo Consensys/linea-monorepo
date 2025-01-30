@@ -112,11 +112,16 @@ type Config struct {
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 
 	// LIMITLESS PROVER Components
-	Bootstrap      Bootstrap      `mapstructure:"execution_bootstrap"`
-	GLExecution    GLExecution    `mapstructure:"execution_gl"`
-	RandomBeacon   RandomBeacon   `mapstructure:"execution_rndbeacon"`
-	LPPExecution   LPPExecution   `mapstructure:"execution_lpp"`
-	Conglomeration Conglomeration `mapstructure:"execution_conglomeration"`
+	Bootstrap_Submodule Execution `mapstructure:"execution_bootstrap_submodule"`
+	Bootstrap_Metadata  Execution `mapstructure:"execution_bootstrap_submodule"`
+
+	GLExecution Execution `mapstructure:"execution_gl"`
+
+	RandomBeacon Execution `mapstructure:"execution_rndbeacon"`
+
+	LPPExecution Execution `mapstructure:"execution_lpp"`
+
+	Conglomeration Execution `mapstructure:"execution_conglomeration"`
 
 	Debug struct {
 		// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
@@ -217,29 +222,6 @@ type Execution struct {
 
 	// ConflatedTracesDir stores the directory where the conflation traces are stored.
 	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
-}
-
-// TODO: Add and define Limitless prover components
-type Bootstrap struct {
-	Execution
-}
-
-type GLExecution struct {
-	Execution
-}
-
-// Component with multiple input files
-type RandomBeacon struct {
-	Bootstrap, GL Execution
-}
-
-type LPPExecution struct {
-	Execution
-}
-
-// Component with multiple input files
-type Conglomeration struct {
-	GL, LPP Execution
 }
 
 type BlobDecompression struct {

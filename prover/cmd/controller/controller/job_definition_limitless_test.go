@@ -7,54 +7,69 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBootstrapDefinition(t *testing.T) {
+// This tests ensures that the naming convention is respected by the file-watcher
+// i.e., files with the right naming only are recognized. And the corresponding
+// output files are also recognized.
+func TestBootstrapSubModInFileRegexp(t *testing.T) {
+
 	var (
 		correctM           = "102-103-etv0.2.3-stv1.2.3-getZkProof.json"
+		correctL           = "102-103-etv0.2.3-stv1.2.3-getZkProof.json.large"
 		correctWithFailM   = "102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_77"
+		correctWithFailL   = "102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.failure.code_77"
 		correctWith2FailsM = "102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_77.failure.code_77"
+		correctWith2FailsL = "102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.failure.code_77.failure.code_77"
 		missingEtv         = "102-103-stv1.2.3-getZkProof.json"
 		missingStv         = "102-103-etv0.2.3-getZkProof.json"
 		notAPoint          = "102-103-etv0.2.3-getZkProofAjson"
 		badName            = "102-103-etv0.2.3-stv1.2.3-getAggregatedProof.json"
 	)
 
-	testcase := []inpFileNamesCases{
-		{
-			Ext: "", Fail: "code", ShouldMatch: true,
-			Fnames:         []string{correctM, correctWithFailM, correctWith2FailsM, missingEtv, missingStv},
-			Explainer:      "happy path, case M",
-			ExpectedOutput: []string{bootstrapSubmoduleFile, bootstrapSubmoduleFile, bootstrapSubmoduleFile, bootstrapSubmoduleFile, bootstrapSubmoduleFile},
-		},
-		{
-			Ext: "", Fail: "code", ShouldMatch: false,
-			Fnames:    []string{notAPoint, badName},
-			Explainer: "M does not pick obviously invalid files",
-		},
-	}
-
-	for _, c := range testcase {
-		conf := config.Config{}
-		conf.Version = "0.1.2"
-		conf.Bootstrap.CanRunFullLarge = c.Ext == "large"
-
-		def, err := BootstrapDefinition(&conf)
-		assert.NoError(t, err)
-
-		t.Run(c.Explainer, func(t *testing.T) {
-			runInpFileTestCaseLimitless(t, def, c)
-		})
-	}
-}
-
-func TestGLExecutionDefinition(t *testing.T) {
+	// The responses in case of success
 	var (
-		correctM           = "102-103-etv0.2.3-stv1.2.3-getZKProof_Bootstrap_Submodule.json"
-		correctWithFailM   = "102-103-etv0.2.3-stv1.2.3-getZKProof_Bootstrap_Submodule.json.failure.code_77"
-		correctWith2FailsM = "102-103-etv0.2.3-stv1.2.3-getZKProof_Bootstrap_Submodule.json.failure.code_77.failure.code_77"
-		missingEtv         = "102-103-stv1.2.3-getZKProof_Bootstrap_Submodule.json"
-		missingStv         = "102-103-etv0.2.3-getZKProof_Bootstrap_Submodule.json"
-		notAPoint          = "102-103-etv0.2.3-getZKProof_Bootstrap_SubmoduleAjson"
-		badName            = "102-103-etv0.2.3-stv1.2.3-getAggregatedProof.json"
+		respM = "responses/102-103-getZkProof_Bootstrap_Submodule.json"
+		respL = "responses/102-103-getZkProof_Bootstrap_Submodule.json"
+		// #nosec G101 -- Not a credential
+		respWithFailM = "responses/102-103-getZkProof_Bootstrap_Submodule.json"
+		// #nosec G101 -- Not a credential
+		respWithFailL = "responses/102-103-getZkProof_Bootstrap_Submodule.json"
+		// #nosec G101 -- Not a credential
+		respWith2FailsM = "responses/102-103-getZkProof_Bootstrap_Submodule.json"
+		// #nosec G101 -- Not a credential
+		respWith2FailsL = "responses/102-103-getZkProof_Bootstrap_Submodule.json"
+	)
+
+	// The rename in case it is deferred to the large prover
+	var (
+		toLargeM           = "requests/102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.failure.code_137"
+		toLargeWithFailM   = "requests/102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.failure.code_137"
+		toLargeWith2FailsM = "requests/102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.failure.code_137"
+		toLargeWoEtv       = "requests/102-103-stv1.2.3-getZkProof.json.large.failure.code_137"
+		toLargeWoStv       = "requests/102-103-etv0.2.3-getZkProof.json.large.failure.code_137"
+	)
+
+	// The rename in case it is a success
+	var (
+		successM           = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.success"
+		successMWoStv      = "requests-done/102-103-etv0.2.3-getZkProof.json.success"
+		successtWoEtv      = "requests-done/102-103-stv1.2.3-getZkProof.json.success"
+		successL           = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.success"
+		successWithFailM   = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.success"
+		successWithFailL   = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.success"
+		successWith2FailsM = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.success"
+		successWith2FailsL = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.success"
+	)
+
+	// The rename in case it is a panic (code = 2)
+	var (
+		failM           = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_2"
+		failMWoStv      = "requests-done/102-103-etv0.2.3-getZkProof.json.failure.code_2"
+		failtWoEtv      = "requests-done/102-103-stv1.2.3-getZkProof.json.failure.code_2"
+		failL           = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.failure.code_2"
+		failWithFailM   = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_2"
+		failWithFailL   = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.failure.code_2"
+		failWith2FailsM = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_2"
+		failWith2FailsL = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.large.failure.code_2"
 	)
 
 	testcase := []inpFileNamesCases{
@@ -62,188 +77,54 @@ func TestGLExecutionDefinition(t *testing.T) {
 			Ext: "", Fail: "code", ShouldMatch: true,
 			Fnames:         []string{correctM, correctWithFailM, correctWith2FailsM, missingEtv, missingStv},
 			Explainer:      "happy path, case M",
-			ExpectedOutput: []string{glBeaconFile, glBeaconFile, glBeaconFile, glBeaconFile, glBeaconFile},
+			ExpectedOutput: []string{respM, respWithFailM, respWith2FailsM, respM, respM},
+			ExpToLarge:     []string{toLargeM, toLargeWithFailM, toLargeWith2FailsM, toLargeWoEtv, toLargeWoStv},
+			ExpSuccess:     []string{successM, successWithFailM, successWith2FailsM, successtWoEtv, successMWoStv},
+			ExpFailW2:      []string{failM, failWithFailM, failWith2FailsM, failtWoEtv, failMWoStv},
+		},
+		{
+			Ext: "large", Fail: "code", ShouldMatch: true,
+			Fnames:         []string{correctL, correctWithFailL, correctWith2FailsL},
+			Explainer:      "happy path, case L",
+			ExpectedOutput: []string{respL, respWithFailL, respWith2FailsL},
+			ExpSuccess:     []string{successL, successWithFailL, successWith2FailsL},
+			ExpFailW2:      []string{failL, failWithFailL, failWith2FailsL},
+		},
+		{
+			Ext: "", Fail: "code", ShouldMatch: false,
+			Fnames:    []string{correctL, correctWithFailL, correctWith2FailsL},
+			Explainer: "M does not pick the files reserved for L",
+		},
+		{
+			Ext: "large", Fail: "code", ShouldMatch: false,
+			Fnames:    []string{correctM, correctWithFailM, correctWith2FailsM},
+			Explainer: "L does not pick the files reserved for M",
 		},
 		{
 			Ext: "", Fail: "code", ShouldMatch: false,
 			Fnames:    []string{notAPoint, badName},
 			Explainer: "M does not pick obviously invalid files",
 		},
-	}
-
-	for _, c := range testcase {
-		conf := config.Config{}
-		conf.Version = "0.1.2"
-		conf.GLExecution.CanRunFullLarge = c.Ext == "large"
-
-		def, err := GLExecutionDefinition(&conf)
-		assert.NoError(t, err)
-
-		t.Run(c.Explainer, func(t *testing.T) {
-			runInpFileTestCaseLimitless(t, def, c)
-		})
-	}
-}
-
-func TestRandomBeaconDefinition(t *testing.T) {
-	var (
-		correctM           = "102-103-etv0.2.3-stv1.2.3-getZKProof_Bootstrap_DistMetadata.json"
-		correctWithFailM   = "102-103-etv0.2.3-stv1.2.3-getZKProof_Bootstrap_DistMetadata.json.failure.code_77"
-		correctWith2FailsM = "102-103-etv0.2.3-stv1.2.3-getZKProof_Bootstrap_DistMetadata.json.failure.code_77.failure.code_77"
-		missingEtv         = "102-103-stv1.2.3-getZKProof_Bootstrap_DistMetadata.json"
-		missingStv         = "102-103-etv0.2.3-getZKProof_Bootstrap_DistMetadata.json"
-		notAPoint          = "102-103-etv0.2.3-getZKProof_Bootstrap_DistMetadataAjson"
-		badName            = "102-103-etv0.2.3-stv1.2.3-getAggregatedProof.json"
-	)
-
-	testcase := []inpFileNamesCases{
 		{
-			Ext: "", Fail: "code", ShouldMatch: true,
-			Fnames:         []string{correctM, correctWithFailM, correctWith2FailsM, missingEtv, missingStv},
-			Explainer:      "happy path, case M",
-			ExpectedOutput: []string{randomBeaconOutputFile, randomBeaconOutputFile, randomBeaconOutputFile, randomBeaconOutputFile, randomBeaconOutputFile},
-		},
-		{
-			Ext: "", Fail: "code", ShouldMatch: false,
-			Fnames:    []string{notAPoint, badName},
-			Explainer: "M does not pick obviously invalid files",
+			Ext: "large", Fail: "code", ShouldMatch: false,
+			Fnames:    []string{missingEtv, missingStv, notAPoint, badName},
+			Explainer: "L does not pick obviously invalid files",
 		},
 	}
 
 	for _, c := range testcase {
+
+		//log.Printf("Running testcase:%s \n", c.Explainer)
+
 		conf := config.Config{}
 		conf.Version = "0.1.2"
-		conf.RandomBeacon.Bootstrap.CanRunFullLarge = c.Ext == "large"
-		conf.RandomBeacon.GL.CanRunFullLarge = c.Ext == "large"
+		conf.Bootstrap_Submodule.CanRunFullLarge = c.Ext == "large"
 
-		def, err := RandomBeaconDefinition(&conf)
+		def, err := BootstrapSubModDefinition(&conf)
 		assert.NoError(t, err)
 
 		t.Run(c.Explainer, func(t *testing.T) {
-			runInpFileTestCaseLimitless(t, def, c)
+			runInpFileTestCase(t, def, c)
 		})
-	}
-}
-
-func TestLPPExecutionDefinition(t *testing.T) {
-	var (
-		correctM           = "102-103-etv0.2.3-stv1.2.3-getZKProof_RndBeacon.json"
-		correctWithFailM   = "102-103-etv0.2.3-stv1.2.3-getZKProof_RndBeacon.json.failure.code_77"
-		correctWith2FailsM = "102-103-etv0.2.3-stv1.2.3-getZKProof_RndBeacon.json.failure.code_77.failure.code_77"
-		missingEtv         = "102-103-stv1.2.3-getZKProof_RndBeacon.json"
-		missingStv         = "102-103-etv0.2.3-getZKProof_RndBeacon.json"
-		notAPoint          = "102-103-etv0.2.3-getZKProof_RndBeaconAjson"
-		badName            = "102-103-etv0.2.3-stv1.2.3-getAggregatedProof.json"
-	)
-
-	testcase := []inpFileNamesCases{
-		{
-			Ext: "", Fail: "code", ShouldMatch: true,
-			Fnames:         []string{correctM, correctWithFailM, correctWith2FailsM, missingEtv, missingStv},
-			Explainer:      "happy path, case M",
-			ExpectedOutput: []string{lppOutputFile, lppOutputFile, lppOutputFile, lppOutputFile, lppOutputFile},
-		},
-		{
-			Ext: "", Fail: "code", ShouldMatch: false,
-			Fnames:    []string{notAPoint, badName},
-			Explainer: "M does not pick obviously invalid files",
-		},
-	}
-
-	for _, c := range testcase {
-		conf := config.Config{}
-		conf.Version = "0.1.2"
-		conf.LPPExecution.CanRunFullLarge = c.Ext == "large"
-
-		def, err := LPPExecutionDefinition(&conf)
-		assert.NoError(t, err)
-
-		t.Run(c.Explainer, func(t *testing.T) {
-			runInpFileTestCaseLimitless(t, def, c)
-		})
-	}
-}
-
-func TestConglomerationDefinition(t *testing.T) {
-	var (
-		correctM           = "102-103-etv0.2.3-stv1.2.3-getZKProof_GL.json"
-		correctWithFailM   = "102-103-etv0.2.3-stv1.2.3-getZKProof_GL.json.failure.code_77"
-		correctWith2FailsM = "102-103-etv0.2.3-stv1.2.3-getZKProof_GL.json.failure.code_77.failure.code_77"
-		missingEtv         = "102-103-stv1.2.3-getZKProof_GL.json"
-		missingStv         = "102-103-etv0.2.3-getZKProof_GL.json"
-		notAPoint          = "102-103-etv0.2.3-getZKProof_GLAjson"
-		badName            = "102-103-etv0.2.3-stv1.2.3-getAggregatedProof.json"
-	)
-
-	testcase := []inpFileNamesCases{
-		{
-			Ext: "", Fail: "code", ShouldMatch: true,
-			Fnames:         []string{correctM, correctWithFailM, correctWith2FailsM, missingEtv, missingStv},
-			Explainer:      "happy path, case M",
-			ExpectedOutput: []string{conglomerationOutputFile, conglomerationOutputFile, conglomerationOutputFile, conglomerationOutputFile, conglomerationOutputFile},
-		},
-		{
-			Ext: "", Fail: "code", ShouldMatch: false,
-			Fnames:    []string{notAPoint, badName},
-			Explainer: "M does not pick obviously invalid files",
-		},
-	}
-
-	for _, c := range testcase {
-		conf := config.Config{}
-		conf.Version = "0.1.2"
-		conf.Conglomeration.GL.CanRunFullLarge = c.Ext == "large"
-		conf.Conglomeration.LPP.CanRunFullLarge = c.Ext == "large"
-
-		def, err := ConglomerationDefinition(&conf)
-		assert.NoError(t, err)
-
-		t.Run(c.Explainer, func(t *testing.T) {
-			runInpFileTestCaseLimitless(t, def, c)
-		})
-	}
-}
-
-func runInpFileTestCaseLimitless(t *testing.T, def *JobDefinition, c inpFileNamesCases) {
-	for i, fname := range c.Fnames {
-		job, err := NewJob(def, fname)
-
-		if c.ShouldMatch {
-			if !assert.NoError(t, err, fname) {
-				continue
-			}
-
-			resp, err := job.ResponseFile()
-			if assert.NoErrorf(t, err, "cannot produce a response for job %s", fname) {
-				assert.Equal(t, c.ExpectedOutput[i], resp, "wrong output file")
-			}
-
-			if len(c.ExpToLarge) > 0 {
-				toLarge, err := job.DeferToLargeFile(
-					Status{ExitCode: 137},
-				)
-
-				if assert.NoError(t, err, "cannot produce name for the too large job") {
-					assert.Equal(t, c.ExpToLarge[i], toLarge)
-				}
-			}
-
-			if len(c.ExpSuccess) > 0 {
-				toSuccess := job.DoneFile(Status{ExitCode: 0})
-				assert.Equal(t, c.ExpSuccess[i], toSuccess)
-			}
-
-			if len(c.ExpFailW2) > 0 {
-				toFail2 := job.DoneFile(Status{ExitCode: 2})
-				assert.Equal(t, c.ExpFailW2[i], toFail2)
-			}
-
-		} else {
-			assert.Errorf(
-				t, err, fname,
-				"%v should not match %s",
-				fname, def.InputFileRegexp.String(),
-			)
-		}
 	}
 }
