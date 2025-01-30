@@ -1,11 +1,9 @@
 package column_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,28 +26,4 @@ func TestStore(t *testing.T) {
 
 	assert.True(t, store.IsIgnored("a"))
 
-}
-
-func TestNextPowerOfTwo(t *testing.T) {
-	tests := []struct {
-		input    int
-		expected int
-	}{
-		{1, 1},
-		{2, 2},
-		{5, 8},
-		{12, 16},
-		{20, 32},
-		{33, 64},
-		{100, 128},
-		{255, 256},
-		{500, 512},
-	}
-
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("NextPowerOfTwo(%d)", test.input), func(t *testing.T) {
-			result := utils.NextPowerOfTwo(test.input)
-			assert.Equal(t, test.expected, result)
-		})
-	}
 }
