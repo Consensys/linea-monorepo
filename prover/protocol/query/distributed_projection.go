@@ -68,7 +68,7 @@ func (dpp DistributedProjectionParams) UpdateFS(fs *fiatshamir.State) {
 
 func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 	var (
-		actualParam = field.One()
+		actualParam = field.Zero()
 		params       = run.GetParams(dp.ID).(DistributedProjectionParams)
 	)
 	for _, inp := range dp.Inp {
@@ -89,17 +89,17 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 		} else if !inp.IsAInModule && inp.IsBInModule {
 			hornerB := poly.CmptHorner(colB, filterB, params.EvalRand)
 			elemParam = hornerB[0]
-			elemParam.Inverse(&elemParam)
+			elemParam.Neg(&elemParam)
 		} else if inp.IsAInModule && inp.IsBInModule {
 			hornerA := poly.CmptHorner(colA, filterA, params.EvalRand)
 			hornerB := poly.CmptHorner(colB, filterB, params.EvalRand)
 			elemParam = hornerB[0]
-			elemParam.Inverse(&elemParam)
-			elemParam.Mul(&elemParam, &hornerA[0])
+			elemParam.Neg(&elemParam)
+			elemParam.Add(&elemParam, &hornerA[0])
 		} else {
 			utils.Panic("Invalid distributed projection query %v", dp.ID)
 		}
-		actualParam.Mul(&actualParam, &elemParam)
+		actualParam.Add(&actualParam, &elemParam)
 
 	}
 

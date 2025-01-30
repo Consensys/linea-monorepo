@@ -47,12 +47,12 @@ func TestDistributedProjection(t *testing.T) {
 		flagBWit[i] = field.One()
 		columnBWit[i] = field.NewElement(uint64(i - (flagSizeB - 10)))
 	}
-	hornerBoth = field.One()
+	hornerBoth = field.Zero()
 	hornerAArray = poly.CmptHorner(columnAWit, flagAWit, evalRand)
 	hornerBArray = poly.CmptHorner(columnBWit, flagBWit, evalRand)
 	hornerA = hornerAArray[0]
 	hornerB = hornerBArray[0]
-	hornerB.Inverse(&hornerB)
+	hornerB.Neg(&hornerB)
 
 	testcases := []struct {
 		Name        string
