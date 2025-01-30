@@ -23,8 +23,8 @@ clean-testnet-folders:
 		rm -rf tmp/testnet/* || true # ignore failure if folders do not exist already
 
 clean-environment:
-		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery kill -s 9 || true;
-		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery down || true;
+		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery kill -s 9 || true;
+		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery down || true;
 		make clean-local-folders;
 		docker volume rm linea-local-dev linea-logs || true; # ignore failure if volumes do not exist already
 		docker system prune -f || true;
