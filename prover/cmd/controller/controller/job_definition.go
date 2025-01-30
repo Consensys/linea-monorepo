@@ -19,7 +19,6 @@ const (
 // JobDefinition represents a collection of static parameters allowing to define
 // a job.
 type JobDefinition struct {
-
 	// Name of the job
 	Name string
 
@@ -43,12 +42,23 @@ type JobDefinition struct {
 	//
 	InputFileRegexp *regexp2.Regexp
 
+	// Secondary request root directory. Some jobs may have more than one input reqeust file
+	// Eg: Random Beacon and Conglomeration
+	SecRequestsRootDir string
+
+	// Second input file pattern
+	SecInputFileRegexp *regexp2.Regexp
+
 	// Template to use to generate the output file. The template should have the
 	// form of a go template. For instance,
 	//
 	// 	`{{.From}}-{{.To}}-pv{{.Version}}-stv{{.Stv}}-etv{{.Etv}}-zkProof.json`
 	//
 	OutputFileTmpl *template.Template
+
+	// Some jobs may have more than one output file.
+	// Eg: Bootstraping => Submodule and distributed metadata
+	SecOutputFileTmpl *template.Template
 
 	// The associated compiled regexp, this saves on recompiling the regexps
 	// everytime we want to use them. If a field is not needed, it can be left

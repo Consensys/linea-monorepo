@@ -48,82 +48,72 @@ const (
 	conglomerationOutputFile     = "{{.Start}}-{{.End}}-.getZKProof.json"
 )
 
-type JobDefinition_Limitless struct {
-	// Name of the job
-	Name string
+const (
+	bootstrapOutputTmpl       = "exec-bootstrap-submodule-req-file"
+	bootstrapDistMetadataTmpl = "exec-bootstrap-submodule-distmetadata-file"
+	glBeaconOutputTmpl        = "exec-GL-Beacon-file"
+	glOutputTmpl              = "exec-GL-output-file"
+	randomBeaconOutputTmpl    = "exec-rndbeacon-output-file"
+	lppOutputTmpl             = "exec-LPP-output-file"
+	conglomerationOutputTmpl  = "exec-output-file"
+)
 
-	// Priority at which this type of job should be processed. The lower the more of a priority.
-	// Typically 0 for bootstrap, 1 for Gl execution, 2 for Random Beacon, 3 for LPP Execution, 4 for Conglomeration.
-	Priority int
-
-	// Parameters for the job definition provided by the user
-	// There can be multiple i/p request files for a job eg: conglomeration
-	ReqRootDir []string
-
-	// The regexp to use to match input files. For instance,
-	//
-	// 	`^\d+-\d+-etv0.1.2-stv\d.\d.\d-getZkProof.json$`
-	//
-	// Will tell the controller to accept any version of the state-manager
-	// but to only accept execution trace. The regexp should always start "^"
-	// and end with "$" otherwise you are going to match in-progress files.
-	//
-	InputFilesRegexp []*regexp2.Regexp
-
-	// Template to use to generate the output file. The template should have the
-	// form of a go template. For instance,
-	//
-	// 	`{{.From}}-{{.To}}-pv{{.Version}}-stv{{.Stv}}-etv{{.Etv}}-zkProof.json`
-	// There can be multiple output files for a job. Eg: GL-Execution
-	OutputFileTmpl []*template.Template
-
-	// The associated compiled regexp, this saves on recompiling the regexps
-	// everytime we want to use them. If a field is not needed, it can be left
-	// at zero.
-	ParamsRegexp struct {
-		Start       *regexp2.Regexp
-		End         *regexp2.Regexp
-		Stv         *regexp2.Regexp
-		Etv         *regexp2.Regexp
-		Cv          *regexp2.Regexp
-		ContentHash *regexp2.Regexp
-	}
-
-	// Regexp of the failure code so that we can trim it if we want to retry.
-	FailureSuffix *regexp2.Regexp
-}
-
-// Function to create a JobDefinition_Limitless
 func createJobDefinition(name string, priority int,
 	reqRootDir, inputFilePattern []string,
-	outputTmpl, outputFileName []string) (*JobDefinition_Limitless, error) {
+	outputTmpl, outputFileName []string) (*JobDefinition, error) {
 
 	numReqs, numIPs, numOPTmpl, numOPFileName := len(reqRootDir), len(inputFilePattern), len(outputTmpl), len(outputFileName)
+
+	// Currently JobDefinition supports only primary and secondary inputs/output files
+	// Length cannot exceed 2
+	if numReqs > 2 || numIPs > 2 || numOPTmpl > 2 || numOPFileName > 2 {
+		return nil, fmt.Errorf("input and output parameters length cannot be greater than 2")
+	}
+
 	if numReqs != numIPs || numOPTmpl != numOPFileName {
 		return nil, fmt.Errorf(`length mismatch: reqRootDir:%d, inputFilePattern:%d, 
 	outputTmpl:%d, and outputFileName:%d must have the same length`, numReqs, numIPs, numOPTmpl, numOPFileName)
 	}
 
-	var inputFileRegexps []*regexp2.Regexp
-	for _, pattern := range inputFilePattern {
-		re, err := regexp2.Compile(pattern, regexp2.None)
+	// Set primary request root directory and compile primary input file regexps
+	primaryReqRootDir := reqRootDir[0]
+	inpReq1FileRegexp, err := regexp2.Compile(inputFilePattern[0], regexp2.None)
+	if err != nil {
+		return nil, fmt.Errorf("invalid input file pattern: %v", err)
+	}
+
+	// Set secondary request root directory and compile secondary input file regexps
+	var inpReq2FileRegexp *regexp2.Regexp
+	var secReqRootDir string
+	if numReqs == 2 {
+		secReqRootDir = reqRootDir[1]
+		inpReq2FileRegexp, err = regexp2.Compile(inputFilePattern[1], regexp2.None)
 		if err != nil {
 			return nil, fmt.Errorf("invalid input file pattern: %v", err)
 		}
-		inputFileRegexps = append(inputFileRegexps, re)
 	}
 
-	var outputFileTemplates []*template.Template
-	for i, tmpl := range outputTmpl {
-		outputFileTemplates = append(outputFileTemplates, tmplMustCompile(tmpl, outputFileName[i]))
+	// Compile output file templates
+	opFile1Template := tmplMustCompile(outputTmpl[0], outputFileName[0])
+	var opFile2Template *template.Template
+	if numOPTmpl == 2 {
+		opFile2Template = tmplMustCompile(outputTmpl[1], outputFileName[1])
 	}
 
-	return &JobDefinition_Limitless{
-		Name:             name,
-		Priority:         priority,
-		ReqRootDir:       reqRootDir,
-		InputFilesRegexp: inputFileRegexps,
-		OutputFileTmpl:   outputFileTemplates,
+	return &JobDefinition{
+		Name:     name,
+		Priority: priority,
+
+		// Primary and Secondary Request (Input) Files
+		RequestsRootDir:    primaryReqRootDir,
+		InputFileRegexp:    inpReq1FileRegexp,
+		SecRequestsRootDir: secReqRootDir,
+		SecInputFileRegexp: inpReq2FileRegexp,
+
+		// Output Templates
+		OutputFileTmpl:    opFile1Template,
+		SecOutputFileTmpl: opFile2Template,
+
 		ParamsRegexp: struct {
 			Start       *regexp2.Regexp
 			End         *regexp2.Regexp
@@ -141,7 +131,7 @@ func createJobDefinition(name string, priority int,
 	}, nil
 }
 
-func BootstrapDefinition(conf *config.Config) (*JobDefinition_Limitless, error) {
+func BootstrapDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
 	if conf.Bootstrap.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
@@ -154,12 +144,12 @@ func BootstrapDefinition(conf *config.Config) (*JobDefinition_Limitless, error) 
 		),
 	}
 	reqRootDir := []string{conf.Bootstrap.RequestsRootDir}
-	outputTmpl := []string{"exec-bootstrap-submodule-req-file", "exec-bootstrap-submodule-distmetadata-file"}
+	outputTmpl := []string{bootstrapOutputTmpl, bootstrapDistMetadataTmpl}
 	outputFileName := []string{bootstrapSubmoduleFile, bootstrapDistMetadataFile}
 	return createJobDefinition(jobNameBootstrap, priorityBootstrap, reqRootDir, inputFilePattern, outputTmpl, outputFileName)
 }
 
-func GLExecutionDefinition(conf *config.Config) (*JobDefinition_Limitless, error) {
+func GLExecutionDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
 	if conf.GLExecution.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
@@ -172,13 +162,13 @@ func GLExecutionDefinition(conf *config.Config) (*JobDefinition_Limitless, error
 		),
 	}
 	reqRootDir := []string{conf.GLExecution.RequestsRootDir}
-	outputTmpl := []string{"exec-GL-Beacon-file", "exec-GL-output-file"}
+	outputTmpl := []string{glBeaconOutputTmpl, glOutputTmpl}
 	outputFileName := []string{glBeaconFile, glOutputFile}
 
 	return createJobDefinition(jobNameGLExecution, priorityGLExecution, reqRootDir, inputFilePattern, outputTmpl, outputFileName)
 }
 
-func RandomBeaconDefinition(conf *config.Config) (*JobDefinition_Limitless, error) {
+func RandomBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFile1Ext, inpFile2Ext := "", ""
 	if conf.RandomBeacon.Bootstrap.CanRunFullLarge && conf.RandomBeacon.GL.CanRunFullLarge {
 		inpFile1Ext, inpFile2Ext = fmt.Sprintf(`\.%v`, config.LargeSuffix), fmt.Sprintf(`\.%v`, config.LargeSuffix)
@@ -196,12 +186,12 @@ func RandomBeaconDefinition(conf *config.Config) (*JobDefinition_Limitless, erro
 		),
 	}
 	reqRootDir := []string{conf.RandomBeacon.Bootstrap.RequestsRootDir, conf.RandomBeacon.GL.RequestsRootDir}
-	outputTmpl := []string{"exec-rndbeacon-output-file"}
+	outputTmpl := []string{randomBeaconOutputTmpl}
 	outputFileName := []string{randomBeaconOutputFile}
 	return createJobDefinition(jobNameRandomBeacon, priorityRandomBeacon, reqRootDir, inputFilePattern, outputTmpl, outputFileName)
 }
 
-func LPPExecutionDefinition(conf *config.Config) (*JobDefinition_Limitless, error) {
+func LPPExecutionDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
 	if conf.LPPExecution.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
@@ -214,13 +204,13 @@ func LPPExecutionDefinition(conf *config.Config) (*JobDefinition_Limitless, erro
 		),
 	}
 	reqRootDir := []string{conf.LPPExecution.RequestsRootDir}
-	outputTmpl := []string{"exec-LPP-output-file"}
+	outputTmpl := []string{lppOutputTmpl}
 	outputFileName := []string{lppOutputFile}
 
 	return createJobDefinition(jobNameLPPExecution, priorityLPPExecution, reqRootDir, inputFilePattern, outputTmpl, outputFileName)
 }
 
-func ConglomerationDefinition(conf *config.Config) (*JobDefinition_Limitless, error) {
+func ConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFile1Ext, inpFile2Ext := "", ""
 
 	// TODO: Clairfy @linea-prover Can be have multiple limitless prover component running in different modes?
@@ -241,7 +231,7 @@ func ConglomerationDefinition(conf *config.Config) (*JobDefinition_Limitless, er
 		),
 	}
 	reqRootDir := []string{conf.Conglomeration.GL.RequestsRootDir, conf.Conglomeration.LPP.RequestsRootDir}
-	outputTmpl := []string{"exec-output-file"}
+	outputTmpl := []string{conglomerationOutputTmpl}
 	outputFileName := []string{conglomerationOutputFile}
 	return createJobDefinition(jobNameConglomeration, priorityConglomeration, reqRootDir, inputFilePattern, outputTmpl, outputFileName)
 }
