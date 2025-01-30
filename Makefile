@@ -16,11 +16,11 @@ docker-pull-images-external-to-monorepo:
 
 clean-local-folders:
 		make clean-smc-folders
-		rm -rf tmp/local/*
+		rm -rf tmp/local/* || true # ignore failure if folders do not exist already
 
 clean-testnet-folders:
 		make clean-smc-folders
-		rm -rf tmp/testnet/*
+		rm -rf tmp/testnet/* || true # ignore failure if folders do not exist already
 
 clean-environment:
 		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery kill -s 9 || true
@@ -41,6 +41,7 @@ start-env:
 	else \
 		echo "Starting stack reusing previous state"; \
 	fi
+	mkdir -p tmp/local
 	L1_GENESIS_TIME=$(get_future_time) COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f $(COMPOSE_FILE) up -d
 	if [ "$(SKIP_CONTRACTS_DEPLOYMENT)" = "true" ]; then \
 		echo "Skipping contracts deployment"; \
