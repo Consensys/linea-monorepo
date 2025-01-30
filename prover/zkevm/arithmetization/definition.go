@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // schemaScanner is a transient scanner structure whose goal is to port the
@@ -72,10 +73,12 @@ func (s *schemaScanner) scanColumns() {
 			size        = int(mult) * moduleLimit
 		)
 
-		// adjust the size , this adjusts the size for interleaved columns and their permuted version.
-		// Since these are the only columns from corset with non-power of two.
+		// Adjust the size for interleaved columns and their permuted versions.
+		// Since these are the only columns from corset with a non-power-of-two size.
 		if !utils.IsPowerOfTwo(size) {
-			size = utils.NextPowerOfTwo(int(mult) * moduleLimit)
+			newSize := utils.NextPowerOfTwo(int(mult) * moduleLimit)
+			logrus.Debug("Adjusting size for column: ", name, " in module: ", module.Name, " from ", size, " to ", newSize)
+			size = newSize
 		}
 
 		// #nosec G115 -- this bound will not overflow
