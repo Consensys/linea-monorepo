@@ -96,6 +96,11 @@ allprojects {
     maxParallelForks = Math.max(Runtime.runtime.availableProcessors(), 9)
   }
 
+  tasks.withType(Test).matching { it.name == 'integrationTest' }.configureEach {
+    outputs.cacheIf { false }
+    outputs.upToDateWhen { false }
+  }
+
   afterEvaluate { subproject ->
     if (hasJavaOrKotlinPlugins(subproject)) {
       subproject.apply plugin: 'com.diffplug.spotless'
@@ -142,7 +147,6 @@ dockerCompose {
       "l1-node-genesis-generator",
       "l1-el-node",
       "l1-cl-node",
-      "l2-node",
       // For debug
       // "l1-blockscout",
       // "l2-blockscout"
