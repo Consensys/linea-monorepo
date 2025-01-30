@@ -35,14 +35,35 @@ clean-environment:
 		docker volume rm linea-local-dev linea-logs || true # ignore failure if volumes do not exist already
 		docker system prune -f || true
 
+start-env: COMPOSE_PROFILES:=l1,l2
+start-env: CLEAN_PREVIOUS_ENV:=true
+start-env: COMPOSE_FILE:=docker/compose-tracing-v2.yml
+start-env: L1_CONTRACT_VERSION:=6
+start-env: SKIP_CONTRACTS_DEPLOYMENT:=false
+start-env: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
+start-env: CLEAN_PREIVOUS_RUNS:=false
+start-env:
+	if [ "$(CLEAN_PREVIOUS_ENV)" = "true" ]; then \
+  		make clean-environment; \
+	fi
+	else \
+		echo "Starting stack reusing previous state"; \
+	fi
+	L1_GENESIS_TIME=$(get_future_time) COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f $(COMPOSE_FILE) up -d
+	if [ "$(SKIP_CONTRACTS_DEPLOYMENT)" = "true" ]; then \
+		echo "Skipping contracts deployment"; \
+	else \
+		make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) LINEA_PROTOCOL_CONTRACTS_ONLY=$(LINEA_PROTOCOL_CONTRACTS_ONLY); \
+	fi
+
 start-l1:
-		L1_GENESIS_TIME=$(get_future_time) docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml --profile l1 up -d
+	command start-env COMPOSE_PROFILES:=l1 COMPOSE_FILE:=docker/compose-tracing-v2.yml SKIP_CONTRACTS_DEPLOYMENT:=true
 
 start-l2:
-		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml --profile l2 up -d
+	command start-env COMPOSE_PROFILES:=l2 COMPOSE_FILE:=docker/compose-tracing-v2.yml SKIP_CONTRACTS_DEPLOYMENT:=true
 
 start-l2-blockchain-only:
-		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml --profile l2-bc up -d
+	command start-env COMPOSE_PROFILES:=l2-bc COMPOSE_FILE:=docker/compose-tracing-v2.yml SKIP_CONTRACTS_DEPLOYMENT:=true
 
 fresh-start-l2-blockchain-only:
 		make clean-environment
@@ -52,14 +73,6 @@ fresh-start-l2-blockchain-only:
 ## Creating new targets to avoid conflicts with existing targets
 ## Redundant targets above will cleanup once this get's merged
 ##
-start-env: COMPOSE_PROFILES:=l1,l2
-start-env: COMPOSE_FILE:=docker/compose-tracing-v2.yml
-start-env: L1_CONTRACT_VERSION:=6
-start-env: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
-start-env:
-	L1_GENESIS_TIME=$(get_future_time) COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f $(COMPOSE_FILE) up -d
-	make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) LINEA_PROTOCOL_CONTRACTS_ONLY=$(LINEA_PROTOCOL_CONTRACTS_ONLY)
-
 start-env-with-tracing-v1:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v1.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
 
@@ -72,34 +85,9 @@ start-env-with-tracing-v2:
 start-env-with-tracing-v2-ci:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2-ci-extension.yml
 
-fresh-start-all: COMPOSE_PROFILES:="l1,l2"
-fresh-start-all: L1_CONTRACT_VERSION:=6
-fresh-start-all:
-		make clean-environment
-		make start-all L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
-
-fresh-start-all-traces-v2: COMPOSE_PROFILES:="l1,l2"
-fresh-start-all-traces-v2: L1_CONTRACT_VERSION:=6
-fresh-start-all-traces-v2:
-		make clean-environment
-		$(MAKE) start-all-traces-v2 L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
-
-start-all: COMPOSE_PROFILES:=l1,l2
-start-all: L1_CONTRACT_VERSION:=6
-start-all:
-		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment COMPOSE_PROFILES=$(COMPOSE_PROFILES)
-		make deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
-
-start-all-traces-v2: COMPOSE_PROFILES:="l1,l2"
-start-all-traces-v2: L1_CONTRACT_VERSION:=6
-start-all-traces-v2:
-		L1_GENESIS_TIME=$(get_future_time) make start-whole-environment-traces-v2 COMPOSE_PROFILES=$(COMPOSE_PROFILES)
-		$(MAKE) deploy-contracts L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
-
-fresh-start-all-staterecovery: COMPOSE_PROFILES:=l1,l2,staterecovery
-fresh-start-all-staterecovery: L1_CONTRACT_VERSION:=6
-fresh-start-all-staterecovery:
-	make clean-environment
+start-env-with-staterecovery: COMPOSE_PROFILES:=l1,l2,staterecovery
+start-env-with-staterecovery: L1_CONTRACT_VERSION:=6
+start-env-with-staterecovery:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2-staterecovery-extension.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION)
 
 staterecovery-replay-from-block: L1_ROLLUP_CONTRACT_ADDRESS:=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
