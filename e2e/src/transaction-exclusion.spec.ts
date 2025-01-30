@@ -32,7 +32,7 @@ describe("Transaction exclusion test suite", () => {
         logger.debug(`sendTransaction expected rejection: ${JSON.stringify(err)}`);
         // assert it was indeed rejected by the traces module limit
         // @ts-expect-error error is not typed
-        expect(err.message).toLowerCase().toContain("is above the limit");
+        expect(err.message).toContain("is above the limit");
       }
 
       expect(rejectedTxHash).toBeDefined();
