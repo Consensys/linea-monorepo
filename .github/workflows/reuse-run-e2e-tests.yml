@@ -96,7 +96,7 @@ jobs:
       - name: Create directory for conflated traces
         run: |
           mkdir -p tmp/local/traces/v2/conflated
-          chmod -R a+w tmp/local/traces/v2/conflated
+          chmod -R a+rw tmp/local/
       # Disable cache for pulling docker images as empirically found that this
       # (retrieving cache and loading docker images) actually increased test time-to-completion
       # - name: Restore cached images
@@ -164,6 +164,7 @@ jobs:
         if: always()
         run: |
           echo "E2E_TESTS_RESULT: ${{ steps.run_e2e_tests.outcome }}"
+          tree tmp/local/
       - name: Dump logs
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}
         run: |
