@@ -164,10 +164,10 @@ jobs:
         if: always()
         run: |
           echo "E2E_TESTS_RESULT: ${{ steps.run_e2e_tests.outcome }}"
-          find tmp/local/
       - name: Dump logs
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}
         run: |
+          find tmp/local/
           mkdir -p docker_logs
           docker ps -a >> docker_logs/docker_ps.txt
           docker logs coordinator --since 1h &>> docker_logs/coordinator.txt
