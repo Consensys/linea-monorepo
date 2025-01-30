@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TrustedCodehashAccess } from "./../../src/TrustedCodehashAccess.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import { IStakeConstants } from "./../../src/interfaces/IStakeConstants.sol";
 
 contract StackOverflowStakeManager is
     UUPSUpgradeable,
@@ -16,7 +17,7 @@ contract StackOverflowStakeManager is
     IERC20 public STAKING_TOKEN;
 
     uint256 public constant SCALE_FACTOR = 1e18;
-    uint256 public constant MP_RATE_PER_YEAR = 1e18;
+    uint256 public constant MP_APY = 100;
 
     uint256 public constant MIN_LOCKUP_PERIOD = 90 days;
     uint256 public constant MAX_LOCKUP_PERIOD = 4 * 365 days;

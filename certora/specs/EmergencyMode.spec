@@ -9,7 +9,12 @@ definition isViewFunction(method f) returns bool = (
   f.selector == sig:streamer.YEAR().selector ||
   f.selector == sig:streamer.STAKING_TOKEN().selector ||
   f.selector == sig:streamer.SCALE_FACTOR().selector ||
-  f.selector == sig:streamer.MP_RATE_PER_YEAR().selector ||
+  f.selector == sig:streamer.MP_APY().selector ||
+  f.selector == sig:streamer.MP_MPY().selector ||
+  f.selector == sig:streamer.MP_MPY_ABSOLUTE().selector ||
+  f.selector == sig:streamer.ACCRUE_RATE().selector ||
+  f.selector == sig:streamer.MIN_BALANCE().selector ||
+  f.selector == sig:streamer.MAX_BALANCE().selector ||
   f.selector == sig:streamer.MIN_LOCKUP_PERIOD().selector ||
   f.selector == sig:streamer.MAX_LOCKUP_PERIOD().selector ||
   f.selector == sig:streamer.MAX_MULTIPLIER().selector ||

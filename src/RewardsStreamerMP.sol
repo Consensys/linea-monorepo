@@ -10,6 +10,7 @@ import { IStakeManager } from "./interfaces/IStakeManager.sol";
 import { IStakeVault } from "./interfaces/IStakeVault.sol";
 import { IRewardProvider } from "./interfaces/IRewardProvider.sol";
 import { TrustedCodehashAccess } from "./TrustedCodehashAccess.sol";
+import { StakeMath } from "./math/StakeMath.sol";
 
 // Rewards Streamer with Multiplier Points
 contract RewardsStreamerMP is
@@ -18,7 +19,8 @@ contract RewardsStreamerMP is
     IStakeManager,
     TrustedCodehashAccess,
     ReentrancyGuardUpgradeable,
-    IRewardProvider
+    IRewardProvider,
+    StakeMath
 {
     error StakingManager__InvalidVault();
     error StakingManager__VaultNotRegistered();
@@ -26,7 +28,7 @@ contract RewardsStreamerMP is
     error StakingManager__AmountCannotBeZero();
     error StakingManager__TransferFailed();
     error StakingManager__InsufficientBalance();
-    error StakingManager__InvalidLockingPeriod();
+    error StakingManager__LockingPeriodCannotBeZero();
     error StakingManager__CannotRestakeWithLockedFunds();
     error StakingManager__TokensAreLocked();
     error StakingManager__AlreadyLocked();
@@ -36,12 +38,6 @@ contract RewardsStreamerMP is
     IERC20 public STAKING_TOKEN;
 
     uint256 public constant SCALE_FACTOR = 1e18;
-    uint256 public constant MP_RATE_PER_YEAR = 1;
-
-    uint256 public constant YEAR = 365 days;
-    uint256 public constant MIN_LOCKUP_PERIOD = 90 days;
-    uint256 public constant MAX_LOCKUP_PERIOD = 4 * YEAR;
-    uint256 public constant MAX_MULTIPLIER = 4;
 
     uint256 public totalStaked;
     uint256 public totalMPAccrued;
@@ -193,10 +189,6 @@ contract RewardsStreamerMP is
             revert StakingManager__AmountCannotBeZero();
         }
 
-        if (lockPeriod != 0 && (lockPeriod < MIN_LOCKUP_PERIOD || lockPeriod > MAX_LOCKUP_PERIOD)) {
-            revert StakingManager__InvalidLockingPeriod();
-        }
-
         _updateGlobalState();
         _updateVaultMP(msg.sender, true);
 
@@ -204,29 +196,23 @@ contract RewardsStreamerMP is
         if (vault.lockUntil != 0 && vault.lockUntil > block.timestamp) {
             revert StakingManager__CannotRestakeWithLockedFunds();
         }
+        (uint256 _deltaMpTotal, uint256 _deltaMPMax, uint256 _newLockEnd) =
+            _calculateStake(vault.stakedBalance, vault.maxMP, vault.lockUntil, block.timestamp, amount, lockPeriod);
 
         vault.stakedBalance += amount;
         totalStaked += amount;
 
-        uint256 initialMP = amount;
-        uint256 potentialMP = amount * MAX_MULTIPLIER;
-        uint256 bonusMP = 0;
-
         if (lockPeriod != 0) {
-            bonusMP = _calculateBonusMP(amount, lockPeriod);
-            vault.lockUntil = block.timestamp + lockPeriod;
+            vault.lockUntil = _newLockEnd;
         } else {
             vault.lockUntil = 0;
         }
 
-        uint256 vaultMaxMP = initialMP + bonusMP + potentialMP;
-        uint256 vaultMP = initialMP + bonusMP;
+        vault.mpAccrued += _deltaMpTotal;
+        totalMPAccrued += _deltaMpTotal;
 
-        vault.mpAccrued += vaultMP;
-        totalMPAccrued += vaultMP;
-
-        vault.maxMP += vaultMaxMP;
-        totalMaxMP += vaultMaxMP;
+        vault.maxMP += _deltaMPMax;
+        totalMaxMP += _deltaMPMax;
 
         vault.rewardIndex = rewardIndex;
     }
@@ -238,33 +224,29 @@ contract RewardsStreamerMP is
         onlyRegisteredVault
         nonReentrant
     {
-        if (lockPeriod < MIN_LOCKUP_PERIOD || lockPeriod > MAX_LOCKUP_PERIOD) {
-            revert StakingManager__InvalidLockingPeriod();
-        }
-
         VaultData storage vault = vaultData[msg.sender];
 
         if (vault.lockUntil > 0) {
             revert StakingManager__AlreadyLocked();
         }
 
-        if (vault.stakedBalance == 0) {
-            revert StakingManager__InsufficientBalance();
+        if (lockPeriod == 0) {
+            revert StakingManager__LockingPeriodCannotBeZero();
         }
 
         _updateGlobalState();
         _updateVaultMP(msg.sender, true);
+        (uint256 deltaMp, uint256 newLockEnd) =
+            _calculateLock(vault.stakedBalance, vault.maxMP, vault.lockUntil, block.timestamp, lockPeriod);
 
-        uint256 additionalBonusMP = _calculateBonusMP(vault.stakedBalance, lockPeriod);
-
-        // Update vault state
-        vault.lockUntil = block.timestamp + lockPeriod;
-        vault.mpAccrued += additionalBonusMP;
-        vault.maxMP += additionalBonusMP;
+        // Update account state
+        vault.lockUntil = newLockEnd;
+        vault.mpAccrued += deltaMp;
+        vault.maxMP += deltaMp;
 
         // Update global state
-        totalMPAccrued += additionalBonusMP;
-        totalMaxMP += additionalBonusMP;
+        totalMPAccrued += deltaMp;
+        totalMaxMP += deltaMp;
 
         vault.rewardIndex = rewardIndex;
     }
@@ -277,13 +259,6 @@ contract RewardsStreamerMP is
         nonReentrant
     {
         VaultData storage vault = vaultData[msg.sender];
-        if (amount > vault.stakedBalance) {
-            revert StakingManager__InsufficientBalance();
-        }
-
-        if (block.timestamp < vault.lockUntil) {
-            revert StakingManager__TokensAreLocked();
-        }
         _unstake(amount, vault, msg.sender);
     }
 
@@ -291,18 +266,15 @@ contract RewardsStreamerMP is
         _updateGlobalState();
         _updateVaultMP(vaultAddress, true);
 
-        uint256 previousStakedBalance = vault.stakedBalance;
-
-        // solhint-disable-next-line
-        uint256 mpToReduce = Math.mulDiv(vault.mpAccrued, amount, previousStakedBalance);
-        uint256 maxMPToReduce = Math.mulDiv(vault.maxMP, amount, previousStakedBalance);
-
+        (uint256 _deltaMpTotal, uint256 _deltaMpMax) = _calculateUnstake(
+            vault.stakedBalance, vault.lockUntil, block.timestamp, vault.mpAccrued, vault.maxMP, amount
+        );
         vault.stakedBalance -= amount;
-        vault.mpAccrued -= mpToReduce;
-        vault.maxMP -= maxMPToReduce;
+        vault.mpAccrued -= _deltaMpTotal;
+        vault.maxMP -= _deltaMpMax;
         vault.rewardIndex = rewardIndex;
-        totalMPAccrued -= mpToReduce;
-        totalMaxMP -= maxMPToReduce;
+        totalMPAccrued -= _deltaMpTotal;
+        totalMaxMP -= _deltaMpMax;
         totalStaked -= amount;
     }
 
@@ -315,6 +287,8 @@ contract RewardsStreamerMP is
         VaultData storage vault = vaultData[msg.sender];
 
         if (vault.stakedBalance > 0) {
+            //updates lockuntil to allow unstake early
+            vault.lockUntil = block.timestamp;
             // calling `_unstake` to update accounting accordingly
             _unstake(vault.stakedBalance, vault, msg.sender);
 
@@ -358,7 +332,7 @@ contract RewardsStreamerMP is
             return (adjustedRewardIndex, totalMPAccrued);
         }
 
-        uint256 accruedMP = (timeDiff * totalStaked * MP_RATE_PER_YEAR) / YEAR;
+        uint256 accruedMP = _accrueMP(totalStaked, timeDiff);
         if (totalMPAccrued + accruedMP > totalMaxMP) {
             accruedMP = totalMaxMP - totalMPAccrued;
         }
@@ -465,26 +439,19 @@ contract RewardsStreamerMP is
         return (accruedRewards, newRewardIndex);
     }
 
-    function _calculateBonusMP(uint256 amount, uint256 lockPeriod) internal pure returns (uint256) {
-        return Math.mulDiv(amount, lockPeriod, YEAR);
-    }
-
     function _getVaultPendingMP(VaultData storage vault) internal view returns (uint256) {
+        if (block.timestamp == vault.lastMPUpdateTime) {
+            return 0;
+        }
         if (vault.maxMP == 0 || vault.stakedBalance == 0) {
             return 0;
         }
 
-        uint256 timeDiff = block.timestamp - vault.lastMPUpdateTime;
-        if (timeDiff == 0) {
-            return 0;
-        }
+        uint256 deltaMpTotal = _calculateAccrual(
+            vault.stakedBalance, vault.mpAccrued, vault.maxMP, vault.lastMPUpdateTime, block.timestamp
+        );
 
-        uint256 accruedMP = Math.mulDiv(timeDiff * vault.stakedBalance, MP_RATE_PER_YEAR, YEAR);
-
-        if (vault.mpAccrued + accruedMP > vault.maxMP) {
-            accruedMP = vault.maxMP - vault.mpAccrued;
-        }
-        return accruedMP;
+        return deltaMpTotal;
     }
 
     function _updateVaultMP(address vaultAddress, bool forceMPUpdate) internal {

@@ -3,8 +3,9 @@ pragma solidity ^0.8.26;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ITrustedCodehashAccess } from "./ITrustedCodehashAccess.sol";
+import { IStakeConstants } from "./IStakeConstants.sol";
 
-interface IStakeManager is ITrustedCodehashAccess {
+interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     error StakingManager__FundsLocked();
     error StakingManager__InvalidLockTime();
     error StakingManager__InsufficientFunds();
@@ -24,8 +25,4 @@ interface IStakeManager is ITrustedCodehashAccess {
     function getStakedBalance(address _vault) external view returns (uint256 _balance);
 
     function STAKING_TOKEN() external view returns (IERC20);
-    function MIN_LOCKUP_PERIOD() external view returns (uint256);
-    function MAX_LOCKUP_PERIOD() external view returns (uint256);
-    function MP_RATE_PER_YEAR() external view returns (uint256);
-    function MAX_MULTIPLIER() external view returns (uint256);
 }
