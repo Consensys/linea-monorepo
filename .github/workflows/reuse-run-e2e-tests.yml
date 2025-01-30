@@ -171,14 +171,14 @@ jobs:
           find tmp/local/ >> docker_logs/files_in_shared_dir.txt
           docker ps -a >> docker_logs/docker_ps.txt
           docker logs coordinator --since 1h &>> docker_logs/coordinator.txt
-          docker logs prover --since 1h &>> docker_logs/prover.txt
-          docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt;
+          docker logs prover --since 1h &>> docker_logs/prover.txt || true
+          docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt; || true
           docker logs shomei --since 1h &>> docker_logs/shomei.txt
           docker logs zkbesu-shomei --since 1h &>> docker_logs/zkbesu-shomei.txt
           docker logs shomei-frontend --since 1h &>> docker_logs/shomei-frontend.txt
           docker logs postman --since 1h &>> docker_logs/postman.txt
-          docker logs traces-node --since 1h &>> docker_logs/traces-node.txt
-          docker logs traces-node-v2 --since 1h &>> docker_logs/traces-node-v2.txt;
+          docker logs traces-node --since 1h &>> docker_logs/traces-node.txt || true
+          docker logs traces-node-v2 --since 1h &>> docker_logs/traces-node-v2.txt; || true
           docker logs l2-node-besu --since 1h &>> docker_logs/l2-node-besu.txt;
           docker logs transaction-exclusion-api --since 1h &>> docker_logs/transaction-exclusion-api.txt
           docker logs sequencer --since 1h &>> docker_logs/sequencer.txt
