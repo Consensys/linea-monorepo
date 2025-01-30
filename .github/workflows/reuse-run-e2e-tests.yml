@@ -164,7 +164,7 @@ jobs:
         if: always()
         run: |
           echo "E2E_TESTS_RESULT: ${{ steps.run_e2e_tests.outcome }}"
-          tree tmp/local/
+          find tmp/local/
       - name: Dump logs
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}
         run: |
