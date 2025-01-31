@@ -25,9 +25,14 @@ type Job struct {
 	Start int
 	End   int
 
-	VersionExecutionTracer string
-	VersionStateManager    string
-	VersionCompressor      string
+	// Execution Trace version
+	Etv string
+
+	// State Manager Trace version
+	Stv string
+
+	// Compressor version ccv
+	VersionCompressor string
 
 	// The hex string of the content hash
 	ContentHash string
@@ -62,8 +67,8 @@ func NewJob(jdef *JobDefinition, filename string) (j *Job, err error) {
 	j.Start = intIfRegexpNotNil(regs.Start, filename)
 	j.End = intIfRegexpNotNil(regs.End, filename)
 	j.VersionCompressor = stringIfRegexpNotNil(regs.Cv, filename)
-	j.VersionExecutionTracer = stringIfRegexpNotNil(regs.Etv, filename)
-	j.VersionStateManager = stringIfRegexpNotNil(regs.Stv, filename)
+	j.Etv = stringIfRegexpNotNil(regs.Etv, filename)
+	j.Stv = stringIfRegexpNotNil(regs.Stv, filename)
 	j.ContentHash = stringIfRegexpNotNil(regs.ContentHash, filename)
 
 	return j, nil

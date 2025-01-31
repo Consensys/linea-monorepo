@@ -11,8 +11,8 @@ import (
 // These jobs will execute asynchronously based on their set priorities
 const (
 	// Bootstrap
-	job_Exec_Bootstrap_Submodule = "exec-bootstrap-submodule"
-	job_Exec_Bootstrap_Metadata  = "exec-bootstrap-metadata"
+	job_Exec_Bootstrap_GLSubmodule  = "exec-bootstrap-GLsubmodule"
+	job_Exec_Bootstrap_DistMetadata = "exec-bootstrap-metadata"
 
 	// Global-Local subprovers
 	job_Exec_GL_RndBeacon = "exec-GL-rndbeacon"
@@ -33,8 +33,8 @@ const (
 
 // Priorities
 const (
-	priority_Exec_Bootstrap_Submodule = 0
-	priority_Exec_Bootstrap_Metadata  = 0
+	priority_Exec_Bootstrap_GLSubmodule  = 0
+	priority_Exec_Bootstrap_DistMetadata = 0
 
 	priority_Exec_GL_RndBeacon = 1
 	priority_Exec_GL           = 1
@@ -51,10 +51,10 @@ const (
 
 // Input file patterns
 const (
-	exec_Bootstrap_Submodule_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json%v(\.failure\.%v_[0-9]+)*$`
-	exec_Bootstrap_MetaData_InputPattern  = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json%v(\.failure\.%v_[0-9]+)*$`
+	exec_Bootstrap_GLSubmodule_InputPattern  = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json%v(\.failure\.%v_[0-9]+)*$`
+	exec_Bootstrap_DistMetaData_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json%v(\.failure\.%v_[0-9]+)*$`
 
-	exec_GL_RndBeacon_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZKProof_Bootstrap_Submodule\.json%v(\.failure\.%v_[0-9]+)*$`
+	exec_GL_RndBeacon_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZKProof_Bootstrap_GLSubmodule\.json%v(\.failure\.%v_[0-9]+)*$`
 
 	exec_RndBeacon_Metadata_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZKProof_Bootstrap_DistMetadata\.json%v(\.failure\.%v_[0-9]+)*$`
 	exec_GL_InputPattern                 = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZKProof_GL_Beacon\.json%v(\.failure\.%v_[0-9]+)*$`
@@ -68,42 +68,39 @@ const (
 
 // Ouput File patterns and templates
 const (
-	exec_Bootstrap_Submodule_File = "{{.Start}}-{{.End}}-getZkProof_Bootstrap_Submodule.json"
-	exec_Bootstrap_Submodule_Tmpl = "exec-bootstrap-submodule-req-file"
+	exec_Bootstrap_GLSubmodule_File = "{{.Start}}-{{.End}}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_Bootstrap_GLSubmodule.json"
+	exec_Bootstrap_Submodule_Tmpl   = "exec-bootstrap-GLsubmodule-req-file"
 
-	exec_Bootstrap_DistMetadata_File = "{{.Start}}-{{.End}}-getZKProof_Bootstrap_DistMetadata.json"
+	exec_Bootstrap_DistMetadata_File = "{{.Start}}-{{.End}}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_Bootstrap_DistMetadata.json"
 	exec_Bootstrap_DistMetadata_Tmpl = "exec-bootstrap-submodule-distmetadata-file"
 
 	// Global-Local subprovers
-	exec_GL_Beacon_File = "{{.Start}}-{{.End}}-getZKProof_GL_Beacon.json"
-	exec_GL_Beacon_Tmpl = "exec-GL-Beacon-file"
+	exec_GL_RndBeacon_File = "{{.Start}}-{{.End}}-getZkProof_GL_Beacon.json"
+	exec_GL_RndBeacon_Tmpl = "exec-GL-Beacon-file"
 
-	exec_GL_File = "{{.Start}}-{{.End}}-getZKProof_GL.json"
+	exec_GL_File = "{{.Start}}-{{.End}}-getZkProof_GL.json"
 	exec_GL_Tmpl = "exec-GL-output-file"
 
 	// Random Beacon
-	exec_RndBeacon_DistMetadata_File = "{{.Start}}-{{.End}}-getZKProof_Bootstrap_DistMetadata.json"
+	exec_RndBeacon_DistMetadata_File = "{{.Start}}-{{.End}}-getZkProof_Bootstrap_DistMetadata.json"
 
-	exec_RndBeacon_GL_File = "{{.Start}}-{{.End}}-getZKProof_GL_Beacon.json"
+	exec_RndBeacon_GL_File = "{{.Start}}-{{.End}}-getZkProof_GL_Beacon.json"
 
-	exec_RndBeacon_File = "{{.Start}}-{{.End}}-getZKProof_RndBeacon.json"
+	exec_RndBeacon_File = "{{.Start}}-{{.End}}-getZkProof_RndBeacon.json"
 	exec_RndBeacon_Tmpl = "exec-rndbeacon-output-file"
 
 	// LPP-subprovers
-	exec_LPP_File = "{{.Start}}-{{.End}}-getZKProof_LPP.json"
+	exec_LPP_File = "{{.Start}}-{{.End}}-getZkProof_LPP.json"
 	exec_LPP_Tmpl = "exec-LPP-output-file"
 
 	// Conglomerator
-	// exec_Congolomerate_GL_File = "{{.Start}}-{{.End}}-.getZKProof_GL.json"
-
-	// exec_Congolomerate_LPP_File = "{{.Start}}-{{.End}}-.getZKProof_LPP.json"
-
-	// exec_Congolomerate_Metadata_File = "{{.Start}}-{{.End}}-.getZKProof_Bootstrap_DistMetadata.json"
-
-	exec_Congolomerate_File = "{{.Start}}-{{.End}}-.getZKProof.json"
+	exec_Congolomerate_File = "{{.Start}}-{{.End}}-.getZkProof.json"
 	exec_Congolomerate_Tmpl = "exec-output-file"
 )
 
+// createJobDefinition creates a new JobDefinition with the provided parameters.
+// It sets up the job's name, priority, request directory, input file pattern, and output template.
+// The function returns a pointer to the JobDefinition and an error if any occurs during the setup.
 func createJobDefinition(name string, priority int,
 	reqRootDir, inputFilePattern string,
 	outputTmpl, outputFileName string) (*JobDefinition, error) {
@@ -136,22 +133,38 @@ func createJobDefinition(name string, priority int,
 	}, nil
 }
 
-func BootstrapSubModDefinition(conf *config.Config) (*JobDefinition, error) {
+// BootstrapGLSubModDefinition creates a job definition for the Bootstrap GL Submodule job.
+// It sets the input file pattern based on the configuration and creates the job definition
+// with the appropriate parameters.
+func BootstrapGLSubModDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
 	if conf.Bootstrap_Submodule.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
-	inputFilePattern := fmt.Sprintf(exec_Bootstrap_Submodule_InputPattern, inpFileExt, config.FailSuffix)
-	return createJobDefinition(job_Exec_Bootstrap_Submodule, priority_Exec_Bootstrap_Submodule,
-		conf.Bootstrap_Submodule.RequestsRootDir, inputFilePattern, exec_Bootstrap_Submodule_Tmpl, exec_Bootstrap_Submodule_File)
+	inputFilePattern := fmt.Sprintf(exec_Bootstrap_GLSubmodule_InputPattern, inpFileExt, config.FailSuffix)
+	return createJobDefinition(job_Exec_Bootstrap_GLSubmodule, priority_Exec_Bootstrap_GLSubmodule,
+		conf.Bootstrap_Submodule.RequestsRootDir, inputFilePattern, exec_Bootstrap_Submodule_Tmpl, exec_Bootstrap_GLSubmodule_File)
 }
 
-func BootstrapMetadataDefinition(conf *config.Config) (*JobDefinition, error) {
+// BootstrapDistMetadataDefinition creates a job definition for the Bootstrap Metadata job.
+// It sets the input file pattern based on the configuration and creates the job definition
+// with the appropriate parameters.
+func BootstrapDistMetadataDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
 	if conf.Bootstrap_Metadata.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
-	inputFilePattern := fmt.Sprintf(exec_Bootstrap_MetaData_InputPattern, inpFileExt, config.FailSuffix)
-	return createJobDefinition(job_Exec_Bootstrap_Metadata, priority_Exec_Bootstrap_Metadata,
+	inputFilePattern := fmt.Sprintf(exec_Bootstrap_DistMetaData_InputPattern, inpFileExt, config.FailSuffix)
+	return createJobDefinition(job_Exec_Bootstrap_DistMetadata, priority_Exec_Bootstrap_DistMetadata,
 		conf.Bootstrap_Metadata.RequestsRootDir, inputFilePattern, exec_Bootstrap_DistMetadata_Tmpl, exec_Bootstrap_DistMetadata_File)
+}
+
+func GLRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
+	inpFileExt := ""
+	if conf.GLExecution.CanRunFullLarge {
+		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
+	}
+	inputFilePattern := fmt.Sprintf(exec_GL_RndBeacon_InputPattern, inpFileExt, config.FailSuffix)
+	return createJobDefinition(job_Exec_GL_RndBeacon, priority_Exec_GL_RndBeacon,
+		conf.GLExecution.RequestsRootDir, inputFilePattern, exec_GL_RndBeacon_Tmpl, exec_GL_RndBeacon_File)
 }
