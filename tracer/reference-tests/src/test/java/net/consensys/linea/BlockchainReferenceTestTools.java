@@ -412,6 +412,8 @@ public class BlockchainReferenceTestTools {
                 ? HeaderValidationMode.LIGHT
                 : HeaderValidationMode.FULL;
 
+        // Note: somehow this function is calling traceEndBlock through
+        // blockValidator.validateAndProcessBlock
         final BlockImportResult importResult =
             blockImporter.importBlock(context, block, validationMode, validationMode);
         log.info(
@@ -425,7 +427,6 @@ public class BlockchainReferenceTestTools {
                 importResult.isImported(),
                 candidateBlock.isValid());
 
-        zkTracer.traceEndBlock(block.getHeader(), block.getBody());
       } catch (final RLPException e) {
         log.info("caught RLP exception, checking it's invalid {}", candidateBlock.isValid());
         assertThat(candidateBlock.isValid()).isFalse();

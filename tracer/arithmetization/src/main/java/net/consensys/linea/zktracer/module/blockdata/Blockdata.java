@@ -19,7 +19,6 @@ import static net.consensys.linea.zktracer.module.blockdata.Trace.GAS_LIMIT_MAXI
 import static net.consensys.linea.zktracer.module.blockdata.Trace.nROWS_DEPTH;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.*;
 
@@ -30,8 +29,8 @@ import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
@@ -40,12 +39,14 @@ public class Blockdata implements Module {
   private final Wcp wcp;
   private final Euc euc;
   private final TxnData txnData;
+  private final Bytes chainId;
 
-  private final Deque<BlockdataOperation> operations = new ArrayDeque<>();
+  private final List<BlockdataOperation> operations = new ArrayList<>();
   private long firstBlockNumber;
-  private Bytes chainId;
 
-  final OpCode[] opCodes = {
+  private boolean conflationFinished = false;
+
+  private static final OpCode[] opCodes = {
     OpCode.COINBASE,
     OpCode.TIMESTAMP,
     OpCode.NUMBER,
@@ -54,10 +55,6 @@ public class Blockdata implements Module {
     OpCode.CHAINID,
     OpCode.BASEFEE
   };
-
-  public void setChainId(BigInteger chainId) {
-    this.chainId = EWord.of(chainId).lo();
-  }
 
   @Override
   public String moduleKey() {
@@ -79,6 +76,11 @@ public class Blockdata implements Module {
         );
 
     euc.additionalRows.add(8);
+  }
+
+  @Override
+  public void traceEndConflation(final WorldView state) {
+    conflationFinished = true;
   }
 
   @Override
@@ -113,7 +115,7 @@ public class Blockdata implements Module {
 
   @Override
   public int lineCount() {
-    final int numberOfBlock = (operations.size() / opCodes.length);
+    final int numberOfBlock = (operations.size() / opCodes.length) + (conflationFinished ? 0 : 1);
     return numberOfBlock * nROWS_DEPTH;
   }
 

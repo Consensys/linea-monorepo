@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.instructionprocessing.ZeroSizeTests;
+package net.consensys.linea.zktracer.instructionprocessing.zeroSize;
 
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
 
