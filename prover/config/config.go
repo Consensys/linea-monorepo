@@ -120,7 +120,7 @@ type Config struct {
 
 	LPPExecution Execution `mapstructure:"execution_lpp"`
 
-	Conglomeration Execution `mapstructure:"execution_conglomeration"`
+	Conglomeration Conglomeration `mapstructure:"execution_conglomeration"`
 
 	Debug struct {
 		// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
@@ -154,6 +154,23 @@ type RndBeacon struct {
 	GL WithRequestDir `mapstructure:",squash"`
 
 	MetaData WithRequestDir `mapstructure:",squash"`
+
+	// ProverMode stores the kind of prover to use.
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
+
+	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
+	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
+
+	// ConflatedTracesDir stores the directory where the conflation traces are stored.
+	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
+}
+
+type Conglomeration struct {
+	GL WithRequestDir `mapstructure:",squash"`
+
+	LPP WithRequestDir `mapstructure:",squash"`
+
+	BootstrapMetadata WithRequestDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`

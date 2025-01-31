@@ -26,9 +26,9 @@ const (
 	job_Exec_LPP = "exec-LPP"
 
 	// Conglomerator
-	job_Exec_Congolomerate_LPP      = "exec-congolo-LPP"
-	job_Exec_Congolomerate_GL       = "exec-congolo-GL"
-	job_Exec_Congolomerate_Metadata = "exec-congolo-metadata"
+	job_Exec_Congolomerate_LPP                = "exec-congolo-LPP"
+	job_Exec_Congolomerate_GL                 = "exec-congolo-GL"
+	job_Exec_Congolomerate_Bootstrap_Metadata = "exec-congolo-metadata"
 )
 
 // Priorities
@@ -65,9 +65,9 @@ const (
 	exec_LPP_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_RndBeacon\.json%v(\.failure\.%v_[0-9]+)*$`
 
 	// Conglomerator Input
-	exec_Conglomerate_GL_InputPattern           = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_GL\.json%v(\.failure\.%v_[0-9]+)*$`
-	exec_Conglomerate_LPP_InputPattern          = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_LPP\.json%v(\.failure\.%v_[0-9]+)*$`
-	exec_Conglomerate_DistMetadata_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_Bootstrap_DistMetadata\.json%v(\.failure\.%v_[0-9]+)*$`
+	exec_Conglomerate_GL_InputPattern                     = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_GL\.json%v(\.failure\.%v_[0-9]+)*$`
+	exec_Conglomerate_LPP_InputPattern                    = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_LPP\.json%v(\.failure\.%v_[0-9]+)*$`
+	exec_Conglomerate_Bootstrap_DistMetadata_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_Bootstrap_DistMetadata\.json%v(\.failure\.%v_[0-9]+)*$`
 )
 
 // Ouput File patterns and templates
@@ -94,7 +94,7 @@ const (
 	exec_LPP_Tmpl = "exec-LPP-output-file"
 
 	// Conglomerator
-	exec_Congolomerate_File = "{{.Start}}-{{.End}}-.getZkProof.json"
+	exec_Congolomerate_File = "{{.Start}}-{{.End}}-getZkProof.json"
 	exec_Congolomerate_Tmpl = "exec-output-file"
 )
 
@@ -207,4 +207,34 @@ func LPPDefinition(conf *config.Config) (*JobDefinition, error) {
 	inputFilePattern := fmt.Sprintf(exec_LPP_InputPattern, inpFileExt, config.FailSuffix)
 	return createJobDefinition(job_Exec_LPP, priority_Exec_LPP,
 		conf.LPPExecution.RequestsRootDir, inputFilePattern, exec_LPP_Tmpl, exec_LPP_File)
+}
+
+func ConglomerateDistMetadataDefinition(conf *config.Config) (*JobDefinition, error) {
+	inpFileExt := ""
+	if conf.Conglomeration.CanRunFullLarge {
+		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
+	}
+	inputFilePattern := fmt.Sprintf(exec_Conglomerate_Bootstrap_DistMetadata_InputPattern, inpFileExt, config.FailSuffix)
+	return createJobDefinition(job_Exec_Congolomerate_Bootstrap_Metadata, priority_Exec_Congolomerate_Metadata,
+		conf.Conglomeration.BootstrapMetadata.RequestsRootDir, inputFilePattern, exec_Congolomerate_Tmpl, exec_Congolomerate_File)
+}
+
+func ConglomerateGLDefinition(conf *config.Config) (*JobDefinition, error) {
+	inpFileExt := ""
+	if conf.Conglomeration.CanRunFullLarge {
+		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
+	}
+	inputFilePattern := fmt.Sprintf(exec_Conglomerate_GL_InputPattern, inpFileExt, config.FailSuffix)
+	return createJobDefinition(job_Exec_Congolomerate_GL, priority_Exec_Congolomerate_GL,
+		conf.Conglomeration.GL.RequestsRootDir, inputFilePattern, exec_Congolomerate_Tmpl, exec_Congolomerate_File)
+}
+
+func ConglomerateLPPDefinition(conf *config.Config) (*JobDefinition, error) {
+	inpFileExt := ""
+	if conf.Conglomeration.CanRunFullLarge {
+		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
+	}
+	inputFilePattern := fmt.Sprintf(exec_Conglomerate_LPP_InputPattern, inpFileExt, config.FailSuffix)
+	return createJobDefinition(job_Exec_Congolomerate_LPP, priority_Exec_Congolomerate_LPP,
+		conf.Conglomeration.LPP.RequestsRootDir, inputFilePattern, exec_Congolomerate_Tmpl, exec_Congolomerate_File)
 }
