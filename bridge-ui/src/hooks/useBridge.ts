@@ -4,7 +4,7 @@ import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { Address, parseUnits } from "viem";
 import log from "loglevel";
 import USDCBridge from "@/abis/USDCBridge.json";
-import TokenBridge from "@/abis/TokenBridgeV1.json";
+import TokenBridge from "@/abis/TokenBridge.json";
 import MessageService from "@/abis/MessageService.json";
 import { TokenType } from "@/config/config";
 import { BridgeError, BridgeErrors, Transaction } from "@/models";
