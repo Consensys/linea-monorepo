@@ -27,7 +27,7 @@ type DistributedProjection struct {
 
 type DistributedProjectionParams struct {
 	HornerVal field.Element
-	EvalRand  field.Element
+	EvalRands []field.Element
 }
 
 func NewDistributedProjection(round int, id ifaces.QueryID, inp []*DistributedProjectionInput) DistributedProjection {
@@ -52,8 +52,8 @@ func NewDistributedProjection(round int, id ifaces.QueryID, inp []*DistributedPr
 }
 
 // Constructor for distributed projection query parameters
-func NewDistributedProjectionParams(hornerVal, evalRand field.Element) DistributedProjectionParams {
-	return DistributedProjectionParams{HornerVal: hornerVal, EvalRand: evalRand}
+func NewDistributedProjectionParams(hornerVal field.Element, evalRands []field.Element) DistributedProjectionParams {
+	return DistributedProjectionParams{HornerVal: hornerVal, EvalRands: evalRands}
 }
 
 // Name returns the unique identifier of the GrandProduct query.
@@ -63,15 +63,20 @@ func (dp DistributedProjection) Name() ifaces.QueryID {
 
 // Updates a Fiat-Shamir state
 func (dpp DistributedProjectionParams) UpdateFS(fs *fiatshamir.State) {
-	fs.Update(dpp.HornerVal, dpp.EvalRand)
+	// Todo: we need dist_projection.MaxNumOfQueriesPerModule + 1 which
+	// introduce import error, remove hardcoded size
+	fsInput := make([]field.Element, 0, 11)
+	fsInput = append(fsInput, dpp.HornerVal)
+	fsInput = append(fsInput, dpp.EvalRands...)
+	fs.Update(fsInput...)
 }
 
 func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 	var (
 		actualParam = field.Zero()
-		params       = run.GetParams(dp.ID).(DistributedProjectionParams)
+		params      = run.GetParams(dp.ID).(DistributedProjectionParams)
 	)
-	for _, inp := range dp.Inp {
+	for index, inp := range dp.Inp {
 		var (
 			colABoard    = inp.ColumnA.Board()
 			colBBoard    = inp.ColumnB.Board()
@@ -81,18 +86,18 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 			colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
 			filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
 			filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
-			elemParam = field.One()
+			elemParam    = field.One()
 		)
 		if inp.IsAInModule && !inp.IsBInModule {
-			hornerA := poly.CmptHorner(colA, filterA, params.EvalRand)
+			hornerA := poly.CmptHorner(colA, filterA, params.EvalRands[index])
 			elemParam = hornerA[0]
 		} else if !inp.IsAInModule && inp.IsBInModule {
-			hornerB := poly.CmptHorner(colB, filterB, params.EvalRand)
+			hornerB := poly.CmptHorner(colB, filterB, params.EvalRands[index])
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 		} else if inp.IsAInModule && inp.IsBInModule {
-			hornerA := poly.CmptHorner(colA, filterA, params.EvalRand)
-			hornerB := poly.CmptHorner(colB, filterB, params.EvalRand)
+			hornerA := poly.CmptHorner(colA, filterA, params.EvalRands[index])
+			hornerB := poly.CmptHorner(colB, filterB, params.EvalRands[index])
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 			elemParam.Add(&elemParam, &hornerA[0])

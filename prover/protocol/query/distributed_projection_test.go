@@ -135,7 +135,7 @@ func TestDistributedProjection(t *testing.T) {
 				run.AssignColumn(columnB.GetColID(), smartvectors.RightZeroPadded(columnBWit, flagSizeB))
 				run.AssignColumn(columnA.GetColID(), smartvectors.RightZeroPadded(columnAWit, flagSizeA))
 
-				runS.AssignDistributedProjection(tc.QueryName, query.DistributedProjectionParams{HornerVal: tc.HornerParam, EvalRand: evalRand})
+				runS.AssignDistributedProjection(tc.QueryName, query.DistributedProjectionParams{HornerVal: tc.HornerParam, EvalRands: []field.Element{evalRand}})
 			}
 			var (
 				comp  = wizard.Compile(tc.DefineFunc)

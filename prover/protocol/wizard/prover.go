@@ -843,6 +843,6 @@ func (run *ProverRuntime) AssignDistributedProjection(name ifaces.QueryID, distr
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
 	// Adds it to the assignments
-	params := query.NewDistributedProjectionParams(distributedProjectionParam.HornerVal, distributedProjectionParam.EvalRand)
+	params := query.NewDistributedProjectionParams(distributedProjectionParam.HornerVal, distributedProjectionParam.EvalRands)
 	run.QueriesParams.InsertNew(name, params)
 }
