@@ -1,6 +1,6 @@
 FROM golang:1.23-alpine as builder
 
-RUN apk add --no-cache git && git clone https://github.com/protolambda/eth2-testnet-genesis.git \
+RUN apk add --no-cache git && git clone -b kaustinen-genesis --single-branch https://github.com/gballet/eth2-testnet-genesis.git \
     && cd eth2-testnet-genesis \
     && go install .
 
