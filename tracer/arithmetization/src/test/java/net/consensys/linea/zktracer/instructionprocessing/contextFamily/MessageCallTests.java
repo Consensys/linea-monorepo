@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.instructionprocessing.ContextFamilyTests;
+package net.consensys.linea.zktracer.instructionprocessing.contextFamily;
 
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendCall;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.keyPair;
