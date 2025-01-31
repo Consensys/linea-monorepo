@@ -6,7 +6,7 @@ import { Address, parseUnits } from "viem";
 import { TokenType, wagmiConfig } from "@/config";
 import { useChainStore } from "@/stores/chainStore";
 import USDCBridge from "@/abis/USDCBridge.json";
-import TokenBridge from "@/abis/TokenBridge.json";
+import TokenBridge from "@/abis/TokenBridgeV1.json";
 import MessageService from "@/abis/MessageService.json";
 
 const useGasEstimation = () => {

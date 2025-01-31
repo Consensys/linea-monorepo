@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { readContract } from "@wagmi/core";
 import { Address, Chain, zeroAddress } from "viem";
 import log from "loglevel";
-import TokenBridge from "@/abis/TokenBridge.json";
+import TokenBridge from "@/abis/TokenBridgeV1.json";
 import { config, TokenInfo } from "@/config/config";
 import { getChainNetworkLayer } from "@/utils/chainsUtil";
 import { wagmiConfig } from "@/config";

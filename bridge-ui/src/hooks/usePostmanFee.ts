@@ -6,7 +6,7 @@ import { useChainStore } from "@/stores/chainStore";
 import { getPublicClient } from "@wagmi/core";
 import { useQueryClient } from "@tanstack/react-query";
 import USDCBridge from "@/abis/USDCBridge.json";
-import TokenBridge from "@/abis/TokenBridge.json";
+import TokenBridge from "@/abis/TokenBridgeV1.json";
 import MessageService from "@/abis/MessageService.json";
 
 function computeMessageHash(
