@@ -1,6 +1,5 @@
 package linea.domain
 
-import linea.domain.MapperLineaDomainToBesu.toWei
 import net.consensys.eth
 import net.consensys.gwei
 import net.consensys.toBigInteger
@@ -11,6 +10,7 @@ import org.hyperledger.besu.crypto.SECP256K1
 import org.hyperledger.besu.crypto.SECPSignature
 import org.hyperledger.besu.crypto.SignatureAlgorithm
 import org.hyperledger.besu.datatypes.Address
+import org.hyperledger.besu.datatypes.Wei
 import java.math.BigInteger
 import kotlin.random.Random
 
@@ -210,19 +210,6 @@ object TransactionFactory {
       .signature
   }
 
-  /**
-   * public BigInteger getV() {
-   *     if (transactionType != null && transactionType != TransactionType.FRONTIER) {
-   *       // EIP-2718 typed transaction, use yParity:
-   *       return null;
-   *     } else {
-   *       final BigInteger recId = BigInteger.valueOf(signature.getRecId());
-   *       return chainId
-   *           .map(bigInteger -> recId.add(REPLAY_PROTECTED_V_BASE).add(TWO.multiply(bigInteger)))
-   *           .orElseGet(() -> recId.add(REPLAY_UNPROTECTED_V_BASE));
-   *     }
-   *   }
-   */
   fun calcV(
     transactionType: TransactionType,
     signature: SECPSignature,
@@ -236,6 +223,18 @@ object TransactionFactory {
       return chainId
         ?.let { (recId + 35UL) + (2UL * chainId) }
         ?: (recId + 27UL)
+    }
+  }
+
+  fun ULong.toWei(): Wei = Wei.of(this.toBigInteger())
+  fun BigInteger.toWei(): Wei = Wei.of(this)
+  fun TransactionType.toBesu(): org.hyperledger.besu.datatypes.TransactionType {
+    return when (this) {
+      linea.domain.TransactionType.FRONTIER -> org.hyperledger.besu.datatypes.TransactionType.FRONTIER
+      linea.domain.TransactionType.EIP1559 -> org.hyperledger.besu.datatypes.TransactionType.EIP1559
+      linea.domain.TransactionType.ACCESS_LIST -> org.hyperledger.besu.datatypes.TransactionType.ACCESS_LIST
+      linea.domain.TransactionType.BLOB -> org.hyperledger.besu.datatypes.TransactionType.BLOB
+      linea.domain.TransactionType.DELEGATE_CODE -> org.hyperledger.besu.datatypes.TransactionType.DELEGATE_CODE
     }
   }
 }
