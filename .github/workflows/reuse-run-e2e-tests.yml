@@ -75,6 +75,7 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
+    # xl saves ~0 mins
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     steps:
       - name: Setup upterm session
@@ -95,15 +96,13 @@ jobs:
       - name: Create directory for conflated traces
         run: |
           mkdir -p tmp/local/traces/v2/conflated
-          chmod -R a+w tmp/local/traces/v2/conflated
-      - name: Restore cached images
-        id: restore-cached-images
-        uses: actions/cache/restore@v4.0.2
-        with:
-          path: ~/docker-images
-          key: cached-images
-          restore-keys: |
-            cached-
+          chmod -R a+rw tmp/local/
+      # Disable cache for pulling docker images as empirically found that this
+      # (retrieving cache and loading docker images) actually increased test time-to-completion
+      # - name: Restore cached images
+      #   id: restore-cached-images
+      #   uses: ./.github/actions/restore-docker-images
+      #   continue-on-error: true
       - name: Pull all images with retry
         uses: nick-fields/retry@v3
         with:
@@ -112,7 +111,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make pull-images-external-to-monorepo
+            make docker-pull-images-external-to-monorepo
       - name: Download local docker image artifacts
         uses: actions/download-artifact@v4
         with:
@@ -135,7 +134,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make start-all
+            make start-env-with-tracing-v1-ci CLEAN_PREVIOUS_ENV=false
           on_retry_command: |
             make clean-environment
       - name: Spin up fresh environment with besu tracing with retry
@@ -147,7 +146,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make start-all-traces-v2
+            make start-env-with-tracing-v2-ci CLEAN_PREVIOUS_ENV=false
           on_retry_command: |
             make clean-environment
       - name: List docker containers/images
@@ -169,24 +168,25 @@ jobs:
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}
         run: |
           mkdir -p docker_logs
-          docker ps -a >> docker_logs/docker_ps.txt
-          docker logs coordinator --since 1h &>> docker_logs/coordinator.txt
-          docker logs prover --since 1h &>> docker_logs/prover.txt
-          docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt;
-          docker logs shomei --since 1h &>> docker_logs/shomei.txt
-          docker logs zkbesu-shomei --since 1h &>> docker_logs/zkbesu-shomei.txt
-          docker logs shomei-frontend --since 1h &>> docker_logs/shomei-frontend.txt
-          docker logs postman --since 1h &>> docker_logs/postman.txt
-          docker logs traces-node --since 1h &>> docker_logs/traces-node.txt
-          docker logs traces-node-v2 --since 1h &>> docker_logs/traces-node-v2.txt;
-          docker logs l2-node-besu --since 1h &>> docker_logs/l2-node-besu.txt;
-          docker logs transaction-exclusion-api --since 1h &>> docker_logs/transaction-exclusion-api.txt
-          docker logs sequencer --since 1h &>> docker_logs/sequencer.txt
+          find tmp/local/ >> docker_logs/files_in_shared_dir.txt || true
+          docker ps -a >> docker_logs/docker_ps.txt || true
+          docker logs coordinator --since 1h &>> docker_logs/coordinator.txt || true
+          docker logs prover --since 1h &>> docker_logs/prover.txt || true
+          docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt; || true
+          docker logs shomei --since 1h &>> docker_logs/shomei.txt || true
+          docker logs zkbesu-shomei --since 1h &>> docker_logs/zkbesu-shomei.txt || true
+          docker logs shomei-frontend --since 1h &>> docker_logs/shomei-frontend.txt || true
+          docker logs postman --since 1h &>> docker_logs/postman.txt || true
+          docker logs traces-node --since 1h &>> docker_logs/traces-node.txt || true || true
+          docker logs traces-node-v2 --since 1h &>> docker_logs/traces-node-v2.txt; || true
+          docker logs l2-node-besu --since 1h &>> docker_logs/l2-node-besu.txt; || true
+          docker logs transaction-exclusion-api --since 1h &>> docker_logs/transaction-exclusion-api.txt || true
+          docker logs sequencer --since 1h &>> docker_logs/sequencer.txt || true
       - name: Archive debug logs
         uses: actions/upload-artifact@v4
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}
         with:
-          name: end-2-end-debug-logs
+          name: end-2-end-debug-logs-${{ inputs.tracing-engine }}
           if-no-files-found: error
           path: |
             docker_logs/**/*
