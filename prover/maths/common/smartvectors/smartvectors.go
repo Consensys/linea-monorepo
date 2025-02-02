@@ -79,7 +79,7 @@ func PseudoRand(rng *rand.Rand, n int) SmartVector {
 	return NewRegular(vector.PseudoRand(rng, n))
 }
 
-// ForTest returns a witness from a explicit litteral assignement
+// ForTest returns a witness from a explicit litteral assignment
 func ForTest(xs ...int) SmartVector {
 	return NewRegular(vector.ForTest(xs...))
 }
