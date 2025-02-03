@@ -264,10 +264,12 @@ func (r *Store) AllPrecomputed() []ifaces.ColID {
 func (r *Store) AllVerifyingKey() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
-	var rnd []*storedColumnInfo
-	if (r.byRounds.Len()) != 0 {
-		rnd = r.byRounds.MustGet(0) // precomputed are always at round zero
+	// This supports the case where the compiled-IOP does not store any column.
+	if r.byRounds.Len() == 0 {
+		return []ifaces.ColID{}
 	}
+
+	rnd := r.byRounds.MustGet(0) // precomputed are always at round zero
 
 	for i, info := range rnd {
 		if info.Status != VerifyingKey {
