@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import { IRewardProvider } from "../../src/interfaces/IRewardProvider.sol";
 
 contract XPProviderMock is IRewardProvider {
+    // solhint-disable-next-line
     mapping(address => uint256) public userXPShare;
 
     uint256 public totalXPShares;

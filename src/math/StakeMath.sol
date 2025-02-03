@@ -51,6 +51,7 @@ abstract contract StakeMath is MultiplierPointMath {
     {
         uint256 newBalance = _balance + _increasedAmount;
         _newLockEnd = Math.max(_currentLockEndTime, _processTime) + _increasedLockSeconds;
+        // solhint-disable-next-line
         uint256 dt_lock = _newLockEnd - _processTime;
         if (dt_lock != 0 && (dt_lock < MIN_LOCKUP_PERIOD || dt_lock > MAX_LOCKUP_PERIOD)) {
             revert StakeMath__InvalidLockingPeriod();
@@ -99,6 +100,7 @@ abstract contract StakeMath is MultiplierPointMath {
         }
 
         _newLockEnd = Math.max(_currentLockEndTime, _processTime) + _increasedLockSeconds;
+        // solhint-disable-next-line
         uint256 dt_lock = _newLockEnd - _processTime;
         if (dt_lock != 0 && (dt_lock < MIN_LOCKUP_PERIOD || dt_lock > MAX_LOCKUP_PERIOD)) {
             revert StakeMath__InvalidLockingPeriod();

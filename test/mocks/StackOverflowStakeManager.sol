@@ -6,7 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TrustedCodehashAccess } from "./../../src/TrustedCodehashAccess.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import { IStakeConstants } from "./../../src/interfaces/IStakeConstants.sol";
 
 contract StackOverflowStakeManager is
     UUPSUpgradeable,
@@ -14,6 +13,7 @@ contract StackOverflowStakeManager is
     TrustedCodehashAccess,
     ReentrancyGuardUpgradeable
 {
+    // solhint-disable-next-line
     IERC20 public STAKING_TOKEN;
 
     uint256 public constant SCALE_FACTOR = 1e18;
@@ -42,15 +42,19 @@ contract StackOverflowStakeManager is
 
     mapping(address account => Account data) public accounts;
 
+    // solhint-disable-next-line
     function getStakedBalance(address _vault) external view override returns (uint256 _balance) {
         // implementation
     }
+    // solhint-disable-next-line
     function lock(uint256 _seconds) external override {
         // implementation
     }
+    // solhint-disable-next-line
     function stake(uint256 _amount, uint256 _seconds) external override {
         // implementation
     }
+    // solhint-disable-next-line
     function unstake(uint256 _amount) external override {
         // implementation
     }
@@ -67,6 +71,7 @@ contract StackOverflowStakeManager is
         return accounts[_account];
     }
 
+    // solhint-disable-next-line
     function registerVault() external override {
         // implementation
     }
