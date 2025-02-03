@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
@@ -92,6 +93,13 @@ func (comp *compTranslator) GetColumn(name ifaces.ColID) ifaces.Column {
 	return comp.Target.Columns.GetHandle(name)
 }
 
+// ColumnExists returns a boolean indicating of the column is already
+// registered in the translator.
+func (comp *compTranslator) ColumnExists(name ifaces.ColID) bool {
+	name = ifaces.ColID(comp.Prefix) + "." + name
+	return comp.Target.Columns.Exists(name)
+}
+
 // InsertCoin inserts a new coin in the target compiled IOP. The coin name
 // is prefixed with the comp.Prefix.
 func (comp *compTranslator) InsertCoin(info coin.Info) coin.Info {
@@ -144,7 +152,9 @@ func (comp *compTranslator) InsertQueryParams(round int, q ifaces.Query) ifaces.
 // TranslateColumnList translates a collection of pre-inserted columns.
 // If one of the columns provided in the list is nil, it will be ignored
 // and the function will return nil at the same position in the returned
-// list of column.
+// list of column. If the column is non-nil but not found in the translated
+// comp, then it is assumed the column is a verifier col and the column is
+// returned as is.
 func (comp *compTranslator) TranslateColumnList(cols []ifaces.Column) []ifaces.Column {
 	res := make([]ifaces.Column, 0, len(cols))
 	for _, col := range cols {
@@ -152,6 +162,12 @@ func (comp *compTranslator) TranslateColumnList(cols []ifaces.Column) []ifaces.C
 		if col == nil {
 			res = append(res, nil)
 			continue
+		}
+
+		if !comp.ColumnExists(col.GetColID()) {
+			if _, ok := col.(verifiercol.VerifierCol); !ok {
+				utils.Panic("expects all the unregistered methods to be verifiercol, but got type=%T for column name=%v", col, col.GetColID())
+			}
 		}
 
 		res = append(res, comp.GetColumn(col.GetColID()))
@@ -165,8 +181,8 @@ func (comp *compTranslator) TranslateColumnVecVec(cols collection.VecVec[ifaces.
 	for r, vec := range cols.Inner() {
 		for _, c := range vec {
 
-			// If it does not exists, then it is a verifier column
-			if !comp.Target.Columns.Exists(c) {
+			// If it does not exists, then it is assumed to be a verifier column
+			if !comp.ColumnExists(c) {
 				res.AppendToInner(r, c)
 				continue
 			}
@@ -182,8 +198,8 @@ func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) m
 	var res = make(map[ifaces.ColID]struct{})
 	for col := range cols {
 
-		// If it does not exists, then it is a verifier column
-		if !comp.Target.Columns.Exists(col) {
+		// If it does not exists, then it is assumed to be a verifier column
+		if !comp.ColumnExists(col) {
 			res[col] = struct{}{}
 			continue
 		}
