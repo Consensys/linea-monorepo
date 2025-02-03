@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import { Test } from "forge-std/Test.sol";
 
 import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
-import { StakeManagerProxy } from "../src/StakeManagerProxy.sol";
+import { TransparentProxy } from "../src/TransparentProxy.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { MockToken } from "./mocks/MockToken.sol";
@@ -33,7 +33,7 @@ contract StakeVaultTest is Test {
         bytes memory initializeData = abi.encodeWithSelector(
             RewardsStreamerMP.initialize.selector, address(this), address(stakingToken), address(rewardToken)
         );
-        address proxy = address(new StakeManagerProxy(impl, initializeData));
+        address proxy = address(new TransparentProxy(impl, initializeData));
         streamer = RewardsStreamerMP(proxy);
 
         stakingToken.mint(alice, 10_000e18);

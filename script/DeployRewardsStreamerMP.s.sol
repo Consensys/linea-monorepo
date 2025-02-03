@@ -3,8 +3,8 @@ pragma solidity ^0.8.26;
 
 import { BaseScript } from "./Base.s.sol";
 import { DeploymentConfig } from "./DeploymentConfig.s.sol";
+import { TransparentProxy } from "../src/TransparentProxy.sol";
 import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
-import { StakeManagerProxy } from "../src/StakeManagerProxy.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 
@@ -16,8 +16,11 @@ contract DeployRewardsStreamerMPScript is BaseScript {
         bytes memory initializeData = abi.encodeCall(RewardsStreamerMP.initialize, (deployer, stakingToken));
 
         vm.startBroadcast(deployer);
+
+        // Deploy RewardsStreamerMP logic contract
         address impl = address(new RewardsStreamerMP());
-        address proxy = address(new StakeManagerProxy(impl, initializeData));
+        // Create upgradeable proxy
+        address proxy = address(new TransparentProxy(impl, initializeData));
         vm.stopBroadcast();
 
         RewardsStreamerMP stakeManager = RewardsStreamerMP(proxy);

@@ -12,7 +12,6 @@ import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeMath } from "../src/math/StakeMath.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
-import { StakeManagerProxy } from "../src/StakeManagerProxy.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 import { StackOverflowStakeManager } from "./mocks/StackOverflowStakeManager.sol";
 
