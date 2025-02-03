@@ -99,6 +99,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
         new CallParams(
             null,
             sender.getAddress(),
+            null,
             sender.getAddress(),
             null,
             Bytes.EMPTY.toHexString(),
@@ -123,6 +124,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
         new CallParams(
             null,
             sender.getAddress(),
+            null,
             sender.getAddress(),
             null,
             Bytes.EMPTY.toHexString(),
@@ -146,6 +148,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
         new CallParams(
             "0x539",
             sender.getAddress(),
+            null,
             sender.getAddress(),
             null,
             Bytes.EMPTY.toHexString(),
@@ -169,6 +172,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
         new CallParams(
             null,
             sender.getAddress(),
+            null,
             sender.getAddress(),
             null,
             Bytes.EMPTY.toHexString(),
@@ -192,6 +196,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
         new CallParams(
             "0x539",
             sender.getAddress(),
+            null,
             sender.getAddress(),
             null,
             Bytes.EMPTY.toHexString(),
@@ -219,6 +224,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
         new CallParams(
             "0x539",
             sender.getAddress(),
+            null,
             sender.getAddress(),
             "1",
             Bytes.EMPTY.toHexString(),
@@ -237,6 +243,49 @@ public class EstimateGasTest extends LineaPluginTestBase {
     assertThat(respLinea.getError().getMessage())
         .isEqualTo(
             "transaction up-front cost 0x208cbab601 exceeds transaction sender account balance 0x0");
+  }
+
+  @Test
+  public void passingNonceWorks() {
+
+    final Account sender = accounts.getSecondaryBenefactor();
+
+    final CallParams callParams =
+        new CallParams(
+            null,
+            sender.getAddress(),
+            "0",
+            sender.getAddress(),
+            null,
+            Bytes.EMPTY.toHexString(),
+            "0",
+            null,
+            "0x1234",
+            null);
+
+    final var reqLinea = new LineaEstimateGasRequest(callParams);
+    final var respLinea = reqLinea.execute(minerNode.nodeRequests());
+    assertThat(respLinea.hasError()).isFalse();
+    assertThat(respLinea.getResult()).isNotNull();
+
+    // try with a future nonce
+    final CallParams callParamsFuture =
+        new CallParams(
+            null,
+            sender.getAddress(),
+            "10",
+            sender.getAddress(),
+            null,
+            Bytes.EMPTY.toHexString(),
+            "0",
+            null,
+            "0x1234",
+            null);
+
+    final var reqLineaFuture = new LineaEstimateGasRequest(callParamsFuture);
+    final var respLineaFuture = reqLineaFuture.execute(minerNode.nodeRequests());
+    assertThat(respLineaFuture.hasError()).isFalse();
+    assertThat(respLineaFuture.getResult()).isNotNull();
   }
 
   @Test
@@ -259,6 +308,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
         new CallParams(
             null,
             sender.getAddress(),
+            null,
             sender.getAddress(),
             null,
             payload.toHexString(),
@@ -320,6 +370,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
             null,
             sender.getAddress(),
             null,
+            null,
             "",
             "",
             String.valueOf(Integer.MAX_VALUE),
@@ -341,6 +392,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
             new CallParams(
                 null,
                 sender.getAddress(),
+                null,
                 simpleStorage.getContractAddress(),
                 "",
                 "",
@@ -362,6 +414,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
             new CallParams(
                 null,
                 sender.getAddress(),
+                null,
                 null,
                 "",
                 Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY,
@@ -492,6 +545,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
   record CallParams(
       String chainId,
       String from,
+      String nonce,
       String to,
       String value,
       String data,

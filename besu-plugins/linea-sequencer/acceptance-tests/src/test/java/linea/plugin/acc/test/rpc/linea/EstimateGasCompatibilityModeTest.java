@@ -71,7 +71,7 @@ public class EstimateGasCompatibilityModeTest extends EstimateGasTest {
     final Account sender = accounts.getSecondaryBenefactor();
 
     final CallParams callParams =
-        new CallParams(null, sender.getAddress(), null, "", "", "0", null, null, null);
+        new CallParams(null, sender.getAddress(), null, null, "", "", "0", null, null, null);
 
     final var reqLinea = new LineaEstimateGasRequest(callParams);
     final var respLinea = reqLinea.execute(minerNode.nodeRequests()).getResult();

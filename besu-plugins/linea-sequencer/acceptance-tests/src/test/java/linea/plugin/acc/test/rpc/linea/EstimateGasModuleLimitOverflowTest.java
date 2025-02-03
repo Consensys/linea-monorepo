@@ -50,6 +50,7 @@ public class EstimateGasModuleLimitOverflowTest extends LineaPluginTestBase {
         new EstimateGasTest.CallParams(
             null,
             sender.getAddress(),
+            null,
             simpleStorage.getContractAddress(),
             null,
             payload.toHexString(),
