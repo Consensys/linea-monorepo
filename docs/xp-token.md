@@ -36,7 +36,7 @@ XP tokens are not transferrable, but they can be used as voting power in the Sta
 - **balanceOf(address)**: Internal balance plus the sum of external balances from reward providers.
 
 ## Sources of XP Tokens
-One of the sources for the generation of XP tokens is the staking protocol, with more sources planned in the future.
+One of the sources for the generation of XP tokens is the [staking protocol](overview.md), with more sources planned in the future.
 
 ## Notes
 - The contract is designed to work alongside an external reward system.
