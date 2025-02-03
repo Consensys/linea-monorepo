@@ -1,9 +1,9 @@
 package byte32cmp
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -20,7 +20,7 @@ func Bytes32Cmp(
 	activeRow *symbolic.Expression,
 ) {
 	bcp := BytesCmpCtx{}
-	round := wizardutils.MaxRound(columnA, columnB)
+	round := column.MaxRound(columnA, columnB)
 	bcp.round = round
 	bcp.columnA = columnA
 	bcp.columnB = columnB

@@ -5,8 +5,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	projection "github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -70,12 +70,12 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 	// projection among providers and stitched module
 	for i, gbm := range d.Inputs.ProvidersData {
 
-		projection.InsertProjection(comp, ifaces.QueryIDf("Stitch_Modules_%v", i),
-			[]ifaces.Column{gbm.HashNum, gbm.Limb, gbm.NBytes, gbm.Index},
-			[]ifaces.Column{d.Provider.HashNum, d.Provider.Limb, d.Provider.NBytes, d.Provider.Index},
-			gbm.ToHash,
-			d.sFilters[i],
-		)
+		comp.InsertProjection(ifaces.QueryIDf("Stitch_Modules_%v", i),
+			query.ProjectionInput{ColumnA: []ifaces.Column{gbm.HashNum, gbm.Limb, gbm.NBytes, gbm.Index},
+				ColumnB: []ifaces.Column{d.Provider.HashNum, d.Provider.Limb, d.Provider.NBytes, d.Provider.Index},
+				FilterA: gbm.ToHash,
+				FilterB: d.sFilters[i]})
+
 	}
 
 	return d

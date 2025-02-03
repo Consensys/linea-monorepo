@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/sticker"
@@ -29,6 +30,7 @@ func Arcane(minStickSize, targetColSize int, noLog ...bool) func(comp *wizard.Co
 		permutation.CompileGrandProduct(comp)
 		lookup.CompileLogDerivative(comp)
 		innerproduct.Compile(comp)
+		projection.CompileProjection(comp)
 		if withLog_ {
 			logdata.Log("after-expansion")(comp)
 		}

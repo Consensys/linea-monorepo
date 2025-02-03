@@ -4,8 +4,8 @@
 package keccak
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
@@ -82,18 +82,17 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 		cKeccak = NewKeccakOverBlocks(comp, cKeccakInp)
 	)
 
-	projection.InsertProjection(comp, "KECCAK_RES_HI",
-		[]ifaces.Column{cKeccak.HashHi},
-		[]ifaces.Column{inp.Provider.Info.HashHi},
-		cKeccak.IsActive,
-		inp.Provider.Info.IsHashHi,
-	)
-	projection.InsertProjection(comp, "KECCAK_RES_LO",
-		[]ifaces.Column{cKeccak.HashLo},
-		[]ifaces.Column{inp.Provider.Info.HashLo},
-		cKeccak.IsActive,
-		inp.Provider.Info.IsHashLo,
-	)
+	comp.InsertProjection("KECCAK_RES_HI",
+		query.ProjectionInput{ColumnA: []ifaces.Column{cKeccak.HashHi},
+			ColumnB: []ifaces.Column{inp.Provider.Info.HashHi},
+			FilterA: cKeccak.IsActive,
+			FilterB: inp.Provider.Info.IsHashHi})
+
+	comp.InsertProjection("KECCAK_RES_LO",
+		query.ProjectionInput{ColumnA: []ifaces.Column{cKeccak.HashLo},
+			ColumnB: []ifaces.Column{inp.Provider.Info.HashLo},
+			FilterA: cKeccak.IsActive,
+			FilterB: inp.Provider.Info.IsHashLo})
 
 	// set the module
 	m := &KeccakSingleProvider{
