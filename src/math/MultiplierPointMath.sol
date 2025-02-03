@@ -25,7 +25,7 @@ abstract contract MultiplierPointMath is IStakeConstants {
     /// @notice Minimal value to generate 1 multiplier point in the accrue rate period (rounded up).
     uint256 public constant MIN_BALANCE = (((YEAR * 100) - 1) / (MP_APY * ACCRUE_RATE)) + 1;
     /// @notice Maximum value to not overflow unsigned integer of 256 bits.
-    uint256 public constant MAX_BALANCE = type(uint256).max / (MP_APY * ACCRUE_RATE);
+    uint256 public constant MAX_BALANCE = type(uint256).max / MP_MPY_ABSOLUTE;
 
     /**
      * @notice Calculates the accrued multiplier points (MPs) over a time period Δt, based on the account balance
