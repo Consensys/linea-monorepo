@@ -175,7 +175,8 @@ public class ExecutionEnvironment {
    */
   public static String constructTestPrefix() {
     for (StackTraceElement ste : Thread.currentThread().getStackTrace()) {
-      if (ste.getClassName().endsWith("Test")) {
+      String className = ste.getClassName();
+      if (className.endsWith("Test") || className.endsWith("Tests")) {
         // Yes, it is.  Now tidy up the name.
         String name = ste.getClassName().replace(LINEA_PACKAGE, "").replace(".", "_");
         // Done
