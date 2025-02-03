@@ -17,7 +17,7 @@ import (
 const (
 	// TimestampOffset is the corresponding offset position for the timestamp
 	// since it is a shift, -1 means no offset.
-	TimestampOffset = -11
+	TimestampOffset = -12
 )
 
 // TimestampFetcher is a struct used to fetch the timestamps from the arithmetization's BlockDataCols
