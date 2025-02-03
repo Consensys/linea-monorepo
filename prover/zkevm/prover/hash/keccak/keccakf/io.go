@@ -4,8 +4,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -229,11 +229,11 @@ func (io *InputOutput) csHashOutput(comp *wizard.CompiledIOP) {
 	colB = append(colB, io.HashOutputSlicesBaseB[2][:]...)
 	colB = append(colB, io.HashOutputSlicesBaseB[3][:]...)
 
-	projection.InsertProjection(comp, ifaces.QueryIDf("HashOutput_Projection"),
-		colB, colA,
-		io.IsActive,
-		io.IsHashOutPut,
-	)
+	comp.InsertProjection(ifaces.QueryIDf("HashOutput_Projection"),
+		query.ProjectionInput{ColumnA: colB,
+			ColumnB: colA,
+			FilterA: io.IsActive,
+			FilterB: io.IsHashOutPut})
 }
 
 // It assigns the columns specific to the submodule.

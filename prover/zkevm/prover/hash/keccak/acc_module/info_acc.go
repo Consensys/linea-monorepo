@@ -4,8 +4,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	projection "github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -59,19 +59,17 @@ func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 	// projection among providers and stitched module
 	for i, gbm := range info.Inputs.ProvidersInfo {
 
-		projection.InsertProjection(comp, ifaces.QueryIDf("Stitch_Modules_Hi_%v", i),
-			[]ifaces.Column{gbm.HashHi},
-			[]ifaces.Column{info.Provider.HashHi},
-			gbm.IsHashHi,
-			info.sFilters[i],
-		)
+		comp.InsertProjection(ifaces.QueryIDf("Stitch_Modules_Hi_%v", i),
+			query.ProjectionInput{ColumnA: []ifaces.Column{gbm.HashHi},
+				ColumnB: []ifaces.Column{info.Provider.HashHi},
+				FilterA: gbm.IsHashHi,
+				FilterB: info.sFilters[i]})
 
-		projection.InsertProjection(comp, ifaces.QueryIDf("Stitch_Modules_Lo_%v", i),
-			[]ifaces.Column{gbm.HashLo},
-			[]ifaces.Column{info.Provider.HashLo},
-			gbm.IsHashLo,
-			info.sFilters[i],
-		)
+		comp.InsertProjection(ifaces.QueryIDf("Stitch_Modules_Lo_%v", i),
+			query.ProjectionInput{ColumnA: []ifaces.Column{gbm.HashLo},
+				ColumnB: []ifaces.Column{info.Provider.HashLo},
+				FilterA: gbm.IsHashLo,
+				FilterB: info.sFilters[i]})
 	}
 	return info
 }
