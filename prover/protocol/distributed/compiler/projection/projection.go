@@ -75,6 +75,7 @@ func NewDistributeProjectionCtx(
 			if bothAAndB {
 				p.push(moduleComp, q_, round, queryInRound, true, true)
 				initialComp.QueriesNoParams.MarkAsIgnored(qName)
+				// Todo: Add panic if other cols are from other modules
 			} else if onlyA {
 				p.push(moduleComp, q_, round, queryInRound, true, false)
 				initialComp.QueriesNoParams.MarkAsIgnored(qName)
@@ -195,6 +196,7 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 			)
 			hornerB := poly.CmptHorner(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
 			elemParam = hornerB[0]
+			elemParam.Neg(&elemParam)
 		} else {
 			panic("Invalid distributed projection query encountered during param evaluation")
 		}
