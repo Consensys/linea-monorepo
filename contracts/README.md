@@ -20,7 +20,7 @@ The L2MessageService is the L2 smart contract that is responsible for:
 
 ## Linea Canonical Token Bridge
 
-The Canonical Token Bridge (TokenBridge) is a canonical ERC20 token brige between Ethereum and Linea networks.
+The Canonical Token Bridge (TokenBridge) is a canonical ERC20 token bridge between Ethereum and Linea networks.
 
 The TokenBridge utilises the L1MessageService and the L2MessageService for the transmission of messages between each layer's TokenBridge.
 
