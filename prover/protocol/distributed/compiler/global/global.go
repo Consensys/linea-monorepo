@@ -137,6 +137,8 @@ func AdjustExpressionForGlobal(
 			// Repass the same variable (for coins or other types of single-valued variable)
 			translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
 		}
+		// reset the number of Boundaries for the next column
+		numBoundaries = 0
 
 	}
 	return expr.Replay(translationMap)
