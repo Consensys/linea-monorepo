@@ -155,9 +155,9 @@ func checkBouandaries(in boundaryInputs) {
 				receiver.lastIndex += numBoundaries
 			}
 
-			// reset the number of Boundaries for the next column
-			numBoundaries = 0
 		}
+		// reset the number of Boundaries for the next column
+		numBoundaries = 0
 
 	}
 }
