@@ -74,7 +74,7 @@ func TestSeedGeneration(t *testing.T) {
 	// run the initial runtime
 	initialRuntime := wizard.ProverOnlyFirstRound(initialComp, prover)
 
-	// Compile and prove for module0
+	// Compile and prove for module
 	for proverID := 0; proverID < numSegModule; proverID++ {
 		proof := wizard.Prove(moduleComp, func(run *wizard.ProverRuntime) {
 			run.ParentRuntime = initialRuntime
