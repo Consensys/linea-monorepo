@@ -23,6 +23,9 @@ COPY ./postman/package.json ./postman/package.json
 COPY ./sdk/package.json ./sdk/package.json
 COPY ./ts-libs/linea-native-libs/package.json ./ts-libs/linea-native-libs/package.json
 
+# Temp fix for the corepack issue described in https://github.com/pnpm/pnpm/issues/9029
+RUN npm i -g corepack@latest
+
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline --ignore-scripts
 
 COPY ./postman ./postman
