@@ -396,7 +396,12 @@ func (run ProverRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element {
 // before doing this call. Will also trigger the "goNextRound" logic if
 // appropriate.
 func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
-	return run.getRandomCoinGeneric(name, coin.Field).(field.Element)
+	mycoin := run.Spec.Coins.Data(name)
+
+	if mycoin.Type == 0 {
+		return run.getRandomCoinGeneric(name, coin.Field).(field.Element)
+	}
+	return run.getRandomCoinGeneric(name, coin.FieldFromSeed).(field.Element)
 }
 
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin. The
@@ -601,15 +606,28 @@ func (run *ProverRuntime) goNextRound() {
 		a next round.
 	*/
 	toCompute := run.Spec.Coins.AllKeysAt(run.currRound)
-	for _, coin := range toCompute {
 
-		if run.Spec.Coins.IsSkippedFromProverTranscript(coin) {
+	for _, myCoin := range toCompute {
+
+		var (
+			info  = run.Spec.Coins.Data(myCoin)
+			value interface{}
+		)
+
+		if run.Spec.Coins.IsSkippedFromProverTranscript(info.Name) {
 			continue
 		}
 
-		info := run.Spec.Coins.Data(coin)
-		value := info.Sample(run.FS)
-		run.Coins.InsertNew(coin, value)
+		if info.Type == coin.FieldFromSeed {
+			// if it is of type FromSeed, sample a coin based on the seed
+			if seed, ok := run.ParentRuntime.Coins.MustGet("SEED").(field.Element); ok {
+				value = info.Sample(run.FS, seed)
+			}
+		} else {
+			// otherwise sample based on the transcript.
+			value = info.Sample(run.FS)
+		}
+		run.Coins.InsertNew(myCoin, value)
 	}
 
 	finalState := run.FS.State()

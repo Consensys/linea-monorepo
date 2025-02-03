@@ -120,6 +120,20 @@ func (fs *State) RandomField() field.Element {
 	return res
 }
 
+// RandomField generates and returns a single field element from the seed and the given name.
+func (fs *State) RandomFieldFromSeed(seed field.Element, name string) field.Element {
+	challBytes := []byte(name)
+	seedBytes := seed.Bytes()
+	challBytes = append(challBytes, seedBytes[:]...)
+
+	var res field.Element
+	res.SetBytes(challBytes)
+
+	// increase the counter by one
+	fs.NumCoinGenerated++
+	return res
+}
+
 // RandomManyIntegers returns a list of challenge small integers. That is, a
 // list of positive integer bounded by `upperBound`. The upperBound is strict
 // and is restricted to being only be a power of two.
