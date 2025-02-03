@@ -8,8 +8,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -349,14 +349,12 @@ func (d *UnalignedGnarkData) csProjectionEcRecover(comp *wizard.CompiledIOP, src
 		)),
 	)
 	// that we have projected correctly ecrecover
-	projection.InsertProjection(
-		comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%v_PROJECT_ECRECOVER", NAME_UNALIGNED_GNARKDATA),
-		[]ifaces.Column{src.Limb},
-		[]ifaces.Column{d.GnarkData},
-		d.isEcrecoverAndFetching,
-		d.isNotPublicKeyAndPushing,
-	)
+		query.ProjectionInput{ColumnA: []ifaces.Column{src.Limb},
+			ColumnB: []ifaces.Column{d.GnarkData},
+			FilterA: d.isEcrecoverAndFetching,
+			FilterB: d.isNotPublicKeyAndPushing})
 }
 
 func (d *UnalignedGnarkData) csTxHash(comp *wizard.CompiledIOP, src *unalignedGnarkDataSource) {
