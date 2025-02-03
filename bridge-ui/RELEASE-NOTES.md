@@ -385,7 +385,7 @@ Description:
 Does not keep the right selected token when switching network
 
 Fix:
-Token is reseting when switching network
+Token is resetting when switching network
 
 Technical implementation:
 The reset was done on the switch network in the form, but not the header. New method `resetToken` in the chain context, called in both place.
