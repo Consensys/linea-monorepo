@@ -8,7 +8,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 jobs:
   nightly-tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
@@ -24,12 +24,13 @@ jobs:
           go-corset: true
 
       - name: Run Nightly tests
-        run: GOMEMLIMIT=64GiB ./gradlew nightlyTests
+        run: GOMEMLIMIT=32GiB ./gradlew nightlyTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -vw --ansi-escapes=false --report --mir
+          GOCORSET_FLAGS: -vw --ansi-escapes=false --report --hir
           ZKEVM_BIN: "zkevm.go.bin"
+          NIGHTLY_TESTS_PARALLELISM: 2
 
       - name: Upload test report
         if: ${{ always() }}
