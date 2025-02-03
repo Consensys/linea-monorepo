@@ -148,9 +148,9 @@ func getLPPColumns(c *wizard.CompiledIOP) []ifaces.Column {
 				lppColumns = append(lppColumns, v.B[i]...)
 			}
 		case query.Projection:
-			lppColumns = append(lppColumns, v.ColumnsA...)
-			lppColumns = append(lppColumns, v.ColumnsB...)
-			lppColumns = append(lppColumns, v.FilterA, v.FilterB)
+			lppColumns = append(lppColumns, v.Inp.ColumnA...)
+			lppColumns = append(lppColumns, v.Inp.ColumnB...)
+			lppColumns = append(lppColumns, v.Inp.FilterA, v.Inp.FilterB)
 
 		default:
 			//do noting

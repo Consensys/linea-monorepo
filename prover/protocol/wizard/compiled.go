@@ -656,3 +656,41 @@ func (c *CompiledIOP) InsertGrandProduct(round int, id ifaces.QueryID, in map[in
 	c.QueriesParams.AddToRound(round, q.Name(), q)
 	return q
 }
+
+/*
+A projection query between sets (columnsA,filterA) and (columnsB,filterB) asserts
+whether the columnsA filtered by filterA is the same as columnsB filtered by
+filterB, preserving the order.
+
+Example:
+
+FilterA = (1,0,0,1,1), ColumnA := (aO,a1,a2,a3,a4)
+
+FiletrB := (0,0,1,0,0,0,0,0,1,1), ColumnB :=(b0,b1,b2,b3,b4,b5,b6,b7,b8,b9)
+
+Thus we have,
+
+ColumnA filtered by FilterA = (a0,a3,a4)
+
+ColumnB filtered by FilterB  = (b2,b8,b9)
+
+The projection query checks if a0 = b2, a3 = b8, a4 = b9
+
+Note that the query imposes that:
+  - the number of 1 in the filters are equal
+  - the order of filtered elements is preserved
+*/
+func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in query.ProjectionInput) query.Projection {
+	var (
+		round = max(
+			column.MaxRound(in.ColumnA...),
+			column.MaxRound(in.ColumnB...),
+			in.FilterA.Round(),
+			in.FilterB.Round())
+	)
+	c.assertConsistentRound(round)
+	q := query.NewProjection(round, id, in)
+	// Finally registers the query
+	c.QueriesNoParams.AddToRound(round, q.Name(), q)
+	return q
+}

@@ -6,8 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -809,14 +809,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.LastAbsTxIDBlock,
 	}
 
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_BLOCK_METADATA_PROJECTION", name),
-		edcMetadataTable,
-		metadataTable,
-		edc.IsNoTx, // We filter on rows where the blockdata is loaded.
-		metadata.FilterFetched,
-	)
-
+		query.ProjectionInput{ColumnA: edcMetadataTable,
+			ColumnB: metadataTable,
+			FilterA: edc.IsNoTx, // We filter on rows where the blockdata is loaded.
+			FilterB: metadata.FilterFetched})
 	// Because we filtered on edc.IsNoTx=1, we also ensure that FirstAbsTxIDBlock and LastAbsTxIDBlock
 	// remain constant in the DefineConstantConstraints function.
 	// we do not need to also check the constancy of TotalNoTxBlock, as it is only used when IsNoTx=1
@@ -834,13 +832,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.UnalignedLimb,
 	}
 
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_TIMESTAMP_PROJECTION", name),
-		edcTimestamps,
-		timestampTable,
-		edc.IsTimestamp, // filter on IsTimestamp=1
-		timestamps.FilterFetched,
-	)
+		query.ProjectionInput{ColumnA: edcTimestamps,
+			ColumnB: timestampTable,
+			FilterA: edc.IsTimestamp, // filter on IsTimestamp=1
+			FilterB: timestamps.FilterFetched})
 
 	// Prepare a projection query to the TxnData fetcher, to check the Hi part of the sender address.
 	// compute the fetcher table, directly tied to the arithmetization.
@@ -856,13 +853,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.UnalignedLimb,
 	}
 
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_SENDER_ADDRESS_HI_PROJECTION", name),
-		edcTxnSenderAddressTableHi,
-		txnDataTableHi,
-		edc.IsAddrHi, // filter on IsAddrHi=1
-		txnData.FilterFetched,
-	)
+		query.ProjectionInput{ColumnA: edcTxnSenderAddressTableHi,
+			ColumnB: txnDataTableHi,
+			FilterA: edc.IsAddrHi, // filter on IsAddrHi=1
+			FilterB: txnData.FilterFetched})
 
 	// Prepare the projection query to the TxnData fetcher, to check the Lo part of the sender address.
 	// compute the fetcher table, directly tied to the arithmetization.
@@ -878,13 +874,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.UnalignedLimb,
 	}
 
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_SENDER_ADDRESS_LO_PROJECTION", name),
-		edcTxnSenderAddressTableLo,
-		txnDataTableLo,
-		edc.IsAddrLo, // filter on IsAddrLo=1
-		txnData.FilterFetched,
-	)
+		query.ProjectionInput{ColumnA: edcTxnSenderAddressTableLo,
+			ColumnB: txnDataTableLo,
+			FilterA: edc.IsAddrLo, // filter on IsAddrLo=1
+			FilterB: txnData.FilterFetched})
 
 	// Prepare the projection query to the RlpTxn fetcher, to check:
 	// AbsTxNum, AbsTxNumMax, Limb, NBytes and EndOfRlpSegment.
@@ -907,13 +902,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		// EndOfRlpSegment is also constrained in DefineZeroizationConstraints, with respect to IsActive.
 	}
 
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_RLP_LIMB_DATA_PROJECTION", name),
-		edcRlpDataTable,
-		rlpDataTable,
-		edc.IsTxRLP, // filter on IsTxRLP=1
-		rlp.FilterFetched,
-	)
+		query.ProjectionInput{ColumnA: edcRlpDataTable,
+			ColumnB: rlpDataTable,
+			FilterA: edc.IsTxRLP, // filter on IsTxRLP=1
+			FilterB: rlp.FilterFetched})
 }
 
 // LookupQueries computes lookup queries to the BlockTxnMetadata arithmetization fetcher:
@@ -938,7 +932,7 @@ func LookupQueries(comp *wizard.CompiledIOP,
 	}
 
 	comp.InsertInclusionDoubleConditional(0,
-		ifaces.QueryIDf("%s_BLOCK_METADATA_PROJECTION", name),
+		ifaces.QueryIDf("%s_BLOCK_METADATA_DOUBLE_CONDITIONAL_LOOKUP", name),
 		metadataTable,    // including table
 		edcMetadataTable, // included table
 		metadata.FilterFetched,

@@ -42,15 +42,6 @@ func LastRoundToEval(expr *symbolic.Expression) int {
 	return maxRound
 }
 
-// maximal round of declaration for a list of commitment
-func MaxRound(handles ...ifaces.Column) int {
-	res := 0
-	for _, handle := range handles {
-		res = utils.Max(res, handle.Round())
-	}
-	return res
-}
-
 // DeriveName is used to construct either [ifaces.QueryID] or [ifaces.ColID] or
 // [coin.Name]. The function will format [ifaces.Query], [ifaces.Column] or
 // [coin.Info] using their names or IDs, in the other cases it will use the

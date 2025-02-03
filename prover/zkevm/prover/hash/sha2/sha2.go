@@ -4,8 +4,8 @@ package sha2
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
@@ -112,18 +112,17 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 		cSha2 = newSha2BlockModule(comp, cSha2Inp).WithCircuit(comp)
 	)
 
-	projection.InsertProjection(comp, "SHA2_RES_HI",
-		[]ifaces.Column{cSha2.HashHi},
-		[]ifaces.Column{inp.Provider.Info.HashHi},
-		cSha2.IsEffFirstLaneOfNewHash,
-		inp.Provider.Info.IsHashHi,
-	)
-	projection.InsertProjection(comp, "SHA2_RES_LO",
-		[]ifaces.Column{cSha2.HashLo},
-		[]ifaces.Column{inp.Provider.Info.HashLo},
-		cSha2.IsEffFirstLaneOfNewHash,
-		inp.Provider.Info.IsHashLo,
-	)
+	comp.InsertProjection("SHA2_RES_HI",
+		query.ProjectionInput{ColumnA: []ifaces.Column{cSha2.HashHi},
+			ColumnB: []ifaces.Column{inp.Provider.Info.HashHi},
+			FilterA: cSha2.IsEffFirstLaneOfNewHash,
+			FilterB: inp.Provider.Info.IsHashHi})
+
+	comp.InsertProjection("SHA2_RES_LO",
+		query.ProjectionInput{ColumnA: []ifaces.Column{cSha2.HashLo},
+			ColumnB: []ifaces.Column{inp.Provider.Info.HashLo},
+			FilterA: cSha2.IsEffFirstLaneOfNewHash,
+			FilterB: inp.Provider.Info.IsHashLo})
 
 	// set the module
 	m := &Sha2SingleProvider{
