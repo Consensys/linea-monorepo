@@ -135,12 +135,12 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 		comp,
 		ifaces.ColumnAsVariable(bdc.Ct), // pick the spots where Ct=0
 	)
-	// constrain the entire arithmetization filtering column
+	// constrain the entire arithmetization filtering column, using SelectorCt and SelectorTimestamp
 	comp.InsertGlobal(
 		0,
 		ifaces.QueryIDf("%s_CONSTRAINT_ARITHMETIZATION_FILTERING_COLUMN", name),
 		sym.Sub(
-			fetcher.FilterArith, // fetcher.FilterArith must be 1 when SelectorCt and SelectorTimestamp are both 1
+			fetcher.FilterArith, // fetcher.FilterArith must be 1 if and only if SelectorCt and SelectorTimestamp are both 1
 			sym.Mul(
 				fetcher.SelectorCt,
 				fetcher.SelectorTimestamp,
