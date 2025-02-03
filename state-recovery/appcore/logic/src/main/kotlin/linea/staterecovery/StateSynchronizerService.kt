@@ -163,10 +163,9 @@ class StateSynchronizerService(
   ): SafeFuture<Unit> {
     return if (importResult.zkStateRootHash.contentEquals(finalizedV3.finalStateRootHash)) {
       log.info(
-        "state recovered up to block={} zkStateRootHash={} finalization={}",
-        importResult.blockNumber,
-        importResult.zkStateRootHash.encodeHex(),
-        finalizedV3.intervalString()
+        "state recovered up to finalization={} zkStateRootHash={}",
+        finalizedV3.intervalString(),
+        importResult.zkStateRootHash.encodeHex()
       )
       SafeFuture.completedFuture(Unit)
     } else {

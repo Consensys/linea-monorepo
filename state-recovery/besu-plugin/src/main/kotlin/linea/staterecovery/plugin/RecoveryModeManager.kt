@@ -56,7 +56,10 @@ class RecoveryModeManager(
     }
   }
 
-  private fun hasReachedTargetBlock(): Boolean {
+  private fun hasReachedTargetBlock(
+    headBlockNumber: ULong = this.headBlockNumber,
+    targetBlockNumber: ULong? = this.targetBlockNumber
+  ): Boolean {
     return (headBlockNumber + 1u) >= (targetBlockNumber ?: ULong.MAX_VALUE)
   }
 
@@ -79,37 +82,30 @@ class RecoveryModeManager(
       }
     }
 
-    val effectiveRecoveryStartBlockNumber = if (targetBlockNumber <= headBlockNumber + 1u) {
-      val effectiveRecoveryStartBlockNumber = headBlockNumber + 1u
-      log.warn(
-        "enabling recovery mode immediately at blockNumber={} recoveryTargetBlockNumber={} headBlockNumber={}",
-        effectiveRecoveryStartBlockNumber,
-        targetBlockNumber,
-        headBlockNumber
-      )
-      switchToRecoveryMode()
-      effectiveRecoveryStartBlockNumber
-    } else {
-      targetBlockNumber
-    }
+    val effectiveRecoveryStartBlockNumber =
+      if (hasReachedTargetBlock(headBlockNumber, targetBlockNumber)) {
+        val effectiveRecoveryStartBlockNumber = headBlockNumber + 1u
+        effectiveRecoveryStartBlockNumber
+      } else {
+        targetBlockNumber
+      }
     recoveryStatePersistence.saveRecoveryStartBlockNumber(effectiveRecoveryStartBlockNumber)
+    enableRecoveryModeIfNecessary()
   }
 
-  /** Switches the node to recovery mode.  */
   private fun switchToRecoveryMode() {
-    log.warn("Stopping synchronization service")
+    stopBesuServices()
+    recoveryModeTriggered.set(true)
+  }
+
+  private fun stopBesuServices() {
+    log.info("Stopping synchronization service")
     synchronizationService.stop()
 
-    log.warn("Stopping P2P discovery service")
+    log.info("Stopping P2P discovery service")
     p2pService.disableDiscovery()
 
-    log.warn("Stopping mining service")
+    log.info("Stopping mining service")
     miningService.stop()
-
-    log.info(
-      "switched to state recovery mode at block={}",
-      headBlockNumber
-    )
-    recoveryModeTriggered.set(true)
   }
 }
