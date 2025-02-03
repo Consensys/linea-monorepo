@@ -250,13 +250,13 @@ func (ctx splitterCtx) compileGlobal(comp *wizard.CompiledIOP, q query.GlobalCon
 		}
 
 		// Requires the verifier to verify the query itself
-		comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
+		comp.InsertVerifier(round, func(vr wizard.Runtime) error {
 			err := q.Check(vr)
 			if err != nil {
 				return fmt.Errorf("failure for query %v, here is why %v", q.ID, err)
 			}
 			return nil
-		}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+		}, func(api frontend.API, wvc wizard.GnarkRuntime) {
 			q.CheckGnark(api, wvc)
 		})
 
@@ -416,13 +416,13 @@ func (ctx splitterCtx) compileLocal(comp *wizard.CompiledIOP, q query.LocalConst
 		}
 
 		// Requires the verifier to verify the query itself
-		comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
+		comp.InsertVerifier(round, func(vr wizard.Runtime) error {
 			err := q.Check(vr)
 			if err != nil {
 				return fmt.Errorf("failure for query %v, here is why %v", q.ID, err)
 			}
 			return nil
-		}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+		}, func(api frontend.API, wvc wizard.GnarkRuntime) {
 			q.CheckGnark(api, wvc)
 		})
 
@@ -488,9 +488,9 @@ func (ctx splitterCtx) compileLocalOpening(comp *wizard.CompiledIOP, q query.Loc
 		verifiercol.AssertIsPublicCol(comp, q.Pol)
 
 		// Requires the verifier to verify the query itself
-		comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
+		comp.InsertVerifier(round, func(vr wizard.Runtime) error {
 			return q.Check(vr)
-		}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+		}, func(api frontend.API, wvc wizard.GnarkRuntime) {
 			q.CheckGnark(api, wvc)
 		})
 
@@ -522,7 +522,7 @@ func (ctx splitterCtx) compileLocalOpening(comp *wizard.CompiledIOP, q query.Loc
 	})
 
 	// The verifier ensures that the old and new queries have the same assignement
-	comp.InsertVerifier(round, func(run *wizard.VerifierRuntime) error {
+	comp.InsertVerifier(round, func(run wizard.Runtime) error {
 		oldParams := run.GetLocalPointEvalParams(q.ID)
 		newParams := run.GetLocalPointEvalParams(newQName)
 
@@ -531,7 +531,7 @@ func (ctx splitterCtx) compileLocalOpening(comp *wizard.CompiledIOP, q query.Loc
 		}
 
 		return nil
-	}, func(api frontend.API, run *wizard.WizardVerifierCircuit) {
+	}, func(api frontend.API, run wizard.GnarkRuntime) {
 		oldParams := run.GetLocalPointEvalParams(q.ID)
 		newParams := run.GetLocalPointEvalParams(newQName)
 		api.AssertIsEqual(oldParams.Y, newParams.Y)

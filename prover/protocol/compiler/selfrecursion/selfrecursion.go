@@ -1,6 +1,7 @@
 package selfrecursion
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 )
@@ -18,4 +19,13 @@ func SelfRecurse(comp *wizard.CompiledIOP) {
 	ctx.ColumnOpeningPhase()
 	// Update the self-recursion counter
 	comp.SelfRecursionCount++
+}
+
+// RecurseOverCustomCtx applies the same compilation steps as [SelfRecurse]
+// over a specified vortex compilation context.
+func RecurseOverCustomCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix string) {
+	ctx := NewRecursionCtx(comp, vortexCtx, prefix)
+	ctx.Precomputations()
+	ctx.RowLinearCombinationPhase()
+	ctx.ColumnOpeningPhase()
 }

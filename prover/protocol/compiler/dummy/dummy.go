@@ -84,7 +84,7 @@ func Compile(comp *wizard.CompiledIOP) {
 		One step to be run at the end, by verifying every constraint
 		"a la mano"
 	*/
-	verifier := func(run *wizard.VerifierRuntime) error {
+	verifier := func(run wizard.Runtime) error {
 
 		logrus.Infof("started to run the dummy verifier")
 
@@ -137,6 +137,6 @@ func Compile(comp *wizard.CompiledIOP) {
 	}
 
 	logrus.Debugf("NB: The gnark circuit does not check the verifier of the dummy reduction\n")
-	comp.InsertVerifier(numRounds-1, verifier, func(frontend.API, *wizard.WizardVerifierCircuit) {})
+	comp.InsertVerifier(numRounds-1, verifier, func(frontend.API, wizard.GnarkRuntime) {})
 
 }

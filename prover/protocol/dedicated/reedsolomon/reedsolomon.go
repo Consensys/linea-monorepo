@@ -60,14 +60,14 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 		h,
 	)
 
-	comp.InsertVerifier(round+1, func(a *wizard.VerifierRuntime) error {
+	comp.InsertVerifier(round+1, func(a wizard.Runtime) error {
 		y := coeffCheck.GetVal(a)
 		y_ := evalCheck.GetVal(a)
 		if y != y_ {
 			return fmt.Errorf("reed-solomon check failed - %v is not a codeword", h.GetColID())
 		}
 		return nil
-	}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	}, func(api frontend.API, wvc wizard.GnarkRuntime) {
 		y := coeffCheck.GetFrontendVariable(api, wvc)
 		y_ := evalCheck.GetFrontendVariable(api, wvc)
 		api.AssertIsEqual(y, y_)

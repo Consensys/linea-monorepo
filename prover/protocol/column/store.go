@@ -49,6 +49,12 @@ type storedColumnInfo struct {
 	// FullRecursion. This field is only meaningfull for [Ignored] columns as
 	// they are excluded by default.
 	IncludeInProverFS bool
+	// ExcludeFromProverFS states the prover should not include the column in
+	// his FS transcript. This overrides [IncludeInProverFS], meaning that if
+	// [IncludeInProverFS] is true but ExcludeFromProverFS is true, the column
+	// will still be excluded from the transcript. This is used explicit FS
+	// compilation.
+	ExcludeFromProverFS bool
 }
 
 // AddToRound constructs a [Natural], registers it in the [Store] and returns
@@ -460,23 +466,50 @@ func (s *Store) IgnoreButKeepInProverTranscript(colName ifaces.ColID) {
 	in.IncludeInProverFS = true
 }
 
-// IsIgnoredAndNotKeptInTranscript indicates whether the column can be ignored
-// from the transcript and is used during the Fiat-Shamir randomness generation.
-func (s *Store) IsIgnoredAndNotKeptInTranscript(colName ifaces.ColID) bool {
+// ExcludeFromProverFS marks a column as excluded from the FS transcript but
+// without changing its status. This is used as part of the conglomeration
+// where the imported columns take part in a separate FS transcript from the
+// canonical of the host wizard.
+func (s *Store) ExcludeFromProverFS(colName ifaces.ColID) {
 	in := s.info(colName)
-	return in.Status == Ignored && !in.IncludeInProverFS
+	in.ExcludeFromProverFS = true
 }
 
-// AllKeysProofsOrIgnoredButKeptInProverTranscript returns the list of the
-// columns to be used as part of the FS transcript.
-func (s *Store) AllKeysProofsOrIgnoredButKeptInProverTranscript(round int) []ifaces.ColID {
+// isExcludedFromProverFS returns true if the passed column ID relates to a column
+// that does not take part in the FS transcript.
+func (in *storedColumnInfo) isExcludedFromProverFS() bool {
+
+	if in.ExcludeFromProverFS {
+		return true
+	}
+
+	if in.Status.IsPublic() {
+		return false
+	}
+
+	if in.IncludeInProverFS {
+		return false
+	}
+
+	return true
+}
+
+// IsExplicitlyExcludedFromProverFS returns true if the passed column ID relates to
+// a column explicitly marked as excluded from the FS transcript.
+func (s *Store) IsExplicitlyExcludedFromProverFS(colName ifaces.ColID) bool {
+	info := s.info(colName)
+	return info.ExcludeFromProverFS
+}
+
+// AllKeysInProverTranscript returns the list of the columns to
+// be used as part of the FS transcript.
+func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := s.byRounds.MustGet(round) // precomputed are always at round zero
 
 	for i, info := range rnd {
 
-		ok := (info.Status == Proof) || (info.Status == Ignored && info.IncludeInProverFS)
-		if !ok {
+		if info.isExcludedFromProverFS() {
 			continue
 		}
 

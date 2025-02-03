@@ -248,9 +248,9 @@ func insertVerifier(
 ) {
 
 	// Requires the verifier to verify the query itself
-	comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
+	comp.InsertVerifier(round, func(vr wizard.Runtime) error {
 		return q.Check(vr)
-	}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	}, func(api frontend.API, wvc wizard.GnarkRuntime) {
 		q.CheckGnark(api, wvc)
 	})
 

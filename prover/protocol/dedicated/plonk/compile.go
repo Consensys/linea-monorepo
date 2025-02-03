@@ -306,7 +306,7 @@ type checkingActivators struct {
 
 var _ wizard.VerifierAction = &checkingActivators{}
 
-func (ca *checkingActivators) Run(run *wizard.VerifierRuntime) error {
+func (ca *checkingActivators) Run(run wizard.Runtime) error {
 	for i := range ca.Cols {
 
 		curr := ca.Cols[i].GetColAssignmentAt(run, 0)
@@ -325,7 +325,7 @@ func (ca *checkingActivators) Run(run *wizard.VerifierRuntime) error {
 	return nil
 }
 
-func (ca *checkingActivators) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (ca *checkingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	for i := range ca.Cols {
 
 		curr := ca.Cols[i].GetColAssignmentGnarkAt(run, 0)

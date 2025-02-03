@@ -75,7 +75,7 @@ type FinalEvaluationCheck struct {
 }
 
 // Run implements the [wizard.VerifierAction]
-func (f *FinalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
+func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 
 	// zSum stores the sum of the ending values of the zs as queried
 	// in the protocol via the local opening queries.
@@ -96,7 +96,7 @@ func (f *FinalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
 }
 
 // RunGnark implements the [wizard.VerifierAction]
-func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried

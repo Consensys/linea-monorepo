@@ -2,11 +2,12 @@ package univariates
 
 import (
 	"fmt"
-	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
+
+	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/sirupsen/logrus"
@@ -396,12 +397,12 @@ func (ctx mptsCtx) claimEvaluation(run *wizard.ProverRuntime) {
 }
 
 // verifier of the evaluation
-func (ctx mptsCtx) verifier(run *wizard.VerifierRuntime) error {
+func (ctx mptsCtx) verifier(run wizard.Runtime) error {
 
 	ys, hs := ctx.getYsHs(
 		run.GetUnivariateParams,
 		func(qName ifaces.QueryID) query.UnivariateEval {
-			return run.Spec.QueriesParams.Data(qName).(query.UnivariateEval)
+			return run.GetQuery(qName).(query.UnivariateEval)
 		},
 	)
 
@@ -513,7 +514,7 @@ func (ctx mptsCtx) verifier(run *wizard.VerifierRuntime) error {
 Gnark function generating constraints to mirror the verification
 of the evaluation step.
 */
-func (ctx mptsCtx) gnarkVerify(api frontend.API, c *wizard.WizardVerifierCircuit) {
+func (ctx mptsCtx) gnarkVerify(api frontend.API, c wizard.GnarkRuntime) {
 
 	logrus.Infof("Start verifying MPTS reduction")
 
@@ -696,7 +697,7 @@ func getLagrangesPolys(domain []field.Element) (lagranges [][]field.Element) {
 
 // Mirrrors `getYsHs` to build a gnark circuit
 func (ctx mptsCtx) getYsHsGnark(
-	c *wizard.WizardVerifierCircuit,
+	c wizard.GnarkRuntime,
 ) (
 	ys map[ifaces.ColID][]frontend.Variable,
 	hs []frontend.Variable,
