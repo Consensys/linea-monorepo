@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -96,8 +95,8 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 
 	var (
 		isBigEndian     = a.IsBigEndian
-		roundA          = wizardutils.MaxRound(a.Limbs...)
-		round           = max(roundA, wizardutils.MaxRound(b.Limbs...))
+		roundA          = column.MaxRound(a.Limbs...)
+		round           = max(roundA, column.MaxRound(b.Limbs...))
 		numLimbs        = len(a.Limbs)
 		numBitsPerLimbs = a.LimbBitSize
 		ctx             = &multiLimbCmp{

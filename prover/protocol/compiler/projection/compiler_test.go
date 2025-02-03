@@ -1,4 +1,4 @@
-package projection
+package projection_test
 
 import (
 	"testing"
@@ -6,7 +6,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,8 +27,7 @@ func makeTestCaseProjection() (
 		flagB = comp.InsertCommit(round, ifaces.ColID("FliterB"), flagSizeB)
 		columnA = comp.InsertCommit(round, ifaces.ColID("ColumnA"), flagSizeA)
 		columnB = comp.InsertCommit(round, ifaces.ColID("ColumnB"), flagSizeB)
-		InsertProjection(comp, ifaces.QueryIDf("OrderPreserving"),
-			[]ifaces.Column{columnA}, []ifaces.Column{columnB}, flagA, flagB)
+		comp.InsertProjection("Projection_Compilation_Test", query.ProjectionInput{ColumnA: []ifaces.Column{columnA}, ColumnB: []ifaces.Column{columnB}, FilterA: flagA, FilterB: flagB})
 
 	}
 	prover = func(run *wizard.ProverRuntime) {
@@ -54,7 +55,7 @@ func makeTestCaseProjection() (
 func TestProjectionQuery(t *testing.T) {
 
 	define, prover := makeTestCaseProjection()
-	comp := wizard.Compile(define, dummy.Compile)
+	comp := wizard.Compile(define, projection.CompileProjection, dummy.CompileAtProverLvl)
 
 	proof := wizard.Prove(comp, prover)
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")

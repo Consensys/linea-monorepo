@@ -25,7 +25,7 @@ func manualCheckMiMCBlock(comp *wizard.CompiledIOP, blocks, oldStates, newStates
 		newStates: newStates,
 	}
 
-	round := wizardutils.MaxRound(blocks, oldStates, newStates)
+	round := column.MaxRound(blocks, oldStates, newStates)
 
 	// Creates an intermediate column for each round
 	s := blocks

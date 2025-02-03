@@ -189,3 +189,12 @@ func RandLinCombColAssignment(run ifaces.Runtime, coinVal field.Element, hs []if
 	}
 	return witnessCollapsed
 }
+
+// maximal round of declaration for a list of commitment
+func MaxRound(handles ...ifaces.Column) int {
+	res := 0
+	for _, handle := range handles {
+		res = utils.Max(res, handle.Round())
+	}
+	return res
+}

@@ -4,8 +4,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -81,11 +81,11 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 
 	// constraints over isFirstLaneOfNewHash
 	// Project the isFirstLaneOfNewHash from isFirstSliceOfNewHash
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_IsFirstLaneOfHash_"+pckInp.Name),
-		[]ifaces.Column{isFirstSliceOfNewHash},
-		[]ifaces.Column{l.IsFirstLaneOfNewHash},
-		l.isLaneComplete, l.IsLaneActive)
-
+	comp.InsertProjection(ifaces.QueryIDf("Project_IsFirstLaneOfHash_"+pckInp.Name),
+		query.ProjectionInput{ColumnA: []ifaces.Column{isFirstSliceOfNewHash},
+			ColumnB: []ifaces.Column{l.IsFirstLaneOfNewHash},
+			FilterA: l.isLaneComplete,
+			FilterB: l.IsLaneActive})
 	return l
 }
 
@@ -135,12 +135,11 @@ func (l *laneRepacking) csRecomposeToLanes(comp *wizard.CompiledIOP, s spaghetti
 	)
 
 	// Project the lanes from ipTracker over the Lane column.
-	projection.InsertProjection(comp, ifaces.QueryIDf("%v_ProjectOverLanes", l.Inputs.pckInp.Name),
-		[]ifaces.Column{ipTracker},
-		[]ifaces.Column{l.Lanes},
-		l.isLaneComplete, l.IsLaneActive,
-	)
-
+	comp.InsertProjection(ifaces.QueryIDf("%v_ProjectOverLanes", l.Inputs.pckInp.Name),
+		query.ProjectionInput{ColumnA: []ifaces.Column{ipTracker},
+			ColumnB: []ifaces.Column{l.Lanes},
+			FilterA: l.isLaneComplete,
+			FilterB: l.IsLaneActive})
 }
 
 // It assigns the columns specific to the submodule
