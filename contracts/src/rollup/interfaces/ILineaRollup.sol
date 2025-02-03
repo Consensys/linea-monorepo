@@ -114,6 +114,32 @@ interface ILineaRollup {
     bytes l2MessagingBlocksOffsets;
   }
 
+  struct LastFinalizedState {
+    bytes32 shnarf;
+    uint256 blockNumber;
+    uint256 timestamp;
+    bytes32 l1RollingHash;
+    uint256 l1RollingHashMessageNumber;
+  }
+
+  struct AlternateFinalizationData {
+    uint256 timestamp;
+    bytes32 l1RollingHash;
+    uint256 l1MessageNumber;
+    uint256 l2MerkleTreesDepth;
+    bytes32[] l2MerkleRoots;
+    bytes32 snarkHash;
+    bytes32 finalStateRootHash;
+    bytes proof;
+  }
+
+  struct SoundessFinalizationData {
+    LastFinalizedState lastFinalizedState;
+    FinalizationDataV3 finalizationData;
+    AlternateFinalizationData alternateFinalizationData;
+    uint256 proofType;
+  }
+
   /**
    * @notice Emitted when the LineaRollup contract version has changed.
    * @dev All bytes8 values are string based SemVer in the format M.m - e.g. "6.0".
@@ -176,6 +202,13 @@ interface ILineaRollup {
     bytes32 parentStateRootHash,
     bytes32 finalStateRootHash
   );
+
+  /**
+   * @notice Emitted when the soundness alert is being fired.
+   * @param verfier The verifier shown to be invalid.
+   * @param proofType The proof type shown to be invalid.
+   */
+  event SoundessInvalidated(address verfier, uint256 proofType);
 
   /**
    * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the fallback operator address.
