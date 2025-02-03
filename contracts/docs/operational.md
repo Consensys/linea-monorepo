@@ -35,8 +35,8 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | ------------------ | -------- | ---------- | ----------- |
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | INFURA_API_KEY     | true     | key | Infura API Key |
-| CONTRACT_TYPE   | true    | Contract name | Contract name parameter. If ommited in the .env, it must be provided as CLI argument using the `--contract-type` flag |
-| PROXY_ADDRESS | true | address | Proxy contract address. If ommited in the .env, it must be provided as CLI argument using the `--proxy-address` flag| 
+| CONTRACT_TYPE   | true    | Contract name | Contract name parameter. If omitted in the .env, it must be provided as CLI argument using the `--contract-type` flag |
+| PROXY_ADDRESS | true | address | Proxy contract address. If omitted in the .env, it must be provided as CLI argument using the `--proxy-address` flag| 
 
 
 <br />
@@ -72,10 +72,10 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | ------------------ | -------- | ---------- | ----------- |
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | INFURA_API_KEY     | true     | key | Infura API Key |
-| CONTRACT_TYPE   | true    | Contract name | Contract name parameter. If ommited in the .env, it must be provided as CLI argument using the `--contract-type` flag |
-| PROXY_ADDRESS | true | address | Proxy contract address. If ommited in the .env, it must be provided as CLI argument using the `--proxy-address` flag| 
-| ADMIN_ADDRESS | true | address | Admin address to which role will be granted. If ommited in the .env, it must be provided as CLI argument using the `--admin-address` flag| 
-| CONTRACT_ROLES | true | bytes | Comma-separated list of bytes32-formatted roles that will be granted to the Admin address. If ommited in the .env, it must be provided as CLI argument using the `--contract-roles` flag| 
+| CONTRACT_TYPE   | true    | Contract name | Contract name parameter. If omitted in the .env, it must be provided as CLI argument using the `--contract-type` flag |
+| PROXY_ADDRESS | true | address | Proxy contract address. If omitted in the .env, it must be provided as CLI argument using the `--proxy-address` flag| 
+| ADMIN_ADDRESS | true | address | Admin address to which role will be granted. If omitted in the .env, it must be provided as CLI argument using the `--admin-address` flag| 
+| CONTRACT_ROLES | true | bytes | Comma-separated list of bytes32-formatted roles that will be granted to the Admin address. If omitted in the .env, it must be provided as CLI argument using the `--contract-roles` flag| 
 
 <br />
 
@@ -112,11 +112,11 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | ------------------ | -------- | ---------- | ----------- |
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | INFURA_API_KEY     | true     | key | Infura API Key |
-| OLD_ADMIN_ADDRESS | true | address | Old admin address. If ommited in the .env, it must be provided as CLI argument using the `--old-admin-address` flag |
-| NEW_ADMIN_ADDRESS | true | address | New admin address. If ommited in the .env, it must be provided as CLI argument using the `--new-admin-address` flag |
-| PROXY_ADDRESS | true | address | Proxy contract address. If ommited in the .env, it must be provided as CLI argument using the `--proxy-address` flag|
-| CONTRACT_TYPE   | true    | Contract name | Contract name parameter. If ommited in the .env, it must be provided as CLI argument using the `--contract-type` flag |
-| CONTRACT_ROLES | true | bytes | Comma-separated bytes32-formatted roles that will be renounced from the Old Admin address. New admin will be checked for roles before revoking from Old admin. If ommited in the .env, it must be provided as CLI argument using the `--contract-roles` flag| 
+| OLD_ADMIN_ADDRESS | true | address | Old admin address. If omitted in the .env, it must be provided as CLI argument using the `--old-admin-address` flag |
+| NEW_ADMIN_ADDRESS | true | address | New admin address. If omitted in the .env, it must be provided as CLI argument using the `--new-admin-address` flag |
+| PROXY_ADDRESS | true | address | Proxy contract address. If omitted in the .env, it must be provided as CLI argument using the `--proxy-address` flag|
+| CONTRACT_TYPE   | true    | Contract name | Contract name parameter. If omitted in the .env, it must be provided as CLI argument using the `--contract-type` flag |
+| CONTRACT_ROLES | true | bytes | Comma-separated bytes32-formatted roles that will be renounced from the Old Admin address. New admin will be checked for roles before revoking from Old admin. If omitted in the .env, it must be provided as CLI argument using the `--contract-roles` flag| 
 <br />
 
 Base command:
@@ -158,9 +158,9 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | ------------------ | -------- | ---------- | ----------- |
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | INFURA_API_KEY     | true     | key | Infura API Key |
-| MESSAGE_SERVICE_TYPE | true | contract name | Contract name parameter. If ommited in the .env, it must be provided as CLI argument using the `--message-service-type` flag |
-| MESSAGE_SERVICE_ADDRESS | true | address | Proxy contract address. If ommited in the .env, it must be provided as CLI argument using the `--message-service-address` flag|
-| WITHDRAW_LIMIT_IN_WEI | true | uint256 | Withdraw limit denominated in wei. If ommited in the .env, it must be provided as CLI argument using the `--withdraw-limit` flag|
+| MESSAGE_SERVICE_TYPE | true | contract name | Contract name parameter. If omitted in the .env, it must be provided as CLI argument using the `--message-service-type` flag |
+| MESSAGE_SERVICE_ADDRESS | true | address | Proxy contract address. If omitted in the .env, it must be provided as CLI argument using the `--message-service-address` flag|
+| WITHDRAW_LIMIT_IN_WEI | true | uint256 | Withdraw limit denominated in wei. If omitted in the .env, it must be provided as CLI argument using the `--withdraw-limit` flag|
 <br />
 
 Base command:
@@ -195,10 +195,10 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | ------------------ | -------- | ---------- | ----------- |
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | INFURA_API_KEY     | true     | key | Infura API Key |
-| VERIFIER_PROOF_TYPE | true | uint256 | Verifier Proof type ("0" - Full Verifier, "1" - Full-Large Verifier, "2" - Light Verifier). If ommited in the .env, it must be provided as CLI argument using the `--verifier-proof-type` flag| |
-| LINEA_ROLLUP_ADDRESS | true | address | Proxy contract address. If ommited in the .env, it must be provided as CLI argument using the `--proxy-address` flag|
-| VERIFIER_ADDRESS | true | address | Verifier Address. If ommited in the .env, it must be provided as CLI argument using the `--verifier-address` flag|
-| VERIFIER_NAME | true | address | Verifier Name. If ommited in the .env, it must be provided as CLI argument using the `--verifier-name` flag|
+| VERIFIER_PROOF_TYPE | true | uint256 | Verifier Proof type ("0" - Full Verifier, "1" - Full-Large Verifier, "2" - Light Verifier). If omitted in the .env, it must be provided as CLI argument using the `--verifier-proof-type` flag| |
+| LINEA_ROLLUP_ADDRESS | true | address | Proxy contract address. If omitted in the .env, it must be provided as CLI argument using the `--proxy-address` flag|
+| VERIFIER_ADDRESS | true | address | Verifier Address. If omitted in the .env, it must be provided as CLI argument using the `--verifier-address` flag|
+| VERIFIER_NAME | true | address | Verifier Name. If omitted in the .env, it must be provided as CLI argument using the `--verifier-name` flag|
 
 <br />
 
