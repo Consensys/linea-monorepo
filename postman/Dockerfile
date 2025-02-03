@@ -3,6 +3,9 @@ FROM node:lts-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
+# Temp fix for the corepack issue described in https://github.com/pnpm/pnpm/issues/9029
+RUN npm i -g corepack@latest
+
 RUN corepack enable
 
 RUN apt-get update \
@@ -22,9 +25,6 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY ./postman/package.json ./postman/package.json
 COPY ./sdk/package.json ./sdk/package.json
 COPY ./ts-libs/linea-native-libs/package.json ./ts-libs/linea-native-libs/package.json
-
-# Temp fix for the corepack issue described in https://github.com/pnpm/pnpm/issues/9029
-RUN npm i -g corepack@latest
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline --ignore-scripts
 
