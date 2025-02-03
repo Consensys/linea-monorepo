@@ -6,7 +6,7 @@
   bytecode_hash = "none"
   cbor_metadata = false
   evm_version = "cancun"
-  fuzz = { runs = 1_000 }
+  fuzz = { runs = 1_000, max_test_rejects = 262144 }
   gas_reports = ["*"]
   libs = ["lib"]
   via_ir = true
@@ -17,6 +17,7 @@
   solc = "0.8.26"
   src = "src"
   test = "test"
+
 [profile.ci]
   fuzz = { runs = 10_000, max_test_rejects = 2621440  }
   verbosity = 4
