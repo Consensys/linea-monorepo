@@ -533,7 +533,7 @@ Bug: when you have a transaction pending, button is loading. If you change accou
 Fix: when you have an approval transaction or bridge transaction loading, and you switch account, the button goes back to not loading.
 
 Technical implementation:
-adding a useEffect on address, so everytime the address is changing, it reset the hash used by useWaitForTransaction, and it stops loading.
+adding a useEffect on address, so every time the address is changing, it reset the hash used by useWaitForTransaction, and it stops loading.
 
 <a name="v0.3.3.1"></a>
 
