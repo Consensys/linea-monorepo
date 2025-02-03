@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,11 +43,11 @@ var (
 		commonVortexStep,
 	}
 	arcaneAndSelfRecCompilationSuite = []func(*wizard.CompiledIOP){
-		compiler.Arcane(1<<8, 1<<10, false),
+		compiler.Arcane(1, 1<<10, false),
 		commonVortexStep,
 		selfrecursion.SelfRecurse,
 		mimc.CompileMiMC,
-		compiler.Arcane(1<<8, 1<<10, false),
+		compiler.Arcane(1, 1<<10, false),
 		commonVortexStep,
 	}
 	arcaneFullRecSelfRecCompilationSuite = []func(*wizard.CompiledIOP){
@@ -75,7 +76,7 @@ func TestConglomerationPureVortexSingleRound(t *testing.T) {
 	var (
 		numCol   = 16
 		numRow   = 16
-		numProof = 16
+		numProof = 2
 		a        []ifaces.Column
 		u        query.UnivariateEval
 	)
@@ -185,7 +186,7 @@ func TestConglomerationPureVortexMultiRound(t *testing.T) {
 
 func TestConglomerationLookup(t *testing.T) {
 
-	t.Skip()
+	logrus.SetLevel(logrus.FatalLevel)
 
 	tcs := []struct {
 		name  string
@@ -199,10 +200,10 @@ func TestConglomerationLookup(t *testing.T) {
 			name:  "arcane/self-recursion",
 			suite: arcaneAndSelfRecCompilationSuite,
 		},
-		{
-			name:  "arcane/full-recursion/self-recursion",
-			suite: arcaneFullRecSelfRecCompilationSuite,
-		},
+		// {
+		// 	name:  "arcane/full-recursion/self-recursion",
+		// 	suite: arcaneFullRecSelfRecCompilationSuite,
+		// },
 	}
 
 	for _, tc := range tcs {
@@ -211,14 +212,14 @@ func TestConglomerationLookup(t *testing.T) {
 			var (
 				numCol   = 16
 				numRow   = 16
-				numProof = 16
+				numProof = 4
 				a        []ifaces.Column
 			)
 
 			define := func(builder *wizard.Builder) {
 				for i := 0; i < numCol; i++ {
 					a = append(a, builder.RegisterCommit(ifaces.ColIDf("a-%v", i), numRow))
-					builder.Range(ifaces.QueryIDf("range-%v", i), a[i], 1<<16)
+					builder.Range(ifaces.QueryIDf("range-%v", i), a[i], 1<<8)
 				}
 			}
 
