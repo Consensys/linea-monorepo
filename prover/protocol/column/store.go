@@ -263,6 +263,12 @@ func (r *Store) AllPrecomputed() []ifaces.ColID {
 // ordered by rounds and then by order of insertion.
 func (r *Store) AllVerifyingKey() []ifaces.ColID {
 	res := []ifaces.ColID{}
+
+	// This supports the case where the compiled-IOP does not store any column.
+	if r.byRounds.Len() == 0 {
+		return []ifaces.ColID{}
+	}
+
 	rnd := r.byRounds.MustGet(0) // precomputed are always at round zero
 
 	for i, info := range rnd {
