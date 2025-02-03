@@ -171,7 +171,7 @@ describe("L2MessageService", () => {
       await expectRevertWithReason(deployCall, INITIALIZED_ALREADY_MESSAGE);
     });
 
-    it("Can upgrade existing contract", async () => {
+    it.skip("Can upgrade existing contract", async () => {
       // Deploy V1 from artifact
       // Deploy V-next when we have it
     });
@@ -1405,8 +1405,8 @@ describe("L2MessageService", () => {
     });
   });
 
-  describe("L2MessageService Upgradeable Tests", () => {
-    it("Should deploy and upgrade the L2MessageService contract", async () => {
+  describe.skip("L2MessageService Upgradeable Tests", () => {
+    it.skip("Should deploy and upgrade the L2MessageService contract", async () => {
       // Deploy V1 from artifact
       // Deploy V-next when we have it
     });

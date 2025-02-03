@@ -5,8 +5,8 @@ import {
   BridgedToken__factory,
   DummyContract,
   DummyContract__factory,
-  L2MessageServiceV1,
-  L2MessageServiceV1__factory,
+  L2MessageServiceV1 as L2MessageService,
+  L2MessageServiceV1__factory as L2MessageService__factory,
   LineaRollupV6,
   LineaRollupV6__factory,
   OpcodeTestContract,
@@ -17,8 +17,8 @@ import {
   TestContract__factory,
   TestERC20,
   TestERC20__factory,
-  TokenBridgeV1,
-  TokenBridgeV1__factory,
+  TokenBridgeV1 as TokenBridge,
+  TokenBridgeV1__factory as TokenBridge__factory,
 } from "../../typechain";
 import { AccountManager } from "./accounts/account-manager";
 
@@ -109,8 +109,8 @@ export default class TestSetup {
     return proxyAdmin;
   }
 
-  public getL2MessageServiceContract(signer?: Wallet): L2MessageServiceV1 {
-    const l2MessageService: L2MessageServiceV1 = L2MessageServiceV1__factory.connect(
+  public getL2MessageServiceContract(signer?: Wallet): L2MessageService {
+    const l2MessageService: L2MessageService = L2MessageService__factory.connect(
       this.config.L2.l2MessageServiceAddress,
       this.getL2Provider(),
     );
@@ -122,8 +122,8 @@ export default class TestSetup {
     return l2MessageService;
   }
 
-  public getL1TokenBridgeContract(signer?: Wallet): TokenBridgeV1 {
-    const l1TokenBridge: TokenBridgeV1 = TokenBridgeV1__factory.connect(
+  public getL1TokenBridgeContract(signer?: Wallet): TokenBridge {
+    const l1TokenBridge: TokenBridge = TokenBridge__factory.connect(
       this.config.L1.tokenBridgeAddress,
       this.getL1Provider(),
     );
@@ -135,8 +135,8 @@ export default class TestSetup {
     return l1TokenBridge;
   }
 
-  public getL2TokenBridgeContract(signer?: Wallet): TokenBridgeV1 {
-    const l2TokenBridge: TokenBridgeV1 = TokenBridgeV1__factory.connect(
+  public getL2TokenBridgeContract(signer?: Wallet): TokenBridge {
+    const l2TokenBridge: TokenBridge = TokenBridge__factory.connect(
       this.config.L2.tokenBridgeAddress,
       this.getL2Provider(),
     );

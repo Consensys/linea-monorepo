@@ -1026,7 +1026,7 @@ describe("TokenBridge", function () {
   });
 
   describe("TokenBridge Upgradeable Tests", function () {
-    it("Should deploy and manually upgrade the TokenBridge contract", async function () {
+    it.skip("Should deploy and manually upgrade the TokenBridge contract", async function () {
       // Deploy V1 from artifact
       // Deploy V-next when we have it
     });
