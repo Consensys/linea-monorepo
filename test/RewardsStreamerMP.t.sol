@@ -7,34 +7,41 @@ import { DeployRewardsStreamerMPScript } from "../script/DeployRewardsStreamerMP
 import { UpgradeRewardsStreamerMPScript } from "../script/UpgradeRewardsStreamerMP.s.sol";
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
+import { ITrustedCodehashAccess } from "../src/interfaces/ITrustedCodehashAccess.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeMath } from "../src/math/StakeMath.sol";
 import { StakeVault } from "../src/StakeVault.sol";
-import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
+import { VaultFactory } from "../src/VaultFactory.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 import { StackOverflowStakeManager } from "./mocks/StackOverflowStakeManager.sol";
 
 contract RewardsStreamerMPTest is StakeMath, Test {
-    MockToken stakingToken;
+    MockToken internal stakingToken;
     RewardsStreamerMP public streamer;
+    VaultFactory public vaultFactory;
 
-    address admin;
-    address alice = makeAddr("alice");
-    address bob = makeAddr("bob");
-    address charlie = makeAddr("charlie");
-    address dave = makeAddr("dave");
+    address internal admin;
+    address internal alice = makeAddr("alice");
+    address internal bob = makeAddr("bob");
+    address internal charlie = makeAddr("charlie");
+    address internal dave = makeAddr("dave");
 
     mapping(address owner => address vault) public vaults;
 
     function setUp() public virtual {
         DeployRewardsStreamerMPScript deployment = new DeployRewardsStreamerMPScript();
-        (RewardsStreamerMP stakeManager, DeploymentConfig deploymentConfig) = deployment.run();
+        (RewardsStreamerMP stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) =
+            deployment.run();
 
         (address _deployer, address _stakingToken) = deploymentConfig.activeNetworkConfig();
 
         streamer = stakeManager;
         stakingToken = MockToken(_stakingToken);
+        vaultFactory = _vaultFactory;
         admin = _deployer;
 
         address[4] memory accounts = [alice, bob, charlie, dave];
@@ -105,8 +112,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
 
     function _createTestVault(address owner) internal returns (StakeVault vault) {
         vm.prank(owner);
-        vault = new StakeVault(owner, IStakeManagerProxy(address(streamer)));
-        vault.register();
+        vault = vaultFactory.createVault();
     }
 
     function _stake(address account, uint256 amount, uint256 lockupTime) public {
@@ -200,6 +206,27 @@ contract VaultRegistrationTest is RewardsStreamerMPTest {
             assertEq(userVaults.length, 1, "wrong number of vaults");
             assertEq(userVaults[0], vaults[accounts[i]], "wrong vault address");
         }
+    }
+}
+
+contract TrustedCodehashAccessTest is RewardsStreamerMPTest {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function test_RevertWhenProxyCloneCodehashNotTrusted() public {
+        // create independent (possibly malicious) StakeVault
+        address vaultTpl = address(new StakeVault(stakingToken));
+        StakeVault proxyClone = StakeVault(Clones.clone(vaultTpl));
+        proxyClone.initialize(address(this), address(streamer));
+
+        // registering already fails as codehash is not trusted
+        vm.expectRevert(ITrustedCodehashAccess.TrustedCodehashAccess__UnauthorizedCodehash.selector);
+        proxyClone.register();
+
+        // staking fails as codehash is not trusted
+        vm.expectRevert(ITrustedCodehashAccess.TrustedCodehashAccess__UnauthorizedCodehash.selector);
+        proxyClone.stake(10e10, 0);
     }
 }
 

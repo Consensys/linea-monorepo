@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.26;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IStakeManagerProxy } from "./interfaces/IStakeManagerProxy.sol";
 import { IStakeVault } from "./interfaces/IStakeVault.sol";
@@ -12,8 +13,10 @@ import { IStakeVault } from "./interfaces/IStakeVault.sol";
  * @author Ricardo Guilherme Schmidt <ricardo3@status.im>
  * @notice A contract to secure user stakes and manage staking with IStakeManager.
  * @dev This contract is owned by the user and allows staking, unstaking, and withdrawing tokens.
+ * @dev The only reason this is `OwnableUpgradeable` is because we use proxy clones
+ * to create stake vault instances. Hence, we need to use `Initializeable` to set the owner.
  */
-contract StakeVault is IStakeVault, Ownable {
+contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     error StakeVault__NotEnoughAvailableBalance();
     error StakeVault__InvalidDestinationAddress();
     error StakeVault__UpdateNotAvailable();
@@ -55,13 +58,20 @@ contract StakeVault is IStakeVault, Ownable {
 
     /**
      * @notice Initializes the contract with the owner, staked token, and stake manager.
+     */
+    constructor(IERC20 token) {
+        STAKING_TOKEN = token;
+        _disableInitializers();
+    }
+
+    /**
      * @param _owner The address of the owner.
      * @param _stakeManager The address of the StakeManager contract.
      */
-    constructor(address _owner, IStakeManagerProxy _stakeManager) Ownable(_owner) {
-        STAKING_TOKEN = _stakeManager.STAKING_TOKEN();
-        stakeManager = _stakeManager;
-        stakeManagerImplementationAddress = _stakeManager.implementation();
+    function initialize(address _owner, address _stakeManager) public initializer {
+        __Ownable_init(_owner);
+        stakeManager = IStakeManagerProxy(_stakeManager);
+        stakeManagerImplementationAddress = stakeManager.implementation();
     }
 
     /**
@@ -82,7 +92,7 @@ contract StakeVault is IStakeVault, Ownable {
     /**
      * @notice Returns the address of the current owner.
      */
-    function owner() public view override(Ownable, IStakeVault) returns (address) {
+    function owner() public view override(OwnableUpgradeable, IStakeVault) returns (address) {
         return super.owner();
     }
 

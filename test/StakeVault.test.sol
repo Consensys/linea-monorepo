@@ -4,12 +4,16 @@ pragma solidity ^0.8.26;
 import { Test } from "forge-std/Test.sol";
 
 import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
-import { TransparentProxy } from "../src/TransparentProxy.sol";
+import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
+import { DeployRewardsStreamerMPScript } from "../script/DeployRewardsStreamerMP.s.sol";
+import { VaultFactory } from "../src/VaultFactory.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 
 contract StakeVaultTest is Test {
+    VaultFactory internal vaultFactory;
+
     RewardsStreamerMP internal streamer;
 
     StakeVault internal stakeVault;
@@ -22,28 +26,23 @@ contract StakeVaultTest is Test {
 
     function _createTestVault(address owner) internal returns (StakeVault vault) {
         vm.prank(owner);
-        vault = new StakeVault(owner, IStakeManagerProxy(address(streamer)));
-        vault.register();
+        vault = vaultFactory.createVault();
     }
 
     function setUp() public virtual {
         rewardToken = new MockToken("Reward Token", "RT");
         stakingToken = new MockToken("Staking Token", "ST");
-        address impl = address(new RewardsStreamerMP());
-        bytes memory initializeData = abi.encodeWithSelector(
-            RewardsStreamerMP.initialize.selector, address(this), address(stakingToken), address(rewardToken)
-        );
-        address proxy = address(new TransparentProxy(impl, initializeData));
-        streamer = RewardsStreamerMP(proxy);
+
+        DeployRewardsStreamerMPScript deployment = new DeployRewardsStreamerMPScript();
+        (RewardsStreamerMP stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) =
+            deployment.run();
+        (, address _stakingToken) = deploymentConfig.activeNetworkConfig();
+
+        streamer = stakeManager;
+        stakingToken = MockToken(_stakingToken);
+        vaultFactory = _vaultFactory;
 
         stakingToken.mint(alice, 10_000e18);
-
-        // Create a temporary vault just to get the codehash
-        StakeVault tempVault = new StakeVault(address(this), IStakeManagerProxy(address(streamer)));
-        bytes32 vaultCodeHash = address(tempVault).codehash;
-
-        // Register the codehash before creating any user vaults
-        streamer.setTrustedCodehash(vaultCodeHash, true);
 
         stakeVault = _createTestVault(alice);
 
