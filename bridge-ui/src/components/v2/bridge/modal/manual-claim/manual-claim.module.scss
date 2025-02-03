@@ -1,0 +1,18 @@
+.modal-inner {
+  padding: 0 1.6rem 1.6rem 1.6rem;
+  font-family: var(--font-atyp-text);
+}
+
+.text {
+  color: var(--v2-color-darker-gray);
+  font-size: 1.6rem;
+  font-family: var(--font-atyp-text);
+  margin-bottom: 1.6rem;
+  text-align: center;
+  line-height: 1.4;
+
+  a {
+    color: var(--v2-color-indigo);
+    text-decoration: none;
+  }
+}

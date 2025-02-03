@@ -1,0 +1,110 @@
+.wrapper {
+  margin-top: 1rem;
+  border: 1px solid var(--v2-color-silver);
+  border-radius: 1rem;
+  padding: 1.6rem;
+}
+
+.setting {
+  cursor: pointer;
+  color: var(--v2-color-indigo);
+  display: flex;
+  align-items: center;
+
+  svg {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-atyp-text);
+
+  .title {
+    color: var(--v2-color-darker-gray);
+  }
+  .config {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+}
+
+.result {
+  display: flex;
+  gap: 0.8rem;
+  margin: 1.6rem 0;
+
+  .crypto {
+    font-size: 2.4rem;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+  }
+  .amount {
+    font-size: 1.2rem;
+    color: var(--v2-color-darker-gray);
+    font-family: var(--font-atyp-text);
+  }
+}
+
+.estimate {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  font-family: var(--font-atyp-text);
+
+  & > * {
+    padding: 0.4rem 0.8rem;
+    background-color: var(--v2-color-smoke);
+    border-radius: 1rem;
+
+    svg {
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+  }
+
+  .time {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    cursor: pointer;
+    color: var(--v2-color-darker-gray);
+  }
+
+  .manual {
+    background-color: #fff1e9;
+    color: var(--v2-color-dark-red);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+  }
+
+  .gas-fees {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    color: var(--v2-color-darker-gray);
+    cursor: pointer;
+
+    .estimate-crypto {
+      font-weight: 500;
+    }
+  }
+}
+
+.bottom {
+  font-family: var(--font-atyp-text);
+  font-size: 1.2rem;
+  margin-top: 0.8rem;
+
+  button {
+    color: var(--v2-color-indigo);
+    cursor: pointer;
+  }
+}

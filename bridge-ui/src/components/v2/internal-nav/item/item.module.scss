@@ -1,0 +1,18 @@
+.nav {
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  column-gap: 0.8rem;
+  padding: 1.2rem 2.2rem;
+  background-color: var(--v2-color-white);
+  text-decoration: none;
+
+  &.active {
+    background-color: var(--v2-color-icterine);
+  }
+
+  svg {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+}

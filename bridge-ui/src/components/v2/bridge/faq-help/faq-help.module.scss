@@ -1,0 +1,24 @@
+.faq-help {
+  text-align: center;
+  font-size: 1.4rem;
+  margin-top: 2.4rem;
+  font-family: var(--font-atyp-text);
+
+  &.is-mobile {
+    @include bp("tablet") {
+      display: none;
+    }
+  }
+  &.is-desktop {
+    display: none;
+
+    @include bp("tablet") {
+      display: block;
+    }
+  }
+
+  a {
+    color: var(--v2-color-indigo);
+    text-decoration: none;
+  }
+}

@@ -1,0 +1,18 @@
+.amount {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  input {
+    font-family: var(--font-atyp);
+    background-color: var(--v2-color-smoke);
+    font-size: 3.2rem;
+    width: 6.6rem;
+  }
+
+  .calculated-value {
+    font-size: 1.2rem;
+    color: var(--v2-color-darker-gray);
+    font-family: var(--font-atyp-text);
+  }
+}
