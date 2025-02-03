@@ -25,9 +25,14 @@ type Job struct {
 	Start int
 	End   int
 
-	VersionExecutionTracer string
-	VersionStateManager    string
-	VersionCompressor      string
+	// Execution Trace version
+	Etv string
+
+	// State Manager Trace version
+	Stv string
+
+	// Compressor version ccv
+	VersionCompressor string
 
 	// The hex string of the content hash
 	ContentHash string
@@ -62,8 +67,8 @@ func NewJob(jdef *JobDefinition, filename string) (j *Job, err error) {
 	j.Start = intIfRegexpNotNil(regs.Start, filename)
 	j.End = intIfRegexpNotNil(regs.End, filename)
 	j.VersionCompressor = stringIfRegexpNotNil(regs.Cv, filename)
-	j.VersionExecutionTracer = stringIfRegexpNotNil(regs.Etv, filename)
-	j.VersionStateManager = stringIfRegexpNotNil(regs.Stv, filename)
+	j.Etv = stringIfRegexpNotNil(regs.Etv, filename)
+	j.Stv = stringIfRegexpNotNil(regs.Stv, filename)
 	j.ContentHash = stringIfRegexpNotNil(regs.ContentHash, filename)
 
 	return j, nil
@@ -103,12 +108,11 @@ func (j *Job) TmpResponseFile(c *config.Config) (s string) {
 	return path.Join(j.Def.dirTo(), "tmp-response-file."+c.Controller.LocalID+".json")
 }
 
-// Returns the name of the input file modified so that it is retried in
-// large mode. It fails if the job's definition does not provide a suffix to
-// retry in large mode. This is still unexpected because the configuration
-// validation ensures that if there is an exit code amenable to defer the job to
-// a larger machine, then the suffix must be set. If the status code of the
-// prover is zero it will return an error.
+// This function returns the name of the input file, modified to indicate that it should be retried in "large mode".
+// It will fail if the job's configuration does not include a suffix for retrying in large mode.
+// However, this situation is unexpected because the configuration validation ensures that if an exit code requires
+// deferring the job to a larger machine, the suffix must be set.
+// Additionally, if the prover's status code is zero (indicating success), the function will return an error.
 func (j *Job) DeferToLargeFile(status Status) (s string, err error) {
 
 	// It's an invariant of the executor to not forget to set the status
@@ -131,8 +135,8 @@ func (j *Job) DeferToLargeFile(status Status) (s string, err error) {
 		logrus.Warnf(
 			"Deferring the large machine but the input file `%v` already has"+
 				" the suffix %v. Still renaming it to %v, but it will likely"+
-				" not be picked up again",
-			j.OriginalFile, suffixLarge, s,
+				// Returns the name of the input file modified so that it is retried in		" not be picked up again",
+				j.OriginalFile, suffixLarge, s,
 		)
 	}
 

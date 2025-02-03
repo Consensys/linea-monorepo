@@ -19,12 +19,18 @@ const (
 // JobDefinition represents a collection of static parameters allowing to define
 // a job.
 type JobDefinition struct {
+	// Name of the job
+	Name string
+
+	// Priority at which this type of job should be processed. The lower the
+	// more of a priority.
+	//
+	// Typically 0 for execution, 1 for compression and 2 for aggregation.
+	//
+	Priority int
 
 	// Parameters for the job definition provided by the user
 	RequestsRootDir string
-
-	// Name of the job
-	Name string
 
 	// The regexp to use to match input files. For instance,
 	//
@@ -42,13 +48,6 @@ type JobDefinition struct {
 	// 	`{{.From}}-{{.To}}-pv{{.Version}}-stv{{.Stv}}-etv{{.Etv}}-zkProof.json`
 	//
 	OutputFileTmpl *template.Template
-
-	// Priority at which this type of job should be processed. The lower the
-	// more of a priority.
-	//
-	// Typically 0 for execution, 1 for compression and 2 for aggregation.
-	//
-	Priority int
 
 	// The associated compiled regexp, this saves on recompiling the regexps
 	// everytime we want to use them. If a field is not needed, it can be left
@@ -178,7 +177,7 @@ func CompressionDefinition(conf *config.Config) JobDefinition {
 	}
 }
 
-// Definition of an execution prover job.
+// Definition of an aggregated prover job.
 func AggregatedDefinition(conf *config.Config) JobDefinition {
 
 	return JobDefinition{
@@ -202,8 +201,8 @@ func AggregatedDefinition(conf *config.Config) JobDefinition {
 			"{{.Start}}-{{.End}}-{{.ContentHash}}-getZkAggregatedProof.json",
 		),
 
-		// Execution job are at utmost priority
-		Priority: 1,
+		// Aggregation job are at lowest priority
+		Priority: 2,
 
 		// Parameters of the regexp, they can loose in the sense that these
 		// regexp are only called if the `InputFileRegexp` is matched.
