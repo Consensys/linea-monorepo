@@ -143,44 +143,16 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
   }
 
-  // /**
-  //  * @notice Reinitializes the LineaRollup contract.
-  //  * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-
-  //  */
-  // function reinitializeLineaRollupV7(LastFinalizedState calldata _initialSoundnessState) external reinitializer(7) {
-  //   // initialSoundnessState = _computeSoundnessState(_initialSoundnessState);
-
-  //   /// @dev using the constants requires string memory and more complex code.
-  //   emit LineaRollupVersionChanged(bytes8("6.0"), bytes8("7.0"));
-  // }
-
   /**
-   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings and fallback operator.
+   * @notice Reinitializes the LineaRollup contract.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _roleAddresses The list of addresses and roles to assign permissions to.
-   * @param _pauseTypeRoles The list of pause types to associate with roles.
-   * @param _unpauseTypeRoles The list of unpause types to associate with roles.
-   * @param _fallbackOperator The address of the fallback operator.
+
    */
-  function reinitializeLineaRollupV6(
-    RoleAddress[] calldata _roleAddresses,
-    PauseTypeRole[] calldata _pauseTypeRoles,
-    PauseTypeRole[] calldata _unpauseTypeRoles,
-    address _fallbackOperator
-  ) external reinitializer(6) {
-    __Permissions_init(_roleAddresses);
-    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-
-    if (_fallbackOperator == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    fallbackOperator = _fallbackOperator;
-    emit FallbackOperatorAddressSet(msg.sender, _fallbackOperator);
+  function reinitializeLineaRollupV7(InitialSoundnessState calldata _initialSoundnessState) external reinitializer(7) {
+    initialSoundnessState = _computeInitialSoundnessStateHash(_initialSoundnessState);
 
     /// @dev using the constants requires string memory and more complex code.
-    emit LineaRollupVersionChanged(bytes8("5.0"), bytes8("6.0"));
+    emit LineaRollupVersionChanged(bytes8("6.0"), bytes8("7.0"));
   }
 
   /**
@@ -197,66 +169,94 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     super.renounceRole(_role, _account);
   }
 
-  // function invalidateProtocolSoundness(
-  //   SoundessFinalizationData memory _finalizationData,
-  //   uint256 _proofType
-  // ) external {
+  function triggerSoundnessAlert(SoundessFinalizationData memory _finalizationData, uint256 _proofType) external {
+    address verifierAddressForProofType = verifiers[_finalizationData.proofType];
 
-  //   // 1. Compute initial state and validate it is the same as stored on chain.
-  //   if(initialSoundnessState != _computeInitialSoundnessState(_finalizationData.initialState)){
-  //       revert InitialSoundnessStateNotSame(initialSoundnessState, _computeInitialSoundnessState(_finalizationData.initialState));
-  //   }
+    if (verifierAddressForProofType == VERIFIER_TRIGGERED_SOUNDNESS_ALERT_ADDRESS) {
+      revert SoundnessAlertAlreadyTriggered();
+    }
 
-  //   // 2. verify final and alternate states are different
-  //   // TODO - check the permutations of this
-  //   if (
-  //     _finalizationData.finalState.shnarfData.snarkHash == _finalizationData.alternateFinalState.shnarfData.snarkHash
-  //   ) {
-  //     revert();
-  //   }
+    // 1. Compute initial state and validate it is the same as stored on chain.
+    if (initialSoundnessState != _computeInitialSoundnessStateHash(_finalizationData.initialSoundnessState)) {
+      revert InitialSoundnessStateNotSame(
+        initialSoundnessState,
+        _computeInitialSoundnessStateHash(_finalizationData.initialSoundnessState)
+      );
+    }
 
-  //   if (
-  //     _finalizationData.finalState.shnarfData.finalStateRootHash ==
-  //     _finalizationData.alternateFinalState.shnarfData.finalStateRootHash
-  //   ) {
-  //     revert();
-  //   }
+    // set the final shnarf data to a memory variable
+    ShnarfData memory firstShnarfData = _finalizationData.finalizationData.shnarfData;
 
-  //   // 3. compute shnarf for final state
+    // 2. verify final and alternate states are different
+    // TODO - check the permutations of this
+    if (firstShnarfData.snarkHash == _finalizationData.alternateFinalizationData.snarkHash) {
+      revert();
+    }
 
-  //   bytes32 finalStateShnarf = _computeShnarf(_parentShnarf, _snarkHash, _finalStateRootHash, _dataEvaluationPoint, _dataEvaluationClaim);
-  //   // 4. get verifierAddress
-  //   // 5. verify initial state matches
-  //   // 6. verify/prove final state (revert if fails)
+    if (firstShnarfData.finalStateRootHash == _finalizationData.alternateFinalizationData.finalStateRootHash) {
+      revert();
+    }
 
-  //   uint256 finalStatePublicInput = _computePublicInput(
-  //     _finalizationData,
-  //     _lastFinalizedShnarf,
-  //     _finalShnarf,
-  //     _lastFinalizedBlockNumber
-  //   );
-  //   _verifyProof(finalStatePublicInput, _finalizationData.proofType, _aggregatedProof);
-  //   bool finalStateProven = true;
-  //   // 7. compute shnarf for alternate state
-  //   // 8. verify/prove alternate state (revert if fails)
+    if (firstShnarfData.parentShnarf != _finalizationData.initialSoundnessState.shnarf) {
+      revert("parents are wrong");
+    }
 
-  //   uint256 alternateFinalStatePublicInput = _computePublicInput(
-  //     _finalizationData,
-  //     _lastFinalizedShnarf,
-  //     _finalShnarf,
-  //     _lastFinalizedBlockNumber
-  //   );
-  //   _verifyProof(alternateFinalStatePublicInput, _finalizationData.proofType, _aggregatedProof);
-  //   bool alternateFinalStateProven = true;
-  //   // 9. if both proofs pass
+    // 6. verify/prove final state (revert if fails)
 
-  //   if (finalStateProven && alternateFinalStateProven) {
-  //     // - remove verifier so that future
-  //     verifiers[_finalizationData.proofType] = VERIFIER_FAILED_SOUNDNESS_ADDRESS;
+    uint256 finalStatePublicInput = _computePublicInput(
+      _finalizationData.finalizationData,
+      _finalizationData.initialSoundnessState.shnarf,
+      _computeShnarf(
+        firstShnarfData.parentShnarf,
+        firstShnarfData.snarkHash,
+        firstShnarfData.finalStateRootHash,
+        firstShnarfData.dataEvaluationPoint,
+        firstShnarfData.dataEvaluationClaim
+      ),
+      _finalizationData.initialSoundnessState.blockNumber
+    );
 
-  //     emit SoundessInvalidated(verifierAddress, _proofType)
-  //   }
-  // }
+    /// @dev If this fails we would get an InvalidProof() revert;
+    _verifyProof(finalStatePublicInput, _finalizationData.proofType, _finalizationData.firstProof);
+
+    /// @dev Update the finalization data vs. creating a whole new object.
+    _finalizationData.finalizationData.l1RollingHashMessageNumber = _finalizationData
+      .alternateFinalizationData
+      .l1RollingHashMessageNumber;
+    _finalizationData.finalizationData.l1RollingHash = _finalizationData.alternateFinalizationData.l1RollingHash;
+    _finalizationData.finalizationData.l2MerkleRoots = _finalizationData.alternateFinalizationData.l2MerkleRoots;
+    _finalizationData.finalizationData.l2MerkleTreesDepth = _finalizationData
+      .alternateFinalizationData
+      .l2MerkleTreesDepth;
+    _finalizationData.finalizationData.finalTimestamp = _finalizationData.alternateFinalizationData.finalTimestamp;
+    _finalizationData.finalizationData.endBlockNumber = _finalizationData.alternateFinalizationData.endBlockNumber;
+
+    // 8. verify/prove alternate state (revert if fails)
+    uint256 alternateFinalStatePublicInput = _computePublicInput(
+      _finalizationData.finalizationData,
+      _finalizationData.initialSoundnessState.shnarf,
+      _computeShnarf(
+        firstShnarfData.parentShnarf, // can't change
+        _finalizationData.alternateFinalizationData.snarkHash,
+        _finalizationData.alternateFinalizationData.finalStateRootHash,
+        firstShnarfData.dataEvaluationPoint, // can't change
+        firstShnarfData.dataEvaluationClaim // can't change
+      ),
+      _finalizationData.initialSoundnessState.blockNumber
+    );
+
+    /// @dev If this fails we would get an InvalidProof() revert;
+    _verifyProof(
+      alternateFinalStatePublicInput,
+      _finalizationData.proofType,
+      _finalizationData.alternateFinalizationData.proof
+    );
+
+    /// @dev Due to lack of reverts and 2 proofs passing, we should remove the verifier and soundness alert is triggered.
+    verifiers[_finalizationData.proofType] = VERIFIER_TRIGGERED_SOUNDNESS_ALERT_ADDRESS;
+
+    emit SoundessAlertTriggered(verifierAddressForProofType, _proofType);
+  }
 
   /**
    * @notice Adds or updates the verifier contract address for a proof type.
@@ -438,6 +438,41 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   }
 
   /**
+   * @notice Finalize compressed blocks with proof.
+   * @dev OPERATOR_ROLE is required to execute.
+   * @param _aggregatedProof The aggregated proof.
+   * @param _proofType The proof type.
+   * @param _finalizationData The full finalization data.
+   */
+  function finalizeBlocks(
+    bytes calldata _aggregatedProof,
+    uint256 _proofType,
+    FinalizationDataV3 calldata _finalizationData
+  ) external whenTypeAndGeneralNotPaused(PauseType.FINALIZATION) onlyRole(OPERATOR_ROLE) {
+    if (_aggregatedProof.length == 0) {
+      revert ProofIsEmpty();
+    }
+
+    uint256 lastFinalizedBlockNumber = currentL2BlockNumber;
+
+    if (stateRootHashes[lastFinalizedBlockNumber] != _finalizationData.parentStateRootHash) {
+      revert StartingRootHashDoesNotMatch();
+    }
+
+    /// @dev currentFinalizedShnarf is updated in _finalizeBlocks and lastFinalizedShnarf MUST be set beforehand for the transition.
+    bytes32 lastFinalizedShnarf = currentFinalizedShnarf;
+
+    uint256 publicInput = _computePublicInput(
+      _finalizationData,
+      lastFinalizedShnarf,
+      _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber),
+      lastFinalizedBlockNumber
+    );
+
+    _verifyProof(publicInput, _proofType, _aggregatedProof);
+  }
+
+  /**
    * @notice Internal function to compute and save the finalization state.
    * @dev Using assembly this way is cheaper gas wise.
    * @param _messageNumber Is the last L2 computed L1 message number in the finalization.
@@ -526,41 +561,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     if (fieldElements != POINT_EVALUATION_FIELD_ELEMENTS_LENGTH || blsCurveModulus != BLS_CURVE_MODULUS) {
       revert PointEvaluationResponseInvalid(fieldElements, blsCurveModulus);
     }
-  }
-
-  /**
-   * @notice Finalize compressed blocks with proof.
-   * @dev OPERATOR_ROLE is required to execute.
-   * @param _aggregatedProof The aggregated proof.
-   * @param _proofType The proof type.
-   * @param _finalizationData The full finalization data.
-   */
-  function finalizeBlocks(
-    bytes calldata _aggregatedProof,
-    uint256 _proofType,
-    FinalizationDataV3 calldata _finalizationData
-  ) external whenTypeAndGeneralNotPaused(PauseType.FINALIZATION) onlyRole(OPERATOR_ROLE) {
-    if (_aggregatedProof.length == 0) {
-      revert ProofIsEmpty();
-    }
-
-    uint256 lastFinalizedBlockNumber = currentL2BlockNumber;
-
-    if (stateRootHashes[lastFinalizedBlockNumber] != _finalizationData.parentStateRootHash) {
-      revert StartingRootHashDoesNotMatch();
-    }
-
-    /// @dev currentFinalizedShnarf is updated in _finalizeBlocks and lastFinalizedShnarf MUST be set beforehand for the transition.
-    bytes32 lastFinalizedShnarf = currentFinalizedShnarf;
-
-    uint256 publicInput = _computePublicInput(
-      _finalizationData,
-      lastFinalizedShnarf,
-      _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber),
-      lastFinalizedBlockNumber
-    );
-
-    _verifyProof(publicInput, _proofType, _aggregatedProof);
   }
 
   /**
@@ -742,6 +742,15 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
       mstore(add(mPtr, 0x160), hashOfMerkleRoots)
 
       publicInput := mod(keccak256(mPtr, 0x180), MODULO_R)
+    }
+  }
+
+  // TODO CORRECT THE NATSPEC HERE
+  function _computeInitialSoundnessStateHash(
+    InitialSoundnessState memory _lastFinalizedSoundness
+  ) internal returns (bytes32 initialStateHashed) {
+    assembly {
+      initialStateHashed := keccak256(_lastFinalizedSoundness, 0xa0)
     }
   }
 }

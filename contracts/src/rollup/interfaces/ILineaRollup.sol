@@ -114,7 +114,7 @@ interface ILineaRollup {
     bytes l2MessagingBlocksOffsets;
   }
 
-  struct LastFinalizedState {
+  struct InitialSoundnessState {
     bytes32 shnarf;
     uint256 blockNumber;
     uint256 timestamp;
@@ -123,20 +123,22 @@ interface ILineaRollup {
   }
 
   struct AlternateFinalizationData {
-    uint256 timestamp;
+    uint256 finalTimestamp;
+    uint256 endBlockNumber;
     bytes32 l1RollingHash;
-    uint256 l1MessageNumber;
+    uint256 l1RollingHashMessageNumber;
     uint256 l2MerkleTreesDepth;
-    bytes32[] l2MerkleRoots;
     bytes32 snarkHash;
     bytes32 finalStateRootHash;
+    bytes32[] l2MerkleRoots;
     bytes proof;
   }
 
   struct SoundessFinalizationData {
-    LastFinalizedState lastFinalizedState;
+    InitialSoundnessState initialSoundnessState;
     FinalizationDataV3 finalizationData;
     AlternateFinalizationData alternateFinalizationData;
+    bytes firstProof;
     uint256 proofType;
   }
 
@@ -204,11 +206,11 @@ interface ILineaRollup {
   );
 
   /**
-   * @notice Emitted when the soundness alert is being fired.
+   * @notice Emitted when the soundness alert is being triggered.
    * @param verfier The verifier shown to be invalid.
    * @param proofType The proof type shown to be invalid.
    */
-  event SoundessInvalidated(address verfier, uint256 proofType);
+  event SoundessAlertTriggered(address verfier, uint256 proofType);
 
   /**
    * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the fallback operator address.
@@ -317,6 +319,16 @@ interface ILineaRollup {
   error OnlyNonFallbackOperator();
 
   /**
+   * @dev Thrown when the soundness alert has already been triggered for the proof type.
+   */
+  error SoundnessAlertAlreadyTriggered();
+
+  /**
+   * @dev Thrown when the initial state provided does not match the on-chain one.
+   */
+  error InitialSoundnessStateNotSame(bytes32 expected, bytes32 actual);
+
+  /**
    * @notice Adds or updates the verifier contract address for a proof type.
    * @dev VERIFIER_SETTER_ROLE is required to execute.
    * @param _newVerifierAddress The address for the verifier contract.
@@ -379,4 +391,7 @@ interface ILineaRollup {
     uint256 _proofType,
     FinalizationDataV3 calldata _finalizationData
   ) external;
+
+  /// TODO NATSPEC
+  function triggerSoundnessAlert(SoundessFinalizationData memory _finalizationData, uint256 _proofType) external;
 }
