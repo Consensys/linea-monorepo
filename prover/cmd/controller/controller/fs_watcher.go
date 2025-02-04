@@ -15,7 +15,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-// FsWatcher is a struct who will watch the filesystem and return files as if
+// FsWatcher watches the filesystem and return files as if
 // it were a message queue.
 type FsWatcher struct {
 	// Unique ID of the container. Used to identify the owner of a locked file
@@ -72,11 +72,13 @@ func (fs *FsWatcher) GetBest() (job *Job) {
 		// of every jobs found so far and they will all be attributed to the
 		// last job definition.
 		jdef := &fs.JobToWatch[i]
-		if err := fs.appendJobFromDef(jdef, &jobs); err != nil {
-			fs.Logger.Errorf(
-				"Got an error trying to fetch job `%v` from dir %v: %v",
-				jdef.Name, jdef.dirFrom(), err,
-			)
+		for j := range jdef.RequestsRootDir {
+			if err := fs.appendJobFromDef(jdef, &jobs); err != nil {
+				fs.Logger.Errorf(
+					"error trying to fetch job `%v` from dir %v: %v",
+					jdef.Name, jdef.dirFrom(j), err,
+				)
+			}
 		}
 	}
 
@@ -85,8 +87,8 @@ func (fs *FsWatcher) GetBest() (job *Job) {
 		return nil
 	}
 
-	// Sort the jobs by scores in ascending order. Lower scores mean more
-	// priority.
+	// Sort the jobs by scores in ascending order.
+	// Lower scores mean more priority.
 	slices.SortStableFunc(jobs, func(a, b *Job) int {
 		return a.Score() - b.Score()
 	})
@@ -119,32 +121,37 @@ func (f *FsWatcher) lockBest(jobs []*Job) (pos int, success bool) {
 // is returned if the function fails to read the directory.
 func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job) (err error) {
 
-	dirFrom := jdef.dirFrom()
-	fs.Logger.Tracef("Seeking jobs for %v in %v", jdef.Name, dirFrom)
-
-	// This will fail if the provided directory is not a directory
-	dirents, err := lsname(dirFrom)
-	if err != nil {
-		return fmt.Errorf("cannot ls `%s` : %v", dirFrom, err)
-	}
 	numMatched := 0
-
 	// Search and append the valid files into the list.
-	for _, dirent := range dirents {
+	var dirEntStr []string
+	for idx := range jdef.RequestsRootDir {
+		dirFrom := jdef.dirFrom(idx)
+		fs.Logger.Tracef("Seeking jobs for %v in %v", jdef.Name, dirFrom)
 
-		fs.Logger.Tracef("Examining entry %s in %s", dirFrom, dirent.Name())
-
-		// Ignore directories
-		if !dirent.Type().IsRegular() {
-			fs.Logger.Debugf("Ignoring directory `%s`", dirent.Name())
-			continue
+		// This will fail if the provided directory is not a directory
+		dirents, err := lsname(dirFrom)
+		if err != nil {
+			return fmt.Errorf("cannot ls `%s` : %v", dirFrom, err)
 		}
 
-		// Attempt to construct a job from the filename. If the filename is
+		for _, dirent := range dirents {
+
+			fs.Logger.Tracef("Examining entry %s in %s", dirFrom, dirent.Name())
+
+			// Ignore directories
+			if !dirent.Type().IsRegular() {
+				fs.Logger.Debugf("Ignoring directory `%s`", dirent.Name())
+				continue
+			}
+
+			dirEntStr = append(dirEntStr, dirent.Name())
+		}
+
+		// Attempt to construct a job from the filenames. If the filenames is
 		// not parseable to the target JobType, it will return an error.
-		job, err := NewJob(jdef, dirent.Name())
+		job, err := NewJob(jdef, dirEntStr)
 		if err != nil {
-			fs.Logger.Debugf("Found invalid file  `%v` : %v", dirent.Name(), err)
+			fs.Logger.Debugf("Found invalid file  `%v` : %v", err)
 			continue
 		}
 
@@ -153,52 +160,51 @@ func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job) (err er
 		*jobs = append(*jobs, job)
 		numMatched++
 	}
-
 	// Pass prometheus metrics
-	metrics.CollectFS(jdef.Name, len(dirents), numMatched)
-
+	metrics.CollectFS(jdef.Name, len(dirEntStr), numMatched)
 	return nil
 }
 
-// Trylock attempts to rename a file by adding an IN_PROGRESS suffix. The lock
-// operation is atomic only on Unix systems.
+// Trylock attempts to rename a file by adding an IN_PROGRESS suffix.
+// The lock operation is atomic only on Unix systems.
 func (fs *FsWatcher) tryLockFile(job *Job) (success bool) {
 
-	dirName := job.Def.dirFrom()
-	lockedFile := strings.Join(
-		[]string{
-			job.OriginalFile,
-			fs.InProgress,
-			fs.LocalID,
-		}, ".")
-	old := path.Join(dirName, job.OriginalFile)
-	new := path.Join(dirName, lockedFile)
-	err := os.Rename(old, new)
+	for idx := range job.OriginalFile {
+		dirName := job.Def.dirFrom(idx)
+		lockedFile := strings.Join(
+			[]string{
+				job.OriginalFile[idx],
+				fs.InProgress,
+				fs.LocalID,
+			}, ".")
+		old := path.Join(dirName, job.OriginalFile[idx])
+		new := path.Join(dirName, lockedFile)
+		err := os.Rename(old, new)
 
-	if err != nil {
-		// Detect the case where the old file still exists but the new one
-		// already exists.
-		_, errOld := os.Lstat(old)
-		_, errNew := os.Lstat(new)
+		if err != nil {
+			// Detect the case where the old file still exists but the new one
+			// already exists.
+			_, errOld := os.Lstat(old)
+			_, errNew := os.Lstat(new)
 
-		if errNew == nil && errOld == nil {
-			fs.Logger.Errorf(
-				"old file `%v` and new files `%v` both exists",
-				old, new,
+			if errNew == nil && errOld == nil {
+				fs.Logger.Errorf(
+					"old file `%v` and new files `%v` both exists",
+					old, new,
+				)
+			}
+
+			fs.Logger.Tracef(
+				"could not lock file %v because : %v",
+				old, errOld,
 			)
+
+			return false
 		}
 
-		fs.Logger.Tracef(
-			"could not lock file %v because : %v",
-			old, errOld,
-		)
-
-		return false
+		// Success, write the name of the locked file
+		job.LockedFile[idx] = lockedFile
 	}
-
-	// Success, write the name of the locked file
-	job.LockedFile = lockedFile
-
 	return true
 }
 
