@@ -5,8 +5,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -96,15 +96,12 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 	mod.csIsSmallAndLarge(comp)
 	mod.csToCirc(comp)
 
-	projection.InsertProjection(
-		comp,
+	comp.InsertProjection(
 		"MODEXP_BLKMDXP_PROJECTION",
-		[]ifaces.Column{mod.Input.Limbs},
-		[]ifaces.Column{mod.Limbs},
-		mod.Input.isModExp,
-		mod.IsActive,
-	)
-
+		query.ProjectionInput{ColumnA: []ifaces.Column{mod.Input.Limbs},
+			ColumnB: []ifaces.Column{mod.Limbs},
+			FilterA: mod.Input.isModExp,
+			FilterB: mod.IsActive})
 	return mod
 }
 

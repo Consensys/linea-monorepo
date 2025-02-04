@@ -144,8 +144,11 @@ func Verify(c *CompiledIOP, proof Proof, parentRuntime ...*VerifierRuntime) erro
 	return nil
 }
 
-func VerifierWithRuntime(c *CompiledIOP, proof Proof) (*VerifierRuntime, error) {
+func VerifyWithRuntime(c *CompiledIOP, proof Proof, parentRuntime ...*VerifierRuntime) (*VerifierRuntime, error) {
 	runtime := c.createVerifier(proof)
+	if len(parentRuntime) != 0 {
+		runtime.ParentRuntime = parentRuntime[0]
+	}
 
 	/*
 		Pre-emptively generates the random coins. As the entire set of prover
