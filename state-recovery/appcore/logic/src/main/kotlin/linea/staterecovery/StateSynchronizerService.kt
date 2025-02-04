@@ -121,31 +121,43 @@ class StateSynchronizerService(
   private fun updateNodeWithBlobsAndVerifyState(
     dataSubmissions: List<DataSubmittedEventAndBlobs>,
     dataFinalizedV3: DataFinalizedV3
-  ): SafeFuture<BlockNumberAndHash> {
+  ): SafeFuture<Unit> {
     return blobDecompressor
       .decompress(
         startBlockNumber = dataFinalizedV3.startBlockNumber,
         blobs = dataSubmissions.flatMap { it.blobs }
       )
       .thenCompose(this::filterOutBlocksAlreadyImportedAndBeyondStopSync)
-      .thenCompose { decompressedBlocks: List<BlockFromL1RecoveredData> ->
-        val blockInterval = CommonDomainFunctions.blockIntervalString(
-          decompressedBlocks.first().header.blockNumber,
-          decompressedBlocks.last().header.blockNumber
-        )
-        log.debug("importing blocks={} from finalization={}", blockInterval, dataFinalizedV3.intervalString())
-        blockImporterAndStateVerifier
-          .importBlocks(decompressedBlocks)
-          .thenCompose { importResult ->
-            log.debug("imported blocks={}", dataFinalizedV3.intervalString())
-            assertStateMatches(importResult, dataFinalizedV3)
-          }
-          .thenApply {
-            BlockNumberAndHash(
-              number = decompressedBlocks.last().header.blockNumber,
-              hash = decompressedBlocks.last().header.blockHash
-            )
-          }
+
+      .thenCompose { decompressedBlocksToImport: List<BlockFromL1RecoveredData> ->
+        if (decompressedBlocksToImport.isEmpty()) {
+          log.info(
+            "stopping recovery synch: imported all blocks up to debugForceSyncStopBlockNumber={} finalization={}",
+            debugForceSyncStopBlockNumber,
+            dataFinalizedV3.intervalString()
+          )
+          this.stop()
+          SafeFuture.completedFuture(null)
+        } else {
+          importBlocksAndAssertStateroot(decompressedBlocksToImport, dataFinalizedV3)
+        }
+      }
+  }
+
+  private fun importBlocksAndAssertStateroot(
+    decompressedBlocksToImport: List<BlockFromL1RecoveredData>,
+    dataFinalizedV3: DataFinalizedV3
+  ): SafeFuture<Unit> {
+    val blockInterval = CommonDomainFunctions.blockIntervalString(
+      decompressedBlocksToImport.first().header.blockNumber,
+      decompressedBlocksToImport.last().header.blockNumber
+    )
+    log.debug("importing blocks={} from finalization={}", blockInterval, dataFinalizedV3.intervalString())
+    return blockImporterAndStateVerifier
+      .importBlocks(decompressedBlocksToImport)
+      .thenCompose { importResult ->
+        log.debug("imported blocks={}", dataFinalizedV3.intervalString())
+        assertStateMatches(importResult, dataFinalizedV3)
       }
   }
 
