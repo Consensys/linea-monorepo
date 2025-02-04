@@ -21,6 +21,7 @@ class StateSynchronizerService(
   private val blobDecompressor: BlobDecompressorAndDeserializer,
   private val blockImporterAndStateVerifier: BlockImporterAndStateVerifier,
   private val pollingInterval: Duration,
+  private val debugForceSyncStopBlockNumber: ULong?,
   private val log: Logger = LogManager.getLogger(StateSynchronizerService::class.java)
 ) : PeriodicPollingService(
   vertx = vertx,
@@ -126,7 +127,7 @@ class StateSynchronizerService(
         startBlockNumber = dataFinalizedV3.startBlockNumber,
         blobs = dataSubmissions.flatMap { it.blobs }
       )
-      .thenCompose(this::filterOutBlocksAlreadyImported)
+      .thenCompose(this::filterOutBlocksAlreadyImportedAndBeyondStopSync)
       .thenCompose { decompressedBlocks: List<BlockFromL1RecoveredData> ->
         val blockInterval = CommonDomainFunctions.blockIntervalString(
           decompressedBlocks.first().header.blockNumber,
@@ -148,12 +149,17 @@ class StateSynchronizerService(
       }
   }
 
-  private fun filterOutBlocksAlreadyImported(
+  private fun filterOutBlocksAlreadyImportedAndBeyondStopSync(
     blocks: List<BlockFromL1RecoveredData>
   ): SafeFuture<List<BlockFromL1RecoveredData>> {
     return elClient.getBlockNumberAndHash(blockParameter = BlockParameter.Tag.LATEST)
       .thenApply { headBlock ->
         blocks.dropWhile { it.header.blockNumber <= headBlock.number }
+        if (debugForceSyncStopBlockNumber != null) {
+          blocks.takeWhile { it.header.blockNumber <= debugForceSyncStopBlockNumber }
+        } else {
+          blocks
+        }
       }
   }
 

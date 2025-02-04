@@ -15,6 +15,7 @@ class RecoveryModeManager(
   private val p2pService: P2PService,
   private val miningService: MiningService,
   private val recoveryStatePersistence: RecoveryStatusPersistence,
+  private val debugForceSyncStopBlockNumber: ULong? = null,
   headBlockNumber: ULong
 ) :
   BesuEvents.BlockAddedListener {
@@ -53,6 +54,9 @@ class RecoveryModeManager(
     headBlockNumber = blockNumber.toULong()
     if (!recoveryModeTriggered.get() && hasReachedTargetBlock()) {
       switchToRecoveryMode()
+    } else if (debugForceSyncStopBlockNumber != null && headBlockNumber >= debugForceSyncStopBlockNumber) {
+      log.info("Stopping synchronization services at blockNumber={}", headBlockNumber)
+      stopBesuServices()
     }
   }
 
