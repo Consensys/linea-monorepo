@@ -3,7 +3,6 @@ package linea.staterecovery
 import build.linea.domain.EthLogEvent
 import io.vertx.core.Vertx
 import net.consensys.encodeHex
-import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.zkevm.PeriodicPollingService
@@ -128,7 +127,6 @@ class StateSynchronizerService(
         blobs = dataSubmissions.flatMap { it.blobs }
       )
       .thenCompose(this::filterOutBlocksAlreadyImportedAndBeyondStopSync)
-
       .thenCompose { decompressedBlocksToImport: List<BlockFromL1RecoveredData> ->
         if (decompressedBlocksToImport.isEmpty()) {
           log.info(
