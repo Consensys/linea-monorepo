@@ -748,7 +748,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   // TODO CORRECT THE NATSPEC HERE
   function _computeInitialSoundnessStateHash(
     InitialSoundnessState memory _lastFinalizedSoundness
-  ) internal returns (bytes32 initialStateHashed) {
+  ) private pure returns (bytes32 initialStateHashed) {
     assembly {
       initialStateHashed := keccak256(_lastFinalizedSoundness, 0xa0)
     }
