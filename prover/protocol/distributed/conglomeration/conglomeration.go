@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -96,6 +97,8 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 		for _, ctx := range ctxs {
 			selfrecursion.RecurseOverCustomCtx(comp, ctx.PcsCtx, ctx.Translator.Prefix)
 		}
+
+		comp.RegisterVerifierAction(ctxs[0].LastRound, &CrossSegmentCheck{Ctxs: ctxs})
 	}
 
 	return def, &ctxs
@@ -117,6 +120,11 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 	var (
 		polyQuery = tmpl.PcsCtxs.(*vortex.Ctx).Query
 		lastRound = tmpl.QueriesParams.Round(polyQuery.QueryID)
+
+		// This sanity-check ensures that the template has the right public inputs
+		_ = tmpl.GetPublicInputAccessor(constants.GrandProductPublicInput)
+		_ = tmpl.GetPublicInputAccessor(constants.GrandSumPublicInput)
+		_ = tmpl.GetPublicInputAccessor(constants.LogDerivativeSumPublicInput)
 	)
 
 	ctx.LastRound = lastRound

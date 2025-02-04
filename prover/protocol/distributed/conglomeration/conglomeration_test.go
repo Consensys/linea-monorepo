@@ -6,14 +6,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/fullrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/conglomeration"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -50,18 +51,18 @@ var (
 		compiler.Arcane(1, 1<<10, false),
 		commonVortexStep,
 	}
-	arcaneFullRecSelfRecCompilationSuite = []func(*wizard.CompiledIOP){
-		compiler.Arcane(1<<8, 1<<10, false),
-		commonVortexStep,
-		selfrecursion.SelfRecurse,
-		mimc.CompileMiMC,
-		compiler.Arcane(1<<8, 1<<10, false),
-		commonVortexStep,
-		fullrecursion.FullRecursion(true),
-		mimc.CompileMiMC,
-		compiler.Arcane(1<<8, 1<<10, false),
-		commonVortexStep,
-	}
+	// arcaneFullRecSelfRecCompilationSuite = []func(*wizard.CompiledIOP){
+	// 	compiler.Arcane(1<<8, 1<<10, false),
+	// 	commonVortexStep,
+	// 	selfrecursion.SelfRecurse,
+	// 	mimc.CompileMiMC,
+	// 	compiler.Arcane(1<<8, 1<<10, false),
+	// 	commonVortexStep,
+	// 	fullrecursion.FullRecursion(true),
+	// 	mimc.CompileMiMC,
+	// 	compiler.Arcane(1<<8, 1<<10, false),
+	// 	commonVortexStep,
+	// }
 )
 
 type conglomerationTestCase struct {
@@ -86,6 +87,9 @@ func TestConglomerationPureVortexSingleRound(t *testing.T) {
 			a = append(a, builder.RegisterCommit(ifaces.ColIDf("a-%v", i), numRow))
 		}
 		u = builder.CompiledIOP.InsertUnivariate(0, "u", a)
+		builder.InsertPublicInput(constants.GrandProductPublicInput, accessors.NewConstant(field.NewElement(1)))
+		builder.InsertPublicInput(constants.GrandSumPublicInput, accessors.NewConstant(field.NewElement(0)))
+		builder.InsertPublicInput(constants.LogDerivativeSumPublicInput, accessors.NewConstant(field.NewElement(0)))
 	}
 
 	prover := func(k int) func(run *wizard.ProverRuntime) {
@@ -165,6 +169,9 @@ func TestConglomerationPureVortexMultiRound(t *testing.T) {
 			run.AssignUnivariate(u.QueryID, field.NewElement(0), ys...)
 		})
 
+		builder.InsertPublicInput(constants.GrandProductPublicInput, accessors.NewConstant(field.NewElement(1)))
+		builder.InsertPublicInput(constants.GrandSumPublicInput, accessors.NewConstant(field.NewElement(0)))
+		builder.InsertPublicInput(constants.LogDerivativeSumPublicInput, accessors.NewConstant(field.NewElement(0)))
 	}
 
 	prover := func(k int) func(run *wizard.ProverRuntime) {
@@ -221,6 +228,10 @@ func TestConglomerationLookup(t *testing.T) {
 					a = append(a, builder.RegisterCommit(ifaces.ColIDf("a-%v", i), numRow))
 					builder.Range(ifaces.QueryIDf("range-%v", i), a[i], 1<<8)
 				}
+
+				builder.InsertPublicInput(constants.GrandProductPublicInput, accessors.NewConstant(field.NewElement(1)))
+				builder.InsertPublicInput(constants.GrandSumPublicInput, accessors.NewConstant(field.NewElement(0)))
+				builder.InsertPublicInput(constants.LogDerivativeSumPublicInput, accessors.NewConstant(field.NewElement(0)))
 			}
 
 			prover := func(k int) func(run *wizard.ProverRuntime) {

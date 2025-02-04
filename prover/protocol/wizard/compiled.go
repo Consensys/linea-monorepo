@@ -657,3 +657,16 @@ func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) Public
 	c.PublicInputs = append(c.PublicInputs, res)
 	return res
 }
+
+// GetPublicInputAccessor attempts to find a public input with the provided name
+// and panic if it fails to do so. The method returns the accessor in case of
+// success.
+func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
+	for _, pi := range c.PublicInputs {
+		if pi.Name == name {
+			return pi.Acc
+		}
+	}
+	utils.Panic("could not find public input %v", name)
+	return nil // unreachable
+}
