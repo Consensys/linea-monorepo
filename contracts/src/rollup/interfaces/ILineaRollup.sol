@@ -135,11 +135,12 @@ interface ILineaRollup {
   }
 
   struct SoundessFinalizationData {
-    InitialSoundnessState initialSoundnessState;
     FinalizationDataV3 finalizationData;
     AlternateFinalizationData alternateFinalizationData;
     bytes firstProof;
     uint256 proofType;
+    bytes32 initialShnarf;
+    uint256 initialBlockNumber;
   }
 
   /**

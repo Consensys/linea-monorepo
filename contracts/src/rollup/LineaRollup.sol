@@ -146,10 +146,15 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   /**
    * @notice Reinitializes the LineaRollup contract.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-
    */
-  function reinitializeLineaRollupV7(InitialSoundnessState calldata _initialSoundnessState) external reinitializer(7) {
-    initialSoundnessState = _computeInitialSoundnessStateHash(_initialSoundnessState);
+  function reinitializeLineaRollupV7(InitialSoundnessState memory _initialSoundnessState) external reinitializer(7) {
+    initialSoundnessState = _computeInitialSoundnessStateHash(
+      _initialSoundnessState.shnarf,
+      _initialSoundnessState.blockNumber,
+      _initialSoundnessState.timestamp,
+      _initialSoundnessState.l1RollingHash,
+      _initialSoundnessState.l1RollingHashMessageNumber
+    );
 
     /// @dev using the constants requires string memory and more complex code.
     emit LineaRollupVersionChanged(bytes8("6.0"), bytes8("7.0"));
@@ -172,15 +177,31 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   function triggerSoundnessAlert(SoundessFinalizationData memory _finalizationData, uint256 _proofType) external {
     address verifierAddressForProofType = verifiers[_finalizationData.proofType];
 
+    // Verify we are not already alerted.
     if (verifierAddressForProofType == VERIFIER_TRIGGERED_SOUNDNESS_ALERT_ADDRESS) {
       revert SoundnessAlertAlreadyTriggered();
     }
 
-    // 1. Compute initial state and validate it is the same as stored on chain.
-    if (initialSoundnessState != _computeInitialSoundnessStateHash(_finalizationData.initialSoundnessState)) {
+    // Compute initial state and validate it is the same as stored on chain.
+    if (
+      initialSoundnessState !=
+      _computeInitialSoundnessStateHash(
+        _finalizationData.initialShnarf,
+        _finalizationData.initialBlockNumber,
+        _finalizationData.finalizationData.lastFinalizedTimestamp,
+        _finalizationData.finalizationData.lastFinalizedL1RollingHash,
+        _finalizationData.finalizationData.lastFinalizedL1RollingHashMessageNumber
+      )
+    ) {
       revert InitialSoundnessStateNotSame(
         initialSoundnessState,
-        _computeInitialSoundnessStateHash(_finalizationData.initialSoundnessState)
+        _computeInitialSoundnessStateHash(
+          _finalizationData.initialShnarf,
+          _finalizationData.initialBlockNumber,
+          _finalizationData.finalizationData.lastFinalizedTimestamp,
+          _finalizationData.finalizationData.lastFinalizedL1RollingHash,
+          _finalizationData.finalizationData.lastFinalizedL1RollingHashMessageNumber
+        )
       );
     }
 
@@ -197,7 +218,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
       revert();
     }
 
-    if (firstShnarfData.parentShnarf != _finalizationData.initialSoundnessState.shnarf) {
+    if (firstShnarfData.parentShnarf != _finalizationData.initialShnarf) {
       revert("parents are wrong");
     }
 
@@ -205,7 +226,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
 
     uint256 finalStatePublicInput = _computePublicInput(
       _finalizationData.finalizationData,
-      _finalizationData.initialSoundnessState.shnarf,
+      _finalizationData.initialShnarf,
       _computeShnarf(
         firstShnarfData.parentShnarf,
         firstShnarfData.snarkHash,
@@ -213,7 +234,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
         firstShnarfData.dataEvaluationPoint,
         firstShnarfData.dataEvaluationClaim
       ),
-      _finalizationData.initialSoundnessState.blockNumber
+      _finalizationData.initialBlockNumber
     );
 
     /// @dev If this fails we would get an InvalidProof() revert;
@@ -234,7 +255,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     // 8. verify/prove alternate state (revert if fails)
     uint256 alternateFinalStatePublicInput = _computePublicInput(
       _finalizationData.finalizationData,
-      _finalizationData.initialSoundnessState.shnarf,
+      _finalizationData.initialShnarf,
       _computeShnarf(
         firstShnarfData.parentShnarf, // can't change
         _finalizationData.alternateFinalizationData.snarkHash,
@@ -242,7 +263,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
         firstShnarfData.dataEvaluationPoint, // can't change
         firstShnarfData.dataEvaluationClaim // can't change
       ),
-      _finalizationData.initialSoundnessState.blockNumber
+      _finalizationData.initialBlockNumber
     );
 
     /// @dev If this fails we would get an InvalidProof() revert;
@@ -711,7 +732,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     bytes32 _finalShnarf,
     uint256 _lastFinalizedBlockNumber
   ) private pure returns (uint256 publicInput) {
-    // TODO move this into Assembly
     bytes32 hashOfMerkleRoots = keccak256(abi.encodePacked(_finalizationData.l2MerkleRoots));
 
     assembly {
@@ -739,6 +759,14 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
        */
       mcopy(add(mPtr, 0xC0), add(_finalizationData, 0xa0), 0xA0)
 
+      // TODO validate this is correct
+      // let merkleRootsLengthLocationOffset :=  add(mload(add(_finalizationData, 0x40)),0x20)
+      // let actualLocation:= add(_finalizationData,merkleRootsLengthLocationOffset)
+      // let merkleRootsLen := mload(actualLocation)
+      // mcopy(add(mPtr, 0x180), add(actualLocation,0x20), mul(merkleRootsLen, 0x20))
+
+      // let hashOfMerkleRoots := keccak256(add(mPtr, 0x180), mul(merkleRootsLen, 0x20))
+
       mstore(add(mPtr, 0x160), hashOfMerkleRoots)
 
       publicInput := mod(keccak256(mPtr, 0x180), MODULO_R)
@@ -746,11 +774,22 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   }
 
   // TODO CORRECT THE NATSPEC HERE
+  // this is really the same as "_computeShnarf" - we could consider hash5words as a shared function
   function _computeInitialSoundnessStateHash(
-    InitialSoundnessState memory _lastFinalizedSoundness
+    bytes32 shnarf,
+    uint256 initialBlockNumber,
+    uint256 initialTimestamp,
+    bytes32 l1RollingHash,
+    uint256 l1RollingHashMessageNumber
   ) private pure returns (bytes32 initialStateHashed) {
     assembly {
-      initialStateHashed := keccak256(_lastFinalizedSoundness, 0xa0)
+      let mPtr := 0x40
+      mstore(mPtr, shnarf)
+      mstore(add(mPtr, 0x20), initialBlockNumber)
+      mstore(add(mPtr, 0x40), initialTimestamp)
+      mstore(add(mPtr, 0x60), l1RollingHash)
+      mstore(add(mPtr, 0x80), l1RollingHashMessageNumber)
+      initialStateHashed := keccak256(mPtr, 0xa0)
     }
   }
 }

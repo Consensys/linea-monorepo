@@ -42,7 +42,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 5_000,
+            runs: 1_000,
           },
           evmVersion: "cancun",
         },
