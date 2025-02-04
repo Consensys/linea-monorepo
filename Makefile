@@ -22,12 +22,15 @@ clean-testnet-folders:
 		make clean-smc-folders
 		rm -rf tmp/testnet/* || true # ignore failure if folders do not exist already
 
+# TODO - Find why docker-l1-node-genesis-generator image is not invalidated by changing COPY-ied generate-genesis.sh
+# See docker/config/l1-node/Dockerfile
 clean-environment:
 		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery kill -s 9 || true;
 		docker compose -f docker/compose-tracing-v1-ci-extension.yml -f docker/compose-tracing-v2-ci-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery down || true;
 		make clean-local-folders;
 		docker volume rm linea-local-dev linea-logs || true; # ignore failure if volumes do not exist already
 		docker system prune -f || true;
+		docker image rm docker-l1-node-genesis-generator
 
 start-env: COMPOSE_PROFILES:=l1,l2
 start-env: CLEAN_PREVIOUS_ENV:=true
