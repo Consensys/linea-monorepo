@@ -154,7 +154,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
   }
 
   fun instantiateStateRecoveryApp(
-    debugForceSyncStopBlockNumber: ULong? = null,
+    debugForceSyncStopBlockNumber: ULong? = null
   ) {
     stateRecoverApp = StateRecoveryApp(
       vertx = vertx,
