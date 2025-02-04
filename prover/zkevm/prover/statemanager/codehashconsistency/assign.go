@@ -18,66 +18,74 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 	)
 
 	externalSs := struct {
-		IsActive      smartvectors.SmartVector
-		IsStorage     smartvectors.SmartVector
-		InitMiMC      smartvectors.SmartVector
-		InitKeccakLo  smartvectors.SmartVector
-		InitKeccakHi  smartvectors.SmartVector
-		FinalMiMC     smartvectors.SmartVector
-		FinalKeccakLo smartvectors.SmartVector
-		FinalKeccakHi smartvectors.SmartVector
+		InitAccountExists  smartvectors.SmartVector
+		FinalAccountExists smartvectors.SmartVector
+		IsStorage          smartvectors.SmartVector
+		InitMiMC           smartvectors.SmartVector
+		InitKeccakLo       smartvectors.SmartVector
+		InitKeccakHi       smartvectors.SmartVector
+		FinalMiMC          smartvectors.SmartVector
+		FinalKeccakLo      smartvectors.SmartVector
+		FinalKeccakHi      smartvectors.SmartVector
 	}{
-		IsActive:      ssInput.IsActive.GetColAssignment(run),
-		IsStorage:     ssInput.IsStorage.GetColAssignment(run),
-		InitMiMC:      ssInput.Account.Initial.MiMCCodeHash.GetColAssignment(run),
-		InitKeccakHi:  ssInput.Account.Initial.KeccakCodeHash.Hi.GetColAssignment(run),
-		InitKeccakLo:  ssInput.Account.Initial.KeccakCodeHash.Lo.GetColAssignment(run),
-		FinalMiMC:     ssInput.Account.Final.MiMCCodeHash.GetColAssignment(run),
-		FinalKeccakHi: ssInput.Account.Final.KeccakCodeHash.Hi.GetColAssignment(run),
-		FinalKeccakLo: ssInput.Account.Final.KeccakCodeHash.Lo.GetColAssignment(run),
+		InitAccountExists:  ssInput.Account.Initial.Exists.GetColAssignment(run),
+		FinalAccountExists: ssInput.Account.Final.Exists.GetColAssignment(run),
+		IsStorage:          ssInput.IsStorage.GetColAssignment(run),
+		InitMiMC:           ssInput.Account.Initial.MiMCCodeHash.GetColAssignment(run),
+		InitKeccakHi:       ssInput.Account.Initial.KeccakCodeHash.Hi.GetColAssignment(run),
+		InitKeccakLo:       ssInput.Account.Initial.KeccakCodeHash.Lo.GetColAssignment(run),
+		FinalMiMC:          ssInput.Account.Final.MiMCCodeHash.GetColAssignment(run),
+		FinalKeccakHi:      ssInput.Account.Final.KeccakCodeHash.Hi.GetColAssignment(run),
+		FinalKeccakLo:      ssInput.Account.Final.KeccakCodeHash.Lo.GetColAssignment(run),
 	}
 
 	externalRom := struct {
-		IsActive   smartvectors.SmartVector
-		IsHashEnd  smartvectors.SmartVector
-		NewState   smartvectors.SmartVector
-		CodeHashHi smartvectors.SmartVector
-		CodeHashLo smartvectors.SmartVector
+		IsActive         smartvectors.SmartVector
+		IsForConsistency smartvectors.SmartVector
+		NewState         smartvectors.SmartVector
+		CodeHashHi       smartvectors.SmartVector
+		CodeHashLo       smartvectors.SmartVector
 	}{
-		IsActive:   mchInput.IsActive.GetColAssignment(run),
-		IsHashEnd:  mchInput.IsHashEnd.GetColAssignment(run),
-		NewState:   mchInput.NewState.GetColAssignment(run),
-		CodeHashHi: mchInput.CodeHashHi.GetColAssignment(run),
-		CodeHashLo: mchInput.CodeHashLo.GetColAssignment(run),
+		IsActive:         mchInput.IsActive.GetColAssignment(run),
+		IsForConsistency: mchInput.IsForConsistency.GetColAssignment(run),
+		NewState:         mchInput.NewState.GetColAssignment(run),
+		CodeHashHi:       mchInput.CodeHashHi.GetColAssignment(run),
+		CodeHashLo:       mchInput.CodeHashLo.GetColAssignment(run),
 	}
 
 	var (
 		ssData  = make([][3]field.Element, 0, 2*externalSs.InitMiMC.Len())
-		romData = make([][3]field.Element, 0, externalRom.IsHashEnd.Len())
+		romData = make([][3]field.Element, 0, externalRom.IsForConsistency.Len())
 	)
 
 	for i := 0; i < externalSs.InitMiMC.Len(); i++ {
-
-		if isActive := externalSs.IsActive.Get(i); isActive.IsZero() {
-			break
-		}
 
 		if isStorage := externalSs.IsStorage.Get(i); isStorage.IsOne() {
 			continue
 		}
 
-		ssData = append(ssData,
-			[3]field.Element{
-				externalSs.InitMiMC.Get(i),
-				externalSs.InitKeccakHi.Get(i),
-				externalSs.InitKeccakLo.Get(i),
-			},
-			[3]field.Element{
-				externalSs.FinalMiMC.Get(i),
-				externalSs.FinalKeccakHi.Get(i),
-				externalSs.FinalKeccakLo.Get(i),
-			},
+		var (
+			initAccountExists  = externalSs.InitAccountExists.Get(i)
+			finalAccountExists = externalSs.FinalAccountExists.Get(i)
 		)
+
+		if initAccountExists.IsOne() {
+			ssData = append(ssData,
+				[3]field.Element{
+					externalSs.InitMiMC.Get(i),
+					externalSs.InitKeccakHi.Get(i),
+					externalSs.InitKeccakLo.Get(i),
+				})
+		}
+
+		if finalAccountExists.IsOne() {
+			ssData = append(ssData,
+				[3]field.Element{
+					externalSs.FinalMiMC.Get(i),
+					externalSs.FinalKeccakHi.Get(i),
+					externalSs.FinalKeccakLo.Get(i),
+				})
+		}
 	}
 
 	for i := 0; i < externalRom.NewState.Len(); i++ {
@@ -86,7 +94,7 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 			break
 		}
 
-		if isHashEnd := externalRom.IsHashEnd.Get(i); isHashEnd.IsZero() {
+		if isHashEnd := externalRom.IsForConsistency.Get(i); isHashEnd.IsZero() {
 			continue
 		}
 
