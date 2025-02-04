@@ -250,23 +250,23 @@ func (jd *JobDefinition) isValidOutputFileIdx(idx int) error {
 	return nil
 }
 
-func (jd *JobDefinition) dirFrom(idx int) string {
-	if err := jd.isValidReqRootDirIdx(idx); err != nil {
+func (jd *JobDefinition) dirFrom(ipIdx int) string {
+	if err := jd.isValidReqRootDirIdx(ipIdx); err != nil {
 		utils.Panic(err.Error())
 	}
-	return filepath.Join(jd.RequestsRootDir[idx], config.RequestsFromSubDir)
+	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsFromSubDir)
 }
 
-func (jd *JobDefinition) dirDone(idx int) string {
-	if err := jd.isValidReqRootDirIdx(idx); err != nil {
+func (jd *JobDefinition) dirDone(ipIdx int) string {
+	if err := jd.isValidReqRootDirIdx(ipIdx); err != nil {
 		utils.Panic(err.Error())
 	}
-	return filepath.Join(jd.RequestsRootDir[idx], config.RequestsDoneSubDir)
+	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsDoneSubDir)
 }
 
-func (jd *JobDefinition) dirTo(idx int) string {
-	if err := jd.isValidReqRootDirIdx(idx); err != nil {
+func (jd *JobDefinition) dirTo(ipIdx int) string {
+	if err := jd.isValidReqRootDirIdx(ipIdx); err != nil {
 		utils.Panic(err.Error())
 	}
-	return filepath.Join(jd.RequestsRootDir[idx], config.RequestsToSubDir)
+	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsToSubDir)
 }

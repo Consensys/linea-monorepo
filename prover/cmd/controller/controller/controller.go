@@ -88,100 +88,106 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 			// Success
 			case status.ExitCode == CodeSuccess:
-				// NB: we already check that the response filename can be
-				// generated prior to running the command. So this actually
-				// will not panic.
-				respFile, err := job.ResponseFile()
-				tmpRespFile := job.TmpResponseFile(cfg)
-				if err != nil {
-					formatStr := "Could not generate the response file: %v (original request file: %v)"
-					utils.Panic(formatStr, err, job.OriginalFile)
-				}
+				for idx := range job.OriginalFile {
+					// NB: we already check that the response filename can be
+					// generated prior to running the command. So this actually
+					// will not panic.
+					respFile, err := job.ResponseFile(idx)
+					tmpRespFile := job.TmpResponseFile(cfg, idx)
+					if err != nil {
+						formatStr := "Could not generate the response file: %v (original request file: %v)"
+						utils.Panic(formatStr, err, job.OriginalFile[idx])
+					}
 
-				logrus.Infof(
-					"Moving the response file from the tmp response file `%v`, to the final response file: `%v`",
-					tmpRespFile, respFile,
-				)
-
-				if err := os.Rename(tmpRespFile, respFile); err != nil {
-					// @Alex: it is unclear how the rename operation could fail
-					// here. If this happens, we prefer removing the tmp file.
-					// Note that the operation is an `mv -f`
-					os.Remove(tmpRespFile)
-
-					cLog.Errorf(
-						"Error renaming %v to %v: %v, removed the tmp file",
-						tmpRespFile, respFile, err,
+					logrus.Infof(
+						"Moving the response file from the tmp response file `%v`, to the final response file: `%v`",
+						tmpRespFile, respFile,
 					)
-				}
 
-				// Move the inprogress to the done directory
-				cLog.Infof(
-					"Moving %v to %v with the success prefix",
-					job.OriginalFile, job.Def.dirDone(),
-				)
+					if err := os.Rename(tmpRespFile, respFile); err != nil {
+						// @Alex: it is unclear how the rename operation could fail
+						// here. If this happens, we prefer removing the tmp file.
+						// Note that the operation is an `mv -f`
+						os.Remove(tmpRespFile)
 
-				jobDone := job.DoneFile(status)
-				if err := os.Rename(job.InProgressPath(), jobDone); err != nil {
-					// When that happens, the only thing left to do is to log
-					// the error and let the inprogress file where it is. It
-					// will likely require a human intervention.
-					cLog.Errorf(
-						"Error renaming %v to %v: %v",
-						job.InProgressPath(), jobDone, err,
+						cLog.Errorf(
+							"Error renaming %v to %v: %v, removed the tmp file",
+							tmpRespFile, respFile, err,
+						)
+					}
+
+					// Move the inprogress to the done directory
+					cLog.Infof(
+						"Moving %v to %v with the success prefix",
+						job.OriginalFile[idx], job.Def.dirDone(idx),
 					)
+
+					jobDone := job.DoneFile(status, idx)
+					if err := os.Rename(job.InProgressPath(idx), jobDone); err != nil {
+						// When that happens, the only thing left to do is to log
+						// the error and let the inprogress file where it is. It
+						// will likely require a human intervention.
+						cLog.Errorf(
+							"Error renaming %v to %v: %v",
+							job.InProgressPath(idx), jobDone, err,
+						)
+					}
 				}
 
 			// Defer to the large prover
 			case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
-				cLog.Infof("Renaming %v for the large prover", job.OriginalFile)
-				// Move the inprogress file back in the from directory with
-				// the new suffix
-				toLargePath, err := job.DeferToLargeFile(status)
-				if err != nil {
-					// There are two possibilities of errors. (1), the status
-					// we success but the above cases prevents that. The other
-					// case is that the suffix was not provided. But, during
-					// the config validation, we check already that the suffix
-					// must be provided if the size of the list of
-					// deferToOtherLargeCodes is non-zero. If the size of the
-					// list was zero, then there would be no way to reach this
-					// portion of the code given that the current exit code
-					// cannot be part of the empty list. Thus, this section is
-					// unreachable.
-					cLog.Errorf(
-						"error deriving the to-large-name of %v: %v",
-						job.InProgressPath(), err,
-					)
-				}
+				for idx := range job.OriginalFile {
+					cLog.Infof("Renaming %v for the large prover", job.OriginalFile[idx])
+					// Move the inprogress file back in the from directory with
+					// the new suffix
+					toLargePath, err := job.DeferToLargeFile(status, idx)
+					if err != nil {
+						// There are two possibilities of errors. (1), the status
+						// we success but the above cases prevents that. The other
+						// case is that the suffix was not provided. But, during
+						// the config validation, we check already that the suffix
+						// must be provided if the size of the list of
+						// deferToOtherLargeCodes is non-zero. If the size of the
+						// list was zero, then there would be no way to reach this
+						// portion of the code given that the current exit code
+						// cannot be part of the empty list. Thus, this section is
+						// unreachable.
+						cLog.Errorf(
+							"error deriving the to-large-name of %v: %v",
+							job.InProgressPath(idx), err,
+						)
+					}
 
-				if err := os.Rename(job.InProgressPath(), toLargePath); err != nil {
-					// When that happens, the only thing left to do is to log
-					// the error and let the inprogress file where it is. It
-					// will likely require a human intervention.
-					cLog.Errorf(
-						"error renaming %v to %v: %v",
-						job.InProgressPath(), toLargePath, err,
-					)
+					if err := os.Rename(job.InProgressPath(idx), toLargePath); err != nil {
+						// When that happens, the only thing left to do is to log
+						// the error and let the inprogress file where it is. It
+						// will likely require a human intervention.
+						cLog.Errorf(
+							"error renaming %v to %v: %v",
+							job.InProgressPath(idx), toLargePath, err,
+						)
+					}
 				}
 
 			// Failure case
 			default:
-				// Move the inprogress to the done directory
-				cLog.Infof(
-					"Moving %v with in %v with a failure suffix for code %v",
-					job.OriginalFile, job.Def.dirDone(), status.ExitCode,
-				)
-
-				jobFailed := job.DoneFile(status)
-				if err := os.Rename(job.InProgressPath(), jobFailed); err != nil {
-					// When that happens, the only thing left to do is to log
-					// the error and let the inprogress file where it is. It
-					// will likely require a human intervention.
-					cLog.Errorf(
-						"Error renaming %v to %v: %v",
-						job.InProgressPath(), jobFailed, err,
+				for idx := range job.OriginalFile {
+					// Move the inprogress to the done directory
+					cLog.Infof(
+						"Moving %v with in %v with a failure suffix for code %v",
+						job.OriginalFile[idx], job.Def.dirDone(idx), status.ExitCode,
 					)
+
+					jobFailed := job.DoneFile(status, idx)
+					if err := os.Rename(job.InProgressPath(idx), jobFailed); err != nil {
+						// When that happens, the only thing left to do is to log
+						// the error and let the inprogress file where it is. It
+						// will likely require a human intervention.
+						cLog.Errorf(
+							"Error renaming %v to %v: %v",
+							job.InProgressPath(idx), jobFailed, err,
+						)
+					}
 				}
 			}
 		}

@@ -93,25 +93,25 @@ func NewJob(jdef *JobDefinition, filenames []string) (j *Job, err error) {
 }
 
 // Returns the full path to the inprogress file
-func (j *Job) InProgressPath(idx int) string {
-	if err := j.Def.isValidReqRootDirIdx(idx); err != nil {
+func (j *Job) InProgressPath(ipIdx int) string {
+	if err := j.Def.isValidReqRootDirIdx(ipIdx); err != nil {
 		utils.Panic(err.Error())
 	}
-	return filepath.Join(j.Def.dirFrom(idx), j.LockedFile[idx])
+	return filepath.Join(j.Def.dirFrom(ipIdx), j.LockedFile[ipIdx])
 }
 
 // Returns the name of the output file for the job at the specified index
-func (j *Job) ResponseFile(idx int) (s string, err error) {
+func (j *Job) ResponseFile(opIdx int) (s string, err error) {
 
 	// Sanity check
-	if err := j.Def.isValidOutputFileIdx(idx); err != nil {
+	if err := j.Def.isValidOutputFileIdx(opIdx); err != nil {
 		return "", err
 	}
 
 	// Run the template
 	// REMARK: Check how it behaves on runtime
 	w := &strings.Builder{}
-	err = j.Def.OutputFileTmpl[idx].Execute(w, OutputFileResource{
+	err = j.Def.OutputFileTmpl[opIdx].Execute(w, OutputFileResource{
 		Job: *j,
 	})
 	if err != nil {
@@ -125,17 +125,17 @@ func (j *Job) ResponseFile(idx int) (s string, err error) {
 	s = strings.ReplaceAll(s, "--", "-")
 
 	// Append the dir_to filepath
-	s = path.Join(j.Def.dirTo(idx), s)
+	s = path.Join(j.Def.dirTo(opIdx), s)
 
 	return s, nil
 }
 
 // Returns the name of the output file for the job
-func (j *Job) TmpResponseFile(c *config.Config, idx int) (s string) {
-	if err := j.Def.isValidOutputFileIdx(idx); err != nil {
+func (j *Job) TmpResponseFile(c *config.Config, opIdx int) (s string) {
+	if err := j.Def.isValidOutputFileIdx(opIdx); err != nil {
 		utils.Panic(err.Error())
 	}
-	return path.Join(j.Def.dirTo(idx), "tmp-response-file."+c.Controller.LocalID+".json")
+	return path.Join(j.Def.dirTo(opIdx), "tmp-response-file."+c.Controller.LocalID+".json")
 }
 
 // This function returns the name of the input file, modified to indicate that it should be retried in "large mode".
@@ -143,10 +143,10 @@ func (j *Job) TmpResponseFile(c *config.Config, idx int) (s string) {
 // However, this situation is unexpected because the configuration validation ensures that if an exit code requires
 // deferring the job to a larger machine, the suffix must be set.
 // Additionally, if the prover's status code is zero (indicating success), the function will return an error.
-func (j *Job) DeferToLargeFile(status Status, idx int) (s string, err error) {
+func (j *Job) DeferToLargeFile(status Status, ipIdx int) (s string, err error) {
 
 	// Sanity check
-	if err := j.Def.isValidReqRootDirIdx(idx); err != nil {
+	if err := j.Def.isValidReqRootDirIdx(ipIdx); err != nil {
 		return "", err
 	}
 
@@ -154,7 +154,7 @@ func (j *Job) DeferToLargeFile(status Status, idx int) (s string, err error) {
 	if status.ExitCode == 0 {
 		return "", fmt.Errorf(
 			"cant defer to large %v, status code was zero",
-			j.OriginalFile[idx],
+			j.OriginalFile[ipIdx],
 		)
 	}
 
@@ -166,18 +166,18 @@ func (j *Job) DeferToLargeFile(status Status, idx int) (s string, err error) {
 	// rename it to "<...>.large.large". That way, the file will not be picked
 	// up a second time by the same large prover, creating an infinite retry
 	// loop.
-	if strings.HasSuffix(j.OriginalFile[idx], suffixLarge) {
+	if strings.HasSuffix(j.OriginalFile[ipIdx], suffixLarge) {
 		logrus.Warnf(
 			"Deferring the large machine but the input file `%v` already has"+
 				" the suffix %v. Still renaming it to %v, but it will likely"+
 				// Returns the name of the input file modified so that it is retried in		" not be picked up again",
-				j.OriginalFile[idx], suffixLarge, s,
+				j.OriginalFile[ipIdx], suffixLarge, s,
 		)
 	}
 
 	// Remove the suffix .failure.code_[0-9]+ from all the strings of the input
 	// file. That way we do not propagate the previous errors.
-	origFile, err := j.Def.FailureSuffix.Replace(j.OriginalFile[idx], "", -1, -1)
+	origFile, err := j.Def.FailureSuffix.Replace(j.OriginalFile[ipIdx], "", -1, -1)
 	if err != nil {
 		// he assumption here is that the above function may return an error
 		// but this error can only depend on the regexp, the replacement,
@@ -189,22 +189,22 @@ func (j *Job) DeferToLargeFile(status Status, idx int) (s string, err error) {
 
 	return fmt.Sprintf(
 		"%v/%v.%v.failure.%v_%v",
-		j.Def.dirFrom(idx), origFile,
+		j.Def.dirFrom(ipIdx), origFile,
 		suffixLarge,
 		config.FailSuffix, status.ExitCode,
 	), nil
 }
 
 // Returns the done file following the jobs status
-func (j *Job) DoneFile(status Status, idx int) string {
+func (j *Job) DoneFile(status Status, ipIdx int) string {
 
 	// Sanity check
-	if err := j.Def.isValidReqRootDirIdx(idx); err != nil {
+	if err := j.Def.isValidReqRootDirIdx(ipIdx); err != nil {
 		utils.Panic(err.Error())
 	}
 
 	// Remove the suffix .failure.code_[0-9]+ from all the strings
-	origFile, err := j.Def.FailureSuffix.Replace(j.OriginalFile[idx], "", -1, -1)
+	origFile, err := j.Def.FailureSuffix.Replace(j.OriginalFile[ipIdx], "", -1, -1)
 	if err != nil {
 		// he assumption here is that the above function may return an error
 		// but this error can only depend on the regexp, the replacement,
@@ -215,9 +215,9 @@ func (j *Job) DoneFile(status Status, idx int) string {
 	}
 
 	if status.ExitCode == CodeSuccess {
-		return fmt.Sprintf("%v/%v.%v", j.Def.dirDone(idx), origFile, config.SuccessSuffix)
+		return fmt.Sprintf("%v/%v.%v", j.Def.dirDone(ipIdx), origFile, config.SuccessSuffix)
 	} else {
-		return fmt.Sprintf("%v/%v.failure.%v_%v", j.Def.dirDone(idx), origFile, config.FailSuffix, status.ExitCode)
+		return fmt.Sprintf("%v/%v.failure.%v_%v", j.Def.dirDone(ipIdx), origFile, config.FailSuffix, status.ExitCode)
 	}
 }
 
