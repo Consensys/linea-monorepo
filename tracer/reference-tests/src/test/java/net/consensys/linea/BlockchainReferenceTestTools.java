@@ -54,6 +54,7 @@ import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
 import org.hyperledger.besu.ethereum.referencetests.BlockchainReferenceTestCaseSpec;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestProtocolSchedules;
 import org.hyperledger.besu.ethereum.rlp.RLPException;
+import org.hyperledger.besu.ethereum.trie.diffbased.common.provider.WorldStateQueryParams;
 import org.hyperledger.besu.testutil.JsonTestParameters;
 import org.junit.jupiter.api.Assumptions;
 
@@ -366,8 +367,10 @@ public class BlockchainReferenceTestTools {
     final BlockHeader genesisBlockHeader = spec.getGenesisBlockHeader();
     final MutableWorldState worldState =
         spec.getWorldStateArchive()
-            .getMutable(genesisBlockHeader.getStateRoot(), genesisBlockHeader.getHash())
-            .get();
+            .getWorldState(
+                WorldStateQueryParams.withStateRootAndBlockHashAndUpdateNodeHead(
+                    genesisBlockHeader.getStateRoot(), genesisBlockHeader.getHash()))
+            .orElseThrow();
 
     log.info(
         "checking roothash {} is {}", worldState.rootHash(), genesisBlockHeader.getStateRoot());
