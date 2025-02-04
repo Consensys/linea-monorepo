@@ -224,12 +224,6 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 				c.FS.UpdateVec(msgContent)
 			}
 
-			toUpdateFS = c.Spec.Columns.AllKeysPublicInputAt(currRound - 1)
-			for _, msg := range toUpdateFS {
-				msgContent := c.GetColumn(msg)
-				c.FS.UpdateVec(msgContent)
-			}
-
 			/*
 				Also include the prover's allegations for all evaluations
 			*/

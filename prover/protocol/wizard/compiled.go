@@ -433,20 +433,6 @@ func (c *CompiledIOP) InsertProof(round int, name ifaces.ColID, size int) (msg i
 	return c.Columns.AddToRound(round, name, size, column.Proof)
 }
 
-// InsertPublicInput registers a public input column, and specifies static information regarding it
-
-// Deprecated: we never really use this type of column to denote actual public
-// inputs. The plan is to resort to using [query.LocalOpeningParams] instead.
-func (c *CompiledIOP) InsertPublicInput(round int, name ifaces.ColID, size int) (msg ifaces.Column) {
-
-	// Common : No zero length
-	if size == 0 {
-		utils.Panic("when registering %v, VecType with length zero", name)
-	}
-
-	return c.Columns.AddToRound(round, name, size, column.PublicInput)
-}
-
 // InsertVerifier registers a verifier steps into the current CompiledIOP;
 // meaning a "native" Go function that performs one or more checks involving
 // wizard items that are accessible to the verifier of the specified protocol.
@@ -654,9 +640,20 @@ func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in query.ProjectionInp
 			in.FilterA.Round(),
 			in.FilterB.Round())
 	)
-	c.assertConsistentRound(round)
 	q := query.NewProjection(round, id, in)
 	// Finally registers the query
 	c.QueriesNoParams.AddToRound(round, q.Name(), q)
 	return q
+}
+
+// AddPublicInput inserts a public-input in the compiled-IOP
+func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) PublicInput {
+
+	res := PublicInput{
+		Name: name,
+		Acc:  acc,
+	}
+
+	c.PublicInputs = append(c.PublicInputs, res)
+	return res
 }

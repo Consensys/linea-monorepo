@@ -171,19 +171,6 @@ func (r *Store) AllKeysProof() []ifaces.ColID {
 	return res
 }
 
-// AllKeysPublicInput returns the list of the [PublicInput] column's ID ordered
-// by rounds and then by order ot insertion.
-func (r *Store) AllKeysPublicInput() []ifaces.ColID {
-	res := []ifaces.ColID{}
-
-	for round := 0; round < r.NumRounds(); round++ {
-		proof := r.AllKeysPublicInputAt(round)
-		res = append(res, proof...)
-	}
-
-	return res
-}
-
 // AllKeysCommitted returns the list of all the IDs of the all the [Committed]
 // columns ordered by rounds and then by IDs.
 func (r *Store) AllKeysCommitted() []ifaces.ColID {
@@ -225,22 +212,6 @@ func (r *Store) AllKeysProofAt(round int) []ifaces.ColID {
 
 	for i, info := range rnd {
 		if info.Status != Proof {
-			continue
-		}
-		res = append(res, rnd[i].ID)
-	}
-
-	return res
-}
-
-// AllKeysPublicInputAt returns the list of all the prover messages in a given
-// round. The resulting slice is ordered by order of insertion.
-func (r *Store) AllKeysPublicInputAt(round int) []ifaces.ColID {
-	res := []ifaces.ColID{}
-	rnd := r.byRounds.MustGet(round)
-
-	for i, info := range rnd {
-		if info.Status != PublicInput {
 			continue
 		}
 		res = append(res, rnd[i].ID)
@@ -448,10 +419,6 @@ func assertCorrectStatusTransition(old, new Status) {
 	// If it's ignored, it's ignored
 	case old == Ignored && new != Ignored:
 		forbiddenTransition = true
-	// You can't change the status of the public inputs because that would
-	// change the statement of the zkEVM.
-	case old == PublicInput && new != PublicInput:
-		forbiddenTransition = true
 	// It's a special status and cannot be changed.
 	case old == VerifierDefined && new != VerifierDefined:
 		forbiddenTransition = true
@@ -487,10 +454,6 @@ func (in *storedColumnInfo) isExcludedFromProverFS() bool {
 
 	if in.ExcludeFromProverFS {
 		return true
-	}
-
-	if in.Status.IsPublic() {
-		return false
 	}
 
 	if in.IncludeInProverFS {

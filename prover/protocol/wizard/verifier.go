@@ -245,12 +245,6 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 					run.FS.UpdateSV(instance)
 				}
 
-				msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(currRound - 1)
-				for _, msgName := range msgsToFS {
-					instance := run.GetColumn(msgName)
-					run.FS.UpdateSV(instance)
-				}
-
 				/*
 					Also include the prover's allegations for all evaluations
 				*/

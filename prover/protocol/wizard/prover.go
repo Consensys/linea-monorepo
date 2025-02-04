@@ -238,11 +238,6 @@ func (run *ProverRuntime) ExtractProof() Proof {
 		messages.InsertNew(name, messageValue)
 	}
 
-	for _, name := range run.Spec.Columns.AllKeysPublicInput() {
-		messageValue := run.Columns.MustGet(name)
-		messages.InsertNew(name, messageValue)
-	}
-
 	queriesParams := collection.NewMapping[ifaces.QueryID, ifaces.QueryParams]()
 	for round := 0; round <= run.currRound; round++ {
 		for _, name := range run.Spec.QueriesParams.AllKeysAt(round) {
@@ -565,18 +560,6 @@ func (run *ProverRuntime) goNextRound() {
 				continue
 			}
 
-			instance := run.GetMessage(msgName)
-			run.FS.UpdateSV(instance)
-		}
-
-		/*
-			Make sure that all messages have been written and use them
-			to update the FS state.  Note that we do not need to update
-			FS using the last round of the prover because he is always
-			the last one to "talk" in the protocol.
-		*/
-		msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(run.currRound)
-		for _, msgName := range msgsToFS {
 			instance := run.GetMessage(msgName)
 			run.FS.UpdateSV(instance)
 		}
