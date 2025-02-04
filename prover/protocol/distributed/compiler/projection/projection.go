@@ -128,6 +128,8 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:     wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
 			FilterA:     fA,
 			FilterB:     fB,
+			Size: 	  q.Inp.FilterA.Size(),
+			EvalCoin:   beta.Name,
 			IsAInModule: true,
 			IsBInModule: true,
 		})
@@ -138,6 +140,8 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:     symbolic.NewConstant(1),
 			FilterA:     fA,
 			FilterB:     symbolic.NewConstant(1),
+			Size: 	  q.Inp.FilterA.Size(),
+			EvalCoin:   beta.Name,
 			IsAInModule: true,
 			IsBInModule: false,
 		})
@@ -148,11 +152,13 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:     wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
 			FilterA:     symbolic.NewConstant(1),
 			FilterB:     fB,
+			Size: 	  q.Inp.FilterB.Size(),
+			EvalCoin:   beta.Name,
 			IsAInModule: false,
 			IsBInModule: true,
 		})
 	} else {
-		panic("Invalid distributed projection query while pushing")
+		panic("Invalid distributed projection query while initial pushing")
 	}
 }
 

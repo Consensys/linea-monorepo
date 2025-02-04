@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -16,6 +17,8 @@ import (
 type DistributedProjectionInput struct {
 	ColumnA, ColumnB         *symbolic.Expression
 	FilterA, FilterB         *symbolic.Expression
+	Size                     int
+	EvalCoin                 coin.Name
 	IsAInModule, IsBInModule bool
 }
 
@@ -27,7 +30,6 @@ type DistributedProjection struct {
 
 type DistributedProjectionParams struct {
 	HornerVal field.Element
-	EvalRands []field.Element
 }
 
 func NewDistributedProjection(round int, id ifaces.QueryID, inp []*DistributedProjectionInput) DistributedProjection {
@@ -52,8 +54,8 @@ func NewDistributedProjection(round int, id ifaces.QueryID, inp []*DistributedPr
 }
 
 // Constructor for distributed projection query parameters
-func NewDistributedProjectionParams(hornerVal field.Element, evalRands []field.Element) DistributedProjectionParams {
-	return DistributedProjectionParams{HornerVal: hornerVal, EvalRands: evalRands}
+func NewDistributedProjectionParams(hornerVal field.Element) DistributedProjectionParams {
+	return DistributedProjectionParams{HornerVal: hornerVal}
 }
 
 // Name returns the unique identifier of the GrandProduct query.
@@ -63,12 +65,7 @@ func (dp DistributedProjection) Name() ifaces.QueryID {
 
 // Updates a Fiat-Shamir state
 func (dpp DistributedProjectionParams) UpdateFS(fs *fiatshamir.State) {
-	// Todo: we need dist_projection.MaxNumOfQueriesPerModule + 1 which
-	// introduce import error, remove hardcoded size
-	fsInput := make([]field.Element, 0, 11)
-	fsInput = append(fsInput, dpp.HornerVal)
-	fsInput = append(fsInput, dpp.EvalRands...)
-	fs.Update(fsInput...)
+	fs.Update(dpp.HornerVal)
 }
 
 func (dp DistributedProjection) Check(run ifaces.Runtime) error {
@@ -89,15 +86,15 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 			elemParam    = field.One()
 		)
 		if inp.IsAInModule && !inp.IsBInModule {
-			hornerA := poly.CmptHorner(colA, filterA, params.EvalRands[index])
+			hornerA := poly.CmptHorner(colA, filterA, run.GetRandomCoinField(inp.EvalCoin))
 			elemParam = hornerA[0]
 		} else if !inp.IsAInModule && inp.IsBInModule {
-			hornerB := poly.CmptHorner(colB, filterB, params.EvalRands[index])
+			hornerB := poly.CmptHorner(colB, filterB, run.GetRandomCoinField(inp.EvalCoin))
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 		} else if inp.IsAInModule && inp.IsBInModule {
-			hornerA := poly.CmptHorner(colA, filterA, params.EvalRands[index])
-			hornerB := poly.CmptHorner(colB, filterB, params.EvalRands[index])
+			hornerA := poly.CmptHorner(colA, filterA, run.GetRandomCoinField(inp.EvalCoin))
+			hornerB := poly.CmptHorner(colB, filterB, run.GetRandomCoinField(inp.EvalCoin))
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 			elemParam.Add(&elemParam, &hornerA[0])
