@@ -44,7 +44,8 @@ type Job struct {
 // OutputFileRessouce collects all the data needed to fill the output template
 // file.
 type OutputFileResource struct {
-	Job
+	Job Job
+	Idx int
 }
 
 // Parse a filename into a Job. Returns an error if the file does not
@@ -113,6 +114,7 @@ func (j *Job) ResponseFile(opIdx int) (s string, err error) {
 	w := &strings.Builder{}
 	err = j.Def.OutputFileTmpl[opIdx].Execute(w, OutputFileResource{
 		Job: *j,
+		Idx: opIdx,
 	})
 	if err != nil {
 		return "", err
@@ -226,6 +228,7 @@ func (j *Job) DoneFile(status Status, ipIdx int) string {
 // 3 if the job is an aggregation job. The lower the score the higher will be
 // the priority of the job. The 100 value is chosen to make the score easy to
 // mentally compute.
+// ASSUMED 0 index here
 func (j *Job) Score() int {
 	return 100*j.End[0] + j.Def.Priority
 }

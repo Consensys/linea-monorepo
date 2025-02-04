@@ -136,7 +136,7 @@ func ExecutionDefinition(conf *config.Config) JobDefinition {
 		[]string{conf.Execution.RequestsRootDir},
 		[]string{inputFilePattern},
 		[]string{"exec-output-file"},
-		[]string{"{{.Start}}-{{.End}}-getZkProof.json"},
+		[]string{"{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-getZkProof.json"},
 		[]ParamsRegexp{paramsRegexp},
 		config.FailSuffix,
 	)
@@ -168,7 +168,7 @@ func CompressionDefinition(conf *config.Config) JobDefinition {
 		[]string{conf.BlobDecompression.RequestsRootDir},
 		[]string{inputFilePattern},
 		[]string{"compress-output-file"},
-		[]string{"{{.Start}}-{{.End}}-{{.ContentHash}}getZkBlobCompressionProof.json"},
+		[]string{"{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-{{ index .Job.ContentHash .Idx }}-getZkBlobCompressionProof.json"},
 		[]ParamsRegexp{paramsRegexp},
 		config.FailSuffix,
 	)
@@ -199,7 +199,7 @@ func AggregatedDefinition(conf *config.Config) JobDefinition {
 		[]string{conf.Aggregation.RequestsRootDir},
 		[]string{inputFilePattern},
 		[]string{"agreg-output-file"},
-		[]string{"{{.Start}}-{{.End}}-{{.ContentHash}}-getZkAggregatedProof.json"},
+		[]string{"{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-{{ index .Job.ContentHash .Idx }}-getZkAggregatedProof.json"},
 		[]ParamsRegexp{paramsRegexp},
 		config.FailSuffix,
 	)

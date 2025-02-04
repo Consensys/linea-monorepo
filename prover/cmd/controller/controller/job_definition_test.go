@@ -9,13 +9,72 @@ import (
 
 type inpFileNamesCases struct {
 	Ext, Fail      string
-	Fnames         []string
+	Fnames         [][]string
 	ShouldMatch    bool
 	Explainer      string
-	ExpectedOutput []string
-	ExpToLarge     []string
-	ExpSuccess     []string
-	ExpFailW2      []string
+	ExpectedOutput [][]string
+	ExpToLarge     [][]string
+	ExpSuccess     [][]string
+	ExpFailW2      [][]string
+}
+
+func runInpFileTestCase(t *testing.T, def *JobDefinition, c inpFileNamesCases) {
+
+	for i, fnames := range c.Fnames {
+
+		// NB: if the regexp matches but the fields cannot be parsed
+		// this will panic and fail the test. This is intentional. All
+		// errors must be caught by the input file regexp.
+		job, err := NewJob(def, fnames)
+
+		if c.ShouldMatch {
+			if !assert.NoError(t, err, fnames) {
+				// stop there for this iteration
+				continue
+			}
+
+			// Then try to format the response of the job
+			for idx := range fnames {
+				resp, err := job.ResponseFile(idx)
+				if assert.NoErrorf(t, err, "cannot produce a response for job %s", fnames[idx]) {
+					assert.Equal(t, c.ExpectedOutput[i][idx], resp, "wrong output file")
+				}
+
+				// Try the name of the large one. If the case is specifying some
+				// expected values
+				if len(c.ExpToLarge) > 0 {
+					toLarge, err := job.DeferToLargeFile(
+						Status{ExitCode: 137}, idx,
+					)
+
+					if assert.NoError(t, err, "cannot produce name for the too large job") {
+						assert.Equal(t, c.ExpToLarge[i][idx], toLarge)
+					}
+				}
+
+				// Try the success file
+				if len(c.ExpSuccess) > 0 {
+					toSuccess := job.DoneFile(Status{ExitCode: 0}, idx)
+					assert.Equal(t, c.ExpSuccess[i][idx], toSuccess)
+				}
+
+				// Try the code 2 file
+				if len(c.ExpFailW2) > 0 {
+					toFail2 := job.DoneFile(Status{ExitCode: 2}, idx)
+					assert.Equal(t, c.ExpFailW2[i][idx], toFail2)
+				}
+			}
+
+		} else {
+			for i := range fnames {
+				assert.Errorf(
+					t, err, fnames[i],
+					"%v should not match %s",
+					fnames, def.InputFileRegexp[i].String(),
+				)
+			}
+		}
+	}
 }
 
 // This tests ensures that the naming convention is respected by the file-watcher
@@ -86,39 +145,39 @@ func TestExecutionInFileRegexp(t *testing.T) {
 	testcase := []inpFileNamesCases{
 		{
 			Ext: "", Fail: "code", ShouldMatch: true,
-			Fnames:         []string{correctM, correctWithFailM, correctWith2FailsM, missingEtv, missingStv},
+			Fnames:         [][]string{{correctM}, {correctWithFailM}, {correctWith2FailsM}, {missingEtv}, {missingStv}},
 			Explainer:      "happy path, case M",
-			ExpectedOutput: []string{respM, respWithFailM, respWith2FailsM, respM, respM},
-			ExpToLarge:     []string{toLargeM, toLargeWithFailM, toLargeWith2FailsM, toLargeWoEtv, toLargeWoStv},
-			ExpSuccess:     []string{successM, successWithFailM, successWith2FailsM, successtWoEtv, successMWoStv},
-			ExpFailW2:      []string{failM, failWithFailM, failWith2FailsM, failtWoEtv, failMWoStv},
+			ExpectedOutput: [][]string{{respM}, {respWithFailM}, {respWith2FailsM}, {respM}, {respM}},
+			ExpToLarge:     [][]string{{toLargeM}, {toLargeWithFailM}, {toLargeWith2FailsM}, {toLargeWoEtv}, {toLargeWoStv}},
+			ExpSuccess:     [][]string{{successM}, {successWithFailM}, {successWith2FailsM}, {successtWoEtv}, {successMWoStv}},
+			ExpFailW2:      [][]string{{failM}, {failWithFailM}, {failWith2FailsM}, {failtWoEtv}, {failMWoStv}},
 		},
 		{
 			Ext: "large", Fail: "code", ShouldMatch: true,
-			Fnames:         []string{correctL, correctWithFailL, correctWith2FailsL},
+			Fnames:         [][]string{{correctL}, {correctWithFailL}, {correctWith2FailsL}},
 			Explainer:      "happy path, case L",
-			ExpectedOutput: []string{respL, respWithFailL, respWith2FailsL},
-			ExpSuccess:     []string{successL, successWithFailL, successWith2FailsL},
-			ExpFailW2:      []string{failL, failWithFailL, failWith2FailsL},
+			ExpectedOutput: [][]string{{respL}, {respWithFailL}, {respWith2FailsL}},
+			ExpSuccess:     [][]string{{successL}, {successWithFailL}, {successWith2FailsL}},
+			ExpFailW2:      [][]string{{failL}, {failWithFailL}, {failWith2FailsL}},
 		},
 		{
 			Ext: "", Fail: "code", ShouldMatch: false,
-			Fnames:    []string{correctL, correctWithFailL, correctWith2FailsL},
+			Fnames:    [][]string{{correctL}, {correctWithFailL}, {correctWith2FailsL}},
 			Explainer: "M does not pick the files reserved for L",
 		},
 		{
 			Ext: "large", Fail: "code", ShouldMatch: false,
-			Fnames:    []string{correctM, correctWithFailM, correctWith2FailsM},
+			Fnames:    [][]string{{correctM}, {correctWithFailM}, {correctWith2FailsM}},
 			Explainer: "L does not pick the files reserved for M",
 		},
 		{
 			Ext: "", Fail: "code", ShouldMatch: false,
-			Fnames:    []string{notAPoint, badName},
+			Fnames:    [][]string{{notAPoint}, {badName}},
 			Explainer: "M does not pick obviously invalid files",
 		},
 		{
 			Ext: "large", Fail: "code", ShouldMatch: false,
-			Fnames:    []string{missingEtv, missingStv, notAPoint, badName},
+			Fnames:    [][]string{{missingEtv}, {missingStv}, {notAPoint}, {badName}},
 			Explainer: "L does not pick obviously invalid files",
 		},
 	}
@@ -175,13 +234,13 @@ func TestCompressionInFileRegexp(t *testing.T) {
 	testcase := []inpFileNamesCases{
 		{
 			Ext: "", Fail: "code", ShouldMatch: true,
-			Fnames:         []string{correctM, correctWithFailM, correctWith2FailsM, withBlobHash, withBlobHash0x, withDoubleDash, with0x, missingCv, missingBCv, missingCCv},
+			Fnames:         [][]string{{correctM}, {correctWithFailM}, {correctWith2FailsM}, {withBlobHash}, {withBlobHash0x}, {withDoubleDash}, {with0x}, {missingCv}, {missingBCv}, {missingCCv}},
 			Explainer:      "happy path, case M",
-			ExpectedOutput: []string{respM, respWithFailM, respWith2FailsM, respWithBlobHash, respWithBlobHash0x, respWithNoDoubleDash, respWith0x, respM, respM, respM},
+			ExpectedOutput: [][]string{{respM}, {respWithFailM}, {respWith2FailsM}, {respWithBlobHash}, {respWithBlobHash0x}, {respWithNoDoubleDash}, {respWith0x}, {respM}, {respM}, {respM}},
 		},
 		{
 			Ext: "", Fail: "code", ShouldMatch: false,
-			Fnames:    []string{etvNoCv, notAPoint, badName},
+			Fnames:    [][]string{{etvNoCv}, {notAPoint}, {badName}},
 			Explainer: "M does not pick obviously invalid files",
 		},
 	}
@@ -223,13 +282,13 @@ func TestAggregatedInFileRegexp(t *testing.T) {
 	testcase := []inpFileNamesCases{
 		{
 			Ext: "", Fail: "code", ShouldMatch: true,
-			Fnames:         []string{correctM, correctWithFailM, correctWith2FailsM, missingContentHash},
+			Fnames:         [][]string{{correctM}, {correctWithFailM}, {correctWith2FailsM}, {missingContentHash}},
 			Explainer:      "happy path, case M",
-			ExpectedOutput: []string{respWithContentHash, respWithContentHash, respWithContentHash, respM},
+			ExpectedOutput: [][]string{{respWithContentHash}, {respWithContentHash}, {respWithContentHash}, {respM}},
 		},
 		{
 			Ext: "", Fail: "code", ShouldMatch: false,
-			Fnames:    []string{withEtv, notAPoint, badName},
+			Fnames:    [][]string{{withEtv}, {notAPoint}, {badName}},
 			Explainer: "M does not pick obviously invalid files",
 		},
 	}
@@ -246,61 +305,6 @@ func TestAggregatedInFileRegexp(t *testing.T) {
 		t.Run(c.Explainer, func(t *testing.T) {
 			runInpFileTestCase(t, &def, c)
 		})
-	}
-}
-
-func runInpFileTestCase(t *testing.T, def *JobDefinition, c inpFileNamesCases) {
-
-	for i, fname := range c.Fnames {
-
-		// NB: if the regexp matches but the fields cannot be parsed
-		// this will panic and fail the test. This is intentional. All
-		// errors must be caught by the input file regexp.
-		job, err := NewJob(def, fname)
-
-		if c.ShouldMatch {
-			if !assert.NoError(t, err, fname) {
-				// stop there for this iteration
-				continue
-			}
-
-			// Then try to format the response of the job
-			resp, err := job.ResponseFile()
-			if assert.NoErrorf(t, err, "cannot produce a response for job %s", fname) {
-				assert.Equal(t, c.ExpectedOutput[i], resp, "wrong output file")
-			}
-
-			// Try the name of the large one. If the case is specifying some
-			// expected values
-			if len(c.ExpToLarge) > 0 {
-				toLarge, err := job.DeferToLargeFile(
-					Status{ExitCode: 137},
-				)
-
-				if assert.NoError(t, err, "cannot produce name for the too large job") {
-					assert.Equal(t, c.ExpToLarge[i], toLarge)
-				}
-			}
-
-			// Try the success file
-			if len(c.ExpSuccess) > 0 {
-				toSuccess := job.DoneFile(Status{ExitCode: 0})
-				assert.Equal(t, c.ExpSuccess[i], toSuccess)
-			}
-
-			// Try the code 2 file
-			if len(c.ExpFailW2) > 0 {
-				toFail2 := job.DoneFile(Status{ExitCode: 2})
-				assert.Equal(t, c.ExpFailW2[i], toFail2)
-			}
-
-		} else {
-			assert.Errorf(
-				t, err, fname,
-				"%v should not match %s",
-				fname, def.InputFileRegexp.String(),
-			)
-		}
 	}
 }
 

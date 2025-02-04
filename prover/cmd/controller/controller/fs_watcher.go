@@ -151,7 +151,7 @@ func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job) (err er
 		// not parseable to the target JobType, it will return an error.
 		job, err := NewJob(jdef, dirEntStr)
 		if err != nil {
-			fs.Logger.Debugf("Found invalid file  `%v` : %v", err)
+			fs.Logger.Debugf("Found invalid file  `%v` : %v", dirEntStr, err)
 			continue
 		}
 
