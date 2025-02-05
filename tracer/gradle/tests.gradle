@@ -115,6 +115,12 @@ tasks.withType(Test).configureEach {
   useJUnitPlatform()
 }
 
+jacocoTestReport {
+  reports {
+    xml.required = true
+  }
+}
+
 tasks.test.configure {
   dependsOn(buildZkevmBin)
 
@@ -130,6 +136,7 @@ tasks.test.configure {
     excludeTags("replay")
     excludeTags("weekly")
   }
+  finalizedBy(jacocoTestReport)
 }
 
 tasks.register("fastReplayTests", Test) {
@@ -204,4 +211,16 @@ tasks.register("weeklyTests", Test) {
     excludeTags("replay")
     includeTags("weekly")
   }
+}
+
+// Gradle task to concatenate Unit and Reference tests exec files
+tasks.register("jacocoUnitAndReferenceTestsReport", JacocoReport) {
+  reports {
+    xml.required = true
+    html.outputLocation = layout.buildDirectory.dir('reports/jacocoConcatenate/html')
+    xml.outputLocation = layout.buildDirectory.file('reports/jacocoConcatenate/jacocoUnitAndReferenceTestsReport.xml')
+  }
+
+  sourceSets project(":arithmetization").sourceSets.main
+  executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
 }

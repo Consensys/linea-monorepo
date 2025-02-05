@@ -34,7 +34,7 @@ jobs:
         uses: ./.github/actions/setup-environment
         with:
           rust-corset: true
-          
+
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
 
@@ -83,6 +83,20 @@ jobs:
         with:
           name: corset-unit-test-report
           path: arithmetization/build/reports/tests/**/*
+
+      - name: Upload jacoco test coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-unit-tests-coverage-report
+          path: arithmetization/build/reports/jacoco/test/**/*
+
+      - name: Upload jacoco exec test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-unit-tests-exec-file
+          path: arithmetization/build/jacoco/test.exec
 
   go-corset-unit-tests:
     needs: [ build ]

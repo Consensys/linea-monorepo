@@ -8,4 +8,41 @@ buildscript {
     besuPluginDir = File.createTempDir("plugins")
   }
 }
+
+plugins {
+  id 'java-library'
+  id "org.sonarqube" version "4.3.1.3277"
+}
+
+sonar {
+  def tests = System.getProperty("tests")
+  def xmlTestReport = ""
+  // Conditional xmlReportPaths based on tests property
+  // Default is unit tests, we account only for the Unit tests jacoco coverage report
+  if(tests == null || tests=="Unit") {
+    print("Executing Sonarqube scanner Unit tests coverage report...\n")
+    xmlTestReport = "${project.projectDir}/arithmetization/build/reports/jacoco/test/jacocoTestReport.xml"
+    // If set to Reference, we account only for the Reference tests coverage report
+  } else if(tests == "Reference") {
+    print("Executing Sonarqube scanner for Reference tests coverage report...\n")
+    xmlTestReport  =  "${project.projectDir}/reference-tests/build/reports/jacoco/jacocoReferenceBlockchainTestsReport/jacocoReferenceBlockchainTestsReport.xml"
+  } else if(tests == "Both") {
+    print("Executing Sonarqube scanner for Unit and Reference tests coverage report...\n")
+    xmlTestReport  =  "${project.projectDir}/arithmetization/build/reports/jacocoConcatenate/test/jacocoTestReport.xml"
+  } else {
+    // Force build failure if unknown concatenate value.
+    println("*** unknown tests property.  Try '-Dconcatenate=Unit' or '-Dconcatenate=Reference' or '-Dconcatenate=Both'\n\n")
+    assert false
+  }
+
+  properties {
+    property "sonar.projectKey", "linea-tracer"
+    property "sonar.host.url", "localhost:80"
+    property "sonar.login", "admin"
+    property "sonar.password", "Adminadmin123*"
+    property "sonar.coverage.exclusions", "reference-tests/**/*, testing/**/*, **/*/Trace.java"
+    property "sonar.coverage.jacoco.xmlReportPaths", "${xmlTestReport}"
+  }
+}
+
 version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
