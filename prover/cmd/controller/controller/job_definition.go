@@ -252,21 +252,21 @@ func (jd *JobDefinition) isValidOutputFileIdx(idx int) error {
 
 func (jd *JobDefinition) dirFrom(ipIdx int) string {
 	if err := jd.isValidReqRootDirIdx(ipIdx); err != nil {
-		utils.Panic(err.Error())
+		utils.Panic("dirFrom:%v", err.Error())
 	}
 	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsFromSubDir)
 }
 
 func (jd *JobDefinition) dirDone(ipIdx int) string {
 	if err := jd.isValidReqRootDirIdx(ipIdx); err != nil {
-		utils.Panic(err.Error())
+		utils.Panic("dirDone:%v", err.Error())
 	}
 	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsDoneSubDir)
 }
 
 func (jd *JobDefinition) dirTo(ipIdx int) string {
 	if err := jd.isValidReqRootDirIdx(ipIdx); err != nil {
-		utils.Panic(err.Error())
+		utils.Panic("dirTo:%v", err.Error())
 	}
 	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsToSubDir)
 }

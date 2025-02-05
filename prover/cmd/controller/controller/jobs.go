@@ -96,7 +96,7 @@ func NewJob(jdef *JobDefinition, filenames []string) (j *Job, err error) {
 // Returns the full path to the inprogress file
 func (j *Job) InProgressPath(ipIdx int) string {
 	if err := j.Def.isValidReqRootDirIdx(ipIdx); err != nil {
-		utils.Panic(err.Error())
+		utils.Panic("InProgressPath panic:%v", err.Error())
 	}
 	return filepath.Join(j.Def.dirFrom(ipIdx), j.LockedFile[ipIdx])
 }
@@ -135,7 +135,7 @@ func (j *Job) ResponseFile(opIdx int) (s string, err error) {
 // Returns the name of the output file for the job
 func (j *Job) TmpResponseFile(c *config.Config, opIdx int) (s string) {
 	if err := j.Def.isValidOutputFileIdx(opIdx); err != nil {
-		utils.Panic(err.Error())
+		utils.Panic("TmpResponseFile panic:%v", err.Error())
 	}
 	return path.Join(j.Def.dirTo(opIdx), "tmp-response-file."+c.Controller.LocalID+".json")
 }
@@ -202,7 +202,7 @@ func (j *Job) DoneFile(status Status, ipIdx int) string {
 
 	// Sanity check
 	if err := j.Def.isValidReqRootDirIdx(ipIdx); err != nil {
-		utils.Panic(err.Error())
+		utils.Panic("DoneFile panic:%v", err.Error())
 	}
 
 	// Remove the suffix .failure.code_[0-9]+ from all the strings

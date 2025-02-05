@@ -70,9 +70,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 				numRetrySoFar++
 				noJobFoundMsg := "found no jobs in the queue"
 				if numRetrySoFar > 5 {
-					cLog.Debugf(noJobFoundMsg)
+					cLog.Debugf("%v", noJobFoundMsg)
 				} else {
-					cLog.Infof(noJobFoundMsg)
+					cLog.Infof("%v", noJobFoundMsg)
 				}
 				continue
 			}
