@@ -224,11 +224,10 @@ func (j *Job) DoneFile(status Status, ipIdx int) string {
 }
 
 // Returns the score of a JOB. The score is obtained as 100*job.Stop + P, where
-// P is 1 if the job is an execution job, 2 if the job is a compression job and
-// 3 if the job is an aggregation job. The lower the score the higher will be
+// P is 0 if the job is an execution job, 1 if the job is a compression job and
+// 2 if the job is an aggregation job. The lower the score the higher will be
 // the priority of the job. The 100 value is chosen to make the score easy to
-// mentally compute.
-// ASSUMED 0 index here
+// mentally compute. ASSUMED 0 index here
 func (j *Job) Score() int {
 	return 100*j.End[0] + j.Def.Priority
 }

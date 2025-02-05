@@ -52,51 +52,44 @@ func TestFileWatcherM(t *testing.T) {
 
 	// Name of the expected in-progress files
 	expectedFNames := []struct {
-		FName string
+		FName []string
 		Skip  bool
 	}{
 		{
-			FName: createTestInputFile(eFrom(), 0, 1, execJob, exitCode),
+			FName: []string{createTestInputFile(eFrom(), 0, 1, execJob, exitCode)},
 		},
 		{
 			Skip:  true, // wrong directory
-			FName: createTestInputFile(eFrom(), 0, 1, aggregationJob, exitCode),
+			FName: []string{createTestInputFile(eFrom(), 0, 1, aggregationJob, exitCode)},
 		},
 		{
-			FName: createTestInputFile(cFrom(), 0, 1, compressionJob, exitCode),
+			FName: []string{createTestInputFile(cFrom(), 0, 1, compressionJob, exitCode)},
 		},
 		{
-			FName: createTestInputFile(eFrom(), 1, 2, execJob, exitCode),
+			FName: []string{createTestInputFile(eFrom(), 1, 2, execJob, exitCode)},
 		},
 		{
-			FName: createTestInputFile(cFrom(), 1, 2, compressionJob, exitCode),
+			FName: []string{createTestInputFile(cFrom(), 1, 2, compressionJob, exitCode)},
 		},
 		{
-			FName: createTestInputFile(aFrom(), 0, 2, aggregationJob, exitCode),
+			FName: []string{createTestInputFile(aFrom(), 0, 2, aggregationJob, exitCode)},
 		},
 		{
 			Skip:  true, // for large only
-			FName: createTestInputFile(eFrom(), 2, 4, execJob, exitCode, forLarge),
+			FName: []string{createTestInputFile(eFrom(), 2, 4, execJob, exitCode, forLarge)},
 		},
 		{
-			FName: createTestInputFile(eFrom(), 4, 5, execJob, exitCode),
+			FName: []string{createTestInputFile(eFrom(), 4, 5, execJob, exitCode)},
 		},
 		{
-			FName: createTestInputFile(cFrom(), 2, 5, compressionJob, exitCode),
+			FName: []string{createTestInputFile(cFrom(), 2, 5, compressionJob, exitCode)},
 		},
 		{
-			FName: createTestInputFile(aFrom(), 2, 5, aggregationJob, exitCode),
+			FName: []string{createTestInputFile(aFrom(), 2, 5, aggregationJob, exitCode)},
 		},
 	}
 
 	fw := NewFsWatcher(confM)
-	// t.Logf("File System Watch Jobs to watch: %v", len(fw.JobToWatch))
-	// t.Logf("File System Watch Jobs file names: %v", fw.JobToWatch[0].RequestsRootDir)
-	// t.Logf("File System Watch Jobs file names: %v", fw.JobToWatch[0].RequestsRootDir[0])
-
-	// t.Logf("File System Watch Jobs file names: %v", fw.JobToWatch[1].RequestsRootDir)
-	// t.Logf("File System Watch Jobs file names: %v", fw.JobToWatch[2].RequestsRootDir)
-
 	for _, f := range expectedFNames {
 		if f.Skip {
 			continue
@@ -107,10 +100,11 @@ func TestFileWatcherM(t *testing.T) {
 			t.Logf("Did not find the job for file: %s", f.FName)
 		}
 		if assert.NotNil(t, found, "did not find the job") {
-			assert.Equal(t, f.FName, found.OriginalFile[0]) // ASSUMED 0 index here
+			assert.Equal(t, f.FName, found.OriginalFile)
 		}
 	}
 	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
+
 }
 
 func TestFileWatcherL(t *testing.T) {
@@ -125,30 +119,30 @@ func TestFileWatcherL(t *testing.T) {
 
 	// Name of the expected in-progress files
 	expectedFNames := []struct {
-		FName string
+		FName []string
 		Skip  bool
 	}{
 		{
 			Skip:  true, // not large
-			FName: createTestInputFile(eFrom, 0, 1, execJob, exitCode),
+			FName: []string{createTestInputFile(eFrom, 0, 1, execJob, exitCode)},
 		},
 		{
 			Skip:  true, // wrong directory
-			FName: createTestInputFile(eFrom, 0, 1, aggregationJob, exitCode),
+			FName: []string{createTestInputFile(eFrom, 0, 1, aggregationJob, exitCode)},
 		},
 		{
-			FName: createTestInputFile(eFrom, 1, 2, execJob, exitCode, forLarge),
+			FName: []string{createTestInputFile(eFrom, 1, 2, execJob, exitCode, forLarge)},
 		},
 		{
-			FName: createTestInputFile(eFrom, 2, 4, execJob, exitCode, forLarge),
+			FName: []string{createTestInputFile(eFrom, 2, 4, execJob, exitCode, forLarge)},
 		},
 		{
 			Skip:  true, // not large
-			FName: createTestInputFile(eFrom, 4, 5, execJob, exitCode),
+			FName: []string{createTestInputFile(eFrom, 4, 5, execJob, exitCode)},
 		},
 		{
 			Skip:  true, // wrong dir
-			FName: createTestInputFile(eFrom, 2, 5, compressionJob, exitCode),
+			FName: []string{createTestInputFile(eFrom, 2, 5, compressionJob, exitCode)},
 		},
 	}
 
@@ -164,7 +158,7 @@ func TestFileWatcherL(t *testing.T) {
 			t.Logf("Did not find the job for file: %s", f.FName)
 		}
 		if assert.NotNil(t, found, "did not find the job") {
-			assert.Equal(t, f.FName, found.OriginalFile[0]) // ASSUMED 0 index here
+			assert.Equal(t, f.FName, found.OriginalFile)
 		}
 	}
 	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
