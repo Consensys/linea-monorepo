@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
@@ -1252,7 +1253,9 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 	timestamps fetch.TimestampFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
-	rlp fetch.RlpTxnFetcher) {
+	rlp fetch.RlpTxnFetcher,
+	blockHashList []types.FullBytes32,
+) {
 	size := edc.Limb.Size()
 	// generate a helper struct that instantiates field element vectors for all our columns
 	vect := NewExecutionDataCollectorVectors(size)
@@ -1299,7 +1302,8 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			totalCt++
 
 			// row 2, load the Hi part of the blockhash
-			fetchedBlockhashHi := field.Zero() // TO BE REPLACED LATER
+			var fetchedBlockhashHi field.Element
+			fetchedBlockhashHi.SetBytes(blockHashList[blockCt][:16])
 			vect.IsBlockHashHi[totalCt].SetOne()
 			vect.NoBytes[totalCt].SetInt64(noBytesBlockHash)
 			genericLoadFunction(loadBlockHashHi, fetchedBlockhashHi)
@@ -1307,7 +1311,8 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			totalCt++
 
 			// row 3, load the Lo part of the blockhash
-			fetchedBlockhashLo := field.Zero() // TO BE REPLACED LATER
+			var fetchedBlockhashLo field.Element
+			fetchedBlockhashLo.SetBytes(blockHashList[blockCt][16:])
 			vect.IsBlockHashLo[totalCt].SetOne()
 			vect.NoBytes[totalCt].SetInt64(noBytesBlockHash)
 			genericLoadFunction(loadBlockHashLo, fetchedBlockhashLo)
