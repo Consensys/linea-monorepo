@@ -147,7 +147,7 @@ func (pa *distribuedProjectionProverAction) registerForCol(
 	switch colName {
 	case "A":
 		{
-			pa.HornerA[index] = comp.InsertCommit(round, ifaces.ColIDf("%v_HORNER_A_%v", pa.Name, index), input.Size)
+			pa.HornerA[index] = comp.InsertCommit(round, ifaces.ColIDf("%v_HORNER_A_%v", pa.Name, index), input.SizeA)
 			comp.InsertGlobal(
 				round,
 				ifaces.QueryIDf("%v_HORNER_A_%v_GLOBAL", pa.Name, index),
@@ -181,7 +181,7 @@ func (pa *distribuedProjectionProverAction) registerForCol(
 		}
 	case "B":
 		{
-			pa.HornerB[index] = comp.InsertCommit(round, ifaces.ColIDf("%v_HORNER_B_%v", pa.Name, index), input.Size)
+			pa.HornerB[index] = comp.InsertCommit(round, ifaces.ColIDf("%v_HORNER_B_%v", pa.Name, index), input.SizeB)
 
 			comp.InsertGlobal(
 				round,

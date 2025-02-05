@@ -17,7 +17,7 @@ import (
 type DistributedProjectionInput struct {
 	ColumnA, ColumnB         *symbolic.Expression
 	FilterA, FilterB         *symbolic.Expression
-	Size                     int
+	SizeA, SizeB             int
 	EvalCoin                 coin.Name
 	IsAInModule, IsBInModule bool
 }

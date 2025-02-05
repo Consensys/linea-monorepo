@@ -1,6 +1,7 @@
 package distributedprojection
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -37,6 +38,7 @@ func compile(comp *wizard.CompiledIOP, round int, distributedprojection query.Di
 			HornerB:  make([]ifaces.Column, len(distributedprojection.Inp)),
 			HornerA0: make([]query.LocalOpening, len(distributedprojection.Inp)),
 			HornerB0: make([]query.LocalOpening, len(distributedprojection.Inp)),
+			EvalCoin: make([]coin.Info, len(distributedprojection.Inp)),
 			IsA:      make([]bool, len(distributedprojection.Inp)),
 			IsB:      make([]bool, len(distributedprojection.Inp)),
 		}
@@ -45,11 +47,11 @@ func compile(comp *wizard.CompiledIOP, round int, distributedprojection query.Di
 	pa.RegisterQueries(comp, round, distributedprojection)
 	comp.RegisterProverAction(round, pa)
 	comp.RegisterVerifierAction(round, &distributedProjectionVerifierAction{
-		Name: pa.Name,
+		Name:     pa.Name,
 		HornerA0: pa.HornerA0,
 		HornerB0: pa.HornerB0,
-		isA: pa.IsA,
-		isB: pa.IsB,
+		isA:      pa.IsA,
+		isB:      pa.IsB,
 	})
 
 }

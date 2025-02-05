@@ -5,18 +5,20 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/distributedprojection"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	dist_projection "github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDistributeProjection(t *testing.T) {
 	var (
 		moduleAName                    = "moduleA"
-		runS                           *wizard.ProverRuntime
 		flagSizeA                      = 512
 		flagSizeB                      = 256
 		flagA, flagB, columnA, columnB ifaces.Column
@@ -44,7 +46,6 @@ func TestDistributeProjection(t *testing.T) {
 			// This function assigns the initial module and is aimed at working
 			// for all test-case.
 			initialProve := func(run *wizard.ProverRuntime) {
-				runS = run
 				// assign filters and columns
 				var (
 					flagAWit   = make([]field.Element, flagSizeA)
@@ -75,15 +76,22 @@ func TestDistributeProjection(t *testing.T) {
 
 			// This declares a compiled IOP with only the columns of the module A
 			moduleAComp := distributed.GetFreshModuleComp(initialComp, &disc, moduleAName)
-			dp := dist_projection.NewDistributeProjectionCtx(moduleAName, initialComp, moduleAComp, &disc)
-			var (
-				_     = wizard.Prove(moduleAComp, initialProve)
-				errDP = dp.Query.Check(runS)
-			)
+			dist_projection.NewDistributeProjectionCtx(moduleAName, initialComp, moduleAComp, &disc)
 
-			if errDP != nil {
-				t.Fatalf("error verifying the distributed projection query: %v", errDP.Error())
-			}
+			// Compile the distributed projection query
+			distributedprojection.CompileDistributedProjection(moduleAComp)
+
+			// This adds a dummy compilation step
+			dummy.CompileAtProverLvl(moduleAComp)
+
+			// This runs the initial prover
+			initialRuntime := wizard.RunProver(initialComp, initialProve)
+
+			proof := wizard.Prove(moduleAComp, func(run *wizard.ProverRuntime) {
+				run.ParentRuntime = initialRuntime
+			})
+			valid := wizard.Verify(moduleAComp, proof)
+			require.NoError(t, valid)
 
 		})
 
