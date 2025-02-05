@@ -94,52 +94,6 @@ const config: HardhatUserConfig = {
         },
       },
     ],
-    overrides: {
-      "contracts/src/verifiers/*": {
-        version: "0.8.26",
-        settings: {
-          viaIR: useViaIR,
-          optimizer: {
-            enabled: true,
-            runs: 10_000,
-          },
-          evmVersion: "cancun",
-        },
-      },
-      "contracts/src/_testing/unit/verifiers/TestPlonkVerifierForDataAggregation.sol": {
-        version: "0.8.26",
-        settings: {
-          viaIR: useViaIR,
-          optimizer: {
-            enabled: true,
-            runs: 10_000,
-          },
-          evmVersion: "cancun",
-        },
-      },
-      "contracts/src/libraries/SparseMerkleProof.sol": {
-        version: "0.8.25",
-        settings: {
-          viaIR: useViaIR,
-          optimizer: {
-            enabled: true,
-            runs: 10_000,
-          },
-          evmVersion: "cancun",
-        },
-      },
-      "contracts/src/libraries/Mimc.sol": {
-        version: "0.8.25",
-        settings: {
-          viaIR: useViaIR,
-          optimizer: {
-            enabled: true,
-            runs: 10_000,
-          },
-          evmVersion: "cancun",
-        },
-      },
-    },
   },
   namedAccounts: {
     deployer: {
