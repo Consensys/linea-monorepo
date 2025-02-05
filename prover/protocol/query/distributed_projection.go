@@ -73,7 +73,7 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 		actualParam = field.Zero()
 		params      = run.GetParams(dp.ID).(DistributedProjectionParams)
 	)
-	for index, inp := range dp.Inp {
+	for _, inp := range dp.Inp {
 		var (
 			colABoard    = inp.ColumnA.Board()
 			colBBoard    = inp.ColumnB.Board()

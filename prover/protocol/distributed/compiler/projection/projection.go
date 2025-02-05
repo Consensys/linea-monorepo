@@ -128,8 +128,8 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:     wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
 			FilterA:     fA,
 			FilterB:     fB,
-			Size: 	  q.Inp.FilterA.Size(),
-			EvalCoin:   beta.Name,
+			Size:        q.Inp.FilterA.Size(),
+			EvalCoin:    beta.Name,
 			IsAInModule: true,
 			IsBInModule: true,
 		})
@@ -140,8 +140,8 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:     symbolic.NewConstant(1),
 			FilterA:     fA,
 			FilterB:     symbolic.NewConstant(1),
-			Size: 	  q.Inp.FilterA.Size(),
-			EvalCoin:   beta.Name,
+			Size:        q.Inp.FilterA.Size(),
+			EvalCoin:    beta.Name,
 			IsAInModule: true,
 			IsBInModule: false,
 		})
@@ -152,8 +152,8 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:     wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
 			FilterA:     symbolic.NewConstant(1),
 			FilterB:     fB,
-			Size: 	  q.Inp.FilterB.Size(),
-			EvalCoin:   beta.Name,
+			Size:        q.Inp.FilterB.Size(),
+			EvalCoin:    beta.Name,
 			IsAInModule: false,
 			IsBInModule: true,
 		})
@@ -212,13 +212,8 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 }
 
 func (p *DistributeProjectionCtx) Run(run *wizard.ProverRuntime) {
-	evalCoins := make([]field.Element, 0, len(p.EvalCoins))
-	for _, c := range p.EvalCoins {
-		evalCoins = append(evalCoins, run.GetRandomCoinField(c.Name))
-	}
 	run.AssignDistributedProjection(p.Query.ID, query.DistributedProjectionParams{
 		HornerVal: p.computeQueryParam(run),
-		EvalRands: evalCoins,
 	})
 }
 

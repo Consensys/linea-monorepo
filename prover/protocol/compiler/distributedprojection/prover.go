@@ -26,43 +26,40 @@ type distribuedProjectionProverAction struct {
 	IsA, IsB           []bool
 }
 
-func (pa distribuedProjectionProverAction) Run(run *wizard.ProverRuntime) {
-	for i := range pa.FilterA {
-		if pa.IsA[i] && pa.IsB[i] {
+func (pa *distribuedProjectionProverAction) Run(run *wizard.ProverRuntime) {
+	for index := range pa.FilterA {
+		if pa.IsA[index] && pa.IsB[index] {
 			var (
-				colA    = column.EvalExprColumn(run, pa.ColumnA[i].Board()).IntoRegVecSaveAlloc()
-				fA      = column.EvalExprColumn(run, pa.FilterA[i].Board()).IntoRegVecSaveAlloc()
-				colB    = column.EvalExprColumn(run, pa.ColumnB[i].Board()).IntoRegVecSaveAlloc()
-				fB      = column.EvalExprColumn(run, pa.FilterB[i].Board()).IntoRegVecSaveAlloc()
-				x       = run.GetRandomCoinField(pa.EvalCoin[i].Name)
+				colA    = column.EvalExprColumn(run, pa.ColumnA[index].Board()).IntoRegVecSaveAlloc()
+				fA      = column.EvalExprColumn(run, pa.FilterA[index].Board()).IntoRegVecSaveAlloc()
+				colB    = column.EvalExprColumn(run, pa.ColumnB[index].Board()).IntoRegVecSaveAlloc()
+				fB      = column.EvalExprColumn(run, pa.FilterB[index].Board()).IntoRegVecSaveAlloc()
+				x       = run.GetRandomCoinField(pa.EvalCoin[index].Name)
 				hornerA = poly.CmptHorner(colA, fA, x)
 				hornerB = poly.CmptHorner(colB, fB, x)
 			)
-
-			run.AssignColumn(pa.HornerA[i].GetColID(), smartvectors.NewRegular(hornerA))
-			run.AssignLocalPoint(pa.HornerA0[i].ID, hornerA[0])
-			run.AssignColumn(pa.HornerB[i].GetColID(), smartvectors.NewRegular(hornerB))
-			run.AssignLocalPoint(pa.HornerB0[i].ID, hornerB[0])
-		} else if pa.IsA[i] && !pa.IsB[i] {
+			run.AssignColumn(pa.HornerA[index].GetColID(), smartvectors.NewRegular(hornerA))
+			run.AssignLocalPoint(pa.HornerA0[index].ID, hornerA[0])
+			run.AssignColumn(pa.HornerB[index].GetColID(), smartvectors.NewRegular(hornerB))
+			run.AssignLocalPoint(pa.HornerB0[index].ID, hornerB[0])
+		} else if pa.IsA[index] && !pa.IsB[index] {
 			var (
-				colA    = column.EvalExprColumn(run, pa.ColumnA[i].Board()).IntoRegVecSaveAlloc()
-				fA      = column.EvalExprColumn(run, pa.FilterA[i].Board()).IntoRegVecSaveAlloc()
-				x       = run.GetRandomCoinField(pa.EvalCoin[i].Name)
+				colA    = column.EvalExprColumn(run, pa.ColumnA[index].Board()).IntoRegVecSaveAlloc()
+				fA      = column.EvalExprColumn(run, pa.FilterA[index].Board()).IntoRegVecSaveAlloc()
+				x       = run.GetRandomCoinField(pa.EvalCoin[index].Name)
 				hornerA = poly.CmptHorner(colA, fA, x)
 			)
-
-			run.AssignColumn(pa.HornerA[i].GetColID(), smartvectors.NewRegular(hornerA))
-			run.AssignLocalPoint(pa.HornerA0[i].ID, hornerA[0])
-		} else if !pa.IsA[i] && pa.IsB[i] {
+			run.AssignColumn(pa.HornerA[index].GetColID(), smartvectors.NewRegular(hornerA))
+			run.AssignLocalPoint(pa.HornerA0[index].ID, hornerA[0])
+		} else if !pa.IsA[index] && pa.IsB[index] {
 			var (
-				colB    = column.EvalExprColumn(run, pa.ColumnB[i].Board()).IntoRegVecSaveAlloc()
-				fB      = column.EvalExprColumn(run, pa.FilterB[i].Board()).IntoRegVecSaveAlloc()
-				x       = run.GetRandomCoinField(pa.EvalCoin[i].Name)
+				colB    = column.EvalExprColumn(run, pa.ColumnB[index].Board()).IntoRegVecSaveAlloc()
+				fB      = column.EvalExprColumn(run, pa.FilterB[index].Board()).IntoRegVecSaveAlloc()
+				x       = run.GetRandomCoinField(pa.EvalCoin[index].Name)
 				hornerB = poly.CmptHorner(colB, fB, x)
 			)
-
-			run.AssignColumn(pa.HornerB[i].GetColID(), smartvectors.NewRegular(hornerB))
-			run.AssignLocalPoint(pa.HornerB0[i].ID, hornerB[0])
+			run.AssignColumn(pa.HornerB[index].GetColID(), smartvectors.NewRegular(hornerB))
+			run.AssignLocalPoint(pa.HornerB0[index].ID, hornerB[0])
 		} else {
 			fmt.Errorf("Invalid prover assignment in distributed projection id: %v", pa.Name)
 		}

@@ -52,6 +52,8 @@ type WizardVerifierCircuit struct {
 	logDerivSumIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
 	// Same for grand-product query
 	grandProductIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
+	// Same for distributed projection query
+	distributedProjectionIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
 
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
@@ -74,6 +76,9 @@ type WizardVerifierCircuit struct {
 	// GrandProductParams stores an assignment for each [query.GrandProductParams]
 	// from the proof. It is part of the witness of the gnark circuit.
 	GrandProductParams []query.GnarkGrandProductParams `gnark:",secret"`
+	// DistributedProjectionParams stores an assignment for each [query.DistributedProjectionParams]
+	// from the proof. It is part of the witness of the gnark circuit.
+	DistributedProjectionParams []query.GnarkDistributedProjectionParams `gnark:",secret"`
 
 	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
@@ -343,6 +348,14 @@ func (c *WizardVerifierCircuit) GetLogDerivSumParams(name ifaces.QueryID) query.
 func (c *WizardVerifierCircuit) GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams {
 	qID := c.grandProductIDs.MustGet(name)
 	return c.GrandProductParams[qID]
+}
+
+// GetDistributedProjectionParams returns the parameters for the requested
+// [query.DistributedProjection] query. Its work mirrors the function
+// [VerifierRuntime.GetDistributedProjectionParams]
+func (c *WizardVerifierCircuit) GetDistributedProjectionParams(name ifaces.QueryID) query.GnarkDistributedProjectionParams {
+	qID := c.distributedProjectionIDs.MustGet(name)
+	return c.DistributedProjectionParams[qID]
 }
 
 // GetColumns returns the gnark assignment of a column in a gnark circuit. It

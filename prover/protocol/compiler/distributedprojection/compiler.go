@@ -42,5 +42,14 @@ func compile(comp *wizard.CompiledIOP, round int, distributedprojection query.Di
 		}
 	)
 	pa.Push(comp, distributedprojection)
+	pa.RegisterQueries(comp, round, distributedprojection)
+	comp.RegisterProverAction(round, pa)
+	comp.RegisterVerifierAction(round, &distributedProjectionVerifierAction{
+		Name: pa.Name,
+		HornerA0: pa.HornerA0,
+		HornerB0: pa.HornerB0,
+		isA: pa.IsA,
+		isB: pa.IsB,
+	})
 
 }
