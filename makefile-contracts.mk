@@ -42,7 +42,7 @@ deploy-l2messageservice:
 		L2MSGSERVICE_L1L2_MESSAGE_SETTER=$${L2MSGSERVICE_L1L2_MESSAGE_SETTER:-0xd42e308fc964b71e18126df469c21b0d7bcb86cc} \
 		L2MSGSERVICE_RATE_LIMIT_PERIOD=86400 \
 		L2MSGSERVICE_RATE_LIMIT_AMOUNT=1000000000000000000000 \
-		npx ts-node local-deployments-artifacts/deployL2MessageService.ts
+		npx ts-node local-deployments-artifacts/deployL2MessageServiceV1.ts
 
 deploy-token-bridge-l1:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
@@ -54,7 +54,7 @@ deploy-token-bridge-l1:
 		L1_TOKEN_BRIDGE_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
 		L2MESSAGESERVICE_ADDRESS=0xe537D669CA013d86EBeF1D64e40fC74CADC91987 \
 		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
-		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridge.ts
+		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridgeV1.ts
 
 deploy-token-bridge-l2:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
@@ -67,7 +67,7 @@ deploy-token-bridge-l2:
 		L2_TOKEN_BRIDGE_SECURITY_COUNCIL=0xf17f52151EbEF6C7334FAD080c5704D77216b732 \
 		L2MESSAGESERVICE_ADDRESS=0xe537D669CA013d86EBeF1D64e40fC74CADC91987 \
 		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
-		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridge.ts
+		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridgeV1.ts
 
 deploy-l1-test-erc20:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
@@ -121,4 +121,24 @@ evm-opcode-tester-execute-all-opcodes:
 		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/executeAllOpcodes.ts
+
+deploy-l2-scenario-testing-proxy:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		cd contracts/; \
+		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		RPC_URL=http:\\localhost:8545/ \
+		npx ts-node local-deployments-artifacts/deployLineaScenarioDelegatingProxy.ts
+
+execute-scenario-testing-proxy-scenario: LINEA_SCENARIO_DELEGATING_PROXY_ADDRESS:=0x2f6dAaF8A81AB675fbD37Ca6Ed5b72cf86237453
+execute-scenario-testing-proxy-scenario:
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		# GAS_LIMIT=452500 will cause it to fail
+		cd contracts/; \
+		LINEA_SCENARIO_DELEGATING_PROXY_ADDRESS=$(LINEA_SCENARIO_DELEGATING_PROXY_ADDRESS) \
+		NUMBER_OF_LOOPS=10000000 \
+		LINEA_SCENARIO=1 \
+		GAS_LIMIT=452500 \
+		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		RPC_URL=http:\\localhost:8545/ \
+		npx ts-node local-deployments-artifacts/executeLineaScenarioDelegatingProxyScenario.ts
 
