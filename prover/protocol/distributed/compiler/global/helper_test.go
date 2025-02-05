@@ -1,1 +1,0 @@
-package global_test
