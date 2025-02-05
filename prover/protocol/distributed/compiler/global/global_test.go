@@ -15,7 +15,7 @@ import (
 )
 
 // It tests DistributedLogDerivSum.
-func TestSeedGeneration(t *testing.T) {
+func TestDistributedGlobal(t *testing.T) {
 	const (
 		numSegModule = 2
 	)
@@ -40,7 +40,7 @@ func TestSeedGeneration(t *testing.T) {
 		run.AssignColumn("module.col1", smartvectors.ForTest(1, 7, 1, 11, 2, 1, 0, 2))
 	}
 
-	// initial compiledIOP is the parent to LPPComp and all the SegmentModuleComp objects.
+	// initial compiledIOP is the parent to all the SegmentModuleComp objects.
 	initialComp := wizard.Compile(define)
 
 	// Initialize the period separating module discoverer
@@ -49,7 +49,7 @@ func TestSeedGeneration(t *testing.T) {
 
 	// distribute the columns among modules and segments; this includes also multiplicity columns
 	// for all the segments from the same module, compiledIOP object is the same.
-	moduleComp := distributed.GetFreshSegmentModuleComp(
+	moduleComp := distributed.GetFreshCompGL(
 		distributed.SegmentModuleInputs{
 			InitialComp:         initialComp,
 			Disc:                disc,
