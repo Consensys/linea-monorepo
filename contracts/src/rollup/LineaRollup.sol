@@ -7,7 +7,7 @@ import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 
-import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
+import { EfficientKeccak } from "../libraries/EfficientKeccak.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
@@ -15,10 +15,10 @@ import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.
  * @custom:security-contact security-report@linea.build
  */
 contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, PermissionsManager, ILineaRollup {
-  using EfficientLeftRightKeccak for *;
+  using EfficientKeccak for *;
 
   /// @notice This is the ABI version and not the reinitialize version.
-  string public constant CONTRACT_VERSION = "6.0";
+  string public constant CONTRACT_VERSION = "6.1";
 
   /// @notice The role required to set/add  proof verifiers by type.
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
@@ -130,7 +130,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     currentL2BlockNumber = _initializationData.initialL2BlockNumber;
     stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
-    bytes32 genesisShnarf = _computeShnarf(
+    bytes32 genesisShnarf = EfficientKeccak._efficientKeccak(
       EMPTY_HASH,
       EMPTY_HASH,
       _initializationData.initialStateRootHash,
@@ -141,6 +141,15 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
     currentFinalizedShnarf = genesisShnarf;
     currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
+
+    // TODO - discuss if we want anything other than default here.
+    initialSoundnessState = EfficientKeccak._efficientKeccak(
+      genesisShnarf,
+      EMPTY_HASH,
+      bytes32(_initializationData.genesisTimestamp),
+      EMPTY_HASH,
+      EMPTY_HASH
+    );
   }
 
   /**
@@ -148,16 +157,16 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
    */
   function reinitializeLineaRollupV7(InitialSoundnessState memory _initialSoundnessState) external reinitializer(7) {
-    initialSoundnessState = _computeInitialSoundnessStateHash(
+    initialSoundnessState = EfficientKeccak._efficientKeccak(
       _initialSoundnessState.shnarf,
-      _initialSoundnessState.blockNumber,
-      _initialSoundnessState.timestamp,
+      bytes32(_initialSoundnessState.blockNumber),
+      bytes32(_initialSoundnessState.timestamp),
       _initialSoundnessState.l1RollingHash,
-      _initialSoundnessState.l1RollingHashMessageNumber
+      bytes32(_initialSoundnessState.l1RollingHashMessageNumber)
     );
 
     /// @dev using the constants requires string memory and more complex code.
-    emit LineaRollupVersionChanged(bytes8("6.0"), bytes8("7.0"));
+    emit LineaRollupVersionChanged(bytes8("6.0"), bytes8("6.1"));
   }
 
   /**
@@ -178,92 +187,79 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     address verifierAddressForProofType = verifiers[_finalizationData.proofType];
 
     // Verify we are not already alerted.
-    if (verifierAddressForProofType == VERIFIER_TRIGGERED_SOUNDNESS_ALERT_ADDRESS) {
+    if (verifierAddressForProofType == TRIGGERED_SOUNDNESS_ALERT_ADDRESS) {
       revert SoundnessAlertAlreadyTriggered();
     }
+
+    // Set the final shnarf data to a memory variable for ease of use.
+    ShnarfData memory finalizationShnarf = _finalizationData.finalizationData.shnarfData;
 
     // Compute initial state and validate it is the same as stored on chain.
     if (
       initialSoundnessState !=
-      _computeInitialSoundnessStateHash(
-        _finalizationData.initialShnarf,
-        _finalizationData.initialBlockNumber,
-        _finalizationData.finalizationData.lastFinalizedTimestamp,
+      EfficientKeccak._efficientKeccak(
+        finalizationShnarf.parentShnarf,
+        bytes32(_finalizationData.initialBlockNumber),
+        bytes32(_finalizationData.finalizationData.lastFinalizedTimestamp),
         _finalizationData.finalizationData.lastFinalizedL1RollingHash,
-        _finalizationData.finalizationData.lastFinalizedL1RollingHashMessageNumber
+        bytes32(_finalizationData.finalizationData.lastFinalizedL1RollingHashMessageNumber)
       )
     ) {
       revert InitialSoundnessStateNotSame(
         initialSoundnessState,
-        _computeInitialSoundnessStateHash(
-          _finalizationData.initialShnarf,
-          _finalizationData.initialBlockNumber,
-          _finalizationData.finalizationData.lastFinalizedTimestamp,
+        EfficientKeccak._efficientKeccak(
+          finalizationShnarf.parentShnarf,
+          bytes32(_finalizationData.initialBlockNumber),
+          bytes32(_finalizationData.finalizationData.lastFinalizedTimestamp),
           _finalizationData.finalizationData.lastFinalizedL1RollingHash,
-          _finalizationData.finalizationData.lastFinalizedL1RollingHashMessageNumber
+          bytes32(_finalizationData.finalizationData.lastFinalizedL1RollingHashMessageNumber)
         )
       );
     }
 
-    // set the final shnarf data to a memory variable
-    ShnarfData memory firstShnarfData = _finalizationData.finalizationData.shnarfData;
-
-    // 2. verify final and alternate states are different
-    // TODO - check the permutations of this
-    if (firstShnarfData.snarkHash == _finalizationData.alternateFinalizationData.snarkHash) {
-      revert();
+    // Verify final and alternate snarkHashes are different else we are proving the same thing twice.
+    if (finalizationShnarf.snarkHash == _finalizationData.alternateFinalizationData.snarkHash) {
+      revert SnarkHashesAreTheSame();
     }
 
-    if (firstShnarfData.finalStateRootHash == _finalizationData.alternateFinalizationData.finalStateRootHash) {
-      revert();
+    // Verify final and alternate states are different else we are proving the same thing twice.
+    if (finalizationShnarf.finalStateRootHash == _finalizationData.alternateFinalizationData.finalStateRootHash) {
+      revert FinalStateRootHashesAreTheSame();
     }
 
-    if (firstShnarfData.parentShnarf != _finalizationData.initialShnarf) {
-      revert("parents are wrong");
-    }
-
-    // 6. verify/prove final state (revert if fails)
-
+    // Compute initial public input.
     uint256 finalStatePublicInput = _computePublicInput(
       _finalizationData.finalizationData,
-      _finalizationData.initialShnarf,
-      _computeShnarf(
-        firstShnarfData.parentShnarf,
-        firstShnarfData.snarkHash,
-        firstShnarfData.finalStateRootHash,
-        firstShnarfData.dataEvaluationPoint,
-        firstShnarfData.dataEvaluationClaim
-      ),
+      finalizationShnarf.parentShnarf,
+      EfficientKeccak._efficientKeccak( // computing the shnarf
+          finalizationShnarf.parentShnarf,
+          finalizationShnarf.snarkHash,
+          finalizationShnarf.finalStateRootHash,
+          finalizationShnarf.dataEvaluationPoint,
+          finalizationShnarf.dataEvaluationClaim
+        ),
       _finalizationData.initialBlockNumber
     );
 
+    // Verify initial proof
     /// @dev If this fails we would get an InvalidProof() revert;
     _verifyProof(finalStatePublicInput, _finalizationData.proofType, _finalizationData.firstProof);
 
-    /// @dev Update the finalization data vs. creating a whole new object.
-    _finalizationData.finalizationData.l1RollingHashMessageNumber = _finalizationData
-      .alternateFinalizationData
-      .l1RollingHashMessageNumber;
-    _finalizationData.finalizationData.l1RollingHash = _finalizationData.alternateFinalizationData.l1RollingHash;
-    _finalizationData.finalizationData.l2MerkleRoots = _finalizationData.alternateFinalizationData.l2MerkleRoots;
-    _finalizationData.finalizationData.l2MerkleTreesDepth = _finalizationData
-      .alternateFinalizationData
-      .l2MerkleTreesDepth;
-    _finalizationData.finalizationData.finalTimestamp = _finalizationData.alternateFinalizationData.finalTimestamp;
-    _finalizationData.finalizationData.endBlockNumber = _finalizationData.alternateFinalizationData.endBlockNumber;
+    /// @dev Update the finalization data vs. creating a whole new object with alternate finalization data.
+    _switchToAlternateFinalizationData(_finalizationData.finalizationData, _finalizationData.alternateFinalizationData);
 
     // 8. verify/prove alternate state (revert if fails)
     uint256 alternateFinalStatePublicInput = _computePublicInput(
-      _finalizationData.finalizationData,
-      _finalizationData.initialShnarf,
-      _computeShnarf(
-        firstShnarfData.parentShnarf, // can't change
-        _finalizationData.alternateFinalizationData.snarkHash,
-        _finalizationData.alternateFinalizationData.finalStateRootHash,
-        firstShnarfData.dataEvaluationPoint, // can't change
-        firstShnarfData.dataEvaluationClaim // can't change
-      ),
-      _finalizationData.initialBlockNumber
+      _finalizationData.finalizationData, // some fields changed in the previous function
+      finalizationShnarf.parentShnarf, // can't change
+      EfficientKeccak._efficientKeccak( // computing the shnarf
+          finalizationShnarf.parentShnarf, // can't change
+          finalizationShnarf.snarkHash, // changed in the in the previous function
+          finalizationShnarf.finalStateRootHash, // changed in the previous function
+          finalizationShnarf.dataEvaluationPoint, // can't change
+          finalizationShnarf.dataEvaluationClaim // can't change
+        ),
+      _finalizationData.initialBlockNumber // can't change
     );
 
     /// @dev If this fails we would get an InvalidProof() revert;
@@ -274,9 +270,24 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     );
 
     /// @dev Due to lack of reverts and 2 proofs passing, we should remove the verifier and soundness alert is triggered.
-    verifiers[_finalizationData.proofType] = VERIFIER_TRIGGERED_SOUNDNESS_ALERT_ADDRESS;
+    verifiers[_finalizationData.proofType] = TRIGGERED_SOUNDNESS_ALERT_ADDRESS;
 
     emit SoundessAlertTriggered(verifierAddressForProofType, _proofType);
+  }
+
+  function _switchToAlternateFinalizationData(
+    FinalizationDataV3 memory _finalizationData,
+    AlternateFinalizationData memory _alternateFinalizationData
+  ) internal {
+    /// @dev All 8 fields are used with the extra field being the proof is used in the
+    _finalizationData.l1RollingHashMessageNumber = _alternateFinalizationData.l1RollingHashMessageNumber;
+    _finalizationData.l1RollingHash = _alternateFinalizationData.l1RollingHash;
+    _finalizationData.l2MerkleRoots = _alternateFinalizationData.l2MerkleRoots;
+    _finalizationData.l2MerkleTreesDepth = _alternateFinalizationData.l2MerkleTreesDepth;
+    _finalizationData.finalTimestamp = _alternateFinalizationData.finalTimestamp;
+    _finalizationData.endBlockNumber = _alternateFinalizationData.endBlockNumber;
+    _finalizationData.shnarfData.snarkHash = _alternateFinalizationData.snarkHash;
+    _finalizationData.shnarfData.finalStateRootHash = _alternateFinalizationData.finalStateRootHash;
   }
 
   /**
@@ -384,7 +395,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
 
       bytes32 snarkHash = blobSubmission.snarkHash;
 
-      currentDataEvaluationPoint = EfficientLeftRightKeccak._efficientKeccak(snarkHash, currentDataHash);
+      currentDataEvaluationPoint = EfficientKeccak._efficientKeccak(snarkHash, currentDataHash);
 
       _verifyPointEvaluation(
         currentDataHash,
@@ -394,7 +405,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
         blobSubmission.kzgProof
       );
 
-      computedShnarf = _computeShnarf(
+      computedShnarf = EfficientKeccak._efficientKeccak(
         computedShnarf,
         snarkHash,
         blobSubmission.finalStateRootHash,
@@ -439,9 +450,9 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
 
     bytes32 currentDataHash = keccak256(_submission.compressedData);
 
-    bytes32 dataEvaluationPoint = EfficientLeftRightKeccak._efficientKeccak(_submission.snarkHash, currentDataHash);
+    bytes32 dataEvaluationPoint = EfficientKeccak._efficientKeccak(_submission.snarkHash, currentDataHash);
 
-    bytes32 computedShnarf = _computeShnarf(
+    bytes32 computedShnarf = EfficientKeccak._efficientKeccak(
       _parentShnarf,
       _submission.snarkHash,
       _submission.finalStateRootHash,
@@ -511,33 +522,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
       mstore(add(mPtr, 0x20), _rollingHash)
       mstore(add(mPtr, 0x40), _timestamp)
       hashedFinalizationState := keccak256(mPtr, 0x60)
-    }
-  }
-
-  /**
-   * @notice Internal function to compute the shnarf more efficiently.
-   * @dev Using assembly this way is cheaper gas wise.
-   * @param _parentShnarf The shnarf of the parent data item.
-   * @param _snarkHash Is the computed hash for compressed data (using a SNARK-friendly hash function) that aggregates per data submission to be used in public input.
-   * @param _finalStateRootHash The final state root hash of the data being submitted.
-   * @param _dataEvaluationPoint The data evaluation point.
-   * @param _dataEvaluationClaim The data evaluation claim.
-   */
-  function _computeShnarf(
-    bytes32 _parentShnarf,
-    bytes32 _snarkHash,
-    bytes32 _finalStateRootHash,
-    bytes32 _dataEvaluationPoint,
-    bytes32 _dataEvaluationClaim
-  ) internal pure returns (bytes32 shnarf) {
-    assembly {
-      let mPtr := mload(0x40)
-      mstore(mPtr, _parentShnarf)
-      mstore(add(mPtr, 0x20), _snarkHash)
-      mstore(add(mPtr, 0x40), _finalStateRootHash)
-      mstore(add(mPtr, 0x60), _dataEvaluationPoint)
-      mstore(add(mPtr, 0x80), _dataEvaluationClaim)
-      shnarf := keccak256(mPtr, 0xA0)
     }
   }
 
@@ -621,7 +605,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
       revert FinalBlockStateEqualsZeroHash();
     }
 
-    finalShnarf = _computeShnarf(
+    finalShnarf = EfficientKeccak._efficientKeccak(
       _finalizationData.shnarfData.parentShnarf,
       _finalizationData.shnarfData.snarkHash,
       _finalizationData.shnarfData.finalStateRootHash,
@@ -770,26 +754,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
       mstore(add(mPtr, 0x160), hashOfMerkleRoots)
 
       publicInput := mod(keccak256(mPtr, 0x180), MODULO_R)
-    }
-  }
-
-  // TODO CORRECT THE NATSPEC HERE
-  // this is really the same as "_computeShnarf" - we could consider hash5words as a shared function
-  function _computeInitialSoundnessStateHash(
-    bytes32 shnarf,
-    uint256 initialBlockNumber,
-    uint256 initialTimestamp,
-    bytes32 l1RollingHash,
-    uint256 l1RollingHashMessageNumber
-  ) private pure returns (bytes32 initialStateHashed) {
-    assembly {
-      let mPtr := 0x40
-      mstore(mPtr, shnarf)
-      mstore(add(mPtr, 0x20), initialBlockNumber)
-      mstore(add(mPtr, 0x40), initialTimestamp)
-      mstore(add(mPtr, 0x60), l1RollingHash)
-      mstore(add(mPtr, 0x80), l1RollingHashMessageNumber)
-      initialStateHashed := keccak256(mPtr, 0xa0)
     }
   }
 }

@@ -21,7 +21,7 @@ abstract contract ZkEvmV2 is AccessControlUpgradeable, L1MessageServiceV1, IZkEv
   uint256 public currentL2BlockNumber;
 
   /// @dev This address is used when the soundness alert is triggered and verifier removed.
-  address internal constant VERIFIER_TRIGGERED_SOUNDNESS_ALERT_ADDRESS = 0xdEAD1234DeAd1234DeaD1234dead1234deAD1234;
+  address internal constant TRIGGERED_SOUNDNESS_ALERT_ADDRESS = 0xdEAD1234DeAd1234DeaD1234dead1234deAD1234;
 
   /// @notice The most recent L2 state root hash mapped by block number.
   mapping(uint256 blockNumber => bytes32 stateRootHash) public stateRootHashes;
@@ -51,7 +51,7 @@ abstract contract ZkEvmV2 is AccessControlUpgradeable, L1MessageServiceV1, IZkEv
     }
 
     // This will fail on finalization.
-    if (verifierToUse == VERIFIER_TRIGGERED_SOUNDNESS_ALERT_ADDRESS) {
+    if (verifierToUse == TRIGGERED_SOUNDNESS_ALERT_ADDRESS) {
       revert("Verifier failed soundness");
     }
 
