@@ -4,6 +4,7 @@ import kotlinx.datetime.Instant
 import linea.domain.BlockHeaderSummary
 import linea.kotlin.ByteArrayExt
 import net.consensys.FakeFixedClock
+import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.fakeTracesCountersV1
 import net.consensys.zkevm.domain.Blob
@@ -86,7 +87,8 @@ class GlobalBlobAwareConflationCalculatorTest {
     calculator = GlobalBlobAwareConflationCalculator(
       conflationCalculator = globalCalculator,
       blobCalculator = calculatorByDataCompressed,
-      batchesLimit = defaultBatchesLimit
+      batchesLimit = defaultBatchesLimit,
+      metricsFacade = mock<MetricsFacade>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
     )
     conflations = mutableListOf()
     blobs = mutableListOf()
