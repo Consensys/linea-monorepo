@@ -39,7 +39,7 @@ func TestProjection(t *testing.T) {
 			flagBWit   = make([]field.Element, flagSizeB)
 			columnBWit = make([]field.Element, flagSizeB)
 		)
-    
+
 		for i := 0; i < 10; i++ {
 			flagAWit[i] = field.One()
 			columnAWit[i] = field.NewElement(uint64(i))
