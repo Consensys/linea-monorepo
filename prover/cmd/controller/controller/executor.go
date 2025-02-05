@@ -42,7 +42,7 @@ type Status struct {
 type Resource struct {
 	ConfFile string
 	// The input and output file paths
-	InFile, OutFile string
+	InFile, OutFile []string
 }
 
 // The executor is responsible for running the commands specified by the jobs
@@ -64,7 +64,8 @@ func NewExecutor(cfg *config.Config) *Executor {
 func (e *Executor) Run(job *Job) (status Status) {
 
 	// The job should be locked
-	if len(job.LockedFile) == 0 {
+	// ASSUMED 0 index here
+	if len(job.LockedFile[0]) == 0 {
 		return Status{
 			ExitCode: CodeFatal,
 			What:     "the job is not locked",
@@ -140,6 +141,7 @@ func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 		)
 		return "", err
 	}
+	// ASSUMED 0 index here
 	outFile := job.TmpResponseFile(e.Config, 0)
 
 	tmpl := e.Config.Controller.WorkerCmdTmpl
@@ -148,10 +150,11 @@ func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 	}
 
 	// use the template to generate the command
+	// ASSUMED 0 index
 	resource := Resource{
 		ConfFile: fConfig,
-		InFile:   job.InProgressPath(0), // Assume 0 index
-		OutFile:  outFile,
+		InFile:   []string{job.InProgressPath(0)},
+		OutFile:  []string{outFile},
 	}
 
 	// Build the command and args from the job

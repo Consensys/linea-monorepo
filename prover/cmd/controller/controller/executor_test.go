@@ -18,11 +18,13 @@ func TestRetryWithLarge(t *testing.T) {
 
 		// The template of the output file (returns a constant template with no
 		// parameters)
-		OutputFileTmpl: template.Must(
-			template.New("output-file").
-				Parse("output-fill-constant"),
-		),
-		RequestsRootDir: "./testdata",
+		OutputFileTmpl: []*template.Template{
+			template.Must(
+				template.New("output-file").
+					Parse("output-fill-constant"),
+			),
+		},
+		RequestsRootDir: []string{"./testdata"},
 	}
 
 	jobs := []struct {
@@ -32,40 +34,40 @@ func TestRetryWithLarge(t *testing.T) {
 		{
 			Job: Job{
 				Def:        &testDefinition,
-				LockedFile: "exit-0.sh",
+				LockedFile: []string{"exit-0.sh"},
 				// Not directly needed but helpful to track the process name
-				Start: 0,
-				End:   0,
+				Start: []int{0},
+				End:   []int{0},
 			},
 			ExpCode: 0,
 		},
 		{
 			Job: Job{
 				Def:        &testDefinition,
-				LockedFile: "exit-1.sh",
+				LockedFile: []string{"exit-1.sh"},
 				// Not directly needed but helpful to track the process name
-				Start: 1,
-				End:   1,
+				Start: []int{1},
+				End:   []int{1},
 			},
 			ExpCode: 1,
 		},
 		{
 			Job: Job{
 				Def:        &testDefinition,
-				LockedFile: "exit-77.sh",
+				LockedFile: []string{"exit-77.sh"},
 				// Not directly needed but helpful to track the process name
-				Start: 2,
-				End:   2,
+				Start: []int{2},
+				End:   []int{2},
 			},
 			ExpCode: 77 + 10,
 		},
 		{
 			Job: Job{
 				Def:        &testDefinition,
-				LockedFile: "sigkill.sh",
+				LockedFile: []string{"sigkill.sh"},
 				// Not directly needed but helpful to track the process name
-				Start: 3,
-				End:   3,
+				Start: []int{3},
+				End:   []int{3},
 			},
 			ExpCode: 137,
 		},
@@ -75,14 +77,14 @@ func TestRetryWithLarge(t *testing.T) {
 		Controller: config.Controller{
 			WorkerCmdTmpl: template.Must(
 				template.New("test-cmd").
-					Parse("/bin/sh {{.InFile}}"),
+					Parse("/bin/sh {{index .InFile 0}}"),
 			),
 			// And the large fields. The commands adds a +10 to the return code
 			// to leave an evidence that the return code was obtained through
 			// running the large command.
 			WorkerCmdLargeTmpl: template.Must(
 				template.New("test-cmd-large").
-					Parse(`/bin/sh -c "/bin/sh {{.InFile}}"; exit $(($? + 10))`),
+					Parse(`/bin/sh -c "/bin/sh {{index .InFile 0}}"; exit $(($? + 10))`),
 			),
 			RetryLocallyWithLargeCodes: config.DefaultRetryLocallyWithLargeCodes,
 		},
