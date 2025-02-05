@@ -47,8 +47,7 @@ func TestDistributedGlobal(t *testing.T) {
 	disc := &md.PeriodSeperatingModuleDiscoverer{}
 	disc.Analyze(initialComp)
 
-	// distribute the columns among modules and segments; this includes also multiplicity columns
-	// for all the segments from the same module, compiledIOP object is the same.
+	// distribute the columns among modules and segments.
 	moduleComp := distributed.GetFreshCompGL(
 		distributed.SegmentModuleInputs{
 			InitialComp:         initialComp,
