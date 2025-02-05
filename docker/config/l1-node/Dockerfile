@@ -4,13 +4,11 @@ RUN apk add --no-cache git && git clone https://github.com/protolambda/eth2-test
     && cd eth2-testnet-genesis \
     && go install .
 
-COPY ./generate-genesis.sh /generate-genesis.sh
-
 FROM alpine:3.20.3
 
-RUN  apk add --no-cache bash
+RUN apk add --no-cache bash
 
-COPY --from=builder /generate-genesis.sh /config/generate-genesis.sh
 COPY --from=builder /go/bin/eth2-testnet-genesis /usr/local/bin/
+COPY ./generate-genesis.sh /config/generate-genesis.sh
 
 ENTRYPOINT [ "/bin/sh" , "/config/generate-genesis.sh" ]
