@@ -234,15 +234,13 @@ public class AccountSnapshot {
     return this;
   }
 
-  /**
-   * Raises the nonce by 1. <b>WARNING:</b> this modifies the underlying {@link AccountSnapshot}. Be
-   * sure to work with a {@link AccountSnapshot#deepCopy} if necessary.
-   *
-   * @return {@code this} with nonce++
-   */
   public AccountSnapshot raiseNonceByOne() {
-    this.nonce(nonce + 1);
-    return this;
+    return this.nonce(nonce + 1);
+  }
+
+  public AccountSnapshot decrementNonceByOne() {
+    checkState(nonce > 0);
+    return this.nonce(nonce - 1);
   }
 
   public AccountSnapshot setDeploymentNumber(Hub hub) {
@@ -250,8 +248,12 @@ public class AccountSnapshot {
   }
 
   public AccountSnapshot setDeploymentNumber(DeploymentInfo deploymentInfo) {
-    this.deploymentNumber(deploymentInfo.deploymentNumber(address));
-    return this;
+    return this.deploymentNumber(deploymentInfo.deploymentNumber(address));
+  }
+
+  public AccountSnapshot decrementDeploymentNumberByOne() {
+    checkState(deploymentNumber > 0);
+    return this.deploymentNumber(deploymentNumber - 1);
   }
 
   public AccountSnapshot setDeploymentInfo(Hub hub) {
