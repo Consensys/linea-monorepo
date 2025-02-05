@@ -43,8 +43,8 @@ var fixedTestDataRlpLimbs = [][]string{
 // We then split the large string into subslices of length 62, and use them to instantiate new field elements.
 // Finally, the field elements are hashed using MiMC.
 func ComputeMiMCHashFixedTestData() field.Element {
-	// 6 byte timestamp values for each block
-	var timestamps = [...]string{"00000000000a", "0000000000ab", "0000000000bc", "0000000000cd"}
+	// 4 byte timestamp values for each block
+	var timestamps = [...]string{"0000000a", "000000ab", "000000bc", "000000cd"}
 	// the maximal number of transaction for each block is stored in 2 bytes
 	var noTxString = [...]string{"0003", "0004", "0002", "0001"}
 	// here are maximal number of transaction for each block, stored as int

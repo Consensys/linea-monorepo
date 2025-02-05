@@ -139,13 +139,13 @@ const (
 	loadRlp          = 6
 
 	noBytesNoTxn        = 2
-	noBytesTimestamp    = 6
+	noBytesTimestamp    = 4
 	noBytesBlockHash    = 16
 	noBytesSenderAddrHi = 4
 	noBytesSenderAddrLo = 16
 
 	powBytesNoTxn   = "5192296858534827628530496329220096" // 2 bytes when loading NO_TX, 2^(128-2*8)
-	powTimestamp    = "1208925819614629174706176"          // 6 bytes when loading TIMESTAMP, 2^(128-6*8)
+	powTimestamp    = "79228162514264337593543950336"      // 4 bytes when loading TIMESTAMP, 2^(128-4*8)
 	powBlockHash    = "1"                                  // 16 bytes when loading BlockHash, 2^(128-16*8)
 	powSenderAddrHi = "79228162514264337593543950336"      // 4 bytes when loading SENDER ADDR HI, 2^(128-4*8)
 	powSenderAddrLo = "1"                                  // 16 bytes bytes when loading SenderAddrLo, 2^(128-16*8)
