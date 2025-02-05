@@ -164,12 +164,11 @@ class StateSynchronizerService(
   ): SafeFuture<List<BlockFromL1RecoveredData>> {
     return elClient.getBlockNumberAndHash(blockParameter = BlockParameter.Tag.LATEST)
       .thenApply { headBlock ->
-        blocks.dropWhile { it.header.blockNumber <= headBlock.number }
+        var filteredBlocks = blocks.dropWhile { it.header.blockNumber <= headBlock.number }
         if (debugForceSyncStopBlockNumber != null) {
-          blocks.takeWhile { it.header.blockNumber <= debugForceSyncStopBlockNumber }
-        } else {
-          blocks
+          filteredBlocks = filteredBlocks.takeWhile { it.header.blockNumber <= debugForceSyncStopBlockNumber }
         }
+        filteredBlocks
       }
   }
 
