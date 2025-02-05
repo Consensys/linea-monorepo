@@ -21,7 +21,6 @@ const (
 )
 
 func TestLsName(t *testing.T) {
-
 	dir := t.TempDir()
 
 	// When the dir doesn't exist we should return an error
@@ -40,7 +39,6 @@ func TestLsName(t *testing.T) {
 }
 
 func TestFileWatcherM(t *testing.T) {
-
 	confM, _ := setupFsTest(t)
 
 	// Create a list of files
@@ -48,11 +46,11 @@ func TestFileWatcherM(t *testing.T) {
 	cFrom := confM.BlobDecompression.DirFrom
 	aFrom := confM.Aggregation.DirFrom
 
-	exitCode := 0 // we are not interesting in the exit code here
+	exitCode := 0 // we are not interested in the exit code here
 
 	// The jobs, declared in the order in which they are expected to be found
 
-	// Name of the expected inprogress files
+	// Name of the expected in-progress files
 	expectedFNames := []struct {
 		FName string
 		Skip  bool
@@ -92,31 +90,40 @@ func TestFileWatcherM(t *testing.T) {
 	}
 
 	fw := NewFsWatcher(confM)
+	// t.Logf("File System Watch Jobs to watch: %v", len(fw.JobToWatch))
+	// t.Logf("File System Watch Jobs file names: %v", fw.JobToWatch[0].RequestsRootDir)
+	// t.Logf("File System Watch Jobs file names: %v", fw.JobToWatch[0].RequestsRootDir[0])
+
+	// t.Logf("File System Watch Jobs file names: %v", fw.JobToWatch[1].RequestsRootDir)
+	// t.Logf("File System Watch Jobs file names: %v", fw.JobToWatch[2].RequestsRootDir)
 
 	for _, f := range expectedFNames {
 		if f.Skip {
 			continue
 		}
+		t.Logf("Looking for job with file: %s", f.FName)
 		found := fw.GetBest()
+		if found == nil {
+			t.Logf("Did not find the job for file: %s", f.FName)
+		}
 		if assert.NotNil(t, found, "did not find the job") {
-			assert.Equal(t, f.FName, found.OriginalFile)
+			assert.Equal(t, f.FName, found.OriginalFile[0]) // ASSUMED 0 index here
 		}
 	}
 	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
 }
 
 func TestFileWatcherL(t *testing.T) {
-
 	_, confL := setupFsTest(t)
 
 	// Create a list of files
 	eFrom := confL.Execution.DirFrom()
 
-	exitCode := 0 // we are not interesting in the exit code here
+	exitCode := 0 // we are not interested in the exit code here
 
 	// The jobs, declared in the order in which they are expected to be found
 
-	// Name of the expected inprogress files
+	// Name of the expected in-progress files
 	expectedFNames := []struct {
 		FName string
 		Skip  bool
@@ -151,16 +158,20 @@ func TestFileWatcherL(t *testing.T) {
 		if f.Skip {
 			continue
 		}
+		t.Logf("Looking for job with file: %s", f.FName)
 		found := fw.GetBest()
+		if found == nil {
+			t.Logf("Did not find the job for file: %s", f.FName)
+		}
 		if assert.NotNil(t, found, "did not find the job") {
-			assert.Equal(t, f.FName, found.OriginalFile)
+			assert.Equal(t, f.FName, found.OriginalFile[0]) // ASSUMED 0 index here
 		}
 	}
 	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
 }
 
+// Sets up the test environment by creating temporary directories and configurations for the prover.
 func setupFsTest(t *testing.T) (confM, confL *config.Config) {
-
 	// Testdir is going to contain the whole test directory
 	testDir := t.TempDir()
 
@@ -177,30 +188,32 @@ func setupFsTest(t *testing.T) (confM, confL *config.Config) {
 	)
 
 	// Create a configuration using temporary directories
+	// Defines three command templates for different types of jobs.
+	// These templates will be used to create shell commands for the worker processes.
 	cmd := `
-/bin/sh {{.InFile}}
+/bin/sh {{index .InFile 0}}
 CODE=$?
 if [ $CODE -eq 0 ]; then
-	touch {{.OutFile}}
+	touch {{index .OutFile 0}}
 fi
 exit $CODE
 `
 	cmdLarge := `
-	/bin/sh {{.InFile}}
-	CODE=$?
-	CODE=$(($CODE - 12))
-	if [ $CODE -eq 0 ]; then
-		touch {{.OutFile}}
-	fi
-	exit $CODE
-	`
+/bin/sh {{index .InFile 0}}
+CODE=$?
+CODE=$(($CODE - 12))
+if [ $CODE -eq 0 ]; then
+	touch {{index .OutFile 0}}
+fi
+exit $CODE
+`
 
 	cmdLargeInternal := `
-/bin/sh {{.InFile}}
+/bin/sh {{index .InFile 0}}
 CODE=$?
 CODE=$(($CODE - 10))
 if [ $CODE -eq 0 ]; then
-	touch {{.OutFile}}
+	touch {{index .OutFile 0}}
 fi
 exit $CODE
 `
@@ -245,39 +258,6 @@ exit $CODE
 	confL.Controller.WorkerCmdLarge = cmdLarge
 	confL.Execution.CanRunFullLarge = true
 
-	// confL = &config.GlobalConfig{
-	// 	Version: "0.2.4",
-
-	// 	Controller: config.Controller{
-	// 		EnableExecution:            true,
-	// 		EnableBlobDecompression:    false,
-	// 		EnableAggregation:          false,
-	// 		LocalID:                    proverL,
-	// 		Prometheus:                 config.Prometheus{Enabled: false},
-	// 		RetryDelays:                []int{0, 1},
-	// 		WorkerCmd:                  cmdLarge,
-	// 		WorkerCmdLarge:             cmdLarge,
-	// 		DeferToOtherLargeCodes:     []int{12, 137},
-	// 		RetryLocallyWithLargeCodes: []int{10, 77},
-	// 	},
-	// 	Execution: config.Execution{
-	// 		WithRequestDir: config.WithRequestDir{
-	// 			RequestsRootDir: path.Join(testDir, proverM, execution),
-	// 		},
-	// 		CanRunFullLarge: true,
-	// 	},
-	// 	BlobDecompression: config.BlobDecompression{
-	// 		WithRequestDir: config.WithRequestDir{
-	// 			RequestsRootDir: path.Join(testDir, proverM, compression),
-	// 		},
-	// 	},
-	// 	Aggregation: config.Aggregation{
-	// 		WithRequestDir: config.WithRequestDir{
-	// 			RequestsRootDir: path.Join(testDir, proverM, aggregation),
-	// 		},
-	// 	},
-	// }
-
 	// ensure the template are parsed
 	confM.Controller.WorkerCmdTmpl = template.Must(template.New("worker").Parse(confM.Controller.WorkerCmd))
 	confM.Controller.WorkerCmdLargeTmpl = template.Must(template.New("worker-large").Parse(confM.Controller.WorkerCmdLarge))
@@ -306,12 +286,12 @@ exit $CODE
 	return confM, confL
 }
 
+// Creates test input files with specific filenames and exit codes to simulate job files for the file system watcher.
 func createTestInputFile(
 	dirfrom string,
 	start, end, jobType, exitWith int,
 	large ...bool,
 ) (fname string) {
-
 	// The filenames are expected to match the regexp pattern that we have in
 	// the job definition.
 	fmtString := ""

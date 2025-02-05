@@ -53,6 +53,8 @@ func NewFsWatcher(conf *config.Config) *FsWatcher {
 // Returns the list of jobs to perform by priorities. If no
 func (fs *FsWatcher) GetBest() (job *Job) {
 
+	fs.Logger.Debug("Starting GetBest")
+
 	// Fetches the full job list from all three directories. The fetching
 	// operation will not ignore files if they are not in the expected
 	// directory. For instance, if an aggregation file is in the directory
@@ -73,7 +75,7 @@ func (fs *FsWatcher) GetBest() (job *Job) {
 		// last job definition.
 		jdef := &fs.JobToWatch[i]
 		for j := range jdef.RequestsRootDir {
-			if err := fs.appendJobFromDef(jdef, &jobs); err != nil {
+			if err := fs.appendJobFromDef(jdef, &jobs, j); err != nil {
 				fs.Logger.Errorf(
 					"error trying to fetch job `%v` from dir %v: %v",
 					jdef.Name, jdef.dirFrom(j), err,
@@ -119,39 +121,34 @@ func (f *FsWatcher) lockBest(jobs []*Job) (pos int, success bool) {
 
 // Try appending a list of jobs that are parsed from a given directory. An error
 // is returned if the function fails to read the directory.
-func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job) (err error) {
+func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job, ipIdx int) (err error) {
 
+	dirFrom := jdef.dirFrom(ipIdx)
+	fs.Logger.Tracef("Seeking jobs for %v in %v", jdef.Name, dirFrom)
+
+	// This will fail if the provided directory is not a directory
+	dirents, err := lsname(dirFrom)
+	if err != nil {
+		return fmt.Errorf("cannot ls `%s` : %v", dirFrom, err)
+	}
 	numMatched := 0
+
 	// Search and append the valid files into the list.
-	var dirEntStr []string
-	for idx := range jdef.RequestsRootDir {
-		dirFrom := jdef.dirFrom(idx)
-		fs.Logger.Tracef("Seeking jobs for %v in %v", jdef.Name, dirFrom)
+	for _, dirent := range dirents {
 
-		// This will fail if the provided directory is not a directory
-		dirents, err := lsname(dirFrom)
-		if err != nil {
-			return fmt.Errorf("cannot ls `%s` : %v", dirFrom, err)
+		fs.Logger.Tracef("Examining entry %s in %s", dirFrom, dirent.Name())
+
+		// Ignore directories
+		if !dirent.Type().IsRegular() {
+			fs.Logger.Debugf("Ignoring directory `%s`", dirent.Name())
+			continue
 		}
 
-		for _, dirent := range dirents {
-
-			fs.Logger.Tracef("Examining entry %s in %s", dirFrom, dirent.Name())
-
-			// Ignore directories
-			if !dirent.Type().IsRegular() {
-				fs.Logger.Debugf("Ignoring directory `%s`", dirent.Name())
-				continue
-			}
-
-			dirEntStr = append(dirEntStr, dirent.Name())
-		}
-
-		// Attempt to construct a job from the filenames. If the filenames is
+		// Attempt to construct a job from the filename. If the filename is
 		// not parseable to the target JobType, it will return an error.
-		job, err := NewJob(jdef, dirEntStr)
+		job, err := NewJob(jdef, []string{dirent.Name()})
 		if err != nil {
-			fs.Logger.Debugf("Found invalid file  `%v` : %v", dirEntStr, err)
+			fs.Logger.Debugf("Found invalid file  `%v` : %v", dirent.Name(), err)
 			continue
 		}
 
@@ -160,8 +157,10 @@ func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job) (err er
 		*jobs = append(*jobs, job)
 		numMatched++
 	}
+
 	// Pass prometheus metrics
-	metrics.CollectFS(jdef.Name, len(dirEntStr), numMatched)
+	metrics.CollectFS(jdef.Name, len(dirents), numMatched)
+
 	return nil
 }
 
