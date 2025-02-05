@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
@@ -109,6 +110,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 	ctBlockData := util.InitializeCsv("../testdata/blockdata_mock.csv", t)
 	ctTxnData := util.InitializeCsv("../testdata/txndata_mock.csv", t)
 	ctRlpTxn := util.InitializeCsv("../testdata/rlp_txn_mock.csv", t)
+	blockHashList := [1 << 10]types.FullBytes32{}
 
 	var (
 		execDataCollector ExecutionDataCollector
@@ -201,7 +203,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		fetch.AssignTxnDataFetcher(run, txnDataFetcher, txnDataCols)
 		fetch.AssignRlpTxnFetcher(run, &rlpTxnFetcher, rlpTxn)
 		// assign the ExecutionDataCollector
-		AssignExecutionDataCollector(run, execDataCollector, timestampFetcher, blockTxnMeta, txnDataFetcher, rlpTxnFetcher)
+		AssignExecutionDataCollector(run, execDataCollector, timestampFetcher, blockTxnMeta, txnDataFetcher, rlpTxnFetcher, blockHashList[:])
 
 		// assign the padding module
 		paddingMod.Run(run)

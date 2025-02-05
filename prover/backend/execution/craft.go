@@ -238,6 +238,7 @@ func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 			TxHashes:        txHashes,
 			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
 			ChainID:         cfg.Layer2.ChainID,
+			BlockHashList:   getBlockHashList(rsp),
 		},
 		FuncInp: rsp.FuncInput(),
 	}
@@ -285,4 +286,12 @@ func validateAndExtractVersion(traceFileName string) (string, error) {
 		return matches[1], nil
 	}
 	return "", fmt.Errorf("conflated trace file: %s not in the appropriate format or version not found", traceFileName)
+}
+
+func getBlockHashList(rsp *Response) []types.FullBytes32 {
+	res := []types.FullBytes32{}
+	for i := range rsp.BlocksData {
+		res = append(res, rsp.BlocksData[i].BlockHash)
+	}
+	return res
 }
