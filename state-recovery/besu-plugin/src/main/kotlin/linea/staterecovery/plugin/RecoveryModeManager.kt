@@ -53,9 +53,18 @@ class RecoveryModeManager(
     val blockNumber = addedBlockContext.blockHeader.number
     headBlockNumber = blockNumber.toULong()
     if (!recoveryModeTriggered.get() && hasReachedTargetBlock()) {
+      log.info(
+        "Stopping synchronization services at block={} recoveryTargetBlockNumber={} was reached",
+        headBlockNumber,
+        targetBlockNumber
+      )
       switchToRecoveryMode()
     } else if (debugForceSyncStopBlockNumber != null && headBlockNumber >= debugForceSyncStopBlockNumber) {
-      log.info("Stopping synchronization services at blockNumber={}", headBlockNumber)
+      log.info(
+        "Stopping synchronization services at block={} debugForceSyncStopBlockNumber={}",
+        headBlockNumber,
+        debugForceSyncStopBlockNumber
+      )
       stopBesuServices()
     }
   }
