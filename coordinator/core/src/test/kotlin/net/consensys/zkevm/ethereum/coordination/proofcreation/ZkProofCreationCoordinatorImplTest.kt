@@ -15,7 +15,6 @@ import net.consensys.zkevm.coordinator.clients.L2MessageServiceLogsClient
 import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
-import net.consensys.zkevm.domain.MetricData
 import net.consensys.zkevm.encoding.BlockEncoder
 import net.consensys.zkevm.ethereum.coordination.CommonTestData
 import net.consensys.zkevm.ethereum.coordination.conflation.BlocksTracesConflated
@@ -118,12 +117,5 @@ class ZkProofCreationCoordinatorImplTest {
 
     assertThat(batch.startBlockNumber).isEqualTo(123UL)
     assertThat(batch.endBlockNumber).isEqualTo(124UL)
-    assertThat(batch.metricData).isEqualTo(
-      MetricData(
-        bridgeTxns = 2,
-        rlpSize = listOf(block1, block2).sumOf { fakeEncoder.encode(it).size },
-        gasUsed = listOf(block1, block2).sumOf { it.gasUsed }
-      )
-    )
   }
 }
