@@ -40,7 +40,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class TxSkipTests {
 
   @Test
-  void test() {
+  void testUselessAccessListForTxSkip() {
     final ToyAccount receiverAccount =
         ToyAccount.builder()
             .balance(Wei.fromEth(1))
