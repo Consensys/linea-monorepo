@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/sirupsen/logrus"
 )
@@ -104,30 +105,30 @@ func (pa *distribuedProjectionProverAction) RegisterQueries(comp *wizard.Compile
 		if input.IsAInModule && input.IsBInModule {
 			var (
 				fA          = pa.FilterA[index]
-				fAShifted   = shiftExpression(fA, -1)
+				fAShifted   = shiftExpression(comp, fA, -1)
 				colA        = pa.ColumnA[index]
-				colAShifted = shiftExpression(colA, -1)
+				colAShifted = shiftExpression(comp, colA, -1)
 				fB          = pa.FilterB[index]
-				fBShifted   = shiftExpression(fB, -1)
+				fBShifted   = shiftExpression(comp, fB, -1)
 				colB        = pa.ColumnB[index]
-				colBShifted = shiftExpression(colB, -1)
+				colBShifted = shiftExpression(comp, colB, -1)
 			)
 			pa.registerForCol(comp, fAShifted, colAShifted, input, "A", round, index)
 			pa.registerForCol(comp, fBShifted, colBShifted, input, "B", round, index)
 		} else if input.IsAInModule && !input.IsBInModule {
 			var (
 				fA          = pa.FilterA[index]
-				fAShifted   = shiftExpression(fA, -1)
+				fAShifted   = shiftExpression(comp, fA, -1)
 				colA        = pa.ColumnA[index]
-				colAShifted = shiftExpression(colA, -1)
+				colAShifted = shiftExpression(comp, colA, -1)
 			)
 			pa.registerForCol(comp, fAShifted, colAShifted, input, "A", round, index)
 		} else if !input.IsAInModule && input.IsBInModule {
 			var (
 				fB          = pa.FilterB[index]
-				fBShifted   = shiftExpression(fB, -1)
+				fBShifted   = shiftExpression(comp, fB, -1)
 				colB        = pa.ColumnB[index]
-				colBShifted = shiftExpression(colB, -1)
+				colBShifted = shiftExpression(comp, colB, -1)
 			)
 			pa.registerForCol(comp, fBShifted, colBShifted, input, "B", round, index)
 		} else {
@@ -216,7 +217,7 @@ func (pa *distribuedProjectionProverAction) registerForCol(
 
 }
 
-func shiftExpression(expr *symbolic.Expression, nbShift int) *symbolic.Expression {
+func shiftExpression(comp *wizard.CompiledIOP, expr *symbolic.Expression, nbShift int) *symbolic.Expression {
 	var (
 		board          = expr.Board()
 		metadata       = board.ListVariableMetadata()
@@ -227,6 +228,13 @@ func shiftExpression(expr *symbolic.Expression, nbShift int) *symbolic.Expressio
 		switch t := m.(type) {
 		case ifaces.Column:
 			translationMap.InsertNew(string(t.GetColID()), ifaces.ColumnAsVariable(column.Shift(t, nbShift)))
+
+		case coin.Info:
+
+			if !comp.Coins.Exists(t.Name) {
+				utils.Panic("Coin %v does not exist in the InitialComp", t.Name)
+			}
+			translationMap.InsertNew(t.String(), symbolic.NewVariable(t))
 		}
 	}
 	return expr.Replay(translationMap)

@@ -100,8 +100,8 @@ func NewDistributeProjectionCtx(
 func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Projection, round, queryInRound int, isA, isB bool) {
 	var (
 		isMultiColumn = len(q.Inp.ColumnA) > 1
-		alphaName     = getCoinName("MERGING_COIN", round, queryInRound)
-		betaName      = getCoinName("EVAL_COIN", round, queryInRound)
+		alphaName     = p.getCoinName("MERGING_COIN", round, queryInRound)
+		betaName      = p.getCoinName("EVAL_COIN", round, queryInRound)
 		alpha         coin.Info
 		beta          coin.Info
 	)
@@ -229,8 +229,8 @@ func (p *DistributeProjectionCtx) QueryID() ifaces.QueryID {
 	return deriveName[ifaces.QueryID](ifaces.QueryID(p.TargetModuleName))
 }
 
-func getCoinName(name string, round, queryInRound int) coin.Name {
-	return deriveName[coin.Name](distProjectionStr, name, round, queryInRound)
+func (p *DistributeProjectionCtx) getCoinName(name string, round, queryInRound int) coin.Name {
+	return deriveName[coin.Name](p.QueryID(), name, round, queryInRound)
 }
 
 // getLastRoundPerm scans the initialComp and looks for uncompiled projection queries. It returns
