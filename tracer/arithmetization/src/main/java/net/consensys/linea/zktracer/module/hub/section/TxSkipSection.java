@@ -112,14 +112,14 @@ public class TxSkipSection extends TraceSection implements PostTransactionDefer 
     // may have to be modified in case of address collision
     senderNew = canonical(hub, world, sender.address(), isPrecompile(sender.address()));
     recipientNew = canonical(hub, world, recipient.address(), isPrecompile(recipient.address()));
-    coinbaseNew = canonical(hub, world, coinbase.address(), isPrecompile(recipient.address()));
+    coinbaseNew = canonical(hub, world, coinbase.address(), isPrecompile(coinbase.address()));
 
     final Wei value = (Wei) txMetadata.getBesuTransaction().getValue();
 
     if (senderAddressCollision()) {
-      BigInteger gasUsed = BigInteger.valueOf(txMetadata.getGasUsed());
-      BigInteger gasPrice = BigInteger.valueOf(txMetadata.getEffectiveGasPrice());
-      BigInteger gasCost = gasUsed.multiply(gasPrice);
+      final BigInteger gasUsed = BigInteger.valueOf(txMetadata.getGasUsed());
+      final BigInteger gasPrice = BigInteger.valueOf(txMetadata.getEffectiveGasPrice());
+      final BigInteger gasCost = gasUsed.multiply(gasPrice);
       senderNew =
           sender
               .deepCopy()
@@ -135,6 +135,9 @@ public class TxSkipSection extends TraceSection implements PostTransactionDefer 
       if (recipientIsCoinbase()) {
         recipientNew = coinbaseNew.deepCopy().decrementBalanceBy(txMetadata.getCoinbaseReward());
         recipient = recipientNew.deepCopy().decrementBalanceBy(value);
+        if (txMetadata.isDeployment()) {
+          recipient.decrementNonceByOne().decrementDeploymentNumberByOne();
+        }
       }
     }
 

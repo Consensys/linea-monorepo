@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
+import static net.consensys.linea.zktracer.types.AddressUtils.getCreateRawAddress;
 
 import java.util.List;
 
@@ -317,6 +318,124 @@ public class TxSkipTests {
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .coinbase(senderAddress)
+        .build()
+        .run();
+  }
+
+  @Test
+  void skipMessageCallCoinbaseIsPrecompile() {
+    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
+    final Address senderAddress =
+        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final ToyAccount senderAccount =
+        ToyAccount.builder().balance(Wei.fromEth(0xffff)).nonce(128).address(senderAddress).build();
+
+    final Address receiverAddress =
+        Address.fromHexString("0xffffffffffffffffffffffffffffffffffffff");
+
+    final ToyAccount receiverAccount =
+        ToyAccount.builder()
+            .balance(Wei.fromEth(0xffffee))
+            .nonce(18)
+            .address(receiverAddress)
+            .build();
+
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(receiverAccount)
+            .keyPair(senderKeyPair)
+            .value(Wei.of(123))
+            .build();
+
+    ToyExecutionEnvironmentV2.builder()
+        .accounts(List.of(senderAccount, receiverAccount))
+        .transaction(tx)
+        .zkTracerValidator(zkTracer -> {})
+        .coinbase(Address.BLAKE2B_F_COMPRESSION)
+        .build()
+        .run();
+  }
+
+  @Test
+  void skippedDepSenderIsCoinbase() {
+    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
+    final Address senderAddress =
+        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final ToyAccount senderAccount =
+        ToyAccount.builder().balance(Wei.fromEth(0xffff)).nonce(128).address(senderAddress).build();
+
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .keyPair(senderKeyPair)
+            .value(Wei.of(123))
+            .gasLimit(100000L)
+            .build();
+
+    ToyExecutionEnvironmentV2.builder()
+        .accounts(List.of(senderAccount))
+        .transaction(tx)
+        .zkTracerValidator(zkTracer -> {})
+        .coinbase(senderAddress)
+        .build()
+        .run();
+  }
+
+  @Test
+  void skippedDepDeploymentAddressIsCoinbase() {
+    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
+    final Address senderAddress =
+        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final int nonce = 632;
+    final ToyAccount senderAccount =
+        ToyAccount.builder()
+            .balance(Wei.fromEth(0xffff))
+            .nonce(nonce)
+            .address(senderAddress)
+            .build();
+
+    final Address depAddress = Address.extract(getCreateRawAddress(senderAddress, nonce));
+
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .keyPair(senderKeyPair)
+            .value(Wei.of(123))
+            .gasLimit(100000L)
+            .nonce((long) nonce)
+            .build();
+
+    ToyExecutionEnvironmentV2.builder()
+        .accounts(List.of(senderAccount))
+        .transaction(tx)
+        .zkTracerValidator(zkTracer -> {})
+        .coinbase(depAddress)
+        .build()
+        .run();
+  }
+
+  @Test
+  void skippedDepCoinbaseIsPrecompile() {
+    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
+    final Address senderAddress =
+        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final ToyAccount senderAccount =
+        ToyAccount.builder().balance(Wei.fromEth(0xffff)).nonce(128).address(senderAddress).build();
+
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .keyPair(senderKeyPair)
+            .value(Wei.of(123))
+            .gasLimit(100000L)
+            .build();
+
+    ToyExecutionEnvironmentV2.builder()
+        .accounts(List.of(senderAccount))
+        .transaction(tx)
+        .zkTracerValidator(zkTracer -> {})
+        .coinbase(Address.RIPEMD160)
         .build()
         .run();
   }
