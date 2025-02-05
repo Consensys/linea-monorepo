@@ -9,6 +9,7 @@ import FromChain from "@/components/v2/bridge/from-chain";
 import ToChain from "@/components/v2/bridge/to-chain";
 import Claiming from "@/components/v2/bridge/claiming";
 import styles from "./bridge-form.module.scss";
+import { Submit } from "@/components/v2/bridge/submit";
 
 export default function BridgeForm() {
   const { isConnected } = useAccount();
@@ -33,7 +34,7 @@ export default function BridgeForm() {
           </div>
           <Claiming />
           <div className={styles["connect-btn-wrapper"]}>
-            <ConnectButton fullWidth text={"Connect"} />
+            {isConnected ? <Submit /> : <ConnectButton fullWidth text={"Connect"} />}
           </div>
           <FaqHelp isMobile />
         </div>

@@ -8,7 +8,11 @@ type CurrencyOption = {
   flag: string;
 };
 
-export default function CurrencyDropdown() {
+type Props = {
+  disabled?: boolean;
+};
+
+export default function CurrencyDropdown({ disabled }: Props) {
   const options: CurrencyOption[] = [
     { value: "usd", label: "USD", flag: "🇺🇸" },
     { value: "usd2", label: "USD2", flag: "🇺🇸" },
@@ -49,7 +53,7 @@ export default function CurrencyDropdown() {
 
   return (
     <div className={styles.container}>
-      <button ref={buttonRef} type="button" className={styles.button} onClick={toggleDropdown}>
+      <button ref={buttonRef} type="button" className={styles.button} onClick={toggleDropdown} disabled={disabled}>
         <div className={styles["selected-label"]}>
           <span className={styles.flag}>{selectedCurrency.flag}</span>
           <span>{selectedCurrency.label}</span>

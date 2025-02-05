@@ -52,12 +52,30 @@ li.item {
     svg {
       width: 1.6rem;
       height: 1.6rem;
+      color: var(--v2-color-black);
     }
   }
 
   .content {
     font-size: 1.4rem;
     line-height: 1.4;
+
+    a {
+      color: var(--v2-color-indigo);
+
+      &:hover {
+        color: var(--v2-color-navy);
+      }
+    }
+
+    ul {
+      list-style-type: disc;
+      padding-left: 2rem;
+
+      &:not(:last-child) {
+        margin-bottom: 1rem;
+      }
+    }
 
     p:not(:last-child) {
       margin-bottom: 1rem;

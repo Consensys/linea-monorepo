@@ -6,6 +6,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import { BridgeForm } from "@/models";
 import { useChainStore } from "@/stores/chainStore";
 import { TokenType } from "@/config";
+import { BridgeType } from "@/config/config";
 
 export default function BridgeLayout() {
   const configContextValue = useTokenStore((state) => state.tokensList);
@@ -15,11 +16,12 @@ export default function BridgeLayout() {
     defaultValues: {
       token: configContextValue?.UNKNOWN[0],
       claim: token?.type === TokenType.ETH ? "auto" : "manual",
-      amount: "0",
+      amount: "",
       minFees: 0n,
       gasFees: 0n,
       bridgingAllowed: false,
       balance: "0",
+      mode: BridgeType.NATIVE,
     },
   });
 

@@ -20,5 +20,9 @@
   a {
     color: var(--v2-color-indigo);
     text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 }

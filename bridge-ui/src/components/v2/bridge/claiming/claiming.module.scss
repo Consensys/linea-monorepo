@@ -74,6 +74,7 @@
     align-items: center;
     cursor: pointer;
     color: var(--v2-color-darker-gray);
+    font-size: inherit;
   }
 
   .manual {
@@ -83,16 +84,34 @@
     align-items: center;
     gap: 0.4rem;
     cursor: pointer;
+    font-size: inherit;
   }
 
-  .gas-fees {
+  .gas-fees,
+  .no-fees {
     display: flex;
     gap: 0.4rem;
     align-items: center;
     color: var(--v2-color-darker-gray);
     cursor: pointer;
+    font-size: inherit;
+
+    img {
+      width: 1.2rem;
+      height: 1.2rem;
+      border-radius: 50%;
+    }
 
     .estimate-crypto {
+      font-weight: 500;
+    }
+  }
+
+  .no-fees {
+    cursor: initial;
+
+    .text {
+      color: var(--v2-color-indigo);
       font-weight: 500;
     }
   }
@@ -104,7 +123,12 @@
   margin-top: 0.8rem;
 
   button {
+    font-size: inherit;
     color: var(--v2-color-indigo);
     cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 }

@@ -66,7 +66,7 @@ export default function InternalNav() {
           <ul className={styles["dropdown-list"]}>
             <li className={clsx(styles["dropdown-item"])}>
               <span>Currency</span>
-              <CurrencyDropdown />
+              <CurrencyDropdown disabled />
             </li>
             <li className={clsx(styles["dropdown-item"])}>
               <span>Show Test Networks</span>

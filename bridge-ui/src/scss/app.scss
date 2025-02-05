@@ -34,7 +34,7 @@ html[data-theme="v2"] {
   }
 
   @include bp("desktop") {
-    font-size: math.div(1000vw, 1440);
+    font-size: 10px;
   }
 
   box-sizing: border-box;
@@ -76,7 +76,7 @@ html[data-theme="v2"] {
   }
   .left-illustration,
   .right-illustration {
-    position: absolute;
+    position: fixed;
     z-index: 1;
     display: none;
     bottom: 0;

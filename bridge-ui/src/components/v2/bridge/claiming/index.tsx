@@ -1,3 +1,4 @@
+import { BridgeForm } from "@/models";
 import BridgeTwoLogo from "@/components/v2/bridge/bridge-two-logo";
 import styles from "./claiming.module.scss";
 import SettingIcon from "@/assets/icons/setting.svg";
@@ -5,36 +6,62 @@ import ClockIcon from "@/assets/icons/clock.svg";
 import AttentionIcon from "@/assets/icons/attention.svg";
 import Image from "next/image";
 import { useState } from "react";
+import { useFormContext } from "react-hook-form";
 import ManualClaim from "@/components/v2/bridge/modal/manual-claim";
 import EstimatedTime from "@/components/v2/bridge/modal/estimated-time";
 import GasFees from "@/components/v2/bridge/modal/gas-fees";
+import AcrossFees from "@/components/v2/bridge/modal/across-fees";
 import AdvancedSettings from "@/components/v2/bridge/modal/advanced-settings";
 import BridgeModeDropdown from "@/components/v2/bridge/bridge-mode-dropdown";
+import { BridgeType } from "@/config/config";
 
 export type BridgeModeOption = {
-  value: string;
+  value: BridgeType;
   label: string;
   image: string;
 };
 
 const options: BridgeModeOption[] = [
-  { value: "native", label: "Native Bridge", image: "/images/logo/linea-rounded.svg" },
-  { value: "across", label: "Across", image: "/images/logo/across.svg" },
+  { value: BridgeType.NATIVE, label: "Native Bridge", image: "/images/logo/linea-rounded.svg" },
+  { value: BridgeType.ACROSS, label: "Across", image: "/images/logo/across.svg" },
 ];
 
 export default function Claiming() {
-  const [selectedMode, setSelectedMode] = useState<BridgeModeOption>(options[0]);
+  const { watch, setValue } = useFormContext<BridgeForm>();
+  const mode = watch("mode");
+
+  const selectedMode = mode ? options[mode - 1] : options[0];
+
   const [showManualClaimModal, setShowManualClaimModal] = useState<boolean>(false);
   const [showEstimatedTimeModal, setShowEstimatedTimeModal] = useState<boolean>(false);
   const [showGasFeesModal, setShowGasFeesModal] = useState<boolean>(false);
+  const [showAcrossFeesModal, setShowAcrossFeesModal] = useState<boolean>(false);
   const [showAdvancedSettingsModal, setShowAdvancedSettingsModal] = useState<boolean>(false);
+
+  const [amount, claim] = watch(["amount", "claim"]);
+
+  const isNoFees = claim === "manual" && mode === BridgeType.NATIVE;
+
+  const handleShowFees = () => {
+    if (mode === BridgeType.NATIVE) {
+      setShowGasFeesModal(true);
+    } else if (mode === BridgeType.ACROSS) {
+      setShowAcrossFeesModal(true);
+    }
+  };
+
+  if (!amount) return null;
 
   return (
     <div className={styles["wrapper"]}>
       <div className={styles.top}>
         <p className={styles.title}>Get on Linea</p>
         <div className={styles.config}>
-          <BridgeModeDropdown selectedMode={selectedMode} setSelectedMode={setSelectedMode} options={options} />
+          <BridgeModeDropdown
+            selectedMode={selectedMode}
+            setSelectedMode={(mode) => setValue("mode", mode.value)}
+            options={options}
+          />
           <button className={styles.setting} type="button" onClick={() => setShowAdvancedSettingsModal(true)}>
             <SettingIcon />
           </button>
@@ -53,31 +80,41 @@ export default function Claiming() {
         </div>
       </div>
       <div className={styles.estimate}>
-        <button type="button" className={styles["gas-fees"]} onClick={() => setShowGasFeesModal(true)}>
-          <Image src="/images/logo/ethereum-rounded.svg" width={12} height={12} alt="eth" />
-          <p className={styles["estimate-crypto"]}>0.00019087 ETH</p>
-          <p className={styles["estimate-amount"]}>{"($10.54)"}</p>
-        </button>
+        {isNoFees ? (
+          <button type="button" className={styles["no-fees"]}>
+            <Image src="/images/logo/ethereum-rounded.svg" width={12} height={12} alt="eth" />
+            <p className={styles["text"]}>No Fees</p>
+          </button>
+        ) : (
+          <button type="button" className={styles["gas-fees"]} onClick={handleShowFees}>
+            <Image src="/images/logo/ethereum-rounded.svg" width={12} height={12} alt="eth" />
+            <p className={styles["estimate-crypto"]}>0.00019087 ETH</p>
+            <p className={styles["estimate-amount"]}>{"($10.54)"}</p>
+          </button>
+        )}
         <button type="button" className={styles.time} onClick={() => setShowEstimatedTimeModal(true)}>
           <ClockIcon />
           <span>~ 20 mins</span>
         </button>
-        <button type="button" className={styles.manual} onClick={() => setShowManualClaimModal(true)}>
-          <AttentionIcon />
-          <span>Manual</span>
-        </button>
+        {claim === "manual" && (
+          <button type="button" className={styles.manual} onClick={() => setShowManualClaimModal(true)}>
+            <AttentionIcon />
+            <span>Manual</span>
+          </button>
+        )}
       </div>
-      {selectedMode.value === "native" ? (
+      {mode === BridgeType.NATIVE ? (
         <div className={styles.bottom}>
           Can&apos;t wait?{" "}
-          <button type="button" onClick={() => setSelectedMode(options[1])}>
-            Speed up with Across
+          <button type="button" onClick={() => setValue("mode", BridgeType.ACROSS)}>
+            Speed up
           </button>
         </div>
       ) : null}
       <ManualClaim isModalOpen={showManualClaimModal} onCloseModal={() => setShowManualClaimModal(false)} />
       <EstimatedTime isModalOpen={showEstimatedTimeModal} onCloseModal={() => setShowEstimatedTimeModal(false)} />
       <GasFees isModalOpen={showGasFeesModal} onCloseModal={() => setShowGasFeesModal(false)} />
+      <AcrossFees isModalOpen={showAcrossFeesModal} onCloseModal={() => setShowAcrossFeesModal(false)} />
       <AdvancedSettings
         isModalOpen={showAdvancedSettingsModal}
         onCloseModal={() => setShowAdvancedSettingsModal(false)}

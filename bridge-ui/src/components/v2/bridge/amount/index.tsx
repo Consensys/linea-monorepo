@@ -117,6 +117,7 @@ export function Amount() {
         onKeyDown={handleKeyDown}
         onChange={checkAmountHandler}
         pattern={AMOUNT_REGEX}
+        placeholder="0"
       />
       {networkType === NetworkType.MAINNET && (
         <span className={styles["calculated-value"]}>

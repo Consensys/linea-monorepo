@@ -5,10 +5,9 @@ import Button from "@/components/v2/ui/button";
 type Props = {
   isModalOpen: boolean;
   onCloseModal: () => void;
-  onClickOk: () => void;
 };
 
-export default function AcrossFees({ isModalOpen, onCloseModal, onClickOk }: Props) {
+export default function AcrossFees({ isModalOpen, onCloseModal }: Props) {
   const allFees = [
     {
       name: "Capital fee",
@@ -43,7 +42,7 @@ export default function AcrossFees({ isModalOpen, onCloseModal, onClickOk }: Pro
             </li>
           ))}
         </ul>
-        <Button fullWidth onClick={onClickOk}>
+        <Button fullWidth onClick={onCloseModal}>
           OK
         </Button>
       </div>

@@ -14,7 +14,7 @@ export default function FaqHelp({ isMobile }: Props) {
         [styles["is-desktop"]]: !isMobile,
       })}
     >
-      Need help? <Link href="/faq">Check your FAQ</Link>
+      Need help? <Link href="/faq">Check our FAQ</Link>
     </div>
   );
 }

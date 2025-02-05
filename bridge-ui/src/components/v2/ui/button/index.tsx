@@ -14,6 +14,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = "primary", onClick, children, disabled, className, fullWidth, type = "button", ...rest }, ref) => {
     const buttonClassNames = clsx(styles["button"], className, styles[variant], {
       [styles["full-width"]]: fullWidth,
+      [styles["disabled"]]: disabled,
     });
 
     return (

@@ -24,6 +24,7 @@
   text-decoration: none;
   padding-left: 1.6rem;
   padding-right: 3.5rem;
+  line-height: 1.4;
 
   @include bp("tablet") {
     max-width: 80%;

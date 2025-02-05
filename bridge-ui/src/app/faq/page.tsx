@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import styles from "./page.module.scss";
 import Link from "next/link";
 import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
+import PlusIcon from "@/assets/icons/plus.svg";
 
 const faqList = [
   {
@@ -111,22 +112,7 @@ function FaqItem({ data, isOpen, onToggle }: FaqItemProps) {
           transition={{ duration: 0.3, ease: "easeInOut" }}
           className={styles["button"]}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M8 3.33325V12.6666"
-              stroke="#121212"
-              strokeWidth="1.33333"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M3.33398 8H12.6673"
-              stroke="#121212"
-              strokeWidth="1.33333"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <PlusIcon />
         </motion.div>
       </motion.div>
 
