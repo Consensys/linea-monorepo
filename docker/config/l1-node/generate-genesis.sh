@@ -56,7 +56,7 @@ cp $l1_genesis $output_dir/genesis.json
 cp $network_config $output_dir/$(basename -- $network_config)
 
 sed -i -E 's/"timestamp": "[0-9]+"/"timestamp": "'"$genesis_time"'"/' $output_dir/genesis.json
-sed -i -E 's/"pragueTime": 0/"pragueTime": '"$prague_time"'/' $output_dir/genesis.json
+# sed -i -E 's/"pragueTime": 0/"pragueTime": '"$prague_time"'/' $output_dir/genesis.json
 sed -i 's/\$GENESIS_TIME/'"$genesis_time"'/g' $output_dir/$(basename -- $network_config)
 
 /usr/local/bin/eth2-testnet-genesis deneb --config $output_dir/$(basename -- $network_config) --mnemonics $mnemonics --tranches-dir $output_dir/tranches --state-output $output_dir/genesis.ssz --eth1-config $output_dir/genesis.json
