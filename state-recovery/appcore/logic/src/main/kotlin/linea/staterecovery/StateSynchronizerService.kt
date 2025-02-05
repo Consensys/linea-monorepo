@@ -186,11 +186,12 @@ class StateSynchronizerService(
     } else {
       log.error(
         "stopping data recovery from L1, stateRootHash mismatch: " +
-          "finalization={} recoveredStateRootHash={} expected block={} to have l1 proven stateRootHash={}",
+          "finalization={} recovered block={} yielded recoveredStateRootHash={} expected to have " +
+          "l1 proven stateRootHash={}",
         finalizedV3.intervalString(),
-        finalizedV3.finalStateRootHash.encodeHex(),
+        importResult.blockNumber,
         importResult.zkStateRootHash.encodeHex(),
-        finalizedV3.endBlockNumber
+        finalizedV3.finalStateRootHash.encodeHex()
       )
       stateRootMismatchFound = true
       this.stop()
