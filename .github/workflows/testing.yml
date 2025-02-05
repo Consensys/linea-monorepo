@@ -28,12 +28,12 @@ on:
 jobs:
   # Disable cache for pulling docker images as empirically found that this 
   # (retrieving cache and loading docker images) actually increased test time-to-completion
-  cache-docker-images:
-    uses: ./.github/workflows/cache-docker-images.yml
-    secrets: inherit
+  # cache-docker-images:
+  #   uses: ./.github/workflows/cache-docker-images.yml
+  #   secrets: inherit
 
   coordinator:
-    needs: [ cache-docker-images ]
+    # needs: [ cache-docker-images ]
     uses: ./.github/workflows/coordinator-testing.yml
     if: ${{ inputs.coordinator_changed == 'true' }}
     with:
@@ -60,7 +60,7 @@ jobs:
     secrets: inherit
 
   staterecovery:
-    needs: [ cache-docker-images ]
+    # needs: [ cache-docker-images ]
     uses: ./.github/workflows/staterecovery-testing.yml
     if: ${{ inputs.staterecovery_changed == 'true' }}
     with:
