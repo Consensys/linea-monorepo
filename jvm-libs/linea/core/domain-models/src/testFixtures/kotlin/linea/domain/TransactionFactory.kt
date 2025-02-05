@@ -72,7 +72,7 @@ object TransactionFactory {
     input = input,
     r = r,
     s = s,
-    v = null,
+    v = yParity,
     yParity = yParity,
     chainId = chainId,
     gasPrice = null,
@@ -122,8 +122,8 @@ object TransactionFactory {
       )
       eR = sig.r
       eS = sig.s
-      eV = calcV(type, sig, chainId)
       eyParity = sig.recId.toULong()
+      eV = calcV(type, sig, chainId) ?: eyParity
     } else {
       eR = r!!
       eS = s!!

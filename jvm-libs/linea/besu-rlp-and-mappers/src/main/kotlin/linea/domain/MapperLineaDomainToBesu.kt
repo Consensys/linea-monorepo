@@ -52,7 +52,7 @@ object MapperLineaDomainToBesu {
     if (tx.type == TransactionType.FRONTIER) {
       return recIdFromV(tx.v!!.toBigInteger())
     } else {
-      return tx.v!!.toByte() to tx.chainId?.toBigInteger()
+      return (tx.yParity ?: tx.v)!!.toByte() to tx.chainId?.toBigInteger()
     }
   }
 
