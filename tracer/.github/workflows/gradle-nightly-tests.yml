@@ -28,7 +28,7 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -vw --ansi-escapes=false --report --hir
+          GOCORSET_FLAGS: -vw --ansi-escapes=false --report --mir
           ZKEVM_BIN: "zkevm.go.bin"
           NIGHTLY_TESTS_PARALLELISM: 2
 
