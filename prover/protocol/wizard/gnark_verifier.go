@@ -16,9 +16,30 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// GnarkRuntime is the interface implemented by the struct [WizardVerifierCircuit]
+// and is used to interact with the GnarkVerifierStep.
+type GnarkRuntime interface {
+	ifaces.GnarkRuntime
+	GetSpec() *CompiledIOP
+	GetPublicInput(api frontend.API, name string) frontend.Variable
+	GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams
+	GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams
+	GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams
+	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
+	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
+	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
+	Fs() *fiatshamir.GnarkFiatShamir
+	FsHistory() [][2][]frontend.Variable
+	GetHasherFactory() *gkrmimc.HasherFactory
+	InsertCoin(name coin.Name, value interface{})
+	GetState(name string) (any, bool)
+	SetState(name string, value any)
+	GetQuery(name ifaces.QueryID) ifaces.Query
+}
+
 // GnarkVerifierStep functions that can be registered in the CompiledIOP by the successive
 // compilation steps. They correspond to "precompiled" verification steps.
-type GnarkVerifierStep func(frontend.API, *WizardVerifierCircuit)
+type GnarkVerifierStep func(frontend.API, GnarkRuntime)
 
 // WizardVerifierCircuit the [VerifierRuntime] in a gnark circuit. The complete
 // implementation follows this mirror logic.
@@ -96,6 +117,10 @@ type WizardVerifierCircuit struct {
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
 	FiatShamirHistory [][2][]frontend.Variable `gnark:"-"`
+
+	// State is a generic-purpose data store that the verifier steps can use to
+	// communicate with each other across rounds.
+	State map[string]interface{} `gnark:"-"`
 }
 
 // AllocateWizardCircuit allocates the inner-slices of the verifier struct from a precompiled IOP. It
@@ -161,7 +186,7 @@ func AllocateWizardCircuit(comp *CompiledIOP) (*WizardVerifierCircuit, error) {
 func (c *WizardVerifierCircuit) Verify(api frontend.API) {
 	c.HasherFactory = gkrmimc.NewHasherFactory(api)
 	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
-	c.FS.Update(c.Spec.fiatShamirSetup)
+	c.FS.Update(c.Spec.FiatShamirSetup)
 	c.FiatShamirHistory = make([][2][]frontend.Variable, c.Spec.NumRounds())
 	c.generateAllRandomCoins(api)
 
@@ -190,12 +215,11 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 			// the last one to "talk" in the protocol.
 			toUpdateFS := c.Spec.Columns.AllKeysProofAt(currRound - 1)
 			for _, msg := range toUpdateFS {
-				msgContent := c.GetColumn(msg)
-				c.FS.UpdateVec(msgContent)
-			}
 
-			toUpdateFS = c.Spec.Columns.AllKeysPublicInputAt(currRound - 1)
-			for _, msg := range toUpdateFS {
+				if c.Spec.Columns.IsExplicitlyExcludedFromProverFS(msg) {
+					continue
+				}
+
 				msgContent := c.GetColumn(msg)
 				c.FS.UpdateVec(msgContent)
 			}
@@ -553,4 +577,64 @@ func (c *WizardVerifierCircuit) GetPublicInput(api frontend.API, name string) fr
 	}
 	utils.Panic("could not find public input nb %v", name)
 	return field.Element{}
+}
+
+// Fs returns the Fiat-Shamir state of the verifier circuit
+func (c *WizardVerifierCircuit) Fs() *fiatshamir.GnarkFiatShamir {
+	return c.FS
+}
+
+// FsHistory returns the Fiat-Shamir state history of the verifier circuit
+func (c *WizardVerifierCircuit) FsHistory() [][2][]frontend.Variable {
+	return c.FiatShamirHistory
+}
+
+// SetFs sets the Fiat-Shamir state of the verifier circuit
+func (c *WizardVerifierCircuit) SetFs(fs *fiatshamir.GnarkFiatShamir) {
+	c.FS = fs
+}
+
+// GetHasherFactory returns the hasher factory of the verifier circuit; nil
+// if none is set.
+func (c *WizardVerifierCircuit) GetHasherFactory() *gkrmimc.HasherFactory {
+	return c.HasherFactory
+}
+
+// SetHasherFactory sets the hasher factory of the verifier circuit
+func (c *WizardVerifierCircuit) SetHasherFactory(hf *gkrmimc.HasherFactory) {
+	c.HasherFactory = hf
+}
+
+// GetSpec returns the compiled IOP of the verifier circuit
+func (c *WizardVerifierCircuit) GetSpec() *CompiledIOP {
+	return c.Spec
+}
+
+// InsertCoin inserts a coin in the verifier circuit. This has
+// a use for implementing recursive application.
+func (c *WizardVerifierCircuit) InsertCoin(name coin.Name, value interface{}) {
+	c.Coins.InsertNew(name, value)
+}
+
+// GetState returns the value of a state variable in the verifier circuit
+func (c *WizardVerifierCircuit) GetState(name string) (any, bool) {
+	res, ok := c.State[name]
+	return res, ok
+}
+
+// SetState sets the value of a state variable in the verifier circuit
+func (c *WizardVerifierCircuit) SetState(name string, value any) {
+	c.State[name] = value
+}
+
+// GetQuery returns a query from its name
+func (c *WizardVerifierCircuit) GetQuery(name ifaces.QueryID) ifaces.Query {
+	if c.Spec.QueriesParams.Exists(name) {
+		return c.Spec.QueriesParams.Data(name)
+	}
+	if c.Spec.QueriesNoParams.Exists(name) {
+		return c.Spec.QueriesNoParams.Data(name)
+	}
+	utils.Panic("could not find query nb %v", name)
+	return nil
 }

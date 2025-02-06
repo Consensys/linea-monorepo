@@ -275,7 +275,7 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 	}
 }
 
-func (ctx naturalizationCtx) Verify(run *wizard.VerifierRuntime) error {
+func (ctx naturalizationCtx) Verify(run wizard.Runtime) error {
 
 	// Get the original query
 	originalQuery := run.GetUnivariateEval(ctx.q.QueryID)
@@ -346,7 +346,7 @@ func (ctx naturalizationCtx) Verify(run *wizard.VerifierRuntime) error {
 
 }
 
-func (ctx naturalizationCtx) GnarkVerify(api frontend.API, c *wizard.WizardVerifierCircuit) {
+func (ctx naturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime) {
 
 	// Get the original query
 	originalQuery := c.GetUnivariateEval(ctx.q.QueryID)

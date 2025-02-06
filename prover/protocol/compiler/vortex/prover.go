@@ -33,7 +33,7 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 
 		// Only to be read by the self-recursion compiler.
 		if ctx.IsSelfrecursed {
-			pr.State.InsertNew(string(ctx.CommitmentName(round)), sisDigest)
+			pr.State.InsertNew(ctx.SisHashName(round), sisDigest)
 		}
 
 		// And assign the 1-sized column to contain the root
@@ -67,11 +67,44 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 	}
 
 	// And get the randomness
-	randomCoinLC := pr.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoinLC := pr.GetRandomCoinField(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
 	proof := ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
-	pr.AssignColumn(ctx.LinCombName(), proof.LinearCombination)
+	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+}
+
+// ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
+// the RS encoded matrix instead of using the basic one. It is slower than
+// the later but is recommended.
+func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
+
+	committedSV := []smartvectors.SmartVector{}
+
+	// Add the precomputed columns to commitedSV if IsCommitToPrecomputed is true
+	if ctx.IsCommitToPrecomputed() {
+		committedSV = append(committedSV, ctx.Items.Precomputeds.CommittedMatrix...)
+	}
+
+	// Collect all the committed polynomials : round by round
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// There are not included in the commitments so there
+		// is no need to compute their linear combination.
+		if ctx.isDry(round) {
+			continue
+		}
+
+		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
+		committedSV = append(committedSV, committedMatrix...)
+	}
+
+	// And get the randomness
+	randomCoinLC := pr.GetRandomCoinField(ctx.Items.Alpha.Name)
+
+	// and compute and assign the random linear combination of the rows
+	proof := ctx.VortexParams.InitOpeningFromAlreadyEncodedLC(committedSV, randomCoinLC)
+
+	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
 
 // Prover steps of Vortex where he opens the columns selected by the verifier
@@ -85,7 +118,7 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 	// Append the precomputed committedMatrices and trees when IsCommitToPrecomputed is true
 	if ctx.IsCommitToPrecomputed() {
 		committedMatrices = append(committedMatrices, ctx.Items.Precomputeds.CommittedMatrix)
-		trees = append(trees, ctx.Items.Precomputeds.tree)
+		trees = append(trees, ctx.Items.Precomputeds.Tree)
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
@@ -107,7 +140,7 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 		trees = append(trees, tree)
 	}
 
-	entryList := pr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
+	entryList := pr.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
 	proof := vortex.OpeningProof{}
 
 	// Merkle mode only:
@@ -131,11 +164,11 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 			assignable = smartvectors.RightZeroPadded(fullCol, utils.NextPowerOfTwo(len(fullCol)))
 		}
 
-		pr.AssignColumn(ctx.SelectedColName(j), assignable)
+		pr.AssignColumn(ctx.Items.OpenedColumns[j].GetColID(), assignable)
 	}
 
 	packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
-	pr.AssignColumn(ctx.MerkleProofName(), packedMProofs)
+	pr.AssignColumn(ctx.Items.MerkleProofs.GetColID(), packedMProofs)
 }
 
 // returns true if the round is dry (i.e, there is nothing to commit to)
