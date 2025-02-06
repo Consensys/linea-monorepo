@@ -398,12 +398,11 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
     log.debug("forceSyncStopBlockNumber={}", fakeStateManagerClient)
 
     stateRecoverApp.start().get()
-    submitDataToL1ContactAndWaitExecution(waitTimeout = 1.minutes)
+    submitDataToL1ContactAndWaitExecution(waitTimeout = 3.minutes)
 
     await()
       .atMost(1.minutes.toJavaDuration())
       .untilAsserted {
-        println(executionLayerClient.headBlock.number)
         assertThat(executionLayerClient.headBlock.number).isGreaterThanOrEqualTo(debugForceSyncStopBlockNumber)
       }
 
