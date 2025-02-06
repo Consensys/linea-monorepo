@@ -15,6 +15,7 @@ type distributedProjectionVerifierAction struct {
 	isA, isB           []bool
 	skipped            bool
 }
+
 // Run implements the [wizard.VerifierAction]
 func (va *distributedProjectionVerifierAction) Run(run *wizard.VerifierRuntime) error {
 	var (
@@ -78,10 +79,12 @@ func (va *distributedProjectionVerifierAction) RunGnark(api frontend.API, run *w
 
 	api.AssertIsEqual(actualParam, queryParam)
 }
+
 // Skip implements the [wizard.VerifierAction]
 func (va *distributedProjectionVerifierAction) Skip() {
 	va.skipped = true
 }
+
 // IsSkipped implements the [wizard.VerifierAction]
 func (va *distributedProjectionVerifierAction) IsSkipped() bool {
 	return va.skipped
