@@ -41,6 +41,7 @@ type Runtime interface {
 	GetSpec() *CompiledIOP
 	GetPublicInput(name string) field.Element
 	GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams
+	GetDistributedProjectionParams(name ifaces.QueryID) query.DistributedProjectionParams
 	GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams
 	GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams
 	GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams
@@ -431,6 +432,11 @@ func (run *VerifierRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogD
 // GetGrandProductParams returns the parameters of a [query.GrandProduct]
 func (run *VerifierRuntime) GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams {
 	return run.QueriesParams.MustGet(name).(query.GrandProductParams)
+}
+
+// GetGrandProductParams returns the parameters of a [query.DistributedProjection]
+func (run *VerifierRuntime) GetDistributedProjectionParams(name ifaces.QueryID) query.DistributedProjectionParams {
+	return run.QueriesParams.MustGet(name).(query.DistributedProjectionParams)
 }
 
 /*

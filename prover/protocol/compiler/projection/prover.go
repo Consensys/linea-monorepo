@@ -39,8 +39,8 @@ func (pa projectionProverAction) Run(run *wizard.ProverRuntime) {
 		fA      = pa.FilterA.GetColAssignment(run).IntoRegVecSaveAlloc()
 		fB      = pa.FilterB.GetColAssignment(run).IntoRegVecSaveAlloc()
 		x       = run.GetRandomCoinField(pa.EvalCoin.Name)
-		hornerA = poly.CmptHorner(a, fA, x)
-		hornerB = poly.CmptHorner(b, fB, x)
+		hornerA = poly.GetHornerTrace(a, fA, x)
+		hornerB = poly.GetHornerTrace(b, fB, x)
 	)
 
 	run.AssignColumn(pa.HornerA.GetColID(), smartvectors.NewRegular(hornerA))
