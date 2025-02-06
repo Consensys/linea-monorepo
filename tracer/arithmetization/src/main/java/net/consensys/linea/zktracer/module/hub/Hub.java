@@ -241,6 +241,9 @@ public class Hub implements Module {
   private final BlakeEffectiveCall blakeEffectiveCall = new BlakeEffectiveCall();
   private final BlakeRounds blakeRounds = new BlakeRounds();
 
+  // TODO: bind it to the frame so as to compute the gasCost per frame
+  @Getter private long gasCostAccumulator = 0;
+
   private List<Module> precompileLimitModules() {
 
     return List.of(
@@ -770,6 +773,8 @@ public class Hub implements Module {
     long lineaGasCost = currentSection.commonValues.gasCost();
     long lineaGasCostExcludingDeploymentCost =
         currentSection.commonValues.gasCostExcluduingDeploymentCost();
+
+    gasCostAccumulator += besuGasCost;
 
     if (operationResult.getHaltReason() != null) {
 
