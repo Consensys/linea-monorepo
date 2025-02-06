@@ -72,7 +72,13 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 	var (
 		actualParam = field.Zero()
 		params      = run.GetParams(dp.ID).(DistributedProjectionParams)
+		evalRand    field.Element
 	)
+	_, errBeta := evalRand.SetRandom()
+	if errBeta != nil {
+		// Cannot happen unless the entropy was exhausted
+		panic(errBeta)
+	}
 	for _, inp := range dp.Inp {
 		var (
 			colABoard    = inp.ColumnA.Board()
@@ -86,15 +92,15 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 			elemParam    = field.One()
 		)
 		if inp.IsAInModule && !inp.IsBInModule {
-			hornerA := poly.CmptHorner(colA, filterA, run.GetRandomCoinField(inp.EvalCoin))
+			hornerA := poly.CmptHorner(colA, filterA, evalRand)
 			elemParam = hornerA[0]
 		} else if !inp.IsAInModule && inp.IsBInModule {
-			hornerB := poly.CmptHorner(colB, filterB, run.GetRandomCoinField(inp.EvalCoin))
+			hornerB := poly.CmptHorner(colB, filterB, evalRand)
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 		} else if inp.IsAInModule && inp.IsBInModule {
-			hornerA := poly.CmptHorner(colA, filterA, run.GetRandomCoinField(inp.EvalCoin))
-			hornerB := poly.CmptHorner(colB, filterB, run.GetRandomCoinField(inp.EvalCoin))
+			hornerA := poly.CmptHorner(colA, filterA, evalRand)
+			hornerB := poly.CmptHorner(colB, filterB, evalRand)
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 			elemParam.Add(&elemParam, &hornerA[0])
@@ -113,5 +119,5 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 }
 
 func (dp DistributedProjection) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-	panic("UNSUPPORTED : can't check an Projection query directly into the circuit")
+	panic("UNSUPPORTED : can't check a Projection query directly into the circuit")
 }

@@ -228,13 +228,13 @@ func shiftExpression(comp *wizard.CompiledIOP, expr *symbolic.Expression, nbShif
 		switch t := m.(type) {
 		case ifaces.Column:
 			translationMap.InsertNew(string(t.GetColID()), ifaces.ColumnAsVariable(column.Shift(t, nbShift)))
-
 		case coin.Info:
-
 			if !comp.Coins.Exists(t.Name) {
 				utils.Panic("Coin %v does not exist in the InitialComp", t.Name)
 			}
 			translationMap.InsertNew(t.String(), symbolic.NewVariable(t))
+		default:
+			utils.Panic("Unsupported type for shift expression operation")
 		}
 	}
 	return expr.Replay(translationMap)
