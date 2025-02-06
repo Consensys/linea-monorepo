@@ -81,6 +81,46 @@ export class RollupGetZkEVMBlockNumberClient {
   }
 }
 
+export class LineaEstimateGasClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async lineaEstimateGas(
+    from: string,
+    to: string,
+    data: string = "0x",
+    value: string = "0x0",
+  ): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint; gasLimit: bigint }> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_estimateGas",
+        params: [
+          {
+            from,
+            to,
+            data,
+            value,
+          },
+        ],
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    const responseJson = await response.json();
+    assert("result" in responseJson);
+    return {
+      maxFeePerGas: BigInt(responseJson.result.baseFeePerGas) + BigInt(responseJson.result.priorityFeePerGas),
+      maxPriorityFeePerGas: BigInt(responseJson.result.priorityFeePerGas),
+      gasLimit: BigInt(responseJson.result.gasLimit),
+    };
+  }
+}
+
 export class TransactionExclusionClient {
   private endpoint: URL;
 
@@ -276,11 +316,18 @@ export async function waitForFile(
 
 export async function sendTransactionsToGenerateTrafficWithInterval(
   signer: AbstractSigner,
+  lineaEstimateGasClient: LineaEstimateGasClient,
   pollingInterval: number = 1_000,
 ) {
-  const { maxPriorityFeePerGas, maxFeePerGas } = await signer.provider!.getFeeData();
+  const signerAddress = await signer.getAddress();
+  const { maxPriorityFeePerGas, maxFeePerGas } = await lineaEstimateGasClient.lineaEstimateGas(
+    signerAddress,
+    signerAddress,
+    "0x",
+    etherToWei("0.000001").toString(16),
+  );
   const transactionRequest = {
-    to: await signer.getAddress(),
+    to: signerAddress,
     value: etherToWei("0.000001"),
     maxPriorityFeePerGas: maxPriorityFeePerGas,
     maxFeePerGas: maxFeePerGas,

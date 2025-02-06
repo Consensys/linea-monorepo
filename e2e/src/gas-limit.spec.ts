@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { pollForContractMethodReturnValueExceedTarget, wait } from "./common/utils";
+import { LineaEstimateGasClient, pollForContractMethodReturnValueExceedTarget, wait } from "./common/utils";
 import { config } from "./config/tests-config";
 import { ContractTransactionReceipt, Wallet } from "ethers";
 
@@ -11,16 +11,22 @@ describe("Gas limit test suite", () => {
     logger.debug(`setGasLimit called with account=${account.address}`);
 
     const opcodeTestContract = config.getOpcodeTestContract(account);
+    const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
     const nonce = await l2Provider.getTransactionCount(account.address, "pending");
     logger.debug(`Fetched nonce. nonce=${nonce} account=${account.address}`);
 
-    const { maxPriorityFeePerGas, maxFeePerGas } = await l2Provider.getFeeData();
+    const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await lineaEstimateGasClient.lineaEstimateGas(
+      account.address,
+      await opcodeTestContract.getAddress(),
+      opcodeTestContract.interface.encodeFunctionData("setGasLimit"),
+    );
     logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
     const tx = await opcodeTestContract.connect(account).setGasLimit({
       nonce: nonce,
       maxPriorityFeePerGas: maxPriorityFeePerGas,
       maxFeePerGas: maxFeePerGas,
+      gasLimit: gasLimit,
     });
     logger.debug(`setGasLimit transaction sent. transactionHash=${tx.hash}`);
 
