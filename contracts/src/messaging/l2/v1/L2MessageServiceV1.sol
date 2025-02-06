@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.19;
 
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { IMessageService } from "../../interfaces/IMessageService.sol";
 import { IL2MessageServiceV1 } from "./interfaces/IL2MessageServiceV1.sol";
 import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
 import { RateLimiter } from "../../../security/limiting/RateLimiter.sol";
+import { TransientStorageReentrancyGuardUpgradeable } from "../../../security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol";
 import { L2MessageManagerV1 } from "./L2MessageManagerV1.sol";
 import { MessageHashing } from "../../libraries/MessageHashing.sol";
 
@@ -17,7 +17,7 @@ import { MessageHashing } from "../../libraries/MessageHashing.sol";
 abstract contract L2MessageServiceV1 is
   RateLimiter,
   L2MessageManagerV1,
-  ReentrancyGuardUpgradeable,
+  TransientStorageReentrancyGuardUpgradeable,
   IMessageService,
   IL2MessageServiceV1,
   IGenericErrors
