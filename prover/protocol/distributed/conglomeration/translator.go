@@ -274,7 +274,6 @@ func (run *runtimeTranslator) GetLogDerivSumParams(name ifaces.QueryID) query.Lo
 	return run.Rt.GetLogDerivSumParams(name)
 }
 
-
 func (run *runtimeTranslator) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams {
 	name = ifaces.QueryID(run.Prefix) + "." + name
 	return run.Rt.GetLocalPointEvalParams(name)
