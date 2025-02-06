@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
@@ -58,7 +57,7 @@ type Module struct {
 func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, mch *mimccodehash.Module) Module {
 
 	name = name + "_CODEHASH_CONSISTENCY"
-	size := utils.NextPowerOfTwo[int](ss.IsActive.Size() + mch.IsActive.Size())
+	size := 1 << 16
 
 	ch := Module{
 		StateSummaryInput: ss,
