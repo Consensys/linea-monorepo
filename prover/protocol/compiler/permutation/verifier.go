@@ -18,7 +18,7 @@ type VerifierCtx struct {
 
 // Run implements the [wizard.VerifierAction] interface and checks that the
 // product of the products given by the ZCtx is equal to one.
-func (v *VerifierCtx) Run(run *wizard.VerifierRuntime) error {
+func (v *VerifierCtx) Run(run wizard.Runtime) error {
 
 	mustBeOne := field.One()
 
@@ -38,7 +38,7 @@ func (v *VerifierCtx) Run(run *wizard.VerifierRuntime) error {
 
 // Run implements the [wizard.VerifierAction] interface and is as
 // [VerifierCtx.Run] but in the context of a gnark circuit.
-func (v *VerifierCtx) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	mustBeOne := frontend.Variable(1)
 

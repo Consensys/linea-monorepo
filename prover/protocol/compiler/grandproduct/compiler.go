@@ -101,7 +101,7 @@ type FinalProductCheck struct {
 }
 
 // Run implements the [wizard.VerifierAction]
-func (f *FinalProductCheck) Run(run *wizard.VerifierRuntime) error {
+func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 
 	// zProd stores the product of the ending values of the zs as queried
 	// in the protocol via the local opening queries.
@@ -122,7 +122,7 @@ func (f *FinalProductCheck) Run(run *wizard.VerifierRuntime) error {
 }
 
 // RunGnark implements the [wizard.VerifierAction]
-func (f *FinalProductCheck) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	claimedProd := run.GetGrandProductParams(f.GrandProductID).Prod
 	// zProd stores the product of the ending values of the z columns
