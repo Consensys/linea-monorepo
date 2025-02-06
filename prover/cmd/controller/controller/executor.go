@@ -65,6 +65,7 @@ func (e *Executor) Run(job *Job) (status Status) {
 
 	// The job should be locked
 	// ASSUMED 0 index here
+
 	if len(job.LockedFile[0]) == 0 {
 		return Status{
 			ExitCode: CodeFatal,

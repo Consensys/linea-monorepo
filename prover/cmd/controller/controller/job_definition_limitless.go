@@ -1,240 +1,153 @@
 package controller
 
-// import (
-// 	"fmt"
+import (
+	"fmt"
 
-// 	"github.com/consensys/linea-monorepo/prover/config"
-// 	"github.com/dlclark/regexp2"
-// )
+	"github.com/consensys/linea-monorepo/prover/config"
+)
 
-// // Job definitions are defined such that each job has a single request and response file
-// // These jobs will execute asynchronously based on their set priorities
-// const (
-// 	// Bootstrap
-// 	job_Exec_Bootstrap_GLSubmodule  = "exec-bootstrap-GLsubmodule"
-// 	job_Exec_Bootstrap_DistMetadata = "exec-bootstrap-metadata"
+const (
+	// Job definitions
+	jobExecBootstrap        = "execBootstrap"
+	jobExecGL               = "execGL"
+	jobExecRndBeacon        = "execRndbeacon"
+	jobExecLPP              = "execLPP"
+	jobExecCongolomerateLPP = "execConglomeration"
 
-// 	// Global-Local subprovers
-// 	job_Exec_GL_RndBeacon = "exec-GL-rndbeacon"
-// 	job_Exec_GL           = "exec-GL"
+	// Priorities
+	priorityExecBootstrap       = 0
+	priorityExecGL              = 1
+	priorityExecRndBeacon       = 2
+	priorityExecLPP             = 3
+	priorityExecCongolomeration = 4
 
-// 	// Random Beacon
-// 	job_Exec_RndBeacon_LPP       = "exec-rndbeacon"
-// 	job_Exec_Bootstrap_RndBeacon = "exec-bootstrap-rndbeacon"
+	// Input file patterns
+	execBootstrapInputPattern                    = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json%v(\.failure\.%v_[0-9]+)*$`
+	execBootstrapGLInputPattern                  = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_Bootstrap_GLSubmodule\.json%v(\.failure\.%v_[0-9]+)*$`
+	execBootstrapRndBeaconInputPattern           = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_Bootstrap_DistMetadata\.json%v(\.failure\.%v_[0-9]+)*$`
+	execGLRndBeaconInputPattern                  = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_GL_RndBeacon\.json%v(\.failure\.%v_[0-9]+)*$`
+	execLPPInputPattern                          = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_RndBeacon\.json%v(\.failure\.%v_[0-9]+)*$`
+	execConglomerateGLInputPattern               = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_GL\.json%v(\.failure\.%v_[0-9]+)*$`
+	execConglomerateLPPInputPattern              = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_LPP\.json%v(\.failure\.%v_[0-9]+)*$`
+	execConglomerateBootstrapDistMetadataPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_Bootstrap_DistMetadata\.json%v(\.failure\.%v_[0-9]+)*$`
 
-// 	// LPP-subprovers
-// 	job_Exec_LPP = "exec-LPP"
+	// Output file templates and patterns
+	execBootstrapGLSubmoduleTemplate  = "execBootstrapGLSubmoduleReqFile"
+	execBootstrapGLSubmoduleFile      = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_Bootstrap_GLSubmodule.json"
+	execBootstrapDistMetadataTemplate = "execBootstrapSubmoduleDistMetadataFile"
+	execBootstrapDistMetadataFile     = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_Bootstrap_DistMetadata.json"
+	execGLRndBeaconTemplate           = "execGLBeaconFile"
+	execGLRndBeaconFile               = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_GL_RndBeacon.json"
+	execGLTemplate                    = "execGLOutputFile"
+	execGLFile                        = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_GL.json"
+	execRndBeaconTemplate             = "execRndBeaconOutputFile"
+	execRndBeaconFile                 = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_RndBeacon.json"
+	execLPPTemplate                   = "execLPPOutputFile"
+	execLPPFile                       = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_LPP.json"
+	execConglomerateTemplate          = "execOutputFile"
+	execConglomerateFile              = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-getZkProof.json"
+)
 
-// 	// Conglomerator
-// 	job_Exec_Congolomerate_LPP                = "exec-conglo-LPP"
-// 	job_Exec_Congolomerate_GL                 = "exec-conglo-GL"
-// 	job_Exec_Congolomerate_Bootstrap_Metadata = "exec-conglo-metadata"
-// )
+func ExecBootstrapDefinition(conf *config.Config) (*JobDefinition, error) {
+	inpFileExt := ""
+	if conf.Bootstrap.CanRunFullLarge {
+		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
+	}
 
-// // Priorities
-// const (
-// 	priority_Exec_Bootstrap_GLSubmodule  = 0
-// 	priority_Exec_Bootstrap_DistMetadata = 0
+	// Input files
+	reqDirs := []string{conf.Bootstrap.RequestsRootDir}
+	inputFilePatterns := []string{fmt.Sprintf(execBootstrapInputPattern, inpFileExt, config.FailSuffix)}
 
-// 	priority_Exec_GL_RndBeacon = 1
-// 	priority_Exec_GL           = 1
+	// Output files
+	outputTmpls := []string{execBootstrapGLSubmoduleTemplate, execBootstrapDistMetadataTemplate}
+	outputFiles := []string{execBootstrapGLSubmoduleFile, execBootstrapDistMetadataFile}
 
-// 	priority_Exec_RndBeacon_LPP       = 2
-// 	priority_Exec_Bootstrap_RndBeacon = 2
+	return commonJobDefinition(jobExecBootstrap, priorityExecBootstrap,
+		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(), config.FailSuffix)
+}
 
-// 	priority_Exec_LPP = 3
+func ExecGLDefinition(conf *config.Config) (*JobDefinition, error) {
+	inpFileExt := ""
+	if conf.GLExecution.CanRunFullLarge {
+		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
+	}
 
-// 	priority_Exec_Congolomerate_LPP      = 4
-// 	priority_Exec_Congolomerate_GL       = 4
-// 	priority_Exec_Congolomerate_Metadata = 4
-// )
+	// Input files
+	reqDirs := []string{conf.GLExecution.RequestsRootDir}
+	inputFilePatterns := []string{fmt.Sprintf(execBootstrapGLInputPattern, inpFileExt, config.FailSuffix)}
 
-// // Input file patterns
-// const (
-// 	// Bootstrap I/p file is the usual execution req. file
-// 	exec_Bootstrap_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json%v(\.failure\.%v_[0-9]+)*$`
+	// Output files
+	outputTmpls := []string{execGLRndBeaconTemplate, execGLTemplate}
+	outputFiles := []string{execGLRndBeaconFile, execGLFile}
 
-// 	// GL input
-// 	exec_Bootstrap_GL_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_Bootstrap_GLSubmodule\.json%v(\.failure\.%v_[0-9]+)*$`
+	return commonJobDefinition(jobExecGL, priorityExecGL,
+		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(), config.FailSuffix)
+}
 
-// 	// Rnd Beacon I/p
-// 	exec_Bootstrap_RndBeacon_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_Bootstrap_DistMetadata\.json%v(\.failure\.%v_[0-9]+)*$`
-// 	exec_GL_RndBeacon_InputPattern        = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_GL_RndBeacon\.json%v(\.failure\.%v_[0-9]+)*$`
+func ExecRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
+	inpFileExt := ""
+	if conf.RndBeacon.CanRunFullLarge {
+		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
+	}
 
-// 	// LPP Input
-// 	exec_LPP_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_RndBeacon\.json%v(\.failure\.%v_[0-9]+)*$`
+	// Input files
+	reqDirs := []string{
+		conf.RndBeacon.MetaData.RequestsRootDir,
+		conf.RndBeacon.GL.RequestsRootDir,
+	}
+	inputFilePatterns := []string{
+		fmt.Sprintf(execBootstrapRndBeaconInputPattern, inpFileExt, config.FailSuffix),
+		fmt.Sprintf(execGLRndBeaconInputPattern, inpFileExt, config.FailSuffix),
+	}
 
-// 	// Conglomerator Input
-// 	exec_Conglomerate_GL_InputPattern                     = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_GL\.json%v(\.failure\.%v_[0-9]+)*$`
-// 	exec_Conglomerate_LPP_InputPattern                    = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_LPP\.json%v(\.failure\.%v_[0-9]+)*$`
-// 	exec_Conglomerate_Bootstrap_DistMetadata_InputPattern = `^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof_Bootstrap_DistMetadata\.json%v(\.failure\.%v_[0-9]+)*$`
-// )
+	// Output files
+	outputTmpls := []string{execRndBeaconTemplate}
+	outputFiles := []string{execRndBeaconFile}
 
-// // Ouput File patterns and templates
-// const (
-// 	exec_Bootstrap_GLSubmodule_File = "{{.Start}}-{{.End}}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_Bootstrap_GLSubmodule.json"
-// 	exec_Bootstrap_Submodule_Tmpl   = "exec-bootstrap-GLsubmodule-req-file"
+	return commonJobDefinition(jobExecRndBeacon, priorityExecRndBeacon,
+		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(), config.FailSuffix)
+}
 
-// 	exec_Bootstrap_DistMetadata_File = "{{.Start}}-{{.End}}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_Bootstrap_DistMetadata.json"
-// 	exec_Bootstrap_DistMetadata_Tmpl = "exec-bootstrap-submodule-distmetadata-file"
+func ExecLPPDefinition(conf *config.Config) (*JobDefinition, error) {
+	inpFileExt := ""
+	if conf.LPPExecution.CanRunFullLarge {
+		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
+	}
 
-// 	// Global-Local subprovers
-// 	exec_GL_RndBeacon_File = "{{.Start}}-{{.End}}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_GL_RndBeacon.json"
-// 	exec_GL_RndBeacon_Tmpl = "exec-GL-Beacon-file"
+	// Input files
+	reqDirs := []string{conf.LPPExecution.RequestsRootDir}
+	inputFilePatterns := []string{fmt.Sprintf(execLPPInputPattern, inpFileExt, config.FailSuffix)}
 
-// 	exec_GL_File = "{{.Start}}-{{.End}}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_GL.json"
-// 	exec_GL_Tmpl = "exec-GL-output-file"
+	// Output files
+	outputTmpls := []string{execLPPTemplate}
+	outputFiles := []string{execLPPFile}
 
-// 	// Random Beacon
-// 	exec_RndBeacon_File = "{{.Start}}-{{.End}}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_RndBeacon.json"
-// 	exec_RndBeacon_Tmpl = "exec-rndbeacon-output-file"
+	return commonJobDefinition(jobExecLPP, priorityExecLPP,
+		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(), config.FailSuffix)
+}
 
-// 	// LPP-subprovers
-// 	exec_LPP_File = "{{.Start}}-{{.End}}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_LPP.json"
-// 	exec_LPP_Tmpl = "exec-LPP-output-file"
+func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
+	inpFileExt := ""
+	if conf.Conglomeration.CanRunFullLarge {
+		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
+	}
 
-// 	// Conglomerator
-// 	exec_Congolomerate_File = "{{.Start}}-{{.End}}-getZkProof.json"
-// 	exec_Congolomerate_Tmpl = "exec-output-file"
-// )
+	// Input files
+	reqDirs := []string{
+		conf.Conglomeration.BootstrapMetadata.RequestsRootDir,
+		conf.Conglomeration.GL.RequestsRootDir,
+		conf.Conglomeration.LPP.RequestsRootDir,
+	}
+	inputFilePatterns := []string{
+		fmt.Sprintf(execConglomerateBootstrapDistMetadataPattern, inpFileExt, config.FailSuffix),
+		fmt.Sprintf(execConglomerateGLInputPattern, inpFileExt, config.FailSuffix),
+		fmt.Sprintf(execConglomerateLPPInputPattern, inpFileExt, config.FailSuffix),
+	}
 
-// // createJobDefinition creates a new JobDefinition with the provided parameters.
-// // It sets up the job's name, priority, request directory, input file pattern, and output template.
-// // The function returns a pointer to the JobDefinition and an error if any occurs during the setup.
-// func createJobDefinition(name string, priority int,
-// 	reqRootDir, inputFilePattern string,
-// 	outputTmpl, outputFileName string) (*JobDefinition, error) {
+	// Output files
+	outputTmpls := []string{execConglomerateTemplate}
+	outputFiles := []string{execConglomerateFile}
 
-// 	return &JobDefinition{
-// 		Name:     name,
-// 		Priority: priority,
-
-// 		// Primary and Secondary Request (Input) Files
-// 		RequestsRootDir: reqRootDir,
-// 		InputFileRegexp: regexp2.MustCompile(inputFilePattern, regexp2.None),
-
-// 		// Output Templates
-// 		OutputFileTmpl: tmplMustCompile(outputTmpl, outputFileName),
-
-// 		ParamsRegexp: struct {
-// 			Start       *regexp2.Regexp
-// 			End         *regexp2.Regexp
-// 			Stv         *regexp2.Regexp
-// 			Etv         *regexp2.Regexp
-// 			Cv          *regexp2.Regexp
-// 			ContentHash *regexp2.Regexp
-// 		}{
-// 			Start: regexp2.MustCompile(`^[0-9]+`, regexp2.None),
-// 			End:   regexp2.MustCompile(`(?<=^[0-9]+-)[0-9]+`, regexp2.None),
-// 			Etv:   matchVersionWithPrefix("etv"),
-// 			Stv:   matchVersionWithPrefix("stv"),
-// 		},
-// 		FailureSuffix: matchFailureSuffix(config.FailSuffix),
-// 	}, nil
-// }
-
-// // BootstrapGLSubModDefinition creates a job definition for the Bootstrap GL Submodule job.
-// // It sets the input file pattern based on the configuration and creates the job definition
-// // with the appropriate parameters.
-// func BootstrapGLSubModDefinition(conf *config.Config) (*JobDefinition, error) {
-// 	inpFileExt := ""
-// 	if conf.Bootstrap.CanRunFullLarge {
-// 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
-// 	}
-// 	inputFilePattern := fmt.Sprintf(exec_Bootstrap_InputPattern, inpFileExt, config.FailSuffix)
-// 	return createJobDefinition(job_Exec_Bootstrap_GLSubmodule, priority_Exec_Bootstrap_GLSubmodule,
-// 		conf.Bootstrap.RequestsRootDir, inputFilePattern, exec_Bootstrap_Submodule_Tmpl, exec_Bootstrap_GLSubmodule_File)
-// }
-
-// // BootstrapDistMetadataDefinition creates a job definition for the Bootstrap Metadata job.
-// // It sets the input file pattern based on the configuration and creates the job definition
-// // with the appropriate parameters.
-// func BootstrapDistMetadataDefinition(conf *config.Config) (*JobDefinition, error) {
-// 	inpFileExt := ""
-// 	if conf.Bootstrap.CanRunFullLarge {
-// 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
-// 	}
-// 	inputFilePattern := fmt.Sprintf(exec_Bootstrap_InputPattern, inpFileExt, config.FailSuffix)
-// 	return createJobDefinition(job_Exec_Bootstrap_DistMetadata, priority_Exec_Bootstrap_DistMetadata,
-// 		conf.Bootstrap.RequestsRootDir, inputFilePattern, exec_Bootstrap_DistMetadata_Tmpl, exec_Bootstrap_DistMetadata_File)
-// }
-
-// func GLRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
-// 	inpFileExt := ""
-// 	if conf.GLExecution.CanRunFullLarge {
-// 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
-// 	}
-// 	inputFilePattern := fmt.Sprintf(exec_Bootstrap_GL_InputPattern, inpFileExt, config.FailSuffix)
-// 	return createJobDefinition(job_Exec_GL_RndBeacon, priority_Exec_GL_RndBeacon,
-// 		conf.GLExecution.RequestsRootDir, inputFilePattern, exec_GL_RndBeacon_Tmpl, exec_GL_RndBeacon_File)
-// }
-
-// func GLDefinition(conf *config.Config) (*JobDefinition, error) {
-// 	inpFileExt := ""
-// 	if conf.GLExecution.CanRunFullLarge {
-// 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
-// 	}
-// 	inputFilePattern := fmt.Sprintf(exec_Bootstrap_GL_InputPattern, inpFileExt, config.FailSuffix)
-// 	return createJobDefinition(job_Exec_GL, priority_Exec_GL,
-// 		conf.GLExecution.RequestsRootDir, inputFilePattern, exec_GL_Tmpl, exec_GL_File)
-// }
-
-// func BootstrapRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
-// 	inpFileExt := ""
-// 	if conf.RndBeacon.CanRunFullLarge {
-// 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
-// 	}
-// 	inputFilePattern := fmt.Sprintf(exec_Bootstrap_RndBeacon_InputPattern, inpFileExt, config.FailSuffix)
-// 	return createJobDefinition(job_Exec_Bootstrap_RndBeacon, priority_Exec_Bootstrap_RndBeacon,
-// 		conf.RndBeacon.MetaData.RequestsRootDir, inputFilePattern, exec_RndBeacon_Tmpl, exec_RndBeacon_File)
-// }
-
-// func RndBeaconLPPDefinition(conf *config.Config) (*JobDefinition, error) {
-// 	inpFileExt := ""
-// 	if conf.RndBeacon.CanRunFullLarge {
-// 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
-// 	}
-// 	inputFilePattern := fmt.Sprintf(exec_GL_RndBeacon_InputPattern, inpFileExt, config.FailSuffix)
-// 	return createJobDefinition(job_Exec_RndBeacon_LPP, priority_Exec_RndBeacon_LPP,
-// 		conf.RndBeacon.GL.RequestsRootDir, inputFilePattern, exec_RndBeacon_Tmpl, exec_RndBeacon_File)
-// }
-
-// func LPPDefinition(conf *config.Config) (*JobDefinition, error) {
-// 	inpFileExt := ""
-// 	if conf.LPPExecution.CanRunFullLarge {
-// 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
-// 	}
-// 	inputFilePattern := fmt.Sprintf(exec_LPP_InputPattern, inpFileExt, config.FailSuffix)
-// 	return createJobDefinition(job_Exec_LPP, priority_Exec_LPP,
-// 		conf.LPPExecution.RequestsRootDir, inputFilePattern, exec_LPP_Tmpl, exec_LPP_File)
-// }
-
-// func ConglomerateDistMetadataDefinition(conf *config.Config) (*JobDefinition, error) {
-// 	inpFileExt := ""
-// 	if conf.Conglomeration.CanRunFullLarge {
-// 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
-// 	}
-// 	inputFilePattern := fmt.Sprintf(exec_Conglomerate_Bootstrap_DistMetadata_InputPattern, inpFileExt, config.FailSuffix)
-// 	return createJobDefinition(job_Exec_Congolomerate_Bootstrap_Metadata, priority_Exec_Congolomerate_Metadata,
-// 		conf.Conglomeration.BootstrapMetadata.RequestsRootDir, inputFilePattern, exec_Congolomerate_Tmpl, exec_Congolomerate_File)
-// }
-
-// func ConglomerateGLDefinition(conf *config.Config) (*JobDefinition, error) {
-// 	inpFileExt := ""
-// 	if conf.Conglomeration.CanRunFullLarge {
-// 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
-// 	}
-// 	inputFilePattern := fmt.Sprintf(exec_Conglomerate_GL_InputPattern, inpFileExt, config.FailSuffix)
-// 	return createJobDefinition(job_Exec_Congolomerate_GL, priority_Exec_Congolomerate_GL,
-// 		conf.Conglomeration.GL.RequestsRootDir, inputFilePattern, exec_Congolomerate_Tmpl, exec_Congolomerate_File)
-// }
-
-// func ConglomerateLPPDefinition(conf *config.Config) (*JobDefinition, error) {
-// 	inpFileExt := ""
-// 	if conf.Conglomeration.CanRunFullLarge {
-// 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
-// 	}
-// 	inputFilePattern := fmt.Sprintf(exec_Conglomerate_LPP_InputPattern, inpFileExt, config.FailSuffix)
-// 	return createJobDefinition(job_Exec_Congolomerate_LPP, priority_Exec_Congolomerate_LPP,
-// 		conf.Conglomeration.LPP.RequestsRootDir, inputFilePattern, exec_Congolomerate_Tmpl, exec_Congolomerate_File)
-// }
+	return commonJobDefinition(jobExecCongolomerateLPP, priorityExecCongolomeration,
+		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(), config.FailSuffix)
+}
