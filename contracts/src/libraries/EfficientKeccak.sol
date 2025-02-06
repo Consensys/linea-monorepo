@@ -37,11 +37,13 @@ library EfficientKeccak {
 
   /**
    * @notice Performs a gas optimized keccak hash for 5 words.
+   * @dev This is bytes32, but any 256 bit word would be the same if converted to bytes32.
    * @param _v1 First value.
    * @param _v2 Second value.
    * @param _v3 Third value.
    * @param _v4 Fourth value.
    * @param _v5 Fifth value.
+   * @return hashedValue The hash value of the 5 fields.
    */
   function _efficientKeccak(
     bytes32 _v1,
@@ -49,7 +51,7 @@ library EfficientKeccak {
     bytes32 _v3,
     bytes32 _v4,
     bytes32 _v5
-  ) internal pure returns (bytes32 shnarf) {
+  ) internal pure returns (bytes32 hashedValue) {
     assembly {
       let mPtr := mload(0x40)
       mstore(mPtr, _v1)
@@ -57,7 +59,7 @@ library EfficientKeccak {
       mstore(add(mPtr, 0x40), _v3)
       mstore(add(mPtr, 0x60), _v4)
       mstore(add(mPtr, 0x80), _v5)
-      shnarf := keccak256(mPtr, 0xA0)
+      hashedValue := keccak256(mPtr, 0xA0)
     }
   }
 }

@@ -36,6 +36,7 @@ abstract contract ZkEvmV2 is AccessControlUpgradeable, L1MessageServiceV1, IZkEv
   /**
    * @notice Verifies the proof with locally computed public inputs.
    * @dev If the verifier based on proof type is not found, it reverts with InvalidProofType.
+   * @dev If the verifier has been removed due to a soundness alert, it reverts with SoundnessAlertTriggered.
    * @param _publicInput The computed public input hash cast as uint256.
    * @param _proofType The proof type to determine which verifier contract to use.
    * @param _proof The proof to be verified with the proof type verifier contract.

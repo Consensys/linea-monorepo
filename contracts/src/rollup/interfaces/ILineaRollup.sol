@@ -400,6 +400,10 @@ interface ILineaRollup {
     FinalizationDataV3 calldata _finalizationData
   ) external;
 
-  /// TODO NATSPEC
-  function triggerSoundnessAlert(SoundessFinalizationData memory _finalizationData) external;
+  /**
+   * @notice Verifies two proofs over the same data and if state differs the soundness alert is triggered.
+   * @dev The alternate finalization will overwrite some fields in the main finalizationData struct.
+   * @param _soundnessFinalizationData The in memory struct containing all the data required in the function.
+   */
+  function triggerSoundnessAlert(SoundessFinalizationData memory _soundnessFinalizationData) external;
 }
