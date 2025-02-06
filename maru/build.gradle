@@ -45,7 +45,8 @@ allprojects {
   spotless {
     kotlin {
       // by default the target is every '.kt' and '.kts` file in the java sourcesets
-      ktlint().setEditorConfigPath("$rootDir/.editorconfig")
+      ktlint()
+        .setEditorConfigPath("$rootDir/.editorconfig")
       licenseHeaderFile("${rootDir}/gradle/spotless/java-kotlin.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*." +
         "*ConsenSys AG\\.)")
     }

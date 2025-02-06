@@ -15,4 +15,7 @@
  */
 package maru.core
 
-data class BeaconBlockBody(val prevBlockSeals: List<Seal>, val executionPayload: ExecutionPayload)
+data class BeaconBlockBody(
+  val prevBlockSeals: List<Seal>,
+  val executionPayload: ExecutionPayload,
+)

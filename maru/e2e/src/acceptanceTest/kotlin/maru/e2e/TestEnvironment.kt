@@ -56,7 +56,11 @@ object TestEnvironment {
   fun EthSendTransaction.waitForInclusion() {
     await().untilAsserted {
       val lastTransaction =
-        sequencerL2Client.ethGetTransactionByHash(transactionHash).send().transaction.get()
+        sequencerL2Client
+          .ethGetTransactionByHash(transactionHash)
+          .send()
+          .transaction
+          .get()
       assertThat(lastTransaction.blockNumberRaw)
         .withFailMessage("Transaction $transactionHash wasn't included!")
         .isNotNull()

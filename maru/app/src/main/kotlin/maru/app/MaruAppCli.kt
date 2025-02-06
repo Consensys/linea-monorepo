@@ -21,8 +21,8 @@ import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.addFileSource
 import java.io.File
 import java.util.concurrent.Callable
-import maru.app.config.BeaconGenesisConfig
 import maru.app.config.MaruConfigDtoToml
+import maru.consensus.dummy.DummyConsensusConfig
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.Configurator
@@ -70,7 +70,7 @@ class MaruAppCli : Callable<Int> {
       return 1
     }
     val appConfig = loadConfig<MaruConfigDtoToml>(configFiles)
-    val beaconGenesisConfig = loadConfig<BeaconGenesisConfig>(listOf(genesisFile))
+    val beaconGenesisConfig = loadConfig<DummyConsensusConfig>(listOf(genesisFile))
 
     if (!validateParsedFile(appConfig, "app configuration", configFiles.map { it.absolutePath }.toString())) {
       return 1
@@ -86,7 +86,8 @@ class MaruAppCli : Callable<Int> {
     val app = MaruApp(parsedAppConfig.reified(), parsedBeaconGenesisConfig)
     app.start()
 
-    Runtime.getRuntime()
+    Runtime
+      .getRuntime()
       .addShutdownHook(
         Thread {
           app.stop()
@@ -104,7 +105,10 @@ class MaruAppCli : Callable<Int> {
   @OptIn(ExperimentalHoplite::class)
   private inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
     val confBuilder: ConfigLoaderBuilder =
-      ConfigLoaderBuilder.Companion.empty().addDefaults().withExplicitSealedTypes()
+      ConfigLoaderBuilder.Companion
+        .empty()
+        .addDefaults()
+        .withExplicitSealedTypes()
     for (configFile in configFiles.reversed()) {
       // files must be added in reverse order for overriding
       confBuilder.addFileSource(configFile, false)
@@ -113,9 +117,7 @@ class MaruAppCli : Callable<Int> {
     return confBuilder.build().loadConfig<T>(emptyList())
   }
 
-  private fun validateConfigFile(file: File): Boolean {
-    return file.canRead()
-  }
+  private fun validateConfigFile(file: File): Boolean = file.canRead()
 
   private fun validateParsedFile(
     configResult: ConfigResult<*>,

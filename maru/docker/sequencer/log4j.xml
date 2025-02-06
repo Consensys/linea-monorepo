@@ -40,6 +40,13 @@
     <Logger name="org.hyperledger.besu.ethereum.eth.manager.snap" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
+    <Logger name="net.consensys.linea.sequencer.txselection.selectors" level="DEBUG" />
+    <Logger name="org.hyperledger.besu.ethereum.blockcreation.txselection.BlockTransactionSelector" level="TRACE">
+      <Filters>
+        <LevelRangeFilter maxLevel="DEBUG" onMatch="ACCEPT" onMismatch="NEUTRAL" />
+        <RegexFilter regex="Transaction selection result .*" useRawMsg="true" onMatch="ACCEPT" onMismatch="DENY" />
+      </Filters>
+    </Logger>
     <Root level="${sys:root.log.level}">
       <AppenderRef ref="Console"/>
     </Root>

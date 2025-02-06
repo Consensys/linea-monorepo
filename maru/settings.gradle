@@ -5,4 +5,6 @@ rootProject.name = 'maru'
 
 include ':app'
 include ':core'
+include ':consensus'
+include ':executionlayer'
 include ':e2e'
