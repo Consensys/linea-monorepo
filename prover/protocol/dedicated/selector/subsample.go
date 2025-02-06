@@ -233,7 +233,7 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 
 	comp.InsertVerifier(
 		round+1,
-		func(run *wizard.VerifierRuntime) error {
+		func(run wizard.Runtime) error {
 			resAccLast := run.GetLocalPointEvalParams(accLargeLast.ID)
 			expectedResAccLast := run.GetLocalPointEvalParams(accSmallLast.ID)
 			if resAccLast.Y != expectedResAccLast.Y {
@@ -241,7 +241,7 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 			}
 			return nil
 		},
-		func(a frontend.API, run *wizard.WizardVerifierCircuit) {
+		func(a frontend.API, run wizard.GnarkRuntime) {
 			resAccLast := run.GetLocalPointEvalParams(accLargeLast.ID)
 			expectedResAccLast := run.GetLocalPointEvalParams(accSmallLast.ID)
 			a.AssertIsEqual(resAccLast.Y, expectedResAccLast.Y)

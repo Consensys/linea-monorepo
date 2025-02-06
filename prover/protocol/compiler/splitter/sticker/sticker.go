@@ -438,7 +438,7 @@ func (ctx *stickContext) compileFixedEvaluation() {
 		})
 
 		// The verifier ensures that the old and new queries have the same assignement
-		ctx.comp.InsertVerifier(round, func(run *wizard.VerifierRuntime) error {
+		ctx.comp.InsertVerifier(round, func(run wizard.Runtime) error {
 			oldParams := run.GetLocalPointEvalParams(q.ID)
 			newParams := run.GetLocalPointEvalParams(queryName(q.ID))
 
@@ -447,7 +447,7 @@ func (ctx *stickContext) compileFixedEvaluation() {
 			}
 
 			return nil
-		}, func(api frontend.API, run *wizard.WizardVerifierCircuit) {
+		}, func(api frontend.API, run wizard.GnarkRuntime) {
 			oldParams := run.GetLocalPointEvalParams(q.ID)
 			newParams := run.GetLocalPointEvalParams(queryName(q.ID))
 			api.AssertIsEqual(oldParams.Y, newParams.Y)

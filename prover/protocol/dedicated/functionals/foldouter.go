@@ -53,12 +53,12 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 	verRound := utils.Max(innerCoinAcc.Round(), foldedEvalAcc.Round())
 
 	// Check that the two evaluations yield the same result
-	comp.InsertVerifier(verRound, func(run *wizard.VerifierRuntime) error {
+	comp.InsertVerifier(verRound, func(run wizard.Runtime) error {
 		if foldedEvalAcc.GetVal(run) != hEvalAcc.GetVal(run) {
 			return fmt.Errorf("verifier of folding failed %v", foldedName)
 		}
 		return nil
-	}, func(api frontend.API, run *wizard.WizardVerifierCircuit) {
+	}, func(api frontend.API, run wizard.GnarkRuntime) {
 		c := foldedEvalAcc.GetFrontendVariable(api, run)
 		c_ := hEvalAcc.GetFrontendVariable(api, run)
 		api.AssertIsEqual(c, c_)

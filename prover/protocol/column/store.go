@@ -49,6 +49,12 @@ type storedColumnInfo struct {
 	// FullRecursion. This field is only meaningfull for [Ignored] columns as
 	// they are excluded by default.
 	IncludeInProverFS bool
+	// ExcludeFromProverFS states the prover should not include the column in
+	// his FS transcript. This overrides [IncludeInProverFS], meaning that if
+	// [IncludeInProverFS] is true but ExcludeFromProverFS is true, the column
+	// will still be excluded from the transcript. This is used explicit FS
+	// compilation.
+	ExcludeFromProverFS bool
 }
 
 // AddToRound constructs a [Natural], registers it in the [Store] and returns
@@ -165,19 +171,6 @@ func (r *Store) AllKeysProof() []ifaces.ColID {
 	return res
 }
 
-// AllKeysPublicInput returns the list of the [PublicInput] column's ID ordered
-// by rounds and then by order ot insertion.
-func (r *Store) AllKeysPublicInput() []ifaces.ColID {
-	res := []ifaces.ColID{}
-
-	for round := 0; round < r.NumRounds(); round++ {
-		proof := r.AllKeysPublicInputAt(round)
-		res = append(res, proof...)
-	}
-
-	return res
-}
-
 // AllKeysCommitted returns the list of all the IDs of the all the [Committed]
 // columns ordered by rounds and then by IDs.
 func (r *Store) AllKeysCommitted() []ifaces.ColID {
@@ -219,22 +212,6 @@ func (r *Store) AllKeysProofAt(round int) []ifaces.ColID {
 
 	for i, info := range rnd {
 		if info.Status != Proof {
-			continue
-		}
-		res = append(res, rnd[i].ID)
-	}
-
-	return res
-}
-
-// AllKeysPublicInputAt returns the list of all the prover messages in a given
-// round. The resulting slice is ordered by order of insertion.
-func (r *Store) AllKeysPublicInputAt(round int) []ifaces.ColID {
-	res := []ifaces.ColID{}
-	rnd := r.byRounds.MustGet(round)
-
-	for i, info := range rnd {
-		if info.Status != PublicInput {
 			continue
 		}
 		res = append(res, rnd[i].ID)
@@ -442,10 +419,6 @@ func assertCorrectStatusTransition(old, new Status) {
 	// If it's ignored, it's ignored
 	case old == Ignored && new != Ignored:
 		forbiddenTransition = true
-	// You can't change the status of the public inputs because that would
-	// change the statement of the zkEVM.
-	case old == PublicInput && new != PublicInput:
-		forbiddenTransition = true
 	// It's a special status and cannot be changed.
 	case old == VerifierDefined && new != VerifierDefined:
 		forbiddenTransition = true
@@ -466,23 +439,46 @@ func (s *Store) IgnoreButKeepInProverTranscript(colName ifaces.ColID) {
 	in.IncludeInProverFS = true
 }
 
-// IsIgnoredAndNotKeptInTranscript indicates whether the column can be ignored
-// from the transcript and is used during the Fiat-Shamir randomness generation.
-func (s *Store) IsIgnoredAndNotKeptInTranscript(colName ifaces.ColID) bool {
+// ExcludeFromProverFS marks a column as excluded from the FS transcript but
+// without changing its status. This is used as part of the conglomeration
+// where the imported columns take part in a separate FS transcript from the
+// canonical of the host wizard.
+func (s *Store) ExcludeFromProverFS(colName ifaces.ColID) {
 	in := s.info(colName)
-	return in.Status == Ignored && !in.IncludeInProverFS
+	in.ExcludeFromProverFS = true
 }
 
-// AllKeysProofsOrIgnoredButKeptInProverTranscript returns the list of the
-// columns to be used as part of the FS transcript.
-func (s *Store) AllKeysProofsOrIgnoredButKeptInProverTranscript(round int) []ifaces.ColID {
+// isExcludedFromProverFS returns true if the passed column ID relates to a column
+// that does not take part in the FS transcript.
+func (in *storedColumnInfo) isExcludedFromProverFS() bool {
+
+	if in.ExcludeFromProverFS {
+		return true
+	}
+
+	if in.IncludeInProverFS {
+		return false
+	}
+
+	return true
+}
+
+// IsExplicitlyExcludedFromProverFS returns true if the passed column ID relates to
+// a column explicitly marked as excluded from the FS transcript.
+func (s *Store) IsExplicitlyExcludedFromProverFS(colName ifaces.ColID) bool {
+	info := s.info(colName)
+	return info.ExcludeFromProverFS
+}
+
+// AllKeysInProverTranscript returns the list of the columns to
+// be used as part of the FS transcript.
+func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := s.byRounds.MustGet(round) // precomputed are always at round zero
 
 	for i, info := range rnd {
 
-		ok := (info.Status == Proof) || (info.Status == Ignored && info.IncludeInProverFS)
-		if !ok {
+		if info.isExcludedFromProverFS() {
 			continue
 		}
 

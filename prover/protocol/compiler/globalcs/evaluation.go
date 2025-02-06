@@ -165,7 +165,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 }
 
 // Run evaluate the constraint and checks that
-func (ctx *evaluationVerifier) Run(run *wizard.VerifierRuntime) error {
+func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 
 	var (
 		// Will be assigned to "X", the random point at which we check the constraint.
@@ -239,7 +239,7 @@ func (ctx *evaluationVerifier) Run(run *wizard.VerifierRuntime) error {
 }
 
 // Verifier step, evaluate the constraint and checks that
-func (ctx *evaluationVerifier) RunGnark(api frontend.API, c *wizard.WizardVerifierCircuit) {
+func (ctx *evaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
 
 	// Will be assigned to "X", the random point at which we check the constraint.
 	r := c.GetRandomCoinField(ctx.EvalCoin.Name)
@@ -299,7 +299,7 @@ func (ctx *evaluationVerifier) RunGnark(api frontend.API, c *wizard.WizardVerifi
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run *wizard.VerifierRuntime, r field.Element) ([]field.Element, error) {
+func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runtime, r field.Element) ([]field.Element, error) {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each
@@ -386,7 +386,7 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run *wizard.Veri
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx evaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run *wizard.WizardVerifierCircuit, r frontend.Variable) []frontend.Variable {
+func (ctx evaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r frontend.Variable) []frontend.Variable {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each

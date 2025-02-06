@@ -20,7 +20,7 @@ type projectionVerifierAction struct {
 }
 
 // Run implements the [wizard.VerifierAction] interface.
-func (va *projectionVerifierAction) Run(run *wizard.VerifierRuntime) error {
+func (va *projectionVerifierAction) Run(run wizard.Runtime) error {
 
 	var (
 		a = run.GetLocalPointEvalParams(va.HornerA0.ID).Y
@@ -35,7 +35,7 @@ func (va *projectionVerifierAction) Run(run *wizard.VerifierRuntime) error {
 }
 
 // RunGnark implements the [wizard.VerifierAction] interface.
-func (va *projectionVerifierAction) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (va *projectionVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		a = run.GetLocalPointEvalParams(va.HornerA0.ID).Y

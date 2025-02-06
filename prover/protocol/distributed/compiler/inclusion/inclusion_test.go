@@ -1,16 +1,18 @@
 package inclusion_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	logderiv "github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
 	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/xcomp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
@@ -25,7 +27,7 @@ func TestSeedGeneration(t *testing.T) {
 	)
 
 	var (
-		allVerfiers = []*wizard.VerifierRuntime{}
+		allVerfiers = []wizard.Runtime{}
 	)
 	//initialComp
 	define := func(b *wizard.Builder) {
@@ -176,7 +178,20 @@ func TestSeedGeneration(t *testing.T) {
 	}
 
 	// apply the crosse checks over the public inputs.
-	xComp := xcomp.GetCrossComp(allVerfiers)
-	wizard.Verify(xComp, wizard.Proof{})
+	require.NoError(t, checkConsistency(allVerfiers))
+}
 
+func checkConsistency(runs []wizard.Runtime) error {
+
+	var res field.Element
+	for _, run := range runs {
+		logderiv := run.GetPublicInput(constants.LogDerivativeSumPublicInput)
+		res.Add(&res, &logderiv)
+	}
+
+	if !res.IsZero() {
+		return errors.New("the logderiv sums do not cancel each others")
+	}
+
+	return nil
 }

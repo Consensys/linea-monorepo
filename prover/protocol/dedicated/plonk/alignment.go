@@ -431,7 +431,7 @@ type checkActivatorAndMask struct {
 	skipped bool
 }
 
-func (c *checkActivatorAndMask) Run(run *wizard.VerifierRuntime) error {
+func (c *checkActivatorAndMask) Run(run wizard.Runtime) error {
 	for i := range c.circMaskOpenings {
 		var (
 			localOpening = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID)
@@ -450,7 +450,7 @@ func (c *checkActivatorAndMask) Run(run *wizard.VerifierRuntime) error {
 	return nil
 }
 
-func (c *checkActivatorAndMask) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (c *checkActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	for i := range c.circMaskOpenings {
 		var (
 			valOpened = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID).Y

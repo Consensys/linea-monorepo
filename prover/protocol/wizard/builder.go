@@ -315,4 +315,12 @@ func (comp *CompiledIOP) EqualizeRounds(numRounds int) {
 		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the verifier. %v", numRounds, comp.SubVerifiers.Len(), helpMsg)
 	}
 	comp.SubVerifiers.Reserve(numRounds)
+
+	/*
+		Check and reserve for the FiatShamirHooks
+	*/
+	if comp.FiatShamirHooks.Len() > numRounds {
+		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the FiatShamirHooks. %v", numRounds, comp.FiatShamirHooks.Len(), helpMsg)
+	}
+	comp.FiatShamirHooks.Reserve(numRounds)
 }

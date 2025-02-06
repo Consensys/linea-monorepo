@@ -20,24 +20,24 @@ type VerifierAction interface {
 	IsSkipped() bool
 	// Run executes the VerifierAction over a [VerifierRuntime] it returns an
 	// error.
-	Run(*VerifierRuntime) error
+	Run(Runtime) error
 	// RunGnark is as Run but in a gnark circuit. Instead, of the returning an
 	// error the function enforces the passing of the verifier's checks.
-	RunGnark(frontend.API, *WizardVerifierCircuit)
+	RunGnark(frontend.API, GnarkRuntime)
 }
 
 // genVerifierAction represents a verifier action represented by closures
 type genVerifierAction struct {
 	skipped  bool
-	run      func(*VerifierRuntime) error
-	runGnark func(frontend.API, *WizardVerifierCircuit)
+	run      func(Runtime) error
+	runGnark func(frontend.API, GnarkRuntime)
 }
 
-func (gva *genVerifierAction) Run(run *VerifierRuntime) error {
+func (gva *genVerifierAction) Run(run Runtime) error {
 	return gva.run(run)
 }
 
-func (gva *genVerifierAction) RunGnark(api frontend.API, run *WizardVerifierCircuit) {
+func (gva *genVerifierAction) RunGnark(api frontend.API, run GnarkRuntime) {
 	gva.runGnark(api, run)
 }
 

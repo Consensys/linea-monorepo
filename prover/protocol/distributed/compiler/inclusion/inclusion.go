@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -162,7 +163,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 	// declare [query.LogDerivSumParams] as [wizard.PublicInput]
 	moduleComp.PublicInputs = append(moduleComp.PublicInputs,
 		wizard.PublicInput{
-			Name: accessors.LOGDERIVSUM_ACCESSOR,
+			Name: constants.LogDerivativeSumPublicInput,
 			Acc:  accessors.NewLogDerivSumAccessor(logDerivQuery),
 		})
 

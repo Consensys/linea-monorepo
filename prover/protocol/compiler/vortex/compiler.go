@@ -119,12 +119,16 @@ type Ctx struct {
 	VortexParams       *vortex.Params
 	SisParams          *ringsis.Params
 	// Optional parameter
-	numOpenedCol int
+	NumOpenedCol int
 
 	// By rounds commitments : if a round is dried we make an empty sublist.
 	// Inversely, for the `driedByRounds` which track the dried commitments.
 	CommitmentsByRounds collection.VecVec[ifaces.ColID]
 	DriedByRounds       collection.VecVec[ifaces.ColID]
+
+	// RunStateNamePrefix is used to prefix some of the names of components of the
+	// compilation context. Mainly state objects.
+	RunStateNamePrefix string
 
 	// Items created by Vortex, includes the proof message and the coins
 	Items struct {
@@ -135,17 +139,13 @@ type Ctx struct {
 			PrecomputedColums []ifaces.Column
 			// Merkle Root of the precomputeds columns
 			MerkleRoot ifaces.Column
-			// List of the column hashes for the precomputed columns
-			Dh ifaces.Column
 			// Committed matrix (rs encoded) of the precomputed columns
 			CommittedMatrix vortex.EncodedMatrix
 			// Tree in case of Merkle mode
-			tree *smt.Tree
+			Tree *smt.Tree
 			// colHashes used in self recursion
 			DhWithMerkle []field.Element
 		}
-		// (not used in the Merkle proof version)
-		Dh []ifaces.Column
 		// Alpha is a random combination linear coin
 		Alpha coin.Info
 		// Linear combination of the row-encoded matrix
@@ -185,12 +185,10 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			Precomputeds struct {
 				PrecomputedColums []ifaces.Column
 				MerkleRoot        ifaces.Column
-				Dh                ifaces.Column
 				CommittedMatrix   vortex.EncodedMatrix
-				tree              *smt.Tree
+				Tree              *smt.Tree
 				DhWithMerkle      []field.Element
 			}
-			Dh            []ifaces.Column
 			Alpha         coin.Info
 			Ualpha        ifaces.Column
 			Q             coin.Info
@@ -437,8 +435,8 @@ func (ctx *Ctx) NbColsToOpen() int {
 
 	// If the context was created with the relevant option,
 	// we return the instructed value
-	if ctx.numOpenedCol > 0 {
-		return ctx.numOpenedCol
+	if ctx.NumOpenedCol > 0 {
+		return ctx.NumOpenedCol
 	}
 
 	if !utils.IsPowerOfTwo(ctx.BlowUpFactor) {
@@ -530,7 +528,9 @@ func (ctx *Ctx) NumEncodedCols() int {
 	return res
 }
 
-// Create a method to decide when to commit to the precomputed
+// IsCommitToPrecomputed returns true if the current compilation step
+// commits to the precomputed columns. This is detected by checking if
+// the number of precomputed columns is greater than the dry treshold.
 func (ctx *Ctx) IsCommitToPrecomputed() bool {
 	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.DryTreshold
 }
@@ -710,7 +710,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 	committedMatrix, tree, colHashes := ctx.VortexParams.CommitMerkle(pols)
 	ctx.Items.Precomputeds.DhWithMerkle = colHashes
 	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
-	ctx.Items.Precomputeds.tree = tree
+	ctx.Items.Precomputeds.Tree = tree
 
 	// And assign the 1-sized column to contain the root
 	var root field.Element

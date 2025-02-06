@@ -96,7 +96,7 @@ func (ctx *localOpeningCtx) prover(assi *wizard.ProverRuntime) {
 	assi.AssignUnivariate(ctx.fixedToVariable(), field.One(), ys...)
 }
 
-func (ctx localOpeningCtx) verifier(assi *wizard.VerifierRuntime) error {
+func (ctx localOpeningCtx) verifier(assi wizard.Runtime) error {
 	ys := []field.Element{}
 
 	// Collect the evaluation from the assigned compiled queries
@@ -131,7 +131,7 @@ func (ctx localOpeningCtx) verifier(assi *wizard.VerifierRuntime) error {
 	return nil
 }
 
-func (ctx localOpeningCtx) gnarkVerifier(api frontend.API, c *wizard.WizardVerifierCircuit) {
+func (ctx localOpeningCtx) gnarkVerifier(api frontend.API, c wizard.GnarkRuntime) {
 	ys := []frontend.Variable{}
 
 	// Collect the evaluation from the assigned compiled queries
