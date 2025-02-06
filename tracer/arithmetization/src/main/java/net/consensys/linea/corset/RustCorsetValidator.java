@@ -80,7 +80,7 @@ public class RustCorsetValidator extends AbstractExecutable {
   @Getter private boolean active = false;
 
   public RustCorsetValidator() {
-    initCorset();
+    // initCorset();
     configCorset();
   }
 

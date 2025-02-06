@@ -9,7 +9,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 jobs:
   tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
@@ -48,7 +48,7 @@ jobs:
              name: "Weekly (Go-Corset)"
              status: "${{ job.status }}"
 
-  go-corset-tests:
+  weekly-tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     continue-on-error: true
     steps:
@@ -67,8 +67,7 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -vw --ansi-escapes=false --report --air
-          ZKEVM_BIN: "zkevm.go.bin"
+          GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --air
 
       - name: Failure Notification
         if: ${{ failure() || cancelled() }}

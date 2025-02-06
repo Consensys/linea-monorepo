@@ -49,14 +49,17 @@ public class CallArgumentsMaybeRedundant {
     program
         .push(0) // return at capacity
         .push("ff".repeat(32)) // return at offset
-        .push(0) // call data size
-        .push(0) // call data offset
+        .push(0) // cds
+        .push(0) // cdo
         .push("ca11ee") // address
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
     BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
-    calleeProgram.op(OpCode.CALLDATASIZE);
+    calleeProgram.op(OpCode.RETURNDATASIZE).op(OpCode.CALLDATASIZE);
+    // .push(0x51) // size
+    // .push(0x0f) // offset
+    // .op(OpCode.RETURN);
 
     final ToyAccount calleeAccount =
         ToyAccount.builder()
@@ -74,16 +77,23 @@ public class CallArgumentsMaybeRedundant {
   void zeroCallDataSizeTest() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     program
-        .push(0) // return at capacity
-        .push(0) // return at offset
+        .push(0xff) // r@c
+        .push(0x7f) // r@o
         .push(0) // call data size
-        .push("ff".repeat(32)) // call data offset
+        .push("ff".repeat(32)) // enormous call data offset
         .push("ca11ee") // address
         .push(1000) // gas
-        .op(OpCode.STATICCALL);
+        .op(OpCode.STATICCALL)
+        .op(OpCode.RETURNDATASIZE)
+        .op(OpCode.CALLDATASIZE);
 
     BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
-    calleeProgram.op(OpCode.CALLDATASIZE);
+    calleeProgram
+        .op(OpCode.RETURNDATASIZE)
+        .op(OpCode.CALLDATASIZE)
+        .push(0x51) // size
+        .push(0x0f) // offset
+        .op(OpCode.RETURN);
 
     final ToyAccount calleeAccount =
         ToyAccount.builder()

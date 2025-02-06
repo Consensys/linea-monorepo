@@ -21,7 +21,7 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC
 import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
+import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
@@ -37,7 +37,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public class TxInitializationSection extends TraceSection implements PostTransactionDefer {
+public class TxInitializationSection extends TraceSection implements EndTransactionDefer {
 
   @Getter private final int hubStamp;
   final AccountFragment.AccountFragmentFactory accountFragmentFactory;
@@ -201,6 +201,12 @@ public class TxInitializationSection extends TraceSection implements PostTransac
           recipientValueReceptionNew.deepCopy().setDeploymentNumber(hub);
       recipientUndoingValueReceptionNew =
           recipientValueReception.deepCopy().setDeploymentNumber(hub).turnOnWarmth();
+
+      if (tx.getTo().isEmpty()) {
+        recipientUndoingValueReception
+            .deploymentStatus(true)
+            .code(recipientValueReceptionNew.code());
+      }
 
       final int revertStamp = hub.currentFrame().revertStamp();
 

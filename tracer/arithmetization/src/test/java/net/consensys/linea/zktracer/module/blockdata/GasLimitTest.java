@@ -85,9 +85,9 @@ public class GasLimitTest {
         List.of(
             0L,
             (long) ETHEREUM_GAS_LIMIT_MINIMUM,
-            (long) GAS_LIMIT_MINIMUM,
+            (long) LINEA_GAS_LIMIT_MINIMUM,
             100_000_000L,
-            (long) GAS_LIMIT_MAXIMUM,
+            (long) LINEA_GAS_LIMIT_MAXIMUM,
             Long.MAX_VALUE);
     for (Long gasLimit : gasLimits) {
       for (NextGasLimitScenario scenario : values()) {

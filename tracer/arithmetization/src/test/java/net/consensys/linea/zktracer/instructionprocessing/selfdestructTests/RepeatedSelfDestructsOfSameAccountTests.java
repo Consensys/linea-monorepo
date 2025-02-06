@@ -204,4 +204,26 @@ public class RepeatedSelfDestructsOfSameAccountTests {
 
     run(heir);
   }
+
+  @ParameterizedTest
+  @EnumSource(Heir.class)
+  public void basicSelfDestruct(Heir heir) {
+    selfDestructorAccount = basicSelfDestructor(heir);
+    buildToAccount();
+    Transaction transaction =
+        ToyTransaction.builder()
+            .keyPair(keyPair)
+            .sender(userAccount)
+            .to(selfDestructorAccount)
+            .transactionType(TransactionType.FRONTIER)
+            .gasLimit(500_000L)
+            .value(Wei.of(0xeeff))
+            .build();
+    ToyExecutionEnvironmentV2.builder()
+        .accounts(List.of(userAccount, toAccount, selfDestructorAccount))
+        .transaction(transaction)
+        .build()
+        .run();
+    run(heir);
+  }
 }

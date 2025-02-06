@@ -91,7 +91,7 @@ public class DomSubStampsSubFragment implements TraceSubFragment {
   public int domStamp() {
     switch (type) {
       case STANDARD -> {
-        return MULTIPLIER___DOM_SUB_STAMPS * hubStamp + this.domOffset;
+        return MULTIPLIER___DOM_SUB_STAMPS * hubStamp + domOffset;
       }
       case REVERTS_WITH_CURRENT -> {
         return MULTIPLIER___DOM_SUB_STAMPS * revertStamp + DOM_SUB_STAMP_OFFSET___REVERT;
@@ -110,10 +110,10 @@ public class DomSubStampsSubFragment implements TraceSubFragment {
   public int subStamp() {
     switch (type) {
       case STANDARD -> {
-        return this.subOffset;
+        return subOffset;
       }
       case REVERTS_WITH_CURRENT, REVERTS_WITH_CHILD, SELFDESTRUCT -> {
-        return MULTIPLIER___DOM_SUB_STAMPS * this.hubStamp + this.subOffset;
+        return MULTIPLIER___DOM_SUB_STAMPS * hubStamp + subOffset;
       }
       default -> throw new RuntimeException("DomSubType not supported");
     }

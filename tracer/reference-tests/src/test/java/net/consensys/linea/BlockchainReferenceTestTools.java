@@ -292,6 +292,59 @@ public class BlockchainReferenceTestTools {
     // module in existence
     PARAMS.ignore("CallContractFromNotBestBlock_London\\[London\\]");
     PARAMS.ignore("RPC_API_Test_London\\[London\\]");
+
+    // the following tests blow up due monetary creation pre PoS where the COINBASE would get paid 2
+    // Eth at the end of every block
+    // TODO: re-enable post Paris
+    PARAMS.ignore("correct_London\\[London\\]");
+    PARAMS.ignore("incorrectUncleTimestamp4_London\\[London\\]");
+    PARAMS.ignore("incorrectUncleTimestamp5_London\\[London\\]");
+    PARAMS.ignore("timestampTooHigh_London\\[London\\]");
+    PARAMS.ignore("timestampTooLow_London\\[London\\]");
+    PARAMS.ignore("futureUncleTimestamp3_London\\[London\\]");
+    PARAMS.ignore("wrongStateRoot_London\\[London\\]");
+    PARAMS.ignore("besuBaseFeeBug_London\\[London\\]");
+    PARAMS.ignore("burnVerifyLondon_London\\[London\\]");
+    PARAMS.ignore("highDemand_London\\[London\\]");
+    PARAMS.ignore("intrinsic_London\\[London\\]");
+    PARAMS.ignore("intrinsicTip_London\\[London\\]");
+    PARAMS.ignore("medDemand_London\\[London\\]");
+    PARAMS.ignore("tipsLondon_London\\[London\\]");
+    PARAMS.ignore("transType_London\\[London\\]");
+    PARAMS.ignore("highGasUsage_London\\[London\\]");
+    PARAMS.ignore("blockhashNonConstArg_London\\[London\\]");
+    PARAMS.ignore("blockhashTests_London\\[London\\]");
+    PARAMS.ignore("extcodehashEmptySuicide_London\\[London\\]");
+    PARAMS.ignore("logRevert_London\\[London\\]");
+    PARAMS.ignore("multimpleBalanceInstruction_London\\[London\\]"); // typo intended
+    PARAMS.ignore("refundReset_London\\[London\\]");
+    PARAMS.ignore("simpleSuicide_London\\[London\\]");
+    PARAMS.ignore("futureUncleTimestamp2_London\\[London\\]");
+    PARAMS.ignore("futureUncleTimestampDifficultyDrop_London\\[London\\]");
+    PARAMS.ignore("futureUncleTimestampDifficultyDrop2_London\\[London\\]");
+    PARAMS.ignore("futureUncleTimestampDifficultyDrop3_London\\[London\\]");
+    PARAMS.ignore("futureUncleTimestampDifficultyDrop4_London\\[London\\]");
+    PARAMS.ignore("uncleBloomNot0_2_London\\[London\\]");
+    PARAMS.ignore("uncleBloomNot0_London\\[London\\]");
+    PARAMS.ignore("oneUncle_London\\[London\\]");
+    PARAMS.ignore("oneUncleGeneration2_London\\[London\\]");
+    PARAMS.ignore("oneUncleGeneration3_London\\[London\\]");
+    PARAMS.ignore("oneUncleGeneration4_London\\[London\\]");
+    PARAMS.ignore("uncleBloomNot0_3_London\\[London\\]");
+    PARAMS.ignore("oneUncleGeneration5_London\\[London\\]");
+    PARAMS.ignore("oneUncleGeneration6_London\\[London\\]");
+    PARAMS.ignore("twoUncle_London\\[London\\]");
+    PARAMS.ignore("uncleHeaderAtBlock2_London\\[London\\]");
+    PARAMS.ignore("RecallSuicidedContract_London\\[London\\]");
+    PARAMS.ignore("RecallSuicidedContractInOneBlock_London\\[London\\]");
+    PARAMS.ignore("timeDiff12_London\\[London\\]");
+    PARAMS.ignore("timeDiff13_London\\[London\\]");
+    PARAMS.ignore("timeDiff14_London\\[London\\]");
+    PARAMS.ignore("wallet2outOf3txs_London\\[London\\]");
+    PARAMS.ignore("wallet2outOf3txs2_London\\[London\\]");
+    PARAMS.ignore("wallet2outOf3txsRevoke_London\\[London\\]");
+    PARAMS.ignore("wallet2outOf3txsRevokeAndConfirmAgain_London\\[London\\]");
+    PARAMS.ignore("walletReorganizeOwners_London\\[London\\]");
   }
 
   private BlockchainReferenceTestTools() {

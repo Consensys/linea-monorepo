@@ -106,6 +106,7 @@ tasks.register('referenceGeneralStateTests', Test) {
     // Record zkevm.bin for CorsetValidator
     environment.put("ZKEVM_BIN", System.getenv("ZKEVM_BIN") ?: "zkevm_for_reference_tests.bin")
     // Configure parallelism
+    environment.put("blockchain", System.getenv("blockchain") ?: "Ethereum")
     systemProperty("junit.jupiter.execution.timeout.default", "15 m")  // 5 minutes
     systemProperty("junit.jupiter.execution.parallel.enabled", "true")
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
