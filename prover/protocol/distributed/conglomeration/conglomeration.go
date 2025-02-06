@@ -42,6 +42,10 @@ type recursionCtx struct {
 // comp and a placeholder pointer for the recursion context. On return
 // of the function, the pointer points to an empty slice and is populated
 // once [wizard.Compile] has been called with def.
+//
+// To be conglomerable, `tmpl` must be compiled with the [vortex.Compile]
+// using the [vortex.PremarkAsSelfRecursed] option and without the
+// [vortex.ReplaceByMiMC].
 func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def func(*wizard.Builder), ctxsPlaceHolder *[]*recursionCtx) {
 
 	var ctxs []*recursionCtx
