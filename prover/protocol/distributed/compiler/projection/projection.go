@@ -180,8 +180,8 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 				filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
 				filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
 			)
-			hornerA := poly.CmptHorner(colA, filterA, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
-			hornerB := poly.CmptHorner(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
+			hornerA := poly.GetHornerTrace(colA, filterA, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
+			hornerB := poly.GetHornerTrace(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 			elemParam.Add(&elemParam, &hornerA[0])
@@ -192,7 +192,7 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 				colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
 				filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
 			)
-			hornerA := poly.CmptHorner(colA, filterA, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
+			hornerA := poly.GetHornerTrace(colA, filterA, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
 			elemParam = hornerA[0]
 		} else if !inp.IsAInModule && inp.IsBInModule {
 			var (
@@ -201,7 +201,7 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 				colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
 				filterB      = column.EvalExprColumn(run, filterBBorad).IntoRegVecSaveAlloc()
 			)
-			hornerB := poly.CmptHorner(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
+			hornerB := poly.GetHornerTrace(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 		} else {

@@ -92,15 +92,15 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 			elemParam    = field.One()
 		)
 		if inp.IsAInModule && !inp.IsBInModule {
-			hornerA := poly.CmptHorner(colA, filterA, evalRand)
+			hornerA := poly.GetHornerTrace(colA, filterA, evalRand)
 			elemParam = hornerA[0]
 		} else if !inp.IsAInModule && inp.IsBInModule {
-			hornerB := poly.CmptHorner(colB, filterB, evalRand)
+			hornerB := poly.GetHornerTrace(colB, filterB, evalRand)
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 		} else if inp.IsAInModule && inp.IsBInModule {
-			hornerA := poly.CmptHorner(colA, filterA, evalRand)
-			hornerB := poly.CmptHorner(colB, filterB, evalRand)
+			hornerA := poly.GetHornerTrace(colA, filterA, evalRand)
+			hornerB := poly.GetHornerTrace(colB, filterB, evalRand)
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 			elemParam.Add(&elemParam, &hornerA[0])
