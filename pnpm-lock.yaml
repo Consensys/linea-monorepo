@@ -274,8 +274,8 @@ importers:
         specifier: 29.7.0
         version: 29.7.0
       '@openzeppelin/upgrades-core':
-        specifier: 1.33.1
-        version: 1.33.1
+        specifier: 1.42.1
+        version: 1.42.1
       '@typechain/ethers-v6':
         specifier: 0.5.1
         version: 0.5.1(ethers@6.13.3(bufferutil@4.0.8)(utf-8-validate@5.0.10))(typechain@8.3.2(typescript@5.4.5))(typescript@5.4.5)
@@ -1229,6 +1229,9 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@bytecodealliance/preview2-shim@0.17.0':
+    resolution: {integrity: sha512-JorcEwe4ud0x5BS/Ar2aQWOQoFzjq/7jcnxYXCvSMh0oRm0dQXzOA+hqLDBnOMks1LLBA7dmiLLsEBl09Yd6iQ==}
 
   '@coinbase/wallet-sdk@3.9.3':
     resolution: {integrity: sha512-N/A2DRIf0Y3PHc1XAMvbBUu4zisna6qAdqABMZwBMNEfWrXpAwx16pZGkYCLGE+Rvv1edbcB2LYDRnACNcmCiw==}
@@ -2328,6 +2331,9 @@ packages:
     peerDependencies:
       hardhat: ^2.0.4
 
+  '@nomicfoundation/slang@0.18.3':
+    resolution: {integrity: sha512-YqAWgckqbHM0/CZxi9Nlf4hjk9wUNLC9ngWCWBiqMxPIZmzsVKYuChdlrfeBPQyvQQBoOhbx+7C1005kLVQDZQ==}
+
   '@nomicfoundation/solidity-analyzer-darwin-arm64@0.1.2':
     resolution: {integrity: sha512-JaqcWPDZENCvm++lFFGjrDd8mxtf+CtLd2MiXvMNTBD33dContTZ9TWETwNFwg7JTJT5Q9HEecH7FA+HTSsIUw==}
     engines: {node: '>= 12'}
@@ -2418,8 +2424,8 @@ packages:
       '@nomicfoundation/hardhat-verify':
         optional: true
 
-  '@openzeppelin/upgrades-core@1.33.1':
-    resolution: {integrity: sha512-YRxIRhTY1b+j7+NUUu8Uuem5ugxKexEMVd8dBRWNgWeoN1gS1OCrhgUg0ytL+54vzQ+SGWZDfNnzjVuI1Cj1Zw==}
+  '@openzeppelin/upgrades-core@1.42.1':
+    resolution: {integrity: sha512-8qnz2XfQrco8R8u9NjV+KiSLrVn7DnWFd+3BuhTUjhVy0bzCSu2SMKCVpZLtXbxf4f2dpz8jYPQYRa6s23PhLA==}
     hasBin: true
 
   '@parcel/watcher-android-arm64@2.4.1':
@@ -4144,13 +4150,13 @@ packages:
   caseless@0.12.0:
     resolution: {integrity: sha512-4tYFyifaFfGacoiObjJegolkwSU4xQNGbVgUiNYVUxbQ2x2lUsFvY4hVgVzGiIe6WLOPqycWXA40l+PWsxthUw==}
 
+  cbor@10.0.3:
+    resolution: {integrity: sha512-72Jnj81xMsqepqdcSdf2+fflz/UDsThOHy5hj2MW5F5xzHL8Oa0KQ6I6V9CwVUPxg5pf+W9xp6W2KilaRXWWtw==}
+    engines: {node: '>=18'}
+
   cbor@8.1.0:
     resolution: {integrity: sha512-DwGjNW9omn6EwP70aXsn7FQJx5kO12tX0bZkaTjzdVFM6/7nhA4t0EENocKGx6D2Bch9PE2KzCUf5SceBdeijg==}
     engines: {node: '>=12.19'}
-
-  cbor@9.0.2:
-    resolution: {integrity: sha512-JPypkxsB10s9QOWwa6zwPzqE1Md3vqpPc+cai4sAecuCsRyAtAl/pMyhPlMbT/xtPnm2dznJZYRLui57qiRhaQ==}
-    engines: {node: '>=16'}
 
   chai-as-promised@7.1.2:
     resolution: {integrity: sha512-aBDHZxRzYnUYuIAIPBH2s511DjlKPzXNlXSGFC8CwmroWQLfrW0LtE1nK3MAwwNhJPa9raEjNCmRoFpG0Hurdw==}
@@ -10765,6 +10771,8 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
+  '@bytecodealliance/preview2-shim@0.17.0': {}
+
   '@coinbase/wallet-sdk@3.9.3':
     dependencies:
       bn.js: 5.2.1
@@ -12172,6 +12180,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@nomicfoundation/slang@0.18.3':
+    dependencies:
+      '@bytecodealliance/preview2-shim': 0.17.0
+
   '@nomicfoundation/solidity-analyzer-darwin-arm64@0.1.2':
     optional: true
 
@@ -12317,7 +12329,7 @@ snapshots:
       '@openzeppelin/defender-base-client': 1.54.6(debug@4.3.7)(encoding@0.1.13)
       '@openzeppelin/defender-sdk-base-client': 1.15.0(encoding@0.1.13)
       '@openzeppelin/defender-sdk-deploy-client': 1.15.0(debug@4.3.7)(encoding@0.1.13)
-      '@openzeppelin/upgrades-core': 1.33.1
+      '@openzeppelin/upgrades-core': 1.42.1
       chalk: 4.1.2
       debug: 4.3.7(supports-color@8.1.1)
       ethereumjs-util: 7.1.5
@@ -12333,13 +12345,15 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@openzeppelin/upgrades-core@1.33.1':
+  '@openzeppelin/upgrades-core@1.42.1':
     dependencies:
-      cbor: 9.0.2
+      '@nomicfoundation/slang': 0.18.3
+      cbor: 10.0.3
       chalk: 4.1.2
       compare-versions: 6.1.1
       debug: 4.3.7(supports-color@8.1.1)
       ethereumjs-util: 7.1.5
+      minimatch: 9.0.5
       minimist: 1.2.8
       proper-lockfile: 4.1.2
       solidity-ast: 0.4.59
@@ -15105,11 +15119,11 @@ snapshots:
 
   caseless@0.12.0: {}
 
-  cbor@8.1.0:
+  cbor@10.0.3:
     dependencies:
       nofilter: 3.1.0
 
-  cbor@9.0.2:
+  cbor@8.1.0:
     dependencies:
       nofilter: 3.1.0
 
