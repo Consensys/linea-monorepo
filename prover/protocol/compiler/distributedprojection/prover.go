@@ -1,8 +1,6 @@
 package distributedprojection
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -10,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -19,8 +16,8 @@ import (
 
 type distribuedProjectionProverAction struct {
 	Name               ifaces.QueryID
-	FilterA, FilterB   []*symbolic.Expression
-	ColumnA, ColumnB   []*symbolic.Expression
+	FilterA, FilterB   []*sym.Expression
+	ColumnA, ColumnB   []*sym.Expression
 	HornerA, HornerB   []ifaces.Column
 	HornerA0, HornerB0 []query.LocalOpening
 	EvalCoin           []coin.Info
@@ -62,7 +59,7 @@ func (pa *distribuedProjectionProverAction) Run(run *wizard.ProverRuntime) {
 			run.AssignColumn(pa.HornerB[index].GetColID(), smartvectors.NewRegular(hornerB))
 			run.AssignLocalPoint(pa.HornerB0[index].ID, hornerB[0])
 		} else {
-			fmt.Errorf("Invalid prover assignment in distributed projection id: %v", pa.Name)
+			utils.Panic("Invalid prover assignment in distributed projection id: %v", pa.Name)
 		}
 	}
 
@@ -132,7 +129,7 @@ func (pa *distribuedProjectionProverAction) RegisterQueries(comp *wizard.Compile
 			)
 			pa.registerForCol(comp, fBShifted, colBShifted, input, "B", round, index)
 		} else {
-			fmt.Errorf("Invalid prover action case for the distributed projection query %v", pa.Name)
+			utils.Panic("Invalid prover action case for the distributed projection query %v", pa.Name)
 		}
 	}
 }
@@ -212,12 +209,12 @@ func (pa *distribuedProjectionProverAction) registerForCol(
 			pa.HornerB0[index] = comp.InsertLocalOpening(round, ifaces.QueryIDf("%v_HORNER_B0_%v", pa.Name, index), pa.HornerB[index])
 		}
 	default:
-		fmt.Errorf("Invalid column name %v, should be either A or B", colName)
+		utils.Panic("Invalid column name %v, should be either A or B", colName)
 	}
 
 }
 
-func shiftExpression(comp *wizard.CompiledIOP, expr *symbolic.Expression, nbShift int) *symbolic.Expression {
+func shiftExpression(comp *wizard.CompiledIOP, expr *sym.Expression, nbShift int) *sym.Expression {
 	var (
 		board          = expr.Board()
 		metadata       = board.ListVariableMetadata()
@@ -232,7 +229,7 @@ func shiftExpression(comp *wizard.CompiledIOP, expr *symbolic.Expression, nbShif
 			if !comp.Coins.Exists(t.Name) {
 				utils.Panic("Coin %v does not exist in the InitialComp", t.Name)
 			}
-			translationMap.InsertNew(t.String(), symbolic.NewVariable(t))
+			translationMap.InsertNew(t.String(), sym.NewVariable(t))
 		default:
 			utils.Panic("Unsupported type for shift expression operation")
 		}

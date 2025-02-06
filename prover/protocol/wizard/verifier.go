@@ -406,6 +406,11 @@ func (run *VerifierRuntime) GetGrandProductParams(name ifaces.QueryID) query.Gra
 	return run.QueriesParams.MustGet(name).(query.GrandProductParams)
 }
 
+// GetGrandProductParams returns the parameters of a [query.DistributedProjection]
+func (run *VerifierRuntime) GetDistributedProjectionParams(name ifaces.QueryID) query.DistributedProjectionParams {
+	return run.QueriesParams.MustGet(name).(query.DistributedProjectionParams)
+}
+
 /*
 CopyColumnInto implements `column.GetWitness`
 Copies the witness into a slice

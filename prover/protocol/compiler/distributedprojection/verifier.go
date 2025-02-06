@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type distributedProjectionVerifierAction struct {
@@ -36,13 +37,13 @@ func (va *distributedProjectionVerifierAction) Run(run *wizard.VerifierRuntime) 
 			elemParam = run.GetLocalPointEvalParams(va.HornerB0[index].ID).Y
 			elemParam.Neg(&elemParam)
 		} else {
-			fmt.Errorf("Unsupported verifier action registered for %v", va.Name)
+			utils.Panic("Unsupported verifier action registered for %v", va.Name)
 		}
 		actualParam.Add(&actualParam, &elemParam)
 	}
-	queryParam := run.GetParams(va.Name).(query.DistributedProjectionParams).HornerVal
+	queryParam := run.GetDistributedProjectionParams(va.Name).HornerVal
 	if actualParam != queryParam {
-		fmt.Errorf("The distributed projection query %v did not pass, query param %v and actual param %v", va.Name, queryParam, actualParam)
+		utils.Panic("The distributed projection query %v did not pass, query param %v and actual param %v", va.Name, queryParam, actualParam)
 	}
 	return nil
 }

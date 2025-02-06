@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Used for deriving names of queries and coins
@@ -73,13 +74,17 @@ func NewDistributeProjectionCtx(
 				bothAAndB = (disc.FindModule(q_.Inp.ColumnA[0]) == targetModuleName) && (disc.FindModule(q_.Inp.ColumnB[0]) == targetModuleName)
 			)
 			if bothAAndB {
+				check(q_.Inp.ColumnA, disc, targetModuleName)
+				check(q_.Inp.ColumnB, disc, targetModuleName)
 				p.push(moduleComp, q_, round, queryInRound, true, true)
 				initialComp.QueriesNoParams.MarkAsIgnored(qName)
 				// Todo: Add panic if other cols are from other modules
 			} else if onlyA {
+				check(q_.Inp.ColumnA, disc, targetModuleName)
 				p.push(moduleComp, q_, round, queryInRound, true, false)
 				initialComp.QueriesNoParams.MarkAsIgnored(qName)
 			} else if onlyB {
+				check(q_.Inp.ColumnB, disc, targetModuleName)
 				p.push(moduleComp, q_, round, queryInRound, false, true)
 				initialComp.QueriesNoParams.MarkAsIgnored(qName)
 			} else {
@@ -94,6 +99,18 @@ func NewDistributeProjectionCtx(
 	moduleComp.RegisterProverAction(p.LastRoundProjection+1, p)
 	return p
 
+}
+
+func check(cols []ifaces.Column,
+	disc distributed.ModuleDiscoverer,
+	targetModuleName namebaseddiscoverer.ModuleName,
+) error {
+	for _, col := range cols {
+		if disc.FindModule(col) != targetModuleName {
+			utils.Panic("unsupported projection query, colName: %v, target: %v", col.GetColID(), targetModuleName)
+		}
+	}
+	return nil
 }
 
 // push appends a new DistributedProjectionInput to the DistProjectionInput slice
