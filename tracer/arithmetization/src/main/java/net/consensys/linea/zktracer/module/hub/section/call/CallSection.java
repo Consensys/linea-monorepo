@@ -35,9 +35,9 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.ContextEntryDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ContextExitDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ContextReEntryDefer;
+import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostOpcodeDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
-import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
@@ -85,7 +85,7 @@ public class CallSection extends TraceSection
         ContextExitDefer,
         ContextReEntryDefer,
         PostRollbackDefer,
-        PostTransactionDefer {
+        EndTransactionDefer {
 
   private static final Map<Address, BiFunction<Hub, CallSection, PrecompileSubsection>>
       ADDRESS_TO_PRECOMPILE =
@@ -575,11 +575,11 @@ public class CallSection extends TraceSection
   private void completeEoaSuccessWillRevert(Hub hub) {
     scenarioFragment.setScenario(CALL_EOA_SUCCESS_WILL_REVERT);
 
-    callerSecond = reEntryCallerSnapshot.deepCopy().setDeploymentInfo(hub);
-    callerSecondNew = callerFirst.deepCopy().setDeploymentInfo(hub);
+    callerSecond = reEntryCallerSnapshot.deepCopy().setDeploymentNumber(hub);
+    callerSecondNew = callerFirst.deepCopy().setDeploymentNumber(hub);
 
-    calleeSecond = reEntryCalleeSnapshot.deepCopy().setDeploymentInfo(hub);
-    calleeSecondNew = calleeFirst.deepCopy().setDeploymentInfo(hub);
+    calleeSecond = reEntryCalleeSnapshot.deepCopy().setDeploymentNumber(hub);
+    calleeSecondNew = calleeFirst.deepCopy().setDeploymentNumber(hub);
 
     final AccountFragment undoingCallerAccountFragment =
         factory
@@ -605,8 +605,14 @@ public class CallSection extends TraceSection
   private void completeSmcFailureWillRevert(Hub hub) {
     scenarioFragment.setScenario(CALL_SMC_FAILURE_WILL_REVERT);
 
-    calleeThird = calleeSecondNew.deepCopy().setDeploymentNumber(hub);
-    calleeThirdNew = calleeFirst.deepCopy().setDeploymentNumber(hub);
+    if (isSelfCall()) {
+      calleeThird = callerSecondNew.deepCopy().setDeploymentNumber(hub);
+      calleeThirdNew = callerFirst.deepCopy().setDeploymentNumber(hub);
+    } else {
+      calleeThird = calleeSecondNew.deepCopy().setDeploymentNumber(hub);
+      calleeThirdNew = calleeFirst.deepCopy().setDeploymentNumber(hub);
+    }
+
     // this (should) work for both self calls and foreign address calls
     final AccountFragment undoingCalleeWarmthAccountFragment =
         factory
@@ -630,11 +636,11 @@ public class CallSection extends TraceSection
       scenarioFragment.setScenario(CALL_PRC_SUCCESS_WILL_REVERT);
     }
 
-    callerSecond = callerFirstNew.deepCopy().setDeploymentInfo(hub);
-    callerSecondNew = callerFirst.deepCopy().setDeploymentInfo(hub);
+    callerSecond = callerFirstNew.deepCopy().setDeploymentNumber(hub);
+    callerSecondNew = callerFirst.deepCopy().setDeploymentNumber(hub);
 
-    calleeSecond = calleeFirstNew.deepCopy().setDeploymentInfo(hub);
-    calleeSecondNew = calleeFirst.deepCopy().setDeploymentInfo(hub);
+    calleeSecond = calleeFirstNew.deepCopy().setDeploymentNumber(hub);
+    calleeSecondNew = calleeFirst.deepCopy().setDeploymentNumber(hub);
 
     final AccountFragment undoingCallerAccountFragment =
         factory

@@ -127,7 +127,7 @@ public class TraceSection {
     commonValues.codeFragmentIndex(
         currentPhase == TX_EXEC
             ? hub()
-                .getCfiByMetaData(
+                .getCodeFragmentIndexByMetaData(
                     commonValues.callFrame().byteCodeAddress(),
                     commonValues.callFrame().byteCodeDeploymentNumber(),
                     commonValues.callFrame().isDeployment())

@@ -58,7 +58,7 @@ public class CreateSection extends TraceSection
         ContextEntryDefer,
         PostRollbackDefer,
         ContextReEntryDefer,
-        PostTransactionDefer {
+        EndTransactionDefer {
 
   private final Address creatorAddress;
   private final Address createeAddress;

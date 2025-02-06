@@ -116,7 +116,7 @@ public final class BytecodeRunner {
         ToyTransaction.builder()
             .sender(senderAccount)
             .to(receiverAccount)
-            .value(Wei.of(69))
+            .value(Wei.of(272)) // 256 + 16, easier for debugging
             .keyPair(keyPair)
             .gasLimit(selectedGasLimit)
             .gasPrice(Wei.of(8))

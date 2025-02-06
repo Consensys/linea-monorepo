@@ -156,17 +156,10 @@ public class AccountSnapshot {
         address, nonce, balance, isWarm, code, deploymentNumber, deploymentStatus);
   }
 
-  public AccountSnapshot wipe(DeploymentInfo deploymentInfo) {
+  public void wipe(DeploymentInfo deploymentInfo) {
     final boolean deploymentStatus = deploymentInfo.getDeploymentStatus(address);
     checkArgument(!deploymentStatus);
-    return new AccountSnapshot(
-        address,
-        0,
-        Wei.of(0),
-        isWarm,
-        Bytecode.EMPTY,
-        deploymentInfo.deploymentNumber(address),
-        deploymentStatus);
+    this.nonce(0).balance(Wei.ZERO).code(Bytecode.EMPTY).setDeploymentInfo(deploymentInfo);
   }
 
   /**

@@ -8,54 +8,9 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 jobs:
   ethereum-tests:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Setup Test Environment
-        uses: ./.github/actions/setup-environment
-        with:
-          rust-corset: true
-
-      - name: Generate General State Reference Tests
-        run:  ./gradlew generateGeneralStateReferenceTests -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
-        env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: fields,expand,expand,expand
-
-      - name: Run General State Reference Tests
-        run: ./gradlew -Dblockchain=Ethereum referenceGeneralStateTests
-        env:
-          REFERENCE_TESTS_PARALLELISM: 10
-          JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: fields,expand,expand,expand
-
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ethereum-tests-report
-          path: |
-            reference-tests/build/reports/tests/**/*
-            tmp/local/*
-
-      - name: Failure Notification
-        if: ${{ failure() || cancelled() }}
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: webhook-trigger
-          payload: |
-             name: "Daily State Tests (Rust Corset)"
-             status: "${{ job.status }}"
-
-  ethereum-tests-go-corset:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
@@ -72,21 +27,19 @@ jobs:
         run: ./gradlew generateGeneralStateReferenceTests -Dorg.gradle.caching=true
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          ZKEVM_BIN: "zkevm_for_reference_tests.go.bin"
 
       - name: Run General State Reference Tests
         run: GOMEMLIMIT=64GiB ./gradlew -Dblockchain=Ethereum referenceGeneralStateTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -vw --ansi-escapes=false --report --air
-          ZKEVM_BIN: "zkevm_for_reference_tests.go.bin"
+          GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --air
 
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ethereum-tests-go-corset-report
+          name: ethereum-tests-report
           path: |
             reference-tests/build/reports/tests/**/*
             tmp/local/*

@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.types;
 
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
+import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -175,14 +176,16 @@ public class TransactionProcessingMetadata {
   }
 
   public void completeLineaTransaction(
-      Hub hub, final boolean statusCode, final List<Log> logs, final Set<Address> selfDestructs) {
+      Hub hub,
+      WorldView world,
+      final boolean statusCode,
+      final List<Log> logs,
+      final Set<Address> selfDestructs) {
     this.statusCode = statusCode;
     hubStampTransactionEnd = hub.stamp();
     this.logs = logs;
     for (Address address : selfDestructs) {
-      destructedAccountsSnapshot.add(
-          AccountSnapshot.fromAddress(
-              address, true, hub.deploymentNumberOf(address), hub.deploymentStatusOf(address)));
+      destructedAccountsSnapshot.add(AccountSnapshot.canonical(hub, world, address));
     }
 
     determineSelfDestructTimeStamp();
@@ -327,5 +330,24 @@ public class TransactionProcessingMetadata {
 
   public Bytes getTransactionCallData() {
     return besuTransaction.getData().orElse(Bytes.EMPTY);
+  }
+
+  public boolean coinbaseWarmthAfterTxInit(Hub hub) {
+    final Address coinbaseAddress = hub.coinbaseAddress;
+    final boolean coinbaseIsInAccessList =
+        this.getBesuTransaction()
+            .getAccessList()
+            .map(
+                accessList ->
+                    accessList.stream().anyMatch(entry -> entry.address().equals(coinbaseAddress)))
+            .orElse(false);
+    final boolean coinbaseIsPrecompile = isPrecompile(coinbaseAddress);
+    final boolean coinbaseIsSender = this.getSender().equals(coinbaseAddress);
+    final boolean coinbaseIsRecipient = this.getEffectiveRecipient().equals(coinbaseAddress);
+
+    return coinbaseIsInAccessList
+        || coinbaseIsPrecompile
+        || coinbaseIsSender
+        || coinbaseIsRecipient;
   }
 }

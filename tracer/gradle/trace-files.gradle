@@ -148,12 +148,15 @@ tasks.register('buildTracer') {
 
     def chain = System.getProperty('blockchain')
     // Conditional dependsOn
-    if(chain == null || chain == "Linea") {
-        print("Building for Linea...\n")
+    if (chain == null) {
+        print("No chain provided, building for Linea\n")
         dependsOn 'blockdataLinea'
-    } else if(chain == "Ethereum") {
+    } else if (chain == "Linea") {
+        print("Building for Linea\n")
+        dependsOn 'blockdataLinea'
+    } else if (chain == "Ethereum") {
         dependsOn 'blockdataEthereum'
-        print("Building for Ethereum...\n")
+        print("Building for Ethereum\n")
     } else {
         // Force build failure if unknown chain.
         println("*** unknown target chain.  Try '-Dblockchain=Linea' or '-Dblockchain=Ethereum'\n\n")

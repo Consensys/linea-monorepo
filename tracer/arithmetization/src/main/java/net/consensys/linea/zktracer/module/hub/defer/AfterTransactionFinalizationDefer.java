@@ -12,24 +12,18 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
 package net.consensys.linea.zktracer.module.hub.defer;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
-import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
- * A TransactionDefer represents an object, whose execution will be deferred until after the current
- * transaction has been executed.
+ * Actions which get deferred to {@link AfterTransactionFinalizationDefer} are those actions that
+ * should be performed after the TX_FINL phase of transaction processing. These include
+ *
+ * <p>- the account wiping of successful <b>SELFDESTRUCT</b>'s
  */
-public interface PostTransactionDefer {
-  /**
-   * This method will be triggered as soon as the current transaction has finished its execution.
-   *
-   * @param hub the {@link Hub} in which the {@link Transaction} took place
-   * @param state a view onto the current blockchain state
-   * @param tx the {@link Transaction} that just executed
-   */
-  void resolveAtEndTransaction(Hub hub, WorldView state, Transaction tx, boolean isSuccessful);
+public interface AfterTransactionFinalizationDefer {
+
+  void resolveAfterTransactionFinalization(Hub hub, WorldView view);
 }

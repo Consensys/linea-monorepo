@@ -55,50 +55,7 @@ jobs:
   # ==================================================================
   # Unit Tests
   # ==================================================================
-  corset-unit-tests:
-    needs: [ build ]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          submodules: false
-
-      - name: Setup Test Environment
-        uses: ./.github/actions/setup-environment
-        with:
-          enable-ssh: ${{ inputs.tests-with-ssh }}
-          rust-corset: true
-
-      - name: Run unit tests
-        run: ./gradlew :arithmetization:test --stacktrace
-        env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: trace-span=3,fields,expand,expand,expand
-          UNIT_TESTS_PARALLELISM: 2
-
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: corset-unit-test-report
-          path: arithmetization/build/reports/tests/**/*
-
-      - name: Upload jacoco test coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-unit-tests-coverage-report
-          path: arithmetization/build/reports/jacoco/test/**/*
-
-      - name: Upload jacoco exec test
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-unit-tests-exec-file
-          path: arithmetization/build/jacoco/test.exec
-
-  go-corset-unit-tests:
+  unit-tests:
     needs: [ build ]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     continue-on-error: true
@@ -121,48 +78,18 @@ jobs:
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -b1024 -vw --ansi-escapes=false --report --air
           UNIT_TESTS_PARALLELISM: 1
-          ZKEVM_BIN: "zkevm.go.bin"
 
       - name: Upload test report
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: go-corset-unit-tests-report
+          name: unit-tests-report
           path: arithmetization/build/reports/tests/**/*
 
   # ==================================================================
   # Fast Replay Tests
   # ==================================================================
-  corset-replay-tests:
-    needs: [ build ]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          submodules: false
-
-      - name: Setup Environment
-        uses: ./.github/actions/setup-environment
-        with:
-          enable-ssh: ${{ inputs.tests-with-ssh }}
-          rust-corset: true
-
-      - name: Run Replay tests
-        run: ./gradlew :arithmetization:fastReplayTests --stacktrace
-        env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
-          CORSET_FLAGS: trace-span=3,fields,expand,expand,expand
-          REPLAY_TESTS_PARALLELISM: 2
-
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: replay-test-report
-          path: arithmetization/build/reports/tests/**/*
-
-  go-corset-replay-tests:
+  replay-tests:
     needs: [ build ]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     continue-on-error: true
@@ -184,11 +111,10 @@ jobs:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -b1024 -vw --ansi-escapes=false --report --air
-          ZKEVM_BIN: "zkevm.go.bin"
 
       - name: Upload test report
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: go-corset-replay-tests-report
+          name: replay-tests-report
           path: arithmetization/build/reports/tests/**/*

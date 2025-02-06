@@ -41,7 +41,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.State;
 import net.consensys.linea.zktracer.module.hub.Trace;
-import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
+import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.*;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
@@ -68,7 +68,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @Setter
 @Getter
 @Accessors(fluent = true)
-public class MmuCall implements TraceSubFragment, PostTransactionDefer {
+public class MmuCall implements TraceSubFragment, EndTransactionDefer {
   protected boolean traceMe = true;
 
   protected int instruction = 0;

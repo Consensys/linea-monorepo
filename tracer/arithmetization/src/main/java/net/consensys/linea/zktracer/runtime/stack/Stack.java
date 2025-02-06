@@ -153,17 +153,18 @@ public class Stack {
 
   private void swap(MessageFrame frame, StackContext pending) {
     int depth = currentOpcodeData.stackSettings().delta() - 1;
-    Bytes val1 = getStack(frame, 0);
-    Bytes val2 = getStack(frame, depth);
+    Bytes topValue = getStack(frame, 0);
+    Bytes botValue = getStack(frame, depth);
 
     pending.addLine(
         new IndexedStackOperation(
-            1, StackItem.pop((short) (height - depth), val1, stackStampWithOffset(0))),
-        new IndexedStackOperation(2, StackItem.pop(height, val2, stackStampWithOffset(1))),
+            1, StackItem.pop((short) (height - depth), botValue, stackStampWithOffset(0))),
+        new IndexedStackOperation(2, StackItem.pop(height, topValue, stackStampWithOffset(1))),
         new IndexedStackOperation(
-            3, StackItem.pushImmediate((short) (height - depth), val2, stackStampWithOffset(2))),
+            3,
+            StackItem.pushImmediate((short) (height - depth), topValue, stackStampWithOffset(2))),
         new IndexedStackOperation(
-            4, StackItem.pushImmediate(height, val1, stackStampWithOffset(3))));
+            4, StackItem.pushImmediate(height, botValue, stackStampWithOffset(3))));
   }
 
   private void log(MessageFrame frame, StackContext pending) {

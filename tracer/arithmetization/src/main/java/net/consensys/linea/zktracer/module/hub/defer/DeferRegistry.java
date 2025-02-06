@@ -34,7 +34,8 @@ public class DeferRegistry
         ContextEntryDefer,
         ContextExitDefer,
         PostRollbackDefer,
-        PostTransactionDefer,
+        EndTransactionDefer,
+        AfterTransactionFinalizationDefer,
         PostConflationDefer {
 
   /** A list of actions deferred until the end of the current opcode execution */
@@ -50,7 +51,11 @@ public class DeferRegistry
   private final Map<CallFrame, List<ContextReEntryDefer>> contextReEntryDefers = new HashMap<>();
 
   /** A list of actions deferred to the end of the current transaction */
-  private final List<PostTransactionDefer> postTransactionDefers = new ArrayList<>();
+  private final List<EndTransactionDefer> endTransactionDefers = new ArrayList<>();
+
+  /** A list of actions deferred to after the TX_FINL phase of the current transaction */
+  private final List<AfterTransactionFinalizationDefer> afterTransactionFinalizationDefers =
+      new ArrayList<>();
 
   /** A list of actions deferred until the end of the current conflation execution */
   private final List<PostConflationDefer> postConflationDefers = new ArrayList<>();
@@ -81,8 +86,13 @@ public class DeferRegistry
   }
 
   /** Schedule an action to be executed at the end of the current transaction. */
-  public void scheduleForEndTransaction(PostTransactionDefer defer) {
-    postTransactionDefers.add(defer);
+  public void scheduleForEndTransaction(EndTransactionDefer defer) {
+    endTransactionDefers.add(defer);
+  }
+
+  /** Schedule an action to be executed after TX_FINL. */
+  public void scheduleForAfterTransactionFinalization(AfterTransactionFinalizationDefer defer) {
+    afterTransactionFinalizationDefers.add(defer);
   }
 
   /** Schedule an action to be executed at the end of the current transaction. */
@@ -119,16 +129,23 @@ public class DeferRegistry
   @Override
   public void resolveAtEndTransaction(
       Hub hub, WorldView world, Transaction tx, boolean isSuccessful) {
-    final List<PostTransactionDefer> postTransactionDefersFirstRound =
-        new ArrayList<>(postTransactionDefers);
-    postTransactionDefers.clear();
-    for (PostTransactionDefer defer : postTransactionDefersFirstRound) {
+    final List<EndTransactionDefer> endTransactionDefersFirstRound =
+        new ArrayList<>(endTransactionDefers);
+    endTransactionDefers.clear();
+    for (EndTransactionDefer defer : endTransactionDefersFirstRound) {
       defer.resolveAtEndTransaction(hub, world, tx, isSuccessful);
     }
-    for (PostTransactionDefer defer : postTransactionDefers) {
+    for (EndTransactionDefer defer : endTransactionDefers) {
       defer.resolveAtEndTransaction(hub, world, tx, isSuccessful);
     }
-    postTransactionDefers.clear();
+    endTransactionDefers.clear();
+  }
+
+  public void resolveAfterTransactionFinalization(Hub hub, WorldView worldView) {
+    for (AfterTransactionFinalizationDefer defer : afterTransactionFinalizationDefers) {
+      defer.resolveAfterTransactionFinalization(hub, worldView);
+    }
+    afterTransactionFinalizationDefers.clear();
   }
 
   /**
@@ -225,7 +242,7 @@ public class DeferRegistry
     contextReEntryDefers.get(callFrame).remove(defer);
   }
 
-  public void unscheduleForPostTransaction(PostTransactionDefer defer) {
-    postTransactionDefers.remove(defer);
+  public void unscheduleForPostTransaction(EndTransactionDefer defer) {
+    endTransactionDefers.remove(defer);
   }
 }

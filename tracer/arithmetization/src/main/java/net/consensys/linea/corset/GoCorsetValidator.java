@@ -95,7 +95,8 @@ public class GoCorsetValidator extends AbstractExecutable {
   private List<String> buildCommandLine(Path traceFile, String zkEvmBin) {
     ArrayList<String> options = new ArrayList<>();
     // Determine options to use (either default or override)
-    String flags = System.getenv().getOrDefault("GOCORSET_FLAGS", "-w --air");
+    String flags =
+        System.getenv().getOrDefault("GOCORSET_FLAGS", "-w --report --report-context 2 --hir ");
     // Specify corset binary
     options.add("go-corset");
     // Specify corset "check" command.

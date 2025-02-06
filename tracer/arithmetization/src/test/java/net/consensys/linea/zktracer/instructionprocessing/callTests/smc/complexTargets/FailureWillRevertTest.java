@@ -21,17 +21,19 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-/**
- * The following uses a smart contract that calls itself but stops after one iteration. At which
- * point it reverts and its caller reverts, too.
- */
 @ExtendWith(UnitTestWatcher.class)
 public class FailureWillRevertTest {
 
+  /**
+   * The following uses a smart contract that calls itself but stops after one iteration. At which
+   * point it reverts and its caller reverts, too. The test modifies storage of the underlying
+   * account at both depths. These changes thus get reverted.
+   */
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
@@ -53,12 +55,42 @@ public class FailureWillRevertTest {
     appendRevert(program, 13, 9); // + 5
     // top is zero execution path
     prepareLanding(program);
-    selfCall(program, callOpCode, 0xffff, 0x01);
+    selfCall(program, callOpCode, 0xffff, 0x10);
     appendRevert(program, 31, 7);
 
     BytecodeRunner.of(program).run();
   }
 
+  @Test
+  public void banalAdditionTest() {
+
+    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    sloadFrom(program, 0x00); // puts 0 on stack
+    addX(program, 0x01);
+    sstoreAt(program, 0x00);
+    sloadFrom(program, 0x00); // puts 1 on stack
+    addX(program, 0x01);
+    sstoreAt(program, 0x00);
+    appendRevert(program, 31, 7);
+
+    BytecodeRunner.of(program).run();
+  }
+
+  /**
+   * This test was written in the debugging of stack-consistency. It showed us that the "top" and
+   * "bottom" elements involved in a <b>SWAPX</b> operation were mixed up in the implementation (of
+   * the swap stack pattern.)
+   */
+  @Test
+  public void banalSwapTest() {
+
+    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    program.push(1).push(2).op(SWAP1).push(3).op(SWAP1);
+
+    BytecodeRunner.of(program).run();
+  }
+
+  /** Similar to {@link #singleSelfCallFailureWillRevertTest(OpCode)} but with two self calls. */
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
