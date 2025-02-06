@@ -82,17 +82,6 @@ const config: HardhatUserConfig = {
           evmVersion: "cancun",
         },
       },
-      {
-        version: "0.8.19",
-        settings: {
-          viaIR: useViaIR,
-          optimizer: {
-            enabled: true,
-            runs: 10_000,
-          },
-          evmVersion: "london",
-        },
-      },
     ],
   },
   namedAccounts: {
