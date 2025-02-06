@@ -46,6 +46,7 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
     __AccessControl_init();
     __RateLimiter_init(_rateLimitPeriod, _rateLimitAmount);
 
+    __ReentrancyGuard_init();
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
     if (_defaultAdmin == address(0)) {
