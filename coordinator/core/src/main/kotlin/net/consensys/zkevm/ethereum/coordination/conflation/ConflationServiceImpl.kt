@@ -33,9 +33,14 @@ class ConflationServiceImpl(
   internal val blocksToConflate = PriorityBlockingQueue<PayloadAndBlockCounters>()
 
   private val blocksCounter = metricsFacade.createCounter(
-    LineaMetricsCategory.CONFLATION,
-    "blocks.imported",
-    "New blocks arriving to conflation service counter"
+    category = LineaMetricsCategory.CONFLATION,
+    name = "blocks.imported",
+    description = "New blocks arriving to conflation service counter"
+  )
+  private val batchSizeInBlocksHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.CONFLATION,
+    name = "blocks.size",
+    description = "Number of blocks in each conflated batch"
   )
 
   init {
@@ -63,6 +68,8 @@ class ConflationServiceImpl(
       conflation.tracesCounters,
       conflation.blocksRange.joinToString(",", "[", "]") { it.toString() }
     )
+    batchSizeInBlocksHistogram.record(conflation.blocksRange.count().toDouble())
+
     val blocksToConflate =
       blocksInProgress
         .filter { it.number in conflation.blocksRange }
