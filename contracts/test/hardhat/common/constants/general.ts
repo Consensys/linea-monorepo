@@ -1,3 +1,4 @@
+import { generateKeccak256 } from "../helpers/hashing";
 import { ethers } from "hardhat";
 
 export const MAX_UINT32 = BigInt(2 ** 32 - 1);
@@ -12,3 +13,10 @@ export const LINEA_ROLLUP_INITIALIZE_SIGNATURE =
 export const BLS_CURVE_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513n;
 
 export const BLOCK_COINBASE = "0xc014ba5ec014ba5ec014ba5ec014ba5ec014ba5e";
+
+export const GENESIS_STATEROOT_HASH = "0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd";
+
+export const GENESIS_SHNARF = generateKeccak256(
+  ["bytes32", "bytes32", "uint256", "bytes32", "bytes32"],
+  [HASH_ZERO, HASH_ZERO, GENESIS_STATEROOT_HASH, HASH_ZERO, HASH_ZERO],
+);

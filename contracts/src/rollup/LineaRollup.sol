@@ -183,8 +183,12 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     super.renounceRole(_role, _account);
   }
 
-  function triggerSoundnessAlert(SoundessFinalizationData memory _finalizationData, uint256 _proofType) external {
+  function triggerSoundnessAlert(SoundessFinalizationData memory _finalizationData) external {
     address verifierAddressForProofType = verifiers[_finalizationData.proofType];
+
+    if (verifierAddressForProofType == address(0)) {
+      revert InvalidProofType();
+    }
 
     // Verify we are not already alerted.
     if (verifierAddressForProofType == TRIGGERED_SOUNDNESS_ALERT_ADDRESS) {
@@ -272,7 +276,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     /// @dev Due to lack of reverts and 2 proofs passing, we should remove the verifier and soundness alert is triggered.
     verifiers[_finalizationData.proofType] = TRIGGERED_SOUNDNESS_ALERT_ADDRESS;
 
-    emit SoundessAlertTriggered(verifierAddressForProofType, _proofType);
+    emit SoundessAlertTriggered(verifierAddressForProofType, _finalizationData.proofType);
   }
 
   function _switchToAlternateFinalizationData(

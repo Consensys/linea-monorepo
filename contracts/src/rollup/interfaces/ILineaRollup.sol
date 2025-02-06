@@ -408,5 +408,5 @@ interface ILineaRollup {
   ) external;
 
   /// TODO NATSPEC
-  function triggerSoundnessAlert(SoundessFinalizationData memory _finalizationData, uint256 _proofType) external;
+  function triggerSoundnessAlert(SoundessFinalizationData memory _finalizationData) external;
 }

@@ -8,6 +8,7 @@ import { CallForwardingProxy, TestLineaRollup } from "../../../typechain-types";
 import calldataAggregatedProof1To155 from "../_testData/compressedData/aggregatedProof-1-155.json";
 import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import blobMultipleAggregatedProof1To81 from "../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
+import blobAggregatedProof1To46 from "../_testData/compressedDataEip4844/aggregatedProof-1-46.json";
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
 import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
@@ -36,6 +37,7 @@ import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   SIX_MONTHS_IN_SECONDS,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+  GENESIS_SHNARF,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
@@ -59,7 +61,14 @@ import {
   expectEventDirectFromReceiptData,
   generateBlobDataSubmissionFromFile,
 } from "../common/helpers";
-import { CalldataSubmissionData, ShnarfDataGenerator } from "../common/types";
+import {
+  AlternateFinalizationData,
+  CalldataSubmissionData,
+  FinalizationData,
+  InitialSoundnessState,
+  ShnarfDataGenerator,
+  SoundessFinalizationData,
+} from "../common/types";
 import aggregatedProof1To81 from "../_testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
 import aggregatedProof82To153 from "../_testData/compressedData/multipleProofs/aggregatedProof-82-153.json";
 import * as kzg from "c-kzg";
@@ -70,6 +79,7 @@ import {
 } from "contracts/common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import * as fs from "fs";
+import { TRIGGERED_SOUNDNESS_ALERT_ADDRESS } from "../common/constants/soundnessAlert";
 
 kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
 
@@ -2156,7 +2166,7 @@ describe("Linea Rollup contract", () => {
     });
   });
 
-  describe("fallback operator Role", () => {
+  describe("Fallback operator Role", () => {
     const expectedLastFinalizedState = calculateLastFinalizedState(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
 
     it("Should revert if trying to set fallback operator role before six months have passed", async () => {
@@ -2290,6 +2300,140 @@ describe("Linea Rollup contract", () => {
         lineaRollup,
       );
     });
+  });
+
+  describe("Triggering the soundness alert", () => {
+    let finalizationData: FinalizationData;
+    let initialSoundnessStateHash: string;
+    let initialSoundnessState: InitialSoundnessState;
+    let soundessFinalizationData: SoundessFinalizationData;
+    let alternateFinalizationData: AlternateFinalizationData;
+
+    const proofType = 0;
+
+    beforeEach(async () => {
+      // We send the blobs in order to test allowed finalization success and then failed finalization
+      // Submit 2 blobs
+      await sendBlobTransaction(0, 2);
+      // Submit another 2 blobs
+      await sendBlobTransaction(2, 4);
+
+      finalizationData = await generateFinalizationData({
+        l1RollingHash: blobAggregatedProof1To46.l1RollingHash,
+        l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To46.l1RollingHashMessageNumber),
+        lastFinalizedTimestamp: BigInt(blobAggregatedProof1To46.parentAggregationLastBlockTimestamp),
+        endBlockNumber: BigInt(blobAggregatedProof1To46.finalBlockNumber),
+        parentStateRootHash: blobAggregatedProof1To46.parentStateRootHash,
+        finalTimestamp: BigInt(blobAggregatedProof1To46.finalTimestamp),
+        l2MerkleRoots: blobAggregatedProof1To46.l2MerkleRoots,
+        l2MerkleTreesDepth: BigInt(blobAggregatedProof1To46.l2MerkleTreesDepth),
+        l2MessagingBlocksOffsets: blobAggregatedProof1To46.l2MessagingBlocksOffsets,
+        aggregatedProof: blobAggregatedProof1To46.aggregatedProof,
+        shnarfData: generateBlobParentShnarfData(1, false),
+      });
+
+      initialSoundnessState = {
+        shnarf: GENESIS_SHNARF, // setting this to get blob 3 passing
+        blockNumber: 0n,
+        timestamp: BigInt(DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        l1RollingHash: HASH_ZERO,
+        l1RollingHashMessageNumber: 0n,
+      };
+
+      await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV7(initialSoundnessState);
+
+      initialSoundnessStateHash = generateKeccak256(
+        ["bytes32", "uint256", "uint256", "bytes32", "uint256"],
+        [finalizationData.shnarfData.parentShnarf, 0n, DEFAULT_LAST_FINALIZED_TIMESTAMP, HASH_ZERO, 0n],
+      );
+
+      alternateFinalizationData = {
+        finalTimestamp: BigInt(blobAggregatedProof1To46.finalTimestamp),
+        endBlockNumber: BigInt(blobAggregatedProof1To46.finalBlockNumber),
+        l1RollingHash: blobAggregatedProof1To46.l1RollingHash,
+        l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To46.l1RollingHashMessageNumber),
+        l2MerkleTreesDepth: BigInt(blobAggregatedProof1To46.l2MerkleTreesDepth),
+        snarkHash: finalizationData.shnarfData.snarkHash,
+        finalStateRootHash: finalizationData.shnarfData.finalStateRootHash,
+        l2MerkleRoots: blobAggregatedProof1To46.l2MerkleRoots,
+        proof: blobAggregatedProof1To46.aggregatedProof,
+      };
+
+      soundessFinalizationData = {
+        finalizationData: finalizationData,
+        alternateFinalizationData: alternateFinalizationData,
+        firstProof: blobAggregatedProof1To46.aggregatedProof,
+        proofType: BigInt(proofType),
+        initialBlockNumber: BigInt(0),
+      };
+    });
+
+    // TODO This test may be redundant as it would fail anyway, but an early fail is good.
+    it("Should fail with InvalidProofType if the alert has already been triggered", async () => {
+      soundessFinalizationData.proofType = 99n; // any non-zero number
+      const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "InvalidProofType");
+    });
+
+    it("Should fail with SoundnessAlertAlreadyTriggered if the alert has already been triggered", async () => {
+      await lineaRollup.connect(securityCouncil).setVerifierAddress(TRIGGERED_SOUNDNESS_ALERT_ADDRESS, proofType);
+      const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "SoundnessAlertAlreadyTriggered");
+    });
+
+    it("Should fail if the initial state does not match calldata", async () => {
+      const expectedFailingInitialSoundnessStateHash = generateKeccak256(
+        ["bytes32", "uint256", "uint256", "bytes32", "uint256"],
+        [finalizationData.shnarfData.parentShnarf, 123n, DEFAULT_LAST_FINALIZED_TIMESTAMP, HASH_ZERO, 0n],
+      );
+
+      soundessFinalizationData.initialBlockNumber = 123n;
+
+      const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "InitialSoundnessStateNotSame", [
+        initialSoundnessStateHash,
+        expectedFailingInitialSoundnessStateHash,
+      ]);
+    });
+
+    it("Should fail if both snark hashes match for both proofs", async () => {
+      const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "SnarkHashesAreTheSame");
+    });
+
+    it("Should fail if both final state root hashes match for both proofs", async () => {
+      soundessFinalizationData.alternateFinalizationData.snarkHash = generateRandomBytes(32);
+      const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "FinalStateRootHashesAreTheSame");
+    });
+
+    it("Should not sound the alert if the first proof fails", async () => {
+      soundessFinalizationData.alternateFinalizationData.snarkHash = generateRandomBytes(32);
+      soundessFinalizationData.alternateFinalizationData.finalStateRootHash = generateRandomBytes(32);
+      soundessFinalizationData.finalizationData.l2MerkleTreesDepth = 4n;
+      const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "InvalidProof");
+
+      const verifierAddress = await lineaRollup.verifiers(soundessFinalizationData.proofType);
+      expect(verifierAddress).to.not.equal(TRIGGERED_SOUNDNESS_ALERT_ADDRESS);
+    });
+
+    // TODO discuss all the variable differences changing the public input
+    it("Should not sound the alert if the second proof fails", async () => {
+      soundessFinalizationData.alternateFinalizationData.snarkHash = generateRandomBytes(32);
+      soundessFinalizationData.alternateFinalizationData.finalStateRootHash = generateRandomBytes(32);
+      const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "InvalidProof");
+
+      const verifierAddress = await lineaRollup.verifiers(soundessFinalizationData.proofType);
+      expect(verifierAddress).to.not.equal(TRIGGERED_SOUNDNESS_ALERT_ADDRESS);
+    });
+
+    it("Should change the verifier address if both proofs pass", async () => {});
+
+    it("Should emit SoundessAlertTriggered if both proofs pass", async () => {});
+
+    it("Should fail to finalize if the soundness alert has been triggered", async () => {});
   });
 
   async function sendBlobTransaction(startIndex: number, finalIndex: number, isMultiple: boolean = false) {
