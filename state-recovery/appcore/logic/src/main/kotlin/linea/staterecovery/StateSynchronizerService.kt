@@ -130,7 +130,7 @@ class StateSynchronizerService(
       .thenCompose { decompressedBlocksToImport: List<BlockFromL1RecoveredData> ->
         if (decompressedBlocksToImport.isEmpty()) {
           log.info(
-            "stopping recovery synch: imported all blocks up to debugForceSyncStopBlockNumber={} finalization={}",
+            "stopping recovery sync: imported all blocks up to debugForceSyncStopBlockNumber={} finalization={}",
             debugForceSyncStopBlockNumber,
             dataFinalizedV3.intervalString()
           )
