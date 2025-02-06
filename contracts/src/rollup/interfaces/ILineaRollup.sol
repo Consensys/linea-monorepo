@@ -127,8 +127,6 @@ interface ILineaRollup {
     uint256 endBlockNumber;
     bytes32 l1RollingHash;
     uint256 l1RollingHashMessageNumber;
-    uint256 l2MerkleTreesDepth;
-    bytes32 snarkHash;
     bytes32 finalStateRootHash;
     bytes32[] l2MerkleRoots;
     bytes proof;
@@ -337,11 +335,6 @@ interface ILineaRollup {
    * @dev Thrown when the soundness alert is using the same final state root hash for both proofs.
    */
   error FinalStateRootHashesAreTheSame();
-
-  /**
-   * @dev Thrown when the soundness alert is using the same snark hash for both proofs.
-   */
-  error SnarkHashesAreTheSame();
 
   /**
    * @notice Adds or updates the verifier contract address for a proof type.

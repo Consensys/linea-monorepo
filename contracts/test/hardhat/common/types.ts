@@ -96,8 +96,6 @@ export type AlternateFinalizationData = {
   endBlockNumber: bigint;
   l1RollingHash: string;
   l1RollingHashMessageNumber: bigint;
-  l2MerkleTreesDepth: bigint;
-  snarkHash: string;
   finalStateRootHash: string;
   l2MerkleRoots: string[];
   proof: string;

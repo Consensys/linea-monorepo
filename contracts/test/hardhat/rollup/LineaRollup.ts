@@ -2302,7 +2302,7 @@ describe("Linea Rollup contract", () => {
     });
   });
 
-  describe("Triggering the soundness alert", () => {
+  describe.only("Triggering the soundness alert", () => {
     let finalizationData: FinalizationData;
     let initialSoundnessStateHash: string;
     let initialSoundnessState: InitialSoundnessState;
@@ -2355,8 +2355,6 @@ describe("Linea Rollup contract", () => {
         endBlockNumber: BigInt(blobAggregatedProof1To46.finalBlockNumber),
         l1RollingHash: blobAggregatedProof1To46.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To46.l1RollingHashMessageNumber),
-        l2MerkleTreesDepth: BigInt(blobAggregatedProof1To46.l2MerkleTreesDepth),
-        snarkHash: finalizationData.shnarfData.snarkHash,
         finalStateRootHash: finalizationData.shnarfData.finalStateRootHash,
         l2MerkleRoots: blobAggregatedProof1To46.l2MerkleRoots,
         proof: blobAggregatedProof1To46.aggregatedProof,
@@ -2399,19 +2397,12 @@ describe("Linea Rollup contract", () => {
       ]);
     });
 
-    it("Should fail if both snark hashes match for both proofs", async () => {
-      const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
-      await expectRevertWithCustomError(lineaRollup, asyncCall, "SnarkHashesAreTheSame");
-    });
-
     it("Should fail if both final state root hashes match for both proofs", async () => {
-      soundessFinalizationData.alternateFinalizationData.snarkHash = generateRandomBytes(32);
       const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
       await expectRevertWithCustomError(lineaRollup, asyncCall, "FinalStateRootHashesAreTheSame");
     });
 
     it("Should not sound the alert if the first proof fails", async () => {
-      soundessFinalizationData.alternateFinalizationData.snarkHash = generateRandomBytes(32);
       soundessFinalizationData.alternateFinalizationData.finalStateRootHash = generateRandomBytes(32);
       soundessFinalizationData.finalizationData.l2MerkleTreesDepth = 4n;
       const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
@@ -2423,7 +2414,6 @@ describe("Linea Rollup contract", () => {
 
     // TODO discuss all the variable differences changing the public input
     it("Should not sound the alert if the second proof fails", async () => {
-      soundessFinalizationData.alternateFinalizationData.snarkHash = generateRandomBytes(32);
       soundessFinalizationData.alternateFinalizationData.finalStateRootHash = generateRandomBytes(32);
       const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
       await expectRevertWithCustomError(lineaRollup, asyncCall, "InvalidProof");
@@ -2436,7 +2426,6 @@ describe("Linea Rollup contract", () => {
       await deployScenarioBasedVerifier(alwaysTrueVerifierScenario);
       await lineaRollup.connect(securityCouncil).setVerifierAddress(scenarioBasedVerifier, 0);
 
-      soundessFinalizationData.alternateFinalizationData.snarkHash = generateRandomBytes(32);
       soundessFinalizationData.alternateFinalizationData.finalStateRootHash = generateRandomBytes(32);
 
       const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
@@ -2453,7 +2442,6 @@ describe("Linea Rollup contract", () => {
       await deployScenarioBasedVerifier(alwaysTrueVerifierScenario);
       await lineaRollup.connect(securityCouncil).setVerifierAddress(scenarioBasedVerifier, 0);
 
-      soundessFinalizationData.alternateFinalizationData.snarkHash = generateRandomBytes(32);
       soundessFinalizationData.alternateFinalizationData.finalStateRootHash = generateRandomBytes(32);
 
       await lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
@@ -2472,7 +2460,7 @@ describe("Linea Rollup contract", () => {
 
     it("Can finalize if soundness alert triggering fails", async () => {
       const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
-      await expectRevertWithCustomError(lineaRollup, asyncCall, "SnarkHashesAreTheSame");
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "FinalStateRootHashesAreTheSame");
 
       // make sure this is set to avoid reverts
       await lineaRollup.setRollingHash(

@@ -221,11 +221,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
       );
     }
 
-    // Verify final and alternate snarkHashes are different else we are proving the same thing twice.
-    if (finalizationShnarf.snarkHash == _finalizationData.alternateFinalizationData.snarkHash) {
-      revert SnarkHashesAreTheSame();
-    }
-
     // Verify final and alternate states are different else we are proving the same thing twice.
     if (finalizationShnarf.finalStateRootHash == _finalizationData.alternateFinalizationData.finalStateRootHash) {
       revert FinalStateRootHashesAreTheSame();
@@ -283,14 +278,11 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     FinalizationDataV3 memory _finalizationData,
     AlternateFinalizationData memory _alternateFinalizationData
   ) internal {
-    /// @dev All 8 fields are used with the extra field being the proof is used in the
     _finalizationData.l1RollingHashMessageNumber = _alternateFinalizationData.l1RollingHashMessageNumber;
     _finalizationData.l1RollingHash = _alternateFinalizationData.l1RollingHash;
     _finalizationData.l2MerkleRoots = _alternateFinalizationData.l2MerkleRoots;
-    _finalizationData.l2MerkleTreesDepth = _alternateFinalizationData.l2MerkleTreesDepth;
     _finalizationData.finalTimestamp = _alternateFinalizationData.finalTimestamp;
     _finalizationData.endBlockNumber = _alternateFinalizationData.endBlockNumber;
-    _finalizationData.shnarfData.snarkHash = _alternateFinalizationData.snarkHash;
     _finalizationData.shnarfData.finalStateRootHash = _alternateFinalizationData.finalStateRootHash;
   }
 
