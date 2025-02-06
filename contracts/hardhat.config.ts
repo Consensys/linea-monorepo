@@ -48,25 +48,6 @@ const config: HardhatUserConfig = {
         },
       },
       /**
-       * Maintain for Verifier contracts
-       * src/_testing/unit/verifiers/TestPlonkVerifierForDataAggregation.sol
-       * src/verifiers/PlonkVerifierDev.sol
-       * src/verifiers/PlonkVerifierForDataAggregation.sol
-       * src/verifiers/PlonkVerifierForMultiTypeDataAggregation.sol
-       * src/verifiers/PlonkVerifierSepoliaFull.sol
-       */
-      {
-        version: "0.8.26",
-        settings: {
-          viaIR: useViaIR,
-          optimizer: {
-            enabled: true,
-            runs: 10_000,
-          },
-          evmVersion: "cancun",
-        },
-      },
-      /**
        * Maintain for Mimc contract
        * src/libraries/Mimc.sol (0.8.25)
        * src/libraries/SparseMerkleProof.sol (0.8.25)
