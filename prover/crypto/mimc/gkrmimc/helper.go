@@ -100,7 +100,7 @@ func (h *Hasher) Sum() frontend.Variable {
 	// 1 - Call the compression function in a loop
 	curr := h.state
 	for _, stream := range h.data {
-		curr = h.compress(curr, stream)
+		curr = h.Compress(curr, stream)
 	}
 	// flush the data already hashed
 	h.data = nil
@@ -132,10 +132,12 @@ func (h *Hasher) State() []frontend.Variable {
 	return []frontend.Variable{h.state}
 }
 
-// compress calls returns a frontend.Variable holding the result of applying
+// Compress calls returns a frontend.Variable holding the result of applying
 // the compression function of MiMC over state and block. The alleged returned
 // result is pushed on the stack of all the claims to verify.
-func (h *Hasher) compress(state, block frontend.Variable) frontend.Variable {
+//
+// This function does not modify the state of the hasher.
+func (h *Hasher) Compress(state, block frontend.Variable) frontend.Variable {
 
 	newState, err := h.factory.api.Compiler().NewHint(mimcHintfunc, 1, state, block)
 	if err != nil {
