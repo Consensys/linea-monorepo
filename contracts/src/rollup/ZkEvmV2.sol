@@ -52,7 +52,7 @@ abstract contract ZkEvmV2 is AccessControlUpgradeable, L1MessageServiceV1, IZkEv
 
     // This will fail on finalization.
     if (verifierToUse == TRIGGERED_SOUNDNESS_ALERT_ADDRESS) {
-      revert("Verifier failed soundness");
+      revert SoundnessAlertTriggered();
     }
 
     (bool callSuccess, bytes memory result) = verifierToUse.call(

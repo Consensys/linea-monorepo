@@ -85,7 +85,7 @@ kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
 
 describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
-  let revertingVerifier: string;
+  let scenarioBasedVerifier: string;
   let sepoliaFullVerifier: string;
   let callForwardingProxy: CallForwardingProxy;
 
@@ -103,11 +103,11 @@ describe("Linea Rollup contract", () => {
     firstCompressedDataContent;
   const { expectedShnarf: secondExpectedShnarf } = secondCompressedDataContent;
 
-  async function deployRevertingVerifier(scenario: bigint) {
-    const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
-    const verifier = await revertingVerifierFactory.deploy(scenario);
+  async function deployScenarioBasedVerifier(scenario: bigint) {
+    const scenarioBasedVerifierFactory = await ethers.getContractFactory("ScenarioBasedVerifier");
+    const verifier = await scenarioBasedVerifierFactory.deploy(scenario);
     await verifier.waitForDeployment();
-    revertingVerifier = await verifier.getAddress();
+    scenarioBasedVerifier = await verifier.getAddress();
   }
 
   async function deployPlonkVerifierSepoliaFull() {
@@ -1176,8 +1176,8 @@ describe("Linea Rollup contract", () => {
 
     testCases.forEach(({ revertScenario, title }) => {
       it(title, async () => {
-        await deployRevertingVerifier(revertScenario);
-        await lineaRollup.connect(securityCouncil).setVerifierAddress(revertingVerifier, 0);
+        await deployScenarioBasedVerifier(revertScenario);
+        await lineaRollup.connect(securityCouncil).setVerifierAddress(scenarioBasedVerifier, 0);
 
         // Submit 2 blobs
         await sendBlobTransaction(0, 2);
@@ -2308,13 +2308,16 @@ describe("Linea Rollup contract", () => {
     let initialSoundnessState: InitialSoundnessState;
     let soundessFinalizationData: SoundessFinalizationData;
     let alternateFinalizationData: AlternateFinalizationData;
+    const alwaysTrueVerifierScenario = 2n;
 
     const proofType = 0;
 
     beforeEach(async () => {
       // We send the blobs in order to test allowed finalization success and then failed finalization
       // Submit 2 blobs
-      await sendBlobTransaction(0, 2);
+      await sendBlobTransaction(0, 1);
+
+      await sendBlobTransaction(1, 2);
       // Submit another 2 blobs
       await sendBlobTransaction(2, 4);
 
@@ -2369,7 +2372,7 @@ describe("Linea Rollup contract", () => {
     });
 
     // TODO This test may be redundant as it would fail anyway, but an early fail is good.
-    it("Should fail with InvalidProofType if the alert has already been triggered", async () => {
+    it("Should fail with InvalidProofType if the verifier address is the zero address", async () => {
       soundessFinalizationData.proofType = 99n; // any non-zero number
       const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
       await expectRevertWithCustomError(lineaRollup, asyncCall, "InvalidProofType");
@@ -2381,7 +2384,7 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(lineaRollup, asyncCall, "SoundnessAlertAlreadyTriggered");
     });
 
-    it("Should fail if the initial state does not match calldata", async () => {
+    it("Should fail if the initial state does not match calldata provided", async () => {
       const expectedFailingInitialSoundnessStateHash = generateKeccak256(
         ["bytes32", "uint256", "uint256", "bytes32", "uint256"],
         [finalizationData.shnarfData.parentShnarf, 123n, DEFAULT_LAST_FINALIZED_TIMESTAMP, HASH_ZERO, 0n],
@@ -2429,11 +2432,61 @@ describe("Linea Rollup contract", () => {
       expect(verifierAddress).to.not.equal(TRIGGERED_SOUNDNESS_ALERT_ADDRESS);
     });
 
-    it("Should change the verifier address if both proofs pass", async () => {});
+    it("Should change the verifier address if both proofs pass and emit the SoundessAlertTriggered event", async () => {
+      await deployScenarioBasedVerifier(alwaysTrueVerifierScenario);
+      await lineaRollup.connect(securityCouncil).setVerifierAddress(scenarioBasedVerifier, 0);
 
-    it("Should emit SoundessAlertTriggered if both proofs pass", async () => {});
+      soundessFinalizationData.alternateFinalizationData.snarkHash = generateRandomBytes(32);
+      soundessFinalizationData.alternateFinalizationData.finalStateRootHash = generateRandomBytes(32);
 
-    it("Should fail to finalize if the soundness alert has been triggered", async () => {});
+      const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
+      await expectEvent(lineaRollup, asyncCall, "SoundessAlertTriggered", [
+        scenarioBasedVerifier,
+        soundessFinalizationData.proofType,
+      ]);
+
+      const verifierAddress = await lineaRollup.verifiers(soundessFinalizationData.proofType);
+      expect(verifierAddress).to.equal(TRIGGERED_SOUNDNESS_ALERT_ADDRESS);
+    });
+
+    it("Should fail to finalize if the soundness alert has been triggered", async () => {
+      await deployScenarioBasedVerifier(alwaysTrueVerifierScenario);
+      await lineaRollup.connect(securityCouncil).setVerifierAddress(scenarioBasedVerifier, 0);
+
+      soundessFinalizationData.alternateFinalizationData.snarkHash = generateRandomBytes(32);
+      soundessFinalizationData.alternateFinalizationData.finalStateRootHash = generateRandomBytes(32);
+
+      await lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
+
+      // make sure this is set to avoid reverts
+      await lineaRollup.setRollingHash(
+        blobAggregatedProof1To46.l1RollingHashMessageNumber,
+        blobAggregatedProof1To46.l1RollingHash,
+      );
+
+      const asyncCall = lineaRollup
+        .connect(operator)
+        .finalizeBlocks(soundessFinalizationData.firstProof, soundessFinalizationData.proofType, finalizationData);
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "SoundnessAlertTriggered");
+    });
+
+    it("Can finalize if soundness alert triggering fails", async () => {
+      const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
+      await expectRevertWithCustomError(lineaRollup, asyncCall, "SnarkHashesAreTheSame");
+
+      // make sure this is set to avoid reverts
+      await lineaRollup.setRollingHash(
+        blobAggregatedProof1To46.l1RollingHashMessageNumber,
+        blobAggregatedProof1To46.l1RollingHash,
+      );
+
+      await expect(
+        lineaRollup
+          .connect(operator)
+          .finalizeBlocks(soundessFinalizationData.firstProof, soundessFinalizationData.proofType, finalizationData),
+      ).to.not.be.reverted;
+      expect(await lineaRollup.currentL2BlockNumber()).to.equal(blobAggregatedProof1To46.finalBlockNumber);
+    });
   });
 
   async function sendBlobTransaction(startIndex: number, finalIndex: number, isMultiple: boolean = false) {
