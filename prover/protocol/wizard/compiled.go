@@ -653,6 +653,7 @@ func (c *CompiledIOP) InsertDistributedProjection(round int, id ifaces.QueryID, 
 	c.QueriesParams.AddToRound(round, q.Name(), q)
 	return q
 }
+
 // AddPublicInput inserts a public-input in the compiled-IOP
 func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) PublicInput {
 
