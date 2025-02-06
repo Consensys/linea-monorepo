@@ -57,7 +57,8 @@ import tech.pegasys.teku.infrastructure.unsigned.UInt64
 class CliqueToPosTest {
   companion object {
     private val qbftCluster =
-      DockerComposeRule.Builder()
+      DockerComposeRule
+        .Builder()
         .file(Path.of("./../docker/compose.yaml").toString())
         .projectName(ProjectName.random())
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
@@ -132,7 +133,7 @@ class CliqueToPosTest {
     log.info("Marked last pre merge block as finalized")
 
     // Next block's content
-    TestEnvironment.sendArbitraryTransaction()
+    val firstPosBlockTransaction = TestEnvironment.sendArbitraryTransaction()
 
     val payloadAttributes =
       Optional.of(
@@ -153,14 +154,21 @@ class CliqueToPosTest {
             lastPreMergeBlockHashBytes32,
           ),
           payloadAttributes,
-        )
-        .get()
+        ).get()
     val payloadId = fcuResponse.payload.asInternalExecutionPayload().payloadId
+
+    // To give EL time to execute a block
+    Thread.sleep(6000)
+
     val getPayloadResponse = sequencerExecutionClient.getPayloadV3(payloadId.get()).get()
     val newExecutionPayload = getPayloadResponse.payload.executionPayload
     val newPayloadResult =
       sequencerExecutionClient.newPayloadV3(newExecutionPayload, emptyList(), Bytes32.ZERO).get()
-    val newPayloadHash = newPayloadResult.payload.asInternalExecutionPayload().latestValidHash.get()
+    val newPayloadHash =
+      newPayloadResult.payload
+        .asInternalExecutionPayload()
+        .latestValidHash
+        .get()
     val nextPayloadAttributes =
       Optional.of(
         PayloadAttributesV3(
@@ -178,6 +186,8 @@ class CliqueToPosTest {
       .also { log.info("FCU of new block on Sequencer $it") }
 
     log.info("Sequencer has switched to PoS")
+
+    firstPosBlockTransaction.waitForInclusion()
 
     sendNewPayloadToFollowers(newExecutionPayload)
 
@@ -198,7 +208,7 @@ class CliqueToPosTest {
     fcuFollowersToBlockHash(blockHash)
   }
 
-  @Disabled
+  @Test
   fun fullSync() {
     val target = geth1ExecutionEngineClient
 
@@ -217,8 +227,7 @@ class CliqueToPosTest {
         .ethGetBlockByNumber(
           DefaultBlockParameter.valueOf(BigInteger.valueOf(headBlockNumber)),
           false,
-        )
-        .send()
+        ).send()
     val blockHash = currentBLock.block.hash
 
     val lastBlockHashBytes = Bytes32.fromHexString(blockHash)
@@ -284,8 +293,7 @@ class CliqueToPosTest {
           .withFailMessage {
             "Block height doesn't match for ${it.first}. Found ${it.second.blockNumber} " +
               "while expecting ${sequencerBlockHeight.blockNumber}."
-          }
-          .isEqualTo(sequencerBlockHeight.blockNumber)
+          }.isEqualTo(sequencerBlockHeight.blockNumber)
       }
     }
   }
@@ -301,9 +309,12 @@ class CliqueToPosTest {
             .adminAddPeer(
               "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e2" +
                 "2bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303",
-            )
-            .send()
-          val peersResult = it.value.adminPeers().send().result
+            ).send()
+          val peersResult =
+            it.value
+              .adminPeers()
+              .send()
+              .result
           val peers = peersResult.size
           log.info("Peers from node ${it.key}: $peers")
           assertThat(peers)
@@ -321,8 +332,7 @@ class CliqueToPosTest {
       .ethGetBlockByNumber(
         DefaultBlockParameter.valueOf(BigInteger.valueOf(blockNumber)),
         retreiveTransactions,
-      )
-      .send()
+      ).send()
       .block
 
   private fun fcuFollowersToBlockHash(blockHash: String) {

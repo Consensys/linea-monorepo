@@ -15,7 +15,9 @@
  */
 package maru.core
 
-data class Validator(val address: ByteArray) {
+data class Validator(
+  val address: ByteArray,
+) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -25,7 +27,5 @@ data class Validator(val address: ByteArray) {
     return address.contentEquals(other.address)
   }
 
-  override fun hashCode(): Int {
-    return address.contentHashCode()
-  }
+  override fun hashCode(): Int = address.contentHashCode()
 }

@@ -51,7 +51,8 @@ object Mappers {
     } else if (v > Transaction.REPLAY_PROTECTED_V_MIN) {
       chainId = v.subtract(Transaction.REPLAY_PROTECTED_V_BASE).divide(Transaction.TWO)
       recId =
-        v.subtract(Transaction.TWO.multiply(chainId).add(Transaction.REPLAY_PROTECTED_V_BASE))
+        v
+          .subtract(Transaction.TWO.multiply(chainId).add(Transaction.REPLAY_PROTECTED_V_BASE))
           .byteValueExact()
     } else {
       throw RuntimeException("An unsupported encoded `v` value of $v was found")
@@ -77,7 +78,8 @@ object Mappers {
       )
 
     val transaction =
-      Transaction.builder()
+      Transaction
+        .builder()
         .nonce(this.nonce.toLong())
         .also { builder ->
           if (isFrontier || this.type == "0x1") {
@@ -86,8 +88,7 @@ object Mappers {
             builder.maxPriorityFeePerGas(Wei.of(this.maxPriorityFeePerGas))
             builder.maxFeePerGas(Wei.of(this.maxFeePerGas))
           }
-        }
-        .gasLimit(this.gas.toLong())
+        }.gasLimit(this.gas.toLong())
         .to(Address.fromHexString(this.to))
         .value(Wei.of(this.value))
         .signature(signature)
@@ -103,14 +104,12 @@ object Mappers {
               },
             )
           }
-        }
-        .sender(Address.fromHexString(this.from))
+        }.sender(Address.fromHexString(this.from))
         .apply {
           if (chainId != null) {
             chainId(chainId)
           }
-        }
-        .build()
+        }.build()
 
     return TransactionEncoder.encodeOpaqueBytes(transaction, EncodingContext.BLOCK_BODY)
   }

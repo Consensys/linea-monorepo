@@ -29,11 +29,7 @@ interface RLPSerializer<T> : Serializer<T> {
 
   fun readFrom(rlpInput: RLPInput): T
 
-  override fun serialize(value: T): ByteArray {
-    return RLP.encode { rlpOutput -> this.writeTo(value, rlpOutput) }.toArray()
-  }
+  override fun serialize(value: T): ByteArray = RLP.encode { rlpOutput -> this.writeTo(value, rlpOutput) }.toArray()
 
-  override fun deserialize(bytes: ByteArray): T {
-    return this.readFrom(RLP.input(Bytes.wrap(bytes)))
-  }
+  override fun deserialize(bytes: ByteArray): T = this.readFrom(RLP.input(Bytes.wrap(bytes)))
 }

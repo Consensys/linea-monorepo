@@ -21,37 +21,37 @@ import com.sksamuel.hoplite.Secret
 import com.sksamuel.hoplite.json.JsonPropertySource
 import com.sksamuel.hoplite.toml.TomlPropertySource
 import java.net.URI
+import maru.consensus.dummy.DummyConsensusConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalHoplite::class)
 class HopliteFriendliesTest {
-  private inline fun <reified T : Any> parseJsonConfig(json: String): T {
-    return ConfigLoaderBuilder.default()
+  private inline fun <reified T : Any> parseJsonConfig(json: String): T =
+    ConfigLoaderBuilder
+      .default()
       .withExplicitSealedTypes()
       .addSource(JsonPropertySource(json))
       .build()
       .loadConfigOrThrow<T>()
-  }
 
-  private inline fun <reified T : Any> parseTomlConfig(toml: String): T {
-    return ConfigLoaderBuilder.default()
+  private inline fun <reified T : Any> parseTomlConfig(toml: String): T =
+    ConfigLoaderBuilder
+      .default()
       .withExplicitSealedTypes()
       .addSource(TomlPropertySource(toml))
       .build()
       .loadConfigOrThrow<T>()
-  }
 
   @Test
   fun genesisFileIsParseable() {
     val config =
-      parseJsonConfig<BeaconGenesisConfig>(
+      parseJsonConfig<DummyConsensusConfig>(
         """
         {
           "blockTimeMillis": 1000
         }
-        """
-          .trimIndent(),
+        """.trimIndent(),
       )
     assertThat(config.blockTimeMillis).isEqualTo(1000u)
   }
@@ -69,8 +69,7 @@ class HopliteFriendliesTest {
 
         [validator]
         validator-key = "0xdead"
-        """
-          .trimIndent(),
+        """.trimIndent(),
       )
     assertThat(config)
       .isEqualTo(

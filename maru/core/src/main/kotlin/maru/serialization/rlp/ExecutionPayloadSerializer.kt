@@ -29,6 +29,7 @@ class ExecutionPayloadSerializer : RLPSerializer<ExecutionPayload> {
     rlpOutput.startList()
 
     rlpOutput.writeBytes(Bytes.wrap(value.parentHash))
+    rlpOutput.writeBytes(Bytes.wrap(value.feeRecipient))
     rlpOutput.writeBytes(Bytes.wrap(value.stateRoot))
     rlpOutput.writeBytes(Bytes.wrap(value.receiptsRoot))
     rlpOutput.writeBytes(Bytes.wrap(value.logsBloom))
@@ -49,6 +50,7 @@ class ExecutionPayloadSerializer : RLPSerializer<ExecutionPayload> {
   override fun readFrom(rlpInput: RLPInput): ExecutionPayload {
     rlpInput.enterList()
     val parentHash = rlpInput.readBytes().toArray()
+    val feeRecipient = rlpInput.readBytes().toArray()
     val stateRoot = rlpInput.readBytes().toArray()
     val receiptsRoot = rlpInput.readBytes().toArray()
     val logsBloom = rlpInput.readBytes().toArray()
@@ -64,6 +66,7 @@ class ExecutionPayloadSerializer : RLPSerializer<ExecutionPayload> {
     rlpInput.leaveList()
     return ExecutionPayload(
       parentHash = parentHash,
+      feeRecipient = feeRecipient,
       stateRoot = stateRoot,
       receiptsRoot = receiptsRoot,
       logsBloom = logsBloom,

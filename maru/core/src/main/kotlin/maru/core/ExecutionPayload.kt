@@ -23,6 +23,7 @@ import java.math.BigInteger
  */
 data class ExecutionPayload(
   val parentHash: ByteArray,
+  val feeRecipient: ByteArray,
   val stateRoot: ByteArray,
   val receiptsRoot: ByteArray,
   val logsBloom: ByteArray,

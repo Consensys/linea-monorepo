@@ -15,15 +15,14 @@
  */
 package maru.serialization.rlp
 
-import java.math.BigInteger
 import kotlin.random.Random
 import kotlin.random.nextULong
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
-import maru.core.ExecutionPayload
 import maru.core.Seal
 import maru.core.Validator
+import maru.core.ext.DataGenerators.randomExecutionPayload
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -54,22 +53,7 @@ class BeaconBlockSerializerTest {
     val beaconBlockBody =
       BeaconBlockBody(
         prevBlockSeals = buildList(3) { Seal(Random.nextBytes(96)) },
-        executionPayload =
-          ExecutionPayload(
-            parentHash = Random.nextBytes(32),
-            stateRoot = Random.nextBytes(32),
-            receiptsRoot = Random.nextBytes(32),
-            logsBloom = Random.nextBytes(32),
-            prevRandao = Random.nextBytes(32),
-            blockNumber = Random.nextULong(),
-            gasLimit = Random.nextULong(),
-            gasUsed = Random.nextULong(),
-            timestamp = Random.nextULong(),
-            extraData = Random.nextBytes(32),
-            baseFeePerGas = BigInteger.valueOf(Random.nextLong()),
-            blockHash = Random.nextBytes(32),
-            transactions = buildList(3) { Random.nextBytes(100) },
-          ),
+        executionPayload = randomExecutionPayload(),
       )
     val testValue =
       BeaconBlock(
