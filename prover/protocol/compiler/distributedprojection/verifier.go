@@ -1,8 +1,6 @@
 package distributedprojection
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -17,7 +15,7 @@ type distributedProjectionVerifierAction struct {
 	isA, isB           []bool
 	skipped            bool
 }
-
+// Run implements the [wizard.VerifierAction]
 func (va *distributedProjectionVerifierAction) Run(run *wizard.VerifierRuntime) error {
 	var (
 		actualParam = field.Zero()
@@ -72,7 +70,7 @@ func (va *distributedProjectionVerifierAction) RunGnark(api frontend.API, run *w
 			b := run.GetLocalPointEvalParams(va.HornerB0[index].ID).Y
 			elemParam = api.Sub(elemParam, b)
 		} else {
-			fmt.Errorf("Unsupported verifier action registered for %v", va.Name)
+			utils.Panic("Unsupported verifier action registered for %v", va.Name)
 		}
 		actualParam = api.Add(actualParam, elemParam)
 	}
@@ -80,11 +78,11 @@ func (va *distributedProjectionVerifierAction) RunGnark(api frontend.API, run *w
 
 	api.AssertIsEqual(actualParam, queryParam)
 }
-
+// Skip implements the [wizard.VerifierAction]
 func (va *distributedProjectionVerifierAction) Skip() {
 	va.skipped = true
 }
-
+// IsSkipped implements the [wizard.VerifierAction]
 func (va *distributedProjectionVerifierAction) IsSkipped() bool {
 	return va.skipped
 }

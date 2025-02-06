@@ -32,7 +32,9 @@ type DistributeProjectionCtx struct {
 	// occurs.
 	LastRoundProjection int
 }
-
+// NewDistributeProjectionCtx processes all the projection queries from the initialComp
+// and registers DistributedProjection queries to the target module using the module 
+// discoverer
 func NewDistributeProjectionCtx(
 	targetModuleName namebaseddiscoverer.ModuleName,
 	initialComp, moduleComp *wizard.CompiledIOP,
@@ -100,7 +102,7 @@ func NewDistributeProjectionCtx(
 	return p
 
 }
-
+// Check verifies if all columns of the projection query belongs to the same module or not
 func check(cols []ifaces.Column,
 	disc distributed.ModuleDiscoverer,
 	targetModuleName namebaseddiscoverer.ModuleName,
@@ -179,7 +181,7 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 		panic("Invalid distributed projection query while initial pushing")
 	}
 }
-
+// computeQueryParam computes the parameter of the DistributedProjection query
 func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) field.Element {
 	var (
 		queryParam = field.Zero()
@@ -228,7 +230,7 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 	}
 	return queryParam
 }
-
+// Run implements [wizard.ProverAction] interface
 func (p *DistributeProjectionCtx) Run(run *wizard.ProverRuntime) {
 	run.AssignDistributedProjection(p.Query.ID, query.DistributedProjectionParams{
 		HornerVal: p.computeQueryParam(run),
