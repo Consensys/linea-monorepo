@@ -44,7 +44,7 @@ const config: HardhatUserConfig = {
             enabled: true,
             runs: 10_000,
           },
-          evmVersion: "cancun",
+          evmVersion: "prague",
         },
       },
       /**
