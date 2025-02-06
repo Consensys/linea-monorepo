@@ -130,7 +130,7 @@ func ExecutionDefinition(conf *config.Config) JobDefinition {
 		[]string{inputFilePattern},
 		[]string{"exec-output-file"},
 		[]string{"{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-getZkProof.json"},
-		cmnExecParamsRegexp(),
+		cmnExecParamsRegexp(1),
 		config.FailSuffix,
 	)
 	if err != nil {
@@ -264,14 +264,15 @@ func (jd *JobDefinition) dirTo(ipIdx int) string {
 	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsToSubDir)
 }
 
-func cmnExecParamsRegexp() []ParamsRegexp {
-	paramsRegexp := []ParamsRegexp{
-		{
+func cmnExecParamsRegexp(nInputs int) []ParamsRegexp {
+	paramsRegexp := make([]ParamsRegexp, nInputs)
+	for i := 0; i < nInputs; i++ {
+		paramsRegexp[i] = ParamsRegexp{
 			Start: regexp2.MustCompile(`^[0-9]+`, regexp2.None),
 			End:   regexp2.MustCompile(`(?<=^[0-9]+-)[0-9]+`, regexp2.None),
 			Etv:   matchVersionWithPrefix("etv"),
 			Stv:   matchVersionWithPrefix("stv"),
-		},
+		}
 	}
 	return paramsRegexp
 }

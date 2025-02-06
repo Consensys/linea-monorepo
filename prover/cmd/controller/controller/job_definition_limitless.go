@@ -33,17 +33,17 @@ const (
 
 	// Output file templates and patterns
 	execBootstrapGLSubmoduleTemplate  = "execBootstrapGLSubmoduleReqFile"
-	execBootstrapGLSubmoduleFile      = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_Bootstrap_GLSubmodule.json"
+	execBootstrapGLSubmoduleFile      = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{ index .Job.Etv .Idx }}-stv{{ index .Job.Stv .Idx }}-getZkProof_Bootstrap_GLSubmodule.json"
 	execBootstrapDistMetadataTemplate = "execBootstrapSubmoduleDistMetadataFile"
-	execBootstrapDistMetadataFile     = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_Bootstrap_DistMetadata.json"
+	execBootstrapDistMetadataFile     = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{ index .Job.Etv .Idx }}-stv{{ index .Job.Stv .Idx }}-getZkProof_Bootstrap_DistMetadata.json"
 	execGLRndBeaconTemplate           = "execGLBeaconFile"
-	execGLRndBeaconFile               = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_GL_RndBeacon.json"
+	execGLRndBeaconFile               = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{ index .Job.Etv .Idx }}-stv{{ index .Job.Stv .Idx }}-getZkProof_GL_RndBeacon.json"
 	execGLTemplate                    = "execGLOutputFile"
-	execGLFile                        = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_GL.json"
+	execGLFile                        = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{ index .Job.Etv .Idx }}-stv{{ index .Job.Stv .Idx }}-getZkProof_GL.json"
 	execRndBeaconTemplate             = "execRndBeaconOutputFile"
-	execRndBeaconFile                 = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_RndBeacon.json"
+	execRndBeaconFile                 = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{ index .Job.Etv .Idx }}-stv{{ index .Job.Stv .Idx }}-getZkProof_RndBeacon.json"
 	execLPPTemplate                   = "execLPPOutputFile"
-	execLPPFile                       = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{.Etv}}-stv{{.Stv}}-getZkProof_LPP.json"
+	execLPPFile                       = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-etv{{ index .Job.Etv .Idx }}-stv{{ index .Job.Stv .Idx }}-getZkProof_LPP.json"
 	execConglomerateTemplate          = "execOutputFile"
 	execConglomerateFile              = "{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-getZkProof.json"
 )
@@ -63,7 +63,7 @@ func ExecBootstrapDefinition(conf *config.Config) (*JobDefinition, error) {
 	outputFiles := []string{execBootstrapGLSubmoduleFile, execBootstrapDistMetadataFile}
 
 	return commonJobDefinition(jobExecBootstrap, priorityExecBootstrap,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(), config.FailSuffix)
+		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
 }
 
 func ExecGLDefinition(conf *config.Config) (*JobDefinition, error) {
@@ -81,7 +81,7 @@ func ExecGLDefinition(conf *config.Config) (*JobDefinition, error) {
 	outputFiles := []string{execGLRndBeaconFile, execGLFile}
 
 	return commonJobDefinition(jobExecGL, priorityExecGL,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(), config.FailSuffix)
+		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
 }
 
 func ExecRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
@@ -105,7 +105,7 @@ func ExecRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
 	outputFiles := []string{execRndBeaconFile}
 
 	return commonJobDefinition(jobExecRndBeacon, priorityExecRndBeacon,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(), config.FailSuffix)
+		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(2), config.FailSuffix)
 }
 
 func ExecLPPDefinition(conf *config.Config) (*JobDefinition, error) {
@@ -123,7 +123,7 @@ func ExecLPPDefinition(conf *config.Config) (*JobDefinition, error) {
 	outputFiles := []string{execLPPFile}
 
 	return commonJobDefinition(jobExecLPP, priorityExecLPP,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(), config.FailSuffix)
+		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
 }
 
 func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
@@ -149,5 +149,5 @@ func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
 	outputFiles := []string{execConglomerateFile}
 
 	return commonJobDefinition(jobExecCongolomerateLPP, priorityExecCongolomeration,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(), config.FailSuffix)
+		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(3), config.FailSuffix)
 }

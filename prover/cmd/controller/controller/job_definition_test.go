@@ -20,24 +20,27 @@ type inpFileNamesCases struct {
 
 func runInpFileTestCase(t *testing.T, def *JobDefinition, c inpFileNamesCases) {
 
-	for i, fnames := range c.Fnames {
+	for i, ipFiles := range c.Fnames {
 
 		// NB: if the regexp matches but the fields cannot be parsed
 		// this will panic and fail the test. This is intentional. All
 		// errors must be caught by the input file regexp.
-		job, err := NewJob(def, fnames)
+		job, err := NewJob(def, ipFiles)
 
 		if c.ShouldMatch {
-			if !assert.NoError(t, err, fnames) {
+			if !assert.NoError(t, err, ipFiles) {
 				// stop there for this iteration
 				continue
 			}
 
-			// Then try to format the response of the job
-			for idx := range fnames {
-				resp, err := job.ResponseFile(idx)
-				if assert.NoErrorf(t, err, "cannot produce a response for job %s", fnames[idx]) {
-					assert.Equal(t, c.ExpectedOutput[i][idx], resp, "wrong output file")
+			for idx := range ipFiles {
+				// idx -> inputIndex. ResponseFile takes in output Idx only
+				if idx < len(job.Def.OutputFileTmpl) {
+					opIdx := idx
+					resp, err := job.ResponseFile(opIdx)
+					if assert.NoErrorf(t, err, "cannot produce a response for job %s", ipFiles[idx]) {
+						assert.Equal(t, c.ExpectedOutput[i][idx], resp, "wrong output file")
+					}
 				}
 
 				// Try the name of the large one. If the case is specifying some
@@ -66,11 +69,11 @@ func runInpFileTestCase(t *testing.T, def *JobDefinition, c inpFileNamesCases) {
 			}
 
 		} else {
-			for i := range fnames {
+			for i := range ipFiles {
 				assert.Errorf(
-					t, err, fnames[i],
+					t, err, ipFiles[i],
 					"%v should not match %s",
-					fnames, def.InputFileRegexp[i].String(),
+					ipFiles, def.InputFileRegexp[i].String(),
 				)
 			}
 		}
