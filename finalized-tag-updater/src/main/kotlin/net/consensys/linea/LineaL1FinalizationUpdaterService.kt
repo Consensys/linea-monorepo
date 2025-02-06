@@ -46,7 +46,7 @@ class LineaBesuEngineBlockTagUpdater(private val blockchainService: BlockchainSe
         throw e
       }
     } else {
-      log.warn("Linea safe/finalized block update: Skipped as getBlockByNumber for block=$finalizedBlockNumber returns empty result")
+      log.warn("Linea safe/finalized block update: Skipped as getBlockByNumber for block={} returns empty result", finalizedBlockNumber)
     }
     return false
   }
