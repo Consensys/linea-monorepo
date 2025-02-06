@@ -255,8 +255,8 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 		}
 
 		for round := 0; round <= totalNumRounds; round++ {
-			colSisHashName := ctx.VortexCtx.CommitmentName(round)
-			colSisHashSV, found := run.State.TryGet(string(colSisHashName))
+			colSisHashName := ctx.VortexCtx.SisHashName(round)
+			colSisHashSV, found := run.State.TryGet(colSisHashName)
 			if !found {
 				// continue with the same committedRound until we meet a non-dry
 				// round or we  reach the total number of committed rounds
@@ -291,7 +291,7 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 			}
 
 			// Frees the colSisHash
-			run.State.TryDel(string(colSisHashName))
+			run.State.TryDel(colSisHashName)
 
 			// Increment only if the committedRound is non-dry
 			committedRound++
@@ -366,6 +366,7 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	// And the linear hashing
 	mimcW.CheckLinearHash(
 		ctx.comp,
+		ctx.linearHashVerificationName(),
 		ctx.Columns.ConcatenatedDhQ,
 		ctx.VortexCtx.SisParams.OutputSize(),
 		leavesSizeUnpadded,
@@ -404,7 +405,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 
 	// Consistency check between the collapsed preimage and UalphaQ
 	{
-		left := functionals.CoeffEval(
+		uAlphaQEval := functionals.CoeffEval(
 			ctx.comp,
 			ctx.constencyUalphaQPreimageLeft(),
 			ctx.Coins.Collapse,
@@ -423,7 +424,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			  evaluation point, we get a bivariate polynomial evaluation
 		*/
 
-		right := functionals.EvalCoeffBivariate(
+		preImageEval := functionals.EvalCoeffBivariate(
 			ctx.comp,
 			ctx.constencyUalphaQPreimageRight(),
 			ctx.Columns.PreimagesCollapse,
@@ -434,21 +435,21 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 		)
 
 		ctx.comp.InsertVerifier(
-			left.Round(),
-			func(run *wizard.VerifierRuntime) error {
-				if left.GetVal(run) != right.GetVal(run) {
-					l, r := left.GetVal(run), right.GetVal(run)
+			uAlphaQEval.Round(),
+			func(run wizard.Runtime) error {
+				if uAlphaQEval.GetVal(run) != preImageEval.GetVal(run) {
+					l, r := uAlphaQEval.GetVal(run), preImageEval.GetVal(run)
 					return fmt.Errorf("consistency between u_alpha and the preimage: "+
-						"mismatch between left and right %v != %v",
+						"mismatch between uAlphaQEval=%v preimages=%v",
 						l.String(), r.String(),
 					)
 				}
 				return nil
 			},
-			func(api frontend.API, run *wizard.WizardVerifierCircuit) {
+			func(api frontend.API, run wizard.GnarkRuntime) {
 				api.AssertIsEqual(
-					left.GetFrontendVariable(api, run),
-					right.GetFrontendVariable(api, run),
+					uAlphaQEval.GetFrontendVariable(api, run),
+					preImageEval.GetFrontendVariable(api, run),
 				)
 			},
 		)
@@ -621,7 +622,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 
 	// And the final check
 	// check the folding of the polynomial is correct
-	ctx.comp.InsertVerifier(round, func(run *wizard.VerifierRuntime) error {
+	ctx.comp.InsertVerifier(round, func(run wizard.Runtime) error {
 
 		// fetch the assignments to edual and dcollapse
 		edual := ctx.Columns.Edual.GetColAssignment(run)
@@ -666,7 +667,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 		}
 
 		return nil
-	}, func(api frontend.API, run *wizard.WizardVerifierCircuit) {
+	}, func(api frontend.API, run wizard.GnarkRuntime) {
 
 		// fetch the assignments to edual and dcollapse
 		edual := ctx.Columns.Edual.GetColAssignmentGnark(run)

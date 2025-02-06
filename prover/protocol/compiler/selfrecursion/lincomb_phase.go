@@ -70,18 +70,18 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 	// And let the verifier check that they should be both equal
 	ctx.comp.InsertVerifier(
 		round,
-		func(run *wizard.VerifierRuntime) error {
+		func(run wizard.Runtime) error {
 
 			ys := ctx.Columns.Ys.GetColAssignment(run)
 			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
 			ysAlpha := smartvectors.EvalCoeff(ys, alpha)
 			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetVal(run)
 			if uAlphaX != ysAlpha {
-				return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass")
+				return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass, ysAlphaX=%v uAlphaX=%v", ysAlpha.String(), uAlphaX.String())
 			}
 			return nil
 		},
-		func(api frontend.API, run *wizard.WizardVerifierCircuit) {
+		func(api frontend.API, run wizard.GnarkRuntime) {
 			ys := ctx.Columns.Ys.GetColAssignmentGnark(run)
 			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
 			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetFrontendVariable(api, run)
