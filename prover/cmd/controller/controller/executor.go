@@ -42,7 +42,7 @@ type Status struct {
 type Resource struct {
 	ConfFile string
 	// The input and output file paths
-	InFile, OutFile string
+	InFile, OutFile []string
 }
 
 // The executor is responsible for running the commands specified by the jobs
@@ -64,7 +64,9 @@ func NewExecutor(cfg *config.Config) *Executor {
 func (e *Executor) Run(job *Job) (status Status) {
 
 	// The job should be locked
-	if len(job.LockedFile) == 0 {
+	// ASSUMED 0 index here
+
+	if len(job.LockedFile[0]) == 0 {
 		return Status{
 			ExitCode: CodeFatal,
 			What:     "the job is not locked",
@@ -74,7 +76,9 @@ func (e *Executor) Run(job *Job) (status Status) {
 	// if we are on a large instance and the job is execution with large suffix,
 	// we directly run with large.
 	// note: checking that locked job contains "large" is not super typesafe...
-	largeRun := job.Def.Name == jobNameExecution && e.Config.Execution.CanRunFullLarge && strings.Contains(job.LockedFile, config.LargeSuffix)
+
+	// ASSUMED 0 index here
+	largeRun := job.Def.Name == jobNameExecution && e.Config.Execution.CanRunFullLarge && strings.Contains(job.LockedFile[0], config.LargeSuffix)
 
 	// First, run the job normally
 	cmd, err := e.buildCmd(job, largeRun)
@@ -126,17 +130,20 @@ func (e *Executor) Run(job *Job) (status Status) {
 // Builds a command from a template to run, returns a status if it failed
 func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 
-	// The generates a name for the output file. Also attempts to generate the
-	// name of the final response file so that we can be sure it will be
-	// not fail being generated after having run the command.
-	if _, err := job.ResponseFile(); err != nil {
+	// Generate names for the output files. Also attempts to generate the
+	// names of the final response files so that we can be sure they will not
+	// fail being generated after having run the command.
+
+	// ASSUMED 0 index here
+	if _, err := job.ResponseFile(0); err != nil {
 		logrus.Errorf(
 			"could not generate the tmp response filename for %s: %v",
 			job.OriginalFile, err,
 		)
 		return "", err
 	}
-	outFile := job.TmpResponseFile(e.Config)
+	// ASSUMED 0 index here
+	outFile := job.TmpResponseFile(e.Config, 0)
 
 	tmpl := e.Config.Controller.WorkerCmdTmpl
 	if large {
@@ -144,10 +151,11 @@ func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 	}
 
 	// use the template to generate the command
+	// ASSUMED 0 index
 	resource := Resource{
 		ConfFile: fConfig,
-		InFile:   job.InProgressPath(),
-		OutFile:  outFile,
+		InFile:   []string{job.InProgressPath(0)},
+		OutFile:  []string{outFile},
 	}
 
 	// Build the command and args from the job
@@ -192,7 +200,8 @@ func runCmd(cmd string, job *Job, retry bool) Status {
 
 	pname := processName(job, cmd)
 
-	metrics.CollectPreProcess(job.Def.Name, job.Start, job.End, false)
+	// ASSUMED 0 index
+	metrics.CollectPreProcess(job.Def.Name, job.Start[0], job.End[0], false)
 
 	// Starts a new process from our command
 	startTime := time.Now()

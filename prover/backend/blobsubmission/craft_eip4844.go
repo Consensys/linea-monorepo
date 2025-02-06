@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -171,5 +172,4 @@ func compressedStreamToBlob(compressedStream []byte) (blob kzg4844.Blob, err err
 		}
 	}
 	return blob, nil
-
 }

@@ -111,6 +111,17 @@ type Config struct {
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 
+	// LIMITLESS PROVER Components
+	Bootstrap Execution `mapstructure:"execution_bootstrap"`
+
+	GLExecution Execution `mapstructure:"execution_gl"`
+
+	RndBeacon RndBeacon `mapstructure:"execution_rndbeacon"`
+
+	LPPExecution Execution `mapstructure:"execution_lpp"`
+
+	Conglomeration Conglomeration `mapstructure:"execution_conglomeration"`
+
 	Debug struct {
 		// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
 		// Profiles can later be read using the `go tool pprof` command.
@@ -137,6 +148,38 @@ type Config struct {
 
 	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
 	TracesLimitsLarge TracesLimits `mapstructure:"traces_limits_large" validate:"required"`
+}
+
+type RndBeacon struct {
+	GL WithRequestDir `mapstructure:",squash"`
+
+	MetaData WithRequestDir `mapstructure:",squash"`
+
+	// ProverMode stores the kind of prover to use.
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
+
+	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
+	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
+
+	// ConflatedTracesDir stores the directory where the conflation traces are stored.
+	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
+}
+
+type Conglomeration struct {
+	GL WithRequestDir `mapstructure:",squash"`
+
+	LPP WithRequestDir `mapstructure:",squash"`
+
+	BootstrapMetadata WithRequestDir `mapstructure:",squash"`
+
+	// ProverMode stores the kind of prover to use.
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
+
+	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
+	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
+
+	// ConflatedTracesDir stores the directory where the conflation traces are stored.
+	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
 }
 
 func (cfg *Config) Logger() *logrus.Logger {
