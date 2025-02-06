@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Make proof runs the prover of the aggregation circuit and returns the
+// MakeProof runs the prover of the aggregation circuit and returns the
 // corresponding proof.
 func MakeProof(
 	setup *circuits.Setup,

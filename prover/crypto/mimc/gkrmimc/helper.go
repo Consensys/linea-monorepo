@@ -38,7 +38,7 @@ func NewHasherFactory(api frontend.API) *HasherFactory {
 // HasherFactory is an object that can construct hashers satisfying the
 // [hash.FieldHasher] interface and which can be used to perform MiMC hashing
 // in a gnark circuit. All hashing operations performed by these hashers are
-// bare claims whose truthfullness is backed by the verification of a GKR proof
+// bare claims whose truthfulness is backed by the verification of a GKR proof
 // in the same circuit. This deferred GKR verification is hidden from the user.
 type HasherFactory struct {
 	initStates []frontend.Variable
@@ -100,7 +100,7 @@ func (h *Hasher) Sum() frontend.Variable {
 	// 1 - Call the compression function in a loop
 	curr := h.state
 	for _, stream := range h.data {
-		curr = h.Compress(curr, stream)
+		curr = h.Compress(h.factory.api, curr, stream)
 	}
 	// flush the data already hashed
 	h.data = nil
@@ -137,9 +137,9 @@ func (h *Hasher) State() []frontend.Variable {
 // result is pushed on the stack of all the claims to verify.
 //
 // This function does not modify the state of the hasher.
-func (h *Hasher) Compress(state, block frontend.Variable) frontend.Variable {
+func (h *Hasher) Compress(api frontend.API, state, block frontend.Variable) frontend.Variable {
 
-	newState, err := h.factory.api.Compiler().NewHint(mimcHintfunc, 1, state, block)
+	newState, err := api.Compiler().NewHint(mimcHintfunc, 1, state, block)
 	if err != nil {
 		panic(err)
 	}
