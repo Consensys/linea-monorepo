@@ -87,6 +87,11 @@ public final class BytecodeRunner {
     this.run(Wei.fromEth(1), (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, additionalAccounts);
   }
 
+  // Ad-hoc gasLimit and accounts
+  public void run(Long gasLimit, List<ToyAccount> additionalAccounts) {
+    this.run(Wei.fromEth(1), gasLimit, additionalAccounts);
+  }
+
   // Ad-hoc senderBalance, gasLimit and accounts
   public void run(Wei senderBalance, Long gasLimit, List<ToyAccount> additionalAccounts) {
     checkArgument(byteCode != null, "byteCode cannot be empty");
