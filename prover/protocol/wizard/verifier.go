@@ -41,6 +41,7 @@ type Runtime interface {
 	GetSpec() *CompiledIOP
 	GetPublicInput(name string) field.Element
 	GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams
+	GetDistributedProjectionParams(name ifaces.QueryID) query.DistributedProjectionParams
 	GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams
 	GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams
 	GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams

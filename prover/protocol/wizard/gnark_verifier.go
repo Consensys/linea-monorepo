@@ -23,6 +23,7 @@ type GnarkRuntime interface {
 	GetSpec() *CompiledIOP
 	GetPublicInput(api frontend.API, name string) frontend.Variable
 	GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams
+	GetDistributedProjectionParams(name ifaces.QueryID) query.GnarkDistributedProjectionParams
 	GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams
 	GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams
 	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams

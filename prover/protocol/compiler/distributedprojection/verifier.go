@@ -17,7 +17,7 @@ type distributedProjectionVerifierAction struct {
 }
 
 // Run implements the [wizard.VerifierAction]
-func (va *distributedProjectionVerifierAction) Run(run *wizard.VerifierRuntime) error {
+func (va *distributedProjectionVerifierAction) Run(run wizard.Runtime) error {
 	var (
 		actualParam = field.Zero()
 	)
@@ -48,7 +48,7 @@ func (va *distributedProjectionVerifierAction) Run(run *wizard.VerifierRuntime) 
 }
 
 // RunGnark implements the [wizard.VerifierAction] interface.
-func (va *distributedProjectionVerifierAction) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (va *distributedProjectionVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		actualParam = frontend.Variable(0)

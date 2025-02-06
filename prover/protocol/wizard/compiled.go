@@ -648,7 +648,6 @@ func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in query.ProjectionInp
 
 // Register a distributed projection query
 func (c *CompiledIOP) InsertDistributedProjection(round int, id ifaces.QueryID, in []*query.DistributedProjectionInput) query.DistributedProjection {
-	c.assertConsistentRound(round)
 	q := query.NewDistributedProjection(round, id, in)
 	// Finally registers the query
 	c.QueriesParams.AddToRound(round, q.Name(), q)
