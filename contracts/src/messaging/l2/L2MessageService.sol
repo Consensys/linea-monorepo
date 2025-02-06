@@ -62,7 +62,6 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
 
     nextMessageNumber = 1;
 
-    _messageSender = DEFAULT_SENDER_ADDRESS;
     minimumFeeInWei = 0.0001 ether;
   }
 
