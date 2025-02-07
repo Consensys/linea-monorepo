@@ -32,7 +32,9 @@ public interface Module {
 
   default void traceStartConflation(final long blockCount) {}
 
-  default void traceEndConflation(final WorldView state) {}
+  default void traceEndConflation(final WorldView state) {
+    this.commitTransactionBundle();
+  }
 
   default void traceStartBlock(
       final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {}
@@ -51,13 +53,16 @@ public interface Module {
   default void tracePreOpcode(MessageFrame frame) {}
 
   /**
-   * Called at the eve of a new transaction; intended to create a new modification context for the
-   * stacked state of the module.
+   * Called when a bundle of transaction execution is cancelled; should revert the state of the
+   * module.
    */
-  void enterTransaction();
+  void popTransactionBundle();
 
-  /** Called when a transaction execution is cancelled; should revert the state of the module. */
-  void popTransaction();
+  /**
+   * Called when a bundle of transactions is committed. Those transactions can't be cancelled
+   * afterward.
+   */
+  void commitTransactionBundle();
 
   int lineCount();
 

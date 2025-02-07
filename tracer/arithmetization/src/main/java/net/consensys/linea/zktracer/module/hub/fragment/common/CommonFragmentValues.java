@@ -30,9 +30,9 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.gas.GasParameters;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
-import net.consensys.linea.zktracer.module.hub.State;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
+import net.consensys.linea.zktracer.module.hub.state.State;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjection;
@@ -48,7 +48,7 @@ public class CommonFragmentValues {
   public final HubProcessingPhase hubProcessingPhase;
   public final int hubStamp;
   public final CallStack callStack;
-  public final State.TxState.Stamps stamps;
+  public final State.HubTransactionState.Stamps stamps;
   @Setter public int logStamp = -1;
   @Getter final CallFrame callFrame;
   public final short exceptions;
@@ -75,11 +75,11 @@ public class CommonFragmentValues {
     final short exceptions = hub.pch().exceptions();
     final boolean stackException = stackException(exceptions);
 
-    final boolean isExec = hub.state.getProcessingPhase() == TX_EXEC;
+    final boolean isExec = hub.state.processingPhase() == TX_EXEC;
 
     this.hub = hub;
     this.txMetadata = hub.txStack().current();
-    this.hubProcessingPhase = hub.state().getProcessingPhase();
+    this.hubProcessingPhase = hub.state().processingPhase();
     this.hubStamp = hub.stamp();
     this.callStack = hub.callStack();
     this.stamps = hub.state().stamps();
@@ -213,7 +213,7 @@ public class CommonFragmentValues {
 
     final CallFrame currentFrame = hub.currentFrame();
 
-    if (hub.state().getProcessingPhase() != TX_EXEC) return 0;
+    if (hub.state().processingPhase() != TX_EXEC) return 0;
 
     if (currentFrame.executionPaused()) {
       currentFrame.unpauseCurrentFrame();

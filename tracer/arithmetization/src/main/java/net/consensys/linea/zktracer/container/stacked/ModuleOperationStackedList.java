@@ -15,12 +15,10 @@
 
 package net.consensys.linea.zktracer.container.stacked;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
-import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import org.jetbrains.annotations.NotNull;
@@ -29,90 +27,49 @@ import org.jetbrains.annotations.NotNull;
  * Implements a system of pseudo-stacked squashed List where {@link
  * ModuleOperationStackedList#operationsCommitedToTheConflation} represents the List of all
  * operations since the beginning of the conflation and {@link
- * ModuleOperationStackedList#operationsInTransaction} represents the operations added by the last
- * transaction. We can pop only the operations added by last transaction. The line counting is done
- * by a separate {@link CountOnlyOperation}.
+ * ModuleOperationStackedList#operationsInTransactionBundle} represents the operations added by the
+ * last bundle of transaction, that can be popped. The line counting is done by a separate {@link
+ * CountOnlyOperation}.
  *
  * @param <E> the type of elements stored in the set
  */
 @Accessors(fluent = true)
-public class ModuleOperationStackedList<E extends ModuleOperation> {
-  private final List<E> operationsCommitedToTheConflation;
-  @Getter private final List<E> operationsInTransaction;
+public class ModuleOperationStackedList<E extends ModuleOperation> extends StackedList<E> {
   private final CountOnlyOperation lineCounter = new CountOnlyOperation();
   private boolean conflationFinished = false;
 
   public ModuleOperationStackedList() {
-    operationsCommitedToTheConflation = new ArrayList<>();
-    operationsInTransaction = new ArrayList<>();
+    super();
   }
 
   /** Prefer this constructor as we preallocate more needed memory */
   public ModuleOperationStackedList(
       final int expectedConflationNumberOperations, final int expectedTransactionNumberOperations) {
-    operationsCommitedToTheConflation = new ArrayList<>(expectedConflationNumberOperations);
-    operationsInTransaction = new ArrayList<>(expectedTransactionNumberOperations);
+    super(expectedConflationNumberOperations, expectedTransactionNumberOperations);
   }
 
-  /**
-   * when we enter a transaction, the previous transaction is definitely added to the block and
-   * can't be pop
-   */
-  public void enter() {
-    operationsCommitedToTheConflation.addAll(operationsInTransaction);
-    operationsInTransaction.clear();
-    lineCounter.enter();
+  public void commitTransactionBundle() {
+    super.commitTransactionBundle();
+    lineCounter.commitTransactionBundle();
   }
 
-  public void pop() {
-    operationsInTransaction.clear();
-    lineCounter.pop();
-  }
-
-  public E getFirst() {
-    return operationsCommitedToTheConflation.isEmpty()
-        ? operationsInTransaction.getFirst()
-        : operationsCommitedToTheConflation.getFirst();
-  }
-
-  public E getLast() {
-    return operationsInTransaction.isEmpty()
-        ? operationsCommitedToTheConflation.getLast()
-        : operationsInTransaction.getLast();
-  }
-
-  public int size() {
-    return operationsInTransaction.size() + operationsCommitedToTheConflation.size();
+  public void popTransactionBundle() {
+    super.popTransactionBundle();
+    lineCounter.popTransactionBundle();
   }
 
   public int lineCount() {
     return lineCounter.lineCount();
   }
 
-  public E get(int index) {
-    if (index < operationsCommitedToTheConflation.size()) {
-      return operationsCommitedToTheConflation.get(index);
-    } else {
-      return operationsInTransaction.get(index - operationsCommitedToTheConflation.size());
-    }
-  }
-
   public List<E> getAll() {
     Preconditions.checkState(conflationFinished, "Conflation not finished");
-    return operationsCommitedToTheConflation;
-  }
-
-  public boolean isEmpty() {
-    return size() == 0;
-  }
-
-  public boolean contains(Object o) {
-    return operationsInTransaction.contains(o) || operationsCommitedToTheConflation.contains(o);
+    return operationsCommitedToTheConflation();
   }
 
   public boolean add(E e) {
     lineCounter.add(e.lineCount());
-    return operationsInTransaction.add(e);
+    return operationsInTransactionBundle().add(e);
   }
 
   public boolean addAll(@NotNull Collection<? extends E> c) {
@@ -124,15 +81,15 @@ public class ModuleOperationStackedList<E extends ModuleOperation> {
   }
 
   public void clear() {
-    operationsCommitedToTheConflation.clear();
-    operationsInTransaction.clear();
+    operationsCommitedToTheConflation().clear();
+    operationsInTransactionBundle().clear();
     lineCounter.clear();
   }
 
   public void finishConflation() {
     conflationFinished = true;
-    operationsCommitedToTheConflation.addAll(operationsInTransaction);
-    operationsInTransaction.clear();
-    lineCounter.enter(); // this is not mandatory but it is more consistent
+    operationsCommitedToTheConflation().addAll(operationsInTransactionBundle());
+    operationsInTransactionBundle().clear();
+    lineCounter.commitTransactionBundle(); // this is not mandatory but it is more consistent
   }
 }

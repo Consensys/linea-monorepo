@@ -40,8 +40,6 @@ import net.consensys.linea.zktracer.types.FiniteList;
 import net.consensys.linea.zktracer.types.Utils;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
@@ -74,7 +72,6 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   @Getter private final Hub hub;
   private final Optional<DebugMode> debugMode;
-  private Hash hashOfLastTransactionTraced = Hash.EMPTY;
 
   /** Accumulate all the exceptions that happened at tracing time. */
   @Getter private final List<Exception> tracingExceptions = new FiniteList<>(50);
@@ -206,7 +203,6 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   public void tracePrepareTransaction(WorldView worldView, Transaction transaction) {
     try {
-      hashOfLastTransactionTraced = transaction.getHash();
       this.debugMode.ifPresent(x -> x.tracePrepareTx(worldView, transaction));
       this.hub.traceStartTransaction(worldView, transaction);
     } catch (final Exception e) {
@@ -304,17 +300,22 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     }
   }
 
-  /** When called, erase all tracing related to the last included transaction. */
-  public void popTransaction(final PendingTransaction pendingTransaction) {
-    if (hashOfLastTransactionTraced.equals(pendingTransaction.getTransaction().getHash())) {
-      hub.popTransaction();
-    }
-  }
-
   private void maybeThrowTracingExceptions() {
     if (!this.tracingExceptions.isEmpty()) {
       throw new TracingExceptions(this.tracingExceptions);
     }
+  }
+
+  /**
+   * When called, erase all tracing related to the bundle of all transactions since the last {@link
+   * commitTransactionBundle()}
+   */
+  public void popTransactionBundle() {
+    hub.popTransactionBundle();
+  }
+
+  public void commitTransactionBundle() {
+    hub.commitTransactionBundle();
   }
 
   public Map<String, Integer> getModulesLineCount() {

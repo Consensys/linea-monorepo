@@ -30,15 +30,20 @@ public class CountOnlyModuleTest {
     ZkTracer state = new ZkTracer();
     final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
 
-    countingOnlyModule.enterTransaction();
     countingOnlyModule.addPrecompileLimit(1);
     assertThat(countingOnlyModule.lineCount()).isEqualTo(1);
 
-    countingOnlyModule.enterTransaction();
     countingOnlyModule.addPrecompileLimit(1);
     assertThat(countingOnlyModule.lineCount()).isEqualTo(2);
 
-    countingOnlyModule.popTransaction();
+    countingOnlyModule.popTransactionBundle();
+    assertThat(countingOnlyModule.lineCount()).isEqualTo(0);
+
+    countingOnlyModule.addPrecompileLimit(1);
+    countingOnlyModule.commitTransactionBundle();
+    countingOnlyModule.addPrecompileLimit(1);
+    assertThat(countingOnlyModule.lineCount()).isEqualTo(2);
+    countingOnlyModule.popTransactionBundle();
     assertThat(countingOnlyModule.lineCount()).isEqualTo(1);
 
     state = new ZkTracer();

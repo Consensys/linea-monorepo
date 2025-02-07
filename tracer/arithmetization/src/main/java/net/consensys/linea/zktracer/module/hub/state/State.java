@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.module.hub.state;
 
 import java.util.*;
 
@@ -22,28 +22,29 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.container.StackedContainer;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
-import net.consensys.linea.zktracer.module.hub.State.TxState.Stamps;
+import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
+import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
+import net.consensys.linea.zktracer.module.hub.state.State.HubTransactionState.Stamps;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.datatypes.Address;
 
-public class State implements StackedContainer {
-  private final Deque<TxState> state = new ArrayDeque<>();
+@RequiredArgsConstructor
+public class State {
+  private final StackedList<HubTransactionState> state = new StackedList<>();
 
   @Getter
   @Accessors(fluent = true)
   private final CountOnlyOperation lineCounter = new CountOnlyOperation();
 
-  State() {}
-
-  public TxState current() {
-    return state.peek();
+  public HubTransactionState current() {
+    return state.getLast();
   }
 
   public Stamps stamps() {
-    return this.current().stamps;
+    return current().stamps;
   }
 
   /** Increments at commit time */
@@ -64,7 +65,10 @@ public class State implements StackedContainer {
     mxpStamp++;
   }
 
-  @Getter @Setter HubProcessingPhase processingPhase;
+  @Getter
+  @Setter
+  @Accessors(fluent = true)
+  HubProcessingPhase processingPhase;
 
   @RequiredArgsConstructor
   @EqualsAndHashCode
@@ -108,8 +112,8 @@ public class State implements StackedContainer {
   /**
    * @return the current transaction trace elements
    */
-  TxTrace currentTxTrace() {
-    return current().txTrace;
+  public TraceSections currentTransactionHubSections() {
+    return current().traceSections;
   }
 
   /**
@@ -118,53 +122,54 @@ public class State implements StackedContainer {
    * @param hubTrace the trace builder to write to
    * @return the trace builder
    */
-  Trace commit(Trace hubTrace) {
-    for (Iterator<TxState> it = state.descendingIterator(); it.hasNext(); ) {
-      final TxState txState = it.next();
-      txState.txTrace().commit(hubTrace);
+  public Trace commit(Trace hubTrace) {
+    for (HubTransactionState state : state.getAll()) {
+      state.traceSections().commit(hubTrace);
     }
     return hubTrace;
   }
 
-  int txCount() {
+  public int txCount() {
     return state.size();
   }
 
-  @Override
-  public void enter() {
+  public void enterTransaction() {
     if (state.isEmpty()) {
-      state.push(new TxState());
+      state.add(new HubTransactionState());
     } else {
-      state.push(this.current().spinOff());
+      state.add(current().spinOff());
     }
-    lineCounter.enter();
   }
 
-  @Override
-  public void pop() {
-    state.pop();
-    lineCounter.pop();
+  public void popTransactionBundle() {
+    state.popTransactionBundle();
+    lineCounter.popTransactionBundle();
+  }
+
+  public void commitTransactionBundle() {
+    state.commitTransactionBundle();
+    lineCounter.commitTransactionBundle();
   }
 
   /** Describes the Hub state during a given transaction. */
   @Accessors(fluent = true)
   @Getter
-  public static class TxState {
+  public static class HubTransactionState {
     Stamps stamps;
-    TxTrace txTrace;
+    TraceSections traceSections;
 
-    TxState() {
+    HubTransactionState() {
       stamps = new Stamps();
-      txTrace = new TxTrace();
+      traceSections = new TraceSections();
     }
 
-    public TxState(Stamps stamps) {
+    public HubTransactionState(Stamps stamps) {
       this.stamps = stamps;
-      txTrace = new TxTrace();
+      traceSections = new TraceSections();
     }
 
-    TxState spinOff() {
-      return new TxState(stamps.snapshot());
+    HubTransactionState spinOff() {
+      return new HubTransactionState(stamps.snapshot());
     }
 
     /**

@@ -28,29 +28,33 @@ public class CountOnlyTests {
   void testAddedToFront() {
     final CountOnlyOperation state = new CountOnlyOperation();
 
-    state.enter();
     state.add(1);
     assertThat(state.lineCount()).isEqualTo(1);
 
-    state.enter();
     state.add(3);
     assertThat(state.lineCount()).isEqualTo(4);
 
-    state.pop();
+    state.popTransactionBundle();
+    assertThat(state.lineCount()).isEqualTo(0);
+
+    state.add(1);
     assertThat(state.lineCount()).isEqualTo(1);
 
-    state.enter();
-    assertThat(state.lineCount()).isEqualTo(1);
+    state.add(3);
+    assertThat(state.lineCount()).isEqualTo(4);
+    state.commitTransactionBundle();
+    assertThat(state.lineCount()).isEqualTo(4);
+    state.popTransactionBundle();
+    assertThat(state.lineCount()).isEqualTo(4);
 
     state.add(2);
     state.add(2);
-    assertThat(state.lineCount()).isEqualTo(5);
+    assertThat(state.lineCount()).isEqualTo(8);
 
-    state.pop();
-    assertThat(state.lineCount()).isEqualTo(1);
+    state.popTransactionBundle();
+    assertThat(state.lineCount()).isEqualTo(4);
 
-    state.enter();
     state.add(0);
-    assertThat(state.lineCount()).isEqualTo(1);
+    assertThat(state.lineCount()).isEqualTo(4);
   }
 }

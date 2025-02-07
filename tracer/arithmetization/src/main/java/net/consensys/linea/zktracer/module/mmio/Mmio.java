@@ -41,7 +41,6 @@ import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.module.mmu.Mmu;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
 import net.consensys.linea.zktracer.module.mmu.MmuOperation;
-import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -56,25 +55,25 @@ public class Mmio implements Module {
   }
 
   @Override
-  public void enterTransaction() {
-    lineCounter.enter();
+  public void commitTransactionBundle() {
+    lineCounter.add(lineCountOfLastTransactionBundle());
+    lineCounter.commitTransactionBundle();
   }
 
   @Override
-  public void popTransaction() {
-    lineCounter.pop();
-  }
+  public void popTransactionBundle() {}
 
-  @Override
-  public void traceEndTx(TransactionProcessingMetadata tx) {
-    for (MmuOperation o : mmu.operations().operationsInTransaction()) {
-      lineCounter.add(o.mmioLineCount());
+  private int lineCountOfLastTransactionBundle() {
+    int count = 0;
+    for (MmuOperation o : mmu.operations().operationsInTransactionBundle()) {
+      count += o.mmioLineCount();
     }
+    return count;
   }
 
   @Override
   public int lineCount() {
-    return lineCounter.lineCount();
+    return lineCounter.lineCount() + lineCountOfLastTransactionBundle();
   }
 
   @Override

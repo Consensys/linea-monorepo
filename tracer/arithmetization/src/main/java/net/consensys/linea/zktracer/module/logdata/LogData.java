@@ -20,7 +20,6 @@ import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
-import com.google.common.base.Preconditions;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.Module;
@@ -42,21 +41,18 @@ public class LogData implements Module {
   }
 
   @Override
-  public void enterTransaction() {
-    lineCounter.enter();
+  public void commitTransactionBundle() {
+    lineCounter.commitTransactionBundle();
   }
 
   @Override
-  public void popTransaction() {
-    lineCounter.pop();
+  public void popTransactionBundle() {
+    lineCounter.popTransactionBundle();
   }
 
   /* WARN: make sure this is called after rlpTxnRcpt as we need the operation of the current transaction */
   @Override
   public void traceEndTx(TransactionProcessingMetadata tx) {
-    Preconditions.checkArgument(
-        rlpTxnRcpt.operations().operationsInTransaction().size() == 1,
-        "We should have only one transaction receipt operation per transaction");
     lineCounter.add(lineCountForLogData(rlpTxnRcpt.operations().getLast()));
   }
 

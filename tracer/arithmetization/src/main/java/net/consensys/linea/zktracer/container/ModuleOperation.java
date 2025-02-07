@@ -29,7 +29,6 @@ public abstract class ModuleOperation {
     if (this.lineCount == -1) {
       this.lineCount = this.computeLineCount();
     }
-
     return this.lineCount;
   }
 }

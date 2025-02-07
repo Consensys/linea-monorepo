@@ -23,10 +23,10 @@ import java.util.HashMap;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.module.hub.State;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
+import net.consensys.linea.zktracer.module.hub.state.State;
 import net.consensys.linea.zktracer.types.EWord;
 
 @RequiredArgsConstructor

@@ -60,45 +60,42 @@ public class StackedListTests {
     final ModuleOperationStackedList<IntegerModuleOperation> state =
         new ModuleOperationStackedList<>();
 
-    state.enter();
     state.add(new IntegerModuleOperation(1));
+    state.commitTransactionBundle();
     assertThat(state.lineCount()).isEqualTo(1);
 
-    state.enter();
     state.add(new IntegerModuleOperation(3));
     assertThat(state.lineCount()).isEqualTo(4);
 
-    state.pop();
+    state.popTransactionBundle();
     assertThat(state.lineCount()).isEqualTo(1);
   }
 
   @Test
   public void push() {
     ModuleOperationStackedList<AddOperation> chunks = new ModuleOperationStackedList<>();
-    chunks.enter();
 
     chunks.add(ONE_PLUS_ONE);
     chunks.add(ONE_PLUS_ONE);
     chunks.add(ONE_PLUS_ONE);
     Assertions.assertEquals(3, chunks.size());
-    chunks.pop();
+    chunks.popTransactionBundle();
     Assertions.assertEquals(0, chunks.size());
   }
 
   @Test
   public void multiplePushPop() {
     ModuleOperationStackedList<AddOperation> chunks = new ModuleOperationStackedList<>();
-    chunks.enter();
     chunks.add(ONE_PLUS_ONE);
     chunks.add(ONE_PLUS_ONE);
     Assertions.assertEquals(2, chunks.size());
+    chunks.commitTransactionBundle();
 
-    chunks.enter();
     chunks.add(ONE_PLUS_ONE);
     Assertions.assertEquals(3, chunks.size());
     chunks.add(ONE_PLUS_TWO);
     Assertions.assertEquals(4, chunks.size());
-    chunks.pop();
+    chunks.popTransactionBundle();
     Assertions.assertEquals(2, chunks.size());
   }
 }
