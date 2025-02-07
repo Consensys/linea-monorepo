@@ -8,7 +8,7 @@ import { CallForwardingProxy, TestLineaRollup } from "../../../typechain-types";
 import calldataAggregatedProof1To155 from "../_testData/compressedData/aggregatedProof-1-155.json";
 import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import blobMultipleAggregatedProof1To81 from "../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
-import blobAggregatedProof1To46 from "../_testData/compressedDataEip4844/aggregatedProof-1-46.json";
+import blobAggregatedProof1To46 from "../_testData/compressedDataEip4844/aggregatedProof1-46.json";
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
 import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
