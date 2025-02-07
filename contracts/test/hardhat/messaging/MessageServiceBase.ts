@@ -150,5 +150,17 @@ describe("MessageServiceBase", () => {
     //   ])) as unknown as TestMessageServiceBase;
     //   await expect(messageServiceBase.withOnlyAuthorizedRemoteSender()).to.not.be.reverted;
     // });
+
+    it("Should succeed if original sender is allowed", async () => {
+      // Construct a call A from `remoteSender` to `messageService`
+      // Call A will created a nested call from `messageService` to `messageServiceBase`, invoking onlyAuthorizedRemoteSender modifier
+      const call = messageService.simulateClaimMessageWithoutChecks(
+        remoteSender,
+        messageServiceBase,
+        0,
+        "0xfcd38105", // keccak256("withOnlyAuthorizedRemoteSender()")
+      );
+      await expect(call).to.not.be.reverted;
+    });
   });
 });

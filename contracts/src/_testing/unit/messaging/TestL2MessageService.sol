@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import { L2MessageService } from "../../../messaging/l2/L2MessageService.sol";
+import { TransientStorageHelpers } from "../../../libraries/TransientStorageHelpers.sol";
 
   /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestL2MessageService is L2MessageService {
@@ -70,5 +71,26 @@ contract TestL2MessageService is L2MessageService {
 
   function makeItRevert() external payable {
     revert();
+  }
+
+  function simulateClaimMessageWithoutChecks(
+    address _from,
+    address _to,
+    uint256 _value,
+    bytes calldata _calldata
+  ) external payable {
+    TransientStorageHelpers.tstoreAddress(MESSAGE_SENDER_TRANSIENT_KEY, _from);
+    (bool callSuccess, bytes memory returnData) = _to.call{ value: _value }(_calldata);
+    if (!callSuccess) {
+      if (returnData.length > 0) {
+        assembly {
+          let data_size := mload(returnData)
+          revert(add(32, returnData), data_size)
+        }
+      } else {
+        revert MessageSendingFailed(_to);
+      }
+    }
+    TransientStorageHelpers.tstoreAddress(MESSAGE_SENDER_TRANSIENT_KEY, DEFAULT_MESSAGE_SENDER_TRANSIENT_VALUE);
   }
 }
