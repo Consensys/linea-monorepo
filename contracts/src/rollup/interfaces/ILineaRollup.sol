@@ -327,11 +327,6 @@ interface ILineaRollup {
   error InitialSoundnessStateNotSame(bytes32 expected, bytes32 actual);
 
   /**
-   * @dev Thrown when the initial shnarf is not being used in the soundness alert final shnarf computation.
-   */
-  error InitialShnarfDoesNotMatchParentShnarf(bytes32 expected, bytes32 actual);
-
-  /**
    * @dev Thrown when the soundness alert is using the same final state root hash for both proofs.
    */
   error FinalStateRootHashesAreTheSame();
