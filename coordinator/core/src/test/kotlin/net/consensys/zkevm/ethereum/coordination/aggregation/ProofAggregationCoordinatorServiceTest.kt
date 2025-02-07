@@ -1,11 +1,10 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import build.linea.domain.BlockIntervals
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
+import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.trimToSecondPrecision
 import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.domain.Aggregation
@@ -18,10 +17,11 @@ import net.consensys.zkevm.domain.ProofsToAggregate
 import net.consensys.zkevm.persistence.AggregationsRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
 import org.mockito.Mockito.anyLong
-import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
+import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -93,7 +93,7 @@ class ProofAggregationCoordinatorServiceTest {
       consecutiveProvenBlobsProvider = mockAggregationsRepository::findConsecutiveProvenBlobs,
       proofAggregationClient = mockProofAggregationClient,
       aggregationL2StateProvider = aggregationL2StateProvider,
-      metricsFacade = MicrometerMetricsFacade(registry = SimpleMeterRegistry()),
+      metricsFacade = mock<MetricsFacade>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS),
       provenAggregationEndBlockNumberConsumer = provenAggregationEndBlockNumberConsumer
     )
     verify(mockAggregationCalculator).onAggregation(proofAggregationCoordinatorService)
