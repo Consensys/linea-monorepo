@@ -2329,7 +2329,7 @@ describe("Linea Rollup contract", () => {
     });
   });
 
-  describe.only("Triggering the soundness alert", () => {
+  describe("Triggering the soundness alert", () => {
     let finalizationData: FinalizationData;
     let initialSoundnessStateHash: string;
     let soundessFinalizationData: SoundessFinalizationData;
