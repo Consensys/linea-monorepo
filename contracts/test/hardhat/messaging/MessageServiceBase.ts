@@ -121,10 +121,30 @@ describe("MessageServiceBase", () => {
       );
     });
 
-    // TODO - Discuss what to do about this test, fails with TSTORE changes
+    /**
+     * TO DISCUSS
+     * Suggest remove this test as it is coupled to implementation detail of `_messageSender` in storage.
+     * It is replaced with a transient storage slot.
+     * Regular storage slot can have a default non-zero value, transient storage slot cannot.
+     * ...
+     * Furthermore the original test is really testing for a specific magic value 'address(123456789)'
+     * that we hardcoded as the default value for the storage slot `_messageSender`.
+     * Arguably the original test is not testing for useful behaviour - it is not really testing the case stated in the 'it' statement
+     * ...
+     * What we care about is that onlyAuthorizedRemoteSender modifier is authorizing calls correctly.
+     * It's a slightly tricky modifier to test because the variable it checks - `messageService.sender()` - is a valid value
+     * only during an intermediate state in the middle of function flow, and not at start or end of the transaction.
+     * ...
+     * Proposed testup
+     * - Construct a call A from `remoteSender` to `messageService`
+     * - Call A will created a nested call from `messageService` to `messageServiceBase`, invoking onlyAuthorizedRemoteSender modifier
+     * - We can enable this function flow with test fixture methods if needed
+     */
+
     // it("Should succeed if original sender is allowed", async () => {
     //   const messageServiceBase = (await deployUpgradableFromFactory("TestMessageServiceBase", [
     //     await messageService.getAddress(),
+    //     // Zero address fails here because we cannot initialize with zero address
     //     // Magic value for address(123456789) which was old L2MessageServiceV1.DEFAULT_SENDER_ADDRESS
     //     "0x00000000000000000000000000000000075BCd15",
     //   ])) as unknown as TestMessageServiceBase;
