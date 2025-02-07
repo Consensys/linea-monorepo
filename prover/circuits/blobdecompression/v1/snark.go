@@ -3,12 +3,16 @@ package v1
 import (
 	"errors"
 
+	mimcGnark "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 
 	"math/big"
 	"math/bits"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark/constraint/solver"
@@ -172,11 +176,21 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 		inputAt31B.Insert(nr.Next())
 	}
 
-	_hsh := func(a, b frontend.Variable) frontend.Variable {
-		hasher.Reset()
-		hasher.Write(a, b)
-		res := hasher.Sum()
-		return res
+	_hsh := func(prevState frontend.Variable, a frontend.Variable, noHash frontend.Variable) frontend.Variable {
+
+		var b frontend.Variable
+
+		switch hasherT := hasher.(type) {
+
+		case *gkrmimc.Hasher:
+			b = hasherT.Compress(prevState, a)
+		case *mimcGnark.MiMC:
+			b = mimc.GnarkBlockCompression(api, prevState, a)
+		default:
+			utils.Panic("unexpected hasher type %T", hasherT)
+		}
+
+		return api.Select(noHash, prevState, b)
 	}
 
 	var (
@@ -213,10 +227,11 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 		noHash := api.IsZero(hashLen) // or equivalently, isZero(currNbBytesRemaining)
 
 		if i != 0 {
-			batchSum = api.Select(
-				noHash,
+
+			batchSum = _hsh(
 				batchSum,
-				_hsh(batchSum, inputAt(api.Add(31*i, startR), hashLen)),
+				inputAt(api.Add(31*i, startR), hashLen),
+				noHash,
 			)
 
 			internal.AssertEqualIf(api, startNext, batchSum, partialSumsT.Lookup(batchI)[0]) // if we're done with the current checksum, check that the claimed one from the table is equal to it
