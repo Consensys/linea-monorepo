@@ -33,6 +33,7 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
    * @param _pauseTypeRoles The list of pause type roles.
    * @param _unpauseTypeRoles The list of unpause type roles.
    */
+  /// @custom:oz-upgrades-unsafe-allow incorrect-initializer-order
   function initialize(
     uint256 _rateLimitPeriod,
     uint256 _rateLimitAmount,
