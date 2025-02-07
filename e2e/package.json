@@ -19,7 +19,7 @@
   "license": "ISC",
   "devDependencies": {
     "@jest/globals": "29.7.0",
-    "@openzeppelin/upgrades-core": "1.33.1",
+    "@openzeppelin/upgrades-core": "1.42.1",
     "@typechain/ethers-v6": "0.5.1",
     "@types/jest": "29.5.13",
     "async-mutex": "^0.5.0",
@@ -28,6 +28,7 @@
     "ethers": "6.13.3",
     "jest": "29.7.0",
     "ts-jest": "29.2.5",
-    "typechain": "8.3.2"
+    "typechain": "8.3.2",
+    "winston": "3.17.0"
   }
 }

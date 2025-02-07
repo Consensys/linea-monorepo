@@ -70,7 +70,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
     vertx: Vertx,
     smartContractVersion: LineaContractVersion
   ) {
-    if (listOf(LineaContractVersion.V5, LineaContractVersion.V6).contains(smartContractVersion).not()) {
+    if (listOf(LineaContractVersion.V6).contains(smartContractVersion).not()) {
       // V6 with prover V3 is soon comming, so we will need to update/extend this test setup
       throw IllegalArgumentException("unsupported contract version=$smartContractVersion!")
     }
@@ -99,13 +99,13 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
     )
     aggregationsRepository = AggregationsRepositoryImpl(PostgresAggregationsDao(sqlClient, fakeClock))
 
-    val lineaRollupContractForDataSubmissionV5 = rollupDeploymentResult.rollupOperatorClient
+    val lineaRollupContractForDataSubmissionV6 = rollupDeploymentResult.rollupOperatorClient
 
     val acceptedBlobEndBlockNumberConsumer = Consumer<ULong> { acceptedBlob = it }
 
     @Suppress("DEPRECATION")
     val alreadySubmittedBlobFilter = L1ShnarfBasedAlreadySubmittedBlobsFilter(
-      lineaRollup = lineaRollupContractForDataSubmissionV5,
+      lineaRollup = lineaRollupContractForDataSubmissionV6,
       acceptedBlobEndBlockNumberConsumer = acceptedBlobEndBlockNumberConsumer
     )
     val blobSubmittedEventConsumers = mapOf(
@@ -123,7 +123,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
         ),
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
-        lineaSmartContractClient = lineaRollupContractForDataSubmissionV5,
+        lineaSmartContractClient = lineaRollupContractForDataSubmissionV6,
         alreadySubmittedBlobsFilter = alreadySubmittedBlobFilter,
         gasPriceCapProvider = FakeGasPriceCapProvider(),
         blobSubmittedEventDispatcher = EventDispatcher(blobSubmittedEventConsumers),
@@ -185,7 +185,8 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
     val blobsEndTime = blobs.last().endBlockTime
     val endTime = if (aggEndTime > blobsEndTime) aggEndTime else blobsEndTime
 
-    fakeClock.setTimeTo(endTime.plus(10.seconds))
+    // submission do the cutoff by minutes, so we need to add 1 minute to the end time
+    fakeClock.setTimeTo(endTime.plus(1.minutes))
 
     blobSubmissionCoordinator.start()
     aggregationFinalizationCoordinator.start()
@@ -205,15 +206,6 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
           }
         testContext.completeNow()
       }.whenException(testContext::failNow)
-  }
-
-  @Test
-  @Timeout(3, timeUnit = TimeUnit.MINUTES)
-  fun `submission works with contract V5`(
-    vertx: Vertx,
-    testContext: VertxTestContext
-  ) {
-    testSubmission(vertx, testContext, LineaContractVersion.V5)
   }
 
   @Test

@@ -5,15 +5,12 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/consensys/compress/lzss"
-	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,29 +78,6 @@ func RandIntn(n int) int { // TODO @Tabaie remove
 	return int(binary.BigEndian.Uint64(b[:]) % uint64(n))
 }
 
-func EmptyBlob(t require.TestingT) []byte {
-	var headerB bytes.Buffer
-
-	repoRoot, err := GetRepoRootPath()
-	assert.NoError(t, err)
-	// Init bm
-	bm, err := v1.NewBlobMaker(1000, filepath.Join(repoRoot, "prover/lib/compressor/compressor_dict.bin"))
-	assert.NoError(t, err)
-
-	if _, err = bm.Header.WriteTo(&headerB); err != nil {
-		panic(err)
-	}
-
-	compressor, err := lzss.NewCompressor(GetDict(t))
-	assert.NoError(t, err)
-
-	var bb bytes.Buffer
-	if _, err = encode.PackAlign(&bb, headerB.Bytes(), fr381.Bits-1, encode.WithAdditionalInput(compressor.Bytes())); err != nil {
-		panic(err)
-	}
-	return bb.Bytes()
-}
-
 func SingleBlockBlob(t require.TestingT) []byte {
 	testBlocks, bm := TestBlocksAndBlobMaker(t)
 
@@ -151,7 +125,7 @@ func ConsecutiveBlobs(t require.TestingT, n ...int) [][]byte {
 }
 
 func TestBlocksAndBlobMaker(t require.TestingT) ([][]byte, *v1.BlobMaker) {
-	repoRoot, err := GetRepoRootPath()
+	repoRoot, err := test_utils.GetRepoRootPath()
 	assert.NoError(t, err)
 	testBlocks, err := LoadTestBlocks(filepath.Join(repoRoot, "testdata/prover-v2/prover-execution/requests"))
 	assert.NoError(t, err)
@@ -167,23 +141,8 @@ func GetDict(t require.TestingT) []byte {
 	return dict
 }
 
-// GetRepoRootPath assumes that current working directory is within the repo
-func GetRepoRootPath() (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	const repoName = "linea-monorepo"
-	i := strings.LastIndex(wd, repoName)
-	if i == -1 {
-		return "", errors.New("could not find repo root")
-	}
-	i += len(repoName)
-	return wd[:i], nil
-}
-
 func getDictForTest() ([]byte, error) {
-	repoRoot, err := GetRepoRootPath()
+	repoRoot, err := test_utils.GetRepoRootPath()
 	if err != nil {
 		return nil, err
 	}

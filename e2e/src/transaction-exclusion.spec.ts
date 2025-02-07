@@ -16,31 +16,35 @@ describe("Transaction exclusion test suite", () => {
       const l2Account = await l2AccountManager.generateAccount();
       const l2AccountLocal = getWallet(l2Account.privateKey, config.getL2BesuNodeProvider()!);
       const testContract = config.getL2TestContract(l2AccountLocal)!;
+      const txRequest: TransactionRequest = {
+        to: await testContract.getAddress(),
+        data: testContract.interface.encodeFunctionData("testAddmod", [13000, 31]),
+        maxPriorityFeePerGas: etherToWei("0.000000001"), // 1 Gwei
+        maxFeePerGas: etherToWei("0.00000001"), // 10 Gwei
+      };
+      const rejectedTxHash = await getTransactionHash(txRequest, l2AccountLocal);
 
-      // This shall be rejected by the Besu node due to traces module limit overflow
-      let rejectedTxHash;
       try {
-        const txRequest: TransactionRequest = {
-          to: await testContract.getAddress(),
-          data: testContract.interface.encodeFunctionData("testAddmod", [13000, 31]),
-          maxPriorityFeePerGas: etherToWei("0.000000001"), // 1 Gwei
-          maxFeePerGas: etherToWei("0.00000001"), // 10 Gwei
-        };
-        rejectedTxHash = await getTransactionHash(txRequest, l2AccountLocal);
+        // This shall be rejected by the Besu node due to traces module limit overflow
         await l2AccountLocal.sendTransaction(txRequest);
       } catch (err) {
         // This shall return error with traces limit overflow
-        console.debug(`sendTransaction expected err: ${JSON.stringify(err)}`);
+        logger.debug(`sendTransaction expected rejection: ${JSON.stringify(err)}`);
+        // assert it was indeed rejected by the traces module limit
+        // @ts-expect-error error is not typed
+        expect(err.message).toContain("is above the limit");
       }
 
       expect(rejectedTxHash).toBeDefined();
-      console.log(`rejectedTxHash (RPC): ${rejectedTxHash}`);
+      logger.debug(`Transaction rejected as expected (RPC). transactionHash=${rejectedTxHash}`);
 
       let getResponse;
       do {
         await wait(1_000);
         getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash!);
       } while (!getResponse?.result);
+
+      logger.debug(`Transaction exclusion status received. response=${JSON.stringify(getResponse.result)}`);
 
       expect(getResponse.result.txHash).toStrictEqual(rejectedTxHash);
       expect(getResponse.result.txRejectionStage).toStrictEqual("RPC");
@@ -60,13 +64,15 @@ describe("Transaction exclusion test suite", () => {
     // This shall be rejected by sequencer due to traces module limit overflow
     const tx = await testContract!.connect(l2AccountLocal).testAddmod(13000, 31);
     const rejectedTxHash = tx.hash;
-    console.log(`rejectedTxHash (SEQUENCER): ${rejectedTxHash}`);
+    logger.debug(`Transaction rejected as expected (SEQUENCER). transactionHash=${rejectedTxHash}`);
 
     let getResponse;
     do {
       await wait(1_000);
       getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(rejectedTxHash);
     } while (!getResponse?.result);
+
+    logger.debug(`Transaction exclusion status received. response=${JSON.stringify(getResponse.result)}`);
 
     expect(getResponse.result.txHash).toStrictEqual(rejectedTxHash);
     expect(getResponse.result.txRejectionStage).toStrictEqual("SEQUENCER");
