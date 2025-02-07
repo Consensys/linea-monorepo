@@ -164,6 +164,11 @@ func TestFileWatcherL(t *testing.T) {
 	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
 }
 
+// TODO: Write this test
+func TestLimitlessProverFileWatcherL(t *testing.T) {
+
+}
+
 // Sets up the test environment by creating temporary directories and configurations for the prover.
 func setupFsTest(t *testing.T) (confM, confL *config.Config) {
 	// Testdir is going to contain the whole test directory
@@ -181,7 +186,7 @@ func setupFsTest(t *testing.T) (confM, confL *config.Config) {
 		aggregation = "aggregation"
 
 		// Add conf. for Limitless prover: Naming convention: exec<i/p><o/p>
-		exec                  = "bootstrap"
+		execBootstrap         = "bootstrap"
 		execBootstrapGL       = "bootstrapGl"
 		execBootstrapMetadata = "bootstrapMetadata"
 		execGLRndBeacon       = "gl-rndbeacon"
@@ -263,7 +268,7 @@ exit $CODE
 		// Limitless prover components
 		ExecBootstrap: config.Execution{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, exec),
+				RequestsRootDir: path.Join(testDir, proverM, execBootstrap),
 			},
 		},
 		ExecGL: config.Execution{
