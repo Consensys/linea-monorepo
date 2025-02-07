@@ -18,7 +18,6 @@ contract TestL1MessageServiceMerkleProof is L1MessageService, TestSetPauseTypeRo
    */
   error MessageAlreadyReceived(bytes32 messageHash);
 
-  /// @custom:oz-upgrades-unsafe-allow incorrect-initializer-order
   function initialize(
     uint256 _rateLimitPeriod,
     uint256 _rateLimitAmount,

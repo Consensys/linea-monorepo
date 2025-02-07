@@ -13,7 +13,6 @@ contract TestL1MessageService is L1MessageService, TestSetPauseTypeRoles {
   address public originalSender;
   bool private reentryDone;
 
-  /// @custom:oz-upgrades-unsafe-allow incorrect-initializer-order
   function initialize(
     uint256 _rateLimitPeriod,
     uint256 _rateLimitAmount,
