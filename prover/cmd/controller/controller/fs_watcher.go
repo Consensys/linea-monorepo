@@ -47,6 +47,37 @@ func NewFsWatcher(conf *config.Config) *FsWatcher {
 		fs.JobToWatch = append(fs.JobToWatch, AggregatedDefinition(conf))
 	}
 
+	// Limitless prover job additions
+	if conf.Controller.EnableExecBootstrap {
+		if job, err := ExecBootstrapDefinition(conf); err == nil {
+			fs.JobToWatch = append(fs.JobToWatch, *job)
+		}
+	}
+
+	if conf.Controller.EnableExecGL {
+		if job, err := ExecGLDefinition(conf); err == nil {
+			fs.JobToWatch = append(fs.JobToWatch, *job)
+		}
+	}
+
+	if conf.Controller.EnableExecRndBeacon {
+		if job, err := ExecRndBeaconDefinition(conf); err == nil {
+			fs.JobToWatch = append(fs.JobToWatch, *job)
+		}
+	}
+
+	if conf.Controller.EnableExecLPP {
+		if job, err := ExecLPPDefinition(conf); err == nil {
+			fs.JobToWatch = append(fs.JobToWatch, *job)
+		}
+	}
+
+	if conf.Controller.EnableExecConglomeration {
+		if job, err := ExecConglomerationDefinition(conf); err == nil {
+			fs.JobToWatch = append(fs.JobToWatch, *job)
+		}
+	}
+
 	return fs
 }
 

@@ -119,7 +119,7 @@ func TestExecBootstrapInFileRegexp(t *testing.T) {
 	for _, c := range testcase {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
-		conf.Bootstrap.CanRunFullLarge = c.Ext == "large"
+		conf.ExecBootstrap.CanRunFullLarge = c.Ext == "large"
 
 		def, err := ExecBootstrapDefinition(&conf)
 		assert.NoError(t, err)
@@ -242,7 +242,7 @@ func TestExecGLInFileRegexp(t *testing.T) {
 	for _, c := range testcase {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
-		conf.GLExecution.CanRunFullLarge = c.Ext == "large"
+		conf.ExecGL.CanRunFullLarge = c.Ext == "large"
 
 		def, err := ExecGLDefinition(&conf)
 		assert.NoError(t, err)
@@ -452,7 +452,7 @@ func TestExecRndBeaconInFileRegexp(t *testing.T) {
 	for _, c := range testcase {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
-		conf.RndBeacon.CanRunFullLarge = c.Ext == "large"
+		conf.ExecRndBeacon.CanRunFullLarge = c.Ext == "large"
 
 		def, err := ExecRndBeaconDefinition(&conf)
 		assert.NoError(t, err)
@@ -567,7 +567,7 @@ func TestExecLPPInFileRegexp(t *testing.T) {
 	for _, c := range testcase {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
-		conf.LPPExecution.CanRunFullLarge = c.Ext == "large"
+		conf.ExecLPP.CanRunFullLarge = c.Ext == "large"
 
 		def, err := ExecLPPDefinition(&conf)
 		assert.NoError(t, err)
@@ -810,7 +810,7 @@ func TestExecConglomerationInFileRegexp(t *testing.T) {
 	for _, c := range testcase {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
-		conf.Conglomeration.CanRunFullLarge = c.Ext == "large"
+		conf.ExecConglomeration.CanRunFullLarge = c.Ext == "large"
 
 		def, err := ExecConglomerationDefinition(&conf)
 		assert.NoError(t, err)

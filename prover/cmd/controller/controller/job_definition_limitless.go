@@ -50,12 +50,12 @@ const (
 
 func ExecBootstrapDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
-	if conf.Bootstrap.CanRunFullLarge {
+	if conf.ExecBootstrap.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
 	// Input files
-	reqDirs := []string{conf.Bootstrap.RequestsRootDir}
+	reqDirs := []string{conf.ExecBootstrap.RequestsRootDir}
 	inputFilePatterns := []string{fmt.Sprintf(execBootstrapInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
@@ -68,12 +68,12 @@ func ExecBootstrapDefinition(conf *config.Config) (*JobDefinition, error) {
 
 func ExecGLDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
-	if conf.GLExecution.CanRunFullLarge {
+	if conf.ExecGL.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
 	// Input files
-	reqDirs := []string{conf.GLExecution.RequestsRootDir}
+	reqDirs := []string{conf.ExecGL.RequestsRootDir}
 	inputFilePatterns := []string{fmt.Sprintf(execBootstrapGLInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
@@ -86,14 +86,14 @@ func ExecGLDefinition(conf *config.Config) (*JobDefinition, error) {
 
 func ExecRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
-	if conf.RndBeacon.CanRunFullLarge {
+	if conf.ExecRndBeacon.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
 	// Input files
 	reqDirs := []string{
-		conf.RndBeacon.MetaData.RequestsRootDir,
-		conf.RndBeacon.GL.RequestsRootDir,
+		conf.ExecRndBeacon.BootstrapMetadata.RequestsRootDir,
+		conf.ExecRndBeacon.GL.RequestsRootDir,
 	}
 	inputFilePatterns := []string{
 		fmt.Sprintf(execBootstrapRndBeaconInputPattern, inpFileExt, config.FailSuffix),
@@ -110,12 +110,12 @@ func ExecRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
 
 func ExecLPPDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
-	if conf.LPPExecution.CanRunFullLarge {
+	if conf.ExecLPP.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
 	// Input files
-	reqDirs := []string{conf.LPPExecution.RequestsRootDir}
+	reqDirs := []string{conf.ExecLPP.RequestsRootDir}
 	inputFilePatterns := []string{fmt.Sprintf(execLPPInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
@@ -128,15 +128,15 @@ func ExecLPPDefinition(conf *config.Config) (*JobDefinition, error) {
 
 func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
-	if conf.Conglomeration.CanRunFullLarge {
+	if conf.ExecConglomeration.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
 	// Input files
 	reqDirs := []string{
-		conf.Conglomeration.BootstrapMetadata.RequestsRootDir,
-		conf.Conglomeration.GL.RequestsRootDir,
-		conf.Conglomeration.LPP.RequestsRootDir,
+		conf.ExecConglomeration.BootstrapMetadata.RequestsRootDir,
+		conf.ExecConglomeration.GL.RequestsRootDir,
+		conf.ExecConglomeration.LPP.RequestsRootDir,
 	}
 	inputFilePatterns := []string{
 		fmt.Sprintf(execConglomerateBootstrapDistMetadataPattern, inpFileExt, config.FailSuffix),

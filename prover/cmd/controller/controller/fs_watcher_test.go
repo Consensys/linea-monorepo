@@ -179,6 +179,15 @@ func setupFsTest(t *testing.T) (confM, confL *config.Config) {
 		execution   = "execution"
 		compression = "compression"
 		aggregation = "aggregation"
+
+		// Add conf. for Limitless prover: Naming convention: exec<i/p><o/p>
+		exec                  = "bootstrap"
+		execBootstrapGL       = "bootstrapGl"
+		execBootstrapMetadata = "bootstrapMetadata"
+		execGLRndBeacon       = "gl-rndbeacon"
+		execGLConglomeration  = "gl"
+		execRndbeaconLPP      = "rndbeacon"
+		execLPPConglomeration = "lpp"
 	)
 
 	// Create a configuration using temporary directories
@@ -211,7 +220,6 @@ if [ $CODE -eq 0 ]; then
 fi
 exit $CODE
 `
-
 	// For a prover M
 	confM = &config.Config{
 		Version: "0.2.4",
@@ -227,6 +235,13 @@ exit $CODE
 			WorkerCmdLarge:             cmdLargeInternal,
 			DeferToOtherLargeCodes:     []int{12, 137},
 			RetryLocallyWithLargeCodes: []int{10, 77},
+
+			// Limitless prover components
+			EnableExecBootstrap:      true,
+			EnableExecGL:             true,
+			EnableExecRndBeacon:      true,
+			EnableExecLPP:            true,
+			EnableExecConglomeration: true,
 		},
 
 		Execution: config.Execution{
@@ -242,6 +257,42 @@ exit $CODE
 		Aggregation: config.Aggregation{
 			WithRequestDir: config.WithRequestDir{
 				RequestsRootDir: path.Join(testDir, proverM, aggregation),
+			},
+		},
+
+		// Limitless prover components
+		ExecBootstrap: config.Execution{
+			WithRequestDir: config.WithRequestDir{
+				RequestsRootDir: path.Join(testDir, proverM, exec),
+			},
+		},
+		ExecGL: config.Execution{
+			WithRequestDir: config.WithRequestDir{
+				RequestsRootDir: path.Join(testDir, proverM, execBootstrapGL),
+			},
+		},
+		ExecRndBeacon: config.RndBeacon{
+			GL: config.WithRequestDir{
+				RequestsRootDir: path.Join(testDir, proverM, execGLRndBeacon),
+			},
+			BootstrapMetadata: config.WithRequestDir{
+				RequestsRootDir: path.Join(testDir, proverM, execBootstrapMetadata),
+			},
+		},
+		ExecLPP: config.Execution{
+			WithRequestDir: config.WithRequestDir{
+				RequestsRootDir: path.Join(testDir, proverM, execRndbeaconLPP),
+			},
+		},
+		ExecConglomeration: config.Conglomeration{
+			GL: config.WithRequestDir{
+				RequestsRootDir: path.Join(testDir, proverM, execGLConglomeration),
+			},
+			LPP: config.WithRequestDir{
+				RequestsRootDir: path.Join(testDir, proverM, execLPPConglomeration),
+			},
+			BootstrapMetadata: config.WithRequestDir{
+				RequestsRootDir: path.Join(testDir, proverM, execBootstrapMetadata),
 			},
 		},
 	}
@@ -271,6 +322,38 @@ exit $CODE
 		os.MkdirAll(confM.Aggregation.DirFrom(), permCode),
 		os.MkdirAll(confM.Aggregation.DirTo(), permCode),
 		os.MkdirAll(confM.Aggregation.DirDone(), permCode),
+
+		// Add stuff for Limitless prover
+		os.MkdirAll(confM.ExecBootstrap.DirFrom(), permCode),
+		os.MkdirAll(confM.ExecBootstrap.DirTo(), permCode),
+		os.MkdirAll(confM.ExecBootstrap.DirDone(), permCode),
+
+		os.MkdirAll(confM.ExecGL.DirFrom(), permCode),
+		os.MkdirAll(confM.ExecGL.DirTo(), permCode),
+		os.MkdirAll(confM.ExecGL.DirDone(), permCode),
+
+		os.MkdirAll(confM.ExecRndBeacon.GL.DirFrom(), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.GL.DirTo(), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.GL.DirDone(), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirFrom(), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirTo(), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirDone(), permCode),
+
+		os.MkdirAll(confM.ExecLPP.DirFrom(), permCode),
+		os.MkdirAll(confM.ExecLPP.DirTo(), permCode),
+		os.MkdirAll(confM.ExecLPP.DirDone(), permCode),
+
+		os.MkdirAll(confM.ExecConglomeration.GL.DirFrom(), permCode),
+		os.MkdirAll(confM.ExecConglomeration.GL.DirTo(), permCode),
+		os.MkdirAll(confM.ExecConglomeration.GL.DirDone(), permCode),
+
+		os.MkdirAll(confM.ExecConglomeration.LPP.DirFrom(), permCode),
+		os.MkdirAll(confM.ExecConglomeration.LPP.DirTo(), permCode),
+		os.MkdirAll(confM.ExecConglomeration.LPP.DirDone(), permCode),
+
+		os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirFrom(), permCode),
+		os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirTo(), permCode),
+		os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirDone(), permCode),
 	)
 
 	if err != nil {

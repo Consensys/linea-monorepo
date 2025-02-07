@@ -112,15 +112,11 @@ type Config struct {
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 
 	// LIMITLESS PROVER Components
-	Bootstrap Execution `mapstructure:"execution_bootstrap"`
-
-	GLExecution Execution `mapstructure:"execution_gl"`
-
-	RndBeacon RndBeacon `mapstructure:"execution_rndbeacon"`
-
-	LPPExecution Execution `mapstructure:"execution_lpp"`
-
-	Conglomeration Conglomeration `mapstructure:"execution_conglomeration"`
+	ExecBootstrap      Execution      `mapstructure:"execution_bootstrap"`
+	ExecGL             Execution      `mapstructure:"execution_gl"`
+	ExecLPP            Execution      `mapstructure:"execution_lpp"`
+	ExecRndBeacon      RndBeacon      `mapstructure:"execution_rndbeacon"`
+	ExecConglomeration Conglomeration `mapstructure:"execution_conglomeration"`
 
 	Debug struct {
 		// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
@@ -153,16 +149,13 @@ type Config struct {
 type RndBeacon struct {
 	GL WithRequestDir `mapstructure:",squash"`
 
-	MetaData WithRequestDir `mapstructure:",squash"`
+	BootstrapMetadata WithRequestDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
 
 	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
 	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
-
-	// ConflatedTracesDir stores the directory where the conflation traces are stored.
-	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
 }
 
 type Conglomeration struct {
@@ -177,9 +170,6 @@ type Conglomeration struct {
 
 	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
 	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
-
-	// ConflatedTracesDir stores the directory where the conflation traces are stored.
-	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
 }
 
 func (cfg *Config) Logger() *logrus.Logger {
@@ -223,6 +213,13 @@ type Controller struct {
 	EnableExecution         bool `mapstructure:"enable_execution"`
 	EnableBlobDecompression bool `mapstructure:"enable_blob_decompression"`
 	EnableAggregation       bool `mapstructure:"enable_aggregation"`
+
+	// Limitless prover components. Defaults to true
+	EnableExecBootstrap      bool `mapstructure:"enable_exec_bootstrap"`
+	EnableExecGL             bool `mapstructure:"enable_exec_gl"`
+	EnableExecRndBeacon      bool `mapstructure:"enable_exec_rndbeacon"`
+	EnableExecLPP            bool `mapstructure:"enable_exec_lpp"`
+	EnableExecConglomeration bool `mapstructure:"enable_exec_conglomeration"`
 
 	// TODO @gbotrel the only reason we keep these is for test purposes; default value is fine,
 	// we should remove them from here for readability.
