@@ -2329,7 +2329,7 @@ describe("Linea Rollup contract", () => {
     });
   });
 
-  describe.only("Triggering the soundness alert", () => {
+  describe("Triggering the soundness alert", () => {
     let finalizationData: FinalizationData;
     let initialSoundnessStateHash: string;
     let soundessFinalizationData: SoundessFinalizationData;
@@ -2338,42 +2338,11 @@ describe("Linea Rollup contract", () => {
     const proofType = 0;
 
     beforeEach(async () => {
-      // Submit 1 blob so that we can actually verify something to get at the second round of data
       const operatorHDSigner = getWalletForIndex(2);
       await lineaRollup.connect(securityCouncil).grantRole(OPERATOR_ROLE, operatorHDSigner.address);
 
-      const lineaRollupAddress = await lineaRollup.getAddress();
-      const { blobDataSubmission, compressedBlobs, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
-
-      const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
-        blobDataSubmission,
-        parentShnarf,
-        finalShnarf,
-      ]);
-
-      const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
-      const nonce = await operatorHDSigner.getNonce();
-
-      const transaction = Transaction.from({
-        data: encodedCall,
-        maxPriorityFeePerGas: maxPriorityFeePerGas!,
-        maxFeePerGas: maxFeePerGas!,
-        to: lineaRollupAddress,
-        chainId: (await ethers.provider.getNetwork()).chainId,
-        type: 3,
-        nonce,
-        value: 0,
-        gasLimit: 5_000_000,
-        kzg,
-        maxFeePerBlobGas: 1n,
-        blobs: compressedBlobs,
-      });
-
-      const signedTx = await operatorHDSigner.signTransaction(transaction);
-
-      const txResponse = await ethers.provider.broadcastTransaction(signedTx);
-      const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
-      expect(receipt).is.not.null;
+      // Submit 1 blob so that we can actually verify something to get at the second round of data
+      await sendBlobTransaction(0, 1);
 
       // We send the blobs in order to test allowed finalization success and then failed finalization
       finalizationData = await generateFinalizationData({
