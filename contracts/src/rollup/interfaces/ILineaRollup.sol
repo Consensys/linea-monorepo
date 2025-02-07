@@ -153,22 +153,6 @@ interface ILineaRollup {
   }
 
   /**
-   * @notice Data passed to be used when trying to prove the same data results in two different states.
-   * @dev finalizationData Is all the finalization data used with the first proof.
-   * @dev alternateFinalizationData Is the alternate finalization data/public input data for the second proof.
-   * @dev firstProof Is the first proof being used in the finalization.
-   * @dev proofType Is the proof type being used in the finalization for both proofs.
-   * @dev initialBlockNumber Is the block number matching the initial soundness state for both proofs.
-   */
-  struct SoundessFinalizationData {
-    FinalizationDataV3 finalizationData;
-    AlternateFinalizationData alternateFinalizationData;
-    bytes firstProof;
-    uint256 proofType;
-    uint256 initialBlockNumber;
-  }
-
-  /**
    * @notice Emitted when the LineaRollup contract version has changed.
    * @dev All bytes8 values are string based SemVer in the format M.m - e.g. "6.0".
    * @param previousVersion The previous version.
@@ -355,9 +339,14 @@ interface ILineaRollup {
   error InitialSoundnessStateNotSame(bytes32 expected, bytes32 actual);
 
   /**
-   * @dev Thrown when the soundness alert is using the same final state root hash for both proofs.
+   * @dev Thrown when the soundness alert is using the same inputs for the public input.
    */
-  error FinalStateRootHashesAreTheSame();
+  error AllFinalizationInputsAreSame();
+
+  /**
+   * @dev Thrown when the data evaluation point is not zero.
+   */
+  error DataEvaluationClaimNotZero();
 
   /**
    * @notice Adds or updates the verifier contract address for a proof type.
@@ -426,7 +415,17 @@ interface ILineaRollup {
   /**
    * @notice Verifies two proofs over the same data and if state differs the soundness alert is triggered.
    * @dev The alternate finalization will overwrite some fields in the main finalizationData struct.
-   * @param _soundnessFinalizationData The in memory struct containing all the data required in the function.
+   * @param _finalizationData .
+   * @param _alternateFinalizationData .
+   * @param _firstProof .
+   * @param _proofType .
+   * @param _initialBlockNumber .
    */
-  function triggerSoundnessAlert(SoundessFinalizationData memory _soundnessFinalizationData) external;
+  function triggerSoundnessAlert(
+    FinalizationDataV3 memory _finalizationData,
+    AlternateFinalizationData memory _alternateFinalizationData,
+    bytes memory _firstProof,
+    uint256 _proofType,
+    uint256 _initialBlockNumber
+  ) external;
 }

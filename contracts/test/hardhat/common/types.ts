@@ -101,12 +101,4 @@ export type AlternateFinalizationData = {
   proof: string;
 };
 
-export type SoundessFinalizationData = {
-  finalizationData: FinalizationData;
-  alternateFinalizationData: AlternateFinalizationData;
-  firstProof: string;
-  proofType: bigint;
-  initialBlockNumber: bigint;
-};
-
 export type ShnarfDataGenerator = (blobParentShnarfIndex: number, isMultiple?: boolean) => ShnarfData;

@@ -20,9 +20,6 @@ abstract contract ZkEvmV2 is AccessControlUpgradeable, L1MessageServiceV1, IZkEv
   /// @notice The most recent finalized L2 block number.
   uint256 public currentL2BlockNumber;
 
-  /// @dev This address is used when the soundness alert is triggered and verifier removed.
-  address internal constant TRIGGERED_SOUNDNESS_ALERT_ADDRESS = 0xdEAD1234DeAd1234DeaD1234dead1234deAD1234;
-
   /// @notice The most recent L2 state root hash mapped by block number.
   mapping(uint256 blockNumber => bytes32 stateRootHash) public stateRootHashes;
 
@@ -36,7 +33,7 @@ abstract contract ZkEvmV2 is AccessControlUpgradeable, L1MessageServiceV1, IZkEv
   /**
    * @notice Verifies the proof with locally computed public inputs.
    * @dev If the verifier based on proof type is not found, it reverts with InvalidProofType.
-   * @dev If the verifier has been removed due to a soundness alert, it reverts with SoundnessAlertTriggered.
+   * @dev If the verifier has been removed due to a soundness alert, it reverts with InvalidProofType as well.
    * @param _publicInput The computed public input hash cast as uint256.
    * @param _proofType The proof type to determine which verifier contract to use.
    * @param _proof The proof to be verified with the proof type verifier contract.
@@ -49,11 +46,6 @@ abstract contract ZkEvmV2 is AccessControlUpgradeable, L1MessageServiceV1, IZkEv
 
     if (verifierToUse == address(0)) {
       revert InvalidProofType();
-    }
-
-    // This will fail on finalization.
-    if (verifierToUse == TRIGGERED_SOUNDNESS_ALERT_ADDRESS) {
-      revert SoundnessAlertTriggered();
     }
 
     (bool callSuccess, bytes memory result) = verifierToUse.call(

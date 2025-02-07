@@ -31,9 +31,4 @@ interface IZkEvmV2 {
    * @dev Thrown when the call to the verifier runs out of gas or reverts internally.
    */
   error InvalidProofOrProofVerificationRanOutOfGas(string errorReason);
-
-  /**
-   * @dev Thrown when the soundness alert has been triggered for the proof type.
-   */
-  error SoundnessAlertTriggered();
 }

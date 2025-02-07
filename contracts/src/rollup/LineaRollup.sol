@@ -154,14 +154,22 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   /**
    * @notice Reinitializes the LineaRollup contract.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
+   * @param _currentFinalizedTimestamp The current finalized timestamp.
+   * @param _currentFinalizedl1RollingHash The current finalized L2 computed L1 rolling hash.
+   * @param _currentFinalizedl1RollingHashMessageNumber  The current finalized L2 computed L1 rolling hash message number.
    */
-  function reinitializeLineaRollupV6_1(InitialSoundnessState memory _initialSoundnessState) external reinitializer(7) {
+  function reinitializeLineaRollupV6_1(
+    uint256 _currentFinalizedTimestamp,
+    bytes32 _currentFinalizedl1RollingHash,
+    uint256 _currentFinalizedl1RollingHashMessageNumber
+  ) external reinitializer(7) {
+    // TODO decide on whether or not we want to validate the timestamp and rollinghash fields.
     initialSoundnessState = EfficientKeccak._efficientKeccak(
-      _initialSoundnessState.shnarf,
-      bytes32(_initialSoundnessState.blockNumber),
-      bytes32(_initialSoundnessState.timestamp),
-      _initialSoundnessState.l1RollingHash,
-      bytes32(_initialSoundnessState.l1RollingHashMessageNumber)
+      currentFinalizedShnarf,
+      bytes32(currentL2BlockNumber),
+      bytes32(_currentFinalizedTimestamp),
+      _currentFinalizedl1RollingHash,
+      bytes32(_currentFinalizedl1RollingHashMessageNumber)
     );
 
     /// @dev using the constants requires string memory and more complex code.
@@ -182,59 +190,86 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     super.renounceRole(_role, _account);
   }
 
+  function triggerSoundnessAlertForJulien(
+    FinalizationDataV3 memory _first,
+    FinalizationDataV3 memory _second,
+    uint256 _proofType,
+    bytes calldata _proof1,
+    bytes calldata _proof2
+  ) external {
+    // check soundess for 1
+    // check soundess for 2
+  }
+
   /**
    * @notice Verifies two proofs over the same data and if state differs the soundness alert is triggered.
    * @dev The alternate finalization will overwrite some fields in the main finalizationData struct.
-   * @param _soundnessFinalizationData The in memory struct containing all the data required in the function.
+   * @dev _finalizationData.shnarfData.dataEvaluationClaim must always be zero.
+   * @param _finalizationData .
+   * @param _alternateFinalizationData .
+   * @param _firstProof .
+   * @param _proofType .
+   * @param _initialBlockNumber .
    */
-  function triggerSoundnessAlert(SoundessFinalizationData memory _soundnessFinalizationData) external {
-    address verifierAddressForProofType = verifiers[_soundnessFinalizationData.proofType];
+  function triggerSoundnessAlert(
+    FinalizationDataV3 memory _finalizationData,
+    AlternateFinalizationData memory _alternateFinalizationData,
+    bytes memory _firstProof,
+    uint256 _proofType,
+    uint256 _initialBlockNumber
+  ) external {
+    // TODO Rework the tests for this to pass
+    // if(_finalizationData.shnarfData.dataEvaluationClaim != 0){
+    //   revert DataEvaluationClaimNotZero();
+    // }
+
+    address verifierAddressForProofType = verifiers[_proofType];
 
     if (verifierAddressForProofType == address(0)) {
       revert InvalidProofType();
     }
 
-    // Verify we are not already alerted.
-    if (verifierAddressForProofType == TRIGGERED_SOUNDNESS_ALERT_ADDRESS) {
-      revert SoundnessAlertAlreadyTriggered();
-    }
-
     // Set the final shnarf data to a memory variable for ease of use.
-    ShnarfData memory finalizationShnarf = _soundnessFinalizationData.finalizationData.shnarfData;
+    ShnarfData memory finalizationShnarf = _finalizationData.shnarfData;
 
     // Compute initial state and validate it is the same as stored on chain.
     if (
       initialSoundnessState !=
       EfficientKeccak._efficientKeccak(
         finalizationShnarf.parentShnarf,
-        bytes32(_soundnessFinalizationData.initialBlockNumber),
-        bytes32(_soundnessFinalizationData.finalizationData.lastFinalizedTimestamp),
-        _soundnessFinalizationData.finalizationData.lastFinalizedL1RollingHash,
-        bytes32(_soundnessFinalizationData.finalizationData.lastFinalizedL1RollingHashMessageNumber)
+        bytes32(_initialBlockNumber),
+        bytes32(_finalizationData.lastFinalizedTimestamp),
+        _finalizationData.lastFinalizedL1RollingHash,
+        bytes32(_finalizationData.lastFinalizedL1RollingHashMessageNumber)
       )
     ) {
       revert InitialSoundnessStateNotSame(
         initialSoundnessState,
         EfficientKeccak._efficientKeccak(
           finalizationShnarf.parentShnarf,
-          bytes32(_soundnessFinalizationData.initialBlockNumber),
-          bytes32(_soundnessFinalizationData.finalizationData.lastFinalizedTimestamp),
-          _soundnessFinalizationData.finalizationData.lastFinalizedL1RollingHash,
-          bytes32(_soundnessFinalizationData.finalizationData.lastFinalizedL1RollingHashMessageNumber)
+          bytes32(_initialBlockNumber),
+          bytes32(_finalizationData.lastFinalizedTimestamp),
+          _finalizationData.lastFinalizedL1RollingHash,
+          bytes32(_finalizationData.lastFinalizedL1RollingHashMessageNumber)
         )
       );
     }
 
-    // Verify final and alternate states are different else we are proving the same thing twice.
     if (
-      finalizationShnarf.finalStateRootHash == _soundnessFinalizationData.alternateFinalizationData.finalStateRootHash
+      _finalizationData.l1RollingHashMessageNumber == _alternateFinalizationData.l1RollingHashMessageNumber &&
+      _finalizationData.l1RollingHash == _alternateFinalizationData.l1RollingHash &&
+      keccak256(abi.encodePacked(_finalizationData.l2MerkleRoots)) ==
+      keccak256(abi.encodePacked(_alternateFinalizationData.l2MerkleRoots)) &&
+      _finalizationData.finalTimestamp == _alternateFinalizationData.finalTimestamp &&
+      _finalizationData.endBlockNumber == _alternateFinalizationData.endBlockNumber &&
+      _finalizationData.shnarfData.finalStateRootHash == _alternateFinalizationData.finalStateRootHash
     ) {
-      revert FinalStateRootHashesAreTheSame();
+      revert AllFinalizationInputsAreSame();
     }
 
     // Compute initial public input.
     uint256 finalStatePublicInput = _computePublicInput(
-      _soundnessFinalizationData.finalizationData,
+      _finalizationData,
       finalizationShnarf.parentShnarf,
       EfficientKeccak._efficientKeccak( // computing the shnarf
           finalizationShnarf.parentShnarf,
@@ -243,21 +278,18 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
           finalizationShnarf.dataEvaluationPoint,
           finalizationShnarf.dataEvaluationClaim
         ),
-      _soundnessFinalizationData.initialBlockNumber
+      _initialBlockNumber
     );
 
     /// If initial proof verification fails we would get an InvalidProof() revert.
-    _verifyProof(finalStatePublicInput, _soundnessFinalizationData.proofType, _soundnessFinalizationData.firstProof);
+    _verifyProof(finalStatePublicInput, _proofType, _firstProof);
 
     /// Update the finalization data vs. creating a whole new object with alternate finalization data.
-    _switchToAlternateFinalizationData(
-      _soundnessFinalizationData.finalizationData,
-      _soundnessFinalizationData.alternateFinalizationData
-    );
+    _switchToAlternateFinalizationData(_finalizationData, _alternateFinalizationData);
 
     /// Compute second public input with altered values.
     uint256 alternateFinalStatePublicInput = _computePublicInput(
-      _soundnessFinalizationData.finalizationData, // some fields changed in the previous function
+      _finalizationData, // some fields changed in the previous function
       finalizationShnarf.parentShnarf, // can't change
       EfficientKeccak._efficientKeccak( // computing the shnarf
           finalizationShnarf.parentShnarf, // can't change
@@ -266,20 +298,16 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
           finalizationShnarf.dataEvaluationPoint, // can't change
           finalizationShnarf.dataEvaluationClaim // can't change
         ),
-      _soundnessFinalizationData.initialBlockNumber // can't change
+      _initialBlockNumber // can't change
     );
 
     /// If second proof verification fails we would get an InvalidProof() revert.
-    _verifyProof(
-      alternateFinalStatePublicInput,
-      _soundnessFinalizationData.proofType,
-      _soundnessFinalizationData.alternateFinalizationData.proof
-    );
+    _verifyProof(alternateFinalStatePublicInput, _proofType, _alternateFinalizationData.proof);
 
     /// Due to lack of reverts and 2 proofs passing, we should remove the verifier and soundness alert is triggered.
-    verifiers[_soundnessFinalizationData.proofType] = TRIGGERED_SOUNDNESS_ALERT_ADDRESS;
+    delete verifiers[_proofType];
 
-    emit SoundessAlertTriggered(verifierAddressForProofType, _soundnessFinalizationData.proofType);
+    emit SoundessAlertTriggered(verifierAddressForProofType, _proofType);
   }
 
   /**
