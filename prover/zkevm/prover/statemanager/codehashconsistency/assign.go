@@ -148,11 +148,24 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 assign_loop:
 	for i := 0; i < nbRowMax; i++ {
 
+		// importantly, we have to account for the fact that romData and/or ssData
+		// can perfectly be empty slices. This can happen when a block is full of
+		// eoa-transactions only. Therefore, we need to check that cRom and cSS
+		// are within bounds. Otherwise, it will panic.
 		var (
-			romRow   = romData[cRom]
-			ssRow    = ssData[cSS]
-			romCmpSs = cmp(romRow, ssRow)
+			romRow = [3]field.Element{}
+			ssRow  = [3]field.Element{}
 		)
+
+		if cRom < len(romData) {
+			romRow = romData[cRom]
+		}
+
+		if cSS < len(ssData) {
+			ssRow = ssData[cSS]
+		}
+
+		romCmpSs := cmp(romRow, ssRow)
 
 		assignment.IsActive.PushOne()
 		assignment.RomMiMC.PushField(romRow[0])
