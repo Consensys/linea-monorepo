@@ -93,6 +93,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
    * @dev Note: This is used for new testnets and local/CI testing, and will not replace existing proxy based contracts.
    * @param _initializationData The initial data used for proof verification.
    */
+  /// @custom:oz-upgrades-unsafe-allow incorrect-initializer-order
   function initialize(InitializationData calldata _initializationData) external initializer {
     if (_initializationData.defaultVerifier == address(0)) {
       revert ZeroAddressNotAllowed();
