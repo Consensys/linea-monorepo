@@ -134,6 +134,7 @@ public class TestOutcomeWriterTool {
           String failingConstraints =
               line.substring(line.indexOf("failing constraint") + "failing constraint".length())
                   .replace(':', ' ');
+
           getPairFromString(failingConstraints, pairs);
         }
       }
@@ -188,6 +189,8 @@ public class TestOutcomeWriterTool {
     String[] pair;
     if (constraint.contains("-into-")) {
       pair = constraint.split("-into-");
+    } else if (constraint.contains("---")) {
+      pair = constraint.split("---");
     } else {
       pair = constraint.split("\\.");
     }

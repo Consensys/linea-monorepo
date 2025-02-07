@@ -24,6 +24,8 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 public class ReferenceTestWatcher extends LineaTestWatcher {
   @Override
   public String getTestName(ExtensionContext context) {
-    return context.getDisplayName().split(": ")[1];
+    return context.getTestClass().map(c -> c.getSimpleName()).orElse("")
+        + ":"
+        + context.getDisplayName().split(": ")[1];
   }
 }
