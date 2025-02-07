@@ -57,12 +57,12 @@ type Module struct {
 func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, mch *mimccodehash.Module) Module {
 
 	name = name + "_CODEHASH_CONSISTENCY"
-	size := ss.IsActive.Size() + mch.IsActive.Size()
+	size := 1 << 16
 
 	ch := Module{
 		StateSummaryInput: ss,
 		MimcCodeHashInput: mch,
-		IsActive:          comp.InsertCommit(0, ifaces.ColIDf(name+"_IS_ACTIVE"), size),
+		IsActive:          comp.InsertCommit(0, ifaces.ColID(name+"_IS_ACTIVE"), size),
 		StateSumKeccak:    common.NewHiLoColumns(comp, size, name+"_STATE_SUMMARY_KECCAK"),
 		RomKeccak:         common.NewHiLoColumns(comp, size, name+"_ROM_KECCAK"),
 		StateSumMiMC:      comp.InsertCommit(0, ifaces.ColID(name+"_STATE_SUMMARY_MIMC"), size),
@@ -192,19 +192,10 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 
 	comp.InsertGlobal(
 		0,
-		ifaces.QueryID(name+"_KECCAK_CONSISTENCY_HI"),
+		ifaces.QueryID(name+"_MIMC_CONSISTENCY"),
 		sym.Mul(
 			ch.StateSumIsEqRom,
-			sym.Sub(ch.RomKeccak.Hi, ch.StateSumKeccak.Hi),
-		),
-	)
-
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryID(name+"_KECCAK_CONSISTENCY_LO"),
-		sym.Mul(
-			ch.StateSumIsEqRom,
-			sym.Sub(ch.RomKeccak.Lo, ch.StateSumKeccak.Lo),
+			sym.Sub(ch.RomMiMC, ch.StateSumMiMC),
 		),
 	)
 
@@ -229,15 +220,15 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 			ch.StateSumKeccak.Lo,
 		},
 		[]ifaces.Column{
-			ss.IsActive,
-			ss.IsActive,
+			ss.Account.Initial.Exists,
+			ss.Account.Final.Exists,
 		},
 		ch.IsActive,
 	)
 
 	comp.InsertInclusionDoubleConditional(
 		0,
-		ifaces.QueryIDf(name+"_IMPORT_STATE_SUMMARY_FORTH_INITIAL"),
+		ifaces.QueryID(name+"_IMPORT_STATE_SUMMARY_FORTH_INITIAL"),
 		[]ifaces.Column{
 			ch.StateSumMiMC,
 			ch.StateSumKeccak.Hi,
@@ -249,12 +240,12 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 			ss.Account.Initial.KeccakCodeHash.Lo,
 		},
 		ch.IsActive,
-		ss.IsActive,
+		ss.Account.Initial.Exists,
 	)
 
 	comp.InsertInclusionDoubleConditional(
 		0,
-		ifaces.QueryIDf(name+"_IMPORT_STATE_SUMMARY_FORTH_FINAL"),
+		ifaces.QueryID(name+"_IMPORT_STATE_SUMMARY_FORTH_FINAL"),
 		[]ifaces.Column{
 			ch.StateSumMiMC,
 			ch.StateSumKeccak.Hi,
@@ -266,12 +257,12 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 			ss.Account.Final.KeccakCodeHash.Lo,
 		},
 		ch.IsActive,
-		ss.IsActive,
+		ss.Account.Final.Exists,
 	)
 
 	comp.InsertInclusionDoubleConditional(
 		0,
-		ifaces.QueryIDf(name+"_IMPORT_MIMC_CODE_HASH_FORTH"),
+		ifaces.QueryID(name+"_IMPORT_MIMC_CODE_HASH_FORTH"),
 		[]ifaces.Column{
 			ch.RomMiMC,
 			ch.RomKeccak.Hi,
@@ -283,12 +274,12 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 			mch.CodeHashLo,
 		},
 		ch.IsActive,
-		mch.IsHashEnd,
+		mch.IsForConsistency,
 	)
 
 	comp.InsertInclusionDoubleConditional(
 		0,
-		ifaces.QueryIDf(name+"_IMPORT_MIMC_CODE_HASH_BACK"),
+		ifaces.QueryID(name+"_IMPORT_MIMC_CODE_HASH_BACK"),
 		[]ifaces.Column{
 			mch.NewState,
 			mch.CodeHashHi,
@@ -299,7 +290,7 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 			ch.RomKeccak.Hi,
 			ch.RomKeccak.Lo,
 		},
-		mch.IsHashEnd,
+		mch.IsForConsistency,
 		ch.IsActive,
 	)
 
