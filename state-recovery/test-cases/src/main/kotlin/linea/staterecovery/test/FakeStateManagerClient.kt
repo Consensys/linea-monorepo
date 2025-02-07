@@ -14,11 +14,14 @@ import net.consensys.linea.errors.ErrorResponse
 import net.consensys.toHexStringUInt256
 import net.consensys.zkevm.domain.BlobRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.ConcurrentHashMap
 
 open class FakeStateManagerClient(
-  private val blocksStateRootHashes: MutableMap<ULong, ByteArray> = mutableMapOf<ULong, ByteArray>(),
-  var headBlockNumber: ULong = blocksStateRootHashes.keys.maxOrNull() ?: 0UL
+  _blocksStateRootHashes: Map<ULong, ByteArray> = emptyMap(),
+  var headBlockNumber: ULong = _blocksStateRootHashes.keys.maxOrNull() ?: 0UL
 ) : StateManagerClientV1 {
+  open val blocksStateRootHashes: MutableMap<ULong, ByteArray> =
+    ConcurrentHashMap<ULong, ByteArray>(_blocksStateRootHashes)
 
   fun setBlockStateRootHash(blockNumber: ULong, stateRootHash: ByteArray) {
     blocksStateRootHashes[blockNumber] = stateRootHash
@@ -56,8 +59,8 @@ open class FakeStateManagerClient(
 class FakeStateManagerClientBasedOnBlobsRecords(
   val blobRecords: List<BlobRecord>
 ) : FakeStateManagerClient(
-  blocksStateRootHashes = blobRecords
-    .associate { it.endBlockNumber to it.blobCompressionProof!!.finalStateRootHash }.toMutableMap()
+  _blocksStateRootHashes = blobRecords
+    .associate { it.endBlockNumber to it.blobCompressionProof!!.finalStateRootHash }
 )
 
 class FakeStateManagerClientReadFromL1(
