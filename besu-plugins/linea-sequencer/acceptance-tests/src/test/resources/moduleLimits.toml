@@ -12,8 +12,8 @@
 ADD                 = 524288
 BIN                 = 262144
 BLAKE_MODEXP_DATA   = 16384
-BLOCK_DATA          = 1024
-BLOCK_HASH          = 512
+BLOCK_DATA          = 4096
+BLOCK_HASH          = 2048
 EC_DATA             = 262144
 EUC                 = 65536
 EXP                 = 8192
@@ -56,8 +56,8 @@ PRECOMPILE_ECMUL_EFFECTIVE_CALLS     = 32
 PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS  = 16
 PRECOMPILE_ECPAIRING_G2_MEMBERSHIP_CALLS    = 64
 PRECOMPILE_ECPAIRING_MILLER_LOOPS           = 64
-PRECOMPILE_BLAKE_EFFECTIVE_CALLS     = 600
-PRECOMPILE_BLAKE_ROUNDS              = 600 # it is possible to call BLAKE2f with r = 0; this is a nontrivial operation ...
+PRECOMPILE_BLAKE_EFFECTIVE_CALLS            = 0 # there are no gnarks circuit atm
+PRECOMPILE_BLAKE_ROUNDS                     = 0 # it is possible to call BLAKE2f with r = 0; this is a nontrivial operation ...
 # # Notes:
 # - there are no IDENTITY related limits
 # - we used to have the following limits
