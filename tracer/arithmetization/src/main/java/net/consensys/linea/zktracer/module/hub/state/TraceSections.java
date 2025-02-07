@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.module.hub.state;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,19 +21,21 @@ import java.util.List;
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 
 /**
- * Stores all the trace sections associated to the same transaction, stored in chronological order
- * of creation.
+ * Stores all the trace sections associated to one transaction, stored in chronological order of
+ * creation.
  */
+@Getter
 @Accessors(fluent = true)
-public class TxTrace {
+public class TraceSections {
   /** The {@link TraceSection} of which this transaction trace is made of */
-  @Getter private final List<TraceSection> trace = new ArrayList<>();
+  private final List<TraceSection> trace = new ArrayList<>();
 
   public int size() {
-    return this.trace.size();
+    return trace.size();
   }
 
   /**
@@ -42,7 +44,7 @@ public class TxTrace {
    * @return the most recent trace section
    */
   public TraceSection currentSection() {
-    return this.trace.get(this.size() - 1);
+    return trace.get(size() - 1);
   }
 
   /**
@@ -53,7 +55,7 @@ public class TxTrace {
    */
   public TraceSection previousSection() {
     Preconditions.checkArgument(trace.size() > 1);
-    return this.trace.get(this.size() - 2);
+    return trace.get(size() - 2);
   }
 
   /**

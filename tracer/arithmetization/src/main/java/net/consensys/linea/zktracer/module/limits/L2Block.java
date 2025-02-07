@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.log.LogTopic;
 
@@ -36,8 +37,6 @@ public class L2Block implements Module {
   private final Address l2l1Address;
   private final LogTopic l2l1Topic;
 
-  private static final int ADDRESS_BYTES = 20;
-  private static final int HASH_BYTES = 32;
   private static final int L1_MSG_INDICES_BYTES = 8;
   private static final int L1_TIMESTAMPS_BYTES = 8;
   private static final int ABI_OFFSET_BYTES = 32;
@@ -55,13 +54,13 @@ public class L2Block implements Module {
   }
 
   @Override
-  public void enterTransaction() {
+  public void commitTransactionBundle() {
     this.sizesRlpEncodedTxs.push(0);
     this.l2l1LogSizes.push(new ArrayList<>());
   }
 
   @Override
-  public void popTransaction() {
+  public void popTransactionBundle() {
     this.sizesRlpEncodedTxs.pop();
     this.l2l1LogSizes.pop();
   }
@@ -85,12 +84,12 @@ public class L2Block implements Module {
     // Calculates the data size related to the abi encoding of the list of the
     // from addresses. The field is a simple array of bytes20. We need to take
     // into account the offset and the length in the ABI encoding.
-    final int totalFromSize = txCount * ADDRESS_BYTES + ABI_OFFSET_BYTES + ABI_LEN_BYTES;
+    final int totalFromSize = txCount * Address.SIZE + ABI_OFFSET_BYTES + ABI_LEN_BYTES;
 
     // Accumulates the data occupied for the hashes of the L2 to L1 messages
     // hashes each of them occupies 32 bytes. Also accounts for the overheads
     // of L2 and L1 messages encoding.
-    final int totalL2L1Logs = HASH_BYTES * l2L1LogsCount + ABI_OFFSET_BYTES + ABI_LEN_BYTES;
+    final int totalL2L1Logs = Hash.SIZE * l2L1LogsCount + ABI_OFFSET_BYTES + ABI_LEN_BYTES;
 
     int l1Size = totalTxsRlpSize + totalL2L1Logs + totalFromSize;
 
@@ -109,7 +108,7 @@ public class L2Block implements Module {
     l1Size +=
         2 * L1_TIMESTAMPS_BYTES
             + // the timestamp
-            2 * HASH_BYTES
+            2 * Hash.SIZE
             + // the root hash
             L1_MSG_INDICES_BYTES * txCount
             + ABI_LEN_BYTES

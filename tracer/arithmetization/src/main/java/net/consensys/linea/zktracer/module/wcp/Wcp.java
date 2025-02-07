@@ -35,8 +35,10 @@ import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @RequiredArgsConstructor
 public class Wcp implements Module {
@@ -82,19 +84,25 @@ public class Wcp implements Module {
   }
 
   @Override
-  public void enterTransaction() {
+  public void commitTransactionBundle() {
     for (ModuleOperationStackedSet<WcpOperation> operationsSet : operations) {
-      operationsSet.enter();
+      operationsSet.commitTransactionBundle();
     }
-    additionalRows.enter();
+    additionalRows.commitTransactionBundle();
   }
 
   @Override
-  public void popTransaction() {
+  public void popTransactionBundle() {
     for (ModuleOperationStackedSet<WcpOperation> operationsSet : operations) {
-      operationsSet.pop();
+      operationsSet.popTransactionBundle();
     }
-    additionalRows.pop();
+    additionalRows.popTransactionBundle();
+  }
+
+  @Override
+  public void traceStartBlock(
+      final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {
+    additionalRows.commitTransactionBundle();
   }
 
   @Override

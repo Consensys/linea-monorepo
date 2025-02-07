@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.romlex;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.getOpCode;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
@@ -92,7 +91,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
 
   public Optional<RomOperation> getChunkByMetadata(final ContractMetadata metadata) {
     // First search in the chunk added in the current transaction
-    for (RomOperation c : operations.operationsInTransaction()) {
+    for (RomOperation c : operations.operationsInTransactionBundle()) {
       if (c.metadata().equals(metadata)) {
         return Optional.of(c);
       }

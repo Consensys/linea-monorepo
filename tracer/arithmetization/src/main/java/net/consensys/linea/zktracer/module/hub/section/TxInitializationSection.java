@@ -179,7 +179,7 @@ public class TxInitializationSection extends TraceSection implements EndTransact
 
     initializationContextFragment = ContextFragment.initializeExecutionContext(hub);
 
-    hub.state.setProcessingPhase(TX_EXEC);
+    hub.state.processingPhase(TX_EXEC);
   }
 
   @Override

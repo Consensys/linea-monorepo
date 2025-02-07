@@ -81,7 +81,8 @@ public class CallEmptyNoStopTest {
         .zkTracerValidator(
             zkTracer -> {
               // Ensure we don't have any superfluous STOP
-              assertThat(zkTracer.getHub().state().currentTxTrace().trace().size()).isEqualTo(11);
+              assertThat(zkTracer.getHub().state().currentTransactionHubSections().trace().size())
+                  .isEqualTo(11);
             })
         .build()
         .run();

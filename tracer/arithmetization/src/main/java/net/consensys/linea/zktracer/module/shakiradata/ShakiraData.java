@@ -95,7 +95,7 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
   public String toString() {
     return "ShakiraData{"
         + "operations="
-        + operations.operationsInTransaction()
+        + operations.operationsInTransactionBundle()
         + ", wcp="
         + wcp
         + ", sha256Blocks="

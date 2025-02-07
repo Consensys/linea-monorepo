@@ -30,12 +30,12 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.State;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragmentValues;
 import net.consensys.linea.zktracer.module.hub.signals.AbortingConditions;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
+import net.consensys.linea.zktracer.module.hub.state.State;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
@@ -61,7 +61,7 @@ public final class StackFragment implements TraceFragment {
   @Getter private final int rawOpCode;
   @Setter private boolean jumpDestinationVettingRequired;
   @Setter private boolean validJumpDestination;
-  private final State.TxState.Stamps stamps;
+  private final State.HubTransactionState.Stamps stamps;
   private final CommonFragmentValues commonFragmentValues;
   private final EWord pushValue;
 

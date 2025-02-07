@@ -98,10 +98,10 @@ public final class InstructionDecoder implements Module {
   }
 
   @Override
-  public void enterTransaction() {}
+  public void commitTransactionBundle() {}
 
   @Override
-  public void popTransaction() {}
+  public void popTransactionBundle() {}
 
   @Override
   public int lineCount() {
