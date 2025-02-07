@@ -2338,6 +2338,9 @@ describe("Linea Rollup contract", () => {
     const proofType = 0;
 
     beforeEach(async () => {
+      // Submit 1 blob so that we can actually verify something to get at the second round of data
+      await sendBlobTransaction(0, 1);
+
       // We send the blobs in order to test allowed finalization success and then failed finalization
       finalizationData = await generateFinalizationData({
         l1RollingHash: blobAggregatedProof1To46.l1RollingHash,
@@ -2423,9 +2426,6 @@ describe("Linea Rollup contract", () => {
 
     // TODO discuss all the variable differences changing the public input
     it("Should not sound the alert if the second proof fails", async () => {
-      // Submit 1 blob so that we can actually verify something to get at the second round of data
-      await sendBlobTransaction(0, 1);
-
       soundessFinalizationData.alternateFinalizationData.finalStateRootHash = generateRandomBytes(32);
       const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
       await expectRevertWithCustomError(lineaRollup, asyncCall, "InvalidProof");
@@ -2435,9 +2435,6 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should change the verifier address if both proofs pass and emit the SoundessAlertTriggered event", async () => {
-      // Submit 1 blob so that we can actually verify something to get at the second round of data
-      await sendBlobTransaction(0, 1);
-
       await deployScenarioBasedVerifier(alwaysTrueVerifierScenario);
       await lineaRollup.connect(securityCouncil).setVerifierAddress(scenarioBasedVerifier, 0);
 
@@ -2454,9 +2451,6 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should fail to finalize if the soundness alert has been triggered", async () => {
-      // Submit 1 blob so that we can actually verify something to get at the second round of data
-      await sendBlobTransaction(0, 1);
-
       await deployScenarioBasedVerifier(alwaysTrueVerifierScenario);
       await lineaRollup.connect(securityCouncil).setVerifierAddress(scenarioBasedVerifier, 0);
 
@@ -2477,9 +2471,6 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Can finalize if soundness alert triggering fails", async () => {
-      // Submit 1 blob so that we can actually verify something to get at the second round of data
-      await sendBlobTransaction(0, 1);
-
       const asyncCall = lineaRollup.triggerSoundnessAlert(soundessFinalizationData);
       await expectRevertWithCustomError(lineaRollup, asyncCall, "FinalStateRootHashesAreTheSame");
 
