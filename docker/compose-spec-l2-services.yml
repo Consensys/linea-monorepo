@@ -519,7 +519,7 @@ services:
     ports:
       - "4001:4001"
     env_file: "./config/blobscan/env"
-    restart: no
+    restart: always
     #    healthcheck:
     #      test: [ "CMD", "curl", "-f", "http://localhost:4001/healthcheck" ]
     #      disable: true
@@ -543,7 +543,7 @@ services:
   blobscan-indexer:
     container_name: blobscan-indexer
     hostname: blobscan-indexer
-    image: blossomlabs/blobscan-indexer:0.2.2
+    image: blossomlabs/blobscan-indexer:0.2.1
     platform: linux/amd64 # only linux available
     profiles: [ "staterecovery" ]
     env_file: "./config/blobscan/env"
