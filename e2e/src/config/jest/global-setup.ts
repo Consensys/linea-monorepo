@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import { config } from "../tests-config";
 import { deployContract } from "../../common/deployments";
 import { DummyContract__factory, TestContract__factory, OpcodeTestContract__factory } from "../../typechain";
-import { etherToWei, LineaEstimateGasClient, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
+import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
 import { EMPTY_CONTRACT_CODE } from "../../common/constants";
 import { createTestLogger } from "../logger";
 
@@ -11,7 +11,6 @@ const logger = createTestLogger();
 
 export default async (): Promise<void> => {
   const dummyContractCode = await config.getL1Provider().getCode(config.getL1DummyContractAddress());
-  const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
 
   // If this is empty, we have not deployed and prerequisites or configured token bridges.
   if (dummyContractCode === EMPTY_CONTRACT_CODE) {
@@ -21,11 +20,7 @@ export default async (): Promise<void> => {
 
   logger.info("Generating L2 traffic...");
   const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"));
-  const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(
-    pollingAccount,
-    lineaEstimateGasClient,
-    2_000,
-  );
+  const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(pollingAccount, 2_000);
 
   global.stopL2TrafficGeneration = stopPolling;
 };

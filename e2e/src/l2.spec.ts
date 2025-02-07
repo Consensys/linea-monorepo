@@ -50,12 +50,7 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send a legacy transaction", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    const { maxFeePerGas: gasPrice } = await lineaEstimateGasClient.lineaEstimateGas(
-      account.address,
-      "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-      "0x",
-      etherToWei("0.01").toString(16),
-    );
+    const { gasPrice } = await config.getL2Provider().getFeeData();
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const tx = await account.sendTransaction({
@@ -78,12 +73,7 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send an EIP1559 transaction", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    const { maxPriorityFeePerGas, maxFeePerGas } = await lineaEstimateGasClient.lineaEstimateGas(
-      account.address,
-      "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-      "0x",
-      etherToWei("0.01").toString(16),
-    );
+    const { maxPriorityFeePerGas, maxFeePerGas } = await config.getL2Provider().getFeeData();
     logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
     const tx = await account.sendTransaction({
@@ -107,12 +97,7 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send an access list transaction with empty access list", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    const { maxFeePerGas: gasPrice } = await lineaEstimateGasClient.lineaEstimateGas(
-      account.address,
-      "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-      "0x",
-      etherToWei("0.01").toString(16),
-    );
+    const { gasPrice } = await config.getL2Provider().getFeeData();
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const tx = await account.sendTransaction({
@@ -137,12 +122,7 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send an access list transaction with access list", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    const { maxFeePerGas: gasPrice } = await lineaEstimateGasClient.lineaEstimateGas(
-      account.address,
-      "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-      "0x",
-      etherToWei("0.01").toString(16),
-    );
+    const { gasPrice } = await config.getL2Provider().getFeeData();
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const accessList = {
@@ -184,12 +164,7 @@ describe("Layer 2 test suite", () => {
     const shomeiFrontendClient = new RollupGetZkEVMBlockNumberClient(shomeiFrontendEndpoint);
 
     for (let i = 0; i < 5; i++) {
-      const { maxPriorityFeePerGas, maxFeePerGas } = await lineaEstimateGasClient.lineaEstimateGas(
-        account.address,
-        "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-        "0x",
-        etherToWei("0.01").toString(16),
-      );
+      const { maxPriorityFeePerGas, maxFeePerGas } = await config.getL2Provider().getFeeData();
       logger.debug(
         `Fetched fee data. transactionNumber=${i + 1} maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`,
       );

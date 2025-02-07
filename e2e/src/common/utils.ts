@@ -316,18 +316,11 @@ export async function waitForFile(
 
 export async function sendTransactionsToGenerateTrafficWithInterval(
   signer: AbstractSigner,
-  lineaEstimateGasClient: LineaEstimateGasClient,
   pollingInterval: number = 1_000,
 ) {
-  const signerAddress = await signer.getAddress();
-  const { maxPriorityFeePerGas, maxFeePerGas } = await lineaEstimateGasClient.lineaEstimateGas(
-    signerAddress,
-    signerAddress,
-    "0x",
-    etherToWei("0.000001").toString(16),
-  );
+  const { maxPriorityFeePerGas, maxFeePerGas } = await signer.provider!.getFeeData();
   const transactionRequest = {
-    to: signerAddress,
+    to: await signer.getAddress(),
     value: etherToWei("0.000001"),
     maxPriorityFeePerGas: maxPriorityFeePerGas,
     maxFeePerGas: maxFeePerGas,
