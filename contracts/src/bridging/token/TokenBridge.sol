@@ -187,38 +187,6 @@ contract TokenBridge is
   }
 
   /**
-   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
-   * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _defaultAdmin The default admin account's address.
-   * @param _roleAddresses The list of addresses and roles to assign permissions to.
-   * @param _pauseTypeRoles The list of pause types to associate with roles.
-   * @param _unpauseTypeRoles The list of unpause types to associate with roles.
-   */
-  function reinitializePauseTypesAndPermissions(
-    address _defaultAdmin,
-    RoleAddress[] calldata _roleAddresses,
-    PauseTypeRole[] calldata _pauseTypeRoles,
-    PauseTypeRole[] calldata _unpauseTypeRoles
-  ) external reinitializer(2) {
-    if (_defaultAdmin == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
-
-    assembly {
-      /// @dev Wiping the storage slot 101 of _owner as it is replaced by AccessControl and there is now the ERC165 __gap in its place.
-      sstore(101, 0)
-      /// @dev Wiping the storage slot 213 of _status as it is replaced by ReentrancyGuardUpgradeable at slot 1.
-      sstore(213, 0)
-    }
-
-    __ReentrancyGuard_init();
-    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-    __Permissions_init(_roleAddresses);
-  }
-
-  /**
    * @notice This function is the single entry point to bridge tokens to the
    *   other chain, both for native and already bridged tokens. You can use it
    *   to bridge any ERC20. If the token is bridged for the first time an ERC20

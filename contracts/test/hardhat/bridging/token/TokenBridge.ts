@@ -5,7 +5,7 @@ import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBri
 import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens";
 import { BridgedToken, TestTokenBridge } from "../../../../typechain-types";
 import { getPermitData } from "./utils/permitHelper";
-import { Contract, ZeroAddress } from "ethers";
+import { Contract } from "ethers";
 import {
   ADDRESS_ZERO,
   COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
@@ -985,42 +985,6 @@ describe("TokenBridge", function () {
             l1TokenBridge.interface.encodeFunctionData("setDeployed", [[]]),
           ),
         "SenderNotAuthorized",
-      );
-    });
-  });
-
-  describe("reinitializePauseTypesAndPermissions", function () {
-    it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializePauseTypesAndPermissions", async function () {
-      const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
-
-      const roleAddresses = [{ addressWithRole: ZeroAddress, role: SET_RESERVED_TOKEN_ROLE }];
-
-      await expectRevertWithCustomError(
-        l1TokenBridge,
-        l1TokenBridge.reinitializePauseTypesAndPermissions(
-          owner.address,
-          roleAddresses,
-          pauseTypeRoles,
-          unpauseTypeRoles,
-        ),
-        "ZeroAddressNotAllowed",
-      );
-    });
-
-    it("Should revert with ZeroAddressNotAllowed when default admin is zero address", async function () {
-      const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
-
-      const roleAddresses = [{ addressWithRole: owner.address, role: SET_RESERVED_TOKEN_ROLE }];
-
-      await expectRevertWithCustomError(
-        l1TokenBridge,
-        l1TokenBridge.reinitializePauseTypesAndPermissions(
-          ZeroAddress, //owner is set to zeroaddress
-          roleAddresses,
-          pauseTypeRoles,
-          unpauseTypeRoles,
-        ),
-        "ZeroAddressNotAllowed",
       );
     });
   });
