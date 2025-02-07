@@ -174,13 +174,13 @@ class StateRecoveryApp(
         } ?: false
         if (hasReachedTargetBlock) {
           log.info(
-            "waiting for node to sync until stateRecoverStartBlockNumber={} - 1,  headBlockNumber={}",
+            "node reached recovery target block: stateRecoverStartBlockNumber={} headBlockNumber={}",
             recoveryStatus.stateRecoverStartBlockNumber,
             recoveryStatus.headBlockNumber
           )
         } else {
           log.info(
-            "node reached recovery target block: stateRecoverStartBlockNumber={} headBlockNumber={}",
+            "waiting for node to sync until stateRecoverStartBlockNumber={} - 1,  headBlockNumber={}",
             recoveryStatus.stateRecoverStartBlockNumber,
             recoveryStatus.headBlockNumber
           )
