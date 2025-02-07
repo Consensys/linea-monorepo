@@ -115,6 +115,44 @@ interface ILineaRollup {
   }
 
   /**
+   * @notice Data passed when reinitializing the contract on upgrade to set initialSoundnessState.
+   * @dev All fields are hashed together to minimize on-chain storage.
+   * @dev shnarf Is the expected starting shnarf.
+   * @dev blockNumber Is the expected starting block number.
+   * @dev timestamp Is the expected starting timestamp.
+   * @dev l1RollingHash Is the expected starting rolling hash.
+   * @dev l1RollingHashMessageNumber Is the expected starting message number.
+   */
+  struct InitialSoundnessState {
+    bytes32 shnarf;
+    uint256 blockNumber;
+    uint256 timestamp;
+    bytes32 l1RollingHash;
+    uint256 l1RollingHashMessageNumber;
+  }
+
+  /**
+   * @notice Data passed to be used when trying to finalize a second state for the same data.
+   * @dev These fields will replace the data in the FinalizationDataV3 struct to compute the second public input.
+   * @dev finalTimestamp Is the timestamp at finalization.
+   * @dev endBlockNumber Is the expected block number at finalization.
+   * @dev l1RollingHash Is the expected L2 computed rolling hash at finalization.
+   * @dev l1RollingHashMessageNumber Is the expected L2 computed message number at finalization.
+   * @dev finalStateRootHash Is the alternate final state in the shnarf data relating to the data submission.
+   * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last initial soundness state and endBlockNumber.
+   * @dev proof Is the second proof used when trying to trigger the soundness alert.
+   */
+  struct AlternateFinalizationData {
+    uint256 finalTimestamp;
+    uint256 endBlockNumber;
+    bytes32 l1RollingHash;
+    uint256 l1RollingHashMessageNumber;
+    bytes32 finalStateRootHash;
+    bytes32[] l2MerkleRoots;
+    bytes proof;
+  }
+
+  /**
    * @notice Emitted when the LineaRollup contract version has changed.
    * @dev All bytes8 values are string based SemVer in the format M.m - e.g. "6.0".
    * @param previousVersion The previous version.
@@ -176,6 +214,13 @@ interface ILineaRollup {
     bytes32 parentStateRootHash,
     bytes32 finalStateRootHash
   );
+
+  /**
+   * @notice Emitted when the soundness alert is being triggered.
+   * @param verfier The verifier shown to be invalid.
+   * @param proofType The proof type shown to be invalid.
+   */
+  event SoundessAlertTriggered(address verfier, uint256 proofType);
 
   /**
    * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the fallback operator address.
@@ -284,6 +329,26 @@ interface ILineaRollup {
   error OnlyNonFallbackOperator();
 
   /**
+   * @dev Thrown when the soundness alert has already been triggered for the proof type.
+   */
+  error SoundnessAlertAlreadyTriggered();
+
+  /**
+   * @dev Thrown when the initial state provided does not match the on-chain one.
+   */
+  error InitialSoundnessStateNotSame(bytes32 expected, bytes32 actual);
+
+  /**
+   * @dev Thrown when the soundness alert is using the same inputs for the public input.
+   */
+  error AllFinalizationInputsAreSame();
+
+  /**
+   * @dev Thrown when the data evaluation point is not zero.
+   */
+  error DataEvaluationClaimNotZero();
+
+  /**
    * @notice Adds or updates the verifier contract address for a proof type.
    * @dev VERIFIER_SETTER_ROLE is required to execute.
    * @param _newVerifierAddress The address for the verifier contract.
@@ -345,5 +410,22 @@ interface ILineaRollup {
     bytes calldata _aggregatedProof,
     uint256 _proofType,
     FinalizationDataV3 calldata _finalizationData
+  ) external;
+
+  /**
+   * @notice Verifies two proofs over the same data and if state differs the soundness alert is triggered.
+   * @dev The alternate finalization will overwrite some fields in the main finalizationData struct.
+   * @param _finalizationData .
+   * @param _alternateFinalizationData .
+   * @param _firstProof .
+   * @param _proofType .
+   * @param _initialBlockNumber .
+   */
+  function triggerSoundnessAlert(
+    FinalizationDataV3 memory _finalizationData,
+    AlternateFinalizationData memory _alternateFinalizationData,
+    bytes memory _firstProof,
+    uint256 _proofType,
+    uint256 _initialBlockNumber
   ) external;
 }
