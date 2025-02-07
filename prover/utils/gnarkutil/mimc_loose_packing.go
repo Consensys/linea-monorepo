@@ -1,11 +1,9 @@
 package gnarkutil
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	hashinterface "hash"
-	"io"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/hash"
@@ -42,48 +40,25 @@ func PartialChecksumBatchesPackedHint(maxNbBatches int) solver.Hint {
 
 }
 
-// partialChecksumLooselyPackedBytes hashes 'b' and sets the result in 'buf' using
-// `h` as a hasher. `b` is choped in chunks of `len(buf) - 1` bytes (let's call them `c_i`). The
-// hash is obtained by hashing the chunks as `... || 0x00 || c_i-1 || 0x00 || c_i || ...`
-//
-// Expectedly, the hasher produces hashes with the same length as `buf`, otherwise it
-// will panic.
 func partialChecksumLooselyPackedBytes(b []byte, buf []byte, h hashinterface.Hash) {
-
-	var (
-		bufShort = make([]byte, len(buf)-1)
-		r        = bytes.NewReader(b)
-	)
-
-	// zeroizeSlice zeroes all the positions of the input slice.
-	zeroizeSlice := func(slice []byte) {
-		for i := range slice {
-			slice[i] = 0x00
+	pack := func(b []byte, buffStartIndex int) {
+		for i := range buf[:buffStartIndex] {
+			buf[i] = 0
+		}
+		buf := buf[buffStartIndex:]
+		for n := copy(buf, b); n < len(buf); n++ {
+			buf[n] = 0
 		}
 	}
 
-	for {
-		_, err := r.Read(bufShort)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			panic(err)
-		}
-
-		buf[0] = 0x00
-		copy(buf[1:], bufShort)
-		h.Write(buf[:])
-		zeroizeSlice(bufShort)
+	pack(b, 1)
+	for i := len(buf) - 1; i < len(b); i += len(buf) - 1 {
+		h.Reset()
+		h.Write(buf)
+		pack(b[i:], 1)
+		h.Write(buf)
+		pack(h.Sum(nil), 0)
 	}
-
-	digest := h.Sum(nil)
-
-	if len(digest) != len(buf) {
-		utils.Panic("digest length is %v but expected %v", len(digest), len(buf))
-	}
-
-	copy(buf, digest)
 }
 
 // ChecksumLooselyPackedBytes produces the results expected by CheckBatchesSums, but more generalized
