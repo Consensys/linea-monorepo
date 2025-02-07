@@ -190,17 +190,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     super.renounceRole(_role, _account);
   }
 
-  function triggerSoundnessAlertForJulien(
-    FinalizationDataV3 memory _first,
-    FinalizationDataV3 memory _second,
-    uint256 _proofType,
-    bytes calldata _proof1,
-    bytes calldata _proof2
-  ) external {
-    // check soundess for 1
-    // check soundess for 2
-  }
-
   /**
    * @notice Verifies two proofs over the same data and if state differs the soundness alert is triggered.
    * @dev The alternate finalization will overwrite some fields in the main finalizationData struct.
@@ -738,14 +727,15 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     }
   }
 
-  // TODO CORRECT THE NATSPEC HERE
   /**
    * @notice Compute the public input.
    * @dev Using assembly this way is cheaper gas wise.
    * @dev Computing the public input as the following:
    * @param _finalizationData The full finalization data.
+   * @param _lastFinalizedShnarf The last finalized shnarf.
    * @param _finalShnarf The final shnarf in the finalization.
    * @param _lastFinalizedBlockNumber The last finalized block number.
+   * @return publicInput The public input as a 256 bit integer.
    */
   function _computePublicInput(
     FinalizationDataV3 memory _finalizationData,
