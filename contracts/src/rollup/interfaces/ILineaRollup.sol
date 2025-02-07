@@ -114,6 +114,15 @@ interface ILineaRollup {
     bytes l2MessagingBlocksOffsets;
   }
 
+  /**
+   * @notice Data passed when reinitializing the contract on upgrade to set initialSoundnessState.
+   * @dev All fields are hashed together to minimize on-chain storage.
+   * @dev shnarf Is the expected starting shnarf.
+   * @dev blockNumber Is the expected starting block number.
+   * @dev timestamp Is the expected starting timestamp.
+   * @dev l1RollingHash Is the expected starting rolling hash.
+   * @dev l1RollingHashMessageNumber Is the expected starting message number.
+   */
   struct InitialSoundnessState {
     bytes32 shnarf;
     uint256 blockNumber;
@@ -122,6 +131,17 @@ interface ILineaRollup {
     uint256 l1RollingHashMessageNumber;
   }
 
+  /**
+   * @notice Data passed to be used when trying to finalize a second state for the same data.
+   * @dev These fields will replace the data in the FinalizationDataV3 struct to compute the second public input.
+   * @dev finalTimestamp Is the timestamp at finalization.
+   * @dev endBlockNumber Is the expected block number at finalization.
+   * @dev l1RollingHash Is the expected L2 computed rolling hash at finalization.
+   * @dev l1RollingHashMessageNumber Is the expected L2 computed message number at finalization.
+   * @dev finalStateRootHash Is the alternate final state in the shnarf data relating to the data submission.
+   * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last initial soundness state and endBlockNumber.
+   * @dev proof Is the second proof used when trying to trigger the soundness alert.
+   */
   struct AlternateFinalizationData {
     uint256 finalTimestamp;
     uint256 endBlockNumber;
@@ -132,6 +152,14 @@ interface ILineaRollup {
     bytes proof;
   }
 
+  /**
+   * @notice Data passed to be used when trying to prove the same data results in two different states.
+   * @dev finalizationData Is all the finalization data used with the first proof.
+   * @dev alternateFinalizationData Is the alternate finalization data/public input data for the second proof.
+   * @dev firstProof Is the first proof being used in the finalization.
+   * @dev proofType Is the proof type being used in the finalization for both proofs.
+   * @dev initialBlockNumber Is the block number matching the initial soundness state for both proofs.
+   */
   struct SoundessFinalizationData {
     FinalizationDataV3 finalizationData;
     AlternateFinalizationData alternateFinalizationData;
