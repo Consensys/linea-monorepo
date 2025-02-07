@@ -19,6 +19,7 @@ import org.web3j.protocol.core.methods.request.EthFilter
 import org.web3j.protocol.core.methods.response.EthLog
 import org.web3j.protocol.core.methods.response.Log
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -73,22 +74,32 @@ class Web3JLogsSearcher(
     val cursor = SearchCursor(fromBlock, toBlock, chunkSize)
     log.trace("searching between blocks={}", CommonDomainFunctions.blockIntervalString(fromBlock, toBlock))
 
-    var nextChunkToSearch: Pair<ULong, ULong>? = cursor.next(searchDirection = SearchDirection.FORWARD)
+    val nextChunkToSearchRef: AtomicReference<Pair<ULong, ULong>?> =
+      AtomicReference(cursor.next(searchDirection = SearchDirection.FORWARD))
     return AsyncRetryer.retry(
       vertx,
       backoffDelay = config.backoffDelay,
-      stopRetriesPredicate = { it is SearchResult.ItemFound || nextChunkToSearch == null }
+      stopRetriesPredicate = {
+        it is SearchResult.ItemFound || nextChunkToSearchRef.get() == null
+      }
     ) {
-      val (chunkStart, chunkEnd) = nextChunkToSearch!!
-      log.trace("searching in chunk={}", CommonDomainFunctions.blockIntervalString(chunkStart, chunkEnd))
+      log.trace("searching in chunk={}", nextChunkToSearchRef.get())
+      val (chunkStart, chunkEnd) = nextChunkToSearchRef.get()!!
+      val chunkInterval = CommonDomainFunctions.blockIntervalString(chunkStart, chunkEnd)
       findLogInInterval(chunkStart, chunkEnd, address, topics, shallContinueToSearchPredicate)
         .thenPeek { result ->
           if (result is SearchResult.NoResultsInInterval) {
-            nextChunkToSearch = cursor.next(searchDirection = null)
+            nextChunkToSearchRef.set(cursor.next(searchDirection = null))
           } else if (result is SearchResult.KeepSearching) {
             // need to search in the same chunk
-            nextChunkToSearch = cursor.next(searchDirection = result.direction)
+            nextChunkToSearchRef.set(cursor.next(searchDirection = result.direction))
           }
+          log.trace(
+            "search result chunk={} searchResult={} nextChunkToSearch={}",
+            chunkInterval,
+            result,
+            nextChunkToSearchRef.get()
+          )
         }
     }.thenApply { either ->
       when (either) {

@@ -19,6 +19,7 @@ dependencies {
   api(project(':state-recovery:appcore:clients-interfaces'))
   api(project(':state-recovery:appcore:domain-models'))
   api(project(':state-recovery:appcore:logic'))
+  api(project(':state-recovery:besu-plugin'))
 
   implementation project(':jvm-libs:linea:besu-libs')
   implementation project(':jvm-libs:linea:testing:file-system')
