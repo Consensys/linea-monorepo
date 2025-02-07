@@ -246,7 +246,12 @@ func TryReduceSize(v SmartVector) SmartVector {
 		// to detect if a regular vector can be reduced to a constant, we need to
 		// check if all the values are equals. That's an expensive, so we instead
 		// by comparing values that would be likely to be unequal if it was not a
-		// constant.
+		// constant. Also, we need to rule out the case where len(*w) because it
+		// is irrelevant to reducing the size.
+		if len(*w) <= 1 {
+			return w
+		}
+
 		if (*w)[0] != (*w)[1] {
 			return w
 		}
