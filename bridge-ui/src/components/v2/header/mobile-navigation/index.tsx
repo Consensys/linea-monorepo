@@ -108,7 +108,10 @@ export const MobileNavigation = ({ menus, theme = "default" }: Props) => {
                               <li
                                 className={styles.submenuItem}
                                 key={subIndex}
-                                onClick={() => handleToggleMenu(submenu, -1)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleMenu(submenu, -1);
+                                }}
                               >
                                 <Link href={submenu.url as string} target={submenu.external ? "_blank" : "_self"}>
                                   {submenu.label}

@@ -24,6 +24,8 @@ export type LinkBlock = {
   icon?: AssetType;
   submenusLeft?: LinkBlock[];
   submenusRight?: LinkBlock;
+  mobileOnly?: boolean;
+  desktopUrl?: string;
 };
 
 export enum Theme {

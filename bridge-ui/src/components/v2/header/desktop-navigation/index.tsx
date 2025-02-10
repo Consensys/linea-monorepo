@@ -13,12 +13,19 @@ type Props = {
   theme?: Theme;
 };
 
+function filterMobileOnly(menu: LinkBlock) {
+  return {
+    ...menu,
+    submenusLeft: (menu.submenusLeft || []).filter((item) => !item.mobileOnly),
+  };
+}
+
 export const DesktopNavigation = ({ menus, theme = Theme.default }: Props) => {
   return (
     <nav className={styles["nav-wrapper"]}>
       <ul className={`${styles.navigation} ${styles[theme]}`}>
         {menus.map((menu, index) => (
-          <MenuItem key={index} menu={menu} />
+          <MenuItem key={index} menu={filterMobileOnly(menu)} />
         ))}
         <li>
           <HeaderConnect />
@@ -37,9 +44,7 @@ function MenuItem({ menu }: MenuItemProps) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (showSubmenu) {
-      setShowsubmenu(false);
-    }
+    setShowsubmenu(false);
   }, [pathname]);
 
   return (
@@ -60,8 +65,18 @@ function MenuItem({ menu }: MenuItemProps) {
 
       {!menu.url && (
         <>
-          <i className={styles.dot}></i>
-          {menu.label}
+          {menu.desktopUrl ? (
+            <Link href={menu.desktopUrl} target={menu.external ? "_blank" : "_self"}>
+              <i className={styles.dot} />
+              {menu.label}
+            </Link>
+          ) : (
+            <>
+              <i className={styles.dot} />
+              {menu.label}
+            </>
+          )}
+
           {menu.submenusLeft && (
             <ul className={styles.submenu}>
               {menu.submenusLeft.map((submenu, key) => (

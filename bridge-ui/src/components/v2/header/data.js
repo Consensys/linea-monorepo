@@ -79,9 +79,18 @@ export const MENUS = [
     label: "Bridge",
     external: false,
     active: true,
+    desktopUrl: "/",
     submenusLeft: [
       {
         __id: "3cPGRx3oGMEnLzgw8VUFUJzz",
+        __typename: "link",
+        name: "Bridge",
+        label: "Bridge",
+        url: "/",
+        mobileOnly: true,
+      },
+      {
+        __id: "3cPGRx3oGMEnLzgw8VUFUJza",
         __typename: "link",
         name: "Transactions",
         label: "Transactions",
