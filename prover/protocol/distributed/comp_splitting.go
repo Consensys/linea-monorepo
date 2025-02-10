@@ -237,7 +237,7 @@ func getSizeForProviderReceiver(comp *wizard.CompiledIOP) int {
 			var (
 				board    = global.Board()
 				metadata = board.ListVariableMetadata()
-				maxShift = GetMaxShift(global.Expression)
+				maxShift = global.MinMaxOffset().Max
 			)
 
 			for _, m := range metadata {
@@ -246,7 +246,7 @@ func getSizeForProviderReceiver(comp *wizard.CompiledIOP) int {
 
 					if shifted, ok := t.(column.Shifted); ok {
 						// number of boundaries from the current column
-						numBoundaries += maxShift - shifted.Offset
+						numBoundaries += maxShift - column.StackOffsets(shifted)
 
 					} else {
 						numBoundaries += maxShift
@@ -257,23 +257,6 @@ func getSizeForProviderReceiver(comp *wizard.CompiledIOP) int {
 		}
 	}
 	return utils.NextPowerOfTwo(numBoundaries)
-}
-
-func GetMaxShift(expr *symbolic.Expression) int {
-	var (
-		board    = expr.Board()
-		metadata = board.ListVariableMetadata()
-		maxshift = 0
-	)
-	for _, m := range metadata {
-		switch t := m.(type) {
-		case ifaces.Column:
-			if shifted, ok := t.(column.Shifted); ok {
-				maxshift = max(maxshift, shifted.Offset)
-			}
-		}
-	}
-	return maxshift
 }
 
 // assignProvider mainly assigns the provider
@@ -293,7 +276,7 @@ func assignProvider(run *wizard.ProverRuntime, segID, numSegments int, col iface
 			var (
 				board    = global.Board()
 				metadata = board.ListVariableMetadata()
-				maxShift = GetMaxShift(global.Expression)
+				maxShift = global.MinMaxOffset().Max
 			)
 
 			for _, m := range metadata {
@@ -303,22 +286,24 @@ func assignProvider(run *wizard.ProverRuntime, segID, numSegments int, col iface
 					var (
 						segmentSize = t.Size() / numSegments
 						lastRow     = (segID+1)*segmentSize - 1
-						colWitness  = t.GetColAssignment(parentRuntime).IntoRegVecSaveAlloc()
+						colWit      []field.Element
 						// number of boundaries from the current column
 						numBoundaries = 0
 					)
 
 					if shifted, ok := t.(column.Shifted); ok {
-						numBoundaries = maxShift - shifted.Offset
+						numBoundaries = maxShift - column.StackOffsets(shifted)
+						colWit = shifted.Parent.GetColAssignment(parentRuntime).IntoRegVecSaveAlloc()
 
 					} else {
 						numBoundaries = maxShift
+						colWit = t.GetColAssignment(parentRuntime).IntoRegVecSaveAlloc()
 					}
 
 					for i := lastRow - numBoundaries + 1; i <= lastRow; i++ {
 
 						allBoundaries = append(allBoundaries,
-							colWitness[i])
+							colWit[i])
 
 					}
 
