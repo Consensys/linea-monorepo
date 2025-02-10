@@ -469,7 +469,7 @@ func (run VerifierRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element
 	wit := run.Columns.MustGet(name)
 
 	if pos >= wit.Len() || pos < 0 {
-		utils.Panic("asked pos %v for vector of size %v", pos, wit)
+		utils.Panic("asked pos %v for vector of size %v", pos, wit.Len())
 	}
 
 	return wit.Get(pos)

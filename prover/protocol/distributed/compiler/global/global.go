@@ -1,8 +1,7 @@
 package global
 
 import (
-	"fmt"
-
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
@@ -16,22 +15,6 @@ import (
 )
 
 type segmentID int
-
-type provider struct {
-	// Provider stores the boundaries that the segment should
-	// provide to the next segment (for all the global constraints).
-	provider ifaces.Column
-	// last index in the provider that is checked by the verifier (for local constraints over boundaries).
-	lastIndex int
-}
-
-type receiver struct {
-	// Receiver stores the boundaries that the segment should
-	// receive from its previous segment (for all the global constraints).
-	receiver ifaces.Column
-	// last index in the provider that is checked by the verifier (for local constraints over boundaries).
-	lastIndex int
-}
 
 type DistributionInputs struct {
 	ModuleComp  *wizard.CompiledIOP
@@ -48,14 +31,12 @@ func DistributeGlobal(in DistributionInputs) {
 
 	var (
 		bInputs = boundaryInputs{
-			comp:               in.ModuleComp,
-			numSegments:        in.NumSegments,
-			provider:           provider{provider: in.ModuleComp.Columns.GetHandle("PROVIDER")},
-			receiver:           receiver{receiver: in.ModuleComp.Columns.GetHandle("RECEIVER")},
-			providerOpenings:   []query.LocalOpening{},
-			receiverOpenings:   []query.LocalOpening{},
-			colAgainstProvider: []query.LocalOpening{},
-			colAgainstReceiver: []query.LocalOpening{},
+			moduleComp:       in.ModuleComp,
+			numSegments:      in.NumSegments,
+			provider:         in.ModuleComp.Columns.GetHandle("PROVIDER"),
+			receiver:         in.ModuleComp.Columns.GetHandle("RECEIVER"),
+			providerOpenings: []query.LocalOpening{},
+			receiverOpenings: []query.LocalOpening{},
 		}
 	)
 
@@ -75,60 +56,38 @@ func DistributeGlobal(in DistributionInputs) {
 			)
 
 			// collect the boundaries for provider and receiver
-			var (
-				board    = q.Board()
-				metadata = board.ListVariableMetadata()
-			)
 
-			for _, m := range metadata {
-				switch t := m.(type) {
-				case ifaces.Column:
-					collectBoundariesForProvider(&bInputs, q, t)
-					collectBoundariesForReceiver(&bInputs, q, t)
+			BoundariesForProvider(&bInputs, q)
+			BoundariesForReceiver(&bInputs, q)
 
-				}
-
-			}
 		}
 
-		// the risk is that some global constraints may be skipped here.
+		// @Azam the risk is that some global constraints may be skipped here.
 		// we can prevent this by tagging the query as ignored from the initialComp,
 		// and at the end make sure that no query has remained in initial CompiledIOP.
 	}
 
-	bInputs.comp.RegisterProverAction(0, &paramAssignments{
-		provider:           bInputs.provider.provider,
-		receiver:           bInputs.receiver.receiver,
-		providerOpenings:   bInputs.providerOpenings,
-		receiverOpenings:   bInputs.receiverOpenings,
-		colAgainstProvider: bInputs.colAgainstProvider,
-		colAgainstReceiver: bInputs.colAgainstReceiver})
-
-	bInputs.comp.RegisterVerifierAction(0, &verifierChecks{
-		providerOpenings:   bInputs.providerOpenings,
-		receiverOpenings:   bInputs.receiverOpenings,
-		colAgainstProvider: bInputs.colAgainstProvider,
-		colAgainstReceiver: bInputs.colAgainstReceiver,
+	in.ModuleComp.RegisterProverAction(0, &paramAssignments{
+		provider:         bInputs.provider,
+		receiver:         bInputs.receiver,
+		providerOpenings: bInputs.providerOpenings,
+		receiverOpenings: bInputs.receiverOpenings,
 	})
 
 }
 
 type boundaryInputs struct {
-	comp                                   *wizard.CompiledIOP
-	numSegments                            int
-	provider                               provider
-	receiver                               receiver
-	isFirst, isLast                        bool
-	providerOpenings, receiverOpenings     []query.LocalOpening
-	colAgainstProvider, colAgainstReceiver []query.LocalOpening
+	moduleComp                         *wizard.CompiledIOP
+	numSegments                        int
+	provider                           ifaces.Column
+	receiver                           ifaces.Column
+	providerOpenings, receiverOpenings []query.LocalOpening
 }
 
-func checkBoundaries(in boundaryInputs, q query.GlobalConstraint) {
-
-}
-
-func AdjustExpressionForGlobal(comp *wizard.CompiledIOP,
-	expr *symbolic.Expression, numSegments int,
+func AdjustExpressionForGlobal(
+	comp *wizard.CompiledIOP,
+	expr *symbolic.Expression,
+	numSegments int,
 ) *symbolic.Expression {
 
 	var (
@@ -136,9 +95,7 @@ func AdjustExpressionForGlobal(comp *wizard.CompiledIOP,
 		metadatas      = board.ListVariableMetadata()
 		translationMap = collection.NewMapping[string, *symbolic.Expression]()
 		colTranslation ifaces.Column
-		// column is split fairly among segments.
-		// size    = column.ExprIsOnSameLengthHandles(&board)
-		// segSize = size / numSegments
+		size           = column.ExprIsOnSameLengthHandles(&board)
 	)
 
 	for _, metadata := range metadatas {
@@ -154,11 +111,9 @@ func AdjustExpressionForGlobal(comp *wizard.CompiledIOP,
 				colTranslation = comp.Columns.GetHandle(m.GetColID())
 
 			case verifiercol.VerifierCol:
-				// Create the split in live
-				//colTranslation = col.Split(comp, segID*segSize, (segID+1)*segSize)
+				// panic happens specially for the case of FromAccessors
+				panic("unsupported for now, unless module discoverer can capture such columns")
 
-			// Shift the subparent, if the offset is larger than the subparent
-			// we repercute it on the num
 			case column.Shifted:
 				colTranslation = column.Shift(comp.Columns.GetHandle(col.Parent.GetColID()), col.Offset)
 
@@ -171,31 +126,13 @@ func AdjustExpressionForGlobal(comp *wizard.CompiledIOP,
 			// Check that the period is not larger than the domain size. If
 			// the period is smaller this is a no-op because the period does
 			// not change.
-			/* translated := symbolic.NewVariable(metadata)
+			segSize := size / numSegments
 
 			if m.T > segSize {
 
-				// Here, there are two possibilities. (1) The current slot is
-				// on a portion of the Periodic sample where everything is
-				// zero or (2) the current slot matches a portion of the
-				// periodic sampling containing a 1. To determine which is
-				// the current situation, we need to find out where the slot
-				// is located compared to the period.
-				var (
-					slotStartAt = (segID * segSize) % m.T
-					slotStopAt  = slotStartAt + segSize
-				)
-
-				if m.Offset >= slotStartAt && m.Offset < slotStopAt {
-					translated = variables.NewPeriodicSample(segSize, m.Offset%segSize)
-				} else {
-					translated = symbolic.NewConstant(0)
-				}
+				panic("unsupported, since this depends on the segment ID, unless the module discoverer can detect such cases")
 			}
-
-			// And we can just pass it over because the period does not change
-			translationMap.InsertNew(m.String(), translated)
-			*/
+			translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
 		default:
 			// Repass the same variable (for coins or other types of single-valued variable)
 			translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
@@ -205,135 +142,171 @@ func AdjustExpressionForGlobal(comp *wizard.CompiledIOP,
 	return expr.Replay(translationMap)
 }
 
-func GetMaxShift(expr *symbolic.Expression) int {
+func BoundariesForProvider(in *boundaryInputs, q query.GlobalConstraint) {
+
 	var (
-		board    = expr.Board()
-		metadata = board.ListVariableMetadata()
-		maxshift = 0
+		board          = q.Board()
+		offsetRange    = q.MinMaxOffset()
+		provider       = in.provider
+		maxShift       = offsetRange.Max
+		colsInExpr     = distributed.ListColumnsFromExpr(q.Expression, false)
+		colsOnProvider = onBoundaries(colsInExpr, maxShift)
+		numBoundaries  = offsetRange.Max - offsetRange.Min
+		size           = column.ExprIsOnSameLengthHandles(&board)
+		segSize        = size / in.numSegments
 	)
-	for _, m := range metadata {
-		switch t := m.(type) {
-		case ifaces.Column:
-			if shifted, ok := t.(column.Shifted); ok {
-				maxshift = max(maxshift, shifted.Offset)
+	for _, col := range colsInExpr {
+		for i := 0; i < numBoundaries; i++ {
+			if colsOnProvider.Exists(col.GetColID()) {
+
+				pos := colsOnProvider.MustGet(col.GetColID())
+
+				if i < maxShift-column.StackOffsets(col) {
+					// take from provider, since the size of the provider is different from size of the expression
+					// take it via accessor.
+					var (
+						index            = pos[0] + i
+						name             = ifaces.QueryIDf("%v_%v", "FROM_PROVIDER_AT", index)
+						loProvider       = in.moduleComp.InsertLocalOpening(0, name, column.Shift(provider, index))
+						accessorProvider = accessors.NewLocalOpeningAccessor(loProvider, 0)
+						indexOnCol       = segSize - (maxShift - column.StackOffsets(col) - i)
+						nameExpr         = ifaces.QueryIDf("%v_%v_%v", "CONSISTENCY_AGAINST_PROVIDER", col.GetColID(), i)
+						colInModule      ifaces.Column
+					)
+
+					// replace col with its replacement in the module.
+					if shifted, ok := col.(column.Shifted); ok {
+						colInModule = in.moduleComp.Columns.GetHandle(shifted.Parent.GetColID())
+					} else {
+						colInModule = in.moduleComp.Columns.GetHandle(col.GetColID())
+					}
+
+					// add the localOpening to the list
+					in.providerOpenings = append(in.providerOpenings, loProvider)
+					// impose that loProvider = loCol
+					in.moduleComp.InsertLocal(0, nameExpr,
+						symbolic.Sub(accessorProvider, column.Shift(colInModule, indexOnCol)),
+					)
+
+				}
 			}
 		}
-
 	}
-	return maxshift
+
 }
 
-func GetMinShift(expr *symbolic.Expression) int {
+func BoundariesForReceiver(in *boundaryInputs, q query.GlobalConstraint) {
+
 	var (
-		board    = expr.Board()
-		metadata = board.ListVariableMetadata()
-		minshift = 0
+		offsetRange    = q.MinMaxOffset()
+		receiver       = in.receiver
+		maxShift       = offsetRange.Max
+		colsInExpr     = distributed.ListColumnsFromExpr(q.Expression, false)
+		colsOnReceiver = onBoundaries(colsInExpr, maxShift)
+		numBoundaries  = offsetRange.Max - offsetRange.Min
+		comp           = in.moduleComp
+		colInModule    ifaces.Column
+		// list of local openings by the boundary index
+		allLists = make([][]query.LocalOpening, numBoundaries)
 	)
-	for _, m := range metadata {
-		switch t := m.(type) {
-		case ifaces.Column:
-			if shifted, ok := t.(column.Shifted); ok {
-				minshift = min(minshift, shifted.Offset)
+
+	for i := 0; i < numBoundaries; i++ {
+
+		translationMap := collection.NewMapping[string, *symbolic.Expression]()
+
+		for _, col := range colsInExpr {
+
+			// replace col with its replacement in the module.
+			if shifted, ok := col.(column.Shifted); ok {
+				colInModule = in.moduleComp.Columns.GetHandle(shifted.Parent.GetColID())
+			} else {
+				colInModule = in.moduleComp.Columns.GetHandle(col.GetColID())
 			}
+
+			if colsOnReceiver.Exists(col.GetColID()) {
+				pos := colsOnReceiver.MustGet(col.GetColID())
+
+				if i < maxShift-column.StackOffsets(col) {
+					// take from receiver, since the size of the receiver is different from size of the expression
+					// take it via accessor.
+					var (
+						index    = pos[0] + i
+						name     = ifaces.QueryIDf("%v_%v", "FROM_RECEIVER_AT", index)
+						lo       = comp.InsertLocalOpening(0, name, column.Shift(receiver, index))
+						accessor = accessors.NewLocalOpeningAccessor(lo, 0)
+					)
+					// add the localOpening to the list
+					allLists[i] = append(allLists[i], lo)
+					// in.receiverOpenings = append(in.receiverOpenings, lo)
+					// translate the column
+					translationMap.InsertNew(string(col.GetColID()), accessor.AsVariable())
+				} else {
+					// take the rest from the column
+					tookFromReceiver := maxShift - column.StackOffsets(col)
+					translationMap.InsertNew(string(col.GetColID()), ifaces.ColumnAsVariable(column.Shift(colInModule, i-tookFromReceiver)))
+				}
+
+			} else {
+				translationMap.InsertNew(string(col.GetColID()), ifaces.ColumnAsVariable((column.Shift(colInModule, i))))
+			}
+
 		}
 
+		expr := q.Expression.Replay(translationMap)
+		name := ifaces.QueryIDf("%v_%v_%v", "CONSISTENCY_AGAINST_RECEIVER", q.ID, i)
+		comp.InsertLocal(0, name, expr)
+
 	}
-	return minshift
+
+	// order receiverOpenings column by column
+	for i := 0; i < numBoundaries; i++ {
+		for _, list := range allLists {
+			if len(list) > i {
+				in.receiverOpenings = append(in.receiverOpenings, list[i])
+			}
+		}
+	}
+
 }
 
-func collectBoundariesForProvider(in *boundaryInputs, q query.GlobalConstraint, t ifaces.Column) {
+// it indicates the column list having the provider cells (i.e.,
+// some cells of the columns are needed to be provided to the next segment)
+func onBoundaries(colsInExpr []ifaces.Column, maxShift int) collection.Mapping[ifaces.ColID, [2]int] {
+
 	var (
-		numSegments    = in.numSegments
-		segmentSize    = t.Size() / numSegments
-		col            ifaces.Column
-		numBoundariesP int
-		maxShift       = GetMaxShift(q.Expression)
+		ctr            = 0
+		colsOnReceiver = collection.NewMapping[ifaces.ColID, [2]int]()
 	)
+	for _, col := range colsInExpr {
+		// number of boundaries from the column (that falls on the receiver) is
+		// maxShift - column.StackOffsets(col)
+		newCtr := ctr + maxShift - column.StackOffsets(col)
 
-	if !utils.IsPowerOfTwo(segmentSize) {
-		panic("the segmentSize is not power of two")
+		// it does not have any cell on the receiver.
+		if newCtr == ctr {
+			continue
+		}
+
+		colsOnReceiver.InsertNew(col.GetColID(), [2]int{ctr, newCtr})
+		ctr = newCtr
+
 	}
 
-	if shifted, ok := t.(column.Shifted); ok {
-		// number of boundaries from the current column
-		numBoundariesP = maxShift - shifted.Offset
-		col = in.comp.Columns.GetHandle(shifted.Parent.GetColID())
+	return colsOnReceiver
 
-	} else {
-		numBoundariesP = maxShift
-		col = in.comp.Columns.GetHandle(t.GetColID())
-	}
-
-	ctrP := in.provider.lastIndex
-	for i := segmentSize - numBoundariesP; i < segmentSize; i++ {
-
-		var (
-			indexP  = (i - (segmentSize - numBoundariesP)) + in.provider.lastIndex
-			nameP   = fmt.Sprintf("%v_%v_%v", q.ID, "PROVIDER_OPENING", indexP)
-			nameCol = fmt.Sprintf("%v_%v_%v_%v", q.ID, col.GetColID(), "AGAINST_PROVIDER", i)
-		)
-
-		in.providerOpenings = append(in.providerOpenings,
-
-			in.comp.InsertLocalOpening(0, ifaces.QueryID(nameP),
-				column.Shift(in.provider.provider, indexP),
-			),
-		)
-
-		in.colAgainstProvider = append(in.colAgainstProvider,
-
-			in.comp.InsertLocalOpening(0, ifaces.QueryID(nameCol),
-				column.Shift(col, i),
-			),
-		)
-
-		ctrP++
-	}
-	in.provider.lastIndex += numBoundariesP
 }
 
-func collectBoundariesForReceiver(in *boundaryInputs, q query.GlobalConstraint, t ifaces.Column) {
+// it generates natural verifier columns, from a given verifier column
+func createVerifierColForModule(col ifaces.Column, numSegments int) ifaces.Column {
 
-	var (
-		col            ifaces.Column
-		numBoundariesR int
-		minShift       = GetMinShift(q.Expression)
-	)
+	if vcol, ok := col.(verifiercol.VerifierCol); ok {
 
-	if shifted, ok := t.(column.Shifted); ok {
-		// number of boundaries from the current column
-		numBoundariesR = shifted.Offset - minShift
-		col = in.comp.Columns.GetHandle(shifted.Parent.GetColID())
-
-	} else {
-		numBoundariesR = -minShift
-		col = in.comp.Columns.GetHandle(t.GetColID())
+		switch v := vcol.(type) {
+		case verifiercol.ConstCol:
+			return verifiercol.NewConstantCol(v.F, v.Size()/numSegments)
+		default:
+			panic("unsupported")
+		}
 	}
-
-	ctrR := in.receiver.lastIndex
-
-	for i := 0; i < numBoundariesR; i++ {
-
-		var (
-			nameR   = fmt.Sprintf("%v_%v_%v", q.ID, "RECEIVER_OPENING", i+in.receiver.lastIndex)
-			nameCol = fmt.Sprintf("%v_%v_%v_%v", q.ID, col.GetColID(), "AGAINST_RECEIVER", i)
-		)
-
-		in.receiverOpenings = append(in.receiverOpenings,
-
-			in.comp.InsertLocalOpening(0, ifaces.QueryID(nameR),
-				column.Shift(in.receiver.receiver, i+in.receiver.lastIndex),
-			),
-		)
-
-		in.colAgainstReceiver = append(in.colAgainstReceiver,
-
-			in.comp.InsertLocalOpening(0, ifaces.QueryID(nameCol),
-				column.Shift(col, i),
-			),
-		)
-
-		ctrR++
-	}
-	in.receiver.lastIndex += numBoundariesR
+	return nil
 }

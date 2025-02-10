@@ -17,7 +17,7 @@ import (
 // It tests DistributedLogDerivSum.
 func TestDistributedGlobal(t *testing.T) {
 	const (
-		numSegModule = 2
+		numSegModule = 1
 	)
 
 	//initialComp
@@ -26,18 +26,27 @@ func TestDistributedGlobal(t *testing.T) {
 		var (
 			col0 = b.CompiledIOP.InsertCommit(0, "module.col0", 8)
 			col1 = b.CompiledIOP.InsertCommit(0, "module.col1", 8)
-			// verifCol = verifiercol.NewConstantCol(field.NewElement(7), 8)
+			col2 = b.CompiledIOP.InsertCommit(0, "module.col2", 8)
+			col3 = b.CompiledIOP.InsertCommit(0, "module.col3", 8)
 		)
 
 		b.CompiledIOP.InsertGlobal(0, "global0",
-			symbolic.Sub(col1, column.Shift(col0, 3)))
+			symbolic.Sub(
+				col1, column.Shift(col0, 3),
+				symbolic.Mul(2, column.Shift(col2, 2)),
+				symbolic.Neg(column.Shift(col3, 3)),
+			),
+		)
 
 	}
 
 	// initialProver
 	prover := func(run *wizard.ProverRuntime) {
-		run.AssignColumn("module.col0", smartvectors.ForTest(1, 0, 2, 1, 7, 1, 11, 2))
+		run.AssignColumn("module.col0", smartvectors.ForTest(3, 0, 2, 1, 4, 1, 13, 0))
 		run.AssignColumn("module.col1", smartvectors.ForTest(1, 7, 1, 11, 2, 1, 0, 2))
+		run.AssignColumn("module.col2", smartvectors.ForTest(7, 0, 1, 3, 0, 4, 1, 0))
+		run.AssignColumn("module.col3", smartvectors.ForTest(2, 14, 0, 2, 3, 0, 10, 0))
+
 	}
 
 	// initial compiledIOP is the parent to all the SegmentModuleComp objects.
@@ -57,8 +66,7 @@ func TestDistributedGlobal(t *testing.T) {
 		},
 	)
 
-	// distribute the query LogDerivativeSum among modules.
-	// The seed is used to generate randomness for each moduleComp.
+	// distribute the query among segments.
 	global.DistributeGlobal(global.DistributionInputs{
 		ModuleComp:  moduleComp,
 		InitialComp: initialComp,
@@ -67,7 +75,7 @@ func TestDistributedGlobal(t *testing.T) {
 		NumSegments: numSegModule,
 	})
 
-	// This compiles the log-derivative queries into global/local queries.
+	// This dummy compiles the global/local queries of the segment.
 	wizard.ContinueCompilation(moduleComp, dummy.Compile)
 
 	// run the initial runtime

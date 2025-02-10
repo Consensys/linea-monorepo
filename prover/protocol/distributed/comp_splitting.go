@@ -176,11 +176,11 @@ func extractGLColumns(comp *wizard.CompiledIOP) []ifaces.Column {
 	for _, queryID := range comp.QueriesNoParams.AllKeysAt(0) {
 
 		if glob, ok := comp.QueriesNoParams.Data(queryID).(query.GlobalConstraint); ok {
-			glColumns = append(glColumns, ListColumnsFromExpr(glob.Expression)...)
+			glColumns = append(glColumns, ListColumnsFromExpr(glob.Expression, true)...)
 		}
 
 		if local, ok := comp.QueriesNoParams.Data(queryID).(query.LocalConstraint); ok {
-			glColumns = append(glColumns, ListColumnsFromExpr(local.Expression)...)
+			glColumns = append(glColumns, ListColumnsFromExpr(local.Expression, true)...)
 		}
 	}
 
@@ -189,7 +189,9 @@ func extractGLColumns(comp *wizard.CompiledIOP) []ifaces.Column {
 }
 
 // ListColumnsFromExpr returns the natural version of all the columns in the expression.
-func ListColumnsFromExpr(expr *symbolic.Expression) []ifaces.Column {
+// if natural is true, it return the natural version of the columns,
+// otherwise it return the original columns.
+func ListColumnsFromExpr(expr *symbolic.Expression, natural bool) []ifaces.Column {
 
 	var (
 		board    = expr.Board()
@@ -201,7 +203,7 @@ func ListColumnsFromExpr(expr *symbolic.Expression) []ifaces.Column {
 		switch t := m.(type) {
 		case ifaces.Column:
 
-			if shifted, ok := t.(column.Shifted); ok {
+			if shifted, ok := t.(column.Shifted); ok && natural {
 				colList = append(colList, shifted.Parent)
 			} else {
 				colList = append(colList, t)
@@ -280,13 +282,12 @@ func GetMaxShift(expr *symbolic.Expression) int {
 func assignProvider(run *wizard.ProverRuntime, segID, numSegments int, col ifaces.Column) {
 
 	var (
-		segComp       = run.Spec
 		parentRuntime = run.ParentRuntime
 		initialComp   = parentRuntime.Spec
 		allBoundaries = []field.Element{}
 	)
 
-	for _, q := range segComp.QueriesNoParams.AllKeysAt(0) {
+	for _, q := range initialComp.QueriesNoParams.AllKeysAt(0) {
 		if global, ok := initialComp.QueriesNoParams.Data(q).(query.GlobalConstraint); ok {
 
 			var (
