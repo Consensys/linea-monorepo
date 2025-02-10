@@ -17,7 +17,7 @@ import (
 // It tests DistributedLogDerivSum.
 func TestDistributedGlobal(t *testing.T) {
 	const (
-		numSegModule = 1
+		numSegModule = 2
 	)
 
 	//initialComp
