@@ -30,8 +30,8 @@ contract RewardsStreamerMP is
     /// @notice Token that is staked in the vaults (SNT).
     IERC20 public STAKING_TOKEN;
     /// @notice Scale factor used for rewards calculation.
-    uint256 public constant SCALE_FACTOR = 1e18;
-    /// @notice Amount of total staked tokens.
+    uint256 public constant SCALE_FACTOR = 1e27;
+
     uint256 public totalStaked;
     /// @notice Total multiplier points accrued.
     uint256 public totalMPAccrued;

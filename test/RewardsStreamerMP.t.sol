@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { Test } from "forge-std/Test.sol";
 import { Test, console } from "forge-std/Test.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { DeployRewardsStreamerMPScript } from "../script/DeployRewardsStreamerMP.s.sol";
@@ -2731,6 +2730,42 @@ contract FuzzTests is RewardsStreamerMPTest {
                 maxMP: expectedMaxTotalMP - _reduceMP(stakeAmount, expectedMaxTotalMP, unstakeAmount),
                 rewardsAccrued: 0
             })
+        );
+    }
+
+    function testFuzz_Rewards(
+        uint256 stakeAmount,
+        uint256 lockUpPeriod,
+        uint256 rewardAmount,
+        uint16 rewardPeriod,
+        uint16 accountRewardPeriod
+    )
+        public
+    {
+        stakeAmount = bound(stakeAmount, 1e18, 20_000_000e18);
+        lockUpPeriod = lockUpPeriod == 0 ? 0 : bound(lockUpPeriod, MIN_LOCKUP_PERIOD, MAX_LOCKUP_PERIOD);
+        vm.assume(rewardPeriod > 0 && rewardPeriod <= 12 weeks); // assuming max 3 months
+        vm.assume(rewardAmount > 1e18 && rewardAmount <= 100_000e18); // assuming max 1_000_000 Karma
+        vm.assume(accountRewardPeriod <= rewardPeriod); // Ensure accountRewardPeriod doesn't exceed rewardPeriod
+
+        uint256 initialTime = vm.getBlockTimestamp();
+        uint256 tolerance = 1000;
+
+        // Calculate expected reward using safe math operations
+        uint256 expectedReward = accountRewardPeriod < rewardPeriod
+            ? Math.mulDiv(accountRewardPeriod, rewardAmount, rewardPeriod)
+            : rewardAmount;
+
+        _stake(alice, stakeAmount, lockUpPeriod);
+
+        vm.prank(admin);
+        streamer.setReward(rewardAmount, rewardPeriod);
+
+        vm.warp(initialTime + accountRewardPeriod);
+
+        assertEq(streamer.totalRewardsSupply(), expectedReward, "Total rewards supply mismatch");
+        assertApproxEqAbs(
+            streamer.rewardsBalanceOf(vaults[alice]), expectedReward, tolerance, "Reward balance mismatch"
         );
     }
 
