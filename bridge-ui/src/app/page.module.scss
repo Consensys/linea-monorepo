@@ -1,0 +1,10 @@
+.content-wrapper {
+  max-width: 46.8rem;
+  margin: 0 auto 6rem;
+
+  width: calc(100% - 4.8rem);
+
+  @include bp("tablet") {
+    width: 100%;
+  }
+}

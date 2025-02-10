@@ -2,7 +2,6 @@
 
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
-import { BridgeExternal } from "./BridgeExternal";
 import { FromChain } from "./FromChain";
 import { Balance } from "./Balance";
 import { Amount } from "./form/Amount";
@@ -184,8 +183,6 @@ const Bridge = () => {
             <div className="text-center">
               {isConnected && <Submit isLoading={isLoading} isWaitingLoading={isWaitingLoading} />}
             </div>
-
-            <div className="mt-4">{isConnected && <BridgeExternal />}</div>
           </div>
           {!isConnected && <ConnectButton fullWidth />}
         </div>

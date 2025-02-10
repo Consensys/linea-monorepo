@@ -1,8 +1,6 @@
 "use client";
 
-import { useAccount } from "wagmi";
 import Bridge from "../bridge/Bridge";
-import { BridgeExternal } from "./BridgeExternal";
 import { useTokenStore } from "@/stores/tokenStoreProvider";
 import { FormProvider, useForm } from "react-hook-form";
 import { BridgeForm } from "@/models";
@@ -10,8 +8,6 @@ import { useChainStore } from "@/stores/chainStore";
 import { TokenType } from "@/config";
 
 export default function BridgeLayout() {
-  const { isConnected } = useAccount();
-
   const configContextValue = useTokenStore((state) => state.tokensList);
   const token = useChainStore((state) => state.token);
 
@@ -28,15 +24,8 @@ export default function BridgeLayout() {
   });
 
   return (
-    <>
-      {!isConnected && (
-        <div className="mb-4 min-w-min max-w-lg rounded-lg bg-cardBg p-2 shadow-lg">
-          <BridgeExternal />
-        </div>
-      )}
-      <FormProvider {...methods}>
-        <Bridge />
-      </FormProvider>
-    </>
+    <FormProvider {...methods}>
+      <Bridge />
+    </FormProvider>
   );
 }
