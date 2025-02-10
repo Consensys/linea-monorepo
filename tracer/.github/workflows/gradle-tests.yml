@@ -77,7 +77,7 @@ jobs:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -b1024 -vw --ansi-escapes=false --report --air
-          UNIT_TESTS_PARALLELISM: 1
+          UNIT_TESTS_PARALLELISM: 4
 
       - name: Upload test report
         if: ${{ always() }}
@@ -109,6 +109,7 @@ jobs:
         run: GOMEMLIMIT=26GiB ./gradlew :arithmetization:fastReplayTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
+          REPLAY_TESTS_PARALLELISM: 4
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -b1024 -vw --ansi-escapes=false --report --air
 
