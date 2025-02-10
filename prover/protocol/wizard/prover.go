@@ -212,7 +212,7 @@ func ProverOnlyFirstRound(c *CompiledIOP, highLevelprover ProverStep) *ProverRun
 	//
 	highLevelprover(&runtime)
 
-	// Then, run the compiled prover steps. This will only run thoses of the
+	// Then, run the compiled prover steps. This will only run those of the
 	// first round.
 	//
 	runtime.runProverSteps()

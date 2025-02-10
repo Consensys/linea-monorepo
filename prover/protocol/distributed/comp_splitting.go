@@ -40,8 +40,8 @@ func GetFreshSegmentModuleComp(in SegmentModuleInputs) *wizard.CompiledIOP {
 			if !in.Disc.ColumnIsInModule(col, in.ModuleName) {
 				continue
 			}
-
-			segModComp.InsertCommit(col.Round(), col.GetColID(), col.Size()/in.NumSegmentsInModule)
+			// Make colSize a power of two 
+			segModComp.InsertCommit(col.Round(), col.GetColID(), utils.NextPowerOfTwo(col.Size()/in.NumSegmentsInModule))
 			columnsInRound = append(columnsInRound, col)
 		}
 
@@ -74,7 +74,7 @@ func (p segmentModuleProver) Run(run *wizard.ProverRuntime) {
 		utils.Panic("invalid call: the runtime does not have a [ParentRuntime]")
 	}
 	if run.ProverID > p.numSegments {
-		panic("proverID can not be larger than number of segments")
+		panic("proverID cannot be larger than number of segments")
 	}
 
 	for _, col := range p.cols {
@@ -87,6 +87,6 @@ func (p segmentModuleProver) Run(run *wizard.ProverRuntime) {
 }
 
 func getSegmentFromWitness(wit ifaces.ColAssignment, numSegs, segID int) ifaces.ColAssignment {
-	segSize := wit.Len() / numSegs
+	segSize := utils.NextPowerOfTwo(wit.Len() / numSegs)
 	return wit.SubVector(segSize*segID, segSize*segID+segSize)
 }
