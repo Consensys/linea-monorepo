@@ -257,11 +257,12 @@ func (jd *JobDefinition) dirDone(ipIdx int) string {
 	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsDoneSubDir)
 }
 
-func (jd *JobDefinition) dirTo(ipIdx int) string {
-	if err := jd.isValidReqRootDirIdx(ipIdx); err != nil {
+func (jd *JobDefinition) dirTo(opIdx int) string {
+	if err := jd.isValidOutputFileIdx(opIdx); err != nil {
 		utils.Panic("dirTo:%v", err.Error())
 	}
-	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsToSubDir)
+
+	return filepath.Join(jd.RequestsRootDir[opIdx], config.RequestsToSubDir)
 }
 
 func cmnExecParamsRegexp(nInputs int) []ParamsRegexp {
