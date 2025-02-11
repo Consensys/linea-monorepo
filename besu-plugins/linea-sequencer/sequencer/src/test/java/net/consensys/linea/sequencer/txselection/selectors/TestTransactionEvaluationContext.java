@@ -20,8 +20,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
-public class TestTransactionEvaluationContext
-    implements TransactionEvaluationContext<PendingTransaction> {
+public class TestTransactionEvaluationContext implements TransactionEvaluationContext {
   private ProcessableBlockHeader processableBlockHeader;
   private PendingTransaction pendingTransaction;
   private Wei transactionGasPrice;

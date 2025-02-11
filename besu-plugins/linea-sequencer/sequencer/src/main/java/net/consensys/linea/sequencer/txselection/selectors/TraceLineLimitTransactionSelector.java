@@ -35,7 +35,6 @@ import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.container.module.Module;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
@@ -99,7 +98,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext) {
+      final TransactionEvaluationContext evaluationContext) {
     if (overLineCountLimitCache.contains(
         evaluationContext.getPendingTransaction().getTransaction().getHash())) {
       log.atTrace()
@@ -114,14 +113,14 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
 
   @Override
   public void onTransactionNotSelected(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
+      final TransactionEvaluationContext evaluationContext,
       final TransactionSelectionResult transactionSelectionResult) {
     zkTracer.popTransaction(evaluationContext.getPendingTransaction());
   }
 
   @Override
   public void onTransactionSelected(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
+      final TransactionEvaluationContext evaluationContext,
       final TransactionProcessingResult processingResult) {
     moduleLineCountAccumulator.updateAccumulatedLineCounts(currCumulatedLineCount);
   }
@@ -137,7 +136,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
+      final TransactionEvaluationContext evaluationContext,
       final TransactionProcessingResult processingResult) {
 
     // check that we are not exceeding line number for any module

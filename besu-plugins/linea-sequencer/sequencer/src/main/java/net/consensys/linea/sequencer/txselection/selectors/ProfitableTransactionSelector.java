@@ -34,7 +34,6 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.metrics.HistogramMetrics.LabelValue;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -138,7 +137,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext) {
+      final TransactionEvaluationContext evaluationContext) {
 
     final Wei minGasPrice = evaluationContext.getMinGasPrice();
 
@@ -198,7 +197,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
+      final TransactionEvaluationContext evaluationContext,
       final TransactionProcessingResult processingResult) {
 
     if (!evaluationContext.getPendingTransaction().hasPriority()) {
@@ -240,7 +239,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
    */
   @Override
   public void onTransactionSelected(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
+      final TransactionEvaluationContext evaluationContext,
       final TransactionProcessingResult processingResult) {
     unprofitableCache.remove(evaluationContext.getPendingTransaction().getTransaction().getHash());
   }
@@ -254,7 +253,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
    */
   @Override
   public void onTransactionNotSelected(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
+      final TransactionEvaluationContext evaluationContext,
       final TransactionSelectionResult transactionSelectionResult) {
     final var txHash = evaluationContext.getPendingTransaction().getTransaction().getHash();
     if (transactionSelectionResult.discard()) {
@@ -276,7 +275,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
 
   private void updateMetric(
       final Phase label,
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
+      final TransactionEvaluationContext evaluationContext,
       final Transaction tx,
       final Wei profitablePriorityFeePerGas) {
 

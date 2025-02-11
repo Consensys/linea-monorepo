@@ -20,7 +20,6 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECT
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
@@ -52,7 +51,7 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
+      final TransactionEvaluationContext evaluationContext,
       final TransactionProcessingResult processingResult) {
 
     final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
@@ -102,7 +101,7 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
    */
   @Override
   public void onTransactionSelected(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
+      final TransactionEvaluationContext evaluationContext,
       final TransactionProcessingResult processingResult) {
     cumulativeBlockGasUsed =
         Math.addExact(cumulativeBlockGasUsed, processingResult.getEstimateGasUsedByTransaction());
@@ -110,7 +109,7 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
 
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
-      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext) {
+      final TransactionEvaluationContext evaluationContext) {
     // Evaluation done in post-processing, no action needed here.
     return SELECTED;
   }
