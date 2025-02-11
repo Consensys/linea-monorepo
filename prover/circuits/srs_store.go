@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/kzg"
@@ -23,15 +22,14 @@ import (
 )
 
 type SRSStore struct {
-	entries map[ecc.ID][]fsEntry
-	rootDir string
+	entries map[ecc.ID][]fsEntry // for each curve, list SRS of different sizes and types (canonical/lagrange)
 }
 
 type fsEntry struct {
-	isCanonical bool
-	size        int
-	path        string
-	org         string
+	isCanonical bool   // canonical or lagrange
+	size        int    // domain size
+	path        string // path to the file it can be loaded from
+	cached      kzg.SRS
 }
 
 // NewSRSStore creates a new SRSStore
@@ -47,7 +45,6 @@ func NewSRSStore(rootDir string) (*SRSStore, error) {
 
 	srsStore := &SRSStore{
 		entries: make(map[ecc.ID][]fsEntry),
-		rootDir: rootDir,
 	}
 	srsStore.entries[ecc.BLS12_377] = []fsEntry{}
 	srsStore.entries[ecc.BN254] = []fsEntry{}
@@ -87,7 +84,6 @@ func NewSRSStore(rootDir string) (*SRSStore, error) {
 			isCanonical: isCanonical,
 			size:        size,
 			path:        filepath.Join(rootDir, fileName),
-			org:         matches[5],
 		})
 
 	}
@@ -102,7 +98,7 @@ func NewSRSStore(rootDir string) (*SRSStore, error) {
 	return srsStore, nil
 }
 
-func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSystem) (kzg.SRS, kzg.SRS, error) {
+func (store *SRSStore) GetSRS(_ context.Context, ccs constraint.ConstraintSystem) (kzg.SRS, kzg.SRS, error) {
 	sizeCanonical, sizeLagrange := plonk.SRSSize(ccs)
 	curveID := fieldToCurve(ccs.Field())
 
@@ -113,12 +109,20 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 			err error
 			f   *os.File
 		)
-		for _, entry := range store.entries[curveID] {
+		for i := range store.entries[curveID] {
+			entry := &store.entries[curveID][i] // reference in case we need to update the cache
 			if !entry.isCanonical && entry.size == sizeLagrange {
+				if entry.cached != nil {
+					lagrangeSRS = entry.cached
+					break
+				}
 				lagrangeSRS = kzg.NewSRS(curveID)
 				if f, err = os.Open(entry.path); err == nil {
 					err = errors.Join(lagrangeSRS.ReadDump(f), f.Close())
 				}
+
+				entry.cached = lagrangeSRS
+
 				break
 			}
 		}
@@ -133,12 +137,16 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 	}()
 
 	// find the canonical srs
-	var (
-		canonicalSRS kzg.SRS
-		canonicalOrg string
-	)
-	for _, entry := range store.entries[curveID] {
+	var canonicalSRS kzg.SRS
+
+	for i := range store.entries[curveID] {
+		entry := &store.entries[curveID][i] // reference in case we need to update the cache
 		if entry.isCanonical && entry.size >= sizeCanonical {
+			if entry.cached != nil {
+				canonicalSRS = entry.cached
+				break
+			}
+
 			canonicalSRS = kzg.NewSRS(curveID)
 			f, err := os.Open(entry.path)
 			if err != nil {
@@ -151,7 +159,9 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 			if err != nil {
 				return nil, nil, err
 			}
-			canonicalOrg = entry.org
+
+			entry.cached = canonicalSRS
+
 			break
 		}
 	}
@@ -170,16 +180,6 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 		var err error
 		if lagrangeSRS, err = toLagrange(canonicalSRS, sizeLagrange); err != nil {
 			return nil, nil, err
-		}
-		// save the lagrange SRS to disk
-		// as it is obtained deterministically from the canonical SRS, we can ascribe it to the same organization
-		// we won't crash if this fails
-		f, err := os.Create(filepath.Join(store.rootDir, fmt.Sprintf("kzg_srs_lagrange_%d_%s_%s.memdump", sizeLagrange, strings.Replace(curveID.String(), "_", "", 1), canonicalOrg)))
-		if err == nil {
-			err = errors.Join(lagrangeSRS.WriteDump(f), f.Close())
-		}
-		if err != nil {
-			logrus.WithError(err).Warn("failed to save lagrange SRS")
 		}
 	}
 
