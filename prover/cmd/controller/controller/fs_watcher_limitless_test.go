@@ -1,6 +1,5 @@
 package controller
 
-/*
 import (
 	"errors"
 	"fmt"
@@ -48,6 +47,7 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 		execGLConglomeration  = "gl"
 		execRndbeaconLPP      = "rndbeacon"
 		execLPPConglomeration = "lpp"
+		execConglomeration    = "execution"
 	)
 
 	// Create a configuration using temporary directories
@@ -85,9 +85,17 @@ exit $CODE
 		Version: "0.2.4",
 
 		Controller: config.Controller{
-			EnableExecution:            false,
-			EnableBlobDecompression:    false,
-			EnableAggregation:          false,
+			// Disable legacy
+			EnableExecution:         false,
+			EnableBlobDecompression: false,
+			EnableAggregation:       false,
+
+			// Limitless prover components
+			EnableExecBootstrap:        true,
+			EnableExecGL:               true,
+			EnableExecRndBeacon:        true,
+			EnableExecLPP:              true,
+			EnableExecConglomeration:   true,
 			LocalID:                    proverM,
 			Prometheus:                 config.Prometheus{Enabled: false},
 			RetryDelays:                []int{0, 1},
@@ -95,13 +103,6 @@ exit $CODE
 			WorkerCmdLarge:             cmdLargeInternal,
 			DeferToOtherLargeCodes:     []int{12, 137},
 			RetryLocallyWithLargeCodes: []int{10, 77},
-
-			// Limitless prover components
-			EnableExecBootstrap:      true,
-			EnableExecGL:             true,
-			EnableExecRndBeacon:      true,
-			EnableExecLPP:            true,
-			EnableExecConglomeration: true,
 		},
 
 		// Limitless prover components
@@ -109,36 +110,55 @@ exit $CODE
 			WithRequestDir: config.WithRequestDir{
 				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrap)},
 			},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{
+					path.Join(testDir, proverM, execBootstrapGL),
+					path.Join(testDir, proverM, execBootstrapMetadata)},
+			},
 		},
-		// ExecGL: config.Execution{
-		// 	WithRequestDir: config.WithRequestDir{
-		// 		RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapGL)},
-		// 	},
-		// },
-		// ExecRndBeacon: config.RndBeacon{
-		// 	GL: config.WithRequestDir{
-		// 		RequestsRootDir: []string{path.Join(testDir, proverM, execGLRndBeacon)},
-		// 	},
-		// 	BootstrapMetadata: config.WithRequestDir{
-		// 		RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata)},
-		// 	},
-		// },
-		// ExecLPP: config.Execution{
-		// 	WithRequestDir: config.WithRequestDir{
-		// 		RequestsRootDir: []string{path.Join(testDir, proverM, execRndbeaconLPP)},
-		// 	},
-		// },
-		// ExecConglomeration: config.Conglomeration{
-		// 	GL: config.WithRequestDir{
-		// 		RequestsRootDir: []string{path.Join(testDir, proverM, execGLConglomeration)},
-		// 	},
-		// 	LPP: config.WithRequestDir{
-		// 		RequestsRootDir: []string{path.Join(testDir, proverM, execLPPConglomeration)},
-		// 	},
-		// 	BootstrapMetadata: config.WithRequestDir{
-		// 		RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata)},
-		// 	},
-		// },
+		ExecGL: config.Execution{
+			WithRequestDir: config.WithRequestDir{
+				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapGL)},
+			},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{
+					path.Join(testDir, proverM, execGLRndBeacon),
+					path.Join(testDir, proverM, execGLConglomeration)},
+			},
+		},
+		ExecRndBeacon: config.RndBeacon{
+			GL: config.WithRequestDir{
+				RequestsRootDir: []string{path.Join(testDir, proverM, execGLRndBeacon)}, // In practice, there will be `n` files
+			},
+			BootstrapMetadata: config.WithRequestDir{
+				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata)},
+			},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{path.Join(testDir, proverM, execRndbeaconLPP)},
+			},
+		},
+		ExecLPP: config.Execution{
+			WithRequestDir: config.WithRequestDir{
+				RequestsRootDir: []string{path.Join(testDir, proverM, execRndbeaconLPP)},
+			},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{path.Join(testDir, proverM, execLPPConglomeration)},
+			},
+		},
+		ExecConglomeration: config.Conglomeration{
+			GL: config.WithRequestDir{
+				RequestsRootDir: []string{path.Join(testDir, proverM, execGLConglomeration)},
+			},
+			LPP: config.WithRequestDir{
+				RequestsRootDir: []string{path.Join(testDir, proverM, execLPPConglomeration)},
+			},
+			BootstrapMetadata: config.WithRequestDir{
+				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata)},
+			},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{path.Join(testDir, proverM, execConglomeration)},
+			},
+		},
 	}
 
 	_confL := *confM
@@ -159,36 +179,46 @@ exit $CODE
 	err := errors.Join(
 
 		// Add stuff for Limitless prover
+
+		// Bootstrap: 1 input -> 2 output
 		os.MkdirAll(confM.ExecBootstrap.DirFrom(0), permCode),
-		os.MkdirAll(confM.ExecBootstrap.DirTo(0), permCode),
 		os.MkdirAll(confM.ExecBootstrap.DirDone(0), permCode),
+		os.MkdirAll(confM.ExecBootstrap.DirTo(0), permCode),
+		os.MkdirAll(confM.ExecBootstrap.DirTo(1), permCode),
 
-		// os.MkdirAll(confM.ExecGL.DirFrom(), permCode),
-		// os.MkdirAll(confM.ExecGL.DirTo(), permCode),
-		// os.MkdirAll(confM.ExecGL.DirDone(), permCode),
+		// GL: 1 input -> 2 output
+		os.MkdirAll(confM.ExecGL.DirFrom(0), permCode),
+		os.MkdirAll(confM.ExecGL.DirDone(0), permCode),
+		// In practice there will be `n` files here
+		os.MkdirAll(confM.ExecGL.DirTo(0), permCode),
+		os.MkdirAll(confM.ExecGL.DirTo(1), permCode),
 
-		// os.MkdirAll(confM.ExecRndBeacon.GL.DirFrom(), permCode),
-		// os.MkdirAll(confM.ExecRndBeacon.GL.DirTo(), permCode),
-		// os.MkdirAll(confM.ExecRndBeacon.GL.DirDone(), permCode),
-		// os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirFrom(), permCode),
-		// os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirTo(), permCode),
-		// os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirDone(), permCode),
+		// RndBeacon: 2 input -> 1 output
+		// In practice there will be `n` files here
+		os.MkdirAll(confM.ExecRndBeacon.GL.DirFrom(0), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.GL.DirDone(0), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirFrom(0), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirDone(0), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.DirTo(0), permCode),
 
-		// os.MkdirAll(confM.ExecLPP.DirFrom(), permCode),
-		// os.MkdirAll(confM.ExecLPP.DirTo(), permCode),
-		// os.MkdirAll(confM.ExecLPP.DirDone(), permCode),
+		// LPP: 1 input -> 1 output
+		// In practice there will be `n` files
+		os.MkdirAll(confM.ExecLPP.DirFrom(0), permCode),
+		os.MkdirAll(confM.ExecLPP.DirDone(0), permCode),
+		os.MkdirAll(confM.ExecLPP.DirTo(0), permCode),
 
-		// os.MkdirAll(confM.ExecConglomeration.GL.DirFrom(), permCode),
-		// os.MkdirAll(confM.ExecConglomeration.GL.DirTo(), permCode),
-		// os.MkdirAll(confM.ExecConglomeration.GL.DirDone(), permCode),
+		// Conglomeration: 3 input -> 1 ouput
+		// In practice there will be `2n+1` inputs => 1 output file
+		os.MkdirAll(confM.ExecConglomeration.GL.DirFrom(0), permCode),
+		os.MkdirAll(confM.ExecConglomeration.GL.DirDone(0), permCode),
 
-		// os.MkdirAll(confM.ExecConglomeration.LPP.DirFrom(), permCode),
-		// os.MkdirAll(confM.ExecConglomeration.LPP.DirTo(), permCode),
-		// os.MkdirAll(confM.ExecConglomeration.LPP.DirDone(), permCode),
+		os.MkdirAll(confM.ExecConglomeration.LPP.DirFrom(0), permCode),
+		os.MkdirAll(confM.ExecConglomeration.LPP.DirDone(0), permCode),
 
-		// os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirFrom(), permCode),
-		// os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirTo(), permCode),
-		// os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirDone(), permCode),
+		os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirFrom(0), permCode),
+		os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirDone(0), permCode),
+
+		os.MkdirAll(confM.ExecConglomeration.DirTo(0), permCode),
 	)
 
 	if err != nil {
@@ -227,7 +257,7 @@ func createLimitlessTestInputFile(
 
 	m, n := len(dirFrom), len(fmtStrArr)
 	if m != n {
-		utils.Panic("number of entries in dirFrom:%d should match with the length of formated input files:%d", m, n)
+		utils.Panic("number of entries in dirFrom:%d should match with the number of formated input files:%d", m, n)
 	}
 
 	fnames = make([]string, len(fmtStrArr))
@@ -249,5 +279,3 @@ func createLimitlessTestInputFile(
 
 	return fnames
 }
-
-*/
