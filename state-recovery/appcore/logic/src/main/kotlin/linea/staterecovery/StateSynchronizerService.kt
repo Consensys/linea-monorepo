@@ -70,18 +70,16 @@ class StateSynchronizerService(
     }
 
     return findNextFinalization()
-      .thenPeek { nextFinalization ->
-        log.debug(
-          "sync state loop: lastSuccessfullyProcessedFinalization={} nextFinalization={}",
-          lastSuccessfullyProcessedFinalization?.event?.intervalString(),
-          nextFinalization?.event?.intervalString()
-        )
-      }
       .thenCompose { nextFinalization ->
         if (nextFinalization == null) {
           // nothing to do for now
           SafeFuture.completedFuture(null)
         } else {
+          log.debug(
+            "sync state loop: lastSuccessfullyProcessedFinalization={} nextFinalization={}",
+            lastSuccessfullyProcessedFinalization?.event?.intervalString(),
+            nextFinalization.event.intervalString()
+          )
           submissionEventsClient
             .findDataSubmittedV3EventsUntilNextFinalization(
               l2StartBlockNumberInclusive = nextFinalization.event.startBlockNumber
