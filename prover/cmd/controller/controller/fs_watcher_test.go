@@ -56,36 +56,36 @@ func TestFileWatcherM(t *testing.T) {
 		Skip  bool
 	}{
 		{
-			FName: []string{createTestInputFile(eFrom(), 0, 1, execJob, exitCode)},
+			FName: []string{createTestInputFile(eFrom(0), 0, 1, execJob, exitCode)},
 		},
 		{
 			Skip:  true, // wrong directory
-			FName: []string{createTestInputFile(eFrom(), 0, 1, aggregationJob, exitCode)},
+			FName: []string{createTestInputFile(eFrom(0), 0, 1, aggregationJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(cFrom(), 0, 1, compressionJob, exitCode)},
+			FName: []string{createTestInputFile(cFrom(0), 0, 1, compressionJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(eFrom(), 1, 2, execJob, exitCode)},
+			FName: []string{createTestInputFile(eFrom(0), 1, 2, execJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(cFrom(), 1, 2, compressionJob, exitCode)},
+			FName: []string{createTestInputFile(cFrom(0), 1, 2, compressionJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(aFrom(), 0, 2, aggregationJob, exitCode)},
+			FName: []string{createTestInputFile(aFrom(0), 0, 2, aggregationJob, exitCode)},
 		},
 		{
 			Skip:  true, // for large only
-			FName: []string{createTestInputFile(eFrom(), 2, 4, execJob, exitCode, forLarge)},
+			FName: []string{createTestInputFile(eFrom(0), 2, 4, execJob, exitCode, forLarge)},
 		},
 		{
-			FName: []string{createTestInputFile(eFrom(), 4, 5, execJob, exitCode)},
+			FName: []string{createTestInputFile(eFrom(0), 4, 5, execJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(cFrom(), 2, 5, compressionJob, exitCode)},
+			FName: []string{createTestInputFile(cFrom(0), 2, 5, compressionJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(aFrom(), 2, 5, aggregationJob, exitCode)},
+			FName: []string{createTestInputFile(aFrom(0), 2, 5, aggregationJob, exitCode)},
 		},
 	}
 
@@ -111,7 +111,7 @@ func TestFileWatcherL(t *testing.T) {
 	_, confL := setupFsTest(t)
 
 	// Create a list of files
-	eFrom := confL.Execution.DirFrom()
+	eFrom := confL.Execution.DirFrom(0)
 
 	exitCode := 0 // we are not interested in the exit code here
 
@@ -211,7 +211,6 @@ if [ $CODE -eq 0 ]; then
 fi
 exit $CODE
 `
-
 	// For a prover M
 	confM = &config.Config{
 		Version: "0.2.4",
@@ -231,17 +230,26 @@ exit $CODE
 
 		Execution: config.Execution{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execution),
+				RequestsRootDir: []string{path.Join(testDir, proverM, execution)},
+			},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{path.Join(testDir, proverM, execution)},
 			},
 		},
 		BlobDecompression: config.BlobDecompression{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, compression),
+				RequestsRootDir: []string{path.Join(testDir, proverM, compression)},
+			},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{path.Join(testDir, proverM, compression)},
 			},
 		},
 		Aggregation: config.Aggregation{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, aggregation),
+				RequestsRootDir: []string{path.Join(testDir, proverM, aggregation)},
+			},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{path.Join(testDir, proverM, aggregation)},
 			},
 		},
 	}
@@ -262,15 +270,15 @@ exit $CODE
 	// wiped out after the test anyway.
 	permCode := fs.FileMode(0777)
 	err := errors.Join(
-		os.MkdirAll(confM.Execution.DirFrom(), permCode),
-		os.MkdirAll(confM.Execution.DirTo(), permCode),
-		os.MkdirAll(confM.Execution.DirDone(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirFrom(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirTo(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirDone(), permCode),
-		os.MkdirAll(confM.Aggregation.DirFrom(), permCode),
-		os.MkdirAll(confM.Aggregation.DirTo(), permCode),
-		os.MkdirAll(confM.Aggregation.DirDone(), permCode),
+		os.MkdirAll(confM.Execution.DirFrom(0), permCode),
+		os.MkdirAll(confM.Execution.DirTo(0), permCode),
+		os.MkdirAll(confM.Execution.DirDone(0), permCode),
+		os.MkdirAll(confM.BlobDecompression.DirFrom(0), permCode),
+		os.MkdirAll(confM.BlobDecompression.DirTo(0), permCode),
+		os.MkdirAll(confM.BlobDecompression.DirDone(0), permCode),
+		os.MkdirAll(confM.Aggregation.DirFrom(0), permCode),
+		os.MkdirAll(confM.Aggregation.DirTo(0), permCode),
+		os.MkdirAll(confM.Aggregation.DirDone(0), permCode),
 	)
 
 	if err != nil {

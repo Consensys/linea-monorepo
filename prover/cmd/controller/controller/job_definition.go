@@ -48,6 +48,9 @@ type JobDefinition struct {
 	//
 	InputFileRegexp []*regexp2.Regexp
 
+	// Output params
+	ResponsesRootDir []string
+
 	// Template to use to generate the output file. The template should have the
 	// form of a go template. For instance,
 	//
@@ -69,7 +72,7 @@ type JobDefinition struct {
 // and parameter regexps. The function returns a JobDefinition and an error if any occurs during the setup.
 func commonJobDefinition(name string, priority int,
 	reqRootDirs []string, inputFilePatterns []string,
-	outputFileTmpls []string, outputFileNames []string,
+	respRootDirs []string, outputFileTmpls []string, outputFileNames []string,
 	paramsRegexp []ParamsRegexp, failSuffix string) (*JobDefinition, error) {
 
 	m, n := len(reqRootDirs), len(inputFilePatterns)
@@ -78,10 +81,10 @@ func commonJobDefinition(name string, priority int,
 		and input file patterns:%d specified in the job definition`, m, n)
 	}
 
-	p, q := len(outputFileTmpls), len(outputFileNames)
-	if p != q {
-		return nil, fmt.Errorf(`length mis-match between the number of output file templates:%d 
-		and output file names:%d specified in the job definition`, p, q)
+	p, q, r := len(respRootDirs), len(outputFileTmpls), len(outputFileNames)
+	if p != q || p != r || q != r {
+		return nil, fmt.Errorf(`length mis-match between the number of response directories:%d, output file templates:%d 
+		and output file names:%d specified in the job definition`, p, q, r)
 	}
 
 	inputFileRegexps := make([]*regexp2.Regexp, m)
@@ -98,13 +101,14 @@ func commonJobDefinition(name string, priority int,
 	}
 
 	return &JobDefinition{
-		Name:            name,
-		Priority:        priority,
-		RequestsRootDir: reqRootDirs,
-		InputFileRegexp: inputFileRegexps,
-		OutputFileTmpl:  outputFileTemplates,
-		ParamsRegexp:    paramsRegexps,
-		FailureSuffix:   matchFailureSuffix(failSuffix),
+		Name:             name,
+		Priority:         priority,
+		RequestsRootDir:  reqRootDirs,
+		InputFileRegexp:  inputFileRegexps,
+		ResponsesRootDir: respRootDirs,
+		OutputFileTmpl:   outputFileTemplates,
+		ParamsRegexp:     paramsRegexps,
+		FailureSuffix:    matchFailureSuffix(failSuffix),
 	}, nil
 }
 
@@ -126,8 +130,9 @@ func ExecutionDefinition(conf *config.Config) JobDefinition {
 	jobDef, err := commonJobDefinition(
 		jobNameExecution,
 		0,
-		[]string{conf.Execution.RequestsRootDir},
+		conf.Execution.RequestsRootDir,
 		[]string{inputFilePattern},
+		conf.Execution.ResponsesRootDir,
 		[]string{"exec-output-file"},
 		[]string{"{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-getZkProof.json"},
 		cmnExecParamsRegexp(1),
@@ -158,8 +163,9 @@ func CompressionDefinition(conf *config.Config) JobDefinition {
 	jobDef, err := commonJobDefinition(
 		jobNameBlobDecompression,
 		1,
-		[]string{conf.BlobDecompression.RequestsRootDir},
+		conf.BlobDecompression.RequestsRootDir,
 		[]string{inputFilePattern},
+		conf.BlobDecompression.ResponsesRootDir,
 		[]string{"compress-output-file"},
 		[]string{"{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-{{ index .Job.ContentHash .Idx }}-getZkBlobCompressionProof.json"},
 		[]ParamsRegexp{paramsRegexp},
@@ -189,8 +195,9 @@ func AggregatedDefinition(conf *config.Config) JobDefinition {
 	jobDef, err := commonJobDefinition(
 		jobNameAggregation,
 		2,
-		[]string{conf.Aggregation.RequestsRootDir},
+		conf.Aggregation.RequestsRootDir,
 		[]string{inputFilePattern},
+		conf.Aggregation.ResponsesRootDir,
 		[]string{"agreg-output-file"},
 		[]string{"{{ index .Job.Start .Idx }}-{{ index .Job.End .Idx }}-{{ index .Job.ContentHash .Idx }}-getZkAggregatedProof.json"},
 		[]ParamsRegexp{paramsRegexp},
@@ -257,11 +264,12 @@ func (jd *JobDefinition) dirDone(ipIdx int) string {
 	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsDoneSubDir)
 }
 
-func (jd *JobDefinition) dirTo(ipIdx int) string {
-	if err := jd.isValidReqRootDirIdx(ipIdx); err != nil {
+func (jd *JobDefinition) dirTo(opIdx int) string {
+	if err := jd.isValidOutputFileIdx(opIdx); err != nil {
 		utils.Panic("dirTo:%v", err.Error())
 	}
-	return filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsToSubDir)
+
+	return filepath.Join(jd.ResponsesRootDir[opIdx], config.ResponsesToSubDir)
 }
 
 func cmnExecParamsRegexp(nInputs int) []ParamsRegexp {

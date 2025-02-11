@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 const (
@@ -50,94 +51,91 @@ const (
 
 func ExecBootstrapDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
-	if conf.Bootstrap.CanRunFullLarge {
+	if conf.ExecBootstrap.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
 	// Input files
-	reqDirs := []string{conf.Bootstrap.RequestsRootDir}
+	reqDirs := conf.ExecBootstrap.RequestsRootDir
 	inputFilePatterns := []string{fmt.Sprintf(execBootstrapInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
+	respDirs := conf.ExecBootstrap.ResponsesRootDir
 	outputTmpls := []string{execBootstrapGLSubmoduleTemplate, execBootstrapDistMetadataTemplate}
 	outputFiles := []string{execBootstrapGLSubmoduleFile, execBootstrapDistMetadataFile}
 
-	return commonJobDefinition(jobExecBootstrap, priorityExecBootstrap,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
+	return commonJobDefinition(jobExecBootstrap, priorityExecBootstrap, reqDirs, inputFilePatterns,
+		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
 }
 
 func ExecGLDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
-	if conf.GLExecution.CanRunFullLarge {
+	if conf.ExecGL.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
 	// Input files
-	reqDirs := []string{conf.GLExecution.RequestsRootDir}
+	reqDirs := conf.ExecGL.RequestsRootDir
 	inputFilePatterns := []string{fmt.Sprintf(execBootstrapGLInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
+	respDirs := conf.ExecGL.ResponsesRootDir
 	outputTmpls := []string{execGLRndBeaconTemplate, execGLTemplate}
 	outputFiles := []string{execGLRndBeaconFile, execGLFile}
 
-	return commonJobDefinition(jobExecGL, priorityExecGL,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
+	return commonJobDefinition(jobExecGL, priorityExecGL, reqDirs, inputFilePatterns,
+		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
 }
 
 func ExecRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
-	if conf.RndBeacon.CanRunFullLarge {
+	if conf.ExecRndBeacon.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
 	// Input files
-	reqDirs := []string{
-		conf.RndBeacon.MetaData.RequestsRootDir,
-		conf.RndBeacon.GL.RequestsRootDir,
-	}
+	reqDirs := utils.CombineRequests(conf.ExecRndBeacon.BootstrapMetadata.RequestsRootDir, conf.ExecRndBeacon.GL.RequestsRootDir)
 	inputFilePatterns := []string{
 		fmt.Sprintf(execBootstrapRndBeaconInputPattern, inpFileExt, config.FailSuffix),
 		fmt.Sprintf(execGLRndBeaconInputPattern, inpFileExt, config.FailSuffix),
 	}
 
 	// Output files
+	respDirs := conf.ExecRndBeacon.ResponsesRootDir
 	outputTmpls := []string{execRndBeaconTemplate}
 	outputFiles := []string{execRndBeaconFile}
 
-	return commonJobDefinition(jobExecRndBeacon, priorityExecRndBeacon,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(2), config.FailSuffix)
+	return commonJobDefinition(jobExecRndBeacon, priorityExecRndBeacon, reqDirs, inputFilePatterns,
+		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(2), config.FailSuffix)
 }
 
 func ExecLPPDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
-	if conf.LPPExecution.CanRunFullLarge {
+	if conf.ExecLPP.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
 	// Input files
-	reqDirs := []string{conf.LPPExecution.RequestsRootDir}
+	reqDirs := conf.ExecLPP.RequestsRootDir
 	inputFilePatterns := []string{fmt.Sprintf(execLPPInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
+	respDirs := conf.ExecLPP.ResponsesRootDir
 	outputTmpls := []string{execLPPTemplate}
 	outputFiles := []string{execLPPFile}
 
-	return commonJobDefinition(jobExecLPP, priorityExecLPP,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
+	return commonJobDefinition(jobExecLPP, priorityExecLPP, reqDirs, inputFilePatterns,
+		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
 }
 
 func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
 	inpFileExt := ""
-	if conf.Conglomeration.CanRunFullLarge {
+	if conf.ExecConglomeration.CanRunFullLarge {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
 	// Input files
-	reqDirs := []string{
-		conf.Conglomeration.BootstrapMetadata.RequestsRootDir,
-		conf.Conglomeration.GL.RequestsRootDir,
-		conf.Conglomeration.LPP.RequestsRootDir,
-	}
+	reqDirs := utils.CombineRequests(conf.ExecConglomeration.BootstrapMetadata.RequestsRootDir, conf.ExecConglomeration.GL.RequestsRootDir, conf.ExecConglomeration.LPP.RequestsRootDir)
 	inputFilePatterns := []string{
 		fmt.Sprintf(execConglomerateBootstrapDistMetadataPattern, inpFileExt, config.FailSuffix),
 		fmt.Sprintf(execConglomerateGLInputPattern, inpFileExt, config.FailSuffix),
@@ -145,9 +143,10 @@ func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Output files
+	respDirs := conf.ExecConglomeration.ResponsesRootDir
 	outputTmpls := []string{execConglomerateTemplate}
 	outputFiles := []string{execConglomerateFile}
 
-	return commonJobDefinition(jobExecCongolomerateLPP, priorityExecCongolomeration,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(3), config.FailSuffix)
+	return commonJobDefinition(jobExecCongolomerateLPP, priorityExecCongolomeration, reqDirs, inputFilePatterns,
+		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(3), config.FailSuffix)
 }

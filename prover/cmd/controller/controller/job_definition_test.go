@@ -190,6 +190,8 @@ func TestExecutionInFileRegexp(t *testing.T) {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
 		conf.Execution.CanRunFullLarge = c.Ext == "large"
+		conf.Execution.RequestsRootDir = []string{""}
+		conf.Execution.ResponsesRootDir = []string{""}
 		// conf.Execution.FilterInExtension = c.Ext
 
 		def := ExecutionDefinition(&conf)
@@ -252,8 +254,8 @@ func TestCompressionInFileRegexp(t *testing.T) {
 
 		conf := config.Config{}
 		conf.Version = "0.1.2"
-		conf.Execution.CanRunFullLarge = c.Ext == "large"
-		// conf.Execution.FilterInExtension = c.Ext
+		conf.BlobDecompression.RequestsRootDir = []string{""}
+		conf.BlobDecompression.ResponsesRootDir = []string{""}
 
 		def := CompressionDefinition(&conf)
 
@@ -300,8 +302,8 @@ func TestAggregatedInFileRegexp(t *testing.T) {
 
 		conf := config.Config{}
 		conf.Version = "0.1.2"
-		conf.Execution.CanRunFullLarge = c.Ext == "large"
-		// conf.Execution.FilterInExtension = c.Ext
+		conf.Aggregation.RequestsRootDir = []string{""}
+		conf.Aggregation.ResponsesRootDir = []string{""}
 
 		def := AggregatedDefinition(&conf)
 
