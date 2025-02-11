@@ -11,6 +11,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -21,8 +22,62 @@ const (
 	Conglomeration
 )
 
-// TODO: Write this test
 func TestLimitlessProverFileWatcherL(t *testing.T) {
+	_, confL := setupLimitlessFsTest(t)
+
+	exitCode := 0 // we are not interested in the exit code here
+
+	// Create a list of files for each job type
+	execBootstrapFrom := []string{confL.ExecBootstrap.DirFrom(0)}
+	execGLFrom := []string{confL.ExecGL.DirFrom(0)}
+	execRndBeaconFrom := []string{
+		confL.ExecRndBeacon.BootstrapMetadata.DirFrom(0),
+		confL.ExecRndBeacon.GL.DirFrom(0),
+	}
+	// execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
+	// execConglomerationFrom := []string{
+	// 	confL.ExecConglomeration.GL.DirFrom(0),
+	// 	confL.ExecConglomeration.LPP.DirFrom(0),
+	// 	confL.ExecConglomeration.BootstrapMetadata.DirFrom(0),
+	// }
+
+	// The jobs, declared in the order in which they are expected to be found
+	expectedFNames := []struct {
+		FName []string
+		Skip  bool
+	}{
+		{
+			FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, Bootstrap, exitCode),
+		},
+		{
+			FName: createLimitlessTestInputFiles(execGLFrom, 0, 1, GL, exitCode),
+		},
+		{
+			FName: createLimitlessTestInputFiles(execRndBeaconFrom, 0, 1, RndBeacon, exitCode),
+		},
+		// {
+		// 	FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, LPP, exitCode),
+		// },
+		// {
+		// 	FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, Conglomeration, exitCode),
+		// },
+	}
+
+	fw := NewFsWatcher(confL)
+	for _, f := range expectedFNames {
+		if f.Skip {
+			continue
+		}
+		t.Logf("Looking for job with file: %s", f.FName)
+		found := fw.GetBest()
+		if found == nil {
+			t.Logf("Did not find the job for file: %s", f.FName)
+		}
+		if assert.NotNil(t, found, "did not find the job") {
+			assert.Equal(t, f.FName, found.OriginalFile)
+		}
+	}
+	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
 
 }
 
@@ -229,7 +284,7 @@ exit $CODE
 }
 
 // Creates test input files with specific filenames and exit codes to simulate job files for the file system watcher.
-func createLimitlessTestInputFile(
+func createLimitlessTestInputFiles(
 	dirFrom []string,
 	start, end, jobType, exitWith int,
 	large ...bool,
