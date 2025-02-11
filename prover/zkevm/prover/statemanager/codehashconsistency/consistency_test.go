@@ -19,6 +19,18 @@ import (
 )
 
 func TestConsistency(t *testing.T) {
+	t.Run("normal", func(t *testing.T) {
+		runTestcase(t, "testdata/mimc-codehash.csv", "testdata/state-summary.csv")
+	})
+	t.Run("empty-rom", func(t *testing.T) {
+		runTestcase(t, "testdata/mimc-codehash-empty.csv", "testdata/state-summary.csv")
+	})
+	t.Run("empty-state-summary", func(t *testing.T) {
+		runTestcase(t, "testdata/mimc-codehash.csv", "testdata/state-summary-empty.csv")
+	})
+}
+
+func runTestcase(t *testing.T, mimcCodeHashCsvPath, stateSummaryCsvPath string) {
 
 	var (
 		stateSummary     *statesummary.Module
@@ -61,8 +73,8 @@ func TestConsistency(t *testing.T) {
 
 	prover := func(run *wizard.ProverRuntime) {
 
-		mchCt := csvtraces.MustOpenCsvFile("testdata/mimc-codehash.csv")
-		ssCt := csvtraces.MustOpenCsvFile("testdata/state-summary.csv")
+		mchCt := csvtraces.MustOpenCsvFile(mimcCodeHashCsvPath)
+		ssCt := csvtraces.MustOpenCsvFile(stateSummaryCsvPath)
 
 		run.AssignColumn(mimcCodeHash.IsActive.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_ACTIVE"), sizeMimcCodeHash))
 		run.AssignColumn(mimcCodeHash.IsHashEnd.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_HASH_END"), sizeMimcCodeHash))
