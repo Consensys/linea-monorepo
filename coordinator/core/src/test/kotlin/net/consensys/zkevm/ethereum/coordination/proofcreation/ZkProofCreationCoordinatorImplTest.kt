@@ -2,7 +2,6 @@ package net.consensys.zkevm.ethereum.coordination.proofcreation
 
 import build.linea.clients.GetZkEVMStateMerkleProofResponse
 import com.fasterxml.jackson.databind.node.ArrayNode
-import linea.domain.Block
 import linea.domain.createBlock
 import linea.kotlin.ByteArrayExt
 import linea.kotlin.encodeHex
@@ -15,7 +14,6 @@ import net.consensys.zkevm.coordinator.clients.L2MessageServiceLogsClient
 import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
-import net.consensys.zkevm.encoding.BlockEncoder
 import net.consensys.zkevm.ethereum.coordination.CommonTestData
 import net.consensys.zkevm.ethereum.coordination.conflation.BlocksTracesConflated
 import org.assertj.core.api.Assertions.assertThat
@@ -26,7 +24,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.spy
 import org.mockito.kotlin.whenever
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.methods.response.EthBlock
@@ -37,26 +34,18 @@ class ZkProofCreationCoordinatorImplTest {
 
   private lateinit var l2MessageServiceLogsClient: L2MessageServiceLogsClient
   private lateinit var l2Web3jClient: Web3j
-  private lateinit var encoder: BlockEncoder
   private lateinit var executionProverClient: ExecutionProverClientV2
   private lateinit var zkProofCreationCoordinator: ZkProofCreationCoordinator
-  private val fakeEncoder: BlockEncoder = object : BlockEncoder {
-    override fun encode(block: Block): ByteArray {
-      return block.number.toString().toByteArray()
-    }
-  }
 
   @BeforeEach
   fun beforeEach() {
     l2MessageServiceLogsClient = mock(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
     l2Web3jClient = mock<Web3j>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
-    encoder = spy(fakeEncoder)
     executionProverClient = mock<ExecutionProverClientV2>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
     zkProofCreationCoordinator = ZkProofCreationCoordinatorImpl(
       executionProverClient = executionProverClient,
       l2MessageServiceLogsClient = l2MessageServiceLogsClient,
-      l2Web3jClient = l2Web3jClient,
-      encoder = encoder
+      l2Web3jClient = l2Web3jClient
     )
   }
 

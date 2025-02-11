@@ -831,7 +831,6 @@ class L1DependentApp(
         zkProofProductionCoordinator = ZkProofCreationCoordinatorImpl(
           executionProverClient = executionProverClient,
           l2MessageServiceLogsClient = l2MessageServiceLogsClient,
-          encoder = BlockRLPEncoder,
           l2Web3jClient = l2Web3jClient
         ),
         batchProofHandler = batchProofHandler,
