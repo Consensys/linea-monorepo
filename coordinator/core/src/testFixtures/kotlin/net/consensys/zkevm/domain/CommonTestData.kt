@@ -1,6 +1,4 @@
-package net.consensys.zkevm.ethereum.coordination
-
-import net.consensys.zkevm.domain.BridgeLogsData
+package net.consensys.zkevm.domain
 
 object CommonTestData {
   val bridgeLogs = listOf(

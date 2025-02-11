@@ -12,9 +12,9 @@ import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.GenerateTracesResponse
 import net.consensys.zkevm.coordinator.clients.L2MessageServiceLogsClient
 import net.consensys.zkevm.domain.BlocksConflation
+import net.consensys.zkevm.domain.CommonTestData
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
-import net.consensys.zkevm.ethereum.coordination.CommonTestData
 import net.consensys.zkevm.ethereum.coordination.conflation.BlocksTracesConflated
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
