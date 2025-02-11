@@ -92,7 +92,7 @@ func (p *lppProver) Run(run *wizard.ProverRuntime) {
 	// thus, this gives access to the seed for all segment-module-compiledIOPs.
 	run.ParentRuntime.Coins.InsertNew("SEED", seed)
 }
-
+// Arijit: Why do we have this function GetLPPComp?
 // GetLPPComp take the and old CompiledIOP object.
 // It creates a fresh CompiledIOP object holding only the LPP columns.
 // old CompiledIOP includes the LPP queries and new LPP Columns includes the new columns generated at round 0,

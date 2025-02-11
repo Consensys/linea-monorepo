@@ -3,9 +3,11 @@ package dist_projection
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -81,7 +83,6 @@ func NewDistributeProjectionCtx(
 				check(q_.Inp.ColumnB, disc, targetModuleName)
 				p.push(moduleComp, q_, round, queryInRound, true, true)
 				initialComp.QueriesNoParams.MarkAsIgnored(qName)
-				// Todo: Add panic if other cols are from other modules
 			} else if onlyA {
 				check(q_.Inp.ColumnA, disc, targetModuleName)
 				p.push(moduleComp, q_, round, queryInRound, true, false)
@@ -100,6 +101,13 @@ func NewDistributeProjectionCtx(
 	p.Query = moduleComp.InsertDistributedProjection(p.LastRoundProjection+1, qId, p.DistProjectionInput)
 
 	moduleComp.RegisterProverAction(p.LastRoundProjection+1, p)
+
+	// declare [query.LogDerivSumParams] as [wizard.PublicInput]
+	moduleComp.PublicInputs = append(moduleComp.PublicInputs,
+		wizard.PublicInput{
+			Name: constants.DistributedProjectionPublicInput,
+			Acc:  accessors.NewDistributedProjectionAccessor(p.Query),
+		})
 	return p
 
 }
