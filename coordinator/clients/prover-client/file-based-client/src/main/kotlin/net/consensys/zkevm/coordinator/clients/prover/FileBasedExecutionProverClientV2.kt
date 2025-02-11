@@ -7,6 +7,7 @@ import linea.encoding.BlockRLPEncoder
 import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
 import net.consensys.linea.async.toSafeFuture
+import net.consensys.toHexString
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofResponse
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
@@ -37,7 +38,7 @@ internal class ExecutionProofRequestDtoMapper(
     val blocksData = request.blocks.map { block ->
       val rlp = encoder.encode(block).encodeHex()
       val bridgeLogs = request.bridgeLogs.filter {
-        it.blockNumber.toULong() == block.number
+        it.blockNumber == block.number.toHexString()
       }
       RlpBridgeLogsData(rlp, bridgeLogs)
     }
