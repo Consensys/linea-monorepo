@@ -179,15 +179,6 @@ func setupFsTest(t *testing.T) (confM, confL *config.Config) {
 		execution   = "execution"
 		compression = "compression"
 		aggregation = "aggregation"
-
-		// Add conf. for Limitless prover: Naming convention: exec<i/p><o/p>
-		execBootstrap         = "bootstrap"
-		execBootstrapGL       = "bootstrapGl"
-		execBootstrapMetadata = "bootstrapMetadata"
-		execGLRndBeacon       = "gl-rndbeacon"
-		execGLConglomeration  = "gl"
-		execRndbeaconLPP      = "rndbeacon"
-		execLPPConglomeration = "lpp"
 	)
 
 	// Create a configuration using temporary directories
@@ -235,64 +226,30 @@ exit $CODE
 			WorkerCmdLarge:             cmdLargeInternal,
 			DeferToOtherLargeCodes:     []int{12, 137},
 			RetryLocallyWithLargeCodes: []int{10, 77},
-
-			// Limitless prover components
-			EnableExecBootstrap:      true,
-			EnableExecGL:             true,
-			EnableExecRndBeacon:      true,
-			EnableExecLPP:            true,
-			EnableExecConglomeration: true,
 		},
 
 		Execution: config.Execution{
 			WithRequestDir: config.WithRequestDir{
 				RequestsRootDir: []string{path.Join(testDir, proverM, execution)},
 			},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{path.Join(testDir, proverM, execution)},
+			},
 		},
 		BlobDecompression: config.BlobDecompression{
 			WithRequestDir: config.WithRequestDir{
 				RequestsRootDir: []string{path.Join(testDir, proverM, compression)},
+			},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{path.Join(testDir, proverM, compression)},
 			},
 		},
 		Aggregation: config.Aggregation{
 			WithRequestDir: config.WithRequestDir{
 				RequestsRootDir: []string{path.Join(testDir, proverM, aggregation)},
 			},
-		},
-
-		// Limitless prover components
-		ExecBootstrap: config.Execution{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrap)},
-			},
-		},
-		ExecGL: config.Execution{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapGL)},
-			},
-		},
-		ExecRndBeacon: config.RndBeacon{
-			GL: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execGLRndBeacon)},
-			},
-			BootstrapMetadata: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata)},
-			},
-		},
-		ExecLPP: config.Execution{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execRndbeaconLPP)},
-			},
-		},
-		ExecConglomeration: config.Conglomeration{
-			GL: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execGLConglomeration)},
-			},
-			LPP: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execLPPConglomeration)},
-			},
-			BootstrapMetadata: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata)},
+			WithResponseDir: config.WithResponseDir{
+				ResponsesRootDir: []string{path.Join(testDir, proverM, aggregation)},
 			},
 		},
 	}

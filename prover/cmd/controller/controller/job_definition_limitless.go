@@ -60,11 +60,12 @@ func ExecBootstrapDefinition(conf *config.Config) (*JobDefinition, error) {
 	inputFilePatterns := []string{fmt.Sprintf(execBootstrapInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
+	respDirs := conf.ExecBootstrap.ResponsesRootDir
 	outputTmpls := []string{execBootstrapGLSubmoduleTemplate, execBootstrapDistMetadataTemplate}
 	outputFiles := []string{execBootstrapGLSubmoduleFile, execBootstrapDistMetadataFile}
 
-	return commonJobDefinition(jobExecBootstrap, priorityExecBootstrap,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
+	return commonJobDefinition(jobExecBootstrap, priorityExecBootstrap, reqDirs, inputFilePatterns,
+		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
 }
 
 func ExecGLDefinition(conf *config.Config) (*JobDefinition, error) {
@@ -78,11 +79,12 @@ func ExecGLDefinition(conf *config.Config) (*JobDefinition, error) {
 	inputFilePatterns := []string{fmt.Sprintf(execBootstrapGLInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
+	respDirs := conf.ExecGL.ResponsesRootDir
 	outputTmpls := []string{execGLRndBeaconTemplate, execGLTemplate}
 	outputFiles := []string{execGLRndBeaconFile, execGLFile}
 
-	return commonJobDefinition(jobExecGL, priorityExecGL,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
+	return commonJobDefinition(jobExecGL, priorityExecGL, reqDirs, inputFilePatterns,
+		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
 }
 
 func ExecRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
@@ -99,11 +101,12 @@ func ExecRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Output files
+	respDirs := conf.ExecRndBeacon.ResponsesRootDir
 	outputTmpls := []string{execRndBeaconTemplate}
 	outputFiles := []string{execRndBeaconFile}
 
-	return commonJobDefinition(jobExecRndBeacon, priorityExecRndBeacon,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(2), config.FailSuffix)
+	return commonJobDefinition(jobExecRndBeacon, priorityExecRndBeacon, reqDirs, inputFilePatterns,
+		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(2), config.FailSuffix)
 }
 
 func ExecLPPDefinition(conf *config.Config) (*JobDefinition, error) {
@@ -117,11 +120,12 @@ func ExecLPPDefinition(conf *config.Config) (*JobDefinition, error) {
 	inputFilePatterns := []string{fmt.Sprintf(execLPPInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
+	respDirs := conf.ExecLPP.ResponsesRootDir
 	outputTmpls := []string{execLPPTemplate}
 	outputFiles := []string{execLPPFile}
 
-	return commonJobDefinition(jobExecLPP, priorityExecLPP,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
+	return commonJobDefinition(jobExecLPP, priorityExecLPP, reqDirs, inputFilePatterns,
+		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(1), config.FailSuffix)
 }
 
 func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
@@ -139,9 +143,10 @@ func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Output files
+	respDirs := conf.ExecConglomeration.ResponsesRootDir
 	outputTmpls := []string{execConglomerateTemplate}
 	outputFiles := []string{execConglomerateFile}
 
-	return commonJobDefinition(jobExecCongolomerateLPP, priorityExecCongolomeration,
-		reqDirs, inputFilePatterns, outputTmpls, outputFiles, cmnExecParamsRegexp(3), config.FailSuffix)
+	return commonJobDefinition(jobExecCongolomerateLPP, priorityExecCongolomeration, reqDirs, inputFilePatterns,
+		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(3), config.FailSuffix)
 }

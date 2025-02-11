@@ -151,6 +151,8 @@ type RndBeacon struct {
 
 	BootstrapMetadata WithRequestDir `mapstructure:",squash"`
 
+	WithResponseDir `mapstructure:",squash"`
+
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
 
@@ -164,6 +166,8 @@ type Conglomeration struct {
 	LPP WithRequestDir `mapstructure:",squash"`
 
 	BootstrapMetadata WithRequestDir `mapstructure:",squash"`
+
+	WithResponseDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
@@ -242,6 +246,8 @@ type Prometheus struct {
 type Execution struct {
 	WithRequestDir `mapstructure:",squash"`
 
+	WithResponseDir `mapstructure:",squash"`
+
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
 
@@ -254,6 +260,8 @@ type Execution struct {
 
 type BlobDecompression struct {
 	WithRequestDir `mapstructure:",squash"`
+
+	WithResponseDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev full"`
@@ -269,6 +277,8 @@ type BlobDecompression struct {
 
 type Aggregation struct {
 	WithRequestDir `mapstructure:",squash"`
+
+	WithResponseDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev full"`
@@ -292,16 +302,20 @@ type WithRequestDir struct {
 	RequestsRootDir []string `mapstructure:"requests_root_dir" validate:"required"`
 }
 
-func (cfg *WithRequestDir) DirFrom(idx int) string {
-	return path.Join(cfg.RequestsRootDir[idx], RequestsFromSubDir)
+type WithResponseDir struct {
+	ResponsesRootDir []string `mapstructure:"responses_root_dir" validate:"required"`
 }
 
-func (cfg *WithRequestDir) DirTo(idx int) string {
-	return path.Join(cfg.RequestsRootDir[idx], RequestsToSubDir)
+func (cfg *WithRequestDir) DirFrom(ipIdx int) string {
+	return path.Join(cfg.RequestsRootDir[ipIdx], RequestsFromSubDir)
 }
 
-func (cfg *WithRequestDir) DirDone(idx int) string {
-	return path.Join(cfg.RequestsRootDir[idx], RequestsDoneSubDir)
+func (cfg *WithResponseDir) DirTo(opIdx int) string {
+	return path.Join(cfg.ResponsesRootDir[opIdx], ResponsesToSubDir)
+}
+
+func (cfg *WithRequestDir) DirDone(ipIdx int) string {
+	return path.Join(cfg.RequestsRootDir[ipIdx], RequestsDoneSubDir)
 }
 
 type PublicInput struct {

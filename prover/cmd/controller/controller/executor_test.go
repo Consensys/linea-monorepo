@@ -24,7 +24,8 @@ func TestRetryWithLarge(t *testing.T) {
 					Parse("output-fill-constant"),
 			),
 		},
-		RequestsRootDir: []string{"./testdata"},
+		RequestsRootDir:  []string{"./testdata"},
+		ResponsesRootDir: []string{"./responses"},
 	}
 
 	jobs := []struct {
