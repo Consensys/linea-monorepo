@@ -44,9 +44,7 @@ allprojects {
       '-Xlint:deprecation',
     ])
     if (!allowCompilationWarnings) {
-      options.compilerArgs.addAll([
-        '-Werror'
-      ])
+      options.compilerArgs.addAll(['-Werror'])
     }
 
     if (!project.path.contains("testing-tools")) {
@@ -89,13 +87,18 @@ allprojects {
     systemProperty("L1_RPC_URL", "http://localhost:8445")
     systemProperty("L2_RPC_URL", "http://localhost:8545")
     systemProperty("L1_GENESIS", "docker/config/l1-node/el/genesis.json")
-    systemProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis.json")
+    systemProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis-PoA.json")
 
     systemProperties["junit.jupiter.execution.timeout.default"] = "5 m" // 5 minutes
     systemProperties["junit.jupiter.execution.parallel.enabled"] = true
     systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
     systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
     maxParallelForks = Math.max(Runtime.runtime.availableProcessors(), 9)
+  }
+
+  tasks.withType(Test).matching { it.name == 'integrationTest' }.configureEach {
+    outputs.cacheIf { false }
+    outputs.upToDateWhen { false }
   }
 
   afterEvaluate { subproject ->
@@ -109,6 +112,12 @@ allprojects {
             //ktfmt()
             ktlint(libs.versions.ktlint.get().toString()).setEditorConfigPath("$rootDir/.editorconfig")
           }
+        }
+        // spotless check applied to build.gradle (groovy) files
+        groovyGradle {
+          greclipse()
+          indentWithSpaces(2)
+          endWithNewline()
         }
       }
     }
@@ -138,13 +147,19 @@ dockerCompose {
       "l1-node-genesis-generator",
       "l1-el-node",
       "l1-cl-node",
-      "l2-node",
       // For debug
       // "l1-blockscout",
       // "l2-blockscout"
     ]
-    composeAdditionalArgs = ["--profile", "l1", "--profile", "l2"]
-    useComposeFiles = ["${project.rootDir.path}/docker/compose.yml"]
+    composeAdditionalArgs = [
+      "--profile",
+      "l1",
+      "--profile",
+      "l2"
+    ]
+    useComposeFiles = [
+      "${project.rootDir.path}/docker/compose-tracing-v2.yml"
+    ]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
     waitForTcpPorts = false
     removeOrphans = true
@@ -157,34 +172,39 @@ dockerCompose {
   }
 
   localStackPostgresDbOnly {
-    startedServices = [
-      "postgres"
+    startedServices = ["postgres"]
+    useComposeFiles = [
+      "${project.rootDir.path}/docker/compose-tracing-v2.yml"
     ]
-    useComposeFiles = ["${project.rootDir.path}/docker/compose.yml"]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
-    waitForTcpPorts = false
+    waitForTcpPorts = true
     removeOrphans = true
     noRecreate = true
     projectName = "docker"
   }
 
-  localStackForStateRecover {
+  localStackForStateRecovery {
     startedServices = [
       "postgres",
       "sequencer",
       "l1-node-genesis-generator",
       "l1-el-node",
       "l1-cl-node",
-      "l2-node",
       "blobscan-api",
       "blobscan-indexer",
       "redis",
-      // For debug
-      // "l1-blockscout",
-      // "l2-blockscout"
     ]
-    composeAdditionalArgs = ["--profile", "l1", "--profile", "l2", "--profile", "staterecover"]
-    useComposeFiles = ["${project.rootDir.path}/docker/compose.yml"]
+    composeAdditionalArgs = [
+      "--profile",
+      "l1",
+      "--profile",
+      "l2",
+      "--profile",
+      "staterecovery"
+    ]
+    useComposeFiles = [
+      "${project.rootDir.path}/docker/compose-tracing-v2-staterecovery-extension.yml"
+    ]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
     waitForTcpPorts = false
     removeOrphans = true

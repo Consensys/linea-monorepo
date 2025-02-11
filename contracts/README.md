@@ -30,7 +30,7 @@ Documentation: [Token Bridge](./docs/linea-token-bridge.md)
 Please see the [Smart Contract Style Guide](./docs/contract-style-guide.md) for in depth smart contract layout and styling.
 
 # Audit reports
-Please see [Audits](./docs/audits.md) for a historical list of all the smart contract audits.
+Please see [Audits](../docs/audits.md#linea-rollup-l2messageservice-and-tokenbridge-smart-contract-audits) for a historical list of all the smart contract audits.
 
 # Development & Testing
 
@@ -43,6 +43,7 @@ This project uses the following libraries
 - [Chai](https://www.chaijs.com/) for assertions
 - [GoLang](https://go.dev/) for the compilation of code to autogenerate data for L2 data and proofs (not strictly required)
 - [Docker](https://www.docker.com/) for the local stack to run in
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) for Hardhat to run with `hardhat-foundry` plugin
 
 If you already have an understanding of the tech stack, use our [Get Started](../docs/get-started.md) guide.
 
@@ -110,7 +111,7 @@ The L2MessageService deploy uses nonce 2 as the following are deployed beforehan
 
 **Deploying the L1 contracts**
 ```
-# This will deploy the Linea Rollup that is currently deployed on Mainnet - the current version is the LineaRollupV5.
+# This will deploy the Linea Rollup that is currently deployed on Mainnet - the current version is the LineaRollupV6.
 # Some end to end tests will test future upgrades to validate the stack remains functional.
 
 # Note: By default a test/placeholder verifier contract is used `IntegrationTestTrueVerifier` if you wish to use a proper verifier, adjust the
@@ -118,10 +119,7 @@ The L2MessageService deploy uses nonce 2 as the following are deployed beforehan
 
 # Be sure to check the parameter values in the Makefile before executing the command.
 
-# Deploy v5
-make deploy-linea-rollup-v5 
-
-# Or deploy v6
+# deploy v6
 make deploy-linea-rollup-v6
 
 make deploy-token-bridge-l1
@@ -144,11 +142,26 @@ make deploy-contracts
 
 The above command will trigger the following commands to deploy:
 
-- deploy-linea-rollup-v5 
+- deploy-linea-rollup-v6 
 - deploy-token-bridge-l1 
 - deploy-l1-test-erc20 
 - deploy-l2messageservice 
 - deploy-token-bridge-l2 
 - deploy-l2-test-erc20
 
-Note: the deploy-l1-test-erc20 and deploy-l1-test-erc20 commands are executed for use in the end to end tests.
+Note: the deploy-l1-test-erc20 and deploy-l2-test-erc20 commands are executed for use in the end to end tests.
+
+## Installation and testing
+
+To run the solution's tests, coverage and gas reporting, be sure to install pnpm and then
+```
+# Install all the dependencies
+
+pnpm install
+
+pnpm run test
+
+pnpm run test:reportgas
+
+pnpm run coverage
+```

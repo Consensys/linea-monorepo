@@ -6,6 +6,7 @@ import java.math.MathContext
 import java.math.RoundingMode
 
 const val OneGWei = 1_000_000_000L
+const val OneEth = 1_000_000_000_000_000_000L
 val OneGWeiBigDecimal: BigDecimal = BigDecimal.valueOf(OneGWei)
 
 const val OneKWei = 1_000L
@@ -56,7 +57,8 @@ fun ULong.toHexStringUInt256(): String = this.toHexStringPaddedToBitSize(256)
 
 fun ULong.toKWeiUInt(): UInt = this.toDouble().tokWeiUInt()
 
-inline val ULong.gwei: ULong get() = this * OneGWei.toULong()
+inline val ULong.gwei: ULong get() = this.multiplyExact(OneGWei.toULong())
+inline val ULong.eth: ULong get() = this.multiplyExact(OneEth.toULong())
 
 fun ULong.toGWei(): Double = this.toDouble().toGWei()
 
@@ -64,7 +66,17 @@ fun ULong.toGWei(): Double = this.toDouble().toGWei()
  * Parses an hexadecimal string as [ULong] number and returns the result.
  * @throws NumberFormatException if the string is not a valid hexadecimal representation of a number.
  */
-fun ULong.Companion.fromHexString(value: String): ULong = value.replace("0x", "").toULong(16)
+fun ULong.Companion.fromHexString(value: String): ULong = value.removePrefix("0x").toULong(16)
+
+fun ULongRange.intersection(other: ULongRange): ULongRange {
+  val start = maxOf(this.first, other.first)
+  val end = minOf(this.last, other.last)
+  return if (start <= end) {
+    start..end
+  } else {
+    ULongRange.EMPTY
+  }
+}
 
 fun <T : Comparable<T>> ClosedRange<T>.toIntervalString(): String {
   val size = if (start <= endInclusive) {

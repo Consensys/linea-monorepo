@@ -2,16 +2,18 @@ package net.consensys.zkevm.coordinator.app
 
 import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerV1JsonRpcClient
+import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
+import build.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
+import build.linea.web3j.Web3JLogsClient
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
+import linea.encoding.BlockRLPEncoder
+import linea.web3j.createWeb3jHttpClient
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.blob.ShnarfCalculatorVersion
-import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.linea.contract.Web3JL2MessageService
 import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
-import net.consensys.linea.contract.Web3JLogsClient
 import net.consensys.linea.contract.l1.GenesisStateProvider
-import net.consensys.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
@@ -36,7 +38,6 @@ import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.web3j.ExtendedWeb3JImpl
 import net.consensys.linea.web3j.SmartContractErrors
 import net.consensys.linea.web3j.Web3jBlobExtended
-import net.consensys.linea.web3j.okHttpClientBuilder
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
@@ -52,11 +53,9 @@ import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV1
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
 import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.domain.FinalizationSubmittedEvent
-import net.consensys.zkevm.encoding.ExecutionPayloadV1RLPEncoderByBesuImplementation
 import net.consensys.zkevm.ethereum.coordination.EventDispatcher
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker
@@ -107,7 +106,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.http.HttpService
-import org.web3j.utils.Async
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
@@ -149,21 +147,20 @@ class L1DependentApp(
     l2Web3jClient,
     smartContractErrors
   )
-  private val l1Web3jClient = Web3j.build(
-    HttpService(
-      configs.l1.rpcEndpoint.toString(),
-      okHttpClientBuilder(LogManager.getLogger("clients.l1")).build()
-    ),
-    1000,
-    Async.defaultExecutorService()
+  private val l1Web3jClient = createWeb3jHttpClient(
+    rpcUrl = configs.l1.rpcEndpoint.toString(),
+    log = LogManager.getLogger("clients.l1.eth-api"),
+    pollingInterval = 1.seconds
+
   )
   private val l1Web3jService = Web3jBlobExtended(HttpService(configs.l1.ethFeeHistoryEndpoint.toString()))
-  private val l2ZkTracesWeb3jClient: Web3j =
-    Web3j.build(
-      HttpService(configs.zkTraces.ethApi.toString()),
-      1000,
-      Async.defaultExecutorService()
-    )
+  private val l2ZkTracesWeb3jClient: Web3j = createWeb3jHttpClient(
+    rpcUrl = configs.zkTraces.ethApi.toString(),
+    log = LogManager.getLogger("clients.l2.eth-api.tracer-node"),
+    pollingInterval = 1.seconds,
+    requestResponseLogLevel = org.apache.logging.log4j.Level.TRACE,
+    failuresLogLevel = org.apache.logging.log4j.Level.DEBUG
+  )
 
   private val l1ChainId = l1Web3jClient.ethChainId().send().chainId.toLong()
 
@@ -220,20 +217,19 @@ class L1DependentApp(
     )
   )
 
-  private val l1FinalizationMonitor = run {
-    // To avoid setDefaultBlockParameter clashes
-    val contractClient: LineaRollupSmartContractClientReadOnly = Web3JLineaRollupSmartContractClientReadOnly(
-      contractAddress = configs.l1.zkEvmContractAddress,
-      web3j = l1Web3jClient
-    )
+  private val lineaRollupClient: LineaRollupSmartContractClientReadOnly = Web3JLineaRollupSmartContractClientReadOnly(
+    contractAddress = configs.l1.zkEvmContractAddress,
+    web3j = l1Web3jClient
+  )
 
+  private val l1FinalizationMonitor = run {
     FinalizationMonitorImpl(
       config =
       FinalizationMonitorImpl.Config(
         pollingInterval = configs.l1.finalizationPollingInterval.toKotlinDuration(),
         l1QueryBlockTag = configs.l1.l1QueryBlockTag
       ),
-      contract = contractClient,
+      contract = lineaRollupClient,
       l2Client = l2Web3jClient,
       vertx = vertx
     )
@@ -323,7 +319,7 @@ class L1DependentApp(
         lastBlockNumber = lastProcessedBlockNumber,
         clock = Clock.System,
         latestBlockProvider = GethCliqueSafeBlockProvider(
-          l2ExtendedWeb3j,
+          l2ExtendedWeb3j.web3jClient,
           GethCliqueSafeBlockProvider.Config(configs.l2.blocksToFinalization.toLong())
         )
       )
@@ -382,7 +378,8 @@ class L1DependentApp(
     val compressorVersion = configs.traces.blobCompressorVersion
     val blobCompressor = GoBackedBlobCompressor.getInstance(
       compressorVersion = compressorVersion,
-      dataLimit = configs.blobCompression.blobSizeLimit.toUInt()
+      dataLimit = configs.blobCompression.blobSizeLimit.toUInt(),
+      metricsFacade = metricsFacade
     )
 
     val compressedBlobCalculator = ConflationCalculatorByDataCompressed(
@@ -447,7 +444,7 @@ class L1DependentApp(
 
   private val genesisStateProvider = GenesisStateProvider(
     configs.l1.genesisStateRootHash,
-    configs.l1.genesisShnarfV5
+    configs.l1.genesisShnarfV6
   )
 
   private val blobCompressionProofCoordinator = run {
@@ -477,7 +474,10 @@ class L1DependentApp(
       blobsRepository = blobsRepository,
       blobCompressionProverClient = proverClientFactory.blobCompressionProverClient(),
       rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
-        blobShnarfCalculator = GoBackedBlobShnarfCalculator(blobShnarfCalculatorVersion),
+        blobShnarfCalculator = GoBackedBlobShnarfCalculator(
+          version = blobShnarfCalculatorVersion,
+          metricsFacade = metricsFacade
+        ),
         blobsRepository = blobsRepository,
         genesisShnarf = genesisStateProvider.shnarf
       ),
@@ -520,7 +520,7 @@ class L1DependentApp(
   private val alreadySubmittedBlobsFilter =
     L1ShnarfBasedAlreadySubmittedBlobsFilter(
       lineaRollup = lineaSmartContractClientForDataSubmission,
-      acceptedBlobEndBlockNumberConsumer = { highestAcceptedBlobTracker }
+      acceptedBlobEndBlockNumberConsumer = { highestAcceptedBlobTracker(it) }
     )
 
   private val latestBlobSubmittedBlockNumberTracker = LatestBlobSubmittedBlockNumberTracker(0UL)
@@ -608,7 +608,7 @@ class L1DependentApp(
         deadlineCheckInterval = configs.proofAggregation.deadlineCheckInterval.toKotlinDuration(),
         aggregationDeadline = configs.proofAggregation.aggregationDeadline.toKotlinDuration(),
         latestBlockProvider = GethCliqueSafeBlockProvider(
-          l2ExtendedWeb3j,
+          l2ExtendedWeb3j.web3jClient,
           GethCliqueSafeBlockProvider.Config(configs.l2.blocksToFinalization.toLong())
         ),
         maxProofsPerAggregation = configs.proofAggregation.aggregationProofsLimit.toUInt(),
@@ -868,7 +868,7 @@ class L1DependentApp(
       conflationService = conflationService,
       tracesCountersClient = tracesCountersClient,
       vertx = vertx,
-      payloadEncoder = ExecutionPayloadV1RLPEncoderByBesuImplementation
+      encoder = BlockRLPEncoder
     )
   }
 
@@ -904,7 +904,7 @@ class L1DependentApp(
     log.info("Resuming conflation from block={} inclusive", lastProcessedBlockNumber + 1UL)
     val blockCreationMonitor = BlockCreationMonitor(
       vertx = vertx,
-      extendedWeb3j = l2ExtendedWeb3j,
+      web3j = l2ExtendedWeb3j,
       startingBlockNumberExclusive = lastProcessedBlockNumber.toLong(),
       blockCreationListener = block2BatchCoordinator,
       lastProvenBlockNumberProviderAsync = lastProvenBlockNumberProvider,
@@ -922,17 +922,9 @@ class L1DependentApp(
   }
 
   private fun lastFinalizedBlock(): SafeFuture<ULong> {
-    val zkEvmClient: LineaRollupAsyncFriendly = instantiateZkEvmContractClient(
-      configs.l1,
-      finalizationTransactionManager,
-      feesFetcher,
-      l1MinPriorityFeeCalculator,
-      l1Web3jClient,
-      smartContractErrors
-    )
     val l1BasedLastFinalizedBlockProvider = L1BasedLastFinalizedBlockProvider(
       vertx,
-      zkEvmClient,
+      lineaRollupClient,
       configs.conflation.consistentNumberOfBlocksOnL1ToWait.toUInt()
     )
     return l1BasedLastFinalizedBlockProvider.getLastFinalizedBlock()

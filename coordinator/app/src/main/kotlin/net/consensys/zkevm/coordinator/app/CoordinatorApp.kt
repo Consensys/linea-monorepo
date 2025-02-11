@@ -1,17 +1,15 @@
 package net.consensys.zkevm.coordinator.app
 
-import com.fasterxml.jackson.databind.module.SimpleModule
 import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.Vertx
-import io.vertx.core.json.jackson.DatabindCodec
 import io.vertx.micrometer.backends.BackendRegistries
 import io.vertx.sqlclient.SqlClient
+import linea.web3j.createWeb3jHttpClient
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.jsonrpc.client.LoadBalancingJsonRpcClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.loadVertxConfig
-import net.consensys.linea.web3j.okHttpClientBuilder
 import net.consensys.zkevm.coordinator.api.Api
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
 import net.consensys.zkevm.coordinator.app.config.DatabaseConfig
@@ -32,12 +30,9 @@ import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.apache.tuweni.bytes.Bytes
 import org.web3j.protocol.Web3j
-import org.web3j.protocol.http.HttpService
-import org.web3j.utils.Async
-import tech.pegasys.teku.ethereum.executionclient.serialization.BytesSerializer
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinDuration
 
 class CoordinatorApp(private val configs: CoordinatorConfig) {
@@ -48,18 +43,13 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
     log.debug("Vertx full configs: {}", vertxConfig)
     log.info("App configs: {}", configs)
 
-    // TODO: adapt JsonMessageProcessor to use custom ObjectMapper
-    // this is just dark magic.
-    val module = SimpleModule()
-    module.addSerializer(Bytes::class.java, BytesSerializer())
-    DatabindCodec.mapper().registerModule(module)
-    // .enable(SerializationFeature.INDENT_OUTPUT)
     Vertx.vertx(vertxConfig)
   }
   private val meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow()
+  private val micrometerMetricsFacade = MicrometerMetricsFacade(meterRegistry, "linea")
   private val httpJsonRpcClientFactory = VertxHttpJsonRpcClientFactory(
-    vertx,
-    meterRegistry,
+    vertx = vertx,
+    metricsFacade = MicrometerMetricsFacade(meterRegistry),
     requestResponseLogLevel = Level.TRACE,
     failuresLogLevel = Level.WARN
   )
@@ -69,15 +59,13 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
     ),
     vertx
   )
-  private val l2Web3jClient: Web3j =
-    Web3j.build(
-      HttpService(
-        configs.l2.rpcEndpoint.toString(),
-        okHttpClientBuilder(LogManager.getLogger("clients.l2")).build()
-      ),
-      1000,
-      Async.defaultExecutorService()
-    )
+  private val l2Web3jClient: Web3j = createWeb3jHttpClient(
+    rpcUrl = configs.zkTraces.ethApi.toString(),
+    log = LogManager.getLogger("clients.l2.eth-api.rpc-node"),
+    pollingInterval = 1.seconds,
+    requestResponseLogLevel = Level.TRACE,
+    failuresLogLevel = Level.DEBUG
+  )
 
   private val persistenceRetryer = PersistenceRetryer(
     vertx = vertx,
@@ -120,8 +108,6 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
       persistenceRetryer = persistenceRetryer
     )
   )
-
-  private val micrometerMetricsFacade = MicrometerMetricsFacade(meterRegistry, "linea")
 
   private val l1FeeHistoriesRepository =
     FeeHistoriesRepositoryImpl(

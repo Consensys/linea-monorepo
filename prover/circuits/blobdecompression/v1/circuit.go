@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"hash"
 	"math/big"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
@@ -192,8 +193,7 @@ func (i *FunctionalPublicInputSnark) Sum(api frontend.API, hsh snarkHash.FieldHa
 func (c Circuit) Define(api frontend.API) error {
 	var hsh snarkHash.FieldHasher
 	if c.UseGkrMiMC {
-		h := gkrmimc.NewHasherFactory(api).NewHasher()
-		hsh = &h
+		hsh = gkrmimc.NewHasherFactory(api).NewHasher()
 	} else {
 		if h, err := mimc.NewMiMC(api); err != nil {
 			return err
@@ -247,18 +247,13 @@ func Compile(dictionaryLength int) constraint.ConstraintSystem {
 	}
 }
 
-func AssignFPI(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.Element) (fpi FunctionalPublicInput, err error) {
+func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (fpi FunctionalPublicInput, dict []byte, err error) {
 	if len(blobBytes) != blob.MaxUsableBytes {
 		err = fmt.Errorf("decompression circuit assignment : invalid blob length : %d. expected %d", len(blobBytes), blob.MaxUsableBytes)
 		return
 	}
 
-	dictStore, err := dictionary.SingletonStore(dict, 1)
-	if err != nil {
-		err = fmt.Errorf("failed to create dictionary store %w", err)
-		return
-	}
-	header, payload, _, err := blob.DecompressBlob(blobBytes, dictStore)
+	header, payload, _, dict, err := blob.DecompressBlob(blobBytes, dictStore)
 	if err != nil {
 		return
 	}
@@ -294,9 +289,9 @@ func AssignFPI(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.
 	return
 }
 
-func Assign(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.Element) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
+func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
 
-	fpi, err := AssignFPI(blobBytes, dict, eip4844Enabled, x, y)
+	fpi, dict, err := AssignFPI(blobBytes, dictStore, eip4844Enabled, x, y)
 	if err != nil {
 		return
 	}

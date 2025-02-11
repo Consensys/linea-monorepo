@@ -1,14 +1,13 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
+import linea.domain.Block
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.domain.ConflationCalculationResult
-import net.consensys.zkevm.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -20,23 +19,28 @@ class ConflationServiceImpl(
   ConflationService {
   private val log: Logger = LogManager.getLogger(this::class.java)
   private var listener: ConflationHandler = ConflationHandler { SafeFuture.completedFuture<Unit>(null) }
-  private val blocksInProgress: MutableList<ExecutionPayloadV1> = mutableListOf()
+  private val blocksInProgress: MutableList<Block> = mutableListOf()
 
   data class PayloadAndBlockCounters(
-    val executionPayload: ExecutionPayloadV1,
+    val block: Block,
     val blockCounters: BlockCounters
   ) : Comparable<PayloadAndBlockCounters> {
     override fun compareTo(other: PayloadAndBlockCounters): Int {
-      return this.executionPayload.blockNumber.compareTo(other.executionPayload.blockNumber)
+      return this.block.number.compareTo(other.block.number)
     }
   }
 
   internal val blocksToConflate = PriorityBlockingQueue<PayloadAndBlockCounters>()
 
   private val blocksCounter = metricsFacade.createCounter(
-    LineaMetricsCategory.CONFLATION,
-    "blocks.imported",
-    "New blocks arriving to conflation service counter"
+    category = LineaMetricsCategory.CONFLATION,
+    name = "blocks.imported",
+    description = "New blocks arriving to conflation service counter"
+  )
+  private val batchSizeInBlocksHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.CONFLATION,
+    name = "blocks.size",
+    description = "Number of blocks in each conflated batch"
   )
 
   init {
@@ -64,10 +68,12 @@ class ConflationServiceImpl(
       conflation.tracesCounters,
       conflation.blocksRange.joinToString(",", "[", "]") { it.toString() }
     )
+    batchSizeInBlocksHistogram.record(conflation.blocksRange.count().toDouble())
+
     val blocksToConflate =
       blocksInProgress
-        .filter { it.blockNumber.toULong() in conflation.blocksRange }
-        .sortedBy { it.blockNumber }
+        .filter { it.number in conflation.blocksRange }
+        .sortedBy { it.number }
     blocksInProgress.removeAll(blocksToConflate)
 
     return listener.handleConflatedBatch(BlocksConflation(blocksToConflate, conflation))
@@ -82,21 +88,21 @@ class ConflationServiceImpl(
   }
 
   @Synchronized
-  override fun newBlock(block: ExecutionPayloadV1, blockCounters: BlockCounters) {
-    require(block.blockNumber.toULong() == blockCounters.blockNumber) {
-      "Payload blockNumber ${block.blockNumber} does not match blockCounters.blockNumber=${blockCounters.blockNumber}"
+  override fun newBlock(block: Block, blockCounters: BlockCounters) {
+    require(block.number == blockCounters.blockNumber) {
+      "block=${block.number} does not match blockCounters.blockNumber=${blockCounters.blockNumber}"
     }
     blocksCounter.increment()
     log.trace(
       "newBlock={} calculatorLastBlockNumber={} blocksToConflateSize={} blocksInProgressSize={}",
-      block.blockNumber,
+      block.number,
       calculator.lastBlockNumber,
       blocksToConflate.size,
       blocksInProgress.size
     )
     blocksToConflate.add(PayloadAndBlockCounters(block, blockCounters))
     blocksInProgress.add(block)
-    log.trace("block {} added to conflation queue", block.blockNumber)
+    log.trace("block {} added to conflation queue", block.number)
     sendBlocksInOrderToTracesCounter()
   }
 
@@ -104,14 +110,14 @@ class ConflationServiceImpl(
     var nextBlockNumberToConflate = calculator.lastBlockNumber + 1u
     var nextAvailableBlock = blocksToConflate.peek()
 
-    while (nextAvailableBlock?.executionPayload?.blockNumber?.toULong() == nextBlockNumberToConflate) {
+    while (nextAvailableBlock?.block?.number == nextBlockNumberToConflate) {
       nextAvailableBlock = blocksToConflate.poll(100, TimeUnit.MILLISECONDS)
       log.trace(
         "block {} removed from conflation queue and sent to calculator",
-        nextAvailableBlock?.executionPayload?.blockNumber
+        nextAvailableBlock?.block?.number
       )
       calculator.newBlock(nextAvailableBlock.blockCounters)
-      nextBlockNumberToConflate = nextAvailableBlock.executionPayload.blockNumber.toULong() + 1u
+      nextBlockNumberToConflate = nextAvailableBlock.block.number + 1u
       nextAvailableBlock = blocksToConflate.peek()
     }
   }

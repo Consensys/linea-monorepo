@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { useFormContext } from "react-hook-form";
-import { NetworkLayer, TokenType } from "@/config";
+import { NetworkLayer } from "@/config";
 import { useChainStore } from "@/stores/chainStore";
 import ClaimingTypeOption from "./ClaimingTypeOption";
 import { ModalContext } from "@/contexts/modal.context";
@@ -18,12 +18,12 @@ export function ClaimingType() {
 
   const selectedClaimType = watch("claim");
 
-  const isAutoDisabled = networkLayer === NetworkLayer.L2 || token?.type !== TokenType.ETH || !isConnected;
+  const isAutoDisabled = networkLayer === NetworkLayer.L2 || !isConnected;
 
   useEffect(() => {
-    if (networkLayer === NetworkLayer.L2 || token?.type !== TokenType.ETH) {
+    if (networkLayer === NetworkLayer.L2) {
       setValue("claim", "manual");
-    } else if (token?.type === TokenType.ETH && networkLayer === NetworkLayer.L1) {
+    } else if (networkLayer === NetworkLayer.L1) {
       setValue("claim", "auto");
     } else if (isManualConfirmed) {
       setValue("claim", "manual");
@@ -55,7 +55,7 @@ export function ClaimingType() {
   }, [isManualConfirmed, setValue]);
 
   return (
-    <div className="form-control grid grid-flow-row gap-2 rounded-lg bg-[#2D2D2D] p-2 sm:grid-flow-col sm:rounded-full">
+    <div className="form-control grid grid-flow-row gap-2 rounded-lg bg-backgroundColor p-2 sm:grid-flow-col sm:rounded-full">
       <ClaimingTypeOption
         id="claim-auto"
         value="auto"

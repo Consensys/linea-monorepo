@@ -1,13 +1,6 @@
 name: Prover testing CI
 
-on:
-  workflow_call:
-    secrets:
-      SLACK_WEBHOOK_CI_PROVER_FAIL:
-        required: true
-      SLACK_WEBHOOK_CI_PROVER_SUCCESS:
-        required: true
-
+on: workflow_call
 env:
   GOPROXY: "https://proxy.golang.org"
 
@@ -17,21 +10,23 @@ concurrency:
 
 jobs:
   staticcheck:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    # ~1.5 mins saved vs small
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: Prover static check
     steps:
-    - name: install Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: 1.23.x
     - name: checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - uses: actions/cache@v3
+    - name: install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.23.x
+        cache-dependency-path: |
+              prover/go.sum
+    - uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/pkg/mod
           ~/.cache/go-build
           ~/Library/Caches/go-build
           %LocalAppData%\go-build
@@ -42,7 +37,7 @@ jobs:
       working-directory: prover
       run: if [[ -n $(gofmt -l .) ]]; then echo "please run gofmt"; exit 1; fi
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v6
       with:
           version: v1.61.0
           working-directory: prover
@@ -59,21 +54,23 @@ jobs:
     strategy:
       matrix:
         go-version: [1.23.x]
-    runs-on: [self-hosted, ubuntu-22.04, X64, large]
+    # ~1 min saved vs large
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xl
     name: Prover testing
     needs:
       - staticcheck
     steps:
-    - name: install Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ matrix.go-version }}
     - name: checkout code
       uses: actions/checkout@v4
-    - uses: actions/cache@v3
+    - name: install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+        cache-dependency-path: |
+              prover/go.sum
+    - uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/pkg/mod
           ~/.cache/go-build
           ~/Library/Caches/go-build
           %LocalAppData%\go-build
@@ -93,50 +90,3 @@ jobs:
       if: matrix.go-version == '1.20.x'
       run: |
           go test -p=1 -tags=nocorset,fuzzlight -timeout=30m -short -race  ./...
-
-  slack-workflow-status-failed:
-    if: failure()
-    name: Prover notify slack
-    needs:
-      - staticcheck
-      - test
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
-    steps:
-      - name: Notify slack -- workflow failed
-        id: slack
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          payload: |
-            {
-              "actor": "${{ github.actor }}",
-              "repo": "${{ github.repository }}",
-              "status": "FAIL",
-              "title": "${{ github.event.pull_request.title }}",
-              "pr": "${{ github.event.pull_request.head.ref }}"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_CI_PROVER_FAIL }}
-
-  slack-workflow-status-success:
-    if: success()
-    name: Prover notify slack
-    needs:
-      - staticcheck
-      - test
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
-    steps:
-      - name: Notify slack -- workflow succeeded
-        id: slack
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          payload: |
-            {
-              "actor": "${{ github.actor }}",
-              "repo": "${{ github.repository }}",
-              "status": "SUCCESS",
-              "title": "${{ github.event.pull_request.title }}",
-              "pr": "${{ github.event.pull_request.head.ref }}"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_CI_PROVER_SUCCESS }}
-

@@ -17,7 +17,8 @@ concurrency:
 
 jobs:
   run-tests:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    # ~2 mins saved vs small
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: Traces api facade tests
     steps:
       - name: Checkout
@@ -29,7 +30,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Run tests with coverage
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         if: ${{ inputs.coverage }}
         with:
           max_attempts: 2
@@ -38,7 +39,7 @@ jobs:
           command: |
             ./gradlew -V traces-api-facade:app:buildNeeded jacocoRootReport
       - name: Run tests without coverage
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         if: ${{ !inputs.coverage }}
         with:
           max_attempts: 2

@@ -1,0 +1,14 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  api(project(':jvm-libs:generic:extensions:kotlin'))
+  api(project(':jvm-libs:generic:extensions:futures'))
+  api(project(':jvm-libs:linea:core:domain-models'))
+  api(project(':jvm-libs:linea:besu-libs'))
+  implementation("org.slf4j:slf4j-api:${libs.versions.slf4j.get()}") {
+    because("Besu RLP uses SLF4J")
+  }
+  api "io.vertx:vertx-core"
+}

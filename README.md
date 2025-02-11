@@ -30,7 +30,7 @@ If you already have an understanding of the tech stack, use our [Get Started](do
 
 Linea's stack is made up of multiple repositories, these include:
 
-- This repo, [linea-monorepo](https://github.com/Consensys/linea-monorepo): The main repository for the Linea stack & network
+- [linea-monorepo](https://github.com/Consensys/linea-monorepo): The main repository for the Linea stack & network
 - [linea-besu](https://github.com/Consensys/linea-besu): Fork of Besu to implement the Linea-Besu client
 - [linea-sequencer](https://github.com/Consensys/linea-sequencer): A set of Linea-Besu plugins for the sequencer and RPC nodes
 - [linea-tracer](https://github.com/Consensys/linea-tracer): Linea-Besu plugin which produces the traces that the constraint system applies and that serve as inputs to the prover
@@ -47,7 +47,10 @@ Linea abstracts away the complexity of this technical architecture to allow deve
 
 ## How to contribute
 
-Contributions of any kind are welcome!
+Contributions are welcome!
+
+### Guidelines for Non-Code and other Trivial Contributions
+Please keep in mind that we do not accept non-code contributions like fixing comments, typos or some other trivial fixes. Although we appreciate the extra help, managing lots of these small contributions is unfeasible, and puts extra pressure in our continuous delivery systems (running all tests, etc). Feel free to open an issue pointing to any of those errors, and we will batch them into a single change.
 
 1. [Create an issue](https://github.com/Consensys/linea-monorepo/issues)
 > If the proposed update is non-trivial, also tag us for discussion.

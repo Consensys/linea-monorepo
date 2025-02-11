@@ -29,8 +29,7 @@ dependencies {
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
 
-  implementation "org.hyperledger.besu.internal:core:${libs.versions.besu.get()}"
-  implementation "org.hyperledger.besu:plugin-api:${libs.versions.besu.get()}"
+  implementation(project(":jvm-libs:linea:besu-libs"))
 
   api("io.netty:netty-transport-native-epoll:${libs.versions.netty.get()}:linux-x86_64") {
     because "It enables native transport for Linux."
@@ -51,17 +50,17 @@ dependencies {
 }
 
 application {
-    mainClass = 'net.consensys.linea.transactionexclusion.app.TransactionExclusionAppMain'
+  mainClass = 'net.consensys.linea.transactionexclusion.app.TransactionExclusionAppMain'
 }
 
 jar {
   archiveBaseName = 'transaction-exclusion-api'
   manifest {
     attributes(
-      'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll {it.endsWith('jar') }.join(' '),
-      'Main-Class': 'net.consensys.linea.transactionexclusion.app.TransactionExclusionAppMain',
-      'Multi-Release': 'true'
-    )
+        'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll {it.endsWith('jar') }.join(' '),
+        'Main-Class': 'net.consensys.linea.transactionexclusion.app.TransactionExclusionAppMain',
+        'Multi-Release': 'true'
+        )
   }
 }
 
@@ -77,10 +76,12 @@ run {
     "-Dvertx.configurationFile=config/transaction-exclusion-api/vertx.json",
     "-Dlog4j2.configurationFile=config/transaction-exclusion-api/log4j2-dev.xml"
   ] + System.properties.entrySet()
-    .findAll { it.key.startsWith("config") }
-    .collect { "-D${it.key}=${it.value}" }
-  args = ["config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml",
-          "config/transaction-exclusion-api/transaction-exclusion-app-local-dev.config.overrides.toml"]
+  .findAll { it.key.startsWith("config") }
+  .collect { "-D${it.key}=${it.value}" }
+  args = [
+    "config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml",
+    "config/transaction-exclusion-api/transaction-exclusion-app-local-dev.config.overrides.toml"
+  ]
 }
 
 sourceSets {
@@ -94,18 +95,17 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    systemProperty "vertx.configurationFile", "vertx-options.json"
+task integrationTest(type: Test) { test ->
+  systemProperty "vertx.configurationFile", "vertx-options.json"
 
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
+  description = "Runs integration tests."
+  group = "verification"
+  useJUnitPlatform()
 
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackPostgresDbOnlyComposeUp")
+  dependsOn(":localStackPostgresDbOnlyComposeUp")
 }
 
 task integrationTestAllNeeded {

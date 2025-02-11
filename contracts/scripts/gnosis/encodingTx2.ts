@@ -1,16 +1,16 @@
 import { ethers } from "hardhat";
-import { LineaRollupInit__factory, LineaRollup__factory } from "../../typechain-types";
+import { LineaRollupInit__factory, LineaRollup__factory, TimeLock__factory } from "../../typechain-types";
 
 /*******************************USAGE******************************************************************
-GOERLI_PRIVATE_KEY=<your_private_key> \
+SEPOLIA_PRIVATE_KEY=<your_private_key> \
 INFURA_API_KEY=<your_infura_key> \
-npx hardhat run scripts/gnosis/encodingTX2.ts --network goerli
+npx hardhat run scripts/gnosis/encodingTX2.ts --network sepolia
 
 or
 
-LINEA_GOERLI_PRIVATE_KEY=<your_private_key> \
+LINEA_SEPOLIA_PRIVATE_KEY=<your_private_key> \
 INFURA_API_KEY=<your_infura_key> \
-npx hardhat run scripts/gnosis/encodingTX2.ts --network linea_goerli
+npx hardhat run scripts/gnosis/encodingTX2.ts --network linea_sepolia
 *******************************************************************************************************/
 
 //--------------------------------------Config------------------------------------
@@ -29,8 +29,16 @@ const main = async () => {
   console.log("Encoded TX Output:");
   console.log("\n");
 
-  //-------------------------UpgradeAndCall Directly with initializeParentShnarfsAndFinalizedState--------------------------
+  //-------------------------updateDelay on timelock--------------------------
+  const newDelayInSeconds = 60;
 
+  const updateDelayOnTimelock = TimeLock__factory.createInterface().encodeFunctionData("updateDelay", [
+    newDelayInSeconds,
+  ]);
+
+  console.log("updateDelayOnTimelock", updateDelayOnTimelock);
+
+  //-------------------------UpgradeAndCall Directly with initializeParentShnarfsAndFinalizedState--------------------------
   const upgradeCallWithInitializeParentShnarfsAndFinalizedState = ethers.concat([
     "0x9623609d",
     ethers.AbiCoder.defaultAbiCoder().encode(

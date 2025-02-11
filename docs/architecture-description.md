@@ -57,7 +57,7 @@ The main components of Linea are:
 * The provers which generate zk-proof for conflated blocks, kzg commitment and compression proof of the blobs, as well as aggregated proof for multiple conflation and compression proofs.
 
 
-![Diagram of Linea components](assets/zkEVM.drawio.svg)
+![Diagram of Linea components](assets/linea.drawio.svg)
 
 The above diagram shows the flow from transaction to finalization. High level, the flow is as follow:
 (1) the coordinator pulls the latest block from the sequencer,
@@ -222,7 +222,7 @@ It checks the total compressed size of the transactions in the batch under const
 
 In case of low activity, the coordinator triggers batch creation after some time out.
 
-Upon batch creation, the coordinator gathers the inputs to create an execution proof, namely: the conflated traces using `linea_generateConflatedTracesToFileV2`, and a Merkle proof for the change of state between the first and the last block of the batch using `rollup_getZkEVMStateMerkleProofV0`.
+Upon batch creation, the coordinator gathers the inputs to create an execution proof request, namely: the conflated traces using `linea_generateConflatedTracesToFileV2`, and a Merkle proof for the change of state between the first and the last block of the batch using `rollup_getZkEVMStateMerkleProofV0`.
 
 The coordinator collects all L2-L1 requests to be included in the batch looking at all logs emitted by `l2MessageServiceAddress` for each block in the batch. The coordinator also collects L1->L2 anchoring message event logs.
 
@@ -471,7 +471,7 @@ Corset is hosted inside the same process as the short running component of the p
   * Reduce the probability of incompatibility between Corset/Prover versions and their input/output formats;
 * Reduce latency of the overall system (rather a beneficial side effect than a driving motivation);
 
-The paragraphs highlights the roles of the different proofs that are generated.
+The paragraphs highlights the roles of the different proofs that are generated. Please refer to the prover backend codebase [here](https://github.com/Consensys/linea-monorepo/tree/main/prover/backend) for details on the objects and attributes for various types of proof requests and responses 
 
 ### Execution proofs
 
@@ -489,8 +489,7 @@ The request file contains this structure:
 
 ```
 ProofRequest
-  zkParentStateRootHash        string
-  keccakParentStateRootHash    string
+  zkParentStateRootHash        bytes32
   conflatedExecutionTracesFile string
   tracesEngineVersion          string
   type2StateManagerVersion     string
@@ -508,15 +507,15 @@ BlockData
 
 ```
 RlpBridgeLogsData
+  address                 string
+  topics                  List[string]
+  data                    string
+  blockNumber             string
+  transactionHash         string
+  transactionIndex        string
+  blockHash               string 
+  logIndex                string
   removed                 boolean
-  logIndex               string
-  transactionIndex string
-  transactionHash  string
-  blockHash        string
-  blockNumber          string
-  address          string
-  data             string
-  topics           List[string]
 ```
 
 The response file contains this file structure:
@@ -524,34 +523,38 @@ The response file contains this file structure:
 ```
 ProofResponse
   proof                               string // hex encoded
-  proverMode                          long
-  verifierIndex                       long   // deprecated
+  proverMode                          string
+  verifierIndex                       uint   // deprecated
   verifyingKeyShaSum                  string // hex encoded
+  blocksData                          List[ResponseBlockData]
   parentStateRootHash                 string // hex encoded
   hasParentStateRootHashMismatch      bool
-  blocksData                          List[ResponseBlockData]
   proverVersion                       string
-  firstBlockNumber                    long
-  debugData                           {
-    …
-    finalHash                         string // hex encoded
-  }
+  firstBlockNumber                    int
+  execDataChecksum                    bytes32
+  chainID                             uint
+  l2BridgeAddress                     [20]byte 
+  maxNbL2MessageHashes                int
+  allRollingHashEvent                 List[RollingHashUpdatedEvent]
+  allL2L1MessageHashes                List[string] // hex encoded
+  publicInput                         bytes32 
 ```
 
 ```
 ResponseBlockData
-  rlpEncodedTransactions              string       // hex encoded
-  l2ToL1Hashes                        List[string] // hex encoded
-  timestamp                           long
-  rootHash                            string       // hex encoded
+  blockHash                           bytes32
+  rlpEncodedTransactions              List[string]       // hex encoded
+  l2ToL1MsgHashes                     List[bytes32] // hex encoded
+  timestamp                           uint64
+  rootHash                            bytes32       // hex encoded
   fromAddresses                       List[string] // hex encoded
-  batchReceptionIndices               List[int]
+  batchReceptionIndices               List[uint16]
   lastRollingHashUpdatedEvent         RollingHashUpdatedEvent
 ```
 
 ```
 RollingHashUpdatedEvent
-   messageNumber                      long
+   messageNumber                      int64
    rollingHash                        string
 ```
 
@@ -577,52 +580,41 @@ Compression proof request file format:
 
 ```
 BlobCompressionProofJsonRequest
-  compressedData       bytes
-  conflationOrder      BlockIntervals
-  prevShnarf           bytes
-  parentStateRootHash  bytes
-  finalStateRootHash   bytes
-  parentDataHash       bytes
-  dataHash             bytes
-  snarkHash            bytes
-  expectedX            bytes
-  expectedY            bytes
-  expectedShnarf       bytes
   eip4844Enabled       boolean
-  commitment           bytes
-  kzgProofContract     bytes
-  kzgProofSidecar      bytes
+  compressedData       string // base64 encoded
+  dataParentHash       string 
+  conflationOrder      ConflationOrder
+  parentStateRootHash  string // hex encoded
+  finalStateRootHash   string // hex encoded
+  prevShnarf           string
 ```
 
 
 ```
-BlockIntervals
-  startingBlockNumber  ULong
-  upperBoundaries      List[ULong]
+ConflationOrder
+  startingBlockNumber  int
+  upperBoundaries      List[int]
 ```
 
 Compression proof response file format:
 
 ```
 BlobCompressionProofJsonResponse
-  compressedData           bytes // The data that are explicitly sent in the blob (i.e. after compression)
-  conflationOrder          BlockIntervals
-  prevShnarf               bytes
-  parentStateRootHash      bytes
-  finalStateRootHash       bytes
-  parentDataHash           bytes
-  dataHash                 bytes
-  snarkHash                bytes
-  expectedX                bytes
-  expectedY                bytes
-  expectedShnarf           bytes
-  decompressionProof       bytes // zkProof of compression and consistency
-  proverVersion            string
-  verifyingKeyShaSum       string
   eip4844Enabled           boolean
-  commitment               bytes
-  kzgProofContract         bytes
-  kzgProofSidecar          bytes
+  dataHash                 string
+  compressedData           string // kzg4844.Blob [131072]byte. The data that are explicitly sent in the blob (i.e. after compression)
+  commitment               string // kzg4844.Commitment [48]byte
+  kzgProofContract         string
+  kzgProofSidecar          string
+  expectedX                string
+  expectedY                string
+  snarkHash                string
+  conflationOrder          ConflationOrder
+  parentStateRootHash      string
+  finalStateRootHash       string
+  parentDataHash           string
+  expectedShnarf           string
+  prevShnarf               string
 ```
 
 ### Aggregation proof
@@ -646,29 +638,31 @@ Inprogress suffix: .inprogress
 AggregationProofJsonRequest
   executionProofs                                     List[String]
   compressionProofs                                   List[String]
-  parentAggregationLastBlockTimestamp                 long
-  parentAggregationLastL1RollingHashMessageNumber     long
+  parentAggregationLastBlockTimestamp                 uint64
   parentAggregationLastL1RollingHash                  string
+  parentAggregationLastL1RollingHashMessageNumber     int
 ```
 
 ```
 ProofToFinalizeJsonResponse
-  aggregatedProof                             bytes
-  aggregatedProverVersion                     string
-  parentStateRootHash                         bytes
-  aggregatedVerifierIndex                     int
-  aggregatedProofPublicInput                  bytes
-  dataHashes                                  List[bytes]
-  dataParentHash                              bytes
-  lastFinalizedBlockNumber                    long
-  finalBlockNumber                            long
-  parentAggregationLastBlockTimestamp         string
-  finalTimestamp                              string
-  l1RollingHash                               bytes
-  l1RollingHashMessageNumber                  long
-  l2MerkleRoots                               List[bytes]
-  l2MerkleTreesDepth                          int
-  l2MessagingBlocksOffsets                    bytes
+  finalShnarf                                string
+  parentAggregationFinalShnarf               string
+  aggregatedProof                            string // hex encoded
+  aggregatedProverVersion                    string // hex encoded
+  aggregatedVerifierIndex                    int
+  aggregatedProofPublicInput                 string
+  dataHashes                                 List[string]
+  dataParentHash                             string
+  parentStateRootHash                        string
+  parentAggregationLastBlockTimestamp        uint 
+  lastFinalizedBlockNumber                   uint
+  finalTimestamp                             uint
+  finalBlockNumber                           uint
+  l1RollingHash                               string
+  l1RollingHashMessageNumber                  uint
+  l2MerkleRoots                               List[string]
+  l2MerkleTreesDepth                          uint 
+  l2MessagingBlocksOffsets                    string
 ```
 
 
@@ -719,20 +713,54 @@ l1RollingHashes(
 
 # Gas price setting
 
-The gas price for transaction execution in Linea is computed from L1 gas price.
+Gas pricing on Linea is designed to ensure the following three properties:
+* Sequencer's inclusion logic is aligned to the L1 fee market. This is to avoid exploiting Linea to execute
+transactions for unsustainably low fees
+* The fees charged to Linea's user represent their fair usage of the network. Unlike the vanilla Ethereum
+protocol, gas price on Linea and other rollups is not 2-dimensional (base fee, priority fee). There's at least L1 fees
+(execution fees and blob fees), infrastructural cost (mostly proving, but not only), potential priority fee
+(only when there's a high congestion and there's competition for L2 block space). This is an issue for interoperability,
+because vanilla Ethreum API isn't tailored for this. That's why there's a Besu plugin addressing this issue and
+providing gas price depending on input transaction
+* Linea remains compatible with users running vanilla nodes. Namely, `eth_gasPrice` returns fees guaranteeing that
+99.9% of transactions are includable on Linea.
 
+This is how these challenges were solved technically:
 
-![gas price API](assets/gasPrice.drawio.svgo.svg)
+![gas price API](assets/gasPrice.drawio.svg)
 
+The Coordinator fetches L1 fees data, based on which it will compute gas pricing components. There are 3 of them:
+* Fixed cost. Represents infrastructural cost per unit of L2 gas. Doesn't really depend on the L1, and it's just a
+configuration in the Coordinator
+* Variable cost. Cost of 1 byte of compressed data on L2, which is finalized on L1 contract. Depends on the fees Linea
+pays for finalization, which in turn depends on the L1 blob and execution fee market
+* Legacy cost. Recommended gas price for the vanilla Ethereum API (`eth_gasPrice`)
 
-Gas price is based on the history of the gas price on L1.
+## Gas pricing propagation
+This information is delivered to nodes in 2 ways:
+* it is added to the extraData block field, part of the vanilla Ethereum Protocol
+* via RPC calls (only Geth and Besu are supported and tested)
 
-It uses the geth method `miner_setGasPrice` and the besu method
+### ExtraData
+The Coordinator sends extraData to the Sequencer via `miner_setExtraData`. ExtraData contains all 3 fields mentioned above (fixed cost, variable cost and legacy cost).
+The Sequencer in turn uses this information for inclusion logic, to include only profitable transactions, and it adds last
+received extraData to the next block it seals. This ensures that pricing information is propagated to all the nodes on Linea
+via P2P as a block header's field. And since this info is on all the nodes, they can use this information to figure out,
+what the gas price is for a given transaction that would make it includable on Linea. This currently is possible with Besu +
+Linea plugin with a custom `linea_estimateGas` method.
 
-`miner_setMinGasPrice` to update the gas price of the nodes.
+### Direct RPC calls
+For nodes that are reachable from the Coordinator directly, it's possible to set legacy cost via `miner_setGasPrice` (Geth)
+and `miner_setMinGasPrice` (Besu). Later isn't really used, because extraData driven approach is superior and is
+supported by Besu nodes with Linea plugin
 
-Both methods expect a single parameter: `0x${gasPrice.toString(16)}`
-
+### Ways to compute Legacy cost
+In the Coordinator 2 ways are supported:
+* So called "naive" way. Based on raw L1 fees processed by some formula
+* So called "sample transaction" way. The idea is to take some relatively unprofitable transaction, estimate its
+profitable gas price the same way Sequencer would. Resulting value would be used as a legacy cost. this is configured by
+2 arguments to a profitability function: execution gas and tx compressed size and it may be changed depending on what
+load is there on Linea.
 
 # L1 &lt;-> L2 interactions
 
@@ -848,7 +876,7 @@ Internally, the message service computes a rolling hash. It’s computed recursi
 
 Linea’s coordinator, which is subscribing to L1 events, detects the L1 finalized (2 epochs to avoid reorgs) cross-chain MessageSent event and anchors it on L2. The coordinator anchors the messages by batches.
 
-Anchoring (Anchoring is the process for placing a "cross-chain validity reference", that must exist for any message to be claimed) of messages is done through the executed via [anchorL1L2MessageHashes](https://github.com/Consensys/zkevm-monorepo/blob/main/contracts/contracts/messageService/l2/L2MessageManager.sol#L35) which is inherited by the [L2MessageService](https://github.com/Consensys/zkevm-monorepo/blob/main/contracts/contracts/messageService/l2/L2MessageService.sol) smart contract.
+Anchoring (Anchoring is the process for placing a "cross-chain validity reference", that must exist for any message to be claimed) of messages is done through the executed via [anchorL1L2MessageHashes](https://github.com/Consensys/linea-monorepo/blob/main/contracts/src/messaging/l2/L2MessageManager.sol#L41) which is inherited by the [L2MessageService](https://github.com/Consensys/linea-monorepo/blob/main/contracts/src/messaging/l2/L2MessageService.sol) smart contract.
 
 To anchor a message, the coordinator collects all L1-L2 message logs from which it gets the message hash, the rolling hash, the nonce (unique message number) and the L1 block number. Note that the L1 block number facilitates the processing but is not anchored on L2.
 

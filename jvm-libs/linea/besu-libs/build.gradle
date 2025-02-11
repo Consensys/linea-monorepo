@@ -3,21 +3,43 @@ plugins {
   id 'java-library'
 }
 
+def besuArtifactGroup="io.consensys.linea-besu"
+def besuVersion="25.2-delivery48"
+
 dependencies {
-  api("org.hyperledger.besu:besu-datatypes:${libs.versions.besu.get()}") {
+  api("${besuArtifactGroup}:besu-datatypes:${besuVersion}") {
     transitive = false
   }
-  api("org.hyperledger.besu:evm:${libs.versions.besu.get()}") {
+  api("${besuArtifactGroup}:evm:${besuVersion}") {
     transitive = false
   }
-  api("org.hyperledger.besu.internal:core:${libs.versions.besu.get()}") {
+  api("${besuArtifactGroup}.internal:core:${besuVersion}") {
     transitive = false
   }
-  api("org.hyperledger.besu.internal:algorithms:${libs.versions.besu.get()}") {
+  api("${besuArtifactGroup}.internal:algorithms:${besuVersion}") {
     transitive = false
   }
 
-  api("org.hyperledger.besu:plugin-api:${libs.versions.besu.get()}") {
+  api("${besuArtifactGroup}:plugin-api:${besuVersion}") {
     transitive = false
+  }
+
+  api("${besuArtifactGroup}.internal:rlp:${besuVersion}") {
+    transitive = false
+  }
+
+  api("io.tmio:tuweni-bytes:${libs.versions.tuweni.get()}") {
+    transitive = false
+  }
+
+  api("io.tmio:tuweni-units:${libs.versions.tuweni.get()}") {
+    transitive = false
+  }
+
+  implementation("org.bouncycastle:bcpkix-jdk18on:${libs.versions.bouncycastle.get()}") {
+    because "necessary for besu Transaction object that verifies signatures"
+  }
+  implementation("org.bouncycastle:bcprov-jdk18on:${libs.versions.bouncycastle.get()}") {
+    because "necessary for besu Transaction object that verifies signatures"
   }
 }

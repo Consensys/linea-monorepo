@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
@@ -25,27 +23,7 @@ func GetVersion(blob []byte) uint16 {
 	return 0
 }
 
-// GetRepoRootPath assumes that current working directory is within the repo
-func GetRepoRootPath() (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	const repoName = "linea-monorepo"
-	i := strings.LastIndex(wd, repoName)
-	if i == -1 {
-		return "", errors.New("could not find repo root")
-	}
-	i += len(repoName)
-	return wd[:i], nil
-}
-
-func GetDict() ([]byte, error) {
-	repoRoot, err := GetRepoRootPath()
-	if err != nil {
-		return nil, err
-	}
-	dictPath := filepath.Join(repoRoot, "prover/lib/compressor/compressor_dict.bin")
+func LoadDict(dictPath string) ([]byte, error) {
 	return os.ReadFile(dictPath)
 }
 
@@ -65,7 +43,7 @@ func DecompressBlob(blob []byte, dictStore dictionary.Store) ([]byte, error) {
 		_, _, blocks, err = v0.DecompressBlob(blob, dictStore)
 		blockDecoder = v0.DecodeBlockFromUncompressed
 	case 1:
-		_, _, blocks, err = v1.DecompressBlob(blob, dictStore)
+		_, _, blocks, _, err = v1.DecompressBlob(blob, dictStore)
 		blockDecoder = v1.DecodeBlockFromUncompressed
 	default:
 		return nil, errors.New("unrecognized blob version")

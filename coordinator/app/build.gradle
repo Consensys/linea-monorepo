@@ -41,8 +41,6 @@ dependencies {
   implementation project(':coordinator:persistence:batch')
   implementation project(':coordinator:persistence:feehistory')
   implementation project(':coordinator:persistence:db-common')
-  implementation project(":jvm-libs:linea:teku-execution-client")
-  implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
 
   implementation project(':coordinator:ethereum:gas-pricing:static-cap')
   implementation project(':coordinator:ethereum:gas-pricing:dynamic-cap')
@@ -66,8 +64,10 @@ dependencies {
   implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
   implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
   testImplementation "org.apache.logging.log4j:log4j-slf4j2-impl:${libs.versions.log4j.get()}"
+  testImplementation project(':jvm-libs:generic:serialization:jackson')
+  testImplementation testFixtures(project(':jvm-libs:linea:core:domain-models'))
+  testImplementation testFixtures(project(':jvm-libs:generic:json-rpc'))
   testImplementation project(':coordinator:ethereum:test-utils')
-  testImplementation project(':jvm-libs:linea:testing:teku-helper')
   testImplementation "io.vertx:vertx-junit5"
 }
 
@@ -79,10 +79,10 @@ jar {
   archiveBaseName = 'coordinator'
   manifest {
     attributes(
-      'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
-      'Main-Class': 'net.consensys.zkevm.coordinator.app.CoordinatorAppMain',
-      'Multi-Release': 'true'
-    )
+        'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
+        'Main-Class': 'net.consensys.zkevm.coordinator.app.CoordinatorAppMain',
+        'Multi-Release': 'true'
+        )
   }
 }
 
@@ -92,20 +92,24 @@ distributions {
   }
 }
 
-tasks.distTar {
-  // we don't need the tar distribution
-  onlyIf { false }
-}
-
 run {
   workingDir = rootProject.projectDir
   jvmArgs = [
     "-Dvertx.configurationFile=config/coordinator/vertx-options.json",
     "-Dlog4j2.configurationFile=config/coordinator/log4j2-dev.xml"
   ] + System.properties.entrySet()
-    .findAll { it.key.startsWith("config") }
-    .collect { "-D${it.key}=${it.value}" }
-  args = ["--traces-limits", "config/common/traces-limits-v1.toml", "--smart-contract-errors", "config/common/smart-contract-errors.toml", "--gas-price-cap-time-of-day-multipliers", "config/common/gas-price-cap-time-of-day-multipliers.toml", "config/coordinator/coordinator-docker.config.toml", "config/coordinator/coordinator-local-dev.config.overrides.toml"]
+  .findAll { it.key.startsWith("config") }
+  .collect { "-D${it.key}=${it.value}" }
+  args = [
+    "--traces-limits",
+    "config/common/traces-limits-v1.toml",
+    "--smart-contract-errors",
+    "config/common/smart-contract-errors.toml",
+    "--gas-price-cap-time-of-day-multipliers",
+    "config/common/gas-price-cap-time-of-day-multipliers.toml",
+    "config/coordinator/coordinator-docker.config.toml",
+    "config/coordinator/coordinator-local-dev.config.overrides.toml"
+  ]
 }
 
 test {

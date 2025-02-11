@@ -2,6 +2,8 @@ plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
 }
 
+description="Linea state manager client"
+
 dependencies {
   api project(':jvm-libs:linea:core:domain-models')
   api project(':jvm-libs:linea:core:metrics')
@@ -17,6 +19,7 @@ dependencies {
   implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
 
   testImplementation(project(":jvm-libs:linea:testing:file-system"))
+  testImplementation project(':jvm-libs:linea:metrics:micrometer')
   testImplementation "io.vertx:vertx-junit5"
   testImplementation "com.github.tomakehurst:wiremock-jre8:${libs.versions.wiremock.get()}"
 }

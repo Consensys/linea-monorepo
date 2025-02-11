@@ -13,6 +13,7 @@ dependencies {
 
   testImplementation("io.vertx:vertx-junit5")
   testImplementation "com.github.tomakehurst:wiremock-jre8:${libs.versions.wiremock.get()}"
+  testImplementation project(':jvm-libs:linea:metrics:micrometer')
 
   testImplementation project(':coordinator:clients:smart-contract-client')
 }
@@ -32,19 +33,12 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
-
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    dependsOn(":localStackComposeUp")
-}
-
-
-
-test {
+task integrationTest(type: Test) { test ->
+  description = "Runs integration tests."
+  group = "verification"
   useJUnitPlatform()
+
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  dependsOn(":localStackComposeUp")
 }

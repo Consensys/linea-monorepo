@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   run-tests:
-    runs-on: [self-hosted, ubuntu-22.04, X64, large]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     name: Postman & SDK tests
     steps:
       - name: Checkout
@@ -24,4 +24,5 @@ jobs:
         run: |
           pnpm run -F ./ts-libs/linea-native-libs build;
           pnpm run -F ./sdk build;
+          pnpm run -F ./postman test;
           pnpm run -F ./sdk test;

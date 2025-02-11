@@ -9,6 +9,7 @@ dependencies {
   implementation(project(":coordinator:core"))
   implementation(project(":coordinator:clients:smart-contract-client"))
   implementation(project(":jvm-libs:linea:web3j-extensions"))
+  implementation(testFixtures(project(":jvm-libs:linea:web3j-extensions")))
   implementation(project(":coordinator:ethereum:common"))
   implementation(project(":jvm-libs:linea:testing:file-system"))
   implementation("org.web3j:core:${libs.versions.web3j.get()}") {
@@ -34,27 +35,26 @@ sourceSets {
   }
 }
 
-task integrationTest(type: Test) {
-  test ->
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
+task integrationTest(type: Test) { test ->
+  description = "Runs integration tests."
+  group = "verification"
+  useJUnitPlatform()
 
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  classpath = sourceSets.integrationTest.runtimeClasspath
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    dependsOn(":localStackComposeUp")
-    testLogging {
-      events TestLogEvent.FAILED,
+  dependsOn(":localStackComposeUp")
+  testLogging {
+    events TestLogEvent.FAILED,
         TestLogEvent.SKIPPED,
         TestLogEvent.STANDARD_ERROR,
         TestLogEvent.STARTED,
         TestLogEvent.PASSED
-      exceptionFormat TestExceptionFormat.FULL
-      showCauses true
-      showExceptions true
-      showStackTraces true
-      // set showStandardStreams if you need to see test logs
-      showStandardStreams true
-    }
+    exceptionFormat TestExceptionFormat.FULL
+    showCauses true
+    showExceptions true
+    showStackTraces true
+    // set showStandardStreams if you need to see test logs
+    showStandardStreams true
+  }
 }

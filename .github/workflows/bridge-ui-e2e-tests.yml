@@ -6,15 +6,17 @@ on:
       - main
     paths:
       - 'bridge-ui/**'
+      - '!bridge-ui/**/*.md'
   push:
     branches:
       - main
     paths:
       - 'bridge-ui/**'
+      - '!bridge-ui/**/*.md'
 
 jobs:
   run-e2e-tests:
-    runs-on: [self-hosted, ubuntu-20.04, X64, medium]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,7 +58,7 @@ jobs:
           NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
 
       - name: Archive Playwright report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report-headful

@@ -129,7 +129,7 @@ class TransactionExclusionApp(config: AppConfig) {
       Api(
         configs = config.api,
         vertx = vertx,
-        meterRegistry = meterRegistry,
+        metricsFacade = MicrometerMetricsFacade(meterRegistry),
         transactionExclusionService = transactionExclusionService
       )
   }
@@ -159,7 +159,7 @@ class TransactionExclusionApp(config: AppConfig) {
     readPipeliningLimit: Int,
     skipMigration: Boolean = false
   ): SqlClient {
-    val dbVersion = "2"
+    val dbVersion = "3"
     if (!skipMigration) {
       Db.applyDbMigrations(
         host = connectionConfig.host,
