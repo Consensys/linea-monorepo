@@ -2,13 +2,14 @@
 set -euo pipefail
 
 genesis_time=""
+current_time_delay_in_sec=""
 l1_genesis=""
 network_config=""
 mnemonics=""
 output_dir=""
 
 usage() {
-  echo "Usage: $0 --genesis-time <timestamp> --l1-genesis <path to l1 genesis file> --network-config <path to network config file> --mnemonics <path to mnemonics file> --output-dir <output directory>"
+  echo "Usage: $0 --genesis-time <timestamp> --current-time-delay-in-sec <seconds to delay current timestamp if genesis-time is not given> --l1-genesis <path to l1 genesis file> --network-config <path to network config file> --mnemonics <path to mnemonics file> --output-dir <output directory>"
   exit 1
 }
 
@@ -16,6 +17,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --genesis-time)
       genesis_time="$2"
+      shift 2
+      ;;
+    --current-time-delay-in-sec)
+      current_time_delay_in_sec="$2"
       shift 2
       ;;
     --l1-genesis)
@@ -41,9 +46,23 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [ -z "$genesis_time" ] || [ -z "$l1_genesis" ] || [ -z "$network_config" ] || [ -z "$mnemonics" ] || [ -z "$output_dir" ]; then
+if [ -z "$l1_genesis" ] || [ -z "$network_config" ] || [ -z "$mnemonics" ] || [ -z "$output_dir" ]; then
   echo "Error: Missing required argument."
   usage
+fi
+
+if [ -z "$genesis_time" ]; then
+  if [ -z "$current_time_delay_in_sec" ]; then
+    current_time_delay_in_sec="3"
+  fi 
+  genesis_time=$(
+    OS=$(uname);
+    if [ $OS = "Linux" ]; then
+      date -d "+$current_time_delay_in_sec seconds" +%s;
+    elif [ $OS = "Darwin" ]; then
+      date -v +"$current_time_delay_in_sec"S +%s;
+    fi
+  )
 fi
 
 echo "Genesis time set to: $genesis_time"
