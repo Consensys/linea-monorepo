@@ -121,13 +121,13 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 	comp.InsertGlobal(
 		0,
 		ifaces.QueryID(name+"_ROM_IS_SORTED"),
-		sym.Mul(ch.IsActive, romDecreased),
+		sym.Mul(ch.RomOngoing, romDecreased),
 	)
 
 	comp.InsertGlobal(
 		0,
 		ifaces.QueryID(name+"_STATE_SUMMARY_IS_SORTED"),
-		sym.Mul(ch.IsActive, stateSumDecreased),
+		sym.Mul(ch.StateSumOngoing, stateSumDecreased),
 	)
 
 	// This constraint ensures that the state summary cursor. Is correctly
@@ -137,10 +137,10 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 	// only increase or stay constant. Therefore, enforcing the constant
 	//
 	// 	switch {
-	// 	case IsActive == 0:
-	// 		// No constraints applied
 	// 	case IsSSOngoing == 0:
-	// 		assert ssMustBeConstant == 1
+	// 		// No constraints applied
+	// 	case IsRomOnGoing == 0:
+	// 		assert ssMustBeConstant == 0
 	// 	case ss > rom:
 	// 		assert ssMustBeConstant == 1
 	// 	else:
@@ -152,17 +152,13 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 		0,
 		ifaces.QueryID(name+"_STATE_SUM_STAY_SAME"),
 		sym.Mul(
-			ch.IsActive,
+			column.Shift(ch.StateSumOngoing, 1),
 			sym.Sub(
 				column.Shift(ch.StateSumIsConst, 1),
 				sym.Mul(
 					ch.RomOngoing,
 					sym.Add(
-						sym.Sub(1, ch.StateSumOngoing),
-						sym.Mul(
-							ch.StateSumOngoing,
-							ch.StateSumIsGtRom,
-						),
+						ch.StateSumIsGtRom,
 					),
 				),
 			),
@@ -173,17 +169,13 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 		0,
 		ifaces.QueryID(name+"_ROM_STAY_SAME"),
 		sym.Mul(
-			ch.IsActive,
+			column.Shift(ch.RomOngoing, 1),
 			sym.Sub(
-				ch.RomIsConst,
+				column.Shift(ch.RomIsConst, 1),
 				sym.Mul(
-					column.Shift(ch.StateSumOngoing, -1),
+					ch.StateSumOngoing,
 					sym.Add(
-						sym.Sub(1, column.Shift(ch.RomOngoing, -1)),
-						sym.Mul(
-							column.Shift(ch.RomOngoing, -1),
-							column.Shift(ch.StateSumIsLtRom, -1),
-						),
+						ch.StateSumIsLtRom,
 					),
 				),
 			),
@@ -223,7 +215,7 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 			ss.Account.Initial.Exists,
 			ss.Account.Final.Exists,
 		},
-		ch.IsActive,
+		ch.StateSumOngoing,
 	)
 
 	comp.InsertInclusionDoubleConditional(
@@ -239,7 +231,7 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 			ss.Account.Initial.KeccakCodeHash.Hi,
 			ss.Account.Initial.KeccakCodeHash.Lo,
 		},
-		ch.IsActive,
+		ch.StateSumOngoing,
 		ss.Account.Initial.Exists,
 	)
 
@@ -256,7 +248,7 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 			ss.Account.Final.KeccakCodeHash.Hi,
 			ss.Account.Final.KeccakCodeHash.Lo,
 		},
-		ch.IsActive,
+		ch.StateSumOngoing,
 		ss.Account.Final.Exists,
 	)
 
@@ -273,7 +265,7 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 			mch.CodeHashHi,
 			mch.CodeHashLo,
 		},
-		ch.IsActive,
+		ch.RomOngoing,
 		mch.IsForConsistency,
 	)
 
@@ -291,7 +283,7 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 			ch.RomKeccak.Lo,
 		},
 		mch.IsForConsistency,
-		ch.IsActive,
+		ch.RomOngoing,
 	)
 
 	return ch

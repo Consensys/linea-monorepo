@@ -111,7 +111,10 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		if res := a[1].Cmp(&b[1]); res != 0 {
 			return res
 		}
-		return a[2].Cmp(&b[2])
+		if res := a[2].Cmp(&b[2]); res != 0 {
+			return res
+		}
+		return a[0].Cmp(&b[0])
 	}
 
 	slices.SortFunc(ssData, cmp)
@@ -145,8 +148,11 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		nbRowMax     = len(romData) + len(ssData)
 	)
 
-assign_loop:
 	for i := 0; i < nbRowMax; i++ {
+
+		if cSS >= len(ssData) && cRom >= len(romData) {
+			break
+		}
 
 		// importantly, we have to account for the fact that romData and/or ssData
 		// can perfectly be empty slices. This can happen when a block is full of
@@ -171,32 +177,31 @@ assign_loop:
 		assignment.RomMiMC.PushField(romRow[0])
 		assignment.RomKeccak.Hi.PushField(romRow[1])
 		assignment.RomKeccak.Lo.PushField(romRow[2])
-		assignment.RomOngoing.PushBoolean(cRom < len(romData)-1)
+		assignment.RomOngoing.PushBoolean(cRom < len(romData))
 		assignment.StateSumMiMC.PushField(ssRow[0])
 		assignment.StateSumKeccak.Hi.PushField(ssRow[1])
 		assignment.StateSumKeccak.Lo.PushField(ssRow[2])
-		assignment.StateSumOngoing.PushBoolean(cSS < len(ssData)-1)
+		assignment.StateSumOngoing.PushBoolean(cSS < len(ssData))
 
-		var (
-			isLastSS  = cSS >= len(ssData)-1
-			isLastRom = cRom >= len(romData)-1
-		)
+		newCRom, newCSS := cRom, cSS
 
-		switch {
-		case isLastSS && isLastRom:
-			break assign_loop
-		case !isLastSS && isLastRom:
-			cSS++
-		case isLastSS && !isLastRom:
-			cRom++
-		case romCmpSs < 0:
-			cRom++
-		case romCmpSs == 0:
-			cRom++
-			cSS++
-		case romCmpSs > 0:
-			cSS++
+		if cRom < len(romData) && romCmpSs <= 0 {
+			newCRom = cRom + 1
 		}
+
+		if cSS < len(ssData) && romCmpSs >= 0 {
+			newCSS = cSS + 1
+		}
+
+		if cRom < len(romData) && newCSS >= len(ssData) {
+			newCRom = cRom + 1
+		}
+
+		if cSS < len(ssData) && newCRom >= len(romData) {
+			newCSS = cSS + 1
+		}
+
+		cRom, cSS = newCRom, newCSS
 	}
 
 	assignment.IsActive.PadAndAssign(run, field.Zero())

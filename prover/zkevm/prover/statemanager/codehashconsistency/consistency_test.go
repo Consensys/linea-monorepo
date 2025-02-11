@@ -37,20 +37,23 @@ func TestConsistency(t *testing.T) {
 				Initial: statesummary.Account{
 					KeccakCodeHash: common.NewHiLoColumns(b.CompiledIOP, sizeStateSummary, "SS_INITIAL_KECCAK"),
 					MiMCCodeHash:   b.InsertCommit(0, "SS_INITIAL_MIMC", sizeStateSummary),
+					Exists:         b.InsertCommit(0, "SS_INITIAL_EXISTS", sizeStateSummary),
 				},
 				Final: statesummary.Account{
 					KeccakCodeHash: common.NewHiLoColumns(b.CompiledIOP, sizeStateSummary, "SS_FINAL_KECCAK"),
 					MiMCCodeHash:   b.InsertCommit(0, "SS_FINAL_MIMC", sizeStateSummary),
+					Exists:         b.InsertCommit(0, "SS_FINAL_EXISTS", sizeStateSummary),
 				},
 			},
 		}
 
 		mimcCodeHash = &mimccodehash.Module{
-			IsActive:   b.InsertCommit(0, "MCH_IS_ACTIVE", sizeMimcCodeHash),
-			IsHashEnd:  b.InsertCommit(0, "MCH_IS_HASH_END", sizeMimcCodeHash),
-			NewState:   b.InsertCommit(0, "MCH_NEW_STATE", sizeMimcCodeHash),
-			CodeHashHi: b.InsertCommit(0, "MCH_KECCAK_HI", sizeMimcCodeHash),
-			CodeHashLo: b.InsertCommit(0, "MCH_KECCAK_LO", sizeMimcCodeHash),
+			IsActive:         b.InsertCommit(0, "MCH_IS_ACTIVE", sizeMimcCodeHash),
+			IsHashEnd:        b.InsertCommit(0, "MCH_IS_HASH_END", sizeMimcCodeHash),
+			NewState:         b.InsertCommit(0, "MCH_NEW_STATE", sizeMimcCodeHash),
+			CodeHashHi:       b.InsertCommit(0, "MCH_KECCAK_HI", sizeMimcCodeHash),
+			CodeHashLo:       b.InsertCommit(0, "MCH_KECCAK_LO", sizeMimcCodeHash),
+			IsForConsistency: b.InsertCommit(0, "MCH_IS_FOR_CONSISTENCY", sizeMimcCodeHash),
 		}
 
 		consistency = NewModule(b.CompiledIOP, "CONSISTENCY", stateSummary, mimcCodeHash)
@@ -66,6 +69,7 @@ func TestConsistency(t *testing.T) {
 		run.AssignColumn(mimcCodeHash.NewState.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("NEW_STATE"), sizeMimcCodeHash))
 		run.AssignColumn(mimcCodeHash.CodeHashHi.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("KECCAK_HI"), sizeMimcCodeHash))
 		run.AssignColumn(mimcCodeHash.CodeHashLo.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("KECCAK_LO"), sizeMimcCodeHash))
+		run.AssignColumn(mimcCodeHash.IsForConsistency.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_FOR_CONSISTENCY"), sizeMimcCodeHash))
 
 		run.AssignColumn(stateSummary.IsActive.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("IS_ACTIVE"), sizeStateSummary))
 		run.AssignColumn(stateSummary.IsStorage.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("IS_STORAGE"), sizeStateSummary))
@@ -75,6 +79,8 @@ func TestConsistency(t *testing.T) {
 		run.AssignColumn(stateSummary.Account.Final.KeccakCodeHash.Hi.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_KECCAK_HI"), sizeStateSummary))
 		run.AssignColumn(stateSummary.Account.Initial.KeccakCodeHash.Lo.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_KECCAK_LO"), sizeStateSummary))
 		run.AssignColumn(stateSummary.Account.Final.KeccakCodeHash.Lo.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_KECCAK_LO"), sizeStateSummary))
+		run.AssignColumn(stateSummary.Account.Initial.Exists.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_EXISTS"), sizeStateSummary))
+		run.AssignColumn(stateSummary.Account.Final.Exists.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_EXISTS"), sizeStateSummary))
 
 		consistency.Assign(run)
 	}
