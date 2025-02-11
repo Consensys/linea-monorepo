@@ -120,6 +120,7 @@ func TestExecBootstrapInFileRegexp(t *testing.T) {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
 		conf.ExecBootstrap.CanRunFullLarge = c.Ext == "large"
+		conf.ExecBootstrap.RequestsRootDir = []string{""}
 
 		def, err := ExecBootstrapDefinition(&conf)
 		assert.NoError(t, err)
@@ -243,6 +244,7 @@ func TestExecGLInFileRegexp(t *testing.T) {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
 		conf.ExecGL.CanRunFullLarge = c.Ext == "large"
+		conf.ExecGL.RequestsRootDir = []string{""}
 
 		def, err := ExecGLDefinition(&conf)
 		assert.NoError(t, err)
@@ -453,6 +455,7 @@ func TestExecRndBeaconInFileRegexp(t *testing.T) {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
 		conf.ExecRndBeacon.CanRunFullLarge = c.Ext == "large"
+		conf.ExecRndBeacon.GL.RequestsRootDir = []string{"", ""}
 
 		def, err := ExecRndBeaconDefinition(&conf)
 		assert.NoError(t, err)
@@ -568,6 +571,7 @@ func TestExecLPPInFileRegexp(t *testing.T) {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
 		conf.ExecLPP.CanRunFullLarge = c.Ext == "large"
+		conf.ExecLPP.RequestsRootDir = []string{""}
 
 		def, err := ExecLPPDefinition(&conf)
 		assert.NoError(t, err)
@@ -811,6 +815,9 @@ func TestExecConglomerationInFileRegexp(t *testing.T) {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
 		conf.ExecConglomeration.CanRunFullLarge = c.Ext == "large"
+		conf.ExecConglomeration.GL.RequestsRootDir = []string{""}
+		conf.ExecConglomeration.LPP.RequestsRootDir = []string{""}
+		conf.ExecConglomeration.BootstrapMetadata.RequestsRootDir = []string{""}
 
 		def, err := ExecConglomerationDefinition(&conf)
 		assert.NoError(t, err)

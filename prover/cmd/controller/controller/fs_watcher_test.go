@@ -56,36 +56,36 @@ func TestFileWatcherM(t *testing.T) {
 		Skip  bool
 	}{
 		{
-			FName: []string{createTestInputFile(eFrom(), 0, 1, execJob, exitCode)},
+			FName: []string{createTestInputFile(eFrom(0), 0, 1, execJob, exitCode)},
 		},
 		{
 			Skip:  true, // wrong directory
-			FName: []string{createTestInputFile(eFrom(), 0, 1, aggregationJob, exitCode)},
+			FName: []string{createTestInputFile(eFrom(0), 0, 1, aggregationJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(cFrom(), 0, 1, compressionJob, exitCode)},
+			FName: []string{createTestInputFile(cFrom(0), 0, 1, compressionJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(eFrom(), 1, 2, execJob, exitCode)},
+			FName: []string{createTestInputFile(eFrom(0), 1, 2, execJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(cFrom(), 1, 2, compressionJob, exitCode)},
+			FName: []string{createTestInputFile(cFrom(0), 1, 2, compressionJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(aFrom(), 0, 2, aggregationJob, exitCode)},
+			FName: []string{createTestInputFile(aFrom(0), 0, 2, aggregationJob, exitCode)},
 		},
 		{
 			Skip:  true, // for large only
-			FName: []string{createTestInputFile(eFrom(), 2, 4, execJob, exitCode, forLarge)},
+			FName: []string{createTestInputFile(eFrom(0), 2, 4, execJob, exitCode, forLarge)},
 		},
 		{
-			FName: []string{createTestInputFile(eFrom(), 4, 5, execJob, exitCode)},
+			FName: []string{createTestInputFile(eFrom(0), 4, 5, execJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(cFrom(), 2, 5, compressionJob, exitCode)},
+			FName: []string{createTestInputFile(cFrom(0), 2, 5, compressionJob, exitCode)},
 		},
 		{
-			FName: []string{createTestInputFile(aFrom(), 2, 5, aggregationJob, exitCode)},
+			FName: []string{createTestInputFile(aFrom(0), 2, 5, aggregationJob, exitCode)},
 		},
 	}
 
@@ -111,7 +111,7 @@ func TestFileWatcherL(t *testing.T) {
 	_, confL := setupFsTest(t)
 
 	// Create a list of files
-	eFrom := confL.Execution.DirFrom()
+	eFrom := confL.Execution.DirFrom(0)
 
 	exitCode := 0 // we are not interested in the exit code here
 
@@ -251,55 +251,56 @@ exit $CODE
 
 		Execution: config.Execution{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execution),
+				RequestsRootDir: []string{path.Join(testDir, proverM, execution)},
 			},
 		},
 		BlobDecompression: config.BlobDecompression{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, compression),
+				RequestsRootDir: []string{path.Join(testDir, proverM, compression)},
 			},
 		},
 		Aggregation: config.Aggregation{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, aggregation),
+				RequestsRootDir: []string{path.Join(testDir, proverM, aggregation)},
 			},
 		},
 
-		// Limitless prover components
-		ExecBootstrap: config.Execution{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execBootstrap),
+		/*
+			// Limitless prover components
+			ExecBootstrap: config.Execution{
+				WithRequestDir: config.WithRequestDir{
+					RequestsRootDir:  path.Join(testDir, proverM, execBootstrap),
+				},
 			},
-		},
-		ExecGL: config.Execution{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execBootstrapGL),
+			ExecGL: config.Execution{
+				WithRequestDir: config.WithRequestDir{
+					RequestsRootDir: path.Join(testDir, proverM, execBootstrapGL),
+				},
 			},
-		},
-		ExecRndBeacon: config.RndBeacon{
-			GL: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execGLRndBeacon),
+			ExecRndBeacon: config.RndBeacon{
+				GL: config.WithRequestDir{
+					RequestsRootDir: path.Join(testDir, proverM, execGLRndBeacon),
+				},
+				BootstrapMetadata: config.WithRequestDir{
+					RequestsRootDir: path.Join(testDir, proverM, execBootstrapMetadata),
+				},
 			},
-			BootstrapMetadata: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execBootstrapMetadata),
+			ExecLPP: config.Execution{
+				WithRequestDir: config.WithRequestDir{
+					RequestsRootDir: path.Join(testDir, proverM, execRndbeaconLPP),
+				},
 			},
-		},
-		ExecLPP: config.Execution{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execRndbeaconLPP),
-			},
-		},
-		ExecConglomeration: config.Conglomeration{
-			GL: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execGLConglomeration),
-			},
-			LPP: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execLPPConglomeration),
-			},
-			BootstrapMetadata: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execBootstrapMetadata),
-			},
-		},
+			ExecConglomeration: config.Conglomeration{
+				GL: config.WithRequestDir{
+					RequestsRootDir: path.Join(testDir, proverM, execGLConglomeration),
+				},
+				LPP: config.WithRequestDir{
+					RequestsRootDir: path.Join(testDir, proverM, execLPPConglomeration),
+				},
+				BootstrapMetadata: config.WithRequestDir{
+					RequestsRootDir: path.Join(testDir, proverM, execBootstrapMetadata),
+				},
+			}, */
 	}
 
 	_confL := *confM
@@ -318,47 +319,50 @@ exit $CODE
 	// wiped out after the test anyway.
 	permCode := fs.FileMode(0777)
 	err := errors.Join(
-		os.MkdirAll(confM.Execution.DirFrom(), permCode),
-		os.MkdirAll(confM.Execution.DirTo(), permCode),
-		os.MkdirAll(confM.Execution.DirDone(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirFrom(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirTo(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirDone(), permCode),
-		os.MkdirAll(confM.Aggregation.DirFrom(), permCode),
-		os.MkdirAll(confM.Aggregation.DirTo(), permCode),
-		os.MkdirAll(confM.Aggregation.DirDone(), permCode),
+		os.MkdirAll(confM.Execution.DirFrom(0), permCode),
+		os.MkdirAll(confM.Execution.DirTo(0), permCode),
+		os.MkdirAll(confM.Execution.DirDone(0), permCode),
+		os.MkdirAll(confM.BlobDecompression.DirFrom(0), permCode),
+		os.MkdirAll(confM.BlobDecompression.DirTo(0), permCode),
+		os.MkdirAll(confM.BlobDecompression.DirDone(0), permCode),
+		os.MkdirAll(confM.Aggregation.DirFrom(0), permCode),
+		os.MkdirAll(confM.Aggregation.DirTo(0), permCode),
+		os.MkdirAll(confM.Aggregation.DirDone(0), permCode),
 
-		// Add stuff for Limitless prover
-		os.MkdirAll(confM.ExecBootstrap.DirFrom(), permCode),
-		os.MkdirAll(confM.ExecBootstrap.DirTo(), permCode),
-		os.MkdirAll(confM.ExecBootstrap.DirDone(), permCode),
+		/*
+			// Add stuff for Limitless prover
+			os.MkdirAll(confM.ExecBootstrap.DirFrom(), permCode),
+			os.MkdirAll(confM.ExecBootstrap.DirTo(), permCode),
+			os.MkdirAll(confM.ExecBootstrap.DirDone(), permCode),
 
-		os.MkdirAll(confM.ExecGL.DirFrom(), permCode),
-		os.MkdirAll(confM.ExecGL.DirTo(), permCode),
-		os.MkdirAll(confM.ExecGL.DirDone(), permCode),
+			os.MkdirAll(confM.ExecGL.DirFrom(), permCode),
+			os.MkdirAll(confM.ExecGL.DirTo(), permCode),
+			os.MkdirAll(confM.ExecGL.DirDone(), permCode),
 
-		os.MkdirAll(confM.ExecRndBeacon.GL.DirFrom(), permCode),
-		os.MkdirAll(confM.ExecRndBeacon.GL.DirTo(), permCode),
-		os.MkdirAll(confM.ExecRndBeacon.GL.DirDone(), permCode),
-		os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirFrom(), permCode),
-		os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirTo(), permCode),
-		os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirDone(), permCode),
+			os.MkdirAll(confM.ExecRndBeacon.GL.DirFrom(), permCode),
+			os.MkdirAll(confM.ExecRndBeacon.GL.DirTo(), permCode),
+			os.MkdirAll(confM.ExecRndBeacon.GL.DirDone(), permCode),
+			os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirFrom(), permCode),
+			os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirTo(), permCode),
+			os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirDone(), permCode),
 
-		os.MkdirAll(confM.ExecLPP.DirFrom(), permCode),
-		os.MkdirAll(confM.ExecLPP.DirTo(), permCode),
-		os.MkdirAll(confM.ExecLPP.DirDone(), permCode),
+			os.MkdirAll(confM.ExecLPP.DirFrom(), permCode),
+			os.MkdirAll(confM.ExecLPP.DirTo(), permCode),
+			os.MkdirAll(confM.ExecLPP.DirDone(), permCode),
 
-		os.MkdirAll(confM.ExecConglomeration.GL.DirFrom(), permCode),
-		os.MkdirAll(confM.ExecConglomeration.GL.DirTo(), permCode),
-		os.MkdirAll(confM.ExecConglomeration.GL.DirDone(), permCode),
+			os.MkdirAll(confM.ExecConglomeration.GL.DirFrom(), permCode),
+			os.MkdirAll(confM.ExecConglomeration.GL.DirTo(), permCode),
+			os.MkdirAll(confM.ExecConglomeration.GL.DirDone(), permCode),
 
-		os.MkdirAll(confM.ExecConglomeration.LPP.DirFrom(), permCode),
-		os.MkdirAll(confM.ExecConglomeration.LPP.DirTo(), permCode),
-		os.MkdirAll(confM.ExecConglomeration.LPP.DirDone(), permCode),
+			os.MkdirAll(confM.ExecConglomeration.LPP.DirFrom(), permCode),
+			os.MkdirAll(confM.ExecConglomeration.LPP.DirTo(), permCode),
+			os.MkdirAll(confM.ExecConglomeration.LPP.DirDone(), permCode),
 
-		os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirFrom(), permCode),
-		os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirTo(), permCode),
-		os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirDone(), permCode),
+			os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirFrom(), permCode),
+			os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirTo(), permCode),
+			os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirDone(), permCode),
+
+		*/
 	)
 
 	if err != nil {

@@ -289,19 +289,19 @@ type Aggregation struct {
 }
 
 type WithRequestDir struct {
-	RequestsRootDir string `mapstructure:"requests_root_dir" validate:"required"`
+	RequestsRootDir []string `mapstructure:"requests_root_dir" validate:"required"`
 }
 
-func (cfg *WithRequestDir) DirFrom() string {
-	return path.Join(cfg.RequestsRootDir, RequestsFromSubDir)
+func (cfg *WithRequestDir) DirFrom(idx int) string {
+	return path.Join(cfg.RequestsRootDir[idx], RequestsFromSubDir)
 }
 
-func (cfg *WithRequestDir) DirTo() string {
-	return path.Join(cfg.RequestsRootDir, RequestsToSubDir)
+func (cfg *WithRequestDir) DirTo(idx int) string {
+	return path.Join(cfg.RequestsRootDir[idx], RequestsToSubDir)
 }
 
-func (cfg *WithRequestDir) DirDone() string {
-	return path.Join(cfg.RequestsRootDir, RequestsDoneSubDir)
+func (cfg *WithRequestDir) DirDone(idx int) string {
+	return path.Join(cfg.RequestsRootDir[idx], RequestsDoneSubDir)
 }
 
 type PublicInput struct {

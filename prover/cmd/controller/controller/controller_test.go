@@ -17,9 +17,9 @@ func TestRunCommand(t *testing.T) {
 	confM, confL := setupFsTest(t)
 
 	var (
-		eFrom   string = confM.Execution.DirFrom()
-		cFrom   string = confM.BlobDecompression.DirFrom()
-		aFrom   string = confM.Aggregation.DirFrom()
+		eFrom   string = confM.Execution.DirFrom(0)
+		cFrom   string = confM.BlobDecompression.DirFrom(0)
+		aFrom   string = confM.Aggregation.DirFrom(0)
 		exit0   int    = 0
 		exit2   int    = 2
 		exit10  int    = 10
@@ -73,11 +73,11 @@ func TestRunCommand(t *testing.T) {
 		Entries []string
 	}{
 		{
-			Path:    confM.Execution.DirFrom(),
+			Path:    confM.Execution.DirFrom(0),
 			Entries: []string{}, // all files should be processed
 		},
 		{
-			Path: confM.Execution.DirDone(),
+			Path: confM.Execution.DirDone(0),
 			Entries: []string{
 				"0-1-etv0.1.2-stv1.2.3-getZkProof.json.success",
 				"1-2-etv0.1.2-stv1.2.3-getZkProof.json.large.success",
@@ -92,7 +92,7 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path: confM.Execution.DirTo(),
+			Path: confM.Execution.DirTo(0),
 			Entries: []string{
 				"0-1-getZkProof.json",
 				"1-2-getZkProof.json",
@@ -101,11 +101,11 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path:    confM.BlobDecompression.DirFrom(),
+			Path:    confM.BlobDecompression.DirFrom(0),
 			Entries: []string{},
 		},
 		{
-			Path: confM.BlobDecompression.DirDone(),
+			Path: confM.BlobDecompression.DirDone(0),
 			Entries: []string{
 				"0-2-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json.success",
 				"2-4-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json.failure.code_2",
@@ -114,17 +114,17 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path: confM.BlobDecompression.DirTo(),
+			Path: confM.BlobDecompression.DirTo(0),
 			Entries: []string{
 				"0-2-getZkBlobCompressionProof.json",
 			},
 		},
 		{
-			Path:    confM.Aggregation.DirFrom(),
+			Path:    confM.Aggregation.DirFrom(0),
 			Entries: []string{},
 		},
 		{
-			Path: confM.Aggregation.DirDone(),
+			Path: confM.Aggregation.DirDone(0),
 			Entries: []string{
 				"0-2-deadbeef57-getZkAggregatedProof.json.success",
 				"2-4-deadbeef57-getZkAggregatedProof.json.failure.code_2",
@@ -133,7 +133,7 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path:    confM.Aggregation.DirTo(),
+			Path:    confM.Aggregation.DirTo(0),
 			Entries: []string{"0-2-deadbeef57-getZkAggregatedProof.json"},
 		},
 	}

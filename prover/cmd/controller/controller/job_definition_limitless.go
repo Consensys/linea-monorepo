@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 const (
@@ -55,7 +56,7 @@ func ExecBootstrapDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Input files
-	reqDirs := []string{conf.ExecBootstrap.RequestsRootDir}
+	reqDirs := conf.ExecBootstrap.RequestsRootDir
 	inputFilePatterns := []string{fmt.Sprintf(execBootstrapInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
@@ -73,7 +74,7 @@ func ExecGLDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Input files
-	reqDirs := []string{conf.ExecGL.RequestsRootDir}
+	reqDirs := conf.ExecGL.RequestsRootDir
 	inputFilePatterns := []string{fmt.Sprintf(execBootstrapGLInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
@@ -91,10 +92,7 @@ func ExecRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Input files
-	reqDirs := []string{
-		conf.ExecRndBeacon.BootstrapMetadata.RequestsRootDir,
-		conf.ExecRndBeacon.GL.RequestsRootDir,
-	}
+	reqDirs := utils.CombineRequests(conf.ExecRndBeacon.BootstrapMetadata.RequestsRootDir, conf.ExecRndBeacon.GL.RequestsRootDir)
 	inputFilePatterns := []string{
 		fmt.Sprintf(execBootstrapRndBeaconInputPattern, inpFileExt, config.FailSuffix),
 		fmt.Sprintf(execGLRndBeaconInputPattern, inpFileExt, config.FailSuffix),
@@ -115,7 +113,7 @@ func ExecLPPDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Input files
-	reqDirs := []string{conf.ExecLPP.RequestsRootDir}
+	reqDirs := conf.ExecLPP.RequestsRootDir
 	inputFilePatterns := []string{fmt.Sprintf(execLPPInputPattern, inpFileExt, config.FailSuffix)}
 
 	// Output files
@@ -133,11 +131,7 @@ func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Input files
-	reqDirs := []string{
-		conf.ExecConglomeration.BootstrapMetadata.RequestsRootDir,
-		conf.ExecConglomeration.GL.RequestsRootDir,
-		conf.ExecConglomeration.LPP.RequestsRootDir,
-	}
+	reqDirs := utils.CombineRequests(conf.ExecConglomeration.BootstrapMetadata.RequestsRootDir, conf.ExecConglomeration.GL.RequestsRootDir, conf.ExecConglomeration.LPP.RequestsRootDir)
 	inputFilePatterns := []string{
 		fmt.Sprintf(execConglomerateBootstrapDistMetadataPattern, inpFileExt, config.FailSuffix),
 		fmt.Sprintf(execConglomerateGLInputPattern, inpFileExt, config.FailSuffix),
