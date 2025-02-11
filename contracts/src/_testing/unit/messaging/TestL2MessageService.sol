@@ -73,7 +73,7 @@ contract TestL2MessageService is L2MessageService {
     revert();
   }
 
-  function simulateClaimMessageWithoutChecks(
+  function claimMessageWithoutChecks(
     address _from,
     address _to,
     uint256 _value,
