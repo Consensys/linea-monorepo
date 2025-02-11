@@ -4,7 +4,7 @@ plugins {
 }
 
 def besuArtifactGroup="io.consensys.linea-besu"
-def besuVersion="25.2-delivery46"
+def besuVersion="25.2-delivery48"
 
 dependencies {
   api("${besuArtifactGroup}:besu-datatypes:${besuVersion}") {
