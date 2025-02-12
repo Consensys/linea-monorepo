@@ -54,5 +54,7 @@
         "0xc43b869dba160a6b870cf62697079fd2fb32bcfb54826112bd4bd53ff4662aa0"
     ],
     "l2MerkleTreesDepth": 5,
-    "l2MessagingBlocksOffsets": "0x020e046f04bb0f0f0f370f6b0f890f9e0fe61002101a107f1090109f10ad10b510e710fd110f111c1323153d17902a103385388138c4"
+    "l2MessagingBlocksOffsets": "0x020e046f04bb0f0f0f370f6b0f890f9e0fe61002101a107f1090109f10ad10b510e710fd110f111c1323153d17902a103385388138c4",
+    "parentAggregationLastL1RollingHashMessageNumber": 16998,
+    "parentAggregationLastL1RollingHash": "0x14a65384fef7a424e59359ffdf2bdb6c6f1cdf077518136f02822188d95836e1"
 }
