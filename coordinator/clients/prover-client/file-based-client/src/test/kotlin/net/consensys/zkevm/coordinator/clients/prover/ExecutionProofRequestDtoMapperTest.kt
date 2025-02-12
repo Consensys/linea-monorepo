@@ -34,9 +34,10 @@ class ExecutionProofRequestDtoMapperTest {
   }
 
   @Test
-  fun `should decorate data with bridge logs and parent stateRootHash`() {
+  fun `should return request dto with correct rlp and bridge logs`() {
     val block1 = createBlock(number = 747066UL)
     val block2 = createBlock(number = 747067UL)
+    val block3 = createBlock(number = 747068UL)
     val type2StateResponse = GetZkEVMStateMerkleProofResponse(
       zkStateMerkleProof = ArrayNode(null),
       zkParentStateRootHash = ByteArrayExt.random32(),
@@ -44,12 +45,12 @@ class ExecutionProofRequestDtoMapperTest {
       zkStateManagerVersion = "2.0.0"
     )
     val generateTracesResponse = GenerateTracesResponse(
-      tracesFileName = "747066-747067-conflated-traces.json",
+      tracesFileName = "747066-747068-conflated-traces.json",
       tracesEngineVersion = "1.0.0"
     )
     val stateRoot = Random.nextBytes(32)
     val request = BatchExecutionProofRequestV1(
-      blocks = listOf(block1, block2),
+      blocks = listOf(block1, block2, block3),
       bridgeLogs = CommonTestData.bridgeLogs,
       tracesResponse = generateTracesResponse,
       type2StateData = type2StateResponse,
@@ -60,21 +61,27 @@ class ExecutionProofRequestDtoMapperTest {
 
     assertThat(requestDto.keccakParentStateRootHash).isEqualTo(stateRoot.encodeHex())
     assertThat(requestDto.zkParentStateRootHash).isEqualTo(type2StateResponse.zkParentStateRootHash.encodeHex())
-    assertThat(requestDto.conflatedExecutionTracesFile).isEqualTo("747066-747067-conflated-traces.json")
+    assertThat(requestDto.conflatedExecutionTracesFile).isEqualTo("747066-747068-conflated-traces.json")
     assertThat(requestDto.tracesEngineVersion).isEqualTo("1.0.0")
     assertThat(requestDto.type2StateManagerVersion).isEqualTo("2.0.0")
     assertThat(requestDto.zkStateMerkleProof).isEqualTo(type2StateResponse.zkStateMerkleProof)
-    assertThat(requestDto.blocksData).hasSize(2)
+    assertThat(requestDto.blocksData).hasSize(3)
     assertThat(requestDto.blocksData[0]).isEqualTo(
       RlpBridgeLogsData(
         rlp = "747066".toByteArray().encodeHex(),
-        bridgeLogs = CommonTestData.bridgeLogs
+        bridgeLogs = listOf(CommonTestData.bridgeLogs[0], CommonTestData.bridgeLogs[1])
       )
     )
     assertThat(requestDto.blocksData[1]).isEqualTo(
       RlpBridgeLogsData(
         rlp = "747067".toByteArray().encodeHex(),
         bridgeLogs = emptyList()
+      )
+    )
+    assertThat(requestDto.blocksData[2]).isEqualTo(
+      RlpBridgeLogsData(
+        rlp = "747068".toByteArray().encodeHex(),
+        bridgeLogs = listOf(CommonTestData.bridgeLogs[2])
       )
     )
   }
