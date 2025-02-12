@@ -26,7 +26,7 @@ type Tree struct {
 	// OccupiedLeaves continuously list of the occupied leaves. For the toy
 	// implementation we track all the leaves.
 	OccupiedLeaves []types.Bytes32
-	// Occupied not stores all the node with a non-trivial value in the tree.
+	// OccupiedNodes stores all the nodes with a non-trivial value in the tree.
 	//
 	// Does not include the root. (So there are 39 levels and not 40).
 	// Returns a node at a given level:
@@ -39,7 +39,7 @@ type Tree struct {
 	// It does not include the "empty root" nor the empty leaf
 	// so the first position contains the empty node for the level one.
 	// So there are 39, and not 40 levels. That way, the indexing stays
-	// consistent with "OccupiedNode"
+	// consistent with "OccupiedNodes"
 	EmptyNodes []types.Bytes32
 }
 
@@ -117,6 +117,9 @@ func (t *Tree) MustGetLeaf(pos int) types.Bytes32 {
 //
 // (for config.Depth == 40)
 func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
+	if posInLevel < 0 {
+		utils.Panic("negative position in level: %v", posInLevel)
+	}
 	switch {
 	case level == t.Config.Depth:
 		// The only logical posInLevels value is zero in this case
@@ -164,6 +167,9 @@ func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
 //
 // (for config.Depth == 40)
 func (t *Tree) updateNode(level, posInLevel int, newVal types.Bytes32) {
+	if posInLevel < 0 {
+		utils.Panic("negative position in level: %v", posInLevel)
+	}
 	switch {
 	case level == t.Config.Depth:
 		// The only logical posInLevels value is zero in this case
@@ -268,7 +274,7 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 	numLeaves := len(leaves)
 
 	// Sanity check : there should be a power of two number of leaves
-	if !utils.IsPowerOfTwo(numLeaves) || numLeaves == 0 {
+	if !utils.IsPowerOfTwo(numLeaves) {
 		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
 	}
 
