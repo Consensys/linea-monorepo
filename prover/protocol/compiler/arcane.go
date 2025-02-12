@@ -9,8 +9,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/sticker"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitch_split/splitter"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitch_split/stitcher"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -32,8 +32,8 @@ func Arcane(minStickSize, targetColSize int, noLog ...bool) func(comp *wizard.Co
 		if withLog_ {
 			logdata.Log("after-expansion")(comp)
 		}
-		sticker.Sticker(minStickSize, targetColSize)(comp)
-		splitter.SplitColumns(targetColSize)(comp)
+		stitcher.Stitcher(minStickSize, targetColSize)(comp)
+		splitter.Splitter(targetColSize)(comp)
 		if withLog_ {
 			logdata.Log("post-rectangularization")(comp)
 		}
