@@ -190,10 +190,10 @@ class SubmissionsFetchingTaskIntTest {
       queuesSizeLimit = 2
     )
       .also { it.start() }
-    val expectedAggregationsToBeFetched =
+    val expectedAggregationsAndBlobsToBeFetched =
       aggregationsAndBlobs
-        .mapNotNull { it.aggregation }
-        .filter { agg ->
+        .filter { aggAndBlobs ->
+          val agg = aggAndBlobs.aggregation!!
           val isAfterOrContainingStart = agg.startBlockNumber >= l2StartBlockNumber || agg.contains(l2StartBlockNumber)
           val isBeforeForcedStop = if (debugForceSyncStopBlockNumber != null) {
             agg.endBlockNumber < debugForceSyncStopBlockNumber
@@ -229,20 +229,18 @@ class SubmissionsFetchingTaskIntTest {
           ?: 0UL
 
         assertThat(highestFetchedBlockNumber)
-          .isGreaterThanOrEqualTo(expectedAggregationsToBeFetched.last().endBlockNumber)
+          .isGreaterThanOrEqualTo(expectedAggregationsAndBlobsToBeFetched.last().aggregation!!.endBlockNumber)
       }
 
     continueConsumming.set(false)
 
     assertThat(fetchedSubmissions.map { it.submissionEvents.dataFinalizedEvent.event.intervalString() })
-      .isEqualTo(expectedAggregationsToBeFetched.map { it.intervalString() })
+      .isEqualTo(expectedAggregationsAndBlobsToBeFetched.map { it.aggregation!!.intervalString() })
 
-//      .forEachIndexed() { sotAggregationData ->
-//        val fetchedData =
-//          fetchedSubmissions.find { it.submissionEvents.dataFinalizedEvent.event.contains(sotAggregationData) }
-//        assertThat(fetchedData).isNotNull
-//        assertFetchedData(fetchedData!!, sotAggregationData)
-//      }
+    fetchedSubmissions.forEachIndexed { index, fetchedSubmission ->
+      val sotAggAndBlobs = expectedAggregationsAndBlobsToBeFetched[index]
+        assertFetchedData(fetchedSubmission!!, sotAggAndBlobs)
+      }
   }
 
   fun assertFetchedData(
