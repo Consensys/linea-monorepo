@@ -367,7 +367,7 @@ func createLimitlessTestInputFiles(
 		fmtStrArr = []string{"%v-%v-etv0.1.2-stv1.2.3-getZkProof_RndBeacon.json"}
 	case Conglomeration:
 		fmtStrArr = []string{"%v-%v-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_DistMetadata.json",
-			"%v-%v-etv0.1.2-stv1.2.3-getZkProof_GLjson",
+			"%v-%v-etv0.1.2-stv1.2.3-getZkProof_GL.json",
 			"%v-%v-etv0.1.2-stv1.2.3-getZkProof_LPP.json"}
 	default:
 		panic("incorrect job type")

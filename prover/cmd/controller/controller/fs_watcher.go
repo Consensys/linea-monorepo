@@ -163,58 +163,14 @@ func (f *FsWatcher) lockBest(jobs []*Job) (pos int, success bool) {
 }
 
 func (fs *FsWatcher) appendMultiInputJobFromDef(jdef *JobDefinition, jobs *[]*Job, numsMatched *int) (err error) {
-
 	switch jdef.Name {
 	case jobExecRndBeacon:
-		dir1From, dir2From := jdef.dirFrom(0), jdef.dirFrom(1)
-		dir1Ent, err := lsname(dir1From)
-		if err != nil {
-			return err
-		}
-		dir2Ent, err := lsname(dir2From)
-		if err != nil {
-			return err
-		}
-		// Create a map to group files by their common prefix
-		fileMap := make(map[string][]string)
-
-		// Populate the map with files from dir1
-		for _, entry := range dir1Ent {
-			if !entry.IsDir() {
-				prefix := getCommonPrefix(entry.Name())
-				fileMap[prefix] = append(fileMap[prefix], entry.Name())
-			}
-		}
-
-		// Populate the map with files from dir2
-		for _, entry := range dir2Ent {
-			if !entry.IsDir() {
-				prefix := getCommonPrefix(entry.Name())
-				fileMap[prefix] = append(fileMap[prefix], entry.Name())
-			}
-		}
-
-		// Convert the map to the desired output format
-		for _, files := range fileMap {
-			//inputFileNames = append(inputFileNames, files)
-			job, err := NewJob(jdef, files)
-			if err != nil {
-				fs.Logger.Debugf("Found invalid files  `%v` : %v", files, err)
-				continue
-			}
-			*jobs = append(*jobs, job)
-			*numsMatched++
-
-			// Pass prometheus metrics
-			// metrics.CollectFS(jdef.Name, len(dirents), *numsMatched)
-		}
-		return nil
+		return fs.processDirectories(jdef, jobs, numsMatched, 2)
 	case jobExecCongolomeration:
-		return nil
+		return fs.processDirectories(jdef, jobs, numsMatched, 3)
 	default:
-		return fmt.Errorf("unsupported job type:%s", jdef.Name)
+		return fmt.Errorf("unsupported multi-input job type:%s", jdef.Name)
 	}
-
 }
 
 // Try appending a list of single-input jobs that are parsed from a given directory.
@@ -327,6 +283,41 @@ func lsname(dirname string) (finfos []fs.DirEntry, err error) {
 	}
 
 	return finfos, err
+}
+
+func (fs *FsWatcher) processDirectories(jdef *JobDefinition, jobs *[]*Job, numsMatched *int, numDirs int) error {
+	// Create a map to group files by their common prefix
+	fileMap := make(map[string][]string)
+
+	// Read and populate the map with files from each directory
+	for i := 0; i < numDirs; i++ {
+		dirFrom := jdef.dirFrom(i)
+		dirEnt, err := lsname(dirFrom)
+		if err != nil {
+			return err
+		}
+		for _, entry := range dirEnt {
+			if !entry.IsDir() {
+				prefix := getCommonPrefix(entry.Name())
+				fileMap[prefix] = append(fileMap[prefix], entry.Name())
+			}
+		}
+	}
+
+	// Convert the map to the desired output format
+	for _, files := range fileMap {
+		job, err := NewJob(jdef, files)
+		if err != nil {
+			fs.Logger.Debugf("Found invalid files  `%v` : %v", files, err)
+			continue
+		}
+		*jobs = append(*jobs, job)
+		*numsMatched++
+
+		// Pass prometheus metrics
+		// metrics.CollectFS(jdef.Name, len(dirents), *numsMatched)
+	}
+	return nil
 }
 
 // getCommonPrefix extracts the common prefix from a filename
