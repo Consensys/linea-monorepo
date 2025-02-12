@@ -32,6 +32,14 @@ repositories {
 
 apply plugin: 'io.spring.dependency-management'
 
+
+dependencies {
+  constraints {
+    // Temporarily locking in to avoid https://github.com/netplex/json-smart-v2/issues/240
+    api 'net.minidev:json-smart:2.4.2'
+  }
+}
+
 dependencyManagement {
   applyMavenExclusions = false
   generatedPomCustomization {
