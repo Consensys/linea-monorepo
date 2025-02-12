@@ -18,7 +18,7 @@ func CompileLPPAndGetSeed(comp *wizard.CompiledIOP, lppCompilers ...func(*wizard
 	)
 
 	// get the LPP columns from comp.
-	lppCols = append(lppCols, getLPPColumns(comp)...)
+	lppCols = append(lppCols, GetLPPColumns(comp)...)
 
 	for _, col := range comp.Columns.AllHandlesAtRound(0) {
 		oldColumns = append(oldColumns, col)
@@ -107,7 +107,7 @@ func GetLPPComp(oldComp *wizard.CompiledIOP, newLPPCols []ifaces.Column) *wizard
 	)
 
 	// get the LPP columns
-	lppCols = append(lppCols, getLPPColumns(oldComp)...)
+	lppCols = append(lppCols, GetLPPColumns(oldComp)...)
 	lppCols = append(lppCols, newLPPCols...)
 
 	for _, col := range lppCols {
@@ -117,7 +117,7 @@ func GetLPPComp(oldComp *wizard.CompiledIOP, newLPPCols []ifaces.Column) *wizard
 }
 
 // it extract LPP columns from the context of each LPP query.
-func getLPPColumns(c *wizard.CompiledIOP) []ifaces.Column {
+func GetLPPColumns(c *wizard.CompiledIOP) []ifaces.Column {
 
 	var (
 		lppColumns = []ifaces.Column{}
