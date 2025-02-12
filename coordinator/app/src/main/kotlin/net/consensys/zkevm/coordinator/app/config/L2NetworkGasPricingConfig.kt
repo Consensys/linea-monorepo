@@ -165,7 +165,6 @@ data class L2NetworkGasPricingTomlDto(
         feeHistoryBlockCount = feeHistoryBlockCount.toUInt(),
         feeHistoryRewardPercentile = feeHistoryRewardPercentile
       ),
-      jsonRpcPricingPropagationEnabled = jsonRpcPricingPropagation?.enabled == true,
       legacy = legacyGasPricingConfig,
       jsonRpcGasPriceUpdaterConfig = gasPriceUpdaterConfig,
       jsonRpcPriceUpdateInterval = priceUpdateInterval.toKotlinDuration(),

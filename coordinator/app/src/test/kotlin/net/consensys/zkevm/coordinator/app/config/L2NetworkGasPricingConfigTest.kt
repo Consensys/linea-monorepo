@@ -242,7 +242,6 @@ class L2NetworkGasPricingConfigTest {
           feeHistoryBlockCount = 50U,
           feeHistoryRewardPercentile = 15.0
         ),
-        jsonRpcPricingPropagationEnabled = true,
         legacy = L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
           naiveGasPricingCalculatorConfig = GasUsageRatioWeightedAverageFeesCalculator.Config(
             baseFeeCoefficient = 0.1,
@@ -310,7 +309,6 @@ class L2NetworkGasPricingConfigTest {
           feeHistoryBlockCount = 50U,
           feeHistoryRewardPercentile = 15.0
         ),
-        jsonRpcPricingPropagationEnabled = true,
         legacy = L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
           naiveGasPricingCalculatorConfig = null,
           legacyGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
@@ -411,7 +409,6 @@ class L2NetworkGasPricingConfigTest {
           feeHistoryBlockCount = 50U,
           feeHistoryRewardPercentile = 15.0
         ),
-        jsonRpcPricingPropagationEnabled = false,
         legacy = L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
           naiveGasPricingCalculatorConfig = null,
           legacyGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
@@ -508,7 +505,6 @@ class L2NetworkGasPricingConfigTest {
           feeHistoryBlockCount = 50U,
           feeHistoryRewardPercentile = 15.0
         ),
-        jsonRpcPricingPropagationEnabled = false,
         legacy = L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
           naiveGasPricingCalculatorConfig = null,
           legacyGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
