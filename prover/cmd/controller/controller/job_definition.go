@@ -268,9 +268,36 @@ func (jd *JobDefinition) dirTo(opIdx int) string {
 	if err := jd.isValidOutputFileIdx(opIdx); err != nil {
 		utils.Panic("dirTo:%v", err.Error())
 	}
-
 	return filepath.Join(jd.ResponsesRootDir[opIdx], config.ResponsesToSubDir)
 }
+
+/*
+
+TODO: Do it like this to avoid confusion
+func (jd *JobDefinition) dirFrom() (dirs []string) {
+	dirs = make([]string, len(jd.RequestsRootDir))
+	for ipIdx := 0; ipIdx < len(jd.RequestsRootDir); ipIdx++ {
+		dirs[ipIdx] = filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsFromSubDir)
+	}
+	return dirs
+}
+
+func (jd *JobDefinition) dirDone() []string {
+	dirs := make([]string, len(jd.RequestsRootDir))
+	for ipIdx := 0; ipIdx < len(jd.RequestsRootDir); ipIdx++ {
+		dirs[ipIdx] = filepath.Join(jd.RequestsRootDir[ipIdx], config.RequestsDoneSubDir)
+	}
+	return dirs
+}
+
+func (jd *JobDefinition) dirTo() []string {
+	dirs := make([]string, len(jd.ResponsesRootDir))
+	for opIdx := 0; opIdx < len(jd.ResponsesRootDir); opIdx++ {
+		dirs[opIdx] = filepath.Join(jd.ResponsesRootDir[opIdx], config.ResponsesToSubDir)
+	}
+	return dirs
+}
+*/
 
 func cmnExecParamsRegexp(nInputs int) []ParamsRegexp {
 	paramsRegexp := make([]ParamsRegexp, nInputs)

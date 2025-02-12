@@ -147,10 +147,11 @@ type Config struct {
 }
 
 type RndBeacon struct {
-	GL WithRequestDir `mapstructure:",squash"`
+	// GL WithRequestDir `mapstructure:",squash"`
 
-	BootstrapMetadata WithRequestDir `mapstructure:",squash"`
+	// BootstrapMetadata WithRequestDir `mapstructure:",squash"`
 
+	WithRequestDir  `mapstructure:",squash"`
 	WithResponseDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.

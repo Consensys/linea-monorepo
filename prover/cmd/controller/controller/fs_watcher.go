@@ -98,6 +98,7 @@ func (fs *FsWatcher) GetBest() (job *Job) {
 		return nil
 	}
 
+	numsMatched := 0
 	for i := range fs.JobToWatch {
 		// Don't try to pass &jdef, where jdef is a loop variable as
 		// `for i, jdef := range f.JobToWatch {...}`
@@ -105,14 +106,25 @@ func (fs *FsWatcher) GetBest() (job *Job) {
 		// of every jobs found so far and they will all be attributed to the
 		// last job definition.
 		jdef := &fs.JobToWatch[i]
-		for j := range jdef.RequestsRootDir {
-			if err := fs.appendJobFromDef(jdef, &jobs, j); err != nil {
+
+		// For multi-input jobs
+		if len(jdef.RequestsRootDir) > 1 {
+			if err := fs.appendMultiInputJobFromDef(jdef, &jobs, &numsMatched); err != nil {
 				fs.Logger.Errorf(
-					"error trying to fetch job `%v` from dir %v: %v",
-					jdef.Name, jdef.dirFrom(j), err,
+					"Got an error trying to fetch job `%v`: %v",
+					jdef.Name, err,
+				)
+			}
+		} else {
+			// For single input jobs
+			if err := fs.appendJobFromDef(jdef, &jobs, &numsMatched); err != nil {
+				fs.Logger.Errorf(
+					"Got an error trying to fetch job `%v` from dir %v: %v",
+					jdef.Name, jdef.dirFrom(0), err,
 				)
 			}
 		}
+
 	}
 
 	if len(jobs) == 0 {
@@ -150,11 +162,67 @@ func (f *FsWatcher) lockBest(jobs []*Job) (pos int, success bool) {
 	return 0, false
 }
 
-// Try appending a list of jobs that are parsed from a given directory. An error
-// is returned if the function fails to read the directory.
-func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job, ipIdx int) (err error) {
+func (fs *FsWatcher) appendMultiInputJobFromDef(jdef *JobDefinition, jobs *[]*Job, numsMatched *int) (err error) {
 
-	dirFrom := jdef.dirFrom(ipIdx)
+	switch jdef.Name {
+	case jobExecRndBeacon:
+		dir1From, dir2From := jdef.dirFrom(0), jdef.dirFrom(1)
+		dir1Ent, err := lsname(dir1From)
+		if err != nil {
+			return err
+		}
+		dir2Ent, err := lsname(dir2From)
+		if err != nil {
+			return err
+		}
+		// Create a map to group files by their common prefix
+		fileMap := make(map[string][]string)
+
+		// Populate the map with files from dir1
+		for _, entry := range dir1Ent {
+			if !entry.IsDir() {
+				prefix := getCommonPrefix(entry.Name())
+				fileMap[prefix] = append(fileMap[prefix], entry.Name())
+			}
+		}
+
+		// Populate the map with files from dir2
+		for _, entry := range dir2Ent {
+			if !entry.IsDir() {
+				prefix := getCommonPrefix(entry.Name())
+				fileMap[prefix] = append(fileMap[prefix], entry.Name())
+			}
+		}
+
+		// Convert the map to the desired output format
+		for _, files := range fileMap {
+			//inputFileNames = append(inputFileNames, files)
+			job, err := NewJob(jdef, files)
+			if err != nil {
+				fs.Logger.Debugf("Found invalid files  `%v` : %v", files, err)
+				continue
+			}
+			*jobs = append(*jobs, job)
+			*numsMatched++
+
+			// Pass prometheus metrics
+			// metrics.CollectFS(jdef.Name, len(dirents), *numsMatched)
+		}
+		return nil
+	case jobExecCongolomeration:
+		return nil
+	default:
+		return fmt.Errorf("unsupported job type:%s", jdef.Name)
+	}
+
+}
+
+// Try appending a list of single-input jobs that are parsed from a given directory.
+// An error is returned if the function fails to read the directory.
+func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job, numsMatched *int) (err error) {
+
+	// ASSUMED 0 index here for jobs with only single inputs
+	dirFrom := jdef.dirFrom(0)
 	fs.Logger.Tracef("Seeking jobs for %v in %v", jdef.Name, dirFrom)
 
 	// This will fail if the provided directory is not a directory
@@ -162,7 +230,6 @@ func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job, ipIdx i
 	if err != nil {
 		return fmt.Errorf("cannot ls `%s` : %v", dirFrom, err)
 	}
-	numMatched := 0
 
 	// Search and append the valid files into the list.
 	for _, dirent := range dirents {
@@ -186,11 +253,11 @@ func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job, ipIdx i
 		// If all the checks passes, we append the filename to the list of the
 		// clean ones.
 		*jobs = append(*jobs, job)
-		numMatched++
+		*numsMatched++
 	}
 
 	// Pass prometheus metrics
-	metrics.CollectFS(jdef.Name, len(dirents), numMatched)
+	metrics.CollectFS(jdef.Name, len(dirents), *numsMatched)
 
 	return nil
 }
@@ -260,4 +327,13 @@ func lsname(dirname string) (finfos []fs.DirEntry, err error) {
 	}
 
 	return finfos, err
+}
+
+// getCommonPrefix extracts the common prefix from a filename
+func getCommonPrefix(filename string) string {
+	parts := strings.Split(filename, "-getZkProof")
+	if len(parts) > 0 {
+		return parts[0]
+	}
+	return ""
 }

@@ -457,7 +457,9 @@ func TestExecRndBeaconInFileRegexp(t *testing.T) {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
 		conf.ExecRndBeacon.CanRunFullLarge = c.Ext == "large"
-		conf.ExecRndBeacon.GL.RequestsRootDir = []string{"", ""}
+		// conf.ExecRndBeacon.GL.RequestsRootDir = []string{"", ""}
+
+		conf.ExecRndBeacon.RequestsRootDir = []string{"", ""}
 		conf.ExecRndBeacon.ResponsesRootDir = []string{""}
 
 		def, err := ExecRndBeaconDefinition(&conf)

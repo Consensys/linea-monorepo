@@ -30,11 +30,15 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 	// Create a list of files for each job type
 	execBootstrapFrom := []string{confL.ExecBootstrap.DirFrom(0)}
 	execGLFrom := []string{confL.ExecGL.DirFrom(0)}
+	// execRndBeaconFrom := []string{
+	// 	confL.ExecRndBeacon.BootstrapMetadata.DirFrom(0),
+	// 	confL.ExecRndBeacon.GL.DirFrom(0),
+	// }
 	execRndBeaconFrom := []string{
-		confL.ExecRndBeacon.BootstrapMetadata.DirFrom(0),
-		confL.ExecRndBeacon.GL.DirFrom(0),
+		confL.ExecRndBeacon.DirFrom(0),
+		confL.ExecRndBeacon.DirFrom(1),
 	}
-	// execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
+	execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
 	// execConglomerationFrom := []string{
 	// 	confL.ExecConglomeration.GL.DirFrom(0),
 	// 	confL.ExecConglomeration.LPP.DirFrom(0),
@@ -55,9 +59,9 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 		{
 			FName: createLimitlessTestInputFiles(execRndBeaconFrom, 0, 1, RndBeacon, exitCode),
 		},
-		// {
-		// 	FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, LPP, exitCode),
-		// },
+		{
+			FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, LPP, exitCode),
+		},
 		// {
 		// 	FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, Conglomeration, exitCode),
 		// },
@@ -70,6 +74,7 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 		}
 		t.Logf("Looking for job with file: %s", f.FName)
 		found := fw.GetBest()
+		t.Logf("Found job: %+v", found)
 		if found == nil {
 			t.Logf("Did not find the job for file: %s", f.FName)
 		}
@@ -105,35 +110,82 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 		execConglomeration    = "execution"
 	)
 
+	// 	// Create a configuration using temporary directories
+	// 	// Defines three command templates for different types of jobs.
+	// 	// These templates will be used to create shell commands for the worker processes.
+	// 	cmd := `
+	// /bin/sh {{index .InFile 0}}
+	// CODE=$?
+	// if [ $CODE -eq 0 ]; then
+	// 	touch {{index .OutFile 0}}
+	// fi
+	// exit $CODE
+	// `
+	// 	cmdLarge := `
+	// /bin/sh {{index .InFile 0}}
+	// CODE=$?
+	// CODE=$(($CODE - 12))
+	// if [ $CODE -eq 0 ]; then
+	// 	touch {{index .OutFile 0}}
+	// fi
+	// exit $CODE
+	// `
+
+	// 	cmdLargeInternal := `
+	// /bin/sh {{index .InFile 0}}
+	// CODE=$?
+	// CODE=$(($CODE - 10))
+	// if [ $CODE -eq 0 ]; then
+	// 	touch {{index .OutFile 0}}
+	// fi
+	// exit $CODE
+	// `
+
 	// Create a configuration using temporary directories
 	// Defines three command templates for different types of jobs.
 	// These templates will be used to create shell commands for the worker processes.
 	cmd := `
-/bin/sh {{index .InFile 0}}
-CODE=$?
-if [ $CODE -eq 0 ]; then
-	touch {{index .OutFile 0}}
-fi
-exit $CODE
+for infile in {{range .InFile}} {{.}} {{end}}; do
+    /bin/sh $infile
+    CODE=$?
+    if [ $CODE -ne 0 ]; then
+        exit $CODE
+    fi
+done
+for outfile in {{range .OutFile}} {{.}} {{end}}; do
+    touch $outfile
+done
+exit 0
 `
+
 	cmdLarge := `
-/bin/sh {{index .InFile 0}}
-CODE=$?
-CODE=$(($CODE - 12))
-if [ $CODE -eq 0 ]; then
-	touch {{index .OutFile 0}}
-fi
-exit $CODE
+for infile in {{range .InFile}} {{.}} {{end}}; do
+    /bin/sh $infile
+    CODE=$?
+    CODE=$(($CODE - 12))
+    if [ $CODE -ne 0 ]; then
+        exit $CODE
+    fi
+done
+for outfile in {{range .OutFile}} {{.}} {{end}}; do
+    touch $outfile
+done
+exit 0
 `
 
 	cmdLargeInternal := `
-/bin/sh {{index .InFile 0}}
-CODE=$?
-CODE=$(($CODE - 10))
-if [ $CODE -eq 0 ]; then
-	touch {{index .OutFile 0}}
-fi
-exit $CODE
+for infile in {{range .InFile}} {{.}} {{end}}; do
+    /bin/sh $infile
+    CODE=$?
+    CODE=$(($CODE - 10))
+    if [ $CODE -ne 0]; then
+        exit $CODE
+    fi
+done
+for outfile in {{range .OutFile}} {{.}} {{end}}; do
+    touch $outfile
+done
+exit 0
 `
 	// For a prover M
 	confM = &config.Config{
@@ -182,11 +234,17 @@ exit $CODE
 			},
 		},
 		ExecRndBeacon: config.RndBeacon{
-			GL: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execGLRndBeacon)}, // In practice, there will be `n` files
-			},
-			BootstrapMetadata: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata)},
+			// GL: config.WithRequestDir{
+			// 	RequestsRootDir: []string{path.Join(testDir, proverM, execGLRndBeacon)}, // In practice, there will be `n` files
+			// },
+			// BootstrapMetadata: config.WithRequestDir{
+			// 	RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata)},
+			// },
+
+			WithRequestDir: config.WithRequestDir{
+				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata),
+					path.Join(testDir, proverM, execGLRndBeacon),
+				},
 			},
 			WithResponseDir: config.WithResponseDir{
 				ResponsesRootDir: []string{path.Join(testDir, proverM, execRndbeaconLPP)},
@@ -250,10 +308,15 @@ exit $CODE
 
 		// RndBeacon: 2 input -> 1 output
 		// In practice there will be `n` files here
-		os.MkdirAll(confM.ExecRndBeacon.GL.DirFrom(0), permCode),
-		os.MkdirAll(confM.ExecRndBeacon.GL.DirDone(0), permCode),
-		os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirFrom(0), permCode),
-		os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirDone(0), permCode),
+		// os.MkdirAll(confM.ExecRndBeacon.GL.DirFrom(0), permCode),
+		// os.MkdirAll(confM.ExecRndBeacon.GL.DirDone(0), permCode),
+		// os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirFrom(0), permCode),
+		// os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirDone(0), permCode),
+
+		os.MkdirAll(confM.ExecRndBeacon.DirFrom(0), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.DirDone(0), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.DirFrom(1), permCode),
+		os.MkdirAll(confM.ExecRndBeacon.DirDone(1), permCode),
 		os.MkdirAll(confM.ExecRndBeacon.DirTo(0), permCode),
 
 		// LPP: 1 input -> 1 output
@@ -299,7 +362,7 @@ func createLimitlessTestInputFiles(
 		fmtStrArr = []string{"%v-%v-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_GLSubmodule.json"}
 	case RndBeacon:
 		fmtStrArr = []string{"%v-%v-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_DistMetadata.json",
-			"%v-%v-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_GLSubmodule.json"}
+			"%v-%v-etv0.1.2-stv1.2.3-getZkProof_GL_RndBeacon.json"}
 	case LPP:
 		fmtStrArr = []string{"%v-%v-etv0.1.2-stv1.2.3-getZkProof_RndBeacon.json"}
 	case Conglomeration:

@@ -9,11 +9,11 @@ import (
 
 const (
 	// Job definitions
-	jobExecBootstrap        = "execBootstrap"
-	jobExecGL               = "execGL"
-	jobExecRndBeacon        = "execRndbeacon"
-	jobExecLPP              = "execLPP"
-	jobExecCongolomerateLPP = "execConglomeration"
+	jobExecBootstrap       = "execBootstrap"
+	jobExecGL              = "execGL"
+	jobExecRndBeacon       = "execRndbeacon"
+	jobExecLPP             = "execLPP"
+	jobExecCongolomeration = "execConglomeration"
 
 	// Priorities
 	priorityExecBootstrap       = 0
@@ -94,7 +94,8 @@ func ExecRndBeaconDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Input files
-	reqDirs := utils.CombineRequests(conf.ExecRndBeacon.BootstrapMetadata.RequestsRootDir, conf.ExecRndBeacon.GL.RequestsRootDir)
+	// reqDirs := utils.CombineRequests(conf.ExecRndBeacon.BootstrapMetadata.RequestsRootDir, conf.ExecRndBeacon.GL.RequestsRootDir)
+	reqDirs := conf.ExecRndBeacon.RequestsRootDir
 	inputFilePatterns := []string{
 		fmt.Sprintf(execBootstrapRndBeaconInputPattern, inpFileExt, config.FailSuffix),
 		fmt.Sprintf(execGLRndBeaconInputPattern, inpFileExt, config.FailSuffix),
@@ -147,6 +148,6 @@ func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
 	outputTmpls := []string{execConglomerateTemplate}
 	outputFiles := []string{execConglomerateFile}
 
-	return commonJobDefinition(jobExecCongolomerateLPP, priorityExecCongolomeration, reqDirs, inputFilePatterns,
+	return commonJobDefinition(jobExecCongolomeration, priorityExecCongolomeration, reqDirs, inputFilePatterns,
 		respDirs, outputTmpls, outputFiles, cmnExecParamsRegexp(3), config.FailSuffix)
 }
