@@ -28,13 +28,13 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 	exitCode := 0 // we are not interested in the exit code here
 
 	// Create a list of files for each job type
-	// execBootstrapFrom := []string{confL.ExecBootstrap.DirFrom(0)}
-	// execGLFrom := []string{confL.ExecGL.DirFrom(0)}
+	execBootstrapFrom := []string{confL.ExecBootstrap.DirFrom(0)}
+	execGLFrom := []string{confL.ExecGL.DirFrom(0)}
 	execRndBeaconFrom := []string{
 		confL.ExecRndBeacon.DirFrom(0),
 		confL.ExecRndBeacon.DirFrom(1),
 	}
-	//execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
+	execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
 	execConglomerationFrom := []string{
 		confL.ExecConglomeration.DirFrom(0),
 		confL.ExecConglomeration.DirFrom(1),
@@ -46,18 +46,18 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 		FName []string
 		Skip  bool
 	}{
-		// {
-		// 	FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, Bootstrap, exitCode),
-		// },
-		// {
-		// 	FName: createLimitlessTestInputFiles(execGLFrom, 0, 1, GL, exitCode),
-		// },
+		{
+			FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, Bootstrap, exitCode),
+		},
+		{
+			FName: createLimitlessTestInputFiles(execGLFrom, 0, 1, GL, exitCode),
+		},
 		{
 			FName: createLimitlessTestInputFiles(execRndBeaconFrom, 0, 1, RndBeacon, exitCode),
 		},
-		// {
-		// 	FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, LPP, exitCode),
-		// },
+		{
+			FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, LPP, exitCode),
+		},
 		{
 			FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, Conglomeration, exitCode),
 		},
@@ -96,93 +96,98 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 		proverL = "prover-full-L"
 
 		// Add conf. for Limitless prover: Naming convention: exec<i/p><o/p>
-		execBootstrap         = "execution"
-		execBootstrapGL       = "bootstrapGl"
-		execBootstrapMetadata = "bootstrapMetadata"
-		execGLRndBeacon       = "gl-rndbeacon"
-		execGLConglomeration  = "gl"
-		execRndbeaconLPP      = "rndbeacon"
-		execLPPConglomeration = "lpp"
-		execConglomeration    = "executionOutput"
+		execBootstrap                       = "execution"
+		execBootstrapGL                     = "bootstrap-gl"
+		execBootstrapMetadata               = "bootstrap-metadata"
+		execBootstrapMetadataRndBeacon      = "bootstrap-metadata-rndbeacon"
+		execGLRndBeacon                     = "gl-rndbeacon"
+		execGLConglomeration                = "gl"
+		execRndbeaconLPP                    = "rndbeacon"
+		execLPPConglomeration               = "lpp"
+		execBootstrapMetadataConglomeration = "bootstrap-metadata-conglomeration"
+		execConglomeration                  = "execution"
 	)
 
-	// 	// Create a configuration using temporary directories
-	// 	// Defines three command templates for different types of jobs.
-	// 	// These templates will be used to create shell commands for the worker processes.
-	// 	cmd := `
-	// /bin/sh {{index .InFile 0}}
-	// CODE=$?
-	// if [ $CODE -eq 0 ]; then
-	// 	touch {{index .OutFile 0}}
-	// fi
-	// exit $CODE
-	// `
-	// 	cmdLarge := `
-	// /bin/sh {{index .InFile 0}}
-	// CODE=$?
-	// CODE=$(($CODE - 12))
-	// if [ $CODE -eq 0 ]; then
-	// 	touch {{index .OutFile 0}}
-	// fi
-	// exit $CODE
-	// `
+	/*
+		// Create a configuration using temporary directories
+		// Defines three command templates for different types of jobs.
+		// These templates will be used to create shell commands for the worker processes.
+		cmd := `
+		/bin/sh {{index .InFile 0}}
+		CODE=$?
+		if [ $CODE -eq 0 ]; then
+			touch {{index .OutFile 0}}
+		fi
+		exit $CODE
+		`
+		cmdLarge := `
+		/bin/sh {{index .InFile 0}}
+		CODE=$?
+		CODE=$(($CODE - 12))
+		if [ $CODE -eq 0 ]; then
+			touch {{index .OutFile 0}}
+		fi
+		exit $CODE
+		`
 
-	// 	cmdLargeInternal := `
-	// /bin/sh {{index .InFile 0}}
-	// CODE=$?
-	// CODE=$(($CODE - 10))
-	// if [ $CODE -eq 0 ]; then
-	// 	touch {{index .OutFile 0}}
-	// fi
-	// exit $CODE
-	// `
+		cmdLargeInternal := `
+		/bin/sh {{index .InFile 0}}
+		CODE=$?
+		CODE=$(($CODE - 10))
+		if [ $CODE -eq 0 ]; then
+			touch {{index .OutFile 0}}
+		fi
+		exit $CODE
+		`
+	*/
 
 	// Create a configuration using temporary directories
 	// Defines three command templates for different types of jobs.
 	// These templates will be used to create shell commands for the worker processes.
 	cmd := `
-for infile in {{range .InFile}} {{.}} {{end}}; do
-    /bin/sh $infile
-    CODE=$?
-    if [ $CODE -ne 0 ]; then
-        exit $CODE
-    fi
-done
-for outfile in {{range .OutFile}} {{.}} {{end}}; do
-    touch $outfile
-done
-exit 0
-`
+		for infile in {{range .InFile}} {{.}} {{end}}; do
+		    /bin/sh $infile
+		    CODE=$?
+		    if [ $CODE -ne 0 ]; then
+		        exit $CODE
+		    fi
+		done
+		for outfile in {{range .OutFile}} {{.}} {{end}}; do
+		    touch $outfile
+		done
+		exit 0
+		`
 
 	cmdLarge := `
-for infile in {{range .InFile}} {{.}} {{end}}; do
-    /bin/sh $infile
-    CODE=$?
-    CODE=$(($CODE - 12))
-    if [ $CODE -ne 0 ]; then
-        exit $CODE
-    fi
-done
-for outfile in {{range .OutFile}} {{.}} {{end}}; do
-    touch $outfile
-done
-exit 0
-`
+		for infile in {{range .InFile}} {{.}} {{end}}; do
+		    /bin/sh $infile
+		    CODE=$?
+		    CODE=$(($CODE - 12))
+		    if [ $CODE -ne 0 ]; then
+		        exit $CODE
+		    fi
+		done
+		for outfile in {{range .OutFile}} {{.}} {{end}}; do
+		    touch $outfile
+		done
+		exit 0
+		`
 
 	cmdLargeInternal := `
-for infile in {{range .InFile}} {{.}} {{end}}; do
-    /bin/sh $infile
-    CODE=$?
-    CODE=$(($CODE - 10))
-    if [ $CODE -ne 0]; then
-        exit $CODE
-    fi
-done
-for outfile in {{range .OutFile}} {{.}} {{end}}; do
-    touch $outfile
-done
-exit 0
-`
+		for infile in {{range .InFile}} {{.}} {{end}}; do
+		    /bin/sh $infile
+		    CODE=$?
+		    CODE=$(($CODE - 10))
+		    if [ $CODE -ne 0]; then
+		        exit $CODE
+		    fi
+		done
+		for outfile in {{range .OutFile}} {{.}} {{end}}; do
+		    touch $outfile
+		done
+		exit 0
+		`
+
 	// For a prover M
 	confM = &config.Config{
 		Version: "0.2.4",
@@ -231,7 +236,7 @@ exit 0
 		},
 		ExecRndBeacon: config.Execution{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata),
+				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadataRndBeacon),
 					path.Join(testDir, proverM, execGLRndBeacon),
 				},
 			},
@@ -249,7 +254,7 @@ exit 0
 		},
 		ExecConglomeration: config.Execution{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata),
+				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadataConglomeration),
 					path.Join(testDir, proverM, execGLConglomeration),
 					path.Join(testDir, proverM, execLPPConglomeration),
 				},
