@@ -99,6 +99,11 @@ export type ListenerOptions = {
   blockConfirmation?: number;
   maxFetchMessagesFromDb?: number;
   maxBlocksToFetchLogs?: number;
+  eventFilters?: {
+    criteria?: string;
+    calldataFunctionInterface?: string;
+  };
 };
 
-export type ListenerConfig = Required<ListenerOptions>;
+export type ListenerConfig = Required<Omit<ListenerOptions, "eventFilters">> &
+  Partial<Pick<ListenerOptions, "eventFilters">>;

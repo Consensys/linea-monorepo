@@ -25,6 +25,14 @@ async function main() {
         ...(parseInt(process.env.L1_LISTENER_BLOCK_CONFIRMATION ?? "") >= 0
           ? { blockConfirmation: parseInt(process.env.L1_LISTENER_BLOCK_CONFIRMATION ?? "") }
           : {}),
+        ...(process.env.L1_EVENT_FILTER_CRITERIA
+          ? {
+              eventFilters: {
+                criteria: process.env.L1_EVENT_FILTER_CRITERIA,
+                calldataFunctionInterface: process.env.L1_EVENT_FILTER_CALLDATA_FUNCTION_INTERFACE,
+              },
+            }
+          : {}),
       },
       claiming: {
         signerPrivateKey: process.env.L1_SIGNER_PRIVATE_KEY ?? "",
@@ -64,6 +72,14 @@ async function main() {
           : {}),
         ...(parseInt(process.env.L2_LISTENER_BLOCK_CONFIRMATION ?? "") >= 0
           ? { blockConfirmation: parseInt(process.env.L2_LISTENER_BLOCK_CONFIRMATION ?? "") }
+          : {}),
+        ...(process.env.L2_EVENT_FILTER_CRITERIA
+          ? {
+              eventFilters: {
+                criteria: process.env.L2_EVENT_FILTER_CRITERIA,
+                calldataFunctionInterface: process.env.L2_EVENT_FILTER_CALLDATA_FUNCTION_INTERFACE,
+              },
+            }
           : {}),
       },
       claiming: {

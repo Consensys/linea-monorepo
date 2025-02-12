@@ -1,12 +1,16 @@
 import {
   Block,
   ContractTransactionResponse,
+  dataSlice,
+  Interface,
   JsonRpcProvider,
+  Result,
   TransactionReceipt,
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
-import { serialize, isEmptyBytes } from "@consensys/linea-sdk";
+import { compileExpression, useDotAccessOperator } from "filtrex";
+import { serialize, isEmptyBytes, MessageSent } from "@consensys/linea-sdk";
 import { ILineaRollupLogClient } from "../../core/clients/blockchain/ethereum/ILineaRollupLogClient";
 import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { MessageFactory } from "../../core/entities/MessageFactory";
@@ -41,7 +45,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
       TransactionResponse,
       JsonRpcProvider
     >,
-    private readonly config: MessageSentEventProcessorConfig,
+    protected readonly config: MessageSentEventProcessorConfig,
     private readonly logger: ILogger,
   ) {
     this.maxBlocksToFetchLogs = Math.max(config.maxBlocksToFetchLogs, 0);
@@ -88,7 +92,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
     this.logger.info("Number of fetched MessageSent events: %s", events.length);
 
     for (const event of events) {
-      const shouldBeProcessed = this.shouldProcessMessage(event.calldata, event.messageHash);
+      const shouldBeProcessed = this.shouldProcessMessage(event, event.messageHash);
       const messageStatusToInsert = shouldBeProcessed ? MessageStatus.SENT : MessageStatus.EXCLUDED;
 
       const message = MessageFactory.createMessage({
@@ -113,21 +117,109 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
    * @param {string} messageHash - The hash of the message.
    * @returns {boolean} `true` if the message should be processed, `false` otherwise.
    */
-  private shouldProcessMessage(messageCalldata: string, messageHash: string): boolean {
-    if (isEmptyBytes(messageCalldata)) {
-      if (this.config.isEOAEnabled) {
-        return true;
-      }
+  protected shouldProcessMessage(
+    event: MessageSent,
+    messageHash: string,
+    filters?: { criteria?: string; calldataFunctionInterface?: string },
+  ): boolean {
+    const hasEmptyCalldata = isEmptyBytes(event.calldata);
+    let basicProcess = false;
+
+    if (hasEmptyCalldata) {
+      basicProcess = this.config.isEOAEnabled;
     } else {
-      if (this.config.isCalldataEnabled) {
-        return true;
-      }
+      basicProcess = this.config.isCalldataEnabled;
     }
 
-    this.logger.debug(
-      "Message has been excluded because target address is not an EOA or calldata is not empty: messageHash=%s",
-      messageHash,
-    );
-    return false;
+    if (!basicProcess) {
+      this.logger.debug(
+        "Message has been excluded because target address is not an EOA or calldata is not empty: messageHash=%s",
+        messageHash,
+      );
+      return false;
+    }
+
+    if (!this.isMessageMatchingCriteria(event, filters)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private isMessageMatchingCriteria(
+    event: MessageSent,
+    filters?: { criteria?: string; calldataFunctionInterface?: string },
+  ) {
+    if (!filters?.criteria) {
+      return true;
+    }
+
+    let decodedCalldata: Result | null = null;
+
+    if (filters.calldataFunctionInterface) {
+      const iface = new Interface([filters.calldataFunctionInterface]);
+      decodedCalldata = iface.decodeFunctionData(filters.calldataFunctionInterface, event.calldata);
+    }
+
+    console.log(this.convertBigInts(decodedCalldata?.toObject(true)));
+
+    const context = {
+      from: event.messageSender,
+      to: event.destination,
+      calldata: {
+        funcSignature: dataSlice(event.calldata, 0, 4),
+        ...(decodedCalldata ? this.convertBigInts(decodedCalldata.toObject(true)) : {}),
+      },
+    };
+
+    const passesFilter = this.evaluateExpression(filters.criteria, context);
+
+    if (!passesFilter) {
+      this.logger.debug(
+        "Message has been excluded because it does not pass the criteria: criteria=%s",
+        filters.criteria,
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  private evaluateExpression(expression: string, context: unknown): boolean {
+    try {
+      const compiledFilter = compileExpression(expression, { customProp: useDotAccessOperator });
+      const passesFilter = compiledFilter(context);
+
+      if (passesFilter === true) {
+        return true;
+      }
+      return false;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private convertBigInts(data: any): any {
+    if (typeof data === "bigint") {
+      return Number(data);
+    }
+
+    if (Array.isArray(data)) {
+      return data.map((item) => this.convertBigInts(item));
+    }
+
+    if (data !== null && typeof data === "object") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result: Record<string, any> = {};
+      for (const key in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+          result[key] = this.convertBigInts(data[key]);
+        }
+      }
+      return result;
+    }
+
+    return data;
   }
 }

@@ -48,6 +48,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
         maxBlocksToFetchLogs: l1Options.listener.maxBlocksToFetchLogs ?? DEFAULT_MAX_BLOCKS_TO_FETCH_LOGS,
         initialFromBlock: l1Options.listener.initialFromBlock ?? DEFAULT_INITIAL_FROM_BLOCK,
         blockConfirmation: l1Options.listener.blockConfirmation ?? DEFAULT_LISTENER_BLOCK_CONFIRMATIONS,
+        ...(l1Options.listener.eventFilters ? { eventFilters: l1Options.listener.eventFilters } : {}),
       },
       claiming: {
         signerPrivateKey: l1Options.claiming.signerPrivateKey,
@@ -77,6 +78,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
         maxBlocksToFetchLogs: l2Options.listener.maxBlocksToFetchLogs ?? DEFAULT_MAX_BLOCKS_TO_FETCH_LOGS,
         initialFromBlock: l2Options.listener.initialFromBlock ?? DEFAULT_INITIAL_FROM_BLOCK,
         blockConfirmation: l2Options.listener.blockConfirmation ?? DEFAULT_LISTENER_BLOCK_CONFIRMATIONS,
+        ...(l2Options.listener.eventFilters ? { eventFilters: l2Options.listener.eventFilters } : {}),
       },
       claiming: {
         signerPrivateKey: l2Options.claiming.signerPrivateKey,

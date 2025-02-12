@@ -12,4 +12,8 @@ export type MessageSentEventProcessorConfig = {
   blockConfirmation: number;
   isEOAEnabled: boolean;
   isCalldataEnabled: boolean;
+  eventFilters?: {
+    criteria?: string;
+    calldataFunctionInterface?: string;
+  };
 };
