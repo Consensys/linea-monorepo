@@ -171,6 +171,7 @@ contract TokenBridge is
 
     tokenBeacon = _initializationData.tokenBeacon;
     if (_initializationData.sourceChainId == _initializationData.targetChainId) revert SourceChainSameAsTargetChain();
+    _setRemoteSender(_initializationData.remoteSender);
     sourceChainId = _initializationData.sourceChainId;
     targetChainId = _initializationData.targetChainId;
 
@@ -414,17 +415,6 @@ contract TokenBridge is
         ++i;
       }
     }
-  }
-
-  /**
-   * @dev Sets the address of the remote token bridge. Can only be called once.
-   * @dev SET_REMOTE_TOKENBRIDGE_ROLE is required to execute.
-   * @param _remoteTokenBridge The address of the remote token bridge to be set.
-   */
-  function setRemoteTokenBridge(address _remoteTokenBridge) external onlyRole(SET_REMOTE_TOKENBRIDGE_ROLE) {
-    if (remoteSender != EMPTY) revert RemoteTokenBridgeAlreadySet(remoteSender);
-    _setRemoteSender(_remoteTokenBridge);
-    emit RemoteTokenBridgeSet(_remoteTokenBridge, msg.sender);
   }
 
   /**
