@@ -3,10 +3,10 @@ package simplify
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math"
 	"sort"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -17,7 +17,7 @@ import (
 func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 	res := expr
 	initEsh := expr.ESHash
-	alreadyWalked := map[field.Element]*sym.Expression{}
+	alreadyWalked := map[fext.Element]*sym.Expression{}
 
 	logrus.Infof("factoring expression : init stats %v", evaluateCostStat(expr))
 
@@ -104,12 +104,12 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 // children that are already in the children set.
 func rankChildren(
 	parents []*sym.Expression,
-	childrenSet map[field.Element]*sym.Expression,
+	childrenSet map[fext.Element]*sym.Expression,
 ) []*sym.Expression {
 
 	// List all the grand-children of the expression whose parents are
 	// products and counts the number of occurences by summing the exponents.
-	relevantGdChildrenCnt := map[field.Element]int{}
+	relevantGdChildrenCnt := map[fext.Element]int{}
 	uniqueChildrenList := make([]*sym.Expression, 0)
 
 	for _, p := range parents {
@@ -156,10 +156,10 @@ func rankChildren(
 // than one parent. The finding is based on a greedy algorithm. We iteratively
 // add nodes in the group so that the number of common parents decreases as
 // slowly as possible.
-func findGdChildrenGroup(expr *sym.Expression) map[field.Element]*sym.Expression {
+func findGdChildrenGroup(expr *sym.Expression) map[fext.Element]*sym.Expression {
 
 	curParents := expr.Children
-	childrenSet := map[field.Element]*sym.Expression{}
+	childrenSet := map[fext.Element]*sym.Expression{}
 
 	for {
 		ranked := rankChildren(curParents, childrenSet)
@@ -198,7 +198,7 @@ func findGdChildrenGroup(expr *sym.Expression) map[field.Element]*sym.Expression
 // that are themselves children of gdp (grandparent). The parents must be of
 // type product however.
 func getCommonProdParentOfCs(
-	cs map[field.Element]*sym.Expression,
+	cs map[fext.Element]*sym.Expression,
 	parents []*sym.Expression,
 ) []*sym.Expression {
 
@@ -212,7 +212,7 @@ func getCommonProdParentOfCs(
 
 		// Account for the fact that p may contain duplicates. So we cannot
 		// just use a counter here.
-		founds := map[field.Element]struct{}{}
+		founds := map[fext.Element]struct{}{}
 		for i, c := range p.Children {
 			if prod.Exponents[i] == 0 {
 				continue
@@ -236,7 +236,7 @@ func getCommonProdParentOfCs(
 // determine the best common factor.
 func factorLinCompFromGroup(
 	lincom *sym.Expression,
-	group map[field.Element]*sym.Expression,
+	group map[fext.Element]*sym.Expression,
 ) *sym.Expression {
 
 	var (
@@ -296,7 +296,7 @@ func factorLinCompFromGroup(
 //
 // Fortunately, this is guaranteed if the expression was constructed via
 // [sym.NewLinComb] or [sym.NewProduct] which is almost mandatory.
-func isFactored(e *sym.Expression, exponentsOfGroup map[field.Element]int) (
+func isFactored(e *sym.Expression, exponentsOfGroup map[fext.Element]int) (
 	factored *sym.Expression,
 	success bool,
 ) {
@@ -336,13 +336,13 @@ func isFactored(e *sym.Expression, exponentsOfGroup map[field.Element]int) (
 // have the whole group as children.
 func optimRegroupExponents(
 	parents []*sym.Expression,
-	group map[field.Element]*sym.Expression,
+	group map[fext.Element]*sym.Expression,
 ) (
-	exponentMap map[field.Element]int,
+	exponentMap map[fext.Element]int,
 	groupedTerm *sym.Expression,
 ) {
 
-	exponentMap = map[field.Element]int{}
+	exponentMap = map[fext.Element]int{}
 	canonTermList := make([]*sym.Expression, 0) // built in deterministic order
 
 	for _, p := range parents {
@@ -355,7 +355,7 @@ func optimRegroupExponents(
 
 		// Used to sanity-check that all the nodes of the group have been
 		// reached through this parent.
-		matched := map[field.Element]int{}
+		matched := map[fext.Element]int{}
 
 		for i, c := range p.Children {
 			if _, ingroup := group[c.ESHash]; !ingroup {
@@ -403,13 +403,13 @@ func optimRegroupExponents(
 // enforce invariants throughout the simplification routines.
 func parentsMustHaveAllChildren[T any](
 	parents []*sym.Expression,
-	childrenSet map[field.Element]T,
+	childrenSet map[fext.Element]T,
 ) (resErr error) {
 
 	for parentID, p := range parents {
 		// Account for the fact that the node may contain duplicates of the node
 		// we are looking for.
-		founds := map[field.Element]struct{}{}
+		founds := map[fext.Element]struct{}{}
 		for _, c := range p.Children {
 			if _, ok := childrenSet[c.ESHash]; ok {
 				founds[c.ESHash] = struct{}{}

@@ -3,6 +3,7 @@ package symbolic
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -41,7 +42,7 @@ func (b *ExpressionBoard) prepareNodeAssignments(inputs []sv.SmartVector) boardA
 		switch op := b.Nodes[0][i].Operator.(type) {
 		case Constant:
 			// The constants are identified to constant vectors
-			nodeAssignments[0][i].Value = sv.NewConstant(op.Val, length)
+			nodeAssignments[0][i].Value = smartvectorsext.NewConstantExt(op.Val, length)
 		case Variable:
 			// Sanity-check the input should have the correct length
 			if inputs[inputCursor].Len() != length {

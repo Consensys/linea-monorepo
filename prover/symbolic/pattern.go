@@ -1,6 +1,8 @@
 package symbolic
 
-import "github.com/consensys/linea-monorepo/prover/maths/field"
+import (
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+)
 
 /*
 IsMul returns true if an expression is a mul at the top-level
@@ -13,11 +15,11 @@ func (f *Expression) IsMul() bool {
 /*
 IsConstant returns true if it is a constant and return its value if so
 */
-func (f *Expression) IsConstant() (bool, field.Element) {
+func (f *Expression) IsConstant() (bool, fext.Element) {
 	if cons, ok := f.Operator.(Constant); ok {
 		return ok, cons.Val
 	}
-	return false, field.Zero()
+	return false, fext.Zero()
 }
 
 /*

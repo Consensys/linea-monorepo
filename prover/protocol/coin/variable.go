@@ -27,3 +27,10 @@ func (i Info) String() string {
 	*/
 	return fmt.Sprintf("__COIN__%v", i.Name)
 }
+
+func (i Info) IsBase() bool {
+	/*
+		Coins are always field extensions
+	*/
+	return false
+}

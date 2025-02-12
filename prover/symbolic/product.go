@@ -3,13 +3,14 @@ package symbolic
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
@@ -70,7 +71,7 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 
 	// This regroups all the constants into a global constant with a coefficient
 	// of 1.
-	var c, t field.Element
+	var c, t fext.Element
 	c.SetOne()
 	for i := range constExponents {
 		t.Exp(constVal[i], big.NewInt(int64(constExponents[i])))
@@ -100,13 +101,13 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	// Now we need to assign the ESH
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
-		eshashes[i] = sv.NewConstant(e.Children[i].ESHash, 1)
+		eshashes[i] = smartvectorsext.NewConstantExt(e.Children[i].ESHash, 1)
 	}
 
 	if len(items) > 0 {
 		// The cast back to sv.Constant is no important functionally but is an easy
 		// sanity check.
-		e.ESHash = e.Operator.Evaluate(eshashes).(*sv.Constant).Get(0)
+		e.ESHash = e.Operator.Evaluate(eshashes).(*smartvectorsext.ConstantExt).GetExt(0)
 	}
 
 	return e

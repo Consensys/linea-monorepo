@@ -2,12 +2,12 @@ package symbolic
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -38,12 +38,12 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 		return coeffs[0]
 	}
 
-	eshashes := []field.Element{}
+	eshashes := []fext.Element{}
 	for i := range coeffs {
 		eshashes = append(eshashes, coeffs[i].ESHash)
 	}
 
-	esh := poly.EvalUnivariate(eshashes, x.ESHash)
+	esh := polyext.EvalUnivariate(eshashes, x.ESHash)
 
 	return &Expression{
 		Operator: PolyEval{},

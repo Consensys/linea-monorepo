@@ -2,9 +2,9 @@ package simplify
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -74,7 +74,7 @@ func TestIsFactored(t *testing.T) {
 			// Build the group exponent map. If by is a product, we use directly
 			// the exponents it contains. Otherwise, we say this is a single
 			// term product with an exponent of 1.
-			groupedExp := map[field.Element]int{}
+			groupedExp := map[fext.Element]int{}
 			if byProd, ok := tc.By.Operator.(sym.Product); ok {
 				for i, ex := range byProd.Exponents {
 					groupedExp[tc.By.Children[i].ESHash] = ex
@@ -207,7 +207,7 @@ func TestFactorLinCompFromGroup(t *testing.T) {
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("test-case-%v", i), func(t *testing.T) {
 
-			group := map[field.Element]*sym.Expression{}
+			group := map[fext.Element]*sym.Expression{}
 			for _, e := range testCase.Group {
 				group[e.ESHash] = e
 			}

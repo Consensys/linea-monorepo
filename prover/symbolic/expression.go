@@ -2,12 +2,13 @@ package symbolic
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
@@ -16,7 +17,7 @@ import (
 // [ExpressionBoard] expression.
 type anchoredExpression struct {
 	Board  *ExpressionBoard
-	ESHash field.Element
+	ESHash fext.Element
 }
 
 // Expression represents a symbolic arithmetic expression. Expression can be
@@ -43,7 +44,7 @@ type Expression struct {
 	// 		- ESHash(a * b) = ESHash(a) * ESHash(b)
 	// 		- ESHash(c: Constant) = c
 	// 		- ESHash(a: variable) = H(a.String())
-	ESHash field.Element
+	ESHash fext.Element
 	// Children stores the list of all the sub-expressions the current
 	// Expression uses as operands.
 	Children []*Expression
@@ -153,13 +154,13 @@ func (e *Expression) Validate() error {
 
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
-		eshashes[i] = sv.NewConstant(e.Children[i].ESHash, 1)
+		eshashes[i] = smartvectorsext.NewConstantExt(e.Children[i].ESHash, 1)
 	}
 
 	if len(e.Children) > 0 {
 		// The cast back to sv.Constant is not functionally important but is an
 		// easy sanity check.
-		expectedESH := e.Operator.Evaluate(eshashes).(*sv.Constant).Get(0)
+		expectedESH := e.Operator.Evaluate(eshashes).(*smartvectorsext.ConstantExt).GetExt(0)
 		if expectedESH != e.ESHash {
 			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
 		}
