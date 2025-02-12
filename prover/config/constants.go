@@ -8,7 +8,7 @@ const (
 	DefaultDictionaryFileName = "compressor_dict.bin"
 
 	RequestsFromSubDir = "requests"
-	RequestsToSubDir   = "responses"
+	ResponsesToSubDir  = "responses"
 	RequestsDoneSubDir = "requests-done"
 
 	InProgressSufix = "inprogress"

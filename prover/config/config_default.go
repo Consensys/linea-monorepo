@@ -18,6 +18,12 @@ func setDefaultValues() {
 	viper.SetDefault("controller.enable_blob_decompression", true)
 	viper.SetDefault("controller.enable_aggregation", true)
 
+	viper.SetDefault("controller.enable_exec_bootstrap", true)
+	viper.SetDefault("controller.enable_exec_gl", true)
+	viper.SetDefault("controller.enable_exec_rndbeacon", true)
+	viper.SetDefault("controller.enable_exec_lpp", true)
+	viper.SetDefault("controller.enable_exec_conglomeration", true)
+
 	// Set the default values for the retry delays
 	viper.SetDefault("controller.retry_delays", []int{0, 1, 2, 3, 5, 8, 13, 21, 44, 85})
 	viper.SetDefault("controller.defer_to_other_large_codes", DefaultDeferToOtherLargeCodes)
@@ -35,6 +41,10 @@ func setDefaultPaths() {
 	viper.SetDefault("execution.requests_root_dir", "/shared/prover-execution")
 	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/prover-compression")
 	viper.SetDefault("aggregation.requests_root_dir", "/shared/prover-aggregation")
+
+	// TODO: @srinathLN7 Add Limitless prover default values
+	viper.SetDefault("execution_bootstrap.requests_root_dir", "/shared/prover-execution/limitless/bootstrap")
+
 }
 
 func setDefaultTracesLimit() {

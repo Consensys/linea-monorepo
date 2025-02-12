@@ -60,7 +60,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		var (
 			po              execution.Response
 			l2MessageHashes []string
-			fpath           = path.Join(cfg.Execution.DirTo(), execReqFPath)
+			fpath           = path.Join(cfg.Execution.DirTo(0), execReqFPath)
 			f               = files.MustRead(fpath)
 		)
 
@@ -155,7 +155,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 	for i, decompReqFPath := range req.DecompressionProofs {
 		dp := &blobdecompression.Response{}
-		fpath := path.Join(cfg.BlobDecompression.DirTo(), decompReqFPath)
+		fpath := path.Join(cfg.BlobDecompression.DirTo(0), decompReqFPath)
 		f := files.MustRead(fpath)
 
 		if err := json.NewDecoder(f).Decode(dp); err != nil {

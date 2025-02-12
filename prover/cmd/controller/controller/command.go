@@ -47,15 +47,15 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 	// TODO @gbotrel @AlexandreBelling check who is responsible for creating the directories
 	// create the sub directories if they do not exist
 	dirs := []string{
-		cfg.Execution.DirDone(),
-		cfg.Execution.DirFrom(),
-		cfg.Execution.DirTo(),
-		cfg.BlobDecompression.DirDone(),
-		cfg.BlobDecompression.DirFrom(),
-		cfg.BlobDecompression.DirTo(),
-		cfg.Aggregation.DirDone(),
-		cfg.Aggregation.DirFrom(),
-		cfg.Aggregation.DirTo(),
+		cfg.Execution.DirDone(0),
+		cfg.Execution.DirFrom(0),
+		cfg.Execution.DirTo(0),
+		cfg.BlobDecompression.DirDone(0),
+		cfg.BlobDecompression.DirFrom(0),
+		cfg.BlobDecompression.DirTo(0),
+		cfg.Aggregation.DirDone(0),
+		cfg.Aggregation.DirFrom(0),
+		cfg.Aggregation.DirTo(0),
 	}
 
 	for _, dir := range dirs {

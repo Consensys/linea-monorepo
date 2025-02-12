@@ -2,16 +2,10 @@ package controller
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"io/fs"
 	"os"
-	"path"
 	"testing"
-	"text/template"
 	"time"
 
-	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
@@ -23,9 +17,9 @@ func TestRunCommand(t *testing.T) {
 	confM, confL := setupFsTest(t)
 
 	var (
-		eFrom   string = confM.Execution.DirFrom()
-		cFrom   string = confM.BlobDecompression.DirFrom()
-		aFrom   string = confM.Aggregation.DirFrom()
+		eFrom   string = confM.Execution.DirFrom(0)
+		cFrom   string = confM.BlobDecompression.DirFrom(0)
+		aFrom   string = confM.Aggregation.DirFrom(0)
 		exit0   int    = 0
 		exit2   int    = 2
 		exit10  int    = 10
@@ -79,11 +73,11 @@ func TestRunCommand(t *testing.T) {
 		Entries []string
 	}{
 		{
-			Path:    confM.Execution.DirFrom(),
+			Path:    confM.Execution.DirFrom(0),
 			Entries: []string{}, // all files should be processed
 		},
 		{
-			Path: confM.Execution.DirDone(),
+			Path: confM.Execution.DirDone(0),
 			Entries: []string{
 				"0-1-etv0.1.2-stv1.2.3-getZkProof.json.success",
 				"1-2-etv0.1.2-stv1.2.3-getZkProof.json.large.success",
@@ -98,7 +92,7 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path: confM.Execution.DirTo(),
+			Path: confM.Execution.DirTo(0),
 			Entries: []string{
 				"0-1-getZkProof.json",
 				"1-2-getZkProof.json",
@@ -107,11 +101,11 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path:    confM.BlobDecompression.DirFrom(),
+			Path:    confM.BlobDecompression.DirFrom(0),
 			Entries: []string{},
 		},
 		{
-			Path: confM.BlobDecompression.DirDone(),
+			Path: confM.BlobDecompression.DirDone(0),
 			Entries: []string{
 				"0-2-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json.success",
 				"2-4-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json.failure.code_2",
@@ -120,17 +114,17 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path: confM.BlobDecompression.DirTo(),
+			Path: confM.BlobDecompression.DirTo(0),
 			Entries: []string{
 				"0-2-getZkBlobCompressionProof.json",
 			},
 		},
 		{
-			Path:    confM.Aggregation.DirFrom(),
+			Path:    confM.Aggregation.DirFrom(0),
 			Entries: []string{},
 		},
 		{
-			Path: confM.Aggregation.DirDone(),
+			Path: confM.Aggregation.DirDone(0),
 			Entries: []string{
 				"0-2-deadbeef57-getZkAggregatedProof.json.success",
 				"2-4-deadbeef57-getZkAggregatedProof.json.failure.code_2",
@@ -139,7 +133,7 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path:    confM.Aggregation.DirTo(),
+			Path:    confM.Aggregation.DirTo(0),
 			Entries: []string{"0-2-deadbeef57-getZkAggregatedProof.json"},
 		},
 	}
@@ -153,315 +147,4 @@ func TestRunCommand(t *testing.T) {
 		assert.Equalf(t, dirVal.Entries, filesFound, "dir %v", dirVal.Path)
 	}
 
-}
-
-func TestFileWatcherM(t *testing.T) {
-
-	confM, _ := setupFsTest(t)
-
-	// Create a list of files
-	eFrom := confM.Execution.DirFrom
-	cFrom := confM.BlobDecompression.DirFrom
-	aFrom := confM.Aggregation.DirFrom
-
-	exitCode := 0 // we are not interesting in the exit code here
-
-	// The jobs, declared in the order in which they are expected to be found
-
-	// Name of the expected inprogress files
-	expectedFNames := []struct {
-		FName string
-		Skip  bool
-	}{
-		{
-			FName: createTestInputFile(eFrom(), 0, 1, execJob, exitCode),
-		},
-		{
-			Skip:  true, // wrong directory
-			FName: createTestInputFile(eFrom(), 0, 1, aggregationJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(cFrom(), 0, 1, compressionJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(eFrom(), 1, 2, execJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(cFrom(), 1, 2, compressionJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(aFrom(), 0, 2, aggregationJob, exitCode),
-		},
-		{
-			Skip:  true, // for large only
-			FName: createTestInputFile(eFrom(), 2, 4, execJob, exitCode, forLarge),
-		},
-		{
-			FName: createTestInputFile(eFrom(), 4, 5, execJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(cFrom(), 2, 5, compressionJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(aFrom(), 2, 5, aggregationJob, exitCode),
-		},
-	}
-
-	fw := NewFsWatcher(confM)
-
-	for _, f := range expectedFNames {
-		if f.Skip {
-			continue
-		}
-		found := fw.GetBest()
-		if assert.NotNil(t, found, "did not find the job") {
-			assert.Equal(t, f.FName, found.OriginalFile)
-		}
-	}
-	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
-}
-
-func TestFileWatcherL(t *testing.T) {
-
-	_, confL := setupFsTest(t)
-
-	// Create a list of files
-	eFrom := confL.Execution.DirFrom()
-
-	exitCode := 0 // we are not interesting in the exit code here
-
-	// The jobs, declared in the order in which they are expected to be found
-
-	// Name of the expected inprogress files
-	expectedFNames := []struct {
-		FName string
-		Skip  bool
-	}{
-		{
-			Skip:  true, // not large
-			FName: createTestInputFile(eFrom, 0, 1, execJob, exitCode),
-		},
-		{
-			Skip:  true, // wrong directory
-			FName: createTestInputFile(eFrom, 0, 1, aggregationJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(eFrom, 1, 2, execJob, exitCode, forLarge),
-		},
-		{
-			FName: createTestInputFile(eFrom, 2, 4, execJob, exitCode, forLarge),
-		},
-		{
-			Skip:  true, // not large
-			FName: createTestInputFile(eFrom, 4, 5, execJob, exitCode),
-		},
-		{
-			Skip:  true, // wrong dir
-			FName: createTestInputFile(eFrom, 2, 5, compressionJob, exitCode),
-		},
-	}
-
-	fw := NewFsWatcher(confL)
-
-	for _, f := range expectedFNames {
-		if f.Skip {
-			continue
-		}
-		found := fw.GetBest()
-		if assert.NotNil(t, found, "did not find the job") {
-			assert.Equal(t, f.FName, found.OriginalFile)
-		}
-	}
-	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
-}
-
-func setupFsTest(t *testing.T) (confM, confL *config.Config) {
-
-	// Testdir is going to contain the whole test directory
-	testDir := t.TempDir()
-
-	const (
-		dirfrom     = "prover-requests"
-		dirto       = "prover-responses"
-		dirdone     = "requests-done"
-		dirlogs     = "logs"
-		proverM     = "prover-full-M"
-		proverL     = "prover-full-L"
-		execution   = "execution"
-		compression = "compression"
-		aggregation = "aggregation"
-	)
-
-	// Create a configuration using temporary directories
-	cmd := `
-/bin/sh {{.InFile}}
-CODE=$?
-if [ $CODE -eq 0 ]; then
-	touch {{.OutFile}}
-fi
-exit $CODE
-`
-	cmdLarge := `
-	/bin/sh {{.InFile}}
-	CODE=$?
-	CODE=$(($CODE - 12))
-	if [ $CODE -eq 0 ]; then
-		touch {{.OutFile}}
-	fi
-	exit $CODE
-	`
-
-	cmdLargeInternal := `
-/bin/sh {{.InFile}}
-CODE=$?
-CODE=$(($CODE - 10))
-if [ $CODE -eq 0 ]; then
-	touch {{.OutFile}}
-fi
-exit $CODE
-`
-
-	// For a prover M
-	confM = &config.Config{
-		Version: "0.2.4",
-
-		Controller: config.Controller{
-			EnableExecution:            true,
-			EnableBlobDecompression:    true,
-			EnableAggregation:          true,
-			LocalID:                    proverM,
-			Prometheus:                 config.Prometheus{Enabled: false},
-			RetryDelays:                []int{0, 1},
-			WorkerCmd:                  cmd,
-			WorkerCmdLarge:             cmdLargeInternal,
-			DeferToOtherLargeCodes:     []int{12, 137},
-			RetryLocallyWithLargeCodes: []int{10, 77},
-		},
-
-		Execution: config.Execution{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execution),
-			},
-		},
-		BlobDecompression: config.BlobDecompression{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, compression),
-			},
-		},
-		Aggregation: config.Aggregation{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, aggregation),
-			},
-		},
-	}
-
-	_confL := *confM
-	confL = &_confL
-	confL.Controller.LocalID = proverL
-	confL.Controller.WorkerCmdLarge = cmdLarge
-	confL.Execution.CanRunFullLarge = true
-
-	// confL = &config.GlobalConfig{
-	// 	Version: "0.2.4",
-
-	// 	Controller: config.Controller{
-	// 		EnableExecution:            true,
-	// 		EnableBlobDecompression:    false,
-	// 		EnableAggregation:          false,
-	// 		LocalID:                    proverL,
-	// 		Prometheus:                 config.Prometheus{Enabled: false},
-	// 		RetryDelays:                []int{0, 1},
-	// 		WorkerCmd:                  cmdLarge,
-	// 		WorkerCmdLarge:             cmdLarge,
-	// 		DeferToOtherLargeCodes:     []int{12, 137},
-	// 		RetryLocallyWithLargeCodes: []int{10, 77},
-	// 	},
-	// 	Execution: config.Execution{
-	// 		WithRequestDir: config.WithRequestDir{
-	// 			RequestsRootDir: path.Join(testDir, proverM, execution),
-	// 		},
-	// 		CanRunFullLarge: true,
-	// 	},
-	// 	BlobDecompression: config.BlobDecompression{
-	// 		WithRequestDir: config.WithRequestDir{
-	// 			RequestsRootDir: path.Join(testDir, proverM, compression),
-	// 		},
-	// 	},
-	// 	Aggregation: config.Aggregation{
-	// 		WithRequestDir: config.WithRequestDir{
-	// 			RequestsRootDir: path.Join(testDir, proverM, aggregation),
-	// 		},
-	// 	},
-	// }
-
-	// ensure the template are parsed
-	confM.Controller.WorkerCmdTmpl = template.Must(template.New("worker").Parse(confM.Controller.WorkerCmd))
-	confM.Controller.WorkerCmdLargeTmpl = template.Must(template.New("worker-large").Parse(confM.Controller.WorkerCmdLarge))
-	confL.Controller.WorkerCmdTmpl = template.Must(template.New("worker").Parse(confL.Controller.WorkerCmd))
-	confL.Controller.WorkerCmdLargeTmpl = template.Must(template.New("worker-large").Parse(confL.Controller.WorkerCmdLarge))
-
-	// Initialize the dirs (and give them all permissions). They will be
-	// wiped out after the test anyway.
-	permCode := fs.FileMode(0777)
-	err := errors.Join(
-		os.MkdirAll(confM.Execution.DirFrom(), permCode),
-		os.MkdirAll(confM.Execution.DirTo(), permCode),
-		os.MkdirAll(confM.Execution.DirDone(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirFrom(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirTo(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirDone(), permCode),
-		os.MkdirAll(confM.Aggregation.DirFrom(), permCode),
-		os.MkdirAll(confM.Aggregation.DirTo(), permCode),
-		os.MkdirAll(confM.Aggregation.DirDone(), permCode),
-	)
-
-	if err != nil {
-		t.Fatalf("could not create the temporary directories")
-	}
-
-	return confM, confL
-}
-
-const (
-	execJob int = iota
-	compressionJob
-	aggregationJob
-	forLarge bool = true
-)
-
-func createTestInputFile(
-	dirfrom string,
-	start, end, jobType, exitWith int,
-	large ...bool,
-) (fname string) {
-
-	// The filenames are expected to match the regexp pattern that we have in
-	// the job definition.
-	fmtString := ""
-	switch jobType {
-	case execJob:
-		fmtString = "%v-%v-etv0.1.2-stv1.2.3-getZkProof.json"
-	case compressionJob:
-		fmtString = "%v-%v-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json"
-	case aggregationJob:
-		fmtString = "%v-%v-deadbeef57-getZkAggregatedProof.json"
-	default:
-		panic("incorrect job type")
-	}
-
-	filename := fmt.Sprintf(fmtString, start, end)
-	if len(large) > 0 && large[0] {
-		filename += ".large"
-	}
-	f, err := os.Create(path.Join(dirfrom, filename))
-	if err != nil {
-		panic(err)
-	}
-
-	// If called (with the test configuration (i.e. with sh), the file will
-	// immediately exit with the provided error code)
-	f.WriteString(fmt.Sprintf("#!/bin/sh\nexit %v", exitWith))
-	f.Close()
-
-	return filename
 }

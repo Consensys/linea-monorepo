@@ -111,6 +111,13 @@ type Config struct {
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 
+	// LIMITLESS PROVER Components
+	ExecBootstrap      Execution      `mapstructure:"execution_bootstrap"`
+	ExecGL             Execution      `mapstructure:"execution_gl"`
+	ExecLPP            Execution      `mapstructure:"execution_lpp"`
+	ExecRndBeacon      RndBeacon      `mapstructure:"execution_rndbeacon"`
+	ExecConglomeration Conglomeration `mapstructure:"execution_conglomeration"`
+
 	Debug struct {
 		// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
 		// Profiles can later be read using the `go tool pprof` command.
@@ -137,6 +144,36 @@ type Config struct {
 
 	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
 	TracesLimitsLarge TracesLimits `mapstructure:"traces_limits_large" validate:"required"`
+}
+
+type RndBeacon struct {
+	GL WithRequestDir `mapstructure:",squash"`
+
+	BootstrapMetadata WithRequestDir `mapstructure:",squash"`
+
+	WithResponseDir `mapstructure:",squash"`
+
+	// ProverMode stores the kind of prover to use.
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
+
+	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
+	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
+}
+
+type Conglomeration struct {
+	GL WithRequestDir `mapstructure:",squash"`
+
+	LPP WithRequestDir `mapstructure:",squash"`
+
+	BootstrapMetadata WithRequestDir `mapstructure:",squash"`
+
+	WithResponseDir `mapstructure:",squash"`
+
+	// ProverMode stores the kind of prover to use.
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
+
+	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
+	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
 }
 
 func (cfg *Config) Logger() *logrus.Logger {
@@ -181,6 +218,13 @@ type Controller struct {
 	EnableBlobDecompression bool `mapstructure:"enable_blob_decompression"`
 	EnableAggregation       bool `mapstructure:"enable_aggregation"`
 
+	// Limitless prover components. Defaults to true
+	EnableExecBootstrap      bool `mapstructure:"enable_exec_bootstrap"`
+	EnableExecGL             bool `mapstructure:"enable_exec_gl"`
+	EnableExecRndBeacon      bool `mapstructure:"enable_exec_rndbeacon"`
+	EnableExecLPP            bool `mapstructure:"enable_exec_lpp"`
+	EnableExecConglomeration bool `mapstructure:"enable_exec_conglomeration"`
+
 	// TODO @gbotrel the only reason we keep these is for test purposes; default value is fine,
 	// we should remove them from here for readability.
 	WorkerCmd          string             `mapstructure:"worker_cmd_tmpl"`
@@ -202,6 +246,8 @@ type Prometheus struct {
 type Execution struct {
 	WithRequestDir `mapstructure:",squash"`
 
+	WithResponseDir `mapstructure:",squash"`
+
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
 
@@ -214,6 +260,8 @@ type Execution struct {
 
 type BlobDecompression struct {
 	WithRequestDir `mapstructure:",squash"`
+
+	WithResponseDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev full"`
@@ -229,6 +277,8 @@ type BlobDecompression struct {
 
 type Aggregation struct {
 	WithRequestDir `mapstructure:",squash"`
+
+	WithResponseDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev full"`
@@ -249,19 +299,23 @@ type Aggregation struct {
 }
 
 type WithRequestDir struct {
-	RequestsRootDir string `mapstructure:"requests_root_dir" validate:"required"`
+	RequestsRootDir []string `mapstructure:"requests_root_dir" validate:"required"`
 }
 
-func (cfg *WithRequestDir) DirFrom() string {
-	return path.Join(cfg.RequestsRootDir, RequestsFromSubDir)
+type WithResponseDir struct {
+	ResponsesRootDir []string `mapstructure:"responses_root_dir" validate:"required"`
 }
 
-func (cfg *WithRequestDir) DirTo() string {
-	return path.Join(cfg.RequestsRootDir, RequestsToSubDir)
+func (cfg *WithRequestDir) DirFrom(ipIdx int) string {
+	return path.Join(cfg.RequestsRootDir[ipIdx], RequestsFromSubDir)
 }
 
-func (cfg *WithRequestDir) DirDone() string {
-	return path.Join(cfg.RequestsRootDir, RequestsDoneSubDir)
+func (cfg *WithResponseDir) DirTo(opIdx int) string {
+	return path.Join(cfg.ResponsesRootDir[opIdx], ResponsesToSubDir)
+}
+
+func (cfg *WithRequestDir) DirDone(ipIdx int) string {
+	return path.Join(cfg.RequestsRootDir[ipIdx], RequestsDoneSubDir)
 }
 
 type PublicInput struct {
