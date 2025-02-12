@@ -30,12 +30,12 @@ type ModuleDiscoverer interface {
 	// Analyze is responsible for letting the module discoverer compute how to
 	// group best the columns into modules.
 	Analyze(comp *wizard.CompiledIOP)
-	NbModules() int
 	ModuleList() []ModuleName
 	FindModule(col ifaces.Column) ModuleName
 	// given a query and a module name it checks if the query is inside the module
 	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
 	QueryIsInModule(ifaces.Query, ModuleName) bool
+	// it checks if the given column is in the given module
 	ColumnIsInModule(col ifaces.Column, name ModuleName) bool
 }
 
