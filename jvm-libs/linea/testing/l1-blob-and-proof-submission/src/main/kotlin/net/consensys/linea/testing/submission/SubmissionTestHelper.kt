@@ -43,9 +43,9 @@ fun assertTxsSuccess(
 ) {
   SafeFuture.supplyAsync {
     txsAndInterval.forEach { (txHash, interval) ->
-      log.info("waiting for tx={} to be mined", txHash)
+      log.debug("waiting for tx to be mined txHash={} ", txHash)
       assertTxSuccess(txHash, interval, submissionType, l1Web3jClient, timeout)
-      log.info("waiting for tx={} to be mined", txHash)
+      log.debug("tx to be mined txHash={} ", txHash)
     }
   }
     .get(timeout.inWholeMilliseconds, java.util.concurrent.TimeUnit.MILLISECONDS)
