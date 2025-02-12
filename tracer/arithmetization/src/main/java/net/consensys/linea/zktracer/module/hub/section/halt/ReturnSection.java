@@ -258,11 +258,6 @@ public class ReturnSection extends TraceSection
 
     checkState(returnFromDeployment);
 
-    // TODO: optional sanity check that may be removed
-    final Bytes topOfTheStack = hub.messageFrame().getStackItem(0);
-    boolean deploymentWasSuccess = !topOfTheStack.isZero();
-    checkArgument(deploymentWasSuccess == successfulDeploymentExpected);
-
     firstCreateeNew = AccountSnapshot.canonical(hub, deploymentAddress);
     final AccountFragment deploymentAccountFragment =
         hub.factories()

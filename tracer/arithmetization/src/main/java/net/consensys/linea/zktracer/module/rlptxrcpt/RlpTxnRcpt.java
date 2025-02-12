@@ -142,10 +142,9 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
 
   private void phase3(RlpTxrcptColumns traceValue, Long cumulativeGasUsed, Trace trace) {
     final int phase = 3;
-    // TODO: uncomment this
-    // if (cumulativeGasUsed ==0){
-    //  throw new IllegalStateException("Cumulative Gas Used can't be 0");
-    // }
+    if (cumulativeGasUsed == 0) {
+      throw new IllegalStateException("Cumulative Gas Used can't be 0");
+    }
     rlpInt(
         1, phase, cumulativeGasUsed, false, false, false, true, false, false, 0, traceValue, trace);
   }

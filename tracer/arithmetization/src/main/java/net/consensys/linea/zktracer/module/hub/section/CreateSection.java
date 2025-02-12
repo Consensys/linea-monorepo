@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddre
 
 import java.util.Optional;
 
+import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.*;
@@ -85,19 +86,17 @@ public class CreateSection extends TraceSection
 
   private RlpAddrSubFragment rlpAddrSubFragment;
 
-  final CreateScenarioFragment scenarioFragment; // row i + 0
+  @Getter public final CreateScenarioFragment scenarioFragment; // row i + 0
   final ContextFragment currentContextFragment; // row i + 1
   final ImcFragment imcFragment; // row i + 2
   private ContextFragment finalContextFragment; // row i+?
 
   private boolean requiresRomLex;
-  private Wei value;
+  private final Wei value;
   private boolean success = false;
 
-  private int hubStamp;
+  private final int hubStamp;
 
-  // TODO: according to our preliminary conclusion in issue #866
-  //  CREATE's that raise a failure condition _do spawn a child context_.
   public CreateSection(Hub hub, MessageFrame frame) {
     super(hub, maxNumberOfLines(hub.pch().exceptions(), hub.pch().abortingConditions()));
     accountFragmentFactory = hub.factories().accountFragment();
@@ -155,8 +154,7 @@ public class CreateSection extends TraceSection
     firstCreatee = AccountSnapshot.canonical(hub, frame.getWorldUpdater(), createeAddress);
 
     final boolean aborts = scenarioFragment.getScenario() == CREATE_ABORT;
-    final boolean failedCreate =
-        scenarioFragment.getScenario() == CREATE_FAILURE_CONDITION_WONT_REVERT;
+    final boolean failedCreate = scenarioFragment.isFailedCreate();
     final boolean emptyInitCode =
         scenarioFragment.getScenario() == CREATE_EMPTY_INIT_CODE_WONT_REVERT;
 
@@ -191,7 +189,6 @@ public class CreateSection extends TraceSection
     if (failedCreate) {
       finalContextFragmentSquashesReturnData(hub);
       commonValues.payGasPaidOutOfPocket(hub);
-      hub.failureConditionForCreates = true;
       return;
     }
 

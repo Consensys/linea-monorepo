@@ -16,8 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes;
 
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.*;
-import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import java.math.BigInteger;
 

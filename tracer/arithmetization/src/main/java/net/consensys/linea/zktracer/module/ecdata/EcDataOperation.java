@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.ecdata;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.Util.rightPaddedSlice;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECADD_DATA;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECADD_RESULT;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECMUL_DATA;
@@ -49,7 +50,6 @@ import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECRECO
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.*;
 import static net.consensys.linea.zktracer.types.Containers.repeat;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
-import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import java.util.List;
 
@@ -155,13 +155,7 @@ public class EcDataOperation extends ModuleOperation {
                   + precompileFlag.name());
         };
 
-    if (callData.size() < paddedCallDataLength) {
-      this.rightPaddedCallData = rightPadTo(callData, paddedCallDataLength);
-    } else {
-      // TODO: why keep the entire rightPaddedCallData rather than
-      // rightPaddedCallData[0:paddedCallDataLength] ?
-      this.rightPaddedCallData = callData;
-    }
+    rightPaddedCallData = rightPaddedSlice(callData, 0, paddedCallDataLength);
 
     if (precompileFlag == PRC_ECPAIRING) {
       totalPairings = callDataSize / TOTAL_SIZE_ECPAIRING_DATA_MIN;

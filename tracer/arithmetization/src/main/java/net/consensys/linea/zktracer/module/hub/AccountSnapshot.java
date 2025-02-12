@@ -57,14 +57,11 @@ public class AccountSnapshot {
    * @return
    */
   public static AccountSnapshot canonical(Hub hub, Address address) {
-    AccountSnapshot canonicalSnapshot =
-        fromArguments(
-            hub.messageFrame().getWorldUpdater(),
-            address,
-            hub.transients.conflation().deploymentInfo(),
-            isAddressWarm(hub.messageFrame(), address));
-
-    return canonicalSnapshot;
+    return fromArguments(
+        hub.messageFrame().getWorldUpdater(),
+        address,
+        hub.transients.conflation().deploymentInfo(),
+        isAddressWarm(hub.messageFrame(), address));
   }
 
   public static AccountSnapshot canonical(Hub hub, WorldView world, Address address) {

@@ -36,7 +36,6 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-// TODO: implement
 public class ExtCodeCopySection extends TraceSection implements PostRollbackDefer {
 
   final Bytes rawAddress;

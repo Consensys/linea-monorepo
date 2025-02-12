@@ -17,14 +17,10 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
-import org.apache.tuweni.bytes.Bytes;
 
 /** This interface defines the API required to execute a call to the OOB module. */
 @RequiredArgsConstructor
 public abstract class OobCall implements TraceSubFragment {
-  // TODO: move these constants somewhere else
-  public static final Bytes ZERO = Bytes.EMPTY;
-  public static final Bytes ONE = Bytes.of(1);
 
   public final OobInstruction oobInstruction;
 

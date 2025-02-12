@@ -122,13 +122,14 @@ public class DeferRegistry
    * @param world a {@link WorldView} on the state
    * @param tx the current {@link Transaction}
    */
-  // TODO: should use the TransactionProcessingMetadata
-
-  // TODO add docs to understand why we do two rounds of resolving (due to AccountFragment created
-  // at endTx which are too deferEndTx), maybe no more the case, so not needed anymore
   @Override
   public void resolveAtEndTransaction(
       Hub hub, WorldView world, Transaction tx, boolean isSuccessful) {
+    /**
+     * AccountFragment could be created at resolveAtEndTransaction for some sections. As those
+     * accountFragments are too endTransactionDeferred, we need to resolveAtEndTransaction in two
+     * steps.
+     */
     final List<EndTransactionDefer> endTransactionDefersFirstRound =
         new ArrayList<>(endTransactionDefers);
     endTransactionDefers.clear();

@@ -19,8 +19,6 @@ import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 
-import java.util.HashMap;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -44,25 +42,6 @@ public final class StorageFragment implements TraceFragment {
   private final StorageFragmentPurpose purpose; // for debugging purposes
 
   public Trace trace(Trace trace) {
-
-    final HashMap<State.StorageSlotIdentifier, State.StorageFragmentPair> current =
-        hubState.firstAndLastStorageSlotOccurrences.get(blockNumber - 1);
-
-    boolean match =
-        current.keySet().stream()
-            .anyMatch(key -> key.getAddress().equals(storageSlotIdentifier.getAddress()));
-    boolean containsActualStorageSlotIdentifier = current.containsKey(storageSlotIdentifier);
-
-    // TODO: maybe remove in the future ?
-    checkArgument(match);
-    checkArgument(containsActualStorageSlotIdentifier);
-
-    final boolean isFirstOccurrence =
-        current.get(storageSlotIdentifier).getFirstOccurrence() == this;
-    final boolean isFinalOccurrence =
-        current.get(storageSlotIdentifier).getFinalOccurrence() == this;
-
-    // tracing
     domSubStampsSubFragment.trace(trace);
 
     return trace

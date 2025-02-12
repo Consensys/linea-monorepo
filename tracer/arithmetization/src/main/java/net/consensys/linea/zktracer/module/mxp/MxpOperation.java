@@ -17,6 +17,8 @@ package net.consensys.linea.zktracer.module.mxp;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.Util.max;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE_MO;
 import static net.consensys.linea.zktracer.module.mxp.Trace.CT_MAX_NON_TRIVIAL;
 import static net.consensys.linea.zktracer.module.mxp.Trace.CT_MAX_NON_TRIVIAL_BUT_MXPX;
 import static net.consensys.linea.zktracer.module.mxp.Trace.CT_MAX_TRIVIAL;
@@ -317,7 +319,7 @@ public class MxpOperation extends ModuleOperation {
         return opCodeData.billing().perUnit().cost() * sizeInBytes;
       }
       if (opCodeData.billing().billingRate() == BillingRate.BY_WORD) {
-        long sizeInWords = (sizeInBytes + 31) / 32;
+        long sizeInWords = (sizeInBytes + WORD_SIZE_MO) / WORD_SIZE;
         return opCodeData.billing().perUnit().cost() * sizeInWords;
       }
     }
