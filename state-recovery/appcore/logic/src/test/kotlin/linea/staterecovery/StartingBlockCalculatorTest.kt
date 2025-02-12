@@ -103,7 +103,7 @@ class StartingBlockCalculatorTest {
     }
 
     @Test
-    fun `should return headblock - lookBackWindow when recoveryStartBlockNumber further back than lookBackWindow`() {
+    fun `should return headblock - lookBackWindow when recoveryStartBlockNumber is before than lookBackWindow`() {
       startBlockToFetchFromL1(
         headBlockNumber = 500UL,
         recoveryStartBlockNumber = 250UL,
@@ -123,6 +123,16 @@ class StartingBlockCalculatorTest {
       ).also { result ->
         // Then
         assertThat(result).isEqualTo(450UL)
+      }
+
+      // potential underflow case
+      startBlockToFetchFromL1(
+        headBlockNumber = 50UL,
+        recoveryStartBlockNumber = 45UL,
+        lookbackWindow = 100UL
+      ).also { result ->
+        // Then
+        assertThat(result).isEqualTo(45UL)
       }
     }
   }

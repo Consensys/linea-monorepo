@@ -12,7 +12,8 @@ fun startBlockToFetchFromL1(
     return headBlockNumber + 1UL
   }
 
-  return (headBlockNumber - lookbackWindow)
+  return headBlockNumber
+    .minusCoercingUnderflow(lookbackWindow)
     .coerceAtLeast(recoveryStartBlockNumber)
 }
 
