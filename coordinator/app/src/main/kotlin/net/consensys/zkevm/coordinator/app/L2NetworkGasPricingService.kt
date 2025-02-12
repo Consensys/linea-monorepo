@@ -40,7 +40,7 @@ class L2NetworkGasPricingService(
     val feeHistoryFetcherConfig: FeeHistoryFetcherImpl.Config,
     val jsonRpcPricingPropagationEnabled: Boolean,
     val legacy: LegacyGasPricingCalculatorConfig,
-    val jsonRpcGasPriceUpdaterConfig: GasPriceUpdaterImpl.Config,
+    val jsonRpcGasPriceUpdaterConfig: GasPriceUpdaterImpl.Config?,
     val jsonRpcPriceUpdateInterval: Duration,
     val extraDataPricingPropagationEnabled: Boolean,
     val extraDataUpdateInterval: Duration,
@@ -48,7 +48,11 @@ class L2NetworkGasPricingService(
     val variableFeesCalculatorBounds: BoundableFeeCalculator.Config,
     val extraDataCalculatorConfig: MinerExtraDataV1CalculatorImpl.Config,
     val extraDataUpdaterConfig: ExtraDataV1UpdaterImpl.Config
-  )
+  ) {
+    init {
+      require(jsonRpcGasPriceUpdaterConfig != null || !jsonRpcPricingPropagationEnabled) { "config can not be null" }
+    }
+  }
   private val log = LogManager.getLogger(this::class.java)
 
   private val gasPricingFeesFetcher: FeesFetcher = FeeHistoryFetcherImpl(
@@ -85,7 +89,7 @@ class L2NetworkGasPricingService(
     if (config.jsonRpcPricingPropagationEnabled) {
       val l2SetGasPriceUpdater: GasPriceUpdater = GasPriceUpdaterImpl(
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
-        config = config.jsonRpcGasPriceUpdaterConfig
+        config = config.jsonRpcGasPriceUpdaterConfig!!
       )
 
       MinMineableFeesPricerService(
