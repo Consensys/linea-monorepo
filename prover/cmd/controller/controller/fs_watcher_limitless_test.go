@@ -30,21 +30,16 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 	// Create a list of files for each job type
 	// execBootstrapFrom := []string{confL.ExecBootstrap.DirFrom(0)}
 	// execGLFrom := []string{confL.ExecGL.DirFrom(0)}
-	// execRndBeaconFrom := []string{
-	// 	confL.ExecRndBeacon.DirFrom(0),
-	// 	confL.ExecRndBeacon.DirFrom(1),
-	// }
-	// execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
+	execRndBeaconFrom := []string{
+		confL.ExecRndBeacon.DirFrom(0),
+		confL.ExecRndBeacon.DirFrom(1),
+	}
+	//execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
 	execConglomerationFrom := []string{
 		confL.ExecConglomeration.DirFrom(0),
-		confL.ExecConglomeration.DirFrom(0),
-		confL.ExecConglomeration.DirFrom(0),
+		confL.ExecConglomeration.DirFrom(1),
+		confL.ExecConglomeration.DirFrom(2),
 	}
-
-	// execRndBeaconFrom := []string{
-	// 	confL.ExecRndBeacon.BootstrapMetadata.DirFrom(0),
-	// 	confL.ExecRndBeacon.GL.DirFrom(0),
-	// }
 
 	// The jobs, declared in the order in which they are expected to be found
 	expectedFNames := []struct {
@@ -57,9 +52,9 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 		// {
 		// 	FName: createLimitlessTestInputFiles(execGLFrom, 0, 1, GL, exitCode),
 		// },
-		// {
-		// 	FName: createLimitlessTestInputFiles(execRndBeaconFrom, 0, 1, RndBeacon, exitCode),
-		// },
+		{
+			FName: createLimitlessTestInputFiles(execRndBeaconFrom, 0, 1, RndBeacon, exitCode),
+		},
 		// {
 		// 	FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, LPP, exitCode),
 		// },
@@ -108,7 +103,7 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 		execGLConglomeration  = "gl"
 		execRndbeaconLPP      = "rndbeacon"
 		execLPPConglomeration = "lpp"
-		execConglomeration    = "execution"
+		execConglomeration    = "executionOutput"
 	)
 
 	// 	// Create a configuration using temporary directories
@@ -199,10 +194,10 @@ exit 0
 			EnableAggregation:       false,
 
 			// Limitless prover components
-			EnableExecBootstrap:        false,
-			EnableExecGL:               false,
-			EnableExecRndBeacon:        false,
-			EnableExecLPP:              false,
+			EnableExecBootstrap:        true,
+			EnableExecGL:               true,
+			EnableExecRndBeacon:        true,
+			EnableExecLPP:              true,
 			EnableExecConglomeration:   true,
 			LocalID:                    proverM,
 			Prometheus:                 config.Prometheus{Enabled: false},
@@ -299,11 +294,6 @@ exit 0
 
 		// RndBeacon: 2 input -> 1 output
 		// In practice there will be `n` files here
-		// os.MkdirAll(confM.ExecRndBeacon.GL.DirFrom(0), permCode),
-		// os.MkdirAll(confM.ExecRndBeacon.GL.DirDone(0), permCode),
-		// os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirFrom(0), permCode),
-		// os.MkdirAll(confM.ExecRndBeacon.BootstrapMetadata.DirDone(0), permCode),
-
 		os.MkdirAll(confM.ExecRndBeacon.DirFrom(0), permCode),
 		os.MkdirAll(confM.ExecRndBeacon.DirDone(0), permCode),
 		os.MkdirAll(confM.ExecRndBeacon.DirFrom(1), permCode),
@@ -329,13 +319,10 @@ exit 0
 
 		os.MkdirAll(confM.ExecConglomeration.DirFrom(0), permCode),
 		os.MkdirAll(confM.ExecConglomeration.DirDone(0), permCode),
-
 		os.MkdirAll(confM.ExecConglomeration.DirFrom(1), permCode),
 		os.MkdirAll(confM.ExecConglomeration.DirDone(1), permCode),
-
 		os.MkdirAll(confM.ExecConglomeration.DirFrom(2), permCode),
 		os.MkdirAll(confM.ExecConglomeration.DirDone(2), permCode),
-
 		os.MkdirAll(confM.ExecConglomeration.DirTo(0), permCode),
 	)
 
