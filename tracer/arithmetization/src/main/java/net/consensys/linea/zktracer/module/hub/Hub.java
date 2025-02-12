@@ -294,12 +294,6 @@ public class Hub implements Module {
   /** reference table modules */
   private final List<Module> refTableModules;
 
-  /**
-   * boolean which remembers whether a {@link CreateSection} detected Failure Condition F. Gets
-   * reset with every new opcode.
-   */
-  public boolean failureConditionForCreates = false;
-
   public Address coinbaseAddress;
   public boolean coinbaseWarmthAtTransactionEnd = false;
 
@@ -535,10 +529,6 @@ public class Hub implements Module {
       boolean isSuccessful,
       List<Log> logs,
       Set<Address> selfDestructs) {
-    // TODO: see issue #875. It is currently unclear which, if any,
-    //  rollbacks already took place at traceEndTransaction.
-
-    // TODO: add the following resolution this.defers.resolvePostRollback(this, ...
 
     txStack.current().completeLineaTransaction(this, world, isSuccessful, logs, selfDestructs);
     defers.resolveAtEndTransaction(this, world, tx, isSuccessful);
@@ -854,7 +844,8 @@ public class Hub implements Module {
      * address A; bytecode A executes exactly the same CREATE2 raising the Failure Condition F for
      * address B;
      */
-    if (failureConditionForCreates) {
+    if (this.currentTraceSection() instanceof CreateSection
+        && ((CreateSection) this.currentTraceSection()).scenarioFragment.isFailedCreate()) {
       return;
     }
     // from here on out: no failure condition
@@ -1022,9 +1013,6 @@ public class Hub implements Module {
   }
 
   void traceOpcode(MessageFrame frame) {
-
-    // TODO: supremely ugly hack, somebody please clean up this mess
-    failureConditionForCreates = false;
 
     switch (this.opCodeData().instructionFamily()) {
       case ADD, MOD, SHF, BIN, WCP, EXT, BATCH, PUSH_POP, DUP, SWAP -> new StackOnlySection(this);

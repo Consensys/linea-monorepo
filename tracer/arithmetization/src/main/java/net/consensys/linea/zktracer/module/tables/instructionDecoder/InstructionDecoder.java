@@ -111,7 +111,6 @@ public final class InstructionDecoder implements Module {
   @Override
   public List<ColumnHeader> columnsHeaders() {
     return headers(this.lineCount());
-    // return Trace.headers(this.lineCount());
   }
 
   @Override

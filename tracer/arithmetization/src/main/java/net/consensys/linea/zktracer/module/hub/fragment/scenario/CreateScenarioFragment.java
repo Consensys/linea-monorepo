@@ -57,11 +57,15 @@ public class CreateScenarioFragment implements TraceFragment {
   @Setter @Getter private CreateScenario scenario;
 
   public CreateScenarioFragment() {
-    this.scenario = CreateScenario.UNDEFINED;
+    scenario = CreateScenario.UNDEFINED;
   }
 
   public boolean isAbortedCreate() {
     return scenario == CreateScenario.CREATE_ABORT;
+  }
+
+  public boolean isFailedCreate() {
+    return scenario.isAnyOf(CreateScenario.CREATE_FAILURE_CONDITION_WONT_REVERT);
   }
 
   @Override

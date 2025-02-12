@@ -186,15 +186,9 @@ public class BlockdataOperation extends ModuleOperation {
       // row i + 2
       final Bytes maxDeviation = eucCall(2, prevGasLimit, EWord.of(GAS_LIMIT_ADJUSTMENT_FACTOR));
       // row i + 3
-      final BigInteger safeGasLimitUpperBound =
-          prevGasLimit.getAsBigInteger().add(maxDeviation.toUnsignedBigInteger());
-      wcpCallToLT(3, data, EWord.of(safeGasLimitUpperBound));
-
+      wcpCallToLT(3, data, EWord.of(prevGasLimit.toLong() + maxDeviation.toLong()));
       // row i + 4
-      wcpCallToGT(
-          4,
-          data,
-          EWord.of(prevGasLimit.toLong() - maxDeviation.toLong())); // TODO: double check this
+      wcpCallToGT(4, data, EWord.of(prevGasLimit.toLong() - maxDeviation.toLong()));
     }
   }
 

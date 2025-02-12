@@ -442,9 +442,6 @@ public class CallSection extends TraceSection
 
   @Override
   public void resolveAtContextReEntry(Hub hub, CallFrame frame) {
-    // TODO: what follows assumes that the caller's stack has been updated
-    //  to contain the success bit of the call at traceContextReEntry.
-    //  See issue #872.
     // The callSuccess will only be set
     // if the call is acted upon i.e. if the call is un-exceptional and un-aborted
     success = bytesToBoolean(hub.messageFrame().getStackItem(0));

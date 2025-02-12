@@ -19,7 +19,6 @@ import static net.consensys.linea.zktracer.module.hub.Trace.*;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
-import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 
 @RequiredArgsConstructor
 public class DomSubStampsSubFragment implements TraceSubFragment {
@@ -43,31 +42,10 @@ public class DomSubStampsSubFragment implements TraceSubFragment {
     return new DomSubStampsSubFragment(DomSubType.STANDARD, h, domOffset, 0, 0, 0, 0);
   }
 
-  // TODO: to be use with care, as stamps might have changed
-  // TODO: remove altogether
-  public static DomSubStampsSubFragment revertWithCurrentDomSubStamps(
-      final Hub hub, final int subOffset) {
-    return new DomSubStampsSubFragment(
-        DomSubType.REVERTS_WITH_CURRENT,
-        hub.stamp(),
-        0,
-        subOffset,
-        hub.callStack().currentCallFrame().revertStamp(),
-        0,
-        0);
-  }
-
   public static DomSubStampsSubFragment revertWithCurrentDomSubStamps(
       final int h, final int revertStamp, final int subOffset) {
     return new DomSubStampsSubFragment(
         DomSubType.REVERTS_WITH_CURRENT, h, 0, subOffset, revertStamp, 0, 0);
-  }
-
-  // TODO: to be use with care, as stamps might have changed
-  public static DomSubStampsSubFragment revertsWithChildDomSubStamps(
-      final Hub hub, final CallFrame child, final int subOffset) {
-    return new DomSubStampsSubFragment(
-        DomSubType.REVERTS_WITH_CHILD, hub.stamp(), 0, subOffset, 0, child.revertStamp(), 0);
   }
 
   public static DomSubStampsSubFragment revertsWithChildDomSubStamps(
@@ -76,7 +54,6 @@ public class DomSubStampsSubFragment implements TraceSubFragment {
         DomSubType.REVERTS_WITH_CHILD, h, 0, subOffset, 0, childRevertStamp, 0);
   }
 
-  // TODO: to be use with care, as stamps might have changed
   public static DomSubStampsSubFragment selfdestructDomSubStamps(Hub hub, int hubStamp) {
     return new DomSubStampsSubFragment(
         DomSubType.SELFDESTRUCT,
