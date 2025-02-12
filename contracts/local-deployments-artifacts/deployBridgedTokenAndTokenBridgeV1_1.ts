@@ -120,10 +120,14 @@ async function main() {
   let reservedAddresses = process.env.L2_RESERVED_TOKEN_ADDRESSES
     ? process.env.L2_RESERVED_TOKEN_ADDRESSES.split(",")
     : [];
+  const remoteSender = ethers.getCreateAddress({
+    from: process.env.REMOTE_DEPLOYER_ADDRESS || "",
+    nonce: remoteDeployerNonce + 3,
+  });
 
   if (process.env.TOKEN_BRIDGE_L1 === "true") {
     console.log(
-      `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES environment variable`,
+      `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES environment variable and remoteSender=${remoteSender}`,
     );
     deployingChainMessageService = lineaRollupAddress;
     reservedAddresses = process.env.L1_RESERVED_TOKEN_ADDRESSES
@@ -131,7 +135,7 @@ async function main() {
       : [];
   } else {
     console.log(
-      `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES environment variable`,
+      `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES environment variable and remoteSender=${remoteSender}`,
     );
   }
 
@@ -142,10 +146,7 @@ async function main() {
       tokenBeacon: beaconProxyAddress,
       sourceChainId: chainId,
       targetChainId: remoteChainId,
-      remoteSender: ethers.getCreateAddress({
-        from: process.env.REMOTE_DEPLOYER_ADDRESS || "",
-        nonce: remoteDeployerNonce + 3,
-      }),
+      remoteSender: remoteSender,
       reservedTokens: reservedAddresses,
       roleAddresses,
       pauseTypeRoles,

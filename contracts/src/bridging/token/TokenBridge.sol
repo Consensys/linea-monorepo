@@ -39,7 +39,7 @@ contract TokenBridge is
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
   /// @dev This is the ABI version and not the reinitialize version.
-  string public constant CONTRACT_VERSION = "1.0";
+  string public constant CONTRACT_VERSION = "1.1";
 
   /// @notice Role used for setting the message service address.
   bytes32 public constant SET_MESSAGE_SERVICE_ROLE = keccak256("SET_MESSAGE_SERVICE_ROLE");
