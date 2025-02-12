@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/grandproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	dist_permutation "github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/permutation"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
+	discoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
@@ -125,7 +125,7 @@ func TestPermutation(t *testing.T) {
 			// test-case.
 			initialComp := wizard.Compile(tc.DefineFunc)
 
-			disc := namebaseddiscoverer.PeriodSeperatingModuleDiscoverer{}
+			disc := discoverer.PeriodSeperatingModuleDiscoverer{}
 			disc.Analyze(initialComp)
 
 			// This declares a compiled IOP with only the columns of the module A
