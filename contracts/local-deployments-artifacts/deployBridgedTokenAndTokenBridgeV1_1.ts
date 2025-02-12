@@ -122,7 +122,7 @@ async function main() {
     : [];
   const remoteSender = ethers.getCreateAddress({
     from: process.env.REMOTE_DEPLOYER_ADDRESS || "",
-    nonce: remoteDeployerNonce + 3,
+    nonce: remoteDeployerNonce + 4,
   });
 
   if (process.env.TOKEN_BRIDGE_L1 === "true") {
