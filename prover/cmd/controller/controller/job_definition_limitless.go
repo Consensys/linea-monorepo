@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 const (
@@ -136,7 +135,8 @@ func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Input files
-	reqDirs := utils.CombineRequests(conf.ExecConglomeration.BootstrapMetadata.RequestsRootDir, conf.ExecConglomeration.GL.RequestsRootDir, conf.ExecConglomeration.LPP.RequestsRootDir)
+	//reqDirs := utils.CombineRequests(conf.ExecConglomeration.BootstrapMetadata.RequestsRootDir, conf.ExecConglomeration.GL.RequestsRootDir, conf.ExecConglomeration.LPP.RequestsRootDir)
+	reqDirs := conf.ExecConglomeration.RequestsRootDir
 	inputFilePatterns := []string{
 		fmt.Sprintf(execConglomerateBootstrapDistMetadataPattern, inpFileExt, config.FailSuffix),
 		fmt.Sprintf(execConglomerateGLInputPattern, inpFileExt, config.FailSuffix),

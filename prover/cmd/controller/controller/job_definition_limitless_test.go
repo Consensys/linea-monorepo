@@ -821,9 +821,10 @@ func TestExecConglomerationInFileRegexp(t *testing.T) {
 		conf := config.Config{}
 		conf.Version = "0.1.2"
 		conf.ExecConglomeration.CanRunFullLarge = c.Ext == "large"
-		conf.ExecConglomeration.GL.RequestsRootDir = []string{""}
-		conf.ExecConglomeration.LPP.RequestsRootDir = []string{""}
-		conf.ExecConglomeration.BootstrapMetadata.RequestsRootDir = []string{""}
+		// conf.ExecConglomeration.GL.RequestsRootDir = []string{""}
+		// conf.ExecConglomeration.LPP.RequestsRootDir = []string{""}
+		// conf.ExecConglomeration.BootstrapMetadata.RequestsRootDir = []string{""}
+		conf.ExecConglomeration.RequestsRootDir = []string{"", "", ""}
 		conf.ExecConglomeration.ResponsesRootDir = []string{""}
 
 		def, err := ExecConglomerationDefinition(&conf)

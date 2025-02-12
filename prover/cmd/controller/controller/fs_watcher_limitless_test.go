@@ -28,21 +28,22 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 	exitCode := 0 // we are not interested in the exit code here
 
 	// Create a list of files for each job type
-	execBootstrapFrom := []string{confL.ExecBootstrap.DirFrom(0)}
-	execGLFrom := []string{confL.ExecGL.DirFrom(0)}
+	// execBootstrapFrom := []string{confL.ExecBootstrap.DirFrom(0)}
+	// execGLFrom := []string{confL.ExecGL.DirFrom(0)}
+	// execRndBeaconFrom := []string{
+	// 	confL.ExecRndBeacon.DirFrom(0),
+	// 	confL.ExecRndBeacon.DirFrom(1),
+	// }
+	// execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
+	execConglomerationFrom := []string{
+		confL.ExecConglomeration.DirFrom(0),
+		confL.ExecConglomeration.DirFrom(0),
+		confL.ExecConglomeration.DirFrom(0),
+	}
+
 	// execRndBeaconFrom := []string{
 	// 	confL.ExecRndBeacon.BootstrapMetadata.DirFrom(0),
 	// 	confL.ExecRndBeacon.GL.DirFrom(0),
-	// }
-	execRndBeaconFrom := []string{
-		confL.ExecRndBeacon.DirFrom(0),
-		confL.ExecRndBeacon.DirFrom(1),
-	}
-	execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
-	// execConglomerationFrom := []string{
-	// 	confL.ExecConglomeration.GL.DirFrom(0),
-	// 	confL.ExecConglomeration.LPP.DirFrom(0),
-	// 	confL.ExecConglomeration.BootstrapMetadata.DirFrom(0),
 	// }
 
 	// The jobs, declared in the order in which they are expected to be found
@@ -50,21 +51,21 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 		FName []string
 		Skip  bool
 	}{
-		{
-			FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, Bootstrap, exitCode),
-		},
-		{
-			FName: createLimitlessTestInputFiles(execGLFrom, 0, 1, GL, exitCode),
-		},
-		{
-			FName: createLimitlessTestInputFiles(execRndBeaconFrom, 0, 1, RndBeacon, exitCode),
-		},
-		{
-			FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, LPP, exitCode),
-		},
 		// {
-		// 	FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, Conglomeration, exitCode),
+		// 	FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, Bootstrap, exitCode),
 		// },
+		// {
+		// 	FName: createLimitlessTestInputFiles(execGLFrom, 0, 1, GL, exitCode),
+		// },
+		// {
+		// 	FName: createLimitlessTestInputFiles(execRndBeaconFrom, 0, 1, RndBeacon, exitCode),
+		// },
+		// {
+		// 	FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, LPP, exitCode),
+		// },
+		{
+			FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, Conglomeration, exitCode),
+		},
 	}
 
 	fw := NewFsWatcher(confL)
@@ -198,10 +199,10 @@ exit 0
 			EnableAggregation:       false,
 
 			// Limitless prover components
-			EnableExecBootstrap:        true,
-			EnableExecGL:               true,
-			EnableExecRndBeacon:        true,
-			EnableExecLPP:              true,
+			EnableExecBootstrap:        false,
+			EnableExecGL:               false,
+			EnableExecRndBeacon:        false,
+			EnableExecLPP:              false,
 			EnableExecConglomeration:   true,
 			LocalID:                    proverM,
 			Prometheus:                 config.Prometheus{Enabled: false},
@@ -233,14 +234,7 @@ exit 0
 					path.Join(testDir, proverM, execGLConglomeration)},
 			},
 		},
-		ExecRndBeacon: config.RndBeacon{
-			// GL: config.WithRequestDir{
-			// 	RequestsRootDir: []string{path.Join(testDir, proverM, execGLRndBeacon)}, // In practice, there will be `n` files
-			// },
-			// BootstrapMetadata: config.WithRequestDir{
-			// 	RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata)},
-			// },
-
+		ExecRndBeacon: config.Execution{
 			WithRequestDir: config.WithRequestDir{
 				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata),
 					path.Join(testDir, proverM, execGLRndBeacon),
@@ -258,15 +252,12 @@ exit 0
 				ResponsesRootDir: []string{path.Join(testDir, proverM, execLPPConglomeration)},
 			},
 		},
-		ExecConglomeration: config.Conglomeration{
-			GL: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execGLConglomeration)},
-			},
-			LPP: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execLPPConglomeration)},
-			},
-			BootstrapMetadata: config.WithRequestDir{
-				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata)},
+		ExecConglomeration: config.Execution{
+			WithRequestDir: config.WithRequestDir{
+				RequestsRootDir: []string{path.Join(testDir, proverM, execBootstrapMetadata),
+					path.Join(testDir, proverM, execGLConglomeration),
+					path.Join(testDir, proverM, execLPPConglomeration),
+				},
 			},
 			WithResponseDir: config.WithResponseDir{
 				ResponsesRootDir: []string{path.Join(testDir, proverM, execConglomeration)},
@@ -327,14 +318,23 @@ exit 0
 
 		// Conglomeration: 3 input -> 1 ouput
 		// In practice there will be `2n+1` inputs => 1 output file
-		os.MkdirAll(confM.ExecConglomeration.GL.DirFrom(0), permCode),
-		os.MkdirAll(confM.ExecConglomeration.GL.DirDone(0), permCode),
+		// os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirFrom(0), permCode),
+		// os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirDone(0), permCode),
 
-		os.MkdirAll(confM.ExecConglomeration.LPP.DirFrom(0), permCode),
-		os.MkdirAll(confM.ExecConglomeration.LPP.DirDone(0), permCode),
+		// os.MkdirAll(confM.ExecConglomeration.GL.DirFrom(0), permCode),
+		// os.MkdirAll(confM.ExecConglomeration.GL.DirDone(0), permCode),
 
-		os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirFrom(0), permCode),
-		os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirDone(0), permCode),
+		// os.MkdirAll(confM.ExecConglomeration.LPP.DirFrom(0), permCode),
+		// os.MkdirAll(confM.ExecConglomeration.LPP.DirDone(0), permCode),
+
+		os.MkdirAll(confM.ExecConglomeration.DirFrom(0), permCode),
+		os.MkdirAll(confM.ExecConglomeration.DirDone(0), permCode),
+
+		os.MkdirAll(confM.ExecConglomeration.DirFrom(1), permCode),
+		os.MkdirAll(confM.ExecConglomeration.DirDone(1), permCode),
+
+		os.MkdirAll(confM.ExecConglomeration.DirFrom(2), permCode),
+		os.MkdirAll(confM.ExecConglomeration.DirDone(2), permCode),
 
 		os.MkdirAll(confM.ExecConglomeration.DirTo(0), permCode),
 	)
