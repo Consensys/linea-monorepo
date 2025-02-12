@@ -239,8 +239,8 @@ class SubmissionsFetchingTaskIntTest {
 
     fetchedSubmissions.forEachIndexed { index, fetchedSubmission ->
       val sotAggAndBlobs = expectedAggregationsAndBlobsToBeFetched[index]
-        assertFetchedData(fetchedSubmission!!, sotAggAndBlobs)
-      }
+      assertFetchedData(fetchedSubmission!!, sotAggAndBlobs)
+    }
   }
 
   fun assertFetchedData(
