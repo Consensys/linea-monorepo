@@ -29,7 +29,6 @@ internal class SubmissionEventsFetchingTask(
   pollingIntervalMs = l1PollingInterval.inWholeMilliseconds,
   log = log
 ) {
-  //  val nextBlockNumberToFetch: AtomicLong = AtomicLong(l2StartBlockNumber.toLong())
   val latestFetchedFinalization: AtomicReference<EthLogEvent<DataFinalizedV3>> = AtomicReference(null)
 
   override fun action(): SafeFuture<*> {

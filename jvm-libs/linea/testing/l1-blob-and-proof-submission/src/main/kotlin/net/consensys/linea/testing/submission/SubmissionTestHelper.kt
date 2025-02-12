@@ -115,7 +115,11 @@ fun submitBlobsAndAggregationsAndWaitExecution(
     l1Web3jClient = l1Web3jClient,
     timeout = waitTimeout
   )
-  log.info("blob={} txHash={} executed on L1", blobSubmissions.last().second, blobSubmissions.last().first)
+  log.info(
+    "blob={} txHash={} executed on L1",
+    blobSubmissions.last().second.last().intervalString(),
+    blobSubmissions.last().first
+  )
 
   val submissions = aggregationsAndBlobs
     .filter { it.aggregation != null }
