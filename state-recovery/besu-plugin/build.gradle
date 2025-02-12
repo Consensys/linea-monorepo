@@ -18,7 +18,6 @@ dependencies {
   api(project(":state-recovery:appcore:logic"))
   api(project(":state-recovery:clients:blobscan-client"))
   api(project(":state-recovery:clients:eth-api"))
-  api(project(":state-recovery:clients:execution-layer-json-rpc-client"))
 }
 
 ext.groupsToIncludeInShadow = [
