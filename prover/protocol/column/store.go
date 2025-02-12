@@ -456,6 +456,10 @@ func (in *storedColumnInfo) isExcludedFromProverFS() bool {
 		return true
 	}
 
+	if in.Status.IsPublic() {
+		return false
+	}
+
 	if in.IncludeInProverFS {
 		return false
 	}
