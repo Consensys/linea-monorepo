@@ -18,9 +18,52 @@ package maru.core.ext
 import java.math.BigInteger
 import kotlin.random.Random
 import kotlin.random.nextULong
+import maru.core.BeaconBlock
+import maru.core.BeaconBlockBody
+import maru.core.BeaconBlockHeader
+import maru.core.BeaconState
 import maru.core.ExecutionPayload
+import maru.core.Seal
+import maru.core.Validator
 
 object DataGenerators {
+  fun randomBeaconState(number: ULong): BeaconState {
+    val beaconBlockHeader =
+      BeaconBlockHeader(
+        number = number,
+        round = Random.nextULong(),
+        proposer = Validator(Random.nextBytes(128)),
+        parentRoot = Random.nextBytes(32),
+        stateRoot = Random.nextBytes(32),
+      )
+    return BeaconState(
+      latestBeaconBlockHeader = beaconBlockHeader,
+      latestBeaconBlockRoot = Random.nextBytes(32),
+      validators = buildSet(3) { Validator(Random.nextBytes(128)) },
+    )
+  }
+
+  fun randomBeaconBlock(number: ULong): BeaconBlock {
+    val beaconBLockHeader =
+      BeaconBlockHeader(
+        number = number,
+        round = Random.nextULong(),
+        proposer = Validator(Random.nextBytes(128)),
+        parentRoot = Random.nextBytes(32),
+        stateRoot = Random.nextBytes(32),
+      )
+    val beaconBlockBody =
+      BeaconBlockBody(
+        prevBlockSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        executionPayload = randomExecutionPayload(),
+      )
+
+    return BeaconBlock(
+      beaconBlockHeader = beaconBLockHeader,
+      beaconBlockBody = beaconBlockBody,
+    )
+  }
+
   fun randomExecutionPayload(): ExecutionPayload =
     ExecutionPayload(
       parentHash = Random.nextBytes(32),

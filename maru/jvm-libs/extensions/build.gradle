@@ -15,7 +15,6 @@
 
 plugins {
   id 'maru.kotlin-library-conventions'
-  id 'java-test-fixtures'
 }
 
 dependencies {
