@@ -134,7 +134,7 @@ class SubmissionsFetchingTaskIntTest {
       blobDecompressor = blobDecompressor,
       submissionEventsQueueLimit = queuesSizeLimit,
       compressedBlobsQueueLimit = queuesSizeLimit,
-      decompressedBlobsQueueLimit = queuesSizeLimit,
+      targetDecompressedBlobsQueueLimit = queuesSizeLimit,
       debugForceSyncStopBlockNumber = debugForceSyncStopBlockNumber
     )
   }

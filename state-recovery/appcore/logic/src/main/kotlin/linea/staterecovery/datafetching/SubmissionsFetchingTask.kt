@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -39,7 +40,7 @@ class SubmissionsFetchingTask(
   private val blobDecompressor: BlobDecompressorAndDeserializer,
   private val submissionEventsQueueLimit: Int,
   private val compressedBlobsQueueLimit: Int,
-  private val decompressedBlobsQueueLimit: Int,
+  private val targetDecompressedBlobsQueueLimit: Int,
   private val debugForceSyncStopBlockNumber: ULong?,
   private val log: Logger = LogManager.getLogger(SubmissionsFetchingTask::class.java)
 ) : PeriodicPollingService(
@@ -47,7 +48,6 @@ class SubmissionsFetchingTask(
   pollingIntervalMs = l1PollingInterval.inWholeMilliseconds,
   log = log
 ) {
-//  Queue<SubmissionEventsAndData<BlockFromL1RecoveredData>> by decompressedBlocksQueue
   init {
     require(submissionEventsQueueLimit >= 1) {
       "submissionEventsQueueLimit=$submissionEventsQueueLimit must be greater than zero"
@@ -55,15 +55,25 @@ class SubmissionsFetchingTask(
     require(compressedBlobsQueueLimit >= 1) {
       "compressedBlobsQueueLimit=$compressedBlobsQueueLimit must be greater than zero"
     }
-    require(decompressedBlobsQueueLimit >= 1) {
-      "decompressedBlobsQueueLimit=$decompressedBlobsQueueLimit must be greater than zero"
+    require(targetDecompressedBlobsQueueLimit >= 1) {
+      "targetDecompressedBlobsQueueLimit=$targetDecompressedBlobsQueueLimit must be greater than zero"
     }
+  }
+  private val dynamicDecompressedBlobsQueueLimit = AtomicInteger(targetDecompressedBlobsQueueLimit)
+  val decompressedBlobsQueueLimit: Int
+    get() = dynamicDecompressedBlobsQueueLimit.get()
+  fun incrementDecompressedBlobsQueueLimit(incrementFactor: Int) {
+    dynamicDecompressedBlobsQueueLimit.accumulateAndGet(incrementFactor) { prev, _ -> prev + incrementFactor }
+  }
+  fun resetDecompressedBlobsQueueLimitToOriginalSize() {
+    dynamicDecompressedBlobsQueueLimit.set(targetDecompressedBlobsQueueLimit)
   }
 
   private val submissionEventsQueue = ConcurrentLinkedQueue<FinalizationAndDataEventsV3>()
   private val compressedBlobsQueue = ConcurrentLinkedQueue<SubmissionEventsAndData<ByteArray>>()
   val decompressedBlocksQueue: ConcurrentLinkedQueue<SubmissionEventsAndData<BlockFromL1RecoveredData>> =
     ConcurrentLinkedQueue<SubmissionEventsAndData<BlockFromL1RecoveredData>>()
+
   private val submissionEventsFetchingTask = SubmissionEventsFetchingTask(
     vertx = vertx,
     l1PollingInterval = l1PollingInterval,
@@ -88,7 +98,7 @@ class SubmissionsFetchingTask(
     blobDecompressor = blobDecompressor,
     rawBlobsQueue = compressedBlobsQueue,
     decompressedBlocksQueue = decompressedBlocksQueue,
-    decompressedFinalizationQueueLimit = decompressedBlobsQueueLimit
+    decompressedFinalizationQueueLimit = dynamicDecompressedBlobsQueueLimit::get
   )
 
   @Synchronized

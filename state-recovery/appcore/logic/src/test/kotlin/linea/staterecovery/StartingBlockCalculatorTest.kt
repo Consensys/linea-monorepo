@@ -14,9 +14,9 @@ class StartingBlockCalculatorTest {
         headBlockNumber = 50UL,
         recoveryStartBlockNumber = null,
         lookbackWindow = 10UL
-      ).also { (l1Interval, elInterval) ->
-        assertThat(l1Interval).isNull()
-        assertThat(elInterval).isEqualTo(BlockInterval(41UL, 50UL))
+      ).also { intervals ->
+        assertThat(intervals.l1Interval).isNull()
+        assertThat(intervals.elInterval).isEqualTo(BlockInterval(41UL, 50UL))
       }
 
       // potential underflow case
@@ -24,9 +24,9 @@ class StartingBlockCalculatorTest {
         headBlockNumber = 5UL,
         recoveryStartBlockNumber = null,
         lookbackWindow = 10UL
-      ).also { (l1Interval, elInterval) ->
-        assertThat(l1Interval).isNull()
-        assertThat(elInterval).isEqualTo(BlockInterval(0UL, 5UL))
+      ).also { intervals ->
+        assertThat(intervals.l1Interval).isNull()
+        assertThat(intervals.elInterval).isEqualTo(BlockInterval(0UL, 5UL))
       }
     }
 
@@ -36,9 +36,9 @@ class StartingBlockCalculatorTest {
         headBlockNumber = 50UL,
         recoveryStartBlockNumber = 51UL,
         lookbackWindow = 10UL
-      ).also { (l1Interval, elInterval) ->
-        assertThat(l1Interval).isNull()
-        assertThat(elInterval).isEqualTo(BlockInterval(41UL, 50UL))
+      ).also { intervals ->
+        assertThat(intervals.l1Interval).isNull()
+        assertThat(intervals.elInterval).isEqualTo(BlockInterval(41UL, 50UL))
       }
     }
 
@@ -48,9 +48,9 @@ class StartingBlockCalculatorTest {
         headBlockNumber = 0UL,
         recoveryStartBlockNumber = 1UL,
         lookbackWindow = 10UL
-      ).also { (l1Interval, elInterval) ->
-        assertThat(l1Interval).isNull()
-        assertThat(elInterval).isEqualTo(BlockInterval(0UL, 0UL))
+      ).also { intervals ->
+        assertThat(intervals.l1Interval).isNull()
+        assertThat(intervals.elInterval).isEqualTo(BlockInterval(0UL, 0UL))
       }
     }
 
@@ -60,9 +60,9 @@ class StartingBlockCalculatorTest {
         headBlockNumber = 50UL,
         recoveryStartBlockNumber = 10UL,
         lookbackWindow = 10UL
-      ).also { (l1Interval, elInterval) ->
-        assertThat(l1Interval).isEqualTo(BlockInterval(41UL, 50UL))
-        assertThat(elInterval).isNull()
+      ).also { intervals ->
+        assertThat(intervals.l1Interval).isEqualTo(BlockInterval(41UL, 50UL))
+        assertThat(intervals.elInterval).isNull()
       }
     }
 
@@ -72,9 +72,9 @@ class StartingBlockCalculatorTest {
         headBlockNumber = 50UL,
         recoveryStartBlockNumber = 45UL,
         lookbackWindow = 10UL
-      ).also { (l1Interval, elInterval) ->
-        assertThat(l1Interval).isEqualTo(BlockInterval(45UL, 50UL))
-        assertThat(elInterval).isEqualTo(BlockInterval(41UL, 44UL))
+      ).also { intervals ->
+        assertThat(intervals.l1Interval).isEqualTo(BlockInterval(45UL, 50UL))
+        assertThat(intervals.elInterval).isEqualTo(BlockInterval(41UL, 44UL))
       }
     }
   }

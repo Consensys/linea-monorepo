@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.function.Supplier
 import kotlin.time.Duration
 
 internal class BlobDecompressionTask(
@@ -16,7 +17,7 @@ internal class BlobDecompressionTask(
   private val blobDecompressor: BlobDecompressorAndDeserializer,
   private val rawBlobsQueue: ConcurrentLinkedQueue<SubmissionEventsAndData<ByteArray>>,
   private val decompressedBlocksQueue: ConcurrentLinkedQueue<SubmissionEventsAndData<BlockFromL1RecoveredData>>,
-  private val decompressedFinalizationQueueLimit: Int,
+  private val decompressedFinalizationQueueLimit: Supplier<Int>,
   private val log: Logger = LogManager.getLogger(SubmissionsFetchingTask::class.java)
 ) : PeriodicPollingService(
   vertx = vertx,
@@ -28,7 +29,7 @@ internal class BlobDecompressionTask(
   }
 
   private fun decompressAndDeserializeBlobs(): SafeFuture<Unit> {
-    if (decompressedBlocksQueue.size >= decompressedFinalizationQueueLimit) {
+    if (decompressedBlocksQueue.size >= decompressedFinalizationQueueLimit.get()) {
       return SafeFuture.completedFuture(Unit)
     }
     val submissionEventsAndData = rawBlobsQueue.poll()

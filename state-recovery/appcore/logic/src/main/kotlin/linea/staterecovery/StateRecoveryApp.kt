@@ -2,7 +2,6 @@ package linea.staterecovery
 
 import build.linea.clients.StateManagerClientV1
 import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
-import build.linea.domain.EthLogEvent
 import io.vertx.core.Vertx
 import linea.EthLogsSearcher
 import net.consensys.linea.BlockParameter
@@ -101,8 +100,6 @@ class StateRecoveryApp(
     pollingInterval = config.l1PollingInterval,
     debugForceSyncStopBlockNumber = config.debugForceSyncStopBlockNumber
   )
-  val lastSuccessfullyRecoveredFinalization: EthLogEvent<DataFinalizedV3>?
-    get() = stateSynchronizerService.lastSuccessfullyProcessedFinalization
   val stateRootMismatchFound: Boolean
     get() = stateSynchronizerService.stateRootMismatchFound
 
