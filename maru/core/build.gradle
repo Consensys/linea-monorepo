@@ -19,7 +19,6 @@ plugins {
 }
 
 dependencies {
-  api 'org.slf4j:slf4j-api'
   implementation "org.hyperledger.besu.internal:rlp"
   implementation "io.tmio:tuweni-bytes"
 }

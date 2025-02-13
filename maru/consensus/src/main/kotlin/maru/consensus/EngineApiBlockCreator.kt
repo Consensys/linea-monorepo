@@ -26,6 +26,7 @@ import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.BlobGas
 import org.hyperledger.besu.datatypes.Hash
 import org.hyperledger.besu.datatypes.Wei
+import org.hyperledger.besu.ethereum.blockcreation.BlockCreationTiming
 import org.hyperledger.besu.ethereum.blockcreation.BlockCreator
 import org.hyperledger.besu.ethereum.core.Block
 import org.hyperledger.besu.ethereum.core.BlockBody
@@ -47,14 +48,16 @@ class EngineApiBlockCreator(
   private val manager: ExecutionLayerManager,
   private val state: DummyConsensusState,
   private val blockHeaderFunctions: BlockHeaderFunctions,
+  initialBlockTimestamp: Long, // Block creation starts right after, so it's required
 ) : BlockCreator {
   init {
     manager
       .setHeadAndStartBlockBuilding(
-        state.latestBlockHash,
-        state.finalizationState.safeBlockHash,
-        state.finalizationState.finalizedBlockHash,
-      )
+        headHash = state.latestBlockHash,
+        safeHash = state.finalizationState.safeBlockHash,
+        finalizedHash = state.finalizationState.finalizedBlockHash,
+        nextBlockTimestamp = initialBlockTimestamp,
+      ).get()
   }
 
   private val log = LogManager.getLogger(EngineApiBlockCreator::class.java)
@@ -78,27 +81,47 @@ class EngineApiBlockCreator(
     parentHeader: BlockHeader?,
   ): BlockCreator.BlockCreationResult = createEmptyWithdrawalsBlock(timestamp, parentHeader)
 
+  // Starts creation of the next block with timestamp, returns current block being built
   override fun createEmptyWithdrawalsBlock(
     timestamp: Long,
     parentHeader: BlockHeader?,
   ): BlockCreator.BlockCreationResult {
-    val blockBuildingResult = manager.finishBlockBuilding().get()
-    val newHeadHash = blockBuildingResult.resultingBlockHash
+    val blockCreationTimings = BlockCreationTiming()
+    blockCreationTimings.register("Block creation")
+    val blockBuildingResult =
+      try {
+        manager
+          .finishBlockBuilding()
+          .thenApply {
+            state.updateLatestStatus(it.blockHash)
+            log.info("Updating latest state")
+            it
+          }.get()
+      } catch (e: Exception) {
+        log.warn("Error during block building finish! Starting new attempt!", e)
+        null
+      }
+
+    val newHeadHash = state.latestBlockHash
     // Mind the atomicity of finalization updates
     val finalizationState = state.finalizationState
+    log.debug(" {}", newHeadHash)
     manager
       .setHeadAndStartBlockBuilding(
-        newHeadHash,
-        finalizationState.safeBlockHash,
-        finalizationState.finalizedBlockHash,
-      ).thenApply {
-        state.updateLatestStatus(newHeadHash)
-      }.whenException {
+        headHash = newHeadHash,
+        safeHash = finalizationState.safeBlockHash,
+        finalizedHash = finalizationState.finalizedBlockHash,
+        nextBlockTimestamp = timestamp,
+      ).whenException {
         log.error("Error while initiating block building!", it)
+      }.get()
+    val block =
+      blockBuildingResult?.let {
+        mapExecutionPayloadToBlock(blockBuildingResult)
       }
-    val block = mapExecutionPayloadToBlock(blockBuildingResult.executionPayload)
+    blockCreationTimings.end("Block creation")
     // This return type doesn't fit this case well so stubbing it with dummy values for now
-    return BlockCreator.BlockCreationResult(block, null, null)
+    return BlockCreator.BlockCreationResult(block, null, blockCreationTimings)
   }
 
   private fun mapExecutionPayloadToBlock(payload: ExecutionPayload): Block {
@@ -129,7 +152,7 @@ class EngineApiBlockCreator(
         /* blobGasUsed = */ 0,
         /* excessBlobGas = */ BlobGas.ZERO,
         /* parentBeaconBlockRoot = TODO: use an actual beacon block root */ Bytes32.ZERO,
-        /* requestsRoot = */ Hash.EMPTY,
+        /* requestsHash = */ BodyValidation.requestsHash(listOf()),
         /* blockHeaderFunctions = */ blockHeaderFunctions,
       )
     val blockBody = BlockBody(transactions, listOf())

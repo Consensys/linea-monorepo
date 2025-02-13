@@ -15,7 +15,7 @@
  */
 package maru.executionlayer.client
 
-import org.apache.tuweni.bytes.Bytes32
+import maru.executionlayer.manager.BlockMetadata
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
@@ -26,13 +26,8 @@ import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
-data class BlockNumberAndHash(
-  val blockNumber: ULong,
-  val blockHash: Bytes32,
-)
-
 interface ExecutionLayerClient {
-  fun getLatestBlockMetadata(): SafeFuture<BlockNumberAndHash>
+  fun getLatestBlockMetadata(): SafeFuture<BlockMetadata>
 
   fun getPayload(payloadId: Bytes8): SafeFuture<Response<GetPayloadV3Response>>
 
