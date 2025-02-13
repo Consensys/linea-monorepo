@@ -4,6 +4,8 @@ plugins {
   id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
+archivesBaseName = 'linea-finalized-tag-updater'
+
 repositories {
   maven {
     url "https://artifacts.consensys.net/public/linea-besu/maven/"
@@ -35,6 +37,8 @@ shadowJar {
   if ("${project.version}" != 'unspecified') {
     archiveClassifier.set('')
     archiveVersion.set("${project.version}")
+  } else {
+    archiveClassifier.set('SNAPSHOT')
   }
 
   dependencies {
