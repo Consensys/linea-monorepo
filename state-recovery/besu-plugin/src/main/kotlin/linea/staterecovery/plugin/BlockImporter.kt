@@ -9,8 +9,6 @@ import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.Hash
 import org.hyperledger.besu.datatypes.StateOverrideMap
-import org.hyperledger.besu.evm.blockhash.BlockHashLookup
-import org.hyperledger.besu.evm.frame.MessageFrame
 import org.hyperledger.besu.plugin.data.BlockContext
 import org.hyperledger.besu.plugin.data.BlockHeader
 import org.hyperledger.besu.plugin.data.BlockOverrides
@@ -18,57 +16,14 @@ import org.hyperledger.besu.plugin.data.PluginBlockSimulationResult
 import org.hyperledger.besu.plugin.services.BlockSimulationService
 import org.hyperledger.besu.plugin.services.BlockchainService
 import org.hyperledger.besu.plugin.services.sync.SynchronizationService
-import java.util.concurrent.ConcurrentHashMap
-
-class BlockHashLookupWithRecoverySupport(
-  val lookbackWindow: ULong = 256UL
-) : BlockHashLookup {
-  private val lookbackHashesMap = ConcurrentHashMap<ULong, ByteArray>()
-
-  fun areSequential(numbers: List<ULong>): Boolean {
-    if (numbers.size < 2) return true // A list with less than 2 elements is trivially continuous
-
-    for (i in 1 until numbers.size) {
-      if (numbers[i] != numbers[i - 1] + 1UL) {
-        return false
-      }
-    }
-    return true
-  }
-
-  fun addLookbackHashes(blocksHashes: Map<ULong, ByteArray>) {
-    require(areSequential(blocksHashes.keys.toList())) {
-      "Block numbers must be sequential"
-    }
-
-    lookbackHashesMap.putAll(blocksHashes)
-  }
-
-  fun addHeadBlockHash(blockNumber: ULong, blockHash: ByteArray) {
-    lookbackHashesMap[blockNumber] = blockHash
-    pruneLookBackHashes(blockNumber)
-  }
-
-  fun pruneLookBackHashes(headBlockNumber: ULong) {
-    lookbackHashesMap.keys.removeIf { it < headBlockNumber - lookbackWindow }
-  }
-
-  fun getHash(blockNumber: Long): Hash {
-    return lookbackHashesMap[blockNumber.toULong()]
-      ?.let { Hash.wrap(Bytes32.wrap(it)) }
-      ?: Hash.ZERO
-  }
-
-  override fun apply(t: MessageFrame?, blockNumber: Long): Hash {
-    return getHash(blockNumber)
-  }
-}
 
 class BlockImporter(
   private val blockchainService: BlockchainService,
   private val simulatorService: BlockSimulationService,
   private val synchronizationService: SynchronizationService,
-  private val blockHashLookup: BlockHashLookupWithRecoverySupport = BlockHashLookupWithRecoverySupport()
+  private val blockHashLookup: BlockHashLookupWithRecoverySupport = BlockHashLookupWithRecoverySupport(
+    lookbackWindow = 256UL
+  )
 ) {
   private val log = LogManager.getLogger(BlockImporter::class.java)
   private val chainId = blockchainService.chainId.orElseThrow().toULong()
