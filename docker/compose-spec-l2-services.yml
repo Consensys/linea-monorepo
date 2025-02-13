@@ -5,7 +5,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-mainnet-fc27c01}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-mainnet-f2ff06c}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     ports:
       - "8545:8545"
@@ -82,7 +82,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-mainnet-fc27c01}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-mainnet-f2ff06c}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
