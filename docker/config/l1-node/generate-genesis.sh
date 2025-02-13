@@ -51,12 +51,13 @@ if [ -z "$l1_genesis" ] || [ -z "$network_config" ] || [ -z "$mnemonics" ] || [ 
   usage
 fi
 
+OS=$(uname);
+
 if [ -z "$genesis_time" ]; then
   if [ -z "$current_time_delay_in_sec" ]; then
     current_time_delay_in_sec="3"
   fi 
-  genesis_time=$(
-    OS=$(uname);
+  genesis_time=$(    
     if [ $OS = "Linux" ]; then
       date -d "+$current_time_delay_in_sec seconds" +%s;
     elif [ $OS = "Darwin" ]; then
@@ -71,7 +72,13 @@ mkdir -p $output_dir
 cp $l1_genesis $output_dir/genesis.json
 cp $network_config $output_dir/$(basename -- $network_config)
 
-sed -i -E 's/"timestamp": "[0-9]+"/"timestamp": "'"$genesis_time"'"/' $output_dir/genesis.json
-sed -i 's/\$GENESIS_TIME/'"$genesis_time"'/g' $output_dir/$(basename -- $network_config)
+# sed in-place command portable with both OS 
+if [ $OS = "Linux" ]; then
+  sed -i -E 's/"timestamp": "[0-9]+"/"timestamp": "'"$genesis_time"'"/' $output_dir/genesis.json
+  sed -i 's/\$GENESIS_TIME/'"$genesis_time"'/g' $output_dir/$(basename -- $network_config)
+elif [ $OS = "Darwin" ]; then
+  sed -i "" -E 's/"timestamp": "[0-9]+"/"timestamp": "'"$genesis_time"'"/' $output_dir/genesis.json
+  sed -i "" 's/\$GENESIS_TIME/'"$genesis_time"'/g' $output_dir/$(basename -- $network_config)
+fi
 
 /usr/local/bin/eth2-testnet-genesis deneb --config $output_dir/$(basename -- $network_config) --mnemonics $mnemonics --tranches-dir $output_dir/tranches --state-output $output_dir/genesis.ssz --eth1-config $output_dir/genesis.json
