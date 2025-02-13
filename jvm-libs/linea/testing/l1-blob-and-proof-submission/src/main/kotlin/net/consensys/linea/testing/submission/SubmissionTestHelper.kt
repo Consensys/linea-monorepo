@@ -7,7 +7,6 @@ import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobRecord
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.assertj.core.api.Assertions.assertThat
 import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration
@@ -19,18 +18,26 @@ fun assertTxSuccess(
   interval: BlockInterval,
   submissionType: String,
   l1Web3jClient: Web3j,
-  timeout: Duration = 1.minutes
+  timeout: Duration = 1.minutes,
+  log: Logger = LogManager.getLogger("linea.testing.submission")
 ) {
   l1Web3jClient.waitForTxReceipt(
     txHash = txHash,
-    timeout = timeout
+    timeout = timeout,
+    log = log
   ).also { txReceipt ->
-    assertThat(txReceipt.status)
-      .withFailMessage(
+    if (txReceipt.status != "0x1") {
+      throw RuntimeException(
         "submission of $submissionType=${interval.intervalString()}" +
           " failed on L1. receipt=$txReceipt"
       )
-      .isEqualTo("0x1")
+    }
+//    assertThat(txReceipt.status)
+//      .withFailMessage(
+//        "submission of $submissionType=${interval.intervalString()}" +
+//          " failed on L1. receipt=$txReceipt"
+//      )
+//      .isEqualTo("0x1")
   }
 }
 
@@ -44,8 +51,8 @@ fun assertTxsSuccess(
   SafeFuture.supplyAsync {
     txsAndInterval.forEach { (txHash, interval) ->
       log.debug("waiting for tx to be mined txHash={} ", txHash)
-      assertTxSuccess(txHash, interval, submissionType, l1Web3jClient, timeout)
-      log.debug("tx to be mined txHash={} ", txHash)
+      assertTxSuccess(txHash, interval, submissionType, l1Web3jClient, timeout, log = log)
+      log.debug("tx was mined txHash={} ", txHash)
     }
   }
     .get(timeout.inWholeMilliseconds, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -80,7 +87,7 @@ fun submitBlobs(
         if (awaitForPreviousTxBeforeSubmittingNext) {
           log.debug("waiting for blobsChunk={} txHash={} to be mined", blobsLogInfo, txHash)
           assertTxSuccess(txHash, blobs.first(), "blobs", l1Web3jClient, 20.seconds)
-          log.info(" blobsChunk={} txHash={} mined", blobsLogInfo, txHash)
+          log.info("blobsChunk={} txHash={} mined", blobsLogInfo, txHash)
         }
 
         txHash to blobs
