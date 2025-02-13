@@ -100,7 +100,9 @@ export type ListenerOptions = {
   maxFetchMessagesFromDb?: number;
   maxBlocksToFetchLogs?: number;
   eventFilters?: {
-    criteria?: string;
+    fromAddressFilter?: string;
+    toAddressFilter?: string;
+    calldataFilter?: string;
     calldataFunctionInterface?: string;
   };
 };

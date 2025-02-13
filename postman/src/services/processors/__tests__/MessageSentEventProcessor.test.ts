@@ -43,7 +43,7 @@ class TestMessageSentEventProcessor extends MessageSentEventProcessor {
   public shouldProcessMessage(
     message: MessageSent,
     messageHash: string,
-    filters?: { criteria?: string; calldataFunctionInterface?: string },
+    filters?: { calldataFilter?: string; calldataFunctionInterface?: string },
   ): boolean {
     return super.shouldProcessMessage(message, messageHash, filters);
   }
@@ -129,6 +129,66 @@ describe("TestMessageSentEventProcessor", () => {
       expect(loggerInfoSpy).toHaveBeenCalledTimes(3);
       expect(messageRepositoryInsertSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositoryInsertSpy).toHaveBeenCalledWith(expectedMessageToInsert);
+    });
+
+    it("Should insert message with status as excluded into repository if the message is excluded becuase of events filters", async () => {
+      messageSentEventProcessor = new TestMessageSentEventProcessor(
+        databaseService,
+        l1LogClientMock,
+        provider,
+        {
+          direction: Direction.L1_TO_L2,
+          maxBlocksToFetchLogs: testL1NetworkConfig.listener.maxBlocksToFetchLogs,
+          blockConfirmation: testL1NetworkConfig.listener.blockConfirmation,
+          isEOAEnabled: testL1NetworkConfig.isEOAEnabled,
+          isCalldataEnabled: true,
+          eventFilters: {
+            fromAddressFilter: TEST_ADDRESS_1,
+            toAddressFilter: TEST_ADDRESS_2,
+            calldataFilter: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
+            calldataFunctionInterface:
+              "function claimMessageWithProof((bytes32[] proof,uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+          },
+        },
+        logger,
+      );
+      const loggerInfoSpy = jest.spyOn(logger, "info");
+      const messageRepositoryInsertSpy = jest.spyOn(databaseService, "insertMessage");
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
+      jest.spyOn(l1LogClientMock, "getMessageSentEvents").mockResolvedValue([
+        testMessageSentEvent,
+        {
+          ...testMessageSentEvent,
+          calldata:
+            "0x6463fb2a000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000014f2c0000000000000000000000000000000000000000000000000000000000000008000000000000000000000000c59d8de7f984abc4913f0177bfb7bbdafac41fa6000000000000000000000000c59d8de7f984abc4913f0177bfb7bbdafac41fa6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038d7ea4c680000000000000000000000000000000000000000000000000000000000000000000d835920764c09f5b2f8105900efd4bd88344f958eb3425436d27d4689da595e80000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000541e47c68e1d235e121f188e5083acf352df62e8d730c6813910a3e1e51f0d0a3e973e11619685da115b8cb81b850a4278a3efd28870281a3f0932e2c32f98af9b4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d306189ee58a32992fa49a5f07feccd1895e3b73923f87f5fc4d07961a3b94d0848e58769b32a1beaf1ea27375a44095a0d1fb664ce2dd358e7fcbfb78c26a193440000000000000000000000000000000000000000000000000000000000000000",
+        },
+      ]);
+      const expectedMessage1ToInsert = MessageFactory.createMessage({
+        ...testMessageSentEvent,
+        sentBlockNumber: testMessageSentEvent.blockNumber,
+        direction: Direction.L1_TO_L2,
+        status: MessageStatus.SENT,
+        claimNumberOfRetry: 0,
+      });
+
+      const expectedMessage2ToInsert = MessageFactory.createMessage({
+        ...{
+          ...testMessageSentEvent,
+          calldata:
+            "0x6463fb2a000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000014f2c0000000000000000000000000000000000000000000000000000000000000008000000000000000000000000c59d8de7f984abc4913f0177bfb7bbdafac41fa6000000000000000000000000c59d8de7f984abc4913f0177bfb7bbdafac41fa6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038d7ea4c680000000000000000000000000000000000000000000000000000000000000000000d835920764c09f5b2f8105900efd4bd88344f958eb3425436d27d4689da595e80000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000541e47c68e1d235e121f188e5083acf352df62e8d730c6813910a3e1e51f0d0a3e973e11619685da115b8cb81b850a4278a3efd28870281a3f0932e2c32f98af9b4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d306189ee58a32992fa49a5f07feccd1895e3b73923f87f5fc4d07961a3b94d0848e58769b32a1beaf1ea27375a44095a0d1fb664ce2dd358e7fcbfb78c26a193440000000000000000000000000000000000000000000000000000000000000000",
+        },
+        sentBlockNumber: testMessageSentEvent.blockNumber,
+        direction: Direction.L1_TO_L2,
+        status: MessageStatus.EXCLUDED,
+        claimNumberOfRetry: 0,
+      });
+
+      await messageSentEventProcessor.process(0, 0);
+
+      expect(loggerInfoSpy).toHaveBeenCalledTimes(3);
+      expect(messageRepositoryInsertSpy).toHaveBeenCalledTimes(2);
+      expect(messageRepositoryInsertSpy).toHaveBeenNthCalledWith(1, expectedMessage1ToInsert);
+      expect(messageRepositoryInsertSpy).toHaveBeenNthCalledWith(2, expectedMessage2ToInsert);
     });
 
     it("Should insert message with calldata with status as sent into repository if calldata is enabled", async () => {
@@ -243,7 +303,7 @@ describe("TestMessageSentEventProcessor", () => {
         },
         testMessageSentEvent.messageHash,
         {
-          criteria: `from == ${TEST_ADDRESS_1} and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
+          calldataFilter: `from == ${TEST_ADDRESS_1} and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
           calldataFunctionInterface: funcFragment,
         },
       );
@@ -260,7 +320,7 @@ describe("TestMessageSentEventProcessor", () => {
         },
         testMessageSentEvent.messageHash,
         {
-          criteria: `from == "${TEST_ADDRESS_1}" and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
+          calldataFilter: `from == "${TEST_ADDRESS_1}" and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
           calldataFunctionInterface: funcFragment,
         },
       );
@@ -277,7 +337,7 @@ describe("TestMessageSentEventProcessor", () => {
         },
         testMessageSentEvent.messageHash,
         {
-          criteria: `from == "${TEST_ADDRESS_1}" and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
+          calldataFilter: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
           calldataFunctionInterface: funcFragment,
         },
       );

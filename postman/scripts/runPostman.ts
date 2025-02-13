@@ -25,10 +25,14 @@ async function main() {
         ...(parseInt(process.env.L1_LISTENER_BLOCK_CONFIRMATION ?? "") >= 0
           ? { blockConfirmation: parseInt(process.env.L1_LISTENER_BLOCK_CONFIRMATION ?? "") }
           : {}),
-        ...(process.env.L1_EVENT_FILTER_CRITERIA
+        ...(process.env.L1_EVENT_FROM_ADDRESS_FILTER ||
+        process.env.L1_EVENT_TO_ADDRESS_FILTER ||
+        process.env.L1_EVENT_CALLDATA_FILTER
           ? {
               eventFilters: {
-                criteria: process.env.L1_EVENT_FILTER_CRITERIA,
+                fromAddressFilter: process.env.L1_EVENT_FROM_ADDRESS_FILTER,
+                toAddressFilter: process.env.L1_EVENT_TO_ADDRESS_FILTER,
+                calldataFilter: process.env.L1_EVENT_CALLDATA_FILTER,
                 calldataFunctionInterface: process.env.L1_EVENT_FILTER_CALLDATA_FUNCTION_INTERFACE,
               },
             }
@@ -73,10 +77,14 @@ async function main() {
         ...(parseInt(process.env.L2_LISTENER_BLOCK_CONFIRMATION ?? "") >= 0
           ? { blockConfirmation: parseInt(process.env.L2_LISTENER_BLOCK_CONFIRMATION ?? "") }
           : {}),
-        ...(process.env.L2_EVENT_FILTER_CRITERIA
+        ...(process.env.L2_EVENT_FROM_ADDRESS_FILTER ||
+        process.env.L2_EVENT_TO_ADDRESS_FILTER ||
+        process.env.L2_EVENT_CALLDATA_FILTER
           ? {
               eventFilters: {
-                criteria: process.env.L2_EVENT_FILTER_CRITERIA,
+                fromAddressFilter: process.env.L2_EVENT_FROM_ADDRESS_FILTER,
+                toAddressFilter: process.env.L2_EVENT_TO_ADDRESS_FILTER,
+                calldataFilter: process.env.L2_EVENT_CALLDATA_FILTER,
                 calldataFunctionInterface: process.env.L2_EVENT_FILTER_CALLDATA_FUNCTION_INTERFACE,
               },
             }

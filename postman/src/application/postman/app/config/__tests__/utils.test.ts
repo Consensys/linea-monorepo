@@ -1,5 +1,5 @@
 import { describe } from "@jest/globals";
-import { getConfig } from "../utils";
+import { getConfig, validateEventsFiltersConfig } from "../utils";
 import {
   TEST_ADDRESS_1,
   TEST_ADDRESS_2,
@@ -233,6 +233,72 @@ describe("Config utils", () => {
         l2L1AutoClaimEnabled: true,
         loggerOptions: undefined,
       });
+    });
+  });
+
+  describe("validateEventsFiltersConfig", () => {
+    it("should throw an error when the from address event filter is not valid", () => {
+      expect(() =>
+        validateEventsFiltersConfig({
+          fromAddressFilter: "0x123",
+        }),
+      ).toThrow("Invalid fromAddressFilter: 0x123");
+    });
+
+    it("should throw an error when the to address event filter is not valid", () => {
+      expect(() =>
+        validateEventsFiltersConfig({
+          toAddressFilter: "0x123",
+        }),
+      ).toThrow("Invalid toAddressFilter: 0x123");
+    });
+
+    it("should throw an error when calldataFilter filter is passed and calldataFunctionInterface is not passed", () => {
+      expect(() =>
+        validateEventsFiltersConfig({
+          calldataFilter: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
+        }),
+      ).toThrow("calldataFilter requires calldataFunctionInterfac");
+    });
+
+    it("should not throw an error when filters are valid", () => {
+      expect(() =>
+        validateEventsFiltersConfig({
+          fromAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
+          toAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
+          calldataFilter: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
+          calldataFunctionInterface:
+            "function claimMessageWithProof((bytes32[] proof,uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+        }),
+      ).not.toThrow();
+    });
+
+    it("should throw an error when calldataFilter filter expression is invalid", () => {
+      expect(() =>
+        validateEventsFiltersConfig({
+          fromAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
+          toAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
+          calldataFilter: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber = 85804`,
+          calldataFunctionInterface:
+            "function claimMessageWithProof((bytes32[] proof,uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+        }),
+      ).toThrow(
+        'Invalid calldataFilter expression: calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber = 85804',
+      );
+    });
+
+    it("should throw an error when calldataFunctionInterface is invalid", () => {
+      expect(() =>
+        validateEventsFiltersConfig({
+          fromAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
+          toAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
+          calldataFilter: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
+          calldataFunctionInterface:
+            "function claimMessageWithProof((bytes32[] proof uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+        }),
+      ).toThrow(
+        "Invalid calldataFunctionInterface: function claimMessageWithProof((bytes32[] proof uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+      );
     });
   });
 });

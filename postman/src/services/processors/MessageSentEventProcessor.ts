@@ -4,7 +4,6 @@ import {
   dataSlice,
   Interface,
   JsonRpcProvider,
-  Result,
   TransactionReceipt,
   TransactionRequest,
   TransactionResponse,
@@ -84,6 +83,10 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
     this.logger.info("Getting events fromBlock=%s toBlock=%s", fromBlock, toBlock);
 
     const events = await this.logClient.getMessageSentEvents({
+      filters: {
+        from: this.config.eventFilters?.fromAddressFilter,
+        to: this.config.eventFilters?.toAddressFilter,
+      },
       fromBlock,
       toBlock,
       fromBlockLogIndex,
@@ -92,7 +95,10 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
     this.logger.info("Number of fetched MessageSent events: %s", events.length);
 
     for (const event of events) {
-      const shouldBeProcessed = this.shouldProcessMessage(event, event.messageHash);
+      const shouldBeProcessed = this.shouldProcessMessage(event, event.messageHash, {
+        calldataFilter: this.config.eventFilters?.calldataFilter,
+        calldataFunctionInterface: this.config.eventFilters?.calldataFunctionInterface,
+      });
       const messageStatusToInsert = shouldBeProcessed ? MessageStatus.SENT : MessageStatus.EXCLUDED;
 
       const message = MessageFactory.createMessage({
@@ -113,14 +119,14 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
   /**
    * Determines whether a message should be processed based on its calldata and the configuration.
    *
-   * @param {string} messageCalldata - The calldata of the message.
+   * @param {string} event - The message event.
    * @param {string} messageHash - The hash of the message.
    * @returns {boolean} `true` if the message should be processed, `false` otherwise.
    */
   protected shouldProcessMessage(
     event: MessageSent,
     messageHash: string,
-    filters?: { criteria?: string; calldataFunctionInterface?: string },
+    filters?: { calldataFilter?: string; calldataFunctionInterface?: string },
   ): boolean {
     const hasEmptyCalldata = isEmptyBytes(event.calldata);
     let basicProcess = false;
@@ -139,7 +145,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
       return false;
     }
 
-    if (!this.isMessageMatchingCriteria(event, filters)) {
+    if (!hasEmptyCalldata && this.config.isCalldataEnabled && !this.isMessageMatchingCriteria(event, filters)) {
       return false;
     }
 
@@ -148,36 +154,29 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
 
   private isMessageMatchingCriteria(
     event: MessageSent,
-    filters?: { criteria?: string; calldataFunctionInterface?: string },
+    filters?: { calldataFilter?: string; calldataFunctionInterface?: string },
   ) {
-    if (!filters?.criteria) {
+    if (!filters?.calldataFilter || !filters?.calldataFunctionInterface) {
+      this.logger.error("Calldata function interface is required to decode calldata");
       return true;
     }
 
-    let decodedCalldata: Result | null = null;
-
-    if (filters.calldataFunctionInterface) {
-      const iface = new Interface([filters.calldataFunctionInterface]);
-      decodedCalldata = iface.decodeFunctionData(filters.calldataFunctionInterface, event.calldata);
-    }
-
-    console.log(this.convertBigInts(decodedCalldata?.toObject(true)));
+    const iface = new Interface([filters.calldataFunctionInterface]);
+    const decodedCalldata = iface.decodeFunctionData(filters.calldataFunctionInterface, event.calldata);
 
     const context = {
-      from: event.messageSender,
-      to: event.destination,
       calldata: {
         funcSignature: dataSlice(event.calldata, 0, 4),
         ...(decodedCalldata ? this.convertBigInts(decodedCalldata.toObject(true)) : {}),
       },
     };
 
-    const passesFilter = this.evaluateExpression(filters.criteria, context);
+    const passesFilter = this.evaluateExpression(filters.calldataFilter, context);
 
     if (!passesFilter) {
       this.logger.debug(
-        "Message has been excluded because it does not pass the criteria: criteria=%s",
-        filters.criteria,
+        "Message has been excluded because it does not match the criteria: criteria=%s",
+        filters.calldataFilter,
       );
       return false;
     }

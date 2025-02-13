@@ -13,7 +13,9 @@ export type MessageSentEventProcessorConfig = {
   isEOAEnabled: boolean;
   isCalldataEnabled: boolean;
   eventFilters?: {
-    criteria?: string;
+    fromAddressFilter?: string;
+    toAddressFilter?: string;
+    calldataFilter?: string;
     calldataFunctionInterface?: string;
   };
 };

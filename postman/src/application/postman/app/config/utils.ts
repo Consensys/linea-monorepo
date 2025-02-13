@@ -1,3 +1,5 @@
+import { Interface, isAddress } from "ethers";
+import { compileExpression, useDotAccessOperator } from "filtrex";
 import {
   DEFAULT_CALLDATA_ENABLED,
   DEFAULT_EOA_ENABLED,
@@ -17,7 +19,7 @@ import {
   DEFAULT_PROFIT_MARGIN,
   DEFAULT_RETRY_DELAY_IN_SECONDS,
 } from "../../../../core/constants";
-import { PostmanConfig, PostmanOptions } from "./config";
+import { ListenerConfig, PostmanConfig, PostmanOptions } from "./config";
 
 /**
  * @notice Generates the configuration for the Postman service based on provided options.
@@ -35,6 +37,14 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
     databaseCleanerOptions,
     loggerOptions,
   } = postmanOptions;
+
+  if (l1Options.listener.eventFilters) {
+    validateEventsFiltersConfig(l1Options.listener.eventFilters);
+  }
+
+  if (l2Options.listener.eventFilters) {
+    validateEventsFiltersConfig(l2Options.listener.eventFilters);
+  }
 
   return {
     l1Config: {
@@ -105,4 +115,51 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
     },
     loggerOptions,
   };
+}
+
+export function validateEventsFiltersConfig(eventFilters: ListenerConfig["eventFilters"]): void {
+  if (eventFilters?.fromAddressFilter && !isAddress(eventFilters.fromAddressFilter)) {
+    throw new Error(`Invalid fromAddressFilter: ${eventFilters.fromAddressFilter}`);
+  }
+
+  if (eventFilters?.toAddressFilter && !isAddress(eventFilters.toAddressFilter)) {
+    throw new Error(`Invalid toAddressFilter: ${eventFilters.toAddressFilter}`);
+  }
+
+  if (
+    (eventFilters?.calldataFilter && !eventFilters.calldataFunctionInterface) ||
+    (!eventFilters?.calldataFilter && eventFilters?.calldataFunctionInterface)
+  ) {
+    throw new Error(`calldataFilter requires calldataFunctionInterface`);
+  }
+
+  if (eventFilters?.calldataFilter && !isValidFiltrexExpression(eventFilters.calldataFilter)) {
+    throw new Error(`Invalid calldataFilter expression: ${eventFilters.calldataFilter}`);
+  }
+
+  if (eventFilters?.calldataFunctionInterface && !isFunctionInterfaceValid(eventFilters.calldataFunctionInterface)) {
+    throw new Error(`Invalid calldataFunctionInterface: ${eventFilters.calldataFunctionInterface}`);
+  }
+}
+
+export function isFunctionInterfaceValid(functionInterface: string): boolean {
+  try {
+    const i = new Interface([functionInterface]);
+
+    if (i.fragments.length === 0) {
+      return false;
+    }
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+export function isValidFiltrexExpression(expression: string): boolean {
+  try {
+    compileExpression(expression, { customProp: useDotAccessOperator });
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
