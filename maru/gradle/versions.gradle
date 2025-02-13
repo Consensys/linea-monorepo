@@ -132,6 +132,7 @@ dependencyManagement {
       entry 'executionclient'
       entry 'unsigned'
       entry 'ssz'
+      entry 'storage'
     }
 
     dependencySet(group: 'org.apache.logging.log4j', version: '2.24.3') {

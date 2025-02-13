@@ -15,8 +15,15 @@
 
 plugins {
   id 'maru.kotlin-library-conventions'
-  id 'java-test-fixtures'
 }
 
 dependencies {
+  implementation (project(":core"))
+  implementation (project(":serialization"))
+  implementation (project(":jvm-libs:extensions"))
+  implementation "org.rocksdb:rocksdbjni"
+  implementation "tech.pegasys.teku.internal:storage"
+  implementation "org.hyperledger.besu.internal:metrics-core"
+  implementation "org.hyperledger.besu:plugin-api"
+  testImplementation (testFixtures(project(":core")))
 }

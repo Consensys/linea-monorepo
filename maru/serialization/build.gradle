@@ -15,8 +15,13 @@
 
 plugins {
   id 'maru.kotlin-library-conventions'
-  id 'java-test-fixtures'
 }
 
 dependencies {
+  implementation (project(":core"))
+  implementation (project(":jvm-libs:extensions"))
+  implementation "io.tmio:tuweni-bytes"
+  implementation "org.hyperledger.besu.internal:rlp"
+  implementation "org.hyperledger.besu:besu-datatypes"
+  testImplementation (testFixtures(project(":core")))
 }
