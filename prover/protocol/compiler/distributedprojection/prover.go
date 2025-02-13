@@ -1,6 +1,8 @@
 package distributedprojection
 
 import (
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -15,13 +17,14 @@ import (
 )
 
 type distribuedProjectionProverAction struct {
-	Name               ifaces.QueryID
-	FilterA, FilterB   []*sym.Expression
-	ColumnA, ColumnB   []*sym.Expression
-	HornerA, HornerB   []ifaces.Column
-	HornerA0, HornerB0 []query.LocalOpening
-	EvalCoin           []coin.Info
-	IsA, IsB           []bool
+	Name                   ifaces.QueryID
+	FilterA, FilterB       []*sym.Expression
+	ColumnA, ColumnB       []*sym.Expression
+	HornerA, HornerB       []ifaces.Column
+	HornerA0, HornerB0     []query.LocalOpening
+	EvalCoins              []coin.Info
+	IsA, IsB               []bool
+	CumNumOnesPrevSegments []big.Int
 }
 
 // Run executes the distributed projection prover action.
@@ -40,7 +43,7 @@ func (pa *distribuedProjectionProverAction) Run(run *wizard.ProverRuntime) {
 				fA      = column.EvalExprColumn(run, pa.FilterA[index].Board()).IntoRegVecSaveAlloc()
 				colB    = column.EvalExprColumn(run, pa.ColumnB[index].Board()).IntoRegVecSaveAlloc()
 				fB      = column.EvalExprColumn(run, pa.FilterB[index].Board()).IntoRegVecSaveAlloc()
-				x       = run.GetRandomCoinField(pa.EvalCoin[index].Name)
+				x       = run.GetRandomCoinField(pa.EvalCoins[index].Name)
 				hornerA = poly.GetHornerTrace(colA, fA, x)
 				hornerB = poly.GetHornerTrace(colB, fB, x)
 			)
@@ -52,7 +55,7 @@ func (pa *distribuedProjectionProverAction) Run(run *wizard.ProverRuntime) {
 			var (
 				colA    = column.EvalExprColumn(run, pa.ColumnA[index].Board()).IntoRegVecSaveAlloc()
 				fA      = column.EvalExprColumn(run, pa.FilterA[index].Board()).IntoRegVecSaveAlloc()
-				x       = run.GetRandomCoinField(pa.EvalCoin[index].Name)
+				x       = run.GetRandomCoinField(pa.EvalCoins[index].Name)
 				hornerA = poly.GetHornerTrace(colA, fA, x)
 			)
 			run.AssignColumn(pa.HornerA[index].GetColID(), smartvectors.NewRegular(hornerA))
@@ -61,7 +64,7 @@ func (pa *distribuedProjectionProverAction) Run(run *wizard.ProverRuntime) {
 			var (
 				colB    = column.EvalExprColumn(run, pa.ColumnB[index].Board()).IntoRegVecSaveAlloc()
 				fB      = column.EvalExprColumn(run, pa.FilterB[index].Board()).IntoRegVecSaveAlloc()
-				x       = run.GetRandomCoinField(pa.EvalCoin[index].Name)
+				x       = run.GetRandomCoinField(pa.EvalCoins[index].Name)
 				hornerB = poly.GetHornerTrace(colB, fB, x)
 			)
 			run.AssignColumn(pa.HornerB[index].GetColID(), smartvectors.NewRegular(hornerB))
@@ -88,24 +91,26 @@ func (pa *distribuedProjectionProverAction) Push(comp *wizard.CompiledIOP, distr
 			pa.FilterB[index] = input.FilterB
 			pa.ColumnA[index] = input.ColumnA
 			pa.ColumnB[index] = input.ColumnB
-			pa.EvalCoin[index] = comp.Coins.Data(input.EvalCoin)
+			pa.EvalCoins[index] = comp.Coins.Data(input.EvalCoin)
 			pa.IsA[index] = true
 			pa.IsB[index] = true
+			pa.CumNumOnesPrevSegments[index] = input.CumulativeNumOnesPrevSegments
 
 		} else if input.IsAInModule && !input.IsBInModule {
 			pa.FilterA[index] = input.FilterA
 			pa.ColumnA[index] = input.ColumnA
-			pa.EvalCoin[index] = comp.Coins.Data(input.EvalCoin)
+			pa.EvalCoins[index] = comp.Coins.Data(input.EvalCoin)
 			pa.IsA[index] = true
 			pa.IsB[index] = false
+			pa.CumNumOnesPrevSegments[index] = input.CumulativeNumOnesPrevSegments
 
 		} else if !input.IsAInModule && input.IsBInModule {
 			pa.FilterB[index] = input.FilterB
 			pa.ColumnB[index] = input.ColumnB
-			pa.EvalCoin[index] = comp.Coins.Data(input.EvalCoin)
+			pa.EvalCoins[index] = comp.Coins.Data(input.EvalCoin)
 			pa.IsA[index] = false
 			pa.IsB[index] = true
-
+			pa.CumNumOnesPrevSegments[index] = input.CumulativeNumOnesPrevSegments
 		} else {
 			logrus.Errorf("Invalid distributed projection query while pushing prover action entries: %v", distributedprojection.ID)
 		}
@@ -200,7 +205,7 @@ func (pa *distribuedProjectionProverAction) registerForCol(
 						sym.Add(
 							pa.ColumnA[index],
 							sym.Mul(
-								pa.EvalCoin[index],
+								pa.EvalCoins[index],
 								column.Shift(pa.HornerA[index], 1),
 							),
 						),
@@ -232,7 +237,7 @@ func (pa *distribuedProjectionProverAction) registerForCol(
 					),
 					sym.Mul(
 						pa.FilterB[index],
-						sym.Add(pa.ColumnB[index], sym.Mul(pa.EvalCoin[index], column.Shift(pa.HornerB[index], 1))),
+						sym.Add(pa.ColumnB[index], sym.Mul(pa.EvalCoins[index], column.Shift(pa.HornerB[index], 1))),
 					),
 				),
 			)

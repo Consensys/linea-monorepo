@@ -1,6 +1,8 @@
 package dist_projection
 
 import (
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -24,7 +26,9 @@ const (
 )
 
 type DistributeProjectionCtx struct {
+	// List of all projection queries alloted to the segments
 	DistProjectionInput []*query.DistributedProjectionInput
+	// List of Evaluation Coins per query
 	EvalCoins           []coin.Info
 	// The module name for which we are processing the distributed projection query
 	TargetModuleName string
@@ -33,6 +37,8 @@ type DistributeProjectionCtx struct {
 	// LastRoundPerm indicates the highest round at which a compiled projection
 	// occurs.
 	LastRoundProjection int
+	// number of segments per module
+	NumSegmentsPerModule int
 }
 
 // NewDistributeProjectionCtx processes all the projection queries from the initialComp
@@ -42,13 +48,15 @@ func NewDistributeProjectionCtx(
 	targetModuleName namebaseddiscoverer.ModuleName,
 	initialComp, moduleComp *wizard.CompiledIOP,
 	disc distributed.ModuleDiscoverer,
+	numSegmentPerModule int,
 ) *DistributeProjectionCtx {
 	var (
 		p = &DistributeProjectionCtx{
-			DistProjectionInput: make([]*query.DistributedProjectionInput, 0, MaxNumOfQueriesPerModule),
-			EvalCoins:           make([]coin.Info, 0, MaxNumOfQueriesPerModule),
-			TargetModuleName:    targetModuleName,
-			LastRoundProjection: getLastRoundPerm(initialComp),
+			DistProjectionInput:  make([]*query.DistributedProjectionInput, 0, MaxNumOfQueriesPerModule),
+			EvalCoins:            make([]coin.Info, 0, MaxNumOfQueriesPerModule),
+			TargetModuleName:     targetModuleName,
+			LastRoundProjection:  getLastRoundPerm(initialComp),
+			NumSegmentsPerModule: numSegmentPerModule,
 		}
 		numRounds = initialComp.NumRounds()
 		qId       = p.QueryID()
@@ -153,15 +161,16 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 		fA, _, _ := wizardutils.AsExpr(q.Inp.FilterA)
 		fB, _, _ := wizardutils.AsExpr(q.Inp.FilterB)
 		p.DistProjectionInput = append(p.DistProjectionInput, &query.DistributedProjectionInput{
-			ColumnA:     wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnA),
-			ColumnB:     wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
-			FilterA:     fA,
-			FilterB:     fB,
-			SizeA:       q.Inp.FilterA.Size(),
-			SizeB:       q.Inp.FilterB.Size(),
-			EvalCoin:    beta.Name,
-			IsAInModule: true,
-			IsBInModule: true,
+			ColumnA:                       wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnA),
+			ColumnB:                       wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
+			FilterA:                       fA,
+			FilterB:                       fB,
+			SizeA:                         q.Inp.FilterA.Size() / p.NumSegmentsPerModule,
+			SizeB:                         q.Inp.FilterB.Size() / p.NumSegmentsPerModule,
+			EvalCoin:                      beta.Name,
+			IsAInModule:                   true,
+			IsBInModule:                   true,
+			CumulativeNumOnesPrevSegments: *big.NewInt(1), // Placeholder value for now
 		})
 	} else if isA {
 		fA, _, _ := wizardutils.AsExpr(q.Inp.FilterA)
@@ -170,10 +179,11 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:     symbolic.NewConstant(1),
 			FilterA:     fA,
 			FilterB:     symbolic.NewConstant(1),
-			SizeA:       q.Inp.FilterA.Size(),
+			SizeA:       q.Inp.FilterA.Size() / p.NumSegmentsPerModule,
 			EvalCoin:    beta.Name,
 			IsAInModule: true,
 			IsBInModule: false,
+			CumulativeNumOnesPrevSegments: *big.NewInt(1), // Placeholder value for now
 		})
 	} else if isB {
 		fB, _, _ := wizardutils.AsExpr(q.Inp.FilterB)
@@ -182,10 +192,11 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:     wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
 			FilterA:     symbolic.NewConstant(1),
 			FilterB:     fB,
-			SizeB:       q.Inp.FilterB.Size(),
+			SizeB:       q.Inp.FilterB.Size() / p.NumSegmentsPerModule,
 			EvalCoin:    beta.Name,
 			IsAInModule: false,
 			IsBInModule: true,
+			CumulativeNumOnesPrevSegments: *big.NewInt(1), // Placeholder value for now
 		})
 	} else {
 		panic("Invalid distributed projection query while initial pushing")
@@ -215,6 +226,10 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 			elemParam.Add(&elemParam, &hornerA[0])
+			// Multiply the horner value with the evalCoin^(CumulativeNumOnesPrevSegments)
+			multiplier := run.GetRandomCoinField(p.EvalCoins[elemIndex].Name)
+			multiplier.Exp(multiplier, &inp.CumulativeNumOnesPrevSegments)
+			elemParam.Mul(&elemParam, &multiplier)
 		} else if inp.IsAInModule && !inp.IsBInModule {
 			var (
 				colABoard    = inp.ColumnA.Board()
@@ -224,6 +239,10 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 			)
 			hornerA := poly.GetHornerTrace(colA, filterA, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
 			elemParam = hornerA[0]
+			// Multiply the horner value with the evalCoin^(CumulativeNumOnesPrevSegments)
+			multiplier := run.GetRandomCoinField(p.EvalCoins[elemIndex].Name)
+			multiplier.Exp(multiplier, &inp.CumulativeNumOnesPrevSegments)
+			elemParam.Mul(&elemParam, &multiplier)
 		} else if !inp.IsAInModule && inp.IsBInModule {
 			var (
 				colBBoard    = inp.ColumnB.Board()
@@ -234,6 +253,10 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 			hornerB := poly.GetHornerTrace(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
+			// Multiply the horner value with the evalCoin^(CumulativeNumOnesPrevSegments)
+			multiplier := run.GetRandomCoinField(p.EvalCoins[elemIndex].Name)
+			multiplier.Exp(multiplier, &inp.CumulativeNumOnesPrevSegments)
+			elemParam.Mul(&elemParam, &multiplier)
 		} else {
 			panic("Invalid distributed projection query encountered during param evaluation")
 		}

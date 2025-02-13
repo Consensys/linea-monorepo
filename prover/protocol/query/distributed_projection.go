@@ -2,6 +2,7 @@ package query
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -15,12 +16,17 @@ import (
 )
 
 type DistributedProjectionInput struct {
-	ColumnA, ColumnB         *symbolic.Expression
-	FilterA, FilterB         *symbolic.Expression
-	SizeA, SizeB             int
-	EvalCoin                 coin.Name
-	IsAInModule, IsBInModule bool
+	ColumnA, ColumnB              *symbolic.Expression
+	FilterA, FilterB              *symbolic.Expression
+	SizeA, SizeB                  int
+	EvalCoin                      coin.Name
+	IsAInModule, IsBInModule      bool
+	CumulativeNumOnesPrevSegments big.Int
 }
+
+// func (dpInp *DistributedProjectionInput) completeAssign(run *ifaces.Runtime) {
+// 	dpInp.CumulativeNumOnesPrevSegments.Run(run)
+// }
 
 type DistributedProjection struct {
 	Round int
