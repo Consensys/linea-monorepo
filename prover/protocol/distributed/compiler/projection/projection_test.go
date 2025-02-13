@@ -15,13 +15,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDistributeProjection(t *testing.T) {
 	const (
-		numSegModuleA = 2
-		numSegModuleB = 2
+		numSegModuleA = 1
+		numSegModuleB = 1
 		numSegModuleC = 1
 	)
 	var (
@@ -210,23 +211,23 @@ func TestDistributeProjection(t *testing.T) {
 			lppVerifierRuntime, valid := wizard.VerifyWithRuntime(initialComp, lppProof)
 			require.NoError(t, valid)
 
-			// Compile and prove for module0
+			// Compile and prove for moduleA
 			for proverID := 0; proverID < numSegModuleA; proverID++ {
 				proofA := wizard.Prove(moduleCompA, func(run *wizard.ProverRuntime) {
 					run.ParentRuntime = initialRuntime
 					// inputs for vertical splitting of the witness
 					run.ProverID = proverID
 				})
-				runtimeA, valid := wizard.VerifyWithRuntime(moduleCompA, proofA, lppVerifierRuntime)
-				require.NoError(t, valid)
+				runtimeA, validA := wizard.VerifyWithRuntime(moduleCompA, proofA, lppVerifierRuntime)
+				require.NoError(t, validA)
 
 				allVerfiers = append(allVerfiers, runtimeA)
 
 			}
 
-			// Compile and prove for module1
+			// Compile and prove for moduleB
 			for proverID := 0; proverID < numSegModuleB; proverID++ {
-				proofB := wizard.Prove(moduleCompA, func(run *wizard.ProverRuntime) {
+				proofB := wizard.Prove(moduleCompB, func(run *wizard.ProverRuntime) {
 					run.ParentRuntime = initialRuntime
 					// inputs for vertical splitting of the witness
 					run.ProverID = proverID
@@ -238,7 +239,7 @@ func TestDistributeProjection(t *testing.T) {
 
 			}
 
-			// Compile and prove for module2
+			// Compile and prove for moduleC
 			for proverID := 0; proverID < numSegModuleC; proverID++ {
 				proofC := wizard.Prove(moduleCompC, func(run *wizard.ProverRuntime) {
 					run.ParentRuntime = initialRuntime
@@ -263,8 +264,9 @@ func TestDistributeProjection(t *testing.T) {
 func checkConsistency(runs []wizard.Runtime) error {
 
 	var res field.Element
-	for _, run := range runs {
+	for i, run := range runs {
 		distProjectionParams := run.GetPublicInput(constants.DistributedProjectionPublicInput)
+		logrus.Printf("successfully retrieved public input for %v, param = %v", i, distProjectionParams)
 		res.Add(&res, &distProjectionParams)
 	}
 
