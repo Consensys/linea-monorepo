@@ -4,6 +4,7 @@ import io.vertx.core.Vertx
 import net.consensys.linea.LineaBesuEngineBlockTagUpdater
 import net.consensys.linea.LineaL1FinalizationUpdaterService
 import net.consensys.linea.PluginCliOptions
+import net.consensys.linea.async.toSafeFuture
 import org.hyperledger.besu.plugin.BesuPlugin
 import org.hyperledger.besu.plugin.ServiceManager
 import org.hyperledger.besu.plugin.services.BlockchainService
@@ -35,7 +36,9 @@ class LineaL1FinalizationTagUpdaterPlugin : BesuPlugin {
 
   override fun stop() {
     service.stop()
-    vertx.close()
+      .thenCompose {
+        vertx.close().toSafeFuture()
+      }.get()
   }
 
   companion object {
