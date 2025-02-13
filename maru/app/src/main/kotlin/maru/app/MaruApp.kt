@@ -15,26 +15,42 @@
  */
 package maru.app
 
+import java.time.Clock
 import maru.app.config.MaruConfig
-import maru.consensus.dummy.DummyConsensusConfig
+import maru.consensus.ForksSchedule
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
 class MaruApp(
-  private val config: MaruConfig,
-  private val beaconGenesisConfig: DummyConsensusConfig,
+  config: MaruConfig,
+  beaconGenesisConfig: ForksSchedule,
+  clock: Clock = Clock.systemUTC(),
 ) {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
-  fun start() {
+  init {
     if (config.p2pConfig == null) {
       log.warn("P2P is disabled!")
     }
     if (config.validator == null) {
       log.info("Maru is running in follower-only node")
     }
+  }
+
+  private val eventProducer =
+    DummyConsensusProtocolBuilder.build(
+      forksSchedule = beaconGenesisConfig,
+      clock = clock,
+      executionClientConfig = config.executionClientConfig,
+      dummyConsensusOptions = config.dummyConsensusOptions!!,
+    )
+
+  fun start() {
+    eventProducer.start()
     log.info("Maru is up")
   }
 
-  fun stop() {}
+  fun stop() {
+    eventProducer.stop()
+  }
 }

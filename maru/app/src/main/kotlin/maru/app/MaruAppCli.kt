@@ -21,8 +21,8 @@ import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.addFileSource
 import java.io.File
 import java.util.concurrent.Callable
+import maru.app.config.JsonFriendlyForksSchedule
 import maru.app.config.MaruConfigDtoToml
-import maru.consensus.dummy.DummyConsensusConfig
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.Configurator
@@ -41,6 +41,23 @@ import picocli.CommandLine.Command
   footerHeading = "%n",
 )
 class MaruAppCli : Callable<Int> {
+  companion object {
+    @OptIn(ExperimentalHoplite::class)
+    internal inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
+      val confBuilder: ConfigLoaderBuilder =
+        ConfigLoaderBuilder.Companion
+          .empty()
+          .addDefaults()
+          .withExplicitSealedTypes()
+      for (configFile in configFiles.reversed()) {
+        // files must be added in reverse order for overriding
+        confBuilder.addFileSource(configFile, false)
+      }
+
+      return confBuilder.build().loadConfig<T>(emptyList())
+    }
+  }
+
   @CommandLine.Option(
     names = ["--config"],
     paramLabel = "CONFIG.toml,CONFIG.overrides.toml",
@@ -70,7 +87,7 @@ class MaruAppCli : Callable<Int> {
       return 1
     }
     val appConfig = loadConfig<MaruConfigDtoToml>(configFiles)
-    val beaconGenesisConfig = loadConfig<DummyConsensusConfig>(listOf(genesisFile))
+    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(genesisFile))
 
     if (!validateParsedFile(appConfig, "app configuration", configFiles.map { it.absolutePath }.toString())) {
       return 1
@@ -83,7 +100,7 @@ class MaruAppCli : Callable<Int> {
     val parsedAppConfig = appConfig.getUnsafe()
     val parsedBeaconGenesisConfig = beaconGenesisConfig.getUnsafe()
 
-    val app = MaruApp(parsedAppConfig.reified(), parsedBeaconGenesisConfig)
+    val app = MaruApp(parsedAppConfig.domainFriendly(), parsedBeaconGenesisConfig.domainFriendly())
     app.start()
 
     Runtime
@@ -100,21 +117,6 @@ class MaruAppCli : Callable<Int> {
       )
 
     return 0
-  }
-
-  @OptIn(ExperimentalHoplite::class)
-  private inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
-    val confBuilder: ConfigLoaderBuilder =
-      ConfigLoaderBuilder.Companion
-        .empty()
-        .addDefaults()
-        .withExplicitSealedTypes()
-    for (configFile in configFiles.reversed()) {
-      // files must be added in reverse order for overriding
-      confBuilder.addFileSource(configFile, false)
-    }
-
-    return confBuilder.build().loadConfig<T>(emptyList())
   }
 
   private fun validateConfigFile(file: File): Boolean = file.canRead()

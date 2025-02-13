@@ -21,8 +21,8 @@ dependencies {
 
   implementation ("org.web3j:core")
 
-  testImplementation 'com.palantir.docker.compose:docker-compose-rule-junit4:2.3.0'
-  testImplementation 'com.palantir.docker.compose:docker-compose-junit-jupiter:2.3.0'
+  testImplementation('com.palantir.docker.compose:docker-compose-rule-junit4')
+  testImplementation('com.palantir.docker.compose:docker-compose-junit-jupiter')
 }
 
 sourceSets {

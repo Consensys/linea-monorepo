@@ -16,9 +16,12 @@
 package maru.app.config
 
 import java.net.URL
+import kotlin.time.Duration
 
 data class ExecutionClientConfig(
-  val endpoint: URL,
+  val ethereumJsonRpcEndpoint: URL,
+  val engineApiJsonRpcEndpoint: URL,
+  val minTimeBetweenGetPayloadAttempts: Duration,
 )
 
 data class P2P(
@@ -42,8 +45,34 @@ data class Validator(
   override fun hashCode(): Int = validatorKey.contentHashCode()
 }
 
+data class DummyConsensusOptions(
+  // Since we cannot finish block production instantly at expected time, we need to set some safety margin
+  val communicationMargin: Duration,
+)
+
 data class MaruConfig(
   val executionClientConfig: ExecutionClientConfig,
+  val dummyConsensusOptions: DummyConsensusOptions?,
   val p2pConfig: P2P?,
   val validator: Validator?,
-)
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as MaruConfig
+
+    if (executionClientConfig != other.executionClientConfig) return false
+    if (p2pConfig != other.p2pConfig) return false
+    if (validator != other.validator) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = executionClientConfig.hashCode()
+    result = 31 * result + (p2pConfig?.hashCode() ?: 0)
+    result = 31 * result + (validator?.hashCode() ?: 0)
+    return result
+  }
+}

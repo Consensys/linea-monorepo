@@ -1,0 +1,9 @@
+{
+  "config": {
+    "0": {
+      "type": "dummy",
+      "blockTimeMillis": 1000,
+      "feeRecipient": "0x0000000000000000000000000000000000000000"
+    }
+  }
+}

@@ -17,8 +17,8 @@ package maru.executionlayer.manager
 
 import kotlin.jvm.optionals.getOrNull
 import maru.core.ExecutionPayload
-import maru.executionlayer.client.BlockNumberAndHash
 import maru.executionlayer.client.ExecutionLayerClient
+import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
@@ -29,66 +29,84 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
+import tech.pegasys.teku.spec.executionlayer.ExecutionPayloadStatus
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult as TekuForkChoiceUpdatedResult
+
+object NoopValidator : ExecutionPayloadValidator {
+  override fun validate(executionPayload: ExecutionPayload): ExecutionPayloadValidator.ValidationResult =
+    ExecutionPayloadValidator.ValidationResult.Valid(executionPayload)
+}
 
 class JsonRpcExecutionLayerManager private constructor(
   private val executionLayerClient: ExecutionLayerClient,
-  private val newBlockTimestampProvider: () -> ULong,
-  private val feeRecipientProvider: () -> ByteArray,
-  private val currentBlockNumberAndHash: BlockNumberAndHash,
+  private val feeRecipientProvider: (ULong) -> ByteArray,
+  currentBlockMetadata: BlockMetadata,
+  private val payloadValidator: ExecutionPayloadValidator,
 ) : ExecutionLayerManager {
+  private val log = LogManager.getLogger(this.javaClass)
+
   companion object {
     fun create(
       executionLayerClient: ExecutionLayerClient,
-      newBlockTimestampProvider: () -> ULong,
-      feeRecipientProvider: () -> ByteArray,
+      feeRecipientProvider: (ULong) -> ByteArray,
+      payloadValidator: ExecutionPayloadValidator,
     ): SafeFuture<JsonRpcExecutionLayerManager> =
       executionLayerClient.getLatestBlockMetadata().thenApply {
-        val currentBlockNumberAndHash = BlockNumberAndHash(it.blockNumber, it.blockHash)
+        val currentBlockMetadata = BlockMetadata(it.blockNumber, it.blockHash, it.unixTimestamp)
         JsonRpcExecutionLayerManager(
           executionLayerClient = executionLayerClient,
-          newBlockTimestampProvider = newBlockTimestampProvider,
           feeRecipientProvider = feeRecipientProvider,
-          currentBlockNumberAndHash = currentBlockNumberAndHash,
+          currentBlockMetadata = currentBlockMetadata,
+          payloadValidator = payloadValidator,
         )
       }
   }
 
-  private class ElHeightMetadata(
-    var nextBlockNumberAndHash: BlockNumberAndHash,
-    var currentBlockNumberAndHash: BlockNumberAndHash,
+  private class ElHeightMetadataCache(
+    private var nextBlockMetadata: BlockMetadata,
+    var currentBlockMetadata: BlockMetadata,
   ) {
     @Synchronized
-    fun updateNext(blockNumberAndHash: BlockNumberAndHash) {
-      nextBlockNumberAndHash = blockNumberAndHash
+    fun updateNext(blockNumberAndHash: BlockMetadata) {
+      nextBlockMetadata = blockNumberAndHash
     }
 
     @Synchronized
-    fun promoteBlockNumberAndHash() {
-      currentBlockNumberAndHash = nextBlockNumberAndHash
+    fun promoteBlockMetadata() {
+      currentBlockMetadata = nextBlockMetadata
     }
   }
 
   private var payloadId: ByteArray? = null
-  private var latestBlockCache: ElHeightMetadata =
-    ElHeightMetadata(
-      nextBlockNumberAndHash = currentBlockNumberAndHash,
-      currentBlockNumberAndHash = currentBlockNumberAndHash,
+  private var latestBlockCache: ElHeightMetadataCache =
+    ElHeightMetadataCache(
+      nextBlockMetadata = currentBlockMetadata,
+      currentBlockMetadata = currentBlockMetadata,
     )
+
+  private fun getNextFeeRecipient(): Bytes20 =
+    Bytes20(Bytes.wrap(feeRecipientProvider(latestBlockMetadata().blockNumber + 1u)))
 
   override fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
     safeHash: ByteArray,
     finalizedHash: ByteArray,
+    nextBlockTimestamp: Long,
   ): SafeFuture<ForkChoiceUpdatedResult> {
+    log.debug(
+      "Trying to create a block number {} with timestamp {}",
+      latestBlockCache.currentBlockMetadata.blockNumber + 1u,
+      nextBlockTimestamp,
+    )
     val payloadAttributes =
       PayloadAttributesV3(
-        UInt64.fromLongBits(newBlockTimestampProvider().toLong()),
+        UInt64.fromLongBits(nextBlockTimestamp),
         Bytes32.ZERO,
-        Bytes20(Bytes.wrap(feeRecipientProvider())),
+        getNextFeeRecipient(),
         emptyList(),
         Bytes32.ZERO,
       )
+    log.debug("Starting block building with payload attributes {}", payloadAttributes)
     return executionLayerClient
       .forkChoiceUpdate(
         ForkChoiceStateV1(
@@ -97,9 +115,20 @@ class JsonRpcExecutionLayerManager private constructor(
           Bytes32.wrap(finalizedHash),
         ),
         payloadAttributes,
-      ).thenApply(::mapForkChoiceUpdatedResultToDomain)
-      .thenPeek {
-        latestBlockCache.promoteBlockNumberAndHash()
+      ).thenApply { response ->
+        log.debug("Forkchoice update response {}", response)
+        if (response.isFailure) {
+          throw IllegalStateException(
+            "forkChoiceUpdate request failed! nextBlockTimestamp=${
+              nextBlockTimestamp
+            } " + response.errorMessage,
+          )
+        } else {
+          mapForkChoiceUpdatedResultToDomain(response)
+        }
+      }.thenPeek {
+        latestBlockCache.promoteBlockMetadata()
+        log.debug("Setting payload Id, block metadata {}", latestBlockCache)
         payloadId = it.payloadId
       }
   }
@@ -124,7 +153,7 @@ class JsonRpcExecutionLayerManager private constructor(
     return ForkChoiceUpdatedResult(domainPayloadStatus, parsedPayloadId)
   }
 
-  override fun finishBlockBuilding(): SafeFuture<BlockBuildingResult> {
+  override fun finishBlockBuilding(): SafeFuture<ExecutionPayload> {
     if (payloadId == null) {
       return SafeFuture.failedFuture(
         IllegalStateException(
@@ -136,26 +165,34 @@ class JsonRpcExecutionLayerManager private constructor(
       .getPayload(Bytes8(Bytes.wrap(payloadId!!)))
       .thenCompose { payloadResponse ->
         if (payloadResponse.isSuccess) {
-          val executionPayload = payloadResponse.payload.executionPayload
-          latestBlockCache.updateNext(
-            BlockNumberAndHash(
-              executionPayload.blockNumber
-                .longValue()
-                .toULong(),
-              executionPayload.blockHash,
-            ),
-          )
-          executionLayerClient.newPayload(executionPayload).thenApply { payloadStatus ->
-            if (payloadStatus.isSuccess) {
+          val tekuExecutionPayload = payloadResponse.payload.executionPayload
+          val executionPayload = executionPayloadV3ToDomain(tekuExecutionPayload)
+          val validationResult = payloadValidator.validate(executionPayload)
+
+          if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
+            throw RuntimeException(validationResult.reason)
+          }
+          executionLayerClient.newPayload(tekuExecutionPayload).thenApply { payloadStatus ->
+            if (payloadStatus.isSuccess &&
+              payloadStatus.payload
+                .asInternalExecutionPayload()
+                .status
+                .get() ==
+              ExecutionPayloadStatus.VALID
+            ) {
               payloadId = null // Not necessary, but it helps to reinforce the order of calls
-              BlockBuildingResult(
-                executionPayloadV3ToDomain(executionPayload),
-                payloadStatus.payload
-                  .asInternalExecutionPayload()
-                  .latestValidHash
-                  .get()
-                  .toArray(),
+              log.debug("Unsetting payload Id, block metadata {}", latestBlockCache)
+
+              latestBlockCache.updateNext(
+                BlockMetadata(
+                  tekuExecutionPayload.blockNumber
+                    .longValue()
+                    .toULong(),
+                  tekuExecutionPayload.blockHash.toArray(),
+                  tekuExecutionPayload.timestamp.longValue(),
+                ),
               )
+              executionPayload
             } else {
               throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatus.errorMessage)
             }
@@ -188,7 +225,7 @@ class JsonRpcExecutionLayerManager private constructor(
       transactions = executionPayloadV3.transactions.map { it.toArray() },
     )
 
-  override fun latestBlockHeight(): ULong = latestBlockCache.currentBlockNumberAndHash.blockNumber
+  override fun latestBlockMetadata(): BlockMetadata = latestBlockCache.currentBlockMetadata
 
   override fun setHead(
     headHash: ByteArray,

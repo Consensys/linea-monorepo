@@ -15,7 +15,6 @@
  */
 package maru.consensus.dummy
 
-import java.util.concurrent.TimeUnit
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -29,9 +28,9 @@ import org.hyperledger.besu.ethereum.blockcreation.BlockCreator
 import org.hyperledger.besu.ethereum.core.Block
 
 class DummyConsensusEventHandler(
-  private var state: DummyConsensusState,
   private val executionLayerManager: ExecutionLayerManager,
   private val blockCreator: BlockCreator,
+  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val onNewBlock: (Block) -> Unit,
 ) : BftEventHandler {
   private val log: Logger = LogManager.getLogger(this::class.java)
@@ -49,18 +48,25 @@ class DummyConsensusEventHandler(
 
   override fun handleBlockTimerExpiry(blockTimerExpiry: BlockTimerExpiry) {
     val roundIdentifier: ConsensusRoundIdentifier = blockTimerExpiry.roundIdentifier
+
     if (isMsgForCurrentHeight(roundIdentifier)) {
+      log.debug("Creating new block by timer {}", blockTimerExpiry.roundIdentifier)
+
+      val latestBlockMetadata = executionLayerManager.latestBlockMetadata()
+      val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata)
       val blockCreationResult =
         blockCreator.createEmptyWithdrawalsBlock(
-          TimeUnit.MILLISECONDS.toSeconds(state.clock.millis()),
+          nextBlockTimestamp,
           // Execution client is aware of the parent header
           null,
         )
-      onNewBlock(blockCreationResult.block)
+      log.debug("Block creation timings {}", blockCreationResult.blockCreationTimings)
+      blockCreationResult.block?.also(onNewBlock)
     } else {
       log.trace(
-        "Block timer event discarded as it is not for current block height chainHeight={} eventHeight={}",
-        executionLayerManager.latestBlockHeight(),
+        "Block timer event discarded as it is not for current block height " +
+          "latestBlockMetadata={} eventHeight={}",
+        executionLayerManager.latestBlockMetadata(),
         roundIdentifier.sequenceNumber,
       )
     }
@@ -71,5 +77,5 @@ class DummyConsensusEventHandler(
   }
 
   private fun isMsgForCurrentHeight(roundIdentifier: ConsensusRoundIdentifier): Boolean =
-    roundIdentifier.sequenceNumber.toULong() == executionLayerManager.latestBlockHeight()
+    roundIdentifier.sequenceNumber.toULong() == executionLayerManager.latestBlockMetadata().blockNumber + 1.toULong()
 }

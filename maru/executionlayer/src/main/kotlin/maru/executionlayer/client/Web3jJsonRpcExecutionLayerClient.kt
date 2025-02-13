@@ -16,6 +16,7 @@
 package maru.executionlayer.client
 
 import java.util.Optional
+import maru.executionlayer.manager.BlockMetadata
 import org.apache.tuweni.bytes.Bytes32
 import org.web3j.protocol.core.DefaultBlockParameter
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
@@ -32,21 +33,23 @@ import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
 class Web3jJsonRpcExecutionLayerClient(
   private val web3jEngineClient: Web3JExecutionEngineClient,
-  private val web3jClient: Web3JClient,
+  private val web3jEthereumApiClient: Web3JClient,
 ) : ExecutionLayerClient {
-  override fun getLatestBlockMetadata(): SafeFuture<BlockNumberAndHash> =
+  override fun getLatestBlockMetadata(): SafeFuture<BlockMetadata> =
     SafeFuture
       .of(
-        web3jClient.eth1Web3j
+        web3jEthereumApiClient.eth1Web3j
           .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), false)
           .sendAsync()
           .minimalCompletionStage(),
       ).thenApply {
-        BlockNumberAndHash(
-          it.block.number
+        val block = it.block
+        BlockMetadata(
+          block.number
             .toLong()
             .toULong(),
-          Bytes32.fromHexString(it.block.hash),
+          Bytes32.fromHexString(block.hash).toArray(),
+          block.timestamp.toLong(),
         )
       }
 

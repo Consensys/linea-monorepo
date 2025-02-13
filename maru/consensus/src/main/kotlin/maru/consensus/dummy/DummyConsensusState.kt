@@ -41,10 +41,9 @@ data class FinalizationState(
 }
 
 data class DummyConsensusState(
-  val blockTimer: BlockTimer,
   val clock: Clock,
   @Volatile private var finalizationState_: FinalizationState,
-  @Volatile private var latestBlockHash_: ByteArray,
+  @Volatile var latestBlockHash_: ByteArray,
 ) {
   val finalizationState: FinalizationState get() = finalizationState_
   val latestBlockHash: ByteArray get() = latestBlockHash_
@@ -65,7 +64,6 @@ data class DummyConsensusState(
 
     other as DummyConsensusState
 
-    if (blockTimer != other.blockTimer) return false
     if (clock != other.clock) return false
     if (finalizationState_ != other.finalizationState_) return false
     if (!latestBlockHash_.contentEquals(other.latestBlockHash_)) return false
@@ -74,8 +72,7 @@ data class DummyConsensusState(
   }
 
   override fun hashCode(): Int {
-    var result = blockTimer.hashCode()
-    result = 31 * result + clock.hashCode()
+    var result = clock.hashCode()
     result = 31 * result + finalizationState_.hashCode()
     result = 31 * result + latestBlockHash_.contentHashCode()
     return result

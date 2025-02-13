@@ -18,15 +18,18 @@ plugins {
 }
 
 dependencies {
-  implementation("org.hyperledger.besu.internal:common")
-  implementation("org.hyperledger.besu.internal:core")
-  implementation("org.hyperledger.besu.internal:rlp")
-  implementation("org.hyperledger.besu.internal:blockcreation")
-  implementation("org.hyperledger.besu:evm")
-
-  implementation "tech.pegasys.teku.internal:executionclient"
-
   implementation(project(":core"))
 
+  api("org.hyperledger.besu.internal:common") {
+    because("API of the BftEventHandler interface")
+  }
+  implementation("org.hyperledger.besu.internal:core")
+  implementation("org.hyperledger.besu.internal:rlp")
+  api("org.hyperledger.besu.internal:blockcreation") {
+    because("of the BlockCreator")
+  }
+  implementation("org.hyperledger.besu:evm")
+
   testImplementation(testFixtures(project(":core")))
+  testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
 }
