@@ -60,18 +60,6 @@ class BlockImporter(
     return executedBlockResult
   }
 
-  private fun createOverrides(blockFromBlob: BlockFromL1RecoveredData): BlockOverrides {
-    return BlockOverrides.builder()
-      .blockHash(Hash.wrap(Bytes32.wrap(blockFromBlob.header.blockHash)))
-      .feeRecipient(Address.fromHexString(blockFromBlob.header.coinbase.encodeHex()))
-      .blockNumber(blockFromBlob.header.blockNumber.toLong())
-      .gasLimit(blockFromBlob.header.gasLimit.toLong())
-      .timestamp(blockFromBlob.header.blockTimestamp.epochSeconds)
-      .difficulty(blockFromBlob.header.difficulty.toBigInteger())
-      .mixHashOrPrevRandao(Hash.ZERO)
-      .build()
-  }
-
   fun importBlock(context: BlockContext): PluginBlockSimulationResult {
     log.trace(
       "calling simulateAndPersistWorldState block={} blockHeader={}",
@@ -95,18 +83,6 @@ class BlockImporter(
     return importedBlockResult
   }
 
-  private fun createOverrides(blockHeader: BlockHeader): BlockOverrides {
-    return BlockOverrides.builder()
-      .feeRecipient(blockHeader.coinbase)
-      .blockNumber(blockHeader.number)
-      .gasLimit(blockHeader.gasLimit)
-      .timestamp(blockHeader.timestamp)
-      .difficulty(blockHeader.difficulty.asBigInteger)
-      .stateRoot(blockHeader.stateRoot)
-      .mixHashOrPrevRandao(Hash.ZERO)
-      .build()
-  }
-
   private fun storeAndSetHead(block: PluginBlockSimulationResult) {
     log.debug(
       "storeAndSetHead result: blockHeader={}",
@@ -118,5 +94,31 @@ class BlockImporter(
       block.receipts
     )
     synchronizationService.setHeadUnsafe(block.blockHeader, block.blockBody)
+  }
+
+  companion object {
+    fun createOverrides(blockFromBlob: BlockFromL1RecoveredData): BlockOverrides {
+      return BlockOverrides.builder()
+        .blockHash(Hash.wrap(Bytes32.wrap(blockFromBlob.header.blockHash)))
+        .feeRecipient(Address.fromHexString(blockFromBlob.header.coinbase.encodeHex()))
+        .blockNumber(blockFromBlob.header.blockNumber.toLong())
+        .gasLimit(blockFromBlob.header.gasLimit.toLong())
+        .timestamp(blockFromBlob.header.blockTimestamp.epochSeconds)
+        .difficulty(blockFromBlob.header.difficulty.toBigInteger())
+        .mixHashOrPrevRandao(Hash.ZERO)
+        .build()
+    }
+
+    fun createOverrides(blockHeader: BlockHeader): BlockOverrides {
+      return BlockOverrides.builder()
+        .feeRecipient(blockHeader.coinbase)
+        .blockNumber(blockHeader.number)
+        .gasLimit(blockHeader.gasLimit)
+        .timestamp(blockHeader.timestamp)
+        .difficulty(blockHeader.difficulty.asBigInteger)
+        .stateRoot(blockHeader.stateRoot)
+        .mixHashOrPrevRandao(Hash.ZERO)
+        .build()
+    }
   }
 }
