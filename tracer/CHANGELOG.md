@@ -1,5 +1,37 @@
 # Changelog
 
+## beta-v1.3.0-rc1
+* fix: MODEXP_lead_log OOB instruction tracing (#1806)
+* hotfix: rm following closed issue (#1805)
+* feat: remove romlex unused columns (#1791)
+* Update Linea Besu to 25.2-delivery49 (#1803)
+* test: mixture of non reverted, self reverted, and get reverted LOGX (#1784)
+* 1792 cleaning some todos (#1797)
+* test: no CFI duplicates (#1789)
+* hotfix: temp dependency conflict (#1801)
+* Update Linea Besu to 25.2-delivery48 (#1796)
+* chore: update weekly and nightly tests (#1794)
+* Added tests for signed comparisons, mod, div and sign extension (#1768)
+* test: check no CFI duplicate for simple calls
+* chore: more parallelism to unit/replay/ref tests (#1786)
+* feat: enable popping bundle of transactions (#1777)
+* Fix/parsing constraint failed (#1760)
+* test: add SHAKIRA tests (#1762)
+* chore: update `go-corset` to latest commit (#1781)
+* feat: point to master of constraints (#1782)
+* `HUB` consistency arguments (#1746)
+* test(oogx): CALL different scenarios and gas accumulator (#1515)
+* chore: update `go-corset` to `301d5c4` (#1774)
+* Feat/sonarqube local setup (#1764)
+* add TX_WARM and TX_FINAL tests (#1743)
+* test: some more skip tests (#1734)
+* Update Linea Besu to 25.2-delivery46 (#1767)
+* feat: update constraints be40337 (#1765
+* fix: nightly tests (#1755)
+* fix: blockdata line counting & traceEndBlock trigger in ref tests (#1751)
+* update `go-corset` to latest (#1739)
+* clean: don't store mmu and mxp stamps with hub and log stamps (#1747)
+
 ## beta-v1.2.0-rc3
 * Update Linea Besu to 25.1-delivery44 (#1742)
 * clean: remove dead code (#1733)
