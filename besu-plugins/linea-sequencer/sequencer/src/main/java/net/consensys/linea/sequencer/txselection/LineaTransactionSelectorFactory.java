@@ -25,9 +25,12 @@ import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txselection.selectors.LineaTransactionSelector;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.hyperledger.besu.plugin.services.txselection.BlockTransactionSelectionService;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelectorFactory;
+import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 
 /**
  * Represents a factory for creating transaction selectors. Note that a new instance of the
@@ -64,8 +67,9 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   }
 
   @Override
-  public PluginTransactionSelector create() {
+  public PluginTransactionSelector create(final SelectorsStateManager selectorsStateManager) {
     return new LineaTransactionSelector(
+        selectorsStateManager,
         blockchainService,
         txSelectorConfiguration,
         l1L2BridgeConfiguration,
@@ -75,4 +79,9 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
         rejectedTxJsonRpcManager,
         maybeProfitabilityMetrics);
   }
+
+  @Override
+  public void selectPendingTransactions(
+      final BlockTransactionSelectionService blockTransactionSelectionService,
+      final ProcessableBlockHeader pendingBlockHeader) {}
 }

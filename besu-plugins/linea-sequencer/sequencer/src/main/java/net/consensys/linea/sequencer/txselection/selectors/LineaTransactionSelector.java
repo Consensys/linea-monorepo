@@ -37,6 +37,7 @@ import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
 /** Class for transaction selection using a list of selectors. */
@@ -49,6 +50,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   private final Set<String> rejectedTransactionReasonsMap = new HashSet<>();
 
   public LineaTransactionSelector(
+      final SelectorsStateManager selectorsStateManager,
       final BlockchainService blockchainService,
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
@@ -67,6 +69,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
 
     selectors =
         createTransactionSelectors(
+            selectorsStateManager,
             blockchainService,
             txSelectorConfiguration,
             l1L2BridgeConfiguration,
@@ -79,6 +82,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   /**
    * Creates a list of selectors based on Linea configuration.
    *
+   * @param selectorsStateManager
    * @param blockchainService Blockchain service.
    * @param txSelectorConfiguration The configuration to use.
    * @param profitabilityConfiguration The profitability configuration.
@@ -87,6 +91,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @return A list of selectors.
    */
   private List<PluginTransactionSelector> createTransactionSelectors(
+      final SelectorsStateManager selectorsStateManager,
       final BlockchainService blockchainService,
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
@@ -97,6 +102,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
+            selectorsStateManager,
             blockchainService.getChainId().get(),
             limitsMap,
             txSelectorConfiguration,
@@ -104,8 +110,10 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             tracerConfiguration);
 
     return List.of(
-        new MaxBlockCallDataTransactionSelector(txSelectorConfiguration.maxBlockCallDataSize()),
-        new MaxBlockGasTransactionSelector(txSelectorConfiguration.maxGasPerBlock()),
+        new MaxBlockCallDataTransactionSelector(
+            selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()),
+        new MaxBlockGasTransactionSelector(
+            selectorsStateManager, txSelectorConfiguration.maxGasPerBlock()),
         new ProfitableTransactionSelector(
             blockchainService,
             txSelectorConfiguration,

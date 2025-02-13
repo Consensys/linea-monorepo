@@ -43,6 +43,7 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,7 @@ public class TraceLineLimitTransactionSelectorTest {
   private static final String MODULE_LINE_LIMITS_RESOURCE_NAME = "/sequencer/line-limits.toml";
   private Map<String, Integer> lineCountLimits;
   private LineaTracerConfiguration lineaTracerConfiguration;
+  private SelectorsStateManager selectorsStateManager;
 
   @TempDir static Path tempDir;
   static Path lineLimitsConfPath;
@@ -78,8 +80,15 @@ public class TraceLineLimitTransactionSelectorTest {
 
   private TestableTraceLineLimitTransactionSelector newSelectorForNewBlock(
       final Map<String, Integer> lineCountLimits) {
-    return new TestableTraceLineLimitTransactionSelector(
-        lineaTracerConfiguration, lineCountLimits, OVER_LINE_COUNT_LIMIT_CACHE_SIZE);
+    selectorsStateManager = new SelectorsStateManager();
+    final var selector =
+        new TestableTraceLineLimitTransactionSelector(
+            selectorsStateManager,
+            lineaTracerConfiguration,
+            lineCountLimits,
+            OVER_LINE_COUNT_LIMIT_CACHE_SIZE);
+    selectorsStateManager.blockSelectionStarted();
+    return selector;
   }
 
   @Test
@@ -88,7 +97,7 @@ public class TraceLineLimitTransactionSelectorTest {
     transactionSelector.resetCache();
 
     final var evaluationContext =
-        mockEvaluationContext(false, 100, Wei.of(1_100_000_000), Wei.of(1_000_000_000), 21000);
+        mockEvaluationContext(false, 100, Wei.of(1_100_000_000), Wei.of(1_000_000_000), 21000, 0);
     verifyTransactionSelection(
         transactionSelector,
         evaluationContext,
@@ -108,7 +117,7 @@ public class TraceLineLimitTransactionSelectorTest {
     transactionSelector.resetCache();
 
     final var evaluationContext =
-        mockEvaluationContext(false, 100, Wei.of(1_100_000_000), Wei.of(1_000_000_000), 21000);
+        mockEvaluationContext(false, 100, Wei.of(1_100_000_000), Wei.of(1_000_000_000), 21000, 0);
     verifyTransactionSelection(
         transactionSelector,
         evaluationContext,
@@ -128,7 +137,7 @@ public class TraceLineLimitTransactionSelectorTest {
     transactionSelector.resetCache();
 
     var evaluationContext =
-        mockEvaluationContext(false, 100, Wei.of(1_100_000_000), Wei.of(1_000_000_000), 21000);
+        mockEvaluationContext(false, 100, Wei.of(1_100_000_000), Wei.of(1_000_000_000), 21000, 0);
     verifyTransactionSelection(
         transactionSelector,
         evaluationContext,
@@ -168,7 +177,7 @@ public class TraceLineLimitTransactionSelectorTest {
         new TestTransactionEvaluationContext[OVER_LINE_COUNT_LIMIT_CACHE_SIZE + 1];
     for (int i = 0; i <= OVER_LINE_COUNT_LIMIT_CACHE_SIZE; i++) {
       var evaluationContext =
-          mockEvaluationContext(false, 100, Wei.of(1_100_000_000), Wei.of(1_000_000_000), 21000);
+          mockEvaluationContext(false, 100, Wei.of(1_100_000_000), Wei.of(1_000_000_000), 21000, 0);
       verifyTransactionSelection(
           transactionSelector,
           evaluationContext,
@@ -182,7 +191,7 @@ public class TraceLineLimitTransactionSelectorTest {
           .isTrue();
     }
 
-    // only the last two txs must be in the unprofitable cache, since the first one was evicted
+    // only the last two txs must be in the over limit cache, since the first one was evicted
     assertThat(
             transactionSelector.isOverLineCountLimitTxCached(
                 evaluationContexts[0].getPendingTransaction().getTransaction().getHash()))
@@ -232,12 +241,14 @@ public class TraceLineLimitTransactionSelectorTest {
       final int size,
       final Wei effectiveGasPrice,
       final Wei minGasPrice,
-      final long gasLimit) {
+      final long gasLimit,
+      final int payloadSize) {
     PendingTransaction pendingTransaction = mock(PendingTransaction.class);
     Transaction transaction = mock(Transaction.class);
     when(transaction.getHash()).thenReturn(Hash.wrap(Bytes32.random()));
     when(transaction.getSize()).thenReturn(size);
     when(transaction.getGasLimit()).thenReturn(gasLimit);
+    when(transaction.getPayload()).thenReturn(Bytes.repeat((byte) 1, payloadSize));
     when(pendingTransaction.getTransaction()).thenReturn(transaction);
     when(pendingTransaction.hasPriority()).thenReturn(hasPriority);
     return new TestTransactionEvaluationContext(
@@ -247,10 +258,12 @@ public class TraceLineLimitTransactionSelectorTest {
   private class TestableTraceLineLimitTransactionSelector
       extends TraceLineLimitTransactionSelector {
     TestableTraceLineLimitTransactionSelector(
+        final SelectorsStateManager selectorsStateManager,
         final LineaTracerConfiguration lineaTracerConfiguration,
         final Map<String, Integer> moduleLimits,
         final int overLimitCacheSize) {
       super(
+          selectorsStateManager,
           BigInteger.ONE,
           moduleLimits,
           LineaTransactionSelectorConfiguration.builder()

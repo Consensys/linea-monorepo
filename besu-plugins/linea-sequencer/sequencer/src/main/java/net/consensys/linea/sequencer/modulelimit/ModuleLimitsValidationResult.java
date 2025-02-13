@@ -14,10 +14,12 @@
  */
 package net.consensys.linea.sequencer.modulelimit;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 /** Represents the result of verifying module line counts against their limits. */
 @Getter
+@EqualsAndHashCode
 public class ModuleLimitsValidationResult {
   private final ModuleLineCountValidator.ModuleLineCountResult result;
   private final String moduleName;

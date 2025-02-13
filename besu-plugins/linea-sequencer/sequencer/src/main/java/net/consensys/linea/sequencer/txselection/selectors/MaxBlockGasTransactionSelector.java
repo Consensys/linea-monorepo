@@ -18,12 +18,12 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_TOO_LARGE_FOR_REMAINING_USER_GAS;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
-import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.AbstractStatefulPluginTransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
 /**
@@ -33,11 +33,23 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  * configure a max gas per block that is below the limit defined by the protocol.
  */
 @Slf4j
-@RequiredArgsConstructor
-public class MaxBlockGasTransactionSelector implements PluginTransactionSelector {
+public class MaxBlockGasTransactionSelector
+    extends AbstractStatefulPluginTransactionSelector<Long> {
 
   private final long maxGasPerBlock;
-  private long cumulativeBlockGasUsed;
+
+  public MaxBlockGasTransactionSelector(
+      final SelectorsStateManager selectorsStateManager, final long maxGasPerBlock) {
+    super(selectorsStateManager, 0L, SelectorsStateManager.StateDuplicator::duplicateLong);
+    this.maxGasPerBlock = maxGasPerBlock;
+  }
+
+  @Override
+  public TransactionSelectionResult evaluateTransactionPreProcessing(
+      final TransactionEvaluationContext evaluationContext) {
+    // Evaluation done in post-processing, no action needed here.
+    return SELECTED;
+  }
 
   /**
    * Evaluates a transaction post-processing. Checks if adding the gas used of the transaction, to
@@ -69,48 +81,25 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
       return TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS;
     }
 
-    if (isTransactionExceedingMaxBlockGasLimit(gasUsedByTransaction)) {
+    final var stateCumulativeBlockGasUsed = getWorkingState();
+
+    final long newCumulativeBlockGasUsed =
+        Math.addExact(stateCumulativeBlockGasUsed, gasUsedByTransaction);
+
+    if (newCumulativeBlockGasUsed > maxGasPerBlock) {
       log.atTrace()
           .setMessage(
-              "Not selecting transaction {}, its cumulative block gas used {} greater than max user gas per block {},"
+              "Not selecting transaction {}, its cumulative block gas used {} exceeds max user gas per block {},"
                   + " skipping it")
           .addArgument(transaction::getHash)
-          .addArgument(cumulativeBlockGasUsed)
+          .addArgument(newCumulativeBlockGasUsed)
           .addArgument(maxGasPerBlock)
           .log();
       return TX_TOO_LARGE_FOR_REMAINING_USER_GAS;
     }
-    return SELECTED;
-  }
 
-  private boolean isTransactionExceedingMaxBlockGasLimit(long transactionGasUsed) {
-    try {
-      return Math.addExact(cumulativeBlockGasUsed, transactionGasUsed) > maxGasPerBlock;
-    } catch (final ArithmeticException e) {
-      // Overflow won't occur as cumulativeBlockGasUsed won't exceed Long.MAX_VALUE
-      return true;
-    }
-  }
+    setWorkingState(newCumulativeBlockGasUsed);
 
-  /**
-   * If the transaction has been selected, then we add its gas used to the current gas used of the
-   * block.
-   *
-   * @param evaluationContext The current selection context
-   * @param processingResult The result of processing the selected transaction.
-   */
-  @Override
-  public void onTransactionSelected(
-      final TransactionEvaluationContext evaluationContext,
-      final TransactionProcessingResult processingResult) {
-    cumulativeBlockGasUsed =
-        Math.addExact(cumulativeBlockGasUsed, processingResult.getEstimateGasUsedByTransaction());
-  }
-
-  @Override
-  public TransactionSelectionResult evaluateTransactionPreProcessing(
-      final TransactionEvaluationContext evaluationContext) {
-    // Evaluation done in post-processing, no action needed here.
     return SELECTED;
   }
 }

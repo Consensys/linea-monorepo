@@ -72,15 +72,4 @@ public class TestTransactionEvaluationContext implements TransactionEvaluationCo
     this.minGasPrice = minGasPrice;
     return this;
   }
-
-  public TestTransactionEvaluationContext setPendingTransaction(
-      final PendingTransaction pendingTransaction) {
-    this.pendingTransaction = pendingTransaction;
-    return this;
-  }
-
-  public TestTransactionEvaluationContext setTransactionGasPrice(final Wei transactionGasPrice) {
-    this.transactionGasPrice = transactionGasPrice;
-    return this;
-  }
 }
