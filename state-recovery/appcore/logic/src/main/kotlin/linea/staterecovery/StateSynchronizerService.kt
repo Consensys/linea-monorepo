@@ -84,7 +84,7 @@ class StateSynchronizerService(
     if (lookbackHashesInitalized) {
       return SafeFuture.completedFuture(Unit)
     }
-    val lookackHasheFetcher = LookBackBlockHashesFetcher(
+    val loobackHasheFetcher = LookBackBlockHashesFetcher(
       vertx = vertx,
       elClient = elClient,
       submissionsFetcher = blobsFetcherTask
@@ -92,7 +92,7 @@ class StateSynchronizerService(
 
     return this.elClient
       .lineaGetStateRecoveryStatus()
-      .thenCompose(lookackHasheFetcher::getLookBackHashes)
+      .thenCompose(loobackHasheFetcher::getLookBackHashes)
       .thenApply { lookbackHashes ->
         elClient.addLookbackHashes(lookbackHashes)
         lookbackHashesInitalized = true
@@ -103,7 +103,7 @@ class StateSynchronizerService(
     val nexFinalization = blobsFetcherTask
       .peekNextFinalizationReadyToImport()
       ?: run {
-        log.debug("no finalization ready to import")
+        log.trace("no finalization ready to import")
         return SafeFuture.completedFuture(Unit)
       }
 
