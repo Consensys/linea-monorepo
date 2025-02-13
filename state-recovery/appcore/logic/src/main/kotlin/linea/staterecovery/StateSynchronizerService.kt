@@ -38,6 +38,7 @@ class StateSynchronizerService(
   private var lookbackHashesInitalized = false
 
   override fun start(): SafeFuture<Unit> {
+    log.debug("starting L1 -> El state importer service")
     return this.elClient
       .lineaGetStateRecoveryStatus()
       .thenCompose { status ->
@@ -64,6 +65,11 @@ class StateSynchronizerService(
       }
       .thenCompose { initLookbackHashes() }
       .thenCompose { super.start() }
+      .whenException {
+        log.error("failed to start  L1 -> El state importer service", it)
+      }.whenSuccess {
+        log.debug("started L1 -> ExecutionLayer state recovery service")
+      }
   }
 
   override fun action(): SafeFuture<*> {

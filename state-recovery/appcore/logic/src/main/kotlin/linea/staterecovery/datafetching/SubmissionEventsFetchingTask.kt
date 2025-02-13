@@ -49,7 +49,7 @@ internal class SubmissionEventsFetchingTask(
     if (submissionEventsQueue.size >= queueLimit) {
       // Queue is full, no need to fetch more
       log.debug(
-        "Skipping fetching submission events from L1, internal queue is full size={}",
+        "skipping fetching submission events from L1, internal queue is full size={}",
         submissionEventsQueue.size
       )
       return SafeFuture.completedFuture(Unit)
@@ -71,7 +71,7 @@ internal class SubmissionEventsFetchingTask(
 
   private fun findNextFinalizationSubmissionEvents(): SafeFuture<FinalizationAndDataEventsV3?> {
     return if (latestFetchedFinalization.get() != null) {
-      log.debug(
+      log.trace(
         "fetching submission events from L1 startBlockNumber={}",
         latestFetchedFinalization.get().event.endBlockNumber + 1u
       )
@@ -80,7 +80,7 @@ internal class SubmissionEventsFetchingTask(
         finalizationStartBlockNumber = latestFetchedFinalization.get().event.endBlockNumber + 1u
       )
     } else {
-      log.debug(
+      log.trace(
         "fetching submission events from L1 startBlockNumber={}",
         l2StartBlockNumber
       )
