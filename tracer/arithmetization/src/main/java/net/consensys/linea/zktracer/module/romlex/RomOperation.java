@@ -42,11 +42,8 @@ public final class RomOperation extends ModuleOperation {
   private static final UnsignedByte UB_LLARGE = UnsignedByte.of(LLARGE);
   private static final UnsignedByte UB_LLARGE_MO = UnsignedByte.of(LLARGEMO);
   private static final UnsignedByte UB_EVW_WORD_MO = UnsignedByte.of(WORD_SIZE_MO);
-  private static final UnsignedByte INVALID = UnsignedByte.of(EVM_INST_INVALID);
 
   @Getter @EqualsAndHashCode.Include private final ContractMetadata metadata;
-  private final boolean readFromTheState;
-  private final boolean commitToTheState;
   private final Bytes byteCode;
 
   public void trace(Trace trace, int cfi, int cfiInfty) {
