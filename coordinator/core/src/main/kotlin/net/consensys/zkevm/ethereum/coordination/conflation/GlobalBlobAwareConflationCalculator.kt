@@ -37,8 +37,8 @@ class GlobalBlobAwareConflationCalculator(
 
   private val gasUsedInBlobHistogram = metricsFacade.createHistogram(
     category = LineaMetricsCategory.BLOB,
-    name = "gas.used",
-    description = "Total gas used in each blob"
+    name = "gas",
+    description = "Total gas in each blob"
   )
   private val compressedDataSizeInBlobHistogram = metricsFacade.createHistogram(
     category = LineaMetricsCategory.BLOB,
@@ -52,8 +52,8 @@ class GlobalBlobAwareConflationCalculator(
   )
   private val gasUsedInBatchHistogram = metricsFacade.createHistogram(
     category = LineaMetricsCategory.BATCH,
-    name = "gas.used",
-    description = "Total gas used in each batch"
+    name = "gas",
+    description = "Total gas in each batch"
   )
   private val compressedDataSizeInBatchHistogram = metricsFacade.createHistogram(
     category = LineaMetricsCategory.BATCH,
