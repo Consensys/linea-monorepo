@@ -55,10 +55,7 @@ shadowJar {
 }
 
 dependencies {
-  annotationProcessor 'com.google.auto.service:auto-service:1.1.1'
-  compileOnly 'com.google.auto.service:auto-service:1.1.1'
-  compileOnly 'com.google.auto.service:auto-service-annotations:1.1.1'
-  compileOnly 'io.consensys.linea-besu:plugin-api:24.11-delivery39'
+  compileOnly project(":jvm-libs:linea:besu-libs")
   compileOnly 'info.picocli:picocli:4.7.6'
   compileOnly 'io.vertx:vertx-core'
 

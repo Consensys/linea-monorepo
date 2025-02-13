@@ -1,6 +1,7 @@
 package net.consensys.linea.consensus
 
 import io.vertx.core.Vertx
+import linea.consensus.EngineBlockTagUpdater
 import net.consensys.linea.LineaL1FinalizationUpdaterService
 import net.consensys.linea.PluginConfig
 import org.hyperledger.besu.datatypes.Address
