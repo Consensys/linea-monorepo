@@ -79,6 +79,8 @@ task integrationTest(type: Test) { test ->
 
   dependsOn(":localStackForStateRecoveryComposeUp")
 
+  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
+
   testLogging {
     events TestLogEvent.FAILED,
         TestLogEvent.SKIPPED,
