@@ -583,7 +583,7 @@ services:
         ipv4_address: 10.10.10.205
 
   zkbesu-shomei-sr:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-devnet-7dfb8e3}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-devnet-e97a644}
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
     profiles: [ "external-to-monorepo", "staterecovery" ]
@@ -614,6 +614,7 @@ services:
       - -c
       - |
         (rm /opt/besu/plugins/linea-staterecovery-besu-plugin-v* || true) && \
+        (rm /opt/besu/plugins/finalized-tag-updater-* || true) && \
         ls -lh /opt/besu/plugins && \
         sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu && \
         /opt/besu/bin/besu \
