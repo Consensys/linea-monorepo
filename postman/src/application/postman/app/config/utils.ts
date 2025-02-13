@@ -127,18 +127,17 @@ export function validateEventsFiltersConfig(eventFilters: ListenerConfig["eventF
   }
 
   if (
-    (eventFilters?.calldataFilter && !eventFilters.calldataFunctionInterface) ||
-    (!eventFilters?.calldataFilter && eventFilters?.calldataFunctionInterface)
+    eventFilters?.calldataFilter?.criteriaExpression &&
+    !isValidFiltrexExpression(eventFilters?.calldataFilter?.criteriaExpression)
   ) {
-    throw new Error(`calldataFilter requires calldataFunctionInterface`);
+    throw new Error(`Invalid calldataFilter expression: ${eventFilters.calldataFilter.criteriaExpression}`);
   }
 
-  if (eventFilters?.calldataFilter && !isValidFiltrexExpression(eventFilters.calldataFilter)) {
-    throw new Error(`Invalid calldataFilter expression: ${eventFilters.calldataFilter}`);
-  }
-
-  if (eventFilters?.calldataFunctionInterface && !isFunctionInterfaceValid(eventFilters.calldataFunctionInterface)) {
-    throw new Error(`Invalid calldataFunctionInterface: ${eventFilters.calldataFunctionInterface}`);
+  if (
+    eventFilters?.calldataFilter?.calldataFunctionInterface &&
+    !isFunctionInterfaceValid(eventFilters?.calldataFilter?.calldataFunctionInterface)
+  ) {
+    throw new Error(`Invalid calldataFunctionInterface: ${eventFilters?.calldataFilter?.calldataFunctionInterface}`);
   }
 }
 

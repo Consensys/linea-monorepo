@@ -102,8 +102,10 @@ export type ListenerOptions = {
   eventFilters?: {
     fromAddressFilter?: string;
     toAddressFilter?: string;
-    calldataFilter?: string;
-    calldataFunctionInterface?: string;
+    calldataFilter?: {
+      criteriaExpression: string;
+      calldataFunctionInterface: string;
+    };
   };
 };
 

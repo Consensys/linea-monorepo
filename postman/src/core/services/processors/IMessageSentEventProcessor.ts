@@ -15,7 +15,9 @@ export type MessageSentEventProcessorConfig = {
   eventFilters?: {
     fromAddressFilter?: string;
     toAddressFilter?: string;
-    calldataFilter?: string;
-    calldataFunctionInterface?: string;
+    calldataFilter?: {
+      criteriaExpression: string;
+      calldataFunctionInterface: string;
+    };
   };
 };

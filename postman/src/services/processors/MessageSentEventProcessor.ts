@@ -95,10 +95,11 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
     this.logger.info("Number of fetched MessageSent events: %s", events.length);
 
     for (const event of events) {
-      const shouldBeProcessed = this.shouldProcessMessage(event, event.messageHash, {
-        calldataFilter: this.config.eventFilters?.calldataFilter,
-        calldataFunctionInterface: this.config.eventFilters?.calldataFunctionInterface,
-      });
+      const shouldBeProcessed = this.shouldProcessMessage(
+        event,
+        event.messageHash,
+        this.config.eventFilters?.calldataFilter,
+      );
       const messageStatusToInsert = shouldBeProcessed ? MessageStatus.SENT : MessageStatus.EXCLUDED;
 
       const message = MessageFactory.createMessage({
@@ -126,7 +127,10 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
   protected shouldProcessMessage(
     event: MessageSent,
     messageHash: string,
-    filters?: { calldataFilter?: string; calldataFunctionInterface?: string },
+    filters?: {
+      criteriaExpression: string;
+      calldataFunctionInterface: string;
+    },
   ): boolean {
     const hasEmptyCalldata = isEmptyBytes(event.calldata);
     let basicProcess = false;
@@ -154,10 +158,9 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
 
   private isMessageMatchingCriteria(
     event: MessageSent,
-    filters?: { calldataFilter?: string; calldataFunctionInterface?: string },
+    filters?: { criteriaExpression: string; calldataFunctionInterface: string },
   ) {
-    if (!filters?.calldataFilter || !filters?.calldataFunctionInterface) {
-      this.logger.error("Calldata function interface is required to decode calldata");
+    if (!filters) {
       return true;
     }
 
@@ -167,16 +170,18 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
     const context = {
       calldata: {
         funcSignature: dataSlice(event.calldata, 0, 4),
-        ...(decodedCalldata ? this.convertBigInts(decodedCalldata.toObject(true)) : {}),
+        ...this.convertBigInts(decodedCalldata.toObject(true)),
       },
     };
 
-    const passesFilter = this.evaluateExpression(filters.calldataFilter, context);
+    const passesFilter = this.evaluateExpression(filters.criteriaExpression, context);
 
     if (!passesFilter) {
       this.logger.debug(
-        "Message has been excluded because it does not match the criteria: criteria=%s",
-        filters.calldataFilter,
+        "Message has been excluded because it does not match the criteria: criteria=%s messageHash=%s transactionHash=%s",
+        filters.criteriaExpression,
+        event.messageHash,
+        event.transactionHash,
       );
       return false;
     }

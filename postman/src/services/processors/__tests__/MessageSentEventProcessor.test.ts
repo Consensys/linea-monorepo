@@ -43,7 +43,7 @@ class TestMessageSentEventProcessor extends MessageSentEventProcessor {
   public shouldProcessMessage(
     message: MessageSent,
     messageHash: string,
-    filters?: { calldataFilter?: string; calldataFunctionInterface?: string },
+    filters?: { criteriaExpression: string; calldataFunctionInterface: string },
   ): boolean {
     return super.shouldProcessMessage(message, messageHash, filters);
   }
@@ -145,9 +145,11 @@ describe("TestMessageSentEventProcessor", () => {
           eventFilters: {
             fromAddressFilter: TEST_ADDRESS_1,
             toAddressFilter: TEST_ADDRESS_2,
-            calldataFilter: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
-            calldataFunctionInterface:
-              "function claimMessageWithProof((bytes32[] proof,uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+            calldataFilter: {
+              criteriaExpression: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
+              calldataFunctionInterface:
+                "function claimMessageWithProof((bytes32[] proof,uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+            },
           },
         },
         logger,
@@ -303,7 +305,7 @@ describe("TestMessageSentEventProcessor", () => {
         },
         testMessageSentEvent.messageHash,
         {
-          calldataFilter: `from == ${TEST_ADDRESS_1} and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
+          criteriaExpression: `from == ${TEST_ADDRESS_1} and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
           calldataFunctionInterface: funcFragment,
         },
       );
@@ -320,7 +322,7 @@ describe("TestMessageSentEventProcessor", () => {
         },
         testMessageSentEvent.messageHash,
         {
-          calldataFilter: `from == "${TEST_ADDRESS_1}" and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
+          criteriaExpression: `from == "${TEST_ADDRESS_1}" and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
           calldataFunctionInterface: funcFragment,
         },
       );
@@ -337,7 +339,7 @@ describe("TestMessageSentEventProcessor", () => {
         },
         testMessageSentEvent.messageHash,
         {
-          calldataFilter: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
+          criteriaExpression: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
           calldataFunctionInterface: funcFragment,
         },
       );
