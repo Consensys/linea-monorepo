@@ -80,7 +80,7 @@ func (ci *CircuitAlignmentInput) NbInstances() int {
 // times. Safe to call multiple times, it is idepotent after first call.
 func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 
-	nbPublicInputs, _, _ := gnarkutil.CountVariables(ci.Circuit)
+	nbPublicInputs, _ := gnarkutil.CountVariables(ci.Circuit)
 
 	ci.witnessesOnce.Do(func() {
 		if ci.InputFiller == nil {
@@ -201,7 +201,7 @@ type Alignment struct {
 func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *Alignment {
 
 	// compute the constant mask
-	nbPublicInputs, _, _ := gnarkutil.CountVariables(toAlign.Circuit)
+	nbPublicInputs, _ := gnarkutil.CountVariables(toAlign.Circuit)
 	if nbPublicInputs == 0 {
 		utils.Panic("cannot connect a circuit with no public inputs: %v", nbPublicInputs)
 	}

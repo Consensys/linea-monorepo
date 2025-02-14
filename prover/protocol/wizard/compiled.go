@@ -681,8 +681,8 @@ func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
 func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
 
 	var (
-		round              = q.GetRound()
-		nbPub, nbSecret, _ = gnarkutil.CountVariables(q.Circuit)
+		round           = q.GetRound()
+		nbPub, nbSecret = gnarkutil.CountVariables(q.Circuit)
 	)
 
 	if q.Data.Size() != q.Selector.Size() {

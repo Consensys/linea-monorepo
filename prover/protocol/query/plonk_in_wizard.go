@@ -184,7 +184,7 @@ func (piw *PlonkInWizard) GetNbPublicInputs() int {
 	// anyway.
 	if !piw.nbPublicInputsLoaded {
 		piw.nbPublicInputsLoaded = true
-		nbPub, _, _ := gnarkutil.CountVariables(piw.Circuit)
+		nbPub, _ := gnarkutil.CountVariables(piw.Circuit)
 		piw.nbPublicInputs = nbPub
 	}
 	return piw.nbPublicInputs
