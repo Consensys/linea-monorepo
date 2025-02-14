@@ -309,8 +309,20 @@ class GlobalBlobAwareConflationCalculatorTest {
 
     calculator.newBlock(block1Counters)
     calculator.newBlock(block2Counters)
+
+    // up till now no batch and blob histogram metrics should be recorded
+    verify(mockGasUsedInBlobHistogram, times(0)).record(any())
+    verify(mockCompressedDataSizeInBlobHistogram, times(0)).record(any())
+    verify(mockUncompressedDataSizeInBlobHistogram, times(0)).record(any())
+    verify(mockGasUsedInBatchHistogram, times(0)).record(any())
+    verify(mockCompressedDataSizeInBatchHistogram, times(0)).record(any())
+    verify(mockUncompressedDataSizeInBatchHistogram, times(0)).record(any())
+    verify(mockAvgCompressedTxDataSizeInBatchHistogram, times(0)).record(any())
+    verify(mockAvgUncompressedTxDataSizeInBatchHistogram, times(0)).record(any())
+
     // block 3 goes over data limit, so it should emit conflation and blob events
     calculator.newBlock(block3Counters)
+
     // block 4 goes over data limit, so it should emit conflation and blob events
     calculator.newBlock(block4Counters)
     assertThat(calculator.lastBlockNumber).isEqualTo(4uL)
@@ -340,7 +352,7 @@ class GlobalBlobAwareConflationCalculatorTest {
     assertThat(blobs[1].startBlockTime).isEqualTo(block3Counters.blockTimestamp)
     assertThat(blobs[1].endBlockTime).isEqualTo(block3Counters.blockTimestamp)
 
-    // verify histogram metrics
+    // verify batch and blob histogram metrics
     inOrder(mockGasUsedInBlobHistogram).also {
       it.verify(mockGasUsedInBlobHistogram).record(20.0)
       it.verify(mockGasUsedInBlobHistogram).record(10.0)
