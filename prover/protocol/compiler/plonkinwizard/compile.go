@@ -101,19 +101,27 @@ func checkSelectorAndData(comp *wizard.CompiledIOP, ctx *context) {
 		nbPub       = ctx.Q.GetNbPublicInputs()
 		nbPubPadded = utils.NextPowerOfTwo(nbPub)
 		fullSize    = ctx.Q.Data.Size()
-		circMaskVal = make([]field.Element, ctx.Q.Data.Size())
 	)
 
-	for i := 0; i < fullSize; i += nbPubPadded {
-		for k := 0; k < nbPub; k++ {
-			circMaskVal[i+k] = field.One()
+	ctx.CircuitMask = ctx.Q.CircuitMask
+
+	// As the circuit mask is an optional parameter we have to account
+	// for the case where it is not provided by the user.
+	if ctx.CircuitMask == nil {
+
+		circMaskVal := make([]field.Element, ctx.Q.Data.Size())
+
+		for i := 0; i < fullSize; i += nbPubPadded {
+			for k := 0; k < nbPub; k++ {
+				circMaskVal[i+k] = field.One()
+			}
 		}
-	}
 
-	ctx.CircuitMask = comp.InsertPrecomputed(
-		ifaces.ColIDf("%v_CIRCMASK", ctx.Q.ID),
-		smartvectors.NewRegular(circMaskVal),
-	)
+		ctx.CircuitMask = comp.InsertPrecomputed(
+			ifaces.ColIDf("%v_CIRCMASK", ctx.Q.ID),
+			smartvectors.NewRegular(circMaskVal),
+		)
+	}
 
 	commonconstraints.MustBeActivationColumns(comp, ctx.Q.Selector)
 

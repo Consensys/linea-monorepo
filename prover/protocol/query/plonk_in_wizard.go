@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -55,6 +56,15 @@ type PlonkInWizard struct {
 	// Circuit is the circuit to satisfy. The circuit must have zero "secret" values
 	// meaning that it should be fully assignable just from the public inputs.
 	Circuit frontend.Circuit
+
+	// CircuitMask is an optional column that can be provided to help the compiler
+	// if provided, it should be a boolean vector with the same length as the
+	// [PlonkInWizard.Data] and [PlonkInWizard.Selector] columns. It indicates which
+	// rows are eligible to store actual public inputs (e.g. it indicates all the
+	// non-padding rows). If provided the column is checked by the compiler to store
+	// the right values.
+	CircuitMask ifaces.Column
+
 	// PlonkOptions are optional options to pass to the circuit when building it
 	PlonkOptions []any
 
@@ -190,4 +200,32 @@ func (piw *PlonkInWizard) GetMaxNbCircuitInstances() int {
 // [PlonkInWizard.Selector] are available.
 func (piw *PlonkInWizard) GetRound() int {
 	return max(piw.Data.Round(), piw.Selector.Round())
+}
+
+// CheckMask checks if the [PlonkInWizard.CircuitMask] is consistent with the
+// provided [PlonkInWizard.Circuit]. It returns an error if not.
+func (piw *PlonkInWizard) CheckMask(mask smartvectors.SmartVector) error {
+
+	var (
+		size                 = piw.Data.Size()
+		nbPublicInputs       = piw.GetNbPublicInputs()
+		nbPublicInputsPadded = utils.NextPowerOfTwo(nbPublicInputs)
+	)
+
+	for i := 0; i < size; i += nbPublicInputsPadded {
+		for k := 0; k < nbPublicInputsPadded; k++ {
+
+			val := mask.Get(i + k)
+
+			if k < nbPublicInputs && !val.IsOne() {
+				return fmt.Errorf("mask is not consistent with the circuit: mask[%v] = %v but expected 1", i+k, val)
+			}
+
+			if k >= nbPublicInputs && !val.IsZero() {
+				return fmt.Errorf("mask is not consistent with the circuit: mask[%v] = %v but expected 0", i+k, val)
+			}
+		}
+	}
+
+	return nil
 }
