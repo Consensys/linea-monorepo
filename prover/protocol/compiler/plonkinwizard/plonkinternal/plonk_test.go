@@ -1,4 +1,4 @@
-package plonk_test
+package plonkinternal_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/internal/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/require"
@@ -33,11 +33,11 @@ func TestPlonkWizard(t *testing.T) {
 
 	circuit := &MyCircuit{}
 
-	var pa plonk.PlonkInWizardProverAction
+	var pa plonkinternal.PlonkInWizardProverAction
 
 	compiled := wizard.Compile(
 		func(build *wizard.Builder) {
-			ctx := plonk.PlonkCheck(build.CompiledIOP, "PLONK", 0, circuit, 1)
+			ctx := plonkinternal.PlonkCheck(build.CompiledIOP, "PLONK", 0, circuit, 1)
 			pa = ctx.GetPlonkProverAction()
 		},
 		dummy.Compile,

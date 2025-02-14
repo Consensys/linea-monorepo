@@ -1,4 +1,4 @@
-package plonk
+package plonkinternal
 
 import (
 	"math/big"

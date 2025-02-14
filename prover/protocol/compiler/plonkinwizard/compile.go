@@ -4,7 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	plonk "github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/internal/plonk"
+	plonkinternal "github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -19,7 +19,7 @@ type context struct {
 	Q *query.PlonkInWizard
 	// PlonkCtx is the compilation context relative to the plonk
 	// circuit satisfaction.
-	PlonkCtx *plonk.CompilationCtx
+	PlonkCtx *plonkinternal.CompilationCtx
 	// SelOpenings are the local constraints responsible for
 	// checking the activators are well-set w.r.t to the circuit mask
 	SelOpenings []query.LocalOpening
@@ -58,7 +58,7 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
 		maxNbInstances = q.GetMaxNbCircuitInstances()
 		ctx            = &context{
 			Q:        q,
-			PlonkCtx: plonk.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances),
+			PlonkCtx: plonkinternal.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances),
 		}
 	)
 

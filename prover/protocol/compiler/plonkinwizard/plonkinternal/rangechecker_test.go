@@ -1,4 +1,4 @@
-package plonk_test
+package plonkinternal_test
 
 import (
 	"math/big"
@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/internal/plonk"
+	plonk "github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/assert"

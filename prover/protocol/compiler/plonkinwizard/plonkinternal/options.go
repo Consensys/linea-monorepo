@@ -1,4 +1,4 @@
-package plonk
+package plonkinternal
 
 // PlonkOption allows modifying Plonk circuit arithmetization.
 type Option func(*CompilationCtx)
