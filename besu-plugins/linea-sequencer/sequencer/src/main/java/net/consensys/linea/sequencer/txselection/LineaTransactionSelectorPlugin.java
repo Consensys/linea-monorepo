@@ -15,6 +15,7 @@
 
 package net.consensys.linea.sequencer.txselection;
 
+import static net.consensys.linea.config.LineaTransactionSelectorCliOptions.DEFAULT_MAX_BUNDLE_GAS_PER_BLOCK;
 import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITABILITY;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.createLimitModules;
 
@@ -30,7 +31,6 @@ import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.sequencer.txselection.selectors.ProfitableTransactionSelector;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
-import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 
 /**
@@ -41,15 +41,14 @@ import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 @Slf4j
 @AutoService(BesuPlugin.class)
 public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin {
-  public static final String NAME = "linea";
-  private ServiceManager serviceManager;
   private TransactionSelectionService transactionSelectionService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
-  private BesuConfiguration besuConfiguration;
+
+  // initialize to the static config default:
+  private long maxBundleGasPerBlock = DEFAULT_MAX_BUNDLE_GAS_PER_BLOCK;
 
   @Override
   public void doRegister(final ServiceManager serviceManager) {
-    this.serviceManager = serviceManager;
     transactionSelectionService =
         serviceManager
             .getService(TransactionSelectionService.class)
@@ -58,13 +57,6 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
                     new RuntimeException(
                         "Failed to obtain TransactionSelectionService from the ServiceManager."));
 
-    besuConfiguration =
-        serviceManager
-            .getService(BesuConfiguration.class)
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Failed to obtain BesuConfiguration from the ServiceManager."));
     metricCategoryRegistry.addMetricCategory(SEQUENCER_PROFITABILITY);
   }
 
@@ -74,6 +66,10 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
 
     final LineaTransactionSelectorConfiguration txSelectorConfiguration =
         transactionSelectorConfiguration();
+
+    // set maxBundleGasPerBlock
+    maxBundleGasPerBlock = txSelectorConfiguration.maxBundleGasPerBlock();
+
     final LineaRejectedTxReportingConfiguration lineaRejectedTxReportingConfiguration =
         rejectedTxReportingConfiguration();
     rejectedTxJsonRpcManager =
@@ -107,7 +103,9 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             tracerConfiguration(),
             createLimitModules(tracerConfiguration()),
             rejectedTxJsonRpcManager,
-            maybeProfitabilityMetrics));
+            maybeProfitabilityMetrics,
+            bundlePoolService,
+            maxBundleGasPerBlock));
   }
 
   @Override

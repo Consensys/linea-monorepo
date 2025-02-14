@@ -28,25 +28,16 @@ import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.data.AddedBlockContext;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BesuEvents.InitialSyncCompletionListener;
-import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
 /** This plugin registers handlers that are activated when new blocks are imported */
 @Slf4j
 @AutoService(BesuPlugin.class)
 public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
   private ServiceManager serviceManager;
-  private RpcEndpointService rpcEndpointService;
 
   @Override
   public void doRegister(final ServiceManager context) {
     serviceManager = context;
-    rpcEndpointService =
-        context
-            .getService(RpcEndpointService.class)
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Failed to obtain RpcEndpointService from the ServiceManager."));
 
     metricCategoryRegistry.addMetricCategory(PRICING_CONF);
   }

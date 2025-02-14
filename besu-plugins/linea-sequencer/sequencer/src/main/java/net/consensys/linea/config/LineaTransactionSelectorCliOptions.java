@@ -32,6 +32,11 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
 
   public static final String MAX_GAS_PER_BLOCK = "--plugin-linea-max-block-gas";
   public static final long DEFAULT_MAX_GAS_PER_BLOCK = 30_000_000L;
+  public static final String MAX_BUNDLE_POOL_SIZE_BYTES =
+      "--plugin-linea-max-bundle-pool-size-bytes";
+  public static final long DEFAULT_MAX_BUNDLE_POOL_SIZE_BYTES = 1024 * 1024 * 16L;
+  public static final String MAX_BUNDLE_GAS_PER_BLOCK = "--plugin-linea-max-bundle-block-gas";
+  public static final long DEFAULT_MAX_BUNDLE_GAS_PER_BLOCK = 15_000_000L;
 
   public static final String UNPROFITABLE_CACHE_SIZE = "--plugin-linea-unprofitable-cache-size";
   public static final int DEFAULT_UNPROFITABLE_CACHE_SIZE = 100_000;
@@ -63,6 +68,22 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
       paramLabel = "<LONG>",
       description = "Sets max gas per block  (default: ${DEFAULT-VALUE})")
   private Long maxGasPerBlock = DEFAULT_MAX_GAS_PER_BLOCK;
+
+  @Positive
+  @CommandLine.Option(
+      names = {MAX_BUNDLE_POOL_SIZE_BYTES},
+      hidden = true,
+      paramLabel = "<LONG>",
+      description = "Sets max gas per block  (default: ${DEFAULT-VALUE})")
+  public Long maxBundlePoolSizeBytes = DEFAULT_MAX_BUNDLE_POOL_SIZE_BYTES;
+
+  @Positive
+  @CommandLine.Option(
+      names = {MAX_BUNDLE_GAS_PER_BLOCK},
+      hidden = true,
+      paramLabel = "<LONG>",
+      description = "Sets max gas per block  (default: ${DEFAULT-VALUE})")
+  public Long maxBundleGasPerBlock = DEFAULT_MAX_BUNDLE_GAS_PER_BLOCK;
 
   @Positive
   @CommandLine.Option(
@@ -123,6 +144,8 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         .maxGasPerBlock(maxGasPerBlock)
         .unprofitableCacheSize(unprofitableCacheSize)
         .unprofitableRetryLimit(unprofitableRetryLimit)
+        .maxBundleGasPerBlock(maxBundleGasPerBlock)
+        .maxBundlePoolSizeBytes(maxBundlePoolSizeBytes)
         .build();
   }
 
@@ -134,6 +157,8 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         .add(MAX_GAS_PER_BLOCK, maxGasPerBlock)
         .add(UNPROFITABLE_CACHE_SIZE, unprofitableCacheSize)
         .add(UNPROFITABLE_RETRY_LIMIT, unprofitableRetryLimit)
+        .add(MAX_BUNDLE_GAS_PER_BLOCK, maxBundleGasPerBlock)
+        .add(MAX_BUNDLE_POOL_SIZE_BYTES, maxBundlePoolSizeBytes)
         .toString();
   }
 }

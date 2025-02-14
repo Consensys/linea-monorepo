@@ -41,7 +41,6 @@ import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
-import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 import org.hyperledger.besu.plugin.services.txselection.AbstractStatefulPluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
@@ -119,13 +118,6 @@ public class TraceLineLimitTransactionSelector
     return SELECTED;
   }
 
-  @Override
-  public void onTransactionNotSelected(
-      final TransactionEvaluationContext evaluationContext,
-      final TransactionSelectionResult transactionSelectionResult) {
-    zkTracer.popTransaction(evaluationContext.getPendingTransaction());
-  }
-
   /**
    * Checking the created trace lines is performed post-processing.
    *
@@ -187,7 +179,7 @@ public class TraceLineLimitTransactionSelector
   }
 
   @Override
-  public BlockAwareOperationTracer getOperationTracer() {
+  public ZkTracer getOperationTracer() {
     return zkTracer;
   }
 

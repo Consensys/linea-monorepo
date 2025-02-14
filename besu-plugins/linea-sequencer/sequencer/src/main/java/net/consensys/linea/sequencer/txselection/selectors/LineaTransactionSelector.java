@@ -32,10 +32,11 @@ import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.rpc.services.BundlePoolService;
+import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
-import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
@@ -56,6 +57,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
+      final BundlePoolService bundlePoolService,
       final Map<String, Integer> limitsMap,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
@@ -75,6 +77,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             l1L2BridgeConfiguration,
             profitabilityConfiguration,
             tracerConfiguration,
+            bundlePoolService,
             limitsMap,
             maybeProfitabilityMetrics);
   }
@@ -86,6 +89,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @param blockchainService Blockchain service.
    * @param txSelectorConfiguration The configuration to use.
    * @param profitabilityConfiguration The profitability configuration.
+   * @param tracerConfiguration the tracer config
+   * @param bundlePoolService bundle pool for transaction bundle selector
    * @param limitsMap The limits map.
    * @param maybeProfitabilityMetrics The optional profitability metrics
    * @return A list of selectors.
@@ -97,6 +102,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
+      final BundlePoolService bundlePoolService,
       final Map<String, Integer> limitsMap,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
 
@@ -109,17 +115,23 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             l1L2BridgeConfiguration,
             tracerConfiguration);
 
-    return List.of(
-        new MaxBlockCallDataTransactionSelector(
-            selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()),
-        new MaxBlockGasTransactionSelector(
-            selectorsStateManager, txSelectorConfiguration.maxGasPerBlock()),
-        new ProfitableTransactionSelector(
-            blockchainService,
-            txSelectorConfiguration,
-            profitabilityConfiguration,
-            maybeProfitabilityMetrics),
-        traceLineLimitTransactionSelector);
+    List<PluginTransactionSelector> selectors =
+        List.of(
+            new MaxBlockCallDataTransactionSelector(
+                selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()),
+            new MaxBlockGasTransactionSelector(
+                selectorsStateManager, txSelectorConfiguration.maxGasPerBlock()),
+            new ProfitableTransactionSelector(
+                blockchainService,
+                txSelectorConfiguration,
+                profitabilityConfiguration,
+                maybeProfitabilityMetrics),
+            new LineaSendBundleTransactionSelector(bundlePoolService),
+            new MaxBundleGasPerBlockTransactionSelector(
+                selectorsStateManager, txSelectorConfiguration.maxBundleGasPerBlock()),
+            traceLineLimitTransactionSelector);
+
+    return selectors;
   }
 
   /**
@@ -211,7 +223,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @return the operation tracer
    */
   @Override
-  public BlockAwareOperationTracer getOperationTracer() {
+  public ZkTracer getOperationTracer() {
     return traceLineLimitTransactionSelector.getOperationTracer();
   }
 }

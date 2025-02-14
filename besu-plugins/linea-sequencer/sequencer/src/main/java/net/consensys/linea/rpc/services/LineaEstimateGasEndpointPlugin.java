@@ -23,16 +23,13 @@ import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.rpc.methods.LineaEstimateGas;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
-import org.hyperledger.besu.plugin.services.BesuConfiguration;
-import org.hyperledger.besu.plugin.services.RpcEndpointService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 
 /** Registers RPC endpoints. This class provides RPC endpoints under the 'linea' namespace. */
 @AutoService(BesuPlugin.class)
 @Slf4j
 public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin {
-  private BesuConfiguration besuConfiguration;
-  private RpcEndpointService rpcEndpointService;
+
   private TransactionSimulationService transactionSimulationService;
   private LineaEstimateGas lineaEstimateGasMethod;
 
@@ -43,22 +40,6 @@ public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin 
    */
   @Override
   public void doRegister(final ServiceManager serviceManager) {
-    besuConfiguration =
-        serviceManager
-            .getService(BesuConfiguration.class)
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Failed to obtain BesuConfiguration from the ServiceManager."));
-
-    rpcEndpointService =
-        serviceManager
-            .getService(RpcEndpointService.class)
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Failed to obtain RpcEndpointService from the ServiceManager."));
-
     transactionSimulationService =
         serviceManager
             .getService(TransactionSimulationService.class)

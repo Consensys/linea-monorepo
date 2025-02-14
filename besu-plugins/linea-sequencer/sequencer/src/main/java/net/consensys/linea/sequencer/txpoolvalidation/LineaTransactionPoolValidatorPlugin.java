@@ -35,7 +35,6 @@ import net.consensys.linea.sequencer.txpoolvalidation.metrics.TransactionPoolPro
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
-import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.TransactionPoolValidatorService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
@@ -51,7 +50,6 @@ import org.hyperledger.besu.plugin.services.transactionpool.TransactionPoolServi
 @AutoService(BesuPlugin.class)
 public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPlugin {
   private ServiceManager serviceManager;
-  private BesuConfiguration besuConfiguration;
   private TransactionPoolValidatorService transactionPoolValidatorService;
   private TransactionSimulationService transactionSimulationService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
@@ -59,13 +57,6 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
   @Override
   public void doRegister(final ServiceManager serviceManager) {
     this.serviceManager = serviceManager;
-    besuConfiguration =
-        serviceManager
-            .getService(BesuConfiguration.class)
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Failed to obtain BesuConfiguration from the ServiceManager."));
 
     transactionPoolValidatorService =
         serviceManager

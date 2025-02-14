@@ -22,13 +22,11 @@ import net.consensys.linea.extradata.LineaExtraDataHandler;
 import net.consensys.linea.rpc.methods.LineaSetExtraData;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
-import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
 /** Registers RPC endpoints. This class provides RPC endpoints under the 'linea' namespace. */
 @AutoService(BesuPlugin.class)
 @Slf4j
 public class LineaSetExtraDataEndpointPlugin extends AbstractLineaRequiredPlugin {
-  private RpcEndpointService rpcEndpointService;
   private LineaSetExtraData lineaSetExtraDataMethod;
 
   /**
@@ -38,14 +36,6 @@ public class LineaSetExtraDataEndpointPlugin extends AbstractLineaRequiredPlugin
    */
   @Override
   public void doRegister(final ServiceManager serviceManager) {
-
-    rpcEndpointService =
-        serviceManager
-            .getService(RpcEndpointService.class)
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Failed to obtain RpcEndpointService from the ServiceManager."));
 
     lineaSetExtraDataMethod = new LineaSetExtraData(rpcEndpointService);
 

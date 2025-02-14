@@ -12,25 +12,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+pragma solidity >=0.7.0 <0.9.0;
 
-package org.hyperledger.besu.tests.acceptance.dsl;
+import "./libs/ERC20/ERC20.sol";
 
-import java.util.concurrent.TimeUnit;
-
-import org.awaitility.Awaitility;
-import org.awaitility.core.ThrowingRunnable;
-
-/** Contains functionality for timeouts. */
-public class WaitUtils {
-  public static void waitFor(final ThrowingRunnable condition) {
-    waitFor(30, condition);
-  }
-
-  public static void waitFor(final int timeout, final ThrowingRunnable condition) {
-    Awaitility.await()
-        .pollInterval(5, TimeUnit.SECONDS)
-        .ignoreExceptions()
-        .atMost(timeout, TimeUnit.SECONDS)
-        .untilAsserted(condition);
-  }
+contract AcceptanceTestToken is ERC20 {
+    constructor() public ERC20("Acceptance Test", "AT") {
+        _mint(msg.sender, 1000);
+    }
 }

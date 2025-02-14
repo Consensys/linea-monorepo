@@ -41,7 +41,7 @@ TXN_DATA            = 262144
 SHAKIRA_DATA        = 262144
 STP                 = 262144
 OOB                 = 262144
-BLOCK_DATA = 13
+BLOCK_DATA = 19
 BLOCK_HASH = 1
 
 #

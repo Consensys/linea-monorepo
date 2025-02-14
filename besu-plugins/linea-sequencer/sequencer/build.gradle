@@ -42,7 +42,10 @@ dependencies {
   implementation "${besuArtifactGroup}.internal:algorithms"
   implementation "${besuArtifactGroup}.internal:api"
   implementation "${besuArtifactGroup}.internal:core"
+  implementation "${besuArtifactGroup}.internal:eth"
   implementation "${besuArtifactGroup}.internal:rlp"
+
+  implementation 'com.github.ben-manes.caffeine:caffeine'
 
   implementation 'com.google.code.gson:gson'
 

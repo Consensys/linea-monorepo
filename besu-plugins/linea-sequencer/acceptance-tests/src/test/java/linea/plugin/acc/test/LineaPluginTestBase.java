@@ -40,6 +40,8 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import linea.plugin.acc.test.tests.web3j.generated.AcceptanceTestToken;
+import linea.plugin.acc.test.tests.web3j.generated.MulmodExecutor;
 import linea.plugin.acc.test.tests.web3j.generated.RevertExample;
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import lombok.extern.slf4j.Slf4j;
@@ -82,9 +84,9 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
   public static final int MAX_CALLDATA_SIZE = 1188; // contract has a call data size of 1160
   public static final int MAX_TX_GAS_LIMIT = DefaultGasProvider.GAS_LIMIT.intValue();
   public static final long CHAIN_ID = 1337L;
+  public static final int BLOCK_PERIOD_SECONDS = 5;
   public static final CliqueOptions LINEA_CLIQUE_OPTIONS =
-      new CliqueOptions(
-          CliqueOptions.DEFAULT.blockPeriodSeconds(), CliqueOptions.DEFAULT.epochLength(), false);
+      new CliqueOptions(BLOCK_PERIOD_SECONDS, CliqueOptions.DEFAULT.epochLength(), false);
   protected static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   protected BesuNode minerNode;
 
@@ -147,7 +149,8 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
                     "LineaEstimateGasEndpointPlugin",
                     "LineaSetExtraDataEndpointPlugin",
                     "LineaTransactionPoolValidatorPlugin",
-                    "LineaTransactionSelectorPlugin"));
+                    "LineaTransactionSelectorPlugin",
+                    "LineaSendBundleEndpointPlugin"));
 
     return besu.create(nodeConfBuilder.build());
   }
@@ -248,6 +251,17 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
     return deploy.send();
   }
 
+  protected MulmodExecutor deployMulmodExecutor() throws Exception {
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    TransactionManager txManager =
+        new RawTransactionManager(web3j, credentials, CHAIN_ID, createReceiptProcessor(web3j));
+
+    final RemoteCall<MulmodExecutor> deploy =
+        MulmodExecutor.deploy(web3j, txManager, new DefaultGasProvider());
+    return deploy.send();
+  }
+
   protected RevertExample deployRevertExample() throws Exception {
     final Web3j web3j = minerNode.nodeRequests().eth();
     final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
@@ -257,6 +271,21 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
     final RemoteCall<RevertExample> deploy =
         RevertExample.deploy(web3j, txManager, new DefaultGasProvider());
     return deploy.send();
+  }
+
+  protected AcceptanceTestToken deployAcceptanceTestToken() throws Exception {
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    // 1000 AT tokens will be assigned to this account on deploy
+    final Credentials credentials = accounts.getPrimaryBenefactor().web3jCredentialsOrThrow();
+    TransactionManager txManager =
+        new RawTransactionManager(web3j, credentials, CHAIN_ID, createReceiptProcessor(web3j));
+
+    final RemoteCall<AcceptanceTestToken> deploy =
+        AcceptanceTestToken.deploy(web3j, txManager, new DefaultGasProvider());
+    final var contract = deploy.send();
+    final var balance = contract.balanceOf(accounts.getPrimaryBenefactor().getAddress()).send();
+    assertThat(balance).isEqualTo(1000);
+    return contract;
   }
 
   public static String getResourcePath(String resource) {

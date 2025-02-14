@@ -58,8 +58,8 @@ public class ModuleLineCountValidator {
   }
 
   /**
-   * Verifies whether the current accumulated line counts, against previous accumulation line counts, for
-   * modules exceed the predefined limits.
+   * Verifies whether the current accumulated line counts, against previous accumulation line
+   * counts, for modules exceed the predefined limits.
    *
    * @param currentAccumulatedLineCounts A map of module names to their current accumulated line
    *     counts.
