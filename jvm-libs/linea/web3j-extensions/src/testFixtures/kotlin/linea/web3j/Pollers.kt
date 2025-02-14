@@ -34,7 +34,7 @@ fun Web3j.waitForTxReceipt(
     }.getOrNull()
 
     if (receipt != null) {
-      log.debug("tx receipt found: txHash={} receiptStatus={}", txHash, receipt?.status)
+      log.debug("tx receipt found: txHash={} receiptStatus={}", txHash, receipt.status)
       if (expectedStatus != null && receipt.status != expectedStatus) {
         throw RuntimeException(
           "Transaction status does not match expected status: " +
