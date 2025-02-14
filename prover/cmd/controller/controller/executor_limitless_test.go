@@ -94,3 +94,117 @@ func TestExecBootstrapRetryWithLarge(t *testing.T) {
 		assert.Equalf(t, jobs[i].ExpCode, status.ExitCode, "got status %++v", status)
 	}
 }
+
+func TestExecConglomerationRetryWithLarge(t *testing.T) {
+	// A test command useful for testing the command generation
+	var testDefinition = JobDefinition{
+		// Give a name to the command
+		Name: jobExecCongolomeration,
+
+		// The template of the output file (returns a constant template with no
+		// parameters)
+		OutputFileTmpl: []*template.Template{
+			template.Must(template.New("output-file").Parse("output-fill-constant")),
+		},
+
+		RequestsRootDir:  []string{"./testdata", "./testdata", "./testdata"},
+		ResponsesRootDir: []string{"./responses"},
+	}
+
+	jobs := []struct {
+		Job
+		ExpCode int
+	}{
+		{
+			Job: Job{
+				Def:        &testDefinition,
+				LockedFile: []string{"exit-0.sh", "exit-0.sh", "exit-0.sh"},
+				// Not directly needed but helpful to track the process name
+				Start: []int{0, 0, 0},
+				End:   []int{0, 0, 0},
+			},
+			ExpCode: 0,
+		},
+		{
+			Job: Job{
+				Def:        &testDefinition,
+				LockedFile: []string{"exit-1.sh", "exit-1.sh", "exit-1.sh"},
+				// Not directly needed but helpful to track the process name
+				Start: []int{1, 1, 1},
+				End:   []int{1, 1, 1},
+			},
+			ExpCode: 1,
+		},
+		{
+			Job: Job{
+				Def:        &testDefinition,
+				LockedFile: []string{"exit-77.sh", "exit-77.sh", "exit-77.sh"},
+				// Not directly needed but helpful to track the process name
+				Start: []int{2, 2, 2},
+				End:   []int{2, 2, 2},
+			},
+			ExpCode: 77 + 10,
+		},
+		{
+			Job: Job{
+				Def:        &testDefinition,
+				LockedFile: []string{"sigkill.sh", "sigkill.sh", "sigkill.sh"},
+				// Not directly needed but helpful to track the process name
+				Start: []int{3, 3, 3},
+				End:   []int{3, 3, 3},
+			},
+			ExpCode: 137,
+		},
+		{
+			Job: Job{
+				Def:        &testDefinition,
+				LockedFile: []string{"sigkill.sh", "exit0.sh", "exit1.sh"},
+				// Not directly needed but helpful to track the process name
+				Start: []int{3, 3, 3},
+				End:   []int{3, 3, 3},
+			},
+			ExpCode: 137,
+		},
+	}
+
+	e := NewExecutor(&config.Config{
+		Controller: config.Controller{
+			WorkerCmdTmpl: template.Must(
+				template.New("test-cmd").
+					Parse(`
+					for infile in {{range .InFile}} {{.}} {{end}}; do
+					    /bin/sh $infile
+					    CODE=$?
+					    if [ $CODE -ne 0 ]; then
+					        exit $CODE
+					    fi
+					done
+					exit 0
+					`),
+			),
+			// And the large fields. The commands adds a +10 to the return code
+			// to leave an evidence that the return code was obtained through
+			// running the large command.
+			WorkerCmdLargeTmpl: template.Must(
+				template.New("test-cmd-large").
+					Parse(`
+					for infile in {{range .InFile}} {{.}} {{end}}; do
+					    /bin/sh $infile
+					    CODE=$?
+					    if [ $CODE -ne 0 ]; then
+					        exit $(($CODE + 10))
+					    fi
+					done
+					exit 0
+					`),
+			),
+
+			RetryLocallyWithLargeCodes: config.DefaultRetryLocallyWithLargeCodes,
+		},
+	})
+
+	for i := range jobs {
+		status := e.Run(&jobs[i].Job)
+		assert.Equalf(t, jobs[i].ExpCode, status.ExitCode, "got status %++v", status)
+	}
+}
