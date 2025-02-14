@@ -1,7 +1,7 @@
-package plonk
+package plonkinwizard
 
 import (
-	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	plonk "github.com/consensys/linea-monorepo/prover/proto/internal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -25,6 +25,7 @@ func Compile(comp *wizard.CompiledIOP) {
 			continue
 		}
 
+		compileQuery(comp, q)
 	}
 }
 

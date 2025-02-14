@@ -2,6 +2,7 @@ package plonk
 
 import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark/backend/witness"
 	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -13,12 +14,14 @@ import (
 // PlonkInWizardProverAction is an interface representing prover runtime action
 // to assign the Plonk circuit and run the gnark solver to generate the witness.
 type PlonkInWizardProverAction interface {
-	Run(run *wizard.ProverRuntime, wa WitnessAssigner)
+	// Run is responsible for scheduling the assignment of the gnark circuit. The
+	// API assumes that the circuit has only public-inputs and no secret-inputs.
+	Run(run *wizard.ProverRuntime, pubWitness []witness.Witness)
 }
 
 // noCommitProverAction is a wrapper-type for [compilationCtx] implementing the
 // [PlonkInWizardProverAction].
-type noCommitProverAction compilationCtx
+type noCommitProverAction CompilationCtx
 
 var (
 	_ PlonkInWizardProverAction = noCommitProverAction{}
@@ -34,12 +37,12 @@ var (
 // solution.
 //
 // It implements the [PlonkInWizardProverAction] interface.
-func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssigner) {
+func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, pubWitnesses []witness.Witness) {
 
 	var (
-		ctx             = compilationCtx(pa)
+		ctx             = CompilationCtx(pa)
 		maxNbInstance   = pa.maxNbInstances
-		numEffInstances = wa.NumEffWitnesses(run)
+		numEffInstances = len(pubWitnesses)
 	)
 
 	parallel.Execute(maxNbInstance, func(start, stop int) {
@@ -55,10 +58,8 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssigner
 			}
 
 			// create the witness assignment
-			witness, pubWitness, err := wa.Assign(run, i)
-			if err != nil {
-				utils.Panic("Could not create the witness: %v", err)
-			}
+			pubWitness := pubWitnesses[i]
+
 			if ctx.TinyPISize() > 0 {
 
 				// Converts it as a smart-vector
@@ -72,7 +73,7 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssigner
 			}
 
 			// Solve the circuit
-			sol_, err := ctx.Plonk.SPR.Solve(witness)
+			sol_, err := ctx.Plonk.SPR.Solve(pubWitness)
 			if err != nil {
 				utils.Panic("Error in the solver")
 			}

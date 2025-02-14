@@ -33,7 +33,7 @@ type (
 	// BBS22 commitment feature, to assign the Cp and PI polynomials so that the
 	// BBS22 randomness can be derived.
 	initialBBSProverAction struct {
-		compilationCtx
+		CompilationCtx
 		proverStateLock *sync.Mutex
 	}
 	// lrCommitProverAction is a wrapper-type for [compilationCtx] implementing the
@@ -41,17 +41,17 @@ type (
 	// commitment feature, to assign the LRO polynomials once the BBS22
 	// randomness has been derived.
 	lroCommitProverAction struct {
-		compilationCtx
+		CompilationCtx
 		proverStateLock *sync.Mutex
 	}
 )
 
 // Run implements the [wizard.ProverAction] interface.
-func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssigner) {
+func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, pubWitnesses []witness.Witness) {
 
 	var (
-		ctx             = compilationCtx(pa.compilationCtx)
-		numEffInstances = wa.NumEffWitnesses(run)
+		ctx             = CompilationCtx(pa.CompilationCtx)
+		numEffInstances = len(pubWitnesses)
 	)
 
 	// Store the information
@@ -79,11 +79,10 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssign
 			run.State.InsertNew(ctx.Sprintf("SOLSYNC_%v", i), solSync)
 			pa.proverStateLock.Unlock()
 
-			// Create the witness assignment
-			witness, pubWitness, err := wa.Assign(run, i)
-			if err != nil {
-				utils.Panic("Could not create the witness: %v", err)
-			}
+			// Create the witness assignment. As we expect circuits with only
+			// public-inputs and (zero) private inputs, we can safely expect
+			// that public-only-witness and the full-witness are identical.
+			pubWitness := pubWitnesses[i]
 
 			if ctx.TinyPISize() > 0 {
 				// Convert public witness to smart-vector
@@ -101,7 +100,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssign
 			// span over the next round. The current function will however wait
 			// for Cp to be available before returning as we need it to derive
 			// the randomness.
-			go ctx.runGnarkPlonkProver(witness, &solSync)
+			go ctx.runGnarkPlonkProver(pubWitness, &solSync)
 
 			// Get the commitment from the chan once ready
 			com := <-solSync.comChan
@@ -116,7 +115,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssign
 // Run implements the [wizard.ProverAction] interface
 func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 
-	ctx := compilationCtx(pa.compilationCtx)
+	ctx := CompilationCtx(pa.CompilationCtx)
 
 	parallel.Execute(ctx.maxNbInstances, func(start, stop int) {
 		for i := start; i < stop; i++ {
@@ -159,7 +158,7 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 }
 
 // Run the gnark solver and put the result in solSync.solChan
-func (ctx compilationCtx) runGnarkPlonkProver(
+func (ctx CompilationCtx) runGnarkPlonkProver(
 	witness witness.Witness,
 	solSync *solverSync,
 ) {
@@ -201,7 +200,7 @@ func (ctx compilationCtx) runGnarkPlonkProver(
 // , pass it to a channel and pause. It will resume in a later stage of the
 // Wizard proving runtime to complete the solving once the the challenge to
 // return is available.
-func (ctx *compilationCtx) solverCommitmentHint(
+func (ctx *CompilationCtx) solverCommitmentHint(
 	// Channel through which the committed poly is obtained
 	pi2Chan chan []field.Element,
 	// Channel through which the randomness is injected back
@@ -249,7 +248,7 @@ func (ctx *compilationCtx) solverCommitmentHint(
 }
 
 // Return whether the current circuit uses api.Commit
-func (ctx *compilationCtx) HasCommitment() bool {
+func (ctx *CompilationCtx) HasCommitment() bool {
 	// goes through all the type casting and accesses
 	commitmentsInfo := ctx.
 		Plonk.SPR.
@@ -266,7 +265,7 @@ func (ctx *compilationCtx) HasCommitment() bool {
 // Returns the Plonk commitment info of the compiled gnark circuit. This is used
 // derive information such as which wires are being committed and how many
 // commitments there are.
-func (ctx *compilationCtx) CommitmentInfo() globalCs.PlonkCommitment {
+func (ctx *CompilationCtx) CommitmentInfo() globalCs.PlonkCommitment {
 	// goes through all the type casting and accesses
 	commitmentsInfo := ctx.
 		Plonk.SPR.

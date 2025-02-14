@@ -18,12 +18,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// The compilationCtx (context) carries all the compilation informations about a call to
+// The CompilationCtx (context) carries all the compilation informations about a call to
 // Plonk in Wizard. Namely, (non-exhaustively) it contains the gnark's internal
 // informations about it, the generated Wizard columns and the compilation
 // parameters that are used for the compilation. The context is also the
 // receiver of all the methods allowing to construct the Plonk in Wizard module.
-type compilationCtx struct {
+type CompilationCtx struct {
 	// The compiled IOP
 	comp *wizard.CompiledIOP
 	// Name of the context
@@ -93,9 +93,9 @@ func createCtx(
 	circuit frontend.Circuit,
 	maxNbInstance int,
 	opts ...Option,
-) (ctx compilationCtx) {
+) (ctx CompilationCtx) {
 
-	ctx = compilationCtx{
+	ctx = CompilationCtx{
 		comp:           comp,
 		name:           name,
 		round:          round,
@@ -137,7 +137,7 @@ func createCtx(
 }
 
 // Return the size of the domain
-func (ctx *compilationCtx) DomainSize() int {
+func (ctx *CompilationCtx) DomainSize() int {
 	// fft domains
 	return utils.NextPowerOfTwo(
 		ctx.Plonk.SPR.NbConstraints + len(ctx.Plonk.SPR.Public),
@@ -145,7 +145,7 @@ func (ctx *compilationCtx) DomainSize() int {
 }
 
 // Returns the size of the public input tiny column
-func (ctx *compilationCtx) TinyPISize() int {
+func (ctx *CompilationCtx) TinyPISize() int {
 	return utils.NextPowerOfTwo(
 		ctx.Plonk.SPR.GetNbPublicVariables(),
 	)
@@ -166,7 +166,7 @@ func (ctx *compilationCtx) TinyPISize() int {
 // The permutation is encoded as a slice s of size 3*size(l), where the
 // i-th entry of l∥r∥o is sent to the s[i]-th entry, so it acts on a tab
 // like this: for i in tab: tab[i] = tab[permutation[i]]
-func (ctx *compilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_377.Trace) {
+func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_377.Trace) {
 
 	nbVariables := spr.NbInternalVariables + len(spr.Public) + len(spr.Secret)
 
@@ -227,7 +227,7 @@ func (ctx *compilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_3
 // ConcatenatedTinyPIs returns a verifier column such constructed by stacking
 // all the `TinyPI` columns on top of one another and padding that with zeroes
 // up to the desired size.
-func (ctx compilationCtx) ConcatenatedTinyPIs(size int) ifaces.Column {
+func (ctx CompilationCtx) ConcatenatedTinyPIs(size int) ifaces.Column {
 	return verifiercol.NewConcatTinyColumns(
 		ctx.comp,
 		size,
@@ -240,11 +240,11 @@ func (ctx compilationCtx) ConcatenatedTinyPIs(size int) ifaces.Column {
 // assigning the first round of the wizard. In case we use the BBS commitment
 // this stands for [initialBBSProverAction] or [noCommitProverAction] in the
 // contrary case.
-func (ctx compilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
+func (ctx CompilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
 
 	if ctx.HasCommitment() {
 		return initialBBSProverAction{
-			compilationCtx:  ctx,
+			CompilationCtx:  ctx,
 			proverStateLock: &sync.Mutex{},
 		}
 	}

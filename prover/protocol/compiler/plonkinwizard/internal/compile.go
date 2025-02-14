@@ -47,7 +47,7 @@ func PlonkCheck(
 	maxNbInstance int,
 	// function to call to get an assignment
 	options ...Option,
-) compilationCtx {
+) CompilationCtx {
 
 	logrus.Infof("building circuit for name=%v, nbInstance=%v", name, maxNbInstance)
 
@@ -65,7 +65,7 @@ func PlonkCheck(
 	}
 
 	if ctx.HasCommitment() {
-		comp.RegisterProverAction(round+1, lroCommitProverAction{compilationCtx: ctx, proverStateLock: &sync.Mutex{}})
+		comp.RegisterProverAction(round+1, lroCommitProverAction{CompilationCtx: ctx, proverStateLock: &sync.Mutex{}})
 	}
 
 	comp.RegisterVerifierAction(round, &checkingActivators{Cols: ctx.Columns.Activators})
@@ -75,7 +75,7 @@ func PlonkCheck(
 
 // This function registers the Plonk gate's columns inside of the wizard. It
 // does not add any constraints whatsoever.
-func (ctx *compilationCtx) commitGateColumns() {
+func (ctx *CompilationCtx) commitGateColumns() {
 
 	// Declare and pre-assign the selector columns
 	ctx.Columns.Ql = ctx.comp.InsertPrecomputed(ctx.colIDf("QL"), iopToSV(ctx.Plonk.Trace.Ql))
@@ -158,7 +158,7 @@ func iopToSV(pol *iop.Polynomial) smartvectors.SmartVector {
 // [plonk.newExternalRangeChecker] to obtain the result in "[]field.Element"
 // form and then it converts it into assignable smartvectors after having
 // checked a few hypothesis.
-func (ctx *compilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO smartvectors.SmartVector) {
+func (ctx *CompilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO smartvectors.SmartVector) {
 	v := [3][]field.Element{
 		make([]field.Element, ctx.DomainSize()),
 		make([]field.Element, ctx.DomainSize()),
@@ -176,7 +176,7 @@ func (ctx *compilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO smartvectors.Smar
 }
 
 // Extract the permutation columns and track them in the ctx
-func (ctx *compilationCtx) extractPermutationColumns() {
+func (ctx *CompilationCtx) extractPermutationColumns() {
 	for i := range ctx.Columns.S {
 		// Directly use the ints from the trace instead of the fresh Plonk ones
 		si := ctx.Plonk.Trace.S[i*ctx.DomainSize() : (i+1)*ctx.DomainSize()]
@@ -192,7 +192,7 @@ func (ctx *compilationCtx) extractPermutationColumns() {
 }
 
 // add gate constraint
-func (ctx *compilationCtx) addGateConstraint() {
+func (ctx *CompilationCtx) addGateConstraint() {
 
 	for i := 0; i < ctx.maxNbInstances; i++ {
 
@@ -242,7 +242,7 @@ func (ctx *compilationCtx) addGateConstraint() {
 }
 
 // add add the copy constraint
-func (ctx *compilationCtx) addCopyConstraint() {
+func (ctx *CompilationCtx) addCopyConstraint() {
 
 	// Creates a special handle for the permutation by
 	// computing a linear combination of the columns
