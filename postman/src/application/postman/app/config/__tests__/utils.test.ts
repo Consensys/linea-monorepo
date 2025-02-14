@@ -259,9 +259,8 @@ describe("Config utils", () => {
           fromAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
           toAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
           calldataFilter: {
-            criteriaExpression: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
-            calldataFunctionInterface:
-              "function claimMessageWithProof((bytes32[] proof,uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+            criteriaExpression: `calldata.funcSignature == "0x26dfbc20" and calldata.amount > 0`,
+            calldataFunctionInterface: "function receiveFromOtherLayer(address recipient, uint256 amount)",
           },
         }),
       ).not.toThrow();
@@ -273,14 +272,11 @@ describe("Config utils", () => {
           fromAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
           toAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
           calldataFilter: {
-            criteriaExpression: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber = 85804`,
-            calldataFunctionInterface:
-              "function claimMessageWithProof((bytes32[] proof,uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+            criteriaExpression: `calldata.funcSignature == "0x26dfbc20" and calldata.amount = 0`,
+            calldataFunctionInterface: "function receiveFromOtherLayer(address recipient, uint256 amount)",
           },
         }),
-      ).toThrow(
-        'Invalid calldataFilter expression: calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber = 85804',
-      );
+      ).toThrow('Invalid calldataFilter expression: calldata.funcSignature == "0x26dfbc20" and calldata.amount = 0');
     });
 
     it("should throw an error when calldataFunctionInterface is invalid", () => {
@@ -289,14 +285,11 @@ describe("Config utils", () => {
           fromAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
           toAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
           calldataFilter: {
-            criteriaExpression: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
-            calldataFunctionInterface:
-              "function claimMessageWithProof((bytes32[] proof uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+            criteriaExpression: `calldata.funcSignature == "0x26dfbc20" and calldata.amount > 0`,
+            calldataFunctionInterface: "function receiveFromOtherLayer(address recipient uint256 amount)",
           },
         }),
-      ).toThrow(
-        "Invalid calldataFunctionInterface: function claimMessageWithProof((bytes32[] proof uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
-      );
+      ).toThrow("Invalid calldataFunctionInterface: function receiveFromOtherLayer(address recipient uint256 amount)");
     });
   });
 });

@@ -146,9 +146,8 @@ describe("TestMessageSentEventProcessor", () => {
             fromAddressFilter: TEST_ADDRESS_1,
             toAddressFilter: TEST_ADDRESS_2,
             calldataFilter: {
-              criteriaExpression: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
-              calldataFunctionInterface:
-                "function claimMessageWithProof((bytes32[] proof,uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)",
+              criteriaExpression: `calldata.funcSignature == "0x26dfbc20" and calldata.amount == 0`,
+              calldataFunctionInterface: "function receiveFromOtherLayer(address recipient, uint256 amount)",
             },
           },
         },
@@ -162,7 +161,7 @@ describe("TestMessageSentEventProcessor", () => {
         {
           ...testMessageSentEvent,
           calldata:
-            "0x6463fb2a000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000014f2c0000000000000000000000000000000000000000000000000000000000000008000000000000000000000000c59d8de7f984abc4913f0177bfb7bbdafac41fa6000000000000000000000000c59d8de7f984abc4913f0177bfb7bbdafac41fa6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038d7ea4c680000000000000000000000000000000000000000000000000000000000000000000d835920764c09f5b2f8105900efd4bd88344f958eb3425436d27d4689da595e80000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000541e47c68e1d235e121f188e5083acf352df62e8d730c6813910a3e1e51f0d0a3e973e11619685da115b8cb81b850a4278a3efd28870281a3f0932e2c32f98af9b4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d306189ee58a32992fa49a5f07feccd1895e3b73923f87f5fc4d07961a3b94d0848e58769b32a1beaf1ea27375a44095a0d1fb664ce2dd358e7fcbfb78c26a193440000000000000000000000000000000000000000000000000000000000000000",
+            "0x26dfbc200000000000000000000000005eeea0e70ffe4f5419477056023c4b0aca01656200000000000000000000000000000000000000000000000000000000000186a0",
         },
       ]);
       const expectedMessage1ToInsert = MessageFactory.createMessage({
@@ -177,7 +176,7 @@ describe("TestMessageSentEventProcessor", () => {
         ...{
           ...testMessageSentEvent,
           calldata:
-            "0x6463fb2a000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000014f2c0000000000000000000000000000000000000000000000000000000000000008000000000000000000000000c59d8de7f984abc4913f0177bfb7bbdafac41fa6000000000000000000000000c59d8de7f984abc4913f0177bfb7bbdafac41fa6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038d7ea4c680000000000000000000000000000000000000000000000000000000000000000000d835920764c09f5b2f8105900efd4bd88344f958eb3425436d27d4689da595e80000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000541e47c68e1d235e121f188e5083acf352df62e8d730c6813910a3e1e51f0d0a3e973e11619685da115b8cb81b850a4278a3efd28870281a3f0932e2c32f98af9b4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d306189ee58a32992fa49a5f07feccd1895e3b73923f87f5fc4d07961a3b94d0848e58769b32a1beaf1ea27375a44095a0d1fb664ce2dd358e7fcbfb78c26a193440000000000000000000000000000000000000000000000000000000000000000",
+            "0x26dfbc200000000000000000000000005eeea0e70ffe4f5419477056023c4b0aca01656200000000000000000000000000000000000000000000000000000000000186a0",
         },
         sentBlockNumber: testMessageSentEvent.blockNumber,
         direction: Direction.L1_TO_L2,
@@ -228,28 +227,11 @@ describe("TestMessageSentEventProcessor", () => {
   });
 
   describe("shouldProcessMessage", () => {
-    const funcFragment =
-      "function claimMessageWithProof((bytes32[] proof,uint256 messageNumber,uint32 leafIndex,address from,address to,uint256 fee,uint256 value,address feeRecipient,bytes32 merkleRoot,bytes data) params)";
+    const funcFragment = "function receiveFromOtherLayer(address recipient, uint256 amount)";
 
     const encodedCalldata = new Interface([funcFragment]).encodeFunctionData(funcFragment, [
-      [
-        [
-          "0x41e47c68e1d235e121f188e5083acf352df62e8d730c6813910a3e1e51f0d0a3",
-          "0xe973e11619685da115b8cb81b850a4278a3efd28870281a3f0932e2c32f98af9",
-          "0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30",
-          "0x6189ee58a32992fa49a5f07feccd1895e3b73923f87f5fc4d07961a3b94d0848",
-          "0xe58769b32a1beaf1ea27375a44095a0d1fb664ce2dd358e7fcbfb78c26a19344",
-        ],
-        85804n,
-        8n,
-        "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
-        "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
-        0n,
-        1000000000000000n,
-        "0x0000000000000000000000000000000000000000",
-        "0xd835920764c09f5b2f8105900efd4bd88344f958eb3425436d27d4689da595e8",
-        "0x",
-      ],
+      "0x5eeea0e70ffe4f5419477056023c4b0aca016562",
+      100000n,
     ]);
 
     it("Should return true if calldata is empty and EOA is enabled", () => {
@@ -305,7 +287,7 @@ describe("TestMessageSentEventProcessor", () => {
         },
         testMessageSentEvent.messageHash,
         {
-          criteriaExpression: `from == ${TEST_ADDRESS_1} and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
+          criteriaExpression: `calldata.funcSignature == 0x26dfbc20 and calldata.amount > 0`,
           calldataFunctionInterface: funcFragment,
         },
       );
@@ -322,7 +304,7 @@ describe("TestMessageSentEventProcessor", () => {
         },
         testMessageSentEvent.messageHash,
         {
-          criteriaExpression: `from == "${TEST_ADDRESS_1}" and to == "${TEST_ADDRESS_2}" and calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85805`,
+          criteriaExpression: `calldata.funcSignature == "0x26dfbc20" and calldata.amount == 0`,
           calldataFunctionInterface: funcFragment,
         },
       );
@@ -339,7 +321,7 @@ describe("TestMessageSentEventProcessor", () => {
         },
         testMessageSentEvent.messageHash,
         {
-          criteriaExpression: `calldata.funcSignature == "0x6463fb2a" and calldata.params.messageNumber == 85804`,
+          criteriaExpression: `calldata.funcSignature == "0x26dfbc20" and calldata.amount > 0`,
           calldataFunctionInterface: funcFragment,
         },
       );
