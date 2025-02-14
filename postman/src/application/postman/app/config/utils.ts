@@ -145,10 +145,7 @@ export function isFunctionInterfaceValid(functionInterface: string): boolean {
   try {
     const i = new Interface([functionInterface]);
 
-    if (i.fragments.length === 0) {
-      return false;
-    }
-    return true;
+    return i.fragments.length !== 0;
   } catch (error) {
     return false;
   }

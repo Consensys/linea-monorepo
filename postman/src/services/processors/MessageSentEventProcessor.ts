@@ -193,11 +193,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
     try {
       const compiledFilter = compileExpression(expression, { customProp: useDotAccessOperator });
       const passesFilter = compiledFilter(context);
-
-      if (passesFilter === true) {
-        return true;
-      }
-      return false;
+      return passesFilter === true;
     } catch (error) {
       return false;
     }
