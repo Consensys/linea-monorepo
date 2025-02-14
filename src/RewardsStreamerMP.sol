@@ -308,28 +308,22 @@ contract RewardsStreamerMP is
     }
 
     function updateGlobalMP() internal {
-        (uint256 adjustedRewardIndex, uint256 newTotalMPAccrued) = _pendingTotalMPAccrued();
+        uint256 newTotalMPAccrued = _pendingTotalMPAccrued();
         if (newTotalMPAccrued > totalMPAccrued) {
             totalMPAccrued = newTotalMPAccrued;
             lastMPUpdatedTime = block.timestamp;
         }
-
-        if (adjustedRewardIndex != rewardIndex) {
-            rewardIndex = adjustedRewardIndex;
-        }
     }
 
-    function _pendingTotalMPAccrued() internal view returns (uint256, uint256) {
-        uint256 adjustedRewardIndex = rewardIndex;
-
+    function _pendingTotalMPAccrued() internal view returns (uint256) {
         if (totalMaxMP == 0) {
-            return (adjustedRewardIndex, totalMPAccrued);
+            return totalMPAccrued;
         }
 
         uint256 currentTime = block.timestamp;
         uint256 timeDiff = currentTime - lastMPUpdatedTime;
         if (timeDiff == 0) {
-            return (adjustedRewardIndex, totalMPAccrued);
+            return totalMPAccrued;
         }
 
         uint256 accruedMP = _accrueMP(totalStaked, timeDiff);
@@ -339,14 +333,7 @@ contract RewardsStreamerMP is
 
         uint256 newTotalMPAccrued = totalMPAccrued + accruedMP;
 
-        // Adjust rewardIndex before updating totalMP
-        uint256 previousTotalWeight = totalStaked + totalMPAccrued;
-        uint256 newTotalWeight = totalStaked + newTotalMPAccrued;
-        if (previousTotalWeight != 0 && newTotalWeight != previousTotalWeight) {
-            adjustedRewardIndex = (rewardIndex * previousTotalWeight) / newTotalWeight;
-        }
-
-        return (adjustedRewardIndex, newTotalMPAccrued);
+        return newTotalMPAccrued;
     }
 
     function setReward(uint256 amount, uint256 duration) external onlyOwner {
@@ -414,10 +401,9 @@ contract RewardsStreamerMP is
     }
 
     function _pendingRewardIndex() internal view returns (uint256, uint256) {
-        (uint256 adjustedRewardIndex, uint256 newTotalMPAccrued) = _pendingTotalMPAccrued();
-        uint256 totalWeight = totalStaked + newTotalMPAccrued;
+        uint256 totalShares = totalStaked;
 
-        if (totalWeight == 0) {
+        if (totalShares == 0) {
             return (0, rewardIndex);
         }
 
@@ -434,7 +420,7 @@ contract RewardsStreamerMP is
             return (0, rewardIndex);
         }
 
-        uint256 newRewardIndex = adjustedRewardIndex + Math.mulDiv(accruedRewards, SCALE_FACTOR, totalWeight);
+        uint256 newRewardIndex = rewardIndex + Math.mulDiv(accruedRewards, SCALE_FACTOR, totalShares);
 
         return (accruedRewards, newRewardIndex);
     }
@@ -492,10 +478,10 @@ contract RewardsStreamerMP is
 
         VaultData storage vault = vaultData[vaultAddress];
 
-        uint256 accountWeight = vault.stakedBalance + _mpBalanceOf(vaultAddress);
+        uint256 accountShares = vault.stakedBalance;
         uint256 deltaRewardIndex = newRewardIndex - vault.rewardIndex;
 
-        return (accountWeight * deltaRewardIndex) / SCALE_FACTOR;
+        return (accountShares * deltaRewardIndex) / SCALE_FACTOR;
     }
 
     function rewardsBalanceOfAccount(address account) external view returns (uint256) {

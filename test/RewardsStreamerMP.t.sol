@@ -2106,27 +2106,31 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
 
         _stake(alice, 100e18, 0);
         assertEq(streamer.rewardsBalanceOf(vaults[alice]), 0);
+        assertEq(streamer.rewardsBalanceOf(vaults[bob]), 0);
 
         vm.prank(admin);
         streamer.setReward(1000e18, 10 days);
         assertEq(streamer.rewardsBalanceOf(vaults[alice]), 0);
+        assertEq(streamer.rewardsBalanceOf(vaults[bob]), 0);
 
         vm.warp(initialTime + 1 days);
 
-        uint256 liveBalanceBeforeGlobalUpdate = streamer.rewardsBalanceOf(vaults[alice]);
-        uint256 tolerance = 300; // 300 wei
-
         assertEq(streamer.totalRewardsSupply(), 100e18, "Total rewards supply mismatch");
-        assertEq(streamer.rewardsBalanceOf(vaults[alice]), liveBalanceBeforeGlobalUpdate);
-        assertApproxEqAbs(streamer.rewardsBalanceOf(vaults[alice]), 100e18, tolerance);
+        assertEq(streamer.rewardsBalanceOf(vaults[alice]), 100e18);
+        assertEq(streamer.rewardsBalanceOf(vaults[bob]), 0);
+
+        vm.warp(initialTime + 5 days);
+        _stake(bob, 100e18, 0);
+
+        assertEq(streamer.totalRewardsSupply(), 500e18, "Total rewards supply mismatch");
+        assertEq(streamer.rewardsBalanceOf(vaults[alice]), 500e18);
+        assertEq(streamer.rewardsBalanceOf(vaults[bob]), 0);
 
         vm.warp(initialTime + 10 days);
 
-        uint256 secondLiveBalanceBeforeGlobalUpdate = streamer.rewardsBalanceOf(vaults[alice]);
-
         assertEq(streamer.totalRewardsSupply(), 1000e18, "Total rewards supply mismatch");
-        assertEq(streamer.rewardsBalanceOf(vaults[alice]), secondLiveBalanceBeforeGlobalUpdate);
-        assertApproxEqAbs(streamer.rewardsBalanceOf(vaults[alice]), 1000e18, tolerance);
+        assertEq(streamer.rewardsBalanceOf(vaults[alice]), 750e18);
+        assertEq(streamer.rewardsBalanceOf(vaults[bob]), 250e18);
     }
 }
 
