@@ -1,5 +1,8 @@
 # Changelog
 
+## beta-v1.3-rc2
+* Protect `MODEXP` line counting from integer overflows (#1813)
+
 ## beta-v1.3.0-rc1
 * fix: MODEXP_lead_log OOB instruction tracing (#1806)
 * hotfix: rm following closed issue (#1805)
