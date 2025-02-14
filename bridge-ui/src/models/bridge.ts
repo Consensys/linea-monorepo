@@ -1,4 +1,4 @@
-import { TokenInfo } from "@/config/config";
+import { BridgeType, TokenInfo } from "@/config/config";
 import { Address } from "viem";
 
 export type BridgeForm = {
@@ -11,6 +11,7 @@ export type BridgeForm = {
   recipient: Address | undefined;
   bridgingAllowed: boolean;
   gasFees: bigint;
+  mode: BridgeType;
 };
 
 export type BridgeError = {

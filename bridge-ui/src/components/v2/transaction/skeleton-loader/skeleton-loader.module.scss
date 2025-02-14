@@ -1,0 +1,61 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.skeleton-item {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 0;
+  border-radius: 1rem;
+  background-color: var(--v2-color-white);
+  padding: 1.6rem;
+  height: 7.8rem;
+
+  @include bp("tablet") {
+    gap: 1rem;
+  }
+}
+
+.skeleton-group {
+  display: flex;
+  column-gap: 4rem;
+  row-gap: 1rem;
+
+  .skeleton:nth-child(n + 2) {
+    display: none;
+  }
+
+  @include bp("tablet") {
+    .skeleton:nth-child(2) {
+      display: block;
+    }
+  }
+}
+
+.skeleton {
+  height: 1rem;
+  border-radius: 1rem;
+  width: 100%;
+
+  background: linear-gradient(90deg, var(--v2-color-white) 25%, var(--v2-color-indigo) 50%, var(--v2-color-white) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s infinite linear;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

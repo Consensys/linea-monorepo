@@ -32,6 +32,11 @@ export enum TokenType {
   ERC20,
 }
 
+export enum BridgeType {
+  NATIVE = 1,
+  ACROSS = 2,
+}
+
 interface LayerConfig {
   name: string;
   iconPath: string;
