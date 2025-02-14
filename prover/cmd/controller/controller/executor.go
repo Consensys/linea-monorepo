@@ -63,22 +63,19 @@ func NewExecutor(cfg *config.Config) *Executor {
 // matter what happens we want to be able to gracefully shutdown.
 func (e *Executor) Run(job *Job) (status Status) {
 
-	// The job should be locked
-	// ASSUMED 0 index here
-
-	if len(job.LockedFile[0]) == 0 {
-		return Status{
-			ExitCode: CodeFatal,
-			What:     "the job is not locked",
+	for ipIdx := 0; ipIdx < len(job.LockedFile); ipIdx++ {
+		// The job should be locked
+		if len(job.LockedFile[ipIdx]) == 0 {
+			return Status{
+				ExitCode: CodeFatal,
+				What:     "the job is not locked",
+			}
 		}
 	}
 
-	// if we are on a large instance and the job is execution with large suffix,
-	// we directly run with large.
-	// note: checking that locked job contains "large" is not super typesafe...
-
-	// ASSUMED 0 index here
-	largeRun := job.Def.Name == jobNameExecution && e.Config.Execution.CanRunFullLarge && strings.Contains(job.LockedFile[0], config.LargeSuffix)
+	// Note: if we are on a large instance and the job is execution with large suffix, we directly run with large.
+	// Checking that locked job contains "large" is not super typesafe...
+	largeRun := e.canRunFullLarge(*job, config.LargeSuffix)
 
 	// First, run the job normally
 	cmd, err := e.buildCmd(job, largeRun)
@@ -92,7 +89,7 @@ func (e *Executor) Run(job *Job) (status Status) {
 
 	status = runCmd(cmd, job, false)
 
-	// if it's a blob decompression or aggregation, we never retry with a large
+	// If it's a blob decompression or aggregation, we never retry with a large
 	// command. We can return the status as is.
 	if largeRun || job.Def.Name == jobNameBlobDecompression || job.Def.Name == jobNameAggregation {
 		return status
@@ -130,32 +127,39 @@ func (e *Executor) Run(job *Job) (status Status) {
 // Builds a command from a template to run, returns a status if it failed
 func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 
-	// Generate names for the output files. Also attempts to generate the
-	// names of the final response files so that we can be sure they will not
-	// fail being generated after having run the command.
-
-	// ASSUMED 0 index here
-	if _, err := job.ResponseFile(0); err != nil {
-		logrus.Errorf(
-			"could not generate the tmp response filename for %s: %v",
-			job.OriginalFile, err,
-		)
-		return "", err
-	}
-	// ASSUMED 0 index here
-	outFile := job.TmpResponseFile(e.Config, 0)
-
 	tmpl := e.Config.Controller.WorkerCmdTmpl
 	if large {
 		tmpl = e.Config.Controller.WorkerCmdLargeTmpl
 	}
 
-	// use the template to generate the command
-	// ASSUMED 0 index
+	// m, n => #input, #output files
+	m, n := len(job.Def.RequestsRootDir), len(job.Def.ResponsesRootDir)
+	inFiles, outFiles := make([]string, m), make([]string, n)
+
+	// Input Files
+	for ipIdx := 0; ipIdx < m; ipIdx++ {
+		inFiles[ipIdx] = job.InProgressPath(ipIdx)
+	}
+
+	// Generate names for the output files. Also attempts to generate the
+	// names of the final response files so that we can be sure they will not
+	// fail being generated after having run the command.
+	for opIdx := 0; opIdx < n; opIdx++ {
+		if _, err := job.ResponseFile(opIdx); err != nil {
+			logrus.Errorf(
+				"could not generate the tmp response filename for %s: %v",
+				job.OriginalFile, err,
+			)
+			return "", err
+		}
+		outFiles[opIdx] = job.TmpResponseFile(e.Config, opIdx)
+	}
+
+	// Use the template to generate the command
 	resource := Resource{
 		ConfFile: fConfig,
-		InFile:   []string{job.InProgressPath(0)},
-		OutFile:  []string{outFile},
+		InFile:   inFiles,
+		OutFile:  outFiles,
 	}
 
 	// Build the command and args from the job
@@ -165,7 +169,6 @@ func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 			"tried to generate the command for job %s but got %v",
 			job.OriginalFile, err,
 		)
-
 		// Returns a status indicating that the command templating failed
 		return "", err
 	}
@@ -178,8 +181,7 @@ func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 // this is a local retry or not.
 func runCmd(cmd string, job *Job, retry bool) Status {
 
-	// Split the command into a list of argvs that can be passed to the os
-	// package.
+	// Split the command into a list of argvs that can be passed to the os package.
 	logrus.Infof("The executor is about to run the command: %s", cmd)
 
 	// The command is run through shell, that way it sparses us the requirement
@@ -199,9 +201,9 @@ func runCmd(cmd string, job *Job, retry bool) Status {
 	}
 
 	pname := processName(job, cmd)
-
-	// ASSUMED 0 index
-	metrics.CollectPreProcess(job.Def.Name, job.Start[0], job.End[0], false)
+	for ipIdx := 0; ipIdx < len(job.Def.RequestsRootDir); ipIdx++ {
+		metrics.CollectPreProcess(job.Def.Name, job.Start[ipIdx], job.End[ipIdx], false)
+	}
 
 	// Starts a new process from our command
 	startTime := time.Now()
@@ -273,7 +275,6 @@ func runCmd(cmd string, job *Job, retry bool) Status {
 	}
 
 	metrics.CollectPostProcess(job.Def.Name, status.ExitCode, processingTime, retry)
-
 	return status
 }
 
@@ -326,4 +327,37 @@ func unixExitCode(proc *os.ProcessState) (int, error) {
 	}
 
 	return -1, fmt.Errorf("getting the unix exit code : the process has an unexpected status : %v, it should be terminated", proc.String())
+}
+
+// canRunFullLarge checks if a job can run in full large mode
+func (e *Executor) canRunFullLarge(job Job, largeSuffix string) bool {
+	for ipIdx := 0; ipIdx < len(job.LockedFile); ipIdx++ {
+		switch job.Def.Name {
+		case jobNameExecution:
+			if e.Config.Execution.CanRunFullLarge && strings.Contains(job.LockedFile[ipIdx], largeSuffix) {
+				return true
+			}
+		case jobExecBootstrap:
+			if e.Config.ExecBootstrap.CanRunFullLarge && strings.Contains(job.LockedFile[ipIdx], largeSuffix) {
+				return true
+			}
+		case jobExecGL:
+			if e.Config.ExecGL.CanRunFullLarge && strings.Contains(job.LockedFile[ipIdx], largeSuffix) {
+				return true
+			}
+		case jobExecRndBeacon:
+			if e.Config.ExecRndBeacon.CanRunFullLarge && strings.Contains(job.LockedFile[ipIdx], largeSuffix) {
+				return true
+			}
+		case jobExecLPP:
+			if e.Config.ExecLPP.CanRunFullLarge && strings.Contains(job.LockedFile[ipIdx], largeSuffix) {
+				return true
+			}
+		case jobExecCongolomeration:
+			if e.Config.ExecConglomeration.CanRunFullLarge && strings.Contains(job.LockedFile[ipIdx], largeSuffix) {
+				return true
+			}
+		}
+	}
+	return false
 }

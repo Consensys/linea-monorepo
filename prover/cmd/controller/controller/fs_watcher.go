@@ -313,10 +313,12 @@ func (fs *FsWatcher) processDirectories(jdef *JobDefinition, jobs *[]*Job, numsM
 		}
 		*jobs = append(*jobs, job)
 		*numsMatched++
-
-		// Pass prometheus metrics
-		// metrics.CollectFS(jdef.Name, len(dirents), *numsMatched)
 	}
+
+	// Pass prometheus metrics
+	// TODO: Define a new function to collect the metrics here:
+	// metrics.CollectFS(jdef.Name, len(dirents), *numsMatched)
+
 	return nil
 }
 

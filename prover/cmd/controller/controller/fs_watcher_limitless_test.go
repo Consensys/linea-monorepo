@@ -313,15 +313,6 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 
 		// Conglomeration: 3 input -> 1 ouput
 		// In practice there will be `2n+1` inputs => 1 output file
-		// os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirFrom(0), permCode),
-		// os.MkdirAll(confM.ExecConglomeration.BootstrapMetadata.DirDone(0), permCode),
-
-		// os.MkdirAll(confM.ExecConglomeration.GL.DirFrom(0), permCode),
-		// os.MkdirAll(confM.ExecConglomeration.GL.DirDone(0), permCode),
-
-		// os.MkdirAll(confM.ExecConglomeration.LPP.DirFrom(0), permCode),
-		// os.MkdirAll(confM.ExecConglomeration.LPP.DirDone(0), permCode),
-
 		os.MkdirAll(confM.ExecConglomeration.DirFrom(0), permCode),
 		os.MkdirAll(confM.ExecConglomeration.DirDone(0), permCode),
 		os.MkdirAll(confM.ExecConglomeration.DirFrom(1), permCode),

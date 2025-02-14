@@ -33,7 +33,6 @@ func setDefaultValues() {
 	// TODO @gbotrel binary to run prover is hardcoded here.
 	viper.SetDefault("controller.worker_cmd_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}")
 	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
-
 }
 
 func setDefaultPaths() {
