@@ -74,7 +74,7 @@ class SubmissionsFetchingTaskIntTest {
     appClients = createAppClients(
       vertx = vertx,
       l1RpcEndpoint = URI(l1RpcUrl),
-      l1RpcRequestRetryConfig = RetryConfig(backoffDelay = 2.seconds),
+      l1RequestRetryConfig = RetryConfig(backoffDelay = 2.seconds),
       blobScanEndpoint = URI(blobScanUrl),
       stateManagerClientEndpoint = URI("http://it-does-not-matter:5432"),
       appConfig = StateRecoveryApp.Config(

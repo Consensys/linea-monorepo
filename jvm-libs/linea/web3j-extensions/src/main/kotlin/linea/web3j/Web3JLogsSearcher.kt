@@ -36,7 +36,7 @@ class Web3JLogsSearcher(
   val log: Logger = LogManager.getLogger(Web3JLogsSearcher::class.java)
 ) : EthLogsSearcher {
   data class Config(
-    val backoffDelay: Duration = 100.milliseconds,
+    val backoffDelay: Duration = 1.milliseconds,
     val requestRetryConfig: RetryConfig = RetryConfig()
   )
 

@@ -20,6 +20,8 @@ import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import org.apache.logging.log4j.LogManager
 import java.net.URI
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 fun createAppAllInProcess(
@@ -27,8 +29,11 @@ fun createAppAllInProcess(
   meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow(),
   elClient: ExecutionLayerClient,
   stateManagerClientEndpoint: URI,
-  l1RpcEndpoint: URI,
+  l1Endpoint: URI,
+  l1SuccessBackoffDelay: Duration,
+  l1RequestRetryConfig: RetryConfig,
   blobScanEndpoint: URI,
+  blobScanRequestRetryConfig: RetryConfig,
   blockHeaderStaticFields: BlockHeaderStaticFields,
   appConfig: StateRecoveryApp.Config
 ): StateRecoveryApp {
@@ -36,8 +41,11 @@ fun createAppAllInProcess(
     vertx = vertx,
     meterRegistry = meterRegistry,
     stateManagerClientEndpoint = stateManagerClientEndpoint,
-    l1RpcEndpoint = l1RpcEndpoint,
+    l1RpcEndpoint = l1Endpoint,
+    l1SuccessBackoffDelay = l1SuccessBackoffDelay,
+    l1RequestRetryConfig = l1RequestRetryConfig,
     blobScanEndpoint = blobScanEndpoint,
+    blobScanRequestRetryConfig = blobScanRequestRetryConfig,
     appConfig = appConfig
   ).let { clients ->
     val app = StateRecoveryApp(
@@ -76,7 +84,8 @@ fun createAppClients(
   vertx: Vertx = Vertx.vertx(),
   meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow(),
   l1RpcEndpoint: URI,
-  l1RpcRequestRetryConfig: RetryConfig = RetryConfig(backoffDelay = 1.seconds),
+  l1SuccessBackoffDelay: Duration = 1.milliseconds,
+  l1RequestRetryConfig: RetryConfig = RetryConfig(backoffDelay = 1.seconds),
   blobScanEndpoint: URI,
   blobScanRequestRetryConfig: RetryConfig = RetryConfig(backoffDelay = 1.seconds),
   stateManagerClientEndpoint: URI,
@@ -100,8 +109,8 @@ fun createAppClients(
         log = log
       ),
       config = Web3JLogsSearcher.Config(
-        backoffDelay = 1.seconds,
-        requestRetryConfig = RetryConfig()
+        requestRetryConfig = l1RequestRetryConfig,
+        backoffDelay = l1SuccessBackoffDelay
       ),
       log = log
     )
@@ -124,7 +133,7 @@ fun createAppClients(
   val transactionDetailsClient: TransactionDetailsClient = VertxTransactionDetailsClient.create(
     jsonRpcClientFactory = jsonRpcClientFactory,
     endpoint = l1RpcEndpoint,
-    retryConfig = l1RpcRequestRetryConfig.toRequestRetryConfig(),
+    retryConfig = l1RequestRetryConfig.toRequestRetryConfig(),
     logger = LogManager.getLogger("linea.plugin.staterecovery.clients.l1.transaction-details")
   )
   return AppClients(

@@ -1,19 +1,22 @@
 package linea.staterecovery.plugin
 
+import linea.domain.RetryConfig
 import org.hyperledger.besu.datatypes.Address
 import picocli.CommandLine
 import java.net.URI
-import java.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toKotlinDuration
 
 data class PluginConfig(
   val lineaSequencerBeneficiaryAddress: Address,
   val l1SmartContractAddress: Address,
-  val l1RpcEndpoint: URI,
-  val blobscanEndpoint: URI,
-  val shomeiEndpoint: URI,
+  val l1Endpoint: URI,
   val l1PollingInterval: kotlin.time.Duration,
+  val l1RequestSuccessBackoffDelay: kotlin.time.Duration,
+  val l1RequestRetryConfig: RetryConfig,
+  val blobscanEndpoint: URI,
+  val blobScanRequestRetryConfig: RetryConfig,
+  val shomeiEndpoint: URI,
   val overridingRecoveryStartBlockNumber: ULong? = null,
   val debugForceSyncStopBlockNumber: ULong? = null
 ) {
@@ -47,11 +50,55 @@ class PluginCliOptions {
   lateinit var lineaSequencerBeneficiaryAddress: Address
 
   @CommandLine.Option(
-    names = ["--$cliOptionsPrefix-l1-rpc-endpoint"],
+    names = ["--$cliOptionsPrefix-l1-endpoint"],
     description = ["L1 RPC endpoint"],
     required = true
   )
   lateinit var l1RpcEndpoint: URI
+
+  @CommandLine.Option(
+    names = ["--$cliOptionsPrefix-l1-polling-interval"],
+    description = ["L1 polling interval for new finalized blobs"],
+    required = false
+  )
+  var l1PollingInterval: java.time.Duration = java.time.Duration.ofSeconds(12)
+
+  @CommandLine.Option(
+    names = ["--$cliOptionsPrefix-l1-success-backoff-delay"],
+    description = [
+      "L1 RPC api retry backoff delay, default none. ",
+      "Request will fire as soon as previous response is received"
+    ],
+    required = false
+  )
+  var l1RequestSuccessBackoffDelay: java.time.Duration? = null
+
+  @CommandLine.Option(
+    names = ["--$cliOptionsPrefix-l1-retry-backoff-delay"],
+    description = ["L1 RPC api retry backoff delay, default 1s"],
+    required = false
+  )
+  var l1RequestRetryBackoffDelay: java.time.Duration? = null
+
+  @CommandLine.Option(
+    names = ["--$cliOptionsPrefix-l1-retry-timeout"],
+    description = [
+      "L1 RPC api stop retrying as soon as timeout has elapsed or limit is reached",
+      "default will retry indefinitely"
+    ],
+    required = false
+  )
+  var l1RequestRetryTimeout: java.time.Duration? = null
+
+  @CommandLine.Option(
+    names = ["--$cliOptionsPrefix-l1-retry-limit"],
+    description = [
+      "L1 RPC api stop retrying when limit is reached or timeout has elapsed",
+      "default will retry indefinitely"
+    ],
+    required = false
+  )
+  var l1RequestRetryLimit: Int? = null
 
   @CommandLine.Option(
     names = ["--$cliOptionsPrefix-shomei-endpoint"],
@@ -68,11 +115,31 @@ class PluginCliOptions {
   lateinit var blobscanEndpoint: URI
 
   @CommandLine.Option(
-    names = ["--$cliOptionsPrefix-l1-polling-interval"],
-    description = ["L1 polling interval for new finalized blobs"],
+    names = ["--$cliOptionsPrefix-blobscan-retry-backoff-delay"],
+    description = ["blobscan api retry backoff delay, default 1s"],
     required = false
   )
-  var l1PollingInterval: Duration = Duration.ofSeconds(12)
+  var blobscanRequestRetryBackoffDelay: java.time.Duration = java.time.Duration.ofSeconds(1)
+
+  @CommandLine.Option(
+    names = ["--$cliOptionsPrefix-blobscan-retry-timeout"],
+    description = [
+      "Blobscan api stop retrying as soon as timeout has elapsed or limit is reached.",
+      "default will retry indefinitely"
+    ],
+    required = false
+  )
+  var blobscanRequestRetryTimeout: java.time.Duration? = null
+
+  @CommandLine.Option(
+    names = ["--$cliOptionsPrefix-blobscan-retry-limit"],
+    description = [
+      "Blobscan api stop retrying when limit is reached or timeout has elapsed",
+      "default will retry indefinitely"
+    ],
+    required = false
+  )
+  var blobscanRequestRetryLimit: Int? = null
 
   @CommandLine.Option(
     names = ["--$cliOptionsPrefix-overriding-recovery-start-block-number"],
@@ -103,10 +170,19 @@ class PluginCliOptions {
     return PluginConfig(
       lineaSequencerBeneficiaryAddress = lineaSequencerBeneficiaryAddress,
       l1SmartContractAddress = l1SmartContractAddress,
-      l1RpcEndpoint = l1RpcEndpoint,
-      blobscanEndpoint = blobscanEndpoint,
-      shomeiEndpoint = shomeiEndpoint,
+      l1Endpoint = l1RpcEndpoint,
       l1PollingInterval = l1PollingInterval.toKotlinDuration(),
+      l1RequestSuccessBackoffDelay = l1RequestSuccessBackoffDelay?.toKotlinDuration() ?: 1.milliseconds,
+      l1RequestRetryConfig = RetryConfig(
+        backoffDelay = l1RequestRetryBackoffDelay?.toKotlinDuration() ?: 1.milliseconds,
+        timeout = l1RequestRetryTimeout?.toKotlinDuration(),
+        maxRetries = l1RequestRetryLimit?.toUInt()
+      ),
+      blobscanEndpoint = blobscanEndpoint,
+      blobScanRequestRetryConfig = RetryConfig(
+        backoffDelay = blobscanRequestRetryBackoffDelay.toKotlinDuration()
+      ),
+      shomeiEndpoint = shomeiEndpoint,
       overridingRecoveryStartBlockNumber = overridingRecoveryStartBlockNumber?.toULong(),
       debugForceSyncStopBlockNumber = debugForceSyncStopBlockNumber?.toULong()
     )

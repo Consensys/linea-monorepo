@@ -90,8 +90,11 @@ open class LineaStateRecoveryPlugin : BesuPlugin {
         meterRegistry = SimpleMeterRegistry(),
         elClient = executionLayerClient,
         stateManagerClientEndpoint = config.shomeiEndpoint,
-        l1RpcEndpoint = config.l1RpcEndpoint,
+        l1Endpoint = config.l1Endpoint,
+        l1SuccessBackoffDelay = config.l1RequestSuccessBackoffDelay,
+        l1RequestRetryConfig = config.l1RequestRetryConfig,
         blobScanEndpoint = config.blobscanEndpoint,
+        blobScanRequestRetryConfig = config.blobScanRequestRetryConfig,
         blockHeaderStaticFields = blockHeaderStaticFields,
         appConfig = StateRecoveryApp.Config(
           smartContractAddress = config.l1SmartContractAddress.toString(),

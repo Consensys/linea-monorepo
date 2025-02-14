@@ -86,8 +86,10 @@ class FakeStateManagerClientReadFromL1(
               blockNumber.toHexStringUInt256()
             )
           ).thenApply { logs ->
-            val logEvent = DataFinalizedV3.fromEthLog(logs.first())
-            logEvent.event.finalStateRootHash
+            logs.firstOrNull()?.let { finalizationLog ->
+              DataFinalizedV3.fromEthLog(finalizationLog).event.finalStateRootHash
+            }
+              ?: ByteArray(32) { 0 }
           }
       }
   }

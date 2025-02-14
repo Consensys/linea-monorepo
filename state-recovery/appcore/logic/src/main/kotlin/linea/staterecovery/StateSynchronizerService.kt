@@ -163,13 +163,24 @@ class StateSynchronizerService(
     importResult: ImportResult,
     finalizedV3: DataFinalizedV3
   ): SafeFuture<Unit> {
-    return if (importResult.zkStateRootHash.contentEquals(finalizedV3.finalStateRootHash)) {
+    if (importResult.blockNumber != finalizedV3.endBlockNumber) {
+      log.info(
+        "cannot compare stateroot: last imported block={} finalization={} debugForceSyncStopBlockNumber={}",
+        importResult.blockNumber,
+        finalizedV3.intervalString(),
+        debugForceSyncStopBlockNumber
+      )
+      if (importResult.blockNumber == debugForceSyncStopBlockNumber) {
+        // this means debugForceSyncStopBlockNumber was set and we stopped before reaching the target block
+        // so just stop the service
+        this.stop()
+      }
+    } else if (importResult.zkStateRootHash.contentEquals(finalizedV3.finalStateRootHash)) {
       log.info(
         "state recovered up to finalization={} zkStateRootHash={}",
         finalizedV3.intervalString(),
         importResult.zkStateRootHash.encodeHex()
       )
-      SafeFuture.completedFuture(Unit)
     } else {
       log.error(
         "stopping data recovery from L1, stateRootHash mismatch: " +
@@ -182,7 +193,7 @@ class StateSynchronizerService(
       )
       stateRootMismatchFound = true
       this.stop()
-      SafeFuture.completedFuture(Unit)
     }
+    return SafeFuture.completedFuture(Unit)
   }
 }
