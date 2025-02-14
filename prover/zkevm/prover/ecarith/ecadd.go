@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bn254"
 	"github.com/consensys/gnark/std/math/bitslice"
 	"github.com/consensys/gnark/std/math/emulated"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -42,12 +43,12 @@ func NewEcAddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcAdd {
 			IsData:  comp.Columns.GetHandle("ecdata.IS_ECADD_DATA"),
 			IsRes:   comp.Columns.GetHandle("ecdata.IS_ECADD_RESULT"),
 		},
-		[]plonk.Option{plonk.WithRangecheck(16, 6, true)},
+		[]any{plonkinternal.WithRangecheck(16, 6, true)},
 	)
 }
 
 // newEcAdd creates a new EC_ADD integration.
-func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, plonkOptions []plonk.Option) *EcAdd {
+func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, plonkOptions []any) *EcAdd {
 	size := limits.sizeEcAddIntegration()
 
 	toAlign := &plonk.CircuitAlignmentInput{

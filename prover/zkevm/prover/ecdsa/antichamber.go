@@ -47,7 +47,7 @@ type antichamberInput struct {
 	txSource     *txnData
 	rlpTxn       generic.GenDataModule
 	settings     *Settings
-	plonkOptions []plonk.Option
+	plonkOptions []any
 }
 
 type antichamber struct {
