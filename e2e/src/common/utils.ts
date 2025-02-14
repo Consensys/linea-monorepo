@@ -3,7 +3,7 @@ import assert from "assert";
 import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
-import { L2MessageService, TokenBridge, LineaRollupV6 } from "../typechain";
+import { L2MessageServiceV1 as L2MessageService, TokenBridgeV1 as TokenBridge, LineaRollupV6 } from "../typechain";
 import {
   PayableOverrides,
   TypedContractEvent,
@@ -12,6 +12,9 @@ import {
   TypedContractMethod,
 } from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
+import { createTestLogger } from "../config/logger";
+
+const logger = createTestLogger();
 
 export function etherToWei(amount: string): bigint {
   return ethers.parseEther(amount.toString());
@@ -75,6 +78,46 @@ export class RollupGetZkEVMBlockNumberClient {
     const data = await response.json();
     assert("result" in data);
     return Number.parseInt(data.result);
+  }
+}
+
+export class LineaEstimateGasClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async lineaEstimateGas(
+    from: string,
+    to: string,
+    data: string = "0x",
+    value: string = "0x0",
+  ): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint; gasLimit: bigint }> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_estimateGas",
+        params: [
+          {
+            from,
+            to,
+            data,
+            value,
+          },
+        ],
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    const responseJson = await response.json();
+    assert("result" in responseJson);
+    return {
+      maxFeePerGas: BigInt(responseJson.result.baseFeePerGas) + BigInt(responseJson.result.priorityFeePerGas),
+      maxPriorityFeePerGas: BigInt(responseJson.result.priorityFeePerGas),
+      gasLimit: BigInt(responseJson.result.gasLimit),
+    };
   }
 }
 
@@ -293,7 +336,7 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
       const tx = await signer.sendTransaction(transactionRequest);
       await tx.wait();
     } catch (error) {
-      console.error("Error sending transaction:", error);
+      logger.error(`Error sending transaction. error=${JSON.stringify(error)}`);
     } finally {
       if (isRunning) {
         timeoutId = setTimeout(sendTransaction, pollingInterval);
@@ -307,7 +350,7 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
       clearTimeout(timeoutId);
       timeoutId = null;
     }
-    console.log("Transaction loop stopped.");
+    logger.info("Stopped generating traffic on L2");
   };
 
   sendTransaction();
@@ -364,14 +407,14 @@ export const sendMessage = async <T extends LineaRollupV6 | L2MessageService>(
 
 export async function execDockerCommand(command: string, containerName: string): Promise<string> {
   const dockerCommand = `docker ${command} ${containerName}`;
-  console.log(`Executing: ${dockerCommand}...`);
+  logger.info(`Executing ${dockerCommand}...`);
   return new Promise((resolve, reject) => {
     exec(dockerCommand, (error, stdout, stderr) => {
       if (error) {
-        console.error(`Error executing (${dockerCommand}): ${stderr}`);
+        logger.error(`Error executing (${dockerCommand}). error=${stderr}`);
         reject(error);
       }
-      console.log(`Execution success (${dockerCommand}): ${stdout}`);
+      logger.info(`Execution success (${dockerCommand}). output=${stdout}`);
       resolve(stdout);
     });
   });

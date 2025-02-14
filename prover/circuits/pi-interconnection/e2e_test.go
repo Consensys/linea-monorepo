@@ -5,6 +5,7 @@ package pi_interconnection_test
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"slices"
 	"testing"
 
@@ -47,7 +48,10 @@ func TestSingleBlockBlobE2E(t *testing.T) {
 	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
 	assert.NoError(t, err)
 
-	a, err := compiled.Assign(req)
+	dictStore, err := dictionary.SingletonStore(blobtesting.GetDict(t), 1)
+	assert.NoError(t, err)
+
+	a, err := compiled.Assign(req, dictStore)
 	assert.NoError(t, err)
 
 	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, compiled.Circuit, frontend.WithCapacity(3_000_000))
@@ -253,6 +257,9 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 	slackIterationNum := len(cfg.slack) * len(cfg.slack)
 	slackIterationNum *= slackIterationNum
 
+	dictStore, err := dictionary.SingletonStore(blobtesting.GetDict(t), 1)
+	assert.NoError(t, err)
+
 	var slack [4]int
 
 	for i := 0; i < slackIterationNum; i++ {
@@ -275,7 +282,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 			compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
 			assert.NoError(t, err)
 
-			a, err := compiled.Assign(req)
+			a, err := compiled.Assign(req, dictStore)
 			assert.NoError(t, err)
 
 			assert.NoError(t, test.IsSolved(compiled.Circuit, &a, ecc.BLS12_377.ScalarField()))

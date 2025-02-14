@@ -1,6 +1,7 @@
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-foundry";
 import "@openzeppelin/hardhat-upgrades";
+import "@nomicfoundation/hardhat-foundry";
 import * as dotenv from "dotenv";
 import "hardhat-deploy";
 import "hardhat-storage-layout";
@@ -30,12 +31,13 @@ const useViaIR = process.env.ENABLE_VIA_IR === "true";
 const config: HardhatUserConfig = {
   paths: {
     artifacts: "./build",
+    sources: "./src",
   },
   solidity: {
     // NB: double check the autoupdate shell script version complies to the latest solidity version if you add a new one.
     compilers: [
       {
-        version: "0.8.26",
+        version: "0.8.28",
         settings: {
           viaIR: useViaIR,
           optimizer: {
@@ -45,19 +47,13 @@ const config: HardhatUserConfig = {
           evmVersion: "cancun",
         },
       },
+      /**
+       * Maintain for Mimc contract
+       * src/libraries/Mimc.sol (0.8.25)
+       * src/libraries/SparseMerkleProof.sol (0.8.25)
+       */
       {
         version: "0.8.25",
-        settings: {
-          viaIR: useViaIR,
-          optimizer: {
-            enabled: true,
-            runs: 10_000,
-          },
-          evmVersion: "cancun",
-        },
-      },
-      {
-        version: "0.8.24",
         settings: {
           viaIR: useViaIR,
           optimizer: {
@@ -154,7 +150,16 @@ const config: HardhatUserConfig = {
     ],
   },
   docgen: {
-    exclude: ["token", "test-contracts", "proxies", "tools", "interfaces/tools", "tokenBridge/mocks", "verifiers"],
+    exclude: [
+      "token",
+      "test-contracts",
+      "proxies",
+      "tools",
+      "interfaces/tools",
+      "tokenBridge/mocks",
+      "tokenBridge/lib/StorageFiller39.sol",
+      "verifiers",
+    ],
     pages: "files",
     outputDir: "docs/api/",
     // For compatibility with docs.linea.build

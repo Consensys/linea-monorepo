@@ -7,8 +7,9 @@ import (
 	cRand "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"math/big"
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,7 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	v1Testing "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 
@@ -55,7 +56,7 @@ func testCompressorSingleSmallBatch(t *testing.T, blocks [][]byte) {
 	dict, err := os.ReadFile(testDictPath)
 	assert.NoError(t, err)
 	dictStore, err := dictionary.SingletonStore(dict, 1)
-	_, _, blocksBack, err := v1.DecompressBlob(bm.Bytes(), dictStore)
+	_, _, blocksBack, _, err := v1.DecompressBlob(bm.Bytes(), dictStore)
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), len(blocksBack), "number of blocks should match")
 	// TODO compare the blocks
@@ -151,7 +152,7 @@ func TestCanWrite(t *testing.T) {
 	cptBlock := 0
 	for i, block := range testBlocks {
 		// get a random from 1 to 5
-		bSize := rand.Intn(3) + 1 // #nosec G404 -- false positive
+		bSize := rand.IntN(3) + 1 // #nosec G404 -- false positive
 
 		if cptBlock > bSize && i%3 == 0 {
 			nbBlocksPerBatch = append(nbBlocksPerBatch, uint16(cptBlock))
@@ -236,7 +237,7 @@ func TestCompressorWithBatches(t *testing.T) {
 	for i, block := range testBlocks {
 		t.Logf("processing block %d over %d", i, len(testBlocks))
 		// get a random from 1 to 5
-		bSize := rand.Intn(5) + 1 // #nosec G404 -- false positive
+		bSize := rand.IntN(5) + 1 // #nosec G404 -- false positive
 
 		if cptBlock > bSize && i%3 == 0 {
 			nbBlocksPerBatch = append(nbBlocksPerBatch, uint16(cptBlock))
@@ -484,7 +485,7 @@ func init() {
 		panic(err)
 	}
 
-	if testBlocks, err = test_utils.LoadTestBlocks(filepath.Join(rootPath, "testdata/prover-v2/prover-execution/requests")); err != nil {
+	if testBlocks, err = v1Testing.LoadTestBlocks(filepath.Join(rootPath, "testdata/prover-v2/prover-execution/requests")); err != nil {
 		panic(err)
 	}
 
@@ -624,8 +625,8 @@ func TestPack(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		// create 2 random slices
-		n1 := rand.Intn(100) + 1 // #nosec G404 -- false positive
-		n2 := rand.Intn(100) + 1 // #nosec G404 -- false positive
+		n1 := rand.IntN(100) + 1 // #nosec G404 -- false positive
+		n2 := rand.IntN(100) + 1 // #nosec G404 -- false positive
 
 		s1 := make([]byte, n1)
 		s2 := make([]byte, n2)

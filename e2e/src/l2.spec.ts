@@ -1,36 +1,49 @@
 import { ethers } from "ethers";
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
-import { RollupGetZkEVMBlockNumberClient, etherToWei } from "./common/utils";
+import { LineaEstimateGasClient, RollupGetZkEVMBlockNumberClient, etherToWei } from "./common/utils";
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
 
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Layer 2 test suite", () => {
   const l2Provider = config.getL2Provider();
+  const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
 
   it.concurrent("Should revert if transaction data size is above the limit", async () => {
     const account = await l2AccountManager.generateAccount();
     const dummyContract = config.getL2DummyContract(account);
 
-    await expect(
-      dummyContract.connect(account).setPayload(ethers.randomBytes(TRANSACTION_CALLDATA_LIMIT)),
-    ).rejects.toThrow("missing revert data");
+    const oversizedData = ethers.randomBytes(TRANSACTION_CALLDATA_LIMIT);
+    logger.debug(`Generated oversized transaction data. dataLength=${oversizedData.length}`);
+
+    await expect(dummyContract.connect(account).setPayload(oversizedData)).rejects.toThrow("missing revert data");
+    logger.debug("Transaction correctly reverted due to oversized data.");
   });
 
   it.concurrent("Should succeed if transaction data size is below the limit", async () => {
     const account = await l2AccountManager.generateAccount();
     const dummyContract = config.getL2DummyContract(account);
     const nonce = await l2Provider.getTransactionCount(account.address, "pending");
-    const { maxPriorityFeePerGas, maxFeePerGas } = await l2Provider.getFeeData();
+    logger.debug(`Fetched nonce. nonce=${nonce} account=${account.address}`);
+
+    const { maxPriorityFeePerGas, maxFeePerGas } = await lineaEstimateGasClient.lineaEstimateGas(
+      account.address,
+      await dummyContract.getAddress(),
+      dummyContract.interface.encodeFunctionData("setPayload", [ethers.randomBytes(1000)]),
+    );
+    logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
     const tx = await dummyContract.connect(account).setPayload(ethers.randomBytes(1000), {
       nonce: nonce,
       maxPriorityFeePerGas: maxPriorityFeePerGas,
       maxFeePerGas: maxFeePerGas,
     });
+    logger.debug(`setPayload transaction sent. transactionHash=${tx.hash}`);
 
     const receipt = await tx.wait();
+    logger.debug(`Transaction receipt received. transactionHash=${tx.hash} status=${receipt?.status}`);
+
     expect(receipt?.status).toEqual(1);
   });
 
@@ -38,17 +51,21 @@ describe("Layer 2 test suite", () => {
     const account = await l2AccountManager.generateAccount();
 
     const { gasPrice } = await config.getL2Provider().getFeeData();
+    logger.debug(`Fetched gasPrice=${gasPrice}`);
 
-    const receipt = await (
-      await account.sendTransaction({
-        type: 0,
-        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-        gasPrice,
-        value: etherToWei("0.01"),
-        gasLimit: "0x466124",
-        chainId: config.getL2ChainId(),
-      })
-    ).wait();
+    const tx = await account.sendTransaction({
+      type: 0,
+      to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+      gasPrice,
+      value: etherToWei("0.01"),
+      gasLimit: "0x466124",
+      chainId: config.getL2ChainId(),
+    });
+
+    logger.debug(`Legacy transaction sent. transactionHash=${tx.hash}`);
+
+    const receipt = await tx.wait();
+    logger.debug(`Legacy transaction receipt received. transactionHash=${tx.hash} status=${receipt?.status}`);
 
     expect(receipt).not.toBeNull();
   });
@@ -57,18 +74,22 @@ describe("Layer 2 test suite", () => {
     const account = await l2AccountManager.generateAccount();
 
     const { maxPriorityFeePerGas, maxFeePerGas } = await config.getL2Provider().getFeeData();
+    logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
-    const receipt = await (
-      await account.sendTransaction({
-        type: 2,
-        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-        maxPriorityFeePerGas,
-        maxFeePerGas,
-        value: etherToWei("0.01"),
-        gasLimit: "21000",
-        chainId: config.getL2ChainId(),
-      })
-    ).wait();
+    const tx = await account.sendTransaction({
+      type: 2,
+      to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+      maxPriorityFeePerGas,
+      maxFeePerGas,
+      value: etherToWei("0.01"),
+      gasLimit: "21000",
+      chainId: config.getL2ChainId(),
+    });
+
+    logger.debug(`EIP1559 transaction sent. transactionHash=${tx.hash}`);
+
+    const receipt = await tx.wait();
+    logger.debug(`EIP1559 transaction receipt received. transactionHash=${tx.hash} status=${receipt?.status}`);
 
     expect(receipt).not.toBeNull();
   });
@@ -77,17 +98,23 @@ describe("Layer 2 test suite", () => {
     const account = await l2AccountManager.generateAccount();
 
     const { gasPrice } = await config.getL2Provider().getFeeData();
+    logger.debug(`Fetched gasPrice=${gasPrice}`);
 
-    const receipt = await (
-      await account.sendTransaction({
-        type: 1,
-        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-        gasPrice,
-        value: etherToWei("0.01"),
-        gasLimit: "21000",
-        chainId: config.getL2ChainId(),
-      })
-    ).wait();
+    const tx = await account.sendTransaction({
+      type: 1,
+      to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+      gasPrice,
+      value: etherToWei("0.01"),
+      gasLimit: "21000",
+      chainId: config.getL2ChainId(),
+    });
+
+    logger.debug(`Empty access list transaction sent. transactionHash=${tx.hash}`);
+
+    const receipt = await tx.wait();
+    logger.debug(
+      `Empty access list transaction receipt received. transactionHash=${tx.hash} status=${receipt?.status}`,
+    );
 
     expect(receipt).not.toBeNull();
   });
@@ -96,6 +123,8 @@ describe("Layer 2 test suite", () => {
     const account = await l2AccountManager.generateAccount();
 
     const { gasPrice } = await config.getL2Provider().getFeeData();
+    logger.debug(`Fetched gasPrice=${gasPrice}`);
+
     const accessList = {
       "0x8D97689C9818892B700e27F316cc3E41e17fBeb9": [
         "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -103,17 +132,19 @@ describe("Layer 2 test suite", () => {
       ],
     };
 
-    const receipt = await (
-      await account.sendTransaction({
-        type: 1,
-        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-        gasPrice,
-        value: etherToWei("0.01"),
-        gasLimit: "200000",
-        chainId: config.getL2ChainId(),
-        accessList: ethers.accessListify(accessList),
-      })
-    ).wait();
+    const tx = await account.sendTransaction({
+      type: 1,
+      to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+      gasPrice,
+      value: etherToWei("0.01"),
+      gasLimit: "200000",
+      chainId: config.getL2ChainId(),
+      accessList: ethers.accessListify(accessList),
+    });
+    logger.debug(`Access list transaction sent. transactionHash=${tx.hash}`);
+
+    const receipt = await tx.wait();
+    logger.debug(`Access list transaction receipt received. transactionHash=${tx.hash} status=${receipt?.status}`);
 
     expect(receipt).not.toBeNull();
   });
@@ -134,6 +165,9 @@ describe("Layer 2 test suite", () => {
 
     for (let i = 0; i < 5; i++) {
       const { maxPriorityFeePerGas, maxFeePerGas } = await config.getL2Provider().getFeeData();
+      logger.debug(
+        `Fetched fee data. transactionNumber=${i + 1} maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`,
+      );
 
       await (
         await account.sendTransaction({
@@ -151,9 +185,12 @@ describe("Layer 2 test suite", () => {
         shomeiClient.rollupGetZkEVMBlockNumber(),
         shomeiFrontendClient.rollupGetZkEVMBlockNumber(),
       ]);
-      console.log(`shomeiBlock = ${shomeiBlock}, shomeiFrontendBlock = ${shomeiFrontendBlock}`);
+      logger.debug(`shomeiBlock=${shomeiBlock}, shomeiFrontendBlock=${shomeiFrontendBlock}`);
 
       expect(shomeiBlock).toBeGreaterThan(shomeiFrontendBlock);
+      logger.debug(
+        `shomeiBlock is greater than shomeiFrontendBlock. shomeiBlock=${shomeiBlock} shomeiFrontendBlock=${shomeiFrontendBlock}`,
+      );
     }
   }, 150_000);
 });
