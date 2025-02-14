@@ -16,11 +16,12 @@ class LineaSubmissionEventsClientImpl(
   private val l1LatestSearchBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
   private val logsBlockChunkSize: Int = 1000
 ) : LineaRollupSubmissionEventsClient {
-  override fun findDataFinalizedEventContainingBlock(
+  private fun findDataFinalizedEventContainingBlock(
+    fromBlock: BlockParameter,
     l2BlockNumber: ULong
   ): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
     return logsSearcher.findLog(
-      fromBlock = l1EarliestSearchBlock,
+      fromBlock = fromBlock,
       toBlock = l1LatestSearchBlock,
       address = smartContractAddress,
       topics = listOf(DataFinalizedV3.topic),
@@ -46,14 +47,32 @@ class LineaSubmissionEventsClientImpl(
     )
   }
 
-  override fun findDataSubmittedV3EventsUntilNextFinalization(
-    l2StartBlockNumberInclusive: ULong
+  override fun findFinalizationAndDataSubmissionV3Events(
+    fromL1BlockNumber: BlockParameter,
+    finalizationStartBlockNumber: ULong
   ): SafeFuture<FinalizationAndDataEventsV3?> {
     return findDataFinalizedV3Event(
-      fromL1BlockNumber = l1EarliestSearchBlock,
+      fromL1BlockNumber = fromL1BlockNumber,
       toL1BlockNumber = l1LatestSearchBlock,
-      startBlockNumber = l2StartBlockNumberInclusive
+      startBlockNumber = finalizationStartBlockNumber
     )
+      .thenCompose { finalizationEvent ->
+        finalizationEvent
+          ?.let {
+            findAggregationDataSubmittedV3Events(it)
+              .thenApply { dataSubmittedEvents ->
+                FinalizationAndDataEventsV3(dataSubmittedEvents, it)
+              }
+          }
+          ?: SafeFuture.completedFuture(null)
+      }
+  }
+
+  override fun findFinalizationAndDataSubmissionV3EventsContainingL2BlockNumber(
+    fromL1BlockNumber: BlockParameter,
+    l2BlockNumber: ULong
+  ): SafeFuture<FinalizationAndDataEventsV3?> {
+    return findDataFinalizedEventContainingBlock(fromL1BlockNumber, l2BlockNumber)
       .thenCompose { finalizationEvent ->
         finalizationEvent
           ?.let {

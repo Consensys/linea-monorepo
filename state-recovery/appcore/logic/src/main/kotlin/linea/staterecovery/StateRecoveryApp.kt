@@ -2,7 +2,6 @@ package linea.staterecovery
 
 import build.linea.clients.StateManagerClientV1
 import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
-import build.linea.domain.EthLogEvent
 import io.vertx.core.Vertx
 import linea.EthLogsSearcher
 import net.consensys.linea.BlockParameter
@@ -70,6 +69,7 @@ class StateRecoveryApp(
       "contract address mismatch: config=${config.smartContractAddress} client=${lineaContractClient.getAddress()}"
     }
   }
+
   private val l1EventsClient = LineaSubmissionEventsClientImpl(
     logsSearcher = ethLogsSearcher,
     smartContractAddress = config.smartContractAddress,
@@ -100,8 +100,6 @@ class StateRecoveryApp(
     pollingInterval = config.l1PollingInterval,
     debugForceSyncStopBlockNumber = config.debugForceSyncStopBlockNumber
   )
-  val lastSuccessfullyRecoveredFinalization: EthLogEvent<DataFinalizedV3>?
-    get() = stateSynchronizerService.lastSuccessfullyProcessedFinalization
   val stateRootMismatchFound: Boolean
     get() = stateSynchronizerService.stateRootMismatchFound
 
@@ -166,16 +164,25 @@ class StateRecoveryApp(
       vertx = vertx,
       backoffDelay = config.executionClientPollingInterval,
       stopRetriesPredicate = { recoveryStatus ->
-        log.debug(
-          "waiting for node to sync until stateRecoverStartBlockNumber={} headBlockNumber={}",
-          recoveryStatus.stateRecoverStartBlockNumber,
-          recoveryStatus.headBlockNumber
-        )
         // headBlockNumber shall be at least 1 block behind of stateRecoverStartBlockNumber
         // if it is after it means it was already enabled
-        recoveryStatus.stateRecoverStartBlockNumber?.let { startBlockNumber ->
+        val hasReachedTargetBlock = recoveryStatus.stateRecoverStartBlockNumber?.let { startBlockNumber ->
           recoveryStatus.headBlockNumber + 1u >= startBlockNumber
         } ?: false
+        if (hasReachedTargetBlock) {
+          log.info(
+            "node reached recovery target block: stateRecoverStartBlockNumber={} headBlockNumber={}",
+            recoveryStatus.stateRecoverStartBlockNumber,
+            recoveryStatus.headBlockNumber
+          )
+        } else {
+          log.info(
+            "waiting for node to sync until stateRecoverStartBlockNumber={} - 1,  headBlockNumber={}",
+            recoveryStatus.stateRecoverStartBlockNumber,
+            recoveryStatus.headBlockNumber
+          )
+        }
+        hasReachedTargetBlock
       }
     ) {
       elClient.lineaGetStateRecoveryStatus()
