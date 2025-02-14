@@ -47,7 +47,7 @@ func PlonkCheck(
 	maxNbInstance int,
 	// function to call to get an assignment
 	options ...Option,
-) CompilationCtx {
+) *CompilationCtx {
 
 	logrus.Infof("building circuit for name=%v, nbInstance=%v", name, maxNbInstance)
 
@@ -70,7 +70,7 @@ func PlonkCheck(
 
 	comp.RegisterVerifierAction(round, &checkingActivators{Cols: ctx.Columns.Activators})
 
-	return ctx
+	return &ctx
 }
 
 // This function registers the Plonk gate's columns inside of the wizard. It

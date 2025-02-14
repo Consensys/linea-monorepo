@@ -9,9 +9,9 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 var _ ifaces.Query = &PlonkInWizard{}
@@ -36,8 +36,12 @@ var _ ifaces.Query = &PlonkInWizard{}
 //
 // MaxNbInstance := len(data) / NextPowTwo()
 //
-// A function 'InputFiller' must also be provided to tell the query how to assign
-// the circuit.
+// The Data column should always be filled in such a way that the *complete* witness
+// witness of a circuit instance is provided: we can't have the last circuit instance
+// be only-partially provided.
+//
+// These additional constraints over data and selector are enforced by the
+// query itself.
 type PlonkInWizard struct {
 	// ID is the unique identifier of the query
 	ID ifaces.QueryID
@@ -53,10 +57,16 @@ type PlonkInWizard struct {
 	Circuit frontend.Circuit
 	// PlonkOptions are optional options to pass to the circuit when building it
 	PlonkOptions []any
-	// InputFiller returns an element to pad in the public input for the
-	// circuit in case DataToCircuitMask is not full length of the circuit
-	// input. If it is nil, then we use zero value.
-	InputFiller func(circuitInstance, inputIndex int) field.Element
+
+	// nbPublicInput is a lazily-loaded variable representing the number of public
+	// inputs in the circuit provided by the query. The variable is computed the
+	// first time [PlonkInWizard.GetNbPublicInputs] is called and saved there.
+	nbPublicInputs int
+
+	// nbPublicInputs loaded is a flag indicating whether we need to compute the
+	// number of public input. It is not using [sync.Once] that way we don't need
+	// to initialize the value.
+	nbPublicInputsLoaded bool
 }
 
 // Name implements the [ifaces.Query] interface
@@ -83,6 +93,13 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 		wg             = &sync.WaitGroup{}
 		errLock        = &sync.Mutex{}
 		errSolver      error
+		// pushErr is a convenience function to join an error to errSolver
+		// in a thread-safe way.
+		pushErr = func(err error) {
+			errLock.Lock()
+			errSolver = errors.Join(errSolver, err)
+			errLock.Unlock()
+		}
 	)
 
 	for i := 0; !sel[i].IsZero(); i += nbPublicPadded {
@@ -98,14 +115,16 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 				locSelector   = sel[i : i+nbPublic]
 				witness, _    = witness.New(ecc.BLS12_377.ScalarField())
 				witnessFiller = make(chan any, nbPublic)
-				currPos       = 0
 			)
 
-			for ; currPos < nbPublic; currPos++ {
+			for currPos := 0; currPos < nbPublic; currPos++ {
 
+				// NB: this will make the dummy verifier fail but not the
+				// actual one as this is not checked by the query. Still,
+				// if it happens it legitimately means there is a bug.
 				if locSelector[currPos].IsZero() {
-					witnessFiller <- piw.InputFiller(i, currPos)
-					continue
+					pushErr(fmt.Errorf("[plonkInWizard] incomplete assignment"))
+					return
 				}
 
 				witnessFiller <- locPubInputs[currPos]
@@ -114,13 +133,20 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 			// closing the channel is necessary to prevent leaking and
 			// also to let the witness "know" it is complete.
 			close(witnessFiller)
-			witness.Fill(nbPublic, 0, witnessFiller)
+
+			// Note: having an error here is completely unexpected so this could
+			// be a panic instead. It bubbling up means there is a bug in the
+			// current function.
+			if err := witness.Fill(nbPublic, 0, witnessFiller); err != nil {
+				pushErr(fmt.Errorf("error in solver instance=%v err=%w", i, err))
+				return
+			}
 
 			if err := ccs.IsSolved(witness); err != nil {
-				errLock.Lock()
-				errSolver = errors.Join(errSolver, fmt.Errorf("error in solver instance=%v err=%w", i, err))
-				errLock.Unlock()
+				pushErr(fmt.Errorf("error in solver instance=%v err=%w", i, err))
+				return
 			}
+
 		}(i)
 	}
 
@@ -138,4 +164,30 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 // circuit
 func (piw *PlonkInWizard) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	utils.Panic("UNSUPPORTED : can't check a PlonkInWizard query directly into the circuit, query-name=%v", piw.Name())
+}
+
+// GetNbPublicInputs returns the number of public inputs of the circuit provided
+// by the query.
+func (piw *PlonkInWizard) GetNbPublicInputs() int {
+	// The lazy loading does not need to be thread-safe as (1) it is not
+	// meant to be run concurrently and (2) the initialization is idempotent
+	// anyway.
+	if !piw.nbPublicInputsLoaded {
+		piw.nbPublicInputsLoaded = true
+		nbPub, _, _ := gnarkutil.CountVariables(piw.Circuit)
+		piw.nbPublicInputs = nbPub
+	}
+	return piw.nbPublicInputs
+}
+
+// GetMaxNbCircuitInstances returns the maximum number of circuit instances
+// that can be covered by the query.
+func (piw *PlonkInWizard) GetMaxNbCircuitInstances() int {
+	return piw.Data.Size() / utils.NextPowerOfTwo(piw.GetNbPublicInputs())
+}
+
+// GetRound returns the round number at which both [PlonkInWizard.Data] and
+// [PlonkInWizard.Selector] are available.
+func (piw *PlonkInWizard) GetRound() int {
+	return max(piw.Data.Round(), piw.Selector.Round())
 }
