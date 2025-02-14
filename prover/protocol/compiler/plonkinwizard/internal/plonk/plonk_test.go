@@ -3,10 +3,12 @@ package plonk_test
 import (
 	"testing"
 
+	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/internal/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,7 +17,7 @@ import (
 type MyCircuit struct {
 	// struct tags on a variable is optional
 	// default uses variable name and secret visibility.
-	X frontend.Variable `gnark:"x"`
+	X frontend.Variable `gnark:"x,public"`
 	Y frontend.Variable `gnark:",public"`
 }
 
@@ -31,15 +33,6 @@ func TestPlonkWizard(t *testing.T) {
 
 	circuit := &MyCircuit{}
 
-	// Assigner is a function returning an assignment. It is called
-	// as part of the prover runtime work, but the function is always
-	// the same so it should be defined accounting for that
-	assigner := func() frontend.Circuit {
-		return &MyCircuit{X: 0, Y: 5}
-	}
-
-	witnessAssigner := plonk.NewSafeCircuitAssigner(circuit, assigner)
-
 	var pa plonk.PlonkInWizardProverAction
 
 	compiled := wizard.Compile(
@@ -51,7 +44,7 @@ func TestPlonkWizard(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, witnessAssigner)
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5})})
 	})
 
 	err := wizard.Verify(compiled, proof)

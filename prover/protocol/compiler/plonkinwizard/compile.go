@@ -64,7 +64,19 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
 
 	checkSelectorAndData(comp, ctx)
 	checkActivators(comp, ctx)
+	checkPublicInputs(comp, ctx)
+
 	comp.RegisterProverAction(round, &circAssignment{context: *ctx})
+}
+
+// checkPublicInputs adds the constraints ensuring that the public inputs are
+// consistent with the one of the PlonkCtx.
+func checkPublicInputs(comp *wizard.CompiledIOP, ctx *context) {
+	comp.InsertGlobal(
+		ctx.Q.GetRound(),
+		ifaces.QueryIDf("%v_PUBLIC_INPUTS", ctx.Q.ID),
+		sym.Sub(ctx.Q.Data, ctx.PlonkCtx.ConcatenatedTinyPIs(ctx.Q.Data.Size())),
+	)
 }
 
 // checkActivators adds the constraints checking the activators are well-set w.r.t

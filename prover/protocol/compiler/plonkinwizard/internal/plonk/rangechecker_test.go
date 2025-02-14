@@ -4,11 +4,13 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/internal/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +20,7 @@ import (
 // not use all the witness variables in gates and assumes that the missing gates
 // are added.
 type testRangeCheckingCircuitIncomplete struct {
-	A [10]frontend.Variable
+	A [10]frontend.Variable `gnark:",public"`
 }
 
 func (r *testRangeCheckingCircuitIncomplete) Define(api frontend.API) error {
@@ -34,7 +36,7 @@ func (r *testRangeCheckingCircuitIncomplete) Define(api frontend.API) error {
 // so it triggers the external range-checker of the Wizard. This circuit uses
 // all the inputs in gates so there should exist a gate for each input.
 type testRangeCheckingCircuitComplete struct {
-	A [10]frontend.Variable
+	A [10]frontend.Variable `gnark:",public"`
 }
 
 func (r *testRangeCheckingCircuitComplete) Define(api frontend.API) error {
@@ -109,25 +111,6 @@ func TestRangeCheckIncompleteSucceeds(t *testing.T) {
 
 	circuit := &testRangeCheckingCircuitIncomplete{}
 
-	assigner := func() frontend.Circuit {
-		return &testRangeCheckingCircuitIncomplete{
-			A: [10]frontend.Variable{
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-			},
-		}
-	}
-
-	witnessAssigner := plonk.NewSafeCircuitAssigner(circuit, assigner)
-
 	var pa plonk.PlonkInWizardProverAction
 
 	compiled := wizard.Compile(
@@ -146,7 +129,7 @@ func TestRangeCheckIncompleteSucceeds(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, witnessAssigner)
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]frontend.Variable{1, 1, 1, 1, 1, 1, 1, 1, 1, 1})})
 	})
 	err := wizard.Verify(compiled, proof)
 	require.NoError(t, err)
@@ -159,25 +142,20 @@ func TestRangeCheckNegative(t *testing.T) {
 
 	circuit := &testRangeCheckingCircuitIncomplete{}
 
-	assigner := func() frontend.Circuit {
-		return &testRangeCheckingCircuitIncomplete{
-			A: [10]frontend.Variable{
-				// 0x10000000000000000000000000 = 2^100
-				field.NewFromString("0x10000000000000000000000000"),
-				field.NewFromString("0x10000000000000000000000000"),
-				field.NewFromString("0x10000000000000000000000000"),
-				field.NewFromString("0x10000000000000000000000000"),
-				field.NewFromString("0x10000000000000000000000000"),
-				field.NewFromString("0x10000000000000000000000000"),
-				field.NewFromString("0x10000000000000000000000000"),
-				field.NewFromString("0x10000000000000000000000000"),
-				field.NewFromString("0x10000000000000000000000000"),
-				field.NewFromString("0x10000000000000000000000000"),
-			},
-		}
-	}
+	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{
+		// 0x10000000000000000000000000 = 2^100
+		field.NewFromString("0x10000000000000000000000000"),
+		field.NewFromString("0x10000000000000000000000000"),
+		field.NewFromString("0x10000000000000000000000000"),
+		field.NewFromString("0x10000000000000000000000000"),
+		field.NewFromString("0x10000000000000000000000000"),
+		field.NewFromString("0x10000000000000000000000000"),
+		field.NewFromString("0x10000000000000000000000000"),
+		field.NewFromString("0x10000000000000000000000000"),
+		field.NewFromString("0x10000000000000000000000000"),
+		field.NewFromString("0x10000000000000000000000000"),
+	})
 
-	witnessAssigner := plonk.NewSafeCircuitAssigner(circuit, assigner)
 	var pa plonk.PlonkInWizardProverAction
 
 	compiled := wizard.Compile(
@@ -197,7 +175,7 @@ func TestRangeCheckNegative(t *testing.T) {
 
 	assert.Panics(t, func() {
 		_ = wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-			pa.Run(run, witnessAssigner)
+			pa.Run(run, []witness.Witness{assignment})
 		})
 	},
 		"The prover should refuse to build a proof for this assignment since "+
@@ -210,26 +188,21 @@ func TestRangeCheckNegative(t *testing.T) {
 // prover should accept the provided witness. The circuit is complete as all the
 // witness variables are used in gates.
 func TestRangeCheckCompleteSucceeds(t *testing.T) {
+
 	circuit := &testRangeCheckingCircuitComplete{}
 
-	assigner := func() frontend.Circuit {
-		return &testRangeCheckingCircuitComplete{
-			A: [10]frontend.Variable{
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-				field.NewElement(1),
-			},
-		}
-	}
-
-	witnessAssigner := plonk.NewSafeCircuitAssigner(circuit, assigner)
+	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+	})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -250,7 +223,7 @@ func TestRangeCheckCompleteSucceeds(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, witnessAssigner)
+		pa.Run(run, []witness.Witness{assignment})
 	})
 	err := wizard.Verify(compiled, proof)
 	require.NoError(t, err)
@@ -286,7 +259,7 @@ func TestRangeCheckIncompleteInternalFails(t *testing.T) {
 // inclusion of the public inputs and the range checker constraint extractor
 // needs to accomodate that.
 type rangeCheckWithPublic struct {
-	A frontend.Variable
+	A frontend.Variable `gnark:",public"`
 	D frontend.Variable `gnark:",public"`
 }
 
@@ -303,14 +276,7 @@ func (c *rangeCheckWithPublic) Define(api frontend.API) error {
 func TestErrorCase(t *testing.T) {
 	circuit := &rangeCheckWithPublic{}
 
-	assigner := func() frontend.Circuit {
-		return &rangeCheckWithPublic{
-			A: field.NewElement(1 << 20),
-			D: field.NewElement(2),
-		}
-	}
-
-	witnessAssigner := plonk.NewSafeCircuitAssigner(circuit, assigner)
+	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{1 << 20, 2})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -330,13 +296,13 @@ func TestErrorCase(t *testing.T) {
 	)
 
 	wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, witnessAssigner)
+		pa.Run(run, []witness.Witness{assignment})
 	})
 }
 
 type testRangeCheckLRSyncCircuit struct {
-	A frontend.Variable
-	B frontend.Variable
+	A frontend.Variable `gnark:",public"`
+	B frontend.Variable `gnark:",public"`
 }
 
 func (c *testRangeCheckLRSyncCircuit) Define(api frontend.API) error {
@@ -353,14 +319,7 @@ func (c *testRangeCheckLRSyncCircuit) Define(api frontend.API) error {
 func TestRangeCheckLRSync(t *testing.T) {
 	circuit := &testRangeCheckLRSyncCircuit{}
 
-	assigner := func() frontend.Circuit {
-		return &testRangeCheckLRSyncCircuit{
-			A: field.NewElement(1),
-			B: field.NewElement(1),
-		}
-	}
-
-	witnessAssigner := plonk.NewSafeCircuitAssigner(circuit, assigner)
+	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{1, 1})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -381,7 +340,7 @@ func TestRangeCheckLRSync(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, witnessAssigner)
+		pa.Run(run, []witness.Witness{assignment})
 	})
 	err := wizard.Verify(compiled, proof)
 	require.NoError(t, err)
@@ -403,14 +362,7 @@ func (c *testRangeCheckOCircuit) Define(api frontend.API) error {
 func TestRangeCheckO(t *testing.T) {
 	circuit := &testRangeCheckOCircuit{}
 
-	assigner := func() frontend.Circuit {
-		return &testRangeCheckOCircuit{
-			A: field.NewElement(1),
-			B: field.NewElement(1),
-		}
-	}
-
-	witnessAssigner := plonk.NewSafeCircuitAssigner(circuit, assigner)
+	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{1, 1})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -431,7 +383,7 @@ func TestRangeCheckO(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, witnessAssigner)
+		pa.Run(run, []witness.Witness{assignment})
 	})
 	err := wizard.Verify(compiled, proof)
 	require.NoError(t, err)
