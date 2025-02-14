@@ -176,7 +176,6 @@ func (fs *FsWatcher) appendMultiInputJobFromDef(jdef *JobDefinition, jobs *[]*Jo
 // Try appending a list of single-input jobs that are parsed from a given directory.
 // An error is returned if the function fails to read the directory.
 func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job, numsMatched *int) (err error) {
-
 	// ASSUMED 0 index here for jobs with only single inputs
 	dirFrom := jdef.dirFrom(0)
 	fs.Logger.Tracef("Seeking jobs for %v in %v", jdef.Name, dirFrom)

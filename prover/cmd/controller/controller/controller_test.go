@@ -30,7 +30,7 @@ func TestRunCommand(t *testing.T) {
 
 	// Populate the filesystem with job files
 
-	// execution
+	// Execution
 	createTestInputFile(eFrom, 0, 1, execJob, exit0)
 	createTestInputFile(eFrom, 1, 2, execJob, exit12, forLarge)
 	createTestInputFile(eFrom, 2, 3, execJob, exit77)
@@ -42,13 +42,13 @@ func TestRunCommand(t *testing.T) {
 	createTestInputFile(eFrom, 8, 9, execJob, exit10)
 	createTestInputFile(eFrom, 9, 10, execJob, exit12)
 
-	// compression
+	// Compression
 	createTestInputFile(cFrom, 0, 2, compressionJob, exit0)
 	createTestInputFile(cFrom, 2, 4, compressionJob, exit2)
 	createTestInputFile(cFrom, 4, 6, compressionJob, exit77)
 	createTestInputFile(cFrom, 6, 8, compressionJob, exit137)
 
-	// aggregation
+	// Aggregation
 	createTestInputFile(aFrom, 0, 2, aggregationJob, exit0)
 	createTestInputFile(aFrom, 2, 4, aggregationJob, exit2)
 	createTestInputFile(aFrom, 4, 6, aggregationJob, exit77)

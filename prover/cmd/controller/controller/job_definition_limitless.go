@@ -135,7 +135,6 @@ func ExecConglomerationDefinition(conf *config.Config) (*JobDefinition, error) {
 	}
 
 	// Input files
-	//reqDirs := utils.CombineRequests(conf.ExecConglomeration.BootstrapMetadata.RequestsRootDir, conf.ExecConglomeration.GL.RequestsRootDir, conf.ExecConglomeration.LPP.RequestsRootDir)
 	reqDirs := conf.ExecConglomeration.RequestsRootDir
 	inputFilePatterns := []string{
 		fmt.Sprintf(execConglomerateBootstrapDistMetadataPattern, inpFileExt, config.FailSuffix),

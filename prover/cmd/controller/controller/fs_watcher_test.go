@@ -147,7 +147,6 @@ func TestFileWatcherL(t *testing.T) {
 	}
 
 	fw := NewFsWatcher(confL)
-
 	for _, f := range expectedFNames {
 		if f.Skip {
 			continue

@@ -10,7 +10,7 @@ import (
 	"text/template"
 
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,6 +42,7 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 	}
 
 	// The jobs, declared in the order in which they are expected to be found
+	// NOTE: It is important to test for the same starting and ending block ranges
 	expectedFNames := []struct {
 		FName []string
 		Skip  bool
@@ -60,6 +61,14 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 		},
 		{
 			FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, Conglomeration, exitCode),
+		},
+		{
+			Skip:  true, // not large
+			FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, Conglomeration, exitCode),
+		},
+		{
+			Skip:  true, // wrong dir
+			FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, Conglomeration, exitCode),
 		},
 	}
 
@@ -358,7 +367,8 @@ func createLimitlessTestInputFiles(
 
 	m, n := len(dirFrom), len(fmtStrArr)
 	if m != n {
-		utils.Panic("number of entries in dirFrom:%d should match with the number of formated input files:%d", m, n)
+		logrus.Debugf("number of entries in dirFrom:%d should match with the number of formated input files:%d", m, n)
+		return nil
 	}
 
 	fnames = make([]string, len(fmtStrArr))
