@@ -8,24 +8,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExecutionRetryWithLarge(t *testing.T) {
-
+func TestExecBootstrapRetryWithLarge(t *testing.T) {
 	// A test command useful for testing the command generation
 	var testDefinition = JobDefinition{
 
 		// Give a name to the command
-		Name: jobNameExecution,
+		Name: jobExecBootstrap,
 
 		// The template of the output file (returns a constant template with no
 		// parameters)
 		OutputFileTmpl: []*template.Template{
-			template.Must(
-				template.New("output-file").
-					Parse("output-fill-constant"),
-			),
+			template.Must(template.New("output-file").Parse("output-fill-constant")),
+			template.Must(template.New("output-file").Parse("output-fill-constant")),
 		},
+
 		RequestsRootDir:  []string{"./testdata"},
-		ResponsesRootDir: []string{"./responses"},
+		ResponsesRootDir: []string{"./responses", "./responses"},
 	}
 
 	jobs := []struct {
@@ -89,10 +87,6 @@ func TestExecutionRetryWithLarge(t *testing.T) {
 			),
 			RetryLocallyWithLargeCodes: config.DefaultRetryLocallyWithLargeCodes,
 		},
-
-		// Execution: config.Execution{
-		// 	CanRunFullLarge: true,
-		// },
 	})
 
 	for i := range jobs {
