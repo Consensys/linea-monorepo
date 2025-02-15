@@ -66,7 +66,7 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
 	checkActivators(comp, ctx)
 	checkPublicInputs(comp, ctx)
 
-	comp.RegisterProverAction(round, &circAssignment{context: *ctx})
+	comp.RegisterProverAction(round, &circAssignment{context: ctx})
 }
 
 // checkPublicInputs adds the constraints ensuring that the public inputs are
@@ -99,8 +99,8 @@ func checkActivators(comp *wizard.CompiledIOP, ctx *context) {
 		)
 	}
 
-	comp.RegisterProverAction(ctx.Q.GetRound(), &assignSelOpening{context: *ctx})
-	comp.RegisterVerifierAction(ctx.Q.GetRound(), &checkActivatorAndMask{context: *ctx})
+	comp.RegisterProverAction(ctx.Q.GetRound(), &assignSelOpening{context: ctx})
+	comp.RegisterVerifierAction(ctx.Q.GetRound(), &checkActivatorAndMask{context: ctx})
 	ctx.SelOpenings = openings
 }
 
@@ -137,17 +137,7 @@ func checkSelectorAndData(comp *wizard.CompiledIOP, ctx *context) {
 
 	commonconstraints.MustBeActivationColumns(comp, ctx.Q.Selector)
 
-	// This query ensures that mask[i]=0 => data[i]=0
-	comp.InsertGlobal(
-		round,
-		ifaces.QueryIDf("%v_DATA_IS_ZERO_WHEN_MASK_IS_ZERO", ctx.Q.ID),
-		sym.Sub(
-			ctx.Q.Data,
-			sym.Mul(ctx.Q.Data, ctx.CircuitMask),
-		),
-	)
-
-	// This query ensures that sel[i] - sel[i+1] == 1 => mask[i] - mask[i+1] == 1
+	// This query ensures that sel[i] - sel[i+1] == 1 => mask[i] - mask[i+1] == -1
 	// Note, that since sel is constrained to be an activation column the difference
 	// is already constrained to never be "-1", this allows simplifying the constraint
 	// as follows. The constraint only works if the number of public inputs is not
@@ -158,7 +148,7 @@ func checkSelectorAndData(comp *wizard.CompiledIOP, ctx *context) {
 		ifaces.QueryIDf("%v_MASK_DEC_WHEN_SEL_DEC", ctx.Q.ID),
 		sym.Mul(
 			sym.Sub(ctx.Q.Selector, column.Shift(ctx.Q.Selector, 1)),
-			sym.Sub(ctx.CircuitMask, column.Shift(ctx.CircuitMask, 1), 1),
+			sym.Sub(ctx.CircuitMask, column.Shift(ctx.CircuitMask, 1), -1),
 		),
 	)
 

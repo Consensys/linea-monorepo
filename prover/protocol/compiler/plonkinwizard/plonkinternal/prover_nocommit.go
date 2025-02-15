@@ -75,7 +75,7 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, pubWitnesses []wit
 			// Solve the circuit
 			sol_, err := ctx.Plonk.SPR.Solve(pubWitness)
 			if err != nil {
-				utils.Panic("Error in the solver")
+				utils.Panic("Error in the solver, err=%v", err)
 			}
 
 			// And parse the solution into a witness

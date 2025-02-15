@@ -8,16 +8,16 @@ import (
 )
 
 // circAssignment is the prover step responsible for assigning the plonk circuit
-type circAssignment struct{ context }
+type circAssignment struct{ *context }
 
 // assignSelOpening is the prover step responsible for assigning the selector opening
-type assignSelOpening struct{ context }
+type assignSelOpening struct{ *context }
 
 func (a *circAssignment) Run(run *wizard.ProverRuntime) {
 	a.PlonkCtx.GetPlonkProverAction().Run(run, a.getWitnesses(run))
 }
 
-func (a *circAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witness {
+func (a circAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witness {
 
 	var (
 		data           = a.Q.Data.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -27,7 +27,7 @@ func (a *circAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witne
 		witnesses      = make([]witness.Witness, 0, a.Q.Data.Size()/nbPublicPadded)
 	)
 
-	for i := 0; !sel[i].IsZero(); i += nbPublicPadded {
+	for i := 0; i < len(sel) && !sel[i].IsZero(); i += nbPublicPadded {
 
 		var (
 			locPubInputs  = data[i : i+nbPublic]
@@ -61,7 +61,7 @@ func (a *circAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witne
 	return witnesses
 }
 
-func (a *assignSelOpening) Run(run *wizard.ProverRuntime) {
+func (a assignSelOpening) Run(run *wizard.ProverRuntime) {
 
 	var (
 		maxNbInstances    = len(a.SelOpenings)

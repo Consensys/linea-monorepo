@@ -712,5 +712,5 @@ func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
 		}
 	}
 
-	c.QueriesParams.AddToRound(round, q.ID, q)
+	c.QueriesNoParams.AddToRound(round, q.ID, q)
 }

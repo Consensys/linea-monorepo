@@ -226,6 +226,8 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 		}
 	)
 
+	comp.InsertPlonkInWizard(plonkInWizardQ)
+
 	res := &Alignment{
 		CircuitAlignmentInput:  toAlign,
 		IsActive:               isActive,

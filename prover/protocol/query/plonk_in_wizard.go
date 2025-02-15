@@ -113,7 +113,7 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 		}
 	)
 
-	for i := 0; !sel[i].IsZero(); i += nbPublicPadded {
+	for i := 0; i < len(sel) && !sel[i].IsZero(); i += nbPublicPadded {
 
 		numEffInstances++
 
@@ -124,8 +124,8 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 			defer wg.Done()
 
 			var (
-				locPubInputs  = data[i : i+nbPublic]
-				locSelector   = sel[i : i+nbPublic]
+				locPubInputs  = data[i : i+nbPublicPadded]
+				locSelector   = sel[i : i+nbPublicPadded]
 				witness, _    = witness.New(ecc.BLS12_377.ScalarField())
 				witnessFiller = make(chan any, nbPublic)
 			)
@@ -142,6 +142,10 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 
 				if currPos < nbPublic {
 					witnessFiller <- locPubInputs[currPos]
+				}
+
+				if currPos >= nbPublic && !locPubInputs[currPos].IsZero() {
+					pushErr(fmt.Errorf("[plonkInWizard] public input is not zero in padding area: %v", locPubInputs[currPos].String()))
 				}
 			}
 
@@ -165,9 +169,11 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 		}(i)
 	}
 
-	if !sel[numEffInstances*nbPublicPadded-1].IsOne() || !sel[numEffInstances*nbPublicPadded].IsZero() {
-		pushErr(errors.New("[plonkInWizard] selector column is not correctly formatted. " +
-			"It's falling edge is not located exactly after the padding of the last instance"))
+	if numEffInstances*nbPublicPadded < len(sel) {
+		if !sel[numEffInstances*nbPublicPadded-1].IsOne() || !sel[numEffInstances*nbPublicPadded].IsZero() {
+			pushErr(errors.New("[plonkInWizard] selector column is not correctly formatted. " +
+				"It's falling edge is not located exactly after the padding of the last instance"))
+		}
 	}
 
 	wg.Wait()

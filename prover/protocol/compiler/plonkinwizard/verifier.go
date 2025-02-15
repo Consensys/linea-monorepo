@@ -10,7 +10,7 @@ import (
 // checkActivatorAndMask is an implementation of [wizard.VerifierAction] and is
 // used to embody the verifier checks added by [checkActivators].
 type checkActivatorAndMask struct {
-	context
+	*context
 	skipped bool
 }
 
