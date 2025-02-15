@@ -260,6 +260,7 @@ func (a *Alignment) csProjectionSelector(comp *wizard.CompiledIOP) {
 func (a *Alignment) Assign(run *wizard.ProverRuntime) {
 	a.assignMasks(run)
 	a.assignCircMaskOpenings(run)
+	a.assignCircData(run)
 }
 
 // assignMasks assigns the [Alignment.IsActive] and the [Alignment.ActualCircuitInputMask]
@@ -268,7 +269,7 @@ func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
 	// we want to assign IS_ACTIVE and ACTUAL_MASK columns. We can construct
 	// them at the same time from the precomputed mask and selector.
 	var (
-		totalSize              = a.DataToCircuit.Size()
+		totalSize              = a.IsActive.Size()
 		fullCircMaskAssignment = a.FullCircuitInputMask.GetColAssignment(run)
 		dataToCircAssignment   = a.DataToCircuitMask.GetColAssignment(run)
 		// totalInputs stores the total number of public inputs to assign within
@@ -302,6 +303,46 @@ func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
 
 	run.AssignColumn(a.IsActive.GetColID(), smartvectors.NewRegular(isActiveAssignment))
 	run.AssignColumn(a.ActualCircuitInputMask.GetColID(), smartvectors.NewRegular(actualCircMaskAssignment))
+}
+
+// assignCircData assigns the [Alignment.CircuitInput] column.
+func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
+
+	var (
+		unalignedInputs   = a.CircuitAlignmentInput.DataToCircuit.GetColAssignment(run).IntoRegVecSaveAlloc()
+		unalignedSelector = a.CircuitAlignmentInput.DataToCircuitMask.GetColAssignment(run).IntoRegVecSaveAlloc()
+		dataChan          = make(chan field.Element, len(unalignedInputs))
+		nbInput           = a.PlonkQuery.GetNbPublicInputs()
+		nbInputsPadded    = utils.NextPowerOfTwo(nbInput)
+		nbInstances       = a.PlonkQuery.GetMaxNbCircuitInstances()
+		res               = make([]field.Element, nbInputsPadded*nbInstances)
+	)
+
+	for i := range unalignedInputs {
+		if unalignedSelector[i].IsOne() {
+			dataChan <- unalignedInputs[i]
+		}
+	}
+
+	close(dataChan)
+
+	for i := 0; i < nbInstances; i += nbInputsPadded {
+		for k := 0; k < nbInput; k++ {
+			x, ok := <-dataChan
+
+			// if the channel is closed on the first position, then
+			// we stop right here and do not start a new instance.
+			if !ok && k == 0 {
+				res = res[:i+k]
+				break
+			}
+
+			res[i+k] = x
+		}
+	}
+
+	run.AssignColumn(a.CircuitInput.GetColID(), smartvectors.RightZeroPadded(res, nbInputsPadded*nbInstances))
+
 }
 
 // assignCircMaskOpenings assigns the openings queries over the actualCircMaskAssignment

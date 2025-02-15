@@ -88,9 +88,10 @@ func (piw *PlonkInWizard) Name() ifaces.QueryID {
 func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 
 	var (
-		data         = piw.Data.GetColAssignment(run).IntoRegVecSaveAlloc()
-		sel          = piw.Selector.GetColAssignment(run).IntoRegVecSaveAlloc()
-		ccs, compErr = frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, piw.Circuit)
+		data                = piw.Data.GetColAssignment(run).IntoRegVecSaveAlloc()
+		sel                 = piw.Selector.GetColAssignment(run).IntoRegVecSaveAlloc()
+		ccs, compErr        = frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, piw.Circuit)
+		numEffInstances int = 0
 	)
 
 	if compErr != nil {
@@ -114,6 +115,8 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 
 	for i := 0; !sel[i].IsZero(); i += nbPublicPadded {
 
+		numEffInstances++
+
 		wg.Add(1)
 
 		go func(i int) {
@@ -127,7 +130,7 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 				witnessFiller = make(chan any, nbPublic)
 			)
 
-			for currPos := 0; currPos < nbPublic; currPos++ {
+			for currPos := 0; currPos < nbPublicPadded; currPos++ {
 
 				// NB: this will make the dummy verifier fail but not the
 				// actual one as this is not checked by the query. Still,
@@ -137,7 +140,9 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 					return
 				}
 
-				witnessFiller <- locPubInputs[currPos]
+				if currPos < nbPublic {
+					witnessFiller <- locPubInputs[currPos]
+				}
 			}
 
 			// closing the channel is necessary to prevent leaking and
@@ -158,6 +163,11 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 			}
 
 		}(i)
+	}
+
+	if !sel[numEffInstances*nbPublicPadded-1].IsOne() || !sel[numEffInstances*nbPublicPadded].IsZero() {
+		pushErr(errors.New("[plonkInWizard] selector column is not correctly formatted. " +
+			"It's falling edge is not located exactly after the padding of the last instance"))
 	}
 
 	wg.Wait()
