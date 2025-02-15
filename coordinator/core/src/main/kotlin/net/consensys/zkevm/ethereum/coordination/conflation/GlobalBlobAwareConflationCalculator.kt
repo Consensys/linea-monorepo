@@ -96,10 +96,18 @@ class GlobalBlobAwareConflationCalculator(
       uncompressedDataSizeInBatchHistogram.record(uncompressedDataSizeInBatch.toDouble())
       compressedDataSizeInBatchHistogram.record(compressedDataSizeInBatch.toDouble())
       avgUncompressedTxDataSizeInBatchHistogram.record(
-        uncompressedDataSizeInBatch.div(numOfTransactionsInBatch.toInt()).toDouble()
+        if (numOfTransactionsInBatch > 0U) {
+          uncompressedDataSizeInBatch.div(numOfTransactionsInBatch.toInt()).toDouble()
+        } else {
+          0.0
+        }
       )
       avgCompressedTxDataSizeInBatchHistogram.record(
-        compressedDataSizeInBatch.toInt().div(numOfTransactionsInBatch.toInt()).toDouble()
+        if (numOfTransactionsInBatch > 0U) {
+          compressedDataSizeInBatch.toInt().div(numOfTransactionsInBatch.toInt()).toDouble()
+        } else {
+          0.0
+        }
       )
     }.onFailure {
       log.error("Error when recording batch metrics: errorMessage={}", it.message)

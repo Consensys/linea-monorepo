@@ -73,7 +73,7 @@ data class BlockCounters(
   val blockTimestamp: Instant,
   val tracesCounters: TracesCounters,
   val blockRLPEncoded: ByteArray,
-  val numOfTransactions: UInt = 1u,
+  val numOfTransactions: UInt = 0u,
   val gasUsed: ULong = 0uL
 ) {
 
