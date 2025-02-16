@@ -45,6 +45,8 @@ type Job struct {
 // file.
 type OutputFileResource struct {
 	Job Job
+
+	// TODO: Remove this attribute. Not required and change the regex patterns defined in the job definition
 	Idx int
 }
 
@@ -123,7 +125,6 @@ func (j *Job) ResponseFile(opIdx int) (s string, err error) {
 	w := &strings.Builder{}
 	err = j.Def.OutputFileTmpl[opIdx].Execute(w, OutputFileResource{
 		Job: *j,
-		Idx: opIdx,
 	})
 	if err != nil {
 		return "", err

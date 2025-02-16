@@ -81,7 +81,12 @@ func runController(ctx context.Context, cfg *config.Config) {
 			case status.ExitCode == CodeSuccess:
 				handleSuccess(job, cfg, status, cLog)
 			// Defer to the large prover
-			case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
+			case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes) ||
+				job.Def.Name == jobExecBootstrap && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes) ||
+				job.Def.Name == jobExecGL && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes) ||
+				job.Def.Name == jobExecRndBeacon && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes) ||
+				job.Def.Name == jobExecLPP && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes) ||
+				job.Def.Name == jobExecCongolomeration && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
 				handleDeferToLarge(job, status, cLog)
 			// Failure case
 			default:

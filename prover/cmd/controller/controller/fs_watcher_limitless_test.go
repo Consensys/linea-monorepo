@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	Bootstrap int = iota
-	GL
-	RndBeacon
-	LPP
-	Conglomeration
+	execBootstrapPriority int = iota
+	execGLPriority
+	execRndBeaconPriority
+	execLPPPriority
+	execConglomerationPriority
 )
 
 func TestLimitlessProverFileWatcherL(t *testing.T) {
@@ -48,27 +48,27 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 		Skip  bool
 	}{
 		{
-			FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, Bootstrap, exitCode),
+			FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, execBootstrapPriority, exitCode),
 		},
 		{
-			FName: createLimitlessTestInputFiles(execGLFrom, 0, 1, GL, exitCode),
+			FName: createLimitlessTestInputFiles(execGLFrom, 0, 1, execGLPriority, exitCode),
 		},
 		{
-			FName: createLimitlessTestInputFiles(execRndBeaconFrom, 0, 1, RndBeacon, exitCode),
+			FName: createLimitlessTestInputFiles(execRndBeaconFrom, 0, 1, execRndBeaconPriority, exitCode),
 		},
 		{
-			FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, LPP, exitCode),
+			FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, execLPPPriority, exitCode),
 		},
 		{
-			FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, Conglomeration, exitCode),
+			FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, execConglomerationPriority, exitCode),
 		},
 		{
 			Skip:  true, // not large
-			FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, Conglomeration, exitCode),
+			FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, execConglomerationPriority, exitCode),
 		},
 		{
 			Skip:  true, // wrong dir
-			FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, Conglomeration, exitCode),
+			FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, execConglomerationPriority, exitCode),
 		},
 	}
 
@@ -117,11 +117,10 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 		execConglomeration                  = "execution"
 	)
 
-	/*
-		// Create a configuration using temporary directories
-		// Defines three command templates for different types of jobs.
-		// These templates will be used to create shell commands for the worker processes.
-		cmd := `
+	// Create a configuration using temporary directories
+	// Defines three command templates for different types of jobs.
+	// These templates will be used to create shell commands for the worker processes.
+	cmd := `
 		/bin/sh {{index .InFile 0}}
 		CODE=$?
 		if [ $CODE -eq 0 ]; then
@@ -129,7 +128,7 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 		fi
 		exit $CODE
 		`
-		cmdLarge := `
+	cmdLarge := `
 		/bin/sh {{index .InFile 0}}
 		CODE=$?
 		CODE=$(($CODE - 12))
@@ -139,7 +138,7 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 		exit $CODE
 		`
 
-		cmdLargeInternal := `
+	cmdLargeInternal := `
 		/bin/sh {{index .InFile 0}}
 		CODE=$?
 		CODE=$(($CODE - 10))
@@ -148,55 +147,55 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 		fi
 		exit $CODE
 		`
+
+	/*
+		// Create a configuration using temporary directories
+		// Defines three command templates for different types of jobs.
+		// These templates will be used to create shell commands for the worker processes.
+		cmd := `
+			for infile in {{range .InFile}} {{.}} {{end}}; do
+			    /bin/sh $infile
+			    CODE=$?
+			    if [ $CODE -ne 0 ]; then
+			        exit $CODE
+			    fi
+			done
+			for outfile in {{range .OutFile}} {{.}} {{end}}; do
+			    touch $outfile
+			done
+			exit 0
+			`
+
+		cmdLarge := `
+			for infile in {{range .InFile}} {{.}} {{end}}; do
+			    /bin/sh $infile
+			    CODE=$?
+			    CODE=$(($CODE - 12))
+			    if [ $CODE -ne 0 ]; then
+			        exit $CODE
+			    fi
+			done
+			for outfile in {{range .OutFile}} {{.}} {{end}}; do
+			    touch $outfile
+			done
+			exit 0
+			`
+
+		cmdLargeInternal := `
+			for infile in {{range .InFile}} {{.}} {{end}}; do
+			    /bin/sh $infile
+			    CODE=$?
+			    CODE=$(($CODE - 10))
+			    if [ $CODE -ne 0]; then
+			        exit $CODE
+			    fi
+			done
+			for outfile in {{range .OutFile}} {{.}} {{end}}; do
+			    touch $outfile
+			done
+			exit 0
+			`
 	*/
-
-	// Create a configuration using temporary directories
-	// Defines three command templates for different types of jobs.
-	// These templates will be used to create shell commands for the worker processes.
-	cmd := `
-		for infile in {{range .InFile}} {{.}} {{end}}; do
-		    /bin/sh $infile
-		    CODE=$?
-		    if [ $CODE -ne 0 ]; then
-		        exit $CODE
-		    fi
-		done
-		for outfile in {{range .OutFile}} {{.}} {{end}}; do
-		    touch $outfile
-		done
-		exit 0
-		`
-
-	cmdLarge := `
-		for infile in {{range .InFile}} {{.}} {{end}}; do
-		    /bin/sh $infile
-		    CODE=$?
-		    CODE=$(($CODE - 12))
-		    if [ $CODE -ne 0 ]; then
-		        exit $CODE
-		    fi
-		done
-		for outfile in {{range .OutFile}} {{.}} {{end}}; do
-		    touch $outfile
-		done
-		exit 0
-		`
-
-	cmdLargeInternal := `
-		for infile in {{range .InFile}} {{.}} {{end}}; do
-		    /bin/sh $infile
-		    CODE=$?
-		    CODE=$(($CODE - 10))
-		    if [ $CODE -ne 0]; then
-		        exit $CODE
-		    fi
-		done
-		for outfile in {{range .OutFile}} {{.}} {{end}}; do
-		    touch $outfile
-		done
-		exit 0
-		`
-
 	// For a prover M
 	confM = &config.Config{
 		Version: "0.2.4",
@@ -278,7 +277,13 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 	confL = &_confL
 	confL.Controller.LocalID = proverL
 	confL.Controller.WorkerCmdLarge = cmdLarge
-	confL.Execution.CanRunFullLarge = true
+
+	// Allow Limitless job to run in large mode
+	confL.ExecBootstrap.CanRunFullLarge = true
+	confL.ExecGL.CanRunFullLarge = true
+	confL.ExecRndBeacon.CanRunFullLarge = true
+	confL.ExecLPP.CanRunFullLarge = true
+	confL.ExecConglomeration.CanRunFullLarge = true
 
 	// ensure the template are parsed
 	confM.Controller.WorkerCmdTmpl = template.Must(template.New("worker").Parse(confM.Controller.WorkerCmd))
@@ -348,16 +353,16 @@ func createLimitlessTestInputFiles(
 	// the job definition.
 	var fmtStrArr []string
 	switch jobType {
-	case Bootstrap:
+	case execBootstrapPriority:
 		fmtStrArr = []string{"%v-%v-etv0.1.2-stv1.2.3-getZkProof.json"}
-	case GL:
+	case execGLPriority:
 		fmtStrArr = []string{"%v-%v-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_GLSubmodule.json"}
-	case RndBeacon:
+	case execRndBeaconPriority:
 		fmtStrArr = []string{"%v-%v-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_DistMetadata.json",
 			"%v-%v-etv0.1.2-stv1.2.3-getZkProof_GL_RndBeacon.json"}
-	case LPP:
+	case execLPPPriority:
 		fmtStrArr = []string{"%v-%v-etv0.1.2-stv1.2.3-getZkProof_RndBeacon.json"}
-	case Conglomeration:
+	case execConglomerationPriority:
 		fmtStrArr = []string{"%v-%v-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_DistMetadata.json",
 			"%v-%v-etv0.1.2-stv1.2.3-getZkProof_GL.json",
 			"%v-%v-etv0.1.2-stv1.2.3-getZkProof_LPP.json"}
