@@ -1,7 +1,16 @@
 # Changelog
 
+## beta-v1.3-rc3
+* constraints commit update
+* update `go-corset` to commit ab7f2d5 (#1822)
+* feat: enable coverage report aggregation (#1799)
+* test: add selfdestructing COINBASE (#1788)
+* fix: overflow protection for `BlakeRounds` limits count (#1817)
+* Update Linea Besu to 25.2-delivery50 (#1819)
+* fix(jacoco): upload test cov unit tests (#1808)
+
 ## beta-v1.3-rc2
-* Protect `MODEXP` line counting from integer overflows (#1813)
+* fix: overflow protection for `MODEXP` line counting (#1813)
 
 ## beta-v1.3.0-rc1
 * fix: MODEXP_lead_log OOB instruction tracing (#1806)
