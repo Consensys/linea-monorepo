@@ -86,6 +86,20 @@ jobs:
           name: unit-tests-report
           path: arithmetization/build/reports/tests/**/*
 
+      - name: Upload jacoco test coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-unit-tests-coverage-report
+          path: arithmetization/build/reports/jacoco/test/**/*
+
+      - name: Upload jacoco exec test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-unit-tests-exec-file
+          path: arithmetization/build/jacoco/test.exec
+
   # ==================================================================
   # Fast Replay Tests
   # ==================================================================
@@ -119,17 +133,3 @@ jobs:
         with:
           name: replay-tests-report
           path: arithmetization/build/reports/tests/**/*
-
-      - name: Upload jacoco test coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-unit-tests-coverage-report
-          path: arithmetization/build/reports/jacoco/test/**/*
-
-      - name: Upload jacoco exec test
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-unit-tests-exec-file
-          path: arithmetization/build/jacoco/test.exec
