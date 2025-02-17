@@ -3,34 +3,55 @@ package net.consensys.linea.vertx
 import io.vertx.core.Vertx
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 object VertxFactory {
-  fun createVertx(
-    configsOverrides: JsonObject = JsonObject()
-  ): Vertx {
-    val defaultConfigs = JsonObject(
-      """
-      {
-        "preferNativeTransport": true,
-        "logStacktraceThreshold": 500,
-        "blockedThreadCheckIntervalUnit": "MINUTES",
-        "maxEventLoopExecuteTime": 5000,
-        "maxEventLoopExecuteTimeUnit": "MILLISECONDS",
-        "warnEventLoopBlocked": 5000,
-        "maxWorkerExecuteTime": 130,
-        "maxWorkerExecuteTimeUnit": "SECONDS",
-        "metricsOptions": {
-          "enabled": true,
-          "jvmMetricsEnabled": true,
-          "prometheusOptions": {
-            "enabled": true,
-            "publishQuantiles": true
-          }
-        }
-      }
-      """.trimIndent()
-    )
+  fun createVertxWithJsonConfigs(configs: JsonObject): Vertx {
+    return Vertx.vertx(VertxOptions(configs))
+  }
 
-    return Vertx.vertx(VertxOptions(defaultConfigs.mergeIn(configsOverrides)))
+  fun createVertx(
+    maxEventLoopExecuteTime: Duration? = 5.seconds,
+    maxWorkerExecuteTime: Duration? = 30.seconds,
+    blockedThreadCheckInterval: Duration? = 5.seconds,
+    warningExceptionTime: Duration? = 60.seconds,
+    jvmMetricsEnabled: Boolean = true,
+    prometheusMetricsEnabled: Boolean = true,
+    preferNativeTransport: Boolean = true
+  ): Vertx {
+    val configs = JsonObject()
+    maxEventLoopExecuteTime?.let {
+      configs.put("maxEventLoopExecuteTime", it.inWholeMilliseconds)
+      configs.put("maxEventLoopExecuteTimeUnit", "MILLISECONDS")
+    }
+    maxWorkerExecuteTime?.let {
+      configs.put("maxWorkerExecuteTime", it.inWholeMilliseconds)
+      configs.put("maxWorkerExecuteTimeTimeUnit", "MILLISECONDS")
+    }
+    blockedThreadCheckInterval?.let {
+      configs.put("blockedThreadCheckInterval", it.inWholeMilliseconds)
+      configs.put("blockedThreadCheckIntervalUnit", "MILLISECONDS")
+    }
+    warningExceptionTime?.let {
+      configs.put("warningExceptionTime", it.inWholeMilliseconds)
+      configs.put("warningExceptionTimeUnit", "MILLISECONDS")
+    }
+    configs.put("preferNativeTransport", preferNativeTransport)
+
+    if (jvmMetricsEnabled || prometheusMetricsEnabled) {
+      val metricsOptions = JsonObject()
+      metricsOptions.put("enabled", true)
+      metricsOptions.put("jvmMetricsEnabled", jvmMetricsEnabled)
+      if (prometheusMetricsEnabled) {
+        val prometheusOptions = JsonObject()
+        prometheusOptions.put("enabled", true)
+        prometheusOptions.put("publishQuantiles", true)
+        metricsOptions.put("prometheusOptions", prometheusOptions)
+      }
+      configs.put("metricsOptions", metricsOptions)
+    }
+    println(configs)
+    return createVertxWithJsonConfigs(configs)
   }
 }

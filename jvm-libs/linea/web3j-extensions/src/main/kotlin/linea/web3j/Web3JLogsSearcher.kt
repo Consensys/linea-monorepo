@@ -36,7 +36,7 @@ class Web3JLogsSearcher(
   val log: Logger = LogManager.getLogger(Web3JLogsSearcher::class.java)
 ) : EthLogsSearcher {
   data class Config(
-    val backoffDelay: Duration = 1.milliseconds,
+    val loopSuccessBackoffDelay: Duration = 1.milliseconds,
     val requestRetryConfig: RetryConfig = RetryConfig()
   )
 
@@ -78,7 +78,7 @@ class Web3JLogsSearcher(
       AtomicReference(cursor.next(searchDirection = SearchDirection.FORWARD))
     return AsyncRetryer.retry(
       vertx,
-      backoffDelay = config.backoffDelay,
+      backoffDelay = config.loopSuccessBackoffDelay,
       stopRetriesPredicate = {
         it is SearchResult.ItemFound || nextChunkToSearchRef.get() == null
       }
@@ -222,7 +222,7 @@ class Web3JLogsSearcher(
     } else {
       AsyncRetryer.retry(
         vertx = vertx,
-        backoffDelay = config.backoffDelay,
+        backoffDelay = config.requestRetryConfig.backoffDelay,
         stopRetriesPredicate = { response ->
           response?.block?.number != null
         },

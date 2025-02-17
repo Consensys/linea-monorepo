@@ -109,8 +109,8 @@ fun createAppClients(
         log = log
       ),
       config = Web3JLogsSearcher.Config(
-        requestRetryConfig = l1RequestRetryConfig,
-        backoffDelay = l1SuccessBackoffDelay
+        loopSuccessBackoffDelay = l1SuccessBackoffDelay,
+        requestRetryConfig = l1RequestRetryConfig
       ),
       log = log
     )

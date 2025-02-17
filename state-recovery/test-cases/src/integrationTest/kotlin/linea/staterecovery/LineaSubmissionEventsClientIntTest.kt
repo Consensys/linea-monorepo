@@ -95,7 +95,7 @@ class LineaSubmissionEventsClientIntTest {
         vertx = vertx,
         web3jClient = eventsFetcherWeb3jClient,
         config = Web3JLogsSearcher.Config(
-          backoffDelay = 1.milliseconds,
+          loopSuccessBackoffDelay = 1.milliseconds,
           requestRetryConfig = RetryConfig.noRetries
         ),
         log = log

@@ -1,6 +1,7 @@
 package linea.staterecovery.plugin
 
 import linea.domain.RetryConfig
+import net.consensys.linea.BlockParameter
 import org.hyperledger.besu.datatypes.Address
 import picocli.CommandLine
 import java.net.URI
@@ -13,6 +14,7 @@ data class PluginConfig(
   val l1Endpoint: URI,
   val l1PollingInterval: kotlin.time.Duration,
   val l1GetLogsChunkSize: UInt,
+  val l1HighestSearchBlock: BlockParameter,
   val l1RequestSuccessBackoffDelay: kotlin.time.Duration,
   val l1RequestRetryConfig: RetryConfig,
   val blobscanEndpoint: URI,
@@ -59,6 +61,7 @@ class PluginCliOptions {
 
   @CommandLine.Option(
     names = ["--$cliOptionsPrefix-l1-polling-interval"],
+    defaultValue = "PT12S",
     description = ["L1 polling interval for new finalized blobs"],
     required = false
   )
@@ -66,10 +69,23 @@ class PluginCliOptions {
 
   @CommandLine.Option(
     names = ["--$cliOptionsPrefix-l1-get-logs-chunk-size"],
-    description = ["Chuck size (fromBlock..toBlock) for eth_getLogs initial search loop. Default is 10_000"],
+    defaultValue = "10000",
+    description = ["Chuck size (fromBlock..toBlock) for eth_getLogs initial search loop"],
     required = false
   )
   var l1GetLogsChunkSize: Int = 10_000
+
+  @CommandLine.Option(
+    names = ["--$cliOptionsPrefix-l1-highest-search-block"],
+    defaultValue = "FINALIZED",
+    description = [
+      "Highest L1 Block to search for new finalizations.",
+      "Finalized is highly recommended, otherwise if state is reverted it may require a full resync. "
+    ],
+    converter = [BlockParameterConverter::class],
+    required = false
+  )
+  var l1HighestSearchBlock: BlockParameter = BlockParameter.Tag.FINALIZED
 
   @CommandLine.Option(
     names = ["--$cliOptionsPrefix-l1-success-backoff-delay"],
@@ -83,10 +99,11 @@ class PluginCliOptions {
 
   @CommandLine.Option(
     names = ["--$cliOptionsPrefix-l1-retry-backoff-delay"],
+    defaultValue = "PT1S",
     description = ["L1 RPC api retry backoff delay, default 1s"],
     required = false
   )
-  var l1RequestRetryBackoffDelay: java.time.Duration? = null
+  var l1RequestRetryBackoffDelay: java.time.Duration = java.time.Duration.ofSeconds(1)
 
   @CommandLine.Option(
     names = ["--$cliOptionsPrefix-l1-retry-timeout"],
@@ -181,9 +198,10 @@ class PluginCliOptions {
       l1Endpoint = l1RpcEndpoint,
       l1PollingInterval = l1PollingInterval.toKotlinDuration(),
       l1GetLogsChunkSize = l1GetLogsChunkSize.toUInt(),
+      l1HighestSearchBlock = l1HighestSearchBlock,
       l1RequestSuccessBackoffDelay = l1RequestSuccessBackoffDelay?.toKotlinDuration() ?: 1.milliseconds,
       l1RequestRetryConfig = RetryConfig(
-        backoffDelay = l1RequestRetryBackoffDelay?.toKotlinDuration() ?: 1.milliseconds,
+        backoffDelay = l1RequestRetryBackoffDelay.toKotlinDuration(),
         timeout = l1RequestRetryTimeout?.toKotlinDuration(),
         maxRetries = l1RequestRetryLimit?.toUInt()
       ),
@@ -204,6 +222,12 @@ class PluginCliOptions {
       return Address.fromHexStringStrict(value) ?: throw CommandLine.TypeConversionException(
         "Invalid address: $value"
       )
+    }
+  }
+
+  class BlockParameterConverter : CommandLine.ITypeConverter<BlockParameter> {
+    override fun convert(value: String): BlockParameter {
+      return BlockParameter.parse(value)
     }
   }
 }
