@@ -2,6 +2,7 @@ package distributed
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -62,6 +63,7 @@ func ReplaceExternalCoinsVerifCols(
 	}
 }
 
+// @Azam should be removed later and replaced with GetFreshGLComp() or GetFreshLPPComp()
 // GetFreshModuleComp returns a [wizard.DefineFunc] that creates
 // a [wizard.CompiledIOP] object including only the columns
 // relevant to the module. It also contains the prover steps
@@ -124,4 +126,31 @@ func (p moduleProver) Run(run *wizard.ProverRuntime) {
 		// assign it in the module in the round col was declared
 		run.AssignColumn(col.GetColID(), colWitness, col.Round())
 	}
+}
+
+// ListColumnsFromExpr returns the natural version of all the columns in the expression.
+// if natural is true, it return the natural version of the columns,
+// otherwise it return the original columns.
+func ListColumnsFromExpr(expr *symbolic.Expression, natural bool) []ifaces.Column {
+
+	var (
+		board    = expr.Board()
+		metadata = board.ListVariableMetadata()
+		colList  = []ifaces.Column{}
+	)
+
+	for _, m := range metadata {
+		switch t := m.(type) {
+		case ifaces.Column:
+
+			if shifted, ok := t.(column.Shifted); ok && natural {
+				colList = append(colList, shifted.Parent)
+			} else {
+				colList = append(colList, t)
+			}
+
+		}
+	}
+	return colList
+
 }

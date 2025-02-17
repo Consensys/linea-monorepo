@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
 	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
+	segcomp "github.com/consensys/linea-monorepo/prover/protocol/distributed/segment_comp.go"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
@@ -86,14 +87,16 @@ func TestSeedGeneration(t *testing.T) {
 	// apply the LPP relevant compilers and generate the seed for initialComp
 	lppComp := lpp.CompileLPPAndGetSeed(initialComp, distributed.IntoLogDerivativeSum)
 
-	// Initialize the period separating module discoverer
-	disc := &md.PeriodSeperatingModuleDiscoverer{}
-	disc.Analyze(initialComp)
+	// Initialize the module discoverer
+	disc := md.QueryBasedDiscoverer{
+		SimpleDiscoverer: &md.PeriodSeperatingModuleDiscoverer{},
+	}
+	disc.Analyze(initialComp, lppComp)
 
 	// distribute the columns among modules and segments; this includes also multiplicity columns
 	// for all the segments from the same module, compiledIOP object is the same.
-	moduleComp0 := distributed.GetFreshSegmentModuleComp(
-		distributed.SegmentModuleInputs{
+	moduleComp0 := segcomp.GetFreshLPPComp(
+		segcomp.SegmentInputs{
 			InitialComp:         initialComp,
 			Disc:                disc,
 			ModuleName:          "module0",
@@ -101,14 +104,14 @@ func TestSeedGeneration(t *testing.T) {
 		},
 	)
 
-	moduleComp1 := distributed.GetFreshSegmentModuleComp(distributed.SegmentModuleInputs{
+	moduleComp1 := segcomp.GetFreshLPPComp(segcomp.SegmentInputs{
 		InitialComp:         initialComp,
 		Disc:                disc,
 		ModuleName:          "module1",
 		NumSegmentsInModule: numSegModule1,
 	})
 
-	moduleComp2 := distributed.GetFreshSegmentModuleComp(distributed.SegmentModuleInputs{
+	moduleComp2 := segcomp.GetFreshLPPComp(segcomp.SegmentInputs{
 		InitialComp:         initialComp,
 		Disc:                disc,
 		ModuleName:          "module2",
@@ -117,9 +120,9 @@ func TestSeedGeneration(t *testing.T) {
 
 	// distribute the query LogDerivativeSum among modules.
 	// The seed is used to generate randomness for each moduleComp.
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc, numSegModule0)
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc, numSegModule1)
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp2, "module2", disc, numSegModule2)
+	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc.SimpleDiscoverer, numSegModule0)
+	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc.SimpleDiscoverer, numSegModule1)
+	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp2, "module2", disc.SimpleDiscoverer, numSegModule2)
 
 	// run the initial runtime
 	initialRuntime := wizard.ProverOnlyFirstRound(initialComp, prover)

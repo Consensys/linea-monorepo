@@ -6,9 +6,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/global"
 	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
+	segcomp "github.com/consensys/linea-monorepo/prover/protocol/distributed/segment_comp.go"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/require"
@@ -52,13 +52,15 @@ func TestDistributedGlobal(t *testing.T) {
 	// initial compiledIOP is the parent to all the SegmentModuleComp objects.
 	initialComp := wizard.Compile(define)
 
-	// Initialize the period separating module discoverer
-	disc := &md.PeriodSeperatingModuleDiscoverer{}
+	// Initialize the module discoverer
+	disc := md.QueryBasedDiscoverer{
+		SimpleDiscoverer: &md.PeriodSeperatingModuleDiscoverer{},
+	}
 	disc.Analyze(initialComp)
 
 	// distribute the columns among modules and segments.
-	moduleComp := distributed.GetFreshCompGL(
-		distributed.SegmentModuleInputs{
+	moduleComp := segcomp.GetFreshGLComp(
+		segcomp.SegmentInputs{
 			InitialComp:         initialComp,
 			Disc:                disc,
 			ModuleName:          "module",
@@ -70,7 +72,7 @@ func TestDistributedGlobal(t *testing.T) {
 	global.DistributeGlobal(global.DistributionInputs{
 		ModuleComp:  moduleComp,
 		InitialComp: initialComp,
-		Disc:        disc,
+		Disc:        disc.SimpleDiscoverer,
 		ModuleName:  "module",
 		NumSegments: numSegModule,
 	})
