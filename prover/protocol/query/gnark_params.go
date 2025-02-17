@@ -25,6 +25,11 @@ type GnarkGrandProductParams struct {
 	Prod frontend.Variable
 }
 
+// A gnark circuit version of DistributedProjectionParams
+type GnarkDistributedProjectionParams struct {
+	Sum frontend.Variable
+}
+
 func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 	return GnarkLogDerivSumParams{Sum: p.Sum}
 }

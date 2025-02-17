@@ -956,3 +956,24 @@ func actionIsProverStep(action any) bool {
 	_, ok := action.(ProverStep)
 	return ok
 }
+
+// AssignDistributedProjection assigns the value horner(A, fA) if A
+// is in the module, horner(B, fB)^{-1} if B is in the module, and
+// horner(A, fA) * horner(B, fB)^{-1} if both are in the module.
+// The function will panic if:
+//   - the parameters were already assigned
+//   - the specified query is not registered
+//   - the assignment round is incorrect
+func (run *ProverRuntime) AssignDistributedProjection(name ifaces.QueryID, distributedProjectionParam query.DistributedProjectionParams) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewDistributedProjectionParams(distributedProjectionParam.HornerVal)
+	run.QueriesParams.InsertNew(name, params)
+}
