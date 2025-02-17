@@ -56,6 +56,35 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 		cfg.Aggregation.DirDone(0),
 		cfg.Aggregation.DirFrom(0),
 		cfg.Aggregation.DirTo(0),
+
+		// Dirs. for Limitless controller
+		cfg.ExecBootstrap.DirFrom(0),
+		cfg.ExecBootstrap.DirDone(0),
+		cfg.ExecBootstrap.DirTo(0),
+		cfg.ExecBootstrap.DirTo(1),
+
+		cfg.ExecGL.DirFrom(0),
+		cfg.ExecGL.DirDone(0),
+		cfg.ExecGL.DirTo(0),
+		cfg.ExecGL.DirTo(1),
+
+		cfg.ExecRndBeacon.DirFrom(0),
+		cfg.ExecRndBeacon.DirFrom(1),
+		cfg.ExecRndBeacon.DirDone(0),
+		cfg.ExecRndBeacon.DirDone(1),
+		cfg.ExecRndBeacon.DirTo(0),
+
+		cfg.ExecLPP.DirFrom(0),
+		cfg.ExecLPP.DirDone(0),
+		cfg.ExecLPP.DirTo(0),
+
+		cfg.ExecConglomeration.DirFrom(0),
+		cfg.ExecConglomeration.DirFrom(1),
+		cfg.ExecConglomeration.DirFrom(2),
+		cfg.ExecConglomeration.DirDone(0),
+		cfg.ExecConglomeration.DirDone(1),
+		cfg.ExecConglomeration.DirDone(2),
+		cfg.ExecConglomeration.DirTo(0),
 	}
 
 	for _, dir := range dirs {
