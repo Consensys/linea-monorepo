@@ -90,8 +90,8 @@ func (p Projection) Check(run ifaces.Runtime) error {
 		bLinComb[row] = rowLinComb(linCombRand, row, b)
 	}
 	var (
-		hornerA = poly.CmptHorner(aLinComb, fA, evalRand)
-		hornerB = poly.CmptHorner(bLinComb, fB, evalRand)
+		hornerA = poly.GetHornerTrace(aLinComb, fA, evalRand)
+		hornerB = poly.GetHornerTrace(bLinComb, fB, evalRand)
 	)
 	if hornerA[0] != hornerB[0] {
 		return fmt.Errorf("the projection query %v check is not satisfied", p.ID)

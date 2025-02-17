@@ -649,6 +649,14 @@ func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in query.ProjectionInp
 	return q
 }
 
+// Register a distributed projection query
+func (c *CompiledIOP) InsertDistributedProjection(round int, id ifaces.QueryID, in []*query.DistributedProjectionInput) query.DistributedProjection {
+	q := query.NewDistributedProjection(round, id, in)
+	// Finally registers the query
+	c.QueriesParams.AddToRound(round, q.Name(), q)
+	return q
+}
+
 // AddPublicInput inserts a public-input in the compiled-IOP
 func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) PublicInput {
 
