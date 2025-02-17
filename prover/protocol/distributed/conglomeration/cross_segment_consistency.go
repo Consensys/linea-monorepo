@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// crossSegmentCheclk is a verifier action that performs cross-segment checks:
+// crossSegmentCheck is a verifier action that performs cross-segment checks:
 // for instance, it checks that the log-derivative sums all sums to 0 and that
 // the grand  product is 1. The goal is to ensure that the lookups, permutations
 // in the original protocol are satisfied.
