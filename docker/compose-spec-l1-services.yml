@@ -85,9 +85,9 @@ services:
         --mnemonics /config/mnemonics.yaml \
         --tranches-dir /data/l1-node-config/tranches \
         --state-output /data/l1-node-config/genesis.ssz \
-        --eth1-config /config/l1-genesis.json
+        --eth1-config /config/genesis.json
     volumes:
       - ./config/l1-node/cl/mnemonics.yaml:/config/mnemonics.yaml:ro
       - ./config/l1-node/cl/network-config.yml:/config/network-config.yml:ro
-      - ./config/l1-node/el/genesis.json:/config/l1-genesis.json
+      - ./config/l1-node/el/genesis.json:/config/genesis.json
       - local-dev:/data
