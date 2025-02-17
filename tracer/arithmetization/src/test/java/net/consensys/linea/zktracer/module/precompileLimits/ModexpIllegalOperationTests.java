@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.containers;
+package net.consensys.linea.zktracer.module.precompileLimits;
 
 import static java.lang.Integer.MAX_VALUE;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
