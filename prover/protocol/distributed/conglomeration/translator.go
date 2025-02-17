@@ -264,6 +264,11 @@ func (run *runtimeTranslator) GetGrandProductParams(name ifaces.QueryID) query.G
 	return run.Rt.GetGrandProductParams(name)
 }
 
+func (run *runtimeTranslator) GetDistributedProjectionParams(name ifaces.QueryID) query.DistributedProjectionParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetDistributedProjectionParams(name)
+}
+
 func (run *runtimeTranslator) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
 	name = ifaces.QueryID(run.Prefix) + "." + name
 	return run.Rt.GetLogDerivSumParams(name)
@@ -359,6 +364,11 @@ func (run *gnarkRuntimeTranslator) GetGrandProductParams(name ifaces.QueryID) qu
 func (run *gnarkRuntimeTranslator) GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams {
 	name = ifaces.QueryID(run.Prefix) + "." + name
 	return run.Rt.GetLogDerivSumParams(name)
+}
+
+func (run *gnarkRuntimeTranslator) GetDistributedProjectionParams(name ifaces.QueryID) query.GnarkDistributedProjectionParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetDistributedProjectionParams(name)
 }
 
 func (run *gnarkRuntimeTranslator) GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams {
