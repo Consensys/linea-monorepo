@@ -1,16 +1,20 @@
-package distributed
+package modulediscoverer
 
 import (
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+// Type alias for distributed.ModuleName
+type ModuleName = distributed.ModuleName
 
 // ModuleDiscoverer implements the ModuleDiscovererInterface
 type ModuleDiscoverer struct {
@@ -61,13 +65,13 @@ func (md *ModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 				mergeClusters(cluster, connectedColumns)
 				moduleFound = true
 				md.assignModule(moduleName, connectedColumns)
-				break
+				break // possible scenario: two clusters could be merged together
 			}
 		}
 
 		// If no module matches, create a new one
 		if !moduleFound {
-			moduleName := ModuleName("Module_" + string(moduleIndex))
+			moduleName := ModuleName("Module_" + string(moduleIndex)) // don't name it
 			moduleIndex++
 			columnClusters[moduleName] = connectedColumns
 			md.moduleNames = append(md.moduleNames, moduleName)
@@ -99,6 +103,9 @@ func (md *ModuleDiscoverer) FindModule(col ifaces.Column) ModuleName {
 
 // ExpressionIsInModule checks that all the columns  (except verifiercol) in the expression are from the given module.
 func (md *ModuleDiscoverer) ExpressionIsInModule(expr *symbolic.Expression, name ModuleName) bool {
+
+	// get columns from an expression
+
 	board := expr.Board()
 	metadata := board.ListVariableMetadata()
 
