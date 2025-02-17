@@ -80,21 +80,21 @@ class Web3JContractAsyncHelper(
   private fun callEthEstimateGas(tx: Transaction): SafeFuture<BigInteger?> {
     return web3j.ethEstimateGas(tx).sendAsync()
       .thenApply {
-        val txType = if (tx is Eip4844Transaction) {
-          "blobs submission"
-        } else {
-          "aggregation submission"
-        }
+        val withBlobs = tx is Eip4844Transaction
         if (it.hasError()) {
           log.info(
-            "eth_estimateGas failed for {} tx with error={} revertReason={}",
-            txType,
+            "eth_estimateGas failed for tx with blobCarrying={} error={} revertReason={}",
+            withBlobs,
             it.error.message,
             getRevertReason(it.error, smartContractErrors)
           )
           null
         } else {
-          log.info("eth_estimateGas for {}={}", txType, it.amountUsed)
+          log.info(
+            "eth_estimateGas for tx with blobCarrying={} estimatedGas={}",
+            withBlobs,
+            it.amountUsed
+          )
           it.amountUsed
         }
       }
