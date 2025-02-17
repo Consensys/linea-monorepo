@@ -122,14 +122,10 @@ func (d *QueryBasedDiscoverer) analyzeExprGL(expr *symbolic.Expression, moduleNa
 		case ifaces.Column:
 
 			if shifted, ok := t.(column.Shifted); ok {
-
-				var col ifaces.Column = shifted.Parent
-				AppendNew(&d.GLColumns, moduleName, col)
+				AppendNew(&d.GLColumns, moduleName, shifted.Parent)
 
 			} else {
-
-				var col1 ifaces.Column = t
-				AppendNew(&d.GLColumns, moduleName, col1)
+				AppendNew(&d.GLColumns, moduleName, t)
 			}
 		}
 	}
