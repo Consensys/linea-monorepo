@@ -78,20 +78,36 @@ func regroupTerms(magnitudes []int, children []*Expression) (
 // the linear combination. This function is used both for simplifying [LinComb]
 // expressions and for simplifying [Product]. "magnitude" denotes either the
 // coefficient for LinComb or exponents for Product.
+//
+// The function takes ownership of the provided slices.
 func removeZeroCoeffs(magnitudes []int, children []*Expression) (cleanMagnitudes []int, cleanChildren []*Expression) {
 
 	if len(magnitudes) != len(children) {
 		panic("magnitudes and children don't have the same length")
 	}
 
-	cleanChildren = make([]*Expression, 0, len(children))
-	cleanMagnitudes = make([]int, 0, len(children))
-
+	// cleanChildren and cleanMagnitudes are initialized lazily to
+	// avoid unnecessarily allocating memory. The underlying assumption
+	// is that the application will 99% of time never pass zero as a
+	// magnitude.
 	for i, c := range magnitudes {
-		if c != 0 {
+
+		if c == 0 && cleanChildren == nil {
+			cleanChildren = make([]*Expression, i, len(children))
+			cleanMagnitudes = make([]int, i, len(children))
+			copy(cleanChildren, children[:i])
+			copy(cleanMagnitudes, magnitudes[:i])
+		}
+
+		if c != 0 && cleanChildren != nil {
 			cleanMagnitudes = append(cleanMagnitudes, magnitudes[i])
 			cleanChildren = append(cleanChildren, children[i])
 		}
+	}
+
+	if cleanChildren == nil {
+		cleanChildren = children
+		cleanMagnitudes = magnitudes
 	}
 
 	return cleanMagnitudes, cleanChildren
@@ -134,8 +150,8 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 	}
 
 	// The capacity allocation is purely heuristic
-	expandedExpression = make([]*Expression, 0, 2*len(magnitudes))
-	expandedMagnitudes = make([]int, 0, 2*len(magnitudes))
+	expandedExpression = make([]*Expression, 0, numChildren)
+	expandedMagnitudes = make([]int, 0, numChildren)
 
 	for i := 0; i < numChildren; i++ {
 
