@@ -58,34 +58,6 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 	return sm
 }
 
-// NewStateManager instantiate the [StateManager] module but ignores the
-// connection with the Hub columns.
-func NewStateManagerNoHub(comp *wizard.CompiledIOP, settings Settings) *StateManager {
-
-	sm := &StateManager{
-		StateSummary: statesummary.NewModule(comp, settings.stateSummarySize()),
-		accumulator:  accumulator.NewModule(comp, settings.AccSettings),
-		mimcCodeHash: mimccodehash.NewModule(comp, mimccodehash.Inputs{
-			Name: "MiMCCodeHash",
-			Size: settings.MiMCCodeHashSize,
-		}),
-	}
-
-	sm.accumulatorSummaryConnector = *accumulatorsummary.NewModule(
-		comp,
-		accumulatorsummary.Inputs{
-			Name:        "ACCUMULATOR_SUMMARY",
-			Accumulator: sm.accumulator,
-		},
-	)
-
-	sm.accumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.StateSummary)
-	sm.mimcCodeHash.ConnectToRom(comp, rom(comp), romLex(comp))
-	sm.codeHashConsistency = codehashconsistency.NewModule(comp, "CODEHASHCONSISTENCY", &sm.StateSummary, &sm.mimcCodeHash)
-
-	return sm
-}
-
 // Assign assignes the submodules of the state-manager. It requires the
 // arithmetization columns to be assigned first.
 func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]statemanager.DecodedTrace) {
