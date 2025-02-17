@@ -117,85 +117,82 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 		execConglomeration                  = "execution"
 	)
 
-	// Create a configuration using temporary directories
-	// Defines three command templates for different types of jobs.
-	// These templates will be used to create shell commands for the worker processes.
-	cmd := `
-		/bin/sh {{index .InFile 0}}
-		CODE=$?
-		if [ $CODE -eq 0 ]; then
-			touch {{index .OutFile 0}}
-		fi
-		exit $CODE
-		`
-	cmdLarge := `
-		/bin/sh {{index .InFile 0}}
-		CODE=$?
-		CODE=$(($CODE - 12))
-		if [ $CODE -eq 0 ]; then
-			touch {{index .OutFile 0}}
-		fi
-		exit $CODE
-		`
-
-	cmdLargeInternal := `
-		/bin/sh {{index .InFile 0}}
-		CODE=$?
-		CODE=$(($CODE - 10))
-		if [ $CODE -eq 0 ]; then
-			touch {{index .OutFile 0}}
-		fi
-		exit $CODE
-		`
-
 	/*
 		// Create a configuration using temporary directories
 		// Defines three command templates for different types of jobs.
 		// These templates will be used to create shell commands for the worker processes.
 		cmd := `
-			for infile in {{range .InFile}} {{.}} {{end}}; do
-			    /bin/sh $infile
-			    CODE=$?
-			    if [ $CODE -ne 0 ]; then
-			        exit $CODE
-			    fi
-			done
-			for outfile in {{range .OutFile}} {{.}} {{end}}; do
-			    touch $outfile
-			done
-			exit 0
+			/bin/sh {{index .InFile 0}}
+			CODE=$?
+			if [ $CODE -eq 0 ]; then
+				touch {{index .OutFile 0}}
+				touch {{index .OutFile 1}}
+			fi
+			exit $CODE
 			`
-
 		cmdLarge := `
-			for infile in {{range .InFile}} {{.}} {{end}}; do
-			    /bin/sh $infile
-			    CODE=$?
-			    CODE=$(($CODE - 12))
-			    if [ $CODE -ne 0 ]; then
-			        exit $CODE
-			    fi
-			done
-			for outfile in {{range .OutFile}} {{.}} {{end}}; do
-			    touch $outfile
-			done
-			exit 0
+			/bin/sh {{index .InFile 0}}
+			CODE=$?
+			CODE=$(($CODE - 12))
+			if [ $CODE -eq 0 ]; then
+				touch {{index .OutFile 0}}
+				touch {{index .OutFile 1}}
+			fi
+			exit $CODE
 			`
 
 		cmdLargeInternal := `
-			for infile in {{range .InFile}} {{.}} {{end}}; do
-			    /bin/sh $infile
-			    CODE=$?
-			    CODE=$(($CODE - 10))
-			    if [ $CODE -ne 0]; then
-			        exit $CODE
-			    fi
-			done
-			for outfile in {{range .OutFile}} {{.}} {{end}}; do
-			    touch $outfile
-			done
-			exit 0
+			/bin/sh {{index .InFile 0}}
+			CODE=$?
+			CODE=$(($CODE - 10))
+			if [ $CODE -eq 0 ]; then
+				touch {{index .OutFile 0}}
+				touch {{index .OutFile 1}}
+			fi
+			exit $CODE
 			`
 	*/
+
+	cmd := `
+		{{- range .InFile }}
+		/bin/sh {{ . }}
+		{{- end }}
+		CODE=$?
+		if [ $CODE -eq 0 ]; then
+			{{- range .OutFile }}
+			touch {{ . }}
+			{{- end }}
+		fi
+		exit $CODE
+		`
+	cmdLarge := `
+		{{- range .InFile }}
+		/bin/sh {{ . }}
+		{{- end }}
+		CODE=$?
+		CODE=$(($CODE - 12))
+		if [ $CODE -eq 0 ]; then
+			{{- range .OutFile }}
+			touch {{ . }}
+			{{- end }}
+		fi
+		exit $CODE
+		`
+
+	cmdLargeInternal := `
+		{{- range .InFile }}
+		/bin/sh {{ . }}
+		{{- end }}
+		CODE=$?
+		CODE=$(($CODE - 10))
+		if [ $CODE -eq 0 ]; then
+			{{- range .OutFile }}
+			touch {{ . }}
+			{{- end }}
+		fi
+		exit $CODE
+		`
+
 	// For a prover M
 	confM = &config.Config{
 		Version: "0.2.4",

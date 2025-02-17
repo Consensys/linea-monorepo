@@ -13,12 +13,12 @@ import (
 
 func TestLimitlessRun(t *testing.T) {
 	var (
-		exit0 int = 0
-		// exit2   int = 2
-		// exit10  int = 10
-		exit12 int = 12
-		exit77 int = 77
-		// exit137 int = 137
+		exit0   int = 0
+		exit2   int = 2
+		exit10  int = 10
+		exit12  int = 12
+		exit77  int = 77
+		exit137 int = 137
 	)
 
 	confM, confL := setupLimitlessFsTest(t)
@@ -32,13 +32,13 @@ func TestLimitlessRun(t *testing.T) {
 	createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, execBootstrapPriority, exit0)
 	createLimitlessTestInputFiles(execBootstrapFrom, 1, 2, execBootstrapPriority, exit12, forLarge)
 	createLimitlessTestInputFiles(execBootstrapFrom, 2, 3, execBootstrapPriority, exit77)
-	// createLimitlessTestInputFiles(execBootstrapFrom, 3, 4, execBootstrapPriority, exit77, forLarge)
-	// createLimitlessTestInputFiles(execBootstrapFrom, 4, 5, execBootstrapPriority, exit137)
-	// createLimitlessTestInputFiles(execBootstrapFrom, 5, 6, execBootstrapPriority, exit137, forLarge)
-	// createLimitlessTestInputFiles(execBootstrapFrom, 6, 7, execBootstrapPriority, exit2)
-	// createLimitlessTestInputFiles(execBootstrapFrom, 7, 8, execBootstrapPriority, exit2)
-	// createLimitlessTestInputFiles(execBootstrapFrom, 8, 9, execBootstrapPriority, exit10)
-	// createLimitlessTestInputFiles(execBootstrapFrom, 9, 10, execBootstrapPriority, exit12)
+	createLimitlessTestInputFiles(execBootstrapFrom, 3, 4, execBootstrapPriority, exit77, forLarge)
+	createLimitlessTestInputFiles(execBootstrapFrom, 4, 5, execBootstrapPriority, exit137)
+	createLimitlessTestInputFiles(execBootstrapFrom, 5, 6, execBootstrapPriority, exit137, forLarge)
+	createLimitlessTestInputFiles(execBootstrapFrom, 6, 7, execBootstrapPriority, exit2)
+	createLimitlessTestInputFiles(execBootstrapFrom, 7, 8, execBootstrapPriority, exit2)
+	createLimitlessTestInputFiles(execBootstrapFrom, 8, 9, execBootstrapPriority, exit10)
+	createLimitlessTestInputFiles(execBootstrapFrom, 9, 10, execBootstrapPriority, exit12)
 
 	ctxM, stopM := context.WithCancel(context.Background())
 	ctxL, stopL := context.WithCancel(context.Background())
@@ -50,7 +50,7 @@ func TestLimitlessRun(t *testing.T) {
 	// runController(ctxL, confL)
 
 	// Wait for a few secs, for the test to complete
-	<-time.After(2 * time.Second)
+	<-time.After(4 * time.Second)
 
 	// Shutdown the controller
 	stopM()
@@ -70,6 +70,13 @@ func TestLimitlessRun(t *testing.T) {
 				"0-1-etv0.1.2-stv1.2.3-getZkProof.json.success",
 				"1-2-etv0.1.2-stv1.2.3-getZkProof.json.large.success",
 				"2-3-etv0.1.2-stv1.2.3-getZkProof.json.failure.code_67",
+				"3-4-etv0.1.2-stv1.2.3-getZkProof.json.large.failure.code_65",
+				"4-5-etv0.1.2-stv1.2.3-getZkProof.json.large.failure.code_125",
+				"5-6-etv0.1.2-stv1.2.3-getZkProof.json.large.failure.code_125",
+				"6-7-etv0.1.2-stv1.2.3-getZkProof.json.failure.code_2",
+				"7-8-etv0.1.2-stv1.2.3-getZkProof.json.failure.code_2",
+				"8-9-etv0.1.2-stv1.2.3-getZkProof.json.success",
+				"9-10-etv0.1.2-stv1.2.3-getZkProof.json.large.success",
 			},
 		},
 		{
@@ -77,6 +84,8 @@ func TestLimitlessRun(t *testing.T) {
 			Entries: []string{
 				"0-1-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_GLSubmodule.json",
 				"1-2-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_GLSubmodule.json",
+				"8-9-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_GLSubmodule.json",
+				"9-10-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_GLSubmodule.json",
 			},
 		},
 		{
@@ -84,6 +93,8 @@ func TestLimitlessRun(t *testing.T) {
 			Entries: []string{
 				"0-1-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_DistMetadata.json",
 				"1-2-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_DistMetadata.json",
+				"8-9-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_DistMetadata.json",
+				"9-10-etv0.1.2-stv1.2.3-getZkProof_Bootstrap_DistMetadata.json",
 			},
 		},
 	}
