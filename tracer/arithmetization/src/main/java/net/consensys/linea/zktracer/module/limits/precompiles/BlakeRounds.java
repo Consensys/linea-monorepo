@@ -15,18 +15,67 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
+import static java.lang.Integer.MAX_VALUE;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.BLAKE2f_R_SIZE;
+
+import java.math.BigInteger;
+
+import com.google.common.base.Preconditions;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
+import org.apache.tuweni.bytes.Bytes;
 
 @Getter
 @Accessors(fluent = true)
 public final class BlakeRounds implements CountingOnlyModule {
   private final CountOnlyOperation counts = new CountOnlyOperation();
+  @Setter private boolean transactionBundleContainsIllegalOperation = false;
+
+  private static final BigInteger INTEGER_MAX_VALUE_BI = BigInteger.valueOf(MAX_VALUE);
 
   @Override
   public String moduleKey() {
     return "PRECOMPILE_BLAKE_ROUNDS";
+  }
+
+  @Override
+  public void addPrecompileLimit(final int count) {
+    throw new UnsupportedOperationException("Not implemented");
+  }
+
+  public void addPrecompileLimit(final Bytes r) {
+    Preconditions.checkArgument(r.size() == BLAKE2f_R_SIZE, "r is 4 bytes long");
+    final BigInteger rBI = r.toUnsignedBigInteger();
+    // check if r is greater or equal to Integer.MAX_VALUE
+    if (rBI.compareTo(INTEGER_MAX_VALUE_BI) >= 0) {
+      transactionBundleContainsIllegalOperation(true);
+      return;
+    }
+
+    // check if the new lineCount would be greater or equal than Integer.MAX_VALUE
+    final BigInteger totalRoundsCount = BigInteger.valueOf(counts.lineCount());
+    if (rBI.add(totalRoundsCount).compareTo(INTEGER_MAX_VALUE_BI) >= 0) {
+      transactionBundleContainsIllegalOperation(true);
+      return;
+    }
+
+    // Then, as no overflow, add the count
+    counts.add(rBI.intValueExact());
+  }
+
+  @Override
+  public int lineCount() {
+    return transactionBundleContainsIllegalOperation
+        ? MAX_VALUE
+        : CountingOnlyModule.super.lineCount();
+  }
+
+  @Override
+  public void popTransactionBundle() {
+    CountingOnlyModule.super.popTransactionBundle();
+    transactionBundleContainsIllegalOperation(false);
   }
 }

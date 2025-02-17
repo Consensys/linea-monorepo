@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.BLAKE2f_R_SIZE;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_HUB;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_RAM;
 
@@ -110,10 +111,13 @@ public class BlakeSubsection extends PrecompileSubsection {
     }
 
     // TODO: make it smarter
-    Bytes callData = getCallDataRange().extract();
+    final Bytes callData = getCallDataRange().extract();
     final BlakeComponents blake2f =
         new BlakeComponents(
-            callData, callData.slice(0, 4), callData.slice(212, 1), extractReturnData());
+            callData,
+            callData.slice(0, BLAKE2f_R_SIZE),
+            callData.slice(212, 1),
+            extractReturnData());
     hub.blakeModexpData().callBlake(blake2f, this.exoModuleOperationId());
   }
 

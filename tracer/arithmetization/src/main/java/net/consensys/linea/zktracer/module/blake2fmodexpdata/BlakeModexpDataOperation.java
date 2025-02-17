@@ -53,7 +53,8 @@ public class BlakeModexpDataOperation extends ModuleOperation {
           + (INDEX_MAX_MODEXP_RESULT + 1);
   private static final int BLAKE2f_COMPONENTS_LINE_COUNT =
       (INDEX_MAX_BLAKE_DATA + 1) + (INDEX_MAX_BLAKE_PARAMS + 1) + (INDEX_MAX_BLAKE_RESULT + 1);
-  public static final short BLAKE2f_HASH_INPUT_OFFSET = 4;
+  public static final short BLAKE2f_R_SIZE = 4;
+  public static final short BLAKE2f_HASH_INPUT_OFFSET = BLAKE2f_R_SIZE;
   public static final short BLAKE2f_HASH_INPUT_SIZE = LLARGE * (INDEX_MAX_BLAKE_DATA + 1);
   public static final short BLAKE2f_HASH_OUTPUT_SIZE = LLARGE * (INDEX_MAX_BLAKE_RESULT + 1);
 
