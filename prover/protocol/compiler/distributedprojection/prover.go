@@ -2,7 +2,6 @@ package distributedprojection
 
 import (
 	"math/big"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -95,8 +94,7 @@ func (pa *distribuedProjectionProverAction) Push(comp *wizard.CompiledIOP, distr
 			pa.IsA[index] = true
 			pa.IsB[index] = true
 			pa.CumNumOnesPrevSegments[index] = input.CumulativeNumOnesPrevSegments
-
-		} else if input.IsAInModule && !input.IsBInModule {
+} else if input.IsAInModule && !input.IsBInModule {
 			pa.FilterA[index] = input.FilterA
 			pa.ColumnA[index] = input.ColumnA
 			pa.EvalCoins[index] = comp.Coins.Data(input.EvalCoin)

@@ -2,7 +2,6 @@ package distributedprojection
 
 import (
 	"math/big"
-
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
