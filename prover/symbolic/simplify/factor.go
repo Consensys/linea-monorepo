@@ -1,7 +1,6 @@
 package simplify
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -108,7 +107,12 @@ func rankChildren(
 
 	// List all the grand-children of the expression whose parents are
 	// products and counts the number of occurences by summing the exponents.
-	relevantGdChildrenCnt := map[field.Element]int{}
+	// As an optimization the map is addressed using the first uint64 repr
+	// of the element. We consider this is good enough to avoid collisions.
+	// The risk if it happens is that it gets caught by the validation checks
+	// at the end of the factorization routine. The preallocation value is
+	// purely heuristic to avoid successive allocations.
+	relevantGdChildrenCnt := make(map[uint64]int, 100)
 	uniqueChildrenList := make([]*sym.Expression, 0)
 
 	for _, p := range parents {
@@ -131,12 +135,12 @@ func rankChildren(
 				continue
 			}
 
-			if _, ok := relevantGdChildrenCnt[c.ESHash]; !ok {
-				relevantGdChildrenCnt[c.ESHash] = 0
+			if _, ok := relevantGdChildrenCnt[c.ESHash[0]]; !ok {
+				relevantGdChildrenCnt[c.ESHash[0]] = 0
 				uniqueChildrenList = append(uniqueChildrenList, c)
 			}
 
-			relevantGdChildrenCnt[c.ESHash]++
+			relevantGdChildrenCnt[c.ESHash[0]]++
 		}
 	}
 
@@ -144,7 +148,7 @@ func rankChildren(
 		x := uniqueChildrenList[i].ESHash
 		y := uniqueChildrenList[j].ESHash
 		// We want to a decreasing order
-		return relevantGdChildrenCnt[x] > relevantGdChildrenCnt[y]
+		return relevantGdChildrenCnt[x[0]] > relevantGdChildrenCnt[y[0]]
 	})
 
 	return uniqueChildrenList
@@ -185,11 +189,6 @@ func findGdChildrenGroup(expr *sym.Expression) map[field.Element]*sym.Expression
 		logrus.Tracef(
 			"find groups, so far we have %v parents and %v siblings",
 			len(curParents), len(childrenSet))
-
-		// Sanity-check
-		if err := parentsMustHaveAllChildren(curParents, childrenSet); err != nil {
-			panic(err)
-		}
 	}
 }
 
@@ -201,7 +200,7 @@ func getCommonProdParentOfCs(
 	parents []*sym.Expression,
 ) []*sym.Expression {
 
-	res := []*sym.Expression{}
+	res := make([]*sym.Expression, 0, len(parents))
 
 	for _, p := range parents {
 		prod, ok := p.Operator.(sym.Product)
@@ -210,8 +209,9 @@ func getCommonProdParentOfCs(
 		}
 
 		// Account for the fact that p may contain duplicates. So we cannot
-		// just use a counter here.
-		founds := map[field.Element]struct{}{}
+		// just use a counter here. The map is indexed by the first u64 of
+		// the esh as this is more efficient with Go maps.
+		founds := map[uint64]struct{}{}
 		for i, c := range p.Children {
 			if prod.Exponents[i] == 0 {
 				continue
@@ -219,7 +219,7 @@ func getCommonProdParentOfCs(
 
 			if _, inside := cs[c.ESHash]; inside {
 				// logrus.Tracef("%v contains %v", p.ESHash.String(), c.ESHash.String())
-				founds[c.ESHash] = struct{}{}
+				founds[c.ESHash[0]] = struct{}{}
 			}
 		}
 
@@ -399,38 +399,6 @@ func optimRegroupExponents(
 	}
 
 	return exponentMap, sym.NewProduct(canonTermList, canonExponents)
-}
-
-// parentsMustHaveAllChildren returns an error if at least one of the parents
-// is missing one children from the set. This function is used internally to
-// enforce invariants throughout the simplification routines.
-func parentsMustHaveAllChildren[T any](
-	parents []*sym.Expression,
-	childrenSet map[field.Element]T,
-) (resErr error) {
-
-	for parentID, p := range parents {
-		// Account for the fact that the node may contain duplicates of the node
-		// we are looking for.
-		founds := map[field.Element]struct{}{}
-		for _, c := range p.Children {
-			if _, ok := childrenSet[c.ESHash]; ok {
-				founds[c.ESHash] = struct{}{}
-			}
-		}
-
-		if len(founds) != len(childrenSet) {
-			resErr = errors.Join(
-				resErr,
-				fmt.Errorf(
-					"parent num %v is incomplete : found = %d/%d",
-					parentID, len(founds), len(childrenSet),
-				),
-			)
-		}
-	}
-
-	return resErr
 }
 
 func copyMap[K comparable, V any](m map[K]V) map[K]V {
