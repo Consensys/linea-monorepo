@@ -103,18 +103,8 @@ func (j *Job) InProgressPath(ipIdx int) string {
 	return filepath.Join(j.Def.dirFrom(ipIdx), j.LockedFile[ipIdx])
 }
 
-// func (j *Job) InProgressPath() []string {
-// 	dirs := j.Def.dirFrom()
-// 	inProgressPaths := make([]string, len(dirs))
-// 	for ipIdx := 0; ipIdx < len(inProgressPaths); ipIdx++ {
-// 		inProgressPaths[ipIdx] = filepath.Join(dirs[ipIdx], j.LockedFile[ipIdx])
-// 	}
-// 	return inProgressPaths
-// }
-
 // Returns the name of the output file for the job at the specified index
 func (j *Job) ResponseFile(opIdx int) (s string, err error) {
-
 	// Sanity check
 	if err := j.Def.isValidOutputFileIdx(opIdx); err != nil {
 		return "", err
@@ -274,3 +264,12 @@ func intIfRegexpNotNil(r *regexp2.Regexp, s string) int {
 	}
 	return res
 }
+
+// func (j *Job) InProgressPath() []string {
+// 	dirs := j.Def.dirFrom()
+// 	inProgressPaths := make([]string, len(dirs))
+// 	for ipIdx := 0; ipIdx < len(inProgressPaths); ipIdx++ {
+// 		inProgressPaths[ipIdx] = filepath.Join(dirs[ipIdx], j.LockedFile[ipIdx])
+// 	}
+// 	return inProgressPaths
+// }

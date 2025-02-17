@@ -46,7 +46,7 @@ func TestLimitlessRun(t *testing.T) {
 	go runController(ctxM, confM)
 	go runController(ctxL, confL)
 
-	// For Debug mode only
+	// For DEBUG TEST mode only
 	// runController(ctxL, confL)
 
 	// Wait for a few secs, for the test to complete

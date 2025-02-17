@@ -22,23 +22,24 @@ const (
 	execConglomerationPriority
 )
 
-func TestLimitlessProverFileWatcherL(t *testing.T) {
-	_, confL := setupLimitlessFsTest(t)
+func TestLimitlessProverFileWatcherM(t *testing.T) {
+	confM, _ := setupLimitlessFsTest(t)
 
-	exitCode := 0 // we are not interested in the exit code here
+	// We are not interested in the exit code here
+	exitCode := 0
 
 	// Create a list of files for each job type
-	execBootstrapFrom := []string{confL.ExecBootstrap.DirFrom(0)}
-	execGLFrom := []string{confL.ExecGL.DirFrom(0)}
+	execBootstrapFrom := []string{confM.ExecBootstrap.DirFrom(0)}
+	execGLFrom := []string{confM.ExecGL.DirFrom(0)}
 	execRndBeaconFrom := []string{
-		confL.ExecRndBeacon.DirFrom(0),
-		confL.ExecRndBeacon.DirFrom(1),
+		confM.ExecRndBeacon.DirFrom(0),
+		confM.ExecRndBeacon.DirFrom(1),
 	}
-	execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
+	execLPPFrom := []string{confM.ExecLPP.DirFrom(0)}
 	execConglomerationFrom := []string{
-		confL.ExecConglomeration.DirFrom(0),
-		confL.ExecConglomeration.DirFrom(1),
-		confL.ExecConglomeration.DirFrom(2),
+		confM.ExecConglomeration.DirFrom(0),
+		confM.ExecConglomeration.DirFrom(1),
+		confM.ExecConglomeration.DirFrom(2),
 	}
 
 	// The jobs, declared in the order in which they are expected to be found
@@ -65,6 +66,76 @@ func TestLimitlessProverFileWatcherL(t *testing.T) {
 		{
 			Skip:  true, // not large
 			FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, execConglomerationPriority, exitCode),
+		},
+		{
+			Skip:  true, // wrong dir
+			FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, execConglomerationPriority, exitCode),
+		},
+	}
+
+	fw := NewFsWatcher(confM)
+	for _, f := range expectedFNames {
+		if f.Skip {
+			continue
+		}
+		t.Logf("Looking for job with file: %s", f.FName)
+		found := fw.GetBest()
+		t.Logf("Found job: %+v", found)
+		if found == nil {
+			t.Logf("Did not find the job for file: %s", f.FName)
+		}
+		if assert.NotNil(t, found, "did not find the job") {
+			assert.Equal(t, f.FName, found.OriginalFile)
+		}
+	}
+	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
+
+}
+
+func TestLimitlessProverFileWatcherL(t *testing.T) {
+	_, confL := setupLimitlessFsTest(t)
+
+	// We are not interested in the exit code here
+	exitCode := 0
+
+	// Create a list of files for each job type
+	execBootstrapFrom := []string{confL.ExecBootstrap.DirFrom(0)}
+	execGLFrom := []string{confL.ExecGL.DirFrom(0)}
+	execRndBeaconFrom := []string{
+		confL.ExecRndBeacon.DirFrom(0),
+		confL.ExecRndBeacon.DirFrom(1),
+	}
+	execLPPFrom := []string{confL.ExecLPP.DirFrom(0)}
+	execConglomerationFrom := []string{
+		confL.ExecConglomeration.DirFrom(0),
+		confL.ExecConglomeration.DirFrom(1),
+		confL.ExecConglomeration.DirFrom(2),
+	}
+
+	// The jobs, declared in the order in which they are expected to be found
+	// NOTE: It is important to test for the same starting and ending block ranges
+	expectedFNames := []struct {
+		FName []string
+		Skip  bool
+	}{
+		{
+			FName: createLimitlessTestInputFiles(execBootstrapFrom, 0, 1, execBootstrapPriority, exitCode, forLarge),
+		},
+		{
+			FName: createLimitlessTestInputFiles(execGLFrom, 0, 1, execGLPriority, exitCode, forLarge),
+		},
+		{
+			FName: createLimitlessTestInputFiles(execRndBeaconFrom, 0, 1, execRndBeaconPriority, exitCode, forLarge),
+		},
+		{
+			FName: createLimitlessTestInputFiles(execLPPFrom, 0, 1, execLPPPriority, exitCode, forLarge),
+		},
+		{
+			FName: createLimitlessTestInputFiles(execConglomerationFrom, 0, 1, execConglomerationPriority, exitCode, forLarge),
+		},
+		{
+			Skip:  true, // not large
+			FName: createLimitlessTestInputFiles(execConglomerationFrom, 4, 5, execConglomerationPriority, exitCode),
 		},
 		{
 			Skip:  true, // wrong dir
