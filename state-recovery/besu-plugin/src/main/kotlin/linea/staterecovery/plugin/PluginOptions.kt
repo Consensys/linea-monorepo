@@ -12,6 +12,7 @@ data class PluginConfig(
   val l1SmartContractAddress: Address,
   val l1Endpoint: URI,
   val l1PollingInterval: kotlin.time.Duration,
+  val l1GetLogsChunkSize: UInt,
   val l1RequestSuccessBackoffDelay: kotlin.time.Duration,
   val l1RequestRetryConfig: RetryConfig,
   val blobscanEndpoint: URI,
@@ -62,6 +63,13 @@ class PluginCliOptions {
     required = false
   )
   var l1PollingInterval: java.time.Duration = java.time.Duration.ofSeconds(12)
+
+  @CommandLine.Option(
+    names = ["--$cliOptionsPrefix-l1-get-logs-chunk-size"],
+    description = ["Chuck size (fromBlock..toBlock) for eth_getLogs initial search loop. Default is 10_000"],
+    required = false
+  )
+  var l1GetLogsChunkSize: Int = 10_000
 
   @CommandLine.Option(
     names = ["--$cliOptionsPrefix-l1-success-backoff-delay"],
@@ -172,6 +180,7 @@ class PluginCliOptions {
       l1SmartContractAddress = l1SmartContractAddress,
       l1Endpoint = l1RpcEndpoint,
       l1PollingInterval = l1PollingInterval.toKotlinDuration(),
+      l1GetLogsChunkSize = l1GetLogsChunkSize.toUInt(),
       l1RequestSuccessBackoffDelay = l1RequestSuccessBackoffDelay?.toKotlinDuration() ?: 1.milliseconds,
       l1RequestRetryConfig = RetryConfig(
         backoffDelay = l1RequestRetryBackoffDelay?.toKotlinDuration() ?: 1.milliseconds,
@@ -180,7 +189,9 @@ class PluginCliOptions {
       ),
       blobscanEndpoint = blobscanEndpoint,
       blobScanRequestRetryConfig = RetryConfig(
-        backoffDelay = blobscanRequestRetryBackoffDelay.toKotlinDuration()
+        backoffDelay = blobscanRequestRetryBackoffDelay.toKotlinDuration(),
+        timeout = blobscanRequestRetryTimeout?.toKotlinDuration(),
+        maxRetries = blobscanRequestRetryLimit?.toUInt()
       ),
       shomeiEndpoint = shomeiEndpoint,
       overridingRecoveryStartBlockNumber = overridingRecoveryStartBlockNumber?.toULong(),

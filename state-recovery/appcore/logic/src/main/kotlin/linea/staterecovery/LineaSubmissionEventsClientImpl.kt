@@ -14,8 +14,12 @@ class LineaSubmissionEventsClientImpl(
   private val smartContractAddress: String,
   private val l1EarliestSearchBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
   private val l1LatestSearchBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
-  private val logsBlockChunkSize: Int = 1000
+  private val logsBlockChunkSize: Int
 ) : LineaRollupSubmissionEventsClient {
+  init {
+    require(logsBlockChunkSize > 0) { "logsBlockChunkSize=$logsBlockChunkSize must be greater than 0" }
+  }
+
   private fun findDataFinalizedEventContainingBlock(
     fromBlock: BlockParameter,
     l2BlockNumber: ULong

@@ -40,7 +40,7 @@ class TestRunner(
     l1PollingInterval = 5.seconds,
     executionClientPollingInterval = 1.seconds,
     smartContractAddress = StateRecoveryApp.Config.lineaSepolia.smartContractAddress,
-    logsBlockChunkSize = 10_000u,
+    l1getLogsChunkSize = 10_000u,
     debugForceSyncStopBlockNumber = debugForceSyncStopBlockNumber
   )
   val appClients = createAppClients(

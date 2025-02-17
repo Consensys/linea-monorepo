@@ -98,9 +98,10 @@ open class LineaStateRecoveryPlugin : BesuPlugin {
         blockHeaderStaticFields = blockHeaderStaticFields,
         appConfig = StateRecoveryApp.Config(
           smartContractAddress = config.l1SmartContractAddress.toString(),
+          l1getLogsChunkSize = config.l1GetLogsChunkSize,
           l1LatestSearchBlock = net.consensys.linea.BlockParameter.Tag.LATEST,
-          overridingRecoveryStartBlockNumber = config.overridingRecoveryStartBlockNumber,
           l1PollingInterval = config.l1PollingInterval,
+          overridingRecoveryStartBlockNumber = config.overridingRecoveryStartBlockNumber,
           debugForceSyncStopBlockNumber = config.debugForceSyncStopBlockNumber
         )
       )

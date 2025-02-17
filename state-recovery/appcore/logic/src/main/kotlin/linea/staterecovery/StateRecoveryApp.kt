@@ -35,9 +35,9 @@ class StateRecoveryApp(
     val l1EarliestSearchBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
     val l1LatestSearchBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
     val l1PollingInterval: Duration = 12.seconds,
+    val l1getLogsChunkSize: UInt,
     val executionClientPollingInterval: Duration = 1.seconds,
     val blobDecompressorVersion: BlobDecompressorVersion = BlobDecompressorVersion.V1_1_0,
-    val logsBlockChunkSize: UInt = 1000u,
     /**
      * The block number at which the recovery mode will start overriding the recovery start block number
      * this is meant for testing purposes, not production
@@ -51,15 +51,17 @@ class StateRecoveryApp(
         // TODO: set block of V6 Upgrade
         l1EarliestSearchBlock = 1UL.toBlockParameter(),
         l1LatestSearchBlock = BlockParameter.Tag.FINALIZED,
-        executionClientPollingInterval = 10.seconds,
-        l1PollingInterval = 12.seconds
+        l1PollingInterval = 12.seconds,
+        l1getLogsChunkSize = 10_000u,
+        executionClientPollingInterval = 10.seconds
       )
       val lineaSepolia = Config(
         smartContractAddress = "0xb218f8a4bc926cf1ca7b3423c154a0d627bdb7e5",
         l1EarliestSearchBlock = 7164537UL.toBlockParameter(),
         l1LatestSearchBlock = BlockParameter.Tag.FINALIZED,
-        executionClientPollingInterval = 10.seconds,
-        l1PollingInterval = 12.seconds
+        l1PollingInterval = 12.seconds,
+        l1getLogsChunkSize = 10_000u,
+        executionClientPollingInterval = 10.seconds
       )
     }
   }
@@ -75,7 +77,7 @@ class StateRecoveryApp(
     smartContractAddress = config.smartContractAddress,
     l1EarliestSearchBlock = config.l1EarliestSearchBlock,
     l1LatestSearchBlock = config.l1LatestSearchBlock,
-    logsBlockChunkSize = config.logsBlockChunkSize.toInt()
+    logsBlockChunkSize = config.l1getLogsChunkSize.toInt()
   )
   private val log = LogManager.getLogger(this::class.java)
   private val blockImporterAndStateVerifier = BlockImporterAndStateVerifierV1(
