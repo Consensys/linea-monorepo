@@ -95,18 +95,13 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	e := &Expression{
 		Operator: Product{Exponents: exponents},
 		Children: items,
+		ESHash:   field.One(),
 	}
 
-	// Now we need to assign the ESH
-	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
-		eshashes[i] = sv.NewConstant(e.Children[i].ESHash, 1)
-	}
-
-	if len(items) > 0 {
-		// The cast back to sv.Constant is no important functionally but is an easy
-		// sanity check.
-		e.ESHash = e.Operator.Evaluate(eshashes).(*sv.Constant).Get(0)
+		for k := 0; k < exponents[i]; k++ {
+			e.ESHash.Mul(&e.ESHash, &e.Children[i].ESHash)
+		}
 	}
 
 	return e
