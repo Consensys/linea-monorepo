@@ -6,7 +6,6 @@ import linea.kotlin.toULong
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.Web3JContractAsyncHelper
 import net.consensys.linea.contract.throwExceptionIfJsonRpcErrorReturned
-import net.consensys.linea.contract.toWeb3JTxBlob
 import net.consensys.linea.web3j.SmartContractErrors
 import net.consensys.linea.web3j.informativeEthCall
 import net.consensys.zkevm.coordinator.clients.smartcontract.BlockAndNonce
@@ -112,7 +111,8 @@ class Web3JLineaRollupSmartContractClient internal constructor(
    */
   override fun submitBlobs(
     blobs: List<BlobRecord>,
-    gasPriceCaps: GasPriceCaps?
+    gasPriceCaps: GasPriceCaps?,
+    useEstimatedGas: Boolean
   ): SafeFuture<String> {
     return getVersion()
       .thenCompose { version ->
@@ -120,24 +120,21 @@ class Web3JLineaRollupSmartContractClient internal constructor(
         helper.sendBlobCarryingTransactionAndGetTxHash(
           function = function,
           blobs = blobs.map { it.blobCompressionProof!!.compressedData },
-          gasPriceCaps = gasPriceCaps
+          gasPriceCaps = gasPriceCaps,
+          useEstimatedGas
         )
       }
   }
 
   override fun submitBlobsEthCall(
     blobs: List<BlobRecord>,
-    gasPriceCaps: GasPriceCaps?
+    gasPriceCaps: GasPriceCaps?,
+    useEstimatedGas: Boolean
   ): SafeFuture<String?> {
     return getVersion()
       .thenCompose { version ->
         val function = buildSubmitBlobsFunction(version, blobs)
-        val transaction = helper.createEip4844Transaction(
-          function,
-          blobs.map { it.blobCompressionProof!!.compressedData }.toWeb3JTxBlob(),
-          gasPriceCaps
-        )
-        web3j.informativeEthCall(transaction, smartContractErrors)
+        helper.executeBlobEthCall(function, blobs, gasPriceCaps, useEstimatedGas)
       }
   }
 
@@ -147,7 +144,8 @@ class Web3JLineaRollupSmartContractClient internal constructor(
     parentShnarf: ByteArray,
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long,
-    gasPriceCaps: GasPriceCaps?
+    gasPriceCaps: GasPriceCaps?,
+    useEstimatedGas: Boolean
   ): SafeFuture<String> {
     return getVersion()
       .thenCompose { version ->
@@ -158,7 +156,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
           parentL1RollingHash,
           parentL1RollingHashMessageNumber
         )
-        helper.sendTransactionAsync(function, BigInteger.ZERO, gasPriceCaps)
+        helper.sendTransactionAsync(function, BigInteger.ZERO, gasPriceCaps, useEstimatedGas)
           .thenApply { result ->
             throwExceptionIfJsonRpcErrorReturned("eth_sendRawTransaction", result)
             result.transactionHash
@@ -171,7 +169,8 @@ class Web3JLineaRollupSmartContractClient internal constructor(
     aggregationLastBlob: BlobRecord,
     parentShnarf: ByteArray,
     parentL1RollingHash: ByteArray,
-    parentL1RollingHashMessageNumber: Long
+    parentL1RollingHashMessageNumber: Long,
+    useEstimatedGas: Boolean
   ): SafeFuture<String?> {
     return getVersion()
       .thenCompose { version ->
@@ -182,7 +181,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
           parentL1RollingHash,
           parentL1RollingHashMessageNumber
         )
-        helper.executeEthCall(function)
+        helper.executeEthCall(function, useEstimatedGas)
       }
   }
 }

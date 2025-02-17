@@ -87,6 +87,7 @@ zk-evm-contract-address="0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
 finalization-polling-interval="PT6S"
 l1-query-block-tag="latest"
 gas-limit=10000000
+use-eth-estimate-gas=true
 fee-history-block-count=10
 fee-history-reward-percentile=15
 # Global caps of maxFeePerGas, maxFeePerBlobGas, and maxPriorityFeePerGas

@@ -26,7 +26,8 @@ interface LineaRollupSmartContractClient : LineaRollupSmartContractClientReadOnl
    */
   fun submitBlobsEthCall(
     blobs: List<BlobRecord>,
-    gasPriceCaps: GasPriceCaps?
+    gasPriceCaps: GasPriceCaps?,
+    useEstimatedGas: Boolean
   ): SafeFuture<String?>
 
   fun finalizeBlocksEthCall(
@@ -34,7 +35,8 @@ interface LineaRollupSmartContractClient : LineaRollupSmartContractClientReadOnl
     aggregationLastBlob: BlobRecord,
     parentShnarf: ByteArray,
     parentL1RollingHash: ByteArray,
-    parentL1RollingHashMessageNumber: Long
+    parentL1RollingHashMessageNumber: Long,
+    useEstimatedGas: Boolean
   ): SafeFuture<String?>
 
   /**
@@ -42,7 +44,8 @@ interface LineaRollupSmartContractClient : LineaRollupSmartContractClientReadOnl
    */
   fun submitBlobs(
     blobs: List<BlobRecord>,
-    gasPriceCaps: GasPriceCaps?
+    gasPriceCaps: GasPriceCaps?,
+    useEstimatedGas: Boolean
   ): SafeFuture<String>
 
   fun finalizeBlocks(
@@ -51,7 +54,8 @@ interface LineaRollupSmartContractClient : LineaRollupSmartContractClientReadOnl
     parentShnarf: ByteArray,
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long,
-    gasPriceCaps: GasPriceCaps?
+    gasPriceCaps: GasPriceCaps?,
+    useEstimatedGas: Boolean
   ): SafeFuture<String>
 }
 

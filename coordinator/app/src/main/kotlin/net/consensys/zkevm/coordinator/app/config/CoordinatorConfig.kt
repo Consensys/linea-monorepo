@@ -263,6 +263,7 @@ data class L1Config(
   @ConfigAlias("l1-query-block-tag")
   private val _l1QueryBlockTag: String = BlockParameter.Tag.FINALIZED.name,
   val gasLimit: ULong,
+  val useEthEstimateGas: Boolean = false,
   val feeHistoryBlockCount: Int,
   val feeHistoryRewardPercentile: Double,
   val maxFeePerGasCap: ULong,

@@ -559,6 +559,7 @@ class L1DependentApp(
       aggregationsRepository = aggregationsRepository,
       lineaSmartContractClient = lineaSmartContractClientForDataSubmission,
       gasPriceCapProvider = gasPriceCapProviderForDataSubmission,
+      useEthEstimateGas = configs.l1.useEthEstimateGas,
       alreadySubmittedBlobsFilter = alreadySubmittedBlobsFilter,
       blobSubmittedEventDispatcher = EventDispatcher(blobSubmittedEventConsumers),
       vertx = vertx,
@@ -695,6 +696,7 @@ class L1DependentApp(
         aggregationSubmitter = AggregationSubmitterImpl(
           lineaRollup = lineaSmartContractClientForFinalization,
           gasPriceCapProvider = gasPriceCapProviderForFinalization,
+          useEstimatedGas = configs.l1.useEthEstimateGas,
           aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers)
         ),
         vertx = vertx,

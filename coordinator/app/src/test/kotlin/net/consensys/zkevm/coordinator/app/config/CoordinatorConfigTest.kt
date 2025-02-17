@@ -193,6 +193,7 @@ class CoordinatorConfigTest {
       finalizationPollingInterval = Duration.parse("PT6S"),
       _l1QueryBlockTag = BlockParameter.Tag.LATEST.getTag(),
       gasLimit = 10000000UL,
+      useEthEstimateGas = true,
       feeHistoryBlockCount = 10,
       feeHistoryRewardPercentile = 15.0,
       maxFeePerGasCap = 100000000000UL,
