@@ -126,7 +126,7 @@ public class LineaExtraDataHandler {
     }
 
     public synchronized void accept(final Bytes extraData) {
-      log.info("Parsing extra data version 1: {}", extraData.toHexString());
+      log.debug("Parsing extra data version 1: {}", extraData.toHexString());
       int startIndex = 0;
       for (final FieldConsumer fieldConsumer : fieldsSequence) {
         fieldConsumer.accept(extraData.slice(startIndex, fieldConsumer.length));
