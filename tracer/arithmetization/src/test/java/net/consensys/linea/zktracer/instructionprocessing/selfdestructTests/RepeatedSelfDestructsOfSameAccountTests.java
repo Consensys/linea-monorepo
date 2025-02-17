@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoO
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.userAccount;
 
 import java.util.List;
+import java.util.Optional;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.*;
@@ -67,7 +68,7 @@ public class RepeatedSelfDestructsOfSameAccountTests {
   }
 
   private void run(Heir heir) {
-    selfDestructorAccount = basicSelfDestructor(heir);
+    selfDestructorAccount = basicSelfDestructor(heir, Optional.empty());
     buildToAccount();
     ToyExecutionEnvironmentV2.builder()
         .accounts(List.of(userAccount, toAccount, selfDestructorAccount))
@@ -208,7 +209,7 @@ public class RepeatedSelfDestructsOfSameAccountTests {
   @ParameterizedTest
   @EnumSource(Heir.class)
   public void basicSelfDestruct(Heir heir) {
-    selfDestructorAccount = basicSelfDestructor(heir);
+    selfDestructorAccount = basicSelfDestructor(heir, Optional.empty());
     buildToAccount();
     Transaction transaction =
         ToyTransaction.builder()

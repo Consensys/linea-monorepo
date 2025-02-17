@@ -19,6 +19,8 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.SelfD
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.SELFDESTRUCT;
 
+import java.util.Optional;
+
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import org.hyperledger.besu.datatypes.Address;
@@ -35,7 +37,7 @@ public enum Heir {
 
   public static Address selfDestructorAddress = Address.fromHexString("0xFFc0deadd7");
 
-  public static ToyAccount basicSelfDestructor(Heir heir) {
+  public static ToyAccount basicSelfDestructor(Heir heir, Optional<Address> selfDestructAddress) {
 
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     switch (heir) {
@@ -57,7 +59,7 @@ public enum Heir {
     program.op(SELFDESTRUCT);
 
     return ToyAccount.builder()
-        .address(selfDestructorAddress)
+        .address(selfDestructAddress.orElse(selfDestructorAddress))
         .code(program.compile())
         .balance(Wei.fromEth(1))
         .nonce(1776)
