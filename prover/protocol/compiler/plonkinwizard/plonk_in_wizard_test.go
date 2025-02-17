@@ -35,7 +35,7 @@ var (
 	// and the padding to the next power of two as found in portions of
 	// the [query.PlonkInWizardData.Data].
 	circAssignmentValid = vector.ForTest(1, 2, 3, 0)
-	// circAssignmentInvalid represents a valid assignment to the circuit
+	// circAssignmentInvalid represents an invalid assignment to the circuit
 	// and the padding to the next power of two as found in portions of
 	// the [query.PlonkInWizardData.Data]. This is used to generated
 	// invalid test assignments.
@@ -102,8 +102,8 @@ var testCases = []struct {
 	},
 }
 
-// generateAssignment returns a list of smart-vectors to assign following
-// a testcase specification. size is the length of the assignment and
+// generateAssignment returns a list of smart-vectors to assign the following
+// testcase specifications. size is the length of the assignment and
 // portions represents the "per-instance" sections of the active part
 // of the data column to generate.
 func generateAssignment(portions [][]field.Element, size int) (data, sel smartvectors.SmartVector) {

@@ -24,7 +24,7 @@ type context struct {
 	// checking the activators are well-set w.r.t to the circuit mask
 	SelOpenings []query.LocalOpening
 	// CircuitMask is a precomputed binary column indicating with 1's
-	// the rows where [Data] corresponds to "potentially" actual public
+	// the rows where [query.PlonkInWizard.Data] corresponds to "potentially" actual public
 	// inputs. It is used to ensure that the selector goes to zero on
 	// the right position.
 	CircuitMask ifaces.Column
