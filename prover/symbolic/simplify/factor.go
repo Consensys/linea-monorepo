@@ -239,18 +239,22 @@ func factorLinCompFromGroup(
 ) *sym.Expression {
 
 	var (
+
+		// numTerms indicates the number of children in the linear-combination
+		numTerms = len(lincom.Children)
+
 		lcCoeffs = lincom.Operator.(sym.LinComb).Coeffs
 		// Build the common term by taking the max of the exponents
 		exponentsOfGroup, groupExpr = optimRegroupExponents(lincom.Children, group)
 
 		// Separate the non-factored terms
-		nonFactoredTerms  = []*sym.Expression{}
-		nonFactoredCoeffs = []int{}
+		nonFactoredTerms  = make([]*sym.Expression, 0, numTerms)
+		nonFactoredCoeffs = make([]int, 0, numTerms)
 
 		// The factored terms of the linear combination divided by the common
 		// group factor
-		factoredTerms  = []*sym.Expression{}
-		factoredCoeffs = []int{}
+		factoredTerms  = make([]*sym.Expression, 0, numTerms)
+		factoredCoeffs = make([]int, 0, numTerms)
 	)
 
 	numFactors := 0
@@ -341,8 +345,8 @@ func optimRegroupExponents(
 	groupedTerm *sym.Expression,
 ) {
 
-	exponentMap = map[field.Element]int{}
-	canonTermList := make([]*sym.Expression, 0) // built in deterministic order
+	exponentMap = make(map[field.Element]int, 16)
+	canonTermList := make([]*sym.Expression, 0, 16) // built in deterministic order
 
 	for _, p := range parents {
 
@@ -354,7 +358,7 @@ func optimRegroupExponents(
 
 		// Used to sanity-check that all the nodes of the group have been
 		// reached through this parent.
-		matched := map[field.Element]int{}
+		matched := make(map[field.Element]int, len(p.Children))
 
 		for i, c := range p.Children {
 			if _, ingroup := group[c.ESHash]; !ingroup {
