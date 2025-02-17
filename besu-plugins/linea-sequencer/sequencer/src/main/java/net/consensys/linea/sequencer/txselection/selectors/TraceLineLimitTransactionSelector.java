@@ -17,6 +17,7 @@ package net.consensys.linea.sequencer.txselection.selectors;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_MODULE_LINE_COUNT_FULL;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_INVALID_COUNT;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
 import java.math.BigInteger;
@@ -151,6 +152,13 @@ public class TraceLineLimitTransactionSelector
         log.error("Module {} does not exist in the limits file.", result.getModuleName());
         throw new RuntimeException(
             "Module " + result.getModuleName() + " does not exist in the limits file.");
+      case INVALID_LINE_COUNT:
+        log.warn(
+            "Tx {} line count for module {}={} is invalid, removing from the txpool",
+            transaction.getHash(),
+            result.getModuleName(),
+            result.getModuleLineCount());
+        return TX_MODULE_LINE_INVALID_COUNT;
       case TX_MODULE_LINE_COUNT_OVERFLOW:
         log.warn(
             "Tx {} line count for module {}={} is above the limit {}, removing from the txpool",

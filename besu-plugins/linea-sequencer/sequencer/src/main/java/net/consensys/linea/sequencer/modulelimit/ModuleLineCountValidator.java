@@ -70,9 +70,17 @@ public class ModuleLineCountValidator {
       final Map<String, Integer> currentAccumulatedLineCounts,
       final Map<String, Integer> prevAccumulatedLineCounts) {
     for (Map.Entry<String, Integer> moduleEntry : currentAccumulatedLineCounts.entrySet()) {
-      String moduleName = moduleEntry.getKey();
-      Integer currentTotalLineCountForModule = moduleEntry.getValue();
-      Integer lineCountLimitForModule = moduleLineCountLimits.get(moduleName);
+      final String moduleName = moduleEntry.getKey();
+      final int currentTotalLineCountForModule = moduleEntry.getValue();
+      if (currentTotalLineCountForModule < 0) {
+        log.error(
+            "Negative line count {} returned for module '{}'.",
+            currentAccumulatedLineCounts,
+            moduleName);
+        return ModuleLimitsValidationResult.invalidLineCount(
+            moduleName, currentTotalLineCountForModule);
+      }
+      final Integer lineCountLimitForModule = moduleLineCountLimits.get(moduleName);
 
       if (lineCountLimitForModule == null) {
         log.error("Module '{}' is not defined in the line count limits.", moduleName);
@@ -113,7 +121,8 @@ public class ModuleLineCountValidator {
     VALID,
     TX_MODULE_LINE_COUNT_OVERFLOW,
     BLOCK_MODULE_LINE_COUNT_FULL,
-    MODULE_NOT_DEFINED
+    MODULE_NOT_DEFINED,
+    INVALID_LINE_COUNT
   }
 
   public static Map<String, Integer> createLimitModules(

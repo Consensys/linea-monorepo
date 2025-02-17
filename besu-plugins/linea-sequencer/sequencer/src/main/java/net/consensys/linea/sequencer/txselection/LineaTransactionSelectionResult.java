@@ -24,6 +24,7 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
     TX_TOO_LARGE_FOR_REMAINING_USER_GAS(false, false, false),
     TX_MODULE_LINE_COUNT_OVERFLOW(false, true, true),
     TX_MODULE_LINE_COUNT_OVERFLOW_CACHED(false, true, true),
+    TX_MODULE_LINE_INVALID_COUNT(false, true, true),
     TX_UNPROFITABLE(false, false, true),
     TX_UNPROFITABLE_UPFRONT(false, false, true),
     TX_UNPROFITABLE_RETRY_LIMIT(false, false, false),
@@ -71,6 +72,8 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
       new LineaTransactionSelectionResult(LineaStatus.TX_MODULE_LINE_COUNT_OVERFLOW);
   public static final TransactionSelectionResult TX_MODULE_LINE_COUNT_OVERFLOW_CACHED =
       new LineaTransactionSelectionResult(LineaStatus.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED);
+  public static final TransactionSelectionResult TX_MODULE_LINE_INVALID_COUNT =
+      new LineaTransactionSelectionResult(LineaStatus.TX_MODULE_LINE_INVALID_COUNT);
   public static final TransactionSelectionResult TX_UNPROFITABLE =
       new LineaTransactionSelectionResult(LineaStatus.TX_UNPROFITABLE);
   public static final TransactionSelectionResult TX_UNPROFITABLE_UPFRONT =

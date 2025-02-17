@@ -57,6 +57,17 @@ public class ModuleLimitsValidationResult {
         null);
   }
 
+  public static ModuleLimitsValidationResult invalidLineCount(
+      final String moduleName, final Integer moduleLineCount) {
+    return new ModuleLimitsValidationResult(
+        ModuleLineCountValidator.ModuleLineCountResult.INVALID_LINE_COUNT,
+        moduleName,
+        moduleLineCount,
+        null,
+        null,
+        null);
+  }
+
   public static ModuleLimitsValidationResult txModuleLineCountOverflow(
       final String moduleName,
       final Integer moduleLineCount,

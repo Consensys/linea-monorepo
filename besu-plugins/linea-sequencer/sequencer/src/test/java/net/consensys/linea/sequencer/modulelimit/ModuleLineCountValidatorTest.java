@@ -64,4 +64,15 @@ class ModuleLineCountValidatorTest {
     assertThat(moduleLineCountValidator.validate(lineCountTx, lineCountTx))
         .isEqualTo(ModuleLimitsValidationResult.moduleNotDefined("MOD4"));
   }
+
+  @Test
+  void failedValidationInvalidLineCount() {
+    final var moduleLineCountValidator =
+        new ModuleLineCountValidator(Map.of("MOD1", 1, "MOD2", 2, "MOD3", 3));
+
+    final var lineCountTx = Map.of("MOD1", 1, "MOD2", -2, "MOD3", 1);
+
+    assertThat(moduleLineCountValidator.validate(lineCountTx, lineCountTx))
+        .isEqualTo(ModuleLimitsValidationResult.invalidLineCount("MOD2", -2));
+  }
 }
