@@ -1,4 +1,4 @@
-package namebaseddiscoverer
+package discoverer
 
 import (
 	"strings"
@@ -53,11 +53,6 @@ func periodSeparator(name string) string {
 	}
 	// Return the substring before the first period
 	return name[:index]
-}
-
-// NbModules returns the number of modules
-func (p *PeriodSeperatingModuleDiscoverer) NbModules() int {
-	return len(p.modules)
 }
 
 // ModuleList returns the list of module names
@@ -131,7 +126,7 @@ func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr *symbolic.E
 	}
 
 	if nCols == 0 {
-		panic("could not find any column in the expression")
+		panic("unsupported, could not find any column in the expression")
 	} else {
 		return b
 	}
