@@ -58,4 +58,4 @@ Xbonsai-limit-trie-logs-enabled=false
 bonsai-historical-block-limit=1024
 
 Xin-process-rpc-enabled=true
-Xin-process-rpc-apis=["ETH"]
+Xin-process-rpc-apis=["ETH", "MINER"]
