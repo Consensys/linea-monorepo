@@ -41,12 +41,12 @@ fun createAppAllInProcess(
     vertx = vertx,
     meterRegistry = meterRegistry,
     stateManagerClientEndpoint = stateManagerClientEndpoint,
+    smartContractAddress = appConfig.smartContractAddress,
     l1RpcEndpoint = l1Endpoint,
     l1SuccessBackoffDelay = l1SuccessBackoffDelay,
     l1RequestRetryConfig = l1RequestRetryConfig,
     blobScanEndpoint = blobScanEndpoint,
-    blobScanRequestRetryConfig = blobScanRequestRetryConfig,
-    appConfig = appConfig
+    blobScanRequestRetryConfig = blobScanRequestRetryConfig
   ).let { clients ->
     val app = StateRecoveryApp(
       vertx = vertx,
@@ -83,6 +83,7 @@ fun RetryConfig.toRequestRetryConfig(): RequestRetryConfig {
 fun createAppClients(
   vertx: Vertx = Vertx.vertx(),
   meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow(),
+  smartContractAddress: String,
   l1RpcEndpoint: URI,
   l1SuccessBackoffDelay: Duration = 1.milliseconds,
   l1RequestRetryConfig: RetryConfig = RetryConfig(backoffDelay = 1.seconds),
@@ -90,11 +91,10 @@ fun createAppClients(
   blobScanRequestRetryConfig: RetryConfig = RetryConfig(backoffDelay = 1.seconds),
   stateManagerClientEndpoint: URI,
   stateManagerRequestRetry: RetryConfig = RetryConfig(backoffDelay = 1.seconds),
-  zkStateManagerVersion: String = "2.3.0",
-  appConfig: StateRecoveryApp.Config
+  zkStateManagerVersion: String = "2.3.0"
 ): AppClients {
   val lineaContractClient = Web3JLineaRollupSmartContractClientReadOnly(
-    contractAddress = appConfig.smartContractAddress,
+    contractAddress = smartContractAddress,
     web3j = createWeb3jHttpClient(
       rpcUrl = l1RpcEndpoint.toString(),
       log = LogManager.getLogger("linea.plugin.staterecovery.clients.l1.smart-contract")

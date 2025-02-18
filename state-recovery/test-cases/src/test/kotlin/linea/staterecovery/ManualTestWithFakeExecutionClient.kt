@@ -45,13 +45,13 @@ class TestRunner(
   )
   val appClients = createAppClients(
     vertx = vertx,
+    smartContractAddress = appConfig.smartContractAddress,
     l1RpcEndpoint = URI(l1RpcUrl),
     l1SuccessBackoffDelay = 1.milliseconds,
     l1RequestRetryConfig = RetryConfig(backoffDelay = 1.seconds, maxRetries = 1u),
     blobScanEndpoint = URI(blobScanUrl),
     blobScanRequestRetryConfig = RetryConfig(backoffDelay = 10.milliseconds, timeout = 5.seconds),
-    stateManagerClientEndpoint = URI("http://it-does-not-matter:5432"),
-    appConfig = appConfig
+    stateManagerClientEndpoint = URI("http://it-does-not-matter:5432")
   )
   private val fakeExecutionLayerClient = FakeExecutionLayerClient(
     headBlock = BlockNumberAndHash(number = l2RecoveryStartBlockNumber - 1UL, hash = ByteArray(32) { 0 }),

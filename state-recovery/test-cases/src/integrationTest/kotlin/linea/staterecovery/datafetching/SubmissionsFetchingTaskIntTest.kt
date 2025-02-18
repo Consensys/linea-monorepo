@@ -11,7 +11,6 @@ import linea.staterecovery.BlockFromL1RecoveredData
 import linea.staterecovery.BlockHeaderStaticFields
 import linea.staterecovery.DataFinalizedV3
 import linea.staterecovery.LineaSubmissionEventsClientImpl
-import linea.staterecovery.StateRecoveryApp
 import linea.staterecovery.plugin.AppClients
 import linea.staterecovery.plugin.createAppClients
 import linea.web3j.createWeb3jHttpClient
@@ -73,16 +72,11 @@ class SubmissionsFetchingTaskIntTest {
 
     appClients = createAppClients(
       vertx = vertx,
+      smartContractAddress = rollupDeploymentResult.contractAddress,
       l1RpcEndpoint = URI(l1RpcUrl),
       l1RequestRetryConfig = RetryConfig(backoffDelay = 2.seconds),
       blobScanEndpoint = URI(blobScanUrl),
-      stateManagerClientEndpoint = URI("http://it-does-not-matter:5432"),
-      appConfig = StateRecoveryApp.Config(
-        l1LatestSearchBlock = BlockParameter.Tag.LATEST,
-        l1PollingInterval = 10.milliseconds,
-        executionClientPollingInterval = 1.seconds,
-        smartContractAddress = rollupDeploymentResult.contractAddress
-      )
+      stateManagerClientEndpoint = URI("http://it-does-not-matter:5432")
     )
 
     contractClientForBlobSubmissions = rollupDeploymentResult.rollupOperatorClient
@@ -194,7 +188,8 @@ class SubmissionsFetchingTaskIntTest {
       aggregationsAndBlobs
         .filter { aggAndBlobs ->
           val agg = aggAndBlobs.aggregation!!
-          val isAfterOrContainingStart = agg.startBlockNumber >= l2StartBlockNumber || agg.contains(l2StartBlockNumber)
+          val isAfterOrContainingStart =
+            agg.startBlockNumber >= l2StartBlockNumber || agg.contains(l2StartBlockNumber)
           val isBeforeForcedStop = if (debugForceSyncStopBlockNumber != null) {
             agg.endBlockNumber < debugForceSyncStopBlockNumber
           } else {

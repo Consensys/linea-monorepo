@@ -39,6 +39,7 @@ import kotlin.time.toJavaDuration
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StateRecoveryAppWithFakeExecutionClientIntTest {
   private val log = LogManager.getLogger("test.case.StateRecoverAppWithFakeExecutionClientIntTest")
+  private lateinit var appConfigs: StateRecoveryApp.Config
   private lateinit var stateRecoverApp: StateRecoveryApp
   private lateinit var aggregationsAndBlobs: List<AggregationAndBlobs>
   private lateinit var fakeExecutionLayerClient: FakeExecutionLayerClient
@@ -76,18 +77,22 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
     val rollupDeploymentResult = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6).get()
 
+    this.appConfigs = StateRecoveryApp.Config(
+      l1EarliestSearchBlock = BlockParameter.Tag.EARLIEST,
+      l1LatestSearchBlock = BlockParameter.Tag.LATEST,
+      l1PollingInterval = 100.milliseconds,
+      l1getLogsChunkSize = 1000u,
+      executionClientPollingInterval = 1.seconds,
+      smartContractAddress = rollupDeploymentResult.contractAddress
+    )
+
     appClients = createAppClients(
       vertx = vertx,
+      smartContractAddress = appConfigs.smartContractAddress,
       l1RpcEndpoint = URI(l1RpcUrl),
       l1RequestRetryConfig = RetryConfig(backoffDelay = 2.seconds),
       blobScanEndpoint = URI(blobScanUrl),
-      stateManagerClientEndpoint = URI("http://it-does-not-matter:5432"),
-      appConfig = StateRecoveryApp.Config(
-        l1LatestSearchBlock = BlockParameter.Tag.LATEST,
-        l1PollingInterval = 10.milliseconds,
-        executionClientPollingInterval = 1.seconds,
-        smartContractAddress = rollupDeploymentResult.contractAddress
-      )
+      stateManagerClientEndpoint = URI("http://it-does-not-matter:5432")
     )
 
     contractClientForBlobSubmissions = rollupDeploymentResult.rollupOperatorClient
@@ -125,12 +130,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
       transactionDetailsClient = appClients.transactionDetailsClient,
       blockHeaderStaticFields = BlockHeaderStaticFields.localDev,
       lineaContractClient = appClients.lineaContractClient,
-      config = StateRecoveryApp.Config(
-        l1EarliestSearchBlock = BlockParameter.Tag.EARLIEST,
-        l1LatestSearchBlock = BlockParameter.Tag.LATEST,
-        l1PollingInterval = 1.seconds,
-        executionClientPollingInterval = 1.seconds,
-        smartContractAddress = appClients.lineaContractClient.contractAddress,
+      config = appConfigs.copy(
         debugForceSyncStopBlockNumber = debugForceSyncStopBlockNumber
       )
     )

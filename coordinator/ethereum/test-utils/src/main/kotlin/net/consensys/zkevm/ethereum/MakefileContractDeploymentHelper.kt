@@ -3,7 +3,6 @@ package net.consensys.zkevm.ethereum
 import build.linea.contract.l1.LineaContractVersion
 import linea.testing.CommandResult
 import linea.testing.Runner
-import okhttp3.Address
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.regex.Matcher
 import java.util.regex.Pattern
