@@ -210,22 +210,22 @@ func getCommonProdParentOfCs(
 			continue
 		}
 
-		// Account for the fact that p may contain duplicates. So we cannot
-		// just use a counter here. The map is indexed by the first u64 of
-		// the esh as this is more efficient with Go maps.
-		founds := map[uint64]struct{}{}
+		// This piece of the code checks if p as all elements of cs in its
+		// children. The implementation relies on the assumption the children
+		// of polyeval are deduplicated.
+		counter := 0
+
 		for i, c := range p.Children {
 			if prod.Exponents[i] == 0 {
 				continue
 			}
 
 			if _, inside := cs[c.ESHash[0]]; inside {
-				// logrus.Tracef("%v contains %v", p.ESHash.String(), c.ESHash.String())
-				founds[c.ESHash[0]] = struct{}{}
+				counter++
 			}
 		}
 
-		if len(founds) == len(cs) {
+		if counter == len(cs) {
 			res = append(res, p)
 		}
 	}
