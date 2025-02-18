@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -174,17 +176,14 @@ func findGdChildrenGroup(expr *sym.Expression) map[uint64]*sym.Expression {
 	for i := range ranked {
 
 		best := ranked[i]
-		newChildrenSet := copyMap(childrenSet)
-		newChildrenSet[best.ESHash[0]] = best
-		newParents := getCommonProdParentOfCs(newChildrenSet, curParents)
+		childrenSet[best.ESHash[0]] = best
+		curParents = filterParentsWithChildren(curParents, best.ESHash)
 
 		// Can't grow the set anymore
-		if len(newParents) <= 1 {
+		if len(curParents) <= 1 {
+			delete(childrenSet, best.ESHash[0])
 			return childrenSet
 		}
-
-		childrenSet = newChildrenSet
-		curParents = newParents
 
 		logrus.Tracef(
 			"find groups, so far we have %v parents and %v siblings",
@@ -194,39 +193,21 @@ func findGdChildrenGroup(expr *sym.Expression) map[uint64]*sym.Expression {
 	return childrenSet
 }
 
-// getCommonProdParentOfCs returns the parents that have all cs as children and
-// that are themselves children of gdp (grandparent). The parents must be of
-// type product however.
-func getCommonProdParentOfCs(
-	cs map[uint64]*sym.Expression,
-	parents []*sym.Expression,
-) []*sym.Expression {
+// filterParentsWithChildren returns a filtered list of parents who have at
+// least one child with the given ESHash. The function allocates a new list
+// of parents and returns it without mutating he original list.
+func filterParentsWithChildren(
+	parents []*symbolic.Expression,
+	childEsh field.Element,
+) []*symbolic.Expression {
 
-	res := make([]*sym.Expression, 0, len(parents))
-
+	res := make([]*symbolic.Expression, 0, len(parents))
 	for _, p := range parents {
-		prod, ok := p.Operator.(sym.Product)
-		if !ok {
-			continue
-		}
-
-		// This piece of the code checks if p as all elements of cs in its
-		// children. The implementation relies on the assumption the children
-		// of polyeval are deduplicated.
-		counter := 0
-
-		for i, c := range p.Children {
-			if prod.Exponents[i] == 0 {
-				continue
+		for _, c := range p.Children {
+			if c.ESHash == childEsh {
+				res = append(res, p)
+				break
 			}
-
-			if _, inside := cs[c.ESHash[0]]; inside {
-				counter++
-			}
-		}
-
-		if counter == len(cs) {
-			res = append(res, p)
 		}
 	}
 
