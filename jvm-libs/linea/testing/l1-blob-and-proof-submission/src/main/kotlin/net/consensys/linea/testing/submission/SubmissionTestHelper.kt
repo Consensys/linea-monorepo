@@ -32,12 +32,6 @@ fun assertTxSuccess(
           " failed on L1. receipt=$txReceipt"
       )
     }
-//    assertThat(txReceipt.status)
-//      .withFailMessage(
-//        "submission of $submissionType=${interval.intervalString()}" +
-//          " failed on L1. receipt=$txReceipt"
-//      )
-//      .isEqualTo("0x1")
   }
 }
 

@@ -85,19 +85,3 @@ internal class SearchCursor(
     return null
   }
 }
-
-fun main() {
-//  for (i in 10 downTo 0 ) {
-//    if (i <= 4) {
-//      return
-//    }
-//    println(i)
-//  }
-
-  (10 downTo 0).forEach { i ->
-    if (i <= 4) {
-      return
-    }
-    println(i)
-  }
-}
