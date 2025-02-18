@@ -39,8 +39,11 @@ export default function BridgeLayout() {
         <div className="mb-4 min-w-min max-w-lg rounded-lg bg-warning p-2 text-warning-content shadow-lg">
           <div className="flex flex-col items-center justify-center gap-2 text-center">
             <MdWarning className="text-lg" />
-            <p>The Linea USDC bridge is being upgraded.</p>
-            <p>To bridge USDC between Linea and Ethereum, you can use alternative bridge providers.</p>
+            <p>The Linea Sepolia (Testnet) USDC bridge is being upgraded.</p>
+            <p>
+              To bridge USDC between Linea and Ethereum, you can use alternative bridge providers. Linea Mainnet is not
+              effected
+            </p>
           </div>
         </div>
       )}
