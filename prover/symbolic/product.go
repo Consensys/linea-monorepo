@@ -99,8 +99,25 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	}
 
 	for i := range e.Children {
-		for k := 0; k < exponents[i]; k++ {
+		var tmp field.Element
+		switch {
+		case exponents[i] == 1:
 			e.ESHash.Mul(&e.ESHash, &e.Children[i].ESHash)
+		case exponents[i] == 2:
+			tmp.Square(&e.Children[i].ESHash)
+			e.ESHash.Mul(&e.ESHash, &tmp)
+		case exponents[i] == 3:
+			tmp.Square(&e.Children[i].ESHash)
+			tmp.Mul(&tmp, &e.Children[i].ESHash)
+			e.ESHash.Mul(&e.ESHash, &tmp)
+		case exponents[i] == 4:
+			tmp.Square(&e.Children[i].ESHash)
+			tmp.Square(&tmp)
+			e.ESHash.Mul(&e.ESHash, &tmp)
+		default:
+			exponent := big.NewInt(int64(exponents[i]))
+			tmp.Exp(e.Children[i].ESHash, exponent)
+			e.ESHash.Mul(&e.ESHash, &tmp)
 		}
 	}
 
