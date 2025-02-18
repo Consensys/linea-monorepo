@@ -153,9 +153,6 @@ func TestDistributeProjection(t *testing.T) {
 	for _, tc := range testcases {
 
 		t.Run(tc.Name, func(t *testing.T) {
-			// This function assigns the initial module and is aimed at working
-			// for all test-case.
-			initialProve := tc.InitialProverFunc
 
 			// initialComp is defined according to the define function provided by the
 			// test-case.
@@ -278,28 +275,4 @@ func checkConsistency(runs []wizard.Runtime) error {
 	}
 
 	return nil
-}
-=======
-			disc := namebaseddiscoverer.PeriodSeperatingModuleDiscoverer{}
-			disc.Analyze(initialComp)
-
-			// This declares a compiled IOP with only the columns of the module A
-			moduleAComp := distributed.GetFreshModuleComp(initialComp, &disc, moduleAName)
-			dist_projection.NewDistributeProjectionCtx(moduleAName, initialComp, moduleAComp, &disc)
-
-			wizard.ContinueCompilation(moduleAComp, distributedprojection.CompileDistributedProjection, dummy.CompileAtProverLvl)
-
-			// This runs the initial prover
-			initialRuntime := wizard.RunProver(initialComp, initialProve)
-
-			proof := wizard.Prove(moduleAComp, func(run *wizard.ProverRuntime) {
-				run.ParentRuntime = initialRuntime
-			})
-			valid := wizard.Verify(moduleAComp, proof)
-			require.NoError(t, valid)
-
-		})
-
-	}
-
 }

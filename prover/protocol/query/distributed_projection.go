@@ -16,12 +16,13 @@ import (
 )
 
 type DistributedProjectionInput struct {
-	ColumnA, ColumnB              *symbolic.Expression
-	FilterA, FilterB              *symbolic.Expression
-	SizeA, SizeB                  int
-	EvalCoin                      coin.Name
-	IsAInModule, IsBInModule      bool
-	CumulativeNumOnesPrevSegments big.Int
+	ColumnA, ColumnB                                               *symbolic.Expression
+	FilterA, FilterB                                               *symbolic.Expression
+	SizeA, SizeB                                                   int
+	EvalCoin                                                       coin.Name
+	IsAInModule, IsBInModule                                       bool
+	CumulativeNumOnesPrevSegmentsA, CumulativeNumOnesPrevSegmentsB big.Int
+	CurrNumOnesA, CurrNumOnesB                                     field.Element
 }
 
 // func (dpInp *DistributedProjectionInput) completeAssign(run *ifaces.Runtime) {
@@ -35,7 +36,8 @@ type DistributedProjection struct {
 }
 
 type DistributedProjectionParams struct {
-	HornerVal field.Element
+	ScaledHorner                         field.Element
+	HashCumSumOnePrev, HashCumSumOneCurr field.Element
 }
 
 func NewDistributedProjection(round int, id ifaces.QueryID, inp []*DistributedProjectionInput) DistributedProjection {
@@ -60,8 +62,11 @@ func NewDistributedProjection(round int, id ifaces.QueryID, inp []*DistributedPr
 }
 
 // Constructor for distributed projection query parameters
-func NewDistributedProjectionParams(hornerVal field.Element) DistributedProjectionParams {
-	return DistributedProjectionParams{HornerVal: hornerVal}
+func NewDistributedProjectionParams(scaledHorner, hashCumSumOnePrev, hashCumSumOneCurr field.Element) DistributedProjectionParams {
+	return DistributedProjectionParams{
+		ScaledHorner:      scaledHorner,
+		HashCumSumOnePrev: hashCumSumOnePrev,
+		HashCumSumOneCurr: hashCumSumOneCurr}
 }
 
 // Name returns the unique identifier of the GrandProduct query.
@@ -71,7 +76,7 @@ func (dp DistributedProjection) Name() ifaces.QueryID {
 
 // Updates a Fiat-Shamir state
 func (dpp DistributedProjectionParams) UpdateFS(fs *fiatshamir.State) {
-	fs.Update(dpp.HornerVal)
+	fs.Update(dpp.ScaledHorner)
 }
 
 func (dp DistributedProjection) Check(run ifaces.Runtime) error {
@@ -117,8 +122,8 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 
 	}
 
-	if actualParam != params.HornerVal {
-		return fmt.Errorf("the distributed projection query %v is not satisfied, actualParam = %v, param.HornerVal = %v", dp.ID, actualParam, params.HornerVal)
+	if actualParam != params.ScaledHorner {
+		return fmt.Errorf("the projection query did not pass, actualParam = %v, queryParam = %v", actualParam, params.ScaledHorner)
 	}
 
 	return nil
