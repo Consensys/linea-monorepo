@@ -45,9 +45,9 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 			// factoring possibilities. There is also a bound on the loop to
 			// prevent infinite loops.
 			//
-			// The choice of 1000 is purely heuristic and is not meant to be
+			// The choice of 100 is purely heuristic and is not meant to be
 			// actually met.
-			for k := 0; k < 1000; k++ {
+			for k := 0; k < 100; k++ {
 				_, ok := new.Operator.(sym.LinComb)
 				if !ok {
 					return new
