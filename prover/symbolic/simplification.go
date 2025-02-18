@@ -133,6 +133,7 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 		opIsLinC        bool
 		numChildren     = len(children)
 		totalReturnSize = 0
+		needExpand      = false
 	)
 
 	switch op.(type) {
@@ -157,11 +158,13 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 		switch child.Operator.(type) {
 		case Product, *Product:
 			if opIsProd {
+				needExpand = true
 				totalReturnSize += len(children[i].Children)
 				continue
 			}
 		case LinComb, *LinComb:
 			if opIsLinC {
+				needExpand = true
 				totalReturnSize += len(children[i].Children)
 				continue
 			}
@@ -170,7 +173,7 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 		totalReturnSize++
 	}
 
-	if totalReturnSize == len(children) {
+	if !needExpand {
 		return magnitudes, children
 	}
 
@@ -215,7 +218,6 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 			for k := range child.Children {
 				expandedExpression = append(expandedExpression, child.Children[k])
 				expandedMagnitudes = append(expandedMagnitudes, magnitude*cLinC.Coeffs[k])
-
 			}
 			continue
 		}
