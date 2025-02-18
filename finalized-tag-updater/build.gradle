@@ -77,7 +77,7 @@ dependencies {
 }
 
 tasks.register('copyShadowJarToLocalBesu', Copy) {
-  def jarFileSuffix = "${project.version}" != 'unspecified' ? "${project.version}" : "all"
+  def jarFileSuffix = "${project.version}" != 'unspecified' ? "${project.version}" : "SNAPSHOT"
   def jarFiles = project.getLayout().buildDirectory.dir("libs").get()
       .asFileTree
       .filter { it.name.endsWith("-${jarFileSuffix}.jar") }
