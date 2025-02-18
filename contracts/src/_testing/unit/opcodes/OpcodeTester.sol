@@ -298,7 +298,7 @@ contract OpcodeTester {
     }
     bytes32[] memory blocksHashes = new bytes32[](endLookBack + 1);
 
-    for (uint8 i = 0; i <= endLookBack; i++) {
+    for (uint256 i = 0; i <= endLookBack; i++) {
       blocksHashes[i] = blockhash(block.number - i);
     }
     return blocksHashes;
