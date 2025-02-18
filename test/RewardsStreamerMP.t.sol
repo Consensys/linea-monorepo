@@ -2101,35 +2101,77 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
 
     function testRewardsBalanceOf() public {
         assertEq(streamer.totalRewardsSupply(), 0);
-
+        uint256 year = 365 days;
         uint256 initialTime = vm.getBlockTimestamp();
 
         _stake(alice, 100e18, 0);
-        assertEq(streamer.rewardsBalanceOf(vaults[alice]), 0);
-        assertEq(streamer.rewardsBalanceOf(vaults[bob]), 0);
 
         vm.prank(admin);
-        streamer.setReward(1000e18, 10 days);
+        streamer.setReward(1000e18, year);
+
+        assertEq(streamer.totalStaked(), 100e18);
+        assertEq(streamer.totalMPStaked(), 100e18);
+        assertEq(streamer.totalShares(), 200e18);
+        assertEq(streamer.totalRewardsSupply(), 0);
+        assertEq(streamer.totalMP(), 100e18);
+        assertEq(streamer.mpBalanceOf(vaults[alice]), 100e18);
+        assertEq(streamer.mpStakedOf(vaults[alice]), 100e18);
+        assertEq(streamer.vaultShares(vaults[alice]), 200e18);
         assertEq(streamer.rewardsBalanceOf(vaults[alice]), 0);
+        assertEq(streamer.mpBalanceOf(vaults[bob]), 0);
+        assertEq(streamer.mpStakedOf(vaults[bob]), 0);
+        assertEq(streamer.mpStakedOf(vaults[bob]), 0);
+        assertEq(streamer.vaultShares(vaults[bob]), 0);
         assertEq(streamer.rewardsBalanceOf(vaults[bob]), 0);
 
-        vm.warp(initialTime + 1 days);
-
-        assertEq(streamer.totalRewardsSupply(), 100e18, "Total rewards supply mismatch");
-        assertEq(streamer.rewardsBalanceOf(vaults[alice]), 100e18);
-        assertEq(streamer.rewardsBalanceOf(vaults[bob]), 0);
-
-        vm.warp(initialTime + 5 days);
+        vm.warp(initialTime + year / 2);
         _stake(bob, 100e18, 0);
 
-        assertEq(streamer.totalRewardsSupply(), 500e18, "Total rewards supply mismatch");
+        assertEq(streamer.totalStaked(), 200e18);
+        assertEq(streamer.totalMPStaked(), 200e18);
+        assertEq(streamer.totalShares(), 400e18);
+        assertEq(streamer.totalRewardsSupply(), 500e18);
+        // totalMP: 200 + 50 accrued by Alice (not stake yet)
+        assertEq(streamer.totalMP(), 250e18);
+        assertEq(streamer.mpBalanceOf(vaults[alice]), 150e18);
+        assertEq(streamer.mpStakedOf(vaults[alice]), 100e18);
+        assertEq(streamer.vaultShares(vaults[alice]), 200e18);
         assertEq(streamer.rewardsBalanceOf(vaults[alice]), 500e18);
+        assertEq(streamer.mpBalanceOf(vaults[bob]), 100e18);
+        assertEq(streamer.mpStakedOf(vaults[bob]), 100e18);
+        assertEq(streamer.vaultShares(vaults[bob]), 200e18);
         assertEq(streamer.rewardsBalanceOf(vaults[bob]), 0);
 
-        vm.warp(initialTime + 10 days);
+        vm.warp(initialTime + year);
 
-        assertEq(streamer.totalRewardsSupply(), 1000e18, "Total rewards supply mismatch");
+        assertEq(streamer.totalStaked(), 200e18);
+        assertEq(streamer.totalMPStaked(), 200e18);
+        assertEq(streamer.totalShares(), 400e18);
+        assertEq(streamer.totalRewardsSupply(), 1000e18);
+        assertEq(streamer.totalMP(), 350e18);
+        assertEq(streamer.mpBalanceOf(vaults[alice]), 200e18);
+        assertEq(streamer.mpStakedOf(vaults[alice]), 100e18);
+        assertEq(streamer.vaultShares(vaults[alice]), 200e18);
         assertEq(streamer.rewardsBalanceOf(vaults[alice]), 750e18);
+        assertEq(streamer.mpBalanceOf(vaults[bob]), 150e18);
+        assertEq(streamer.mpStakedOf(vaults[bob]), 100e18);
+        assertEq(streamer.vaultShares(vaults[bob]), 200e18);
+        assertEq(streamer.rewardsBalanceOf(vaults[bob]), 250e18);
+
+        vm.warp(initialTime + year * 2);
+
+        assertEq(streamer.totalStaked(), 200e18);
+        assertEq(streamer.totalMPStaked(), 200e18);
+        assertEq(streamer.totalShares(), 400e18);
+        assertEq(streamer.totalRewardsSupply(), 1000e18);
+        assertEq(streamer.totalMP(), 550e18);
+        assertEq(streamer.mpBalanceOf(vaults[alice]), 300e18);
+        assertEq(streamer.mpStakedOf(vaults[alice]), 100e18);
+        assertEq(streamer.vaultShares(vaults[alice]), 200e18);
+        assertEq(streamer.rewardsBalanceOf(vaults[alice]), 750e18);
+        assertEq(streamer.mpBalanceOf(vaults[bob]), 250e18);
+        assertEq(streamer.mpStakedOf(vaults[bob]), 100e18);
+        assertEq(streamer.vaultShares(vaults[bob]), 200e18);
         assertEq(streamer.rewardsBalanceOf(vaults[bob]), 250e18);
     }
 }
