@@ -64,7 +64,8 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
     }
     aggregationsAndBlobs = loadBlobsAndAggregationsSortedAndGrouped(
       blobsResponsesDir = "$testDataDir/compression/responses",
-      aggregationsResponsesDir = "$testDataDir/aggregation/responses"
+      aggregationsResponsesDir = "$testDataDir/aggregation/responses",
+      numberOfAggregations = 7
     )
     fakeExecutionLayerClient = FakeExecutionLayerClient(
       headBlock = BlockNumberAndHash(number = 0uL, hash = ByteArray(32) { 0 }),

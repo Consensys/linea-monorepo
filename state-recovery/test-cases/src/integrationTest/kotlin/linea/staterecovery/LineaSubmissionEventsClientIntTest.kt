@@ -57,7 +57,8 @@ class LineaSubmissionEventsClientIntTest {
     // load files from FS while smc deploy
     aggregationsAndBlobs = loadBlobsAndAggregationsSortedAndGrouped(
       blobsResponsesDir = "$testDataDir/compression/responses",
-      aggregationsResponsesDir = "$testDataDir/aggregation/responses"
+      aggregationsResponsesDir = "$testDataDir/aggregation/responses",
+      numberOfAggregations = 7
     )
     // wait smc deployment finishes
     rollupDeploymentResult = rollupDeploymentFuture.get()
