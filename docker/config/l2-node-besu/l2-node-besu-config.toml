@@ -56,3 +56,6 @@ plugin-linea-estimate-gas-min-margin="1.2"
 
 Xbonsai-limit-trie-logs-enabled=false
 bonsai-historical-block-limit=1024
+
+Xin-process-rpc-enabled=true
+Xin-process-rpc-apis=["ETH"]
