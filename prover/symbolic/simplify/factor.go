@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -197,11 +196,11 @@ func findGdChildrenGroup(expr *sym.Expression) map[uint64]*sym.Expression {
 // least one child with the given ESHash. The function allocates a new list
 // of parents and returns it without mutating he original list.
 func filterParentsWithChildren(
-	parents []*symbolic.Expression,
+	parents []*sym.Expression,
 	childEsh field.Element,
-) []*symbolic.Expression {
+) []*sym.Expression {
 
-	res := make([]*symbolic.Expression, 0, len(parents))
+	res := make([]*sym.Expression, 0, len(parents))
 	for _, p := range parents {
 		for _, c := range p.Children {
 			if c.ESHash == childEsh {
@@ -382,12 +381,4 @@ func optimRegroupExponents(
 	}
 
 	return exponentMap, sym.NewProduct(canonTermList, canonExponents)
-}
-
-func copyMap[K comparable, V any](m map[K]V) map[K]V {
-	res := make(map[K]V, len(m))
-	for k, v := range m {
-		res[k] = v
-	}
-	return res
 }
