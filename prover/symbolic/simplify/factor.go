@@ -112,7 +112,7 @@ func rankChildren(
 	// at the end of the factorization routine. The preallocation value is
 	// purely heuristic to avoid successive allocations.
 	relevantGdChildrenCnt := make(map[uint64]int, 100)
-	uniqueChildrenList := make([]*sym.Expression, 0)
+	uniqueChildrenList := make([]*sym.Expression, 0, 100)
 
 	for _, p := range parents {
 
@@ -163,16 +163,17 @@ func findGdChildrenGroup(expr *sym.Expression) map[uint64]*sym.Expression {
 	curParents := expr.Children
 	childrenSet := map[uint64]*sym.Expression{}
 
-	for {
-		ranked := rankChildren(curParents, childrenSet)
+	ranked := rankChildren(curParents, childrenSet)
 
-		// Can happen when we have a lincomb of lincomb. Ideally they should be
-		// merged during canonization.
-		if len(ranked) == 0 {
-			return childrenSet
-		}
+	// Can happen when we have a lincomb of lincomb. Ideally they should be
+	// merged during canonization.
+	if len(ranked) == 0 {
+		return childrenSet
+	}
 
-		best := ranked[0]
+	for i := range ranked {
+
+		best := ranked[i]
 		newChildrenSet := copyMap(childrenSet)
 		newChildrenSet[best.ESHash[0]] = best
 		newParents := getCommonProdParentOfCs(newChildrenSet, curParents)
@@ -189,6 +190,8 @@ func findGdChildrenGroup(expr *sym.Expression) map[uint64]*sym.Expression {
 			"find groups, so far we have %v parents and %v siblings",
 			len(curParents), len(childrenSet))
 	}
+
+	return childrenSet
 }
 
 // getCommonProdParentOfCs returns the parents that have all cs as children and
