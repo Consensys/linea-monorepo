@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import styles from "./skeleton-loader.module.scss";
 
 export default function SkeletonLoader() {
@@ -8,8 +9,8 @@ export default function SkeletonLoader() {
           <div className={styles["skeleton-item"]}>
             {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className={styles["skeleton-group"]}>
-                <div className={styles.skeleton} />
-                <div className={styles.skeleton} />
+                <div className={clsx(styles.skeleton, "pulsating")} />
+                <div className={clsx(styles.skeleton, "pulsating")} />
               </div>
             ))}
           </div>

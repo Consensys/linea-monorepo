@@ -4,28 +4,41 @@
   padding: 2.4rem;
 }
 
-.swap-chain-container {
-  position: absolute;
-  left: calc(50% - 1.2rem);
-  top: calc(50% - 1.2rem);
+.headline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1.6rem;
 
-  svg {
-    transform: rotate(90deg);
-    @include bp("tablet") {
-      transform: unset;
+  .title {
+    font-weight: 500;
+    font-size: 2rem;
+    color: var(--v2-color-black);
+  }
+
+  .action {
+    display: flex;
+    gap: 1.6rem;
+
+    .transaction-icon {
+      width: 2rem;
+      height: 2rem;
+      color: var(--v2-color-black);
     }
   }
+}
+
+.swap-chain-container {
+  position: absolute;
+  left: calc(50% - 1.6rem);
+  top: calc(50% - 1.6rem);
 }
 
 .exchange {
   position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
-
-  @include bp("tablet") {
-    flex-direction: row;
-  }
+  gap: 0.8rem;
 }
 
 .amount-wrapper {

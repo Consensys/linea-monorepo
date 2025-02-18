@@ -45,17 +45,4 @@
   height: 1rem;
   border-radius: 1rem;
   width: 100%;
-
-  background: linear-gradient(90deg, var(--v2-color-white) 25%, var(--v2-color-indigo) 50%, var(--v2-color-white) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 2.5s infinite linear;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
 }

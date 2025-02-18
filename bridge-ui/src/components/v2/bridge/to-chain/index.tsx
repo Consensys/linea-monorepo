@@ -12,9 +12,9 @@ export default function ToChain() {
   return (
     <>
       <button onClick={openModal} className={styles["to"]} type="button">
-        <Image src="/images/logo/linea-rounded.svg" width="40" height="40" alt="eth" />
+        <div className={styles["name"]}>To</div>
         <div className={styles["info"]}>
-          <div className={styles["info-name"]}>To</div>
+          <Image src="/images/logo/linea-rounded.svg" width="40" height="40" alt="eth" />
           <div className={styles["info-value"]}>Ethereum</div>
         </div>
       </button>

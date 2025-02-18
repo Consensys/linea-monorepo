@@ -106,6 +106,7 @@ export function Amount() {
 
   return (
     <div className={styles["amount"]}>
+      <p className={styles.title}>Send</p>
       <input
         id="amount-input"
         type="text"

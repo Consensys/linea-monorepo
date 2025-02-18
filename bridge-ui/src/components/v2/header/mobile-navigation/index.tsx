@@ -5,7 +5,7 @@ import Image from "next/image";
 import HeaderConnect from "@/components/v2/header/header-connect";
 
 import styles from "./mobile-navigation.module.scss";
-import { LineaLogo } from "../logos/LineaLogo";
+import LineaBridgeLogo from "@/assets/logos/linea-bridge.svg";
 import clsx from "clsx";
 
 type Props = {
@@ -60,7 +60,7 @@ export const MobileNavigation = ({ menus, theme = "default" }: Props) => {
           <div className={styles.content}>
             <div className={styles.actions}>
               <Link href="/" aria-label="Go to homepage">
-                <LineaLogo className={styles.logo} />
+                <LineaBridgeLogo className={styles.logo} />
               </Link>
               <button onClick={() => setIsOpen(false)}>
                 <svg

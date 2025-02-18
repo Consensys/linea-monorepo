@@ -1,0 +1,52 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-wrapper {
+  position: relative;
+  width: 4rem;
+  height: 4rem;
+}
+
+.big {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+}
+
+.small {
+  position: absolute;
+  width: 1.6rem;
+  height: 1.6rem;
+  bottom: 0;
+  right: 0;
+  border-radius: 50%;
+  border: 1px solid var(--v2-color-smoke);
+}
+
+.result {
+  display: flex;
+  gap: 0.8rem;
+  margin: 1.6rem 0;
+}
+
+.value {
+  min-width: 6.4rem;
+  min-height: 4rem;
+  border-radius: 0.6rem;
+}
+
+.estimate {
+  min-width: 6.4rem;
+  min-height: 1.7rem;
+  border-radius: 0.6rem;
+}
+
+.bottom {
+  min-height: 1.7rem;
+  min-width: 12rem;
+  border-radius: 0.6rem;
+  margin-top: 0.8rem;
+  display: inline-block;
+}

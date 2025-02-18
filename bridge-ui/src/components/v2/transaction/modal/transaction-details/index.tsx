@@ -51,7 +51,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
           </li>
         </ul>
         <Button onClick={handleClaim} fullWidth>
-          CLAIM
+          Claim
         </Button>
       </div>
     </Modal>

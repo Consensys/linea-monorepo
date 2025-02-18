@@ -1,13 +1,15 @@
 .swap-chain {
-  width: 2.4rem;
-  height: 2.4rem;
-  background-color: var(--v2-color-white);
+  width: 3.2rem;
+  height: 3.2rem;
+  background-color: var(--v2-color-smoke);
   display: flex;
   justify-content: center;
   align-items: center;
   border-radius: 100%;
-  border: 1px solid var(--v2-color-smoke);
-  transition: transform 0.2s ease;
+  border: 0.2rem solid var(--v2-color-white);
+  transition:
+    transform,
+    background-color 0.2s ease;
 
   &.rotate-360 {
     transform: rotate(360deg);
@@ -19,7 +21,7 @@
 }
 
 .arrow-icon {
-  width: 1rem;
+  width: 1.2rem;
   height: auto;
   color: var(--v2-color-black);
 }

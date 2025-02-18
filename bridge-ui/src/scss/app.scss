@@ -27,13 +27,9 @@
 }
 
 html[data-theme="v2"] {
-  font-size: 10px;
+  font-size: math.div(1000vw, 414);
 
-  @include bp("tablet") {
-    font-size: math.div(1000vw, 834);
-  }
-
-  @include bp("desktop") {
+  @media (min-width: 414px) {
     font-size: 10px;
   }
 
@@ -112,5 +108,18 @@ html[data-theme="v2"] {
     &.hidden {
       display: none !important;
     }
+  }
+}
+
+.pulsating {
+  animation: pulsate 1s infinite alternate;
+}
+
+@keyframes pulsate {
+  0% {
+    background-color: var(--v2-color-smoke);
+  }
+  100% {
+    background-color: #ecece8;
   }
 }

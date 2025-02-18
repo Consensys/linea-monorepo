@@ -4,7 +4,7 @@
   padding: 1.6rem;
   width: 100%;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 0.8rem;
   transition: box-shadow 0.25s ease-in-out;
   cursor: pointer;
@@ -19,16 +19,20 @@
   }
 }
 
-.info {
+.name {
+  font-family: var(--font-atyp-text);
+  font-size: 1.4rem;
+  color: var(--v2-color-black);
   text-align: initial;
+  font-weight: 500;
+}
+
+.info {
   font-family: var(--font-atyp-text);
   line-height: 1;
-
-  .info-name {
-    font-size: 1.4rem;
-    color: var(--v2-color-darker-gray);
-    margin-bottom: 0.8rem;
-  }
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
 
   .info-value {
     font-size: 1.6rem;

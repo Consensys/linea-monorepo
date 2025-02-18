@@ -8,13 +8,11 @@
   text-decoration: none;
   transition: background-color 0.25s ease-in-out;
 
-  &.active,
-  &:hover {
-    background-color: var(--v2-color-icterine);
+  &.active {
+    background-color: var(--v2-color-indigo);
+    color: var(--v2-color-white);
   }
-
-  svg {
-    width: 1.6rem;
-    height: 1.6rem;
+  &:hover:not(.active) {
+    background-color: var(--v2-color-icterine);
   }
 }

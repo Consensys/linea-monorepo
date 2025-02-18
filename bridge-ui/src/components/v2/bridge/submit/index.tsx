@@ -5,12 +5,18 @@ import { NetworkLayer } from "@/config";
 import { useBridge } from "@/hooks";
 import { useChainStore } from "@/stores/chainStore";
 import Button from "@/components/v2/ui/button";
+import WalletIcon from "@/assets/icons/wallet.svg";
+import DestinationAddress from "@/components/v2/bridge/modal/destination-address";
+import { useState } from "react";
+import styles from "./submit.module.scss";
 
 type Props = {
   disabled?: boolean;
 };
 
 export function Submit({ disabled = false }: Props) {
+  const [showChangeAddressModal, setShowChangeAddressModal] = useState<boolean>(false);
+
   // Form
   const { watch, formState } = useFormContext();
   const { errors } = formState;
@@ -47,9 +53,23 @@ export function Submit({ disabled = false }: Props) {
       ? "Bridge anyway"
       : "Bridge";
 
+  const handleCloseModal = () => {
+    setShowChangeAddressModal(false);
+  };
+
   return (
-    <Button disabled={disabled} fullWidth>
-      Bridge
-    </Button>
+    <div className={styles.container}>
+      <Button disabled={disabled} fullWidth>
+        Review Bridge
+      </Button>
+      <button type="button" className={styles["wallet-icon"]} onClick={() => setShowChangeAddressModal(true)}>
+        <WalletIcon />
+      </button>
+      <DestinationAddress
+        isModalOpen={showChangeAddressModal}
+        onCloseModal={handleCloseModal}
+        defaultAddress="0xE9493bF17dyhxzkD23dE93F17hdyh73"
+      />
+    </div>
   );
 }

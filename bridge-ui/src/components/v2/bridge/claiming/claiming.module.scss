@@ -1,8 +1,13 @@
 .wrapper {
   margin-top: 1rem;
-  border: 1px solid var(--v2-color-silver);
+  background-color: var(--v2-color-smoke);
   border-radius: 1rem;
   padding: 1.6rem;
+  transition: box-shadow 0.25s ease-in-out;
+
+  &:hover {
+    box-shadow: inset 0 0 0 0.2rem var(--v2-color-icterine);
+  }
 }
 
 .setting {
@@ -24,7 +29,9 @@
   font-family: var(--font-atyp-text);
 
   .title {
-    color: var(--v2-color-darker-gray);
+    color: var(--v2-color-black);
+    font-size: 1.4rem;
+    font-weight: 500;
   }
   .config {
     display: flex;
@@ -53,19 +60,13 @@
 .estimate {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.8rem;
   font-size: 1.2rem;
   font-family: var(--font-atyp-text);
 
-  & > * {
-    padding: 0.4rem 0.8rem;
-    background-color: var(--v2-color-smoke);
-    border-radius: 1rem;
-
-    svg {
-      width: 1.2rem;
-      height: 1.2rem;
-    }
+  svg {
+    width: 1.2rem;
+    height: 1.2rem;
   }
 
   .time {
@@ -75,10 +76,14 @@
     cursor: pointer;
     color: var(--v2-color-darker-gray);
     font-size: inherit;
+    font-weight: 500;
+
+    span {
+      color: var(--v2-color-black);
+    }
   }
 
   .manual {
-    background-color: #fff1e9;
     color: var(--v2-color-dark-red);
     display: flex;
     align-items: center;
