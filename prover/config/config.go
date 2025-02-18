@@ -114,8 +114,8 @@ type Config struct {
 	// LIMITLESS PROVER Components
 	ExecBootstrap      Execution `mapstructure:"execution_bootstrap"`
 	ExecGL             Execution `mapstructure:"execution_gl"`
-	ExecLPP            Execution `mapstructure:"execution_lpp"`
 	ExecRndBeacon      Execution `mapstructure:"execution_rndbeacon"`
+	ExecLPP            Execution `mapstructure:"execution_lpp"`
 	ExecConglomeration Execution `mapstructure:"execution_conglomeration"`
 
 	Debug struct {

@@ -188,42 +188,6 @@ func setupLimitlessFsTest(t *testing.T) (confM, confL *config.Config) {
 		execConglomeration                  = "execution"
 	)
 
-	/*
-		// Create a configuration using temporary directories
-		// Defines three command templates for different types of jobs.
-		// These templates will be used to create shell commands for the worker processes.
-		cmd := `
-			/bin/sh {{index .InFile 0}}
-			CODE=$?
-			if [ $CODE -eq 0 ]; then
-				touch {{index .OutFile 0}}
-				touch {{index .OutFile 1}}
-			fi
-			exit $CODE
-			`
-		cmdLarge := `
-			/bin/sh {{index .InFile 0}}
-			CODE=$?
-			CODE=$(($CODE - 12))
-			if [ $CODE -eq 0 ]; then
-				touch {{index .OutFile 0}}
-				touch {{index .OutFile 1}}
-			fi
-			exit $CODE
-			`
-
-		cmdLargeInternal := `
-			/bin/sh {{index .InFile 0}}
-			CODE=$?
-			CODE=$(($CODE - 10))
-			if [ $CODE -eq 0 ]; then
-				touch {{index .OutFile 0}}
-				touch {{index .OutFile 1}}
-			fi
-			exit $CODE
-			`
-	*/
-
 	cmd := `
 		{{- range .InFile }}
 		/bin/sh {{ . }}
