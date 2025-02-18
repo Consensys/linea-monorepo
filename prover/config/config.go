@@ -146,22 +146,6 @@ type Config struct {
 	TracesLimitsLarge TracesLimits `mapstructure:"traces_limits_large" validate:"required"`
 }
 
-type Conglomeration struct {
-	GL WithRequestDir `mapstructure:",squash"`
-
-	LPP WithRequestDir `mapstructure:",squash"`
-
-	BootstrapMetadata WithRequestDir `mapstructure:",squash"`
-
-	WithResponseDir `mapstructure:",squash"`
-
-	// ProverMode stores the kind of prover to use.
-	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only encode-only"`
-
-	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
-	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
-}
-
 func (cfg *Config) Logger() *logrus.Logger {
 	// TODO @gbotrel revisit.
 	return logrus.StandardLogger()

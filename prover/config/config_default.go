@@ -30,19 +30,26 @@ func setDefaultValues() {
 	viper.SetDefault("controller.retry_locally_with_large_codes", DefaultRetryLocallyWithLargeCodes)
 
 	// Set default for cmdTmpl and cmdLargeTmpl
-	// TODO @gbotrel binary to run prover is hardcoded here.
 	viper.SetDefault("controller.worker_cmd_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}")
 	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
 }
 
 func setDefaultPaths() {
 	viper.SetDefault("execution.conflated_traces_dir", "/shared/traces/conflated")
-	viper.SetDefault("execution.requests_root_dir", "/shared/prover-execution")
-	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/prover-compression")
-	viper.SetDefault("aggregation.requests_root_dir", "/shared/prover-aggregation")
+	viper.SetDefault("execution.requests_root_dir", []string{"/shared/prover-execution"})
+	viper.SetDefault("blob_decompression.requests_root_dir", []string{"/shared/prover-compression"})
+	viper.SetDefault("aggregation.requests_root_dir", []string{"/shared/prover-aggregation"})
+	viper.SetDefault("execution.responses_root_dir", []string{"/shared/prover-execution"})
+	viper.SetDefault("blob_decompression.responses_root_dir", []string{"/shared/prover-compression"})
+	viper.SetDefault("aggregation.responses_root_dir", []string{"/shared/prover-aggregation"})
 
-	// TODO: @srinathLN7 Add Limitless prover default values
-	viper.SetDefault("execution_bootstrap.requests_root_dir", "/shared/prover-execution/limitless/bootstrap")
+	// PLACEHOLDER for default request and response dirs - Subjected to change
+	// TODO @srinathln7: Implement a simple mechanism to introduce the chaining effect here i.e. move the response files
+	// in response dir from prev. job to req dir of the next job. FIND the optimal way to implement this
+	viper.SetDefault("execution_bootstrap.requests_root_dir", []string{"/shared/prover-execution/limitless/bootstrap"})
+	viper.SetDefault("execution_bootstrap.responses_root_dir", []string{"/shared/prover-execution/limitless/bootstrap/gl",
+		"/shared/prover-execution/limitless/bootstrap/metadata",
+	})
 
 }
 
