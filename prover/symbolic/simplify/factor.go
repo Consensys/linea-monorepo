@@ -6,7 +6,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -102,7 +101,7 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 // children that are already in the children set.
 func rankChildren(
 	parents []*sym.Expression,
-	childrenSet map[field.Element]*sym.Expression,
+	childrenSet map[uint64]*sym.Expression,
 ) []*sym.Expression {
 
 	// List all the grand-children of the expression whose parents are
@@ -131,7 +130,7 @@ func rankChildren(
 
 			// If it's in the group, it does not count. We can't add it a second
 			// time.
-			if _, ok := childrenSet[c.ESHash]; ok {
+			if _, ok := childrenSet[c.ESHash[0]]; ok {
 				continue
 			}
 
@@ -159,10 +158,10 @@ func rankChildren(
 // than one parent. The finding is based on a greedy algorithm. We iteratively
 // add nodes in the group so that the number of common parents decreases as
 // slowly as possible.
-func findGdChildrenGroup(expr *sym.Expression) map[field.Element]*sym.Expression {
+func findGdChildrenGroup(expr *sym.Expression) map[uint64]*sym.Expression {
 
 	curParents := expr.Children
-	childrenSet := map[field.Element]*sym.Expression{}
+	childrenSet := map[uint64]*sym.Expression{}
 
 	for {
 		ranked := rankChildren(curParents, childrenSet)
@@ -175,7 +174,7 @@ func findGdChildrenGroup(expr *sym.Expression) map[field.Element]*sym.Expression
 
 		best := ranked[0]
 		newChildrenSet := copyMap(childrenSet)
-		newChildrenSet[best.ESHash] = best
+		newChildrenSet[best.ESHash[0]] = best
 		newParents := getCommonProdParentOfCs(newChildrenSet, curParents)
 
 		// Can't grow the set anymore
@@ -196,7 +195,7 @@ func findGdChildrenGroup(expr *sym.Expression) map[field.Element]*sym.Expression
 // that are themselves children of gdp (grandparent). The parents must be of
 // type product however.
 func getCommonProdParentOfCs(
-	cs map[field.Element]*sym.Expression,
+	cs map[uint64]*sym.Expression,
 	parents []*sym.Expression,
 ) []*sym.Expression {
 
@@ -217,7 +216,7 @@ func getCommonProdParentOfCs(
 				continue
 			}
 
-			if _, inside := cs[c.ESHash]; inside {
+			if _, inside := cs[c.ESHash[0]]; inside {
 				// logrus.Tracef("%v contains %v", p.ESHash.String(), c.ESHash.String())
 				founds[c.ESHash[0]] = struct{}{}
 			}
@@ -235,7 +234,7 @@ func getCommonProdParentOfCs(
 // determine the best common factor.
 func factorLinCompFromGroup(
 	lincom *sym.Expression,
-	group map[field.Element]*sym.Expression,
+	group map[uint64]*sym.Expression,
 ) *sym.Expression {
 
 	var (
@@ -299,7 +298,7 @@ func factorLinCompFromGroup(
 //
 // Fortunately, this is guaranteed if the expression was constructed via
 // [sym.NewLinComb] or [sym.NewProduct] which is almost mandatory.
-func isFactored(e *sym.Expression, exponentsOfGroup map[field.Element]int) (
+func isFactored(e *sym.Expression, exponentsOfGroup map[uint64]int) (
 	factored *sym.Expression,
 	success bool,
 ) {
@@ -314,7 +313,7 @@ func isFactored(e *sym.Expression, exponentsOfGroup map[field.Element]int) (
 
 	numMatches := 0
 	for i, c := range e.Children {
-		eig, found := exponentsOfGroup[c.ESHash]
+		eig, found := exponentsOfGroup[c.ESHash[0]]
 		if !found {
 			continue
 		}
@@ -339,13 +338,13 @@ func isFactored(e *sym.Expression, exponentsOfGroup map[field.Element]int) (
 // have the whole group as children.
 func optimRegroupExponents(
 	parents []*sym.Expression,
-	group map[field.Element]*sym.Expression,
+	group map[uint64]*sym.Expression,
 ) (
-	exponentMap map[field.Element]int,
+	exponentMap map[uint64]int,
 	groupedTerm *sym.Expression,
 ) {
 
-	exponentMap = make(map[field.Element]int, 16)
+	exponentMap = make(map[uint64]int, 16)
 	canonTermList := make([]*sym.Expression, 0, 16) // built in deterministic order
 
 	for _, p := range parents {
@@ -358,10 +357,10 @@ func optimRegroupExponents(
 
 		// Used to sanity-check that all the nodes of the group have been
 		// reached through this parent.
-		matched := make(map[field.Element]int, len(p.Children))
+		matched := make(map[uint64]int, len(p.Children))
 
 		for i, c := range p.Children {
-			if _, ingroup := group[c.ESHash]; !ingroup {
+			if _, ingroup := group[c.ESHash[0]]; !ingroup {
 				continue
 			}
 
@@ -369,16 +368,16 @@ func optimRegroupExponents(
 				panic("The expression is not canonic")
 			}
 
-			_, initialized := exponentMap[c.ESHash]
+			_, initialized := exponentMap[c.ESHash[0]]
 			if !initialized {
 				// Max int is used as a placeholder. It will be replaced anytime
 				// we wall utils.Min(exponentMap[h], n) where n is actually an
 				// exponent.
-				exponentMap[c.ESHash] = math.MaxInt
+				exponentMap[c.ESHash[0]] = math.MaxInt
 				canonTermList = append(canonTermList, c)
 			}
 
-			matched[c.ESHash] = exponents[i]
+			matched[c.ESHash[0]] = exponents[i]
 		}
 
 		if len(matched) != len(group) {
@@ -395,7 +394,7 @@ func optimRegroupExponents(
 
 	canonExponents := []int{}
 	for _, e := range canonTermList {
-		canonExponents = append(canonExponents, exponentMap[e.ESHash])
+		canonExponents = append(canonExponents, exponentMap[e.ESHash[0]])
 	}
 
 	return exponentMap, sym.NewProduct(canonTermList, canonExponents)
