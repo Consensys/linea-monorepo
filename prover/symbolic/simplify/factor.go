@@ -112,8 +112,8 @@ func rankChildren(
 	// The risk if it happens is that it gets caught by the validation checks
 	// at the end of the factorization routine. The preallocation value is
 	// purely heuristic to avoid successive allocations.
-	relevantGdChildrenCnt := make(map[uint64]int, 100)
-	uniqueChildrenList := make([]*sym.Expression, 0, 100)
+	var relevantGdChildrenCnt map[uint64]int
+	var uniqueChildrenList []*sym.Expression
 
 	for _, p := range parents {
 
@@ -133,6 +133,11 @@ func rankChildren(
 			// time.
 			if _, ok := childrenSet[c.ESHash[0]]; ok {
 				continue
+			}
+
+			if relevantGdChildrenCnt == nil {
+				relevantGdChildrenCnt = make(map[uint64]int, len(parents)+2)
+				uniqueChildrenList = make([]*sym.Expression, 0, len(parents)+2)
 			}
 
 			if _, ok := relevantGdChildrenCnt[c.ESHash[0]]; !ok {
