@@ -12,7 +12,6 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class LineaSubmissionEventsClientImpl(
   private val logsSearcher: EthLogsSearcher,
   private val smartContractAddress: String,
-  private val l1EarliestSearchBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
   private val l1LatestSearchBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
   private val logsBlockChunkSize: Int
 ) : LineaRollupSubmissionEventsClient {
@@ -39,16 +38,6 @@ class LineaSubmissionEventsClientImpl(
         }
       }
     ).thenApply { it?.let { DataFinalizedV3.fromEthLog(it) } }
-  }
-
-  override fun findDataFinalizedEventByStartBlockNumber(
-    l2StartBlockNumberInclusive: ULong
-  ): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
-    return findDataFinalizedV3Event(
-      fromL1BlockNumber = l1EarliestSearchBlock,
-      toL1BlockNumber = l1LatestSearchBlock,
-      startBlockNumber = l2StartBlockNumberInclusive
-    )
   }
 
   override fun findFinalizationAndDataSubmissionV3Events(

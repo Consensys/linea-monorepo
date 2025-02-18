@@ -7,6 +7,7 @@ import linea.staterecovery.BlockFromL1RecoveredData
 import linea.staterecovery.FinalizationAndDataEventsV3
 import linea.staterecovery.LineaRollupSubmissionEventsClient
 import linea.staterecovery.TransactionDetailsClient
+import net.consensys.linea.BlockParameter
 import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -32,6 +33,7 @@ data class SubmissionEventsAndData<T>(
 
 class SubmissionsFetchingTask(
   private val vertx: Vertx,
+  private val l1EarliestBlockWithFinalizationThatSupportRecovery: BlockParameter,
   private val l1PollingInterval: Duration,
   private val l2StartBlockNumberToFetchInclusive: ULong,
   private val submissionEventsClient: LineaRollupSubmissionEventsClient,
@@ -76,6 +78,7 @@ class SubmissionsFetchingTask(
 
   private val submissionEventsFetchingTask = SubmissionEventsFetchingTask(
     vertx = vertx,
+    l1EarliestBlockWithFinalizationThatSupportRecovery = l1EarliestBlockWithFinalizationThatSupportRecovery,
     l1PollingInterval = l1PollingInterval,
     submissionEventsClient = submissionEventsClient,
     l2StartBlockNumber = l2StartBlockNumberToFetchInclusive,

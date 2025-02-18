@@ -108,7 +108,6 @@ class SubmissionsFetchingTaskIntTest {
     val l1EventsClient = LineaSubmissionEventsClientImpl(
       logsSearcher = appClients.ethLogsSearcher,
       smartContractAddress = appClients.lineaContractClient.contractAddress,
-      l1EarliestSearchBlock = BlockParameter.Tag.EARLIEST,
       l1LatestSearchBlock = BlockParameter.Tag.LATEST,
       logsBlockChunkSize = 5000
     )
@@ -120,6 +119,7 @@ class SubmissionsFetchingTaskIntTest {
 
     return SubmissionsFetchingTask(
       vertx = vertx,
+      l1EarliestBlockWithFinalizationThatSupportRecovery = BlockParameter.Tag.EARLIEST,
       l1PollingInterval = 10.milliseconds,
       l2StartBlockNumberToFetchInclusive = l2StartBlockNumber,
       submissionEventsClient = l1EventsClient,

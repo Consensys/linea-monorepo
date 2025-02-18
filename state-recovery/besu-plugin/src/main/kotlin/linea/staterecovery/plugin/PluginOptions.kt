@@ -14,6 +14,7 @@ data class PluginConfig(
   val l1Endpoint: URI,
   val l1PollingInterval: kotlin.time.Duration,
   val l1GetLogsChunkSize: UInt,
+  val l1EarliestSearchBlock: BlockParameter,
   val l1HighestSearchBlock: BlockParameter,
   val l1RequestSuccessBackoffDelay: kotlin.time.Duration,
   val l1RequestRetryConfig: RetryConfig,
@@ -74,6 +75,18 @@ class PluginCliOptions {
     required = false
   )
   var l1GetLogsChunkSize: Int = 10_000
+
+  @CommandLine.Option(
+    names = ["--$cliOptionsPrefix-l1-earliest-search-block"],
+    defaultValue = "EARLIEST",
+    description = [
+      "Earliest L1 Block to search for new finalizations on startup.",
+      "Optional, if defined it shall match L1 block with 1st finalization that supports recovery."
+    ],
+    converter = [BlockParameterConverter::class],
+    required = false
+  )
+  var l1EarliestSearchBlock: BlockParameter = BlockParameter.Tag.EARLIEST
 
   @CommandLine.Option(
     names = ["--$cliOptionsPrefix-l1-highest-search-block"],
@@ -198,6 +211,7 @@ class PluginCliOptions {
       l1Endpoint = l1RpcEndpoint,
       l1PollingInterval = l1PollingInterval.toKotlinDuration(),
       l1GetLogsChunkSize = l1GetLogsChunkSize.toUInt(),
+      l1EarliestSearchBlock = l1EarliestSearchBlock,
       l1HighestSearchBlock = l1HighestSearchBlock,
       l1RequestSuccessBackoffDelay = l1RequestSuccessBackoffDelay?.toKotlinDuration() ?: 1.milliseconds,
       l1RequestRetryConfig = RetryConfig(

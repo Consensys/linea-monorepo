@@ -107,6 +107,7 @@ open class LineaStateRecoveryPlugin : BesuPlugin {
         appConfig = StateRecoveryApp.Config(
           smartContractAddress = config.l1SmartContractAddress.toString(),
           l1getLogsChunkSize = config.l1GetLogsChunkSize,
+          l1EarliestSearchBlock = config.l1EarliestSearchBlock,
           l1LatestSearchBlock = config.l1HighestSearchBlock,
           l1PollingInterval = config.l1PollingInterval,
           overridingRecoveryStartBlockNumber = config.overridingRecoveryStartBlockNumber,

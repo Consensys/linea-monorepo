@@ -42,6 +42,9 @@
     <Logger name="linea.plugin.staterecovery.clients.l1" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
+    <Logger name="linea.plugin.staterecovery.clients.l1.logs-searcher" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
     <Logger name="linea.plugin.staterecovery.clients.l1.transaction-details" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>

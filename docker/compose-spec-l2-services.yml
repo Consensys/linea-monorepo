@@ -626,7 +626,8 @@ services:
         --plugin-shomei-http-host="11.11.11.117" \
         --plugin-shomei-http-port=8888 \
         --plugin-staterecovery-l1-endpoint=http://l1-el-node:8545 \
-        --plugin-staterecovery-l1-polling-interval=PT0.01S \
+        --plugin-staterecovery-l1-polling-interval=PT1S \
+        --plugin-staterecovery-l1-earliest-search-block=EARLIEST \
         --plugin-staterecovery-l1-highest-search-block=LATEST \
         --plugin-staterecovery-shomei-endpoint=http://shomei-sr:8888 \
         --plugin-staterecovery-blobscan-endpoint=http://blobscan-api:4001 \

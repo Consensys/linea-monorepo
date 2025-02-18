@@ -18,6 +18,7 @@ import kotlin.time.Duration
 internal class SubmissionEventsFetchingTask(
   private val vertx: Vertx,
   private val l1PollingInterval: Duration,
+  private val l1EarliestBlockWithFinalizationThatSupportRecovery: BlockParameter,
   private val l2StartBlockNumber: ULong,
   private val submissionEventsClient: LineaRollupSubmissionEventsClient,
   private val submissionEventsQueue: ConcurrentLinkedQueue<FinalizationAndDataEventsV3>,
@@ -86,9 +87,7 @@ internal class SubmissionEventsFetchingTask(
       )
       submissionEventsClient
         .findFinalizationAndDataSubmissionV3EventsContainingL2BlockNumber(
-          // FIXME: fromL1BlockNumber needs be be adjusted to
-          // earliest block number with blobs that support state recovery
-          fromL1BlockNumber = BlockParameter.Tag.EARLIEST,
+          fromL1BlockNumber = l1EarliestBlockWithFinalizationThatSupportRecovery,
           l2BlockNumber = l2StartBlockNumber
         )
     }

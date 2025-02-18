@@ -52,14 +52,21 @@ class Web3JLogsSearcher(
 
     return getAbsoluteBlockNumbers(fromBlock, toBlock)
       .thenCompose { (start, end) ->
-        findLogLoop(
-          start,
-          end,
-          chunkSize,
-          address,
-          topics,
-          shallContinueToSearch
-        )
+        if (start > end) {
+          // this is to prevent edge case when fromBlock number is after toBlock=LATEST/FINALIZED
+          SafeFuture.failedFuture(
+            IllegalStateException("invalid range: fromBlock=$fromBlock is after toBlock=$toBlock ($end)")
+          )
+        } else {
+          findLogLoop(
+            start,
+            end,
+            chunkSize,
+            address,
+            topics,
+            shallContinueToSearch
+          )
+        }
       }
   }
 

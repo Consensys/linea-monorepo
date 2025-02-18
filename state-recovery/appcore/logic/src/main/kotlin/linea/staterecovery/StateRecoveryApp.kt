@@ -28,7 +28,7 @@ class StateRecoveryApp(
   private val transactionDetailsClient: TransactionDetailsClient,
   private val blockHeaderStaticFields: BlockHeaderStaticFields,
   // configs
-  private val config: Config = Config.lineaMainnet
+  private val config: Config
 ) : LongRunningService {
   data class Config(
     val smartContractAddress: String,
@@ -53,7 +53,7 @@ class StateRecoveryApp(
         l1LatestSearchBlock = BlockParameter.Tag.FINALIZED,
         l1PollingInterval = 12.seconds,
         l1getLogsChunkSize = 10_000u,
-        executionClientPollingInterval = 10.seconds
+        executionClientPollingInterval = 2.seconds
       )
       val lineaSepolia = Config(
         smartContractAddress = "0xb218f8a4bc926cf1ca7b3423c154a0d627bdb7e5",
@@ -61,7 +61,7 @@ class StateRecoveryApp(
         l1LatestSearchBlock = BlockParameter.Tag.FINALIZED,
         l1PollingInterval = 12.seconds,
         l1getLogsChunkSize = 10_000u,
-        executionClientPollingInterval = 10.seconds
+        executionClientPollingInterval = 2.seconds
       )
     }
   }
@@ -75,7 +75,6 @@ class StateRecoveryApp(
   private val l1EventsClient = LineaSubmissionEventsClientImpl(
     logsSearcher = ethLogsSearcher,
     smartContractAddress = config.smartContractAddress,
-    l1EarliestSearchBlock = config.l1EarliestSearchBlock,
     l1LatestSearchBlock = config.l1LatestSearchBlock,
     logsBlockChunkSize = config.l1getLogsChunkSize.toInt()
   )
@@ -93,6 +92,7 @@ class StateRecoveryApp(
   )
   private val stateSynchronizerService = StateSynchronizerService(
     vertx = vertx,
+    l1EarliestBlockWithFinalizationThatSupportRecovery = config.l1EarliestSearchBlock,
     elClient = elClient,
     submissionEventsClient = l1EventsClient,
     blobsFetcher = blobFetcher,

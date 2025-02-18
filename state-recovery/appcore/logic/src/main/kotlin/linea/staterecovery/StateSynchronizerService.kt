@@ -13,6 +13,7 @@ import kotlin.time.Duration
 
 class StateSynchronizerService(
   private val vertx: Vertx,
+  private val l1EarliestBlockWithFinalizationThatSupportRecovery: BlockParameter,
   private val elClient: ExecutionLayerClient,
   private val submissionEventsClient: LineaRollupSubmissionEventsClient,
   private val blobsFetcher: BlobFetcher,
@@ -38,7 +39,7 @@ class StateSynchronizerService(
   private var lookbackHashesInitalized = false
 
   override fun start(): SafeFuture<Unit> {
-    log.debug("starting L1 -> El state importer service")
+    log.debug("starting L1 -> ExecutionLayer state importer service")
     return this.elClient
       .lineaGetStateRecoveryStatus()
       .thenCompose { status ->
@@ -50,6 +51,7 @@ class StateSynchronizerService(
 
         this.blobsFetcherTask = SubmissionsFetchingTask(
           vertx = vertx,
+          l1EarliestBlockWithFinalizationThatSupportRecovery = l1EarliestBlockWithFinalizationThatSupportRecovery,
           l1PollingInterval = pollingInterval,
           l2StartBlockNumberToFetchInclusive = l2StartBlockNumberToFetchInclusive,
           submissionEventsClient = submissionEventsClient,
@@ -66,9 +68,9 @@ class StateSynchronizerService(
       .thenCompose { initLookbackHashes() }
       .thenCompose { super.start() }
       .whenException {
-        log.error("failed to start  L1 -> El state importer service", it)
+        log.error("failed to start L1 -> ExecutionLayer state importer service", it)
       }.whenSuccess {
-        log.debug("started L1 -> ExecutionLayer state recovery service")
+        log.debug("started L1 -> ExecutionLayer state importer service")
       }
   }
 

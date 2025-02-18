@@ -128,10 +128,6 @@ data class FinalizationAndDataEventsV3(
 )
 
 interface LineaRollupSubmissionEventsClient {
-  fun findDataFinalizedEventByStartBlockNumber(
-    l2StartBlockNumberInclusive: ULong
-  ): SafeFuture<EthLogEvent<DataFinalizedV3>?>
-
   fun findFinalizationAndDataSubmissionV3Events(
     fromL1BlockNumber: BlockParameter,
     finalizationStartBlockNumber: ULong

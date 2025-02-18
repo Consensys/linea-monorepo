@@ -66,5 +66,9 @@ sealed interface BlockParameter {
     override fun getNumber(): ULong {
       return parameter
     }
+
+    override fun toString(): String {
+      return parameter.toString()
+    }
   }
 }

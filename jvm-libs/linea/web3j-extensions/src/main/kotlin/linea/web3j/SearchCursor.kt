@@ -28,6 +28,10 @@ internal class SearchCursor(
   val to: ULong,
   val chunkSize: Int
 ) {
+  init {
+    require(from <= to) { "invalid range: from=$from must be less or equal to=$to" }
+    require(chunkSize > 0) { "chunkSize=$chunkSize must be greater than 0" }
+  }
   private data class Chunk(val interval: Pair<ULong, ULong>, var searched: Boolean = false)
 
   private val searchChunks = rangeChunks(from, to, chunkSize)
