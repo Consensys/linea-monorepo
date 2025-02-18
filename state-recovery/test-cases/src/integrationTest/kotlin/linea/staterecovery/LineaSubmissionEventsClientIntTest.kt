@@ -101,7 +101,6 @@ class LineaSubmissionEventsClientIntTest {
         log = log
       ),
       smartContractAddress = contractAddress,
-      l1EarliestSearchBlock = BlockParameter.Tag.EARLIEST,
       l1LatestSearchBlock = BlockParameter.Tag.LATEST,
       logsBlockChunkSize = 100
     )
