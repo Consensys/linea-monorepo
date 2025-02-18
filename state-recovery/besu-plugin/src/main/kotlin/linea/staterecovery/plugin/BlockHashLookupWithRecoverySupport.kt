@@ -47,8 +47,12 @@ class BlockHashLookupWithRecoverySupport(
   }
 
   fun pruneLookBackHashes(headBlockNumber: ULong) {
+    if (headBlockNumber <= lookbackWindow) return
+
     lookbackHashesMap.keys.removeIf {
-      it <= headBlockNumber.minusCoercingUnderflow(lookbackWindow)
+      // <= would wrongly remove block 0 while headBlockNumber < lookBackWindow,
+      // we keep 1 block more that we need, but it's fine
+      it < headBlockNumber.minusCoercingUnderflow(lookbackWindow)
     }
   }
 
