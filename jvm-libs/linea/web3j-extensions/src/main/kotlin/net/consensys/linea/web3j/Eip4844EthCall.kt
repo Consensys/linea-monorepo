@@ -35,11 +35,7 @@ class Eip4844Transaction(
   val blobVersionedHashes: List<Bytes> = computeVersionedHashesFromBlobs(blobs)
 ) : Transaction(from, nonce, gasPrice, gasLimit, to, value, data, chainId, maxPriorityFeePerGas, maxFeePerGas) {
   @Suppress("Unused")
-  val maxFeePerBlobGas: String? = if (_maxFeePerBlobGas != null) {
-    Numeric.encodeQuantity(_maxFeePerBlobGas)
-  } else {
-    null
-  }
+  val maxFeePerBlobGas: String? = _maxFeePerBlobGas?.let { Numeric.encodeQuantity(it) }
   companion object {
     fun computeVersionedHashesFromBlobs(blobs: List<Blob>): List<Bytes> {
       return blobs.map(BlobUtils::getCommitment).map(BlobUtils::kzgToVersionedHash)
