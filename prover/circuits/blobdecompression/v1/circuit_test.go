@@ -11,10 +11,9 @@ import (
 
 func TestFPIConsistency(t *testing.T) {
 	fpi := FunctionalPublicInput{
-		Y:              [2][]byte{{3}, {4}},
-		SnarkHash:      []byte{6},
-		Eip4844Enabled: true,
-		BatchSums:      [][]byte{{7}, {8}, {9}},
+		Y:         [2][]byte{{3}, {4}},
+		SnarkHash: []byte{6},
+		BatchSums: [][]byte{{7}, {8}, {9}},
 	}
 	fpi.X[0], fpi.X[31] = 1<<5, 2
 	sum, err := fpi.Sum()
