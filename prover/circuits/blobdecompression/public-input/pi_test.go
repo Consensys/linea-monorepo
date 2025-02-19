@@ -161,15 +161,14 @@ func (c *testInterpolateLagrangeCircuit) Define(api frontend.API) error {
 }
 
 type blobConsistencyCheckCircuit struct {
-	BlobBytes      []frontend.Variable   // "the blob" in EIP-4844 parlance
-	X              [32]frontend.Variable `gnark:",public"` // "high" and "low"
-	Y              [2]frontend.Variable  `gnark:",public"`
-	Eip4844Enabled frontend.Variable
+	BlobBytes []frontend.Variable   // "the blob" in EIP-4844 parlance
+	X         [32]frontend.Variable `gnark:",public"` // "high" and "low"
+	Y         [2]frontend.Variable  `gnark:",public"`
 }
 
 func (c *blobConsistencyCheckCircuit) Define(api frontend.API) error {
 	blobCrumbs := internal.PackedBytesToCrumbs(api, c.BlobBytes, fr381.Bits-1)
-	y, err := VerifyBlobConsistency(api, blobCrumbs, c.X, c.Eip4844Enabled)
+	y, err := VerifyBlobConsistency(api, blobCrumbs, c.X)
 	if err != nil {
 		return err
 	}
@@ -226,6 +225,11 @@ func TestVerifyBlobConsistencyIntegration(t *testing.T) {
 			var testCase BlobConsistencyCheckTestCase
 			assert.NoError(t, json.Unmarshal(fileRaw, &testCase))
 
+			if !testCase.Eip4844Enabled {
+				t.Logf("skipping \"%s\" because eip4844 is disabled", file.Name())
+				continue
+			}
+
 			var assignment blobConsistencyCheckCircuit
 
 			blob, err := base64.StdEncoding.DecodeString(testCase.CompressedData)
@@ -234,10 +238,6 @@ func TestVerifyBlobConsistencyIntegration(t *testing.T) {
 			assert.LessOrEqual(t, len(blob), 4096*32, "blob too large")
 			blob = append(blob, make([]byte, 4096*32-len(blob))...) // pad if necessary
 			assignment.BlobBytes = utils.ToVariableSlice(blob)
-
-			if assignment.Eip4844Enabled = 0; testCase.Eip4844Enabled {
-				assignment.Eip4844Enabled = 1
-			}
 
 			utils.Copy(assignment.X[:], decodeHex(t, testCase.ExpectedX))
 			assignment.Y = decodeHexHL(t, testCase.ExpectedY)
@@ -288,49 +288,6 @@ func TestVectorIopCompatibility(t *testing.T) {
 	// in text form without being affected by the left-most zeroes.
 	expectedY := field.NewFromString(testCase.ExpectedY)
 	assert.Equal(t, expectedY.Text(16), y.Text(16))
-}
-
-func TestConsistencyCheckFlagRange(t *testing.T) {
-	circuit := &blobConsistencyCheckCircuit{
-		BlobBytes: make([]frontend.Variable, 4096*32),
-	}
-	assignments := []*blobConsistencyCheckCircuit{
-		{
-			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
-			Y:              [2]frontend.Variable{0, 0},
-			Eip4844Enabled: 0,
-		},
-		{
-			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
-			Y:              [2]frontend.Variable{0, 0},
-			Eip4844Enabled: 1,
-		},
-		{
-			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
-			Y:              [2]frontend.Variable{0, 0},
-			Eip4844Enabled: 2,
-		},
-	}
-	for i := range assignments {
-		setZero(assignments[i].X[:])
-	}
-
-	internal.RegisterHints()
-
-	options := []test.TestingOption{
-		test.WithCurves(ecc.BLS12_377), test.WithBackends(backend.PLONK),
-		test.WithValidAssignment(assignments[0]),
-		test.WithValidAssignment(assignments[1]),
-		test.WithInvalidAssignment(assignments[2]),
-		test.NoTestEngine(),
-	}
-	test.NewAssert(t).CheckCircuit(circuit, options...)
-}
-
-func setZero(s []frontend.Variable) {
-	for i := range s {
-		s[i] = 0
-	}
 }
 
 func TestFrConversions(t *testing.T) {

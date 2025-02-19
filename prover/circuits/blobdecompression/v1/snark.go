@@ -325,7 +325,7 @@ func crumbStreamToByteStream(api frontend.API, crumbs []frontend.Variable) (byte
 
 // ProcessBlob takes in a blob, an evaluation challenge, and a decompression dictionary. It returns a hash of the blob data along with its "evaluation" at the challenge point and a hash of all the batches in the blob payload
 // TODO too many arguments; confusing. Replace with a request struct?
-func ProcessBlob(api frontend.API, hsh snarkHash.FieldHasher, maxUncompressedBlobSize int, blobBytes []frontend.Variable, evaluationChallenge [32]frontend.Variable, eip4844Enabled frontend.Variable, expectedBatchSums internal.VarSlice, dict []frontend.Variable) (blobSum frontend.Variable, evaluation [2]frontend.Variable, err error) {
+func ProcessBlob(api frontend.API, hsh snarkHash.FieldHasher, maxUncompressedBlobSize int, blobBytes []frontend.Variable, evaluationChallenge [32]frontend.Variable, expectedBatchSums internal.VarSlice, dict []frontend.Variable) (blobSum frontend.Variable, evaluation [2]frontend.Variable, err error) {
 
 	blobCrumbs := internal.PackedBytesToCrumbs(api, blobBytes, blob.PackingSizeU256)
 
@@ -335,7 +335,7 @@ func ProcessBlob(api frontend.API, hsh snarkHash.FieldHasher, maxUncompressedBlo
 	blobSum = hsh.Sum()
 
 	// EIP-4844 stuff
-	if evaluation, err = public_input.VerifyBlobConsistency(api, blobCrumbs, evaluationChallenge, eip4844Enabled); err != nil {
+	if evaluation, err = public_input.VerifyBlobConsistency(api, blobCrumbs, evaluationChallenge); err != nil {
 		return
 	}
 

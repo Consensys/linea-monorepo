@@ -50,7 +50,7 @@ func TestBlobV0(t *testing.T) {
 	givenSnarkHash, err := utils.HexDecodeString(resp.SnarkHash)
 	assert.NoError(t, err)
 
-	a, _, snarkHash, err := blobdecompression.Assign(blobBytes, dictStore, true, x, y)
+	a, _, snarkHash, err := blobdecompression.Assign(blobBytes, dictStore, x, y)
 	assert.NoError(t, err)
 	_, ok := a.(*v0.Circuit)
 	assert.True(t, ok)

@@ -20,7 +20,7 @@ import (
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 )
 
-// Generates a concrete proof for the decompression of the blob
+// Prove generates a concrete proof for the decompression of the blob
 func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 	// Parsing / validating the request
@@ -79,13 +79,11 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("could not parse the snark hash: %w", err)
 	}
 
-	assignment, pubInput, _snarkHash, err := blobdecompression.Assign(
-		utils.RightPad(blobBytes, expectedMaxUsableBytes),
-		dictStore,
-		req.Eip4844Enabled,
-		xBytes,
-		y,
-	)
+	if !req.Eip4844Enabled {
+		return nil, fmt.Errorf("EIP-4844 is mandatory")
+	}
+
+	assignment, pubInput, _snarkHash, err := blobdecompression.Assign(utils.RightPad(blobBytes, expectedMaxUsableBytes), dictStore, xBytes, y)
 
 	if err != nil {
 		return nil, fmt.Errorf("while generating the assignment: %w", err)

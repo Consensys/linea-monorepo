@@ -57,9 +57,8 @@ type Circuit struct {
 
 	// The final public input. It is the hash of
 	// 	- the hash of the uncompressed message.
-	// 	- the hash of the compressed message. aka the SnarKHash on the contract
+	// 	- the hash of the compressed message. aka the SnarkHash on the contract
 	// 	- the X and Y evaluation points claimed on the contract
-	//  TODO - whether we are using Eip4844
 	PublicInput frontend.Variable `gnark:",public"`
 
 	// The X and Y evaluation point that are "claimed" by the contract. The
@@ -75,11 +74,10 @@ type Circuit struct {
 
 // FunctionalPublicInputQSnark the "unique" portion of the functional public input that cannot be inferred from other circuits in the same aggregation batch
 type FunctionalPublicInputQSnark struct {
-	Y              [2]frontend.Variable // Y[1] holds 252 bits
-	SnarkHash      frontend.Variable
-	Eip4844Enabled frontend.Variable
-	NbBatches      frontend.Variable
-	X              [32]frontend.Variable // unreduced value
+	Y         [2]frontend.Variable // Y[1] holds 252 bits
+	SnarkHash frontend.Variable
+	NbBatches frontend.Variable
+	X         [32]frontend.Variable // unreduced value
 }
 
 type FunctionalPublicInputSnark struct {
@@ -88,11 +86,10 @@ type FunctionalPublicInputSnark struct {
 }
 
 type FunctionalPublicInput struct {
-	X              [32]byte  // X[1] holds 252 bits
-	Y              [2][]byte // Y[1] holds 252 bits
-	SnarkHash      []byte
-	Eip4844Enabled bool
-	BatchSums      [][]byte
+	X         [32]byte  // X[1] holds 252 bits
+	Y         [2][]byte // Y[1] holds 252 bits
+	SnarkHash []byte
+	BatchSums [][]byte
 }
 
 // RangeCheck checks that values are within range
@@ -111,10 +108,9 @@ func (i *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 func (i *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error) {
 	res := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-			Y:              [2]frontend.Variable{i.Y[0], i.Y[1]},
-			SnarkHash:      i.SnarkHash,
-			Eip4844Enabled: utils.Ite(i.Eip4844Enabled, 1, 0),
-			NbBatches:      len(i.BatchSums),
+			Y:         [2]frontend.Variable{i.Y[0], i.Y[1]},
+			SnarkHash: i.SnarkHash,
+			NbBatches: len(i.BatchSums),
 		},
 	}
 	utils.Copy(res.X[:], i.X[:])
@@ -168,7 +164,6 @@ func (i *FunctionalPublicInput) Sum(opts ...FPISumOption) ([]byte, error) {
 	hsh.Write(i.Y[0])
 	hsh.Write(i.Y[1])
 	hsh.Write(i.SnarkHash)
-	hsh.Write(utils.Ite(i.Eip4844Enabled, []byte{1}, []byte{0}))
 	hsh.Write(settings.batchesSum)
 	return hsh.Sum(nil), nil
 }
@@ -177,7 +172,7 @@ func (i *FunctionalPublicInput) Sum(opts ...FPISumOption) ([]byte, error) {
 func (i *FunctionalPublicInputQSnark) Sum(api frontend.API, hsh snarkHash.FieldHasher, batchesSum frontend.Variable) frontend.Variable {
 	radix := big.NewInt(256)
 	hsh.Reset()
-	hsh.Write(compress.ReadNum(api, i.X[:16], radix), compress.ReadNum(api, i.X[16:], radix), i.Y[0], i.Y[1], i.SnarkHash, i.Eip4844Enabled, batchesSum)
+	hsh.Write(compress.ReadNum(api, i.X[:16], radix), compress.ReadNum(api, i.X[16:], radix), i.Y[0], i.Y[1], i.SnarkHash, batchesSum)
 	return hsh.Sum()
 }
 
@@ -207,7 +202,7 @@ func (c Circuit) Define(api frontend.API) error {
 		Length: c.FuncPI.NbBatches,
 	}
 
-	blobSum, y, err := ProcessBlob(api, hsh, c.MaxBlobPayloadNbBytes, c.BlobBytes, c.FuncPI.X, c.FuncPI.Eip4844Enabled, batchSums, c.Dict)
+	blobSum, y, err := ProcessBlob(api, hsh, c.MaxBlobPayloadNbBytes, c.BlobBytes, c.FuncPI.X, batchSums, c.Dict)
 	if err != nil {
 		return err
 	}
@@ -247,7 +242,7 @@ func Compile(dictionaryLength int) constraint.ConstraintSystem {
 	}
 }
 
-func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (fpi FunctionalPublicInput, dict []byte, err error) {
+func AssignFPI(blobBytes []byte, dictStore dictionary.Store, x [32]byte, y fr381.Element) (fpi FunctionalPublicInput, dict []byte, err error) {
 	if len(blobBytes) != blob.MaxUsableBytes {
 		err = fmt.Errorf("decompression circuit assignment : invalid blob length : %d. expected %d", len(blobBytes), blob.MaxUsableBytes)
 		return
@@ -279,8 +274,6 @@ func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool
 		return
 	}
 
-	fpi.Eip4844Enabled = eip4844Enabled
-
 	if len(blobBytes) != 128*1024 {
 		panic("blobBytes length is not 128*1024")
 	}
@@ -289,9 +282,9 @@ func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool
 	return
 }
 
-func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
+func Assign(blobBytes []byte, dictStore dictionary.Store, x [32]byte, y fr381.Element) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
 
-	fpi, dict, err := AssignFPI(blobBytes, dictStore, eip4844Enabled, x, y)
+	fpi, dict, err := AssignFPI(blobBytes, dictStore, x, y)
 	if err != nil {
 		return
 	}

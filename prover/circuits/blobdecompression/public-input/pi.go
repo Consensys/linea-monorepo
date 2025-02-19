@@ -75,7 +75,7 @@ func genInterpolateLagrangeParams(n int) (x []fr381.Element, nInv fr381.Element)
 
 // VerifyBlobConsistency opens the "commitment" to the blob at evaluationChallenge; if bypassEip4844 is set, it does so in a KZG-like manner using a Lagrange basis on the unit circle. if not, a Reed-Solomon type method is used.
 // TODO consider using the batch hashes as "snarkHash" instead of hashing the data here to save on constraints
-func VerifyBlobConsistency(api frontend.API, blobCrumbs []frontend.Variable, evaluationChallenge [32]frontend.Variable, eip4844Enabled frontend.Variable) (evaluation [2]frontend.Variable, err error) {
+func VerifyBlobConsistency(api frontend.API, blobCrumbs []frontend.Variable, evaluationChallenge [32]frontend.Variable) (evaluation [2]frontend.Variable, err error) {
 	snarkFieldLen := api.Compiler().Field().BitLen()
 	if snarkFieldLen >= fr381.Bits {
 		err = fmt.Errorf("large field moduli ( %d≥%d ) not yet supported", snarkFieldLen, fr381.Bits)
@@ -98,27 +98,8 @@ func VerifyBlobConsistency(api frontend.API, blobCrumbs []frontend.Variable, eva
 		return
 	}
 
-	polyEval, err := evalPolyBls12381(field, blobEmulated, evaluationChallengeEmulated)
-	if err != nil {
-		return
-	}
-	l := bls12381ScalarToBls12377Scalars(api, lagrangeEval)
-	p := bls12381ScalarToBls12377Scalars(api, polyEval)
+	evaluation = bls12381ScalarToBls12377Scalars(api, lagrangeEval)
 
-	api.AssertIsBoolean(eip4844Enabled)
-	evaluation[0] = api.Select(eip4844Enabled, l[0], p[0])
-	evaluation[1] = api.Select(eip4844Enabled, l[1], p[1])
-
-	return
-}
-
-func evalPolyBls12381(field *emulated.Field[emulated.BLS12381Fr], coeffs []*emulated.Element[emulated.BLS12381Fr], evaluationPoint *emulated.Element[emulated.BLS12381Fr]) (evaluation *emulated.Element[emulated.BLS12381Fr], err error) {
-	// lower degree coeff first
-	evaluation = coeffs[len(coeffs)-1]
-	for i := len(coeffs) - 2; i >= 0; i-- {
-		evaluation = field.Mul(evaluation, evaluationPoint)
-		evaluation = field.Add(evaluation, coeffs[i])
-	}
 	return
 }
 
@@ -209,15 +190,6 @@ func packCrumbsEmulated(api frontend.API, words []frontend.Variable) []*emulated
 		res[i] = field.NewElement(currLimbs)
 	}
 	return res
-}
-
-// bls12377ScalarToBls12381Scalar converts a scalar in the BLS12-377 field to a scalar in the BLS12-381 field. It assumes the input is only 252 bits long to accommodate arbitrary data
-func bls12377ScalarToBls12381Scalar(api frontend.API, v frontend.Variable) *emulated.Element[emulated.BLS12381Fr] {
-	field, err := emulated.NewField[emulated.BLS12381Fr](api)
-	if err != nil {
-		panic(err)
-	}
-	return field.FromBits(api.ToBinary(v, api.Compiler().FieldBitLen()-1)...)
 }
 
 func bls12381ScalarToBls12377Scalars(api frontend.API, e *emulated.Element[emulated.BLS12381Fr]) (r [2]frontend.Variable) {

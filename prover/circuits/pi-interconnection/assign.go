@@ -101,7 +101,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 			fpi  decompression.FunctionalPublicInput
 			sfpi decompression.FunctionalPublicInputSnark
 		)
-		if fpi, _, err = decompression.AssignFPI(blobData[:], dictStore, p.Eip4844Enabled, x, y); err != nil {
+		if fpi, _, err = decompression.AssignFPI(blobData[:], dictStore, x, y); err != nil {
 			return
 		}
 		execDataChecksums = append(execDataChecksums, fpi.BatchSums...) // len(execDataChecksums) = index of the first execution associated with the next blob
