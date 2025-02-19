@@ -32,7 +32,7 @@ class BlockHashLookupWithRecoverySupportTest {
   }
 
   @Test
-  fun `addHeadBlockHash should update  and prune the lookback hashes outside the lookback window`() {
+  fun `addHeadBlockHash should update and prune the lookback hashes outside the lookback window`() {
     val lookback = BlockHashLookupWithRecoverySupport(
       lookbackWindow = 3UL
     )
