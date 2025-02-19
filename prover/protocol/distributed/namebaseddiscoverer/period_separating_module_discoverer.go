@@ -137,3 +137,7 @@ func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr *symbolic.E
 		return b
 	}
 }
+
+func (p *PeriodSeperatingModuleDiscoverer) NewSizeOf(ifaces.Column) int {
+	panic("unimplemented")
+}

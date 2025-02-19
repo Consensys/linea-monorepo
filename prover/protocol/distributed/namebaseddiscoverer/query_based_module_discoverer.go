@@ -134,3 +134,7 @@ func (d *QueryBasedDiscoverer) analyzeExprGL(expr *symbolic.Expression, moduleNa
 		}
 	}
 }
+
+func (p *QueryBasedDiscoverer) NewSizeOf(ifaces.Column) int {
+	panic("unimplemented")
+}

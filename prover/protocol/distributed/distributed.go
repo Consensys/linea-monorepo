@@ -30,13 +30,18 @@ type ModuleDiscoverer interface {
 	// Analyze is responsible for letting the module discoverer compute how to
 	// group best the columns into modules.
 	Analyze(comp *wizard.CompiledIOP)
+	// ModuleList returns the list of module names
 	ModuleList() []ModuleName
+	// FindModule returns the module corresponding to a column
 	FindModule(col ifaces.Column) ModuleName
-	// given a query and a module name it checks if the query is inside the module
+	// ExpressionIsInModule returns if the symbolic expression is in the given module.
 	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
+	// QueryIsInModule checks if the given query is inside the given module
 	QueryIsInModule(ifaces.Query, ModuleName) bool
-	// it checks if the given column is in the given module
+	// ColumnIsInModule checks if the given column is in the given module
 	ColumnIsInModule(col ifaces.Column, name ModuleName) bool
+	// NewSizeOf returns the split-size of a column in the module.
+	NewSizeOf(col ifaces.Column) int
 }
 
 // This transforms the initial wizard. So it is not really the initial
@@ -46,7 +51,8 @@ type ModuleDiscoverer interface {
 // maxNumSegment give the max number of segments in a module.
 func Distribute(initialWizard *wizard.CompiledIOP, disc ModuleDiscoverer, maxSegmentSize, maxNumSegment int) DistributedWizard {
 
-	prepare(initialWizard)
+	precompileInitialWizard(initialWizard)
+
 	// analyze the initialWizard to split it to modules.
 	disc.Analyze(initialWizard)
 
