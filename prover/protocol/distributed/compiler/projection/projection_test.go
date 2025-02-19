@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	dist_projection "github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/projection"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
+	discoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -184,7 +184,7 @@ func TestDistributeProjection(t *testing.T) {
 			// test-case.
 			initialComp := wizard.Compile(tc.DefineFunc)
 
-			disc := namebaseddiscoverer.PeriodSeperatingModuleDiscoverer{}
+			disc := discoverer.PeriodSeperatingModuleDiscoverer{}
 			disc.Analyze(initialComp)
 
 			// This declares a compiled IOP with only the columns of the module A

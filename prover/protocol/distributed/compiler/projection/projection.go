@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -37,7 +36,7 @@ type DistributeProjectionCtx struct {
 // and registers DistributedProjection queries to the target module using the module
 // discoverer
 func NewDistributeProjectionCtx(
-	targetModuleName namebaseddiscoverer.ModuleName,
+	targetModuleName distributed.ModuleName,
 	initialComp, moduleComp *wizard.CompiledIOP,
 	disc distributed.ModuleDiscoverer,
 ) *DistributeProjectionCtx {
@@ -107,7 +106,7 @@ func NewDistributeProjectionCtx(
 // Check verifies if all columns of the projection query belongs to the same module or not
 func check(cols []ifaces.Column,
 	disc distributed.ModuleDiscoverer,
-	targetModuleName namebaseddiscoverer.ModuleName,
+	targetModuleName distributed.ModuleName,
 ) error {
 	for _, col := range cols {
 		if disc.FindModule(col) != targetModuleName {
