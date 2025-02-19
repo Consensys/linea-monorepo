@@ -140,8 +140,8 @@ public class Mmio implements Module {
     final boolean isRamToRamTwoSource = (mmioData.instruction() == MMIO_INST_RAM_TO_RAM_TWO_SOURCE);
     final boolean isRamToRamTwoTarget = (mmioData.instruction() == MMIO_INST_RAM_TO_RAM_TWO_TARGET);
     final boolean isRamVanishes = (mmioData.instruction() == MMIO_INST_RAM_VANISHES);
-
-    for (short ct = 0; ct < lineCountOfMmioInstruction(mmioData.instruction()); ct++) {
+    int mmioLineCountingInstruction = lineCountOfMmioInstruction(mmioData.instruction());
+    for (short ct = 0; ct < mmioLineCountingInstruction; ct++) {
       trace
           .cnA(Bytes.minimalBytes(mmioData.cnA()))
           .cnB(Bytes.minimalBytes(mmioData.cnB()))
