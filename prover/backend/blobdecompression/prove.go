@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -54,10 +53,6 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		expectedMaxUncompressedBytes int
 	)
 	switch version {
-	case 0:
-		circuitID = circuits.BlobDecompressionV0CircuitID
-		expectedMaxUsableBytes = blob_v0.MaxUsableBytes
-		expectedMaxUncompressedBytes = blob_v0.MaxUncompressedBytes
 	case 1:
 		circuitID = circuits.BlobDecompressionV1CircuitID
 		expectedMaxUsableBytes = blob_v1.MaxUsableBytes

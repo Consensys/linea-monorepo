@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,7 +11,6 @@ import (
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 
-	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/sirupsen/logrus"
 
@@ -20,7 +18,6 @@ import (
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
-	v0 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0"
 	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/emulation"
@@ -33,7 +30,6 @@ import (
 type SetupArgs struct {
 	Force      bool
 	Circuits   string
-	DictPath   string // to be deprecated; only used for compiling v0 blob decompression circuit
 	DictSize   int
 	AssetsDir  string
 	ConfigFile string
@@ -42,7 +38,6 @@ type SetupArgs struct {
 var AllCircuits = []circuits.CircuitID{
 	circuits.ExecutionCircuitID,
 	circuits.ExecutionLargeCircuitID,
-	circuits.BlobDecompressionV0CircuitID,
 	circuits.BlobDecompressionV1CircuitID,
 	circuits.PublicInputInterconnectionCircuitID,
 	circuits.AggregationCircuitID,
@@ -56,13 +51,6 @@ func Setup(context context.Context, args SetupArgs) error {
 	cfg, err := config.NewConfigFromFile(args.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("%s failed to read config file: %w", cmdName, err)
-	}
-
-	if args.DictPath != "" {
-		// fail early if the dictionary file is not found but was specified.
-		if _, err := os.Stat(args.DictPath); err != nil {
-			return fmt.Errorf("%s dictionary file not found: %w", cmdName, err)
-		}
 	}
 
 	// parse inCircuits
@@ -87,8 +75,6 @@ func Setup(context context.Context, args SetupArgs) error {
 	if err != nil {
 		return fmt.Errorf("%s failed to create SRS provider: %w", cmdName, err)
 	}
-	var foundDecompressionV0 bool // this is a temporary mechanism to make sure we phase out the practice
-	// of providing entire dictionaries for setup.
 
 	// for each circuit, we start by compiling the circuit
 	// then we do a sha sum and compare against the one in the manifest.json
@@ -115,15 +101,6 @@ func Setup(context context.Context, args SetupArgs) error {
 			zkEvm := zkevm.FullZkEvm(&limits)
 			builder = execution.NewBuilder(zkEvm)
 
-		case circuits.BlobDecompressionV0CircuitID:
-			dict, err := os.ReadFile(args.DictPath)
-			if err != nil {
-				return fmt.Errorf("%s failed to read dictionary file: %w", cmdName, err)
-			}
-			foundDecompressionV0 = true
-			extraFlags["maxUsableBytes"] = blob_v0.MaxUsableBytes
-			extraFlags["maxUncompressedBytes"] = blob_v0.MaxUncompressedBytes
-			builder = v0.NewBuilder(dict)
 		case circuits.BlobDecompressionV1CircuitID:
 			extraFlags["maxUsableBytes"] = blob_v1.MaxUsableBytes
 			extraFlags["maxUncompressedBytes"] = blob_v1.MaxUncompressedBytes
@@ -141,10 +118,6 @@ func Setup(context context.Context, args SetupArgs) error {
 		if err := updateSetup(context, cfg, args.Force, srsProvider, c, builder, extraFlags); err != nil {
 			return err
 		}
-	}
-
-	if !foundDecompressionV0 && args.DictPath != "" {
-		return errors.New("explicit provision of a dictionary is only allowed for backwards compatibility with v0 blob decompression")
 	}
 
 	if !(inCircuits[circuits.AggregationCircuitID] || inCircuits[circuits.EmulationCircuitID]) {
