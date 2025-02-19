@@ -453,10 +453,7 @@ contract RewardsStreamerMP is
         _updateVaultMP(vaultAddress, false);
     }
 
-    function enableEmergencyMode() external onlyOwner {
-        if (emergencyModeEnabled) {
-            revert StakingManager__EmergencyModeEnabled();
-        }
+    function enableEmergencyMode() external onlyOwner onlyNotEmergencyMode {
         emergencyModeEnabled = true;
     }
 
