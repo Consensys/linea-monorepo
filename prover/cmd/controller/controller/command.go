@@ -44,11 +44,11 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 	}
 	cfg.Controller.LocalID = fLocalID
 
-	// Disable Legacy for testing
 	cfg.Controller.EnableExecution = true
+
+	// Disable for testing
 	cfg.Controller.EnableBlobDecompression = false
 	cfg.Controller.EnableAggregation = false
-
 	cfg.Controller.EnableExecBootstrap = false
 	cfg.Controller.EnableExecGL = false
 	cfg.Controller.EnableExecRndBeacon = false
