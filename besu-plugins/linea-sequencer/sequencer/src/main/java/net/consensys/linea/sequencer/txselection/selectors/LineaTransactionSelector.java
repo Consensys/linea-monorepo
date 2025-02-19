@@ -32,6 +32,7 @@ import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.rpc.methods.LineaSendBundle;
 import net.consensys.linea.rpc.services.BundlePoolService;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -183,6 +184,12 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   public void onTransactionSelected(
       final TransactionEvaluationContext evaluationContext,
       final TransactionProcessingResult processingResult) {
+
+    // if pending tx is not from a bundle, then we need to commit now
+    if (!(evaluationContext.getPendingTransaction() instanceof LineaSendBundle.PendingBundleTx)) {
+      getOperationTracer().commitTransactionBundle();
+    }
+
     selectors.forEach(
         selector -> selector.onTransactionSelected(evaluationContext, processingResult));
   }
@@ -197,6 +204,12 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   public void onTransactionNotSelected(
       final TransactionEvaluationContext evaluationContext,
       final TransactionSelectionResult transactionSelectionResult) {
+
+    // if pending tx is not from a bundle, then we need to rollback now
+    if (!(evaluationContext.getPendingTransaction() instanceof LineaSendBundle.PendingBundleTx)) {
+      getOperationTracer().popTransactionBundle();
+    }
+
     selectors.forEach(
         selector ->
             selector.onTransactionNotSelected(evaluationContext, transactionSelectionResult));

@@ -35,7 +35,7 @@ public class TransactionTraceLimitOverflowTest extends LineaPluginTestBase {
 
   private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
   private static final BigInteger VALUE = BigInteger.ZERO;
-  private static final BigInteger GAS_PRICE = BigInteger.TEN.pow(9);
+  private static final BigInteger GAS_PRICE = BigInteger.TEN.pow(11);
 
   @Override
   public List<String> getTestCliOptions() {
@@ -68,7 +68,7 @@ public class TransactionTraceLimitOverflowTest extends LineaPluginTestBase {
             GAS_PRICE.multiply(BigInteger.TEN).add(BigInteger.ONE));
     final byte[] signedTxContractInteraction =
         TransactionEncoder.signMessage(
-            txModuleLineCountTooBig, Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY));
+            txModuleLineCountTooBig, Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY));
     final EthSendTransaction signedTxContractInteractionResp =
         web3j.ethSendRawTransaction(Numeric.toHexString(signedTxContractInteraction)).send();
 
