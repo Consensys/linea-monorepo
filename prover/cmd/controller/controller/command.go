@@ -44,16 +44,15 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 	}
 	cfg.Controller.LocalID = fLocalID
 
-	cfg.Controller.EnableExecution = true
-
 	// Disable for testing
-	cfg.Controller.EnableBlobDecompression = false
-	cfg.Controller.EnableAggregation = false
-	cfg.Controller.EnableExecBootstrap = false
-	cfg.Controller.EnableExecGL = false
-	cfg.Controller.EnableExecRndBeacon = false
-	cfg.Controller.EnableExecLPP = false
-	cfg.Controller.EnableExecConglomeration = false
+	// cfg.Controller.EnableExecution = true
+	// cfg.Controller.EnableBlobDecompression = false
+	// cfg.Controller.EnableAggregation = false
+	// cfg.Controller.EnableExecBootstrap = false
+	// cfg.Controller.EnableExecGL = false
+	// cfg.Controller.EnableExecRndBeacon = false
+	// cfg.Controller.EnableExecLPP = false
+	// cfg.Controller.EnableExecConglomeration = false
 
 	// TODO @gbotrel @AlexandreBelling check who is responsible for creating the directories
 	// create the sub directories if they do not exist

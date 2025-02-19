@@ -18,6 +18,7 @@ func setDefaultValues() {
 	viper.SetDefault("controller.enable_blob_decompression", true)
 	viper.SetDefault("controller.enable_aggregation", true)
 
+	// Limitless controller components
 	viper.SetDefault("controller.enable_exec_bootstrap", true)
 	viper.SetDefault("controller.enable_exec_gl", true)
 	viper.SetDefault("controller.enable_exec_rndbeacon", true)
@@ -29,9 +30,13 @@ func setDefaultValues() {
 	viper.SetDefault("controller.defer_to_other_large_codes", DefaultDeferToOtherLargeCodes)
 	viper.SetDefault("controller.retry_locally_with_large_codes", DefaultRetryLocallyWithLargeCodes)
 
-	// Set default for cmdTmpl and cmdLargeTmpl
-	viper.SetDefault("controller.worker_cmd_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}")
-	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
+	// Define the default command templates using the range action
+	workerCmdTmpl := `prover prove --config {{.ConfFile}} {{range $index, $element := .InFile}}--in {{$element}} {{end}} {{range $index, $element := .OutFile}}--out {{$element}} {{end}}`
+	workerCmdLargeTmpl := `prover prove --config {{.ConfFile}} {{range $index, $element := .InFile}}--in {{$element}} {{end}} {{range $index, $element := .OutFile}}--out {{$element}} {{end}} --large`
+
+	// Set the default command templates in viper
+	viper.SetDefault("controller.worker_cmd_tmpl", workerCmdTmpl)
+	viper.SetDefault("controller.worker_cmd_large_tmpl", workerCmdLargeTmpl)
 }
 
 func setDefaultPaths() {
