@@ -13,7 +13,7 @@ import (
 )
 
 func nbConstraints(blobSize int) int {
-	fmt.Printf("*********************\nfor blob of size %dB or %.2fKB:\n", blobSize, float32(blobSize)/1024)
+	fmt.Printf("*********************\nfor blob of size %d B or %.2fKB:\n", blobSize, float32(blobSize)/1024)
 	c := v1.Circuit{
 		BlobBytes:             make([]frontend.Variable, 32*4096),
 		Dict:                  make([]frontend.Variable, 64*1024),
@@ -41,11 +41,23 @@ var (
 	flagCrawlStep           = flag.Int("step", 1000, "the crawl step") // TODO @Tabaie fix mixed metaphor
 	flagStart               = flag.Int("start", blob.MaxUncompressedBytes, "initial size in bytes")
 	flagTargetNbConstraints = flag.Int("target", 1<<27, "target number of constraints")
+	flagBound1              = flag.Int("bound1", -1, "last size")
+	flagBound2              = flag.Int("bound2", -1, "second to last size")
 )
 
 func main() {
 
 	flag.Parse()
+	if *flagBound1 != -1 && *flagBound2 != -1 {
+		*flagStart = (*flagBound1 + *flagBound2) / 2
+		*flagCrawlStep = (*flagBound1 - *flagBound2) / 4
+		if *flagCrawlStep == 0 {
+			*flagCrawlStep = 1
+		}
+		if *flagCrawlStep < 0 {
+			*flagCrawlStep = -*flagCrawlStep
+		}
+	}
 	v := nbConstraints(*flagStart)
 	a, b := *flagStart, *flagStart
 
