@@ -18,65 +18,6 @@ func TestGetVersion(t *testing.T) {
 	assert.Equal(t, uint32(0x10000), uint32(0xffff)+uint32(blob.GetVersion(_blob)), "version should match the current one")
 }
 
-const dictPath = "../compressor_dict.bin"
-
-// TODO add test for v1
-/*func TestAddToBlob(t *testing.T) {
-	t.Skip("obtain ")
-	dictStore := dictionary.NewStore()
-	require.NoError(t, dictStore.Load(dictPath))
-	blobData := withNoError(t, os.ReadFile, "testdata/v1/sample-blob-01b9918c3f0ceb6a.bin")
-	r, err := v1.DecompressBlob(blobData, dictStore)
-	blocksSerialized := r.Blocks
-	require.NoError(t, err)
-
-	blobData = withNoError(t, os.ReadFile, "testdata/v1/sample-blob-0151eda71505187b5.bin")
-	r, err = v1.DecompressBlob(blobData, dictStore)
-	blocksSerializedNext := r.Blocks
-	require.NoError(t, err)
-
-	bm, err := v1.NewBlobMaker(v1.MaxUsableBytes, "../compressor_dict.bin")
-	require.NoError(t, err)
-	var ok bool
-	writeBlock := func(blocks *[][]byte) {
-		dbd, err := v1.DecodeBlockFromUncompressed(bytes.NewReader((*blocks)[0]))
-		assert.NoError(t, err)
-
-		stdBlockRlp, err := rlp.EncodeToBytes(dbd.ToStd())
-
-		ok, err = bm.Write(stdBlockRlp, false, encode.WithTxAddressGetter(encode.GetAddressFromR))
-		assert.NoError(t, err)
-
-		*blocks = (*blocks)[1:]
-	}
-
-	for i := 0; i < header.NbBatches(); i++ {
-		for j := 0; j < header.NbBlocksInBatch(i); j++ {
-			writeBlock(&blocksSerialized)
-			assert.True(t, ok)
-		}
-		bm.StartNewBatch()
-	}
-	assert.Empty(t, blocksSerialized)
-
-	util0 := 100 * bm.Len() / v1.MaxUsableBytes
-
-	require.NoError(t, err)
-	for ok { // all in one batch
-		writeBlock(&blocksSerializedNext)
-	}
-
-	util1 := 100 * bm.Len() / v1.MaxUsableBytes
-
-	fmt.Printf("%d%%\n%d%%\n", util0, util1)
-}*/
-
-func withNoError[X, Y any](t *testing.T, f func(X) (Y, error), x X) Y {
-	y, err := f(x)
-	require.NoError(t, err)
-	return y
-}
-
 func TestDecompressBlob(t *testing.T) {
 	store := dictionary.NewStore("../compressor_dict.bin")
 	files := newRecursiveFolderIterator(t, "testdata")
