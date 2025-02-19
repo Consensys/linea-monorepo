@@ -1,10 +1,12 @@
 package global
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -12,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	edc "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/execution_data_collector"
 )
 
 type segmentID int
@@ -25,6 +28,8 @@ type DistributionInputs struct {
 	ModuleName distributed.ModuleName
 	// number of segments for the module
 	NumSegments int
+	// the ID of the segment in the module
+	SegID int
 }
 
 func DistributeGlobal(in DistributionInputs) {
@@ -56,7 +61,6 @@ func DistributeGlobal(in DistributionInputs) {
 			)
 
 			// collect the boundaries for provider and receiver
-
 			BoundariesForProvider(&bInputs, q)
 			BoundariesForReceiver(&bInputs, q)
 
@@ -67,11 +71,44 @@ func DistributeGlobal(in DistributionInputs) {
 		// and at the end make sure that no query has remained in initial CompiledIOP.
 	}
 
-	in.ModuleComp.RegisterProverAction(0, &paramAssignments{
+	// get the hash of the provider and the receiver
+	var (
+		colOnes             = verifiercol.NewConstantCol(field.One(), bInputs.provider.Size())
+		mimcHasherProvider  = edc.NewMIMCHasher(in.ModuleComp, bInputs.provider, colOnes, "MIMC_HASHER_PROVIDER")
+		mimicHasherReceiver = edc.NewMIMCHasher(in.ModuleComp, bInputs.receiver, colOnes, "MIMC_HASHER_RECEIVER")
+	)
+
+	mimcHasherProvider.DefineHasher(in.ModuleComp, "DISTRIBUTED_GLOBAL_QUERY_MIMC_HASHER_PROVIDER")
+	mimcHasherProvider.DefineHasher(in.ModuleComp, "DISTRIBUTED_GLOBAL_QUERY_MIMC_HASHER_RECEIVER")
+
+	var (
+		openingHashProvider = in.ModuleComp.InsertLocalOpening(0, "ACCESSOR_FROM_HASH_PROVIDER", mimcHasherProvider.HashFinal)
+		openingHashReceiver = in.ModuleComp.InsertLocalOpening(0, "ACCESSOR_FROM_HASH_RECEIVER", mimicHasherReceiver.HashFinal)
+	)
+
+	// declare the hash of the provider/receiver as the public inputs.
+	in.ModuleComp.PublicInputs = append(in.ModuleComp.PublicInputs,
+		wizard.PublicInput{
+			Name: constants.GlobalProviderPublicInput,
+			Acc:  accessors.NewLocalOpeningAccessor(openingHashProvider, 0),
+		})
+
+	in.ModuleComp.PublicInputs = append(in.ModuleComp.PublicInputs,
+		wizard.PublicInput{
+			Name: constants.GlobalReceiverPublicInput,
+			Acc:  accessors.NewLocalOpeningAccessor(openingHashReceiver, 0),
+		})
+
+	in.ModuleComp.RegisterProverAction(0, &proverActionForBoundaries{
 		provider:         bInputs.provider,
 		receiver:         bInputs.receiver,
 		providerOpenings: bInputs.providerOpenings,
 		receiverOpenings: bInputs.receiverOpenings,
+
+		mimicHasherProvider: *mimcHasherProvider,
+		mimicHasherReceiver: *mimicHasherReceiver,
+		hashOpeningProvider: openingHashProvider,
+		hashOpeningReceiver: openingHashReceiver,
 	})
 
 }
@@ -82,6 +119,7 @@ type boundaryInputs struct {
 	provider                           ifaces.Column
 	receiver                           ifaces.Column
 	providerOpenings, receiverOpenings []query.LocalOpening
+	segID                              int
 }
 
 func AdjustExpressionForGlobal(
@@ -252,9 +290,13 @@ func BoundariesForReceiver(in *boundaryInputs, q query.GlobalConstraint) {
 
 		}
 
-		expr := q.Expression.Replay(translationMap)
-		name := ifaces.QueryIDf("%v_%v_%v", "CONSISTENCY_AGAINST_RECEIVER", q.ID, i)
-		comp.InsertLocal(0, name, expr)
+		// If this is the first segment check for NoBoundCancel.
+		// q.NoBoundCancel is false by default, which in this case we should not check the boundaries.
+		if in.segID != 0 || q.NoBoundCancel {
+			expr := q.Expression.Replay(translationMap)
+			name := ifaces.QueryIDf("%v_%v_%v", "CONSISTENCY_AGAINST_RECEIVER", q.ID, i)
+			comp.InsertLocal(0, name, expr)
+		}
 
 	}
 

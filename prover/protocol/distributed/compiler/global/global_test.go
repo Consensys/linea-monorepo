@@ -1,12 +1,14 @@
 package global_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/global"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	segcomp "github.com/consensys/linea-monorepo/prover/protocol/distributed/segment_comp.go"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -18,6 +20,10 @@ import (
 func TestDistributedGlobal(t *testing.T) {
 	const (
 		numSegModule = 2
+	)
+
+	var (
+		allVerfiers = []wizard.Runtime{}
 	)
 
 	//initialComp
@@ -51,6 +57,7 @@ func TestDistributedGlobal(t *testing.T) {
 
 	// initial compiledIOP is the parent to all the SegmentModuleComp objects.
 	initialComp := wizard.Compile(define)
+	var segID int
 
 	// Initialize the module discoverer
 	disc := md.QueryBasedDiscoverer{
@@ -65,6 +72,7 @@ func TestDistributedGlobal(t *testing.T) {
 			Disc:                disc,
 			ModuleName:          "module",
 			NumSegmentsInModule: numSegModule,
+			SegID:               segID,
 		},
 	)
 
@@ -75,6 +83,7 @@ func TestDistributedGlobal(t *testing.T) {
 		Disc:        disc.SimpleDiscoverer,
 		ModuleName:  "module",
 		NumSegments: numSegModule,
+		SegID:       segID,
 	})
 
 	// This dummy compiles the global/local queries of the segment.
@@ -90,8 +99,29 @@ func TestDistributedGlobal(t *testing.T) {
 			// inputs for vertical splitting of the witness
 			run.ProverID = proverID
 		})
-		valid := wizard.Verify(moduleComp, proof)
+		vRunTime, valid := wizard.VerifyWithRuntime(moduleComp, proof)
 		require.NoError(t, valid)
+
+		allVerfiers = append(allVerfiers, vRunTime)
+	}
+	// apply the crosse checks over the public inputs.
+	require.NoError(t, checkConsistency(allVerfiers))
+
+}
+
+func checkConsistency(runs []wizard.Runtime) error {
+
+	for i := range runs {
+
+		var (
+			hashProvider     = runs[i].GetPublicInput(constants.GlobalProviderPublicInput)
+			hashNextReceiver = runs[(i+1)%len(runs)].GetPublicInput(constants.GlobalReceiverPublicInput)
+		)
+
+		if hashProvider != hashNextReceiver {
+			return errors.New("the provider and the next receiver have different values")
+		}
 	}
 
+	return nil
 }

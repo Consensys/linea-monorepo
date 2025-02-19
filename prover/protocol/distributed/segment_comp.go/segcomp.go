@@ -1,8 +1,6 @@
 package segcomp
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -26,24 +24,22 @@ type SegmentInputs struct {
 	ModuleName distributed.ModuleName
 	// inputs for vertical splitting
 	NumSegmentsInModule int
+	SegID               int
 }
 
 // It creates a segComp for GL sub-provers , it push LPP to round 0 and GL to round 1
 // @Azam for the moment all is at round zero!
 func GetFreshGLComp(in SegmentInputs) *wizard.CompiledIOP {
-
-	fmt.Printf("moduleName %v, glColumn %v\n", in.ModuleName, in.Disc.GLColumns.MustGet(in.ModuleName))
 	var (
 		initialComp = in.InitialComp
 		// initialize the compiledIOP of the segment by adding the lpp columns to round 0.
 		segComp = GetFreshLPPComp(in)
 		// extract glColumns of the module
 		glCols = in.Disc.GLColumns.MustGet(in.ModuleName)
-		segID  int
 	)
 
 	// get the segment ID via a ProverAction
-	segComp.RegisterProverAction(0, segIDProvider{segID: segID})
+	segComp.RegisterProverAction(0, segIDProvider{segID: in.SegID})
 
 	// commit to GL columns
 	for _, col := range glCols {
@@ -56,18 +52,18 @@ func GetFreshGLComp(in SegmentInputs) *wizard.CompiledIOP {
 
 			precom := in.InitialComp.Precomputed.MustGet(col.GetColID())
 			segComp.InsertPrecomputed(col.GetColID(),
-				precom.SubVector(segSize*segID, segSize*(segID+1)))
+				precom.SubVector(segSize*in.SegID, segSize*(in.SegID+1)))
 
 		case column.VerifyingKey:
 
 			precom := in.InitialComp.Precomputed.MustGet(col.GetColID())
 			segComp.InsertPrecomputed(col.GetColID(),
-				precom.SubVector(segSize*segID, segSize*(segID+1)))
+				precom.SubVector(segSize*in.SegID, segSize*(in.SegID+1)))
 			segComp.Columns.SetStatus(col.GetColID(), column.VerifyingKey)
 
 		case column.VerifierDefined:
 			if vcol, ok := col.(verifiercol.VerifierCol); ok {
-				vcol.Split(segComp, segSize*segID, segSize*(segID+1))
+				vcol.Split(segComp, segSize*in.SegID, segSize*(in.SegID+1))
 			} else {
 				panic("unexpected type")
 			}
