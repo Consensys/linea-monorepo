@@ -38,10 +38,10 @@ var (
 	// level target.
 	sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
-	dummyCompilationSuite = compilationSuite{dummy.CompileAtProverLvl}
+	dummyCompilationSuite = CompilationSuite{dummy.CompileAtProverLvl}
 
 	// This is the compilation suite in use for the full prover
-	fullCompilationSuite = compilationSuite{
+	fullCompilationSuite = CompilationSuite{
 		// logdata.Log("initial-wizard"),
 		mimc.CompileMiMC,
 		compiler.Arcane(1<<10, 1<<19, false),
@@ -104,7 +104,7 @@ func FullZkEvm(tl *config.TracesLimits) *ZkEvm {
 
 	onceFullZkEvm.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvm = fullZKEVMWithSuite(tl, fullCompilationSuite)
+		fullZkEvm = FullZKEVMWithSuite(tl, fullCompilationSuite)
 	})
 
 	return fullZkEvm
@@ -114,13 +114,13 @@ func FullZkEVMCheckOnly(tl *config.TracesLimits) *ZkEvm {
 
 	onceFullZkEvmCheckOnly.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvmCheckOnly = fullZKEVMWithSuite(tl, dummyCompilationSuite)
+		fullZkEvmCheckOnly = FullZKEVMWithSuite(tl, dummyCompilationSuite)
 	})
 
 	return fullZkEvmCheckOnly
 }
 
-func fullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite) *ZkEvm {
+func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite) *ZkEvm {
 
 	// @Alex: only set mandatory parameters here. aka, the one that are not
 	// actually feature-gated.

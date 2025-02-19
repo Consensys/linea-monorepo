@@ -18,7 +18,7 @@ import (
 var (
 	encodeOnlyZkevm            *ZkEvm
 	onceEncodeOnlyZkevm        = sync.Once{}
-	encodeOnlyCompilationSuite = compilationSuite{
+	encodeOnlyCompilationSuite = CompilationSuite{
 		mimc.CompileMiMC,
 		specialqueries.RangeProof,
 		lookup.CompileLogDerivative,
@@ -27,7 +27,7 @@ var (
 
 func EncodeOnlyZkEvm(tl *config.TracesLimits) *ZkEvm {
 	onceEncodeOnlyZkevm.Do(func() {
-		encodeOnlyZkevm = fullZKEVMWithSuite(tl, encodeOnlyCompilationSuite)
+		encodeOnlyZkevm = FullZKEVMWithSuite(tl, encodeOnlyCompilationSuite)
 	})
 
 	return encodeOnlyZkevm
