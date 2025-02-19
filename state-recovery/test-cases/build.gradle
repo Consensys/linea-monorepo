@@ -79,8 +79,8 @@ task integrationTest(type: Test) { test ->
   testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
   dependsOn(":localStackForStateRecoveryComposeUp")
-
-  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
+  // increase default timeout because this tests submit loads of blobs
+  systemProperties["junit.jupiter.execution.timeout.default"] = "10 m" // 10 minutes
 
   testLogging {
     events TestLogEvent.FAILED,
@@ -112,10 +112,8 @@ task e2eTest(type: Test) { test ->
   classpath = sourceSets.e2eTest.runtimeClasspath
   testClassesDirs = sourceSets.e2eTest.output.classesDirs
 
-  systemProperties["junit.jupiter.execution.timeout.default"] = "5 m" // 5 minutes
+  systemProperties["junit.jupiter.execution.timeout.default"] = "10 m" // 10 minutes
   systemProperties["junit.jupiter.execution.parallel.enabled"] = false
-  systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
-  systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
   maxParallelForks = Math.max(Runtime.runtime.availableProcessors(), 9)
 
   testLogging {
