@@ -41,7 +41,7 @@ func (l *FromDistributedProjectionAccessor) String() string {
 // GetVal implements [ifaces.Accessor]
 func (l *FromDistributedProjectionAccessor) GetVal(run ifaces.Runtime) field.Element {
 	params := run.GetParams(l.Q.ID).(query.DistributedProjectionParams)
-	return params.HornerVal
+	return params.ScaledHorner
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]

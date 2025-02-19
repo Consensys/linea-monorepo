@@ -3,6 +3,7 @@ package dist_projection
 import (
 	"math/big"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -39,6 +40,8 @@ type DistributeProjectionCtx struct {
 	LastRoundProjection int
 	// number of segments per module
 	NumSegmentsPerModule int
+	// original projection queries to extract filters
+	QIds []query.Projection
 }
 
 // NewDistributeProjectionCtx processes all the projection queries from the initialComp
@@ -57,6 +60,7 @@ func NewDistributeProjectionCtx(
 			TargetModuleName:     targetModuleName,
 			LastRoundProjection:  getLastRoundPerm(initialComp),
 			NumSegmentsPerModule: numSegmentPerModule,
+			QIds:                 make([]query.Projection, 0, MaxNumOfQueriesPerModule),
 		}
 		numRounds = initialComp.NumRounds()
 		qId       = p.QueryID()
@@ -90,15 +94,12 @@ func NewDistributeProjectionCtx(
 				check(q_.Inp.ColumnA, disc, targetModuleName)
 				check(q_.Inp.ColumnB, disc, targetModuleName)
 				p.push(moduleComp, q_, round, queryInRound, true, true)
-				initialComp.QueriesNoParams.MarkAsIgnored(qName)
 			} else if onlyA {
 				check(q_.Inp.ColumnA, disc, targetModuleName)
 				p.push(moduleComp, q_, round, queryInRound, true, false)
-				initialComp.QueriesNoParams.MarkAsIgnored(qName)
 			} else if onlyB {
 				check(q_.Inp.ColumnB, disc, targetModuleName)
 				p.push(moduleComp, q_, round, queryInRound, false, true)
-				initialComp.QueriesNoParams.MarkAsIgnored(qName)
 			} else {
 				continue
 			}
@@ -137,8 +138,10 @@ func check(cols []ifaces.Column,
 func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Projection, round, queryInRound int, isA, isB bool) {
 	var (
 		isMultiColumn = len(q.Inp.ColumnA) > 1
-		alphaName     = p.getCoinName("MERGING_COIN", round, queryInRound)
-		betaName      = p.getCoinName("EVAL_COIN", round, queryInRound)
+		alphaName_    = p.getCoinName("MERGING_COIN", round, queryInRound)
+		alphaName     = coin.Namef("%v_%v", alphaName_, "FieldFromSeed")
+		betaName_     = p.getCoinName("EVAL_COIN", round, queryInRound)
+		betaName      = coin.Namef("%v_%v", betaName_, "FieldFromSeed")
 		alpha         coin.Info
 		beta          coin.Info
 	)
@@ -147,55 +150,56 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 		if comp.Coins.Exists(alphaName) {
 			alpha = comp.Coins.Data(alphaName)
 		} else {
-			alpha = comp.InsertCoin(p.LastRoundProjection+1, alphaName, coin.Field)
+			alpha = comp.InsertCoin(p.LastRoundProjection+1, alphaName, coin.FieldFromSeed)
 		}
 	}
-
 	if comp.Coins.Exists(betaName) {
 		beta = comp.Coins.Data(betaName)
 	} else {
-		beta = comp.InsertCoin(p.LastRoundProjection+1, betaName, coin.Field)
+		beta = comp.InsertCoin(p.LastRoundProjection+1, betaName, coin.FieldFromSeed)
 	}
 	p.EvalCoins = append(p.EvalCoins, beta)
+	p.QIds = append(p.QIds, q)
+	// Push the DistributedProjectionInput
 	if isA && isB {
 		fA, _, _ := wizardutils.AsExpr(q.Inp.FilterA)
 		fB, _, _ := wizardutils.AsExpr(q.Inp.FilterB)
 		p.DistProjectionInput = append(p.DistProjectionInput, &query.DistributedProjectionInput{
-			ColumnA:                       wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnA),
-			ColumnB:                       wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
-			FilterA:                       fA,
-			FilterB:                       fB,
-			SizeA:                         q.Inp.FilterA.Size() / p.NumSegmentsPerModule,
-			SizeB:                         q.Inp.FilterB.Size() / p.NumSegmentsPerModule,
-			EvalCoin:                      beta.Name,
-			IsAInModule:                   true,
-			IsBInModule:                   true,
+			ColumnA:                        wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnA),
+			ColumnB:                        wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
+			FilterA:                        fA,
+			FilterB:                        fB,
+			SizeA:                          utils.NextPowerOfTwo(q.Inp.FilterA.Size() / p.NumSegmentsPerModule),
+			SizeB:                          utils.NextPowerOfTwo(q.Inp.FilterB.Size() / p.NumSegmentsPerModule),
+			EvalCoin:                       beta.Name,
+			IsAInModule:                    true,
+			IsBInModule:                    true,
 			CumulativeNumOnesPrevSegmentsA: *big.NewInt(1), // Placeholder value for now
 		})
 	} else if isA {
 		fA, _, _ := wizardutils.AsExpr(q.Inp.FilterA)
 		p.DistProjectionInput = append(p.DistProjectionInput, &query.DistributedProjectionInput{
-			ColumnA:                       wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnA),
-			ColumnB:                       symbolic.NewConstant(1),
-			FilterA:                       fA,
-			FilterB:                       symbolic.NewConstant(1),
-			SizeA:                         q.Inp.FilterA.Size() / p.NumSegmentsPerModule,
-			EvalCoin:                      beta.Name,
-			IsAInModule:                   true,
-			IsBInModule:                   false,
+			ColumnA:                        wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnA),
+			ColumnB:                        symbolic.NewConstant(1),
+			FilterA:                        fA,
+			FilterB:                        symbolic.NewConstant(1),
+			SizeA:                          q.Inp.FilterA.Size() / p.NumSegmentsPerModule,
+			EvalCoin:                       beta.Name,
+			IsAInModule:                    true,
+			IsBInModule:                    false,
 			CumulativeNumOnesPrevSegmentsA: *big.NewInt(1), // Placeholder value for now
 		})
 	} else if isB {
 		fB, _, _ := wizardutils.AsExpr(q.Inp.FilterB)
 		p.DistProjectionInput = append(p.DistProjectionInput, &query.DistributedProjectionInput{
-			ColumnA:     symbolic.NewConstant(1),
-			ColumnB:     wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
-			FilterA:     symbolic.NewConstant(1),
-			FilterB:     fB,
-			SizeB:       q.Inp.FilterB.Size() / p.NumSegmentsPerModule,
-			EvalCoin:    beta.Name,
-			IsAInModule: false,
-			IsBInModule: true,
+			ColumnA:                        symbolic.NewConstant(1),
+			ColumnB:                        wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
+			FilterA:                        symbolic.NewConstant(1),
+			FilterB:                        fB,
+			SizeB:                          q.Inp.FilterB.Size() / p.NumSegmentsPerModule,
+			EvalCoin:                       beta.Name,
+			IsAInModule:                    false,
+			IsBInModule:                    true,
 			CumulativeNumOnesPrevSegmentsA: *big.NewInt(1), // Placeholder value for now
 		})
 	} else {
@@ -203,8 +207,168 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 	}
 }
 
-// computeQueryParam computes the parameter of the DistributedProjection query
-func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) field.Element {
+// Run implements [wizard.ProverAction] interface
+func (p *DistributeProjectionCtx) Run(run *wizard.ProverRuntime) {
+	p.assignSumNumOnes(run)
+	run.AssignDistributedProjection(p.Query.ID, query.DistributedProjectionParams{
+		ScaledHorner:      p.computeScaledHorner(run),
+		HashCumSumOnePrev: p.computeHashPrev(),
+		HashCumSumOneCurr: p.computeHashCurr(),
+	})
+}
+
+// assignSumNumOnes assigns the cumulative number of ones in the previous segments as well as the current segment
+func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
+	var (
+		initialRuntime = run.ParentRuntime
+		segId          = run.ProverID
+		one            = field.One()
+		bigOne         = big.NewInt(1)
+	)
+	for elemIndex, inp := range p.DistProjectionInput {
+		if inp.IsAInModule && inp.IsBInModule {
+			var (
+				fA                         = initialRuntime.GetColumn(p.QIds[elemIndex].Inp.FilterA.GetColID())
+				fB                         = initialRuntime.GetColumn(p.QIds[elemIndex].Inp.FilterB.GetColID())
+				segSizeA                   = utils.NextPowerOfTwo(fA.Len() / p.NumSegmentsPerModule)
+				segSizeB                   = utils.NextPowerOfTwo(fB.Len() / p.NumSegmentsPerModule)
+				numOnesCurrA, numOnesCurrB field.Element
+				cumSumOnesPrevA            = big.NewInt(0)
+				cumSumOnesPrevB            = big.NewInt(0)
+			)
+			if segId == 0 {
+				var (
+					fACurr = fA.SubVector(segId*segSizeA, (segId+1)*segSizeA).IntoRegVecSaveAlloc()
+					fBCurr = fB.SubVector(segId*segSizeB, (segId+1)*segSizeB).IntoRegVecSaveAlloc()
+				)
+				for i := 0; i < len(fACurr); i++ {
+					if fACurr[i] == one {
+						numOnesCurrA.Add(&numOnesCurrA, &one)
+					}
+				}
+				for i := 0; i < len(fBCurr); i++ {
+					if fBCurr[i] == one {
+						numOnesCurrB.Add(&numOnesCurrB, &one)
+					}
+				}
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = *cumSumOnesPrevA
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = *cumSumOnesPrevB
+				p.DistProjectionInput[elemIndex].CurrNumOnesA = numOnesCurrA
+				p.DistProjectionInput[elemIndex].CurrNumOnesB = numOnesCurrB
+			} else {
+				var (
+					fAPrev = fA.SubVector(0, segId*segSizeA).IntoRegVecSaveAlloc()
+					fBPrev = fB.SubVector(0, segId*segSizeB).IntoRegVecSaveAlloc()
+					fACurr = fA.SubVector(segId*segSizeA, (segId+1)*segSizeA).IntoRegVecSaveAlloc()
+					fBCurr = fB.SubVector(segId*segSizeB, (segId+1)*segSizeB).IntoRegVecSaveAlloc()
+				)
+				for i := 0; i < len(fAPrev); i++ {
+					if fAPrev[i] == one {
+						cumSumOnesPrevA.Add(cumSumOnesPrevA, bigOne)
+					}
+				}
+				for i := 0; i < len(fBPrev); i++ {
+					if fBPrev[i] == one {
+						cumSumOnesPrevB.Add(cumSumOnesPrevB, bigOne)
+					}
+				}
+				for i := 0; i < len(fACurr); i++ {
+					if fACurr[i] == one {
+						numOnesCurrA.Add(&numOnesCurrA, &one)
+					}
+				}
+				for i := 0; i < len(fBCurr); i++ {
+					if fBCurr[i] == one {
+						numOnesCurrB.Add(&numOnesCurrB, &one)
+					}
+				}
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = *cumSumOnesPrevA
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = *cumSumOnesPrevB
+				p.DistProjectionInput[elemIndex].CurrNumOnesA = numOnesCurrA
+				p.DistProjectionInput[elemIndex].CurrNumOnesB = numOnesCurrB
+			}
+		}
+		if inp.IsAInModule && !inp.IsBInModule {
+			var (
+				fA              = initialRuntime.GetColumn(p.QIds[elemIndex].Inp.FilterA.GetColID())
+				segSizeA        = utils.NextPowerOfTwo(fA.Len() / p.NumSegmentsPerModule)
+				numOnesCurrA    field.Element
+				cumSumOnesPrevA = big.NewInt(0)
+			)
+			if segId == 0 {
+				var (
+					fACurr = fA.SubVector(segId*segSizeA, (segId+1)*segSizeA).IntoRegVecSaveAlloc()
+				)
+
+				for i := 0; i < len(fACurr); i++ {
+					if fACurr[i] == one {
+						numOnesCurrA.Add(&numOnesCurrA, &one)
+					}
+				}
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = *cumSumOnesPrevA
+				p.DistProjectionInput[elemIndex].CurrNumOnesA = numOnesCurrA
+			} else {
+				var (
+					fAPrev = fA.SubVector(0, segId*segSizeA).IntoRegVecSaveAlloc()
+					fACurr = fA.SubVector(segId*segSizeA, (segId+1)*segSizeA).IntoRegVecSaveAlloc()
+				)
+				for i := 0; i < len(fAPrev); i++ {
+					if fAPrev[i] == one {
+						cumSumOnesPrevA.Add(cumSumOnesPrevA, bigOne)
+					}
+				}
+				for i := 0; i < len(fACurr); i++ {
+					if fACurr[i] == one {
+						numOnesCurrA.Add(&numOnesCurrA, &one)
+					}
+				}
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = *cumSumOnesPrevA
+				p.DistProjectionInput[elemIndex].CurrNumOnesA = numOnesCurrA
+			}
+		}
+		if !inp.IsAInModule && inp.IsBInModule {
+			var (
+				fB              = initialRuntime.GetColumn(p.QIds[elemIndex].Inp.FilterB.GetColID())
+				segSizeB        = utils.NextPowerOfTwo(fB.Len() / p.NumSegmentsPerModule)
+				numOnesCurrB    field.Element
+				cumSumOnesPrevB = big.NewInt(0)
+			)
+			if segId == 0 {
+				var (
+					fBCurr = fB.SubVector(segId*segSizeB, (segId+1)*segSizeB).IntoRegVecSaveAlloc()
+				)
+
+				for i := 0; i < len(fBCurr); i++ {
+					if fBCurr[i] == one {
+						numOnesCurrB.Add(&numOnesCurrB, &one)
+					}
+				}
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = *cumSumOnesPrevB
+				p.DistProjectionInput[elemIndex].CurrNumOnesB = numOnesCurrB
+			} else {
+				var (
+					fBPrev = fB.SubVector(0, segId*segSizeB).IntoRegVecSaveAlloc()
+					fBCurr = fB.SubVector(segId*segSizeB, (segId+1)*segSizeB).IntoRegVecSaveAlloc()
+				)
+				for i := 0; i < len(fBPrev); i++ {
+					if fBPrev[i] == one {
+						cumSumOnesPrevB.Add(cumSumOnesPrevB, bigOne)
+					}
+				}
+				for i := 0; i < len(fBCurr); i++ {
+					if fBCurr[i] == one {
+						numOnesCurrB.Add(&numOnesCurrB, &one)
+					}
+				}
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = *cumSumOnesPrevB
+				p.DistProjectionInput[elemIndex].CurrNumOnesB = numOnesCurrB
+			}
+		}
+	}
+}
+
+// computeScaledHorner computes the parameter of the DistributedProjection query
+func (p *DistributeProjectionCtx) computeScaledHorner(run *wizard.ProverRuntime) field.Element {
 	var (
 		queryParam = field.Zero()
 		elemParam  = field.Zero()
@@ -212,51 +376,60 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 	for elemIndex, inp := range p.DistProjectionInput {
 		if inp.IsAInModule && inp.IsBInModule {
 			var (
-				colABoard    = inp.ColumnA.Board()
-				colBBoard    = inp.ColumnB.Board()
-				filterABorad = inp.FilterA.Board()
-				filterBBoard = inp.FilterB.Board()
-				colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
-				colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
-				filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
-				filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
+				colABoard                      = inp.ColumnA.Board()
+				colBBoard                      = inp.ColumnB.Board()
+				filterABorad                   = inp.FilterA.Board()
+				filterBBoard                   = inp.FilterB.Board()
+				colA                           = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
+				colB                           = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
+				filterA                        = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
+				filterB                        = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
+				multA, multB, hornerA, hornerB field.Element
 			)
-			hornerA := poly.GetHornerTrace(colA, filterA, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
-			hornerB := poly.GetHornerTrace(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
-			elemParam = hornerB[0]
-			elemParam.Neg(&elemParam)
-			elemParam.Add(&elemParam, &hornerA[0])
-			// Multiply the horner value with the evalCoin^(CumulativeNumOnesPrevSegmentsA)
-			multiplier := run.GetRandomCoinField(p.EvalCoins[elemIndex].Name)
-			multiplier.Exp(multiplier, &inp.CumulativeNumOnesPrevSegmentsA)
-			elemParam.Mul(&elemParam, &multiplier)
+			// Add hornerA after scaling
+			hornerATrace := poly.GetHornerTrace(colA, filterA, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
+			multA = run.GetRandomCoinField(p.EvalCoins[elemIndex].Name)
+			multA.Exp(multA, &inp.CumulativeNumOnesPrevSegmentsA)
+			hornerA = hornerATrace[0]
+			hornerA.Mul(&hornerA, &multA)
+			elemParam.Sub(&elemParam, &hornerA)
+			// Subtract hornerB after scaling
+			hornerBTrace := poly.GetHornerTrace(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
+			hornerB = hornerBTrace[0]
+			multB = run.GetRandomCoinField(p.EvalCoins[elemIndex].Name)
+			multB.Exp(multB, &inp.CumulativeNumOnesPrevSegmentsB)
+			hornerB.Mul(&hornerB, &multB)
+			elemParam.Sub(&elemParam, &hornerB)
 		} else if inp.IsAInModule && !inp.IsBInModule {
 			var (
-				colABoard    = inp.ColumnA.Board()
-				filterABorad = inp.FilterA.Board()
-				colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
-				filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
+				colABoard      = inp.ColumnA.Board()
+				filterABorad   = inp.FilterA.Board()
+				colA           = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
+				filterA        = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
+				multA, hornerA field.Element
 			)
-			hornerA := poly.GetHornerTrace(colA, filterA, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
-			elemParam = hornerA[0]
-			// Multiply the horner value with the evalCoin^(CumulativeNumOnesPrevSegmentsA)
-			multiplier := run.GetRandomCoinField(p.EvalCoins[elemIndex].Name)
-			multiplier.Exp(multiplier, &inp.CumulativeNumOnesPrevSegmentsA)
-			elemParam.Mul(&elemParam, &multiplier)
+			// Add hornerA after scaling
+			hornerATrace := poly.GetHornerTrace(colA, filterA, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
+			multA = run.GetRandomCoinField(p.EvalCoins[elemIndex].Name)
+			multA.Exp(multA, &inp.CumulativeNumOnesPrevSegmentsA)
+			hornerA = hornerATrace[0]
+			hornerA.Mul(&hornerA, &multA)
+			elemParam.Sub(&elemParam, &hornerA)
 		} else if !inp.IsAInModule && inp.IsBInModule {
 			var (
-				colBBoard    = inp.ColumnB.Board()
-				filterBBorad = inp.FilterB.Board()
-				colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
-				filterB      = column.EvalExprColumn(run, filterBBorad).IntoRegVecSaveAlloc()
+				colBBoard      = inp.ColumnB.Board()
+				filterBBorad   = inp.FilterB.Board()
+				colB           = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
+				filterB        = column.EvalExprColumn(run, filterBBorad).IntoRegVecSaveAlloc()
+				multB, hornerB field.Element
 			)
-			hornerB := poly.GetHornerTrace(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
-			elemParam = hornerB[0]
-			elemParam.Neg(&elemParam)
-			// Multiply the horner value with the evalCoin^(CumulativeNumOnesPrevSegments)
-			multiplier := run.GetRandomCoinField(p.EvalCoins[elemIndex].Name)
-			multiplier.Exp(multiplier, &inp.CumulativeNumOnesPrevSegmentsA)
-			elemParam.Mul(&elemParam, &multiplier)
+			// Subtract hornerB after scaling
+			hornerBTrace := poly.GetHornerTrace(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
+			hornerB = hornerBTrace[0]
+			multB = run.GetRandomCoinField(p.EvalCoins[elemIndex].Name)
+			multB.Exp(multB, &inp.CumulativeNumOnesPrevSegmentsB)
+			hornerB.Mul(&hornerB, &multB)
+			elemParam.Sub(&elemParam, &hornerB)
 		} else {
 			panic("Invalid distributed projection query encountered during param evaluation")
 		}
@@ -265,11 +438,56 @@ func (p *DistributeProjectionCtx) computeQueryParam(run *wizard.ProverRuntime) f
 	return queryParam
 }
 
-// Run implements [wizard.ProverAction] interface
-func (p *DistributeProjectionCtx) Run(run *wizard.ProverRuntime) {
-	run.AssignDistributedProjection(p.Query.ID, query.DistributedProjectionParams{
-		ScaledHorner: p.computeQueryParam(run),
-	})
+// computeHashPrev computes the hash of the cumulative number of ones in the previous segments
+func (p *DistributeProjectionCtx) computeHashPrev() field.Element {
+	var (
+		oldState = field.Zero()
+	)
+	for _, inp := range p.DistProjectionInput {
+		if inp.IsAInModule && inp.IsBInModule {
+			sumA := field.NewElement(inp.CumulativeNumOnesPrevSegmentsA.Uint64())
+			oldState = mimc.BlockCompression(oldState, sumA)
+			sumB := field.NewElement(inp.CumulativeNumOnesPrevSegmentsB.Uint64())
+			oldState = mimc.BlockCompression(oldState, sumB)
+		} else if inp.IsAInModule && !inp.IsBInModule {
+			sumA := field.NewElement(inp.CumulativeNumOnesPrevSegmentsA.Uint64())
+			oldState = mimc.BlockCompression(oldState, sumA)
+		} else if !inp.IsAInModule && inp.IsBInModule {
+			sumB := field.NewElement(inp.CumulativeNumOnesPrevSegmentsB.Uint64())
+			oldState = mimc.BlockCompression(oldState, sumB)
+		} else {
+			panic("Invalid distributed projection query encountered during previous hash computation")
+		}
+	}
+	return oldState
+}
+
+// computeHashCurr computes the hash of the cumulative number of ones in the current segment
+func (p *DistributeProjectionCtx) computeHashCurr() field.Element {
+	var (
+		oldState = field.Zero()
+	)
+	for _, inp := range p.DistProjectionInput {
+		if inp.IsAInModule && inp.IsBInModule {
+			sumA := field.NewElement(inp.CumulativeNumOnesPrevSegmentsA.Uint64())
+			sumA.Add(&sumA, &inp.CurrNumOnesA)
+			oldState = mimc.BlockCompression(oldState, sumA)
+			sumB := field.NewElement(inp.CumulativeNumOnesPrevSegmentsB.Uint64())
+			sumB.Add(&sumB, &inp.CurrNumOnesB)
+			oldState = mimc.BlockCompression(oldState, sumB)
+		} else if inp.IsAInModule && !inp.IsBInModule {
+			sumA := field.NewElement(inp.CumulativeNumOnesPrevSegmentsA.Uint64())
+			sumA.Add(&sumA, &inp.CurrNumOnesA)
+			oldState = mimc.BlockCompression(oldState, sumA)
+		} else if !inp.IsAInModule && inp.IsBInModule {
+			sumB := field.NewElement(inp.CumulativeNumOnesPrevSegmentsB.Uint64())
+			sumB.Add(&sumB, &inp.CurrNumOnesB)
+			oldState = mimc.BlockCompression(oldState, sumB)
+		} else {
+			panic("Invalid distributed projection query encountered during current hash computation")
+		}
+	}
+	return oldState
 }
 
 // deriveName constructs a name for the DistributeProjectionCtx context

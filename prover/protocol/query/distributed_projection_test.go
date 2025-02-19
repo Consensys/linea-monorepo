@@ -70,7 +70,7 @@ func TestDistributedProjectionQuery(t *testing.T) {
 				run.AssignColumn(columnB.GetColID(), smartvectors.RightZeroPadded(columnBWit, flagSizeB))
 				run.AssignColumn(columnA.GetColID(), smartvectors.RightZeroPadded(columnAWit, flagSizeA))
 
-				runS.AssignDistributedProjection(queryNameBothAAndB, query.DistributedProjectionParams{HornerVal: field.Zero()})
+				runS.AssignDistributedProjection(queryNameBothAAndB, query.DistributedProjectionParams{ScaledHorner: field.Zero()})
 			},
 		},
 	}

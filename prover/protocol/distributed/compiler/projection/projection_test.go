@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	dist_projection "github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
 	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -22,8 +23,8 @@ import (
 func TestDistributeProjection(t *testing.T) {
 	const (
 		numSegModuleA = 1
-		numSegModuleB = 1
-		numSegModuleC = 1
+		numSegModuleB = 2
+		numSegModuleC = 2
 	)
 	var (
 		allVerfiers                                                   = []wizard.Runtime{}
@@ -159,7 +160,7 @@ func TestDistributeProjection(t *testing.T) {
 			initialComp := wizard.Compile(tc.DefineFunc)
 
 			// apply the LPP relevant compilers and generate the seed for initialComp
-			// lppComp := lpp.CompileLPPAndGetSeed(initialComp)
+			lppComp := lpp.CompileLPPAndGetSeed(initialComp)
 
 			// Initialize the period separating module discoverer
 			disc := &md.PeriodSeperatingModuleDiscoverer{}
@@ -205,10 +206,10 @@ func TestDistributeProjection(t *testing.T) {
 			initialRuntime := wizard.ProverOnlyFirstRound(initialComp, tc.InitialProverFunc)
 
 			// compile and verify for lpp-Prover
-			lppProof := wizard.Prove(initialComp, func(run *wizard.ProverRuntime) {
+			lppProof := wizard.Prove(lppComp, func(run *wizard.ProverRuntime) {
 				run.ParentRuntime = initialRuntime
 			})
-			lppVerifierRuntime, valid := wizard.VerifyWithRuntime(initialComp, lppProof)
+			lppVerifierRuntime, valid := wizard.VerifyWithRuntime(lppComp, lppProof)
 			require.NoError(t, valid)
 
 			// Compile and prove for moduleA
