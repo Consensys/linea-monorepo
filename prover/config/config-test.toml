@@ -6,45 +6,43 @@ log_level = 4                                  # TODO @gbotrel will be refactore
 [controller]
 retry_delays = [0, 1]
 
-
-
 [execution]
 prover_mode = "full"
-conflated_traces_dir = "/home/ubuntu/dummy-test-data/traces/conflated"
-requests_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution"]
-responses_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution"]
+conflated_traces_dir = "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/traces/conflated"
+requests_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution"]
+responses_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution"]
 
-# dummy-test-data to test limitless prover controller 
+# dummy-test-data/sepolia-v0.8.0-rc3 to test limitless prover controller 
 
 [execution_bootstrap]
 prover_mode = "full"
-conflated_traces_dir = "/home/ubuntu/dummy-test-data/traces/conflated"
-requests_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution/limitless"]
-responses_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution/limitless/bootstrap-gl", "/home/ubuntu/dummy-test-data/prover-execution/limitless/bootstrap-distmetadata"]
+conflated_traces_dir = "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/traces/conflated"
+requests_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless"]
+responses_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/bootstrap-gl", "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/bootstrap-distmetadata"]
 
 [execution_gl]
 prover_mode = "full"
-conflated_traces_dir = "/home/ubuntu/dummy-test-data/traces/conflated"
-requests_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution/limitless/bootstrap-gl"]
-responses_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution/limitless/gl-rndbeacon", "/home/ubuntu/dummy-test-data/prover-execution/limitless/gl-conglomeration"]
+conflated_traces_dir = "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/traces/conflated"
+requests_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/bootstrap-gl"]
+responses_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/gl-rndbeacon", "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/gl-conglomeration"]
 
 [execution_rndbeacon]
 prover_mode = "full"
-conflated_traces_dir = "/home/ubuntu/dummy-test-data/traces/conflated"
-requests_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution/limitless/bootstrap-rndbeacon/", "/home/ubuntu/dummy-test-data/prover-execution/limitless/gl-rndbeacon"]
-responses_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution/limitless/rndbeacon-lpp"]
+conflated_traces_dir = "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/traces/conflated"
+requests_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/bootstrap-rndbeacon/", "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/gl-rndbeacon"]
+responses_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/rndbeacon-lpp"]
 
 [execution_lpp]
 prover_mode = "full"
-conflated_traces_dir = "/home/ubuntu/dummy-test-data/traces/conflated"
-requests_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution/limitless/rndbeacon-lpp"]
-responses_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution/limitless/lpp-conglomeration"]
+conflated_traces_dir = "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/traces/conflated"
+requests_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/rndbeacon-lpp"]
+responses_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/lpp-conglomeration"]
 
 [execution_conglomeration]
 prover_mode = "full"
-conflated_traces_dir = "/home/ubuntu/dummy-test-data/traces/conflated"
-requests_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution/limitless/bootstrap-metadata", "/home/ubuntu/dummy-test-data/prover-execution/limitless/gl-conglomeration", "/home/ubuntu/dummy-test-data/prover-execution/limitless/lpp-conglomeration"]
-responses_root_dir = ["/home/ubuntu/dummy-test-data/prover-execution/limitless"]
+conflated_traces_dir = "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/traces/conflated"
+requests_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/bootstrap-metadata", "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/gl-conglomeration", "/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless/lpp-conglomeration"]
+responses_root_dir = ["/home/ubuntu/dummy-test-data/sepolia-v0.8.0-rc3/prover-execution/limitless"]
 
 [blob_decompression]
 prover_mode = "full"
