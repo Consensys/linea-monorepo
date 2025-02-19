@@ -45,7 +45,7 @@ func TestDistributeProjection(t *testing.T) {
 			DefineFunc: func(builder *wizard.Builder) {
 				flagA = builder.RegisterCommit(ifaces.ColID("moduleA.FilterA"), flagSizeA)
 				flagB = builder.RegisterCommit(ifaces.ColID("moduleB.FliterB"), flagSizeB)
-				flagC = builder.RegisterCommit(ifaces.ColID("moduleC.FliterB"), flagSizeB)
+				flagC = builder.RegisterCommit(ifaces.ColID("moduleC.FliterC"), flagSizeB)
 				columnA = builder.RegisterCommit(ifaces.ColID("moduleA.ColumnA"), flagSizeA)
 				columnB = builder.RegisterCommit(ifaces.ColID("moduleB.ColumnB"), flagSizeB)
 				columnC = builder.RegisterCommit(ifaces.ColID("moduleC.ColumnC"), flagSizeB)
