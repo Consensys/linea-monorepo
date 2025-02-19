@@ -25,6 +25,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     error StakeVault__NotAllowedToExit();
     error StakeVault__NotAllowedToLeave();
     error StakeVault__StakeManagerImplementationNotTrusted();
+    error StakeVault__MigrationFailed();
 
     //STAKING_TOKEN must be kept as an immutable, otherwise, StakeManager would accept StakeVaults with any token
     //if is needed that STAKING_TOKEN to be a variable, StakeManager should be changed to check codehash and
@@ -263,5 +264,20 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     function _stakeManagerImplementationTrusted() internal view virtual returns (bool) {
         return stakeManagerImplementationAddress == stakeManager.implementation();
+    }
+
+    /**
+     * @notice Migrate all funds to a new vault.
+     * @param migrateTo The address of the new vault.
+     * @dev This function is only callable by the owner.
+     * @dev This function is only callable if the current stake manager is trusted.
+     * @dev Reverts when the stake manager reverts or the funds can't be transferred.
+     */
+    function migrateToVault(address migrateTo) external onlyOwner onlyTrustedStakeManager {
+        stakeManager.migrateToVault(migrateTo);
+        bool success = STAKING_TOKEN.transfer(migrateTo, STAKING_TOKEN.balanceOf(address(this)));
+        if (!success) {
+            revert StakeVault__MigrationFailed();
+        }
     }
 }

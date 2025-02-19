@@ -56,13 +56,13 @@ invariant sumOfBalancesIsTotalStaked()
 invariant vaultMPLessEqualVaultMaxMP(address vault)
   to_mathint(getVaultMPAccrued(vault)) <= to_mathint(getVaultMaxMP(vault))
   filtered {
-    f -> f.selector != sig:upgradeToAndCall(address,bytes).selector
+    f -> f.selector != sig:upgradeToAndCall(address,bytes).selector && f.selector != sig:migrateToVault(address).selector
   }
 
 invariant vaultMPGreaterEqualVaultStakedBalance(address vault)
   to_mathint(getVaultMPAccrued(vault)) >= to_mathint(getVaultStakedBalance(vault))
   filtered {
-    f -> f.selector != sig:upgradeToAndCall(address,bytes).selector
+    f -> f.selector != sig:upgradeToAndCall(address,bytes).selector && f.selector != sig:migrateToVault(address).selector
   }
 
 rule stakingMintsMultiplierPoints1To1Ratio {

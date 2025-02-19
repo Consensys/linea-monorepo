@@ -75,4 +75,9 @@ contract StackOverflowStakeManager is
     function registerVault() external override {
         // implementation
     }
+
+    // solhint-disable-next-line
+    function migrateToVault(address _migrateTo) external {
+        // implementation
+    }
 }

@@ -34,6 +34,10 @@ contract RewardsStreamerMP is
     error StakingManager__AlreadyLocked();
     error StakingManager__EmergencyModeEnabled();
     error StakingManager__DurationCannotBeZero();
+    error StakingManager__Unauthorized();
+    error StakingManager__MigrationTargetHasFunds();
+
+    event VaultMigrated(address indexed from, address indexed to);
 
     IERC20 public STAKING_TOKEN;
 
@@ -538,5 +542,39 @@ contract RewardsStreamerMP is
     function mpStakedOf(address vaultAddress) external view returns (uint256) {
         VaultData storage vault = vaultData[vaultAddress];
         return vault.mpStaked;
+    }
+
+    /// @notice Migrate the staked balance of a vault to another vault.
+    /// @param migrateTo The address of the vault to migrate to.
+    /// @dev This function is only callable by trusted stake vaults.
+    /// @dev Reverts if the vault to migrate to is not owned by the same user.
+    /// @dev Revets if the vault to migrate to has a non-zero staked balance.
+    function migrateToVault(address migrateTo) external onlyNotEmergencyMode onlyTrustedCodehash onlyRegisteredVault {
+        // first ensure the vault to migrate to is actually owned by the same user
+        if (IStakeVault(msg.sender).owner() != IStakeVault(migrateTo).owner()) {
+            revert StakingManager__Unauthorized();
+        }
+
+        if (vaultData[migrateTo].stakedBalance > 0) {
+            revert StakingManager__MigrationTargetHasFunds();
+        }
+
+        _updateGlobalState();
+        _updateVaultMP(msg.sender, true);
+
+        VaultData storage oldVault = vaultData[msg.sender];
+        VaultData storage newVault = vaultData[migrateTo];
+
+        // migrate vault data to new vault
+        newVault.stakedBalance = oldVault.stakedBalance;
+        newVault.rewardIndex = oldVault.rewardIndex;
+        newVault.mpAccrued = oldVault.mpAccrued;
+        newVault.maxMP = oldVault.maxMP;
+        newVault.lastMPUpdateTime = oldVault.lastMPUpdateTime;
+        newVault.lockUntil = oldVault.lockUntil;
+
+        delete vaultData[msg.sender];
+
+        emit VaultMigrated(msg.sender, migrateTo);
     }
 }
