@@ -1,5 +1,6 @@
 package linea.staterecovery.plugin
 
+import linea.kotlin.hasSequentialElements
 import net.consensys.encodeHex
 import net.consensys.minusCoercingUnderflow
 import org.apache.logging.log4j.LogManager
@@ -16,19 +17,8 @@ class BlockHashLookupWithRecoverySupport(
 ) : BlockHashLookup {
   private val lookbackHashesMap = ConcurrentHashMap<ULong, ByteArray>()
 
-  fun areSequential(numbers: List<ULong>): Boolean {
-    if (numbers.size < 2) return true // A list with less than 2 elements is trivially continuous
-
-    for (i in 1 until numbers.size) {
-      if (numbers[i] != numbers[i - 1] + 1UL) {
-        return false
-      }
-    }
-    return true
-  }
-
   fun addLookbackHashes(blocksHashes: Map<ULong, ByteArray>) {
-    require(areSequential(blocksHashes.keys.toList())) {
+    require(blocksHashes.keys.toList().sorted().hasSequentialElements()) {
       "Block numbers must be sequential"
     }
 
@@ -46,7 +36,7 @@ class BlockHashLookupWithRecoverySupport(
     pruneLookBackHashes(blockNumber)
   }
 
-  fun pruneLookBackHashes(headBlockNumber: ULong) {
+  private fun pruneLookBackHashes(headBlockNumber: ULong) {
     if (headBlockNumber <= lookbackWindow) return
 
     lookbackHashesMap.keys.removeIf {
