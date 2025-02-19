@@ -65,7 +65,8 @@ class SubmissionsFetchingTaskIntTest {
     aggregationsAndBlobs = loadBlobsAndAggregationsSortedAndGrouped(
       blobsResponsesDir = "$testDataDir/compression/responses",
       aggregationsResponsesDir = "$testDataDir/aggregation/responses",
-      ignoreBlobsWithoutAggregation = true
+      ignoreBlobsWithoutAggregation = true,
+      numberOfAggregations = 7
     )
     val rollupDeploymentResult = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6).get()
@@ -92,7 +93,6 @@ class SubmissionsFetchingTaskIntTest {
       "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN, // silence noisy gasPrice Caps logs
       "linea.staterecovery.BlobDecompressorToDomainV1" to Level.DEBUG,
       "linea.plugin.staterecovery.clients" to Level.DEBUG,
-      "test.fake.clients.l1.fake-execution-layer" to Level.DEBUG,
       "test.clients.l1.web3j-default" to Level.DEBUG,
       "test.clients.l1.web3j.receipt-poller" to Level.DEBUG,
       "linea.staterecovery.datafetching" to Level.DEBUG
@@ -197,6 +197,7 @@ class SubmissionsFetchingTaskIntTest {
           }
           isAfterOrContainingStart && isBeforeForcedStop
         }
+
     val fetchedSubmissions = CopyOnWriteArrayList<SubmissionEventsAndData<BlockFromL1RecoveredData>>()
 
     // consume finalizations until all are fetched
@@ -217,7 +218,7 @@ class SubmissionsFetchingTaskIntTest {
     consumingThread.start()
 
     await()
-      .atMost(20.seconds.toJavaDuration())
+      .atMost(1.minutes.toJavaDuration())
       .untilAsserted {
         val highestFetchedBlockNumber = fetchedSubmissions.lastOrNull()
           ?.let { it.submissionEvents.dataFinalizedEvent.event.endBlockNumber }
