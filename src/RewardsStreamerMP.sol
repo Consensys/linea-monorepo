@@ -100,7 +100,7 @@ contract RewardsStreamerMP is
      * @notice Registers a vault with its owner. Called by the vault itself during initialization.
      * @dev Only callable by contracts with trusted codehash
      */
-    function registerVault() external onlyTrustedCodehash {
+    function registerVault() external onlyTrustedCodehash onlyNotEmergencyMode {
         address vault = msg.sender;
         address owner = IStakeVault(vault).owner();
 
