@@ -16,21 +16,19 @@ async function downloadAndParseJson(url: string, headers: Record<string, string>
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to load JSON from ${url}. HTTP error code: ${response.status}`);
+    throw new Error(`Failed to load JSON from "${url}". HTTP error code: ${response.status}`);
   }
 
   return await response.json();
 }
 
 async function getReleaseAssetUrl(nativeLibReleaseTag: string): Promise<string> {
-  const urlStr = "https://api.github.com/repos/Consensys/linea-monorepo/releases";
+  const urlStr = `https://api.github.com/repos/Consensys/linea-monorepo/releases/tags/${nativeLibReleaseTag}`;
 
-  const json = await downloadAndParseJson(urlStr);
-  const release = json.find((release: any) => release.tag_name === nativeLibReleaseTag);
+  const release = await downloadAndParseJson(urlStr);
 
   if (!release) {
-    const releases = json.map((release: any) => release.tag_name);
-    throw new Error(`Release ${nativeLibReleaseTag} not found! releases: ${releases}`);
+    throw new Error(`Release ${nativeLibReleaseTag} not found!`);
   }
 
   if (release.assets.length === 0) {
