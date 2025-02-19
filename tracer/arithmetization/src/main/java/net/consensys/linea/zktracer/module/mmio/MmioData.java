@@ -164,13 +164,11 @@ public class MmioData {
   }
 
   public static boolean isFastOperation(final int mmioInstruction) {
-    return List.of(
-            MMIO_INST_LIMB_VANISHES,
-            MMIO_INST_LIMB_TO_RAM_TRANSPLANT,
-            MMIO_INST_RAM_TO_LIMB_TRANSPLANT,
-            MMIO_INST_RAM_TO_RAM_TRANSPLANT,
-            MMIO_INST_RAM_VANISHES)
-        .contains(mmioInstruction);
+    return (mmioInstruction == MMIO_INST_LIMB_VANISHES
+        || mmioInstruction == MMIO_INST_LIMB_TO_RAM_TRANSPLANT
+        || mmioInstruction == MMIO_INST_RAM_TO_LIMB_TRANSPLANT
+        || mmioInstruction == MMIO_INST_RAM_TO_RAM_TRANSPLANT
+        || mmioInstruction == MMIO_INST_RAM_VANISHES);
   }
 
   public static int lineCountOfMmioInstruction(final int mmioInstruction) {
