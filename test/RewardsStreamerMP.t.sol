@@ -1630,6 +1630,11 @@ contract LockTest is RewardsStreamerMPTest {
         vm.expectRevert(StakeMath.StakeMath__InvalidLockingPeriod.selector);
         _lock(alice, _lockPeriod);
     }
+
+    function test_RevertWhenVaultToLockIsEmpty() public {
+        vm.expectRevert(StakeMath.StakeMath__InsufficientBalance.selector);
+        _lock(alice, YEAR);
+    }
 }
 
 contract EmergencyExitTest is RewardsStreamerMPTest {

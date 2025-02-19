@@ -7,7 +7,7 @@ methods {
     function ERC20A.allowance(address, address) external returns(uint256) envfree;
     function ERC20A.totalSupply() external returns(uint256) envfree;
     function totalStaked() external returns (uint256) envfree;
-    function vaultData(address) external returns (uint256, uint256, uint256, uint256, uint256, uint256) envfree;
+    function vaultData(address) external returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256) envfree;
     function lastMPUpdatedTime() external returns (uint256) envfree;
     function updateGlobalState() external;
     function updateVaultMP(address vaultAddress) external;
