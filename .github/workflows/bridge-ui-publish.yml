@@ -68,7 +68,7 @@ jobs:
           NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
   
   test-build:
-    if: github.event.pull_request.head.repo.fork == true
+    if: github.event.pull_request.head.repo.fork == false
     # ~1 min saved vs small
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: Test Build Bridge UI
