@@ -1,6 +1,6 @@
 package linea.staterecovery.test
 
-import build.linea.domain.EthLogEvent
+import linea.domain.EthLogEvent
 import linea.staterecovery.DataFinalizedV3
 import linea.web3j.Web3JLogsSearcher
 import net.consensys.linea.BlockParameter

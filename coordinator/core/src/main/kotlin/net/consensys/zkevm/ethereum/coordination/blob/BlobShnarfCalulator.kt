@@ -1,6 +1,6 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
-import build.linea.domain.BlockIntervals
+import linea.domain.BlockIntervals
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import net.consensys.linea.blob.CalculateShnarfResult

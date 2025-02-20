@@ -1,4 +1,4 @@
-package build.linea.domain
+package linea.domain
 
 import linea.kotlin.encodeHex
 

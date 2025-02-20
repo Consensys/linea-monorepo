@@ -2,11 +2,11 @@ package linea.staterecovery
 
 import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerV1JsonRpcClient
-import build.linea.domain.EthLogEvent
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import kotlinx.datetime.Clock
+import linea.domain.EthLogEvent
 import linea.domain.RetryConfig
 import linea.kotlin.gwei
 import linea.kotlin.toBigInteger

@@ -1,7 +1,7 @@
 package net.consensys.zkevm.coordination.blob
 
-import build.linea.domain.BlockIntervals
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import linea.domain.BlockIntervals
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import net.consensys.linea.blob.CalculateShnarfResult

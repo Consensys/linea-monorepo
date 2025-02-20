@@ -1,8 +1,8 @@
 package linea.staterecovery
 
-import build.linea.domain.EthLogEvent
 import linea.EthLogsSearcher
 import linea.SearchDirection
+import linea.domain.EthLogEvent
 import linea.kotlin.encodeHex
 import linea.kotlin.toHexStringUInt256
 import net.consensys.linea.BlockParameter

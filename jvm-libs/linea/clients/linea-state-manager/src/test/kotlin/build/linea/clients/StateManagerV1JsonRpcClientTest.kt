@@ -1,6 +1,5 @@
 package build.linea.clients
 
-import build.linea.domain.BlockInterval
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.michaelbull.result.Err
@@ -13,6 +12,7 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.domain.BlockInterval
 import linea.kotlin.decodeHex
 import linea.kotlin.fromHexString
 import net.consensys.linea.async.get

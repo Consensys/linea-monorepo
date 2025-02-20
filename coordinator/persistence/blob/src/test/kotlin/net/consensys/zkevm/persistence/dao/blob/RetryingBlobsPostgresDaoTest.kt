@@ -1,8 +1,8 @@
 package net.consensys.zkevm.persistence.dao.blob
 
-import build.linea.domain.BlockIntervals
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.domain.BlockIntervals
 import linea.kotlin.setFirstByteToZero
 import linea.kotlin.trimToSecondPrecision
 import net.consensys.FakeFixedClock

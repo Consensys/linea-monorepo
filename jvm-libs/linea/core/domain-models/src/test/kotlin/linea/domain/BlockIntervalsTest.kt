@@ -1,4 +1,4 @@
-package build.linea.domain
+package linea.domain
 
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test

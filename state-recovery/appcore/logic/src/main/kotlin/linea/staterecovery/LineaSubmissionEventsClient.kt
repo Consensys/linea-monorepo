@@ -1,8 +1,8 @@
 package linea.staterecovery
 
-import build.linea.domain.BlockInterval
-import build.linea.domain.EthLog
-import build.linea.domain.EthLogEvent
+import linea.domain.BlockInterval
+import linea.domain.EthLog
+import linea.domain.EthLogEvent
 import linea.kotlin.encodeHex
 import linea.kotlin.sliceOf32
 import linea.kotlin.toULongFromLast8Bytes

@@ -24,7 +24,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 private sealed interface SearchResult {
-  data class ItemFound(val log: build.linea.domain.EthLog) : SearchResult
+  data class ItemFound(val log: linea.domain.EthLog) : SearchResult
   data class KeepSearching(val direction: SearchDirection) : SearchResult
   data object NoResultsInInterval : SearchResult
 }
@@ -46,8 +46,8 @@ class Web3JLogsSearcher(
     chunkSize: Int,
     address: String,
     topics: List<String>,
-    shallContinueToSearch: (build.linea.domain.EthLog) -> SearchDirection?
-  ): SafeFuture<build.linea.domain.EthLog?> {
+    shallContinueToSearch: (linea.domain.EthLog) -> SearchDirection?
+  ): SafeFuture<linea.domain.EthLog?> {
     require(chunkSize > 0) { "chunkSize=$chunkSize must be greater than 0" }
 
     return getAbsoluteBlockNumbers(fromBlock, toBlock)
@@ -76,8 +76,8 @@ class Web3JLogsSearcher(
     chunkSize: Int,
     address: String,
     topics: List<String>,
-    shallContinueToSearchPredicate: (build.linea.domain.EthLog) -> SearchDirection?
-  ): SafeFuture<build.linea.domain.EthLog?> {
+    shallContinueToSearchPredicate: (linea.domain.EthLog) -> SearchDirection?
+  ): SafeFuture<linea.domain.EthLog?> {
     val cursor = SearchCursor(fromBlock, toBlock, chunkSize)
     log.trace("searching between blocks={}", CommonDomainFunctions.blockIntervalString(fromBlock, toBlock))
 
@@ -121,7 +121,7 @@ class Web3JLogsSearcher(
     toBlock: ULong,
     address: String,
     topics: List<String>,
-    shallContinueToSearchPredicate: (build.linea.domain.EthLog) -> SearchDirection?
+    shallContinueToSearchPredicate: (linea.domain.EthLog) -> SearchDirection?
   ): SafeFuture<SearchResult> {
     return getLogs(
       fromBlock = fromBlock.toBlockParameter(),
@@ -152,7 +152,7 @@ class Web3JLogsSearcher(
     toBlock: BlockParameter,
     address: String,
     topics: List<String?>
-  ): SafeFuture<List<build.linea.domain.EthLog>> {
+  ): SafeFuture<List<linea.domain.EthLog>> {
     return if (config.requestRetryConfig.isRetryEnabled) {
       AsyncRetryer.retry(
         vertx = vertx,
@@ -172,7 +172,7 @@ class Web3JLogsSearcher(
     toBlock: BlockParameter,
     address: String,
     topics: List<String?>
-  ): SafeFuture<List<build.linea.domain.EthLog>> {
+  ): SafeFuture<List<linea.domain.EthLog>> {
     val ethFilter = EthFilter(
       /*fromBlock*/ fromBlock.toWeb3j(),
       /*toBlock*/ toBlock.toWeb3j(),

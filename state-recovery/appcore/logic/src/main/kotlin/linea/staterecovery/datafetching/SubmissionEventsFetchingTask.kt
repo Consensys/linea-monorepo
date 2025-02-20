@@ -1,7 +1,7 @@
 package linea.staterecovery.datafetching
 
-import build.linea.domain.EthLogEvent
 import io.vertx.core.Vertx
+import linea.domain.EthLogEvent
 import linea.staterecovery.DataFinalizedV3
 import linea.staterecovery.FinalizationAndDataEventsV3
 import linea.staterecovery.LineaRollupSubmissionEventsClient

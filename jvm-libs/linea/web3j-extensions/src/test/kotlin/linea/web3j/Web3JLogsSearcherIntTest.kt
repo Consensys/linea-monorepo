@@ -1,6 +1,5 @@
 package linea.web3j
 
-import build.linea.domain.EthLog
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.containing
@@ -9,6 +8,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.vertx.core.Vertx
 import linea.SearchDirection
+import linea.domain.EthLog
 import linea.domain.RetryConfig
 import linea.jsonrpc.TestingJsonRpcServer
 import linea.kotlin.encodeHex

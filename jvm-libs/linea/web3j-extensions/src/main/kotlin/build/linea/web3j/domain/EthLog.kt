@@ -1,6 +1,6 @@
 package build.linea.web3j.domain
 
-import build.linea.domain.EthLog
+import linea.domain.EthLog
 import linea.kotlin.decodeHex
 import linea.kotlin.toULong
 import org.web3j.protocol.core.methods.response.Log

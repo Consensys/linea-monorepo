@@ -3,11 +3,11 @@ package linea.staterecovery.test
 import build.linea.clients.GetZkEVMStateMerkleProofResponse
 import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerErrorType
-import build.linea.domain.BlockInterval
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import linea.EthLogsSearcher
+import linea.domain.BlockInterval
 import linea.kotlin.toHexStringUInt256
 import linea.staterecovery.DataFinalizedV3
 import net.consensys.linea.BlockParameter
