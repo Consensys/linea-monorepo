@@ -44,7 +44,6 @@ contract RewardsStreamerMP is
     uint256 public constant SCALE_FACTOR = 1e18;
 
     uint256 public totalStaked;
-    uint256 public totalMPStaked;
     uint256 public totalMPAccrued;
     uint256 public totalMaxMP;
     uint256 public rewardIndex;
@@ -71,6 +70,8 @@ contract RewardsStreamerMP is
     mapping(address vault => VaultData data) public vaultData;
     mapping(address owner => address[] vault) public vaults;
     mapping(address vault => address owner) public vaultOwners;
+
+    uint256 public totalMPStaked;
 
     modifier onlyRegisteredVault() {
         if (vaultOwners[msg.sender] == address(0)) {
