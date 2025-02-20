@@ -5,11 +5,11 @@ import build.linea.web3j.domain.toWeb3j
 import io.vertx.core.Vertx
 import linea.EthLogsSearcher
 import linea.SearchDirection
+import linea.domain.BlockParameter
+import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.domain.CommonDomainFunctions
 import linea.domain.RetryConfig
 import linea.kotlin.toULong
-import net.consensys.linea.BlockParameter
-import net.consensys.linea.BlockParameter.Companion.toBlockParameter
-import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager

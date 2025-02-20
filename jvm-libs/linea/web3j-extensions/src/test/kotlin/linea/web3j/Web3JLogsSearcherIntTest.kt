@@ -8,6 +8,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.vertx.core.Vertx
 import linea.SearchDirection
+import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.domain.EthLog
 import linea.domain.RetryConfig
 import linea.jsonrpc.TestingJsonRpcServer
@@ -16,7 +17,6 @@ import linea.kotlin.fromHexString
 import linea.kotlin.toHexString
 import linea.kotlin.toHexStringUInt256
 import linea.log4j.configureLoggers
-import net.consensys.linea.BlockParameter.Companion.toBlockParameter
 import net.consensys.linea.jsonrpc.JsonRpcError
 import net.consensys.linea.jsonrpc.JsonRpcRequest
 import org.apache.logging.log4j.Level

@@ -1,4 +1,4 @@
-package net.consensys.linea
+package linea.domain
 
 data class FeeHistory(
   val oldestBlock: ULong,

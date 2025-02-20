@@ -3,8 +3,8 @@ package net.consensys.zkevm.domain
 import kotlinx.datetime.Instant
 import linea.domain.Block
 import linea.domain.BlockInterval
+import linea.domain.CommonDomainFunctions
 import linea.kotlin.isSortedBy
-import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.traces.TracesCounters
 
 data class BlocksConflation(

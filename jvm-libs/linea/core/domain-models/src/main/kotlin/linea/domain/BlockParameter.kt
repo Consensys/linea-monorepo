@@ -1,4 +1,4 @@
-package net.consensys.linea
+package linea.domain
 
 sealed interface BlockParameter {
   fun getTag(): String

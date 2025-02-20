@@ -1,10 +1,10 @@
 package build.linea.contract.l1
 
 import build.linea.contract.LineaRollupV6
+import linea.domain.BlockParameter
 import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
 import linea.kotlin.toULong
-import net.consensys.linea.BlockParameter
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

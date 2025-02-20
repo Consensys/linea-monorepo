@@ -1,7 +1,7 @@
 package build.linea.web3j.domain
 
+import linea.domain.BlockParameter
 import linea.kotlin.toBigInteger
-import net.consensys.linea.BlockParameter
 import org.web3j.protocol.core.DefaultBlockParameter
 
 fun BlockParameter.toWeb3j(): DefaultBlockParameter {

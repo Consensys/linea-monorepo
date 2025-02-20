@@ -10,7 +10,7 @@ import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.map
 import com.github.michaelbull.result.mapBoth
 import linea.domain.BlockInterval
-import net.consensys.linea.BlockNumberAndHash
+import linea.domain.BlockNumberAndHash
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.zkevm.coordinator.clients.GenerateTracesResponse
 import net.consensys.zkevm.coordinator.clients.TracesConflationClientV1

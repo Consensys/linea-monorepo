@@ -1,7 +1,6 @@
 package linea.domain
 
 import linea.kotlin.isSortedBy
-import net.consensys.linea.CommonDomainFunctions
 
 /**
  * Represents a block interval, with inclusive start and end block numbers

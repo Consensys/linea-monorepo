@@ -4,8 +4,8 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import linea.domain.BlockParameter
 import linea.kotlin.toBigInteger
-import net.consensys.linea.BlockParameter
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.EIP1559GasProvider

@@ -1,7 +1,7 @@
 package linea
 
+import linea.domain.BlockParameter
 import linea.domain.EthLog
-import net.consensys.linea.BlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 enum class SearchDirection {

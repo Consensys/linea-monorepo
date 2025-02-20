@@ -1,12 +1,12 @@
 package linea.staterecovery
 
 import linea.domain.BlockInterval
+import linea.domain.BlockParameter
 import linea.domain.EthLog
 import linea.domain.EthLogEvent
 import linea.kotlin.encodeHex
 import linea.kotlin.sliceOf32
 import linea.kotlin.toULongFromLast8Bytes
-import net.consensys.linea.BlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 data class DataSubmittedV3(

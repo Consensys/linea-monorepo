@@ -4,9 +4,9 @@ import build.linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import linea.domain.BlockParameter
 import linea.kotlin.ByteArrayExt
 import linea.kotlin.encodeHex
-import net.consensys.linea.BlockParameter
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat

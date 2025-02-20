@@ -3,7 +3,7 @@ package net.consensys.zkevm.domain
 import kotlinx.datetime.Instant
 import linea.domain.BlockInterval
 import linea.domain.BlockIntervals
-import net.consensys.linea.CommonDomainFunctions
+import linea.domain.CommonDomainFunctions
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 
 data class Blob(

@@ -1,4 +1,4 @@
-package net.consensys.linea
+package linea.domain
 
 import linea.kotlin.assertIs20Bytes
 import linea.kotlin.decodeHex
