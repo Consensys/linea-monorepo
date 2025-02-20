@@ -1,25 +1,27 @@
 package blobsubmission
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"hash"
-
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
-
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"golang.org/x/crypto/sha3"
+	"hash"
 )
 
-var b64 = base64.StdEncoding
-
 // Prepare a response object by computing all the fields except for the proof.
-func CraftResponseCalldata(req *Request) (*Response, error) {
+func CraftResponse(req *Request) (*Response, error) {
 	if req == nil {
 		return nil, errors.New("crafting response: request must not be nil")
+	}
+
+	if !req.Eip4844Enabled { // no longer supported
+		return nil, errors.New("EIP-4844 is mandatory")
 	}
 
 	// Flat pass the request parameters to the response
@@ -35,7 +37,7 @@ func CraftResponseCalldata(req *Request) (*Response, error) {
 	parentZkRootHash, errs[0] = utils.HexDecodeString(req.ParentStateRootHash)
 	newZkRootHash, errs[1] = utils.HexDecodeString(req.FinalStateRootHash)
 	prevShnarf, errs[2] = utils.HexDecodeString(req.PrevShnarf)
-	compressedStream, errs[3] = b64.DecodeString(req.CompressedData)
+	compressedStream, errs[3] = base64.StdEncoding.DecodeString(req.CompressedData)
 
 	// Collect and wrap the errors if any, so that we get a friendly error message
 	if errors.Join(errs[:]...) != nil {
@@ -53,80 +55,122 @@ func CraftResponseCalldata(req *Request) (*Response, error) {
 			errsFiltered = append(errsFiltered, fmt.Errorf("bad compressed data: %w", errs[3]))
 		}
 		return nil, fmt.Errorf("crafting response:\n%w", errors.Join(errsFiltered...))
+
 	}
 
 	resp := &Response{
 		ConflationOrder: req.ConflationOrder,
 		// Reencode all the parameters to ensure that they are in 0x prefixed format
-		CompressedData:      b64.EncodeToString(compressedStream),
 		ParentStateRootHash: utils.HexEncodeToString(parentZkRootHash),
 		FinalStateRootHash:  utils.HexEncodeToString(newZkRootHash),
 		DataParentHash:      req.DataParentHash,
 		PrevShnarf:          utils.HexEncodeToString(prevShnarf),
-		Eip4844Enabled:      req.Eip4844Enabled, // this is guaranteed to be false
-		// Pass an the hex for an empty commitments and proofs instead of passing
-		// empty string so that the response is always a valid hex string.
-		KzgProofContract: "0x",
-		KzgProofSidecar:  "0x",
-		Commitment:       "0x",
+		Eip4844Enabled:      req.Eip4844Enabled, // this is guaranteed to be true
+	}
+
+	// copy compressedStream to kzg48484 blobPadded type
+	// check boundary conditions and add padding if necessary
+	blobPadded, err := compressedStreamToBlob(compressedStream)
+	if err != nil {
+		formatStr := "crafting response: compressedStreamToBlob:  %w"
+		return nil, fmt.Errorf(formatStr, err)
+	}
+
+	// BlobToCommitment creates a commitment out of a data blob.
+	commitment, err := kzg4844.BlobToCommitment(&blobPadded)
+	if err != nil {
+		formatStr := "crafting response: BlobToCommitment:  %w"
+		return nil, fmt.Errorf(formatStr, err)
+	}
+
+	// blobHash
+	blobHash := kzg4844.CalcBlobHashV1(sha256.New(), &commitment)
+	if !kzg4844.IsValidVersionedHash(blobHash[:]) {
+		formatStr := "crafting response: invalid versionedHash (blobHash, dataHash):  %w"
+		return nil, fmt.Errorf(formatStr, err)
 	}
 
 	// Compute all the prover fields
-	snarkHash, err := encode.MiMCChecksumPackedData(compressedStream, fr381.Bits-1, encode.NoTerminalSymbol())
+	snarkHash, err := encode.MiMCChecksumPackedData(append(compressedStream, make([]byte, blob.MaxUsableBytes-len(compressedStream))...), fr381.Bits-1, encode.NoTerminalSymbol())
 	if err != nil {
 		return nil, fmt.Errorf("crafting response: could not compute snark hash: %w", err)
 	}
 
-	keccakHash := utils.KeccakHash(compressedStream)
-	x := evaluationChallenge(snarkHash, keccakHash)
-	y, err := EvalStream(compressedStream, x)
+	// ExpectedX
+	// Perform the modular reduction before passing to `ComputeProof`. That's needed because ComputeProof expects a reduced
+	// x point and our x point comes out of Keccak. Thus, it has no reason to be a valid field element as is.
+	// importantly, do not use `SetByteCanonical` as it will return an error because it expects a reduced input
+	xUnreduced := evaluationChallenge(snarkHash, blobHash[:])
+	var tmp fr381.Element
+	tmp.SetBytes(xUnreduced[:])
+	xPoint := kzg4844.Point(tmp.Bytes())
+
+	// KZG Proof Contract
+	kzgProofContract, yClaim, err := kzg4844.ComputeProof(&blobPadded, xPoint)
 	if err != nil {
-		errorMsg := "crafting response: could not compute y: %w"
-		return nil, fmt.Errorf(errorMsg, err)
+		formatStr := "kzgProofContract: kzg4844.ComputeProof error:  %w"
+		return nil, fmt.Errorf(formatStr, err)
 	}
 
+	// ExpectedY
+	// A claimed evaluation value in a specific point.
+	y := make([]byte, len(yClaim))
+	copy(y[:], yClaim[:])
+
+	// KZG Proof Sidecar
+	kzgProofSidecar, err := kzg4844.ComputeBlobProof(&blobPadded, commitment)
+	if err != nil {
+		formatStr := "kzgProofSidecar: kzg4844.ComputeBlobProof error:  %w"
+		return nil, fmt.Errorf(formatStr, err)
+	}
+
+	// newShnarf
 	parts := Shnarf{
 		OldShnarf:        prevShnarf,
 		SnarkHash:        snarkHash,
 		NewStateRootHash: newZkRootHash,
-		Y:                y,
-		X:                x,
+		X:                xUnreduced,
+	}
+	if err = parts.Y.SetBytesCanonical(y); err != nil {
+		return nil, err
 	}
 	newShnarf := parts.Compute()
 
 	// Assign all the fields in the input
-	resp.DataHash = utils.HexEncodeToString(keccakHash)
+
+	// We return the unpadded blob-data and leave the coordinator the responsibility
+	// to perform the padding operation.
+	resp.CompressedData = req.CompressedData
+	resp.Commitment = utils.HexEncodeToString(commitment[:])
+	resp.KzgProofContract = utils.HexEncodeToString(kzgProofContract[:])
+	resp.KzgProofSidecar = utils.HexEncodeToString(kzgProofSidecar[:])
+	resp.DataHash = utils.HexEncodeToString(blobHash[:])
 	resp.SnarkHash = utils.HexEncodeToString(snarkHash)
-	xBytes, yBytes := x, y.Bytes()
-	resp.ExpectedX = utils.HexEncodeToString(xBytes)
-	resp.ExpectedY = utils.HexEncodeToString(yBytes[:])
+	resp.ExpectedX = utils.HexEncodeToString(xUnreduced)
+	resp.ExpectedY = utils.HexEncodeToString(y)
 	resp.ExpectedShnarf = utils.HexEncodeToString(newShnarf)
 
 	return resp, nil
 }
 
-// TODO @gbotrel this is not used? confirm with @Tabaie / @AlexandreBelling
-// Computes the SNARK hash of a stream of byte. Returns the hex string. The hash
-// can fail if the input stream does not have the right format.
-func snarkHashV0(stream []byte) ([]byte, error) {
-	h := mimc.NewMiMC()
-
-	const blobBytes = 4096 * 32
-
-	if len(stream) > blobBytes {
-		return nil, fmt.Errorf("the compressed blob is too large : %v bytes, the limit is %v bytes", len(stream), blobBytes)
+// Blob is populated with the compressedStream (with padding)
+func compressedStreamToBlob(compressedStream []byte) (blob kzg4844.Blob, err error) {
+	// Error is returned when len(compressedStream) is larger than the 4844 data blob [131072]byte
+	if len(compressedStream) > len(blob) {
+		return blob, fmt.Errorf("compressedStream length (%d) exceeds blob length (%d)", len(compressedStream), len(blob))
 	}
 
-	if _, err := h.Write(stream); err != nil {
-		return nil, fmt.Errorf("cannot generate Snarkhash of the string `%x`, MiMC failed : %w", stream, err)
-	}
+	// Copy compressedStream to blob, padding with zeros
+	copy(blob[:len(compressedStream)], compressedStream)
 
-	// @alex: for consistency with the circuit, we need to hash the whole input
-	// stream padded.
-	if len(stream) < blobBytes {
-		h.Write(make([]byte, blobBytes-len(stream)))
+	// Sanity-check that the blob is right-padded with zeroes
+	for i := len(compressedStream); i < len(blob); i++ {
+		if blob[i] != 0 {
+			utils.Panic("blob not padded correctly at index blob[%d]", i)
+		}
 	}
-	return h.Sum(nil), nil
+	return blob, nil
+
 }
 
 // Returns an evaluation challenge point from a SNARK hash and a blob hash. The
@@ -134,7 +178,6 @@ func snarkHashV0(stream []byte) ([]byte, error) {
 // hash (or the blob hash once we go EIP4844) in that order. The digest is
 // returned as a field element modulo the scalar field of the curve BLS12-381.
 func evaluationChallenge(snarkHash, keccakHash []byte) (x []byte) {
-
 	// Use the keccak hash
 	h := sha3.NewLegacyKeccak256()
 	h.Write(snarkHash)
@@ -143,43 +186,8 @@ func evaluationChallenge(snarkHash, keccakHash []byte) (x []byte) {
 	return d
 }
 
-// Cast the list of the field into a vector of field elements and performs a
-// polynomial evaluation in the scalar field of BLS12-381. The bytes are split
-// in chunks of 31 bytes representing each a field element in bigendian order.
-// The last chunk is padded to the right with zeroes. The input x is taken as
-// an array of 32 bytes because the smart-contract generating it will be using
-// the result of the keccak directly. The modular reduction is implicitly done
-// during the evaluation of the compressed data polynomial representation.
-func EvalStream(stream []byte, x_ []byte) (fr381.Element, error) {
-	streamLen := len(stream)
-
-	const chunkSize = 32
-	var p, x, y fr381.Element
-
-	x.SetBytes(x_)
-
-	if streamLen%chunkSize != 0 {
-		return fr381.Element{}, fmt.Errorf("stream length must be a multiple of 32; received length: %d", streamLen)
-	}
-
-	// Compute y by the Horner method. NB: y is initialized to zero when
-	// allocated but not assigned.
-	for k := streamLen; k > 0; k -= chunkSize {
-		if k < len(stream) {
-			y.Mul(&y, &x)
-		}
-		start, stop := k-chunkSize, k
-		if err := p.SetBytesCanonical(stream[start:stop]); err != nil {
-			return fr381.Element{}, fmt.Errorf("stream is invalid: %w", err)
-		}
-		y.Add(&y, &p)
-	}
-
-	return y, nil
-}
-
-// schnarfParts wrap the arguments needed to create a new Shnarf by calling
-// the NewSchnarf() function.
+// Shnarf wrap the arguments needed to create a new Shnarf by calling
+// the NewShnarf() function.
 type Shnarf struct {
 	OldShnarf, SnarkHash, NewStateRootHash []byte
 	X                                      []byte
