@@ -145,6 +145,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     if (isPaused(_pauseType)) {
       revert IsPaused(_pauseType);
     }
+    
     if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
       pauseExpiry = type(uint256).max;
     } else {
