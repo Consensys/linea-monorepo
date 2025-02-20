@@ -16,15 +16,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDistributeProjection(t *testing.T) {
 	const (
-		numSegModuleA = 2
-		numSegModuleB = 2
-		numSegModuleC = 2
+		numSegModuleA = 4
+		numSegModuleB = 4
+		numSegModuleC = 4
 	)
 	var (
 		allVerfiers                                                   = []wizard.Runtime{}
@@ -265,9 +264,8 @@ func TestDistributeProjection(t *testing.T) {
 func checkConsistency(runs []wizard.Runtime) error {
 
 	var res = field.Zero()
-	for i, run := range runs {
+	for _, run := range runs {
 		distProjectionParams := run.GetPublicInput(constants.DistributedProjectionPublicInput)
-		logrus.Printf("successfully retrieved public input for %v, param = %v", i, distProjectionParams)
 		res.Add(&res, &distProjectionParams)
 	}
 
