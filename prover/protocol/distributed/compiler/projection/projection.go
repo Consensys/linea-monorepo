@@ -58,7 +58,7 @@ func NewDistributeProjectionCtx(
 			DistProjectionInput:  make([]*query.DistributedProjectionInput, 0, MaxNumOfQueriesPerModule),
 			EvalCoins:            make([]coin.Info, 0, MaxNumOfQueriesPerModule),
 			TargetModuleName:     targetModuleName,
-			LastRoundProjection:  getLastRoundPerm(initialComp),
+			LastRoundProjection:  getLastRoundProjection(initialComp),
 			NumSegmentsPerModule: numSegmentPerModule,
 			QIds:                 make([]query.Projection, 0, MaxNumOfQueriesPerModule),
 		}
@@ -169,8 +169,8 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:                        wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
 			FilterA:                        fA,
 			FilterB:                        fB,
-			SizeA:                          utils.NextPowerOfTwo(q.Inp.FilterA.Size() / p.NumSegmentsPerModule),
-			SizeB:                          utils.NextPowerOfTwo(q.Inp.FilterB.Size() / p.NumSegmentsPerModule),
+			SizeA:                          q.Inp.FilterA.Size(),
+			SizeB:                          q.Inp.FilterB.Size(),
 			EvalCoin:                       beta.Name,
 			IsAInModule:                    true,
 			IsBInModule:                    true,
@@ -183,7 +183,7 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:                        symbolic.NewConstant(1),
 			FilterA:                        fA,
 			FilterB:                        symbolic.NewConstant(1),
-			SizeA:                          q.Inp.FilterA.Size() / p.NumSegmentsPerModule,
+			SizeA:                          q.Inp.FilterA.Size(),
 			EvalCoin:                       beta.Name,
 			IsAInModule:                    true,
 			IsBInModule:                    false,
@@ -196,7 +196,7 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 			ColumnB:                        wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
 			FilterA:                        symbolic.NewConstant(1),
 			FilterB:                        fB,
-			SizeB:                          q.Inp.FilterB.Size() / p.NumSegmentsPerModule,
+			SizeB:                          q.Inp.FilterB.Size(),
 			EvalCoin:                       beta.Name,
 			IsAInModule:                    false,
 			IsBInModule:                    true,
@@ -371,9 +371,11 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 func (p *DistributeProjectionCtx) computeScaledHorner(run *wizard.ProverRuntime) field.Element {
 	var (
 		queryParam = field.Zero()
-		elemParam  = field.Zero()
 	)
 	for elemIndex, inp := range p.DistProjectionInput {
+		var (
+			elemParam  = field.Zero()
+		)
 		if inp.IsAInModule && inp.IsBInModule {
 			var (
 				colABoard                      = inp.ColumnA.Board()
@@ -392,7 +394,7 @@ func (p *DistributeProjectionCtx) computeScaledHorner(run *wizard.ProverRuntime)
 			multA.Exp(multA, &inp.CumulativeNumOnesPrevSegmentsA)
 			hornerA = hornerATrace[0]
 			hornerA.Mul(&hornerA, &multA)
-			elemParam.Sub(&elemParam, &hornerA)
+			elemParam.Add(&elemParam, &hornerA)
 			// Subtract hornerB after scaling
 			hornerBTrace := poly.GetHornerTrace(colB, filterB, run.GetRandomCoinField(p.EvalCoins[elemIndex].Name))
 			hornerB = hornerBTrace[0]
@@ -414,7 +416,7 @@ func (p *DistributeProjectionCtx) computeScaledHorner(run *wizard.ProverRuntime)
 			multA.Exp(multA, &inp.CumulativeNumOnesPrevSegmentsA)
 			hornerA = hornerATrace[0]
 			hornerA.Mul(&hornerA, &multA)
-			elemParam.Sub(&elemParam, &hornerA)
+			elemParam.Add(&elemParam, &hornerA)
 		} else if !inp.IsAInModule && inp.IsBInModule {
 			var (
 				colBBoard      = inp.ColumnB.Board()
@@ -505,9 +507,9 @@ func (p *DistributeProjectionCtx) getCoinName(name string, round, queryInRound i
 	return deriveName[coin.Name](p.QueryID(), name, round, queryInRound)
 }
 
-// getLastRoundPerm scans the initialComp and looks for uncompiled projection queries. It returns
+// getLastRoundProjection scans the initialComp and looks for uncompiled projection queries. It returns
 // the highest round found for a matched projection query. It returns -1 if no queries are found.
-func getLastRoundPerm(initialComp *wizard.CompiledIOP) int {
+func getLastRoundProjection(initialComp *wizard.CompiledIOP) int {
 
 	var (
 		lastRound = -1

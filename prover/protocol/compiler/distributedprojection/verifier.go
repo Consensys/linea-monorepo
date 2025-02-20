@@ -59,35 +59,41 @@ func (va *distributedProjectionVerifierAction) scaledHornerCheck(run wizard.Runt
 		)
 		if va.IsA[index] && va.IsB[index] {
 			var (
-				multA = field.One()
-				multB = field.One()
+				multA            = field.One()
+				multB            = field.One()
+				hornerA, hornerB field.Element
 			)
-			elemParam = run.GetLocalPointEvalParams(va.HornerB0[index].ID).Y
-			multB = run.GetRandomCoinField(va.EvalCoins[index].Name)
-			multB.Exp(multB, &va.CumNumOnesPrevSegmentsB[index])
-			elemParam.Mul(&elemParam, &multB)
-			elemParam.Neg(&elemParam)
-			temp := run.GetLocalPointEvalParams(va.HornerA0[index].ID).Y
+			hornerA = run.GetLocalPointEvalParams(va.HornerA0[index].ID).Y
 			multA = run.GetRandomCoinField(va.EvalCoins[index].Name)
 			multA.Exp(multA, &va.CumNumOnesPrevSegmentsA[index])
-			temp.Mul(&temp, &multA)
-			elemParam.Add(&elemParam, &temp)
+			hornerA.Mul(&hornerA, &multA)
+			elemParam.Add(&elemParam, &hornerA)
+
+			hornerB = run.GetLocalPointEvalParams(va.HornerB0[index].ID).Y
+			multB = run.GetRandomCoinField(va.EvalCoins[index].Name)
+			multB.Exp(multB, &va.CumNumOnesPrevSegmentsB[index])
+			hornerB.Mul(&elemParam, &multB)
+			elemParam.Sub(&elemParam, &hornerB)
 		} else if va.IsA[index] && !va.IsB[index] {
 			var (
-				multA = field.One()
+				multA   = field.One()
+				hornerA field.Element
 			)
-			elemParam = run.GetLocalPointEvalParams(va.HornerA0[index].ID).Y
+			hornerA = run.GetLocalPointEvalParams(va.HornerA0[index].ID).Y
 			multA = run.GetRandomCoinField(va.EvalCoins[index].Name)
 			multA.Exp(multA, &va.CumNumOnesPrevSegmentsA[index])
-			elemParam.Mul(&elemParam, &multA)
+			hornerA.Mul(&hornerA, &multA)
+			elemParam.Add(&elemParam, &hornerA)
 		} else if !va.IsA[index] && va.IsB[index] {
 			var (
-				multB = field.One()
+				multB   = field.One()
+				hornerB field.Element
 			)
-			elemParam = run.GetLocalPointEvalParams(va.HornerB0[index].ID).Y
+			hornerB = run.GetLocalPointEvalParams(va.HornerB0[index].ID).Y
 			multB = run.GetRandomCoinField(va.EvalCoins[index].Name)
 			multB.Exp(multB, &va.CumNumOnesPrevSegmentsB[index])
-			elemParam.Mul(&elemParam, &multB)
+			hornerB.Mul(&elemParam, &multB)
+			elemParam.Sub(&elemParam, &hornerB)
 		} else {
 			utils.Panic("Unsupported verifier action registered for %v", va.Name)
 		}
