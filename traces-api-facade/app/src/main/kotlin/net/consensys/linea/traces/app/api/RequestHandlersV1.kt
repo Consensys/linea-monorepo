@@ -10,7 +10,7 @@ import com.github.michaelbull.result.mapError
 import io.vertx.core.Future
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.auth.User
-import net.consensys.decodeHex
+import linea.kotlin.decodeHex
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.TracesConflationServiceV1
 import net.consensys.linea.TracesCountingServiceV1

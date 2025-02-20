@@ -1,4 +1,4 @@
-package net.consensys
+package linea.kotlin
 
 import kotlinx.datetime.Instant
 

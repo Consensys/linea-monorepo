@@ -1,4 +1,4 @@
-package net.consensys
+package linea.kotlin
 
 internal fun <T : Comparable<T>> isRangeWithin(outer: ClosedRange<T>, inner: ClosedRange<T>): Boolean {
   return inner.start >= outer.start && inner.endInclusive <= outer.endInclusive

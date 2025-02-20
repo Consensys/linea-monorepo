@@ -6,12 +6,12 @@ import io.vertx.core.Vertx
 import linea.EthLogsSearcher
 import linea.SearchDirection
 import linea.domain.RetryConfig
+import linea.kotlin.toULong
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.BlockParameter.Companion.toBlockParameter
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j

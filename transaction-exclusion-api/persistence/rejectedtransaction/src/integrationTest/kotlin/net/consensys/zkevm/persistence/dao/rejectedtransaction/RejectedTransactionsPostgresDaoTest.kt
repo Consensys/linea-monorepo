@@ -7,9 +7,9 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import linea.kotlin.decodeHex
+import linea.kotlin.encodeHex
 import net.consensys.FakeFixedClock
-import net.consensys.decodeHex
-import net.consensys.encodeHex
 import net.consensys.linea.async.get
 import net.consensys.linea.transactionexclusion.ModuleOverflow
 import net.consensys.linea.transactionexclusion.RejectedTransaction

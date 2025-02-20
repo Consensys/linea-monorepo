@@ -1,6 +1,6 @@
-package build.linea.jvm
+package linea.jvm
 
-import build.linea.jvm.ResourcesUtil.copyResourceToTmpDir
+import linea.jvm.ResourcesUtil.copyResourceToTmpDir
 import org.assertj.core.api.AssertionsForClassTypes.assertThat
 import org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy
 import org.junit.jupiter.api.Test

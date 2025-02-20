@@ -1,6 +1,6 @@
 package net.consensys.linea
 
-import net.consensys.encodeHex
+import linea.kotlin.encodeHex
 
 data class BlockNumberAndHash(
   val number: ULong,

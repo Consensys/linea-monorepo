@@ -1,8 +1,8 @@
 package linea.staterecovery
 
 import io.vertx.core.Vertx
+import linea.kotlin.encodeHex
 import linea.staterecovery.datafetching.SubmissionsFetchingTask
-import net.consensys.encodeHex
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.zkevm.PeriodicPollingService

@@ -8,7 +8,6 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.trimToSecondPrecision
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.BlobAndBatchCounters

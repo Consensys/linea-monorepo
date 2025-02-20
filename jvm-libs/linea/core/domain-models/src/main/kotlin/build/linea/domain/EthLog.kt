@@ -1,6 +1,6 @@
 package build.linea.domain
 
-import net.consensys.encodeHex
+import linea.kotlin.encodeHex
 
 data class EthLog(
   val removed: Boolean,

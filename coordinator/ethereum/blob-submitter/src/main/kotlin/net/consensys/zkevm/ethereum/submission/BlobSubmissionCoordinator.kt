@@ -5,8 +5,8 @@ import build.linea.domain.toBlockIntervals
 import build.linea.domain.toBlockIntervalsString
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
+import linea.kotlin.trimToMinutePrecision
 import net.consensys.linea.async.AsyncFilter
-import net.consensys.trimToMinutePrecision
 import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord

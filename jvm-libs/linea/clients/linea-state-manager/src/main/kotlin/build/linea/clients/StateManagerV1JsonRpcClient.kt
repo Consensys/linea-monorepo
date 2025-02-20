@@ -7,8 +7,8 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import io.vertx.core.json.JsonObject
-import net.consensys.decodeHex
-import net.consensys.fromHexString
+import linea.kotlin.decodeHex
+import linea.kotlin.fromHexString
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponseException
 import net.consensys.linea.jsonrpc.client.JsonRpcClientFactory

@@ -5,7 +5,7 @@ import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.mapEither
 import com.github.michaelbull.result.runCatching
 import io.vertx.core.Vertx
-import net.consensys.encodeHex
+import linea.kotlin.encodeHex
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.errors.ErrorResponse

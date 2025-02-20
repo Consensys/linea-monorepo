@@ -4,7 +4,7 @@ import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.mapEither
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import net.consensys.encodeHex
+import linea.kotlin.encodeHex
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.errors.ErrorResponse

@@ -7,7 +7,7 @@ import io.restassured.http.ContentType
 import io.restassured.specification.RequestSpecification
 import io.vertx.junit5.VertxExtension
 import kotlinx.datetime.Clock
-import net.consensys.encodeHex
+import linea.kotlin.encodeHex
 import net.consensys.linea.async.get
 import net.consensys.linea.transactionexclusion.app.AppConfig
 import net.consensys.linea.transactionexclusion.app.DatabaseConfig

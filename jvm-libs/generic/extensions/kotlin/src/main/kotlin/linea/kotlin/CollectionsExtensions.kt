@@ -1,4 +1,4 @@
-package net.consensys
+package linea.kotlin
 
 inline fun <T, R : Comparable<R>> Iterable<T>.isSortedBy(crossinline selector: (T) -> R?): Boolean {
   if (this is Collection) {

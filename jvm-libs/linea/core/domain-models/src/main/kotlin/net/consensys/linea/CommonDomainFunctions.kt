@@ -1,7 +1,7 @@
 package net.consensys.linea
 
-import net.consensys.assertIs20Bytes
-import net.consensys.decodeHex
+import linea.kotlin.assertIs20Bytes
+import linea.kotlin.decodeHex
 import java.math.BigInteger
 
 object CommonDomainFunctions {

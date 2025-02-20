@@ -1,5 +1,7 @@
-package build.linea.jvm
+package linea.jvm
 
+import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
 
 object ResourcesUtil {
@@ -17,8 +19,17 @@ object ResourcesUtil {
     classLoader: ClassLoader,
     tmpDirPrefix: String = "linea-resources-"
   ): Path {
-    // WARNING: this is to keep backwards compatibility with package location
-    // otherwise, the we may get error at runtime: java.lang.NoClassDefFoundError: build/linea/jvm/ResourcesUtil
-    return linea.jvm.ResourcesUtil.copyResourceToTmpDir(resourcePath, classLoader, tmpDirPrefix)
+    val fileDestination = File(
+      Files.createTempDirectory(tmpDirPrefix)
+        .resolve(Path.of(resourcePath).fileName)
+        .toString()
+    )
+    val resourceInputStream = classLoader.getResourceAsStream(resourcePath)
+      ?: throw IllegalStateException("Resource not found: $resourcePath")
+    Files.copy(
+      resourceInputStream,
+      fileDestination.toPath()
+    )
+    return fileDestination.toPath()
   }
 }

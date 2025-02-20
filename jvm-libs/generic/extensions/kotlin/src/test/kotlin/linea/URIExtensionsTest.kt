@@ -1,4 +1,4 @@
-package build.linea
+package linea
 
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy

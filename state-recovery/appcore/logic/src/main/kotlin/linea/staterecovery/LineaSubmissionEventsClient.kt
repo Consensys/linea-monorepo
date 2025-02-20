@@ -3,10 +3,10 @@ package linea.staterecovery
 import build.linea.domain.BlockInterval
 import build.linea.domain.EthLog
 import build.linea.domain.EthLogEvent
-import net.consensys.encodeHex
+import linea.kotlin.encodeHex
+import linea.kotlin.sliceOf32
+import linea.kotlin.toULongFromLast8Bytes
 import net.consensys.linea.BlockParameter
-import net.consensys.sliceOf32
-import net.consensys.toULongFromLast8Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 data class DataSubmittedV3(

@@ -3,7 +3,7 @@ package build.linea.clients
 import build.linea.domain.BlockInterval
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.github.michaelbull.result.Result
-import net.consensys.encodeHex
+import linea.kotlin.encodeHex
 import net.consensys.linea.errors.ErrorResponse
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 

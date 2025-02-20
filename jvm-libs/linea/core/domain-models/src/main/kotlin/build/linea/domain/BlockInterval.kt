@@ -1,6 +1,6 @@
 package build.linea.domain
 
-import net.consensys.isSortedBy
+import linea.kotlin.isSortedBy
 import net.consensys.linea.CommonDomainFunctions
 
 /**

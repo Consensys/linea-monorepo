@@ -2,7 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.blockcreation
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
-import net.consensys.ByteArrayExt
+import linea.kotlin.ByteArrayExt
 import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.zkevm.coordinator.clients.RollupForkChoiceUpdatedClient

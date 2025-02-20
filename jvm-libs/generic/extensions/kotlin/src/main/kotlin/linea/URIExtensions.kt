@@ -1,4 +1,4 @@
-package build.linea
+package linea
 
 import java.net.URI
 

@@ -3,7 +3,7 @@ package net.consensys.zkevm.domain
 import build.linea.domain.BlockInterval
 import kotlinx.datetime.Instant
 import linea.domain.Block
-import net.consensys.isSortedBy
+import linea.kotlin.isSortedBy
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.traces.TracesCounters
 

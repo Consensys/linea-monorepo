@@ -8,10 +8,10 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import linea.EthLogsSearcher
+import linea.kotlin.toHexStringUInt256
 import linea.staterecovery.DataFinalizedV3
 import net.consensys.linea.BlockParameter
 import net.consensys.linea.errors.ErrorResponse
-import net.consensys.toHexStringUInt256
 import net.consensys.zkevm.domain.BlobRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentHashMap

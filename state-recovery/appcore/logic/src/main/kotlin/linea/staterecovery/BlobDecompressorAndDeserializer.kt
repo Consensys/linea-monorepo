@@ -4,10 +4,10 @@ import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import linea.domain.BinaryDecoder
+import linea.kotlin.decodeHex
+import linea.kotlin.encodeHex
 import linea.rlp.BesuRlpBlobDecoder
 import linea.rlp.RLP
-import net.consensys.decodeHex
-import net.consensys.encodeHex
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.blob.BlobDecompressor

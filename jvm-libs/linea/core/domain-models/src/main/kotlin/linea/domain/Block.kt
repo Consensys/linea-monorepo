@@ -1,7 +1,7 @@
 package linea.domain
 
 import kotlinx.datetime.Instant
-import net.consensys.encodeHex
+import linea.kotlin.encodeHex
 import net.consensys.linea.BlockNumberAndHash
 
 data class Block(
