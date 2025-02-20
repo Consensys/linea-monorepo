@@ -243,9 +243,6 @@ public class Hub implements Module {
   private final BlakeEffectiveCall blakeEffectiveCall = new BlakeEffectiveCall();
   private final BlakeRounds blakeRounds = new BlakeRounds();
 
-  // TODO: bind it to the frame so as to compute the gasCost per frame
-  @Getter private long gasCostAccumulator = 0;
-
   private List<Module> precompileLimitModules() {
 
     return List.of(
@@ -718,8 +715,6 @@ public class Hub implements Module {
 
     final TraceSection currentSection = state.currentTransactionHubSections().currentSection();
 
-    compareLineaAndBesuGasCosts(frame, operationResult);
-
     /*
      * NOTE: whenever there is an exception, a context row
      * is added at the end of the section; its purpose is
@@ -747,50 +742,6 @@ public class Hub implements Module {
 
     if (frame.getDepth() == 0 && (isExceptional() || opCode() == REVERT)) {
       new TxFinalizationSection(this, frame.getWorldUpdater(), true);
-    }
-  }
-
-  /**
-   * Compares the gas costs between Linea and Besu. The total cost should be the same for both, but
-   * it is batched/split differently. This is especially true for opcodes requiring memory
-   * expansion. In Linea's arithmetization, the cost of CALLs and CREATEs doesn't include the gas
-   * paid to the child context. This cost is accounted for separately. The deployment cost is
-   * included in the arithmetization but paid separately in Besu.
-   *
-   * @param frame the current message frame
-   * @param operationResult the result of the operation being executed
-   */
-  private void compareLineaAndBesuGasCosts(
-      MessageFrame frame, Operation.OperationResult operationResult) {
-    TraceSection currentSection = state.currentTransactionHubSections().currentSection();
-    long besuGasCost = operationResult.getGasCost();
-    long lineaGasCost = currentSection.commonValues.gasCost();
-    long lineaGasCostExcludingDeploymentCost =
-        currentSection.commonValues.gasCostExcluduingDeploymentCost();
-
-    gasCostAccumulator += besuGasCost;
-
-    if (operationResult.getHaltReason() != null) {
-
-      return;
-    }
-
-    if (returnFromDeployment(frame)) {
-      checkState(
-          besuGasCost == lineaGasCostExcludingDeploymentCost,
-          "besuGasCost: %d, lineaGasCostExcludingDeploymentCost: %d",
-          besuGasCost,
-          lineaGasCostExcludingDeploymentCost);
-      return;
-    }
-
-    // TODO: same check but for CALL and CREATE's
-    if (!opCode().isCall() && !opCode().isCreate()) {
-      checkState(
-          besuGasCost == lineaGasCost,
-          "besuGasCost: %d, lineaGasCost: %d",
-          besuGasCost,
-          lineaGasCost);
     }
   }
 
