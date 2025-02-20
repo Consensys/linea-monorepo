@@ -22,21 +22,6 @@ contract RewardsStreamerMP is
     IRewardProvider,
     StakeMath
 {
-    error StakingManager__InvalidVault();
-    error StakingManager__VaultNotRegistered();
-    error StakingManager__VaultAlreadyRegistered();
-    error StakingManager__AmountCannotBeZero();
-    error StakingManager__TransferFailed();
-    error StakingManager__InsufficientBalance();
-    error StakingManager__LockingPeriodCannotBeZero();
-    error StakingManager__CannotRestakeWithLockedFunds();
-    error StakingManager__TokensAreLocked();
-    error StakingManager__AlreadyLocked();
-    error StakingManager__EmergencyModeEnabled();
-    error StakingManager__DurationCannotBeZero();
-    error StakingManager__Unauthorized();
-    error StakingManager__MigrationTargetHasFunds();
-
     event VaultMigrated(address indexed from, address indexed to);
 
     IERC20 public STAKING_TOKEN;
@@ -241,7 +226,7 @@ contract RewardsStreamerMP is
         }
 
         if (lockPeriod == 0) {
-            revert StakingManager__LockingPeriodCannotBeZero();
+            revert StakingManager__DurationCannotBeZero();
         }
 
         _updateGlobalState();

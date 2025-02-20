@@ -6,11 +6,16 @@ import { ITrustedCodehashAccess } from "./ITrustedCodehashAccess.sol";
 import { IStakeConstants } from "./IStakeConstants.sol";
 
 interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
-    error StakingManager__FundsLocked();
-    error StakingManager__InvalidLockTime();
-    error StakingManager__InsufficientFunds();
-    error StakingManager__StakeIsTooLow();
-    error StakingManager__NotAllowedToLeave();
+    error StakingManager__VaultNotRegistered();
+    error StakingManager__VaultAlreadyRegistered();
+    error StakingManager__InvalidVault();
+    error StakingManager__AmountCannotBeZero();
+    error StakingManager__CannotRestakeWithLockedFunds();
+    error StakingManager__AlreadyLocked();
+    error StakingManager__EmergencyModeEnabled();
+    error StakingManager__MigrationTargetHasFunds();
+    error StakingManager__Unauthorized();
+    error StakingManager__DurationCannotBeZero();
 
     function registerVault() external;
     function stake(uint256 _amount, uint256 _seconds) external;

@@ -10,6 +10,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { IStakeManager } from "../src/interfaces/IStakeManager.sol";
 import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
 import { ITrustedCodehashAccess } from "../src/interfaces/ITrustedCodehashAccess.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
@@ -1616,7 +1617,7 @@ contract LockTest is RewardsStreamerMPTest {
         _stake(alice, 10e18, 0);
 
         // Test with period = 0
-        vm.expectRevert(RewardsStreamerMP.StakingManager__LockingPeriodCannotBeZero.selector);
+        vm.expectRevert(IStakeManager.StakingManager__DurationCannotBeZero.selector);
         _lock(alice, 0);
     }
 
@@ -1658,7 +1659,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
         vm.prank(admin);
         streamer.enableEmergencyMode();
 
-        vm.expectRevert(RewardsStreamerMP.StakingManager__EmergencyModeEnabled.selector);
+        vm.expectRevert(IStakeManager.StakingManager__EmergencyModeEnabled.selector);
         vm.prank(admin);
         streamer.enableEmergencyMode();
     }
@@ -2052,13 +2053,13 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
 
     function testSetRewards_RevertsBadDuration() public {
         vm.prank(admin);
-        vm.expectRevert(RewardsStreamerMP.StakingManager__DurationCannotBeZero.selector);
+        vm.expectRevert(IStakeManager.StakingManager__DurationCannotBeZero.selector);
         streamer.setReward(1000, 0);
     }
 
     function testSetRewards_RevertsBadAmount() public {
         vm.prank(admin);
-        vm.expectRevert(RewardsStreamerMP.StakingManager__AmountCannotBeZero.selector);
+        vm.expectRevert(IStakeManager.StakingManager__AmountCannotBeZero.selector);
         streamer.setReward(0, 10);
     }
 
@@ -2240,7 +2241,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
     function test_RevertWhenNotOwnerOfMigrationVault() public {
         // alice tries to migrate to a vault she doesn't own
         vm.prank(alice);
-        vm.expectRevert(RewardsStreamerMP.StakingManager__Unauthorized.selector);
+        vm.expectRevert(IStakeManager.StakingManager__Unauthorized.selector);
         StakeVault(vaults[alice]).migrateToVault(vaults[bob]);
     }
 
@@ -2254,7 +2255,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
         newVault.stake(10e18, 0);
 
         // alice tries to migrate to a vault that is not empty
-        vm.expectRevert(RewardsStreamerMP.StakingManager__MigrationTargetHasFunds.selector);
+        vm.expectRevert(IStakeManager.StakingManager__MigrationTargetHasFunds.selector);
         StakeVault(vaults[alice]).migrateToVault(address(newVault));
     }
 
