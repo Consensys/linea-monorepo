@@ -3,6 +3,7 @@ package blobsubmission
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -142,7 +143,7 @@ func TestBlobSubmissionEIP4844EmptyBlob(t *testing.T) {
 		t.Fatalf("could not decode %++v: %v", outExpected, err)
 	}
 
-	compressedStream, _ := b64.DecodeString(inp.CompressedData)
+	compressedStream, _ := base64.StdEncoding.DecodeString(inp.CompressedData)
 	// Check if len(compressedStream) is equal to 0
 	expectedLength := 0
 	actualLength := len(compressedStream)
@@ -189,7 +190,7 @@ func TestBlobSubmissionEIP4844MaxSize(t *testing.T) {
 		t.Fatalf("could not decode %++v: %v", _outFileEIP4844MaxSize, err)
 	}
 
-	compressedStream, _ := b64.DecodeString(inp.CompressedData)
+	compressedStream, _ := base64.StdEncoding.DecodeString(inp.CompressedData)
 	// Check if len(compressedStream) is equal to 131072
 	expectedLength := 131072
 	actualLength := len(compressedStream)
@@ -235,7 +236,7 @@ func TestBlobSubmissionEIP4844BlobTooLarge(t *testing.T) {
 		return
 	}
 
-	compressedStream, _ := b64.DecodeString(inp.CompressedData)
+	compressedStream, _ := base64.StdEncoding.DecodeString(inp.CompressedData)
 	// Check if the error message contains the expected substring
 	expectedErrorMsg := fmt.Sprintf("compressedStream length (%d) exceeds blob length (%d)", len(compressedStream), len(blob))
 	if !strings.Contains(err.Error(), expectedErrorMsg) {
