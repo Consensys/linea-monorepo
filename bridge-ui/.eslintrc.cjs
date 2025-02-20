@@ -6,7 +6,7 @@ module.exports = {
     "next",
     "next/core-web-vitals",
     "plugin:@typescript-eslint/recommended",
-    "plugin:tailwindcss/recommended",
+    // "plugin:tailwindcss/recommended",
   ],
   rules: {
     "@typescript-eslint/no-unused-vars": "warn",
@@ -14,6 +14,6 @@ module.exports = {
     "@typescript-eslint/no-duplicate-imports": "off",
     "@typescript-eslint/no-var-requires": "off",
     "react/react-in-jsx-scope": "off",
-    "tailwindcss/no-custom-classname": "off",
+    // "tailwindcss/no-custom-classname": "off",
   },
 };

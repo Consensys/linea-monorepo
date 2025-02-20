@@ -26,6 +26,9 @@ const nextConfig = {
       },
     ],
   },
+  sassOptions: {
+    prependData: `@use 'sass:math'; @import 'src/scss/breakpoints';`,
+  },
   webpack: (config) => {
     const warning = [...(config.ignoreWarnings || []), { module: /typeorm/ }];
 

@@ -1,0 +1,83 @@
+.banner-wrapper {
+  position: relative;
+  overflow: hidden;
+  margin: 0 auto;
+  width: calc(100% - 1.5rem);
+  border-radius: 2rem;
+  margin-top: 0.8rem;
+
+  @include bp("tablet") {
+    width: calc(100% - 7.2rem);
+  }
+}
+
+.banner {
+  background-color: var(--v2-color-indigo);
+  color: var(--v2-color-white);
+  padding: 1.6rem 0;
+  display: flex;
+  justify-content: center;
+  font-size: 1.6rem;
+}
+
+.inner {
+  text-decoration: none;
+  padding-left: 1.6rem;
+  padding-right: 3.5rem;
+  line-height: 1.4;
+
+  @include bp("tablet") {
+    max-width: 80%;
+    text-align: center;
+  }
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.external-icon {
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-left: 0.8rem;
+}
+
+.left-illustration,
+.right-illustration {
+  position: absolute;
+  height: 100%;
+  top: 0;
+  display: none;
+}
+
+.left-illustration {
+  left: 1rem;
+
+  @include bp("desktop") {
+    display: block;
+  }
+}
+
+.right-illustration {
+  right: -40%;
+  display: block;
+
+  @include bp("desktop") {
+    right: 0;
+  }
+}
+
+.close-icon {
+  position: absolute;
+  right: 1.6rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  top: 1rem;
+  color: var(--v2-color-white);
+  cursor: pointer;
+  z-index: 2;
+
+  @include bp("tablet") {
+    top: calc(50% - 0.8rem);
+  }
+}

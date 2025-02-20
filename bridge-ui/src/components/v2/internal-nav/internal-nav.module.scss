@@ -1,0 +1,18 @@
+.wrapper {
+  max-width: 46.8rem;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin: 4.8rem auto 1.6rem;
+
+  @include bp("tablet") {
+    margin: 6rem auto 2.4rem;
+  }
+}
+
+.list-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}

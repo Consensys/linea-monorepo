@@ -1,0 +1,29 @@
+.wrapper {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.arrow-down-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-left: 0.8rem;
+}
+
+.token-select-btn {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-atyp-text);
+  font-size: 1.4rem;
+  cursor: pointer;
+
+  background-color: var(--v2-color-white);
+  border-radius: 10rem;
+  padding: 0.8rem;
+
+  img {
+    margin-right: 0.6rem;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+  }
+}

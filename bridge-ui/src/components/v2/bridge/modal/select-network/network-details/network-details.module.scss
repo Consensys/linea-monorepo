@@ -1,0 +1,23 @@
+.wrapper {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 1.2rem 1.6rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease-in-out;
+
+  &:hover {
+    background-color: var(--v2-color-light-pink);
+  }
+
+  .image {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+  .name {
+    font-family: var(--font-atyp-text);
+    font-weight: 500;
+    font-size: 1.6rem;
+  }
+}

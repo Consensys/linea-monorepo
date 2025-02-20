@@ -1,14 +1,14 @@
-@tailwind base;
+/* @tailwind base;
 @tailwind components;
-@tailwind utilities;
+@tailwind utilities; */
 
 :root {
   /* toastify */
   --toastify-color-success: #7adffd;
   --toastify-color-progress-success: #7adffd;
 
-  --background-color: #F8F7F2;
-  --yellow: #FFF068;
+  --background-color: #f8f7f2;
+  --yellow: #fff068;
 }
 
 body {
@@ -17,9 +17,9 @@ body {
 
 @layer components {
   input:-webkit-autofill,
-  input:-webkit-autofill:hover, 
-  input:-webkit-autofill:focus, 
-  input:-webkit-autofill:active{
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 30px var(--background-color) inset !important;
   }
 
@@ -47,15 +47,15 @@ body {
   .tooltip-top::after {
     border-color: var(--yellow) transparent transparent transparent;
   }
-  
+
   .tooltip-right::after {
     border-color: transparent var(--yellow) transparent transparent;
   }
-  
+
   .tooltip-bottom::after {
     border-color: transparent transparent var(--yellow) transparent;
   }
-  
+
   .tooltip-left::after {
     border-color: transparent transparent transparent var(--yellow);
   }
