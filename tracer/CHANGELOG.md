@@ -1,5 +1,11 @@
 # Changelog
 
+## beta-v2.0-rc1
+* Low gas stipend precompile calls (#1754)
+* Tweak GOMEMLIMIT (#1830)
+* Improve MMIO line counting performance (#1831)
+* constraints commit update
+
 ## beta-v1.3-rc3
 * constraints commit update
 * update `go-corset` to commit ab7f2d5 (#1822)

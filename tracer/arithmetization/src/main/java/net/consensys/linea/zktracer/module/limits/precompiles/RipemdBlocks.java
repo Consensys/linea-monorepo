@@ -26,8 +26,6 @@ import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 @Accessors(fluent = true)
 public final class RipemdBlocks implements CountingOnlyModule {
   private final CountOnlyOperation counts = new CountOnlyOperation();
-  private static final int PRECOMPILE_BASE_GAS_FEE = 600;
-  private static final int PRECOMPILE_GAS_FEE_PER_EWORD = 120;
   private static final int RIPEMD160_BLOCKSIZE = 64 * 8;
   // If the length is > 2⁶4, we just use the lower 64 bits.
   private static final int RIPEMD160_LENGTH_APPEND = 64;
