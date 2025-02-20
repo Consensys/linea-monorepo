@@ -48,6 +48,7 @@ contract RewardsStreamerMP is
         uint256 lastMPUpdateTime;
         uint256 lockUntil;
         uint256 mpStaked;
+        uint256 rewardsAccrued;
     }
 
     mapping(address vault => VaultData data) public vaultData;
@@ -182,7 +183,7 @@ contract RewardsStreamerMP is
         }
 
         _updateGlobalState();
-        _updateVaultMP(msg.sender, true);
+        _updateVault(msg.sender, true);
 
         VaultData storage vault = vaultData[msg.sender];
         if (vault.lockUntil != 0 && vault.lockUntil > block.timestamp) {
@@ -231,7 +232,7 @@ contract RewardsStreamerMP is
         }
 
         _updateGlobalState();
-        _updateVaultMP(msg.sender, true);
+        _updateVault(msg.sender, true);
         (uint256 deltaMp, uint256 newLockEnd) =
             _calculateLock(vault.stakedBalance, vault.maxMP, vault.lockUntil, block.timestamp, lockPeriod);
 
@@ -265,7 +266,7 @@ contract RewardsStreamerMP is
 
     function _unstake(uint256 amount, VaultData storage vault, address vaultAddress) internal {
         _updateGlobalState();
-        _updateVaultMP(vaultAddress, true);
+        _updateVault(vaultAddress, true);
 
         (uint256 _deltaMpTotal, uint256 _deltaMpMax) = _calculateUnstake(
             vault.stakedBalance, vault.lockUntil, block.timestamp, vault.mpAccrued, vault.maxMP, amount
@@ -276,6 +277,7 @@ contract RewardsStreamerMP is
         vault.mpAccrued -= _deltaMpTotal;
 
         if (vault.mpAccrued < vault.mpStaked) {
+            totalMPStaked -= vault.mpStaked - vault.mpAccrued;
             vault.mpStaked = vault.mpAccrued;
             totalMPStaked -= vault.mpStaked - vault.mpAccrued;
         }
@@ -425,6 +427,23 @@ contract RewardsStreamerMP is
         return _vaultShares(vaultAddress);
     }
 
+    function compound(address vaultAddress) external onlyNotEmergencyMode {
+        VaultData storage vault = vaultData[vaultAddress];
+        _updateGlobalState();
+        _updateVault(vaultAddress, true);
+
+        uint256 mpToStake = vault.mpAccrued - vault.mpStaked;
+        if (mpToStake == 0) {
+            revert StakingManager__InsufficientBalance();
+        }
+
+        vault.mpStaked += mpToStake;
+        totalMPStaked += mpToStake;
+        vault.rewardIndex = rewardIndex;
+
+        emit Compound(vaultAddress, mpToStake);
+    }
+
     function _vaultShares(address vaultAddress) internal view returns (uint256) {
         VaultData storage vault = vaultData[vaultAddress];
         return vault.stakedBalance + vault.mpStaked;
@@ -470,17 +489,21 @@ contract RewardsStreamerMP is
         return deltaMP;
     }
 
-    function _updateVaultMP(address vaultAddress, bool forceMPUpdate) internal {
+    function _updateVault(address vaultAddress, bool forceMPUpdate) internal {
         VaultData storage vault = vaultData[vaultAddress];
         uint256 accruedMP = _getVaultPendingMP(vault);
         if (accruedMP > 0 || forceMPUpdate) {
             vault.mpAccrued += accruedMP;
             vault.lastMPUpdateTime = block.timestamp;
         }
+
+        uint256 rewardsAccrued = _vaultPendingRewards(vault);
+        vault.rewardsAccrued += rewardsAccrued;
+        vault.rewardIndex = rewardIndex;
     }
 
     function updateVaultMP(address vaultAddress) external onlyNotEmergencyMode {
-        _updateVaultMP(vaultAddress, false);
+        _updateVault(vaultAddress, false);
     }
 
     function enableEmergencyMode() external onlyOwner onlyNotEmergencyMode {
@@ -501,10 +524,13 @@ contract RewardsStreamerMP is
     }
 
     function rewardsBalanceOf(address vaultAddress) public view returns (uint256) {
+        VaultData storage vault = vaultData[vaultAddress];
+        return vault.rewardsAccrued + _vaultPendingRewards(vault);
+    }
+
+    function _vaultPendingRewards(VaultData storage vault) internal view returns (uint256) {
         uint256 newRewardIndex;
         (, newRewardIndex) = _liveRewardIndex();
-
-        VaultData storage vault = vaultData[vaultAddress];
 
         uint256 accountShares = vault.stakedBalance + vault.mpStaked;
         uint256 deltaRewardIndex = newRewardIndex - vault.rewardIndex;
@@ -553,7 +579,7 @@ contract RewardsStreamerMP is
         }
 
         _updateGlobalState();
-        _updateVaultMP(msg.sender, true);
+        _updateVault(msg.sender, true);
 
         VaultData storage oldVault = vaultData[msg.sender];
         VaultData storage newVault = vaultData[migrateTo];
@@ -561,10 +587,12 @@ contract RewardsStreamerMP is
         // migrate vault data to new vault
         newVault.stakedBalance = oldVault.stakedBalance;
         newVault.rewardIndex = oldVault.rewardIndex;
+        newVault.mpStaked = oldVault.mpStaked;
         newVault.mpAccrued = oldVault.mpAccrued;
         newVault.maxMP = oldVault.maxMP;
         newVault.lastMPUpdateTime = oldVault.lastMPUpdateTime;
         newVault.lockUntil = oldVault.lockUntil;
+        newVault.rewardsAccrued = oldVault.rewardsAccrued;
 
         delete vaultData[msg.sender];
 

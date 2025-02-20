@@ -59,6 +59,11 @@ contract StackOverflowStakeManager is
         // implementation
     }
 
+    // solhint-disable-next-line
+    function compound(address _vaultAddress) external override {
+        // implementation
+    }
+
     function leave() external override {
         this.leave();
     }

@@ -16,6 +16,7 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     error StakingManager__MigrationTargetHasFunds();
     error StakingManager__Unauthorized();
     error StakingManager__DurationCannotBeZero();
+    error StakingManager__InsufficientBalance();
 
     event VaultRegistered(address indexed vault, address indexed owner);
     event VaultMigrated(address indexed from, address indexed to);
@@ -24,6 +25,7 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     event Unstaked(address indexed vault, uint256 amount);
     event EmergencyModeEnabled();
     event AccountLeft(address indexed vault);
+    event Compound(address indexed vault, uint256 amount);
 
     function registerVault() external;
     function stake(uint256 _amount, uint256 _seconds) external;
@@ -31,6 +33,7 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     function unstake(uint256 _amount) external;
     function leave() external;
     function migrateToVault(address migrateTo) external;
+    function compound(address _vault) external;
 
     function emergencyModeEnabled() external view returns (bool);
     function totalStaked() external view returns (uint256);

@@ -122,6 +122,11 @@ contract RewardsStreamerMPTest is StakeMath, Test {
         vault.stake(amount, lockupTime);
     }
 
+    function _compound(address account) public {
+        StakeVault vault = StakeVault(vaults[account]);
+        streamer.compound(address(vault));
+    }
+
     function _unstake(address account, uint256 amount) public {
         StakeVault vault = StakeVault(vaults[account]);
         vm.prank(account);
@@ -2179,6 +2184,41 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
         assertEq(streamer.mpStakedOf(vaults[bob]), 100e18);
         assertEq(streamer.vaultShares(vaults[bob]), 200e18);
         assertEq(streamer.rewardsBalanceOf(vaults[bob]), 250e18);
+
+        _compound(alice);
+
+        assertEq(streamer.totalStaked(), 200e18);
+        assertEq(streamer.totalMPStaked(), 400e18);
+        assertEq(streamer.totalShares(), 600e18);
+        assertEq(streamer.totalRewardsSupply(), 1000e18);
+        assertEq(streamer.totalMP(), 550e18);
+        assertEq(streamer.mpBalanceOf(vaults[alice]), 300e18);
+        assertEq(streamer.mpStakedOf(vaults[alice]), 300e18);
+        assertEq(streamer.vaultShares(vaults[alice]), 400e18);
+        assertEq(streamer.rewardsBalanceOf(vaults[alice]), 750e18);
+        assertEq(streamer.mpBalanceOf(vaults[bob]), 250e18);
+        assertEq(streamer.mpStakedOf(vaults[bob]), 100e18);
+        assertEq(streamer.vaultShares(vaults[bob]), 200e18);
+        assertEq(streamer.rewardsBalanceOf(vaults[bob]), 250e18);
+
+        vm.prank(admin);
+        streamer.setReward(600e18, year);
+
+        vm.warp(initialTime + year * 3);
+
+        assertEq(streamer.totalStaked(), 200e18);
+        assertEq(streamer.totalMPStaked(), 400e18);
+        assertEq(streamer.totalShares(), 600e18);
+        assertEq(streamer.totalRewardsSupply(), 1600e18);
+        assertEq(streamer.totalMP(), 750e18);
+        assertEq(streamer.mpBalanceOf(vaults[alice]), 400e18);
+        assertEq(streamer.mpStakedOf(vaults[alice]), 300e18);
+        assertEq(streamer.vaultShares(vaults[alice]), 400e18);
+        assertEq(streamer.rewardsBalanceOf(vaults[alice]), 1150e18);
+        assertEq(streamer.mpBalanceOf(vaults[bob]), 350e18);
+        assertEq(streamer.mpStakedOf(vaults[bob]), 100e18);
+        assertEq(streamer.vaultShares(vaults[bob]), 200e18);
+        assertEq(streamer.rewardsBalanceOf(vaults[bob]), 450e18);
     }
 }
 
