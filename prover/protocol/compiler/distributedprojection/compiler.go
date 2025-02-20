@@ -33,6 +33,7 @@ func compile(comp *wizard.CompiledIOP, round int, distributedprojection query.Di
 	var (
 		pa = &distribuedProjectionProverAction{
 			Name:                    distributedprojection.ID,
+			Query:                   distributedprojection,
 			FilterA:                 make([]*symbolic.Expression, len(distributedprojection.Inp)),
 			FilterB:                 make([]*symbolic.Expression, len(distributedprojection.Inp)),
 			ColumnA:                 make([]*symbolic.Expression, len(distributedprojection.Inp)),
@@ -44,10 +45,6 @@ func compile(comp *wizard.CompiledIOP, round int, distributedprojection query.Di
 			EvalCoins:               make([]coin.Info, len(distributedprojection.Inp)),
 			IsA:                     make([]bool, len(distributedprojection.Inp)),
 			IsB:                     make([]bool, len(distributedprojection.Inp)),
-			CumNumOnesPrevSegmentsA: make([]big.Int, len(distributedprojection.Inp)),
-			CumNumOnesPrevSegmentsB: make([]big.Int, len(distributedprojection.Inp)),
-			CumNumOnesCurrSegmentA:  make([]field.Element, len(distributedprojection.Inp)),
-			CumNumOnesCurrSegmentB:  make([]field.Element, len(distributedprojection.Inp)),
 		}
 	)
 	pa.Push(comp, distributedprojection)
@@ -55,17 +52,18 @@ func compile(comp *wizard.CompiledIOP, round int, distributedprojection query.Di
 	comp.RegisterProverAction(round, pa)
 	comp.RegisterVerifierAction(round, &distributedProjectionVerifierAction{
 		Name:                    pa.Name,
+		Query:                   pa.Query,
 		HornerA0:                pa.HornerA0,
 		HornerB0:                pa.HornerB0,
 		IsA:                     pa.IsA,
 		IsB:                     pa.IsB,
 		EvalCoins:               pa.EvalCoins,
-		CumNumOnesPrevSegmentsA: pa.CumNumOnesPrevSegmentsA,
-		CumNumOnesPrevSegmentsB: pa.CumNumOnesPrevSegmentsB,
-		NumOnesCurrSegmentA:     pa.CumNumOnesCurrSegmentA,
-		NumOnesCurrSegmentB:     pa.CumNumOnesCurrSegmentB,
-		FilterA: pa.FilterA,
-		FilterB: pa.FilterB,
+		FilterA:                 pa.FilterA,
+		FilterB:                 pa.FilterB,
+		CumNumOnesPrevSegmentsA: make([]big.Int, len(distributedprojection.Inp)),
+		CumNumOnesPrevSegmentsB: make([]big.Int, len(distributedprojection.Inp)),
+		NumOnesCurrSegmentA:     make([]field.Element, len(distributedprojection.Inp)),
+		NumOnesCurrSegmentB:     make([]field.Element, len(distributedprojection.Inp)),
 	})
 
 }

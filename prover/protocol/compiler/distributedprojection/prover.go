@@ -1,11 +1,8 @@
 package distributedprojection
 
 import (
-	"math/big"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -18,17 +15,14 @@ import (
 )
 
 type distribuedProjectionProverAction struct {
-	Name                    ifaces.QueryID
-	FilterA, FilterB        []*sym.Expression
-	ColumnA, ColumnB        []*sym.Expression
-	HornerA, HornerB        []ifaces.Column
-	HornerA0, HornerB0      []query.LocalOpening
-	EvalCoins               []coin.Info
-	IsA, IsB                []bool
-	CumNumOnesPrevSegmentsA []big.Int
-	CumNumOnesPrevSegmentsB []big.Int
-	CumNumOnesCurrSegmentA  []field.Element
-	CumNumOnesCurrSegmentB  []field.Element
+	Name               ifaces.QueryID
+	Query              query.DistributedProjection
+	FilterA, FilterB   []*sym.Expression
+	ColumnA, ColumnB   []*sym.Expression
+	HornerA, HornerB   []ifaces.Column
+	HornerA0, HornerB0 []query.LocalOpening
+	EvalCoins          []coin.Info
+	IsA, IsB           []bool
 }
 
 // Run executes the distributed projection prover action.
@@ -40,7 +34,7 @@ type distribuedProjectionProverAction struct {
 // If IsA is false and IsB is true, it computes the Horner trace for column B only.
 // If neither IsA nor IsB is true, it panics with an error message indicating an invalid prover assignment.
 func (pa *distribuedProjectionProverAction) Run(run *wizard.ProverRuntime) {
-	for index := range pa.FilterA {
+	for index := range pa.Query.Inp {
 		if pa.IsA[index] && pa.IsB[index] {
 			var (
 				colA    = column.EvalExprColumn(run, pa.ColumnA[index].Board()).IntoRegVecSaveAlloc()
@@ -98,26 +92,18 @@ func (pa *distribuedProjectionProverAction) Push(comp *wizard.CompiledIOP, distr
 			pa.EvalCoins[index] = comp.Coins.Data(input.EvalCoin)
 			pa.IsA[index] = true
 			pa.IsB[index] = true
-			pa.CumNumOnesPrevSegmentsA[index] = input.CumulativeNumOnesPrevSegmentsA
-			pa.CumNumOnesCurrSegmentA[index] = input.CurrNumOnesA
-			pa.CumNumOnesPrevSegmentsB[index] = input.CumulativeNumOnesPrevSegmentsB
-			pa.CumNumOnesCurrSegmentB[index] = input.CurrNumOnesB
 		} else if input.IsAInModule && !input.IsBInModule {
 			pa.FilterA[index] = input.FilterA
 			pa.ColumnA[index] = input.ColumnA
 			pa.EvalCoins[index] = comp.Coins.Data(input.EvalCoin)
 			pa.IsA[index] = true
 			pa.IsB[index] = false
-			pa.CumNumOnesPrevSegmentsA[index] = input.CumulativeNumOnesPrevSegmentsA
-			pa.CumNumOnesCurrSegmentA[index] = input.CurrNumOnesA
 		} else if !input.IsAInModule && input.IsBInModule {
 			pa.FilterB[index] = input.FilterB
 			pa.ColumnB[index] = input.ColumnB
 			pa.EvalCoins[index] = comp.Coins.Data(input.EvalCoin)
 			pa.IsA[index] = false
 			pa.IsB[index] = true
-			pa.CumNumOnesPrevSegmentsB[index] = input.CumulativeNumOnesPrevSegmentsB
-			pa.CumNumOnesCurrSegmentB[index] = input.CurrNumOnesB
 		} else {
 			logrus.Errorf("Invalid distributed projection query while pushing prover action entries: %v", distributedprojection.ID)
 		}

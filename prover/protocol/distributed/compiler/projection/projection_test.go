@@ -22,7 +22,7 @@ import (
 
 func TestDistributeProjection(t *testing.T) {
 	const (
-		numSegModuleA = 1
+		numSegModuleA = 2
 		numSegModuleB = 2
 		numSegModuleC = 2
 	)

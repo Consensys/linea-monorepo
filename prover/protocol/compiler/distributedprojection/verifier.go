@@ -18,6 +18,7 @@ import (
 
 type distributedProjectionVerifierAction struct {
 	Name                    ifaces.QueryID
+	Query                   query.DistributedProjection
 	HornerA0, HornerB0      []query.LocalOpening
 	IsA, IsB                []bool
 	skipped                 bool
@@ -31,6 +32,20 @@ type distributedProjectionVerifierAction struct {
 
 // Run implements the [wizard.VerifierAction]
 func (va *distributedProjectionVerifierAction) Run(run wizard.Runtime) error {
+	for index, inp := range va.Query.Inp {
+		if va.IsA[index] && va.IsB[index] {
+			va.CumNumOnesPrevSegmentsA[index] = inp.CumulativeNumOnesPrevSegmentsA
+			va.NumOnesCurrSegmentA[index] = inp.CurrNumOnesA
+			va.CumNumOnesPrevSegmentsB[index] = inp.CumulativeNumOnesPrevSegmentsB
+			va.NumOnesCurrSegmentB[index] = inp.CurrNumOnesB
+		} else if va.IsA[index] && !va.IsB[index] {
+			va.CumNumOnesPrevSegmentsA[index] = inp.CumulativeNumOnesPrevSegmentsA
+			va.NumOnesCurrSegmentA[index] = inp.CurrNumOnesA
+		} else if !va.IsA[index] && va.IsB[index] {
+			va.CumNumOnesPrevSegmentsB[index] = inp.CumulativeNumOnesPrevSegmentsB
+			va.NumOnesCurrSegmentB[index] = inp.CurrNumOnesB
+		}
+	}
 	errorCheckHorner := va.scaledHornerCheck(run)
 	if errorCheckHorner != nil {
 		return errorCheckHorner

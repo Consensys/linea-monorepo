@@ -162,45 +162,64 @@ func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Project
 	p.QIds = append(p.QIds, q)
 	// Push the DistributedProjectionInput
 	if isA && isB {
-		fA, _, _ := wizardutils.AsExpr(q.Inp.FilterA)
-		fB, _, _ := wizardutils.AsExpr(q.Inp.FilterB)
+		fA, _, _ := wizardutils.AsExpr(comp.Columns.GetHandle(q.Inp.FilterA.GetColID()))
+		fB, _, _ := wizardutils.AsExpr(comp.Columns.GetHandle(q.Inp.FilterB.GetColID()))
+		var (
+			colA = make([]ifaces.Column, 0, len(q.Inp.ColumnA))
+			colB = make([]ifaces.Column, 0, len(q.Inp.ColumnB))
+		)
+		for i := 0; i < len(q.Inp.ColumnA); i++ {
+			colA = append(colA, comp.Columns.GetHandle(q.Inp.ColumnA[i].GetColID()))
+		}
+		for i := 0; i < len(q.Inp.ColumnB); i++ {
+			colB = append(colB, comp.Columns.GetHandle(q.Inp.ColumnB[i].GetColID()))
+		}
 		p.DistProjectionInput = append(p.DistProjectionInput, &query.DistributedProjectionInput{
-			ColumnA:                        wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnA),
-			ColumnB:                        wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
-			FilterA:                        fA,
-			FilterB:                        fB,
-			SizeA:                          q.Inp.FilterA.Size(),
-			SizeB:                          q.Inp.FilterB.Size(),
-			EvalCoin:                       beta.Name,
-			IsAInModule:                    true,
-			IsBInModule:                    true,
-			CumulativeNumOnesPrevSegmentsA: *big.NewInt(1), // Placeholder value for now
+			ColumnA:     wizardutils.RandLinCombColSymbolic(alpha, colA),
+			ColumnB:     wizardutils.RandLinCombColSymbolic(alpha, colB),
+			FilterA:     fA,
+			FilterB:     fB,
+			SizeA:       comp.Columns.GetSize(q.Inp.FilterA.GetColID()),
+			SizeB:       comp.Columns.GetSize(q.Inp.FilterB.GetColID()),
+			EvalCoin:    beta.Name,
+			IsAInModule: true,
+			IsBInModule: true,
 		})
 	} else if isA {
-		fA, _, _ := wizardutils.AsExpr(q.Inp.FilterA)
+		fA, _, _ := wizardutils.AsExpr(comp.Columns.GetHandle(q.Inp.FilterA.GetColID()))
+		var (
+			colA = make([]ifaces.Column, 0, len(q.Inp.ColumnA))
+		)
+		for i := 0; i < len(q.Inp.ColumnA); i++ {
+			colA = append(colA, comp.Columns.GetHandle(q.Inp.ColumnA[i].GetColID()))
+		}
 		p.DistProjectionInput = append(p.DistProjectionInput, &query.DistributedProjectionInput{
-			ColumnA:                        wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnA),
-			ColumnB:                        symbolic.NewConstant(1),
-			FilterA:                        fA,
-			FilterB:                        symbolic.NewConstant(1),
-			SizeA:                          q.Inp.FilterA.Size(),
-			EvalCoin:                       beta.Name,
-			IsAInModule:                    true,
-			IsBInModule:                    false,
-			CumulativeNumOnesPrevSegmentsA: *big.NewInt(1), // Placeholder value for now
+			ColumnA:     wizardutils.RandLinCombColSymbolic(alpha, colA),
+			ColumnB:     symbolic.NewConstant(1),
+			FilterA:     fA,
+			FilterB:     symbolic.NewConstant(1),
+			SizeA:       comp.Columns.GetSize(q.Inp.FilterA.GetColID()),
+			EvalCoin:    beta.Name,
+			IsAInModule: true,
+			IsBInModule: false,
 		})
 	} else if isB {
-		fB, _, _ := wizardutils.AsExpr(q.Inp.FilterB)
+		fB, _, _ := wizardutils.AsExpr(comp.Columns.GetHandle(q.Inp.FilterB.GetColID()))
+		var (
+			colB = make([]ifaces.Column, 0, len(q.Inp.ColumnB))
+		)
+		for i := 0; i < len(q.Inp.ColumnB); i++ {
+			colB = append(colB, comp.Columns.GetHandle(q.Inp.ColumnB[i].GetColID()))
+		}
 		p.DistProjectionInput = append(p.DistProjectionInput, &query.DistributedProjectionInput{
-			ColumnA:                        symbolic.NewConstant(1),
-			ColumnB:                        wizardutils.RandLinCombColSymbolic(alpha, q.Inp.ColumnB),
-			FilterA:                        symbolic.NewConstant(1),
-			FilterB:                        fB,
-			SizeB:                          q.Inp.FilterB.Size(),
-			EvalCoin:                       beta.Name,
-			IsAInModule:                    false,
-			IsBInModule:                    true,
-			CumulativeNumOnesPrevSegmentsA: *big.NewInt(1), // Placeholder value for now
+			ColumnA:     symbolic.NewConstant(1),
+			ColumnB:     wizardutils.RandLinCombColSymbolic(alpha, colB),
+			FilterA:     symbolic.NewConstant(1),
+			FilterB:     fB,
+			SizeB:       comp.Columns.GetSize(q.Inp.FilterB.GetColID()),
+			EvalCoin:    beta.Name,
+			IsAInModule: false,
+			IsBInModule: true,
 		})
 	} else {
 		panic("Invalid distributed projection query while initial pushing")
@@ -228,13 +247,14 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 	for elemIndex, inp := range p.DistProjectionInput {
 		if inp.IsAInModule && inp.IsBInModule {
 			var (
-				fA                         = initialRuntime.GetColumn(p.QIds[elemIndex].Inp.FilterA.GetColID())
-				fB                         = initialRuntime.GetColumn(p.QIds[elemIndex].Inp.FilterB.GetColID())
-				segSizeA                   = utils.NextPowerOfTwo(fA.Len() / p.NumSegmentsPerModule)
-				segSizeB                   = utils.NextPowerOfTwo(fB.Len() / p.NumSegmentsPerModule)
-				numOnesCurrA, numOnesCurrB field.Element
-				cumSumOnesPrevA            = big.NewInt(0)
-				cumSumOnesPrevB            = big.NewInt(0)
+				fA              = initialRuntime.GetColumn(p.QIds[elemIndex].Inp.FilterA.GetColID())
+				fB              = initialRuntime.GetColumn(p.QIds[elemIndex].Inp.FilterB.GetColID())
+				segSizeA        = utils.NextPowerOfTwo(fA.Len() / p.NumSegmentsPerModule)
+				segSizeB        = utils.NextPowerOfTwo(fB.Len() / p.NumSegmentsPerModule)
+				numOnesCurrA    = field.Zero()
+				numOnesCurrB    = field.Zero()
+				cumSumOnesPrevA = *big.NewInt(0)
+				cumSumOnesPrevB = *big.NewInt(0)
 			)
 			if segId == 0 {
 				var (
@@ -251,8 +271,8 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 						numOnesCurrB.Add(&numOnesCurrB, &one)
 					}
 				}
-				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = *cumSumOnesPrevA
-				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = *cumSumOnesPrevB
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = cumSumOnesPrevA
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = cumSumOnesPrevB
 				p.DistProjectionInput[elemIndex].CurrNumOnesA = numOnesCurrA
 				p.DistProjectionInput[elemIndex].CurrNumOnesB = numOnesCurrB
 			} else {
@@ -264,12 +284,12 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 				)
 				for i := 0; i < len(fAPrev); i++ {
 					if fAPrev[i] == one {
-						cumSumOnesPrevA.Add(cumSumOnesPrevA, bigOne)
+						cumSumOnesPrevA.Add(&cumSumOnesPrevA, bigOne)
 					}
 				}
 				for i := 0; i < len(fBPrev); i++ {
 					if fBPrev[i] == one {
-						cumSumOnesPrevB.Add(cumSumOnesPrevB, bigOne)
+						cumSumOnesPrevB.Add(&cumSumOnesPrevB, bigOne)
 					}
 				}
 				for i := 0; i < len(fACurr); i++ {
@@ -282,8 +302,8 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 						numOnesCurrB.Add(&numOnesCurrB, &one)
 					}
 				}
-				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = *cumSumOnesPrevA
-				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = *cumSumOnesPrevB
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = cumSumOnesPrevA
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = cumSumOnesPrevB
 				p.DistProjectionInput[elemIndex].CurrNumOnesA = numOnesCurrA
 				p.DistProjectionInput[elemIndex].CurrNumOnesB = numOnesCurrB
 			}
@@ -292,8 +312,8 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 			var (
 				fA              = initialRuntime.GetColumn(p.QIds[elemIndex].Inp.FilterA.GetColID())
 				segSizeA        = utils.NextPowerOfTwo(fA.Len() / p.NumSegmentsPerModule)
-				numOnesCurrA    field.Element
-				cumSumOnesPrevA = big.NewInt(0)
+				numOnesCurrA    = field.Zero()
+				cumSumOnesPrevA = *big.NewInt(0)
 			)
 			if segId == 0 {
 				var (
@@ -305,7 +325,7 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 						numOnesCurrA.Add(&numOnesCurrA, &one)
 					}
 				}
-				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = *cumSumOnesPrevA
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = cumSumOnesPrevA
 				p.DistProjectionInput[elemIndex].CurrNumOnesA = numOnesCurrA
 			} else {
 				var (
@@ -314,7 +334,7 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 				)
 				for i := 0; i < len(fAPrev); i++ {
 					if fAPrev[i] == one {
-						cumSumOnesPrevA.Add(cumSumOnesPrevA, bigOne)
+						cumSumOnesPrevA.Add(&cumSumOnesPrevA, bigOne)
 					}
 				}
 				for i := 0; i < len(fACurr); i++ {
@@ -322,7 +342,7 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 						numOnesCurrA.Add(&numOnesCurrA, &one)
 					}
 				}
-				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = *cumSumOnesPrevA
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsA = cumSumOnesPrevA
 				p.DistProjectionInput[elemIndex].CurrNumOnesA = numOnesCurrA
 			}
 		}
@@ -331,7 +351,7 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 				fB              = initialRuntime.GetColumn(p.QIds[elemIndex].Inp.FilterB.GetColID())
 				segSizeB        = utils.NextPowerOfTwo(fB.Len() / p.NumSegmentsPerModule)
 				numOnesCurrB    field.Element
-				cumSumOnesPrevB = big.NewInt(0)
+				cumSumOnesPrevB = *big.NewInt(0)
 			)
 			if segId == 0 {
 				var (
@@ -343,7 +363,7 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 						numOnesCurrB.Add(&numOnesCurrB, &one)
 					}
 				}
-				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = *cumSumOnesPrevB
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = cumSumOnesPrevB
 				p.DistProjectionInput[elemIndex].CurrNumOnesB = numOnesCurrB
 			} else {
 				var (
@@ -352,7 +372,7 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 				)
 				for i := 0; i < len(fBPrev); i++ {
 					if fBPrev[i] == one {
-						cumSumOnesPrevB.Add(cumSumOnesPrevB, bigOne)
+						cumSumOnesPrevB.Add(&cumSumOnesPrevB, bigOne)
 					}
 				}
 				for i := 0; i < len(fBCurr); i++ {
@@ -360,7 +380,7 @@ func (p *DistributeProjectionCtx) assignSumNumOnes(run *wizard.ProverRuntime) {
 						numOnesCurrB.Add(&numOnesCurrB, &one)
 					}
 				}
-				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = *cumSumOnesPrevB
+				p.DistProjectionInput[elemIndex].CumulativeNumOnesPrevSegmentsB = cumSumOnesPrevB
 				p.DistProjectionInput[elemIndex].CurrNumOnesB = numOnesCurrB
 			}
 		}
@@ -374,7 +394,7 @@ func (p *DistributeProjectionCtx) computeScaledHorner(run *wizard.ProverRuntime)
 	)
 	for elemIndex, inp := range p.DistProjectionInput {
 		var (
-			elemParam  = field.Zero()
+			elemParam = field.Zero()
 		)
 		if inp.IsAInModule && inp.IsBInModule {
 			var (
