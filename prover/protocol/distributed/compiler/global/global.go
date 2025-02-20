@@ -65,7 +65,7 @@ func DistributeGlobal(in DistributionInputs) {
 		if in.Disc.ExpressionIsInModule(q.Expression, in.ModuleName) {
 
 			// apply global constraint over the segment.
-			in.ModuleComp.InsertGlobal(constants.RoundGL,
+			in.ModuleComp.InsertGlobal(0,
 				q.ID,
 				AdjustExpressionForGlobal(in.ModuleComp, q.Expression, in.NumSegments),
 			)
@@ -92,8 +92,8 @@ func DistributeGlobal(in DistributionInputs) {
 	mimcHasherReceiver.DefineHasher(in.ModuleComp, "DISTRIBUTED_GLOBAL_QUERY_MIMC_HASHER_RECEIVER")
 
 	var (
-		openingHashProvider = in.ModuleComp.InsertLocalOpening(constants.RoundGL, "ACCESSOR_FROM_HASH_PROVIDER", mimcHasherProvider.HashFinal)
-		openingHashReceiver = in.ModuleComp.InsertLocalOpening(constants.RoundGL, "ACCESSOR_FROM_HASH_RECEIVER", mimcHasherReceiver.HashFinal)
+		openingHashProvider = in.ModuleComp.InsertLocalOpening(0, "ACCESSOR_FROM_HASH_PROVIDER", mimcHasherProvider.HashFinal)
+		openingHashReceiver = in.ModuleComp.InsertLocalOpening(0, "ACCESSOR_FROM_HASH_RECEIVER", mimcHasherReceiver.HashFinal)
 	)
 
 	// declare the hash of the provider/receiver as the public inputs.
@@ -106,10 +106,10 @@ func DistributeGlobal(in DistributionInputs) {
 	in.ModuleComp.PublicInputs = append(in.ModuleComp.PublicInputs,
 		wizard.PublicInput{
 			Name: constants.GlobalReceiverPublicInput,
-			Acc:  accessors.NewLocalOpeningAccessor(openingHashReceiver, constants.RoundGL),
+			Acc:  accessors.NewLocalOpeningAccessor(openingHashReceiver, 0),
 		})
 
-	in.ModuleComp.RegisterProverAction(constants.RoundGL, &proverActionForBoundaries{
+	in.ModuleComp.RegisterProverAction(0, &proverActionForBoundaries{
 		provider: boundaryAssignments{
 			boundaries:  bInputs.provider,
 			hashOpening: openingHashProvider,
@@ -221,8 +221,8 @@ func BoundariesForProvider(in *boundaryInputs, q query.GlobalConstraint) {
 					var (
 						index            = pos[0] + i
 						name             = ifaces.QueryIDf("%v_%v_%v", q.ID, "FROM_PROVIDER_AT", index)
-						loProvider       = in.moduleComp.InsertLocalOpening(constants.RoundGL, name, column.Shift(in.provider.boundaryCol, index))
-						accessorProvider = accessors.NewLocalOpeningAccessor(loProvider, constants.RoundGL)
+						loProvider       = in.moduleComp.InsertLocalOpening(0, name, column.Shift(in.provider.boundaryCol, index))
+						accessorProvider = accessors.NewLocalOpeningAccessor(loProvider, 0)
 						indexOnCol       = segSize - (maxShift - column.StackOffsets(col) - i)
 						nameExpr         = ifaces.QueryIDf("%v_%v_%v", "CONSISTENCY_AGAINST_PROVIDER", col.GetColID(), i)
 						colInModule      ifaces.Column
@@ -238,7 +238,7 @@ func BoundariesForProvider(in *boundaryInputs, q query.GlobalConstraint) {
 					// add the localOpening to the map
 					in.provider.boundaryOpenings.InsertNew(loProvider, index)
 					// impose that loProvider = loCol
-					in.moduleComp.InsertLocal(constants.RoundGL, nameExpr,
+					in.moduleComp.InsertLocal(0, nameExpr,
 						symbolic.Sub(accessorProvider, column.Shift(colInModule, indexOnCol)),
 					)
 
@@ -283,8 +283,8 @@ func BoundariesForReceiver(in *boundaryInputs, q query.GlobalConstraint) {
 					var (
 						index    = pos[0] + i
 						name     = ifaces.QueryIDf("%v_%v_%v", q.ID, "FROM_RECEIVER_AT", index)
-						lo       = comp.InsertLocalOpening(constants.RoundGL, name, column.Shift(in.receiver.boundaryCol, index))
-						accessor = accessors.NewLocalOpeningAccessor(lo, constants.RoundGL)
+						lo       = comp.InsertLocalOpening(0, name, column.Shift(in.receiver.boundaryCol, index))
+						accessor = accessors.NewLocalOpeningAccessor(lo, 0)
 					)
 					// add the localOpening to the map
 					in.receiver.boundaryOpenings.InsertNew(lo, index)
@@ -308,7 +308,7 @@ func BoundariesForReceiver(in *boundaryInputs, q query.GlobalConstraint) {
 		if in.segID != 0 || q.NoBoundCancel {
 			expr := q.Expression.Replay(translationMap)
 			name := ifaces.QueryIDf("%v_%v_%v", "CONSISTENCY_AGAINST_RECEIVER", q.ID, i)
-			comp.InsertLocal(constants.RoundGL, name, expr)
+			comp.InsertLocal(0, name, expr)
 		}
 
 	}

@@ -27,13 +27,18 @@ type SegmentInputs struct {
 	SegID               int
 }
 
-// It creates a segComp for GL sub-provers , it push LPP to round 0 and GL to round 1
-// @Azam for the moment all is at round zero!
+// GetFreshGLComp creates a coimpiledIOP relevant to the GL queries/sub-provers.
 func GetFreshGLComp(in SegmentInputs) *wizard.CompiledIOP {
+
+	// If it has no GL column return an empty compiledIOP
+	if !in.Disc.GLColumns.Exists(in.ModuleName) {
+		return wizard.NewCompiledIOP()
+	}
+
 	var (
 		initialComp = in.InitialComp
-		// initialize the compiledIOP of the segment by adding the lpp columns to round 0.
-		segComp = GetFreshLPPComp(in)
+		// initialize the compiledIOP.
+		segComp = wizard.NewCompiledIOP()
 		// extract glColumns of the module
 		glCols = in.Disc.GLColumns.MustGet(in.ModuleName)
 	)
@@ -41,49 +46,21 @@ func GetFreshGLComp(in SegmentInputs) *wizard.CompiledIOP {
 	// get the segment ID via a ProverAction
 	segComp.RegisterProverAction(0, segIDProvider{segID: in.SegID})
 
-	// commit to GL columns
-	for _, col := range glCols {
-		var (
-			status  = in.InitialComp.Columns.Status(col.GetColID())
-			segSize = col.Size() / in.NumSegmentsInModule
-		)
-		switch status {
-		case column.Precomputed:
+	// insert the split columns into the segment
+	insertColumnIntoSegment(in, segComp, glCols)
 
-			precom := in.InitialComp.Precomputed.MustGet(col.GetColID())
-			segComp.InsertPrecomputed(col.GetColID(),
-				precom.SubVector(segSize*in.SegID, segSize*(in.SegID+1)))
-
-		case column.VerifyingKey:
-
-			precom := in.InitialComp.Precomputed.MustGet(col.GetColID())
-			segComp.InsertPrecomputed(col.GetColID(),
-				precom.SubVector(segSize*in.SegID, segSize*(in.SegID+1)))
-			segComp.Columns.SetStatus(col.GetColID(), column.VerifyingKey)
-
-		case column.VerifierDefined:
-			if vcol, ok := col.(verifiercol.VerifierCol); ok {
-				vcol.Split(segComp, segSize*in.SegID, segSize*(in.SegID+1))
-			} else {
-				panic("unexpected type")
-			}
-		default:
-			segComp.InsertColumn(0, col.GetColID(), segSize, status)
-
-		}
-	}
-
-	// register provider and receiver
+	// register provider and receiver,  the placeholders for boundaries.
 	provider := segComp.InsertCommit(0, "PROVIDER", getSizeForProviderReceiver(initialComp))
 	receiver := segComp.InsertCommit(0, "RECEIVER", getSizeForProviderReceiver(initialComp))
 
-	// create a new  moduleProver
+	// create a new  sub-prover for the segment.
 	glProver := glProver{
 		// all the glColumns in the module
 		glCols:      glCols,
 		numSegments: in.NumSegmentsInModule,
-		provider:    provider,
-		receiver:    receiver,
+		// placeholders for boundaries
+		provider: provider,
+		receiver: receiver,
 	}
 
 	// register Prover action to assign columns
@@ -92,8 +69,7 @@ func GetFreshGLComp(in SegmentInputs) *wizard.CompiledIOP {
 
 }
 
-// GetLPPComp generates compiledIOP for compilation of LPP queries.
-// this is used twice once in the above once directly for LPP compilation after round 1.
+// GetFreshLPPComp generates compiledIOP for compilation of LPP queries.
 func GetFreshLPPComp(in SegmentInputs) *wizard.CompiledIOP {
 
 	// If it has no LPP column return an empty compiledIOP
@@ -112,39 +88,10 @@ func GetFreshLPPComp(in SegmentInputs) *wizard.CompiledIOP {
 	// get the segmentID via a ProverAction
 	segComp.RegisterProverAction(0, segIDProvider{segID: segID})
 
-	for _, col := range lppCols {
-		var (
-			status  = in.InitialComp.Columns.Status(col.GetColID())
-			segSize = col.Size() / in.NumSegmentsInModule
-		)
-		switch status {
-		case column.Precomputed:
+	// insert the split columns into the segment
+	insertColumnIntoSegment(in, segComp, lppCols)
 
-			precom := in.InitialComp.Precomputed.MustGet(col.GetColID())
-			segComp.InsertPrecomputed(col.GetColID(),
-				precom.SubVector(segSize*segID, segSize*(segID+1)))
-
-		case column.VerifyingKey:
-
-			precom := in.InitialComp.Precomputed.MustGet(col.GetColID())
-			segComp.InsertPrecomputed(col.GetColID(),
-				precom.SubVector(segSize*segID, segSize*(segID+1)))
-			segComp.Columns.SetStatus(col.GetColID(), column.VerifyingKey)
-
-		case column.VerifierDefined:
-			if vcol, ok := col.(verifiercol.VerifierCol); ok {
-				vcol.Split(segComp, segSize*segID, segSize*(segID+1))
-			} else {
-				panic("unexpected type")
-			}
-		default:
-			segComp.InsertColumn(0, col.GetColID(), segSize, status)
-
-		}
-
-	}
-
-	// create a new subProver
+	// create a new subProver for the segment.
 	segProver := segmentModuleProver{
 		cols:        lppCols,
 		numSegments: in.NumSegmentsInModule,
@@ -323,4 +270,38 @@ func assignProvider(run *wizard.ProverRuntime, segID, numSegments int, col iface
 		}
 	}
 	run.AssignColumn(col.GetColID(), smartvectors.RightZeroPadded(allBoundaries, col.Size()))
+}
+
+func insertColumnIntoSegment(in SegmentInputs, segComp *wizard.CompiledIOP, cols []ifaces.Column) {
+	for _, col := range cols {
+		var (
+			status  = in.InitialComp.Columns.Status(col.GetColID())
+			segSize = col.Size() / in.NumSegmentsInModule
+		)
+		switch status {
+		case column.Precomputed:
+
+			precom := in.InitialComp.Precomputed.MustGet(col.GetColID())
+			segComp.InsertPrecomputed(col.GetColID(),
+				precom.SubVector(segSize*in.SegID, segSize*(in.SegID+1)))
+
+		case column.VerifyingKey:
+
+			precom := in.InitialComp.Precomputed.MustGet(col.GetColID())
+			segComp.InsertPrecomputed(col.GetColID(),
+				precom.SubVector(segSize*in.SegID, segSize*(in.SegID+1)))
+			segComp.Columns.SetStatus(col.GetColID(), column.VerifyingKey)
+
+		case column.VerifierDefined:
+			if vcol, ok := col.(verifiercol.VerifierCol); ok {
+				vcol.Split(segComp, segSize*in.SegID, segSize*(in.SegID+1))
+			} else {
+				panic("unexpected type")
+			}
+		default:
+			segComp.InsertColumn(0, col.GetColID(), segSize, status)
+
+		}
+
+	}
 }

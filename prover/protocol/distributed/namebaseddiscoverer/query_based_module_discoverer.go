@@ -56,7 +56,7 @@ func (d *QueryBasedDiscoverer) Analyze(comp *wizard.CompiledIOP, otherComp ...*w
 
 				if d.SimpleDiscoverer.ExpressionIsInModule(local.Expression, moduleName) {
 
-					// it analyzes de expression and update d.GLColumns and d.PeriodicSamplingGL
+					// it analyzes de expression and update d.GLColumns
 					d.analyzeExprGL(local.Expression, moduleName)
 
 				}
