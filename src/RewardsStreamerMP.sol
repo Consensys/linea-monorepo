@@ -22,8 +22,6 @@ contract RewardsStreamerMP is
     IRewardProvider,
     StakeMath
 {
-    event VaultMigrated(address indexed from, address indexed to);
-
     IERC20 public STAKING_TOKEN;
 
     uint256 public constant SCALE_FACTOR = 1e18;
@@ -108,6 +106,7 @@ contract RewardsStreamerMP is
 
         vaultOwners[vault] = owner;
         vaults[owner].push(vault);
+        emit VaultRegistered(vault, owner);
     }
 
     /**
@@ -210,6 +209,8 @@ contract RewardsStreamerMP is
         totalMaxMP += _deltaMPMax;
 
         vault.rewardIndex = rewardIndex;
+
+        emit Staked(msg.sender, amount, lockPeriod);
     }
 
     function lock(uint256 lockPeriod)
@@ -246,6 +247,8 @@ contract RewardsStreamerMP is
         totalMaxMP += deltaMp;
 
         vault.rewardIndex = rewardIndex;
+
+        emit Locked(msg.sender, lockPeriod, newLockEnd);
     }
 
     function unstake(uint256 amount)
@@ -257,6 +260,7 @@ contract RewardsStreamerMP is
     {
         VaultData storage vault = vaultData[msg.sender];
         _unstake(amount, vault, msg.sender);
+        emit Unstaked(msg.sender, amount);
     }
 
     function _unstake(uint256 amount, VaultData storage vault, address vaultAddress) internal {
@@ -299,6 +303,8 @@ contract RewardsStreamerMP is
             vault.rewardIndex = 0;
             vault.lockUntil = 0;
         }
+
+        emit AccountLeft(msg.sender);
     }
 
     function _updateGlobalState() internal {
@@ -479,6 +485,7 @@ contract RewardsStreamerMP is
 
     function enableEmergencyMode() external onlyOwner onlyNotEmergencyMode {
         emergencyModeEnabled = true;
+        emit EmergencyModeEnabled();
     }
 
     function getStakedBalance(address vaultAddress) public view returns (uint256) {

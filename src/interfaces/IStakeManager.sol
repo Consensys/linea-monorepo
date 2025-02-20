@@ -17,6 +17,14 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     error StakingManager__Unauthorized();
     error StakingManager__DurationCannotBeZero();
 
+    event VaultRegistered(address indexed vault, address indexed owner);
+    event VaultMigrated(address indexed from, address indexed to);
+    event Staked(address indexed vault, uint256 amount, uint256 lockPeriod);
+    event Locked(address indexed vault, uint256 lockPeriod, uint256 lockUntil);
+    event Unstaked(address indexed vault, uint256 amount);
+    event EmergencyModeEnabled();
+    event AccountLeft(address indexed vault);
+
     function registerVault() external;
     function stake(uint256 _amount, uint256 _seconds) external;
     function lock(uint256 _seconds) external;
