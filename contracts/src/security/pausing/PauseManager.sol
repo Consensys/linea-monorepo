@@ -5,7 +5,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { IPauseManager } from "./interfaces/IPauseManager.sol";
 
 /**
- * @title Contract to manage cross-chain function pausing.
+ * @title Contract to manage cross-chain function pausing with limited duration and cooldown mechanic.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
@@ -16,8 +16,18 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /// @notice This is used to unpause all unpausable functions.
   bytes32 public constant UNPAUSE_ALL_ROLE = keccak256("UNPAUSE_ALL_ROLE");
 
+  /// @notice Role assigned to the security council that enables indefinite pausing.
+  bytes32 public constant SECURITY_COUNCIL_ROLE = keccak256("SECURITY_COUNCIL_ROLE");
+
+  /// @notice Duration of pauses.
+  /// @dev Pauses enacted by the SECURITY_COUNCIL_ROLE do not have a limited duration.
+  uint256 public constant PAUSE_DURATION = 72 hours;
+
+  /// @notice Duration of cooldown period after a pause expires, during which no pauses (except by the SECURITY_COUNCIL_ROLE role) can be enacted.
+  uint256 public constant COOLDOWN_DURATION = 24 hours;
+
   // @dev DEPRECATED. USE _pauseTypeStatusesBitMap INSTEAD
-  mapping(bytes32 pauseType => bool pauseStatus) public pauseTypeStatuses;
+  mapping(bytes32 pauseType => bool pauseStatus) private pauseTypeStatuses;
 
   /// @dev The bitmap containing the pause statuses mapped by type.
   uint256 private _pauseTypeStatusesBitMap;
@@ -28,10 +38,13 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /// @dev This maps the unpause type to the role that is allowed to unpause it.
   mapping(PauseType unPauseType => bytes32 role) private _unPauseTypeRoles;
 
-  /// @dev Total contract storage is 11 slots with the gap below.
-  /// @dev Keep 7 free storage slots for future implementation updates to avoid storage collision.
+  /// @notice Unix timestamp of pause expiry.
+  uint256 public pauseExpiry;
+
+  /// @dev Total contract storage is 12 slots with the gap below.
+  /// @dev Keep 6 free storage slots for future implementation updates to avoid storage collision.
   /// @dev Note: This was reduced previously to cater for new functionality.
-  uint256[7] private __gap;
+  uint256[6] private __gap;
 
   /**
    * @dev Modifier to prevent usage of unused PauseType.
@@ -132,7 +145,15 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     if (isPaused(_pauseType)) {
       revert IsPaused(_pauseType);
     }
-
+    if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
+      pauseExpiry = type(uint256).max;
+    } else {
+      uint256 cooldownEnd = pauseExpiry + COOLDOWN_DURATION;
+      if (block.timestamp < cooldownEnd) {
+        revert PauseUnavailableDueToCooldown(cooldownEnd);
+      }
+      pauseExpiry = block.timestamp + PAUSE_DURATION;
+    }
     _pauseTypeStatusesBitMap |= 1 << uint256(_pauseType);
     emit Paused(_msgSender(), _pauseType);
   }
@@ -150,8 +171,30 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
       revert IsNotPaused(_pauseType);
     }
 
+    if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
+      pauseExpiry = block.timestamp - COOLDOWN_DURATION;
+    }
     _pauseTypeStatusesBitMap &= ~(1 << uint256(_pauseType));
     emit UnPaused(_msgSender(), _pauseType);
+  }
+
+  /**
+   * @notice Unpauses functionality by pause type when pause period has expired.
+   * @dev Throws if UNUSED pause type is used, or the pause expiry period has not passed.
+   * @param _pauseType The pause type value.
+   */
+  function unPauseDueToExpiry(
+    PauseType _pauseType
+  ) external onlyUsedPausedTypes(_pauseType) {
+    if (!isPaused(_pauseType)) {
+      revert IsNotPaused(_pauseType);
+    }
+    if (block.timestamp < pauseExpiry) {
+      revert PauseNotExpired(pauseExpiry);
+    }
+
+    _pauseTypeStatusesBitMap &= ~(1 << uint256(_pauseType));
+    emit UnPausedDueToExpiry(_pauseType);
   }
 
   /**
@@ -167,14 +210,14 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
    * @notice Update the pause type role mapping.
    * @dev Throws if UNUSED pause type is used.
    * @dev Throws if role not different.
-   * @dev PAUSE_ALL_ROLE role is required to execute this function.
+   * @dev SECURITY_COUNCIL_ROLE role is required to execute this function.
    * @param _pauseType The pause type value to update.
    * @param _newRole The role to update to.
    */
   function updatePauseTypeRole(
     PauseType _pauseType,
     bytes32 _newRole
-  ) external onlyUsedPausedTypes(_pauseType) onlyRole(PAUSE_ALL_ROLE) {
+  ) external onlyUsedPausedTypes(_pauseType) onlyRole(SECURITY_COUNCIL_ROLE) {
     bytes32 previousRole = _pauseTypeRoles[_pauseType];
     if (previousRole == _newRole) {
       revert RolesNotDifferent();
@@ -188,14 +231,14 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
    * @notice Update the unpause type role mapping.
    * @dev Throws if UNUSED pause type is used.
    * @dev Throws if role not different.
-   * @dev UNPAUSE_ALL_ROLE role is required to execute this function.
+   * @dev SECURITY_COUNCIL_ROLE role is required to execute this function.
    * @param _pauseType The pause type value to update.
    * @param _newRole The role to update to.
    */
   function updateUnpauseTypeRole(
     PauseType _pauseType,
     bytes32 _newRole
-  ) external onlyUsedPausedTypes(_pauseType) onlyRole(UNPAUSE_ALL_ROLE) {
+  ) external onlyUsedPausedTypes(_pauseType) onlyRole(SECURITY_COUNCIL_ROLE) {
     bytes32 previousRole = _unPauseTypeRoles[_pauseType];
     if (previousRole == _newRole) {
       revert RolesNotDifferent();

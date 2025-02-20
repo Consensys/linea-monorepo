@@ -51,6 +51,12 @@ interface IPauseManager {
   event UnPaused(address messageSender, PauseType indexed pauseType);
 
   /**
+   * @notice Emitted when a pause type is unpaused due to pause expiry period elapsing.
+   * @param pauseType The pause type that was unpaused.
+   */
+  event UnPausedDueToExpiry(PauseType pauseType);
+
+  /**
    * @notice Emitted when a pause type and its associated role are set in the `_pauseTypeRoles` mapping.
    * @param pauseType The indexed type of pause.
    * @param role The indexed role associated with the pause type.
@@ -86,9 +92,19 @@ interface IPauseManager {
   error IsPaused(PauseType pauseType);
 
   /**
+   * @dev Thrown when unpauseDueToExpiry is attempted before a pause has expired.
+   */
+  error PauseNotExpired(uint256 expiryEnd);
+
+  /**
    * @dev Thrown when a specific pause type is not paused and expected to be.
    */
   error IsNotPaused(PauseType pauseType);
+
+  /**
+   * @dev Thrown when pausing is attempted during the cooldown period.
+   */
+  error PauseUnavailableDueToCooldown(uint256 cooldownEnd);
 
   /**
    * @dev Thrown when the unused paused type is used.
@@ -115,6 +131,13 @@ interface IPauseManager {
    * @param _pauseType The pause type value.
    */
   function unPauseByType(PauseType _pauseType) external;
+
+  /**
+   * @notice Unpauses functionality by pause type when pause period has expired.
+   * @dev Throws if UNUSED pause type is used, or the pause expiry period has not passed.
+   * @param _pauseType The pause type value.
+   */
+  function unPauseDueToExpiry(PauseType _pauseType) external;
 
   /**
    * @notice Check if a pause type is enabled.
