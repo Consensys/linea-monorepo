@@ -1,6 +1,5 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
-import build.linea.domain.BlockIntervals
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
