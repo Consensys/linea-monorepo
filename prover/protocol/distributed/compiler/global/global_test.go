@@ -34,6 +34,8 @@ func TestDistributedGlobal(t *testing.T) {
 			col1 = b.CompiledIOP.InsertCommit(0, "module.col1", 8)
 			col2 = b.CompiledIOP.InsertCommit(0, "module.col2", 8)
 			col3 = b.CompiledIOP.InsertCommit(0, "module.col3", 8)
+
+			fibonacci = b.CompiledIOP.InsertCommit(0, "module.fibo", 16)
 		)
 
 		b.CompiledIOP.InsertGlobal(0, "global0",
@@ -44,6 +46,13 @@ func TestDistributedGlobal(t *testing.T) {
 			),
 		)
 
+		b.CompiledIOP.InsertGlobal(0, "fibonacci",
+			symbolic.Sub(
+				fibonacci,
+				column.Shift(fibonacci, -1),
+				column.Shift(fibonacci, -2)),
+		)
+
 	}
 
 	// initialProver
@@ -52,6 +61,8 @@ func TestDistributedGlobal(t *testing.T) {
 		run.AssignColumn("module.col1", smartvectors.ForTest(1, 7, 1, 11, 2, 1, 0, 2))
 		run.AssignColumn("module.col2", smartvectors.ForTest(7, 0, 1, 3, 0, 4, 1, 0))
 		run.AssignColumn("module.col3", smartvectors.ForTest(2, 14, 0, 2, 3, 0, 10, 0))
+
+		run.AssignColumn("module.fibo", smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987))
 
 	}
 

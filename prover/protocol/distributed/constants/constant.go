@@ -8,3 +8,8 @@ const (
 	GlobalProviderPublicInput = "GLOBAL_PROVIDER_PUBLIC_INPUT"
 	GlobalReceiverPublicInput = "GLOBAL_RECEIVER_PUBLIC_INPUT"
 )
+
+const (
+	RoundLPP = 0
+	RoundGL  = 0
+)

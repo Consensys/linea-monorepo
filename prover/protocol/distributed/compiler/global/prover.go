@@ -1,45 +1,57 @@
 package global
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"fmt"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	edc "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/execution_data_collector"
 )
 
+type boundaryAssignments struct {
+	boundaries  boundaries
+	hashOpening query.LocalOpening
+	mimcHash    edc.MIMCHasher
+}
 type proverActionForBoundaries struct {
-	provider         ifaces.Column
-	receiver         ifaces.Column
-	providerOpenings []query.LocalOpening
-	receiverOpenings []query.LocalOpening
-
-	hashOpeningProvider query.LocalOpening
-	hashOpeningReceiver query.LocalOpening
-	mimicHasherProvider edc.MIMCHasher
-	mimicHasherReceiver edc.MIMCHasher
+	provider boundaryAssignments
+	receiver boundaryAssignments
 }
 
 // it assigns all the LocalOpening  covering the boundaries
 func (pa proverActionForBoundaries) Run(run *wizard.ProverRuntime) {
 	var (
-		providerWit = run.GetColumn(pa.provider.GetColID()).IntoRegVecSaveAlloc()
-		receiverWit = run.GetColumn(pa.receiver.GetColID()).IntoRegVecSaveAlloc()
+		provider         = pa.provider.boundaries.boundaryCol
+		receiver         = pa.receiver.boundaries.boundaryCol
+		providerOpenings = pa.provider.boundaries.boundaryOpenings
+		receiverOpenings = pa.receiver.boundaries.boundaryOpenings
+
+		providerWit = run.GetColumn(provider.GetColID()).IntoRegVecSaveAlloc()
+		receiverWit = run.GetColumn(receiver.GetColID()).IntoRegVecSaveAlloc()
 	)
 
-	for i := range pa.providerOpenings {
+	fmt.Printf("provider %v\n", vector.Prettify(providerWit))
+	fmt.Printf("receiver %v\n", vector.Prettify(receiverWit))
 
-		run.AssignLocalPoint(pa.providerOpenings[i].ID, providerWit[i])
-		run.AssignLocalPoint(pa.receiverOpenings[i].ID, receiverWit[i])
+	for _, loProvider := range providerOpenings.ListAllKeys() {
+		index := providerOpenings.MustGet(loProvider)
+		run.AssignLocalPoint(loProvider.ID, providerWit[index])
 	}
 
-	pa.mimicHasherProvider.AssignHasher(run)
-	pa.mimicHasherReceiver.AssignHasher(run)
+	for _, loReceiver := range receiverOpenings.ListAllKeys() {
+		index := receiverOpenings.MustGet(loReceiver)
+		run.AssignLocalPoint(loReceiver.ID, receiverWit[index])
+	}
+
+	pa.provider.mimcHash.AssignHasher(run)
+	pa.receiver.mimcHash.AssignHasher(run)
 
 	var (
-		hashProvider = run.GetColumnAt(pa.mimicHasherProvider.HashFinal.GetColID(), 0)
-		hashReceiver = run.GetColumnAt(pa.mimicHasherReceiver.HashFinal.GetColID(), 0)
+		hashProvider = run.GetColumnAt(pa.provider.mimcHash.HashFinal.GetColID(), 0)
+		hashReceiver = run.GetColumnAt(pa.receiver.mimcHash.HashFinal.GetColID(), 0)
 	)
 
-	run.AssignLocalPoint(pa.hashOpeningProvider.ID, hashProvider)
-	run.AssignLocalPoint(pa.hashOpeningReceiver.ID, hashReceiver)
+	run.AssignLocalPoint(pa.provider.hashOpening.ID, hashProvider)
+	run.AssignLocalPoint(pa.receiver.hashOpening.ID, hashReceiver)
 }
