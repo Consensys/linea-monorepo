@@ -113,6 +113,7 @@ public class ExecutionEnvironment {
 
     return blockHeaderBuilder
         .baseFee(Wei.of(LINEA_BASE_FEE))
+        // TODO: refacto this block gas limit
         .gasLimit(LINEA_BLOCK_GAS_LIMIT)
         .difficulty(Difficulty.of(LINEA_DIFFICULTY));
   }

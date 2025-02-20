@@ -147,4 +147,16 @@ class MemoryTests {
 
     BytecodeRunner.of(program.compile()).run();
   }
+
+  @Test
+  void checkMSizeAfterMemoryExpansion() {
+    BytecodeCompiler program = newProgram();
+    program
+        .push(0xFF)
+        .push(0)
+        .op(OpCode.MSTORE) // expand memory
+        .op(OpCode.MSIZE); // call MSIZE on non-zero memory
+
+    BytecodeRunner.of(program.compile()).run();
+  }
 }
