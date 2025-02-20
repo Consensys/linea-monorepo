@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import linea.domain.createBlock
 import linea.kotlin.ByteArrayExt
 import linea.kotlin.encodeHex
-import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
 import net.consensys.linea.traces.fakeTracesCountersV1
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofResponse
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2

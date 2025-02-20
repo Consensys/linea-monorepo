@@ -1,6 +1,6 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
-import linea.domain.CommonDomainFunctions.blockIntervalString
+import linea.domain.BlockInterval
 import linea.domain.toBlockIntervalsString
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
