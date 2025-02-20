@@ -9,6 +9,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
+import linea.kotlin.trimToMillisecondPrecision
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.linea.transactionexclusion.ModuleOverflow
@@ -16,7 +17,6 @@ import net.consensys.linea.transactionexclusion.RejectedTransaction
 import net.consensys.linea.transactionexclusion.TransactionInfo
 import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
 import net.consensys.linea.transactionexclusion.test.rejectedContractDeploymentTransaction
-import net.consensys.trimToMillisecondPrecision
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel

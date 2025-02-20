@@ -6,6 +6,7 @@ import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import linea.kotlin.toHexString
+import linea.kotlin.toULong
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator

@@ -6,6 +6,7 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import linea.kotlin.trimToSecondPrecision
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.zkevm.domain.Aggregation

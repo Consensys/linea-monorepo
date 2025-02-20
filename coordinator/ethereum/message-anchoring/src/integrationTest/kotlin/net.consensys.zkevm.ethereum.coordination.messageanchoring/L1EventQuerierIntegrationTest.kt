@@ -7,6 +7,7 @@ import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import linea.kotlin.toBigInteger
+import linea.kotlin.toULong
 import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.Web3jClientManager

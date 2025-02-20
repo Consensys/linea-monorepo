@@ -6,6 +6,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import linea.kotlin.toBigInteger
+import linea.kotlin.toULong
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.L2MessageService
