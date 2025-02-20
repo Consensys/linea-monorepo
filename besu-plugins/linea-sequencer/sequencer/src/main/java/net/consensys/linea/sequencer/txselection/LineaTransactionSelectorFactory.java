@@ -28,7 +28,6 @@ import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.rpc.services.BundlePoolService;
 import net.consensys.linea.sequencer.txselection.selectors.LineaTransactionSelector;
-import org.apache.commons.lang3.mutable.MutableLong;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.txselection.BlockTransactionSelectionService;
@@ -52,7 +51,6 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final BundlePoolService bundlePoolService;
-  private final long maxBundleGasPerBlock;
   private final Map<String, Integer> limitsMap;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
 
@@ -65,8 +63,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final Map<String, Integer> limitsMap,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
-      final BundlePoolService bundlePoolService,
-      final long maxBundleGasPerBlock) {
+      final BundlePoolService bundlePoolService) {
     this.blockchainService = blockchainService;
     this.txSelectorConfiguration = txSelectorConfiguration;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
@@ -76,7 +73,6 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
     this.bundlePoolService = bundlePoolService;
-    this.maxBundleGasPerBlock = maxBundleGasPerBlock;
   }
 
   @Override
@@ -109,18 +105,15 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
         .addArgument(bundlesByBlockNumber::size)
         .log();
 
-    final var cumulativeBundleGasLimit = new MutableLong(0L);
-
     bundlesByBlockNumber.forEach(
         bundle -> {
           log.trace("Starting evaluation of bundle {}", bundle);
-          // mark as "to-evaluate" to prevent eviction during processing:
-          bundlePoolService.markBundleForEval(bundle);
           var badBundleRes =
               bundle.pendingTransactions().stream()
                   .map(bts::evaluatePendingTransaction)
                   .filter(evalRes -> !evalRes.selected())
                   .findFirst();
+
           if (badBundleRes.isPresent()) {
             log.trace("Failed bundle {}, reason {}", bundle, badBundleRes);
             rollback(bts);

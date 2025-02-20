@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -29,7 +28,6 @@ import net.consensys.linea.rpc.services.BundlePoolService.TransactionBundle;
 import net.consensys.linea.rpc.services.LineaLimitedBundlePool;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.parameters.UnsignedLongParameter;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonRpcParameter;
 import org.hyperledger.besu.ethereum.api.util.DomainObjectDecodeUtils;
@@ -84,11 +82,8 @@ public class LineaSendBundle {
 
       if (optBundleHash.isPresent()) {
         Hash bundleHash = optBundleHash.get();
-        List<PendingTransaction> txs =
-            bundleParams.txs.stream()
-                .map(DomainObjectDecodeUtils::decodeRawTransaction)
-                .map(tx -> new PendingBundleTx(tx))
-                .collect(Collectors.toList());
+        final List<Transaction> txs =
+            bundleParams.txs.stream().map(DomainObjectDecodeUtils::decodeRawTransaction).toList();
 
         if (!txs.isEmpty()) {
           bundlePool.putOrReplace(
@@ -178,19 +173,6 @@ public class LineaSendBundle {
           revertingTxHashes,
           replacementUUID,
           builders);
-    }
-  }
-
-  public class PendingBundleTx
-      extends org.hyperledger.besu.ethereum.eth.transactions.PendingTransaction.Local {
-
-    public PendingBundleTx(final Transaction transaction) {
-      super(transaction);
-    }
-
-    @Override
-    public String toTraceLog() {
-      return "Bundle tx: " + super.toTraceLog();
     }
   }
 }

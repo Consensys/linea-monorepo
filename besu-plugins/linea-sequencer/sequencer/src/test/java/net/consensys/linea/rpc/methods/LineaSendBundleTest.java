@@ -28,9 +28,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import net.consensys.linea.rpc.services.BundlePoolService;
 import net.consensys.linea.rpc.services.LineaLimitedBundlePool;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.TransactionTestFixture;
 import org.hyperledger.besu.plugin.services.BesuEvents;
@@ -137,7 +137,8 @@ class LineaSendBundleTest {
 
     // assert the new block number:
     assertTrue(bundlePool.get(expectedUUIDBundleHash).blockNumber().equals(12345L));
-    List<PendingTransaction> pts = bundlePool.get(expectedUUIDBundleHash).pendingTransactions();
+    List<BundlePoolService.TransactionBundle.PendingBundleTx> pts =
+        bundlePool.get(expectedUUIDBundleHash).pendingTransactions();
     // assert the new tx2 is present
     assertTrue(pts.stream().map(pt -> pt.getTransaction()).anyMatch(t -> t.equals(mockTX2)));
   }

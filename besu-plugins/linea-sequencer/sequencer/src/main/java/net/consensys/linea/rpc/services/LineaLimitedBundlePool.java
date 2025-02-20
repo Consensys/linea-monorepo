@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -46,7 +45,6 @@ import org.hyperledger.besu.plugin.services.BesuService;
 @Slf4j
 public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.BlockAddedListener {
   private final Cache<Hash, TransactionBundle> cache;
-  private final Cache<Hash, TransactionBundle> evalCache;
   private final Map<Long, List<TransactionBundle>> blockIndex;
   private final AtomicLong maxBlockHeight = new AtomicLong(0L);
 
@@ -79,7 +77,6 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
                   }
                 })
             .build();
-    this.evalCache = Caffeine.newBuilder().maximumSize(10).build();
     this.blockIndex = new ConcurrentHashMap<>();
 
     // register ourselves as a block added listener:
@@ -95,30 +92,6 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
    */
   public List<TransactionBundle> getBundlesByBlockNumber(long blockNumber) {
     return blockIndex.getOrDefault(blockNumber, Collections.emptyList());
-  }
-
-  /**
-   * Finds a TransactionBundle that contains the specified pending transaction.
-   *
-   * @param blockNumber The block number to search for bundles.
-   * @param pendingTransaction The pending transaction to search for.
-   * @return An Optional containing the found TransactionBundle, or empty if none found.
-   */
-  public Optional<TransactionBundle> getBundleByPendingTransaction(
-      long blockNumber, PendingTransaction pendingTransaction) {
-    var getFromEvalCache =
-        evalCache.asMap().values().stream()
-            .filter(e -> e.pendingTransactions().contains(pendingTransaction))
-            .findAny();
-
-    var withFallbackToPool =
-        getFromEvalCache.or(
-            () ->
-                getBundlesByBlockNumber(blockNumber).stream()
-                    .filter(bundle -> bundle.pendingTransactions().contains(pendingTransaction))
-                    .findAny());
-
-    return withFallbackToPool;
   }
 
   /**
@@ -205,11 +178,6 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
         cache.invalidate(bundle.bundleIdentifier());
       }
     }
-  }
-
-  @Override
-  public void markBundleForEval(final TransactionBundle bundle) {
-    evalCache.put(bundle.bundleIdentifier(), bundle);
   }
 
   @Override

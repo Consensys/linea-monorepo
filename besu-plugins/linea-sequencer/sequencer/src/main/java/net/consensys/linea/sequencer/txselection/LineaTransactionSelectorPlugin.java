@@ -104,8 +104,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             createLimitModules(tracerConfiguration()),
             rejectedTxJsonRpcManager,
             maybeProfitabilityMetrics,
-            bundlePoolService,
-            maxBundleGasPerBlock));
+            bundlePoolService));
   }
 
   @Override

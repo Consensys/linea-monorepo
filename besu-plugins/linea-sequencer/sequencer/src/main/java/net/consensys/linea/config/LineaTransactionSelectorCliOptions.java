@@ -74,7 +74,8 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
       names = {MAX_BUNDLE_POOL_SIZE_BYTES},
       hidden = true,
       paramLabel = "<LONG>",
-      description = "Sets max gas per block  (default: ${DEFAULT-VALUE})")
+      description =
+          "Sets max memory size, in bytes, that the bundle txpool can occupy (default: ${DEFAULT-VALUE})")
   public Long maxBundlePoolSizeBytes = DEFAULT_MAX_BUNDLE_POOL_SIZE_BYTES;
 
   @Positive
@@ -82,7 +83,8 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
       names = {MAX_BUNDLE_GAS_PER_BLOCK},
       hidden = true,
       paramLabel = "<LONG>",
-      description = "Sets max gas per block  (default: ${DEFAULT-VALUE})")
+      description =
+          "Sets max amount of block gas bundle transactions can use (default: ${DEFAULT-VALUE})")
   public Long maxBundleGasPerBlock = DEFAULT_MAX_BUNDLE_GAS_PER_BLOCK;
 
   @Positive

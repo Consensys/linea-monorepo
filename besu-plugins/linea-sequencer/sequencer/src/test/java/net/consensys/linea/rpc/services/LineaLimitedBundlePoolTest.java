@@ -31,13 +31,12 @@ import java.util.UUID;
 import net.consensys.linea.rpc.services.BundlePoolService.TransactionBundle;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.PendingTransaction;
+import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.data.AddedBlockContext;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 
 class LineaLimitedBundlePoolTest {
 
@@ -81,29 +80,6 @@ class LineaLimitedBundlePoolTest {
     assertEquals(2, bundles.size(), "There should be two bundles for block 1");
     assertTrue(bundles.contains(bundle1), "Bundles should contain bundle1");
     assertTrue(bundles.contains(bundle2), "Bundles should contain bundle2");
-  }
-
-  @Test
-  void smokeTestGetBundleByPendingTransaction() {
-    Hash hash = Hash.fromHexStringLenient("0x1234");
-    PendingTransaction pendingTransaction =
-        mock(PendingTransaction.class, Answers.RETURNS_DEEP_STUBS);
-    TransactionBundle bundle =
-        new TransactionBundle(
-            hash,
-            List.of(pendingTransaction),
-            1L,
-            Optional.empty(),
-            Optional.empty(),
-            Optional.empty());
-
-    pool.putOrReplace(hash, bundle);
-
-    Optional<TransactionBundle> retrieved =
-        pool.getBundleByPendingTransaction(1, pendingTransaction);
-
-    assertTrue(retrieved.isPresent(), "Bundle containing the pending transaction should be found");
-    assertEquals(bundle, retrieved.get(), "Retrieved bundle should match the expected bundle");
   }
 
   @Test
@@ -219,43 +195,11 @@ class LineaLimitedBundlePoolTest {
     assert pool.getBundlesByBlockNumber(oldBlockNumber).isEmpty();
   }
 
-  @Test
-  void testGetBundleByPendingTransaction_UsesEvalCache() {
-    long blockNumber = 15L;
-    PendingTransaction mockPendingTransaction = mock(PendingTransaction.class);
-    TransactionBundle mockBundle =
-        createBundle(Hash.ZERO, blockNumber, List.of(mockPendingTransaction));
-    pool.markBundleForEval(mockBundle);
-
-    Optional<TransactionBundle> result =
-        pool.getBundleByPendingTransaction(blockNumber, mockPendingTransaction);
-
-    assertTrue(result.isPresent(), "Bundle should be found in evalCache");
-    assertEquals(mockBundle, result.get(), "Returned bundle should match the evalCache entry");
-  }
-
-  @Test
-  void testGetBundleByPendingTransaction_FallsBackToPoolCache() {
-    long blockNumber = 15L;
-    PendingTransaction mockPendingTransaction =
-        mock(PendingTransaction.class, Answers.RETURNS_DEEP_STUBS);
-    TransactionBundle mockBundle =
-        createBundle(Hash.ZERO, blockNumber, List.of(mockPendingTransaction));
-    pool.putOrReplace(mockBundle.bundleIdentifier(), mockBundle);
-
-    Optional<TransactionBundle> result =
-        pool.getBundleByPendingTransaction(blockNumber, mockPendingTransaction);
-
-    assertTrue(result.isPresent(), "Bundle should be found in blockIndex");
-    assertEquals(mockBundle, result.get(), "Returned bundle should match the blockIndex entry");
-  }
-
   private TransactionBundle createBundle(Hash hash, long blockNumber) {
     return createBundle(hash, blockNumber, Collections.emptyList());
   }
 
-  private TransactionBundle createBundle(
-      Hash hash, long blockNumber, List<PendingTransaction> maybeTxs) {
+  private TransactionBundle createBundle(Hash hash, long blockNumber, List<Transaction> maybeTxs) {
     return new TransactionBundle(
         hash, maybeTxs, blockNumber, Optional.empty(), Optional.empty(), Optional.empty());
   }

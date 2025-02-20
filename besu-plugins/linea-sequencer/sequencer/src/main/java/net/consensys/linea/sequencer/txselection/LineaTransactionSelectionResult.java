@@ -28,7 +28,8 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
     TX_UNPROFITABLE(false, false, true),
     TX_UNPROFITABLE_UPFRONT(false, false, true),
     TX_UNPROFITABLE_RETRY_LIMIT(false, false, false),
-    BUNDLE_GAS_EXCEEDS_MAX_BUNDLE_BLOCK_GAS(false, false, false);
+    BUNDLE_GAS_EXCEEDS_MAX_BUNDLE_BLOCK_GAS(false, true, true),
+    BUNDLE_TOO_LARGE_FOR_REMAINING_BUNDLE_BLOCK_GAS(false, false, false);
 
     private final boolean stop;
     private final boolean discard;
@@ -82,4 +83,7 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
       new LineaTransactionSelectionResult(LineaStatus.TX_UNPROFITABLE_RETRY_LIMIT);
   public static final TransactionSelectionResult BUNDLE_GAS_EXCEEDS_MAX_BUNDLE_BLOCK_GAS =
       new LineaTransactionSelectionResult(LineaStatus.BUNDLE_GAS_EXCEEDS_MAX_BUNDLE_BLOCK_GAS);
+  public static final TransactionSelectionResult BUNDLE_TOO_LARGE_FOR_REMAINING_BUNDLE_BLOCK_GAS =
+      new LineaTransactionSelectionResult(
+          LineaStatus.BUNDLE_TOO_LARGE_FOR_REMAINING_BUNDLE_BLOCK_GAS);
 }

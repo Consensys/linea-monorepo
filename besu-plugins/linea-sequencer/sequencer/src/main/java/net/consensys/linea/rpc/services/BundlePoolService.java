@@ -18,20 +18,62 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.PendingTransaction;
+import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.services.BesuService;
 
 public interface BundlePoolService extends BesuService {
 
   /** TransactionBundle record representing a collection of pending transactions with metadata. */
-  record TransactionBundle(
-      Hash bundleIdentifier,
-      List<PendingTransaction> pendingTransactions,
-      Long blockNumber,
-      Optional<Long> minTimestamp,
-      Optional<Long> maxTimestamp,
-      Optional<List<Hash>> revertingTxHashes) {}
+  @Accessors(fluent = true)
+  @Getter
+  class TransactionBundle {
+    private final Hash bundleIdentifier;
+    private final List<PendingBundleTx> pendingTransactions;
+    private final Long blockNumber;
+    private final Optional<Long> minTimestamp;
+    private final Optional<Long> maxTimestamp;
+    private final Optional<List<Hash>> revertingTxHashes;
+
+    public TransactionBundle(
+        final Hash bundleIdentifier,
+        final List<Transaction> transactions,
+        final Long blockNumber,
+        final Optional<Long> minTimestamp,
+        final Optional<Long> maxTimestamp,
+        final Optional<List<Hash>> revertingTxHashes) {
+      this.bundleIdentifier = bundleIdentifier;
+      this.pendingTransactions = transactions.stream().map(PendingBundleTx::new).toList();
+      this.blockNumber = blockNumber;
+      this.minTimestamp = minTimestamp;
+      this.maxTimestamp = maxTimestamp;
+      this.revertingTxHashes = revertingTxHashes;
+    }
+
+    /** A pending transaction contained in a bundle. */
+    public class PendingBundleTx
+        extends org.hyperledger.besu.ethereum.eth.transactions.PendingTransaction.Local {
+
+      public PendingBundleTx(final org.hyperledger.besu.ethereum.core.Transaction transaction) {
+        super(transaction);
+      }
+
+      public TransactionBundle getBundle() {
+        return TransactionBundle.this;
+      }
+
+      public boolean isBundleStart() {
+        return getBundle().pendingTransactions().getFirst().equals(this);
+      }
+
+      @Override
+      public String toTraceLog() {
+        return "Bundle tx: " + super.toTraceLog();
+      }
+    }
+  }
 
   /**
    * Retrieves a list of TransactionBundles associated with a block number.
@@ -41,16 +83,6 @@ public interface BundlePoolService extends BesuService {
    *     found.
    */
   List<TransactionBundle> getBundlesByBlockNumber(long blockNumber);
-
-  /**
-   * Finds a TransactionBundle that contains the specified pending transaction.
-   *
-   * @param blockNumber The block number to search for bundles.
-   * @param pendingTransaction The pending transaction to search for.
-   * @return An Optional containing the found TransactionBundle, or empty if none found.
-   */
-  Optional<TransactionBundle> getBundleByPendingTransaction(
-      long blockNumber, PendingTransaction pendingTransaction);
 
   /**
    * Retrieves a TransactionBundle by its unique hash identifier.
@@ -107,13 +139,6 @@ public interface BundlePoolService extends BesuService {
    * @param blockNumber The block number whose bundles should be removed.
    */
   void removeByBlockNumber(long blockNumber);
-
-  /**
-   * Mark this bundle for evaluation, to ensure it is not evicted during processing.
-   *
-   * @param bundle to mark
-   */
-  void markBundleForEval(TransactionBundle bundle);
 
   /**
    * Get the number of bundles in the pool
