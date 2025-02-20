@@ -12,7 +12,7 @@ import { TokenType } from "@/config";
 
 export default function BridgeLayout() {
   const { isConnected } = useAccount();
-  
+
   const configContextValue = useTokenStore((state) => state.tokensList);
   const token = useChainStore((state) => state.token);
 
