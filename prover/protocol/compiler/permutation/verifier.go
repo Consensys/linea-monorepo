@@ -2,9 +2,11 @@ package permutation
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -58,4 +60,32 @@ func (v *VerifierCtx) Skip() {
 
 func (v *VerifierCtx) IsSkipped() bool {
 	return v.skipped
+}
+
+// CheckGrandProductIsOne is a verifier action checking that the grand product
+// is one.
+type CheckGrandProductIsOne struct {
+	Query   *query.GrandProduct
+	Skipped bool
+}
+
+func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
+	y := run.GetGrandProductParams(c.Query.ID).Y
+	if !y.IsOne() {
+		return fmt.Errorf("[Permutation -> GrandProduct] the outcome of the grand-product query should be one")
+	}
+	return nil
+}
+
+func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	y := run.GetGrandProductParams(c.Query.ID).Prod
+	api.AssertIsEqual(y, frontend.Variable(1))
+}
+
+func (c *CheckGrandProductIsOne) Skip() {
+	c.Skipped = true
+}
+
+func (c *CheckGrandProductIsOne) IsSkipped() bool {
+	return c.Skipped
 }
