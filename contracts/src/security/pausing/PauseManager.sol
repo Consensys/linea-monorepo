@@ -230,14 +230,14 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
    * @notice Update the pause type role mapping.
    * @dev Throws if UNUSED pause type is used.
    * @dev Throws if role not different.
-   * @dev PAUSE_ALL_ROLE role is required to execute this function.
+   * @dev SECURITY_COUNCIL_ROLE role is required to execute this function.
    * @param _pauseType The pause type value to update.
    * @param _newRole The role to update to.
    */
   function updatePauseTypeRole(
     PauseType _pauseType,
     bytes32 _newRole
-  ) external onlyUsedPausedTypes(_pauseType) onlyRole(PAUSE_ALL_ROLE) {
+  ) external onlyUsedPausedTypes(_pauseType) onlyRole(SECURITY_COUNCIL_ROLE) {
     bytes32 previousRole = _pauseTypeRoles[_pauseType];
     if (previousRole == _newRole) {
       revert RolesNotDifferent();
@@ -251,14 +251,14 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
    * @notice Update the unpause type role mapping.
    * @dev Throws if UNUSED pause type is used.
    * @dev Throws if role not different.
-   * @dev UNPAUSE_ALL_ROLE role is required to execute this function.
+   * @dev SECURITY_COUNCIL_ROLE role is required to execute this function.
    * @param _pauseType The pause type value to update.
    * @param _newRole The role to update to.
    */
   function updateUnpauseTypeRole(
     PauseType _pauseType,
     bytes32 _newRole
-  ) external onlyUsedPausedTypes(_pauseType) onlyRole(UNPAUSE_ALL_ROLE) {
+  ) external onlyUsedPausedTypes(_pauseType) onlyRole(SECURITY_COUNCIL_ROLE) {
     bytes32 previousRole = _unPauseTypeRoles[_pauseType];
     if (previousRole == _newRole) {
       revert RolesNotDifferent();
