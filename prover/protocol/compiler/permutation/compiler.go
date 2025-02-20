@@ -9,11 +9,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
-// CompileGrandProduct scans `comp`, looking for [query.Permutation] queries and
+// CompileViaGrandProduct scans `comp`, looking for [query.Permutation] queries and
 // compiles them using the GrandProduct argument technique. All the queries are
 // compiled independently and the technique relies on computing a column Z
 // accumulating the fractions (A[i] + Beta) / (B[i] + Beta)
-func CompileGrandProduct(comp *wizard.CompiledIOP) {
+func CompileViaGrandProduct(comp *wizard.CompiledIOP) {
 
 	var (
 		allProverActions = make([]ProverTaskAtRound, comp.NumRounds()+1)

@@ -70,7 +70,7 @@ func TestLookup(t *testing.T) {
 			specialqueries.RangeProof,
 			lookup.CompileLogDerivative,
 			specialqueries.CompileFixedPermutations,
-			permutation.CompileGrandProduct,
+			permutation.CompileViaGrandProduct,
 			innerproduct.Compile,
 			sticker.Sticker(1<<8, 1<<16),
 			splitter.SplitColumns(1 << 16),

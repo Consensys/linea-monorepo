@@ -27,7 +27,7 @@ func Arcane(minStickSize, targetColSize int, noLog ...bool) func(comp *wizard.Co
 	return func(comp *wizard.CompiledIOP) {
 		specialqueries.RangeProof(comp)
 		specialqueries.CompileFixedPermutations(comp)
-		permutation.CompileGrandProduct(comp)
+		permutation.CompileViaGrandProduct(comp)
 		lookup.CompileLogDerivative(comp)
 		innerproduct.Compile(comp)
 		projection.CompileProjection(comp)

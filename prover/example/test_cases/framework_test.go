@@ -62,7 +62,7 @@ var (
 		specialqueries.RangeProof,
 		specialqueries.CompileFixedPermutations,
 		lookup.CompileLogDerivative,
-		permutation.CompileGrandProduct,
+		permutation.CompileViaGrandProduct,
 		innerproduct.Compile,
 	}
 	ARITHMETICS = compilationSuite{

@@ -121,7 +121,7 @@ func BenchmarkDataTransferModule(b *testing.B) {
 					define,
 					specialqueries.RangeProof,
 					specialqueries.CompileFixedPermutations,
-					permutation.CompileGrandProduct,
+					permutation.CompileViaGrandProduct,
 					lookup.CompileLogDerivative,
 					innerproduct.Compile,
 				)
