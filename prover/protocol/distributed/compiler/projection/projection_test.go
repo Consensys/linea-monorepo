@@ -264,7 +264,7 @@ func TestDistributeProjection(t *testing.T) {
 
 func checkConsistency(runs []wizard.Runtime) error {
 
-	var res field.Element
+	var res = field.Zero()
 	for i, run := range runs {
 		distProjectionParams := run.GetPublicInput(constants.DistributedProjectionPublicInput)
 		logrus.Printf("successfully retrieved public input for %v, param = %v", i, distProjectionParams)
