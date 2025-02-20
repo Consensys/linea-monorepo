@@ -851,6 +851,6 @@ func (run *ProverRuntime) AssignDistributedProjection(name ifaces.QueryID, distr
 	// Adds it to the assignments
 	params := query.NewDistributedProjectionParams(distributedProjectionParam.ScaledHorner,
 		distributedProjectionParam.HashCumSumOnePrev,
-		distributedProjectionParam.HashCumSumOnePrev)
+		distributedProjectionParam.HashCumSumOneCurr)
 	run.QueriesParams.InsertNew(name, params)
 }

@@ -23,7 +23,6 @@ func CompileDistributedProjection(comp *wizard.CompiledIOP) {
 		// This ensures that the distributed projection query is not used again in the
 		// compilation process. We know that the query was not already ignored at the beginning
 		// because we are iterating over the unignored keys.
-		comp.QueriesParams.MarkAsIgnored(qName)
 		round := comp.QueriesParams.Round(qName)
 		compile(comp, round, distributedprojection)
 	}

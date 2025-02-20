@@ -107,7 +107,7 @@ func (va *distributedProjectionVerifierAction) scaledHornerCheck(run wizard.Runt
 			hornerB = run.GetLocalPointEvalParams(va.HornerB0[index].ID).Y
 			multB = run.GetRandomCoinField(va.EvalCoins[index].Name)
 			multB.Exp(multB, &va.CumNumOnesPrevSegmentsB[index])
-			hornerB.Mul(&elemParam, &multB)
+			hornerB.Mul(&hornerB, &multB)
 			elemParam.Sub(&elemParam, &hornerB)
 		} else {
 			utils.Panic("Unsupported verifier action registered for %v", va.Name)
@@ -136,7 +136,7 @@ func (va *distributedProjectionVerifierAction) currSumOneCheck(run wizard.Runtim
 				}
 			}
 			if numOnesA != va.NumOnesCurrSegmentA[index] {
-				return fmt.Errorf("Number of one for filterA does not match, actual = %v, assigned = %v", numOnesA, va.NumOnesCurrSegmentA[index])
+				return fmt.Errorf("number of one for filterA does not match, actual = %v, assigned = %v", numOnesA, va.NumOnesCurrSegmentA[index])
 			}
 			fB := column.EvalExprColumn(run, va.FilterB[index].Board()).IntoRegVecSaveAlloc()
 			for i := 0; i < len(fB); i++ {
@@ -145,7 +145,7 @@ func (va *distributedProjectionVerifierAction) currSumOneCheck(run wizard.Runtim
 				}
 			}
 			if numOnesB != va.NumOnesCurrSegmentB[index] {
-				return fmt.Errorf("Number of one for filterB does not match, actual = %v, assigned = %v", numOnesB, va.NumOnesCurrSegmentB[index])
+				return fmt.Errorf("number of one for filterB does not match, actual = %v, assigned = %v", numOnesB, va.NumOnesCurrSegmentB[index])
 			}
 		}
 		if va.IsA[index] && !va.IsB[index] {
@@ -160,7 +160,7 @@ func (va *distributedProjectionVerifierAction) currSumOneCheck(run wizard.Runtim
 				}
 			}
 			if numOnesA != va.NumOnesCurrSegmentA[index] {
-				return fmt.Errorf("Number of one for filterA does not match, actual = %v, assigned = %v", numOnesA, va.NumOnesCurrSegmentA[index])
+				return fmt.Errorf("number of one for filterA does not match, actual = %v, assigned = %v", numOnesA, va.NumOnesCurrSegmentA[index])
 			}
 		}
 		if !va.IsA[index] && va.IsB[index] {
@@ -175,7 +175,7 @@ func (va *distributedProjectionVerifierAction) currSumOneCheck(run wizard.Runtim
 				}
 			}
 			if numOnesB != va.NumOnesCurrSegmentB[index] {
-				return fmt.Errorf("Number of one for filterB does not match, actual = %v, assigned = %v", numOnesB, va.NumOnesCurrSegmentB[index])
+				return fmt.Errorf("number of one for filterB does not match, actual = %v, assigned = %v", numOnesB, va.NumOnesCurrSegmentB[index])
 			}
 		}
 	}
@@ -198,22 +198,22 @@ func (va *distributedProjectionVerifierAction) hashCheck(run wizard.Runtime) err
 			sumB.Add(&sumB, &va.NumOnesCurrSegmentB[index])
 			oldState = mimc.BlockCompression(oldState, sumA)
 			oldState = mimc.BlockCompression(oldState, sumB)
-		}
-		if va.IsA[index] && !va.IsB[index] {
+		} else if va.IsA[index] && !va.IsB[index] {
 			var (
 				sumA = field.Zero()
 			)
 			sumA = field.NewElement(va.CumNumOnesPrevSegmentsA[index].Uint64())
 			sumA.Add(&sumA, &va.NumOnesCurrSegmentA[index])
 			oldState = mimc.BlockCompression(oldState, sumA)
-		}
-		if !va.IsA[index] && va.IsB[index] {
+		} else if !va.IsA[index] && va.IsB[index] {
 			var (
 				sumB = field.Zero()
 			)
 			sumB = field.NewElement(va.CumNumOnesPrevSegmentsB[index].Uint64())
 			sumB.Add(&sumB, &va.NumOnesCurrSegmentB[index])
 			oldState = mimc.BlockCompression(oldState, sumB)
+		} else {
+			panic("Invalid distributed projection query encountered during current hash verification")
 		}
 	}
 	if oldState != run.GetDistributedProjectionParams(va.Name).HashCumSumOneCurr {

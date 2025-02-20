@@ -138,9 +138,9 @@ func check(cols []ifaces.Column,
 func (p *DistributeProjectionCtx) push(comp *wizard.CompiledIOP, q query.Projection, round, queryInRound int, isA, isB bool) {
 	var (
 		isMultiColumn = len(q.Inp.ColumnA) > 1
-		alphaName_    = p.getCoinName("MERGING_COIN", round, queryInRound)
+		alphaName_    = p.getCoinName("MERGING_COIN", string(q.ID), round, queryInRound)
 		alphaName     = coin.Namef("%v_%v", alphaName_, "FieldFromSeed")
-		betaName_     = p.getCoinName("EVAL_COIN", round, queryInRound)
+		betaName_     = p.getCoinName("EVAL_COIN", string(q.ID), round, queryInRound)
 		betaName      = coin.Namef("%v_%v", betaName_, "FieldFromSeed")
 		alpha         coin.Info
 		beta          coin.Info
@@ -523,8 +523,8 @@ func (p *DistributeProjectionCtx) QueryID() ifaces.QueryID {
 	return deriveName[ifaces.QueryID](ifaces.QueryID(p.TargetModuleName))
 }
 
-func (p *DistributeProjectionCtx) getCoinName(name string, round, queryInRound int) coin.Name {
-	return deriveName[coin.Name](p.QueryID(), name, round, queryInRound)
+func (p *DistributeProjectionCtx) getCoinName(name string, queryId string, round, queryInRound int) coin.Name {
+	return deriveName[coin.Name](p.QueryID(), name, queryId, round, queryInRound)
 }
 
 // getLastRoundProjection scans the initialComp and looks for uncompiled projection queries. It returns

@@ -92,24 +92,38 @@ func (dp DistributedProjection) Check(run ifaces.Runtime) error {
 	}
 	for _, inp := range dp.Inp {
 		var (
-			colABoard    = inp.ColumnA.Board()
-			colBBoard    = inp.ColumnB.Board()
-			filterABorad = inp.FilterA.Board()
-			filterBBoard = inp.FilterB.Board()
-			colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
-			colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
-			filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
-			filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
-			elemParam    = field.One()
+			elemParam = field.One()
 		)
 		if inp.IsAInModule && !inp.IsBInModule {
+			var (
+				colABoard    = inp.ColumnA.Board()
+				filterABorad = inp.FilterA.Board()
+				colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
+				filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
+			)
 			hornerA := poly.GetHornerTrace(colA, filterA, evalRand)
 			elemParam = hornerA[0]
 		} else if !inp.IsAInModule && inp.IsBInModule {
+			var (
+				colBBoard    = inp.ColumnB.Board()
+				filterBBoard = inp.FilterB.Board()
+				colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
+				filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
+			)
 			hornerB := poly.GetHornerTrace(colB, filterB, evalRand)
 			elemParam = hornerB[0]
 			elemParam.Neg(&elemParam)
 		} else if inp.IsAInModule && inp.IsBInModule {
+			var (
+				colABoard    = inp.ColumnA.Board()
+				colBBoard    = inp.ColumnB.Board()
+				filterABorad = inp.FilterA.Board()
+				filterBBoard = inp.FilterB.Board()
+				colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
+				colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
+				filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
+				filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
+			)
 			hornerA := poly.GetHornerTrace(colA, filterA, evalRand)
 			hornerB := poly.GetHornerTrace(colB, filterB, evalRand)
 			elemParam = hornerB[0]
