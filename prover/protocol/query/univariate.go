@@ -3,6 +3,8 @@ package query
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -22,8 +24,11 @@ type UnivariateEval struct {
 
 // Parameters for an univariate evaluation
 type UnivariateEvalParams struct {
-	X  field.Element
-	Ys []field.Element
+	baseX  field.Element
+	baseYs []field.Element
+	extX   fext.Element
+	extYs  []fext.Element
+	isBase bool
 }
 
 /*
@@ -59,14 +64,40 @@ func (r UnivariateEval) Name() ifaces.QueryID {
 
 // Constructor for non-fixed point univariate evaluation query parameters
 func NewUnivariateEvalParams(x field.Element, ys ...field.Element) UnivariateEvalParams {
-	return UnivariateEvalParams{X: x, Ys: ys}
+	return UnivariateEvalParams{
+		baseX:  x,
+		baseYs: ys,
+		extX:   fext.Zero(),
+		extYs:  nil,
+		isBase: true,
+	}
+}
+
+func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEvalParams {
+	return UnivariateEvalParams{
+		baseX:  field.Zero(),
+		baseYs: nil,
+		extX:   x,
+		extYs:  ys,
+		isBase: false,
+	}
 }
 
 // Update the fiat-shamir state with the alleged evaluations. We assume that
 // the verifer always computes the values of X upfront on his own. Therefore
 // there is no need to include them in the FS.
 func (p UnivariateEvalParams) UpdateFS(state *fiatshamir.State) {
-	state.Update(p.Ys...)
+	if p.isBase {
+		state.Update(p.baseYs...)
+	} else {
+		// update this with the proper field extension later
+		tempSlice := make([]field.Element, 2*len(p.baseYs))
+		for i := range p.extYs {
+			tempSlice[2*i] = p.extYs[i].A0
+			tempSlice[2*i+1] = p.extYs[i].A1
+		}
+		state.Update(tempSlice...)
+	}
 }
 
 // Test that the polynomial evaluation holds
@@ -76,18 +107,34 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 	errMsg := "univariate query check failed\n"
 	anyErr := false
 
-	for k, pol := range r.Pols {
-		wit := pol.GetColAssignment(run)
-		actualY := smartvectors.Interpolate(wit, params.X)
+	if params.isBase {
+		for k, pol := range r.Pols {
+			wit := pol.GetColAssignment(run)
+			actualY := smartvectors.Interpolate(wit, params.baseX)
 
-		if actualY != params.Ys[k] {
-			anyErr = true
-			errMsg += fmt.Sprintf("expected P(x) = %s but got %s for %v\n", params.Ys[k].String(), actualY.String(), pol.GetColID())
+			if actualY != params.baseYs[k] {
+				anyErr = true
+				errMsg += fmt.Sprintf("expected P(x) = %s but got %s for %v\n", params.baseYs[k].String(), actualY.String(), pol.GetColID())
+			}
 		}
-	}
 
-	if anyErr {
-		return errors.New(errMsg)
+		if anyErr {
+			return errors.New(errMsg)
+		}
+	} else {
+		for k, pol := range r.Pols {
+			wit := pol.GetColAssignment(run)
+			actualY := smartvectorsext.Interpolate(wit, params.extX)
+
+			if actualY != params.extYs[k] {
+				anyErr = true
+				errMsg += fmt.Sprintf("expected P(x) = %s but got %s for %v\n", params.extYs[k].String(), actualY.String(), pol.GetColID())
+			}
+		}
+
+		if anyErr {
+			return errors.New(errMsg)
+		}
 	}
 
 	return nil

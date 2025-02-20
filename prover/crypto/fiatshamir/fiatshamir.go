@@ -205,7 +205,7 @@ func (fs *State) RandomManyIntegers(num, upperBound int) []int {
 }
 
 // safeguardUpdate updates the state as a safeguard. This way, we are guaranteed
-// that successive random oracle queries will yield a different, independant
+// that successive random oracle queries will yield a different, independent
 // result.
 //
 // This is implemented by adding a 0 in the transcript.

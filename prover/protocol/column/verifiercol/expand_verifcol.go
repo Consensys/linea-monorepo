@@ -5,6 +5,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -62,15 +64,63 @@ func (ex ExpandedVerifCol) GetColAssignmentGnark(run ifaces.GnarkRuntime) []fron
 	return res
 }
 
+func (ex ExpandedVerifCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) []frontend.Variable {
+	if ex.Verifiercol.IsBase() {
+		assi := ex.Verifiercol.GetColAssignmentGnark(run)
+		res := make([]frontend.Variable, ex.Size())
+		for i := 0; i < len(assi); i++ {
+			for j := 0; j < ex.Expansion; j++ {
+				res[j+i*ex.Expansion] = assi[i]
+			}
+		}
+		return res
+	} else {
+		panic("Requested base elements but column is defined over the extension")
+	}
+}
+
+func (ex ExpandedVerifCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+	assi := ex.Verifiercol.GetColAssignmentGnarkExt(run)
+	res := make([]gnarkfext.Variable, ex.Size())
+	for i := 0; i < len(assi); i++ {
+		for j := 0; j < ex.Expansion; j++ {
+			res[j+i*ex.Expansion] = assi[i]
+		}
+	}
+	return res
+}
+
 // GetColAssignmentAt returns a particular position of the column
 func (ex ExpandedVerifCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
 	return ex.Verifiercol.GetColAssignmentAt(run, pos/ex.Expansion)
 }
 
+func (ex ExpandedVerifCol) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	return ex.Verifiercol.GetColAssignmentAtBase(run, pos/ex.Expansion)
+}
+
+func (ex ExpandedVerifCol) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	return ex.Verifiercol.GetColAssignmentAtExt(run, pos/ex.Expansion)
+}
+
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
 func (ex ExpandedVerifCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 
-	return ex.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
+	return ex.Verifiercol.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
+}
+
+func (ex ExpandedVerifCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+
+	return ex.Verifiercol.GetColAssignmentGnarkAtBase(run, pos/ex.Expansion)
+}
+
+func (ex ExpandedVerifCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+
+	return ex.Verifiercol.GetColAssignmentGnarkAtExt(run, pos/ex.Expansion)
+}
+
+func (ex ExpandedVerifCol) IsBase() bool {
+	return ex.Verifiercol.IsBase()
 }
 
 // IsComposite implements the [ifaces.Column] interface

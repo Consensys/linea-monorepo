@@ -3,6 +3,7 @@ package column
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -19,7 +20,8 @@ type Natural struct {
 	// store points to the Store where the column is registered. It is accessed
 	// to fetch static informations about the column such as its size or its
 	// status.
-	store *Store
+	store  *Store
+	isBase bool
 }
 
 // Size returns the size of the column, as required by the [ifaces.Column]
@@ -71,6 +73,14 @@ func (n Natural) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
 	return run.GetColumnAt(n.ID, pos)
 }
 
+func (n Natural) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	return run.GetColumnAtBase(n.ID, pos)
+}
+
+func (n Natural) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	return run.GetColumnAtExt(n.ID, pos)
+}
+
 // GetColAssignmentGnark implements [ifaces.Column]
 func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 	return run.GetColumn(n.ID)
@@ -85,6 +95,10 @@ func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) front
 // and [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
 func (n Natural) String() string {
 	return string(n.GetColID())
+}
+
+func (n Natural) IsBase() bool {
+	return n.isBase
 }
 
 // Status returns the status of the column. It is only implemented for Natural

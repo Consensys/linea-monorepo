@@ -2,6 +2,8 @@ package accessors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -51,9 +53,31 @@ func (c *FromIntVecCoinPositionAccessor) GetVal(run ifaces.Runtime) field.Elemen
 	return field.NewElement(uint64(run.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]))
 }
 
+func (c *FromIntVecCoinPositionAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	return field.NewElement(uint64(run.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos])), nil
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	return fext.Element{
+		A0: field.NewElement(uint64(run.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos])),
+		A1: field.Zero(),
+	}
+}
+
 // GetFrontendVariable implements [ifaces.Accessor]
 func (c *FromIntVecCoinPositionAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
 	return circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+	return circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos], nil
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Variable {
+	return gnarkfext.Variable{
+		A0: circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos],
+		A1: field.Zero(),
+	}
 }
 
 // AsVariable implements the [ifaces.Accessor] interface
@@ -64,4 +88,8 @@ func (c *FromIntVecCoinPositionAccessor) AsVariable() *symbolic.Expression {
 // Round implements the [ifaces.Accessor] interface
 func (c *FromIntVecCoinPositionAccessor) Round() int {
 	return c.Info.Round
+}
+
+func (c *FromIntVecCoinPositionAccessor) IsBase() bool {
+	return true
 }

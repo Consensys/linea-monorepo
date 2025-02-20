@@ -4,24 +4,39 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 )
 
 // A gnark circuit version of the LocalOpeningResult
 type GnarkLocalOpeningParams struct {
-	Y frontend.Variable
+	BaseY  frontend.Variable
+	ExtY   gnarkfext.Variable
+	isBase bool
 }
 
 func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
-	return GnarkLocalOpeningParams{Y: p.Y}
+	return GnarkLocalOpeningParams{
+		BaseY: p.base,
+		ExtY: gnarkfext.Variable{
+			A0: p.ext.A0,
+			A1: p.ext.A1,
+		},
+		isBase: p.IsBase,
+	}
 }
 
 // A gnark circuit version of InnerProductParams
 type GnarkInnerProductParams struct {
-	Ys []frontend.Variable
+	baseYs []frontend.Variable
+	extYs []gnarkfext.Variable
+	isBase bool
 }
 
 func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: make([]frontend.Variable, len(p.Bs))}
+
+	return GnarkInnerProductParams{
+		baseYs: make([]frontend.Variable, len(p.Bs))
+	}
 }
 
 func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {

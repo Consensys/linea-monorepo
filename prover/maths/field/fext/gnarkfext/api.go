@@ -12,6 +12,12 @@ type API struct {
 	Inner frontend.API
 }
 
+func NewExtApi(inner frontend.API) API {
+	return API{
+		Inner: inner,
+	}
+}
+
 // Variable element in a quadratic extension
 type Variable struct {
 	A0, A1 frontend.Variable
@@ -21,6 +27,13 @@ func NewZero() Variable {
 	return Variable{
 		A0: 0,
 		A1: 0,
+	}
+}
+
+func NewFromExtension(e fext.Element) Variable {
+	return Variable{
+		A0: e.A0,
+		A1: e.A1,
 	}
 }
 

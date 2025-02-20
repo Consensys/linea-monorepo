@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"reflect"
 
@@ -23,6 +24,10 @@ func (Constant) Degree([]int) int {
 // Evaluates implements the [Operator] interface
 func (c Constant) Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
 	panic("we never call it for a constant")
+}
+
+func (c Constant) EvaluateExt([]sv.SmartVector, ...mempoolext.MemPool) sv.SmartVector {
+	panic("we never call EvaluateExt for a constant")
 }
 
 // GnarkEval implements the [Operator] interface.

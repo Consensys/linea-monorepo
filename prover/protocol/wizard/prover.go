@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -327,6 +328,10 @@ func (run ProverRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element {
 // appropriate.
 func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	return run.getRandomCoinGeneric(name, coin.Field).(field.Element)
+}
+
+func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
+	return run.getRandomCoinGeneric(name, coin.FieldExt).(fext.Element)
 }
 
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin. The

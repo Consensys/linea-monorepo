@@ -3,6 +3,7 @@ package symbolic
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
@@ -127,6 +128,10 @@ func (prod Product) Degree(inputDegrees []int) int {
 // Evaluate implements the [Operator] interface.
 func (prod Product) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	return sv.Product(prod.Exponents, inputs, p...)
+}
+
+func (prod Product) EvaluateExt(inputs []sv.SmartVector, p ...mempoolext.MemPool) sv.SmartVector {
+	return smartvectorsext.Product(prod.Exponents, inputs, p...)
 }
 
 // Validate implements the [Operator] interface.

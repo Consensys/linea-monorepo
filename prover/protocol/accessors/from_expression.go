@@ -2,6 +2,8 @@ package accessors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -27,6 +29,21 @@ type FromExprAccessor struct {
 	ExprName string
 	// The definition round of the expression
 	ExprRound int
+}
+
+func (e *FromExprAccessor) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewFromExpression returns an [ifaces.Accessor] symbolizing the evaluation of a
@@ -111,6 +128,15 @@ func (e *FromExprAccessor) GetVal(run ifaces.Runtime) field.Element {
 	}
 
 	return e.Boarded.Evaluate(inputs).Get(0)
+}
+
+func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	return e.GetVal(run), nil
+}
+
+func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	//TODO implement me
+	panic("implement me")
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]

@@ -27,6 +27,10 @@ func (x X) String() string {
 	return "__X__"
 }
 
+func (x X) IsBase() bool {
+	return true
+}
+
 // Returns an evaluation of the X, possibly over a coset. Pass
 // `EvalCoset(size, 0, 0, false)` to directly evaluate over a coset
 func (x X) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVector {

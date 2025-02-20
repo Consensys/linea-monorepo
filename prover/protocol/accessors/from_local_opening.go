@@ -2,6 +2,8 @@ package accessors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -18,6 +20,10 @@ type FromLocalOpeningYAccessor struct {
 	Q query.LocalOpening
 	// QRound is the declaration round of the query
 	QRound int
+}
+
+func (l *FromLocalOpeningYAccessor) IsBase() bool {
+	return l.IsBase()
 }
 
 // NewLocalOpeningAccessor creates an [ifaces.Accessor] returning the opening
@@ -39,13 +45,42 @@ func (l *FromLocalOpeningYAccessor) String() string {
 // GetVal implements [ifaces.Accessor]
 func (l *FromLocalOpeningYAccessor) GetVal(run ifaces.Runtime) field.Element {
 	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
-	return params.Y
+	return params.BaseY
+}
+
+func (l *FromLocalOpeningYAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
+	if params.IsBase {
+		return params.BaseY, nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element but we are dealing with an extension")
+	}
+
+}
+
+func (l *FromLocalOpeningYAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
+	return params.ExtY
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (l *FromLocalOpeningYAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
-	return params.Y
+	return params.BaseY
+}
+
+func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+	if l.IsBase() {
+		params := circ.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
+		return params.BaseY, nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element but we are dealing with an extension")
+	}
+}
+
+func (l *FromLocalOpeningYAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Variable {
+	params := circ.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
+	return params.ExtY
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

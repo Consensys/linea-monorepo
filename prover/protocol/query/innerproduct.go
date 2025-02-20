@@ -3,6 +3,9 @@ package query
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -15,19 +18,32 @@ import (
 
 // Represent a batch of inner-product <a, b0>, <a, b1>, <a, b2> ...
 type InnerProduct struct {
-	A  ifaces.Column
-	Bs []ifaces.Column
-	ID ifaces.QueryID
+	A      ifaces.Column
+	Bs     []ifaces.Column
+	ID     ifaces.QueryID
+	isBase bool
 }
 
 // Inner product params
 type InnerProductParams struct {
-	Ys []field.Element
+	baseYs []field.Element
+	extYs  []fext.Element
+	isBase bool
 }
 
 // Update the fiat-shamir state with inner-product params
 func (ipp InnerProductParams) UpdateFS(state *fiatshamir.State) {
-	state.UpdateVec(ipp.Ys)
+	if ipp.isBase {
+		state.UpdateVec(ipp.baseYs)
+	} else {
+		// update this with the proper field extension later
+		tempSlice := make([]field.Element, 2*len(ipp.baseYs))
+		for i := range ipp.extYs {
+			tempSlice[2*i] = ipp.extYs[i].A0
+			tempSlice[2*i+1] = ipp.extYs[i].A1
+		}
+		state.Update(tempSlice...)
+	}
 }
 
 // Constructor for inner-product.
@@ -62,7 +78,19 @@ func NewInnerProduct(id ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) In
 
 // Constructor for fixed point univariate evaluation query parameters
 func NewInnerProductParams(ys ...field.Element) InnerProductParams {
-	return InnerProductParams{Ys: ys}
+	return InnerProductParams{
+		baseYs: ys,
+		extYs:  nil,
+		isBase: true,
+	}
+}
+
+func NewInnerProductParamsExt(ys ...fext.Element) InnerProductParams {
+	return InnerProductParams{
+		baseYs: nil,
+		extYs:  ys,
+		isBase: false,
+	}
 }
 
 // Name implements the [ifaces.Query] interface
@@ -80,23 +108,45 @@ func (r InnerProduct) Check(run ifaces.Runtime) error {
 	errMsg := fmt.Sprintf("Inner-product %v\n", r.ID)
 	errorFlag := false
 
-	for i, b := range r.Bs {
-		wB := b.GetColAssignment(run)
-		mul := smartvectors.Mul(wA, wB)
+	if expecteds.isBase {
+		for i, b := range r.Bs {
+			wB := b.GetColAssignment(run)
+			mul := smartvectors.Mul(wA, wB)
 
-		// Compute manually the inner-product of two witnesses
-		actualIP := field.Zero()
-		for i := 0; i < mul.Len(); i++ {
-			tmp := mul.Get(i)
-			actualIP.Add(&actualIP, &tmp)
+			// Compute manually the inner-product of two witnesses
+			actualIP := field.Zero()
+			for i := 0; i < mul.Len(); i++ {
+				tmp := mul.Get(i)
+				actualIP.Add(&actualIP, &tmp)
+			}
+
+			if expecteds.baseYs[i] != actualIP {
+				errorFlag = true
+				errMsg = fmt.Sprintf("%v\tFor witness <%v, %v> the alleged value is %v but the correct value is %v\n",
+					errMsg, r.A.GetColID(), b.GetColID(), expecteds.baseYs[i].String(), actualIP.String(),
+				)
+			}
+		}
+	} else {
+		for i, b := range r.Bs {
+			wB := b.GetColAssignment(run)
+			mul := smartvectorsext.Mul(wA, wB)
+
+			// Compute manually the inner-product of two witnesses
+			actualIP := fext.Zero()
+			for i := 0; i < mul.Len(); i++ {
+				tmp := mul.GetExt(i)
+				actualIP.Add(&actualIP, &tmp)
+			}
+
+			if expecteds.extYs[i] != actualIP {
+				errorFlag = true
+				errMsg = fmt.Sprintf("%v\tFor witness <%v, %v> the alleged value is %v but the correct value is %v\n",
+					errMsg, r.A.GetColID(), b.GetColID(), expecteds.extYs[i].String(), actualIP.String(),
+				)
+			}
 		}
 
-		if expecteds.Ys[i] != actualIP {
-			errorFlag = true
-			errMsg = fmt.Sprintf("%v\tFor witness <%v, %v> the alleged value is %v but the correct value is %v\n",
-				errMsg, r.A.GetColID(), b.GetColID(), expecteds.Ys[i].String(), actualIP.String(),
-			)
-		}
 	}
 
 	if errorFlag {
@@ -109,19 +159,37 @@ func (r InnerProduct) Check(run ifaces.Runtime) error {
 // Check the inner-product manually
 func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
-	wA := r.A.GetColAssignmentGnark(run)
 	expecteds := run.GetParams(r.ID).(GnarkInnerProductParams)
 
-	for i, b := range r.Bs {
-		wB := b.GetColAssignmentGnark(run)
+	if expecteds.isBase {
+		wA := r.A.GetColAssignmentGnark(run)
+		for i, b := range r.Bs {
+			wB := b.GetColAssignmentGnark(run)
 
-		// mul <- \sum_j wA * wB
-		actualIP := frontend.Variable(0)
-		for j := range wA {
-			tmp := api.Mul(wA[j], wB[j])
-			actualIP = api.Add(actualIP, tmp)
+			// mul <- \sum_j wA * wB
+			actualIP := frontend.Variable(0)
+			for j := range wA {
+				tmp := api.Mul(wA[j], wB[j])
+				actualIP = api.Add(actualIP, tmp)
+			}
+
+			api.AssertIsEqual(expecteds.baseYs[i], actualIP)
 		}
+	} else {
+		wA := r.A.GetColAssignmentGnarkExt(run)
+		extApi := gnarkfext.API{Inner: api}
+		for i, b := range r.Bs {
+			wB := b.GetColAssignmentGnarkExt(run)
 
-		api.AssertIsEqual(expecteds.Ys[i], actualIP)
+			// mul <- \sum_j wA * wB
+			actualIP := gnarkfext.NewZero()
+			for j := range wA {
+				tmp := extApi.Mul(wA[j], wB[j])
+				actualIP = extApi.Add(actualIP, tmp)
+			}
+
+			api.AssertIsEqual(expecteds.extYs[i], actualIP)
+		}
 	}
+
 }

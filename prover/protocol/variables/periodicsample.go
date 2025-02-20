@@ -51,6 +51,11 @@ func (t PeriodicSample) String() string {
 	return fmt.Sprintf("__PERIODIC_SAMPLE_%v_OFFSET_%v__", t.T, t.Offset)
 }
 
+func (t PeriodicSample) IsBase() bool {
+
+	return true
+}
+
 func (t PeriodicSample) EvalAtOnDomain(pos int) field.Element {
 	if pos%t.T == t.Offset {
 		return field.One()
