@@ -15,7 +15,10 @@
 package net.consensys.linea.zktracer.instructionprocessing.callTests;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
+
+import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
@@ -123,5 +126,22 @@ public class Utilities {
         .push("1feecd50adc6273fdd5d11c6da18c8cfe14e2787f5a90af7c7c1328e7d0a2c42")
         .push(96)
         .op(MSTORE);
+  }
+
+  /**
+   * {@link #populateMemory} populates memory with <b>nWords</b> chosen cyclically from the set of 6
+   * EVM words obtained by repeating the strings <b>aa</b>, <b>bb</b>, ..., <b>ff</b> 32 times.
+   *
+   * @param program
+   * @param nWords
+   */
+  public static void populateMemory(BytecodeCompiler program, int nWords, int offset) {
+    List<String> abcdef = List.of("aa", "bb", "cc", "dd", "ee", "ff");
+    for (int i = 0; i < nWords; i++) {
+      program
+          .push(abcdef.get(i % abcdef.size()).repeat(WORD_SIZE)) // value, a 32 byte word
+          .push(offset + i * WORD_SIZE) // offset
+          .op(MSTORE);
+    }
   }
 }
