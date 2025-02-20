@@ -26,13 +26,13 @@ describe("L2MessageManager", () => {
   let l2MessageManager: TestL2MessageManager;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
-  let pauser: SignerWithAddress;
+  let securityCouncil: SignerWithAddress;
   let l1l2MessageSetter: SignerWithAddress;
   let notAuthorizedAccount: SignerWithAddress;
 
   async function deployL2MessageManagerFixture() {
     return deployUpgradableFromFactory("TestL2MessageManager", [
-      pauser.address,
+      securityCouncil.address,
       l1l2MessageSetter.address,
       pauseTypeRoles,
       unpauseTypeRoles,
@@ -40,7 +40,7 @@ describe("L2MessageManager", () => {
   }
 
   beforeEach(async () => {
-    [admin, pauser, l1l2MessageSetter, notAuthorizedAccount] = await ethers.getSigners();
+    [admin, securityCouncil, l1l2MessageSetter, notAuthorizedAccount] = await ethers.getSigners();
     l2MessageManager = await loadFixture(deployL2MessageManagerFixture);
   });
 
@@ -56,7 +56,7 @@ describe("L2MessageManager", () => {
   describe("Add L1->L2 message hashes in 'inboxL1L2MessageStatus'", () => {
     it("Should revert if GENERAL_PAUSE_TYPE is enabled", async () => {
       const messageHashes = generateNKeccak256Hashes("message", 2);
-      await l2MessageManager.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
+      await l2MessageManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         l2MessageManager,
