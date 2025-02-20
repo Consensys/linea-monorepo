@@ -2,12 +2,10 @@
 pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { DeployRewardsStreamerMPScript } from "../script/DeployRewardsStreamerMP.s.sol";
 import { UpgradeRewardsStreamerMPScript } from "../script/UpgradeRewardsStreamerMP.s.sol";
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { IStakeManager } from "../src/interfaces/IStakeManager.sol";
@@ -61,6 +59,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
 
     struct CheckStreamerParams {
         uint256 totalStaked;
+        uint256 totalMPStaked;
         uint256 totalMPAccrued;
         uint256 totalMaxMP;
         uint256 stakingBalance;
@@ -70,7 +69,8 @@ contract RewardsStreamerMPTest is StakeMath, Test {
 
     function checkStreamer(CheckStreamerParams memory p) public view {
         assertEq(streamer.totalStaked(), p.totalStaked, "wrong total staked");
-        assertEq(streamer.totalMPAccrued(), p.totalMPAccrued, "wrong total MP");
+        assertEq(streamer.totalMPStaked(), p.totalMPStaked, "wrong total staked MP");
+        assertEq(streamer.totalMPAccrued(), p.totalMPAccrued, "wrong total accrued MP");
         assertEq(streamer.totalMaxMP(), p.totalMaxMP, "wrong totalMaxMP MP");
         // assertEq(rewardToken.balanceOf(address(streamer)), p.rewardBalance, "wrong reward balance");
         // assertEq(streamer.rewardIndex(), p.rewardIndex, "wrong reward index");
@@ -82,8 +82,10 @@ contract RewardsStreamerMPTest is StakeMath, Test {
         uint256 stakedBalance;
         uint256 vaultBalance;
         uint256 rewardIndex;
+        uint256 mpStaked;
         uint256 mpAccrued;
         uint256 maxMP;
+        uint256 rewardsAccrued;
     }
 
     function checkVault(CheckVaultParams memory p) public view {
@@ -94,8 +96,10 @@ contract RewardsStreamerMPTest is StakeMath, Test {
         assertEq(vaultData.stakedBalance, p.stakedBalance, "wrong account staked balance");
         assertEq(stakingToken.balanceOf(p.account), p.vaultBalance, "wrong vault balance");
         // assertEq(vaultData.accountRewardIndex, p.rewardIndex, "wrong account reward index");
-        assertEq(vaultData.mpAccrued, p.mpAccrued, "wrong account MP");
+        assertEq(vaultData.mpStaked, p.mpStaked, "wrong account MP staked");
+        assertEq(vaultData.mpAccrued, p.mpAccrued, "wrong account MP accrued");
         assertEq(vaultData.maxMP, p.maxMP, "wrong account max MP");
+        assertEq(vaultData.rewardsAccrued, p.rewardsAccrued, "wrong account rewards accrued");
     }
 
     struct CheckUserTotalsParams {
@@ -248,6 +252,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 0,
+                totalMPStaked: 0,
                 totalMPAccrued: 0,
                 totalMaxMP: 0,
                 stakingBalance: 0,
@@ -263,6 +268,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 10e18,
+                totalMPStaked: 10e18,
                 totalMPAccrued: 10e18,
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
@@ -278,8 +284,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 10e18,
                 vaultBalance: 10e18,
                 rewardIndex: 0,
+                mpStaked: 10e18,
                 mpAccrued: 10e18,
-                maxMP: 50e18
+                maxMP: 50e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -289,6 +297,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 40e18,
+                totalMPStaked: 40e18,
                 totalMPAccrued: 40e18,
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
@@ -304,8 +313,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 10e18,
                 vaultBalance: 10e18,
                 rewardIndex: 0,
+                mpStaked: 10e18,
                 mpAccrued: 10e18,
-                maxMP: 50e18
+                maxMP: 50e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -316,8 +327,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 30e18,
                 rewardIndex: 0,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -328,6 +341,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 40e18,
+                totalMPStaked: 40e18,
                 totalMPAccrued: 40e18,
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
@@ -343,8 +357,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 10e18,
                 vaultBalance: 10e18,
                 rewardIndex: 0,
+                mpStaked: 10e18,
                 mpAccrued: 10e18,
-                maxMP: 50e18
+                maxMP: 50e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -355,8 +371,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 30e18,
                 rewardIndex: 0,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -368,6 +386,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 40e18,
+                totalMPStaked: 40e18,
                 totalMPAccrued: 60e18, // 6 months passed, 20 MP accrued
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
@@ -384,6 +403,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 30e18,
+                totalMPStaked: 30e18,
                 totalMPAccrued: 45e18, // 60 - 15 from Alice (10 + 6 months = 5)
                 totalMaxMP: 150e18, // 200e18 - (10e18 * 5) = 150e18
                 stakingBalance: 30e18,
@@ -399,8 +419,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 0e18,
                 vaultBalance: 0e18,
                 rewardIndex: 10e18,
+                mpStaked: 0e18,
                 mpAccrued: 0e18,
-                maxMP: 0e18
+                maxMP: 0e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -411,8 +433,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 30e18,
                 rewardIndex: 0,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -422,6 +446,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 60e18,
+                totalMPStaked: 60e18,
                 totalMPAccrued: 75e18,
                 totalMaxMP: 300e18,
                 stakingBalance: 60e18,
@@ -437,8 +462,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 0e18,
                 vaultBalance: 0e18,
                 rewardIndex: 10e18,
+                mpStaked: 0e18,
                 mpAccrued: 0e18,
-                maxMP: 0e18
+                maxMP: 0e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -449,8 +476,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 30e18,
                 rewardIndex: 0,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -461,8 +490,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 30e18,
                 rewardIndex: 10e18,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -473,6 +504,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 60e18,
+                totalMPStaked: 60e18,
                 totalMPAccrued: 75e18,
                 totalMaxMP: 300e18,
                 stakingBalance: 60e18,
@@ -488,8 +520,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 0e18,
                 vaultBalance: 0e18,
                 rewardIndex: 10e18,
+                mpStaked: 0e18,
                 mpAccrued: 0e18,
-                maxMP: 0e18
+                maxMP: 0e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -500,8 +534,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 30e18,
                 rewardIndex: 0,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -512,8 +548,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 30e18,
                 rewardIndex: 10e18,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -523,6 +561,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 30e18,
+                totalMPStaked: 30e18,
                 totalMPAccrued: 30e18,
                 totalMaxMP: 150e18,
                 stakingBalance: 30e18,
@@ -539,8 +578,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 0e18,
                 vaultBalance: 0e18,
                 rewardIndex: 10e18,
+                mpStaked: 0,
                 mpAccrued: 0,
-                maxMP: 0
+                maxMP: 0,
+                rewardsAccrued: 0
             })
         );
 
@@ -558,8 +599,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 0e18,
                 vaultBalance: 0e18,
                 rewardIndex: 17_407_407_407_407_407_407,
+                mpStaked: 0,
                 mpAccrued: 0,
-                maxMP: 0
+                maxMP: 0,
+                rewardsAccrued: 0
             })
         );
 
@@ -570,8 +613,10 @@ contract IntegrationTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 30e18,
                 rewardIndex: 10e18,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
     }
@@ -589,6 +634,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 10e18,
+                totalMPStaked: 10e18,
                 totalMPAccrued: 10e18,
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
@@ -603,8 +649,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: 10e18,
                 vaultBalance: 10e18,
                 rewardIndex: 0,
+                mpStaked: 10e18,
                 mpAccrued: 10e18,
-                maxMP: 50e18
+                maxMP: 50e18,
+                rewardsAccrued: 0
             })
         );
     }
@@ -615,6 +663,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 10e18,
+                totalMPStaked: 10e18,
                 totalMPAccrued: 10e18,
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
@@ -630,14 +679,17 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: 10e18,
                 vaultBalance: 10e18,
                 rewardIndex: 0,
+                mpStaked: 10e18,
                 mpAccrued: 10e18,
-                maxMP: 50e18
+                maxMP: 50e18,
+                rewardsAccrued: 0
             })
         );
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 10e18,
+                totalMPStaked: 10e18,
                 totalMPAccrued: 10e18,
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
@@ -659,6 +711,7 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckStreamerParams({
                 totalStaked: stakeAmount,
                 // 10e18 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKUP_PERIOD) / SCALE_FACTOR)
+                totalMPStaked: stakeAmount + expectedBonusMP,
                 totalMPAccrued: stakeAmount + expectedBonusMP,
                 totalMaxMP: expectedMaxTotalMP,
                 stakingBalance: stakeAmount,
@@ -679,6 +732,7 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckStreamerParams({
                 totalStaked: stakeAmount,
                 // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKUP_PERIOD) / SCALE_FACTOR)
+                totalMPStaked: stakeAmount + expectedBonusMP,
                 totalMPAccrued: stakeAmount + expectedBonusMP,
                 totalMaxMP: 90e18,
                 stakingBalance: stakeAmount,
@@ -700,6 +754,7 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckStreamerParams({
                 totalStaked: stakeAmount,
                 // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKUP_PERIOD) / SCALE_FACTOR)
+                totalMPStaked: stakeAmount + expectedBonusMP,
                 totalMPAccrued: stakeAmount + expectedBonusMP,
                 totalMaxMP: expectedMaxTotalMP,
                 stakingBalance: stakeAmount,
@@ -719,6 +774,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
+                totalMPStaked: stakeAmount,
                 totalMPAccrued: stakeAmount,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
@@ -734,11 +790,13 @@ contract StakeTest is RewardsStreamerMPTest {
         streamer.updateVaultMP(vaults[alice]);
 
         uint256 expectedMPIncrease = stakeAmount; // 1 year passed, 1 MP accrued per token staked
+        uint256 totalMPStaked = totalMPAccrued;
         totalMPAccrued = totalMPAccrued + expectedMPIncrease;
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
+                totalMPStaked: stakeAmount,
                 totalMPAccrued: totalMPAccrued,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
@@ -754,8 +812,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
+                mpStaked: totalMPStaked,
                 mpAccrued: totalMPAccrued, // accountMP == totalMPAccrued because only one account is staking
-                maxMP: totalMaxMP
+                maxMP: totalMaxMP,
+                rewardsAccrued: 0
             })
         );
 
@@ -771,6 +831,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
+                totalMPStaked: stakeAmount,
                 totalMPAccrued: totalMPAccrued,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
@@ -786,8 +847,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
+                mpStaked: totalMPStaked,
                 mpAccrued: totalMPAccrued, // accountMP == totalMPAccrued because only one account is staking
-                maxMP: totalMaxMP
+                maxMP: totalMaxMP,
+                rewardsAccrued: 0
             })
         );
     }
@@ -802,6 +865,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
+                totalMPStaked: stakeAmount,
                 totalMPAccrued: stakeAmount,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
@@ -817,9 +881,11 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
+                mpStaked: stakeAmount,
                 mpAccrued: totalMPAccrued, // accountMP == totalMPAccrued because only one account is staking
-                maxMP: totalMaxMP // maxMP == totalMaxMP because only one account is staking
-             })
+                maxMP: totalMaxMP, // maxMP == totalMaxMP because only one account is staking
+                rewardsAccrued: 0
+            })
         );
 
         uint256 currentTime = vm.getBlockTimestamp();
@@ -832,6 +898,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
+                totalMPStaked: stakeAmount,
                 totalMPAccrued: totalMaxMP,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
@@ -847,8 +914,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
+                mpStaked: stakeAmount,
                 mpAccrued: totalMaxMP,
-                maxMP: totalMaxMP
+                maxMP: totalMaxMP,
+                rewardsAccrued: 0
             })
         );
 
@@ -863,6 +932,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
+                totalMPStaked: stakeAmount,
                 totalMPAccrued: totalMaxMP,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
@@ -882,6 +952,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 40e18,
+                totalMPStaked: 40e18,
                 totalMPAccrued: 40e18,
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
@@ -897,8 +968,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: 10e18,
                 vaultBalance: 10e18,
                 rewardIndex: 0,
+                mpStaked: 10e18,
                 mpAccrued: 10e18,
-                maxMP: 50e18
+                maxMP: 50e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -909,8 +982,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 30e18,
                 rewardIndex: 0,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
     }
@@ -925,6 +1000,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 40e18,
+                totalMPStaked: 40e18,
                 totalMPAccrued: 40e18,
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
@@ -940,8 +1016,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: 10e18,
                 vaultBalance: 10e18,
                 rewardIndex: 0,
+                mpStaked: 10e18,
                 mpAccrued: 10e18,
-                maxMP: 50e18
+                maxMP: 50e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -952,14 +1030,17 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 30e18,
                 rewardIndex: 0,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 40e18,
+                totalMPStaked: 40e18,
                 totalMPAccrued: 40e18,
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
@@ -991,6 +1072,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: sumOfStakeAmount,
+                totalMPStaked: sumOfStakeAmount + sumOfExpectedBonusMP,
                 totalMPAccrued: sumOfStakeAmount + sumOfExpectedBonusMP,
                 totalMaxMP: expectedMaxTotalMP,
                 stakingBalance: sumOfStakeAmount,
@@ -1023,6 +1105,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: sumOfStakeAmount,
+                totalMPStaked: sumOfStakeAmount + sumOfExpectedBonusMP,
                 totalMPAccrued: sumOfStakeAmount + sumOfExpectedBonusMP,
                 totalMaxMP: expectedMaxTotalMP,
                 stakingBalance: sumOfStakeAmount,
@@ -1051,6 +1134,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: totalStaked,
+                totalMPStaked: totalStaked,
                 totalMPAccrued: totalMPAccrued,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: totalStaked,
@@ -1066,8 +1150,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: aliceStakeAmount,
                 vaultBalance: aliceStakeAmount,
                 rewardIndex: 0,
+                mpStaked: aliceMP,
                 mpAccrued: aliceMP,
-                maxMP: aliceMaxMP
+                maxMP: aliceMaxMP,
+                rewardsAccrued: 0
             })
         );
         checkVault(
@@ -1077,8 +1163,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: bobStakeAmount,
                 vaultBalance: bobStakeAmount,
                 rewardIndex: 0,
+                mpStaked: bobMP,
                 mpAccrued: bobMP,
-                maxMP: bobMaxMP
+                maxMP: bobMaxMP,
+                rewardsAccrued: 0
             })
         );
 
@@ -1093,13 +1181,14 @@ contract StakeTest is RewardsStreamerMPTest {
         uint256 bobExpectedMPIncrease = bobStakeAmount; // 1 year passed, 1 MP accrued per token staked
         uint256 totalExpectedMPIncrease = aliceExpectedMPIncrease + bobExpectedMPIncrease;
 
-        aliceMP = aliceMP + aliceExpectedMPIncrease;
-        bobMP = bobMP + bobExpectedMPIncrease;
+        uint256 aliceMPAccrued = aliceMP + aliceExpectedMPIncrease;
+        uint256 bobMPAccrued = bobMP + bobExpectedMPIncrease;
         totalMPAccrued = totalMPAccrued + totalExpectedMPIncrease;
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: totalStaked,
+                totalMPStaked: totalStaked,
                 totalMPAccrued: totalMPAccrued,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: totalStaked,
@@ -1115,8 +1204,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: aliceStakeAmount,
                 vaultBalance: aliceStakeAmount,
                 rewardIndex: 0,
-                mpAccrued: aliceMP,
-                maxMP: aliceMaxMP
+                mpStaked: aliceMP,
+                mpAccrued: aliceMPAccrued,
+                maxMP: aliceMaxMP,
+                rewardsAccrued: 0
             })
         );
         checkVault(
@@ -1126,8 +1217,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: bobStakeAmount,
                 vaultBalance: bobStakeAmount,
                 rewardIndex: 0,
-                mpAccrued: bobMP,
-                maxMP: bobMaxMP
+                mpStaked: bobMP,
+                mpAccrued: bobMPAccrued,
+                maxMP: bobMaxMP,
+                rewardsAccrued: 0
             })
         );
 
@@ -1142,13 +1235,14 @@ contract StakeTest is RewardsStreamerMPTest {
         bobExpectedMPIncrease = bobStakeAmount / 2;
         totalExpectedMPIncrease = aliceExpectedMPIncrease + bobExpectedMPIncrease;
 
-        aliceMP = aliceMP + aliceExpectedMPIncrease;
-        bobMP = bobMP + bobExpectedMPIncrease;
+        aliceMPAccrued = aliceMPAccrued + aliceExpectedMPIncrease;
+        bobMPAccrued = bobMPAccrued + bobExpectedMPIncrease;
         totalMPAccrued = totalMPAccrued + totalExpectedMPIncrease;
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: totalStaked,
+                totalMPStaked: totalStaked,
                 totalMPAccrued: totalMPAccrued,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: totalStaked,
@@ -1164,8 +1258,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: aliceStakeAmount,
                 vaultBalance: aliceStakeAmount,
                 rewardIndex: 0,
-                mpAccrued: aliceMP,
-                maxMP: aliceMaxMP
+                mpStaked: aliceMP,
+                mpAccrued: aliceMPAccrued,
+                maxMP: aliceMaxMP,
+                rewardsAccrued: 0
             })
         );
         checkVault(
@@ -1175,8 +1271,10 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: bobStakeAmount,
                 vaultBalance: bobStakeAmount,
                 rewardIndex: 0,
-                mpAccrued: bobMP,
-                maxMP: bobMaxMP
+                mpStaked: bobMP,
+                mpAccrued: bobMPAccrued,
+                maxMP: bobMaxMP,
+                rewardsAccrued: 0
             })
         );
     }
@@ -1195,6 +1293,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 2e18,
+                totalMPStaked: 2e18,
                 totalMPAccrued: 2e18,
                 totalMaxMP: 10e18,
                 stakingBalance: 2e18,
@@ -1210,8 +1309,10 @@ contract UnstakeTest is StakeTest {
                 stakedBalance: 2e18,
                 vaultBalance: 2e18,
                 rewardIndex: 0,
+                mpStaked: 2e18,
                 mpAccrued: 2e18,
-                maxMP: 10e18
+                maxMP: 10e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -1220,6 +1321,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 0,
+                totalMPStaked: 0,
                 totalMPAccrued: 0,
                 totalMaxMP: 0,
                 stakingBalance: 0,
@@ -1242,6 +1344,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 10e18,
+                totalMPStaked: 10e18,
                 totalMPAccrued: 20e18, // total MP must have been doubled
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
@@ -1256,6 +1359,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 5e18, // 10 - 5
+                totalMPStaked: 10e18,
                 totalMPAccrued: 10e18, // 20 - 10 (5 initial + 5 accrued)
                 totalMaxMP: 25e18,
                 stakingBalance: 5e18,
@@ -1285,6 +1389,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
+                totalMPStaked: (stakeAmount + expectedBonusMP),
                 totalMPAccrued: (stakeAmount + expectedBonusMP) + stakeAmount, // we do `+ stakeAmount` we've accrued
                     // `stakeAmount` after 1 year
                 totalMaxMP: _maxTotalMP(stakeAmount, lockUpPeriod),
@@ -1302,6 +1407,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: newBalance,
+                totalMPStaked: expectedTotalMP,
                 totalMPAccrued: expectedTotalMP,
                 totalMaxMP: _maxTotalMP(newBalance, lockUpPeriod),
                 stakingBalance: newBalance,
@@ -1319,6 +1425,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 2e18,
+                totalMPStaked: 2e18,
                 totalMPAccrued: 2e18,
                 totalMaxMP: 10e18,
                 stakingBalance: 2e18,
@@ -1334,8 +1441,10 @@ contract UnstakeTest is StakeTest {
                 stakedBalance: 2e18,
                 vaultBalance: 2e18,
                 rewardIndex: 50e18, // alice reward index has been updated
+                mpStaked: 2e18,
                 mpAccrued: 2e18,
-                maxMP: 10e18
+                maxMP: 10e18,
+                rewardsAccrued: 0
             })
         );
     }
@@ -1447,6 +1556,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 20e18,
+                totalMPStaked: 20e18,
                 totalMPAccrued: 20e18,
                 totalMaxMP: 100e18,
                 stakingBalance: 20e18,
@@ -1462,8 +1572,10 @@ contract UnstakeTest is StakeTest {
                 stakedBalance: 0,
                 vaultBalance: 0,
                 rewardIndex: 0,
+                mpStaked: 0,
                 mpAccrued: 0,
-                maxMP: 0
+                maxMP: 0,
+                rewardsAccrued: 0
             })
         );
 
@@ -1474,8 +1586,10 @@ contract UnstakeTest is StakeTest {
                 stakedBalance: 20e18,
                 vaultBalance: 20e18,
                 rewardIndex: 0,
+                mpStaked: 20e18,
                 mpAccrued: 20e18,
-                maxMP: 100e18
+                maxMP: 100e18,
+                rewardsAccrued: 0
             })
         );
     }
@@ -1488,6 +1602,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 30e18,
+                totalMPStaked: 30e18,
                 totalMPAccrued: 30e18,
                 totalMaxMP: 150e18,
                 stakingBalance: 30e18,
@@ -1504,8 +1619,10 @@ contract UnstakeTest is StakeTest {
                 stakedBalance: 0,
                 vaultBalance: 0,
                 rewardIndex: 125e17,
+                mpStaked: 0,
                 mpAccrued: 0,
-                maxMP: 0
+                maxMP: 0,
+                rewardsAccrued: 0
             })
         );
 
@@ -1514,6 +1631,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 20e18,
+                totalMPStaked: 20e18,
                 totalMPAccrued: 20e18,
                 totalMaxMP: 100e18,
                 stakingBalance: 20e18,
@@ -1529,8 +1647,10 @@ contract UnstakeTest is StakeTest {
                 stakedBalance: 20e18,
                 vaultBalance: 20e18,
                 rewardIndex: 125e17,
+                mpStaked: 20e18,
                 mpAccrued: 20e18,
-                maxMP: 100e18
+                maxMP: 100e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -1539,6 +1659,7 @@ contract UnstakeTest is StakeTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 0,
+                totalMPStaked: 0,
                 totalMPAccrued: 0,
                 totalMaxMP: 0,
                 stakingBalance: 0,
@@ -1554,8 +1675,10 @@ contract UnstakeTest is StakeTest {
                 stakedBalance: 0,
                 vaultBalance: 0,
                 rewardIndex: 125e17,
+                mpStaked: 0,
                 mpAccrued: 0,
-                maxMP: 0
+                maxMP: 0,
+                rewardsAccrued: 0
             })
         );
     }
@@ -1588,8 +1711,10 @@ contract LockTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
+                mpStaked: initialAccountMP,
                 mpAccrued: initialAccountMP,
-                maxMP: initialMaxMP
+                maxMP: initialMaxMP,
+                rewardsAccrued: 0
             })
         );
 
@@ -1607,8 +1732,10 @@ contract LockTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
+                mpStaked: initialAccountMP + expectedBonusMP,
                 mpAccrued: initialAccountMP + expectedBonusMP,
-                maxMP: initialMaxMP + expectedBonusMP
+                maxMP: initialMaxMP + expectedBonusMP,
+                rewardsAccrued: 0
             })
         );
     }
@@ -1683,6 +1810,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 10e18,
+                totalMPStaked: 10e18,
                 totalMPAccrued: 10e18,
                 totalMaxMP: 50e18,
                 stakingBalance: 0,
@@ -1698,8 +1826,10 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
                 stakedBalance: 10e18,
                 vaultBalance: 0,
                 rewardIndex: 0,
+                mpStaked: 10e18,
                 mpAccrued: 10e18,
-                maxMP: 50e18
+                maxMP: 50e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -1720,6 +1850,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 10e18,
+                totalMPStaked: 10e18,
                 totalMPAccrued: 10e18,
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
@@ -1766,6 +1897,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 40e18,
+                totalMPStaked: 40e18,
                 totalMPAccrued: 40e18,
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
@@ -1781,6 +1913,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 40e18,
+                totalMPStaked: 40e18,
                 totalMPAccrued: 40e18,
                 totalMaxMP: 200e18,
                 stakingBalance: 40e18,
@@ -1796,8 +1929,10 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
                 stakedBalance: 10e18,
                 vaultBalance: 0,
                 rewardIndex: 0,
+                mpStaked: 10e18,
                 mpAccrued: 10e18,
-                maxMP: 50e18
+                maxMP: 50e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -1808,8 +1943,10 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
                 stakedBalance: 30e18,
                 vaultBalance: 0,
                 rewardIndex: 0,
+                mpStaked: 30e18,
                 mpAccrued: 30e18,
-                maxMP: 150e18
+                maxMP: 150e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -1841,8 +1978,10 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
                 stakedBalance: 10e18,
                 vaultBalance: 0,
                 rewardIndex: 0,
+                mpStaked: 10e18,
                 mpAccrued: 10e18,
-                maxMP: 50e18
+                maxMP: 50e18,
+                rewardsAccrued: 0
             })
         );
 
@@ -1876,6 +2015,7 @@ contract UpgradeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 10e18,
+                totalMPStaked: 10e18,
                 totalMPAccrued: 10e18,
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
@@ -1891,6 +2031,7 @@ contract UpgradeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 10e18,
+                totalMPStaked: 10e18,
                 totalMPAccrued: 10e18,
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
@@ -1922,6 +2063,7 @@ contract LeaveTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 100e18,
+                totalMPStaked: 100e18,
                 totalMPAccrued: 100e18,
                 totalMaxMP: 500e18,
                 stakingBalance: 100e18,
@@ -1937,6 +2079,7 @@ contract LeaveTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 0,
+                totalMPStaked: 0,
                 totalMPAccrued: 0,
                 totalMaxMP: 0,
                 stakingBalance: 0,
@@ -1953,8 +2096,10 @@ contract LeaveTest is RewardsStreamerMPTest {
                 stakedBalance: 0,
                 vaultBalance: 0,
                 rewardIndex: 0,
+                mpStaked: 0,
                 mpAccrued: 0,
-                maxMP: 0
+                maxMP: 0,
+                rewardsAccrued: 0
             })
         );
 
@@ -2006,6 +2151,7 @@ contract MaliciousUpgradeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 100e18,
+                totalMPStaked: 100e18,
                 totalMPAccrued: 100e18,
                 totalMaxMP: 500e18,
                 stakingBalance: 100e18,
@@ -2259,6 +2405,7 @@ contract MultipleVaultsStakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 90e18,
+                totalMPStaked: 90e18,
                 totalMPAccrued: 90e18,
                 totalMaxMP: 450e18,
                 stakingBalance: 90e18,
@@ -2315,14 +2462,17 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
+                mpStaked: initialAccountMP,
                 mpAccrued: initialAccountMP,
-                maxMP: initialMaxMP
+                maxMP: initialMaxMP,
+                rewardsAccrued: 0
             })
         );
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
+                totalMPStaked: initialAccountMP,
                 totalMPAccrued: initialAccountMP,
                 totalMaxMP: initialMaxMP,
                 stakingBalance: stakeAmount,
@@ -2346,14 +2496,17 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
+                mpStaked: initialAccountMP,
                 mpAccrued: initialAccountMP * 2, // alice now has twice the amount after a year
-                maxMP: initialMaxMP
+                maxMP: initialMaxMP,
+                rewardsAccrued: 0
             })
         );
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
+                totalMPStaked: stakeAmount,
                 totalMPAccrued: initialAccountMP * 2, // stakemanager has twice the amount after a year
                 totalMaxMP: initialMaxMP,
                 stakingBalance: stakeAmount,
@@ -2374,6 +2527,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
+                totalMPStaked: initialAccountMP,
                 totalMPAccrued: initialAccountMP * 2,
                 totalMaxMP: initialMaxMP,
                 stakingBalance: stakeAmount,
@@ -2390,8 +2544,10 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
+                mpStaked: initialAccountMP,
                 mpAccrued: initialAccountMP * 2, // alice now has twice the amount after a year
-                maxMP: initialMaxMP
+                maxMP: initialMaxMP,
+                rewardsAccrued: 0
             })
         );
 
@@ -2403,9 +2559,23 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
                 stakedBalance: 0,
                 vaultBalance: 0,
                 rewardIndex: 0,
+                mpStaked: 0,
                 mpAccrued: 0,
-                maxMP: 0
+                maxMP: 0,
+                rewardsAccrued: 0
             })
         );
+    }
+}
+
+contract CompoundTest is RewardsStreamerMPTest {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function test_RevertWhenInsufficientMPBalance() public {
+        _stake(alice, 10e18, 0);
+        vm.expectRevert(IStakeManager.StakingManager__InsufficientBalance.selector);
+        _compound(alice);
     }
 }
