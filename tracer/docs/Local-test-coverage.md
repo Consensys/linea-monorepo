@@ -46,7 +46,7 @@ Paste the xml report in the following paths :
 - for unit tests
   `/arithmetization/build/reports/jacoco/test/jacocoTestReport.xml`
 - or for reference tests
-  `/referenceBlockchainTests/build/reports/jacoco/jacocoReferenceBlockchainTestsReport/jacocoReferenceBlockchainTestsReport.xml`
+  `/reference-tests/build/reports/jacoco/jacocoReferenceBlockchainTestsReport/jacocoReferenceBlockchainTestsReport.xml`
 
 ### Concatenate two Jacoco reports
 
@@ -57,7 +57,7 @@ Paste the exec files in the following paths :
 - for unit tests
   `/arithmetization/build/jacoco/test.exec`
 - for reference tests
-  `/referenceBlockchainTests/build/jacoco/referenceBlockchainTests.exec`
+  `/reference-tests/build/jacoco/referenceBlockchainTests.exec`
 
 Run the jacocoUnitAndReferenceTestsReport task
 

@@ -15,18 +15,18 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BLOCK_GAS_LIMIT;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Consumer;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ZkTracer;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.BlobGas;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
@@ -41,7 +41,10 @@ import org.hyperledger.besu.ethereum.referencetests.ReferenceTestBlockchain;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.ethereum.vm.BlockchainBasedBlockHashLookup;
+import org.hyperledger.besu.evm.EVM;
 import org.hyperledger.besu.evm.account.Account;
+import org.hyperledger.besu.evm.fluent.SimpleBlockValues;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
@@ -101,7 +104,7 @@ public class GeneralStateReferenceTestTools {
       // This check is performed within the `BlockImporter` rather than inside the
       // `TransactionProcessor`, so these tests are skipped.
       if (transaction.getGasLimit() > blockHeader.getGasLimit() - blockHeader.getGasUsed()) {
-        throw new IllegalArgumentException("Transaction gas limit higher that avaliable in block");
+        throw new IllegalArgumentException("Transaction gas limit higher that available in block");
       }
 
       result =
@@ -169,6 +172,59 @@ public class GeneralStateReferenceTestTools {
             });
 
     ExecutionEnvironment.checkTracer(tracer, CORSET_VALIDATOR, Optional.of(log));
+  }
+
+  @SneakyThrows
+  public static long executeTestOnlyForGasCost(
+      final GeneralStateTestCaseEipSpec spec,
+      final ProtocolSpec protocolSpec,
+      final List<ToyAccount> accounts) {
+    final MutableWorldState worldState = spec.getInitialWorldState();
+    final WorldUpdater worldStateUpdater = worldState.updater();
+    final MainnetTransactionProcessor processor = protocolSpec.getTransactionProcessor();
+    final EVM evm = protocolSpec.getEvm();
+
+    SimpleBlockValues blockValues = new SimpleBlockValues();
+    blockValues.setBaseFee(Optional.of(Wei.of(1)));
+    Account senderAccount = accounts.get(0);
+    Account receiverAccount = accounts.get(1);
+    Transaction tx = spec.getTransaction(0);
+    Bytes txPayload = tx.getPayload();
+    Wei txValue = tx.getValue();
+
+    MessageFrame initialMessageFrame =
+        MessageFrame.builder()
+            .worldUpdater(worldStateUpdater)
+            .gasPrice(Wei.ONE)
+            .blobGasPrice(Wei.ONE)
+            .blockValues(blockValues)
+            .miningBeneficiary(Address.ZERO)
+            .blockHashLookup((__, ___) -> Hash.ZERO)
+            .completer(messageFrame -> {})
+            .apparentValue(Wei.ZERO)
+            .value(txValue)
+            .inputData(txPayload)
+            .originator(senderAccount.getAddress())
+            .address(receiverAccount.getAddress())
+            .contract(receiverAccount.getAddress())
+            .sender(senderAccount.getAddress())
+            // For gas cost purposes, we don't care about the Type of the message frame
+            .type(MessageFrame.Type.MESSAGE_CALL)
+            .initialGas(LINEA_BLOCK_GAS_LIMIT)
+            .code(evm.getCodeUncached(receiverAccount.getCode()))
+            .build();
+
+    Deque<MessageFrame> messageFrameStack = initialMessageFrame.getMessageFrameStack();
+    while (!messageFrameStack.isEmpty()) {
+      processor.process(messageFrameStack.peekFirst(), new ZkTracer());
+    }
+
+    long intrinsicTxCostWithNoAccessOrDelegationCost =
+        evm.getGasCalculator().transactionIntrinsicGasCost(txPayload, false, 0);
+
+    return LINEA_BLOCK_GAS_LIMIT
+        - initialMessageFrame.getRemainingGas()
+        + intrinsicTxCostWithNoAccessOrDelegationCost;
   }
 
   private static boolean shouldClearEmptyAccounts(final String eip) {

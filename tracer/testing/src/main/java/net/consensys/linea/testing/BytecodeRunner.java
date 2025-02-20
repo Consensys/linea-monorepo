@@ -16,6 +16,7 @@
 package net.consensys.linea.testing;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
  */
 @Accessors(fluent = true)
 public final class BytecodeRunner {
+  // TODO: refacto default value
   public static final long DEFAULT_GAS_LIMIT = 61_000_000L;
   private final Bytes byteCode;
   ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2;
@@ -64,36 +66,46 @@ public final class BytecodeRunner {
 
   // Default run method
   public void run() {
-    this.run(Wei.fromEth(1), (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, List.of());
+    this.run(Wei.fromEth(1), (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY);
   }
 
   // Ad-hoc senderBalance
   public void run(Wei senderBalance) {
-    this.run(senderBalance, (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, List.of());
+    this.run(senderBalance, (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY);
   }
 
   // Ad-hoc gasLimit
   public void run(Long gasLimit) {
-    this.run(Wei.fromEth(1), gasLimit, List.of());
+    this.run(Wei.fromEth(1), gasLimit, List.of(), Bytes.EMPTY);
   }
 
   // Ad-hoc senderBalance and gasLimit
   public void run(Wei senderBalance, Long gasLimit) {
-    this.run(senderBalance, gasLimit, List.of());
+    this.run(senderBalance, gasLimit, List.of(), Bytes.EMPTY);
   }
 
   // Ad-hoc accounts
   public void run(List<ToyAccount> additionalAccounts) {
-    this.run(Wei.fromEth(1), (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, additionalAccounts);
+    this.run(
+        Wei.fromEth(1),
+        (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT,
+        additionalAccounts,
+        Bytes.EMPTY);
   }
 
   // Ad-hoc gasLimit and accounts
   public void run(Long gasLimit, List<ToyAccount> additionalAccounts) {
-    this.run(Wei.fromEth(1), gasLimit, additionalAccounts);
+    this.run(Wei.fromEth(1), gasLimit, additionalAccounts, Bytes.EMPTY);
   }
 
   // Ad-hoc senderBalance, gasLimit and accounts
   public void run(Wei senderBalance, Long gasLimit, List<ToyAccount> additionalAccounts) {
+    this.run(senderBalance, gasLimit, additionalAccounts, Bytes.EMPTY);
+  }
+
+  // Ad-hoc senderBalance, gasLimit, accounts and payload
+  public void run(
+      Wei senderBalance, Long gasLimit, List<ToyAccount> additionalAccounts, Bytes payload) {
     checkArgument(byteCode != null, "byteCode cannot be empty");
 
     KeyPair keyPair = new SECP256K1().generateKeyPair();
@@ -112,15 +124,18 @@ public final class BytecodeRunner {
             .code(byteCode)
             .build();
 
-    final Transaction tx =
+    final ToyTransaction.ToyTransactionBuilder txBuilder =
         ToyTransaction.builder()
             .sender(senderAccount)
             .to(receiverAccount)
             .value(Wei.of(272)) // 256 + 16, easier for debugging
             .keyPair(keyPair)
             .gasLimit(selectedGasLimit)
-            .gasPrice(Wei.of(8))
-            .build();
+            .gasPrice(Wei.of(8));
+    if (!payload.isEmpty()) {
+      txBuilder.payload(payload);
+    }
+    final Transaction tx = txBuilder.build();
 
     List<ToyAccount> accounts = new ArrayList<>();
     accounts.add(senderAccount);
@@ -136,6 +151,73 @@ public final class BytecodeRunner {
             .transaction(tx)
             .build();
     toyExecutionEnvironmentV2.run();
+  }
+
+  /*
+  BytecodeRunner: runOnlyForGasCost section
+   */
+
+  // Ad-hoc accounts
+  public long runOnlyForGasCost(List<ToyAccount> additionalAccounts) {
+    return this.runOnlyForGasCost(
+        Wei.fromEth(1), (long) LINEA_BLOCK_GAS_LIMIT, additionalAccounts, Bytes.EMPTY);
+  }
+
+  // Ad-hoc payload
+  public long runOnlyForGasCost(Bytes payload) {
+    return this.runOnlyForGasCost(Wei.fromEth(1), (long) LINEA_BLOCK_GAS_LIMIT, List.of(), payload);
+  }
+
+  // Ad-hoc payload
+  public long runOnlyForGasCost() {
+    return this.runOnlyForGasCost(
+        Wei.fromEth(1), (long) LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY);
+  }
+
+  // Ad-hoc senderBalance, accounts and payload
+  // Uses LondonGasCalculator - update for fork upgrades
+  // Does not include : accessListGas, codeDelegationGas
+  public long runOnlyForGasCost(
+      Wei senderBalance, Long gasLimit, List<ToyAccount> additionalAccounts, Bytes payload) {
+    checkArgument(byteCode != null, "byteCode cannot be empty");
+
+    KeyPair keyPair = new SECP256K1().generateKeyPair();
+    Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+
+    final ToyAccount senderAccount =
+        ToyAccount.builder().balance(senderBalance).nonce(5).address(senderAddress).build();
+
+    final ToyAccount receiverAccount =
+        ToyAccount.builder()
+            .balance(Wei.fromEth(1))
+            .nonce(6)
+            .address(Address.fromHexString("0x1111111111111111111111111111111111111111"))
+            .code(byteCode)
+            .build();
+
+    final ToyTransaction.ToyTransactionBuilder txBuilder =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(receiverAccount)
+            .value(Wei.of(272)) // 256 + 16, easier for debugging
+            .keyPair(keyPair)
+            .gasLimit(gasLimit)
+            .gasPrice(Wei.of(8));
+
+    if (!payload.isEmpty()) {
+      txBuilder.payload(payload);
+    }
+
+    final Transaction tx = txBuilder.build();
+
+    List<ToyAccount> accounts = new ArrayList<>();
+    accounts.add(senderAccount);
+    accounts.add(receiverAccount);
+    accounts.addAll(additionalAccounts);
+
+    toyExecutionEnvironmentV2 =
+        ToyExecutionEnvironmentV2.builder().accounts(accounts).transaction(tx).build();
+    return toyExecutionEnvironmentV2.runForGasCost();
   }
 
   public Hub getHub() {
