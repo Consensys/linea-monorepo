@@ -14,45 +14,8 @@ import (
 // compiled independently and the technique relies on computing a column Z
 // accumulating the fractions (A[i] + Beta) / (B[i] + Beta)
 func CompileViaGrandProduct(comp *wizard.CompiledIOP) {
-
-	var (
-		allProverActions = make([]ProverTaskAtRound, comp.NumRounds()+1)
-		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
-		// which Z context should be used to handle a part of a given permutation
-		// query.
-		zCatalog = map[[2]int]*ZCtx{}
-	)
-
-	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
-
-		// Filter out non permutation queries
-		permutation, ok := comp.QueriesNoParams.Data(qName).(query.Permutation)
-		if !ok {
-			continue
-		}
-
-		// This ensures that the lookup query is not used again in the
-		// compilation process. We know that the query was already ignored at
-		// the beginning because we are iterating over the unignored keys.
-		comp.QueriesNoParams.MarkAsIgnored(qName)
-		round := comp.QueriesNoParams.Round(qName)
-
-		dispatchPermutation(comp, zCatalog, round, permutation)
-	}
-
-	for entry, zC := range zCatalog {
-		zC.Compile(comp)
-		round := entry[0]
-		allProverActions[round] = append(allProverActions[round], zC)
-	}
-
-	for round := range allProverActions {
-		if len(allProverActions[round]) > 0 {
-			comp.RegisterProverAction(round, allProverActions[round])
-			comp.RegisterVerifierAction(round, &VerifierCtx{Ctxs: allProverActions[round]})
-		}
-	}
-
+	CompileIntoGdProduct(comp)
+	CompileGrandProduct(comp)
 }
 
 // dispatchPermutation applies the grand product argument compilation over
