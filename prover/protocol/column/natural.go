@@ -1,12 +1,16 @@
 package column
 
 import (
+	"fmt"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+var _ ifaces.Column = &Natural{}
 
 // Natural represents a [ifaces.Column] that has been directly declared in the
 // corresponding [github.com/consensys/linea-monorepo/prover/protocol/wizard.CompiledIOP] or [github.com/consensys/linea-monorepo/prover/protocol/wizard.Builder]
@@ -22,6 +26,16 @@ type Natural struct {
 	// status.
 	store  *Store
 	isBase bool
+}
+
+func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (n Natural) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+	//TODO implement me
+	panic("implement me")
 }
 
 // Size returns the size of the column, as required by the [ifaces.Column]
@@ -84,6 +98,18 @@ func (n Natural) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element
 // GetColAssignmentGnark implements [ifaces.Column]
 func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 	return run.GetColumn(n.ID)
+}
+
+func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+	if n.isBase {
+		return run.GetColumn(n.ID), nil
+	} else {
+		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
+	}
+}
+
+func (n Natural) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+	return run.GetColumnExt(n.ID)
 }
 
 // GetColAssignmentGnarkAt implements [ifaces.Column]

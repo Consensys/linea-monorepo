@@ -32,6 +32,8 @@ type Runtime interface {
 type GnarkRuntime interface {
 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
 	GetColumn(ColID) []frontend.Variable
+	GetColumnBase(ColID) []frontend.Variable
+	GetColumnExt(ColID) []gnarkfext.Variable
 	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
 	GetColumnAt(ColID, int) frontend.Variable
 	GetColumnAtBase(ColID, int) (frontend.Variable, error)

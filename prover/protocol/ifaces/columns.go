@@ -109,7 +109,7 @@ type Column interface {
 	// column is not visible by the verifier. For instance, it will panic if the
 	// column is tagged as committed.
 	GetColAssignmentGnark(run GnarkRuntime) []frontend.Variable
-	GetColAssignmentGnarkBase(run GnarkRuntime) []frontend.Variable
+	GetColAssignmentGnarkBase(run GnarkRuntime) ([]frontend.Variable, error)
 	GetColAssignmentGnarkExt(run GnarkRuntime) []gnarkfext.Variable
 	// GetColAssignmentGnarkAt recovers the assignment of the column at a
 	// particular position. This will panic if the column is not yet assigned or if the

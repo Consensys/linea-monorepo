@@ -321,6 +321,46 @@ func (run ProverRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element {
 	return wit.Get(pos)
 }
 
+func (run ProverRuntime) GetColumnAtBase(name ifaces.ColID, pos int) (field.Element, error) {
+	// global prover's lock before accessing the witnesses
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	/*
+		Make sure the column is registered. If the name is the one specified
+		does not correcpond to a natural column, this will panic. And this is
+		expected behaviour.
+	*/
+	run.Spec.Columns.MustHaveName(name)
+	wit := run.Columns.MustGet(name)
+
+	if _, err := wit.GetBase(0); err == nil {
+		if pos >= wit.Len() || pos < 0 {
+			utils.Panic("asked pos %v for vector of size %v", pos, wit)
+		}
+		result, _ := wit.GetBase(pos)
+		return result, nil
+	} else {
+		return field.Zero(), err
+	}
+
+}
+
+func (run ProverRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element {
+	// global prover's lock before accessing the witnesses
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	/*
+		Make sure the column is registered. If the name is the one specified
+		does not correcpond to a natural column, this will panic. And this is
+		expected behaviour.
+	*/
+	run.Spec.Columns.MustHaveName(name)
+	wit := run.Columns.MustGet(name)
+	return wit.GetExt(pos)
+}
+
 // GetRandomCoinField returns a field element random. The coin should be issued
 // at the same round as it was registered. The same coin can't be retrieved more
 // than once. The coin should also have been registered as a field element

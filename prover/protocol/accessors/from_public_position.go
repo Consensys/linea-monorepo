@@ -2,6 +2,8 @@ package accessors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -61,9 +63,34 @@ func (c *FromPublicColumn) GetVal(run ifaces.Runtime) field.Element {
 	return run.GetColumnAt(c.Col.ID, c.Pos)
 }
 
+func (c *FromPublicColumn) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	if c.IsBase() {
+		return run.GetColumnAt(c.Col.ID, c.Pos), nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested base elements but column defined over field extensions")
+	}
+
+}
+
+func (c *FromPublicColumn) GetValExt(run ifaces.Runtime) fext.Element {
+	return run.GetColumnAtExt(c.Col.ID, c.Pos)
+}
+
 // GetFrontendVariable implements [ifaces.Accessor]
 func (c *FromPublicColumn) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
 	return circ.GetColumnAt(c.Col.ID, c.Pos)
+}
+
+func (c *FromPublicColumn) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+	if c.IsBase() {
+		return circ.GetColumnAt(c.Col.ID, c.Pos), nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested base elements but column defined over field extensions")
+	}
+}
+
+func (c *FromPublicColumn) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Variable {
+	return circ.GetColumnAtExt(c.Col.ID, c.Pos)
 }
 
 // AsVariable implements the [ifaces.Accessor] interface
@@ -74,4 +101,8 @@ func (c *FromPublicColumn) AsVariable() *symbolic.Expression {
 // Round implements the [ifaces.Accessor] interface
 func (c *FromPublicColumn) Round() int {
 	return c.Col.Round()
+}
+
+func (c *FromPublicColumn) IsBase() bool {
+	return c.Col.IsBase()
 }
