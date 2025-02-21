@@ -17,31 +17,29 @@ import { IStakeVault } from "./interfaces/IStakeVault.sol";
  * to create stake vault instances. Hence, we need to use `Initializeable` to set the owner.
  */
 contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
+    /// @notice Emitted when not enough balance to withdraw
     error StakeVault__NotEnoughAvailableBalance();
+    /// @notice Emitted when destination address is invalid
     error StakeVault__InvalidDestinationAddress();
-    error StakeVault__UpdateNotAvailable();
+    /// @notice Emitted when staking was unsuccessful
     error StakeVault__StakingFailed();
+    /// @notice Emitted when unstaking was unsuccessful
     error StakeVault__UnstakingFailed();
+    /// @notice Emitted when not allowed to exit the system
     error StakeVault__NotAllowedToExit();
+    /// @notice Emitted when not allowed to leave the system
     error StakeVault__NotAllowedToLeave();
+    /// @notice Emitted when the configured stake manager is not trusted
     error StakeVault__StakeManagerImplementationNotTrusted();
+    /// @notice Emitted when migration failed
     error StakeVault__MigrationFailed();
 
-    //STAKING_TOKEN must be kept as an immutable, otherwise, StakeManager would accept StakeVaults with any token
-    //if is needed that STAKING_TOKEN to be a variable, StakeManager should be changed to check codehash and
-    //StakeVault(msg.sender).STAKING_TOKEN()
+    /// @notice Staking token - must be set immutable due to codehash check in StakeManager
     IERC20 public immutable STAKING_TOKEN;
+    /// @notice Stake manager proxy contract
     IStakeManagerProxy public stakeManager;
+    /// @notice Address of the trusted stake manager implementation
     address public stakeManagerImplementationAddress;
-
-    /**
-     * @dev Emitted when tokens are staked.
-     * @param from The address from which tokens are transferred.
-     * @param to The address receiving the staked tokens (this contract).
-     * @param amount The amount of tokens staked.
-     * @param time The time period for which tokens are staked.
-     */
-    event Staked(address indexed from, address indexed to, uint256 amount, uint256 time);
 
     modifier validDestination(address _destination) {
         if (_destination == address(0)) {
@@ -58,7 +56,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @notice Initializes the contract with the owner, staked token, and stake manager.
+     * @notice Initializes the contract with the staking token address.
+     * @dev The staking token address is immutable and cannot be changed after deployment.
+     * @dev Contract will be initialized via `initialize` function.
+     * @param token The address of the staking token.
      */
     constructor(IERC20 token) {
         STAKING_TOKEN = token;
@@ -66,6 +67,9 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     }
 
     /**
+     * @notice Initializes the contract with the owner and the stake manager.
+     * @dev Ensures that the stake manager implementation is trusted.
+     * @dev Initializion is done on proxy clones.
      * @param _owner The address of the owner.
      * @param _stakeManager The address of the StakeManager contract.
      */
@@ -77,6 +81,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Allows the owner to trust a new stake manager implementation.
+     * @dev This function is only callable by the owner.
      * @param stakeManagerAddress The address of the new stake manager implementation.
      */
     function trustStakeManager(address stakeManagerAddress) external onlyOwner {
@@ -85,6 +90,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Registers the vault with the stake manager.
+     * @dev This is necessary to allow the stake manager to interact with the vault.
      */
     function register() public {
         stakeManager.registerVault();
@@ -92,6 +98,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Returns the address of the current owner.
+     * @return The address of the owner.
      */
     function owner() public view override(OwnableUpgradeable, IStakeVault) returns (address) {
         return super.owner();
@@ -99,6 +106,9 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Stake tokens for a specified time.
+     * @dev This function is only callable by the owner.
+     * @dev Can only be called if the stake manager is trusted.
+     * @dev Reverts if the staking token transfer fails.
      * @param _amount The amount of tokens to stake.
      * @param _seconds The time period to stake for.
      */
@@ -108,6 +118,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Stake tokens from a specified address for a specified time.
+     * @dev Overloads the `stake` function to allow staking from a specified address.
+     * @dev This function is only callable by the owner.
+     * @dev Can only be called if the stake manager is trusted.
+     * @dev Reverts if the staking token transfer fails.
      * @param _amount The amount of tokens to stake.
      * @param _seconds The time period to stake for.
      * @param _from The address from which tokens will be transferred.
@@ -118,6 +132,8 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Lock the staked amount for a specified time.
+     * @dev This function is only callable by the owner.
+     * @dev Can only be called if the stake manager is trusted.
      * @param _seconds The time period to lock the staked amount for.
      */
     function lock(uint256 _seconds) external onlyOwner onlyTrustedStakeManager {
@@ -126,6 +142,9 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Unstake a specified amount of tokens and send to the owner.
+     * @dev This function is only callable by the owner.
+     * @dev Can only be called if the stake manager is trusted.
+     * @dev Reverts if the staking token transfer fails.
      * @param _amount The amount of tokens to unstake.
      */
     function unstake(uint256 _amount) external onlyOwner onlyTrustedStakeManager {
@@ -134,6 +153,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Unstake a specified amount of tokens and send to a destination address.
+     * @dev Overloads the `unstake` function to allow unstaking to a specified address.
+     * @dev This function is only callable by the owner.
+     * @dev Can only be called if the stake manager is trusted.
+     * @dev Reverts if the staking token transfer fails.
      * @param _amount The amount of tokens to unstake.
      * @param _destination The address to receive the unstaked tokens.
      */
@@ -150,7 +173,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @notice Withdraw all tokens from the contract to the owner.
+     * @notice Allows the vault to leave the system and withdraw all funds.
+     * @dev This function is only callable by the owner.
+     * @dev Vaults can only leave the system if the stake manager is not trusted.
+     * @param _destination The address to receive the funds.
      */
     function leave(address _destination) external onlyOwner validDestination(_destination) {
         if (_stakeManagerImplementationTrusted()) {
@@ -177,6 +203,8 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Withdraw tokens from the contract.
+     * @dev This function is only callable by the owner.
+     * @dev Only withdraws excess staking token amounts.
      * @param _token The IERC20 token to withdraw.
      * @param _amount The amount of tokens to withdraw.
      */
@@ -186,6 +214,9 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Withdraw tokens from the contract to a destination address.
+     * @dev Overloads the `withdraw` function to allow withdrawing to a specified address.
+     * @dev This function is only callable by the owner.
+     * @dev Only withdraws excess staking token amounts.
      * @param _token The IERC20 token to withdraw.
      * @param _amount The amount of tokens to withdraw.
      * @param _destination The address to receive the tokens.
@@ -204,6 +235,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Returns the available amount of a token that can be withdrawn.
+     * @dev Returns only excess amount if token is staking token.
      * @param _token The IERC20 token to check.
      * @return The amount of token available for withdrawal.
      */
@@ -214,15 +246,27 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         return _token.balanceOf(address(this));
     }
 
+    /**
+     * @notice Stakes tokens for a specified time.
+     * @dev Reverts if the staking token transfer fails.
+     * @param _amount The amount of tokens to stake.
+     * @param _seconds The time period to stake for.
+     * @param _source The address from which tokens will be transferred.
+     */
     function _stake(uint256 _amount, uint256 _seconds, address _source) internal {
         stakeManager.stake(_amount, _seconds);
         bool success = STAKING_TOKEN.transferFrom(_source, address(this), _amount);
         if (!success) {
             revert StakeVault__StakingFailed();
         }
-        emit Staked(_source, address(this), _amount, _seconds);
     }
 
+    /**
+     * @notice Unstakes tokens to a specified address.
+     * @dev Reverts if the staking token transfer fails.
+     * @param _amount The amount of tokens to unstake.
+     * @param _destination The address to receive the unstaked tokens.
+     */
     function _unstake(uint256 _amount, address _destination) internal {
         stakeManager.unstake(_amount);
         bool success = STAKING_TOKEN.transfer(_destination, _amount);
@@ -231,6 +275,14 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         }
     }
 
+    /**
+     * @notice Withdraws tokens to a specified address.
+     * @dev Reverts if the staking token transfer fails.
+     * @dev Only withdraws excess staking token amounts.
+     * @param _token The IERC20 token to withdraw.
+     * @param _amount The amount of tokens to withdraw.
+     * @param _destination The address to receive the tokens.
+     */
     function _withdraw(IERC20 _token, uint256 _amount, address _destination) internal {
         if (_token == STAKING_TOKEN && STAKING_TOKEN.balanceOf(address(this)) - amountStaked() < _amount) {
             revert StakeVault__NotEnoughAvailableBalance();
@@ -238,6 +290,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         _token.transfer(_destination, _amount);
     }
 
+    /**
+     * @notice Returns the amount of tokens staked by the vault.
+     * @return The amount of tokens staked.
+     */
     function amountStaked() public view returns (uint256) {
         return stakeManager.getStakedBalance(address(this));
     }
@@ -262,16 +318,22 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         }
     }
 
+    /**
+     * @notice Checks if the current stake manager implementation is trusted.
+     * @dev Trusted implementation address is set during initialization.
+     * @dev Trusted implementation address can be changed by owner.
+     * @return True if the current stake manager implementation is trusted, otherwise false.
+     */
     function _stakeManagerImplementationTrusted() internal view virtual returns (bool) {
         return stakeManagerImplementationAddress == stakeManager.implementation();
     }
 
     /**
      * @notice Migrate all funds to a new vault.
-     * @param migrateTo The address of the new vault.
      * @dev This function is only callable by the owner.
      * @dev This function is only callable if the current stake manager is trusted.
      * @dev Reverts when the stake manager reverts or the funds can't be transferred.
+     * @param migrateTo The address of the new vault.
      */
     function migrateToVault(address migrateTo) external onlyOwner onlyTrustedStakeManager {
         stakeManager.migrateToVault(migrateTo);

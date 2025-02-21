@@ -3,14 +3,16 @@ pragma solidity ^0.8.26;
 
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { ITrustedCodehashAccess } from "./interfaces/ITrustedCodehashAccess.sol";
+
 /**
  * @title TrustedCodehashAccess
  * @author Ricardo Guilherme Schmidt <ricardo3@status.im>
  * @notice Ensures that only specific contract bytecode hashes are trusted to
  *         interact with the functions using the `onlyTrustedCodehash` modifier.
+ * @dev This contract is used to restrict access to functions based on the codehash of the caller.
  */
-
 abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, OwnableUpgradeable {
+    /// @notice Whidelisted codehashes.
     mapping(bytes32 codehash => bool permission) private trustedCodehashes;
 
     /**
@@ -25,6 +27,11 @@ abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, OwnableUpgrad
         _;
     }
 
+    /**
+     * @notice Initializes the contract with the provided owner address.
+     * @dev This function is called only once during the contract deployment.
+     * @param _initialOwner The address of the owner.
+     */
     function __TrustedCodehashAccess_init(address _initialOwner) public onlyInitializing {
         __Ownable_init(_initialOwner);
     }
