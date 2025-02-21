@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -442,4 +443,22 @@ func WriteToFile(path string, from io.WriterTo) error {
 	}
 	_, err = from.WriteTo(f)
 	return errors.Join(err, f.Close())
+}
+
+// SortedKeysOf returns a sorted list of the keys of the map using less
+// to determine the order. Less is as in [sort.Slice]
+func SortedKeysOf[K comparable, V any](m map[K]V, less func(K, K) bool) []K {
+
+	keys := make([]K, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	// Since the keys of a map are all unique, we don't have to worry
+	// about the duplicates and thus, we don't need a stable sort.
+	sort.Slice(keys, func(i, j int) bool {
+		return less(keys[i], keys[j])
+	})
+
+	return keys
 }
