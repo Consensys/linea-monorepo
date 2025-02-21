@@ -1,0 +1,219 @@
+package experiment
+
+import (
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+)
+
+// ModuleName is a name used to identify an horizontal module
+type ModuleName string
+
+var (
+	// NoModuleFound is a default module name that is returned whenever
+	// the discoverer gives conflicting modules names for an item or
+	// a column.
+	NoModuleFound ModuleName = ModuleName("no module found")
+	// AnyModule is a default module name that is returned to indicate
+	// the provided item is not assigned any particular module. For
+	// instance [verifiercol.FromConst] or an [accessors.FromConst].
+	// Unlike [NoModuleFound], it does not indicate an error but more
+	// a wildcard.
+	AnyModule ModuleName = ModuleName("any module")
+)
+
+// ModuleDiscoverer a set of methods responsible for the horizontal splittings (i.e., splitting to modules)
+type ModuleDiscoverer interface {
+	// Analyze is responsible for letting the module discoverer compute how to
+	// group best the columns into modules.
+	Analyze(comp *wizard.CompiledIOP)
+	// ModuleList returns the list of module names
+	ModuleList() []ModuleName
+	// FindModule returns the module corresponding to a column. The function is
+	// not required to return a column name for [verifier.VerifierCol]. The
+	// implementation is required to work using **only** the name of the column
+	// to find the result so the user can pass either columns from the original
+	// (unsplit) compiled-IOP or from a particular segment.
+	ModuleOf(col *column.Natural) ModuleName
+	// NewSizeOf returns the split-size of a column in the module.
+	NewSizeOf(col ifaces.Column) int
+}
+
+// ExpressionIsInModule is a helper function that returns the module of a [symbolic.Expression]
+// using the informations of the discoverer. The resolution of the module name
+// occurs as follows:
+//   - If the expression is a constant, the module is [AnyModule].
+//   - By default, the expression of type [AnyModule].
+//   - If the expression contains operands that are not [AnyModule]
+//     but have the same type. Then the expression takes their type.
+//   - If the expression contains variables that are from different modules,
+//     (excluding [AnyModule]), the function returns [NoModuleFound].
+func ModuleOfExpr(disc ModuleDiscoverer, expr *symbolic.Expression) ModuleName {
+	board := expr.Board()
+	metadata := board.ListVariableMetadata()
+	return ModuleOfList(disc, metadata...)
+}
+
+// NewSizeOfExpr looks for the metadata in the expressions and resolves the new
+// size of the columns in the expression. The function returns 0 if the expression
+// does not have any size-resolvable item.
+func NewSizeOfExpr(disc ModuleDiscoverer, expr *symbolic.Expression) int {
+	board := expr.Board()
+	metadata := board.ListVariableMetadata()
+	newSize := 0
+
+	for _, m := range metadata {
+		if c, ok := m.(ifaces.Column); ok {
+			cSize := disc.NewSizeOf(c)
+
+			if cSize == 0 {
+				continue
+			}
+
+			if newSize == 0 {
+				newSize = cSize
+				continue
+			}
+
+			if cSize != newSize {
+				utils.Panic("inconsistenct size: col=%v has-size=%v but expected=%v", c.GetColID(), disc.NewSizeOf(c), newSize)
+			}
+		}
+	}
+	return newSize
+}
+
+// ModuleOfColumn returns the module associated with the provided column.
+// The provided column can be of any type unlike what [ModuleDiscoverer.ModuleOf]
+// requires.
+func ModuleOfColumn(disc ModuleDiscoverer, col ifaces.Column) ModuleName {
+
+	switch c := col.(type) {
+
+	case column.Natural:
+		return disc.ModuleOf(&c)
+
+	case column.Shifted:
+		return ModuleOfColumn(disc, c.Parent)
+
+	case verifiercol.ConstCol:
+		return AnyModule
+
+	case verifiercol.FromAccessors:
+		return ModuleOfList(disc, c.Accessors...)
+
+	case verifiercol.ExpandedVerifCol:
+		return ModuleOfColumn(disc, c.Verifiercol)
+
+	default:
+		utils.Panic("expected type of column: %T", col)
+	}
+
+	return ""
+}
+
+// NewSizeOfColumn returns the new size of the provided column. If the
+// column size is not resolvable (but expected), the function returns
+// zero.
+//
+// The function panics if the type of the column is unexpected: all
+// the [verifiercol.VerifierCol] except for [verifiercol.ConstCol].
+func NewSizeOfColumn(disc ModuleDiscoverer, col ifaces.Column) int {
+
+	switch c := col.(type) {
+	case column.Natural:
+		return disc.NewSizeOf(c)
+	case column.Shifted:
+		return NewSizeOfColumn(disc, c.Parent)
+	case verifiercol.ConstCol:
+		return 0
+	default:
+		utils.Panic("expected type of column: %T", col)
+	}
+
+	return -1
+}
+
+// ModuleOfAccessor returns the module associated with acc
+func ModuleOfAccessor(disc ModuleDiscoverer, acc ifaces.Accessor) ModuleName {
+
+	switch a := acc.(type) {
+	case *accessors.FromConstAccessor:
+		return AnyModule
+	case *accessors.FromExprAccessor:
+		return ModuleOfExpr(disc, a.Expr)
+	case *accessors.FromCoinAccessor:
+		return AnyModule
+	case *accessors.FromPublicColumn:
+		return ModuleOfColumn(disc, a.Col)
+	case *accessors.FromLocalOpeningYAccessor:
+		return ModuleOfColumn(disc, a.Q.Pol)
+	default:
+		utils.Panic("expected type of accessor: %T", acc)
+	}
+
+	return ""
+}
+
+// ModuleOfList returns the module associated with the provided list of
+// items. Items can be either [ifaces.Column], [ifaces.Accessor] or [symbolic.Expression].
+func ModuleOfList[T any](disc ModuleDiscoverer, items ...T) ModuleName {
+
+	res := AnyModule
+
+	for _, item_ := range items {
+
+		var m ModuleName
+
+		switch item := any(item_).(type) {
+		case ifaces.Accessor:
+			m = ModuleOfAccessor(disc, item)
+		case ifaces.Column:
+			m = ModuleOfColumn(disc, item)
+		case *symbolic.Expression:
+			m = ModuleOfExpr(disc, item)
+		case coin.Info:
+			m = AnyModule
+		case variables.X, variables.PeriodicSample:
+			m = AnyModule
+		default:
+			utils.Panic("unexpected type %T", item)
+		}
+
+		if m == NoModuleFound {
+			return NoModuleFound
+		}
+
+		if m == AnyModule {
+			continue
+		}
+
+		if res == AnyModule {
+			res = m
+		}
+
+		if res != m {
+			return NoModuleFound
+		}
+	}
+
+	return res
+}
+
+// MustBeResolved checks that a module name is neither [AnyModule] or [NoModuleFound]
+// and throws a panic if it is not.
+func (m ModuleName) MustBeResolved() {
+	if m == AnyModule {
+		utils.Panic("could not resolve module of numerator or denominator, both are AnyModule")
+	}
+
+	if m == NoModuleFound {
+		utils.Panic("could not resolve module of numerator or denominator, one is NoModuleFound")
+	}
+}
