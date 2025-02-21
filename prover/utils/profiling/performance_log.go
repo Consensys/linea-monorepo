@@ -1,6 +1,8 @@
 package profiling
 
 import (
+	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path"
@@ -29,11 +31,12 @@ type PerformanceLog struct {
 	MemoryAllocatedPerSecondGiB        []float64
 	MemoryGCNotDeallocatedPerSecondGiB []float64
 
-	// [min, avg, max] in GiB
+	// Memory usage stats [min, avg, max] in GiB
 	MemoryInUseStatsGiB            [3]float64
 	MemoryAllocatedStatsGiB        [3]float64
 	MemoryGCNotDeallocatedStatsGiB [3]float64
 
+	// Profiling files
 	cpuProfile *os.File
 	memProfile *os.File
 }
@@ -45,8 +48,14 @@ type performanceMonitor struct {
 }
 
 // StartPerformanceMonitor initializes and starts performance monitoring
-// and samples at the specified sampleRate
-func StartPerformanceMonitor(sampleRate time.Duration, profilePath, flameGraphPath string) *performanceMonitor {
+// and samples at the specified sampleRate. If flame graph is not needed
+// then empty string value may be passed
+func StartPerformanceMonitor(sampleRate time.Duration, profilePath, flameGraphPath string) (*performanceMonitor, error) {
+
+	if profilePath == "" {
+		return nil, errors.New("empty profile path specified")
+	}
+
 	m := &performanceMonitor{
 		log: &PerformanceLog{
 			ProfilePath:    profilePath,
@@ -57,22 +66,41 @@ func StartPerformanceMonitor(sampleRate time.Duration, profilePath, flameGraphPa
 		stopChan: make(chan struct{}),
 	}
 
-	// Start CPU and memory profiling
-	if f, err := os.Create(path.Join(profilePath, "cpu-profile.pb.gz")); err == nil {
+	// Ensure the flame graph path exists
+	if err := os.MkdirAll(profilePath, 0755); err != nil {
+		return nil, err
+	}
+
+	if flameGraphPath != "" {
+		if err := os.MkdirAll(flameGraphPath, 0755); err != nil {
+			return nil, err
+		}
+	}
+
+	// Start CPU profiling
+	cpuProfilePath := path.Join(m.log.ProfilePath, "cpu-profile.pb.gz")
+	if f, err := os.Create(cpuProfilePath); err != nil {
+		return nil, err
+	} else {
 		pprof.StartCPUProfile(f)
 		m.log.cpuProfile = f
 	}
-	if f, err := os.Create(path.Join(profilePath, "mem-profile.pb.gz")); err == nil {
+
+	// Start memory profiling
+	memProfilePath := path.Join(m.log.ProfilePath, "mem-profile.pb.gz")
+	if f, err := os.Create(memProfilePath); err != nil {
+		return nil, err
+	} else {
 		m.log.memProfile = f
 	}
 
 	// Start sampling every `sampleRate`
 	go m.sample(sampleRate)
-	return m
+	return m, nil
 }
 
 // Stop ends performance monitoring and returns the collected metrics
-func (m *performanceMonitor) Stop() *PerformanceLog {
+func (m *performanceMonitor) Stop() (*PerformanceLog, error) {
 	close(m.stopChan)
 	m.log.StopTime = time.Now()
 
@@ -80,16 +108,30 @@ func (m *performanceMonitor) Stop() *PerformanceLog {
 	if m.log.cpuProfile != nil {
 		pprof.StopCPUProfile()
 		m.log.cpuProfile.Close()
+
+		// Generate Flame graph for CPU
+		if m.log.FlameGraphPath != "" {
+			if err := m.log.generateFlameGraph("cpu-profile.pb.gz", "cpu-flamegraph.svg"); err != nil {
+				return nil, fmt.Errorf("failed to generate CPU flame graph: %v", err)
+			}
+		}
 	}
 
 	// Write memory profile
 	if m.log.memProfile != nil {
 		pprof.WriteHeapProfile(m.log.memProfile)
 		m.log.memProfile.Close()
+
+		// Generate Flame graph for Memory
+		if m.log.FlameGraphPath != "" {
+			if err := m.log.generateFlameGraph("mem-profile.pb.gz", "mem-flamegraph.svg"); err != nil {
+				return nil, fmt.Errorf("failed to generate Memory flame graph: %v", err)
+			}
+		}
 	}
 
 	m.calculateStats()
-	return m.log
+	return m.log, nil
 }
 
 // sample collects performance metrics at regular intervals

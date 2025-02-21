@@ -3,21 +3,25 @@ package profiling
 import (
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 
 	"github.com/google/pprof/profile"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // GenerateFlameGraph generates a flame graph from a profile file
-func (pl *PerformanceLog) GenerateFlameGraph() error {
+func (pl *PerformanceLog) generateFlameGraph(profileFile, outputFile string) error {
+
+	logrus.Infof("Generating flame graph from: %s to %s \n", path.Join(pl.ProfilePath, profileFile), path.Join(pl.FlameGraphPath, outputFile))
 	// Ensure the output directory exists
 	if err := os.MkdirAll(pl.FlameGraphPath, 0755); err != nil {
 		return errors.Wrap(err, "failed to create output directory")
 	}
 
 	// Read the profile file
-	prof, err := os.Open(pl.ProfilePath)
+	prof, err := os.Open(path.Join(pl.ProfilePath, profileFile))
 	if err != nil {
 		return errors.Wrap(err, "failed to open profile file")
 	}
@@ -36,7 +40,7 @@ func (pl *PerformanceLog) GenerateFlameGraph() error {
 	}
 
 	// Generate the flame graph using pprof
-	flameGraphPath := filepath.Join(pl.FlameGraphPath, "flamegraph.svg")
+	flameGraphPath := filepath.Join(pl.FlameGraphPath, outputFile)
 	cmd := exec.Command("go", "tool", "pprof", "-svg", "-output", flameGraphPath, tempFile)
 	if err := cmd.Run(); err != nil {
 		return errors.Wrap(err, "failed to generate flame graph")
