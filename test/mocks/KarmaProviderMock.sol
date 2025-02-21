@@ -3,18 +3,18 @@ pragma solidity ^0.8.26;
 
 import { IRewardProvider } from "../../src/interfaces/IRewardProvider.sol";
 
-contract XPProviderMock is IRewardProvider {
+contract KarmaProviderMock is IRewardProvider {
     // solhint-disable-next-line
-    mapping(address => uint256) public userXPShare;
+    mapping(address => uint256) public userKarmaShare;
 
-    uint256 public totalXPShares;
+    uint256 public totalKarmaShares;
 
-    function setUserXPShare(address user, uint256 xp) external {
-        userXPShare[user] = xp;
+    function setUserKarmaShare(address user, uint256 karma) external {
+        userKarmaShare[user] = karma;
     }
 
-    function setTotalXPShares(uint256 xp) external {
-        totalXPShares = xp;
+    function setTotalKarmaShares(uint256 karma) external {
+        totalKarmaShares = karma;
     }
 
     function rewardsBalanceOf(address) external pure override returns (uint256) {
@@ -22,10 +22,10 @@ contract XPProviderMock is IRewardProvider {
     }
 
     function rewardsBalanceOfAccount(address account) external view override returns (uint256) {
-        return userXPShare[account];
+        return userKarmaShare[account];
     }
 
     function totalRewardsSupply() external view override returns (uint256) {
-        return totalXPShares;
+        return totalKarmaShares;
     }
 }

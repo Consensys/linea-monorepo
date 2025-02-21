@@ -14,8 +14,8 @@ abstract contract BaseNFTMetadataGenerator is INFTMetadataGenerator, Ownable {
     }
 
     function generate(address account, uint256 balance) external view returns (string memory) {
-        string memory baseName = "XPNFT Token ";
-        string memory baseDescription = "This is a XPNFT token for address ";
+        string memory baseName = "KarmaNFT ";
+        string memory baseDescription = "This is a KarmaNFT for address ";
 
         string memory propName = string(abi.encodePacked(baseName, Strings.toHexString(account)));
         string memory propDescription = string(

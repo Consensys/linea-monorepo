@@ -8,27 +8,27 @@ interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
 }
 
-contract XPNFTToken is Ownable {
-    error XPNFT__TransferNotAllowed();
-    error XPNFT__InvalidTokenId();
+contract KarmaNFT is Ownable {
+    error KarmaNFT__TransferNotAllowed();
+    error KarmaNFT__InvalidTokenId();
 
-    IERC20 public xpToken;
+    IERC20 public karmaToken;
     INFTMetadataGenerator public metadataGenerator;
 
-    string private name = "XPNFT";
-    string private symbol = "XPNFT";
+    string private name = "KarmaNFT";
+    string private symbol = "KARMANFT";
 
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
 
     modifier onlyValidTokenId(uint256 tokenId) {
         if (tokenId > type(uint160).max) {
-            revert XPNFT__InvalidTokenId();
+            revert KarmaNFT__InvalidTokenId();
         }
         _;
     }
 
-    constructor(address xpTokenAddress, address _metadataGenerator) Ownable(msg.sender) {
-        xpToken = IERC20(xpTokenAddress);
+    constructor(address karmaTokenAddress, address _metadataGenerator) Ownable(msg.sender) {
+        karmaToken = IERC20(karmaTokenAddress);
         metadataGenerator = INFTMetadataGenerator(_metadataGenerator);
     }
 
@@ -50,23 +50,23 @@ contract XPNFTToken is Ownable {
     }
 
     function safeTransferFrom(address, address, uint256, bytes calldata) external pure {
-        revert XPNFT__TransferNotAllowed();
+        revert KarmaNFT__TransferNotAllowed();
     }
 
     function safeTransferFrom(address, address, uint256) external pure {
-        revert XPNFT__TransferNotAllowed();
+        revert KarmaNFT__TransferNotAllowed();
     }
 
     function transferFrom(address, address, uint256) external pure {
-        revert XPNFT__TransferNotAllowed();
+        revert KarmaNFT__TransferNotAllowed();
     }
 
     function approve(address, uint256) external pure {
-        revert XPNFT__TransferNotAllowed();
+        revert KarmaNFT__TransferNotAllowed();
     }
 
     function setApprovalForAll(address, bool) external pure {
-        revert XPNFT__TransferNotAllowed();
+        revert KarmaNFT__TransferNotAllowed();
     }
 
     function getApproved(uint256) external pure returns (address) {
@@ -79,7 +79,7 @@ contract XPNFTToken is Ownable {
 
     function tokenURI(uint256 tokenId) external view onlyValidTokenId(tokenId) returns (string memory) {
         address account = address(uint160(tokenId));
-        uint256 balance = xpToken.balanceOf(account);
+        uint256 balance = karmaToken.balanceOf(account);
         return metadataGenerator.generate(account, balance);
     }
 }

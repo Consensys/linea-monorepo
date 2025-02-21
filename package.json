@@ -23,10 +23,10 @@
   "scripts": {
     "clean": "rm -rf cache out",
     "lint": "pnpm lint:sol && pnpm prettier:check",
-    "verify": "pnpm verify:rewards_streamer_mp && pnpm verify:xp_token && pnpm verify:emergency_mode",
+    "verify": "pnpm verify:rewards_streamer_mp && pnpm verify:karma && pnpm verify:emergency_mode",
     "verify:rewards_streamer_mp": "certoraRun certora/confs/RewardsStreamerMP.conf",
     "verify:emergency_mode": "certoraRun certora/confs/EmergencyMode.conf",
-    "verify:xp_token": "certoraRun certora/confs/XPToken.conf",
+    "verify:karma": "certoraRun certora/confs/Karma.conf",
     "lint:sol": "forge fmt --check && pnpm solhint {script,src,test,certora}/**/*.sol",
     "prettier:check": "prettier --check **/*.{json,md,yml} --ignore-path=.prettierignore",
     "prettier:write": "prettier --write **/*.{json,md,yml} --ignore-path=.prettierignore",

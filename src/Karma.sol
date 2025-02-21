@@ -5,15 +5,15 @@ import { Ownable, Ownable2Step } from "@openzeppelin/contracts/access/Ownable2St
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IRewardProvider } from "./interfaces/IRewardProvider.sol";
 
-contract XPToken is ERC20, Ownable2Step {
-    error XPToken__MintAllowanceExceeded();
+contract Karma is ERC20, Ownable2Step {
+    error Karma__MintAllowanceExceeded();
 
-    string public constant NAME = "XP Token";
-    string public constant SYMBOL = "XP";
+    string public constant NAME = "Karma";
+    string public constant SYMBOL = "KARMA";
 
     IRewardProvider[] public rewardProviders;
 
-    error XPToken__TransfersNotAllowed();
+    error Karma__TransfersNotAllowed();
     error RewardProvider__IndexOutOfBounds();
 
     constructor() ERC20(NAME, SYMBOL) Ownable(msg.sender) { }
@@ -45,7 +45,7 @@ contract XPToken is ERC20, Ownable2Step {
 
     function mint(address account, uint256 amount) external onlyOwner {
         if (amount > _mintAllowance()) {
-            revert XPToken__MintAllowanceExceeded();
+            revert Karma__MintAllowanceExceeded();
         }
 
         _mint(account, amount);
@@ -87,15 +87,15 @@ contract XPToken is ERC20, Ownable2Step {
     }
 
     function transfer(address, uint256) public pure override returns (bool) {
-        revert XPToken__TransfersNotAllowed();
+        revert Karma__TransfersNotAllowed();
     }
 
     function approve(address, uint256) public pure override returns (bool) {
-        revert XPToken__TransfersNotAllowed();
+        revert Karma__TransfersNotAllowed();
     }
 
     function transferFrom(address, address, uint256) public pure override returns (bool) {
-        revert XPToken__TransfersNotAllowed();
+        revert Karma__TransfersNotAllowed();
     }
 
     function allowance(address, address) public pure override returns (uint256) {

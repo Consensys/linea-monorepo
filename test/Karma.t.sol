@@ -2,27 +2,27 @@
 pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
-import { XPToken } from "../src/XPToken.sol";
-import { XPProviderMock } from "./mocks/XPProviderMock.sol";
+import { Karma } from "../src/Karma.sol";
+import { KarmaProviderMock } from "./mocks/KarmaProviderMock.sol";
 import { IRewardProvider } from "../src/interfaces/IRewardProvider.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract XPTokenTest is Test {
-    XPToken xpToken;
+contract KarmaTest is Test {
+    Karma xpToken;
 
     address owner = makeAddr("owner");
     address alice = makeAddr("alice");
     address bob = makeAddr("bob");
 
-    XPProviderMock provider1;
-    XPProviderMock provider2;
+    KarmaProviderMock provider1;
+    KarmaProviderMock provider2;
 
     function setUp() public virtual {
         vm.prank(owner);
-        xpToken = new XPToken();
+        xpToken = new Karma();
 
-        provider1 = new XPProviderMock();
-        provider2 = new XPProviderMock();
+        provider1 = new KarmaProviderMock();
+        provider2 = new KarmaProviderMock();
 
         vm.prank(owner);
         xpToken.addRewardProvider(provider1);
@@ -31,8 +31,8 @@ contract XPTokenTest is Test {
         xpToken.addRewardProvider(provider2);
     }
 
-    function testAddXPProviderOnlyOwner() public {
-        XPProviderMock provider3 = new XPProviderMock();
+    function testAddKarmaProviderOnlyOwner() public {
+        KarmaProviderMock provider3 = new KarmaProviderMock();
 
         vm.prank(alice);
         vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
@@ -48,7 +48,7 @@ contract XPTokenTest is Test {
         assertEq(address(providers[2]), address(provider3));
     }
 
-    function testRemoveXPProviderOnlyOwner() public {
+    function testRemoveKarmaProviderOnlyOwner() public {
         vm.prank(alice);
         vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
         xpToken.removeRewardProvider(0);
@@ -61,15 +61,15 @@ contract XPTokenTest is Test {
         assertEq(address(providers[0]), address(provider2));
     }
 
-    function testRemoveXPProviderIndexOutOfBounds() public {
+    function testRemoveKarmaProviderIndexOutOfBounds() public {
         vm.prank(owner);
-        vm.expectRevert(XPToken.RewardProvider__IndexOutOfBounds.selector);
+        vm.expectRevert(Karma.RewardProvider__IndexOutOfBounds.selector);
         xpToken.removeRewardProvider(10);
     }
 
     function testTotalSupply() public {
-        provider1.setTotalXPShares(1000 ether);
-        provider2.setTotalXPShares(2000 ether);
+        provider1.setTotalKarmaShares(1000 ether);
+        provider2.setTotalKarmaShares(2000 ether);
 
         vm.prank(owner);
         xpToken.mint(owner, 500 ether);
@@ -78,7 +78,7 @@ contract XPTokenTest is Test {
         assertEq(totalSupply, 3500 ether);
     }
 
-    function testBalanceOfWithNoSystemTotalXP() public view {
+    function testBalanceOfWithNoSystemTotalKarma() public view {
         uint256 aliceBalance = xpToken.balanceOf(alice);
         assertEq(aliceBalance, 0);
 
@@ -87,11 +87,11 @@ contract XPTokenTest is Test {
     }
 
     function testBalanceOf() public {
-        provider1.setTotalXPShares(1000 ether);
-        provider2.setTotalXPShares(2000 ether);
+        provider1.setTotalKarmaShares(1000 ether);
+        provider2.setTotalKarmaShares(2000 ether);
 
-        provider1.setUserXPShare(alice, 1000e18);
-        provider2.setUserXPShare(alice, 2000e18);
+        provider1.setUserKarmaShare(alice, 1000e18);
+        provider2.setUserKarmaShare(alice, 2000e18);
 
         vm.prank(owner);
         xpToken.mint(alice, 500e18);
@@ -103,8 +103,8 @@ contract XPTokenTest is Test {
     }
 
     function testMintOnlyOwner() public {
-        provider1.setTotalXPShares(1000 ether);
-        provider2.setTotalXPShares(2000 ether);
+        provider1.setTotalKarmaShares(1000 ether);
+        provider2.setTotalKarmaShares(2000 ether);
         assertEq(xpToken.totalSupply(), 3000 ether);
 
         vm.prank(alice);
@@ -117,13 +117,13 @@ contract XPTokenTest is Test {
     }
 
     function testTransfersNotAllowed() public {
-        vm.expectRevert(XPToken.XPToken__TransfersNotAllowed.selector);
+        vm.expectRevert(Karma.Karma__TransfersNotAllowed.selector);
         xpToken.transfer(alice, 100e18);
 
-        vm.expectRevert(XPToken.XPToken__TransfersNotAllowed.selector);
+        vm.expectRevert(Karma.Karma__TransfersNotAllowed.selector);
         xpToken.approve(alice, 100e18);
 
-        vm.expectRevert(XPToken.XPToken__TransfersNotAllowed.selector);
+        vm.expectRevert(Karma.Karma__TransfersNotAllowed.selector);
         xpToken.transferFrom(alice, bob, 100e18);
 
         uint256 allowance = xpToken.allowance(alice, bob);
@@ -131,15 +131,15 @@ contract XPTokenTest is Test {
     }
 }
 
-contract XPTokenOwnershipTest is Test {
-    XPToken xpToken;
+contract KarmaOwnershipTest is Test {
+    Karma xpToken;
 
     address owner = makeAddr("owner");
     address alice = makeAddr("alice");
 
     function setUp() public {
         vm.prank(owner);
-        xpToken = new XPToken();
+        xpToken = new Karma();
     }
 
     function testInitialOwner() public view {
@@ -157,15 +157,15 @@ contract XPTokenOwnershipTest is Test {
     }
 }
 
-contract XPTokenMintAllowanceTest is XPTokenTest {
+contract KarmaMintAllowanceTest is KarmaTest {
     function setUp() public override {
         super.setUp();
     }
 
     function testMintAllowance_Available() public {
         // 3000 external => maxSupply = 9000
-        provider1.setTotalXPShares(1000 ether);
-        provider2.setTotalXPShares(2000 ether);
+        provider1.setTotalKarmaShares(1000 ether);
+        provider2.setTotalKarmaShares(2000 ether);
 
         vm.prank(owner);
         xpToken.mint(owner, 500 ether);
@@ -177,8 +177,8 @@ contract XPTokenMintAllowanceTest is XPTokenTest {
 
     function testMintAllowance_NotAvailable() public {
         // 3000 external => maxSupply = 9000
-        provider1.setTotalXPShares(1000 ether);
-        provider2.setTotalXPShares(2000 ether);
+        provider1.setTotalKarmaShares(1000 ether);
+        provider2.setTotalKarmaShares(2000 ether);
 
         vm.prank(owner);
         xpToken.mint(owner, 6000 ether);
@@ -190,8 +190,8 @@ contract XPTokenMintAllowanceTest is XPTokenTest {
 
     function testMint_RevertWithAllowanceExceeded() public {
         // 3000 external => maxSupply = 9000
-        provider1.setTotalXPShares(1000 ether);
-        provider2.setTotalXPShares(2000 ether);
+        provider1.setTotalKarmaShares(1000 ether);
+        provider2.setTotalKarmaShares(2000 ether);
 
         vm.prank(owner);
         xpToken.mint(owner, 500 ether);
@@ -199,14 +199,14 @@ contract XPTokenMintAllowanceTest is XPTokenTest {
         // allowed to mint 5500
 
         vm.prank(owner);
-        vm.expectRevert(XPToken.XPToken__MintAllowanceExceeded.selector);
+        vm.expectRevert(Karma.Karma__MintAllowanceExceeded.selector);
         xpToken.mint(owner, 6000 ether);
     }
 
     function testMint_Ok() public {
         // 3000 external => maxSupply = 9000
-        provider1.setTotalXPShares(1000 ether);
-        provider2.setTotalXPShares(2000 ether);
+        provider1.setTotalKarmaShares(1000 ether);
+        provider2.setTotalKarmaShares(2000 ether);
 
         vm.prank(owner);
         xpToken.mint(owner, 500 ether);

@@ -23,9 +23,9 @@ contract NFTMetadataGeneratorURLTest is Test {
     function testGenerateMetadata() public view {
         string memory expectedMetadata = "data:application/json;base64,";
         bytes memory json = abi.encodePacked(
-            "{\"name\":\"XPNFT Token 0x328809bc894f92807417d2dad6b7c998c1afdac6\",",
+            "{\"name\":\"KarmaNFT 0x328809bc894f92807417d2dad6b7c998c1afdac6\",",
             // solhint-disable-next-line
-            "\"description\":\"This is a XPNFT token for address 0x328809bc894f92807417d2dad6b7c998c1afdac6 with balance 10000000000000000000\",",
+            "\"description\":\"This is a KarmaNFT for address 0x328809bc894f92807417d2dad6b7c998c1afdac6 with balance 10000000000000000000\",",
             "\"image\":\"http://test.local/images/0x328809bc894f92807417d2dad6b7c998c1afdac6.jpg\"}"
         );
         expectedMetadata = string(abi.encodePacked(expectedMetadata, Base64.encode(json)));
