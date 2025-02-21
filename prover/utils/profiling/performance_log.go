@@ -3,21 +3,26 @@ package profiling
 import (
 	"math"
 	"os"
+	"path"
 	"runtime"
 	"runtime/metrics"
 	"runtime/pprof"
 	"time"
 
-	"go.uber.org/goleak"
+	"github.com/sirupsen/logrus"
 )
 
 // PerformanceLog captures performance metrics
 type PerformanceLog struct {
+	ProfilePath    string
+	FlameGraphPath string
+
 	StartTime time.Time
 	StopTime  time.Time
 
-	CpuUsageStats       [3]float64 // [min, avg, max] in percent
+	// CPU Usage Stats
 	CpuUsageEachSeconds []float64  // CPU usage per second
+	CpuUsageStats       [3]float64 // [min, avg, max] in percent
 
 	// Memory usage per second in GiB
 	MemoryInUsePerSecondGiB            []float64
@@ -35,35 +40,34 @@ type PerformanceLog struct {
 
 // performanceMonitor manages the collection of performance metrics
 type performanceMonitor struct {
-	log       *PerformanceLog
-	stopChan  chan struct{}
-	startTime time.Time
+	log      *PerformanceLog
+	stopChan chan struct{}
 }
 
 // StartPerformanceMonitor initializes and starts performance monitoring
-func StartPerformanceMonitor() *performanceMonitor {
+// and samples at the specified sampleRate
+func StartPerformanceMonitor(sampleRate time.Duration, profilePath, flameGraphPath string) *performanceMonitor {
 	m := &performanceMonitor{
 		log: &PerformanceLog{
+			ProfilePath:    profilePath,
+			FlameGraphPath: flameGraphPath,
+
 			StartTime: time.Now(),
 		},
-		stopChan:  make(chan struct{}),
-		startTime: time.Now(),
+		stopChan: make(chan struct{}),
 	}
 
 	// Start CPU and memory profiling
-	if f, err := os.Create("cpu-profile.pb.gz"); err == nil {
+	if f, err := os.Create(path.Join(profilePath, "cpu-profile.pb.gz")); err == nil {
 		pprof.StartCPUProfile(f)
 		m.log.cpuProfile = f
 	}
-	if f, err := os.Create("mem-profile.pb.gz"); err == nil {
+	if f, err := os.Create(path.Join(profilePath, "mem-profile.pb.gz")); err == nil {
 		m.log.memProfile = f
 	}
 
-	// Start goroutine leak detection
-	goleak.VerifyNone(nil)
-
-	// Start sampling every second
-	go m.sample()
+	// Start sampling every `sampleRate`
+	go m.sample(sampleRate)
 	return m
 }
 
@@ -89,8 +93,8 @@ func (m *performanceMonitor) Stop() *PerformanceLog {
 }
 
 // sample collects performance metrics at regular intervals
-func (m *performanceMonitor) sample() {
-	ticker := time.NewTicker(time.Second)
+func (m *performanceMonitor) sample(duration time.Duration) {
+	ticker := time.NewTicker(duration)
 	defer ticker.Stop()
 
 	var memStats runtime.MemStats
@@ -187,4 +191,18 @@ func calculateMinAvgMax(values []float64) (min, avg, max float64) {
 
 	avg = sum / float64(len(values))
 	return min, avg, max
+}
+
+// PrintPerformanceLog prints the collected performance metrics
+func (pl *PerformanceLog) PrintMetrics() {
+	logrus.Printf("Start Time: %v\n", pl.StartTime)
+	logrus.Printf("Stop Time: %v\n", pl.StopTime)
+	logrus.Printf("CPU Usage Stats: min=%.2f%%, avg=%.2f%%, max=%.2f%%\n",
+		pl.CpuUsageStats[0], pl.CpuUsageStats[1], pl.CpuUsageStats[2])
+	logrus.Printf("Memory In Use Stats: min=%.2f GiB, avg=%.2f GiB, max=%.2f GiB\n",
+		pl.MemoryInUseStatsGiB[0], pl.MemoryInUseStatsGiB[1], pl.MemoryInUseStatsGiB[2])
+	logrus.Printf("Memory Allocated Stats: min=%.2f GiB, avg=%.2f GiB, max=%.2f GiB\n",
+		pl.MemoryAllocatedStatsGiB[0], pl.MemoryAllocatedStatsGiB[1], pl.MemoryAllocatedStatsGiB[2])
+	logrus.Printf("Memory GC Not Deallocated Stats: min=%.2f GiB, avg=%.2f GiB, max=%.2f GiB\n",
+		pl.MemoryGCNotDeallocatedStatsGiB[0], pl.MemoryGCNotDeallocatedStatsGiB[1], pl.MemoryGCNotDeallocatedStatsGiB[2])
 }
