@@ -16,6 +16,8 @@ import (
 
 // PerformanceLog captures performance metrics
 type PerformanceLog struct {
+	Description string
+
 	ProfilePath    string
 	FlameGraphPath string
 
@@ -50,7 +52,7 @@ type performanceMonitor struct {
 // StartPerformanceMonitor initializes and starts performance monitoring
 // and samples at the specified sampleRate. If flame graph is not needed
 // then empty string value may be passed
-func StartPerformanceMonitor(sampleRate time.Duration, profilePath, flameGraphPath string) (*performanceMonitor, error) {
+func StartPerformanceMonitor(description string, sampleRate time.Duration, profilePath, flameGraphPath string) (*performanceMonitor, error) {
 
 	if profilePath == "" {
 		return nil, errors.New("empty profile path specified")

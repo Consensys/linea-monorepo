@@ -1,7 +1,10 @@
 package wizard
 
 import (
+	"path"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -12,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
 // ProverStep represents an operation to be performed by the prover of a
@@ -124,6 +128,9 @@ type ProverRuntime struct {
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
 	FiatShamirHistory [][2][]field.Element
+
+	// PerformanceLogs stores performance metrics for each major operation
+	PerformanceLogs []*profiling.PerformanceLog
 }
 
 // Prove is the top-level function that runs the Prover on the user's side. It
@@ -158,10 +165,37 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 	/*
 		Then, run the compiled prover steps
 	*/
-	runtime.runProverSteps()
+
+	// Disable flamegraph temp
+	profilingPath, flameGraphPath := "./wizard-performance", ""
+	sampleDuration := 1 * time.Second
+
+	// Helper function to setup, execute, and stop performance monitoring
+	runWithPerformanceMonitor := func(name string, action func()) {
+		monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, path.Join(profilingPath, name), flameGraphPath)
+		if err != nil {
+			panic("error setting up performance monitor for " + name)
+		}
+		action()
+		perfLog, err := monitor.Stop()
+		if err != nil {
+			panic("error retrieving performance log for " + name)
+		}
+		runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
+	}
+
+	// Initial prover step
+	currRoundStr := strconv.Itoa(runtime.currRound)
+	runWithPerformanceMonitor("prover-steps-round"+currRoundStr, runtime.runProverSteps)
+
 	for runtime.currRound+1 < runtime.NumRounds() {
-		runtime.goNextRound()
-		runtime.runProverSteps()
+		currRoundStr = strconv.Itoa(runtime.currRound + 1)
+
+		// Next round
+		runWithPerformanceMonitor("next-round"+currRoundStr, runtime.goNextRound)
+
+		// Prover steps for the next round
+		runWithPerformanceMonitor("prover-steps-round"+currRoundStr, runtime.runProverSteps)
 	}
 
 	/*
