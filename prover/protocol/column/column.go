@@ -56,13 +56,6 @@ func RootParents(h ifaces.Column) []ifaces.Column {
 }
 
 // StackOffset sums all the offsets contained in the handle and return the result
-//
-// If `h` is an [Interleaved] or derive from an [Interleaved] column, it will
-// expect that the stacked offset of its parent is zero. (i.e, we should always
-// shift an interleave but never interleave a shift. In practice, this does not
-// cause issues as we do not have that in the arithmetization). This restriction
-// is motivated by the fact that the "offset" would not be defined in this
-// situation.
 func StackOffsets(h ifaces.Column) int {
 
 	if !h.IsComposite() {
