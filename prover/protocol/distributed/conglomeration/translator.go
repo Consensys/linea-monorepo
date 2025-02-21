@@ -254,7 +254,7 @@ func (run *runtimeTranslator) GetSpec() *wizard.CompiledIOP {
 	return run.Rt.GetSpec()
 }
 
-func (run *runtimeTranslator) GetPublicInput(name string) field.Element {
+func (run *runtimeTranslator) GetPublicInput(name string) any {
 	name = run.Prefix + "." + name
 	return run.Rt.GetPublicInput(name)
 }

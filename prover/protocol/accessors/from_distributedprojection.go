@@ -44,6 +44,16 @@ func (l *FromDistributedProjectionAccessor) GetVal(run ifaces.Runtime) field.Ele
 	return params.ScaledHorner
 }
 
+func (l *FromDistributedProjectionAccessor) GetValCumSumCurr(run ifaces.Runtime) field.Element {
+	params := run.GetParams(l.Q.ID).(query.DistributedProjectionParams)
+	return params.HashCumSumOneCurr
+}
+
+func (l *FromDistributedProjectionAccessor) GetValCumSumPrev(run ifaces.Runtime) field.Element {
+	params := run.GetParams(l.Q.ID).(query.DistributedProjectionParams)
+	return params.HashCumSumOnePrev
+}
+
 // GetFrontendVariable implements [ifaces.Accessor]
 func (l *FromDistributedProjectionAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
 	params := circ.GetParams(l.Q.ID).(query.GnarkDistributedProjectionParams)

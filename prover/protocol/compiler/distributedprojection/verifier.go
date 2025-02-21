@@ -74,8 +74,7 @@ func (va *distributedProjectionVerifierAction) scaledHornerCheck(run wizard.Runt
 		)
 		if va.IsA[index] && va.IsB[index] {
 			var (
-				multA            = field.One()
-				multB            = field.One()
+				multA, multB     field.Element
 				hornerA, hornerB field.Element
 			)
 			hornerA = run.GetLocalPointEvalParams(va.HornerA0[index].ID).Y
@@ -91,7 +90,7 @@ func (va *distributedProjectionVerifierAction) scaledHornerCheck(run wizard.Runt
 			elemParam.Sub(&elemParam, &hornerB)
 		} else if va.IsA[index] && !va.IsB[index] {
 			var (
-				multA   = field.One()
+				multA   field.Element
 				hornerA field.Element
 			)
 			hornerA = run.GetLocalPointEvalParams(va.HornerA0[index].ID).Y
@@ -101,7 +100,7 @@ func (va *distributedProjectionVerifierAction) scaledHornerCheck(run wizard.Runt
 			elemParam.Add(&elemParam, &hornerA)
 		} else if !va.IsA[index] && va.IsB[index] {
 			var (
-				multB   = field.One()
+				multB   field.Element
 				hornerB field.Element
 			)
 			hornerB = run.GetLocalPointEvalParams(va.HornerB0[index].ID).Y
@@ -189,8 +188,7 @@ func (va *distributedProjectionVerifierAction) hashCheck(run wizard.Runtime) err
 	for index := range va.HornerA0 {
 		if va.IsA[index] && va.IsB[index] {
 			var (
-				sumA = field.Zero()
-				sumB = field.Zero()
+				sumA, sumB field.Element
 			)
 			sumA = field.NewElement(va.CumNumOnesPrevSegmentsA[index].Uint64())
 			sumA.Add(&sumA, &va.NumOnesCurrSegmentA[index])
@@ -199,17 +197,11 @@ func (va *distributedProjectionVerifierAction) hashCheck(run wizard.Runtime) err
 			oldState = mimc.BlockCompression(oldState, sumA)
 			oldState = mimc.BlockCompression(oldState, sumB)
 		} else if va.IsA[index] && !va.IsB[index] {
-			var (
-				sumA = field.Zero()
-			)
-			sumA = field.NewElement(va.CumNumOnesPrevSegmentsA[index].Uint64())
+			sumA := field.NewElement(va.CumNumOnesPrevSegmentsA[index].Uint64())
 			sumA.Add(&sumA, &va.NumOnesCurrSegmentA[index])
 			oldState = mimc.BlockCompression(oldState, sumA)
 		} else if !va.IsA[index] && va.IsB[index] {
-			var (
-				sumB = field.Zero()
-			)
-			sumB = field.NewElement(va.CumNumOnesPrevSegmentsB[index].Uint64())
+			sumB := field.NewElement(va.CumNumOnesPrevSegmentsB[index].Uint64())
 			sumB.Add(&sumB, &va.NumOnesCurrSegmentB[index])
 			oldState = mimc.BlockCompression(oldState, sumB)
 		} else {
@@ -226,46 +218,6 @@ func (va *distributedProjectionVerifierAction) hashCheck(run wizard.Runtime) err
 func (va *distributedProjectionVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	panic("unimplemented")
-	// var (
-	// 	actualParam = frontend.Variable(0)
-	// )
-	// for index := range va.HornerA0 {
-	// 	var (
-	// 		elemParam, multiplier, evalCoin frontend.Variable
-	// 	)
-	// 	if va.IsA[index] && va.IsB[index] {
-	// 		var (
-	// 			a, b frontend.Variable
-	// 		)
-	// 		a = run.GetLocalPointEvalParams(va.HornerA0[index].ID).Y
-	// 		b = run.GetLocalPointEvalParams(va.HornerB0[index].ID).Y
-	// 		elemParam = api.Sub(a, b)
-	// 		// Multiply the horner value with the evalCoin^(CumulativeNumOnesPrevSegments)
-	// 		evalCoin = run.GetRandomCoinField(va.EvalCoins[index].Name)
-	// 		multiplier = gnarkutil.Exp(api, evalCoin, int(va.CumNumOnesPrevSegments[index].Int64()))
-	// 		elemParam = api.Mul(elemParam, multiplier)
-	// 	} else if va.IsA[index] && !va.IsB[index] {
-	// 		a := run.GetLocalPointEvalParams(va.HornerA0[index].ID).Y
-	// 		elemParam = api.Add(elemParam, a)
-	// 		// Multiply the horner value with the evalCoin^(CumulativeNumOnesPrevSegments)
-	// 		evalCoin = run.GetRandomCoinField(va.EvalCoins[index].Name)
-	// 		multiplier = gnarkutil.Exp(api, evalCoin, int(va.CumNumOnesPrevSegments[index].Int64()))
-	// 		elemParam = api.Mul(elemParam, multiplier)
-	// 	} else if !va.IsA[index] && va.IsB[index] {
-	// 		b := run.GetLocalPointEvalParams(va.HornerB0[index].ID).Y
-	// 		elemParam = api.Sub(elemParam, b)
-	// 		// Multiply the horner value with the evalCoin^(CumulativeNumOnesPrevSegments)
-	// 		evalCoin = run.GetRandomCoinField(va.EvalCoins[index].Name)
-	// 		multiplier = gnarkutil.Exp(api, evalCoin, int(va.CumNumOnesPrevSegments[index].Int64()))
-	// 		elemParam = api.Mul(elemParam, multiplier)
-	// 	} else {
-	// 		utils.Panic("Unsupported verifier action registered for %v", va.Name)
-	// 	}
-	// 	actualParam = api.Add(actualParam, elemParam)
-	// }
-	// queryParam := run.GetDistributedProjectionParams(va.Name).Sum
-
-	// api.AssertIsEqual(actualParam, queryParam)
 }
 
 // Skip implements the [wizard.VerifierAction]

@@ -19,6 +19,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type AllVerifierRuntimes struct {
+	RuntimesA []wizard.Runtime
+	RuntimesB []wizard.Runtime
+	RuntimesC []wizard.Runtime
+}
+
 func TestDistributeProjection(t *testing.T) {
 	const (
 		numSegModuleA = 4
@@ -26,7 +32,7 @@ func TestDistributeProjection(t *testing.T) {
 		numSegModuleC = 4
 	)
 	var (
-		allVerfiers                                                   = []wizard.Runtime{}
+		allVerfiers                                                   = AllVerifierRuntimes{}
 		moduleAName                                                   = "moduleA"
 		moduleBName                                                   = "moduleB"
 		moduleCName                                                   = "moduleC"
@@ -212,6 +218,7 @@ func TestDistributeProjection(t *testing.T) {
 			require.NoError(t, valid)
 
 			// Compile and prove for moduleA
+			allVerfiers.RuntimesA = make([]wizard.Runtime, 0, numSegModuleA)
 			for proverID := 0; proverID < numSegModuleA; proverID++ {
 				proofA := wizard.Prove(moduleCompA, func(run *wizard.ProverRuntime) {
 					run.ParentRuntime = initialRuntime
@@ -221,11 +228,11 @@ func TestDistributeProjection(t *testing.T) {
 				runtimeA, validA := wizard.VerifyWithRuntime(moduleCompA, proofA, lppVerifierRuntime)
 				require.NoError(t, validA)
 
-				allVerfiers = append(allVerfiers, runtimeA)
-
+				allVerfiers.RuntimesA = append(allVerfiers.RuntimesA, runtimeA)
 			}
 
 			// Compile and prove for moduleB
+			allVerfiers.RuntimesB = make([]wizard.Runtime, 0, numSegModuleB)
 			for proverID := 0; proverID < numSegModuleB; proverID++ {
 				proofB := wizard.Prove(moduleCompB, func(run *wizard.ProverRuntime) {
 					run.ParentRuntime = initialRuntime
@@ -235,11 +242,12 @@ func TestDistributeProjection(t *testing.T) {
 				runtimeB, validB := wizard.VerifyWithRuntime(moduleCompB, proofB, lppVerifierRuntime)
 				require.NoError(t, validB)
 
-				allVerfiers = append(allVerfiers, runtimeB)
+				allVerfiers.RuntimesB = append(allVerfiers.RuntimesB, runtimeB)
 
 			}
 
 			// Compile and prove for moduleC
+			allVerfiers.RuntimesC = make([]wizard.Runtime, 0, numSegModuleC)
 			for proverID := 0; proverID < numSegModuleC; proverID++ {
 				proofC := wizard.Prove(moduleCompC, func(run *wizard.ProverRuntime) {
 					run.ParentRuntime = initialRuntime
@@ -249,7 +257,7 @@ func TestDistributeProjection(t *testing.T) {
 				runtimeC, validC := wizard.VerifyWithRuntime(moduleCompC, proofC, lppVerifierRuntime)
 				require.NoError(t, validC)
 
-				allVerfiers = append(allVerfiers, runtimeC)
+				allVerfiers.RuntimesC = append(allVerfiers.RuntimesC, runtimeC)
 			}
 
 			// apply the crosse checks over the public inputs.
@@ -261,16 +269,65 @@ func TestDistributeProjection(t *testing.T) {
 
 }
 
-func checkConsistency(runs []wizard.Runtime) error {
+func checkConsistency(allVerRuns AllVerifierRuntimes) error {
 
-	var res = field.Zero()
-	for _, run := range runs {
-		distProjectionParams := run.GetPublicInput(constants.DistributedProjectionPublicInput)
-		res.Add(&res, &distProjectionParams)
+	var (
+		res              = field.Zero()
+		currCumSumArrayA = make([]field.Element, 0, len(allVerRuns.RuntimesA))
+		prevCumSumArrayA = make([]field.Element, 0, len(allVerRuns.RuntimesA))
+		currCumSumArrayB = make([]field.Element, 0, len(allVerRuns.RuntimesB))
+		prevCumSumArrayB = make([]field.Element, 0, len(allVerRuns.RuntimesB))
+		currCumSumArrayC = make([]field.Element, 0, len(allVerRuns.RuntimesC))
+		prevCumSumArrayC = make([]field.Element, 0, len(allVerRuns.RuntimesC))
+	)
+	for _, run := range allVerRuns.RuntimesA {
+		distributedPubInputs_ := run.GetPublicInput(constants.DistributedProjectionPublicInput)
+		distributedPubInputs, ok := distributedPubInputs_.(wizard.DistributedProjectionPublicInput)
+		if !ok {
+			return errors.New("the distributed projection public input is not valid for module A")
+		}
+		res.Add(&res, &distributedPubInputs.ScaledHorner)
+		currCumSumArrayA = append(currCumSumArrayA, distributedPubInputs.CumSumCurr)
+		prevCumSumArrayA = append(prevCumSumArrayA, distributedPubInputs.CumSumPrev)
+	}
+	for _, run := range allVerRuns.RuntimesB {
+		distributedPubInputs_ := run.GetPublicInput(constants.DistributedProjectionPublicInput)
+		distributedPubInputs, ok := distributedPubInputs_.(wizard.DistributedProjectionPublicInput)
+		if !ok {
+			return errors.New("the distributed projection public input is not valid for module B")
+		}
+		res.Add(&res, &distributedPubInputs.ScaledHorner)
+		currCumSumArrayB = append(currCumSumArrayB, distributedPubInputs.CumSumCurr)
+		prevCumSumArrayB = append(prevCumSumArrayB, distributedPubInputs.CumSumPrev)
+	}
+	for _, run := range allVerRuns.RuntimesC {
+		distributedPubInputs_ := run.GetPublicInput(constants.DistributedProjectionPublicInput)
+		distributedPubInputs, ok := distributedPubInputs_.(wizard.DistributedProjectionPublicInput)
+		if !ok {
+			return errors.New("the distributed projection public input is not valid for module C")
+		}
+		res.Add(&res, &distributedPubInputs.ScaledHorner)
+		currCumSumArrayC = append(currCumSumArrayC, distributedPubInputs.CumSumCurr)
+		prevCumSumArrayC = append(prevCumSumArrayC, distributedPubInputs.CumSumPrev)
 	}
 
 	if !res.IsZero() {
 		return errors.New("the distributed projection sums do not cancel each others")
+	}
+	for i := 1; i < len(currCumSumArrayA); i++ {
+		if currCumSumArrayA[i-1] != prevCumSumArrayA[i] {
+			return errors.New("the vertical splitting for the distributed projection is not consistent for module A")
+		}
+	}
+	for i := 1; i < len(currCumSumArrayB); i++ {
+		if currCumSumArrayB[i-1] != prevCumSumArrayB[i] {
+			return errors.New("the vertical splitting for the distributed projection is not consistent for module B")
+		}
+	}
+	for i := 1; i < len(currCumSumArrayC); i++ {
+		if currCumSumArrayC[i-1] != prevCumSumArrayC[i] {
+			return errors.New("the vertical splitting for the distributed projection is not consistent for module C")
+		}
 	}
 
 	return nil

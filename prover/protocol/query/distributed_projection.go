@@ -76,67 +76,8 @@ func (dpp DistributedProjectionParams) UpdateFS(fs *fiatshamir.State) {
 	fs.Update(dpp.ScaledHorner)
 }
 
+// Unimplemented
 func (dp DistributedProjection) Check(run ifaces.Runtime) error {
-	// var (
-	// 	actualParam = field.Zero()
-	// 	params      = run.GetParams(dp.ID).(DistributedProjectionParams)
-	// 	evalRand    field.Element
-	// )
-	// _, errBeta := evalRand.SetRandom()
-	// if errBeta != nil {
-	// 	// Cannot happen unless the entropy was exhausted
-	// 	panic(errBeta)
-	// }
-	// for _, inp := range dp.Inp {
-	// 	var (
-	// 		elemParam = field.One()
-	// 	)
-	// 	if inp.IsAInModule && !inp.IsBInModule {
-	// 		var (
-	// 			colABoard    = inp.ColumnA.Board()
-	// 			filterABorad = inp.FilterA.Board()
-	// 			colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
-	// 			filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
-	// 		)
-	// 		hornerA := poly.GetHornerTrace(colA, filterA, evalRand)
-	// 		elemParam = hornerA[0]
-	// 	} else if !inp.IsAInModule && inp.IsBInModule {
-	// 		var (
-	// 			colBBoard    = inp.ColumnB.Board()
-	// 			filterBBoard = inp.FilterB.Board()
-	// 			colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
-	// 			filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
-	// 		)
-	// 		hornerB := poly.GetHornerTrace(colB, filterB, evalRand)
-	// 		elemParam = hornerB[0]
-	// 		elemParam.Neg(&elemParam)
-	// 	} else if inp.IsAInModule && inp.IsBInModule {
-	// 		var (
-	// 			colABoard    = inp.ColumnA.Board()
-	// 			colBBoard    = inp.ColumnB.Board()
-	// 			filterABorad = inp.FilterA.Board()
-	// 			filterBBoard = inp.FilterB.Board()
-	// 			colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
-	// 			colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
-	// 			filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
-	// 			filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
-	// 		)
-	// 		hornerA := poly.GetHornerTrace(colA, filterA, evalRand)
-	// 		hornerB := poly.GetHornerTrace(colB, filterB, evalRand)
-	// 		elemParam = hornerB[0]
-	// 		elemParam.Neg(&elemParam)
-	// 		elemParam.Add(&elemParam, &hornerA[0])
-	// 	} else {
-	// 		utils.Panic("Invalid distributed projection query %v", dp.ID)
-	// 	}
-	// 	actualParam.Add(&actualParam, &elemParam)
-
-	// }
-
-	// if actualParam != params.ScaledHorner {
-	// 	return fmt.Errorf("the projection query did not pass, actualParam = %v, queryParam = %v", actualParam, params.ScaledHorner)
-	// }
-
 	return nil
 }
 

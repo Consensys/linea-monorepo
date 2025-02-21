@@ -45,7 +45,7 @@ func GetFreshSegmentModuleComp(in SegmentModuleInputs) *wizard.CompiledIOP {
 			if !in.Disc.ColumnIsInModule(col, in.ModuleName) {
 				continue
 			}
-			// Make colSize a power of two 
+			// Make colSize a power of two
 			segModComp.InsertCommit(col.Round(), col.GetColID(), utils.NextPowerOfTwo(col.Size()/in.NumSegmentsInModule))
 			columnsInRound = append(columnsInRound, col)
 		}
@@ -288,7 +288,7 @@ func assignProvider(run *wizard.ProverRuntime, segID, numSegments int, col iface
 						lastRow     = (segID+1)*segmentSize - 1
 						colWit      []field.Element
 						// number of boundaries from the current column
-						numBoundaries = 0
+						numBoundaries int
 					)
 
 					if shifted, ok := t.(column.Shifted); ok {

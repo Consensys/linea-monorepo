@@ -31,19 +31,19 @@ func CompileDistributedProjection(comp *wizard.CompiledIOP) {
 func compile(comp *wizard.CompiledIOP, round int, distributedprojection query.DistributedProjection) {
 	var (
 		pa = &distribuedProjectionProverAction{
-			Name:                    distributedprojection.ID,
-			Query:                   distributedprojection,
-			FilterA:                 make([]*symbolic.Expression, len(distributedprojection.Inp)),
-			FilterB:                 make([]*symbolic.Expression, len(distributedprojection.Inp)),
-			ColumnA:                 make([]*symbolic.Expression, len(distributedprojection.Inp)),
-			ColumnB:                 make([]*symbolic.Expression, len(distributedprojection.Inp)),
-			HornerA:                 make([]ifaces.Column, len(distributedprojection.Inp)),
-			HornerB:                 make([]ifaces.Column, len(distributedprojection.Inp)),
-			HornerA0:                make([]query.LocalOpening, len(distributedprojection.Inp)),
-			HornerB0:                make([]query.LocalOpening, len(distributedprojection.Inp)),
-			EvalCoins:               make([]coin.Info, len(distributedprojection.Inp)),
-			IsA:                     make([]bool, len(distributedprojection.Inp)),
-			IsB:                     make([]bool, len(distributedprojection.Inp)),
+			Name:      distributedprojection.ID,
+			Query:     distributedprojection,
+			FilterA:   make([]*symbolic.Expression, len(distributedprojection.Inp)),
+			FilterB:   make([]*symbolic.Expression, len(distributedprojection.Inp)),
+			ColumnA:   make([]*symbolic.Expression, len(distributedprojection.Inp)),
+			ColumnB:   make([]*symbolic.Expression, len(distributedprojection.Inp)),
+			HornerA:   make([]ifaces.Column, len(distributedprojection.Inp)),
+			HornerB:   make([]ifaces.Column, len(distributedprojection.Inp)),
+			HornerA0:  make([]query.LocalOpening, len(distributedprojection.Inp)),
+			HornerB0:  make([]query.LocalOpening, len(distributedprojection.Inp)),
+			EvalCoins: make([]coin.Info, len(distributedprojection.Inp)),
+			IsA:       make([]bool, len(distributedprojection.Inp)),
+			IsB:       make([]bool, len(distributedprojection.Inp)),
 		}
 	)
 	pa.Push(comp, distributedprojection)
