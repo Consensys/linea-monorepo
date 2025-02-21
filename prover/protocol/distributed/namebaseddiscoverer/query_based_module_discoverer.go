@@ -28,7 +28,6 @@ type QueryBasedDiscoverer struct {
 func (d *QueryBasedDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 	// initialize discoverer
-	d.SimpleDiscoverer.Analyze(comp)
 	d.GLColumns = collection.NewMapping[ModuleName, []ifaces.Column]()
 	d.LPPColumns = collection.NewMapping[ModuleName, []ifaces.Column]()
 
@@ -122,26 +121,24 @@ func (d *QueryBasedDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 					for i := range value.Denominator {
 
 						if d.SimpleDiscoverer.ExpressionIsInModule(value.Denominator[i], moduleName) {
-
 							// it analyzes the expression and update d.LPPColumns
 							cols := distributed.ListColumnsFromExpr(value.Denominator[i], true)
 							for _, col := range cols {
 								AppendNew(&d.LPPColumns, moduleName, col)
 							}
-							// d.analyzeExprLPP(value.Denominator[i], moduleName)
 
-						}
-
-						if d.SimpleDiscoverer.ExpressionIsInModule(value.Numerator[i], moduleName) {
+							d.SimpleDiscoverer.UpdateDiscoverer(cols, moduleName)
 
 							// it analyzes the expression and update d.LPPColumns
-							cols := distributed.ListColumnsFromExpr(value.Numerator[i], true)
-							for _, col := range cols {
+							colsNum := distributed.ListColumnsFromExpr(value.Numerator[i], true)
+							for _, col := range colsNum {
 								AppendNew(&d.LPPColumns, moduleName, col)
 							}
-							// d.analyzeExprLPP(value.Denominator[i], moduleName)
+
+							d.SimpleDiscoverer.UpdateDiscoverer(colsNum, moduleName)
 
 						}
+
 					}
 				}
 			}

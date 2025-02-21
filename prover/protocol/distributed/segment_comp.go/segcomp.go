@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	discoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -131,7 +130,7 @@ func (p segmentModuleProver) Run(run *wizard.ProverRuntime) {
 
 	for _, col := range p.cols {
 
-		if _, ok := col.(verifiercol.VerifierCol); ok {
+		if distributed.IsVerifierColumn(col) {
 			continue
 		}
 
@@ -269,7 +268,7 @@ func insertColumnIntoSegment(in SegmentInputs, segComp *wizard.CompiledIOP, cols
 
 	for _, col := range cols {
 
-		if _, ok := col.(verifiercol.VerifierCol); ok {
+		if distributed.IsVerifierColumn(col) {
 			continue
 		}
 

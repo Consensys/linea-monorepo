@@ -6,6 +6,8 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	logderiv "github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
@@ -20,7 +22,7 @@ import (
 )
 
 // It tests DistributedLogDerivSum.
-func TestSeedGeneration(t *testing.T) {
+func TestDistributedInclusion(t *testing.T) {
 	const (
 		numSegModule0 = 2
 		numSegModule1 = 2
@@ -29,22 +31,26 @@ func TestSeedGeneration(t *testing.T) {
 
 	var (
 		allVerfiers = []wizard.Runtime{}
+		simpleDisc  = md.PeriodSeperatingModuleDiscoverer{}
 	)
 	//initialComp
 	define := func(b *wizard.Builder) {
 
 		var (
 			// columns from module0
-			col01 = b.CompiledIOP.InsertCommit(0, "module0.col1", 4)
-			col02 = b.CompiledIOP.InsertCommit(0, "module0.col2", 8)
+			col01     = b.CompiledIOP.InsertCommit(0, "module0.col1", 4)
+			col02     = b.CompiledIOP.InsertCommit(0, "module0.col2", 8)
+			verifCol0 = verifiercol.NewConstantCol(field.One(), 4)
 
 			// columns from module1
-			col10 = b.CompiledIOP.InsertCommit(0, "module1.col0", 8)
-			col11 = b.CompiledIOP.InsertCommit(0, "module1.col1", 16)
-			col12 = b.CompiledIOP.InsertCommit(0, "module1.col2", 4)
-			col13 = b.CompiledIOP.InsertCommit(0, "module1.col3", 4)
-			col14 = b.CompiledIOP.InsertCommit(0, "module1.col4", 16)
-			col15 = b.CompiledIOP.InsertCommit(0, "module1.col5", 16)
+			col10     = b.CompiledIOP.InsertCommit(0, "module1.col0", 8)
+			col11     = b.CompiledIOP.InsertCommit(0, "module1.col1", 16)
+			col12     = b.CompiledIOP.InsertCommit(0, "module1.col2", 4)
+			col13     = b.CompiledIOP.InsertCommit(0, "module1.col3", 4)
+			col14     = b.CompiledIOP.InsertCommit(0, "module1.col4", 16)
+			col15     = b.CompiledIOP.InsertCommit(0, "module1.col5", 16)
+			verifCol  = verifiercol.NewConstantCol(field.One(), 8)
+			verifCol1 = column.Shift(verifCol, 3)
 
 			//  columns from module2
 			col20 = b.CompiledIOP.InsertCommit(0, "module2.col0", 4)
@@ -54,7 +60,7 @@ func TestSeedGeneration(t *testing.T) {
 
 		// inclusion query: S \subset T , S in module0, T in module1.
 		b.CompiledIOP.InsertInclusion(0, "lookup0",
-			[]ifaces.Column{col10}, []ifaces.Column{col01})
+			[]ifaces.Column{col10, verifCol1}, []ifaces.Column{col01, verifCol0})
 
 		// conditional inclusion query : S\subset T, S in module1,T in module0.
 		b.CompiledIOP.InsertInclusionConditionalOnIncluded(0, "lookup1",
@@ -84,12 +90,15 @@ func TestSeedGeneration(t *testing.T) {
 
 	// initial compiledIOP is the parent to LPPComp and all the SegmentModuleComp objects.
 	initialComp := wizard.Compile(define)
+
+	simpleDisc.Analyze(initialComp)
+
 	// apply the LPP relevant compilers and generate the seed for initialComp
 	lppComp := lpp.CompileLPPAndGetSeed(initialComp, distributed.IntoLogDerivativeSum)
 
 	// Initialize the module discoverer
 	disc := md.QueryBasedDiscoverer{
-		SimpleDiscoverer: &md.PeriodSeperatingModuleDiscoverer{},
+		SimpleDiscoverer: &simpleDisc,
 	}
 	disc.Analyze(initialComp)
 

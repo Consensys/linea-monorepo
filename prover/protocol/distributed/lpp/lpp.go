@@ -2,6 +2,7 @@ package lpp
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -80,8 +81,14 @@ type lppProver struct {
 func (p *lppProver) Run(run *wizard.ProverRuntime) {
 
 	for _, col := range p.cols {
+
+		if distributed.IsVerifierColumn(col) {
+			continue
+		}
+
 		colWitness := run.ParentRuntime.GetColumn(col.GetColID())
 		run.AssignColumn(col.GetColID(), colWitness, col.Round())
+
 	}
 
 	// generate the seed based on LPP run time.

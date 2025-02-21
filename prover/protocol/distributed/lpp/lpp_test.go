@@ -28,7 +28,7 @@ func TestSeedGeneration(t *testing.T) {
 		coinLookup1Gamma field.Element
 		coinLookup2Gamma field.Element
 		coinLookup2Alpha field.Element
-		segID            int
+		simpleDisc       = md.PeriodSeperatingModuleDiscoverer{}
 	)
 
 	//initialComp
@@ -85,12 +85,14 @@ func TestSeedGeneration(t *testing.T) {
 
 	// initial compiledIOP is the parent to LPPComp and all the SegmentModuleComp objects.
 	initialComp := wizard.Compile(define)
+
+	simpleDisc.Analyze(initialComp)
 	// apply the LPP relevant compilers and generate the seed for initialComp
 	lppComp := lpp.CompileLPPAndGetSeed(initialComp, distributed.IntoLogDerivativeSum)
 
 	// Initialize the module discoverer
 	disc := md.QueryBasedDiscoverer{
-		SimpleDiscoverer: &md.PeriodSeperatingModuleDiscoverer{},
+		SimpleDiscoverer: &simpleDisc,
 	}
 	disc.Analyze(initialComp)
 
@@ -100,7 +102,6 @@ func TestSeedGeneration(t *testing.T) {
 			Disc:                disc,
 			ModuleName:          "module0",
 			NumSegmentsInModule: numSegModule0,
-			SegID:               segID,
 		}
 
 		in1 = segcomp.SegmentInputs{
@@ -108,7 +109,6 @@ func TestSeedGeneration(t *testing.T) {
 			Disc:                disc,
 			ModuleName:          "module1",
 			NumSegmentsInModule: numSegModule1,
-			SegID:               segID,
 		}
 
 		in2 = segcomp.SegmentInputs{
@@ -116,7 +116,6 @@ func TestSeedGeneration(t *testing.T) {
 			Disc:                disc,
 			ModuleName:          "module2",
 			NumSegmentsInModule: numSegModule2,
-			SegID:               segID,
 		}
 	)
 

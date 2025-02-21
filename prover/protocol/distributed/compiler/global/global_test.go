@@ -26,6 +26,7 @@ func TestDistributedGlobal(t *testing.T) {
 
 	var (
 		allVerfiers = []wizard.Runtime{}
+		simpleDisc  = md.PeriodSeperatingModuleDiscoverer{}
 	)
 
 	//initialComp
@@ -39,7 +40,7 @@ func TestDistributedGlobal(t *testing.T) {
 
 			fibonacci = b.CompiledIOP.InsertCommit(0, "module.fibo", 16)
 			verifCol  = verifiercol.NewConstantCol(field.One(), 16)
-			// verifCol1 = column.Shift(verifCol, 2)
+			verifCol1 = column.Shift(verifCol, 2)
 		)
 
 		b.CompiledIOP.InsertGlobal(0, "global0",
@@ -54,7 +55,7 @@ func TestDistributedGlobal(t *testing.T) {
 
 		b.CompiledIOP.InsertGlobal(0, "fibonacci",
 			symbolic.Sub(
-				symbolic.Mul(fibonacci, verifCol),
+				symbolic.Mul(fibonacci, verifCol1),
 				column.Shift(fibonacci, -1),
 				column.Shift(fibonacci, -2)),
 		)
@@ -74,11 +75,12 @@ func TestDistributedGlobal(t *testing.T) {
 
 	// initial compiledIOP is the parent to all the SegmentModuleComp objects.
 	initialComp := wizard.Compile(define)
-	var segID int
+
+	simpleDisc.Analyze(initialComp)
 
 	// Initialize the module discoverer
 	disc := md.QueryBasedDiscoverer{
-		SimpleDiscoverer: &md.PeriodSeperatingModuleDiscoverer{},
+		SimpleDiscoverer: &simpleDisc,
 	}
 	disc.Analyze(initialComp)
 
@@ -89,7 +91,6 @@ func TestDistributedGlobal(t *testing.T) {
 			Disc:                disc,
 			ModuleName:          "module",
 			NumSegmentsInModule: numSegModule,
-			SegID:               segID,
 		},
 	)
 
@@ -100,7 +101,6 @@ func TestDistributedGlobal(t *testing.T) {
 		Disc:        disc.SimpleDiscoverer,
 		ModuleName:  "module",
 		NumSegments: numSegModule,
-		SegID:       segID,
 	})
 
 	// This dummy compiles the global/local queries of the segment.

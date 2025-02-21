@@ -123,8 +123,15 @@ func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr *symbolic.E
 	}
 
 	for _, col := range cols {
-		if p.ColumnIsInModule(col, name) {
-			return true
+
+		// verifer column can be common among modules (since they have the same ID),
+		//so they are not good for decision making.
+		if !distributed.IsVerifierColumn(col) {
+
+			if p.ColumnIsInModule(col, name) {
+				return true
+			}
+
 		}
 	}
 
@@ -141,9 +148,13 @@ func (p *PeriodSeperatingModuleDiscoverer) SliceIsInModule(cols []ifaces.Column,
 	}
 
 	for _, col := range cols {
-		if p.ColumnIsInModule(col, name) {
-			return true
+
+		if !distributed.IsVerifierColumn(col) {
+			if p.ColumnIsInModule(col, name) {
+				return true
+			}
 		}
+
 	}
 
 	return false
@@ -159,8 +170,10 @@ func (p *PeriodSeperatingModuleDiscoverer) UpdateDiscoverer(cols []ifaces.Column
 		// sanity check; panic if the column is already in a different module
 		if actualModule, ok := p.HasModule(col); ok {
 			if actualModule != name {
-				utils.Panic("column %v is from module %v and not from the given module %v",
-					col.GetColID(), actualModule, name)
+				if !distributed.IsVerifierColumn(col) {
+					utils.Panic("column %v is from module %v and not from the given module %v",
+						col.GetColID(), actualModule, name)
+				}
 			}
 		}
 

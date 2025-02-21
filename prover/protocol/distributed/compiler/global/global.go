@@ -9,10 +9,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
-	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	edc "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/execution_data_collector"
 )
@@ -87,7 +85,7 @@ func DistributeGlobal(in DistributionInputs) {
 			// apply global constraint over the segment.
 			in.ModuleComp.InsertGlobal(0,
 				q.ID,
-				AdjustExpressionForGlobal(in.InitialComp, in.ModuleComp, q.Expression, in.NumSegments, in.SegID),
+				distributed.AdjustExpressionForModule(in.InitialComp, in.ModuleComp, q.Expression, in.NumSegments, in.SegID),
 			)
 
 			// check that the provider is correctly built from the boundaries in the segment
@@ -149,63 +147,6 @@ func DistributeGlobal(in DistributionInputs) {
 		},
 	})
 
-}
-
-// adjust the expression w.r.t the columns in the segment.
-func AdjustExpressionForGlobal(
-	initComp, comp *wizard.CompiledIOP,
-	expr *symbolic.Expression,
-	numSegments, segID int,
-) *symbolic.Expression {
-
-	var (
-		board          = expr.Board()
-		metadatas      = board.ListVariableMetadata()
-		translationMap = collection.NewMapping[string, *symbolic.Expression]()
-		colTranslation ifaces.Column
-		size           = column.ExprIsOnSameLengthHandles(&board)
-		segSize        = size / numSegments
-	)
-
-	for _, metadata := range metadatas {
-
-		// For each slot, get the expression obtained by replacing the commitment
-		// by the appropriated column.
-
-		switch m := metadata.(type) {
-		case ifaces.Column:
-
-			switch col := m.(type) {
-			case column.Natural:
-				colTranslation = comp.Columns.GetHandle(m.GetColID())
-
-			case verifiercol.VerifierCol:
-				colTranslation = col.Split(initComp, segID*segSize, (segID+1)*segSize)
-
-			case column.Shifted:
-				colTranslation = column.Shift(comp.Columns.GetHandle(col.Parent.GetColID()), col.Offset)
-
-			}
-
-			translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(colTranslation))
-		case variables.X:
-			utils.Panic("unsupported, the value of `x` in the unsplit query and the split would be different")
-		case variables.PeriodicSample:
-			// Check that the period is not larger than the domain size. If
-			// the period is smaller this is a no-op because the period does
-			// not change.
-			if m.T > segSize {
-
-				panic("unsupported")
-			}
-			translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
-		default:
-			// Repass the same variable (for coins or other types of single-valued variable)
-			translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
-		}
-
-	}
-	return expr.Replay(translationMap)
 }
 
 // It checks that the provider is correctly built from the boundaries of the segment
@@ -339,7 +280,7 @@ func AdjustExpressionForBoundaries(
 	for _, col := range colsInExpr {
 
 		// replace col with its replacement in the module.
-		colInModule := colInModule(initComp, comp, col, segID, segSize)
+		colInModule := distributed.ColInModule(initComp, comp, col, segID, segSize, true)
 
 		if colsOnReceiver.Exists(col.GetColID()) {
 			pos := colsOnReceiver.MustGet(col.GetColID())
@@ -369,23 +310,4 @@ func AdjustExpressionForBoundaries(
 		}
 
 	}
-}
-
-// for the given column it return its counterpart in the module.
-func colInModule(initComp, moduleComp *wizard.CompiledIOP, col ifaces.Column, segID, segSize int) ifaces.Column {
-
-	switch v := col.(type) {
-	case column.Shifted:
-		return colInModule(initComp, moduleComp, v.Parent, segID, segSize)
-
-	case verifiercol.VerifierCol:
-		return v.Split(initComp, segID*segSize, (segID+1)*segSize)
-
-	case column.Natural:
-		return moduleComp.Columns.GetHandle(col.GetColID())
-
-	default:
-		panic("unsupported")
-	}
-
 }
