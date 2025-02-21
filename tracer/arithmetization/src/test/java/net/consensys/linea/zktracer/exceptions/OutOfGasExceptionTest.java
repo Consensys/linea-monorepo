@@ -18,7 +18,7 @@ package net.consensys.linea.zktracer.exceptions;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_BLOCK_NUMBER;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OUT_OF_GAS_EXCEPTION;
-import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeToOpCodeDataMap;
+import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeDataList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -80,37 +80,40 @@ public class OutOfGasExceptionTest {
 
   static Stream<Arguments> outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTestSource() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCodeData : opCodeToOpCodeDataMap.values()) {
-      OpCode opCode = opCodeData.mnemonic();
-      int nPushes = opCodeData.stackSettings().delta(); // number of items popped from the stack
-      if (opCode != OpCode.CALLDATACOPY // CALLDATACOPY needs the memory expansion cost
-          && opCode != OpCode.CODECOPY // CODECOPY needs the memory expansion cost
-          && opCode != OpCode.EXTCODECOPY // EXTCODECOPY needs the memory expansion cost
-          && opCode != OpCode.INVALID // INVALID consumes all gas left
-          && opCode != OpCode.MLOAD // MLOAD needs the memory expansion cost
-          && opCode != OpCode.MSTORE // MSTORE needs the memory expansion cost
-          && opCode != OpCode.MSTORE8 // MSTORE8 needs the memory expansion cost
-          && opCode != OpCode.RETURN // RETURN needs the memory expansion cost
-          && opCode != OpCode.RETURNDATACOPY // RETURNDATACOPY needs the memory expansion cost
-          && opCode != OpCode.REVERT // REVERT needs the memory expansion cost
-          && opCode != OpCode.SHA3 // SHA3 needs the memory expansion cost ??
-          && opCode != OpCode.STOP // STOP does not consume gas
-          && opCode
-              != OpCode
-                  .JUMP // JUMP needs a valid bytecode to jump to, see outOfGasExceptionJump below
-          && opCode
-              != OpCode.JUMPI // JUMPI needs a valid bytecode to jump to, see outOfGasExceptionJumpi
-          // below
-          && opCode != OpCode.SLOAD // SLOAD a non-zero value, see outOfGasExceptionSLoad below
-          && !opCodeData.isCall() // CALL family is managed separately
-          && !opCodeData.isCreate() // CREATE needs the memory expansion cost
-          && !opCodeData.isLog() // LOG needs the memory expansion cost
-      ) {
-        arguments.add(Arguments.of(opCode, nPushes, -1));
-        System.out.println(opCode);
-        System.out.println(nPushes);
-        arguments.add(Arguments.of(opCode, nPushes, 0));
-        arguments.add(Arguments.of(opCode, nPushes, 1));
+    for (OpCodeData opCodeData : opCodeDataList) {
+      if (opCodeData != null) {
+        OpCode opCode = opCodeData.mnemonic();
+        int nPushes = opCodeData.stackSettings().delta(); // number of items popped from the stack
+        if (opCode != OpCode.CALLDATACOPY // CALLDATACOPY needs the memory expansion cost
+            && opCode != OpCode.CODECOPY // CODECOPY needs the memory expansion cost
+            && opCode != OpCode.EXTCODECOPY // EXTCODECOPY needs the memory expansion cost
+            && opCode != OpCode.INVALID // INVALID consumes all gas left
+            && opCode != OpCode.MLOAD // MLOAD needs the memory expansion cost
+            && opCode != OpCode.MSTORE // MSTORE needs the memory expansion cost
+            && opCode != OpCode.MSTORE8 // MSTORE8 needs the memory expansion cost
+            && opCode != OpCode.RETURN // RETURN needs the memory expansion cost
+            && opCode != OpCode.RETURNDATACOPY // RETURNDATACOPY needs the memory expansion cost
+            && opCode != OpCode.REVERT // REVERT needs the memory expansion cost
+            && opCode != OpCode.SHA3 // SHA3 needs the memory expansion cost ??
+            && opCode != OpCode.STOP // STOP does not consume gas
+            && opCode
+                != OpCode
+                    .JUMP // JUMP needs a valid bytecode to jump to, see outOfGasExceptionJump below
+            && opCode
+                != OpCode
+                    .JUMPI // JUMPI needs a valid bytecode to jump to, see outOfGasExceptionJumpi
+            // below
+            && opCode != OpCode.SLOAD // SLOAD a non-zero value, see outOfGasExceptionSLoad below
+            && !opCodeData.isCall() // CALL family is managed separately
+            && !opCodeData.isCreate() // CREATE needs the memory expansion cost
+            && !opCodeData.isLog() // LOG needs the memory expansion cost
+        ) {
+          arguments.add(Arguments.of(opCode, nPushes, -1));
+          System.out.println(opCode);
+          System.out.println(nPushes);
+          arguments.add(Arguments.of(opCode, nPushes, 0));
+          arguments.add(Arguments.of(opCode, nPushes, 1));
+        }
       }
     }
     return arguments.stream();

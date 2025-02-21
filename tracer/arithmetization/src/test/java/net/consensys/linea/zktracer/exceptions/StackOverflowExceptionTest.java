@@ -15,7 +15,7 @@
 package net.consensys.linea.zktracer.exceptions;
 
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.STACK_OVERFLOW;
-import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeToOpCodeDataMap;
+import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeDataList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
@@ -55,12 +55,14 @@ public class StackOverflowExceptionTest {
 
   static Stream<Arguments> stackOverflowExceptionSource() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCodeData : opCodeToOpCodeDataMap.values()) {
-      OpCode opCode = opCodeData.mnemonic();
-      int alpha = opCodeData.stackSettings().alpha(); // number of items pushed onto the stack
-      int delta = opCodeData.stackSettings().delta(); // number of items popped from the stack
-      if (alpha > delta) {
-        arguments.add(Arguments.of(opCode, alpha, delta));
+    for (OpCodeData opCodeData : opCodeDataList) {
+      if (opCodeData != null) {
+        OpCode opCode = opCodeData.mnemonic();
+        int alpha = opCodeData.stackSettings().alpha(); // number of items pushed onto the stack
+        int delta = opCodeData.stackSettings().delta(); // number of items popped from the stack
+        if (alpha > delta) {
+          arguments.add(Arguments.of(opCode, alpha, delta));
+        }
       }
     }
     return arguments.stream();

@@ -14,7 +14,7 @@
  */
 package net.consensys.linea.zktracer.exceptions;
 
-import static net.consensys.linea.zktracer.opcode.OpCodes.valueToOpCodeDataMap;
+import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeDataList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
@@ -62,7 +62,7 @@ public class InvalidOpcodeExceptionTest {
     List<Arguments> arguments = new ArrayList<>();
     for (int value = 0; value < 256; value++) {
       // If value is not in the map, then it is not an OpCode
-      if (!valueToOpCodeDataMap.containsKey(value)) {
+      if (opCodeDataList.get(value) == null) {
         arguments.add(Arguments.of(value));
       }
     }

@@ -15,7 +15,7 @@
 package net.consensys.linea.zktracer.exceptions;
 
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.STACK_UNDERFLOW;
-import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeToOpCodeDataMap;
+import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeDataList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
@@ -58,11 +58,13 @@ public class StackUnderflowExceptionTest {
 
   static Stream<Arguments> stackUnderflowExceptionSource() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCodeData : opCodeToOpCodeDataMap.values()) {
-      OpCode opCode = opCodeData.mnemonic();
-      int delta = opCodeData.stackSettings().delta(); // number of items popped from the stack
-      for (int nPushes = 0; nPushes <= delta; nPushes++) {
-        arguments.add(Arguments.of(opCode, nPushes, nPushes < delta));
+    for (OpCodeData opCodeData : opCodeDataList) {
+      if (opCodeData != null) {
+        OpCode opCode = opCodeData.mnemonic();
+        int delta = opCodeData.stackSettings().delta(); // number of items popped from the stack
+        for (int nPushes = 0; nPushes <= delta; nPushes++) {
+          arguments.add(Arguments.of(opCode, nPushes, nPushes < delta));
+        }
       }
     }
     return arguments.stream();
