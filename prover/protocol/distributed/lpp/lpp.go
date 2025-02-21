@@ -26,15 +26,17 @@ func CompileLPPAndGetSeed(comp *wizard.CompiledIOP, lppCompilers ...func(*wizard
 
 	// applies lppCompiler; this  would add a new round and probably new columns to the current round
 	//  but no new column to the new round.
-	for _, lppCompiler := range lppCompilers {
-		lppCompiler(comp)
+	if len(lppCompilers) > 0 {
+		for _, lppCompiler := range lppCompilers {
+			lppCompiler(comp)
 
-		if comp.NumRounds() != 2 || comp.Columns.NumRounds() != 1 {
-			panic("we expect to have new round while no column is yet registered for the new round")
+			if comp.NumRounds() != 2 || comp.Columns.NumRounds() != 1 {
+				panic("we expect to have new round while no column is yet registered for the new round")
+			}
+
+			numRounds := comp.NumRounds()
+			comp.EqualizeRounds(numRounds)
 		}
-
-		numRounds := comp.NumRounds()
-		comp.EqualizeRounds(numRounds)
 	}
 
 	// filter the new lpp columns.
@@ -60,7 +62,7 @@ func CompileLPPAndGetSeed(comp *wizard.CompiledIOP, lppCompilers ...func(*wizard
 	// register the seed, generated from LPP, in comp
 	// for the sake of the assignment it also should be registered in lppComp
 	lppComp.InsertCoin(1, "SEED", coin.Field)
-	comp.InsertCoin(1, "SEED", coin.Field)
+	comp.InsertCoin(0, "SEED", coin.Field)
 
 	// prepare and register prover actions.
 	lppProver := &lppProver{
@@ -118,7 +120,8 @@ func GetLPPComp(oldComp *wizard.CompiledIOP, newLPPCols []ifaces.Column) *wizard
 
 // it extract LPP columns from the context of each LPP query.
 func GetLPPColumns(c *wizard.CompiledIOP) []ifaces.Column {
-
+	// Todo(arijit): should prevent inserting duplicate columns
+	// Use checkAlreadyExists()
 	var (
 		lppColumns = []ifaces.Column{}
 	)
@@ -127,30 +130,46 @@ func GetLPPColumns(c *wizard.CompiledIOP) []ifaces.Column {
 		q := c.QueriesNoParams.Data(qName)
 		switch v := q.(type) {
 		case query.Inclusion:
-
-			for i := range v.Including {
-				lppColumns = append(lppColumns, v.Including[i]...)
+			if !checkAlreadyExists(lppColumns, v.Including[0][0]) {
+				for i := range v.Including {
+					lppColumns = append(lppColumns, v.Including[i]...)
+				}
+			}
+			if !checkAlreadyExists(lppColumns, v.Included[0]) {
+				lppColumns = append(lppColumns, v.Included...)
 			}
 
-			lppColumns = append(lppColumns, v.Included...)
-
 			if v.IncludingFilter != nil {
-				lppColumns = append(lppColumns, v.IncludingFilter...)
+				if !checkAlreadyExists(lppColumns, v.IncludingFilter[0]) {
+					lppColumns = append(lppColumns, v.IncludingFilter...)
+				}
 			}
 
 			if v.IncludedFilter != nil {
-				lppColumns = append(lppColumns, v.IncludedFilter)
+				if !checkAlreadyExists(lppColumns, v.IncludedFilter) {
+					lppColumns = append(lppColumns, v.IncludedFilter)
+				}
 			}
 
 		case query.Permutation:
 			for i := range v.A {
-				lppColumns = append(lppColumns, v.A[i]...)
-				lppColumns = append(lppColumns, v.B[i]...)
+				if !checkAlreadyExists(lppColumns, v.A[0][0]) {
+					lppColumns = append(lppColumns, v.A[i]...)
+				}
+				if !checkAlreadyExists(lppColumns, v.B[0][0]) {
+					lppColumns = append(lppColumns, v.B[i]...)
+				}
 			}
 		case query.Projection:
-			lppColumns = append(lppColumns, v.Inp.ColumnA...)
-			lppColumns = append(lppColumns, v.Inp.ColumnB...)
-			lppColumns = append(lppColumns, v.Inp.FilterA, v.Inp.FilterB)
+			// If ColumnA exists then FilterA also exists
+			if !checkAlreadyExists(lppColumns, v.Inp.ColumnA[0]) {
+				lppColumns = append(lppColumns, v.Inp.ColumnA...)
+				lppColumns = append(lppColumns, v.Inp.FilterA)
+			}
+			if !checkAlreadyExists(lppColumns, v.Inp.ColumnB[0]) {
+				lppColumns = append(lppColumns, v.Inp.ColumnB...)
+				lppColumns = append(lppColumns, v.Inp.FilterB)
+			}
 
 		default:
 			//do noting
@@ -159,4 +178,14 @@ func GetLPPColumns(c *wizard.CompiledIOP) []ifaces.Column {
 	}
 
 	return lppColumns
+}
+
+// it checks if the column is already inserted in the list
+func checkAlreadyExists(lppColumns []ifaces.Column, sampleCol ifaces.Column) bool {
+	for _, col := range lppColumns {
+		if col.GetColID() == sampleCol.GetColID() {
+			return true
+		}
+	}
+	return false
 }

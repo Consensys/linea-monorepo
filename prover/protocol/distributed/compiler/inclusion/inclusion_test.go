@@ -183,9 +183,15 @@ func TestSeedGeneration(t *testing.T) {
 
 func checkConsistency(runs []wizard.Runtime) error {
 
-	var res field.Element
+	var (
+		res field.Element
+	)
 	for _, run := range runs {
-		logderiv := run.GetPublicInput(constants.LogDerivativeSumPublicInput)
+		logderiv_ := run.GetPublicInput(constants.LogDerivativeSumPublicInput)
+		logderiv, ok := logderiv_.(field.Element)
+		if !ok {
+			return errors.New("the logderiv is not a field element")
+		}
 		res.Add(&res, &logderiv)
 	}
 

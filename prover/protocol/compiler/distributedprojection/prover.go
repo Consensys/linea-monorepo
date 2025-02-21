@@ -16,11 +16,12 @@ import (
 
 type distribuedProjectionProverAction struct {
 	Name               ifaces.QueryID
+	Query              query.DistributedProjection
 	FilterA, FilterB   []*sym.Expression
 	ColumnA, ColumnB   []*sym.Expression
 	HornerA, HornerB   []ifaces.Column
 	HornerA0, HornerB0 []query.LocalOpening
-	EvalCoin           []coin.Info
+	EvalCoins          []coin.Info
 	IsA, IsB           []bool
 }
 
@@ -33,14 +34,14 @@ type distribuedProjectionProverAction struct {
 // If IsA is false and IsB is true, it computes the Horner trace for column B only.
 // If neither IsA nor IsB is true, it panics with an error message indicating an invalid prover assignment.
 func (pa *distribuedProjectionProverAction) Run(run *wizard.ProverRuntime) {
-	for index := range pa.FilterA {
+	for index := range pa.Query.Inp {
 		if pa.IsA[index] && pa.IsB[index] {
 			var (
 				colA    = column.EvalExprColumn(run, pa.ColumnA[index].Board()).IntoRegVecSaveAlloc()
 				fA      = column.EvalExprColumn(run, pa.FilterA[index].Board()).IntoRegVecSaveAlloc()
 				colB    = column.EvalExprColumn(run, pa.ColumnB[index].Board()).IntoRegVecSaveAlloc()
 				fB      = column.EvalExprColumn(run, pa.FilterB[index].Board()).IntoRegVecSaveAlloc()
-				x       = run.GetRandomCoinField(pa.EvalCoin[index].Name)
+				x       = run.GetRandomCoinField(pa.EvalCoins[index].Name)
 				hornerA = poly.GetHornerTrace(colA, fA, x)
 				hornerB = poly.GetHornerTrace(colB, fB, x)
 			)
@@ -52,7 +53,7 @@ func (pa *distribuedProjectionProverAction) Run(run *wizard.ProverRuntime) {
 			var (
 				colA    = column.EvalExprColumn(run, pa.ColumnA[index].Board()).IntoRegVecSaveAlloc()
 				fA      = column.EvalExprColumn(run, pa.FilterA[index].Board()).IntoRegVecSaveAlloc()
-				x       = run.GetRandomCoinField(pa.EvalCoin[index].Name)
+				x       = run.GetRandomCoinField(pa.EvalCoins[index].Name)
 				hornerA = poly.GetHornerTrace(colA, fA, x)
 			)
 			run.AssignColumn(pa.HornerA[index].GetColID(), smartvectors.NewRegular(hornerA))
@@ -61,7 +62,7 @@ func (pa *distribuedProjectionProverAction) Run(run *wizard.ProverRuntime) {
 			var (
 				colB    = column.EvalExprColumn(run, pa.ColumnB[index].Board()).IntoRegVecSaveAlloc()
 				fB      = column.EvalExprColumn(run, pa.FilterB[index].Board()).IntoRegVecSaveAlloc()
-				x       = run.GetRandomCoinField(pa.EvalCoin[index].Name)
+				x       = run.GetRandomCoinField(pa.EvalCoins[index].Name)
 				hornerB = poly.GetHornerTrace(colB, fB, x)
 			)
 			run.AssignColumn(pa.HornerB[index].GetColID(), smartvectors.NewRegular(hornerB))
@@ -88,24 +89,21 @@ func (pa *distribuedProjectionProverAction) Push(comp *wizard.CompiledIOP, distr
 			pa.FilterB[index] = input.FilterB
 			pa.ColumnA[index] = input.ColumnA
 			pa.ColumnB[index] = input.ColumnB
-			pa.EvalCoin[index] = comp.Coins.Data(input.EvalCoin)
+			pa.EvalCoins[index] = comp.Coins.Data(input.EvalCoin)
 			pa.IsA[index] = true
 			pa.IsB[index] = true
-
 		} else if input.IsAInModule && !input.IsBInModule {
 			pa.FilterA[index] = input.FilterA
 			pa.ColumnA[index] = input.ColumnA
-			pa.EvalCoin[index] = comp.Coins.Data(input.EvalCoin)
+			pa.EvalCoins[index] = comp.Coins.Data(input.EvalCoin)
 			pa.IsA[index] = true
 			pa.IsB[index] = false
-
 		} else if !input.IsAInModule && input.IsBInModule {
 			pa.FilterB[index] = input.FilterB
 			pa.ColumnB[index] = input.ColumnB
-			pa.EvalCoin[index] = comp.Coins.Data(input.EvalCoin)
+			pa.EvalCoins[index] = comp.Coins.Data(input.EvalCoin)
 			pa.IsA[index] = false
 			pa.IsB[index] = true
-
 		} else {
 			logrus.Errorf("Invalid distributed projection query while pushing prover action entries: %v", distributedprojection.ID)
 		}
@@ -200,7 +198,7 @@ func (pa *distribuedProjectionProverAction) registerForCol(
 						sym.Add(
 							pa.ColumnA[index],
 							sym.Mul(
-								pa.EvalCoin[index],
+								pa.EvalCoins[index],
 								column.Shift(pa.HornerA[index], 1),
 							),
 						),
@@ -232,7 +230,7 @@ func (pa *distribuedProjectionProverAction) registerForCol(
 					),
 					sym.Mul(
 						pa.FilterB[index],
-						sym.Add(pa.ColumnB[index], sym.Mul(pa.EvalCoin[index], column.Shift(pa.HornerB[index], 1))),
+						sym.Add(pa.ColumnB[index], sym.Mul(pa.EvalCoins[index], column.Shift(pa.HornerB[index], 1))),
 					),
 				),
 			)

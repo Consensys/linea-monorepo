@@ -4,7 +4,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -33,13 +35,21 @@ type Proof struct {
 	QueriesParams collection.Mapping[ifaces.QueryID, ifaces.QueryParams]
 }
 
+// DistributedProjectionPublicInput is a struct that holds the public inputs
+// for the distributed projection protocol.
+type DistributedProjectionPublicInput struct {
+	ScaledHorner field.Element
+	CumSumPrev   field.Element
+	CumSumCurr   field.Element
+}
+
 // Runtime is a generic interface extending the [ifaces.Runtime] interface
 // with all methods of [wizard.VerifierRuntime]. This is used to allow the
 // writing of adapters for the verifier runtime.
 type Runtime interface {
 	ifaces.Runtime
 	GetSpec() *CompiledIOP
-	GetPublicInput(name string) field.Element
+	GetPublicInput(name string) any
 	GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams
 	GetDistributedProjectionParams(name ifaces.QueryID) query.DistributedProjectionParams
 	GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams
@@ -491,9 +501,18 @@ func (run *VerifierRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 }
 
 // GetPublicInput returns a public input from its name
-func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
+func (run *VerifierRuntime) GetPublicInput(name string) any {
 	allPubs := run.Spec.PublicInputs
 	for i := range allPubs {
+		if allPubs[i].Name == name && name == constants.DistributedProjectionPublicInput {
+			if s, ok := allPubs[i].Acc.(*accessors.FromDistributedProjectionAccessor); ok {
+				return DistributedProjectionPublicInput{
+					ScaledHorner: s.GetVal(run),
+					CumSumCurr:   s.GetValCumSumCurr(run),
+					CumSumPrev:   s.GetValCumSumPrev(run),
+				}
+			}
+		}
 		if allPubs[i].Name == name {
 			return allPubs[i].Acc.GetVal(run)
 		}

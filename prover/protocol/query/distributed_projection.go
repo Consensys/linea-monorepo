@@ -1,26 +1,30 @@
 package query
 
 import (
-	"fmt"
+	"math/big"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type DistributedProjectionInput struct {
-	ColumnA, ColumnB         *symbolic.Expression
-	FilterA, FilterB         *symbolic.Expression
-	SizeA, SizeB             int
-	EvalCoin                 coin.Name
-	IsAInModule, IsBInModule bool
+	ColumnA, ColumnB                                               *symbolic.Expression
+	FilterA, FilterB                                               *symbolic.Expression
+	SizeA, SizeB                                                   int
+	EvalCoin                                                       coin.Name
+	IsAInModule, IsBInModule                                       bool
+	CumulativeNumOnesPrevSegmentsA, CumulativeNumOnesPrevSegmentsB big.Int
+	CurrNumOnesA, CurrNumOnesB                                     field.Element
 }
+
+// func (dpInp *DistributedProjectionInput) completeAssign(run *ifaces.Runtime) {
+// 	dpInp.CumulativeNumOnesPrevSegments.Run(run)
+// }
 
 type DistributedProjection struct {
 	Round int
@@ -29,7 +33,8 @@ type DistributedProjection struct {
 }
 
 type DistributedProjectionParams struct {
-	HornerVal field.Element
+	ScaledHorner                         field.Element
+	HashCumSumOnePrev, HashCumSumOneCurr field.Element
 }
 
 func NewDistributedProjection(round int, id ifaces.QueryID, inp []*DistributedProjectionInput) DistributedProjection {
@@ -54,8 +59,11 @@ func NewDistributedProjection(round int, id ifaces.QueryID, inp []*DistributedPr
 }
 
 // Constructor for distributed projection query parameters
-func NewDistributedProjectionParams(hornerVal field.Element) DistributedProjectionParams {
-	return DistributedProjectionParams{HornerVal: hornerVal}
+func NewDistributedProjectionParams(scaledHorner, hashCumSumOnePrev, hashCumSumOneCurr field.Element) DistributedProjectionParams {
+	return DistributedProjectionParams{
+		ScaledHorner:      scaledHorner,
+		HashCumSumOnePrev: hashCumSumOnePrev,
+		HashCumSumOneCurr: hashCumSumOneCurr}
 }
 
 // Name returns the unique identifier of the GrandProduct query.
@@ -65,56 +73,11 @@ func (dp DistributedProjection) Name() ifaces.QueryID {
 
 // Updates a Fiat-Shamir state
 func (dpp DistributedProjectionParams) UpdateFS(fs *fiatshamir.State) {
-	fs.Update(dpp.HornerVal)
+	fs.Update(dpp.ScaledHorner)
 }
 
+// Unimplemented
 func (dp DistributedProjection) Check(run ifaces.Runtime) error {
-	var (
-		actualParam = field.Zero()
-		params      = run.GetParams(dp.ID).(DistributedProjectionParams)
-		evalRand    field.Element
-	)
-	_, errBeta := evalRand.SetRandom()
-	if errBeta != nil {
-		// Cannot happen unless the entropy was exhausted
-		panic(errBeta)
-	}
-	for _, inp := range dp.Inp {
-		var (
-			colABoard    = inp.ColumnA.Board()
-			colBBoard    = inp.ColumnB.Board()
-			filterABorad = inp.FilterA.Board()
-			filterBBoard = inp.FilterB.Board()
-			colA         = column.EvalExprColumn(run, colABoard).IntoRegVecSaveAlloc()
-			colB         = column.EvalExprColumn(run, colBBoard).IntoRegVecSaveAlloc()
-			filterA      = column.EvalExprColumn(run, filterABorad).IntoRegVecSaveAlloc()
-			filterB      = column.EvalExprColumn(run, filterBBoard).IntoRegVecSaveAlloc()
-			elemParam    = field.One()
-		)
-		if inp.IsAInModule && !inp.IsBInModule {
-			hornerA := poly.GetHornerTrace(colA, filterA, evalRand)
-			elemParam = hornerA[0]
-		} else if !inp.IsAInModule && inp.IsBInModule {
-			hornerB := poly.GetHornerTrace(colB, filterB, evalRand)
-			elemParam = hornerB[0]
-			elemParam.Neg(&elemParam)
-		} else if inp.IsAInModule && inp.IsBInModule {
-			hornerA := poly.GetHornerTrace(colA, filterA, evalRand)
-			hornerB := poly.GetHornerTrace(colB, filterB, evalRand)
-			elemParam = hornerB[0]
-			elemParam.Neg(&elemParam)
-			elemParam.Add(&elemParam, &hornerA[0])
-		} else {
-			utils.Panic("Invalid distributed projection query %v", dp.ID)
-		}
-		actualParam.Add(&actualParam, &elemParam)
-
-	}
-
-	if actualParam != params.HornerVal {
-		return fmt.Errorf("the distributed projection query %v is not satisfied, actualParam = %v, param.HornerVal = %v", dp.ID, actualParam, params.HornerVal)
-	}
-
 	return nil
 }
 

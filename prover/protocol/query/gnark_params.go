@@ -84,6 +84,11 @@ func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 }
 
 // Update the fiat-shamir state with the the present parameters
+func (p GnarkDistributedProjectionParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+	fs.Update(p.Sum)
+}
+
+// Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	fs.Update(p.Ys...)
 }
