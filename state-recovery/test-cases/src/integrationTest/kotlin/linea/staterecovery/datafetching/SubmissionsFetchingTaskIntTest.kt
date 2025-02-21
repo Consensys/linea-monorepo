@@ -65,8 +65,8 @@ class SubmissionsFetchingTaskIntTest {
     aggregationsAndBlobs = loadBlobsAndAggregationsSortedAndGrouped(
       blobsResponsesDir = "$testDataDir/compression/responses",
       aggregationsResponsesDir = "$testDataDir/aggregation/responses",
-      ignoreBlobsWithoutAggregation = true,
-      numberOfAggregations = 7
+      numberOfAggregations = 7,
+      extraBlobsWithoutAggregation = 2
     )
     val rollupDeploymentResult = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6).get()

@@ -65,7 +65,8 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
     aggregationsAndBlobs = loadBlobsAndAggregationsSortedAndGrouped(
       blobsResponsesDir = "$testDataDir/compression/responses",
       aggregationsResponsesDir = "$testDataDir/aggregation/responses",
-      numberOfAggregations = 7
+      numberOfAggregations = 4,
+      extraBlobsWithoutAggregation = 0
     )
     fakeExecutionLayerClient = FakeExecutionLayerClient(
       headBlock = BlockNumberAndHash(number = 0uL, hash = ByteArray(32) { 0 }),
@@ -108,13 +109,13 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
     configureLoggers(
       rootLevel = Level.INFO,
       log.name to Level.DEBUG,
-      "linea.testing.submission" to Level.INFO,
+      "linea.testing.submission" to Level.DEBUG,
       "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN, // silence noisy gasPrice Caps logs
       "linea.staterecovery.BlobDecompressorToDomainV1" to Level.DEBUG,
       "linea.plugin.staterecovery.clients" to Level.INFO,
       "test.fake.clients.l1.fake-execution-layer" to Level.DEBUG,
       "test.clients.l1.web3j-default" to Level.DEBUG,
-      "test.clients.l1.web3j.receipt-poller" to Level.DEBUG,
+      "test.clients.l1.web3j.receipt-poller" to Level.TRACE,
       "linea.staterecovery.datafetching" to Level.TRACE
     )
   }
@@ -151,8 +152,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
       l1Web3jClient = createWeb3jHttpClient(
         rpcUrl = l1RpcUrl,
         log = LogManager.getLogger("test.clients.l1.web3j.receipt-poller")
-      ),
-      log = log
+      )
     )
   }
 
@@ -367,7 +367,13 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
 
     await()
       .atMost(1.minutes.toJavaDuration())
+      .pollInterval(2.seconds.toJavaDuration())
       .untilAsserted {
+        log.debug(
+          "headBlockNumber={} forceSyncStopBlockNumber={}",
+          fakeExecutionLayerClient.headBlock.number,
+          debugForceSyncStopBlockNumber
+        )
         assertThat(fakeExecutionLayerClient.headBlock.number).isGreaterThanOrEqualTo(debugForceSyncStopBlockNumber)
       }
 

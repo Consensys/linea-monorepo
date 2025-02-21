@@ -62,8 +62,8 @@ fun loadBlobsAndAggregations(
 fun loadBlobsAndAggregationsSortedAndGrouped(
   blobsResponsesDir: String,
   aggregationsResponsesDir: String,
-  ignoreBlobsWithoutAggregation: Boolean = false,
-  numberOfAggregations: Int? = null
+  numberOfAggregations: Int? = null,
+  extraBlobsWithoutAggregation: Int = 2
 ): List<AggregationAndBlobs> {
   var (blobs, aggregations) = loadBlobsAndAggregations(blobsResponsesDir, aggregationsResponsesDir)
 
@@ -71,10 +71,7 @@ fun loadBlobsAndAggregationsSortedAndGrouped(
     aggregations = aggregations.take(numberOfAggregations)
   }
 
-  return groupBlobsToAggregations(aggregations, blobs)
-    .let {
-      if (ignoreBlobsWithoutAggregation) it.filter { it.aggregation != null } else it
-    }
+  return groupBlobsToAggregations(aggregations, blobs, extraBlobsWithoutAggregation)
 }
 
 data class AggregationAndBlobs(
@@ -84,7 +81,8 @@ data class AggregationAndBlobs(
 
 fun groupBlobsToAggregations(
   aggregations: List<Aggregation>,
-  blobs: List<BlobRecord>
+  blobs: List<BlobRecord>,
+  extraBlobsWithoutAggregation: Int
 ): List<AggregationAndBlobs> {
   val aggBlobs = aggregations.map { agg ->
     AggregationAndBlobs(agg, blobs.filter { it.startBlockNumber in agg.blocksRange })
@@ -92,6 +90,6 @@ fun groupBlobsToAggregations(
 
   val blobsWithoutAgg = blobs.filter { blob ->
     aggBlobs.none { it.blobs.contains(blob) }
-  }
+  }.take(extraBlobsWithoutAggregation)
   return aggBlobs + listOf(AggregationAndBlobs(null, blobsWithoutAgg))
 }
