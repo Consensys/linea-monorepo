@@ -48,45 +48,49 @@ var (
 func main() {
 
 	flag.Parse()
-	if *flagBound1 != -1 && *flagBound2 != -1 {
-		*flagStart = (*flagBound1 + *flagBound2) / 2
-		*flagCrawlStep = (*flagBound1 - *flagBound2) / 4
-		if *flagCrawlStep == 0 {
-			*flagCrawlStep = 1
-		}
-		if *flagCrawlStep < 0 {
-			*flagCrawlStep = -*flagCrawlStep
-		}
-	}
-	v := nbConstraints(*flagStart)
-	a, b := *flagStart, *flagStart
 
-	if v > *flagTargetNbConstraints {
-		fmt.Println("crawling downward")
-		for v > *flagTargetNbConstraints {
-			b = a
-			a = max(a-*flagCrawlStep, 0)
-			v = nbConstraints(a)
-			*flagCrawlStep *= 2
+	var a, b int // lower and upper bounds
+
+	// if given bounds, start the binary search
+	if *flagBound1 != -1 && *flagBound2 != -1 {
+		a, b = *flagBound1, *flagBound2
+		if a > b {
+			a, b = b, a
 		}
-	} else if v < *flagTargetNbConstraints {
-		fmt.Println("crawling upward")
-		for v < *flagTargetNbConstraints {
-			a = b
-			b += *flagCrawlStep
-			v = nbConstraints(b)
-			*flagCrawlStep *= 2
+		fmt.Print("bounds given.")
+	} else { // only one value given, start crawling
+		v := nbConstraints(*flagStart)
+		a, b = *flagStart, *flagStart
+
+		if v > *flagTargetNbConstraints {
+			fmt.Println("crawling downward")
+			for v > *flagTargetNbConstraints {
+				b = a
+				a = max(a-*flagCrawlStep, 0)
+				v = nbConstraints(a)
+				*flagCrawlStep *= 2
+			}
+		} else if v < *flagTargetNbConstraints {
+			fmt.Println("crawling upward")
+			for v < *flagTargetNbConstraints {
+				a = b
+				b += *flagCrawlStep
+				v = nbConstraints(b)
+				*flagCrawlStep *= 2
+			}
 		}
+		if v == *flagTargetNbConstraints {
+			fmt.Println("wow what are the odds")
+			return
+		}
+		fmt.Print("bounds found.")
 	}
-	if v == *flagTargetNbConstraints {
-		fmt.Println("wow what are the odds")
-		return
-	}
-	fmt.Println("bounds found. binary searching")
+
+	fmt.Println(" binary searching")
 
 	for b > a {
 		m := (b + a) / 2
-		v = nbConstraints(m)
+		v := nbConstraints(m)
 		if v > *flagTargetNbConstraints {
 			b = m
 		}

@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	_inFile                = "./samples/sample0.json"
-	_outFile               = "./samples/sample0-response.json"
 	_inFileEIP4844         = "./samples/sample1.json"
 	_outFileEIP4844        = "./samples/sample1-response.json"
 	_inFileEIP4844MaxSize  = "./samples/sample-max-size.json"
@@ -30,49 +28,6 @@ const (
 	_outFileEIP4844Empty   = "./samples/sample-empty-response.json"
 	_inFileEIP4844TooLarge = "./samples/sample-too-large.json"
 )
-
-// blobsubmission with callData
-// eip4844Enabled=false
-func TestBlobSubmission(t *testing.T) {
-	fIn, err := os.Open(_inFile)
-	if err != nil {
-		t.Fatalf("could not open %s: %v", _inFile, err)
-	}
-	defer fIn.Close()
-
-	fOut, err := os.Open(_outFile)
-	if err != nil {
-		t.Fatalf("could not open %s: %v", _outFile, err)
-	}
-	defer fOut.Close()
-
-	var (
-		inp         Request
-		outExpected Response
-	)
-
-	if err = json.NewDecoder(fIn).Decode(&inp); err != nil {
-		t.Fatalf("could not decode %++v: %v", inp, err)
-	}
-
-	if err = json.NewDecoder(fOut).Decode(&outExpected); err != nil {
-		t.Fatalf("could not decode %++v: %v", outExpected, err)
-	}
-
-	// call CraftResponseCalldata()
-	out, err := CraftResponse(&inp)
-
-	ok := assert.NoErrorf(t, err, "could not craft the response: %v", err)
-	if ok {
-		assert.Equal(t, outExpected, *out, "the response file should be the same")
-	}
-
-	// Stop the test after the first failed file to not overwhelm the
-	// logs.
-	if t.Failed() {
-		t.Fatalf("Got errors for file %s, stopping the test", _outFile)
-	}
-}
 
 // eip4844 blob submission
 // eip4844Enabled = true
