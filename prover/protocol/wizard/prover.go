@@ -212,7 +212,7 @@ func ProverOnlyFirstRound(c *CompiledIOP, highLevelprover ProverStep) *ProverRun
 	//
 	highLevelprover(&runtime)
 
-	// Then, run the compiled prover steps. This will only run thoses of the
+	// Then, run the compiled prover steps. This will only run those of the
 	// first round.
 	//
 	runtime.runProverSteps()
@@ -849,6 +849,8 @@ func (run *ProverRuntime) AssignDistributedProjection(name ifaces.QueryID, distr
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
 	// Adds it to the assignments
-	params := query.NewDistributedProjectionParams(distributedProjectionParam.HornerVal)
+	params := query.NewDistributedProjectionParams(distributedProjectionParam.ScaledHorner,
+		distributedProjectionParam.HashCumSumOnePrev,
+		distributedProjectionParam.HashCumSumOneCurr)
 	run.QueriesParams.InsertNew(name, params)
 }
