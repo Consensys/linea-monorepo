@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer;
 
-import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeToOpCodeDataMap;
+import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeDataList;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
@@ -38,17 +38,19 @@ public class OpCodesTest {
 
   private Bytes getAllOpCodesProgram() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
-    for (OpCodeData opCodeData : opCodeToOpCodeDataMap.values()) {
-      if (opCodeData.instructionFamily() != InstructionFamily.HALT
-          && opCodeData.instructionFamily() != InstructionFamily.JUMP) {
-        OpCode opCode = opCodeData.mnemonic();
-        int nPushes = opCodeData.stackSettings().delta();
-        for (int i = 0; i < nPushes; i++) {
-          program.push(0);
-        }
-        program.op(opCode);
-        if (opCodeData.stackSettings().alpha() != 0) {
-          program.op(OpCode.POP);
+    for (OpCodeData opCodeData : opCodeDataList) {
+      if (opCodeData != null) {
+        if (opCodeData.instructionFamily() != InstructionFamily.HALT
+            && opCodeData.instructionFamily() != InstructionFamily.JUMP) {
+          OpCode opCode = opCodeData.mnemonic();
+          int nPushes = opCodeData.stackSettings().delta();
+          for (int i = 0; i < nPushes; i++) {
+            program.push(0);
+          }
+          program.op(opCode);
+          if (opCodeData.stackSettings().alpha() != 0) {
+            program.op(OpCode.POP);
+          }
         }
       }
     }
