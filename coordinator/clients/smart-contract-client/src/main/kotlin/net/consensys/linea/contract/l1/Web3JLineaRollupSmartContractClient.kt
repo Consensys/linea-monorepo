@@ -7,7 +7,6 @@ import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.Web3JContractAsyncHelper
 import net.consensys.linea.contract.throwExceptionIfJsonRpcErrorReturned
 import net.consensys.linea.web3j.SmartContractErrors
-import net.consensys.linea.web3j.informativeEthCall
 import net.consensys.zkevm.coordinator.clients.smartcontract.BlockAndNonce
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord

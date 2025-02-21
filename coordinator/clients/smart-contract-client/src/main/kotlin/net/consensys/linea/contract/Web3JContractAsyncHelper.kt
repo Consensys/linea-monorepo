@@ -12,6 +12,7 @@ import net.consensys.linea.web3j.Eip4844Transaction
 import net.consensys.linea.web3j.SmartContractErrors
 import net.consensys.linea.web3j.getRevertReason
 import net.consensys.linea.web3j.informativeEthCall
+import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCaps
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
