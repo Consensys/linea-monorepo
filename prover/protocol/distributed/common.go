@@ -21,7 +21,7 @@ func ReplaceExternalCoinsVerifCols(
 	initialComp, moduleComp *wizard.CompiledIOP,
 	expr *symbolic.Expression,
 	translationMap collection.Mapping[string, *symbolic.Expression],
-	numSegments int,
+	numSegments, segID int,
 ) {
 	var (
 		board    = expr.Board()
@@ -45,18 +45,17 @@ func ReplaceExternalCoinsVerifCols(
 				// register a local coin of type FieldFromSeed.
 				name := coin.Namef("%v_%v", v.Name, "FieldFromSeed")
 				localV := moduleComp.InsertCoin(v.Round, name, coin.FieldFromSeed)
+				// add it to the translation map
 				translationMap.InsertNew(v.String(), symbolic.NewVariable(localV))
 			}
 		case ifaces.Column:
+
+			segSize := v.Size() / numSegments
 			// create the local verfiercols and add them to the translationMap.
 			if vCol, ok := v.(verifiercol.VerifierCol); ok {
-				if constCol, ok := vCol.(verifiercol.ConstCol); ok {
-					verifcol := verifiercol.NewConstantCol(constCol.F,
-						constCol.Size_/numSegments)
-					translationMap.InsertNew(v.String(), ifaces.ColumnAsVariable(verifcol))
-				} else {
-					panic("this case is not supported for now")
-				}
+				verifCol := vCol.Split(initialComp, segSize*segID, segSize*(segID+1))
+				// add it to the translation map
+				translationMap.InsertNew(v.String(), ifaces.ColumnAsVariable(verifCol))
 			}
 
 		}

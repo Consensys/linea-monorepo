@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/global"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
@@ -36,6 +38,8 @@ func TestDistributedGlobal(t *testing.T) {
 			col3 = b.CompiledIOP.InsertCommit(0, "module.col3", 8)
 
 			fibonacci = b.CompiledIOP.InsertCommit(0, "module.fibo", 16)
+			verifCol  = verifiercol.NewConstantCol(field.One(), 16)
+			// verifCol1 = column.Shift(verifCol, 2)
 		)
 
 		b.CompiledIOP.InsertGlobal(0, "global0",
@@ -44,11 +48,13 @@ func TestDistributedGlobal(t *testing.T) {
 				symbolic.Mul(2, column.Shift(col2, 2)),
 				symbolic.Neg(column.Shift(col3, 3)),
 			),
+			// check boundaries
+			true,
 		)
 
 		b.CompiledIOP.InsertGlobal(0, "fibonacci",
 			symbolic.Sub(
-				fibonacci,
+				symbolic.Mul(fibonacci, verifCol),
 				column.Shift(fibonacci, -1),
 				column.Shift(fibonacci, -2)),
 		)

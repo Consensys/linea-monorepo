@@ -1,25 +1,25 @@
 package global
 
 import (
-	"fmt"
-
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	edc "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/execution_data_collector"
 )
 
+// it stores the data structs the prover should assigns
 type boundaryAssignments struct {
 	boundaries  boundaries
 	hashOpening query.LocalOpening
 	mimcHash    edc.MIMCHasher
 }
+
+// it stores the information that the prover should assign regarding provider/receiver
 type proverActionForBoundaries struct {
 	provider boundaryAssignments
 	receiver boundaryAssignments
 }
 
-// it assigns all the LocalOpening  covering the boundaries
+// it assigns all the LocalOpening covering the boundaries, and hash values
 func (pa proverActionForBoundaries) Run(run *wizard.ProverRuntime) {
 	var (
 		provider         = pa.provider.boundaries.boundaryCol
@@ -31,9 +31,6 @@ func (pa proverActionForBoundaries) Run(run *wizard.ProverRuntime) {
 		receiverWit = run.GetColumn(receiver.GetColID()).IntoRegVecSaveAlloc()
 	)
 
-	fmt.Printf("provider %v\n", vector.Prettify(providerWit))
-	fmt.Printf("receiver %v\n", vector.Prettify(receiverWit))
-
 	for _, loProvider := range providerOpenings.ListAllKeys() {
 		index := providerOpenings.MustGet(loProvider)
 		run.AssignLocalPoint(loProvider.ID, providerWit[index])
@@ -44,6 +41,7 @@ func (pa proverActionForBoundaries) Run(run *wizard.ProverRuntime) {
 		run.AssignLocalPoint(loReceiver.ID, receiverWit[index])
 	}
 
+	// compute and  assign the hash of Provider/Receiver
 	pa.provider.mimcHash.AssignHasher(run)
 	pa.receiver.mimcHash.AssignHasher(run)
 

@@ -91,38 +91,42 @@ func TestSeedGeneration(t *testing.T) {
 	disc := md.QueryBasedDiscoverer{
 		SimpleDiscoverer: &md.PeriodSeperatingModuleDiscoverer{},
 	}
-	disc.Analyze(initialComp, lppComp)
+	disc.Analyze(initialComp)
 
-	// distribute the columns among modules and segments; this includes also multiplicity columns
-	// for all the segments from the same module, compiledIOP object is the same.
-	moduleComp0 := segcomp.GetFreshLPPComp(
-		segcomp.SegmentInputs{
+	var (
+		in0 = segcomp.SegmentInputs{
 			InitialComp:         initialComp,
 			Disc:                disc,
 			ModuleName:          "module0",
 			NumSegmentsInModule: numSegModule0,
-		},
+		}
+
+		in1 = segcomp.SegmentInputs{
+			InitialComp:         initialComp,
+			Disc:                disc,
+			ModuleName:          "module1",
+			NumSegmentsInModule: numSegModule1,
+		}
+
+		in2 = segcomp.SegmentInputs{
+			InitialComp:         initialComp,
+			Disc:                disc,
+			ModuleName:          "module2",
+			NumSegmentsInModule: numSegModule2,
+		}
 	)
 
-	moduleComp1 := segcomp.GetFreshLPPComp(segcomp.SegmentInputs{
-		InitialComp:         initialComp,
-		Disc:                disc,
-		ModuleName:          "module1",
-		NumSegmentsInModule: numSegModule1,
-	})
-
-	moduleComp2 := segcomp.GetFreshLPPComp(segcomp.SegmentInputs{
-		InitialComp:         initialComp,
-		Disc:                disc,
-		ModuleName:          "module2",
-		NumSegmentsInModule: numSegModule2,
-	})
+	// distribute the columns among modules and segments; this includes also multiplicity columns
+	// for all the segments from the same module, compiledIOP object is the same.
+	moduleComp0 := segcomp.GetFreshLPPComp(in0)
+	moduleComp1 := segcomp.GetFreshLPPComp(in1)
+	moduleComp2 := segcomp.GetFreshLPPComp(in2)
 
 	// distribute the query LogDerivativeSum among modules.
 	// The seed is used to generate randomness for each moduleComp.
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc.SimpleDiscoverer, numSegModule0)
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc.SimpleDiscoverer, numSegModule1)
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp2, "module2", disc.SimpleDiscoverer, numSegModule2)
+	inclusion.DistributeLogDerivativeSum(moduleComp0, in0)
+	inclusion.DistributeLogDerivativeSum(moduleComp1, in1)
+	inclusion.DistributeLogDerivativeSum(moduleComp2, in2)
 
 	// This compiles the log-derivative queries into global/local queries.
 	wizard.ContinueCompilation(moduleComp0, logderiv.CompileLogDerivSum, dummy.Compile)
@@ -193,7 +197,7 @@ func checkConsistency(runs []wizard.Runtime) error {
 	}
 
 	if !res.IsZero() {
-		return errors.New("the logderiv sums do not cancel each others")
+		return errors.New("the logderive sums do not cancel each others")
 	}
 
 	return nil

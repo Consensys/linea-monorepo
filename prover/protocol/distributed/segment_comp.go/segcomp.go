@@ -56,8 +56,10 @@ func GetFreshGLComp(in SegmentInputs) *wizard.CompiledIOP {
 	// create a new  sub-prover for the segment.
 	glProver := glProver{
 		// all the glColumns in the module
-		glCols:      glCols,
-		numSegments: in.NumSegmentsInModule,
+		segProver: segmentModuleProver{
+			cols:        glCols,
+			numSegments: in.NumSegmentsInModule,
+		},
 		// placeholders for boundaries
 		provider: provider,
 		receiver: receiver,
@@ -82,11 +84,10 @@ func GetFreshLPPComp(in SegmentInputs) *wizard.CompiledIOP {
 		lppCols = in.Disc.LPPColumns.MustGet(in.ModuleName)
 		// initialize CompiledIOP of the segment
 		segComp = wizard.NewCompiledIOP()
-		segID   int
 	)
 
 	// get the segmentID via a ProverAction
-	segComp.RegisterProverAction(0, segIDProvider{segID: segID})
+	segComp.RegisterProverAction(0, segIDProvider{})
 
 	// insert the split columns into the segment
 	insertColumnIntoSegment(in, segComp, lppCols)
@@ -130,6 +131,10 @@ func (p segmentModuleProver) Run(run *wizard.ProverRuntime) {
 
 	for _, col := range p.cols {
 
+		if _, ok := col.(verifiercol.VerifierCol); ok {
+			continue
+		}
+
 		status := run.Spec.Columns.Status(col.GetColID())
 		// verifiercol and precomputed are already assigned, so assign the other columns.
 		if status == column.Committed || status == column.Proof {
@@ -148,37 +153,25 @@ func getSegmentFromWitness(wit ifaces.ColAssignment, numSegs, segID int) ifaces.
 }
 
 type glProver struct {
-	glCols      []ifaces.Column
-	numSegments int
-	provider    ifaces.Column
-	receiver    ifaces.Column
+	segProver segmentModuleProver
+	provider  ifaces.Column
+	receiver  ifaces.Column
 }
 
 func (p glProver) Run(run *wizard.ProverRuntime) {
 	if run.ParentRuntime == nil {
 		utils.Panic("invalid call: the runtime does not have a [ParentRuntime]")
 	}
-	if run.ProverID > p.numSegments {
+	if run.ProverID > p.segProver.numSegments {
 		panic("proverID can not be larger than number of segments")
 	}
-
-	for _, col := range p.glCols {
-
-		status := run.Spec.Columns.Status(col.GetColID())
-		// verifiercol and precomputed are already assigned, so assign the other columns.
-		if status == column.Committed || status == column.Proof {
-			// get the witness from the initialProver
-			colWitness := run.ParentRuntime.GetColumn(col.GetColID())
-			colSegWitness := getSegmentFromWitness(colWitness, p.numSegments, run.ProverID)
-			// assign it in the module in the round 0
-			run.AssignColumn(col.GetColID(), colSegWitness, 0)
-		}
-	}
-
+	// assign the gl columns
+	p.segProver.Run(run)
 	// assign Provider and Receiver
-	assignProvider(run, run.ProverID, p.numSegments, p.provider)
+	assignProvider(run, run.ProverID, p.segProver.numSegments, p.provider)
 	//  for the current segment, the receiver is the provider of the previous segment.
-	assignProvider(run, utils.PositiveMod(run.ProverID-1, p.numSegments), p.numSegments, p.receiver)
+	assignProvider(run, utils.PositiveMod(run.ProverID-1, p.segProver.numSegments),
+		p.segProver.numSegments, p.receiver)
 
 }
 
@@ -273,11 +266,18 @@ func assignProvider(run *wizard.ProverRuntime, segID, numSegments int, col iface
 }
 
 func insertColumnIntoSegment(in SegmentInputs, segComp *wizard.CompiledIOP, cols []ifaces.Column) {
+
 	for _, col := range cols {
+
+		if _, ok := col.(verifiercol.VerifierCol); ok {
+			continue
+		}
+
 		var (
-			status  = in.InitialComp.Columns.Status(col.GetColID())
 			segSize = col.Size() / in.NumSegmentsInModule
+			status  = in.InitialComp.Columns.Status(col.GetColID())
 		)
+
 		switch status {
 		case column.Precomputed:
 
@@ -292,12 +292,6 @@ func insertColumnIntoSegment(in SegmentInputs, segComp *wizard.CompiledIOP, cols
 				precom.SubVector(segSize*in.SegID, segSize*(in.SegID+1)))
 			segComp.Columns.SetStatus(col.GetColID(), column.VerifyingKey)
 
-		case column.VerifierDefined:
-			if vcol, ok := col.(verifiercol.VerifierCol); ok {
-				vcol.Split(segComp, segSize*in.SegID, segSize*(in.SegID+1))
-			} else {
-				panic("unexpected type")
-			}
 		default:
 			segComp.InsertColumn(0, col.GetColID(), segSize, status)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
+	segcomp "github.com/consensys/linea-monorepo/prover/protocol/distributed/segment_comp.go"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -30,24 +31,19 @@ type DistributionInputs struct {
 	// query is supposed to be the global LogDerivativeSum.
 	Query query.LogDerivativeSum
 	// number of segments for the module
-	NumSegments int
+	NumSegments, SegID int
 }
 
 // DistributeLogDerivativeSum distributes a  share from a global [query.LogDerivativeSum] query to the given module.
-func DistributeLogDerivativeSum(
-	initialComp, moduleComp *wizard.CompiledIOP,
-	moduleName distributed.ModuleName,
-	disc distributed.ModuleDiscoverer,
-	numSegments int,
-) {
+func DistributeLogDerivativeSum(moduleComp *wizard.CompiledIOP, segIn segcomp.SegmentInputs) {
 
 	var (
 		queryID ifaces.QueryID
 	)
 
-	for _, qName := range initialComp.QueriesParams.AllUnignoredKeys() {
+	for _, qName := range segIn.InitialComp.QueriesParams.AllUnignoredKeys() {
 
-		_, ok := initialComp.QueriesParams.Data(qName).(query.LogDerivativeSum)
+		_, ok := segIn.InitialComp.QueriesParams.Data(qName).(query.LogDerivativeSum)
 		if !ok {
 			continue
 		}
@@ -63,11 +59,12 @@ func DistributeLogDerivativeSum(
 	// get the share of the module from the LogDerivativeSum query
 	GetShareOfLogDerivativeSum(DistributionInputs{
 		ModuleComp:  moduleComp,
-		InitialComp: initialComp,
-		Disc:        disc,
-		ModuleName:  moduleName,
-		Query:       initialComp.QueriesParams.Data(queryID).(query.LogDerivativeSum),
-		NumSegments: numSegments,
+		InitialComp: segIn.InitialComp,
+		Disc:        segIn.Disc.SimpleDiscoverer,
+		ModuleName:  segIn.ModuleName,
+		Query:       segIn.InitialComp.QueriesParams.Data(queryID).(query.LogDerivativeSum),
+		NumSegments: segIn.NumSegmentsInModule,
+		SegID:       segIn.SegID,
 	})
 
 }
@@ -110,7 +107,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 				// from the expression  are in the module
 				// Thus we can add the coins locally (i.e., without [distributed.ModuleDiscoverer]).
 				distributed.ReplaceExternalCoinsVerifCols(in.InitialComp, moduleComp,
-					logDeriv.Inputs[size].Denominator[i], translationMap, in.NumSegments)
+					logDeriv.Inputs[size].Denominator[i], translationMap, in.NumSegments, in.SegID)
 
 				denominator = append(denominator,
 					// get the corresponding expression from the module
