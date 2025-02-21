@@ -200,43 +200,51 @@ describe("PauseManager", () => {
   });
 
   describe("Pausing with GENERAL_PAUSE_TYPE", () => {
-    // can pause with GENERAL_PAUSE_TYPE as SECURITY_COUNCIL_ROLE
-    it("should pause the contract if SECURITY_COUNCIL_ROLE", async () => {
-      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
-    });
+    describe("Pausing and unpausing:", () => {
+      // can pause with GENERAL_PAUSE_TYPE as SECURITY_COUNCIL_ROLE
+      it("should pause the contract if SECURITY_COUNCIL_ROLE", async () => {
+        await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+        expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      });
 
-    // cannot pause as non-SECURITY_COUNCIL_ROLE
-    it("should revert pause attempt if not SECURITY_COUNCIL_ROLE", async () => {
-      await expect(pauseByType(GENERAL_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-        buildAccessErrorMessage(nonManager, SECURITY_COUNCIL_ROLE),
-      );
-    });
+      it("should pause the contract with SECURITY_COUNCIL_ROLE, if another pause type is already active", async () => {
+        await pauseByType(L1_L2_PAUSE_TYPE);
+        await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+        expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      });
 
-    // can unpause as SECURITY_COUNCIL_ROLE
-    it("should unpause the contract if SECURITY_COUNCIL_ROLE", async () => {
-      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
-      await unPauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+      // cannot pause as non-SECURITY_COUNCIL_ROLE
+      it("should revert pause attempt if not SECURITY_COUNCIL_ROLE", async () => {
+        await expect(pauseByType(GENERAL_PAUSE_TYPE, nonManager)).to.be.revertedWith(
+          buildAccessErrorMessage(nonManager, SECURITY_COUNCIL_ROLE),
+        );
+      });
 
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
-    });
+      // can unpause as SECURITY_COUNCIL_ROLE
+      it("should unpause the contract if SECURITY_COUNCIL_ROLE", async () => {
+        await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+        await unPauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
 
-    // cannot unpause as non-UNPAUSE_ALL_ROLE
-    it("should revert unpause attempt if not UNPAUSE_ALL_ROLE", async () => {
-      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+        expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      });
 
-      await expect(unPauseByType(GENERAL_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-        buildAccessErrorMessage(nonManager, SECURITY_COUNCIL_ROLE),
-      );
+      // cannot unpause as non-UNPAUSE_ALL_ROLE
+      it("should revert unpause attempt if not UNPAUSE_ALL_ROLE", async () => {
+        await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+
+        await expect(unPauseByType(GENERAL_PAUSE_TYPE, nonManager)).to.be.revertedWith(
+          buildAccessErrorMessage(nonManager, SECURITY_COUNCIL_ROLE),
+        );
+      });
     });
 
     describe("Pause cooldown and expiry:", () => {
-      it("should set pauseExpiry to a practically unreachable timestamp if SECURITY_COUNCIL_ROLE", async () => {
+      it("should set pauseExpiry to an unreachable timestamp if pause with SECURITY_COUNCIL_ROLE", async () => {
         await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
         expect(await pauseManager.pauseExpiry()).to.equal(ethers.MaxUint256);
       });
 
-      it("Should be unable to unPauseDueToExpiry after SECURITY_COUNCIL_ROLE pauses", async () => {
+      it("Should be unable to unPauseDueToExpiry after pause with SECURITY_COUNCIL_ROLE", async () => {
         await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
         const pauseTimestamp = await getLastBlockTimestamp();
         const expectedPauseExpiry = pauseTimestamp + (await pauseManager.PAUSE_DURATION());
@@ -264,6 +272,22 @@ describe("PauseManager", () => {
         await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
         await unPauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
         await pauseByType(L1_L2_PAUSE_TYPE);
+      });
+
+      it("during pause cooldown, SECURITY_COUNCIL_ROLE should be able to pause", async () => {
+        await pauseByType(L1_L2_PAUSE_TYPE);
+        await setFutureTimestampForNextBlock(await pauseManager.PAUSE_DURATION());
+        await unPauseDueToExpiry(L1_L2_PAUSE_TYPE, nonManager);
+        await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+      });
+
+      it("Granular pause -> General pause -> General unpause -> Granular unPauseDueToExpiry should work", async () => {
+        await pauseByType(L1_L2_PAUSE_TYPE);
+        await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+        await unPauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+        await unPauseDueToExpiry(L1_L2_PAUSE_TYPE, nonManager);
+        expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+        expect(await pauseManager.isPaused(L1_L2_PAUSE_TYPE)).to.be.false;
       });
     });
   });
@@ -462,7 +486,7 @@ describe("PauseManager", () => {
         await expect(pauseByType(L1_L2_PAUSE_TYPE)).to.be.revertedWithCustomError(pauseManager, "IsPaused");
       });
 
-      it("Should not allow other types to pause if one is paused", async () => {
+      it("Should not allow other types to pause if one is already paused", async () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
         await expect(pauseByType(L1_L2_PAUSE_TYPE)).to.be.revertedWithCustomError(pauseManager, "IsPaused");
         const expectedCooldown = (await pauseManager.pauseExpiry()) + (await pauseManager.COOLDOWN_DURATION());

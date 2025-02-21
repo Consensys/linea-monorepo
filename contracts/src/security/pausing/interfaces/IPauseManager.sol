@@ -51,7 +51,7 @@ interface IPauseManager {
   event UnPaused(address messageSender, PauseType indexed pauseType);
 
   /**
-   * @notice Emitted when a pause type is unpaused due to pause expiry period elapsing.
+   * @notice Emitted when a pause type is unpaused due to pause expiry passing.
    * @param pauseType The pause type that was unpaused.
    */
   event UnPausedDueToExpiry(PauseType pauseType);
@@ -120,6 +120,8 @@ interface IPauseManager {
    * @notice Pauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in pauseTypeRoles for the pauseType.
+   * @dev Non-SECURITY_COUNCIL_ROLE can only pause after cooldown has passed.
+   * @dev SECURITY_COUNCIL_ROLE can pause without cooldown or expiry restrictions.
    * @param _pauseType The pause type value.
    */
   function pauseByType(PauseType _pauseType) external;
@@ -128,12 +130,14 @@ interface IPauseManager {
    * @notice Unpauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in unPauseTypeRoles for the pauseType.
+   * @dev SECURITY_COUNCIL_ROLE unpause will reset the cooldown.
    * @param _pauseType The pause type value.
    */
   function unPauseByType(PauseType _pauseType) external;
 
   /**
-   * @notice Unpauses functionality by pause type when pause period has expired.
+   * @notice Unpauses a specific pause type when the pause has expired.
+   * @dev Can be called by anyone.
    * @dev Throws if UNUSED pause type is used, or the pause expiry period has not passed.
    * @param _pauseType The pause type value.
    */

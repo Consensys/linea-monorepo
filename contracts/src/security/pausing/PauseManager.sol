@@ -19,7 +19,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /// @notice Role assigned to the security council that enables indefinite pausing.
   bytes32 public constant SECURITY_COUNCIL_ROLE = keccak256("SECURITY_COUNCIL_ROLE");
 
-  /// @notice Duration of pauses.
+  /// @notice Duration of pauses, after which pauses will expire.
   /// @dev Pauses enacted by the SECURITY_COUNCIL_ROLE do not have a limited duration.
   uint256 public constant PAUSE_DURATION = 72 hours;
 
@@ -39,6 +39,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   mapping(PauseType unPauseType => bytes32 role) private _unPauseTypeRoles;
 
   /// @notice Unix timestamp of pause expiry.
+  /// @dev A single pauseExpiry value applies to all pause types, so pausing with one pause type will block another pause type from being enacted (unless the SECURITY_COUNCIL_ROLE is used).
   uint256 public pauseExpiry;
 
   /// @dev Total contract storage is 12 slots with the gap below.
@@ -137,6 +138,8 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
    * @notice Pauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_pauseTypeRoles` for the pauseType.
+   * @dev Non-SECURITY_COUNCIL_ROLE can only pause after cooldown has passed.
+   * @dev SECURITY_COUNCIL_ROLE can pause without cooldown or expiry restrictions.
    * @param _pauseType The pause type value.
    */
   function pauseByType(
@@ -163,6 +166,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
    * @notice Unpauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_unPauseTypeRoles` for the pauseType.
+   * @dev SECURITY_COUNCIL_ROLE unpause will reset the cooldown.
    * @param _pauseType The pause type value.
    */
   function unPauseByType(
@@ -180,7 +184,8 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   }
 
   /**
-   * @notice Unpauses functionality by pause type when pause period has expired.
+   * @notice Unpauses a specific pause type when the pause has expired.
+   * @dev Can be called by anyone.
    * @dev Throws if UNUSED pause type is used, or the pause expiry period has not passed.
    * @param _pauseType The pause type value.
    */
