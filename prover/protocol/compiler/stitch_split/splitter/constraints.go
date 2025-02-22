@@ -81,7 +81,7 @@ func (ctx splitterContext) LocalGlobalConstraints() {
 				continue
 			}
 
-			// if the associated expression is eligible to the stitching, mark the query, over the sub columns, as ignored.
+			// if the associated expression is eligible to the splitting, mark the query as ignored.
 			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the sub columns

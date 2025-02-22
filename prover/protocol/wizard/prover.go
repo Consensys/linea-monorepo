@@ -212,7 +212,7 @@ func ProverOnlyFirstRound(c *CompiledIOP, highLevelprover ProverStep) *ProverRun
 	//
 	highLevelprover(&runtime)
 
-	// Then, run the compiled prover steps. This will only run thoses of the
+	// Then, run the compiled prover steps. This will only run those of the
 	// first round.
 	//
 	runtime.runProverSteps()
@@ -829,5 +829,28 @@ func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Elemen
 
 	// Adds it to the assignments
 	params := query.NewGrandProductParams(y)
+	run.QueriesParams.InsertNew(name, params)
+}
+
+// AssignDistributedProjection assigns the value horner(A, fA) if A
+// is in the module, horner(B, fB)^{-1} if B is in the module, and
+// horner(A, fA) * horner(B, fB)^{-1} if both are in the module.
+// The function will panic if:
+//   - the parameters were already assigned
+//   - the specified query is not registered
+//   - the assignment round is incorrect
+func (run *ProverRuntime) AssignDistributedProjection(name ifaces.QueryID, distributedProjectionParam query.DistributedProjectionParams) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewDistributedProjectionParams(distributedProjectionParam.ScaledHorner,
+		distributedProjectionParam.HashCumSumOnePrev,
+		distributedProjectionParam.HashCumSumOneCurr)
 	run.QueriesParams.InsertNew(name, params)
 }

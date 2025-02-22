@@ -1,9 +1,10 @@
-package namebaseddiscoverer
+package discoverer
 
 import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -55,11 +56,6 @@ func periodSeparator(name string) string {
 	return name[:index]
 }
 
-// NbModules returns the number of modules
-func (p *PeriodSeperatingModuleDiscoverer) NbModules() int {
-	return len(p.modules)
-}
-
 // ModuleList returns the list of module names
 func (p *PeriodSeperatingModuleDiscoverer) ModuleList() []ModuleName {
 	moduleNames := make([]ModuleName, 0, len(p.modules))
@@ -89,8 +85,12 @@ func (p *PeriodSeperatingModuleDiscoverer) QueryIsInModule(ifaces.Query, ModuleN
 
 // ColumnIsInModule checks that the given column is inside the given module.
 func (p *PeriodSeperatingModuleDiscoverer) ColumnIsInModule(col ifaces.Column, name ModuleName) bool {
+	colID := col.GetColID()
+	if shifted, ok := col.(column.Shifted); ok {
+		colID = shifted.Parent.GetColID()
+	}
 	for _, c := range p.modules[name] {
-		if c.GetColID() == col.GetColID() {
+		if c.GetColID() == colID {
 			return true
 		}
 	}
@@ -100,6 +100,7 @@ func (p *PeriodSeperatingModuleDiscoverer) ColumnIsInModule(col ifaces.Column, n
 //	ExpressionIsInModule checks that all the columns  (except verifiercol) in the expression are from the given module.
 //
 // It does not check the presence of the coins and other metadata in the module.
+// the restriction over verifier column comes from the fact that the discoverer Analyses compiledIOP and the verifier columns are not accessible there.
 func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr *symbolic.Expression, name ModuleName) bool {
 	var (
 		board    = expr.Board()
@@ -131,7 +132,7 @@ func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr *symbolic.E
 	}
 
 	if nCols == 0 {
-		panic("could not find any column in the expression")
+		panic("unsupported, could not find any column in the expression")
 	} else {
 		return b
 	}

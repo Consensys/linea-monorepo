@@ -33,10 +33,13 @@ func TestProjection(t *testing.T) {
 	prover := func(run *wizard.ProverRuntime) {
 		runS = run
 		// assign filters and columns
-		flagAWit := make([]field.Element, flagSizeA)
-		columnAWit := make([]field.Element, flagSizeA)
-		flagBWit := make([]field.Element, flagSizeB)
-		columnBWit := make([]field.Element, flagSizeB)
+		var (
+			flagAWit   = make([]field.Element, flagSizeA)
+			columnAWit = make([]field.Element, flagSizeA)
+			flagBWit   = make([]field.Element, flagSizeB)
+			columnBWit = make([]field.Element, flagSizeB)
+		)
+
 		for i := 0; i < 10; i++ {
 			flagAWit[i] = field.One()
 			columnAWit[i] = field.NewElement(uint64(i))
