@@ -51,7 +51,7 @@ func DistributePlonkInWizard(
 			utils.Panic("data and selector must be in the same module")
 		}
 
-		if hasMask && dataInModule != !maskInModule {
+		if hasMask && dataInModule != maskInModule {
 			utils.Panic("data and mask must be in the same module")
 		}
 
