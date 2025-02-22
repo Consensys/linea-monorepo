@@ -53,12 +53,17 @@ func Compile(comp *wizard.CompiledIOP) {
 
 func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
 
+	plonkOptions := make([]plonkinternal.Option, len(q.PlonkOptions))
+	for i := range plonkOptions {
+		plonkOptions[i] = q.PlonkOptions[i].(plonkinternal.Option)
+	}
+
 	var (
 		round          = max(q.Data.Round(), q.Selector.Round())
 		maxNbInstances = q.GetMaxNbCircuitInstances()
 		ctx            = &context{
 			Q:        q,
-			PlonkCtx: plonkinternal.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances),
+			PlonkCtx: plonkinternal.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances, plonkOptions...),
 		}
 	)
 
