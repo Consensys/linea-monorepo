@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/plonkinternal"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
@@ -46,7 +46,7 @@ func TestModexpWithCircuit(t *testing.T) {
 				}
 
 				mod = newModule(build.CompiledIOP, inp).
-					WithCircuit(build.CompiledIOP, plonkinternal.WithRangecheck(21, 4, false))
+					WithCircuit(build.CompiledIOP, query.PlonkRangeCheckOption(21, 4, false))
 			}, dummy.Compile)
 
 			proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {

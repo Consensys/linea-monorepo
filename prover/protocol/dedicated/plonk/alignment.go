@@ -54,7 +54,7 @@ type CircuitAlignmentInput struct {
 	NbCircuitInstances int
 
 	// PlonkOptions are optional options to the plonk-in-wizard checker. See [Option].
-	PlonkOptions []any
+	PlonkOptions []query.PlonkOption
 
 	// InputFiller returns an element to pad in the public input for the
 	// circuit in case DataToCircuitMask is not full length of the circuit

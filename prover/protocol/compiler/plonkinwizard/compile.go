@@ -4,8 +4,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	plonkinternal "github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	plonkinternal "github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -55,7 +55,13 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
 
 	plonkOptions := make([]plonkinternal.Option, len(q.PlonkOptions))
 	for i := range plonkOptions {
-		plonkOptions[i] = q.PlonkOptions[i].(plonkinternal.Option)
+		// Note: today, there is only one type of PlonkOption but in the
+		// the future we might have more.
+		plonkOptions[i] = plonkinternal.WithRangecheck(
+			q.PlonkOptions[i].RangeCheckNbBits,
+			q.PlonkOptions[i].RangeCheckNbLimbs,
+			q.PlonkOptions[i].RangeCheckAddGateForRangeCheck,
+		)
 	}
 
 	var (

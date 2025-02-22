@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -69,7 +68,7 @@ type Module struct {
 // does not define them.
 func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings) *Module {
 	return newModule(comp, newZkEVMInput(comp, settings)).
-		WithCircuit(comp, plonkinternal.WithRangecheck(16, 6, false))
+		WithCircuit(comp, query.PlonkRangeCheckOption(16, 6, false))
 }
 
 func newModule(comp *wizard.CompiledIOP, input Input) *Module {
@@ -108,7 +107,7 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 
 // WithCircuits adds the Plonk-in-Wizard circuit verification to complete
 // the anti-chamber.
-func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...any) *Module {
+func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *Module {
 
 	mod.hasCircuit = true
 

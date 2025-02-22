@@ -1,7 +1,7 @@
 package ecdsa
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard/plonkinternal"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
@@ -22,7 +22,7 @@ func NewEcdsaZkEvm(
 				ecSource:     getEcdataArithmetization(comp),
 				txSource:     getTxnDataArithmetization(comp),
 				rlpTxn:       getRlpTxnArithmetization(comp),
-				plonkOptions: []any{plonkinternal.WithRangecheck(16, 6, true)},
+				plonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
 			},
 		),
 	}

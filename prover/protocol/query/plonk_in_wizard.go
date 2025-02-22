@@ -66,7 +66,7 @@ type PlonkInWizard struct {
 	CircuitMask ifaces.Column
 
 	// PlonkOptions are optional options to pass to the circuit when building it
-	PlonkOptions []any
+	PlonkOptions []PlonkOption
 
 	// nbPublicInput is a lazily-loaded variable representing the number of public
 	// inputs in the circuit provided by the query. The variable is computed the
@@ -77,6 +77,26 @@ type PlonkInWizard struct {
 	// number of public input. It is not using [sync.Once] that way we don't need
 	// to initialize the value.
 	nbPublicInputsLoaded bool
+}
+
+// PlonkOption represents a an option for the compilation of the circuit. One
+// option is the use of a custom range-checker (based on external-lookups)
+// instead of one based on in-circuit lookups.
+type PlonkOption struct {
+	RangeCheckNbBits               int
+	RangeCheckNbLimbs              int
+	RangeCheckAddGateForRangeCheck bool
+}
+
+// WithRangecheck allows bridging range checking from gnark into Wizard. The
+// total of bits being range-checked are nbBits*nbLimbs. If addGateForRangeCheck
+// is true, then new gates are added for wires not present in existing gates.
+func PlonkRangeCheckOption(nbBits, nbLimbs int, addGateForRangeCheck bool) PlonkOption {
+	return PlonkOption{
+		RangeCheckNbBits:               nbBits,
+		RangeCheckNbLimbs:              nbLimbs,
+		RangeCheckAddGateForRangeCheck: addGateForRangeCheck,
+	}
 }
 
 // Name implements the [ifaces.Query] interface
