@@ -313,22 +313,39 @@ func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
 	var (
 		unalignedInputs   = a.CircuitAlignmentInput.DataToCircuit.GetColAssignment(run).IntoRegVecSaveAlloc()
 		unalignedSelector = a.CircuitAlignmentInput.DataToCircuitMask.GetColAssignment(run).IntoRegVecSaveAlloc()
-		dataChan          = make(chan field.Element, len(unalignedInputs))
 		nbInput           = a.PlonkQuery.GetNbPublicInputs()
 		nbInputsPadded    = utils.NextPowerOfTwo(nbInput)
-		nbInstances       = a.PlonkQuery.GetMaxNbCircuitInstances()
-		res               = make([]field.Element, nbInputsPadded*nbInstances)
+		maxNbInstances    = a.PlonkQuery.GetMaxNbCircuitInstances()
+		res               = make([]field.Element, nbInputsPadded*maxNbInstances)
+		dataChan          = make(chan field.Element, nbInputsPadded*maxNbInstances)
+		nbActualData      = 0
 	)
 
 	for i := range unalignedInputs {
 		if unalignedSelector[i].IsOne() {
 			dataChan <- unalignedInputs[i]
+			nbActualData++
+		}
+	}
+
+	var (
+		lastEffInstance    = nbActualData / nbInput
+		nbDataLastInstance = nbActualData % nbInput
+	)
+
+	if nbDataLastInstance > 0 {
+		for i := nbDataLastInstance; i < nbInput; i++ {
+			if a.InputFiller != nil {
+				dataChan <- a.InputFiller(lastEffInstance, i)
+			} else {
+				dataChan <- field.Zero()
+			}
 		}
 	}
 
 	close(dataChan)
 
-	for i := 0; i < nbInstances; i += nbInputsPadded {
+	for i := 0; i < maxNbInstances*nbInputsPadded; i += nbInputsPadded {
 		for k := 0; k < nbInput; k++ {
 			x, ok := <-dataChan
 
@@ -343,7 +360,7 @@ func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
 		}
 	}
 
-	run.AssignColumn(a.CircuitInput.GetColID(), smartvectors.RightZeroPadded(res, nbInputsPadded*nbInstances))
+	run.AssignColumn(a.CircuitInput.GetColID(), smartvectors.RightZeroPadded(res, nbInputsPadded*maxNbInstances))
 
 }
 
