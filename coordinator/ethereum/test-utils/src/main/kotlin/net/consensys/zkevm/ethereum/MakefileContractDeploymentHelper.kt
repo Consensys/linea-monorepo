@@ -3,6 +3,7 @@ package net.consensys.zkevm.ethereum
 import build.linea.contract.l1.LineaContractVersion
 import linea.testing.CommandResult
 import linea.testing.Runner
+import org.hyperledger.besu.datatypes.Address
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.regex.Matcher
 import java.util.regex.Pattern
@@ -23,7 +24,7 @@ fun getDeployedAddress(
   commandResult: CommandResult,
   addressPattern: Pattern
 ): DeployedContract {
-  val lines = commandResult.stdOut.toList().asReversed()
+  val lines = commandResult.stdOutLines.toList().asReversed()
   return getDeployedAddress(lines, addressPattern)
 }
 
@@ -36,7 +37,13 @@ fun getDeployedAddress(
     ?.let { addressPattern.matcher(it).also { it.find() } }
 
   return matcher
-    ?.let { DeployedContract(it.group(1), it.group(2).toLong()) }
+    ?.let {
+      val address = it.group(1)
+      val deploymentBlockNumber = it.group(2).toLong()
+      // validated address was correctly parsed
+      Address.fromHexString(address)
+      DeployedContract(address, deploymentBlockNumber)
+    }
     ?: throw IllegalStateException("Couldn't extract contract address. Expecting pattern: $addressPattern")
 }
 
@@ -55,8 +62,8 @@ private fun deployContract(
         throw IllegalStateException(
           "Command $command failed: " +
             "\nexitCode=${result.exitCode} " +
-            "\nSTD_OUT: \n${result.stdOut.joinToString("\n")}" +
-            "\nSTD_ERROR: \n${result.stdErr.joinToString("\n")}"
+            "\nSTD_OUT: \n${result.stdOutStr}" +
+            "\nSTD_ERROR: \n${result.stdErrStr}"
         )
       } else {
         runCatching { getDeployedAddress(result, addressPattern) }
@@ -77,7 +84,6 @@ fun makeDeployLineaRollup(
   )
   deploymentPrivateKey?.let { env["DEPLOYMENT_PRIVATE_KEY"] = it }
   val command = when (contractVersion) {
-    LineaContractVersion.V5 -> "make deploy-linea-rollup-v5"
     LineaContractVersion.V6 -> "make deploy-linea-rollup-v6"
     else -> throw IllegalArgumentException("Unsupported contract version: $contractVersion")
   }
@@ -107,9 +113,9 @@ fun makeDeployL2MessageService(
 
 fun logCommand(commandResult: CommandResult) {
   println("stdout:")
-  commandResult.stdOut.forEach { println(it) }
+  println(commandResult.stdOutStr)
   println("stderr:")
-  commandResult.stdErr.forEach { println(it) }
+  println(commandResult.stdErrStr)
   println("exit code: ${commandResult.exitCode}")
 }
 
@@ -118,7 +124,7 @@ fun main() {
     makeDeployLineaRollup(
       L1AccountManager.generateAccount().privateKey,
       listOf("03dfa322A95039BB679771346Ee2dBfEa0e2B773"),
-      LineaContractVersion.V5
+      LineaContractVersion.V6
     ),
     makeDeployL2MessageService(
       L2AccountManager.generateAccount().privateKey,

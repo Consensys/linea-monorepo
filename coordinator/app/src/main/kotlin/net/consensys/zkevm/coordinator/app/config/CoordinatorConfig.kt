@@ -2,10 +2,10 @@ package net.consensys.zkevm.coordinator.app.config
 
 import com.sksamuel.hoplite.ConfigAlias
 import com.sksamuel.hoplite.Masked
-import net.consensys.assertIs32Bytes
-import net.consensys.decodeHex
-import net.consensys.linea.BlockParameter
-import net.consensys.linea.assertIsValidAddress
+import linea.domain.BlockParameter
+import linea.domain.assertIsValidAddress
+import linea.kotlin.assertIs32Bytes
+import linea.kotlin.decodeHex
 import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORIES_STORAGE_PERIOD
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORY_BLOCK_COUNT
@@ -278,15 +278,15 @@ data class L1Config(
   val blockTime: Duration = Duration.parse("PT12S"),
   @ConfigAlias("eth-fee-history-endpoint") private val _ethFeeHistoryEndpoint: URL?,
   @ConfigAlias("genesis-state-root-hash") private val _genesisStateRootHash: String,
-  @ConfigAlias("genesis-shnarf-v5") private val _genesisShnarfV5: String
+  @ConfigAlias("genesis-shnarf-v6") private val _genesisShnarfV6: String
 ) {
   val ethFeeHistoryEndpoint: URL
     get() = _ethFeeHistoryEndpoint ?: rpcEndpoint
 
   val genesisStateRootHash: ByteArray
     get() = _genesisStateRootHash.decodeHex().assertIs32Bytes("genesisStateRootHash")
-  val genesisShnarfV5: ByteArray
-    get() = _genesisShnarfV5.decodeHex().assertIs32Bytes("genesisShnarfV5")
+  val genesisShnarfV6: ByteArray
+    get() = _genesisShnarfV6.decodeHex().assertIs32Bytes("genesisShnarfV6")
 
   val l1QueryBlockTag: BlockParameter.Tag
     get() = BlockParameter.Tag.fromString(_l1QueryBlockTag)

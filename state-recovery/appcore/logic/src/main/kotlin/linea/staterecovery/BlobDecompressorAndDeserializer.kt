@@ -4,11 +4,11 @@ import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import linea.domain.BinaryDecoder
+import linea.domain.CommonDomainFunctions
+import linea.kotlin.decodeHex
+import linea.kotlin.encodeHex
 import linea.rlp.BesuRlpBlobDecoder
 import linea.rlp.RLP
-import net.consensys.decodeHex
-import net.consensys.encodeHex
-import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.blob.BlobDecompressor
 import org.apache.logging.log4j.LogManager
@@ -30,16 +30,10 @@ interface BlobDecompressorAndDeserializer {
 
 data class BlockHeaderStaticFields(
   val coinbase: ByteArray,
-  val gasLimit: ULong = 61_000_000UL,
+  val gasLimit: ULong = 2_000_000_000UL,
   val difficulty: ULong = 2UL
 ) {
   companion object {
-    val mainnet = BlockHeaderStaticFields(
-      coinbase = "0x8F81e2E3F8b46467523463835F965fFE476E1c9E".decodeHex()
-    )
-    val sepolia = BlockHeaderStaticFields(
-      coinbase = "0x4D517Aef039A48b3B6bF921e210b7551C8E37107".decodeHex()
-    )
     val localDev = BlockHeaderStaticFields(
       coinbase = "0x6d976c9b8ceee705d4fe8699b44e5eb58242f484".decodeHex()
     )
@@ -83,7 +77,7 @@ class BlobDecompressorToDomainV1(
   ): SafeFuture<List<BlockFromL1RecoveredData>> {
     var blockNumber = startBlockNumber
     val startTime = Clock.System.now()
-    logger.debug("start decompressing blobs: startBlockNumber={} {} blobs", startBlockNumber, blobs.size)
+    logger.trace("start decompressing blobs: startBlockNumber={} {} blobs", startBlockNumber, blobs.size)
     val decompressedBlobs = blobs.map { decompressor.decompress(it) }
     return SafeFuture
       .collectAll(decompressedBlobs.map(::decodeBlocksAsync).stream())
