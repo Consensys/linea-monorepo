@@ -1,4 +1,4 @@
-package lookup
+package logderivativesum
 
 import (
 	"testing"
@@ -31,7 +31,7 @@ func TestLogDerivativeLookupSimple(t *testing.T) {
 		run.AssignColumn("B", colb)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestLogDerivativeLookupSimple2(t *testing.T) {
 		run.AssignColumn("T", colb)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 
 	// m should be
@@ -101,7 +101,7 @@ func TestLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 		run.AssignColumn("T", colb)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 
 	// m should be
@@ -155,7 +155,7 @@ func TestLogDerivativeLookupOneXor(t *testing.T) {
 		run.AssignColumn("WITNESS_XXORY", wXY)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 
 	// m should be
@@ -222,7 +222,7 @@ func TestLogDerivativeLookupMultiXor(t *testing.T) {
 		run.AssignColumn("W2_XXORY", w2XY)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 
 	// m should be
@@ -282,7 +282,7 @@ func TestLogDerivativeLookupRandomLinComb(t *testing.T) {
 		run.AssignColumn("UChosen", smartvectors.NewRegular(t))
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
@@ -341,7 +341,7 @@ func BenchmarkLogDeriveLookupMultiXor(b *testing.B) {
 			run.AssignColumn("W2_XXORY", w2XY)
 		}
 
-		comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+		comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 		proof := wizard.Prove(comp, prover)
 
 		// m should be

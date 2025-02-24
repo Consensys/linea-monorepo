@@ -1,4 +1,4 @@
-package lookup
+package logderivativesum
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"

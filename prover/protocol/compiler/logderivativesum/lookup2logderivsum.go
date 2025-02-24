@@ -1,8 +1,9 @@
-package lookup
+package logderivativesum
 
 import (
-	"slices"
+	"fmt"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -17,26 +18,21 @@ import (
 // compiler as a shorthand to make the code more eye-parseable.
 type table = []ifaces.Column
 
-// CompileLogDerivative scans `comp“, looking for Inclusion queries and compile
-// them using the LogDerivativeLookup technique. The compiler attempt to group
-// queries relating to the same table. This allows saving in commitment because
-// when grouping is possible, then we only need to commit to a single
-// extract the table and the checked from the lookup query and ensures that the
-// table are in canonical order. That is because we want to group lookups into
-// the same columns but not in the same order.
-func CompileLogDerivative(comp *wizard.CompiledIOP) {
+// LookupIntoLogDerivativeSum compiles  all the inclusion queries to a single
+// LogDerivativeSum query without compiling it immediately. This compiler
+// is used by the distributed wizard protocol feature as it allows to
+// prepare the lookup queries to be split across several wizard-IOP
+// in such a way that we can recombine them later.
+func LookupIntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 
 	var (
 		mainLookupCtx = CaptureLookupTables(comp)
 		lastRound     = comp.NumRounds() - 1
-		proverActions = make([]proverTaskAtRound, comp.NumRounds()+1)
-		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
-		// which Z context should be used to handle a part of a given permutation
+		// zCatalog stores a mapping (round, size) into query.LogDerivativeSumInput and helps finding
+		// which Z context should be used to handle a part of a given inclusion
 		// query.
-		zCatalog = map[[2]int]*ZCtx{}
-		zEntries = [][2]int{}
-		// verifier actions
-		va = &finalEvaluationCheck{}
+		zCatalog    = map[int]*query.LogDerivativeSumInput{}
+		proverTasks = make([]proverTaskAtRound, lastRound+1)
 	)
 
 	// Skip the compilation phase if no lookup constraint is being used. Otherwise
@@ -55,68 +51,116 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 			checkTable      = mainLookupCtx.CheckedTables[lookupTableName]
 			round           = mainLookupCtx.Rounds[lookupTableName]
 			includedFilters = mainLookupCtx.IncludedFilters[lookupTableName]
-			tableCtx        = CompileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
+			// collapse multiColumns to single Columns and commit to M.
+			tableCtx = CompileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
 		)
 
-		// push to zCatalog
-		tableCtx.PushToZCatalog(zCatalog)
+		// push single-columns into zCatalog
+		pushToZCatalog(tableCtx, zCatalog)
 
-		proverActions[round].pushMAssignment(
-			MAssignmentTask{
-				M:       tableCtx.M,
-				S:       checkTable,
-				T:       lookupTable,
-				SFilter: includedFilters,
-			},
-		)
+		// assign the multiplicity column
+		proverTasks[round].pushMAssignment(MAssignmentTask{
+			M:       tableCtx.M,
+			S:       checkTable,
+			T:       lookupTable,
+			SFilter: includedFilters,
+		})
 	}
 
-	// This loops is necessary to build a sorted list of the entries of zCatalog.
-	// Without it, if we tried to loop over zCatalog directly, the entries would
-	// be processed in a non-deterministic order. The sorting order itself is
-	// without importance, what matters is that zEntries is in deterministic
-	// order.
-	for entry := range zCatalog {
-		zEntries = append(zEntries, entry)
-	}
-
-	slices.SortFunc(zEntries, func(a, b [2]int) int {
-		switch {
-		case a[0] < b[0]:
-			return -1
-		case a[0] > b[0]:
-			return 1
-		case a[1] < b[1]:
-			return -1
-		case a[1] > b[1]:
-			return 1
-		default:
-			return 0
+	for round, task := range proverTasks {
+		if task.numTasks() > 0 {
+			comp.RegisterProverAction(round, task)
 		}
+	}
+
+	// insert a single LogDerivativeSum query for the global zCatalog.
+	q := comp.InsertLogDerivativeSum(lastRound+1, "GlobalLogDerivativeSum", zCatalog)
+
+	// assign parameters of LogDerivativeSum, it is just to prevent the panic attack in the prover
+	comp.SubProvers.AppendToInner(lastRound+1, func(run *wizard.ProverRuntime) {
+		run.AssignLogDerivSum("GlobalLogDerivativeSum", field.Zero())
 	})
 
-	// compile zCatalog
-	for _, entry := range zEntries {
-		zC := zCatalog[entry]
-		// z-packing compile
-		zC.Compile(comp)
-		// entry[0]:round, entry[1]: size
-		// the round that Gamma was registered.
-		round := entry[0]
-		proverActions[round].pushZAssignment(ZAssignmentTask(*zC))
-		va.ZOpenings = append(va.ZOpenings, zC.ZOpenings...)
-		va.Name = zC.Name
-	}
+	// the verifier checks that the log-derivative sum result is zeroo
+	comp.RegisterVerifierAction(lastRound+1, &CheckLogDerivativeSumMustBeZero{
+		Q: q,
+	})
 
-	for round := range proverActions {
-		// It would not be a bugged to include a proverAction that does nothing
-		// but this pollutes the performance analysis of the prover and logs.
-		if proverActions[round].numTasks() > 0 {
-			comp.RegisterProverAction(round, proverActions[round])
+}
+
+// pushToZCatalog constructs the numerators and denominators for the collapsed S and T
+// into zCatalog, for their corresponding rounds and size.
+func pushToZCatalog(stc SingleTableCtx, zCatalog map[int]*query.LogDerivativeSumInput) {
+
+	// tableCtx push to -> zCtx
+	// Process the T columns
+	for frag := range stc.T {
+		size := stc.M[frag].Size()
+
+		key := size
+		if zCatalog[key] == nil {
+			zCatalog[key] = &query.LogDerivativeSumInput{
+				Size: size,
+			}
 		}
+
+		zCtxEntry := zCatalog[key]
+		zCtxEntry.Numerator = append(zCtxEntry.Numerator, symbolic.Neg(stc.M[frag])) // no functions for num, denom here
+		zCtxEntry.Denominator = append(zCtxEntry.Denominator, symbolic.Add(stc.Gamma, stc.T[frag]))
 	}
 
-	comp.RegisterVerifierAction(lastRound, va)
+	// Process the S columns
+	for table := range stc.S {
+		var (
+			_, _, size = wizardutils.AsExpr(stc.S[table])
+			sFilter    = symbolic.NewConstant(1)
+		)
+
+		if stc.SFilters[table] != nil {
+			sFilter = symbolic.NewVariable(stc.SFilters[table])
+		}
+
+		key := size
+		if zCatalog[key] == nil {
+			zCatalog[key] = &query.LogDerivativeSumInput{
+				Size: size,
+			}
+		}
+
+		zCtxEntry := zCatalog[key]
+		zCtxEntry.Numerator = append(zCtxEntry.Numerator, sFilter)
+		zCtxEntry.Denominator = append(zCtxEntry.Denominator, symbolic.Add(stc.Gamma, stc.S[table]))
+	}
+}
+
+// CheckLogDerivativeSumMustBeZero is an implementation of the [wizard.VerifierAction] interface.
+// It checks that the log-derivative sum result is zero.
+type CheckLogDerivativeSumMustBeZero struct {
+	Q       query.LogDerivativeSum
+	skipped bool
+}
+
+func (c *CheckLogDerivativeSumMustBeZero) Run(run wizard.Runtime) error {
+	y := run.GetLogDerivSumParams(c.Q.ID).Sum
+	if !y.IsZero() {
+		return fmt.Errorf("log-derivate sum; the final evaluation check failed for %v\n"+
+			"expected '0' but calculated %v,",
+			c.Q.ID, y.String())
+	}
+	return nil
+}
+
+func (c *CheckLogDerivativeSumMustBeZero) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	y := run.GetLogDerivSumParams(c.Q.ID).Sum
+	api.AssertIsEqual(y, 0)
+}
+
+func (c *CheckLogDerivativeSumMustBeZero) Skip() {
+	c.skipped = true
+}
+
+func (c *CheckLogDerivativeSumMustBeZero) IsSkipped() bool {
+	return c.skipped
 }
 
 // CaptureLookupTables inspects comp and look for Inclusion queries that are not
@@ -282,57 +326,4 @@ func CompileLookupTable(
 	)
 
 	return ctx
-}
-
-// PushToZCatalog constructs the numerators and denominators for S and T of the
-// stc into zCatalog for their corresponding rounds and size.
-func (stc *SingleTableCtx) PushToZCatalog(zCatalog map[[2]int]*ZCtx) {
-
-	var (
-		round = stc.Gamma.Round
-	)
-
-	// tableCtx push to -> zCtx
-	// Process the T columns
-	for frag := range stc.T {
-		size := stc.M[frag].Size()
-
-		key := [2]int{round, size}
-		if zCatalog[key] == nil {
-			zCatalog[key] = &ZCtx{
-				Size:  size,
-				Round: round,
-				Name:  stc.TableName,
-			}
-		}
-
-		zCtxEntry := zCatalog[key]
-		zCtxEntry.SigmaNumerator = append(zCtxEntry.SigmaNumerator, symbolic.Neg(stc.M[frag])) // no functions for num, denom here
-		zCtxEntry.SigmaDenominator = append(zCtxEntry.SigmaDenominator, symbolic.Add(stc.Gamma, stc.T[frag]))
-	}
-
-	// Process the S columns
-	for table := range stc.S {
-		var (
-			_, _, size = wizardutils.AsExpr(stc.S[table])
-			sFilter    = symbolic.NewConstant(1)
-		)
-
-		if stc.SFilters[table] != nil {
-			sFilter = symbolic.NewVariable(stc.SFilters[table])
-		}
-
-		key := [2]int{round, size}
-		if zCatalog[key] == nil {
-			zCatalog[key] = &ZCtx{
-				Size:  size,
-				Round: round,
-				Name:  stc.TableName,
-			}
-		}
-
-		zCtxEntry := zCatalog[key]
-		zCtxEntry.SigmaNumerator = append(zCtxEntry.SigmaNumerator, sFilter)
-		zCtxEntry.SigmaDenominator = append(zCtxEntry.SigmaDenominator, symbolic.Add(stc.Gamma, stc.S[table]))
-	}
 }

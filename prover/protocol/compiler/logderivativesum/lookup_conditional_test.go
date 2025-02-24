@@ -1,4 +1,4 @@
-package lookup
+package logderivativesum
 
 import (
 	"testing"
@@ -40,7 +40,7 @@ func TestConditionalLogDerivativeDebug(t *testing.T) {
 		run.AssignColumn("filterB", filterB)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
@@ -73,7 +73,7 @@ func TestConditionalLogDerivativeLookupSimple(t *testing.T) {
 		run.AssignColumn("filterB", filterB)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
@@ -106,7 +106,7 @@ func TestConditionalLogDerivativeLookupSimple2(t *testing.T) {
 		run.AssignColumn("filterB", filterB)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 
 	//filtered cola := smartvectors.ForTest(1, -, -, -, 3, 3, -, -, -, -, -, -, 3, 0, 3, 1)
@@ -166,7 +166,7 @@ func TestConditionalLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 		run.AssignColumn("filterT", filterT)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 
 	// m should be
@@ -231,7 +231,7 @@ func TestConditionalLogDerivativeLookupOneXor(t *testing.T) {
 		run.AssignColumn("filterS", filterS)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 
 	// m should be
@@ -312,7 +312,7 @@ func TestConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 		run.AssignColumn("FILTER_S2", filterS2)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 
 	// m should be
@@ -426,7 +426,7 @@ func TestMixedConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 		run.AssignColumn("FILTER_S4", filterS4)
 	}
 
-	comp := wizard.Compile(define, CompileLogDerivative, dummy.Compile)
+	comp := wizard.Compile(define, CompileLookups, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 
 	// m should be
@@ -469,7 +469,7 @@ func TestConditionalWithDummyCompilerOnly(t *testing.T) {
 
 	comp := wizard.Compile(
 		define,
-		// CompileLogDerivative,
+		// CompileLookups,
 		dummy.Compile,
 	)
 	proof := wizard.Prove(comp, prover)

@@ -1,4 +1,4 @@
-package lookup
+package logderivativesum
 
 import (
 	"fmt"
