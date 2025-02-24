@@ -116,14 +116,14 @@ class GlobalBlobAwareConflationCalculator(
 
   private fun recordBlobMetrics(blobInterval: BlockInterval, blobCompressedDataSize: Int) {
     runCatching {
-      val gasUsedInBlob = blobBlockCounters
+      val filteredBlockCounters = blobBlockCounters
         .filter { blobInterval.blocksRange.contains(it.blockNumber) }
-        .sumOf { it.gasUsed }
-      val uncompressedDataSizeInBlob = blobBlockCounters
-        .filter { blobInterval.blocksRange.contains(it.blockNumber) }
-        .sumOf { it.blockRLPEncoded.size }
-      gasUsedInBlobHistogram.record(gasUsedInBlob.toDouble())
-      uncompressedDataSizeInBlobHistogram.record(uncompressedDataSizeInBlob.toDouble())
+      gasUsedInBlobHistogram.record(
+        filteredBlockCounters.sumOf { it.gasUsed }.toDouble()
+      )
+      uncompressedDataSizeInBlobHistogram.record(
+        filteredBlockCounters.sumOf { it.blockRLPEncoded.size }.toDouble()
+      )
       compressedDataSizeInBlobHistogram.record(blobCompressedDataSize.toDouble())
     }.onFailure {
       log.error("Error when recording blob metrics: errorMessage={}", it.message)

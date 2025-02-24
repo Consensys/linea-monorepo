@@ -1,13 +1,13 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import linea.domain.BlockIntervals
 import linea.kotlin.trimToSecondPrecision
-import net.consensys.linea.metrics.Histogram
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
@@ -21,11 +21,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.anyLong
 import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argThat
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -79,19 +76,8 @@ class ProofAggregationCoordinatorServiceTest {
     val mockAggregationsRepository = mock<AggregationsRepository>()
     val mockProofAggregationClient = mock<ProofAggregationProverClientV2>()
     val mockAggregationL2StateProvider = mock<AggregationL2StateProvider>()
-
-    // histogram metrics mocks
-    lateinit var mockAggregationSizeInBlocksHistogram: Histogram
-    lateinit var mockAggregationSizeInBatchesHistogram: Histogram
-    lateinit var mockAggregationSizeInBlobsHistogram: Histogram
-    val mockMetricsFacade: MetricsFacade = mock() {
-      on { createHistogram(eq(LineaMetricsCategory.AGGREGATION), eq("blocks.size"), any(), any(), any(), anyOrNull()) }
-        .thenAnswer { mock<Histogram>().also { mockAggregationSizeInBlocksHistogram = it } }
-      on { createHistogram(eq(LineaMetricsCategory.AGGREGATION), eq("batches.size"), any(), any(), any(), anyOrNull()) }
-        .thenAnswer { mock<Histogram>().also { mockAggregationSizeInBatchesHistogram = it } }
-      on { createHistogram(eq(LineaMetricsCategory.AGGREGATION), eq("blobs.size"), any(), any(), any(), anyOrNull()) }
-        .thenAnswer { mock<Histogram>().also { mockAggregationSizeInBlobsHistogram = it } }
-    }
+    val meterRegistry = SimpleMeterRegistry()
+    val metricsFacade: MetricsFacade = MicrometerMetricsFacade(registry = meterRegistry)
 
     val config = ProofAggregationCoordinatorService.Config(
       pollingInterval = 10.milliseconds,
@@ -110,7 +96,7 @@ class ProofAggregationCoordinatorServiceTest {
       consecutiveProvenBlobsProvider = mockAggregationsRepository::findConsecutiveProvenBlobs,
       proofAggregationClient = mockProofAggregationClient,
       aggregationL2StateProvider = mockAggregationL2StateProvider,
-      metricsFacade = mockMetricsFacade,
+      metricsFacade = metricsFacade,
       provenAggregationEndBlockNumberConsumer = provenAggregationEndBlockNumberConsumer
     )
     verify(mockAggregationCalculator).onAggregation(proofAggregationCoordinatorService)
@@ -237,9 +223,12 @@ class ProofAggregationCoordinatorServiceTest {
     // First aggregation should Trigger
     proofAggregationCoordinatorService.action().get()
 
-    verify(mockAggregationSizeInBlocksHistogram, times(1)).record(23.0)
-    verify(mockAggregationSizeInBatchesHistogram, times(1)).record(6.0)
-    verify(mockAggregationSizeInBlobsHistogram, times(1)).record(2.0)
+    assertThat(meterRegistry.summary("aggregation.blocks.size").count()).isEqualTo(1)
+    assertThat(meterRegistry.summary("aggregation.batches.size").count()).isEqualTo(1)
+    assertThat(meterRegistry.summary("aggregation.blobs.size").count()).isEqualTo(1)
+    assertThat(meterRegistry.summary("aggregation.blocks.size").max()).isEqualTo(23.0)
+    assertThat(meterRegistry.summary("aggregation.batches.size").max()).isEqualTo(6.0)
+    assertThat(meterRegistry.summary("aggregation.blobs.size").max()).isEqualTo(2.0)
     verify(mockProofAggregationClient).requestProof(proofsToAggregate1)
     verify(mockAggregationsRepository).saveNewAggregation(aggregation1)
     assertThat(provenAggregation).isEqualTo(aggregation1.endBlockNumber)
@@ -247,12 +236,14 @@ class ProofAggregationCoordinatorServiceTest {
     // Second aggregation should Trigger
     proofAggregationCoordinatorService.action().get()
 
-    verify(mockAggregationSizeInBlocksHistogram, times(1)).record(27.0)
-    verify(mockAggregationSizeInBatchesHistogram, times(2)).record(6.0)
-    verify(mockAggregationSizeInBlobsHistogram, times(2)).record(2.0)
+    assertThat(meterRegistry.summary("aggregation.blocks.size").count()).isEqualTo(2)
+    assertThat(meterRegistry.summary("aggregation.batches.size").count()).isEqualTo(2)
+    assertThat(meterRegistry.summary("aggregation.blobs.size").count()).isEqualTo(2)
+    assertThat(meterRegistry.summary("aggregation.blocks.size").max()).isEqualTo(27.0)
+    assertThat(meterRegistry.summary("aggregation.batches.size").max()).isEqualTo(6.0)
+    assertThat(meterRegistry.summary("aggregation.blobs.size").max()).isEqualTo(2.0)
     verify(mockProofAggregationClient).requestProof(proofsToAggregate2)
     verify(mockAggregationsRepository).saveNewAggregation(aggregation2)
-
     assertThat(provenAggregation).isEqualTo(aggregation2.endBlockNumber)
   }
 }
