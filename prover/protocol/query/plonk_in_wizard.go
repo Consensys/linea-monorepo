@@ -28,8 +28,8 @@ var _ ifaces.Query = &PlonkInWizard{}
 //	| <zero padding>			| 1 1 1 1 ...		| // Padding to the next power of two positions
 //	| <inputs (instance 1)>		| 1 1 1 1 ...		|
 //	| <zero padding>			| 1 1 1 1 ...		|
-//	| <inputs (instance 2)>		| 1 1 1 1 ...		|
-//	| <zero padding>			| 1 1 1 1 ...		|
+//	| <inputs (instance 2)>		| 1 1 0 0 ...		|
+//	| <zero padding>			| 0 0 0 0 ...		|
 //	| 0 0 0 0 ... 				| 0 0 0 0 ...		| // Both the selector and the data columns are right-padded with zeroes to highlight that no more instances are expected.
 //
 // Of course, both the Data and the Selector columns must have the same length
@@ -41,8 +41,10 @@ var _ ifaces.Query = &PlonkInWizard{}
 // witness of a circuit instance is provided: we can't have the last circuit instance
 // be only-partially provided.
 //
-// These additional constraints over data and selector are enforced by the
-// query itself.
+// To understand if an instance of the circuit is active or, the query looks at the
+// first row of the Selector column for the corresponding instance. 0 indicates the
+// instance is not used and 1 indicates it is. The query does not enforce any
+// constraints on the Selector column.
 type PlonkInWizard struct {
 	// ID is the unique identifier of the query
 	ID ifaces.QueryID
@@ -155,7 +157,7 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 				// NB: this will make the dummy verifier fail but not the
 				// actual one as this is not checked by the query. Still,
 				// if it happens it legitimately means there is a bug.
-				if locSelector[currPos].IsZero() {
+				if currPos == 0 && locSelector[currPos].IsZero() {
 					pushErr(fmt.Errorf("[plonkInWizard] incomplete assignment"))
 					return
 				}
@@ -187,13 +189,6 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 			}
 
 		}(i)
-	}
-
-	if numEffInstances*nbPublicPadded < len(sel) {
-		if !sel[numEffInstances*nbPublicPadded-1].IsOne() || !sel[numEffInstances*nbPublicPadded].IsZero() {
-			pushErr(errors.New("[plonkInWizard] selector column is not correctly formatted. " +
-				"It's falling edge is not located exactly after the padding of the last instance"))
-		}
 	}
 
 	wg.Wait()

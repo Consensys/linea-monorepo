@@ -1,8 +1,6 @@
 package plonkinwizard
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	plonkinternal "github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
@@ -10,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 // context stores the compilation context for a single PlonkInWizard query
@@ -73,7 +70,6 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
 		}
 	)
 
-	checkSelectorAndData(comp, ctx)
 	checkActivators(comp, ctx)
 	checkPublicInputs(comp, ctx)
 
@@ -113,54 +109,4 @@ func checkActivators(comp *wizard.CompiledIOP, ctx *context) {
 	comp.RegisterProverAction(ctx.Q.GetRound(), &assignSelOpening{context: ctx})
 	comp.RegisterVerifierAction(ctx.Q.GetRound(), &checkActivatorAndMask{context: ctx})
 	ctx.SelOpenings = openings
-}
-
-// checkSelectorAndData adds the constraints ensuring that the selector and the data
-// column are well-set w.r.t. to the circuit mask column.
-func checkSelectorAndData(comp *wizard.CompiledIOP, ctx *context) {
-
-	var (
-		round       = ctx.Q.GetRound()
-		nbPub       = ctx.Q.GetNbPublicInputs()
-		nbPubPadded = utils.NextPowerOfTwo(nbPub)
-		fullSize    = ctx.Q.Data.Size()
-	)
-
-	ctx.CircuitMask = ctx.Q.CircuitMask
-
-	// As the circuit mask is an optional parameter we have to account
-	// for the case where it is not provided by the user.
-	if ctx.CircuitMask == nil {
-
-		circMaskVal := make([]field.Element, ctx.Q.Data.Size())
-
-		for i := 0; i < fullSize; i += nbPubPadded {
-			for k := 0; k < nbPub; k++ {
-				circMaskVal[i+k] = field.One()
-			}
-		}
-
-		ctx.CircuitMask = comp.InsertPrecomputed(
-			ifaces.ColIDf("%v_CIRCMASK", ctx.Q.ID),
-			smartvectors.NewRegular(circMaskVal),
-		)
-	}
-
-	commonconstraints.MustBeActivationColumns(comp, ctx.Q.Selector)
-
-	// This query ensures that sel[i] - sel[i+1] == 1 => mask[i] - mask[i+1] == -1
-	// Note, that since sel is constrained to be an activation column the difference
-	// is already constrained to never be "-1", this allows simplifying the constraint
-	// as follows. The constraint only works if the number of public inputs is not
-	// exactly a power of two but in this case, the implemented approach does not
-	// work.
-	comp.InsertGlobal(
-		round,
-		ifaces.QueryIDf("%v_MASK_DEC_WHEN_SEL_DEC", ctx.Q.ID),
-		sym.Mul(
-			sym.Sub(ctx.Q.Selector, column.Shift(ctx.Q.Selector, 1)),
-			sym.Sub(ctx.CircuitMask, column.Shift(ctx.CircuitMask, 1), -1),
-		),
-	)
-
 }

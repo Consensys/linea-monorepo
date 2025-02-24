@@ -705,10 +705,6 @@ func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
 		utils.Panic("the circuit has secret variables, found %v", nbSecret)
 	}
 
-	if utils.IsPowerOfTwo(nbPub) {
-		utils.Panic("the number of public inputs is a power of two (nbPub=%v). This is not supported for technical reasons pertaining to the compilation of the constraint", nbPub)
-	}
-
 	if q.CircuitMask != nil && !c.Precomputed.Exists(q.CircuitMask.GetColID()) {
 		utils.Panic("circuit mask %v not registered as a precomputed column", q.CircuitMask.GetColID())
 	}
