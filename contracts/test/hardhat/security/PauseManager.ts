@@ -405,13 +405,11 @@ describe("PauseManager", () => {
     describe("Incorrect pausing and unpausing", () => {
       it("Should pause and fail to pause when paused", async () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
-
         await expect(pauseByType(L1_L2_PAUSE_TYPE)).to.be.revertedWithCustomError(pauseManager, "IsPaused");
       });
 
       it("Should not allow other types to pause if one is already paused", async () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
-        await expect(pauseByType(L1_L2_PAUSE_TYPE)).to.be.revertedWithCustomError(pauseManager, "IsPaused");
         const expectedCooldown = (await pauseManager.pauseExpiry()) + (await pauseManager.COOLDOWN_DURATION());
         await expectRevertWithCustomError(
           pauseManager,
@@ -517,7 +515,7 @@ describe("PauseManager", () => {
   });
 
   describe("Pausing/unpausing with SECURITY_COUNCIL_ROLE", () => {
-    it("should pause the contract with SECURITY_COUNCIL_ROLE, if another pause type is already active", async () => {
+    it("should pause the contract with SECURITY_COUNCIL_ROLE, when another pause type is already active", async () => {
       await pauseByType(L1_L2_PAUSE_TYPE);
       await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
@@ -550,6 +548,12 @@ describe("PauseManager", () => {
       expect(await pauseManager.pauseExpiry()).to.equal(
         unPauseBlockTimestamp - (await pauseManager.COOLDOWN_DURATION()),
       );
+    });
+
+    it("should not reset the pause cooldown when unpause contract with non-SECURITY_COUNCIL_ROLE", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+      await unPauseByType(GENERAL_PAUSE_TYPE, pauseManagerAccount);
+      expect(await pauseManager.pauseExpiry()).to.equal(ethers.MaxUint256);
     });
 
     it("after unpause contract with SECURITY_COUNCIL_ROLE, any pause should be possible", async () => {
