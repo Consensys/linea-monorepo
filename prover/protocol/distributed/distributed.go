@@ -35,8 +35,16 @@ type ModuleDiscoverer interface {
 	// given a query and a module name it checks if the query is inside the module
 	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
 	QueryIsInModule(ifaces.Query, ModuleName) bool
+	// it return true if it can find any column from the given slice in the module
+	SliceIsInModule([]ifaces.Column, ModuleName) bool
 	// it checks if the given column is in the given module
 	ColumnIsInModule(col ifaces.Column, name ModuleName) bool
+	// it adds all the unassigned columns in the slice to the given module.
+	UpdateDiscoverer([]ifaces.Column, ModuleName)
+	// it return the module associated with the column, if it is already captured
+	HasModule(col ifaces.Column) (ModuleName, bool)
+	// return the columns from the module
+	ListColumns(ModuleName) []ifaces.Column
 }
 
 // This transforms the initial wizard. So it is not really the initial
