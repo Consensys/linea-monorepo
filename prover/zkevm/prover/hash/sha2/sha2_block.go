@@ -318,7 +318,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 	return res
 }
 
-func (sbh *sha2BlockModule) WithCircuit(comp *wizard.CompiledIOP, options ...plonk.Option) *sha2BlockModule {
+func (sbh *sha2BlockModule) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *sha2BlockModule {
 
 	sbh.hasCircuit = true
 

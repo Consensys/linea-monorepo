@@ -121,7 +121,7 @@ func IntoGnarkAssignment(sv SmartVector) []frontend.Variable {
 func LeftPadded(v []field.Element, padding field.Element, targetLen int) SmartVector {
 
 	if len(v) > targetLen {
-		utils.Panic("target length %v must be less than %v", len(v), targetLen)
+		utils.Panic("unpadded vector (length=%v) must be smaller than the target length (%v)", len(v), targetLen)
 	}
 
 	if len(v) == targetLen {
@@ -139,7 +139,7 @@ func LeftPadded(v []field.Element, padding field.Element, targetLen int) SmartVe
 func RightPadded(v []field.Element, padding field.Element, targetLen int) SmartVector {
 
 	if len(v) > targetLen {
-		utils.Panic("target length %v must be less than %v", len(v), targetLen)
+		utils.Panic("unpadded vector (length=%v) must be smaller than the target length (%v)", len(v), targetLen)
 	}
 
 	if len(v) == targetLen {
