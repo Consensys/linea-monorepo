@@ -63,7 +63,7 @@ fun loadBlobsAndAggregationsSortedAndGrouped(
   blobsResponsesDir: String,
   aggregationsResponsesDir: String,
   numberOfAggregations: Int? = null,
-  extraBlobsWithoutAggregation: Int = 2
+  extraBlobsWithoutAggregation: Int = 0
 ): List<AggregationAndBlobs> {
   var (blobs, aggregations) = loadBlobsAndAggregations(blobsResponsesDir, aggregationsResponsesDir)
 
@@ -88,8 +88,21 @@ fun groupBlobsToAggregations(
     AggregationAndBlobs(agg, blobs.filter { it.startBlockNumber in agg.blocksRange })
   }.sortedBy { it.aggregation!!.startBlockNumber }
 
-  val blobsWithoutAgg = blobs.filter { blob ->
-    aggBlobs.none { it.blobs.contains(blob) }
-  }.take(extraBlobsWithoutAggregation)
-  return aggBlobs + listOf(AggregationAndBlobs(null, blobsWithoutAgg))
+  return if (extraBlobsWithoutAggregation > 0) {
+    val blobsWithoutAgg = blobs.filter { blob ->
+      aggBlobs.none { it.blobs.contains(blob) }
+    }
+
+    if (blobsWithoutAgg.size < extraBlobsWithoutAggregation) {
+      throw IllegalStateException(
+        "Not enough blobs without aggregation: " +
+          "blobsWithoutAggregation=${blobsWithoutAgg.size} " +
+          "requestedBlobsWithoutAggregation=$extraBlobsWithoutAggregation"
+      )
+    }
+
+    aggBlobs + listOf(AggregationAndBlobs(null, blobsWithoutAgg.take(extraBlobsWithoutAggregation)))
+  } else {
+    aggBlobs
+  }
 }
