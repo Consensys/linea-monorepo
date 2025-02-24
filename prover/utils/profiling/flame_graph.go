@@ -8,13 +8,11 @@ import (
 
 	"github.com/google/pprof/profile"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
 // GenerateFlameGraph generates a flame graph from a profile file
 func (pl *PerformanceLog) generateFlameGraph(profileFile, outputFile string) error {
 
-	logrus.Infof("Generating flame graph from: %s to %s \n", path.Join(pl.ProfilePath, profileFile), path.Join(pl.FlameGraphPath, outputFile))
 	// Ensure the output directory exists
 	if err := os.MkdirAll(pl.FlameGraphPath, 0755); err != nil {
 		return errors.Wrap(err, "failed to create output directory")

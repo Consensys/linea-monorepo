@@ -722,22 +722,30 @@ func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 	return run.QueriesParams.MustGet(name)
 }
 
+// runWithPerformanceMonitor: runs the `action` with the performance monitor
 func (runtime *ProverRuntime) runWithPerformanceMonitor(namePrefix string, round int, action func()) {
-	profilingPath := "./wizard-performance"
-	flameGraphPath := "" // Disable flamegraph temp
+
+	// Profiling params
+	profilingPath := "./protocol/wizard/performance/profiling"
+	flameGraphPath := "./protocol/wizard/performance/flamegraphs"
 	sampleDuration := 1 * time.Second
 
 	currRoundStr := strconv.Itoa(round)
 	name := namePrefix + currRoundStr
 
-	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, path.Join(profilingPath, name), flameGraphPath)
+	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, path.Join(profilingPath, name), path.Join(flameGraphPath, name))
 	if err != nil {
 		panic("error setting up performance monitor for " + name)
 	}
+
+	// Run the action
 	action()
+
 	perfLog, err := monitor.Stop()
 	if err != nil {
 		panic("error retrieving performance log for " + name)
 	}
+
+	perfLog.PrintMetrics()
 	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
 }

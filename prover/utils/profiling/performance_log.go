@@ -58,17 +58,7 @@ func StartPerformanceMonitor(description string, sampleRate time.Duration, profi
 		return nil, errors.New("empty profile path specified")
 	}
 
-	m := &performanceMonitor{
-		log: &PerformanceLog{
-			ProfilePath:    profilePath,
-			FlameGraphPath: flameGraphPath,
-
-			StartTime: time.Now(),
-		},
-		stopChan: make(chan struct{}),
-	}
-
-	// Ensure the flame graph path exists
+	// Ensure the profile path exists
 	if err := os.MkdirAll(profilePath, 0755); err != nil {
 		return nil, err
 	}
@@ -77,6 +67,16 @@ func StartPerformanceMonitor(description string, sampleRate time.Duration, profi
 		if err := os.MkdirAll(flameGraphPath, 0755); err != nil {
 			return nil, err
 		}
+	}
+
+	m := &performanceMonitor{
+		log: &PerformanceLog{
+			ProfilePath:    profilePath,
+			FlameGraphPath: flameGraphPath,
+
+			StartTime: time.Now(),
+		},
+		stopChan: make(chan struct{}),
 	}
 
 	// Start CPU profiling
@@ -237,8 +237,8 @@ func calculateMinAvgMax(values []float64) (min, avg, max float64) {
 	return min, avg, max
 }
 
-// PrintPerformanceLog prints the collected performance metrics
 func (pl *PerformanceLog) PrintMetrics() {
+	logrus.Printf("********** Perf. Metrics for %s **********\n", pl.Description)
 	logrus.Printf("Start Time: %v\n", pl.StartTime)
 	logrus.Printf("Stop Time: %v\n", pl.StopTime)
 	logrus.Printf("CPU Usage Stats: min=%.2f%%, avg=%.2f%%, max=%.2f%%\n",
