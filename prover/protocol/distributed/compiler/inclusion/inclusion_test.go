@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	logderiv "github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup2logderivsum"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/inclusion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
@@ -94,7 +94,7 @@ func TestDistributedInclusion(t *testing.T) {
 	simpleDisc.Analyze(initialComp)
 
 	// apply the LPP relevant compilers and generate the seed for initialComp
-	lppComp := lpp.CompileLPPAndGetSeed(initialComp, distributed.IntoLogDerivativeSum)
+	lppComp := lpp.CompileLPPAndGetSeed(initialComp, lookup2logderivsum.IntoLogDerivativeSum)
 
 	// Initialize the module discoverer
 	disc := md.QueryBasedDiscoverer{
