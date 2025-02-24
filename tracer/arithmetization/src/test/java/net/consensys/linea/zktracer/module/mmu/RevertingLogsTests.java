@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.mmu;
 
 import static net.consensys.linea.testing.BytecodeCompiler.newProgram;
+import static net.consensys.linea.zktracer.Utils.*;
 
 import java.util.List;
 
@@ -38,14 +39,6 @@ import org.junit.jupiter.api.Test;
  * reverting LOGX operations
  */
 public class RevertingLogsTests {
-
-  private static final Bytes POPULATE_MEMORY =
-      newProgram()
-          .op(OpCode.CALLDATASIZE) // size
-          .push(0) // offset
-          .push(0) // dest offset
-          .op(OpCode.CALLDATACOPY)
-          .compile();
 
   private static final Bytes TOPIC_1 =
       Bytes.fromHexString("0x000007031c100000000007031c100000000007031c100000000007031c100000");
@@ -104,8 +97,6 @@ public class RevertingLogsTests {
           .op(OpCode.LOG4)
           .compile();
 
-  private static final Bytes REVERT = newProgram().push(0).push(0).op(OpCode.REVERT).compile();
-
   private static final Bytes SELFREVERT_LOG_BYTECODE =
       newProgram().immediate(POPULATE_MEMORY).immediate(LOG3).immediate(REVERT).compile();
 
@@ -132,20 +123,6 @@ public class RevertingLogsTests {
           .code(Bytes.concatenate(call(nonRevertingLogSMC.getAddress(), false), REVERT))
           .balance(Wei.of(10000))
           .build();
-
-  private static Bytes call(Address address, boolean staticCall) {
-    return newProgram()
-        .immediate(POPULATE_MEMORY)
-        .push(0) // retSize
-        .push(0) // retOffset
-        .op(OpCode.MSIZE) // arg size
-        .push(0) // argOffset
-        .push(1) // value
-        .push(address) // address
-        .push(100000) // gas
-        .op(staticCall ? OpCode.STATICCALL : OpCode.CALL)
-        .compile();
-  }
 
   @Test
   void mixtureOfRevertedLogs() {
