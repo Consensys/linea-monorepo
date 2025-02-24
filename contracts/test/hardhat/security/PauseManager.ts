@@ -210,9 +210,9 @@ describe("PauseManager", () => {
   });
 
   describe("Pausing and unpausing with GENERAL_PAUSE_TYPE", () => {
-    // can pause with GENERAL_PAUSE_TYPE as PAUSE_ALL_ROLE
+    // can pause as PAUSE_ALL_ROLE
     it("should pause the contract if PAUSE_ALL_ROLE", async () => {
-      await pauseByType(GENERAL_PAUSE_TYPE, pauseManagerAccount);
+      await pauseByType(GENERAL_PAUSE_TYPE);
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
     });
 
@@ -225,15 +225,15 @@ describe("PauseManager", () => {
 
     // can unpause as UNPAUSE_ALL_ROLE
     it("should unpause the contract if UNPAUSE_ALL_ROLE", async () => {
-      await pauseByType(GENERAL_PAUSE_TYPE, pauseManagerAccount);
-      await unPauseByType(GENERAL_PAUSE_TYPE, pauseManagerAccount);
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      await unPauseByType(GENERAL_PAUSE_TYPE);
 
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
     });
 
     // cannot unpause as non-UNPAUSE_ALL_ROLE
     it("should revert unpause attempt if not UNPAUSE_ALL_ROLE", async () => {
-      await pauseByType(GENERAL_PAUSE_TYPE, pauseManagerAccount);
+      await pauseByType(GENERAL_PAUSE_TYPE);
 
       await expect(unPauseByType(GENERAL_PAUSE_TYPE, nonManager)).to.be.revertedWith(
         buildAccessErrorMessage(nonManager, UNPAUSE_ALL_ROLE),
