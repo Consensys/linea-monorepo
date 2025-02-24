@@ -60,6 +60,10 @@ type FilteredModuleInputs struct {
 	Columns    []*column.Natural
 	ColumnsSet map[ifaces.ColID]struct{}
 
+	// ColumnsPrecomputed is a map of the precomputed columns found
+	// in the original compiled-IOP mapping to their assignment.
+	ColumnsPrecomputed map[ifaces.ColID]ifaces.ColAssignment
+
 	// Disc is the module discoverer used to determine the module's
 	// scope
 	Disc ModuleDiscoverer
@@ -110,6 +114,10 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 			continue
 		}
 		fmi.addColumn(col)
+
+		if data, isPrecomp := comp.Precomputed.TryGet(columnName); isPrecomp {
+			fmi.ColumnsPrecomputed[columnName] = data
+		}
 	}
 
 	for _, qName := range queryParamsName {

@@ -145,6 +145,10 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		}
 
 		moduleGL.InsertColumn(*col, newRound)
+
+		if data, isPrecomp := moduleInput.ColumnsPrecomputed[col.GetColID()]; isPrecomp {
+			moduleGL.Wiop.Precomputed.InsertNew(col.ID, data)
+		}
 	}
 
 	for _, globalCs := range moduleInput.GlobalConstraints {
