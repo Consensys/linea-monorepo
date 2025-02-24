@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -214,4 +215,11 @@ func (h *Horner) Check(run ifaces.Runtime) error {
 	}
 
 	return nil
+}
+
+// CheckGnark implements the [ifaces.Query] interface. It will panic
+// when called as this query is not intended to be explicitly verified
+// by the verifier in a gnark circuit.
+func (h *Horner) CheckGnark(api frontend.Variable, run ifaces.GnarkRuntime) {
+	panic("Horner query is not intended to be explicitly verified by the verifier in a gnark circuit")
 }
