@@ -51,6 +51,10 @@ tasks.register('acceptanceTests', Test) {
 }
 
 dependencies {
+  annotationProcessor 'org.apache.logging.log4j:log4j-core'
+
+  implementation 'org.apache.logging.log4j:log4j-core'
+
   testImplementation project(':native:compress')
 
   testImplementation project(':sequencer')

@@ -10,33 +10,33 @@
 #
 # Arithmetization module limits
 #
-ADD                 = 70
+ADD                 = 247
 BIN                 = 262144
 BLAKE_MODEXP_DATA   = 262144
-BLOCK_DATA = 19
-BLOCK_HASH = 1
+BLOCK_DATA          = 19
+BLOCK_HASH          = 1
 EC_DATA             = 4096
 EUC                 = 16384 # can probably be lower
 EXP                 = 32760
 EXT                 = 20
 GAS                 = 262144
-HUB                 = 176
+HUB                 = 321
 MMIO                = 1048576
 MMU                 = 524288
-MOD                 = 20
+MOD                 = 23
 MUL                 = 20
-MXP                 = 35
+MXP                 = 311
 PHONEY_RLP          = 65536 # can probably get lower
-ROM                 = 2300
+ROM                 = 3009
 ROM_LEX             = 20
 SHF                 = 63
 TX_RLP              = 131072
 TRM                 = 120
-WCP                 = 236
+WCP                 = 583
 LOG_DATA            = 20
 LOG_INFO            = 20
 RLP_ADDR            = 20
-RLP_TXN             = 1300
+RLP_TXN             = 1590
 RLP_TXN_RCPT        = 100
 TXN_DATA            = 30
 SHAKIRA_DATA        = 262144
@@ -63,7 +63,7 @@ INSTRUCTION_DECODER = 512    # contains 256             data rows + 1 padding ro
 #
 PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS        = 10000
 PRECOMPILE_SHA2_BLOCKS                      = 10000
-PRECOMPILE_RIPEMD_BLOCKS                    = 10000
+PRECOMPILE_RIPEMD_BLOCKS                    = 0
 PRECOMPILE_ECPAIRING_MILLER_LOOPS           = 10000
 PRECOMPILE_MODEXP_EFFECTIVE_CALLS           = 10000
 PRECOMPILE_ECADD_EFFECTIVE_CALLS            = 10000

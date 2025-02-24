@@ -41,9 +41,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import linea.plugin.acc.test.tests.web3j.generated.AcceptanceTestToken;
+import linea.plugin.acc.test.tests.web3j.generated.ExcludedPrecompiles;
+import linea.plugin.acc.test.tests.web3j.generated.ModExp;
 import linea.plugin.acc.test.tests.web3j.generated.MulmodExecutor;
 import linea.plugin.acc.test.tests.web3j.generated.RevertExample;
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
+import linea.plugin.acc.test.utils.MemoryAppender;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.tuweni.bytes.Bytes;
@@ -56,6 +59,7 @@ import org.hyperledger.besu.ethereum.eth.transactions.TransactionPoolConfigurati
 import org.hyperledger.besu.metrics.prometheus.MetricsConfiguration;
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory;
 import org.hyperledger.besu.tests.acceptance.dsl.AcceptanceTestBase;
+import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.txpool.TxPoolConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
@@ -68,6 +72,8 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.txpool.TxPoolTransa
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.web3j.crypto.Credentials;
+import org.web3j.crypto.RawTransaction;
+import org.web3j.crypto.TransactionEncoder;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
@@ -111,6 +117,7 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
   public void stop() {
     cluster.stop();
     cluster.close();
+    MemoryAppender.reset();
   }
 
   protected Optional<Bytes32> maybeCustomGenesisExtraData() {
@@ -262,6 +269,16 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
     return deploy.send();
   }
 
+  protected ModExp deployModExp() throws Exception {
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    TransactionManager txManager =
+        new RawTransactionManager(web3j, credentials, CHAIN_ID, createReceiptProcessor(web3j));
+
+    final RemoteCall<ModExp> deploy = ModExp.deploy(web3j, txManager, new DefaultGasProvider());
+    return deploy.send();
+  }
+
   protected RevertExample deployRevertExample() throws Exception {
     final Web3j web3j = minerNode.nodeRequests().eth();
     final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
@@ -286,6 +303,17 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
     final var balance = contract.balanceOf(accounts.getPrimaryBenefactor().getAddress()).send();
     assertThat(balance).isEqualTo(1000);
     return contract;
+  }
+
+  protected ExcludedPrecompiles deployExcludedPrecompiles() throws Exception {
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    TransactionManager txManager =
+        new RawTransactionManager(web3j, credentials, CHAIN_ID, createReceiptProcessor(web3j));
+
+    final RemoteCall<ExcludedPrecompiles> deploy =
+        ExcludedPrecompiles.deploy(web3j, txManager, new DefaultGasProvider());
+    return deploy.send();
   }
 
   public static String getResourcePath(String resource) {
@@ -393,5 +421,33 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
         .map(line -> line.substring(searchString.length()).trim())
         .map(Double::valueOf)
         .orElse(Double.NaN);
+  }
+
+  protected String getLog() {
+    return MemoryAppender.getLog();
+  }
+
+  protected String getAndResetLog() {
+    final var log = MemoryAppender.getLog();
+    MemoryAppender.reset();
+    return log;
+  }
+
+  protected byte[] encodedCallModExp(
+      final ModExp modExp, final Account sender, final int nonce, final Bytes input) {
+    final var modExpCalldata = modExp.callModExp(input.toArrayUnsafe()).encodeFunctionCall();
+
+    final var modExpCall =
+        RawTransaction.createTransaction(
+            CHAIN_ID,
+            BigInteger.valueOf(nonce),
+            DefaultGasProvider.GAS_LIMIT,
+            modExp.getContractAddress(),
+            BigInteger.ZERO,
+            modExpCalldata,
+            DefaultGasProvider.GAS_PRICE,
+            DefaultGasProvider.GAS_PRICE.multiply(BigInteger.TEN).add(BigInteger.ONE));
+
+    return TransactionEncoder.signMessage(modExpCall, sender.web3jCredentialsOrThrow());
   }
 }

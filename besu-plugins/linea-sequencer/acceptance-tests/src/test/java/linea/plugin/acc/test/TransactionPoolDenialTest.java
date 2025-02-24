@@ -15,10 +15,13 @@
 package linea.plugin.acc.test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.stream.IntStream;
 
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.junit.jupiter.api.Test;
 import org.web3j.crypto.Credentials;
@@ -74,22 +77,20 @@ public class TransactionPoolDenialTest extends LineaPluginTestBase {
   }
 
   @Test
-  public void transactionCallingContractOnDenyListCannotBeAddedToPool() throws Exception {
-    final Credentials notDenied = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
-    final Web3j miner = minerNode.nodeRequests().eth();
-
-    RawTransactionManager transactionManager =
-        new RawTransactionManager(miner, notDenied, CHAIN_ID);
-    EthSendTransaction transactionResponse =
-        transactionManager.sendTransaction(
-            GAS_PRICE,
-            GAS_LIMIT,
-            "0x000000000000000000000000000000000000000a",
-            "0xdeadbeef",
-            VALUE);
-
-    assertThat(transactionResponse.getTransactionHash()).isNull();
-    assertThat(transactionResponse.getError().getMessage())
-        .isEqualTo("destination address is a precompile address and cannot receive transactions");
+  public void transactionThatTargetPrecompileIsNotAccepted() {
+    IntStream.rangeClosed(1, 9)
+        .mapToObj(
+            index ->
+                accountTransactions.createTransfer(
+                    accounts.getPrimaryBenefactor(),
+                    accounts.createAccount(Address.precompiled(index)),
+                    1,
+                    BigInteger.valueOf(1)))
+        .forEach(
+            txWithPrecompileRecipient ->
+                assertThatThrownBy(
+                        () -> txWithPrecompileRecipient.execute(minerNode.nodeRequests()))
+                    .hasMessage(
+                        "Error sending transaction: destination address is a precompile address and cannot receive transactions"));
   }
 }
