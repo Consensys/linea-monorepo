@@ -1,4 +1,4 @@
-package plonk
+package plonkinternal
 
 import (
 	"fmt"
@@ -136,7 +136,7 @@ func (builder *externalRangeChecker) Compiler() frontend.Compiler {
 
 // addRangeCheckConstraints adds the wizard constraints implementing the range-checks
 // requested by the gnark circuit.
-func (ctx *compilationCtx) addRangeCheckConstraint() {
+func (ctx *CompilationCtx) addRangeCheckConstraint() {
 
 	var (
 		round                            = ctx.Columns.L[0].Round()
@@ -210,7 +210,7 @@ func (ctx *compilationCtx) addRangeCheckConstraint() {
 	}
 }
 
-func (ctx *compilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
+func (ctx *CompilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
 
 	var (
 		rcL      = ctx.Columns.RcL

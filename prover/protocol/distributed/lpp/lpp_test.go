@@ -150,7 +150,7 @@ func TestSeedGeneration(t *testing.T) {
 			run.ProverID = proverID
 		})
 
-		// get and compar the coins with the other segments/modules
+		// get and compare the coins with the other segments/modules
 		coin1 := runtime0.Coins.MustGet("TABLE_module0.col2_LOGDERIVATIVE_GAMMA_FieldFromSeed").(field.Element)
 		coin0 := runtime0.Coins.MustGet("TABLE_module1.col0_LOGDERIVATIVE_GAMMA_FieldFromSeed").(field.Element)
 		if coinLookup1Gamma.IsZero() {

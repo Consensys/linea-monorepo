@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
@@ -47,7 +48,7 @@ type antichamberInput struct {
 	txSource     *txnData
 	rlpTxn       generic.GenDataModule
 	settings     *Settings
-	plonkOptions []plonk.Option
+	plonkOptions []query.PlonkOption
 }
 
 type antichamber struct {

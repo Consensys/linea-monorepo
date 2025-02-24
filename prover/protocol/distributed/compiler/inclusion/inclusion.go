@@ -48,9 +48,9 @@ func DistributeLogDerivativeSum(moduleComp *wizard.CompiledIOP, segIn segcomp.Se
 			continue
 		}
 
-		// panic if there is more than a LogDerivativeSum query in the initialComp.
+		// panic if there is more than one LogDerivativeSum queries in the initialComp.
 		if string(queryID) != "" {
-			utils.Panic("found more than a LogDerivativeSum query in the initialComp")
+			utils.Panic("found more than one LogDerivativeSum queries in the initialComp")
 		}
 
 		queryID = qName
