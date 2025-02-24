@@ -17,6 +17,8 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   bytes32 public constant UNPAUSE_ALL_ROLE = keccak256("UNPAUSE_ALL_ROLE");
 
   /// @notice Role assigned to the security council that enables indefinite pausing and bypassing the cooldown period.
+  /// @dev Is not a pause or unpause role; a specific pause/unpause role is still required for specific pause/unpause types.
+  /// @dev However the SECURITY_COUNCIL_ROLE will enable bypassing pause expiration and cooldown limitations.
   bytes32 public constant SECURITY_COUNCIL_ROLE = keccak256("SECURITY_COUNCIL_ROLE");
 
   /// @notice Duration of pauses, after which pauses will expire.

@@ -28,12 +28,13 @@ import {
   MESSAGE_FEE,
   MESSAGE_VALUE_1ETH,
   ONE_DAY_IN_SECONDS,
+  PAUSE_ALL_ROLE,
+  UNPAUSE_ALL_ROLE,
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
   VALID_MERKLE_PROOF,
   PAUSE_L2_L1_ROLE,
   PAUSE_L1_L2_ROLE,
-  SECURITY_COUNCIL_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
 } from "./common/constants";
@@ -58,7 +59,6 @@ describe("L1MessageService", () => {
   let notAuthorizedAccount: SignerWithAddress;
   let postmanAddress: SignerWithAddress;
   let l2Sender: SignerWithAddress;
-  let securityCouncil: SignerWithAddress;
 
   async function deployTestL1MessageServiceFixture(): Promise<TestL1MessageService> {
     return deployUpgradableFromFactory("TestL1MessageService", [
@@ -83,8 +83,7 @@ describe("L1MessageService", () => {
   }
 
   before(async () => {
-    [admin, pauser, limitSetter, notAuthorizedAccount, postmanAddress, l2Sender, securityCouncil] =
-      await ethers.getSigners();
+    [admin, pauser, limitSetter, notAuthorizedAccount, postmanAddress, l2Sender] = await ethers.getSigners();
     // TODO adjust the tests to dynamically use whatever nonce is set for the merkle proof
     await setNonce(admin.address, 1);
   });
@@ -96,11 +95,12 @@ describe("L1MessageService", () => {
 
     await l1MessageService.grantRole(PAUSE_L1_L2_ROLE, pauser.address);
     await l1MessageService.grantRole(PAUSE_L2_L1_ROLE, pauser.address);
-    await l1MessageService.grantRole(SECURITY_COUNCIL_ROLE, securityCouncil.address);
+    await l1MessageService.grantRole(PAUSE_ALL_ROLE, pauser.address);
+    await l1MessageService.grantRole(UNPAUSE_ALL_ROLE, pauser.address);
     await l1MessageService.grantRole(RATE_LIMIT_SETTER_ROLE, limitSetter.address);
     await l1MessageService.grantRole(USED_RATE_LIMIT_RESETTER_ROLE, limitSetter.address);
 
-    await l1MessageServiceMerkleProof.grantRole(SECURITY_COUNCIL_ROLE, securityCouncil.address);
+    await l1MessageServiceMerkleProof.grantRole(PAUSE_ALL_ROLE, pauser.address);
 
     await l1MessageService.addFunds({ value: INITIAL_WITHDRAW_LIMIT * 2n });
     await l1MessageServiceMerkleProof.addFunds({ value: INITIAL_WITHDRAW_LIMIT * 2n });
@@ -119,12 +119,12 @@ describe("L1MessageService", () => {
       expect(await l1MessageService.hasRole(USED_RATE_LIMIT_RESETTER_ROLE, limitSetter.address)).to.be.true;
     });
 
-    it("securityCouncil has SECURITY_COUNCIL_ROLE", async () => {
-      expect(await l1MessageService.hasRole(SECURITY_COUNCIL_ROLE, securityCouncil.address)).to.be.true;
+    it("pauser has PAUSE_ALL_ROLE", async () => {
+      expect(await l1MessageService.hasRole(PAUSE_ALL_ROLE, pauser.address)).to.be.true;
     });
 
-    it("securityCouncil has SECURITY_COUNCIL_ROLE", async () => {
-      expect(await l1MessageService.hasRole(SECURITY_COUNCIL_ROLE, securityCouncil.address)).to.be.true;
+    it("pauser has UNPAUSE_ALL_ROLE", async () => {
+      expect(await l1MessageService.hasRole(UNPAUSE_ALL_ROLE, pauser.address)).to.be.true;
     });
 
     it("Should set rate limit and period", async () => {
@@ -1061,7 +1061,7 @@ describe("L1MessageService", () => {
     });
 
     it("Should fail to claim when the contract is generally paused", async () => {
-      await l1MessageServiceMerkleProof.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+      await l1MessageServiceMerkleProof.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
 
       await expect(
         l1MessageServiceMerkleProof.claimMessageWithProof({
@@ -1318,22 +1318,22 @@ describe("L1MessageService", () => {
       expect(await l1MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
 
       await expect(l1MessageService.connect(admin).pauseByType(GENERAL_PAUSE_TYPE)).to.be.revertedWith(
-        "AccessControl: account " + admin.address.toLowerCase() + " is missing role " + SECURITY_COUNCIL_ROLE,
+        "AccessControl: account " + admin.address.toLowerCase() + " is missing role " + PAUSE_ALL_ROLE,
       );
 
       expect(await l1MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
     });
 
-    it("Should pause generally as security council", async () => {
+    it("Should pause generally as pause manager", async () => {
       expect(await l1MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
 
-      await l1MessageService.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+      await l1MessageService.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
 
       expect(await l1MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
     });
 
     it("Should fail when to claim the contract is generally paused", async () => {
-      await l1MessageService.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+      await l1MessageService.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
 
       const claimMessageCall = l1MessageService.claimMessage(
         await l1MessageService.getAddress(),
@@ -1365,7 +1365,7 @@ describe("L1MessageService", () => {
     });
 
     it("Should fail to send if the contract is generally paused", async () => {
-      await l1MessageService.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+      await l1MessageService.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
 
       const claimMessageCall = l1MessageService
         .connect(admin)

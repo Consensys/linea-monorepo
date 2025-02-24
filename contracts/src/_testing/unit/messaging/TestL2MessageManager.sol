@@ -13,12 +13,12 @@ contract TestL2MessageManager is Initializable, L2MessageManager, IGenericErrors
   }
 
   function initialize(
-    address _securityCouncil,
+    address _pauserManager,
     address _l1l2MessageSetter,
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles
   ) public initializer {
-    if (_securityCouncil == address(0)) {
+    if (_pauserManager == address(0)) {
       revert ZeroAddressNotAllowed();
     }
 
@@ -32,7 +32,8 @@ contract TestL2MessageManager is Initializable, L2MessageManager, IGenericErrors
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    _grantRole(SECURITY_COUNCIL_ROLE, _securityCouncil);
+    _grantRole(PAUSE_ALL_ROLE, _pauserManager);
+    _grantRole(UNPAUSE_ALL_ROLE, _pauserManager);
     _grantRole(L1_L2_MESSAGE_SETTER_ROLE, _l1l2MessageSetter);
   }
 
