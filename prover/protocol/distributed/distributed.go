@@ -38,10 +38,16 @@ type ModuleDiscoverer interface {
 	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
 	// QueryIsInModule checks if the given query is inside the given module
 	QueryIsInModule(ifaces.Query, ModuleName) bool
-	// ColumnIsInModule checks if the given column is in the given module
+	// it return true if it can find any column from the given slice in the module
+	SliceIsInModule([]ifaces.Column, ModuleName) bool
+	// it checks if the given column is in the given module
 	ColumnIsInModule(col ifaces.Column, name ModuleName) bool
-	// NewSizeOf returns the split-size of a column in the module.
-	NewSizeOf(col ifaces.Column) int
+	// it adds all the unassigned columns in the slice to the given module.
+	UpdateDiscoverer([]ifaces.Column, ModuleName)
+	// it return the module associated with the column, if it is already captured
+	HasModule(col ifaces.Column) (ModuleName, bool)
+	// return the columns from the module
+	ListColumns(ModuleName) []ifaces.Column
 }
 
 // This transforms the initial wizard. So it is not really the initial

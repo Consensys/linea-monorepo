@@ -90,6 +90,9 @@ func TestConglomerationPureVortexSingleRound(t *testing.T) {
 		builder.InsertPublicInput(constants.GrandProductPublicInput, accessors.NewConstant(field.NewElement(1)))
 		builder.InsertPublicInput(constants.GrandSumPublicInput, accessors.NewConstant(field.NewElement(0)))
 		builder.InsertPublicInput(constants.LogDerivativeSumPublicInput, accessors.NewConstant(field.NewElement(0)))
+
+		builder.InsertPublicInput(constants.GlobalProviderPublicInput, accessors.NewConstant(field.NewElement(0)))
+		builder.InsertPublicInput(constants.GlobalReceiverPublicInput, accessors.NewConstant(field.NewElement(0)))
 	}
 
 	prover := func(k int) func(run *wizard.ProverRuntime) {
@@ -172,6 +175,9 @@ func TestConglomerationPureVortexMultiRound(t *testing.T) {
 		builder.InsertPublicInput(constants.GrandProductPublicInput, accessors.NewConstant(field.NewElement(1)))
 		builder.InsertPublicInput(constants.GrandSumPublicInput, accessors.NewConstant(field.NewElement(0)))
 		builder.InsertPublicInput(constants.LogDerivativeSumPublicInput, accessors.NewConstant(field.NewElement(0)))
+
+		builder.InsertPublicInput(constants.GlobalProviderPublicInput, accessors.NewConstant(field.NewElement(0)))
+		builder.InsertPublicInput(constants.GlobalReceiverPublicInput, accessors.NewConstant(field.NewElement(0)))
 	}
 
 	prover := func(k int) func(run *wizard.ProverRuntime) {
@@ -232,6 +238,9 @@ func TestConglomerationLookup(t *testing.T) {
 				builder.InsertPublicInput(constants.GrandProductPublicInput, accessors.NewConstant(field.NewElement(1)))
 				builder.InsertPublicInput(constants.GrandSumPublicInput, accessors.NewConstant(field.NewElement(0)))
 				builder.InsertPublicInput(constants.LogDerivativeSumPublicInput, accessors.NewConstant(field.NewElement(0)))
+
+				builder.InsertPublicInput(constants.GlobalProviderPublicInput, accessors.NewConstant(field.NewElement(0)))
+				builder.InsertPublicInput(constants.GlobalReceiverPublicInput, accessors.NewConstant(field.NewElement(0)))
 			}
 
 			prover := func(k int) func(run *wizard.ProverRuntime) {

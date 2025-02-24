@@ -68,7 +68,7 @@ type Module struct {
 // does not define them.
 func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings) *Module {
 	return newModule(comp, newZkEVMInput(comp, settings)).
-		WithCircuit(comp, plonk.WithRangecheck(16, 6, false))
+		WithCircuit(comp, query.PlonkRangeCheckOption(16, 6, false))
 }
 
 func newModule(comp *wizard.CompiledIOP, input Input) *Module {
@@ -107,7 +107,7 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 
 // WithCircuits adds the Plonk-in-Wizard circuit verification to complete
 // the anti-chamber.
-func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...plonk.Option) *Module {
+func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *Module {
 
 	mod.hasCircuit = true
 

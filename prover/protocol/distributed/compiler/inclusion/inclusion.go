@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
+	segcomp "github.com/consensys/linea-monorepo/prover/protocol/distributed/segment_comp.go"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -30,31 +31,26 @@ type DistributionInputs struct {
 	// query is supposed to be the global LogDerivativeSum.
 	Query query.LogDerivativeSum
 	// number of segments for the module
-	NumSegments int
+	NumSegments, SegID int
 }
 
 // DistributeLogDerivativeSum distributes a  share from a global [query.LogDerivativeSum] query to the given module.
-func DistributeLogDerivativeSum(
-	initialComp, moduleComp *wizard.CompiledIOP,
-	moduleName distributed.ModuleName,
-	disc distributed.ModuleDiscoverer,
-	numSegments int,
-) {
+func DistributeLogDerivativeSum(moduleComp *wizard.CompiledIOP, segIn segcomp.SegmentInputs) {
 
 	var (
 		queryID ifaces.QueryID
 	)
 
-	for _, qName := range initialComp.QueriesParams.AllUnignoredKeys() {
+	for _, qName := range segIn.InitialComp.QueriesParams.AllUnignoredKeys() {
 
-		_, ok := initialComp.QueriesParams.Data(qName).(query.LogDerivativeSum)
+		_, ok := segIn.InitialComp.QueriesParams.Data(qName).(query.LogDerivativeSum)
 		if !ok {
 			continue
 		}
 
-		// panic if there is more than a LogDerivativeSum query in the initialComp.
+		// panic if there is more than one LogDerivativeSum queries in the initialComp.
 		if string(queryID) != "" {
-			utils.Panic("found more than a LogDerivativeSum query in the initialComp")
+			utils.Panic("found more than one LogDerivativeSum queries in the initialComp")
 		}
 
 		queryID = qName
@@ -63,11 +59,12 @@ func DistributeLogDerivativeSum(
 	// get the share of the module from the LogDerivativeSum query
 	GetShareOfLogDerivativeSum(DistributionInputs{
 		ModuleComp:  moduleComp,
-		InitialComp: initialComp,
-		Disc:        disc,
-		ModuleName:  moduleName,
-		Query:       initialComp.QueriesParams.Data(queryID).(query.LogDerivativeSum),
-		NumSegments: numSegments,
+		InitialComp: segIn.InitialComp,
+		Disc:        segIn.Disc.SimpleDiscoverer,
+		ModuleName:  segIn.ModuleName,
+		Query:       segIn.InitialComp.QueriesParams.Data(queryID).(query.LogDerivativeSum),
+		NumSegments: segIn.NumSegmentsInModule,
+		SegID:       segIn.SegID,
 	})
 
 }
@@ -84,7 +81,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 		round         = logDeriv.Round
 		// create a translation map from the columns of moduleComp.
 		// this does not include verifier columns.
-		translationMap = createTranslationMap(moduleComp)
+		translationMap = collection.NewMapping[string, *symbolic.Expression]()
 	)
 
 	// extract the share of the module from the global sum.
@@ -95,7 +92,7 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 			denominator []*symbolic.Expression
 		)
 
-		for i, num := range logDeriv.Inputs[size].Numerator {
+		for i := range logDeriv.Inputs[size].Numerator {
 
 			// if Denominator is in the module pass the numerator from initialComp to moduleComp
 			// Particularly, T might be in the module and needs to take M from initialComp.
@@ -103,23 +100,34 @@ func GetShareOfLogDerivativeSum(in DistributionInputs) {
 			if in.Disc.ExpressionIsInModule(logDeriv.Inputs[size].Denominator[i], in.ModuleName) {
 
 				if !in.Disc.ExpressionIsInModule(logDeriv.Inputs[size].Numerator[i], in.ModuleName) {
-					utils.Panic("Denominator is in the module but not Numerator")
+
+					utils.Panic("Denominator is in the module %v but not Numerator", in.ModuleName)
 				}
+
 				// update translationMap by adding local coins
 				// the previous check guarantees that all the columns
 				// from the expression  are in the module
 				// Thus we can add the coins locally (i.e., without [distributed.ModuleDiscoverer]).
-				distributed.ReplaceExternalCoinsVerifCols(in.InitialComp, moduleComp,
-					logDeriv.Inputs[size].Denominator[i], translationMap, in.NumSegments)
+				distributed.ReplaceExternalCoins(in.InitialComp, moduleComp,
+					logDeriv.Inputs[size].Denominator[i], translationMap, in.NumSegments, in.SegID)
 
-				denominator = append(denominator,
-					// get the corresponding expression from the module
-					// this is mainly for adjusting the size of expressions
-					// in the module-segments.
+				denExpr := distributed.AdjustExpressionForModule(
+					in.InitialComp,
+					in.ModuleComp,
 					logDeriv.Inputs[size].Denominator[i].Replay(translationMap),
+					in.NumSegments, in.SegID,
 				)
 
-				numerator = append(numerator, num.Replay(translationMap))
+				numExpr := distributed.AdjustExpressionForModule(
+					in.InitialComp,
+					in.ModuleComp,
+					logDeriv.Inputs[size].Numerator[i],
+					in.NumSegments, in.SegID,
+				)
+
+				denominator = append(denominator, denExpr)
+
+				numerator = append(numerator, numExpr)
 
 				keyIsInModule = true
 			}

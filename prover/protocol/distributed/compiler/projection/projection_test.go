@@ -1,6 +1,7 @@
 package dist_projection_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -9,6 +10,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	dist_projection "github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
 	discoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -16,9 +19,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type AllVerifierRuntimes struct {
+	RuntimesA []wizard.Runtime
+	RuntimesB []wizard.Runtime
+	RuntimesC []wizard.Runtime
+}
+
 func TestDistributeProjection(t *testing.T) {
+	const (
+		numSegModuleA = 4
+		numSegModuleB = 4
+		numSegModuleC = 4
+	)
 	var (
+		allVerfiers                                                   = AllVerifierRuntimes{}
 		moduleAName                                                   = "moduleA"
+		moduleBName                                                   = "moduleB"
+		moduleCName                                                   = "moduleC"
 		flagSizeA                                                     = 512
 		flagSizeB                                                     = 256
 		flagA, flagB, columnA, columnB, flagC, columnC                ifaces.Column
@@ -30,44 +47,10 @@ func TestDistributeProjection(t *testing.T) {
 		InitialProverFunc func(run *wizard.ProverRuntime)
 	}{
 		{
-			Name: "distribute-projection-both-A-and-B",
-			DefineFunc: func(builder *wizard.Builder) {
-				flagA = builder.RegisterCommit(ifaces.ColID("moduleA.FilterA"), flagSizeA)
-				flagB = builder.RegisterCommit(ifaces.ColID("moduleA.FliterB"), flagSizeB)
-				columnA = builder.RegisterCommit(ifaces.ColID("moduleA.ColumnA"), flagSizeA)
-				columnB = builder.RegisterCommit(ifaces.ColID("moduleA.ColumnB"), flagSizeB)
-				_ = builder.InsertProjection("ProjectionTest-both-A-and-B",
-					query.ProjectionInput{ColumnA: []ifaces.Column{columnA}, ColumnB: []ifaces.Column{columnB}, FilterA: flagA, FilterB: flagB})
-
-			},
-			InitialProverFunc: func(run *wizard.ProverRuntime) {
-				// assign filters and columns
-				var (
-					flagAWit   = make([]field.Element, flagSizeA)
-					columnAWit = make([]field.Element, flagSizeA)
-					flagBWit   = make([]field.Element, flagSizeB)
-					columnBWit = make([]field.Element, flagSizeB)
-				)
-				for i := 0; i < 10; i++ {
-					flagAWit[i] = field.One()
-					columnAWit[i] = field.NewElement(uint64(i))
-				}
-				for i := flagSizeB - 10; i < flagSizeB; i++ {
-					flagBWit[i] = field.One()
-					columnBWit[i] = field.NewElement(uint64(i - (flagSizeB - 10)))
-				}
-				run.AssignColumn(flagA.GetColID(), smartvectors.RightZeroPadded(flagAWit, flagSizeA))
-				run.AssignColumn(flagB.GetColID(), smartvectors.RightZeroPadded(flagBWit, flagSizeB))
-				run.AssignColumn(columnB.GetColID(), smartvectors.RightZeroPadded(columnBWit, flagSizeB))
-				run.AssignColumn(columnA.GetColID(), smartvectors.RightZeroPadded(columnAWit, flagSizeA))
-			},
-		},
-		{
-			Name: "distribute-projection-multiple_projections",
 			DefineFunc: func(builder *wizard.Builder) {
 				flagA = builder.RegisterCommit(ifaces.ColID("moduleA.FilterA"), flagSizeA)
 				flagB = builder.RegisterCommit(ifaces.ColID("moduleB.FliterB"), flagSizeB)
-				flagC = builder.RegisterCommit(ifaces.ColID("moduleC.FliterB"), flagSizeB)
+				flagC = builder.RegisterCommit(ifaces.ColID("moduleC.FliterC"), flagSizeB)
 				columnA = builder.RegisterCommit(ifaces.ColID("moduleA.ColumnA"), flagSizeA)
 				columnB = builder.RegisterCommit(ifaces.ColID("moduleB.ColumnB"), flagSizeB)
 				columnC = builder.RegisterCommit(ifaces.ColID("moduleC.ColumnC"), flagSizeB)
@@ -176,34 +159,154 @@ func TestDistributeProjection(t *testing.T) {
 	for _, tc := range testcases {
 
 		t.Run(tc.Name, func(t *testing.T) {
-			// This function assigns the initial module and is aimed at working
-			// for all test-case.
-			initialProve := tc.InitialProverFunc
 
 			// initialComp is defined according to the define function provided by the
 			// test-case.
 			initialComp := wizard.Compile(tc.DefineFunc)
 
+			lppComp := lpp.CompileLPPAndGetSeed(initialComp)
 			disc := discoverer.PeriodSeperatingModuleDiscoverer{}
 			disc.Analyze(initialComp)
 
-			// This declares a compiled IOP with only the columns of the module A
-			moduleAComp := distributed.GetFreshModuleComp(initialComp, &disc, moduleAName)
-			dist_projection.NewDistributeProjectionCtx(moduleAName, initialComp, moduleAComp, &disc)
+			// distribute the columns among modules and segments; this includes also multiplicity columns
+			// for all the segments from the same module, compiledIOP object is the same.
+			moduleCompA := distributed.GetFreshModuleComp(initialComp, &disc, moduleAName)
+			moduleCompB := distributed.GetFreshModuleComp(initialComp, &disc, moduleBName)
+			moduleCompC := distributed.GetFreshModuleComp(initialComp, &disc, moduleCName)
 
-			wizard.ContinueCompilation(moduleAComp, distributedprojection.CompileDistributedProjection, dummy.CompileAtProverLvl)
+			// distribute the query LogDerivativeSum among modules.
+			// The seed is used to generate randomness for each moduleComp.
+			dist_projection.NewDistributeProjectionCtx(moduleAName, initialComp, moduleCompA, &disc, numSegModuleA)
+			dist_projection.NewDistributeProjectionCtx(moduleBName, initialComp, moduleCompB, &disc, numSegModuleB)
+			dist_projection.NewDistributeProjectionCtx(moduleCName, initialComp, moduleCompC, &disc, numSegModuleC)
 
-			// This runs the initial prover
-			initialRuntime := wizard.RunProver(initialComp, initialProve)
+			// This compiles the log-derivative queries into global/local queries.
+			wizard.ContinueCompilation(moduleCompA, distributedprojection.CompileDistributedProjection, dummy.Compile)
+			wizard.ContinueCompilation(moduleCompB, distributedprojection.CompileDistributedProjection, dummy.Compile)
+			wizard.ContinueCompilation(moduleCompC, distributedprojection.CompileDistributedProjection, dummy.Compile)
 
-			proof := wizard.Prove(moduleAComp, func(run *wizard.ProverRuntime) {
+			// run the initial runtime
+			initialRuntime := wizard.ProverOnlyFirstRound(initialComp, tc.InitialProverFunc)
+
+			// compile and verify for lpp-Prover
+			lppProof := wizard.Prove(lppComp, func(run *wizard.ProverRuntime) {
 				run.ParentRuntime = initialRuntime
 			})
-			valid := wizard.Verify(moduleAComp, proof)
+			lppVerifierRuntime, valid := wizard.VerifyWithRuntime(lppComp, lppProof)
 			require.NoError(t, valid)
+
+			// Compile and prove for moduleA
+			allVerfiers.RuntimesA = make([]wizard.Runtime, 0, numSegModuleA)
+			for proverID := 0; proverID < numSegModuleA; proverID++ {
+				proofA := wizard.Prove(moduleCompA, func(run *wizard.ProverRuntime) {
+					run.ParentRuntime = initialRuntime
+					// inputs for vertical splitting of the witness
+					run.ProverID = proverID
+				})
+				runtimeA, validA := wizard.VerifyWithRuntime(moduleCompA, proofA, lppVerifierRuntime)
+				require.NoError(t, validA)
+
+				allVerfiers.RuntimesA = append(allVerfiers.RuntimesA, runtimeA)
+			}
+
+			// Compile and prove for moduleB
+			allVerfiers.RuntimesB = make([]wizard.Runtime, 0, numSegModuleB)
+			for proverID := 0; proverID < numSegModuleB; proverID++ {
+				proofB := wizard.Prove(moduleCompB, func(run *wizard.ProverRuntime) {
+					run.ParentRuntime = initialRuntime
+					// inputs for vertical splitting of the witness
+					run.ProverID = proverID
+				})
+				runtimeB, validB := wizard.VerifyWithRuntime(moduleCompB, proofB, lppVerifierRuntime)
+				require.NoError(t, validB)
+
+				allVerfiers.RuntimesB = append(allVerfiers.RuntimesB, runtimeB)
+
+			}
+
+			// Compile and prove for moduleC
+			allVerfiers.RuntimesC = make([]wizard.Runtime, 0, numSegModuleC)
+			for proverID := 0; proverID < numSegModuleC; proverID++ {
+				proofC := wizard.Prove(moduleCompC, func(run *wizard.ProverRuntime) {
+					run.ParentRuntime = initialRuntime
+					// inputs for vertical splitting of the witness
+					run.ProverID = proverID
+				})
+				runtimeC, validC := wizard.VerifyWithRuntime(moduleCompC, proofC, lppVerifierRuntime)
+				require.NoError(t, validC)
+
+				allVerfiers.RuntimesC = append(allVerfiers.RuntimesC, runtimeC)
+			}
+
+			// apply the crosse checks over the public inputs.
+			require.NoError(t, checkConsistency(allVerfiers))
 
 		})
 
 	}
 
+}
+
+func checkConsistency(allVerRuns AllVerifierRuntimes) error {
+
+	var (
+		res              = field.Zero()
+		currCumSumArrayA = make([]field.Element, 0, len(allVerRuns.RuntimesA))
+		prevCumSumArrayA = make([]field.Element, 0, len(allVerRuns.RuntimesA))
+		currCumSumArrayB = make([]field.Element, 0, len(allVerRuns.RuntimesB))
+		prevCumSumArrayB = make([]field.Element, 0, len(allVerRuns.RuntimesB))
+		currCumSumArrayC = make([]field.Element, 0, len(allVerRuns.RuntimesC))
+		prevCumSumArrayC = make([]field.Element, 0, len(allVerRuns.RuntimesC))
+	)
+	for _, run := range allVerRuns.RuntimesA {
+		distributedPubInputs_ := run.GetPublicInput(constants.DistributedProjectionPublicInput)
+		distributedPubInputs, ok := distributedPubInputs_.(wizard.DistributedProjectionPublicInput)
+		if !ok {
+			return errors.New("the distributed projection public input is not valid for module A")
+		}
+		res.Add(&res, &distributedPubInputs.ScaledHorner)
+		currCumSumArrayA = append(currCumSumArrayA, distributedPubInputs.CumSumCurr)
+		prevCumSumArrayA = append(prevCumSumArrayA, distributedPubInputs.CumSumPrev)
+	}
+	for _, run := range allVerRuns.RuntimesB {
+		distributedPubInputs_ := run.GetPublicInput(constants.DistributedProjectionPublicInput)
+		distributedPubInputs, ok := distributedPubInputs_.(wizard.DistributedProjectionPublicInput)
+		if !ok {
+			return errors.New("the distributed projection public input is not valid for module B")
+		}
+		res.Add(&res, &distributedPubInputs.ScaledHorner)
+		currCumSumArrayB = append(currCumSumArrayB, distributedPubInputs.CumSumCurr)
+		prevCumSumArrayB = append(prevCumSumArrayB, distributedPubInputs.CumSumPrev)
+	}
+	for _, run := range allVerRuns.RuntimesC {
+		distributedPubInputs_ := run.GetPublicInput(constants.DistributedProjectionPublicInput)
+		distributedPubInputs, ok := distributedPubInputs_.(wizard.DistributedProjectionPublicInput)
+		if !ok {
+			return errors.New("the distributed projection public input is not valid for module C")
+		}
+		res.Add(&res, &distributedPubInputs.ScaledHorner)
+		currCumSumArrayC = append(currCumSumArrayC, distributedPubInputs.CumSumCurr)
+		prevCumSumArrayC = append(prevCumSumArrayC, distributedPubInputs.CumSumPrev)
+	}
+
+	if !res.IsZero() {
+		return errors.New("the distributed projection sums do not cancel each others")
+	}
+	for i := 1; i < len(currCumSumArrayA); i++ {
+		if currCumSumArrayA[i-1] != prevCumSumArrayA[i] {
+			return errors.New("the vertical splitting for the distributed projection is not consistent for module A")
+		}
+	}
+	for i := 1; i < len(currCumSumArrayB); i++ {
+		if currCumSumArrayB[i-1] != prevCumSumArrayB[i] {
+			return errors.New("the vertical splitting for the distributed projection is not consistent for module B")
+		}
+	}
+	for i := 1; i < len(currCumSumArrayC); i++ {
+		if currCumSumArrayC[i-1] != prevCumSumArrayC[i] {
+			return errors.New("the vertical splitting for the distributed projection is not consistent for module C")
+		}
+	}
+
+	return nil
 }

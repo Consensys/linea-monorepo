@@ -3,10 +3,8 @@ package discoverer
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
-	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -18,57 +16,130 @@ type QueryBasedDiscoverer struct {
 	// it can neither capture the specific columns (like verifier columns or periodicSampling variables),
 	// nor categorizes the columns GL and LPP.
 	SimpleDiscoverer distributed.ModuleDiscoverer
-	// all the  columns involved in the LPP queries, including the verifier columns
+	// all the  columns involved in the LPP queries,
+	// including the verifier columns and new columns from Preparation phase
 	LPPColumns collection.Mapping[ModuleName, []ifaces.Column]
 	// all the  columns involved in the GL queries, including the verifier columns
 	GLColumns collection.Mapping[ModuleName, []ifaces.Column]
-	// all the periodicSamples involved in the GL queries
-	PeriodicSamplingGL collection.Mapping[ModuleName, []variables.PeriodicSample]
 }
 
 // Analyze first analyzes the simpleDiscoverer and then adds extra analyses based on the queries
-// , to get the the verifier, GL , LPP columns and also PeriodicSamplings
-func (d QueryBasedDiscoverer) Analyze(comp *wizard.CompiledIOP) {
+// , to get the the verifier, GL , LPP columns.
+func (d *QueryBasedDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
-	d.SimpleDiscoverer.Analyze(comp)
+	// initialize discoverer
+	d.GLColumns = collection.NewMapping[ModuleName, []ifaces.Column]()
+	d.LPPColumns = collection.NewMapping[ModuleName, []ifaces.Column]()
 
 	// sanity check
 	if len(comp.QueriesParams.AllKeysAt(0)) != 0 {
 		panic("At this step, we do not expect a query with parameters")
 	}
 
-	// capture and analysis GL Queries
 	for _, moduleName := range d.SimpleDiscoverer.ModuleList() {
-		for _, q := range comp.QueriesNoParams.AllKeys() {
+		for _, qID := range comp.QueriesNoParams.AllKeys() {
 
-			if global, ok := comp.QueriesNoParams.Data(q).(query.GlobalConstraint); ok {
+			// capture and analysis GL Queries
+			if global, ok := comp.QueriesNoParams.Data(qID).(query.GlobalConstraint); ok {
 
 				if d.SimpleDiscoverer.ExpressionIsInModule(global.Expression, moduleName) {
 
-					// it analyzes the expression and update d.GLColumns and d.PeriodicSamplingGL
+					d.SimpleDiscoverer.UpdateDiscoverer(
+						distributed.ListColumnsFromExpr(global.Expression, true),
+						moduleName)
+
+					// it analyzes the expression and update d.GLColumns
 					d.analyzeExprGL(global.Expression, moduleName)
 
 				}
 			}
 
 			// the same for local queries.
-			if local, ok := comp.QueriesNoParams.Data(q).(query.LocalConstraint); ok {
+			if local, ok := comp.QueriesNoParams.Data(qID).(query.LocalConstraint); ok {
 
 				if d.SimpleDiscoverer.ExpressionIsInModule(local.Expression, moduleName) {
 
-					// it analyzes de expression and update d.GLColumns and d.PeriodicSamplingGL
+					d.SimpleDiscoverer.UpdateDiscoverer(
+						distributed.ListColumnsFromExpr(local.Expression, true),
+						moduleName)
+
+					// it analyzes de expression and update d.GLColumns
 					d.analyzeExprGL(local.Expression, moduleName)
 
 				}
 			}
 
-			// get the LPP columns from all the LPP queries, and check if they are in the module
-			// this does not contain the new columns from preparation phase like the multiplicity columns.
-			lppCols := lpp.GetLPPColumns(comp)
-			for _, col := range lppCols {
-				if d.SimpleDiscoverer.ColumnIsInModule(col, moduleName) {
-					// update d content
-					d.LPPColumns.AppendNew(moduleName, []ifaces.Column{col})
+			// capture and analysis LPP Queries
+			q := comp.QueriesNoParams.Data(qID)
+			switch v := q.(type) {
+
+			case query.Permutation:
+				for i := range v.A {
+					if d.SimpleDiscoverer.SliceIsInModule(v.A[i], moduleName) {
+						for _, col := range v.A[i] {
+							AppendNew(&d.LPPColumns, moduleName, col)
+						}
+
+					}
+					if d.SimpleDiscoverer.SliceIsInModule(v.B[i], moduleName) {
+						for _, col := range v.B[i] {
+							AppendNew(&d.LPPColumns, moduleName, col)
+						}
+
+					}
+				}
+
+			case query.Projection:
+				if d.SimpleDiscoverer.SliceIsInModule(v.Inp.ColumnA, moduleName) {
+					for _, col := range v.Inp.ColumnA {
+						AppendNew(&d.LPPColumns, moduleName, col)
+					}
+					AppendNew(&d.LPPColumns, moduleName, v.Inp.FilterA)
+
+				}
+				if d.SimpleDiscoverer.SliceIsInModule(v.Inp.ColumnB, moduleName) {
+					for _, col := range v.Inp.ColumnB {
+						AppendNew(&d.LPPColumns, moduleName, col)
+					}
+					AppendNew(&d.LPPColumns, moduleName, v.Inp.FilterB)
+
+				}
+
+			}
+		}
+
+		// capture and analysis LPP queries
+		// here instead of inclusion we use LogDerivativeSum,
+		// Since the expression versions include the columns generated during the preparation phase.
+		for _, q := range comp.QueriesParams.AllKeys() {
+
+			// handle inclusion queries (LogDerivativeSum instead, due to the preparation phase)
+			if logDeriv, ok := comp.QueriesParams.Data(q).(query.LogDerivativeSum); ok {
+
+				for _, value := range logDeriv.Inputs {
+
+					for i := range value.Denominator {
+
+						if d.SimpleDiscoverer.ExpressionIsInModule(value.Denominator[i], moduleName) {
+							// it analyzes the expression and update d.LPPColumns
+							cols := distributed.ListColumnsFromExpr(value.Denominator[i], true)
+							for _, col := range cols {
+								AppendNew(&d.LPPColumns, moduleName, col)
+							}
+
+							d.SimpleDiscoverer.UpdateDiscoverer(cols, moduleName)
+
+							// it analyzes the expression and update d.LPPColumns
+							colsNum := distributed.ListColumnsFromExpr(value.Numerator[i], true)
+							for _, col := range colsNum {
+								AppendNew(&d.LPPColumns, moduleName, col)
+							}
+
+							d.SimpleDiscoverer.UpdateDiscoverer(colsNum, moduleName)
+
+						}
+
+					}
 				}
 			}
 
@@ -120,21 +191,56 @@ func (d *QueryBasedDiscoverer) analyzeExprGL(expr *symbolic.Expression, moduleNa
 		case ifaces.Column:
 
 			if shifted, ok := t.(column.Shifted); ok {
-
-				d.GLColumns.AppendNew(moduleName, []ifaces.Column{shifted.Parent})
+				AppendNew(&d.GLColumns, moduleName, shifted.Parent)
 
 			} else {
-				d.GLColumns.AppendNew(moduleName, []ifaces.Column{t})
+				AppendNew(&d.GLColumns, moduleName, t)
 			}
-
-		case variables.PeriodicSample:
-
-			d.PeriodicSamplingGL.AppendNew(moduleName, []variables.PeriodicSample{t})
-
 		}
 	}
 }
 
 func (p *QueryBasedDiscoverer) NewSizeOf(ifaces.Column) int {
 	panic("unimplemented")
+}
+
+// analyzeExpr analyzes the expression and update the content of d.
+func (d *QueryBasedDiscoverer) analyzeExprLPP(expr *symbolic.Expression, moduleName ModuleName) {
+
+	var (
+		board    = expr.Board()
+		metadata = board.ListVariableMetadata()
+	)
+
+	for _, m := range metadata {
+
+		switch t := m.(type) {
+		case ifaces.Column:
+
+			if shifted, ok := t.(column.Shifted); ok {
+				AppendNew(&d.GLColumns, moduleName, shifted.Parent)
+
+			} else {
+				AppendNew(&d.GLColumns, moduleName, t)
+			}
+		}
+	}
+}
+
+func AppendNew(myMap *collection.Mapping[ModuleName, []ifaces.Column], name ModuleName, myCol ifaces.Column) {
+	if !myMap.Exists(name) {
+		myMap.InsertNew(name, []ifaces.Column{myCol})
+		return
+	}
+
+	allCols := myMap.MustGet(name)
+	for _, col := range allCols {
+		if col.GetColID() == myCol.GetColID() {
+			return
+		}
+	}
+
+	allCols = append(allCols, myCol)
+	myMap.Update(name, allCols)
+
 }

@@ -6,6 +6,8 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	logderiv "github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
@@ -13,13 +15,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
 	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
+	segcomp "github.com/consensys/linea-monorepo/prover/protocol/distributed/segment_comp.go"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 
 // It tests DistributedLogDerivSum.
-func TestSeedGeneration(t *testing.T) {
+func TestDistributedInclusion(t *testing.T) {
 	const (
 		numSegModule0 = 2
 		numSegModule1 = 2
@@ -28,22 +31,26 @@ func TestSeedGeneration(t *testing.T) {
 
 	var (
 		allVerfiers = []wizard.Runtime{}
+		simpleDisc  = md.PeriodSeperatingModuleDiscoverer{}
 	)
 	//initialComp
 	define := func(b *wizard.Builder) {
 
 		var (
 			// columns from module0
-			col01 = b.CompiledIOP.InsertCommit(0, "module0.col1", 4)
-			col02 = b.CompiledIOP.InsertCommit(0, "module0.col2", 8)
+			col01     = b.CompiledIOP.InsertCommit(0, "module0.col1", 4)
+			col02     = b.CompiledIOP.InsertCommit(0, "module0.col2", 8)
+			verifCol0 = verifiercol.NewConstantCol(field.One(), 4)
 
 			// columns from module1
-			col10 = b.CompiledIOP.InsertCommit(0, "module1.col0", 8)
-			col11 = b.CompiledIOP.InsertCommit(0, "module1.col1", 16)
-			col12 = b.CompiledIOP.InsertCommit(0, "module1.col2", 4)
-			col13 = b.CompiledIOP.InsertCommit(0, "module1.col3", 4)
-			col14 = b.CompiledIOP.InsertCommit(0, "module1.col4", 16)
-			col15 = b.CompiledIOP.InsertCommit(0, "module1.col5", 16)
+			col10     = b.CompiledIOP.InsertCommit(0, "module1.col0", 8)
+			col11     = b.CompiledIOP.InsertCommit(0, "module1.col1", 16)
+			col12     = b.CompiledIOP.InsertCommit(0, "module1.col2", 4)
+			col13     = b.CompiledIOP.InsertCommit(0, "module1.col3", 4)
+			col14     = b.CompiledIOP.InsertCommit(0, "module1.col4", 16)
+			col15     = b.CompiledIOP.InsertCommit(0, "module1.col5", 16)
+			verifCol  = verifiercol.NewConstantCol(field.One(), 8)
+			verifCol1 = column.Shift(verifCol, 3)
 
 			//  columns from module2
 			col20 = b.CompiledIOP.InsertCommit(0, "module2.col0", 4)
@@ -53,7 +60,7 @@ func TestSeedGeneration(t *testing.T) {
 
 		// inclusion query: S \subset T , S in module0, T in module1.
 		b.CompiledIOP.InsertInclusion(0, "lookup0",
-			[]ifaces.Column{col10}, []ifaces.Column{col01})
+			[]ifaces.Column{col10, verifCol1}, []ifaces.Column{col01, verifCol0})
 
 		// conditional inclusion query : S\subset T, S in module1,T in module0.
 		b.CompiledIOP.InsertInclusionConditionalOnIncluded(0, "lookup1",
@@ -83,43 +90,52 @@ func TestSeedGeneration(t *testing.T) {
 
 	// initial compiledIOP is the parent to LPPComp and all the SegmentModuleComp objects.
 	initialComp := wizard.Compile(define)
+
+	simpleDisc.Analyze(initialComp)
+
 	// apply the LPP relevant compilers and generate the seed for initialComp
 	lppComp := lpp.CompileLPPAndGetSeed(initialComp, distributed.IntoLogDerivativeSum)
 
-	// Initialize the period separating module discoverer
-	disc := &md.PeriodSeperatingModuleDiscoverer{}
+	// Initialize the module discoverer
+	disc := md.QueryBasedDiscoverer{
+		SimpleDiscoverer: &simpleDisc,
+	}
 	disc.Analyze(initialComp)
 
-	// distribute the columns among modules and segments; this includes also multiplicity columns
-	// for all the segments from the same module, compiledIOP object is the same.
-	moduleComp0 := distributed.GetFreshSegmentModuleComp(
-		distributed.SegmentModuleInputs{
+	var (
+		in0 = segcomp.SegmentInputs{
 			InitialComp:         initialComp,
 			Disc:                disc,
 			ModuleName:          "module0",
 			NumSegmentsInModule: numSegModule0,
-		},
+		}
+
+		in1 = segcomp.SegmentInputs{
+			InitialComp:         initialComp,
+			Disc:                disc,
+			ModuleName:          "module1",
+			NumSegmentsInModule: numSegModule1,
+		}
+
+		in2 = segcomp.SegmentInputs{
+			InitialComp:         initialComp,
+			Disc:                disc,
+			ModuleName:          "module2",
+			NumSegmentsInModule: numSegModule2,
+		}
 	)
 
-	moduleComp1 := distributed.GetFreshSegmentModuleComp(distributed.SegmentModuleInputs{
-		InitialComp:         initialComp,
-		Disc:                disc,
-		ModuleName:          "module1",
-		NumSegmentsInModule: numSegModule1,
-	})
-
-	moduleComp2 := distributed.GetFreshSegmentModuleComp(distributed.SegmentModuleInputs{
-		InitialComp:         initialComp,
-		Disc:                disc,
-		ModuleName:          "module2",
-		NumSegmentsInModule: numSegModule2,
-	})
+	// distribute the columns among modules and segments; this includes also multiplicity columns
+	// for all the segments from the same module, compiledIOP object is the same.
+	moduleComp0 := segcomp.GetFreshLPPComp(in0)
+	moduleComp1 := segcomp.GetFreshLPPComp(in1)
+	moduleComp2 := segcomp.GetFreshLPPComp(in2)
 
 	// distribute the query LogDerivativeSum among modules.
 	// The seed is used to generate randomness for each moduleComp.
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp0, "module0", disc, numSegModule0)
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp1, "module1", disc, numSegModule1)
-	inclusion.DistributeLogDerivativeSum(initialComp, moduleComp2, "module2", disc, numSegModule2)
+	inclusion.DistributeLogDerivativeSum(moduleComp0, in0)
+	inclusion.DistributeLogDerivativeSum(moduleComp1, in1)
+	inclusion.DistributeLogDerivativeSum(moduleComp2, in2)
 
 	// This compiles the log-derivative queries into global/local queries.
 	wizard.ContinueCompilation(moduleComp0, logderiv.CompileLogDerivSum, dummy.Compile)
@@ -183,14 +199,20 @@ func TestSeedGeneration(t *testing.T) {
 
 func checkConsistency(runs []wizard.Runtime) error {
 
-	var res field.Element
+	var (
+		res field.Element
+	)
 	for _, run := range runs {
-		logderiv := run.GetPublicInput(constants.LogDerivativeSumPublicInput)
+		logderiv_ := run.GetPublicInput(constants.LogDerivativeSumPublicInput)
+		logderiv, ok := logderiv_.(field.Element)
+		if !ok {
+			return errors.New("the logderiv is not a field element")
+		}
 		res.Add(&res, &logderiv)
 	}
 
 	if !res.IsZero() {
-		return errors.New("the logderiv sums do not cancel each others")
+		return errors.New("the logderive sums do not cancel each others")
 	}
 
 	return nil
