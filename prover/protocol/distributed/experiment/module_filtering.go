@@ -46,6 +46,10 @@ type FilteredModuleInputs struct {
 	// found for a module.
 	LocalOpenings []*query.LocalOpening
 
+	// PlonkInWizard are the list of the PlonkInWizard queries
+	// found for a module.
+	PlonkInWizard []*query.PlonkInWizard
+
 	// Range are the [query.Range] constraints to apply for the
 	// current module.
 	Range []*query.Range
@@ -199,6 +203,18 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 				continue
 			}
 			fmi.Range = append(fmi.Range, &q)
+
+		case *query.PlonkInWizard:
+			items := []ifaces.Column{q.Selector, q.Data}
+			if q.CircuitMask != nil {
+				items = append(items, q.CircuitMask)
+			}
+			resolvedModule := ModuleOfList(mf.Disc, items...)
+			resolvedModule.MustBeResolved()
+			if resolvedModule != mf.Module {
+				continue
+			}
+			fmi.PlonkInWizard = append(fmi.PlonkInWizard, q)
 
 		default:
 			utils.Panic("unexpected type of query: type=%T name=%v", q, qName)

@@ -145,3 +145,23 @@ func (mt *moduleTranslator) TranslateAccessor(acc ifaces.Accessor) ifaces.Access
 func (mt *moduleTranslator) TranslateQueryParam(query ifaces.Query) ifaces.Query {
 	return mt.Wiop.QueriesParams.Data(query.Name())
 }
+
+// InsertPlonkInWizard inserts a new PlonkInWizard query in the target compiled IOP
+// by translating all the related columns
+func (mt *moduleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *query.PlonkInWizard {
+
+	newQuery := &query.PlonkInWizard{
+		ID:           oldQuery.ID,
+		Data:         mt.TranslateColumn(oldQuery.Data, 0),
+		Selector:     mt.TranslateColumn(oldQuery.Selector, 0),
+		Circuit:      oldQuery.Circuit,
+		PlonkOptions: oldQuery.PlonkOptions,
+	}
+
+	if oldQuery.CircuitMask != nil {
+		newQuery.CircuitMask = mt.TranslateColumn(oldQuery.CircuitMask, newQuery.Data.Size())
+	}
+
+	mt.Wiop.InsertPlonkInWizard(newQuery)
+	return newQuery
+}

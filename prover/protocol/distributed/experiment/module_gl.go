@@ -169,6 +169,10 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		moduleGL.Wiop.InsertLocalOpening(1, localOpening.ID, newCol)
 	}
 
+	for _, piw := range moduleInput.PlonkInWizard {
+		moduleGL.InsertPlonkInWizard(piw)
+	}
+
 	moduleGL.processSendAndReceiveGlobal()
 
 	for _, globalCs := range moduleInput.GlobalConstraints {
