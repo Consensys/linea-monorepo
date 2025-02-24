@@ -37,12 +37,12 @@ var (
 // solution.
 //
 // It implements the [PlonkInWizardProverAction] interface.
-func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, pubWitnesses []witness.Witness) {
+func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
 
 	var (
 		ctx             = CompilationCtx(pa)
 		maxNbInstance   = pa.maxNbInstances
-		numEffInstances = len(pubWitnesses)
+		numEffInstances = len(fullWitnesses)
 	)
 
 	parallel.Execute(maxNbInstance, func(start, stop int) {
@@ -58,7 +58,10 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, pubWitnesses []wit
 			}
 
 			// create the witness assignment
-			pubWitness := pubWitnesses[i]
+			pubWitness, err := fullWitnesses[i].Public()
+			if err != nil {
+				utils.Panic("[witness.Public] returned an error: %v", err)
+			}
 
 			if ctx.TinyPISize() > 0 {
 
@@ -73,7 +76,7 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, pubWitnesses []wit
 			}
 
 			// Solve the circuit
-			sol_, err := ctx.Plonk.SPR.Solve(pubWitness)
+			sol_, err := ctx.Plonk.SPR.Solve(fullWitnesses[i])
 			if err != nil {
 				utils.Panic("Error in the solver, err=%v", err)
 			}

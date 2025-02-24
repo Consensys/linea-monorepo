@@ -46,12 +46,13 @@ type (
 	}
 )
 
-// Run implements the [wizard.ProverAction] interface.
-func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, pubWitnesses []witness.Witness) {
+// Run initializes the circuit assignment in the case where the the circuit uses
+// BBS22 commitment.
+func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
 
 	var (
 		ctx             = CompilationCtx(pa.CompilationCtx)
-		numEffInstances = len(pubWitnesses)
+		numEffInstances = len(fullWitnesses)
 	)
 
 	// Store the information
@@ -82,7 +83,11 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, pubWitnesses []w
 			// Create the witness assignment. As we expect circuits with only
 			// public-inputs and (zero) private inputs, we can safely expect
 			// that public-only-witness and the full-witness are identical.
-			pubWitness := pubWitnesses[i]
+			pubWitness, err := fullWitnesses[i].Public()
+
+			if err != nil {
+				utils.Panic("[witness.Public()] returned an error: %v", err)
+			}
 
 			if ctx.TinyPISize() > 0 {
 				// Convert public witness to smart-vector
@@ -100,7 +105,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, pubWitnesses []w
 			// span over the next round. The current function will however wait
 			// for Cp to be available before returning as we need it to derive
 			// the randomness.
-			go ctx.runGnarkPlonkProver(pubWitness, &solSync)
+			go ctx.runGnarkPlonkProver(fullWitnesses[i], &solSync)
 
 			// Get the commitment from the chan once ready
 			com := <-solSync.comChan
