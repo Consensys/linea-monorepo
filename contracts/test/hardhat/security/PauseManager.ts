@@ -228,8 +228,8 @@ describe("PauseManager", () => {
         expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
       });
 
-      // cannot unpause as non-UNPAUSE_ALL_ROLE
-      it("should revert unpause attempt if not UNPAUSE_ALL_ROLE", async () => {
+      // cannot unpause as non-SECURITY_COUNCIL_ROLE
+      it("should revert unpause attempt if not SECURITY_COUNCIL_ROLE", async () => {
         await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
 
         await expect(unPauseByType(GENERAL_PAUSE_TYPE, nonManager)).to.be.revertedWith(
@@ -239,7 +239,7 @@ describe("PauseManager", () => {
     });
 
     describe("Pause cooldown and expiry:", () => {
-      it("should set pauseExpiry to an unreachable timestamp if pause with SECURITY_COUNCIL_ROLE", async () => {
+      it("should set pauseExpiry to an unreachable timestamp if pause enacted by SECURITY_COUNCIL_ROLE", async () => {
         await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
         expect(await pauseManager.pauseExpiry()).to.equal(ethers.MaxUint256);
       });
