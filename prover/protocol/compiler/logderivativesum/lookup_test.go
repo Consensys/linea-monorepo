@@ -1,4 +1,4 @@
-package logderiv_test
+package logderivativesum_test
 
 import (
 	"testing"
