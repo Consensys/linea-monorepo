@@ -15,6 +15,7 @@ dependencies {
   implementation(project(':state-recovery:clients:blobscan-client'))
   implementation('build.linea:l1-rollup-contract-client:6.0.0')
   implementation project(':jvm-libs:generic:vertx-helper')
+  implementation project(':jvm-libs:generic:extensions:kotlin')
   implementation project(':jvm-libs:linea:besu-libs')
   implementation project(':jvm-libs:linea:testing:file-system')
   implementation(project(':coordinator:clients:smart-contract-client'))
