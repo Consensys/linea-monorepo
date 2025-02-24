@@ -166,36 +166,15 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 		Then, run the compiled prover steps
 	*/
 
-	// Disable flamegraph temp
-	profilingPath, flameGraphPath := "./wizard-performance", ""
-	sampleDuration := 1 * time.Second
-
-	// Helper function to setup, execute, and stop performance monitoring
-	runWithPerformanceMonitor := func(name string, action func()) {
-		monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, path.Join(profilingPath, name), flameGraphPath)
-		if err != nil {
-			panic("error setting up performance monitor for " + name)
-		}
-		action()
-		perfLog, err := monitor.Stop()
-		if err != nil {
-			panic("error retrieving performance log for " + name)
-		}
-		runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
-	}
-
 	// Initial prover step
-	currRoundStr := strconv.Itoa(runtime.currRound)
-	runWithPerformanceMonitor("prover-steps-round"+currRoundStr, runtime.runProverSteps)
+	runtime.runWithPerformanceMonitor("prover-steps-round", runtime.currRound, runtime.runProverSteps)
 
 	for runtime.currRound+1 < runtime.NumRounds() {
-		currRoundStr = strconv.Itoa(runtime.currRound + 1)
-
 		// Next round
-		runWithPerformanceMonitor("next-round"+currRoundStr, runtime.goNextRound)
+		runtime.runWithPerformanceMonitor("next-round", runtime.currRound+1, runtime.goNextRound)
 
 		// Prover steps for the next round
-		runWithPerformanceMonitor("prover-steps-round"+currRoundStr, runtime.runProverSteps)
+		runtime.runWithPerformanceMonitor("prover-steps-round", runtime.currRound, runtime.runProverSteps)
 	}
 
 	/*
@@ -741,4 +720,24 @@ func (run *ProverRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.Loc
 // parameters are found
 func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 	return run.QueriesParams.MustGet(name)
+}
+
+func (runtime *ProverRuntime) runWithPerformanceMonitor(namePrefix string, round int, action func()) {
+	profilingPath := "./wizard-performance"
+	flameGraphPath := "" // Disable flamegraph temp
+	sampleDuration := 1 * time.Second
+
+	currRoundStr := strconv.Itoa(round)
+	name := namePrefix + currRoundStr
+
+	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, path.Join(profilingPath, name), flameGraphPath)
+	if err != nil {
+		panic("error setting up performance monitor for " + name)
+	}
+	action()
+	perfLog, err := monitor.Stop()
+	if err != nil {
+		panic("error retrieving performance log for " + name)
+	}
+	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
 }
