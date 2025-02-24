@@ -227,24 +227,9 @@ func AssignGnarkCircuit(ctx *fullRecursionCtx, comp *wizard.CompiledIOP, run *wi
 	return c
 }
 
-// WitnessAssign is an implementation of the [plonk.WitnessAssigner] and is used to
-// generate the assignment of the fullRecursion circuit.
-type WitnessAssigner fullRecursionCtx
+func (ctx *fullRecursionCtx) getWitness(run *wizard.ProverRuntime) (private, public witness.Witness, err error) {
 
-func (w WitnessAssigner) NumEffWitnesses(_ *wizard.ProverRuntime) int {
-	return 1
-}
-
-func (w WitnessAssigner) Assign(run *wizard.ProverRuntime, i int) (private, public witness.Witness, err error) {
-
-	if i > 0 {
-		panic("only a single witness for the full-recursion")
-	}
-
-	var (
-		ctx        = fullRecursionCtx(w)
-		assignment = AssignGnarkCircuit(&ctx, w.Comp, run)
-	)
+	assignment := AssignGnarkCircuit(ctx, ctx.Comp, run)
 
 	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 	if err != nil {

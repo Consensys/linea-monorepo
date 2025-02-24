@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 // CompiledIOP carries a static description of the IOP protocol throughout the
@@ -680,4 +681,43 @@ func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
 	}
 	utils.Panic("could not find public input %v", name)
 	return nil // unreachable
+}
+
+// InsertPlonkInWizard inserts a [query.PlonkInWizard] in the current compilation
+// context. The function panics if the query is improper:
+//   - the circuit has secret variables
+//   - the nb of public inputs of the circuit is larger than the size of Data and Selector
+//   - data and selector do not have the same size
+//   - the number of public inputs is a power of two (for technical reasons)
+func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
+
+	var (
+		round           = q.GetRound()
+		nbPub, nbSecret = gnarkutil.CountVariables(q.Circuit)
+	)
+
+	if q.Data.Size() != q.Selector.Size() {
+		utils.Panic("data and selector must have the same size, data-size=%v selector-size=%v", q.Data.Size(), q.Selector.Size())
+	}
+
+	if nbPub > q.Data.Size() {
+		utils.Panic("the number of public inputs of the circuit is larger than the size of Data and Selector, nbPub=%v data-size=%v selector-size=%v", nbPub, q.Data.Size(), q.Selector.Size())
+	}
+
+	if nbSecret > 0 {
+		utils.Panic("the circuit has secret variables, found %v", nbSecret)
+	}
+
+	if q.CircuitMask != nil && !c.Precomputed.Exists(q.CircuitMask.GetColID()) {
+		utils.Panic("circuit mask %v not registered as a precomputed column", q.CircuitMask.GetColID())
+	}
+
+	if q.CircuitMask != nil {
+		mask := c.Precomputed.MustGet(q.CircuitMask.GetColID())
+		if err := q.CheckMask(mask); err != nil {
+			utils.Panic("provided mask is improper: %v", err)
+		}
+	}
+
+	c.QueriesNoParams.AddToRound(round, q.ID, q)
 }

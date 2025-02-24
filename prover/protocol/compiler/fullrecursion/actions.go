@@ -3,6 +3,7 @@ package fullrecursion
 import (
 	"fmt"
 
+	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -43,7 +44,12 @@ type ResetFsActions struct {
 }
 
 func (c CircuitAssignment) Run(run *wizard.ProverRuntime) {
-	c.PlonkInWizard.ProverAction.Run(run, WitnessAssigner(c))
+	ctx := fullRecursionCtx(c)
+	wit, _, err := ctx.getWitness(run)
+	if err != nil {
+		panic(err)
+	}
+	c.PlonkInWizard.ProverAction.Run(run, []witness.Witness{wit})
 }
 
 func (c ReplacementAssignment) Run(run *wizard.ProverRuntime) {
