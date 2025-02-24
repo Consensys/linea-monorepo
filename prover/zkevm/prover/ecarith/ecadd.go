@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -42,12 +43,12 @@ func NewEcAddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcAdd {
 			IsData:  comp.Columns.GetHandle("ecdata.IS_ECADD_DATA"),
 			IsRes:   comp.Columns.GetHandle("ecdata.IS_ECADD_RESULT"),
 		},
-		[]plonk.Option{plonk.WithRangecheck(16, 6, true)},
+		[]query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
 	)
 }
 
 // newEcAdd creates a new EC_ADD integration.
-func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, plonkOptions []plonk.Option) *EcAdd {
+func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, plonkOptions []query.PlonkOption) *EcAdd {
 	size := limits.sizeEcAddIntegration()
 
 	toAlign := &plonk.CircuitAlignmentInput{
