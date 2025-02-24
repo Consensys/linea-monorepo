@@ -2,7 +2,6 @@ package collection
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -131,27 +130,4 @@ func (kv *Mapping[K, V]) TryDel(k K) bool {
 		delete(kv.innerMap, k)
 	}
 	return found
-}
-
-// AppendNew appends a new value v to V if V is a slice
-func (kv *Mapping[K, V]) AppendNew(k K, v V) {
-	// Get the current value from the map
-	currentValue, exists := kv.innerMap[k]
-	if !exists {
-		// If the key does not exist, initialize it with an empty slice of type V
-		kv.innerMap[k] = v
-		return
-	}
-
-	// Use reflection to check if the current value is a slice
-	currentValueValue := reflect.ValueOf(currentValue)
-	if currentValueValue.Kind() == reflect.Slice {
-		// Append the new value to the slice
-		newSlice := reflect.Append(currentValueValue, reflect.ValueOf(v))
-		// Set the updated slice back to the map
-		kv.innerMap[k] = newSlice.Interface().(V)
-	} else {
-		// If V is not a slice, handle the error
-		fmt.Println("Error: V is not a slice")
-	}
 }

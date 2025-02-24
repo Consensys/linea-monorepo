@@ -30,19 +30,28 @@ func (pir *CrossSegmentCheck) Run(run wizard.Runtime) error {
 		err                         error
 	)
 
-	for _, ctx := range pir.Ctxs {
+	for i, ctx := range pir.Ctxs {
 
 		var (
 			wrappedRun  = &runtimeTranslator{Prefix: ctx.Translator.Prefix, Rt: run}
 			tmpl        = ctx.Tmpl
+			nextTmpl    = pir.Ctxs[(i+1)%len(pir.Ctxs)].Tmpl
 			logDerivSum = tmpl.GetPublicInputAccessor(constants.LogDerivativeSumPublicInput).GetVal(wrappedRun)
 			grandProd   = tmpl.GetPublicInputAccessor(constants.GrandProductPublicInput).GetVal(wrappedRun)
 			grandSum    = tmpl.GetPublicInputAccessor(constants.GrandSumPublicInput).GetVal(wrappedRun)
+
+			providerHash     = tmpl.GetPublicInputAccessor(constants.GlobalProviderPublicInput).GetVal(wrappedRun)
+			nextReceiverHash = nextTmpl.GetPublicInputAccessor(constants.GlobalReceiverPublicInput).GetVal(wrappedRun)
 		)
 
 		logDerivSumAcc.Add(&logDerivSumAcc, &logDerivSum)
 		grandSumAcc.Add(&grandSumAcc, &grandSum)
 		grandProductAcc.Mul(&grandProductAcc, &grandProd)
+
+		if providerHash != nextReceiverHash {
+			err = errors.Join(err, fmt.Errorf("error in crosse checks for distributed global: "+
+				"the provider of the current template is different from the receiver of the next template "))
+		}
 	}
 
 	if logDerivSumAcc != field.Zero() {
@@ -76,19 +85,26 @@ func (pir *CrossSegmentCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime
 		grandProductAcc = frontend.Variable(1)
 	)
 
-	for _, ctx := range pir.Ctxs {
+	for i, ctx := range pir.Ctxs {
 
 		var (
 			wrappedRun  = &gnarkRuntimeTranslator{Prefix: ctx.Translator.Prefix, Rt: run}
 			tmpl        = ctx.Tmpl
+			nextTmpl    = pir.Ctxs[(i+1)%len(pir.Ctxs)].Tmpl
 			logDerivSum = tmpl.GetPublicInputAccessor(constants.LogDerivativeSumPublicInput).GetFrontendVariable(api, wrappedRun)
 			grandProd   = tmpl.GetPublicInputAccessor(constants.GrandProductPublicInput).GetFrontendVariable(api, wrappedRun)
 			grandSum    = tmpl.GetPublicInputAccessor(constants.GrandSumPublicInput).GetFrontendVariable(api, wrappedRun)
+
+			providerHash     = tmpl.GetPublicInputAccessor(constants.GlobalProviderPublicInput).GetFrontendVariable(api, wrappedRun)
+			nextReceiverHash = nextTmpl.GetPublicInputAccessor(constants.GlobalReceiverPublicInput).GetFrontendVariable(api, wrappedRun)
 		)
 
 		logDerivSumAcc = api.Add(logDerivSumAcc, logDerivSum)
 		grandSumAcc = api.Add(grandSumAcc, grandSum)
 		grandProductAcc = api.Mul(grandProductAcc, grandProd)
+
+		api.AssertIsEqual(providerHash, nextReceiverHash)
+
 	}
 
 	api.AssertIsEqual(logDerivSumAcc, field.Zero())

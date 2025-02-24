@@ -12,7 +12,7 @@ import (
 	dist_projection "github.com/consensys/linea-monorepo/prover/protocol/distributed/compiler/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/lpp"
-	md "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
+	discoverer "github.com/consensys/linea-monorepo/prover/protocol/distributed/namebaseddiscoverer"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -164,43 +164,21 @@ func TestDistributeProjection(t *testing.T) {
 			// test-case.
 			initialComp := wizard.Compile(tc.DefineFunc)
 
-			// apply the LPP relevant compilers and generate the seed for initialComp
 			lppComp := lpp.CompileLPPAndGetSeed(initialComp)
-
-			// Initialize the period separating module discoverer
-			disc := &md.PeriodSeperatingModuleDiscoverer{}
+			disc := discoverer.PeriodSeperatingModuleDiscoverer{}
 			disc.Analyze(initialComp)
 
 			// distribute the columns among modules and segments; this includes also multiplicity columns
 			// for all the segments from the same module, compiledIOP object is the same.
-			moduleCompA := distributed.GetFreshSegmentModuleComp(
-				distributed.SegmentModuleInputs{
-					InitialComp:         initialComp,
-					Disc:                disc,
-					ModuleName:          moduleAName,
-					NumSegmentsInModule: numSegModuleA,
-				},
-			)
-
-			moduleCompB := distributed.GetFreshSegmentModuleComp(distributed.SegmentModuleInputs{
-				InitialComp:         initialComp,
-				Disc:                disc,
-				ModuleName:          moduleBName,
-				NumSegmentsInModule: numSegModuleB,
-			})
-
-			moduleCompC := distributed.GetFreshSegmentModuleComp(distributed.SegmentModuleInputs{
-				InitialComp:         initialComp,
-				Disc:                disc,
-				ModuleName:          moduleCName,
-				NumSegmentsInModule: numSegModuleC,
-			})
+			moduleCompA := distributed.GetFreshModuleComp(initialComp, &disc, moduleAName)
+			moduleCompB := distributed.GetFreshModuleComp(initialComp, &disc, moduleBName)
+			moduleCompC := distributed.GetFreshModuleComp(initialComp, &disc, moduleCName)
 
 			// distribute the query LogDerivativeSum among modules.
 			// The seed is used to generate randomness for each moduleComp.
-			dist_projection.NewDistributeProjectionCtx(moduleAName, initialComp, moduleCompA, disc, numSegModuleA)
-			dist_projection.NewDistributeProjectionCtx(moduleBName, initialComp, moduleCompB, disc, numSegModuleB)
-			dist_projection.NewDistributeProjectionCtx(moduleCName, initialComp, moduleCompC, disc, numSegModuleC)
+			dist_projection.NewDistributeProjectionCtx(moduleAName, initialComp, moduleCompA, &disc, numSegModuleA)
+			dist_projection.NewDistributeProjectionCtx(moduleBName, initialComp, moduleCompB, &disc, numSegModuleB)
+			dist_projection.NewDistributeProjectionCtx(moduleCName, initialComp, moduleCompC, &disc, numSegModuleC)
 
 			// This compiles the log-derivative queries into global/local queries.
 			wizard.ContinueCompilation(moduleCompA, distributedprojection.CompileDistributedProjection, dummy.Compile)

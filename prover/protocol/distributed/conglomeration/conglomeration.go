@@ -129,6 +129,9 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 		_ = tmpl.GetPublicInputAccessor(constants.GrandProductPublicInput)
 		_ = tmpl.GetPublicInputAccessor(constants.GrandSumPublicInput)
 		_ = tmpl.GetPublicInputAccessor(constants.LogDerivativeSumPublicInput)
+
+		_ = tmpl.GetPublicInputAccessor(constants.GlobalProviderPublicInput)
+		_ = tmpl.GetPublicInputAccessor(constants.GlobalReceiverPublicInput)
 	)
 
 	ctx.LastRound = lastRound
