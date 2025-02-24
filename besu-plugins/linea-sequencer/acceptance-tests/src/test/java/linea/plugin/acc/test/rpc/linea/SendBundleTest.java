@@ -15,16 +15,23 @@
 package linea.plugin.acc.test.rpc.linea;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.web3j.crypto.Hash.sha3;
 
 import java.math.BigInteger;
 import java.util.Arrays;
 
 import linea.plugin.acc.test.tests.web3j.generated.AcceptanceTestToken;
+import linea.plugin.acc.test.tests.web3j.generated.RevertExample;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
+import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.TransferTransaction;
 import org.junit.jupiter.api.Test;
+import org.web3j.crypto.Credentials;
+import org.web3j.crypto.RawTransaction;
+import org.web3j.crypto.TransactionEncoder;
+import org.web3j.utils.Numeric;
 
 public class SendBundleTest extends AbstractSendBundleTest {
 
@@ -284,5 +291,89 @@ public class SendBundleTest extends AbstractSendBundleTest {
     // while first bundle is not selected
     minerNode.verify(eth.expectNoTransactionReceipt(mulmodOverflow.txHash()));
     minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx1.transactionHash()));
+  }
+
+  @Test
+  public void bundleWithRevertedTxIsNotMined() throws Exception {
+    final RevertExample revertExample = deployRevertExample();
+
+    // fund a new account
+    final var recipient = accounts.createAccount("recipient");
+    final var txHashFundRecipient =
+        accountTransactions
+            .createTransfer(accounts.getPrimaryBenefactor(), recipient, 10, BigInteger.valueOf(1))
+            .execute(minerNode.nodeRequests());
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(txHashFundRecipient.toHexString()));
+
+    // create a tx that reverts
+    final String contractAddress = revertExample.getContractAddress();
+    final String txData = revertExample.setValue(BigInteger.ZERO).encodeFunctionCall();
+
+    final RawTransaction txThatReverts =
+        RawTransaction.createTransaction(
+            CHAIN_ID,
+            BigInteger.ZERO,
+            TRANSFER_GAS_LIMIT,
+            contractAddress,
+            BigInteger.ZERO,
+            txData,
+            GAS_PRICE,
+            GAS_PRICE.multiply(BigInteger.TEN).add(BigInteger.ONE));
+    final var signedTxThatReverts =
+        Numeric.toHexString(
+            TransactionEncoder.signMessage(
+                txThatReverts, Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY)));
+    final var txThatRevertsHash = sha3(signedTxThatReverts);
+
+    final var inBundleTransferTx =
+        accountTransactions.createTransfer(recipient, accounts.getSecondaryBenefactor(), 1);
+
+    // first tx reverts and bundle is not selected
+    final var bundleRawTxs =
+        new String[] {signedTxThatReverts, inBundleTransferTx.signedTransactionData()};
+
+    final var sendBundleRequest =
+        new SendBundleRequest(new BundleParams(bundleRawTxs, Integer.toHexString(3)));
+    final var sendBundleResponse = sendBundleRequest.execute(minerNode.nodeRequests());
+
+    assertThat(sendBundleResponse.hasError()).isFalse();
+    assertThat(sendBundleResponse.getResult().bundleHash()).isNotBlank();
+
+    // transfer used as sentry to ensure a new block is mined without the bundles
+    final var transferTxHash1 =
+        accountTransactions
+            .createTransfer(
+                accounts.getPrimaryBenefactor(),
+                accounts.getSecondaryBenefactor(),
+                1,
+                BigInteger.valueOf(2))
+            .execute(minerNode.nodeRequests());
+
+    // first sentry is mined and no tx of the bundle is mined
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash1.toHexString()));
+    minerNode.verify(eth.expectNoTransactionReceipt(txThatRevertsHash));
+    minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx.transactionHash()));
+
+    // try with a bundle where first is selected but second reverts
+    final var reverseBundleRawTxs =
+        new String[] {inBundleTransferTx.signedTransactionData(), signedTxThatReverts};
+    final var sendReverseBundleRequest =
+        new SendBundleRequest(new BundleParams(reverseBundleRawTxs, Integer.toHexString(4)));
+    final var sendReverseBundleResponse =
+        sendReverseBundleRequest.execute(minerNode.nodeRequests());
+
+    assertThat(sendReverseBundleResponse.hasError()).isFalse();
+    assertThat(sendReverseBundleResponse.getResult().bundleHash()).isNotBlank();
+
+    // transfer used as sentry to ensure a new block is mined without the bundles
+    final var transferTxHash2 =
+        accountTransactions
+            .createTransfer(accounts.getPrimaryBenefactor(), recipient, 1, BigInteger.valueOf(3))
+            .execute(minerNode.nodeRequests());
+
+    // second sentry is mined and no tx of the bundle is mined
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash2.toHexString()));
+    minerNode.verify(eth.expectNoTransactionReceipt(txThatRevertsHash));
+    minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx.transactionHash()));
   }
 }
