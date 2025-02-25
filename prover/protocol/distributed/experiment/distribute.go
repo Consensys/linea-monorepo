@@ -1,8 +1,8 @@
 package experiment
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup2logderivsum"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
@@ -17,7 +17,7 @@ func precompileInitialWizard(comp *wizard.CompiledIOP) {
 	mimc.CompileMiMC(comp)
 	specialqueries.RangeProof(comp)
 	specialqueries.CompileFixedPermutations(comp)
-	innerproduct.Compile(comp)
-	lookup2logderivsum.IntoLogDerivativeSum(comp)
+	logderivativesum.LookupIntoLogDerivativeSum(comp)
 	permutation.CompileIntoGdProduct(comp)
+	horner.ProjectionToHorner(comp)
 }
