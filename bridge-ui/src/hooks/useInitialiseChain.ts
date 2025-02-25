@@ -23,29 +23,17 @@ function findLayerByChainId(config: Config, chainId: number | undefined): { netw
 const findChainById = (chainId: number) => wagmiConfig.chains.find((chain) => chain.id === chainId);
 
 const useInitialiseChain = () => {
-  const token = useChainStore((state) => state.token);
-  const networkType = useChainStore((state) => state.networkType);
-  const {
-    setNetworkType,
-    setNetworkLayer,
-    setToken,
-    setTokenBridgeAddress,
-    setMessageServiceAddress,
-    setL1Chain,
-    setL2Chain,
-    setFromChain,
-    setToChain,
-  } = useChainStore((state) => ({
-    setNetworkType: state.setNetworkType,
-    setNetworkLayer: state.setNetworkLayer,
-    setToken: state.setToken,
-    setTokenBridgeAddress: state.setTokenBridgeAddress,
-    setMessageServiceAddress: state.setMessageServiceAddress,
-    setL1Chain: state.setL1Chain,
-    setL2Chain: state.setL2Chain,
-    setFromChain: state.setFromChain,
-    setToChain: state.setToChain,
-  }));
+  const token = useChainStore.useToken();
+  const networkType = useChainStore.useNetworkType();
+  const setNetworkType = useChainStore.useSetNetworkType();
+  const setNetworkLayer = useChainStore.useSetNetworkLayer();
+  const setToken = useChainStore.useSetToken();
+  const setTokenBridgeAddress = useChainStore.useSetTokenBridgeAddress();
+  const setMessageServiceAddress = useChainStore.useSetMessageServiceAddress();
+  const setL1Chain = useChainStore.useSetL1Chain();
+  const setL2Chain = useChainStore.useSetL2Chain();
+  const setFromChain = useChainStore.useSetFromChain();
+  const setToChain = useChainStore.useSetToChain();
 
   useEffect(() => {
     const unwatch = watchAccount(wagmiConfig, {

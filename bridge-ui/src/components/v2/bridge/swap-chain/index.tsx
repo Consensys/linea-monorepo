@@ -6,7 +6,7 @@ import { useFormContext } from "react-hook-form";
 import { BridgeForm } from "@/models";
 
 export default function SwapChain() {
-  const switchChainInStore = useChainStore((state) => state.switchChain);
+  const switchChainInStore = useChainStore.useSwitchChain();
   const { reset } = useFormContext<BridgeForm>();
 
   return (

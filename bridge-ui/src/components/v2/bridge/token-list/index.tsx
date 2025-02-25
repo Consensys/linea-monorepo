@@ -11,7 +11,7 @@ import { useFormContext } from "react-hook-form";
 export default function TokenList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const token = useChainStore((state) => state.token);
+  const token = useChainStore.useToken();
   const { isConnected } = useAccount();
   const { setValue, clearErrors } = useFormContext();
 

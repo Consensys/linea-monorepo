@@ -1,0 +1,30 @@
+.transaction-history-wrapper {
+    background-color: var(--v2-color-white);
+    border-radius: 1rem;
+    padding: 2.4rem;
+  }
+  
+  .headline {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.6rem;
+  
+    .title {
+      font-weight: 500;
+      font-size: 2rem;
+      color: var(--v2-color-black);
+    }
+  
+    .action {
+      display: flex;
+      gap: 1.6rem;
+  
+      .go-back-icon {
+        width: 2rem;
+        height: 2rem;
+        color: var(--v2-color-black);
+      }
+    }
+  }

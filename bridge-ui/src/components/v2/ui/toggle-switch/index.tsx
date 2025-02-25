@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import styles from "./toggle-switch.module.scss";
 import clsx from "clsx";
 
@@ -11,13 +11,16 @@ type Props = {
 export default function ToggleSwitch({ checked = false, onChange, disabled }: Props) {
   const [isChecked, setIsChecked] = useState<boolean>(checked);
 
-  const handleChange = () => {
+  useEffect(() => {
+    setIsChecked(checked);
+  }, [checked]);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (!disabled) {
-      const newChecked = !isChecked;
-      setIsChecked(newChecked);
+      setIsChecked(e.target.checked);
 
       if (onChange) {
-        onChange(isChecked);
+        onChange(e.target.checked);
       }
     }
   };

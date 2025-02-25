@@ -20,12 +20,10 @@ interface TokenDetailsProps {
 }
 
 export default function TokenDetails({ token, onTokenClick, setValue, clearErrors, tokenPrice }: TokenDetailsProps) {
-  const { networkLayer, setToken, setTokenBridgeAddress, networkType } = useChainStore((state) => ({
-    networkLayer: state.networkLayer,
-    setToken: state.setToken,
-    setTokenBridgeAddress: state.setTokenBridgeAddress,
-    networkType: state.networkType,
-  }));
+  const networkLayer = useChainStore.useNetworkLayer();
+  const networkType = useChainStore.useNetworkType();
+  const setToken = useChainStore.useSetToken();
+  const setTokenBridgeAddress = useChainStore.useSetTokenBridgeAddress();
 
   const tokenNotFromCurrentLayer = !token[networkLayer] && token.type !== TokenType.ETH;
 

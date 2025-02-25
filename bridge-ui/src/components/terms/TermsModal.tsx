@@ -7,11 +7,9 @@ import { Button } from "../ui";
 export default function TermsModal() {
   const termsModalRef = useRef<HTMLDivElement>(null);
 
-  const { agreeToTerms, rehydrated, setAgreeToTerms } = useConfigStore((state) => ({
-    agreeToTerms: state.agreeToTerms,
-    rehydrated: state.rehydrated,
-    setAgreeToTerms: state.setAgreeToTerms,
-  }));
+  const agreeToTerms = useConfigStore.useAgreeToTerms();
+  const rehydrated = useConfigStore.useRehydrated();
+  const setAgreeToTerms = useConfigStore.useSetAgreeToTerms();
 
   const [open, setOpen] = useState(false);
 

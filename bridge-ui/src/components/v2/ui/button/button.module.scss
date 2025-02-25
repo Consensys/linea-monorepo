@@ -19,6 +19,14 @@
     }
   }
 
+  &.link {
+    padding: 0;
+
+    &:hover:not(.disabled) {
+      color: var(--v2-color-black);
+    }
+  }
+
   &.full-width {
     width: 100%;
   }

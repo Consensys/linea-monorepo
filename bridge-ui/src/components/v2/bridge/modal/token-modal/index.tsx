@@ -33,9 +33,9 @@ export default function TokenModal({ setValue, clearErrors, isModalOpen, onClose
   const { isMobile } = useDevice();
 
   // Context
-  const networkType = useChainStore((state) => state.networkType);
-  const networkLayer = useChainStore((state) => state.networkLayer);
-  const fromChain = useChainStore((state) => state.fromChain);
+  const networkType = useChainStore.useNetworkType();
+  const networkLayer = useChainStore.useNetworkLayer();
+  const fromChain = useChainStore.useFromChain();
 
   const { updateOrInsertUserTokenList } = useERC20Storage();
   const [searchQuery, setSearchQuery] = useState("");

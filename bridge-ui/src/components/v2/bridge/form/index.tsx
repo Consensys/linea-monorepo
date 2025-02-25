@@ -10,22 +10,53 @@ import Claiming from "@/components/v2/bridge/claiming";
 import styles from "./bridge-form.module.scss";
 import { Submit } from "@/components/v2/bridge/submit";
 import TransactionPaperIcon from "@/assets/icons/transaction-paper.svg";
-import Link from "next/link";
 import Setting from "@/components/v2/setting";
+import { useEffect, useState } from "react";
+import { DestinationAddress } from "../destination-address";
+import Button from "../../ui/button";
+import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
+import { FormProvider, useForm } from "react-hook-form";
+import { BridgeForm as BridgeFormModel } from "@/models";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
+import { BridgeType, TokenType } from "@/config/config";
+import { useChainStore } from "@/stores/chainStore";
 
 export default function BridgeForm() {
   const { isConnected } = useAccount();
+  const token = useChainStore.useToken();
+  const [isDestinationAddressOpen, setIsDestinationAddressOpen] = useState(false);
+  const setIsTransactionHistoryOpen = useNativeBridgeNavigationStore.useSetIsTransactionHistoryOpen();
+  const setIsBridgeOpen = useNativeBridgeNavigationStore.useSetIsBridgeOpen();
+  const configContextValue = useTokenStore((state) => state.tokensList);
+
+  const methods = useForm<BridgeFormModel>({
+    defaultValues: {
+      token: configContextValue?.UNKNOWN[0],
+      claim: token?.type === TokenType.ETH ? "auto" : "manual",
+      amount: "",
+      minFees: 0n,
+      gasFees: 0n,
+      bridgingAllowed: false,
+      balance: "0",
+      mode: BridgeType.NATIVE,
+    },
+  });
 
   return (
-    <>
+    <FormProvider {...methods}>
       <form>
         <div className={styles["form-wrapper"]}>
           <div className={styles.headline}>
-            <h1 className={styles.title}>Bridge</h1>
             <div className={styles["action"]}>
-              <Link href="/transactions">
+              <Button
+                variant="link"
+                onClick={() => {
+                  setIsBridgeOpen(false);
+                  setIsTransactionHistoryOpen(true);
+                }}
+              >
                 <TransactionPaperIcon className={styles["transaction-icon"]} />
-              </Link>
+              </Button>
               <Setting />
             </div>
           </div>
@@ -43,13 +74,22 @@ export default function BridgeForm() {
             </div>
           </div>
           <Claiming />
+          {isDestinationAddressOpen && (
+            <div className={styles["destination-address-wrapper"]}>
+              <DestinationAddress />
+            </div>
+          )}
           <div className={styles["connect-btn-wrapper"]}>
-            {isConnected ? <Submit /> : <ConnectButton fullWidth text={"Connect wallet"} />}
+            {isConnected ? (
+              <Submit setIsDestinationAddressOpen={() => setIsDestinationAddressOpen((prev) => !prev)} />
+            ) : (
+              <ConnectButton fullWidth text={"Connect wallet"} />
+            )}
           </div>
           <FaqHelp isMobile />
         </div>
       </form>
       <FaqHelp />
-    </>
+    </FormProvider>
   );
 }

@@ -8,10 +8,10 @@ export type BridgeForm = {
   claim: string;
   minFees: bigint;
   token: TokenInfo;
-  recipient: Address | undefined;
   bridgingAllowed: boolean;
   gasFees: bigint;
   mode: BridgeType;
+  destinationAddress: Address;
 };
 
 export type BridgeError = {

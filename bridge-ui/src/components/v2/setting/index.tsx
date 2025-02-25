@@ -5,10 +5,13 @@ import SettingIcon from "@/assets/icons/setting.svg";
 import ToggleSwitch from "@/components/v2/ui/toggle-switch";
 import { useEffect, useRef, useState } from "react";
 import CurrencyDropdown from "@/components/v2/bridge/currency-dropdown";
+import { useConfigStore } from "@/stores/configStore";
 
 export default function Setting() {
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [isDropdownVisible, setDropdownVisible] = useState<boolean>(false);
+  const setShowTestnet = useConfigStore.useSetShowTestnet();
+  const showTestnet = useConfigStore.useShowTestnet();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -46,11 +49,16 @@ export default function Setting() {
           <ul className={styles["dropdown-list"]}>
             <li className={clsx(styles["dropdown-item"])}>
               <span>Currency</span>
-              <CurrencyDropdown disabled />
+              <CurrencyDropdown />
             </li>
             <li className={clsx(styles["dropdown-item"])}>
               <span>Show Test Networks</span>
-              <ToggleSwitch />
+              <ToggleSwitch
+                checked={showTestnet}
+                onChange={(checked) => {
+                  setShowTestnet(checked);
+                }}
+              />
             </li>
           </ul>
         </div>

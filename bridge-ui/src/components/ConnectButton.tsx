@@ -1,4 +1,4 @@
-import { useAppKit } from "@reown/appkit/react";
+// import { useAppKit } from "@reown/appkit/react";
 import { cn } from "@/utils/cn";
 import { Button } from "./ui";
 
@@ -7,7 +7,6 @@ type ConnectButtonProps = {
 };
 
 export default function ConnectButton({ fullWidth }: ConnectButtonProps) {
-  const { open } = useAppKit();
   return (
     <Button
       id="wallet-connect-btn"
@@ -16,7 +15,7 @@ export default function ConnectButton({ fullWidth }: ConnectButtonProps) {
       className={cn("text-lg font-normal", {
         "w-full": fullWidth,
       })}
-      onClick={() => open()}
+      onClick={() => {}}
     >
       Connect Wallet
     </Button>

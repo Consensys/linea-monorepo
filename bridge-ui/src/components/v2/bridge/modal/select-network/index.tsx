@@ -14,55 +14,12 @@ interface Props {
 
 const ListNetwork = [
   {
-    name: "Aleph Zero",
-  },
-  {
-    name: "Arbitrum One",
-  },
-  {
-    name: "Base",
-  },
-  {
-    name: "Blast",
-  },
-  {
-    name: "Ethereum Mainnet",
-  },
-  {
-    name: "Ink",
+    name: "Ethereum",
+    image: "/images/logo/ethereum-rounded.svg",
   },
   {
     name: "Linea",
-  },
-  {
-    name: "Lisk",
-  },
-  {
-    name: "Mode",
-  },
-  {
-    name: "Optimism",
-  },
-  {
-    name: "Polygon Network",
-  },
-  {
-    name: "Redstone",
-  },
-  {
-    name: "Scroll",
-  },
-  {
-    name: "World Chain",
-  },
-  {
-    name: "Zora",
-  },
-  {
-    name: "Soneium",
-  },
-  {
-    name: "ZkSync Era",
+    image: "/images/logo/linea-mainnet.svg",
   },
 ];
 
@@ -88,12 +45,7 @@ export default function SelectNetwork({ isModalOpen, onCloseModal }: Props) {
           {filteredNetworks.length > 0 ? (
             filteredNetworks.map((network, index: number) => {
               return (
-                <NetworkDetails
-                  key={index}
-                  name={network.name}
-                  onClickNetwork={onCloseModal}
-                  image="/images/logo/ethereum-rounded.svg"
-                />
+                <NetworkDetails key={index} name={network.name} onClickNetwork={onCloseModal} image={network.image} />
               );
             })
           ) : (

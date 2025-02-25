@@ -9,10 +9,8 @@ import styles from "./balance.module.scss";
 
 export function Balance() {
   // Context
-  const { token, networkLayer } = useChainStore((state) => ({
-    token: state.token,
-    networkLayer: state.networkLayer,
-  }));
+  const token = useChainStore.useToken();
+  const networkLayer = useChainStore.useNetworkLayer();
 
   const tokenAddress = token?.[networkLayer];
   // Wagmi

@@ -1,17 +1,14 @@
 "use client";
+
 import { usePathname } from "next/navigation";
 import styles from "./internal-nav.module.scss";
 import NavItem from "./item";
 
 const NavData = [
   {
-    title: "Bridge",
+    title: "Native Bridge",
     href: "/",
   },
-  // {
-  //   title: "Transactions",
-  //   href: "/transactions",
-  // },
 ];
 
 export default function InternalNav() {
