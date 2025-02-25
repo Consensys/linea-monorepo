@@ -195,6 +195,9 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 		)
 
 		col[len(col)-1].Mul(&selector[len(col)-1], &data[len(col)-1])
+		if col[len(col)-1].IsOne() {
+			count++
+		}
 
 		for j := len(col) - 2; j >= 0; j-- {
 
@@ -214,7 +217,7 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 		}
 
 		if n0+count != params.Parts[i].N1 {
-			utils.Panic("Horner query has %v parts but HornerParams has %v", len(a.Q.Parts), len(params.Parts))
+			fmt.Errorf("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v", params.Parts[i].N1, n0, count)
 		}
 
 		run.AssignColumn(a.AccumulatingCols[i].GetColID(), smartvectors.NewRegular(col))
