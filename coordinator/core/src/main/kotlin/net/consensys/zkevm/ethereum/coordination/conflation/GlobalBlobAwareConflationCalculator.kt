@@ -82,16 +82,12 @@ class GlobalBlobAwareConflationCalculator(
 
   private fun recordBatchMetrics(conflation: ConflationCalculationResult) {
     runCatching {
-      val gasUsedInBatch = blobBlockCounters
+      val filteredBlockCounters = blobBlockCounters
         .filter { conflation.blocksRange.contains(it.blockNumber) }
-        .sumOf { it.gasUsed }
-      val uncompressedDataSizeInBatch = blobBlockCounters
-        .filter { conflation.blocksRange.contains(it.blockNumber) }
-        .sumOf { it.blockRLPEncoded.size }
+      val gasUsedInBatch = filteredBlockCounters.sumOf { it.gasUsed }
+      val uncompressedDataSizeInBatch = filteredBlockCounters.sumOf { it.blockRLPEncoded.size }
+      val numOfTransactionsInBatch = filteredBlockCounters.sumOf { it.numOfTransactions }
       val compressedDataSizeInBatch = blobCalculator.getCompressedDataSizeInCurrentBatch()
-      val numOfTransactionsInBatch = blobBlockCounters
-        .filter { conflation.blocksRange.contains(it.blockNumber) }
-        .sumOf { it.numOfTransactions }
       gasUsedInBatchHistogram.record(gasUsedInBatch.toDouble())
       uncompressedDataSizeInBatchHistogram.record(uncompressedDataSizeInBatch.toDouble())
       compressedDataSizeInBatchHistogram.record(compressedDataSizeInBatch.toDouble())
