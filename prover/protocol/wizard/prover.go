@@ -1,6 +1,8 @@
 package wizard
 
 import (
+	"encoding/csv"
+	"os"
 	"path"
 	"strconv"
 	"sync"
@@ -191,6 +193,11 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 	for _, name := range runtime.Spec.Columns.AllKeysPublicInput() {
 		messageValue := runtime.Columns.MustGet(name)
 		messages.InsertNew(name, messageValue)
+	}
+
+	// Write performance logs to CSV
+	if err := runtime.writePerformanceLogsToCSV(); err != nil {
+		utils.Panic("error writing performance logs to CSV: " + err.Error())
 	}
 
 	return Proof{
@@ -727,12 +734,10 @@ func (runtime *ProverRuntime) runWithPerformanceMonitor(namePrefix string, round
 
 	// Profiling params
 	profilingPath := "./protocol/wizard/performance/profiling"
-	flameGraphPath := "./protocol/wizard/performance/flamegraphs"
-	sampleDuration := 1 * time.Second
-
+	flameGraphPath := "" // Disable flamegraph temp
+	sampleDuration := 100 * time.Millisecond
 	currRoundStr := strconv.Itoa(round)
 	name := namePrefix + currRoundStr
-
 	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, path.Join(profilingPath, name), path.Join(flameGraphPath, name))
 	if err != nil {
 		panic("error setting up performance monitor for " + name)
@@ -748,4 +753,53 @@ func (runtime *ProverRuntime) runWithPerformanceMonitor(namePrefix string, round
 
 	perfLog.PrintMetrics()
 	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
+}
+
+// writePerformanceLogsToCSV: Dumps all the performance logs inside prover runtime to the csv file
+// located at the specified path
+func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
+
+	csvFilePath := "./protocol/wizard/performance/runtime_performance_logs.csv"
+	file, err := os.Create(csvFilePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Define CSV headers
+	headers := []string{
+		"Description", "StartTime", "StopTime",
+		"CpuUsageMin", "CpuUsageAvg", "CpuUsageMax",
+		"MemoryInUseMinGiB", "MemoryInUseAvgGiB", "MemoryInUseMaxGiB",
+		"MemoryAllocatedMinGiB", "MemoryAllocatedAvgGiB", "MemoryAllocatedMaxGiB",
+		"MemoryGCNotDeallocatedMinGiB", "MemoryGCNotDeallocatedAvgGiB", "MemoryGCNotDeallocatedMaxGiB",
+	}
+	writer.Write(headers)
+
+	// Write performance logs to CSV
+	for _, log := range runtime.PerformanceLogs {
+		record := []string{
+			log.Description,
+			log.StartTime.String(),
+			log.StopTime.String(),
+			strconv.FormatFloat(log.CpuUsageStats[0], 'f', 2, 64),
+			strconv.FormatFloat(log.CpuUsageStats[1], 'f', 2, 64),
+			strconv.FormatFloat(log.CpuUsageStats[2], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryInUseStatsGiB[0], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryInUseStatsGiB[1], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryInUseStatsGiB[2], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[0], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[1], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[2], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[0], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[1], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[2], 'f', 2, 64),
+		}
+		writer.Write(record)
+	}
+
+	return nil
 }
