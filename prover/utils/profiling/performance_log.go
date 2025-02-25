@@ -71,6 +71,7 @@ func StartPerformanceMonitor(description string, sampleRate time.Duration, profi
 
 	m := &performanceMonitor{
 		log: &PerformanceLog{
+			Description:    description,
 			ProfilePath:    profilePath,
 			FlameGraphPath: flameGraphPath,
 
