@@ -51,7 +51,7 @@ type Runtime interface {
 	GetSpec() *CompiledIOP
 	GetPublicInput(name string) any
 	GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams
-	GetDistributedProjectionParams(name ifaces.QueryID) query.DistributedProjectionParams
+	GetHornerParams(name ifaces.QueryID) query.HornerParams
 	GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams
 	GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams
 	GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams
@@ -444,9 +444,9 @@ func (run *VerifierRuntime) GetGrandProductParams(name ifaces.QueryID) query.Gra
 	return run.QueriesParams.MustGet(name).(query.GrandProductParams)
 }
 
-// GetGrandProductParams returns the parameters of a [query.DistributedProjection]
-func (run *VerifierRuntime) GetDistributedProjectionParams(name ifaces.QueryID) query.DistributedProjectionParams {
-	return run.QueriesParams.MustGet(name).(query.DistributedProjectionParams)
+// GetHornerParams returns the parameters of a [query.Honer] query.
+func (run *VerifierRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParams {
+	return run.QueriesParams.MustGet(name).(query.HornerParams)
 }
 
 /*

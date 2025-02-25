@@ -40,9 +40,9 @@ type HornerParamsPartGnark struct {
 	N1 frontend.Variable
 }
 
-// HornerParamsGnark represents the parameters of the Horner evaluation query
+// GnarkHornerParams represents the parameters of the Horner evaluation query
 // in a gnark circuit.
-type HornerParamsGnark struct {
+type GnarkHornerParams struct {
 	// Final result is the result of summing the Horner parts for every
 	// queries.
 	FinalResult frontend.Variable
@@ -83,26 +83,25 @@ func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
 	return GnarkUnivariateEvalParams{Ys: vector.IntoGnarkAssignment(p.Ys), X: p.X}
 }
 
-// GnarkAllocate allocates a [HornerParamsGnark] with the right dimensions
-func (p HornerParams) GnarkAllocate() HornerParamsGnark {
-	return HornerParamsGnark{
+// GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions
+func (p HornerParams) GnarkAllocate() GnarkHornerParams {
+	return GnarkHornerParams{
 		Parts: make([]HornerParamsPartGnark, len(p.Parts)),
 	}
 }
 
 // GnarkAssign returns a gnark assignment for the present parameters.
-func (p HornerParams) GnarkAssign() HornerParamsGnark {
+func (p HornerParams) GnarkAssign() GnarkHornerParams {
 
 	parts := make([]HornerParamsPartGnark, len(p.Parts))
 	for i, part := range p.Parts {
 		parts[i] = HornerParamsPartGnark{
-			X:  part.X,
 			N0: part.N0,
 			N1: part.N1,
 		}
 	}
 
-	return HornerParamsGnark{
+	return GnarkHornerParams{
 		FinalResult: p.FinalResult,
 		Parts:       parts,
 	}
@@ -139,7 +138,7 @@ func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p HornerParamsGnark) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	fs.Update(p.FinalResult)
 
 	for _, part := range p.Parts {

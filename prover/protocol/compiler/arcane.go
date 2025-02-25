@@ -3,12 +3,12 @@ package compiler
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/sticker"
@@ -28,9 +28,9 @@ func Arcane(minStickSize, targetColSize int, noLog ...bool) func(comp *wizard.Co
 		specialqueries.RangeProof(comp)
 		specialqueries.CompileFixedPermutations(comp)
 		permutation.CompileViaGrandProduct(comp)
-		lookup.CompileLogDerivative(comp)
+		logderivativesum.CompileLookups(comp)
+		horner.CompileProjection(comp)
 		innerproduct.Compile(comp)
-		projection.CompileProjection(comp)
 		if withLog_ {
 			logdata.Log("after-expansion")(comp)
 		}

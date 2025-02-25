@@ -23,7 +23,7 @@ type GnarkRuntime interface {
 	GetSpec() *CompiledIOP
 	GetPublicInput(api frontend.API, name string) frontend.Variable
 	GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams
-	GetDistributedProjectionParams(name ifaces.QueryID) query.GnarkDistributedProjectionParams
+	GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams
 	GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams
 	GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams
 	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
@@ -651,4 +651,9 @@ func (c *WizardVerifierCircuit) GetQuery(name ifaces.QueryID) ifaces.Query {
 	}
 	utils.Panic("could not find query nb %v", name)
 	return nil
+}
+
+// GetHornerParams returns the parameters of a [query.Honer] query.
+func (c *WizardVerifierCircuit) GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams {
+	panic("not implemented")
 }

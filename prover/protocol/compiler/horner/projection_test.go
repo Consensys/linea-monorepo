@@ -1,4 +1,4 @@
-package projection_test
+package horner_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -44,6 +44,7 @@ func makeTestCaseProjection() (
 			flagBWit[i] = field.One()
 			columnBWit[i] = field.NewElement(uint64(i - (flagSizeB - 10)))
 		}
+
 		run.AssignColumn(flagA.GetColID(), smartvectors.RightZeroPadded(flagAWit, flagSizeA))
 		run.AssignColumn(flagB.GetColID(), smartvectors.RightZeroPadded(flagBWit, flagSizeB))
 		run.AssignColumn(columnB.GetColID(), smartvectors.RightZeroPadded(columnBWit, flagSizeB))
@@ -55,7 +56,7 @@ func makeTestCaseProjection() (
 func TestProjectionQuery(t *testing.T) {
 
 	define, prover := makeTestCaseProjection()
-	comp := wizard.Compile(define, projection.CompileProjection, dummy.CompileAtProverLvl)
+	comp := wizard.Compile(define, horner.CompileProjection, dummy.CompileAtProverLvl)
 
 	proof := wizard.Prove(comp, prover)
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")

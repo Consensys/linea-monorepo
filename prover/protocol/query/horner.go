@@ -23,6 +23,10 @@ type HornerPart struct {
 	// Selector is a boolean indicator column telling which terms
 	// or [Coefficients] should be included in the Horner evaluation.
 	Selector ifaces.Column
+	// X is the "x" value in the Horner evaluation query. Most of the
+	// time, the accessor will be a random coin. The typing to accessor
+	// allows for more flexibility.
+	X ifaces.Accessor
 	// size indicates the size of which the horner part is running.
 	// It is lazily computed thanks to the Size() column.
 	size int
@@ -60,8 +64,6 @@ type Horner struct {
 // HornerParamsParts represents the parameters for a part of a [Horner]
 // evaluation query.
 type HornerParamsPart struct {
-	// X is the evaluation value of the Horner query
-	X field.Element
 	// N0 is an initial offset of the Horner query
 	N0 int
 	// N1 is the second offset of the Horner query
@@ -152,7 +154,7 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q *Horner) (n1s []int, fina
 			data      = column.EvalExprColumn(run, dataBoard).IntoRegVecSaveAlloc()
 			sel       = part.Selector.GetColAssignment(run).IntoRegVecSaveAlloc()
 			n0        = p.Parts[i].N0
-			x         = p.Parts[i].X
+			x         = part.X.GetVal(run)
 			count     = 0
 			res       field.Element
 			xN0       = new(field.Element).Exp(x, big.NewInt(int64(n0)))
@@ -220,6 +222,11 @@ func (h *Horner) Check(run ifaces.Runtime) error {
 // CheckGnark implements the [ifaces.Query] interface. It will panic
 // when called as this query is not intended to be explicitly verified
 // by the verifier in a gnark circuit.
-func (h *Horner) CheckGnark(api frontend.Variable, run ifaces.GnarkRuntime) {
+func (h *Horner) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("Horner query is not intended to be explicitly verified by the verifier in a gnark circuit")
+}
+
+// Size returns the size of the columns taking part in a [HornerPart].
+func (h *HornerPart) Size() int {
+	return h.size
 }

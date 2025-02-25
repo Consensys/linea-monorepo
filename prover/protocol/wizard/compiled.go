@@ -647,14 +647,6 @@ func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in query.ProjectionInp
 	return q
 }
 
-// Register a distributed projection query
-func (c *CompiledIOP) InsertDistributedProjection(round int, id ifaces.QueryID, in []*query.DistributedProjectionInput) query.DistributedProjection {
-	q := query.NewDistributedProjection(round, id, in)
-	// Finally registers the query
-	c.QueriesParams.AddToRound(round, q.Name(), q)
-	return q
-}
-
 // AddPublicInput inserts a public-input in the compiled-IOP
 func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) PublicInput {
 
@@ -717,4 +709,13 @@ func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
 	}
 
 	c.QueriesNoParams.AddToRound(round, q.ID, q)
+}
+
+// InsertHornerQuery inserts a [query.Horner] in the current compilation
+// context.
+func (c *CompiledIOP) InsertHornerQuery(round int, id ifaces.QueryID, parts []query.HornerPart) query.Horner {
+	q := query.NewHorner(round, id, parts)
+	// Finally registers the query
+	c.QueriesParams.AddToRound(round, q.Name(), &q)
+	return q
 }

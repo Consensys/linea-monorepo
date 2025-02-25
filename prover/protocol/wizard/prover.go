@@ -832,15 +832,8 @@ func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Elemen
 	run.QueriesParams.InsertNew(name, params)
 }
 
-// AssignDistributedProjection assigns the value horner(A, fA) if A
-// is in the module, horner(B, fB)^{-1} if B is in the module, and
-// horner(A, fA) * horner(B, fB)^{-1} if both are in the module.
-// The function will panic if:
-//   - the parameters were already assigned
-//   - the specified query is not registered
-//   - the assignment round is incorrect
-func (run *ProverRuntime) AssignDistributedProjection(name ifaces.QueryID, distributedProjectionParam query.DistributedProjectionParams) {
-
+// AssignHornerParams assignes the parameters of a [query.Honer] query.
+func (run *ProverRuntime) AssignHornerParams(name ifaces.QueryID, params query.HornerParams) {
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -849,8 +842,13 @@ func (run *ProverRuntime) AssignDistributedProjection(name ifaces.QueryID, distr
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
 	// Adds it to the assignments
-	params := query.NewDistributedProjectionParams(distributedProjectionParam.ScaledHorner,
-		distributedProjectionParam.HashCumSumOnePrev,
-		distributedProjectionParam.HashCumSumOneCurr)
 	run.QueriesParams.InsertNew(name, params)
+}
+
+// GetHornerParams returns the parameters of a [query.Honer] query.
+func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParams {
+	// Global prover's lock for accessing params
+	run.lock.Lock()
+	defer run.lock.Unlock()
+	return run.QueriesParams.MustGet(name).(query.HornerParams)
 }

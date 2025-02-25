@@ -13,7 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
@@ -47,7 +47,7 @@ func TestLookup(t *testing.T) {
 
 	suites := [][]func(*wizard.CompiledIOP){
 		{
-			lookup.CompileLogDerivative,
+			logderivativesum.CompileLookups,
 			localcs.Compile,
 			globalcs.Compile,
 			univariates.CompileLocalOpening,
@@ -58,7 +58,7 @@ func TestLookup(t *testing.T) {
 			dummy.CompileAtProverLvl,
 		},
 		{
-			lookup.CompileLogDerivative,
+			logderivativesum.CompileLookups,
 			localcs.Compile,
 			globalcs.Compile,
 			univariates.CompileLocalOpening,
@@ -68,7 +68,7 @@ func TestLookup(t *testing.T) {
 			fullrecursion.FullRecursion(true),
 			mimc.CompileMiMC,
 			specialqueries.RangeProof,
-			lookup.CompileLogDerivative,
+			logderivativesum.CompileLookups,
 			specialqueries.CompileFixedPermutations,
 			permutation.CompileViaGrandProduct,
 			innerproduct.Compile,
