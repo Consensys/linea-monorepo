@@ -22,16 +22,32 @@ sonar {
   if(tests == null || tests=="Unit") {
     print("Executing Sonarqube scanner Unit tests coverage report...\n")
     xmlTestReport = "${project.projectDir}/arithmetization/build/reports/jacoco/test/jacocoTestReport.xml"
-    // If set to Reference, we account only for the Reference tests coverage report
-  } else if(tests == "Reference") {
-    print("Executing Sonarqube scanner for Reference tests coverage report...\n")
+    // If set to FastReplay, we account only for the Nightly tests coverage report
+  } else if(tests == "FastReplay") {
+    print("Executing Sonarqube scanner for FastReplay tests coverage report...\n")
+    xmlTestReport  =  "${project.projectDir}/arithmetization/build/reports/jacoco/jacocoFastReplayTestsReport/jacocoFastReplayTestsReport.xml"
+    // If set to Nightly, we account only for the Nightly tests coverage report
+  } else if(tests == "Nightly") {
+    print("Executing Sonarqube scanner for Nightly tests coverage report...\n")
+    xmlTestReport  =  "${project.projectDir}/arithmetization/build/reports/jacoco/jacocoNightlyTestsReport/jacocoNightlyTestsReport.xml"
+    // If set to Weekly, we account only for the Weekly tests coverage report
+  } else if(tests == "Weekly") {
+    print("Executing Sonarqube scanner for Weekly tests coverage report...\n")
+    xmlTestReport  =  "${project.projectDir}/arithmetization/build/reports/jacoco/jacocoWeeklyTestsReport/jacocoWeeklyTestsReport.xml"
+    // If set to ReferenceBlockchain, we account only for the Reference Blockchain tests coverage report
+  } else if(tests == "ReferenceBlockchain") {
+    print("Executing Sonarqube scanner for Reference Blockchain tests coverage report...\n")
     xmlTestReport  =  "${project.projectDir}/reference-tests/build/reports/jacoco/jacocoReferenceBlockchainTestsReport/jacocoReferenceBlockchainTestsReport.xml"
-  } else if(tests == "Both") {
-    print("Executing Sonarqube scanner for Unit and Reference tests coverage report...\n")
+    // If set to ReferenceState, we account only for the Reference State tests coverage report
+  } else if(tests == "ReferenceState") {
+    print("Executing Sonarqube scanner for Reference State tests coverage report...\n")
+    xmlTestReport  =  "${project.projectDir}/reference-tests/build/reports/jacoco/jacocoReferenceGeneralStateTestsReport/jacocoReferenceGeneralStateTestsReport.xml"
+  } else if(tests == "All") {
+    print("Executing Sonarqube scanner for Unit, FastReplay, Nightly, Weekly, Reference Blockchain and State tests coverage report...\n")
     xmlTestReport  =  "${project.projectDir}/arithmetization/build/reports/jacocoConcatenate/test/jacocoTestReport.xml"
   } else {
     // Force build failure if unknown concatenate value.
-    println("*** unknown tests property.  Try '-Dconcatenate=Unit' or '-Dconcatenate=Reference' or '-Dconcatenate=Both'\n\n")
+    println("*** unknown tests property.  Try '-Dconcatenate=Unit', '-Dconcatenate=FastReplay', '-Dconcatenate=Nightly', '-Dconcatenate=Weekly', '-Dconcatenate=ReferenceBlockchain','-Dconcatenate=ReferenceState' or '-Dconcatenate=All'\n\n")
     assert false
   }
 

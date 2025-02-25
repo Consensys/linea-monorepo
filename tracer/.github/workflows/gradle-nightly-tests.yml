@@ -39,6 +39,20 @@ jobs:
           name: nightly-tests-report
           path: build/reports/tests/**/*
 
+      - name: Upload jacoco nightly tests coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-nightly-tests-coverage-report
+          path: arithmetization/build/reports/jacoco/jacocoNightlyTestsReport/**/*
+
+      - name: Upload jacoco nightly tests exec file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-nightly-tests-exec-file
+          path: arithmetization/build/jacoco/nightlyTests.exec
+
       - name: Failure Notification
         if: ${{ failure() || cancelled() }}
         uses: slackapi/slack-github-action@v2.0.0

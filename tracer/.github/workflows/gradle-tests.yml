@@ -86,14 +86,14 @@ jobs:
           name: unit-tests-report
           path: arithmetization/build/reports/tests/**/*
 
-      - name: Upload jacoco test coverage report
+      - name: Upload jacoco unit tests coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-unit-tests-coverage-report
           path: arithmetization/build/reports/jacoco/test/**/*
 
-      - name: Upload jacoco exec test
+      - name: Upload jacoco unit tests exec file
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -133,3 +133,17 @@ jobs:
         with:
           name: replay-tests-report
           path: arithmetization/build/reports/tests/**/*
+
+      - name: Upload jacoco fast replay tests coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-fast-replay-tests-coverage-report
+          path: arithmetization/build/reports/jacoco/fastReplayTestsReport/**/*
+
+      - name: Upload jacoco fast replay tests exec file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-fast-replay-tests-exec-file
+          path: arithmetization/build/jacoco/fastReplayTests.exec
