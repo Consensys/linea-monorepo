@@ -15,8 +15,8 @@ import (
 )
 
 type ProverArgs struct {
-	Input      string
-	Output     string
+	Input      []string
+	Output     []string
 	Large      bool
 	ConfigFile string
 }
@@ -33,32 +33,32 @@ func Prove(args ProverArgs) error {
 	}
 
 	// discover the type of the job from the input file name
-	jobExecution := strings.Contains(args.Input, "getZkProof")
-	jobBlobDecompression := strings.Contains(args.Input, "getZkBlobCompressionProof")
-	jobAggregation := strings.Contains(args.Input, "getZkAggregatedProof")
+	jobExecution := strings.Contains(args.Input[0], "getZkProof")
+	jobBlobDecompression := strings.Contains(args.Input[0], "getZkBlobCompressionProof")
+	jobAggregation := strings.Contains(args.Input[0], "getZkAggregatedProof")
 
 	if jobExecution {
 		req := &execution.Request{}
-		if err := readRequest(args.Input, req); err != nil {
+		if err := readRequest(args.Input[0], req); err != nil {
 			return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 		}
 
 		// we use the large traces in 2 cases;
 		// 1. the user explicitly asked for it (args.Large)
 		// 2. the job contains the large suffix and we are a large machine (cfg.Execution.CanRunLarge)
-		large := args.Large || (strings.Contains(args.Input, "large") && cfg.Execution.CanRunFullLarge)
+		large := args.Large || (strings.Contains(args.Input[0], "large") && cfg.Execution.CanRunFullLarge)
 
 		resp, err := execution.Prove(cfg, req, large)
 		if err != nil {
 			return fmt.Errorf("could not prove the execution: %w", err)
 		}
 
-		return writeResponse(args.Output, resp)
+		return writeResponse(args.Output[0], resp)
 	}
 
 	if jobBlobDecompression {
 		req := &blobdecompression.Request{}
-		if err := readRequest(args.Input, req); err != nil {
+		if err := readRequest(args.Input[0], req); err != nil {
 			return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 		}
 
@@ -67,12 +67,12 @@ func Prove(args ProverArgs) error {
 			return fmt.Errorf("could not prove the blob decompression: %w", err)
 		}
 
-		return writeResponse(args.Output, resp)
+		return writeResponse(args.Output[0], resp)
 	}
 
 	if jobAggregation {
 		req := &aggregation.Request{}
-		if err := readRequest(args.Input, req); err != nil {
+		if err := readRequest(args.Input[0], req); err != nil {
 			return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 		}
 
@@ -81,7 +81,7 @@ func Prove(args ProverArgs) error {
 			return fmt.Errorf("could not prove the aggregation: %w", err)
 		}
 
-		return writeResponse(args.Output, resp)
+		return writeResponse(args.Output[0], resp)
 	}
 
 	return errors.New("unknown job type")

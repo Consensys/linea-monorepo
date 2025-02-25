@@ -35,14 +35,15 @@ func CraftProverOutput(
 	req *Request,
 ) Response {
 
-	// Split the embedded file contents into a string slice
-	constraintsVersions := strings.Split(strings.TrimSpace(constraintsVersionsStr), "\n")
+	/*
+		// Split the embedded file contents into a string slice
+		constraintsVersions := strings.Split(strings.TrimSpace(constraintsVersionsStr), "\n")
 
-	// Check the arithmetization version used to generate the trace is contained in the prover request
-	// and fail fast if the constraint version is not supported
-	if err := checkArithmetizationVersion(req.ConflatedExecutionTracesFile, req.TracesEngineVersion, constraintsVersions); err != nil {
-		panic(err.Error())
-	}
+		// Check the arithmetization version used to generate the trace is contained in the prover request
+		// and fail fast if the constraint version is not supported
+		if err := checkArithmetizationVersion(req.ConflatedExecutionTracesFile, req.TracesEngineVersion, constraintsVersions); err != nil {
+			panic(err.Error())
+		} */
 
 	var (
 		l2BridgeAddress = cfg.Layer2.MsgSvcContract
@@ -73,7 +74,7 @@ func CraftProverOutput(
 			l2l1MessageHashes = bridge.L2L1MessageHashes(logs, l2BridgeAddress)
 		)
 
-		// This encodes the block as it will be by the compressor before running
+		// This encodes the block as it will be used by the compressor before running
 		// the compression algorithm.
 		blob.EncodeBlockForCompression(block, execDataBuf)
 

@@ -18,23 +18,44 @@ func setDefaultValues() {
 	viper.SetDefault("controller.enable_blob_decompression", true)
 	viper.SetDefault("controller.enable_aggregation", true)
 
+	// Limitless controller components
+	viper.SetDefault("controller.enable_exec_bootstrap", true)
+	viper.SetDefault("controller.enable_exec_gl", true)
+	viper.SetDefault("controller.enable_exec_rndbeacon", true)
+	viper.SetDefault("controller.enable_exec_lpp", true)
+	viper.SetDefault("controller.enable_exec_conglomeration", true)
+
 	// Set the default values for the retry delays
 	viper.SetDefault("controller.retry_delays", []int{0, 1, 2, 3, 5, 8, 13, 21, 44, 85})
 	viper.SetDefault("controller.defer_to_other_large_codes", DefaultDeferToOtherLargeCodes)
 	viper.SetDefault("controller.retry_locally_with_large_codes", DefaultRetryLocallyWithLargeCodes)
 
-	// Set default for cmdTmpl and cmdLargeTmpl
-	// TODO @gbotrel binary to run prover is hardcoded here.
-	viper.SetDefault("controller.worker_cmd_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}")
-	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
+	// Define the default command templates using the range action
+	workerCmdTmpl := `prover prove --config {{.ConfFile}} {{range $index, $element := .InFile}}--in {{$element}} {{end}} {{range $index, $element := .OutFile}}--out {{$element}} {{end}}`
+	workerCmdLargeTmpl := `prover prove --config {{.ConfFile}} {{range $index, $element := .InFile}}--in {{$element}} {{end}} {{range $index, $element := .OutFile}}--out {{$element}} {{end}} --large`
 
+	// Set the default command templates in viper
+	viper.SetDefault("controller.worker_cmd_tmpl", workerCmdTmpl)
+	viper.SetDefault("controller.worker_cmd_large_tmpl", workerCmdLargeTmpl)
 }
 
 func setDefaultPaths() {
 	viper.SetDefault("execution.conflated_traces_dir", "/shared/traces/conflated")
-	viper.SetDefault("execution.requests_root_dir", "/shared/prover-execution")
-	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/prover-compression")
-	viper.SetDefault("aggregation.requests_root_dir", "/shared/prover-aggregation")
+	viper.SetDefault("execution.requests_root_dir", []string{"/shared/prover-execution"})
+	viper.SetDefault("blob_decompression.requests_root_dir", []string{"/shared/prover-compression"})
+	viper.SetDefault("aggregation.requests_root_dir", []string{"/shared/prover-aggregation"})
+	viper.SetDefault("execution.responses_root_dir", []string{"/shared/prover-execution"})
+	viper.SetDefault("blob_decompression.responses_root_dir", []string{"/shared/prover-compression"})
+	viper.SetDefault("aggregation.responses_root_dir", []string{"/shared/prover-aggregation"})
+
+	// PLACEHOLDER for default request and response dirs - Subjected to change
+	// TODO @srinathln7: Implement a simple mechanism to introduce the chaining effect here i.e. move the response files
+	// in response dir from prev. job to req dir of the next job. FIND the optimal way to implement this
+	viper.SetDefault("execution_bootstrap.requests_root_dir", []string{"/shared/prover-execution/limitless/bootstrap"})
+	viper.SetDefault("execution_bootstrap.responses_root_dir", []string{"/shared/prover-execution/limitless/bootstrap/gl",
+		"/shared/prover-execution/limitless/bootstrap/metadata",
+	})
+
 }
 
 func setDefaultTracesLimit() {

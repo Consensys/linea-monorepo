@@ -62,8 +62,13 @@ func init() {
 
 	rootCmd.AddCommand(proveCmd)
 
-	proveCmd.Flags().StringVar(&proverArgs.Input, "in", "", "input file")
-	proveCmd.Flags().StringVar(&proverArgs.Output, "out", "", "output file")
+	// ASSUMED 0 index here
+	// proveCmd.Flags().StringVar(&proverArgs.Input[0], "in", "", "input file")
+	// proveCmd.Flags().StringVar(&proverArgs.Output[0], "out", "", "output file")
+
+	proveCmd.Flags().StringSliceVar(&proverArgs.Input, "in", make([]string, len(proverArgs.Input)), "input file")
+	proveCmd.Flags().StringSliceVar(&proverArgs.Output, "out", make([]string, len(proverArgs.Output)), "output file")
+
 	proveCmd.Flags().BoolVar(&proverArgs.Large, "large", false, "run the large execution circuit")
 }
 

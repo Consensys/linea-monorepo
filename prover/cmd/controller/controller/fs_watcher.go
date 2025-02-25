@@ -15,7 +15,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-// FsWatcher is a struct who will watch the filesystem and return files as if
+// FsWatcher watches the filesystem and return files as if
 // it were a message queue.
 type FsWatcher struct {
 	// Unique ID of the container. Used to identify the owner of a locked file
@@ -47,11 +47,44 @@ func NewFsWatcher(conf *config.Config) *FsWatcher {
 		fs.JobToWatch = append(fs.JobToWatch, AggregatedDefinition(conf))
 	}
 
+	// Limitless prover job additions
+	if conf.Controller.EnableExecBootstrap {
+		if job, err := ExecBootstrapDefinition(conf); err == nil {
+			fs.JobToWatch = append(fs.JobToWatch, *job)
+		}
+	}
+
+	if conf.Controller.EnableExecGL {
+		if job, err := ExecGLDefinition(conf); err == nil {
+			fs.JobToWatch = append(fs.JobToWatch, *job)
+		}
+	}
+
+	if conf.Controller.EnableExecRndBeacon {
+		if job, err := ExecRndBeaconDefinition(conf); err == nil {
+			fs.JobToWatch = append(fs.JobToWatch, *job)
+		}
+	}
+
+	if conf.Controller.EnableExecLPP {
+		if job, err := ExecLPPDefinition(conf); err == nil {
+			fs.JobToWatch = append(fs.JobToWatch, *job)
+		}
+	}
+
+	if conf.Controller.EnableExecConglomeration {
+		if job, err := ExecConglomerationDefinition(conf); err == nil {
+			fs.JobToWatch = append(fs.JobToWatch, *job)
+		}
+	}
+
 	return fs
 }
 
 // Returns the list of jobs to perform by priorities. If no
 func (fs *FsWatcher) GetBest() (job *Job) {
+
+	fs.Logger.Debug("Starting GetBest")
 
 	// Fetches the full job list from all three directories. The fetching
 	// operation will not ignore files if they are not in the expected
@@ -65,6 +98,7 @@ func (fs *FsWatcher) GetBest() (job *Job) {
 		return nil
 	}
 
+	numsMatched := 0
 	for i := range fs.JobToWatch {
 		// Don't try to pass &jdef, where jdef is a loop variable as
 		// `for i, jdef := range f.JobToWatch {...}`
@@ -72,12 +106,25 @@ func (fs *FsWatcher) GetBest() (job *Job) {
 		// of every jobs found so far and they will all be attributed to the
 		// last job definition.
 		jdef := &fs.JobToWatch[i]
-		if err := fs.appendJobFromDef(jdef, &jobs); err != nil {
-			fs.Logger.Errorf(
-				"Got an error trying to fetch job `%v` from dir %v: %v",
-				jdef.Name, jdef.dirFrom(), err,
-			)
+
+		// For multi-input jobs
+		if len(jdef.RequestsRootDir) > 1 {
+			if err := fs.appendMultiInputJobFromDef(jdef, &jobs, &numsMatched); err != nil {
+				fs.Logger.Errorf(
+					"Got an error trying to fetch job `%v`: %v",
+					jdef.Name, err,
+				)
+			}
+		} else {
+			// For single input jobs
+			if err := fs.appendJobFromDef(jdef, &jobs, &numsMatched); err != nil {
+				fs.Logger.Errorf(
+					"Got an error trying to fetch job `%v` from dir %v: %v",
+					jdef.Name, jdef.dirFrom(0), err,
+				)
+			}
 		}
+
 	}
 
 	if len(jobs) == 0 {
@@ -85,8 +132,8 @@ func (fs *FsWatcher) GetBest() (job *Job) {
 		return nil
 	}
 
-	// Sort the jobs by scores in ascending order. Lower scores mean more
-	// priority.
+	// Sort the jobs by scores in ascending order.
+	// Lower scores mean more priority.
 	slices.SortStableFunc(jobs, func(a, b *Job) int {
 		return a.Score() - b.Score()
 	})
@@ -115,11 +162,22 @@ func (f *FsWatcher) lockBest(jobs []*Job) (pos int, success bool) {
 	return 0, false
 }
 
-// Try appending a list of jobs that are parsed from a given directory. An error
-// is returned if the function fails to read the directory.
-func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job) (err error) {
+func (fs *FsWatcher) appendMultiInputJobFromDef(jdef *JobDefinition, jobs *[]*Job, numsMatched *int) (err error) {
+	switch jdef.Name {
+	case jobExecRndBeacon:
+		return fs.processDirectories(jdef, jobs, numsMatched, 2)
+	case jobExecCongolomeration:
+		return fs.processDirectories(jdef, jobs, numsMatched, 3)
+	default:
+		return fmt.Errorf("unsupported multi-input job type:%s", jdef.Name)
+	}
+}
 
-	dirFrom := jdef.dirFrom()
+// Try appending a list of single-input jobs that are parsed from a given directory.
+// An error is returned if the function fails to read the directory.
+func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job, numsMatched *int) (err error) {
+	// ASSUMED 0 index here for jobs with only single inputs
+	dirFrom := jdef.dirFrom(0)
 	fs.Logger.Tracef("Seeking jobs for %v in %v", jdef.Name, dirFrom)
 
 	// This will fail if the provided directory is not a directory
@@ -127,7 +185,6 @@ func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job) (err er
 	if err != nil {
 		return fmt.Errorf("cannot ls `%s` : %v", dirFrom, err)
 	}
-	numMatched := 0
 
 	// Search and append the valid files into the list.
 	for _, dirent := range dirents {
@@ -142,7 +199,7 @@ func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job) (err er
 
 		// Attempt to construct a job from the filename. If the filename is
 		// not parseable to the target JobType, it will return an error.
-		job, err := NewJob(jdef, dirent.Name())
+		job, err := NewJob(jdef, []string{dirent.Name()})
 		if err != nil {
 			fs.Logger.Debugf("Found invalid file  `%v` : %v", dirent.Name(), err)
 			continue
@@ -151,54 +208,55 @@ func (fs *FsWatcher) appendJobFromDef(jdef *JobDefinition, jobs *[]*Job) (err er
 		// If all the checks passes, we append the filename to the list of the
 		// clean ones.
 		*jobs = append(*jobs, job)
-		numMatched++
+		*numsMatched++
 	}
 
 	// Pass prometheus metrics
-	metrics.CollectFS(jdef.Name, len(dirents), numMatched)
+	metrics.CollectFS(jdef.Name, len(dirents), *numsMatched)
 
 	return nil
 }
 
-// Trylock attempts to rename a file by adding an IN_PROGRESS suffix. The lock
-// operation is atomic only on Unix systems.
+// Trylock attempts to rename a file by adding an IN_PROGRESS suffix.
+// The lock operation is atomic only on Unix systems.
 func (fs *FsWatcher) tryLockFile(job *Job) (success bool) {
 
-	dirName := job.Def.dirFrom()
-	lockedFile := strings.Join(
-		[]string{
-			job.OriginalFile,
-			fs.InProgress,
-			fs.LocalID,
-		}, ".")
-	old := path.Join(dirName, job.OriginalFile)
-	new := path.Join(dirName, lockedFile)
-	err := os.Rename(old, new)
+	for idx := range job.OriginalFile {
+		dirName := job.Def.dirFrom(idx)
+		lockedFile := strings.Join(
+			[]string{
+				job.OriginalFile[idx],
+				fs.InProgress,
+				fs.LocalID,
+			}, ".")
+		old := path.Join(dirName, job.OriginalFile[idx])
+		new := path.Join(dirName, lockedFile)
+		err := os.Rename(old, new)
 
-	if err != nil {
-		// Detect the case where the old file still exists but the new one
-		// already exists.
-		_, errOld := os.Lstat(old)
-		_, errNew := os.Lstat(new)
+		if err != nil {
+			// Detect the case where the old file still exists but the new one
+			// already exists.
+			_, errOld := os.Lstat(old)
+			_, errNew := os.Lstat(new)
 
-		if errNew == nil && errOld == nil {
-			fs.Logger.Errorf(
-				"old file `%v` and new files `%v` both exists",
-				old, new,
+			if errNew == nil && errOld == nil {
+				fs.Logger.Errorf(
+					"old file `%v` and new files `%v` both exists",
+					old, new,
+				)
+			}
+
+			fs.Logger.Tracef(
+				"could not lock file %v because : %v",
+				old, errOld,
 			)
+
+			return false
 		}
 
-		fs.Logger.Tracef(
-			"could not lock file %v because : %v",
-			old, errOld,
-		)
-
-		return false
+		// Success, write the name of the locked file
+		job.LockedFile[idx] = lockedFile
 	}
-
-	// Success, write the name of the locked file
-	job.LockedFile = lockedFile
-
 	return true
 }
 
@@ -224,4 +282,50 @@ func lsname(dirname string) (finfos []fs.DirEntry, err error) {
 	}
 
 	return finfos, err
+}
+
+func (fs *FsWatcher) processDirectories(jdef *JobDefinition, jobs *[]*Job, numsMatched *int, numDirs int) error {
+	// Create a map to group files by their common prefix
+	fileMap := make(map[string][]string)
+
+	// Read and populate the map with files from each directory
+	for i := 0; i < numDirs; i++ {
+		dirFrom := jdef.dirFrom(i)
+		dirEnt, err := lsname(dirFrom)
+		if err != nil {
+			return err
+		}
+		for _, entry := range dirEnt {
+			if !entry.IsDir() {
+				prefix := getCommonPrefix(entry.Name())
+				fileMap[prefix] = append(fileMap[prefix], entry.Name())
+			}
+		}
+	}
+
+	// Convert the map to the desired output format
+	for _, files := range fileMap {
+		job, err := NewJob(jdef, files)
+		if err != nil {
+			fs.Logger.Debugf("Found invalid files  `%v` : %v", files, err)
+			continue
+		}
+		*jobs = append(*jobs, job)
+		*numsMatched++
+	}
+
+	// Pass prometheus metrics
+	// TODO: Define a new function to collect the metrics here:
+	// metrics.CollectFS(jdef.Name, len(dirents), *numsMatched)
+
+	return nil
+}
+
+// getCommonPrefix extracts the common prefix from a filename
+func getCommonPrefix(filename string) string {
+	parts := strings.Split(filename, "-getZkProof")
+	if len(parts) > 0 {
+		return parts[0]
+	}
+	return ""
 }
