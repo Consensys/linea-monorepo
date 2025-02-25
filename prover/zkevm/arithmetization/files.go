@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 
 	"github.com/consensys/go-corset/pkg/air"
 	"github.com/consensys/go-corset/pkg/binfile"
 	"github.com/consensys/go-corset/pkg/corset"
+	"github.com/consensys/go-corset/pkg/hir"
 	"github.com/consensys/go-corset/pkg/mir"
 	"github.com/consensys/go-corset/pkg/schema"
 	"github.com/consensys/go-corset/pkg/trace"
@@ -30,19 +32,53 @@ func ReadZkevmBin(optConfig *mir.OptimisationConfig) (schema *air.Schema, metada
 		binf binfile.BinaryFile
 		buf  []byte = []byte(zkevmStr)
 	)
+
+	fmt.Println("Starting ReadZkevmBin...")
+
 	// TODO: why is only this one needed??
 	gob.Register(binfile.Attribute(&corset.SourceMap{}))
+
 	// Parse zkbinary file
 	err = binf.UnmarshalBinary(buf)
-	// Sanity check for errors
 	if err != nil {
+		fmt.Printf("Error during UnmarshalBinary: %v\n", err)
 		return nil, nil, fmt.Errorf("could not parse the read bytes of the 'zkevm.bin' file into an hir.Schema: %w", err)
 	}
+	fmt.Println("UnmarshalBinary successful")
+
 	// Extract schema
+	if reflect.DeepEqual(binf.Schema, hir.Schema{}) {
+		fmt.Println("binf.Schema is empty after unmarshaling zkevm.bin")
+		return nil, nil, fmt.Errorf("binf.Schema is empty after unmarshaling zkevm.bin")
+	}
+	fmt.Println("binf.Schema extraction successful")
+
 	hirSchema := &binf.Schema
 	metadata, err = binf.Header.GetMetaData()
-	// This performs the corset compilation
-	return hirSchema.LowerToMir().LowerToAir(*optConfig), metadata, err
+	if err != nil {
+		fmt.Printf("Error extracting metadata: %v\n", err)
+		return nil, nil, fmt.Errorf("failed to extract metadata: %w", err)
+	}
+	fmt.Println("Metadata extraction successful")
+
+	// Ensure LowerToMir() does not return a zero-value struct
+	mirSchema := hirSchema.LowerToMir()
+	if reflect.DeepEqual(mirSchema, mir.Schema{}) {
+		fmt.Println("LowerToMir() returned an empty struct")
+		return nil, nil, fmt.Errorf("LowerToMir() returned an empty struct")
+	}
+	fmt.Println("LowerToMir() successful")
+
+	// Ensure LowerToAir() does not return a zero-value struct
+	airSchema := mirSchema.LowerToAir(*optConfig)
+	if reflect.DeepEqual(airSchema, air.Schema{}) {
+		fmt.Println("LowerToAir() returned an empty struct")
+		return nil, nil, fmt.Errorf("LowerToAir() returned an empty struct")
+	}
+	fmt.Println("LowerToAir() successful")
+
+	fmt.Println("ReadZkevmBin completed successfully")
+	return airSchema, metadata, nil
 }
 
 func ReadLtTraces(f io.ReadCloser, sch *air.Schema) (trace.Trace, error) {
