@@ -191,3 +191,27 @@ func MaxRound(handles ...ifaces.Column) int {
 	}
 	return res
 }
+
+// ShiftExpr returns a shifted version of the expression. The function will
+// panic if called with an expression that uses [variables.PeriodicSampling]
+func ShiftExpr(expr *symbolic.Expression, offset int) *symbolic.Expression {
+
+	return expr.ReconstructBottomUp(func(e *symbolic.Expression, children []*symbolic.Expression) (new *symbolic.Expression) {
+
+		vari, isVar := e.Operator.(symbolic.Variable)
+		if !isVar {
+			return e.SameWithNewChildren(children)
+		}
+
+		if _, isPeriodic := vari.Metadata.(variables.PeriodicSample); isPeriodic {
+			panic("unsupported: periodic sampling")
+		}
+
+		col, isCol := vari.Metadata.(ifaces.Column)
+		if !isCol {
+			return e.SameWithNewChildren(children)
+		}
+
+		return symbolic.NewVariable(Shift(col, offset))
+	})
+}
