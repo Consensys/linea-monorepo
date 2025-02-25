@@ -82,18 +82,14 @@ func (gp GrandProductParams) UpdateFS(fs *fiatshamir.State) {
 	fs.Update(gp.Y)
 }
 
-// Check verifies the satisfaction of the GrandProduct query using the provided runtime.
-// It calculates the product of numerators and denominators, and checks
-// if prod(Numerators) == Prod(Denominators)*ParamY, and returns an error if the condition is not satisfied.
-//
-// Parameters:
-// - run: The runtime interface providing access to the query parameter for query verification.
-//
-// Returns:
-// - An error if the grand product query is not satisfied, or nil if it is satisfied.
-func (g GrandProduct) Check(run ifaces.Runtime) error {
-	params := run.GetParams(g.ID).(GrandProductParams)
-	actualProd := field.One()
+// Compute returns the result value of the [GrandProduct] query. It
+// should be run by a runtime with access to the query columns. i.e
+// either by a [wizard.ProverRuntime] or a [wizard.VerifierRuntime]
+// but then the involved columns should all be public.
+func (g GrandProduct) Compute(run ifaces.Runtime) field.Element {
+
+	result := field.One()
+
 	for key := range g.Inputs {
 		for i, num := range g.Inputs[key].Numerators {
 
@@ -120,9 +116,29 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 					packedZ[k].Mul(&packedZ[k], &packedZ[k-1])
 				}
 			}
-			actualProd.Mul(&actualProd, &packedZ[len(packedZ)-1])
+			result.Mul(&result, &packedZ[len(packedZ)-1])
 		}
 	}
+
+	return result
+}
+
+// Check verifies the satisfaction of the GrandProduct query using the provided runtime.
+// It calculates the product of numerators and denominators, and checks
+// if prod(Numerators) == Prod(Denominators)*ParamY, and returns an error if the condition is not satisfied.
+//
+// Parameters:
+// - run: The runtime interface providing access to the query parameter for query verification.
+//
+// Returns:
+// - An error if the grand product query is not satisfied, or nil if it is satisfied.
+func (g GrandProduct) Check(run ifaces.Runtime) error {
+
+	var (
+		params     = run.GetParams(g.ID).(GrandProductParams)
+		actualProd = g.Compute(run)
+	)
+
 	if actualProd != params.Y {
 		return fmt.Errorf("the grand product query %v is not satisfied, actualProd = %v, param.Y = %v", g.ID, actualProd, params.Y)
 	}

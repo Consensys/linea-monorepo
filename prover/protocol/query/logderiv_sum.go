@@ -80,9 +80,12 @@ func NewLogDerivSumParams(sum field.Element) LogDerivSumParams {
 	return LogDerivSumParams{Sum: sum}
 }
 
-// Test that global sum is correct
-func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
-	params := run.GetParams(r.ID).(LogDerivSumParams)
+// Compute returns the result value of the [LogDerivativeSum] query. It
+// should be run by a runtime with access to the query columns. i.e
+// either by a [wizard.ProverRuntime] or a [wizard.VerifierRuntime]
+// but then the involved columns should all be public.
+func (r LogDerivativeSum) Compute(run ifaces.Runtime) field.Element {
+
 	// compute the actual sum from the Numerator and Denominator
 	actualSum := field.Zero()
 	for key := range r.Inputs {
@@ -114,6 +117,17 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 			actualSum.Add(&actualSum, &packedZ[len(packedZ)-1])
 		}
 	}
+
+	return actualSum
+}
+
+// Test that global sum is correct
+func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
+
+	var (
+		params    = run.GetParams(r.ID).(LogDerivSumParams)
+		actualSum = r.Compute(run)
+	)
 
 	if actualSum != params.Sum {
 		return fmt.Errorf("expected LogDerivativeSum = %s but got %s for the query %v", params.Sum.String(), actualSum.String(), r.ID)

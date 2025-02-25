@@ -25,4 +25,7 @@ type ModuleWitness struct {
 	// ReceivedValuesGlobal stores the received values (for the global
 	// constraints) of the current segment.
 	ReceivedValuesGlobal []field.Element
+	// N0 values are the parameters to the Horner queries in the same order
+	// as in the [FilteredModuleInputs.HornerArgs]
+	N0Values []int
 }

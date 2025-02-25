@@ -189,7 +189,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 	return moduleGL
 }
 
-// AssignModuleGL is the entry-point for the assignment of [ModuleGL]. It
+// Assign is the entry-point for the assignment of [ModuleGL]. It
 // is responsible for setting up the [ProverRuntime.State] with the witness
 // value and assigning the following columns.
 //
@@ -197,7 +197,10 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 //   - The IsFirst, IsLast columns
 //
 // But not the local-openings for the local-constraints.
-func (m *ModuleGL) AssignModuleGL(run *wizard.ProverRuntime, witness *ModuleWitness) {
+//
+// The function depopulates the [ModuleWitness] from its columns assignment
+// as the columns are assigned in the runtime.
+func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
 
 	var (
 		// columns stores the list of columns to assign. Though, it
@@ -222,7 +225,7 @@ func (m *ModuleGL) AssignModuleGL(run *wizard.ProverRuntime, witness *ModuleWitn
 		newCol := m.Wiop.Columns.GetHandle(colName)
 
 		if newCol.Round() != 0 {
-			utils.Panic("expected a column with round 1, got %v, column: %v", newCol.Round(), colName)
+			utils.Panic("expected a column with round 0, got %v, column: %v", newCol.Round(), colName)
 		}
 
 		colWitness, ok := witness.Columns[colName]

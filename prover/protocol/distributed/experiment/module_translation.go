@@ -168,29 +168,35 @@ func (mt *moduleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *
 
 // InsertLogDerivative inserts a new LogDerivative query in the target compiled IOP
 // by translating all the related columns
-func (mt *moduleTranslator) InsertLogDerivative(oldQuery query.LogDerivativeSum) query.LogDerivativeSum {
+func (mt *moduleTranslator) InsertLogDerivative(
+	round int,
+	id ifaces.QueryID,
+	logDerivativeArgs [][2]*symbolic.Expression,
+) query.LogDerivativeSum {
 
 	res := query.LogDerivativeSum{
-		Round:  oldQuery.Round,
-		ID:     oldQuery.ID,
+		Round:  round,
+		ID:     id,
 		Inputs: map[int]*query.LogDerivativeSumInput{},
 	}
 
-	for size, oldInp := range oldQuery.Inputs {
+	for _, numDenPair := range logDerivativeArgs {
 
-		newInp := &query.LogDerivativeSumInput{
-			Size: size,
+		var (
+			num  = numDenPair[0]
+			den  = numDenPair[1]
+			size = NewSizeOfList(mt.Disc, num, den)
+		)
+
+		if _, hasSize := res.Inputs[size]; !hasSize {
+			res.Inputs[size] = &query.LogDerivativeSumInput{
+				Size: size,
+			}
 		}
 
-		for _, num := range oldInp.Numerator {
-			newInp.Numerator = append(newInp.Numerator, mt.TranslateExpression(num))
-		}
-
-		for _, den := range oldInp.Denominator {
-			newInp.Denominator = append(newInp.Denominator, mt.TranslateExpression(den))
-		}
-
-		res.Inputs[size] = newInp
+		newInp := res.Inputs[size]
+		newInp.Numerator = append(newInp.Numerator, mt.TranslateExpression(num))
+		newInp.Denominator = append(newInp.Denominator, mt.TranslateExpression(den))
 	}
 
 	return mt.Wiop.InsertLogDerivativeSum(res.Round, res.ID, res.Inputs)
@@ -198,28 +204,34 @@ func (mt *moduleTranslator) InsertLogDerivative(oldQuery query.LogDerivativeSum)
 
 // InsertGrandProduct inserts a new GrandProduct query in the target compiled IOP
 // by translating all the related columns
-func (mt *moduleTranslator) InsertGrandProduct(oldQuery query.GrandProduct) query.GrandProduct {
+func (mt *moduleTranslator) InsertGrandProduct(
+	round int,
+	id ifaces.QueryID,
+	args [][2]*symbolic.Expression,
+) query.GrandProduct {
 
 	res := query.GrandProduct{
-		ID:    oldQuery.ID,
-		Round: oldQuery.Round,
+		ID:    id,
+		Round: round,
 	}
 
-	for size, oldInp := range oldQuery.Inputs {
+	for _, numDenPair := range args {
 
-		newInp := &query.GrandProductInput{
-			Size: size,
+		var (
+			num  = numDenPair[0]
+			den  = numDenPair[1]
+			size = NewSizeOfList(mt.Disc, num, den)
+		)
+
+		if _, hasSize := res.Inputs[size]; !hasSize {
+			res.Inputs[size] = &query.GrandProductInput{
+				Size: size,
+			}
 		}
 
-		for _, num := range oldInp.Numerators {
-			newInp.Numerators = append(newInp.Numerators, mt.TranslateExpression(num))
-		}
-
-		for _, den := range oldInp.Denominators {
-			newInp.Denominators = append(newInp.Denominators, mt.TranslateExpression(den))
-		}
-
-		res.Inputs[size] = newInp
+		newInp := res.Inputs[size]
+		newInp.Numerators = append(newInp.Numerators, mt.TranslateExpression(num))
+		newInp.Denominators = append(newInp.Denominators, mt.TranslateExpression(den))
 	}
 
 	return mt.Wiop.InsertGrandProduct(res.Round, res.ID, res.Inputs)
@@ -227,14 +239,18 @@ func (mt *moduleTranslator) InsertGrandProduct(oldQuery query.GrandProduct) quer
 
 // InsertHorner inserts a new Horner query in the target compiled IOP
 // by translating all the related columns
-func (mt *moduleTranslator) InsertHorner(oldQuery query.Horner) query.Horner {
+func (mt *moduleTranslator) InsertHorner(
+	round int,
+	id ifaces.QueryID,
+	parts []query.HornerPart,
+) query.Horner {
 
 	res := query.Horner{
-		Round: oldQuery.Round,
-		ID:    oldQuery.ID,
+		Round: round,
+		ID:    id,
 	}
 
-	for _, oldPart := range oldQuery.Parts {
+	for _, oldPart := range parts {
 
 		newPart := query.HornerPart{
 			Coefficient:  mt.TranslateExpression(oldPart.Coefficient),

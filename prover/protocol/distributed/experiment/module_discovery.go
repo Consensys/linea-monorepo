@@ -206,6 +206,38 @@ func ModuleOfList[T any](disc ModuleDiscoverer, items ...T) ModuleName {
 	return res
 }
 
+// NewSizeOfList returns the new size of the provided list of items.
+// The function asserts that all provided items have the same new size
+// without which the
+func NewSizeOfList[T any](disc ModuleDiscoverer, items ...T) int {
+
+	res := 0
+
+	for i, item_ := range items {
+
+		sizeOfItem := 0
+
+		switch item := any(item_).(type) {
+		case ifaces.Column:
+			sizeOfItem = NewSizeOfColumn(disc, item)
+		case *symbolic.Expression:
+			sizeOfItem = NewSizeOfExpr(disc, item)
+		default:
+			utils.Panic("unexpected type %T", item)
+		}
+
+		if i == 0 {
+			res = sizeOfItem
+		}
+
+		if res != sizeOfItem {
+			utils.Panic("inconsistent sizes %v != %v", res, sizeOfItem)
+		}
+	}
+
+	return res
+}
+
 // MustBeResolved checks that a module name is neither [AnyModule] or [NoModuleFound]
 // and throws a panic if it is not.
 func (m ModuleName) MustBeResolved() {

@@ -1,0 +1,261 @@
+package experiment
+
+import (
+	"fmt"
+
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+)
+
+// ModuleLPP is a compilation structure holding the central informations
+// of the LPP part of a module.
+type ModuleLPP struct {
+
+	// moduleTranslator is the translator for the GL part of the module
+	// it also has the ownership of the [wizard.Compiled] IOP built for
+	// this module.
+	moduleTranslator
+
+	// definitionInput stores the [FilteredModuleInputs] that was used
+	// to generate the module.
+	definitionInput *FilteredModuleInputs
+
+	// N0Hash is the hash of the N0 positions for the Horner queries
+	N0Hash ifaces.Column
+
+	// N1Hash is the hash of the N1 positions for the Horner queries
+	N1Hash ifaces.Column
+
+	// LogDerivative is the translated log-derivative query in the module
+	LogDerivative query.LogDerivativeSum
+
+	// GrandProduct is the translated grand-product query in the module
+	GrandProduct query.GrandProduct
+
+	// Horner is the translated horner query in the module
+	Horner query.Horner
+}
+
+// AssignLPPQueries is a [wizard.ProverAction] responsible for assigning the LPP
+// query results as well as the N0Hash and N1Hash values.
+type AssignLPPQueries struct {
+	ModuleLPP
+}
+
+// CheckNxHash is a [wizard.VerifierAction] responsible for checking the N0Hash
+// and N1Hash values.
+type CheckNxHash struct {
+	ModuleLPP
+	skipped bool
+}
+
+// NewModuleLPP declares and constructs a new [ModuleLPP] from a [wizard.Builder]
+// and a [FilteredModuleInput]. The function performs all the necessary
+// declarations to build the LPP part of the module and returns the constructed
+// module.
+func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *ModuleLPP {
+
+	moduleLPP := &ModuleLPP{
+		moduleTranslator: moduleTranslator{
+			Wiop: builder.CompiledIOP,
+			Disc: moduleInput.Disc,
+		},
+		definitionInput: moduleInput,
+		N0Hash:          builder.InsertProof(1, "LPP_N0_HASH", 1),
+		N1Hash:          builder.InsertProof(1, "LPP_N1_HASH", 1),
+	}
+
+	for _, col := range moduleInput.Columns {
+
+		if col.Round() != 0 {
+			utils.Panic("cannot translate a column with non-zero round %v", col.Round())
+		}
+
+		_, isLPP := moduleInput.ColumnsLPPSet[col.GetColID()]
+
+		if !isLPP {
+			continue
+		}
+
+		moduleLPP.InsertColumn(*col, 0)
+
+		if data, isPrecomp := moduleInput.ColumnsPrecomputed[col.GetColID()]; isPrecomp {
+			moduleLPP.Wiop.Precomputed.InsertNew(col.ID, data)
+		}
+	}
+
+	moduleLPP.LogDerivative = moduleLPP.InsertLogDerivative(1, ifaces.QueryID("MAIN_LOGDERIVATIVE"), moduleInput.LogDerivativeArgs)
+	moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(1, ifaces.QueryID("MAIN_GRANDPRODUCT"), moduleInput.GrandProductArgs)
+	moduleLPP.Horner = moduleLPP.InsertHorner(1, ifaces.QueryID("MAIN_HORNER"), moduleInput.HornerArgs)
+
+	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
+	moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
+
+	return moduleLPP
+}
+
+// Assign is the entry-point for the assignment of the [ModuleLPP]. It
+// is responsible for setting up the [ProverRuntime.State] with the witness
+// value and assigning the columns.
+//
+// The function depopulates the [ModuleWitness] from its columns assignment
+// as the columns are assigned in the runtime.
+func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
+
+	var (
+		// columns stores the list of columns to assign. Though, it
+		// stores the columns as in the origin CompiledIOP so we cannot
+		// directly use them to refer to columns of the current IOP.
+		// Yet, the column share the same names.
+		columns = m.definitionInput.Columns
+	)
+
+	run.State.InsertNew(moduleWitnessKey, witness)
+
+	for _, col := range columns {
+
+		colName := col.GetColID()
+
+		// Skips the non-LPP columns
+		if _, ok := m.definitionInput.ColumnsLPPSet[colName]; !ok {
+			continue
+		}
+
+		newCol := m.Wiop.Columns.GetHandle(colName)
+
+		if newCol.Round() != 0 {
+			utils.Panic("expected a column with round 0, got %v, column: %v", newCol.Round(), colName)
+		}
+
+		colWitness, ok := witness.Columns[colName]
+		if !ok {
+			utils.Panic("witness of column %v was not found", colName)
+		}
+
+		run.AssignColumn(colName, colWitness)
+		delete(witness.Columns, colName)
+	}
+}
+
+func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
+
+	moduleWitness := run.State.MustGet(moduleWitnessKey).(*ModuleWitness)
+	run.State.Del(moduleWitnessKey)
+
+	hornerParams := a.getHornerParams(run, moduleWitness.N0Values)
+
+	run.AssignHornerParams(a.Horner.ID, hornerParams)
+	run.AssignGrandProduct(a.GrandProduct.ID, a.GrandProduct.Compute(run))
+	run.AssignLogDerivSum(a.LogDerivative.ID, a.LogDerivative.Compute(run))
+
+	n0Hash, n1Hash := hashNxs(hornerParams, 0), hashNxs(hornerParams, 1)
+
+	run.AssignColumn(a.N0Hash.GetColID(), smartvectors.NewRegular([]field.Element{n0Hash}))
+	run.AssignColumn(a.N1Hash.GetColID(), smartvectors.NewRegular([]field.Element{n1Hash}))
+}
+
+func (m ModuleLPP) getHornerParams(run *wizard.ProverRuntime, n0Values []int) query.HornerParams {
+
+	hornerParams := query.HornerParams{}
+	for i := range n0Values {
+		hornerParams.Parts = append(hornerParams.Parts, query.HornerParamsPart{
+			N0: n0Values[i],
+		})
+	}
+
+	hornerParams.SetResult(run, m.Horner)
+	return hornerParams
+}
+
+func (a *CheckNxHash) Run(run wizard.Runtime) error {
+
+	var (
+		hornerParams  = run.GetHornerParams(a.Horner.ID)
+		n0HashAlleged = a.N0Hash.GetColAssignmentAt(run, 0)
+		n1HashAlleged = a.N1Hash.GetColAssignmentAt(run, 0)
+		n0Hash        = hashNxs(hornerParams, 0)
+		n1Hash        = hashNxs(hornerParams, 1)
+	)
+
+	if n1HashAlleged != n1Hash {
+		return fmt.Errorf("n0Hash %v != n1HashAlleged %v", n1Hash, n1HashAlleged)
+	}
+
+	if n0HashAlleged != n0Hash {
+		return fmt.Errorf("n0Hash %v != n0HashAlleged %v", n0Hash, n0HashAlleged)
+	}
+
+	return nil
+}
+
+func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+
+	var (
+		hornerParams  = run.GetHornerParams(a.Horner.ID)
+		n0HashAlleged = a.N0Hash.GetColAssignmentGnarkAt(run, 0)
+		n1HashAlleged = a.N1Hash.GetColAssignmentGnarkAt(run, 0)
+		n0Hash        = hashNxsGnark(api, hornerParams, 0)
+		n1Hash        = hashNxsGnark(api, hornerParams, 1)
+	)
+
+	api.AssertIsEqual(n0Hash, n0HashAlleged)
+	api.AssertIsEqual(n1Hash, n1HashAlleged)
+}
+
+func (a *CheckNxHash) Skip() {
+	a.skipped = true
+}
+
+func (a *CheckNxHash) IsSkipped() bool {
+	return a.skipped
+}
+
+// hashNxs scans params and hash either the N0s or the N1s value all together
+// (pass x=0, to compute the hash of the N0s and x=1 for the N1s).
+func hashNxs(params query.HornerParams, x int) field.Element {
+
+	res := field.Element{}
+
+	for _, part := range params.Parts {
+
+		nx := 0
+
+		if x == 0 {
+			nx = part.N0
+		} else {
+			nx = part.N1
+		}
+
+		nxField := field.NewElement(uint64(nx))
+		res = mimc.BlockCompression(res, nxField)
+	}
+
+	return res
+}
+
+// hashNxsGnark is as [hashNxs] but in a gnark circuit
+func hashNxsGnark(api frontend.API, params query.GnarkHornerParams, x int) frontend.Variable {
+
+	res := frontend.Variable(0)
+
+	for _, part := range params.Parts {
+
+		var nx frontend.Variable
+
+		if x == 0 {
+			nx = part.N0
+		} else {
+			nx = part.N1
+		}
+
+		res = mimc.GnarkBlockCompression(api, res, nx)
+	}
+
+	return res
+}
