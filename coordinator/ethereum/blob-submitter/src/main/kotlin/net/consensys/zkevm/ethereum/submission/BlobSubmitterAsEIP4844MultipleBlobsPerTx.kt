@@ -15,7 +15,6 @@ import java.util.function.Consumer
 class BlobSubmitterAsEIP4844MultipleBlobsPerTx(
   private val contract: LineaRollupSmartContractClient,
   private val gasPriceCapProvider: GasPriceCapProvider?,
-  private val useEstimatedGas: Boolean,
   private val blobSubmittedEventConsumer: Consumer<BlobSubmittedEvent> = Consumer<BlobSubmittedEvent> { },
   private val clock: Clock = Clock.System
 ) : BlobSubmitter {
@@ -50,7 +49,7 @@ class BlobSubmitterAsEIP4844MultipleBlobsPerTx(
           nonce,
           gasPriceCaps
         )
-        contract.submitBlobs(blobs, gasPriceCaps, useEstimatedGas)
+        contract.submitBlobs(blobs, gasPriceCaps)
           .whenException { th ->
             logSubmissionError(
               log,
@@ -94,7 +93,7 @@ class BlobSubmitterAsEIP4844MultipleBlobsPerTx(
           nonce,
           gasPriceCaps
         )
-        contract.submitBlobsEthCall(blobRecords, gasPriceCaps, useEstimatedGas)
+        contract.submitBlobsEthCall(blobRecords, gasPriceCaps)
           .whenException { th ->
             logSubmissionError(log, blobRecords.toBlockIntervalsString(), th, isEthCall = true)
           }

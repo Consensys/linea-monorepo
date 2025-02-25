@@ -197,7 +197,6 @@ class BlobSubmissionCoordinator(
       aggregationsRepository: AggregationsRepository,
       lineaSmartContractClient: LineaRollupSmartContractClient,
       gasPriceCapProvider: GasPriceCapProvider?,
-      useEthEstimateGas: Boolean,
       alreadySubmittedBlobsFilter: AsyncFilter<BlobRecord>,
       blobSubmittedEventDispatcher: Consumer<BlobSubmittedEvent>,
       vertx: Vertx,
@@ -209,7 +208,6 @@ class BlobSubmissionCoordinator(
       val blobSubmitter = BlobSubmitterAsEIP4844MultipleBlobsPerTx(
         contract = lineaSmartContractClient,
         gasPriceCapProvider = gasPriceCapProvider,
-        useEstimatedGas = useEthEstimateGas,
         blobSubmittedEventConsumer = blobSubmittedEventDispatcher,
         clock = clock
       )

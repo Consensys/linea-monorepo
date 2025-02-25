@@ -29,7 +29,6 @@ interface AggregationSubmitter {
 class AggregationSubmitterImpl(
   private val lineaRollup: LineaRollupSmartContractClient,
   private val gasPriceCapProvider: GasPriceCapProvider?,
-  private val useEstimatedGas: Boolean,
   private val aggregationSubmittedEventConsumer: Consumer<FinalizationSubmittedEvent> =
     Consumer<FinalizationSubmittedEvent> { },
   private val clock: Clock = Clock.System
@@ -52,8 +51,7 @@ class AggregationSubmitterImpl(
       aggregationLastBlob = aggregationEndBlob,
       parentShnarf = parentShnarf,
       parentL1RollingHash = parentL1RollingHash,
-      parentL1RollingHashMessageNumber = parentL1RollingHashMessageNumber,
-      useEstimatedGas = useEstimatedGas
+      parentL1RollingHashMessageNumber = parentL1RollingHashMessageNumber
     )
       .whenException { th -> logAggregationSubmissionError(aggregationProof.intervalString(), th, isEthCall = true) }
       .thenPeek { result ->
@@ -82,8 +80,7 @@ class AggregationSubmitterImpl(
               parentShnarf = parentShnarf,
               parentL1RollingHash = parentL1RollingHash,
               parentL1RollingHashMessageNumber = parentL1RollingHashMessageNumber,
-              gasPriceCaps = gasPriceCaps,
-              useEstimatedGas = useEstimatedGas
+              gasPriceCaps = gasPriceCaps
             )
               .whenException { th -> logAggregationSubmissionError(aggregationProof.intervalString(), th) }
               .thenPeek { transactionHash ->

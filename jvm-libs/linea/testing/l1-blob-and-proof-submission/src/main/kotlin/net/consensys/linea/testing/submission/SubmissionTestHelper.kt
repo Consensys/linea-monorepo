@@ -70,7 +70,7 @@ fun submitBlobs(
     .map { (agg, aggBlobs) ->
       val blobChunks = aggBlobs.chunked(blobChunksSize)
       blobChunks.map { blobs ->
-        val txHash = contractClient.submitBlobs(blobs, gasPriceCaps = null, useEstimatedGas = false).get()
+        val txHash = contractClient.submitBlobs(blobs, gasPriceCaps = null).get()
         val blobsLogInfo = blobs.map(BlockInterval::intervalString)
         log.info(
           "submitting blobs: aggregation={} blobsChunk={} txHash={}",
@@ -133,8 +133,7 @@ fun submitBlobsAndAggregationsAndWaitExecution(
         parentShnarf = aggBlobs.first().blobCompressionProof!!.prevShnarf,
         parentL1RollingHash = parentAgg?.aggregationProof?.l1RollingHash ?: ByteArray(32),
         parentL1RollingHashMessageNumber = parentAgg?.aggregationProof?.l1RollingHashMessageNumber ?: 0L,
-        gasPriceCaps = null,
-        useEstimatedGas = false
+        gasPriceCaps = null
       ).get()
       log.info(
         "submitting aggregation={} txHash={}",

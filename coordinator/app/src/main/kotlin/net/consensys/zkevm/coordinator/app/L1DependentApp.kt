@@ -439,7 +439,8 @@ class L1DependentApp(
       ),
       contractGasProvider = primaryOrFallbackGasProvider,
       web3jClient = l1Web3jClient,
-      smartContractErrors = smartContractErrors
+      smartContractErrors = smartContractErrors,
+      useEthEstimateGas = configs.l1.useEthEstimateGas
     )
   }
 
@@ -559,7 +560,6 @@ class L1DependentApp(
       aggregationsRepository = aggregationsRepository,
       lineaSmartContractClient = lineaSmartContractClientForDataSubmission,
       gasPriceCapProvider = gasPriceCapProviderForDataSubmission,
-      useEthEstimateGas = configs.l1.useEthEstimateGas,
       alreadySubmittedBlobsFilter = alreadySubmittedBlobsFilter,
       blobSubmittedEventDispatcher = EventDispatcher(blobSubmittedEventConsumers),
       vertx = vertx,
@@ -657,7 +657,8 @@ class L1DependentApp(
         transactionManager = finalizationTransactionManager,
         contractGasProvider = primaryOrFallbackGasProvider,
         web3jClient = l1Web3jClient,
-        smartContractErrors = smartContractErrors
+        smartContractErrors = smartContractErrors,
+        useEthEstimateGas = configs.l1.useEthEstimateGas
       )
 
       val latestFinalizationSubmittedBlockNumberTracker = LatestFinalizationSubmittedBlockNumberTracker(0UL)
@@ -696,7 +697,6 @@ class L1DependentApp(
         aggregationSubmitter = AggregationSubmitterImpl(
           lineaRollup = lineaSmartContractClientForFinalization,
           gasPriceCapProvider = gasPriceCapProviderForFinalization,
-          useEstimatedGas = configs.l1.useEthEstimateGas,
           aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers)
         ),
         vertx = vertx,

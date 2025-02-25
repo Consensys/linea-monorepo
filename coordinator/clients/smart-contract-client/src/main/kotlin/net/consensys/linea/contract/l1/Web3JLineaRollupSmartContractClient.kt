@@ -24,24 +24,9 @@ import java.math.BigInteger
 class Web3JLineaRollupSmartContractClient internal constructor(
   contractAddress: String,
   web3j: Web3j,
-  private val asyncTransactionManager: AsyncFriendlyTransactionManager,
-  contractGasProvider: ContractGasProvider,
-  private val smartContractErrors: SmartContractErrors,
-  private val helper: Web3JContractAsyncHelper =
-    Web3JContractAsyncHelper(
-      contractAddress,
-      web3j,
-      asyncTransactionManager,
-      contractGasProvider,
-      smartContractErrors
-    ),
-  private val web3jLineaClient: LineaRollupV6 = LineaRollupEnhancedWrapper(
-    contractAddress,
-    web3j,
-    asyncTransactionManager,
-    contractGasProvider,
-    helper
-  ),
+  private val transactionManager: AsyncFriendlyTransactionManager,
+  private val web3jContractHelper: Web3JContractAsyncHelper,
+  private val web3jLineaClient: LineaRollupV6,
   private val log: Logger = LogManager.getLogger(Web3JLineaRollupSmartContractClient::class.java)
 ) : Web3JLineaRollupSmartContractClientReadOnly(
   contractAddress = contractAddress,
@@ -56,14 +41,30 @@ class Web3JLineaRollupSmartContractClient internal constructor(
       web3j: Web3j,
       transactionManager: AsyncFriendlyTransactionManager,
       contractGasProvider: ContractGasProvider,
-      smartContractErrors: SmartContractErrors
+      smartContractErrors: SmartContractErrors,
+      useEthEstimateGas: Boolean = false
     ): Web3JLineaRollupSmartContractClient {
+      val web3JContractAsyncHelper = Web3JContractAsyncHelper(
+        contractAddress = contractAddress,
+        web3j = web3j,
+        transactionManager = transactionManager,
+        contractGasProvider = contractGasProvider,
+        smartContractErrors = smartContractErrors,
+        useEthEstimateGas = useEthEstimateGas
+      )
+      val lineaRollupEnhancedWrapper = LineaRollupEnhancedWrapper(
+        contractAddress = contractAddress,
+        web3j = web3j,
+        transactionManager = transactionManager,
+        contractGasProvider = contractGasProvider,
+        web3jContractHelper = web3JContractAsyncHelper
+      )
       return Web3JLineaRollupSmartContractClient(
-        contractAddress,
-        web3j,
-        transactionManager,
-        contractGasProvider,
-        smartContractErrors
+        contractAddress = contractAddress,
+        web3j = web3j,
+        transactionManager = transactionManager,
+        web3jContractHelper = web3JContractAsyncHelper,
+        web3jLineaClient = lineaRollupEnhancedWrapper
       )
     }
 
@@ -72,7 +73,8 @@ class Web3JLineaRollupSmartContractClient internal constructor(
       web3j: Web3j,
       credentials: Credentials,
       contractGasProvider: ContractGasProvider,
-      smartContractErrors: SmartContractErrors
+      smartContractErrors: SmartContractErrors,
+      useEthEstimateGas: Boolean
     ): Web3JLineaRollupSmartContractClient {
       return load(
         contractAddress,
@@ -80,23 +82,24 @@ class Web3JLineaRollupSmartContractClient internal constructor(
         // chainId will default -1, which will create legacy transactions
         AsyncFriendlyTransactionManager(web3j, credentials),
         contractGasProvider,
-        smartContractErrors
+        smartContractErrors,
+        useEthEstimateGas
       )
     }
   }
 
   override fun currentNonce(): ULong {
-    return asyncTransactionManager.currentNonce().toULong()
+    return transactionManager.currentNonce().toULong()
   }
 
   private fun resetNonce(blockNumber: BigInteger?): SafeFuture<ULong> {
-    return asyncTransactionManager
+    return transactionManager
       .resetNonce(blockNumber)
       .thenApply { currentNonce() }
   }
 
   override fun updateNonceAndReferenceBlockToLastL1Block(): SafeFuture<BlockAndNonce> {
-    return helper.getCurrentBlock()
+    return web3jContractHelper.getCurrentBlock()
       .thenCompose { blockNumber ->
         web3jLineaClient.setDefaultBlockParameter(DefaultBlockParameter.valueOf(blockNumber))
         resetNonce(blockNumber)
@@ -110,30 +113,27 @@ class Web3JLineaRollupSmartContractClient internal constructor(
    */
   override fun submitBlobs(
     blobs: List<BlobRecord>,
-    gasPriceCaps: GasPriceCaps?,
-    useEstimatedGas: Boolean
+    gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String> {
     return getVersion()
       .thenCompose { version ->
         val function = buildSubmitBlobsFunction(version, blobs)
-        helper.sendBlobCarryingTransactionAndGetTxHash(
+        web3jContractHelper.sendBlobCarryingTransactionAndGetTxHash(
           function = function,
           blobs = blobs.map { it.blobCompressionProof!!.compressedData },
-          gasPriceCaps = gasPriceCaps,
-          useEstimatedGas
+          gasPriceCaps = gasPriceCaps
         )
       }
   }
 
   override fun submitBlobsEthCall(
     blobs: List<BlobRecord>,
-    gasPriceCaps: GasPriceCaps?,
-    useEstimatedGas: Boolean
+    gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String?> {
     return getVersion()
       .thenCompose { version ->
         val function = buildSubmitBlobsFunction(version, blobs)
-        helper.executeBlobEthCall(function, blobs, gasPriceCaps, useEstimatedGas)
+        web3jContractHelper.executeBlobEthCall(function, blobs, gasPriceCaps)
       }
   }
 
@@ -143,8 +143,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
     parentShnarf: ByteArray,
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long,
-    gasPriceCaps: GasPriceCaps?,
-    useEstimatedGas: Boolean
+    gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String> {
     return getVersion()
       .thenCompose { version ->
@@ -155,7 +154,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
           parentL1RollingHash,
           parentL1RollingHashMessageNumber
         )
-        helper.sendTransactionAsync(function, BigInteger.ZERO, gasPriceCaps, useEstimatedGas)
+        web3jContractHelper.sendTransactionAsync(function, BigInteger.ZERO, gasPriceCaps)
           .thenApply { result ->
             throwExceptionIfJsonRpcErrorReturned("eth_sendRawTransaction", result)
             result.transactionHash
@@ -168,8 +167,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
     aggregationLastBlob: BlobRecord,
     parentShnarf: ByteArray,
     parentL1RollingHash: ByteArray,
-    parentL1RollingHashMessageNumber: Long,
-    useEstimatedGas: Boolean
+    parentL1RollingHashMessageNumber: Long
   ): SafeFuture<String?> {
     return getVersion()
       .thenCompose { version ->
@@ -180,7 +178,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
           parentL1RollingHash,
           parentL1RollingHashMessageNumber
         )
-        helper.executeEthCall(function, useEstimatedGas)
+        web3jContractHelper.executeEthCall(function)
       }
   }
 }
