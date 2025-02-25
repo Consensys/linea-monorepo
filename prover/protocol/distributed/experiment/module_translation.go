@@ -224,3 +224,27 @@ func (mt *moduleTranslator) InsertGrandProduct(oldQuery query.GrandProduct) quer
 
 	return mt.Wiop.InsertGrandProduct(res.Round, res.ID, res.Inputs)
 }
+
+// InsertHorner inserts a new Horner query in the target compiled IOP
+// by translating all the related columns
+func (mt *moduleTranslator) InsertHorner(oldQuery query.Horner) query.Horner {
+
+	res := query.Horner{
+		Round: oldQuery.Round,
+		ID:    oldQuery.ID,
+	}
+
+	for _, oldPart := range oldQuery.Parts {
+
+		newPart := query.HornerPart{
+			Coefficient:  mt.TranslateExpression(oldPart.Coefficient),
+			SignNegative: oldPart.SignNegative,
+			Selector:     mt.TranslateColumn(oldPart.Selector, 0),
+			X:            mt.TranslateAccessor(oldPart.X),
+		}
+
+		res.Parts = append(res.Parts, newPart)
+	}
+
+	return mt.Wiop.InsertHornerQuery(res.Round, res.ID, res.Parts)
+}

@@ -604,6 +604,11 @@ func (c *CompiledIOP) RegisterVerifierAction(round int, action VerifierAction) {
 
 // Register a GrandProduct query
 func (c *CompiledIOP) InsertGrandProduct(round int, id ifaces.QueryID, in map[int]*query.GrandProductInput) query.GrandProduct {
+
+	if in == nil {
+		panic("passed a nil set of inputs")
+	}
+
 	q := query.NewGrandProduct(round, in, id)
 	// Finally registers the query
 	c.QueriesParams.AddToRound(round, q.Name(), q)

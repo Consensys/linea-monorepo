@@ -34,6 +34,10 @@ type FilteredModuleInputs struct {
 	// query (expectedly, the only one) for the current module.
 	GrandProductArgs [][2]*symbolic.Expression
 
+	// HornerArgs are the [query.HornerParts] of the Horner queries
+	// (expetedly, the one one) for the current module.
+	HornerArgs []query.HornerPart
+
 	// GlobalConstraints are the global constraints
 	// for the current module.
 	GlobalConstraints []*query.GlobalConstraint
@@ -168,6 +172,20 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 				}
 			}
 			fmi.GrandProductArgs = args
+
+		case *query.Horner:
+			if len(fmi.HornerArgs) > 0 {
+				utils.Panic("expected there would be only one horner query")
+			}
+			args := mf.FilterHornerParts(q)
+			for i := range args {
+				cols := wizardutils.ColumnsOfExpression(args[i].Coefficient)
+				for _, col := range cols {
+					fmi.addColumnLPP(col)
+				}
+				fmi.addColumnLPP(args[i].Selector)
+			}
+			fmi.HornerArgs = args
 
 		default:
 			utils.Panic("unexpected type of query: type=%T name=%v", q, qName)
@@ -371,6 +389,32 @@ func (filter moduleFilter) FilterGrandProductInputs(q *query.GrandProduct) [][2]
 				},
 			)
 		}
+	}
+
+	return res
+}
+
+// FilterHornerParts returns a list of [query.HornerPart] who can be resolved
+// to the current module. The function panics if one part could not be resolved.
+func (filter moduleFilter) FilterHornerParts(q *query.Horner) []query.HornerPart {
+
+	var res []query.HornerPart
+
+	for _, part := range q.Parts {
+
+		resolvedMod := ModuleOfList(
+			filter.Disc,
+			part.Coefficient,
+			symbolic.NewVariable(part.Selector),
+		)
+
+		resolvedMod.MustBeResolved()
+
+		if resolvedMod != filter.Module {
+			continue
+		}
+
+		res = append(res, part)
 	}
 
 	return res

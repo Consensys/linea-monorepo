@@ -52,6 +52,8 @@ func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryI
 			if err := inp[key].Numerators[i].Validate(); err != nil {
 				utils.Panic(" Numerator[%v] is not a valid expression", i)
 			}
+		}
+		for i := range inp[key].Denominators {
 			if err := inp[key].Denominators[i].Validate(); err != nil {
 				utils.Panic(" Denominator[%v] is not a valid expression", i)
 			}
