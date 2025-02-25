@@ -114,6 +114,24 @@ type ModuleGLAssignGL struct {
 	*ModuleGL
 }
 
+// BuildModuleGL builds a [ModuleGL] from scratch from a [FilteredModuleInputs].
+// The function works by creating a define function that will call [NewModuleGL]
+// / and then it calls [wizard.Compile] without passing compilers.
+func BuildModuleGL(moduleInput *FilteredModuleInputs) *ModuleGL {
+
+	var (
+		moduleGL   *ModuleGL
+		defineFunc = func(b *wizard.Builder) {
+			moduleGL = NewModuleGL(b, moduleInput)
+		}
+		// Since the NewModuleGL contains a pointer to the compiled IOP already
+		// there is no need to use the one returned by [wizard.Compile].
+		_ = wizard.Compile(defineFunc)
+	)
+
+	return moduleGL
+}
+
 // NewModuleGL declares and constructs a new ModuleGL from a [wizard.Builder]
 // and a [FilteredModuleInput]. The function performs all the necessary
 // declarations to build the GL part of the module and returns the constructed

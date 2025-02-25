@@ -1,6 +1,7 @@
 package smartvectors
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 
@@ -181,6 +182,28 @@ func Density(v SmartVector) int {
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}
+}
+
+// PaddingOrientationOf returns an integer indicating the orientation of the
+// padding of a column. '0' indicates an unresolved orientation. '1' indicates
+// that the columns if right-padded and '-1' indicates that it is left-padded.
+//
+// The function returns an error if the vector is not a padded-circular window.
+func PaddingOrientationOf(v SmartVector) (int, error) {
+
+	switch w := v.(type) {
+	case *PaddedCircularWindow:
+		if w.offset == 0 {
+			return 1, nil
+		}
+		if w.offset+len(w.window) == w.totLen {
+			return -1, nil
+		}
+	default:
+		return 0, errors.New("vector is not a padded-circular window")
+	}
+
+	return 0, nil
 }
 
 // Window returns the effective window of the vector,
