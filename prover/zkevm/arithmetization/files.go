@@ -33,7 +33,7 @@ func ReadZkevmBin(optConfig *mir.OptimisationConfig) (schema *air.Schema, metada
 		buf  []byte = []byte(zkevmStr)
 	)
 
-	fmt.Println("Starting ReadZkevmBin...")
+	logrus.Info("Starting ReadZkevmBin...")
 
 	// TODO: why is only this one needed??
 	gob.Register(binfile.Attribute(&corset.SourceMap{}))
@@ -41,43 +41,43 @@ func ReadZkevmBin(optConfig *mir.OptimisationConfig) (schema *air.Schema, metada
 	// Parse zkbinary file
 	err = binf.UnmarshalBinary(buf)
 	if err != nil {
-		fmt.Printf("Error during UnmarshalBinary: %v\n", err)
+		logrus.Errorf("Error during UnmarshalBinary: %v", err)
 		return nil, nil, fmt.Errorf("could not parse the read bytes of the 'zkevm.bin' file into an hir.Schema: %w", err)
 	}
-	fmt.Println("UnmarshalBinary successful")
+	logrus.Info("UnmarshalBinary successful")
 
 	// Extract schema
 	if reflect.DeepEqual(binf.Schema, hir.Schema{}) {
-		fmt.Println("binf.Schema is empty after unmarshaling zkevm.bin")
+		logrus.Error("binf.Schema is empty after unmarshaling zkevm.bin")
 		return nil, nil, fmt.Errorf("binf.Schema is empty after unmarshaling zkevm.bin")
 	}
-	fmt.Println("binf.Schema extraction successful")
+	logrus.Info("binf.Schema extraction successful")
 
 	hirSchema := &binf.Schema
 	metadata, err = binf.Header.GetMetaData()
 	if err != nil {
-		fmt.Printf("Error extracting metadata: %v\n", err)
+		logrus.Errorf("Error extracting metadata: %v", err)
 		return nil, nil, fmt.Errorf("failed to extract metadata: %w", err)
 	}
-	fmt.Println("Metadata extraction successful")
+	logrus.Info("Metadata extraction successful")
 
 	// Ensure LowerToMir() does not return a zero-value struct
 	mirSchema := hirSchema.LowerToMir()
 	if reflect.DeepEqual(mirSchema, mir.Schema{}) {
-		fmt.Println("LowerToMir() returned an empty struct")
+		logrus.Error("LowerToMir() returned an empty struct")
 		return nil, nil, fmt.Errorf("LowerToMir() returned an empty struct")
 	}
-	fmt.Println("LowerToMir() successful")
+	logrus.Info("LowerToMir() successful")
 
 	// Ensure LowerToAir() does not return a zero-value struct
 	airSchema := mirSchema.LowerToAir(*optConfig)
 	if reflect.DeepEqual(airSchema, air.Schema{}) {
-		fmt.Println("LowerToAir() returned an empty struct")
+		logrus.Error("LowerToAir() returned an empty struct")
 		return nil, nil, fmt.Errorf("LowerToAir() returned an empty struct")
 	}
-	fmt.Println("LowerToAir() successful")
+	logrus.Info("LowerToAir() successful")
 
-	fmt.Println("ReadZkevmBin completed successfully")
+	logrus.Info("ReadZkevmBin completed successfully")
 	return airSchema, metadata, nil
 }
 
