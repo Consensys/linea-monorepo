@@ -61,7 +61,7 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 // Assign assignes the submodules of the state-manager. It requires the
 // arithmetization columns to be assigned first.
 func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]statemanager.DecodedTrace) {
-
+	assignHubAddresses(run)
 	sm.StateSummary.Assign(run, shomeiTraces)
 	sm.accumulator.Assign(run, utils.Join(shomeiTraces...))
 	sm.accumulatorSummaryConnector.Assign(run)

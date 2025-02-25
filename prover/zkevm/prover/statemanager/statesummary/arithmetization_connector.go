@@ -76,7 +76,6 @@ type HubColumnSet struct {
 	// account data
 	AddressHI, AddressLO                                 ifaces.Column
 	Nonce, NonceNew                                      ifaces.Column
-	MimcCodeHash, MimcCodeHashNew                        ifaces.Column
 	CodeHashHI, CodeHashLO, CodeHashHINew, CodeHashLONew ifaces.Column
 	CodeSizeOld, CodeSizeNew                             ifaces.Column
 	BalanceOld, BalanceNew                               ifaces.Column
