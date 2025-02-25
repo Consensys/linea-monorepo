@@ -12,7 +12,12 @@ import { IRewardProvider } from "./interfaces/IRewardProvider.sol";
 import { TrustedCodehashAccess } from "./TrustedCodehashAccess.sol";
 import { StakeMath } from "./math/StakeMath.sol";
 
-// Rewards Streamer with Multiplier Points
+/**
+ * @title RewardsStreamerMP
+ * @notice A contract that manages staking and rewards for multiple vaults.
+ * @dev This contract is upgradeable using the UUPS pattern.
+ * @dev Uses `TrustedCodeHashAccess` to whitelist trusted vaults.
+ */
 contract RewardsStreamerMP is
     Initializable,
     UUPSUpgradeable,
@@ -22,22 +27,31 @@ contract RewardsStreamerMP is
     IRewardProvider,
     StakeMath
 {
+    /// @notice Token that is staked in the vaults (SNT).
     IERC20 public STAKING_TOKEN;
-
+    /// @notice Scale factor used for rewards calculation.
     uint256 public constant SCALE_FACTOR = 1e18;
-
+    /// @notice Amount of total staked tokens.
     uint256 public totalStaked;
+    /// @notice Total multiplier points accrued.
     uint256 public totalMPAccrued;
+    /// @notice Total maximum multiplier points that can be accrued.
     uint256 public totalMaxMP;
+    /// @notice Index of the current reward period.
     uint256 public rewardIndex;
+    /// @notice Time of the last multiplier points update.
     uint256 public lastMPUpdatedTime;
-
+    /// @notice Flag to enable emergency mode.
     bool public emergencyModeEnabled;
-
+    /// @notice Total rewards accrued in the system.
     uint256 public totalRewardsAccrued;
+    /// @notice Amount of rewards available for distribution.
     uint256 public rewardAmount;
+    /// @notice Time of the last reward update.
     uint256 public lastRewardTime;
+    /// @notice Time when rewards start.
     uint256 public rewardStartTime;
+    /// @notice Time when rewards end.
     uint256 public rewardEndTime;
 
     struct VaultData {
@@ -51,10 +65,13 @@ contract RewardsStreamerMP is
         uint256 rewardsAccrued;
     }
 
+    /// @notice Maps vault addresses to vault data
     mapping(address vault => VaultData data) public vaultData;
+    /// @notice Maps Account address to a list of vaults
     mapping(address owner => address[] vault) public vaults;
+    /// @notice Maps vault addresses to their owners
     mapping(address vault => address owner) public vaultOwners;
-
+    /// @notice Total amount of staked multiplier points
     uint256 public totalMPStaked;
 
     modifier onlyRegisteredVault() {
@@ -71,10 +88,20 @@ contract RewardsStreamerMP is
         _;
     }
 
+    /**
+     * @notice Initializes the contract.
+     * @dev Disables initializers to prevent reinitialization.
+     */
     constructor() {
         _disableInitializers();
     }
 
+    /**
+     * @notice Initializes the contract with the provided owner and staking token.
+     * @dev Also sets the initial `lastMPUpdatedTime`
+     * @param _owner Address of the owner of the contract.
+     * @param _stakingToken Address of the staking token.
+     */
     function initialize(address _owner, address _stakingToken) public initializer {
         __TrustedCodehashAccess_init(_owner);
         __UUPSUpgradeable_init();
@@ -84,6 +111,10 @@ contract RewardsStreamerMP is
         lastMPUpdatedTime = block.timestamp;
     }
 
+    /**
+     * @notice Authorizes contract upgrades via UUPS.
+     * @dev This function is only callable by the owner.
+     */
     function _authorizeUpgrade(address) internal view override {
         _checkOwner();
     }
@@ -168,6 +199,14 @@ contract RewardsStreamerMP is
         return accountTotalStake;
     }
 
+    /**
+     * @notice Allows users to stake and start accruing MPs.
+     * @dev Called by trusted `StakeVault`.
+     * @dev Can only be called when emergency mode is disabled.
+     * @dev Only registered vaults are allowed to stake.
+     * @param amount The amount of tokens to stake
+     * @param lockPeriod The duration to lock the stake
+     */
     function stake(
         uint256 amount,
         uint256 lockPeriod
@@ -214,6 +253,13 @@ contract RewardsStreamerMP is
         emit Staked(msg.sender, amount, lockPeriod);
     }
 
+    /**
+     * @notice Allows users to lock their staked balance for a specified duration.
+     * @dev Called by trusted `StakeVault`.
+     * @dev Can only be called when emergency mode is disabled.
+     * @dev Only registered vaults are allowed to lock.
+     * @param lockPeriod The duration to lock the stake
+     */
     function lock(uint256 lockPeriod)
         external
         onlyTrustedCodehash
@@ -252,6 +298,14 @@ contract RewardsStreamerMP is
         emit Locked(msg.sender, lockPeriod, newLockEnd);
     }
 
+    /**
+     * @notice Allows users to unstake their staked balance.
+     * @dev Called by trusted `StakeVault`.
+     * @dev Can only be called when emergency mode is disabled.
+     * @dev Only registered vaults are allowed to unstake.
+     * @dev Unstaking reduces accrued MPs proportionally.
+     * @param amount The amount of tokens to unstake
+     */
     function unstake(uint256 amount)
         external
         onlyTrustedCodehash
@@ -276,6 +330,8 @@ contract RewardsStreamerMP is
         vault.rewardIndex = rewardIndex;
         vault.mpAccrued -= _deltaMpTotal;
 
+        // A vault's "staked" MP will be reduced if the accrued MP is less than the staked MP.
+        // This is because the accrued MP represents the vault's total MP
         if (vault.mpAccrued < vault.mpStaked) {
             totalMPStaked -= vault.mpStaked - vault.mpAccrued;
             vault.mpStaked = vault.mpAccrued;
@@ -326,6 +382,10 @@ contract RewardsStreamerMP is
         }
     }
 
+    /**
+     * @notice Returns the total multiplier points accrued in the system.
+     * @return The total multiplier points accrued in the system.
+     */
     function totalMP() external view returns (uint256) {
         return _liveTotalMP();
     }
@@ -351,6 +411,12 @@ contract RewardsStreamerMP is
         return newTotalMPAccrued;
     }
 
+    /**
+     * @notice Allows an admin to set the reward amount and duration.
+     * @dev This function is only callable by the owner.
+     * @param amount The amount of rewards to distribute.
+     * @param duration The duration of the reward period.
+     */
     function setReward(uint256 amount, uint256 duration) external onlyOwner {
         if (duration == 0) {
             revert StakingManager__DurationCannotBeZero();
@@ -360,10 +426,10 @@ contract RewardsStreamerMP is
             revert StakingManager__AmountCannotBeZero();
         }
 
-        // this will call _updateRewardIndex and update the totalRewardsAccrued
+        // this will call updateRewardIndex and update the totalRewardsAccrued
         _updateGlobalState();
 
-        // in case _updateRewardIndex returns earlier,
+        // in case updateRewardIndex returns earlier,
         // we still update the lastRewardTime
         lastRewardTime = block.timestamp;
         rewardAmount = amount;
@@ -409,12 +475,11 @@ contract RewardsStreamerMP is
         }
     }
 
-    function pendingRewardIndex() external view returns (uint256) {
-        uint256 newRewardIndex;
-        (, newRewardIndex) = _liveRewardIndex();
-        return newRewardIndex;
-    }
-
+    /**
+     * @notice Returns the total shares in the system.
+     * @dev Total shares are total staked tokens and total multiplier points staked.
+     * @return The total shares in the system.
+     */
     function totalShares() external view returns (uint256) {
         return _totalShares();
     }
@@ -423,10 +488,19 @@ contract RewardsStreamerMP is
         return totalStaked + totalMPStaked;
     }
 
+    /**
+     * @notice Returns the total shares of a given vault.
+     * @return The total vault shares
+     */
     function vaultShares(address vaultAddress) external view returns (uint256) {
         return _vaultShares(vaultAddress);
     }
 
+    /**
+     * @notice Allows users to compound their accrued MP.
+     * @dev This function is only callable when emergency mode is disabled.
+     * @dev Anyone can compound MPs for any vault.
+     */
     function compound(address vaultAddress) external onlyNotEmergencyMode {
         VaultData storage vault = vaultData[vaultAddress];
         _updateGlobalState();
@@ -502,27 +576,53 @@ contract RewardsStreamerMP is
         vault.rewardIndex = rewardIndex;
     }
 
+    /**
+     * @notice Allows users to claim their accrued rewards.
+     * @dev This function is only callable when emergency mode is disabled.
+     * @dev Anyone can claim rewards on behalf of any vault
+     */
     function updateVaultMP(address vaultAddress) external onlyNotEmergencyMode {
         _updateVault(vaultAddress, false);
     }
 
+    /**
+     * @notice Enables emergency mode.
+     * @dev This function is only callable when emergency mode is disabled.
+     * @dev Only the owner of the contract can call this function.
+     */
     function enableEmergencyMode() external onlyOwner onlyNotEmergencyMode {
         emergencyModeEnabled = true;
         emit EmergencyModeEnabled();
     }
 
+    /**
+     * @notice Returns the staked balance of a vault.
+     * @param vaultAddress The address of the vault.
+     */
     function getStakedBalance(address vaultAddress) public view returns (uint256) {
         return vaultData[vaultAddress].stakedBalance;
     }
 
+    /**
+     * @notice Returns vault data for a given vault address.
+     * @return Vault data for the given vault address
+     */
     function getVault(address vaultAddress) external view returns (VaultData memory) {
         return vaultData[vaultAddress];
     }
 
+    /**
+     * @notice Returns total rewards supply in the system.
+     * @return Total rewards supply in the system.
+     */
     function totalRewardsSupply() public view returns (uint256) {
         return totalRewardsAccrued + _calculatePendingRewards();
     }
 
+    /**
+     * @notice Returns the rewards balance of a vault.
+     * @return Rewards balance of the vault.
+     */
     function rewardsBalanceOf(address vaultAddress) public view returns (uint256) {
         VaultData storage vault = vaultData[vaultAddress];
         return vault.rewardsAccrued + _vaultPendingRewards(vault);
@@ -538,6 +638,11 @@ contract RewardsStreamerMP is
         return (accountShares * deltaRewardIndex) / SCALE_FACTOR;
     }
 
+    /**
+     * @notice Returns the rewards balance of an account.
+     * @dev Iterates over all vaults owned by the account and sums the rewards.
+     * @return Rewards balance of the account.
+     */
     function rewardsBalanceOfAccount(address account) external view returns (uint256) {
         address[] memory accountVaults = vaults[account];
         uint256 accountTotalRewards = 0;
@@ -554,20 +659,30 @@ contract RewardsStreamerMP is
         return vault.mpAccrued + _getVaultPendingMP(vault);
     }
 
+    /**
+     * @notice Returns the multiplier points balance of a vault.
+     * @return Multiplier points balance of the vault.
+     */
     function mpBalanceOf(address vaultAddress) external view returns (uint256) {
         return _mpBalanceOf(vaultAddress);
     }
 
+    /**
+     * @notice Returns staked multiplier points of a vault.
+     * @return Staked multiplier points of the vault.
+     */
     function mpStakedOf(address vaultAddress) external view returns (uint256) {
         VaultData storage vault = vaultData[vaultAddress];
         return vault.mpStaked;
     }
 
-    /// @notice Migrate the staked balance of a vault to another vault.
-    /// @param migrateTo The address of the vault to migrate to.
-    /// @dev This function is only callable by trusted stake vaults.
-    /// @dev Reverts if the vault to migrate to is not owned by the same user.
-    /// @dev Revets if the vault to migrate to has a non-zero staked balance.
+    /**
+     * @notice Migrate the staked balance of a vault to another vault.
+     * @param migrateTo The address of the vault to migrate to.
+     * @dev This function is only callable by trusted stake vaults.
+     * @dev Reverts if the vault to migrate to is not owned by the same user.
+     * @dev Revets if the vault to migrate to has a non-zero staked balance.
+     */
     function migrateToVault(address migrateTo) external onlyNotEmergencyMode onlyTrustedCodehash onlyRegisteredVault {
         // first ensure the vault to migrate to is actually owned by the same user
         if (IStakeVault(msg.sender).owner() != IStakeVault(migrateTo).owner()) {
