@@ -4,9 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -504,15 +502,6 @@ func (run *VerifierRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 func (run *VerifierRuntime) GetPublicInput(name string) any {
 	allPubs := run.Spec.PublicInputs
 	for i := range allPubs {
-		if allPubs[i].Name == name && name == constants.DistributedProjectionPublicInput {
-			if s, ok := allPubs[i].Acc.(*accessors.FromDistributedProjectionAccessor); ok {
-				return DistributedProjectionPublicInput{
-					ScaledHorner: s.GetVal(run),
-					CumSumCurr:   s.GetValCumSumCurr(run),
-					CumSumPrev:   s.GetValCumSumPrev(run),
-				}
-			}
-		}
 		if allPubs[i].Name == name {
 			return allPubs[i].Acc.GetVal(run)
 		}

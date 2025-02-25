@@ -25,11 +25,6 @@ type GnarkGrandProductParams struct {
 	Prod frontend.Variable
 }
 
-// A gnark circuit version of DistributedProjectionParams
-type GnarkDistributedProjectionParams struct {
-	Sum frontend.Variable
-}
-
 // HornerParamsPartGnark is a [HornerParamsPart] in a gnark circuit.
 type HornerParamsPartGnark struct {
 	// X is the evaluation value of the Horner query
@@ -125,11 +120,6 @@ func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	fs.Update(p.Prod)
-}
-
-// Update the fiat-shamir state with the the present parameters
-func (p GnarkDistributedProjectionParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	fs.Update(p.Sum)
 }
 
 // Update the fiat-shamir state with the the present parameters
