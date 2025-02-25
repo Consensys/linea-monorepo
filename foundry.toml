@@ -9,7 +9,6 @@
   fuzz = { runs = 1_000, max_test_rejects = 262144 }
   gas_reports = ["*"]
   libs = ["lib"]
-  via_ir = true
   optimizer = true
   optimizer_runs = 10_000
   out = "out"

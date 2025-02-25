@@ -1117,29 +1117,38 @@ contract StakeTest is RewardsStreamerMPTest {
         );
     }
 
+    struct TestParams {
+        uint256 aliceStakeAmount;
+        uint256 bobStakeAmount;
+        uint256 totalStaked;
+        uint256 totalMPAccrued;
+        uint256 totalMaxMP;
+    }
+
     function test_StakeMultipleAccountsMPIncreasesMaxMPDoesNotChange() public {
-        uint256 aliceStakeAmount = 15e18;
-        uint256 aliceMP = aliceStakeAmount;
-        uint256 aliceMaxMP = aliceStakeAmount * streamer.MAX_MULTIPLIER() + aliceMP;
+        TestParams memory params;
+        params.aliceStakeAmount = 15e18;
+        params.bobStakeAmount = 5e18;
+        params.totalStaked = params.aliceStakeAmount + params.bobStakeAmount;
+        params.totalMPAccrued = params.totalStaked;
+        params.totalMaxMP = (params.aliceStakeAmount * streamer.MAX_MULTIPLIER() + params.aliceStakeAmount)
+            + (params.bobStakeAmount * streamer.MAX_MULTIPLIER() + params.bobStakeAmount);
 
-        uint256 bobStakeAmount = 5e18;
-        uint256 bobMP = bobStakeAmount;
-        uint256 bobMaxMP = bobStakeAmount * streamer.MAX_MULTIPLIER() + bobMP;
+        uint256 aliceMP = params.aliceStakeAmount;
+        uint256 aliceMaxMP = params.aliceStakeAmount * streamer.MAX_MULTIPLIER() + aliceMP;
 
-        uint256 totalMPAccrued = aliceStakeAmount + bobStakeAmount;
-        uint256 totalStaked = aliceStakeAmount + bobStakeAmount;
-        uint256 totalMaxMP = aliceMaxMP + bobMaxMP;
-
-        _stake(alice, aliceStakeAmount, 0);
-        _stake(bob, bobStakeAmount, 0);
+        uint256 bobMP = params.bobStakeAmount;
+        uint256 bobMaxMP = params.bobStakeAmount * streamer.MAX_MULTIPLIER() + bobMP;
+        _stake(alice, params.aliceStakeAmount, 0);
+        _stake(bob, params.bobStakeAmount, 0);
 
         checkStreamer(
             CheckStreamerParams({
-                totalStaked: totalStaked,
-                totalMPStaked: totalStaked,
-                totalMPAccrued: totalMPAccrued,
-                totalMaxMP: totalMaxMP,
-                stakingBalance: totalStaked,
+                totalStaked: params.totalStaked,
+                totalMPStaked: params.totalStaked,
+                totalMPAccrued: params.totalMPAccrued,
+                totalMaxMP: params.totalMaxMP,
+                stakingBalance: params.totalStaked,
                 rewardBalance: 0,
                 rewardIndex: 0
             })
@@ -1149,8 +1158,8 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckVaultParams({
                 account: vaults[alice],
                 rewardBalance: 0,
-                stakedBalance: aliceStakeAmount,
-                vaultBalance: aliceStakeAmount,
+                stakedBalance: params.aliceStakeAmount,
+                vaultBalance: params.aliceStakeAmount,
                 rewardIndex: 0,
                 mpStaked: aliceMP,
                 mpAccrued: aliceMP,
@@ -1162,8 +1171,8 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckVaultParams({
                 account: vaults[bob],
                 rewardBalance: 0,
-                stakedBalance: bobStakeAmount,
-                vaultBalance: bobStakeAmount,
+                stakedBalance: params.bobStakeAmount,
+                vaultBalance: params.bobStakeAmount,
                 rewardIndex: 0,
                 mpStaked: bobMP,
                 mpAccrued: bobMP,
@@ -1179,21 +1188,21 @@ contract StakeTest is RewardsStreamerMPTest {
         streamer.updateVaultMP(vaults[alice]);
         streamer.updateVaultMP(vaults[bob]);
 
-        uint256 aliceExpectedMPIncrease = aliceStakeAmount; // 1 year passed, 1 MP accrued per token staked
-        uint256 bobExpectedMPIncrease = bobStakeAmount; // 1 year passed, 1 MP accrued per token staked
+        uint256 aliceExpectedMPIncrease = params.aliceStakeAmount; // 1 year passed, 1 MP accrued per token staked
+        uint256 bobExpectedMPIncrease = params.bobStakeAmount; // 1 year passed, 1 MP accrued per token staked
         uint256 totalExpectedMPIncrease = aliceExpectedMPIncrease + bobExpectedMPIncrease;
 
         uint256 aliceMPAccrued = aliceMP + aliceExpectedMPIncrease;
         uint256 bobMPAccrued = bobMP + bobExpectedMPIncrease;
-        totalMPAccrued = totalMPAccrued + totalExpectedMPIncrease;
+        params.totalMPAccrued = params.totalMPAccrued + totalExpectedMPIncrease;
 
         checkStreamer(
             CheckStreamerParams({
-                totalStaked: totalStaked,
-                totalMPStaked: totalStaked,
-                totalMPAccrued: totalMPAccrued,
-                totalMaxMP: totalMaxMP,
-                stakingBalance: totalStaked,
+                totalStaked: params.totalStaked,
+                totalMPStaked: params.totalStaked,
+                totalMPAccrued: params.totalMPAccrued,
+                totalMaxMP: params.totalMaxMP,
+                stakingBalance: params.totalStaked,
                 rewardBalance: 0,
                 rewardIndex: 0
             })
@@ -1203,11 +1212,11 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckVaultParams({
                 account: vaults[alice],
                 rewardBalance: 0,
-                stakedBalance: aliceStakeAmount,
-                vaultBalance: aliceStakeAmount,
+                stakedBalance: params.aliceStakeAmount,
+                vaultBalance: params.aliceStakeAmount,
                 rewardIndex: 0,
                 mpStaked: aliceMP,
-                mpAccrued: aliceMPAccrued,
+                mpAccrued: aliceMP + aliceExpectedMPIncrease,
                 maxMP: aliceMaxMP,
                 rewardsAccrued: 0
             })
@@ -1216,8 +1225,8 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckVaultParams({
                 account: vaults[bob],
                 rewardBalance: 0,
-                stakedBalance: bobStakeAmount,
-                vaultBalance: bobStakeAmount,
+                stakedBalance: params.bobStakeAmount,
+                vaultBalance: params.bobStakeAmount,
                 rewardIndex: 0,
                 mpStaked: bobMP,
                 mpAccrued: bobMPAccrued,
@@ -1233,21 +1242,21 @@ contract StakeTest is RewardsStreamerMPTest {
         streamer.updateVaultMP(vaults[alice]);
         streamer.updateVaultMP(vaults[bob]);
 
-        aliceExpectedMPIncrease = aliceStakeAmount / 2;
-        bobExpectedMPIncrease = bobStakeAmount / 2;
+        aliceExpectedMPIncrease = params.aliceStakeAmount / 2;
+        bobExpectedMPIncrease = params.bobStakeAmount / 2;
         totalExpectedMPIncrease = aliceExpectedMPIncrease + bobExpectedMPIncrease;
 
         aliceMPAccrued = aliceMPAccrued + aliceExpectedMPIncrease;
         bobMPAccrued = bobMPAccrued + bobExpectedMPIncrease;
-        totalMPAccrued = totalMPAccrued + totalExpectedMPIncrease;
+        params.totalMPAccrued = params.totalMPAccrued + totalExpectedMPIncrease;
 
         checkStreamer(
             CheckStreamerParams({
-                totalStaked: totalStaked,
-                totalMPStaked: totalStaked,
-                totalMPAccrued: totalMPAccrued,
-                totalMaxMP: totalMaxMP,
-                stakingBalance: totalStaked,
+                totalStaked: params.totalStaked,
+                totalMPStaked: params.totalStaked,
+                totalMPAccrued: params.totalMPAccrued,
+                totalMaxMP: params.totalMaxMP,
+                stakingBalance: params.totalStaked,
                 rewardBalance: 0,
                 rewardIndex: 0
             })
@@ -1257,8 +1266,8 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckVaultParams({
                 account: vaults[alice],
                 rewardBalance: 0,
-                stakedBalance: aliceStakeAmount,
-                vaultBalance: aliceStakeAmount,
+                stakedBalance: params.aliceStakeAmount,
+                vaultBalance: params.aliceStakeAmount,
                 rewardIndex: 0,
                 mpStaked: aliceMP,
                 mpAccrued: aliceMPAccrued,
@@ -1270,8 +1279,8 @@ contract StakeTest is RewardsStreamerMPTest {
             CheckVaultParams({
                 account: vaults[bob],
                 rewardBalance: 0,
-                stakedBalance: bobStakeAmount,
-                vaultBalance: bobStakeAmount,
+                stakedBalance: params.bobStakeAmount,
+                vaultBalance: params.bobStakeAmount,
                 rewardIndex: 0,
                 mpStaked: bobMP,
                 mpAccrued: bobMPAccrued,
