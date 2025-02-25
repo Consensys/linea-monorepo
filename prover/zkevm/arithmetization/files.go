@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/go-corset/pkg/air"
 	"github.com/consensys/go-corset/pkg/binfile"
 	"github.com/consensys/go-corset/pkg/corset"
+	"github.com/consensys/go-corset/pkg/mir"
 	"github.com/consensys/go-corset/pkg/schema"
 	"github.com/consensys/go-corset/pkg/trace"
 	"github.com/consensys/go-corset/pkg/trace/lt"
@@ -24,9 +25,7 @@ const TraceOverflowExitCode = 77
 //go:embed zkevm.bin
 var zkevmStr string
 
-// ReadZkEvmBin parses and compiles a "zkevm.bin" into an air.Schema. f is closed
-// at the end of the function call.
-func ReadZkevmBin() (*air.Schema, error) {
+func ReadZkevmBin(optConfig *mir.OptimisationConfig) (schema *air.Schema, metadata map[string]string, err error) {
 	var (
 		binf binfile.BinaryFile
 		buf  []byte = []byte(zkevmStr)
@@ -34,15 +33,16 @@ func ReadZkevmBin() (*air.Schema, error) {
 	// TODO: why is only this one needed??
 	gob.Register(binfile.Attribute(&corset.SourceMap{}))
 	// Parse zkbinary file
-	err := binf.UnmarshalBinary(buf)
+	err = binf.UnmarshalBinary(buf)
 	// Sanity check for errors
 	if err != nil {
-		return nil, fmt.Errorf("could not parse the read bytes of the 'zkevm.bin' file into an hir.Schema: %w", err)
+		return nil, nil, fmt.Errorf("could not parse the read bytes of the 'zkevm.bin' file into an hir.Schema: %w", err)
 	}
 	// Extract schema
 	hirSchema := &binf.Schema
+	metadata, err = binf.Header.GetMetaData()
 	// This performs the corset compilation
-	return hirSchema.LowerToMir().LowerToAir(), nil
+	return hirSchema.LowerToMir().LowerToAir(*optConfig), metadata, err
 }
 
 func ReadLtTraces(f io.ReadCloser, sch *air.Schema) (trace.Trace, error) {
