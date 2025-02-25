@@ -111,7 +111,7 @@ func NewHorner(round int, id ifaces.QueryID, parts []HornerPart) Horner {
 // NewIncompleteHornerParams returns an incomplete [HornerParams] by using
 // the [HornerParamsParts] as inputs. The function ignores the N1's values
 // if they are provided and does not set
-func NewHornerParamsFromIncomplete(run ifaces.Runtime, q *Horner, parts []HornerParamsPart) HornerParams {
+func NewHornerParamsFromIncomplete(run ifaces.Runtime, q Horner, parts []HornerParamsPart) HornerParams {
 	res := HornerParams{
 		Parts: parts,
 	}
@@ -123,7 +123,7 @@ func NewHornerParamsFromIncomplete(run ifaces.Runtime, q *Horner, parts []Horner
 // an incomplete [HornerParams]. The object should however have a the X's
 // and the N0's set. The function returns a pointer to its receiver so the
 // call can be chained.
-func (p *HornerParams) SetResult(run ifaces.Runtime, q *Horner) *HornerParams {
+func (p *HornerParams) SetResult(run ifaces.Runtime, q Horner) *HornerParams {
 	n1s, finalResult := p.GetResult(run, q)
 	for i := range p.Parts {
 		p.Parts[i].N1 = n1s[i]
@@ -136,7 +136,7 @@ func (p *HornerParams) SetResult(run ifaces.Runtime, q *Horner) *HornerParams {
 // from the (possibly incomplete) [HornerParams]. The function returns
 // the list of the N1 values and the final result of the Horner evaluation
 // query.
-func (p *HornerParams) GetResult(run ifaces.Runtime, q *Horner) (n1s []int, finalResult field.Element) {
+func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, finalResult field.Element) {
 
 	// note: this is ineffective as the final result is already allocated
 	// and assigned with 0. The line is here for clarity.
@@ -161,7 +161,7 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q *Horner) (n1s []int, fina
 		)
 
 		for j := range data {
-			if sel[i].IsOne() {
+			if sel[j].IsOne() {
 				res.Mul(&res, &x)
 				res.Add(&res, &data[j])
 				count++
@@ -199,10 +199,10 @@ func (h HornerParams) UpdateFS(fs *fiatshamir.State) {
 }
 
 // Check implements the [ifaces.Query] interface
-func (h *Horner) Check(run ifaces.Runtime) error {
+func (h Horner) Check(run ifaces.Runtime) error {
 
 	var (
-		params           = run.GetParams(h.ID).(*HornerParams)
+		params           = run.GetParams(h.ID).(HornerParams)
 		n1s, finalResult = params.GetResult(run, h)
 	)
 

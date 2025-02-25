@@ -85,8 +85,11 @@ func CompileHorner(comp *wizard.CompiledIOP) {
 func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 
 	var (
-		round   = q.Round
-		ctx     = hornerCtx{}
+		round = q.Round
+		ctx   = hornerCtx{
+			Selectors: make(map[int]*[]ifaces.Column),
+			Q:         q,
+		}
 		iPRound = 0
 	)
 
@@ -169,7 +172,7 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 
 	comp.RegisterProverAction(iPRound, assignHornerIP{ctx})
 	comp.RegisterProverAction(q.Round, assignHornerCtx{ctx})
-	comp.RegisterVerifierAction(q.Round, checkHornerResult{hornerCtx: ctx})
+	comp.RegisterVerifierAction(q.Round, &checkHornerResult{hornerCtx: ctx})
 }
 
 func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
@@ -261,7 +264,7 @@ func (a assignHornerIP) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (c checkHornerResult) Run(run wizard.Runtime) error {
+func (c *checkHornerResult) Run(run wizard.Runtime) error {
 
 	var (
 		hornerQuery  = c.Q
@@ -337,13 +340,13 @@ func (c checkHornerResult) Run(run wizard.Runtime) error {
 	}
 
 	if res != hornerParams.FinalResult {
-		return fmt.Errorf("Horner query has finalResult %v but we recovered %v", res.String(), hornerParams.FinalResult.String())
+		return fmt.Errorf("horner query has finalResult %v but we recovered %v", res.String(), hornerParams.FinalResult.String())
 	}
 
 	return nil
 }
 
-func (c checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		hornerQuery  = c.Q
@@ -412,10 +415,10 @@ func (c checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	api.AssertIsEqual(res, hornerParams.FinalResult)
 }
 
-func (c checkHornerResult) Skip() {
+func (c *checkHornerResult) Skip() {
 	c.skipped = true
 }
 
-func (c checkHornerResult) IsSkipped() bool {
+func (c *checkHornerResult) IsSkipped() bool {
 	return c.skipped
 }

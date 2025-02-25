@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // projectionContext is a compilation artefact generated during the execution of
@@ -21,7 +22,7 @@ type projectionContext struct {
 	Xs []coin.Info
 	// Query is the Horner query generated during the compilation of the projection
 	// queries.
-	Query *query.Horner
+	Query query.Horner
 }
 
 // assignHornerQuery is a [wizard.ProverAction] that assigns the Horner query from
@@ -80,7 +81,7 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 			query.HornerPart{
 				SignNegative: true,
 				Coefficient:  b,
-				Selector:     projection.Inp.FilterA,
+				Selector:     projection.Inp.FilterB,
 				X:            accessors.NewFromCoin(alpha),
 			},
 		)
@@ -88,7 +89,7 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 		ctx.Xs = append(ctx.Xs, alpha, alpha)
 	}
 
-	comp.InsertHornerQuery(round, ifaces.QueryIDf("PROJECTION_TO_HORNER_%v", comp.SelfRecursionCount), parts)
+	ctx.Query = comp.InsertHornerQuery(round, ifaces.QueryIDf("PROJECTION_TO_HORNER_%v", comp.SelfRecursionCount), parts)
 	comp.RegisterProverAction(round, assignHornerQuery{ctx})
 	comp.RegisterVerifierAction(round, &checkHornerQuery{projectionContext: ctx})
 }
@@ -97,7 +98,7 @@ func (a assignHornerQuery) Run(run *wizard.ProverRuntime) {
 
 	params := query.HornerParams{}
 
-	for _ = range a.Query.Parts {
+	for range a.Query.Parts {
 		params.Parts = append(params.Parts, query.HornerParamsPart{
 			N0: 0,
 		})
@@ -106,7 +107,7 @@ func (a assignHornerQuery) Run(run *wizard.ProverRuntime) {
 	params.SetResult(run, a.Query)
 
 	if !params.FinalResult.IsZero() {
-		panic("expected final result to be zero")
+		utils.Panic("expected final result to be zero, but computed %v", params.FinalResult.String())
 	}
 
 	run.AssignHornerParams(a.Query.ID, params)
