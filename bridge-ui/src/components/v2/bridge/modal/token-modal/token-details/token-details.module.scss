@@ -2,9 +2,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.2rem 1.6rem;
+  padding: 0.75rem 1rem;
   cursor: pointer;
-  border-radius: 0.5rem;
+  border-radius: 0.3125rem;
   transition: background-color 0.2s ease-in-out;
 
   &:hover {
@@ -14,13 +14,13 @@
 
 .left {
   display: flex;
-  gap: 0.8rem;
+  gap: 0.5rem;
   text-align: initial;
   align-items: center;
 
   img {
-    width: 3.2rem;
-    height: 3.2rem;
+    width: 2rem;
+    height: 2rem;
   }
 }
 
@@ -29,11 +29,11 @@
   align-items: center;
 
   .token-symbol {
-    font-size: 1.6rem;
+    font-size: 1rem;
     font-weight: 500;
   }
   .token-name {
-    font-size: 1.4rem;
+    font-size: 0.875rem;
     color: var(--v2-color-darker-gray);
   }
 }
@@ -42,16 +42,16 @@
   text-align: right;
 
   .balance {
-    font-size: 1.6rem;
+    font-size: 1rem;
     font-weight: 500;
   }
   .price {
-    font-size: 1.4rem;
+    font-size: 0.875rem;
     color: var(--v2-color-darker-gray);
   }
 }
 
 .not-from-current-layer {
   text-align: initial;
-  max-width: 19rem;
+  max-width: 11.875rem;
 }

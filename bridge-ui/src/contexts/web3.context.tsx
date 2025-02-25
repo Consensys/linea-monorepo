@@ -12,57 +12,50 @@ type Web3ProviderProps = {
   children: ReactNode;
 };
 
-// export const cssOverrides = `
-//     .modal > * {
-//         font-size: 2rem !important;
-//     }
-//     .connect-button {
-//         border-radius: 3rem;
-//         padding: 1.2rem 2.4rem;
-//         line-height: 1;
-//         width: 100%;
-//     }
+export const cssOverrides = `
+  .connect-button {
+    font-size: 0.875rem;
+    border-radius: 1.875rem;
+    padding: 0.75rem 1.5rem;
+    text-align: center;
+    line-height: 1;
+    cursor: pointer;
+  }
 
-//     .connect-button .typography {
-//         font-size: 1.4rem;
-//     }
+  .connect-button .typography {
+    font-size: 0.875rem;
+  }
 
-//     .dynamic-widget-inline-controls__network-picker-main {
-//         display: none;
-//     }
+  .dynamic-widget-inline-controls {
+    background-color: transparent;
+    border: 1px solid white;
+    border-radius: 1.875rem;
+  }
 
-//     .dynamic-widget-inline-controls__account-control-container {
-//         border-radius: 3rem;
-//         min-width: 100%;
-//     }
+  .dynamic-widget-inline-controls .network-switch-control__network-name {
+    color: white;
 
-//     .wallet-icon-with-network__container {
-//         display: none;
-//         width: 32px;
-//         height: 32px;
-//     }
+    @media screen and (max-width: 912px) {
+      display: none;
+    }
+  }
 
-//     .account-control__name {
-//         display: none;
-//     }
+  .dynamic-widget-inline-controls .network-switch-control__arrow-icon {
+    color: white;
+  }
 
-//     .dynamic-widget-inline-controls {
-//         max-height: 100%;
-//         width: 32px;
-//         height: 32px;
-//         border-radius: 100%;
-//         background: linear-gradient(to top left,
-//           #F8CECE 15.62%,
-//           #ED7878 39.58%,
-//           #E7781D 72.92%,
-//           #D36E09 90.63%,
-//           #D76E04 100%);
-//     }
+  .account-control__name {
+    color: white;
 
-//     .dynamic-widget-inline-controls__account-control > svg {
-//         display: none;
-//     }
-// `;
+    @media screen and (max-width: 912px) {
+      display: none;
+    }
+  }
+
+  .account-control__icon {
+    color: white;
+  }
+`;
 
 export function Web3Provider({ children }: Web3ProviderProps) {
   return (
@@ -71,6 +64,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
         environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID!,
         walletConnectors: [EthereumWalletConnectors],
         appName: "Linea Bridge",
+        cssOverrides,
       }}
     >
       <WagmiProvider config={config}>

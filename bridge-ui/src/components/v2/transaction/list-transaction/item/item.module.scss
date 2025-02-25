@@ -1,17 +1,17 @@
 .transaction-item {
   position: relative;
   background-color: var(--v2-color-white);
-  padding: 1.6rem;
-  border-radius: 1rem;
+  padding: 1rem;
+  border-radius: 0.625rem;
   transition: box-shadow 0.25s ease-in-out;
   display: flex;
   justify-content: space-between;
-  column-gap: 0.8rem;
+  column-gap: 0.5rem;
   font-family: var(--font-atyp-text);
   cursor: pointer;
 
   &:hover {
-    box-shadow: inset 0 0 0 0.2rem var(--v2-color-icterine);
+    box-shadow: inset 0 0 0 0.125rem var(--v2-color-icterine);
   }
 
   &.completed {
@@ -30,7 +30,7 @@
 
 .left {
   display: flex;
-  column-gap: 0.8rem;
+  column-gap: 0.5rem;
   align-items: center;
 }
 
@@ -38,11 +38,11 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.4rem;
+  gap: 0.25rem;
 }
 
 .date {
-  font-size: 1.4rem;
+  font-size: 0.875rem;
   line-height: 1.4;
   color: var(--v2-color-darker-gray);
 }
@@ -50,21 +50,21 @@
 .info {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.25rem;
   justify-content: space-between;
 }
 
 .code {
-  font-size: 1.6rem;
+  font-size: 1rem;
   line-height: 1.4;
   font-weight: 600;
 }
 
 .value-wrapper {
-  font-size: 1.6rem;
+  font-size: 1rem;
   line-height: 1.4;
   font-weight: 600;
-  padding-right: 0.8rem;
+  padding-right: 0.5rem;
 }
 
 .unit {
@@ -72,17 +72,17 @@
 }
 
 .status {
-  padding: 0.4rem 0.8rem;
-  border-radius: 3rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 1.875rem;
   color: var(--v2-color-darker-gray);
   background-color: var(--v2-color-smoke);
-  font-size: 1.2rem;
+  font-size: 0.75rem;
   display: flex;
-  gap: 0.4rem;
+  gap: 0.25rem;
   align-items: center;
 
   svg {
-    width: 1.2rem;
-    height: 1.2rem;
+    width: 0.75rem;
+    height: 0.75rem;
   }
 }

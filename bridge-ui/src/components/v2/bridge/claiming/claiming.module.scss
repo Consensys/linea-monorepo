@@ -1,12 +1,12 @@
 .wrapper {
-  margin-top: 1rem;
+  margin-top: 0.625rem;
   background-color: var(--v2-color-smoke);
-  border-radius: 1rem;
-  padding: 1.6rem;
+  border-radius: 0.625rem;
+  padding: 0.625rem;
   transition: box-shadow 0.25s ease-in-out;
 
   &:hover {
-    box-shadow: inset 0 0 0 0.2rem var(--v2-color-icterine);
+    box-shadow: inset 0 0 0 0.125rem var(--v2-color-icterine);
   }
 }
 
@@ -17,8 +17,8 @@
   align-items: center;
 
   svg {
-    width: 1.6rem;
-    height: 1.6rem;
+    width: 1rem;
+    height: 1rem;
   }
 }
 
@@ -30,28 +30,28 @@
 
   .title {
     color: var(--v2-color-black);
-    font-size: 1.4rem;
+    font-size: 0.875rem;
     font-weight: 500;
   }
   .config {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
+    gap: 0.5rem;
   }
 }
 
 .result {
   display: flex;
-  gap: 0.8rem;
-  margin: 1.6rem 0;
+  gap: 0.5rem;
+  margin: 1rem 0;
 
   .crypto {
-    font-size: 2.4rem;
+    font-size: 1.5rem;
     font-weight: 500;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.25rem;
   }
   .amount {
-    font-size: 1.2rem;
+    font-size: 0.75rem;
     color: var(--v2-color-darker-gray);
     font-family: var(--font-atyp-text);
   }
@@ -60,18 +60,18 @@
 .estimate {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.8rem;
-  font-size: 1.2rem;
+  gap: 0.5rem;
+  font-size: 0.75rem;
   font-family: var(--font-atyp-text);
 
   svg {
-    width: 1.2rem;
-    height: 1.2rem;
+    width: 0.75rem;
+    height: 0.75rem;
   }
 
   .time {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.25rem;
     align-items: center;
     cursor: pointer;
     color: var(--v2-color-darker-gray);
@@ -87,7 +87,7 @@
     color: var(--v2-color-dark-red);
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.25rem;
     cursor: pointer;
     font-size: inherit;
   }
@@ -95,15 +95,15 @@
   .gas-fees,
   .no-fees {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.25rem;
     align-items: center;
     color: var(--v2-color-darker-gray);
     cursor: pointer;
     font-size: inherit;
 
     img {
-      width: 1.2rem;
-      height: 1.2rem;
+      width: 0.75rem;
+      height: 0.75rem;
       border-radius: 50%;
     }
 
@@ -124,8 +124,8 @@
 
 .bottom {
   font-family: var(--font-atyp-text);
-  font-size: 1.2rem;
-  margin-top: 0.8rem;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
 
   button {
     font-size: inherit;

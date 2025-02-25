@@ -1,8 +1,8 @@
 .content-wrapper {
-  max-width: 46.8rem;
-  margin: 0 auto 6rem;
+  max-width: 29.25rem;
+  margin: 0 auto 3.75rem;
 
-  width: calc(100% - 4.8rem);
+  width: calc(100% - 3rem);
 
   @include bp("tablet") {
     width: 100%;

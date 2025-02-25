@@ -1,5 +1,5 @@
 .modal-inner {
-  padding: 0 1.6rem 1.6rem 1.6rem;
+  padding: 0 1rem 1rem 1rem;
   font-family: var(--font-atyp-text);
 
   label {
@@ -8,17 +8,17 @@
   }
 
   input {
-    margin-top: 0.4rem;
-    border-radius: 1rem;
+    margin-top: 0.25rem;
+    border-radius: 0.625rem;
     box-shadow: 0 0 0 1px var(--v2-color-silver);
     width: 100%;
-    padding: 1.2rem 4.2rem 1.2rem 1.6rem;
-    font-size: 1.4rem;
+    padding: 0.75rem 2.625rem 0.75rem 1rem;
+    font-size: 0.875rem;
     color: var(--v2-color-black);
   }
 
   .btn-save {
-    margin-top: 1.6rem;
+    margin-top: 1rem;
   }
 
   &.success {
@@ -28,7 +28,7 @@
   }
   &.error {
     input:focus {
-      box-shadow: inset 0 0 0 0.2rem var(--v2-color-red);
+      box-shadow: inset 0 0 0 0.125rem var(--v2-color-red);
     }
     .message-text {
       color: var(--v2-color-red);
@@ -43,8 +43,8 @@
 
 .message-text {
   font-family: var(--font-atyp-text);
-  font-size: 1.2rem;
-  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
   line-height: 1.4;
 }
 
@@ -53,12 +53,12 @@
 }
 
 .reset {
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 1rem;
+  height: 1rem;
   color: var(--v2-color-darker-gray);
   position: absolute;
-  right: 1.6rem;
-  top: calc(50% - 0.8rem);
+  right: 1rem;
+  top: calc(50% - 0.5rem);
   cursor: pointer;
   visibility: hidden;
 

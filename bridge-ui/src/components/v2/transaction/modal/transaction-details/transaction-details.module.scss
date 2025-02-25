@@ -1,22 +1,22 @@
 .modal-inner {
-  padding: 0 1.6rem 1.6rem 1.6rem;
+  padding: 0 1rem 1rem 1rem;
 }
 
 .list {
   background-color: var(--v2-color-smoke);
-  border-radius: 0.8rem;
-  margin-bottom: 1.6rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
   font-family: var(--font-atyp-text);
 
   li {
-    padding: 1.2rem;
-    font-size: 1.4rem;
+    padding: 0.75rem;
+    font-size: 0.875rem;
     display: flex;
     justify-content: space-between;
 
     .date-time {
       display: flex;
-      gap: 0.8rem;
+      gap: 0.5rem;
 
       & > :first-child {
         font-weight: 500;
@@ -30,7 +30,7 @@
     .hash {
       display: flex;
       align-items: center;
-      gap: 0.8rem;
+      gap: 0.5rem;
 
       a {
         text-decoration: none;
@@ -42,8 +42,8 @@
       }
 
       svg {
-        width: 0.8rem;
-        height: 0.8rem;
+        width: 0.5rem;
+        height: 0.5rem;
         color: var(--v2-color-silver);
         transform: rotate(-45deg);
       }

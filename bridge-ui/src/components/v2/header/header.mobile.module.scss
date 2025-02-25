@@ -1,12 +1,12 @@
 @include bp-max("tablet") {
   .header {
-    width: calc(100% - 1.5rem);
-    margin-top: 0.73rem;
-    padding: 1.6rem 1.665rem;
+    width: calc(100% - 0.9375rem);
+    margin-top: 0.45625rem;
+    padding: 1rem 1.040625rem;
   }
 
   .logo {
     width: auto;
-    height: 2.4rem;
+    height: 1.5rem;
   }
 }

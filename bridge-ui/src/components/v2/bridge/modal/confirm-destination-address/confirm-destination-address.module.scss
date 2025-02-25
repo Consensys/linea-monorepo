@@ -1,14 +1,14 @@
 .modal-inner {
-  padding: 0 1.6rem 1.6rem 1.6rem;
+  padding: 0 1rem 1rem 1rem;
   font-family: var(--font-atyp-text);
   display: flex;
   flex-direction: column;
-  gap: 1.6rem;
+  gap: 1rem;
 
   a {
     display: flex;
     align-self: center;
-    gap: 0.8rem;
+    gap: 0.5rem;
     align-items: center;
     color: var(--v2-color-indigo);
     text-decoration: none;
