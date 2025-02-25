@@ -84,6 +84,7 @@ tasks.register("jacocoReferenceBlockchainTestsReport", JacocoReport) {
 
 tasks.register('referenceGeneralStateTests', Test) {
   dependsOn(buildReferenceTestsZkevmBin)
+  finalizedBy(jacocoReferenceGeneralStateTestsReport)
   description = 'Runs ETH reference general state tests.'
   dependsOn generateGeneralStateReferenceTests
   // Record zkevm.bin for CorsetValidator
@@ -96,6 +97,15 @@ tasks.register('referenceGeneralStateTests', Test) {
   boolean isCiServer = System.getenv().containsKey("CI")
   minHeapSize = "4g"
   maxHeapSize = isCiServer ? "32g" : "8g"
+}
+
+tasks.register("jacocoReferenceGeneralStateTestsReport", JacocoReport) {
+  reports {
+    xml.required = true
+  }
+
+  sourceSets project(":arithmetization").sourceSets.main
+  executionData(referenceGeneralStateTests)
 }
 
 [

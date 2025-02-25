@@ -33,6 +33,20 @@ jobs:
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --air
 
+      - name: Upload jacoco weekly tests coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-weekly-tests-coverage-report
+          path: arithmetization/build/reports/jacoco/jacocoWeeklyTestsReport/**/*
+
+      - name: Upload jacoco weekly tests exec file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-weekly-tests-exec-file
+          path: arithmetization/build/jacoco/weeklyTests.exec
+
       - name: Failure Notification
         if: ${{ failure() || cancelled() }}
         uses: slackapi/slack-github-action@v2.0.0

@@ -155,6 +155,15 @@ tasks.register("fastReplayTests", Test) {
     excludeTags("nightly")
     excludeTags("weekly")
   }
+  finalizedBy(jacocoFastReplayTestsReport)
+}
+
+tasks.register("jacocoFastReplayTestsReport", JacocoReport) {
+  reports {
+    xml.required = true
+  }
+
+  executionData(fastReplayTests)
 }
 
 tasks.register("nightlyReplayTests", Test) {
@@ -194,6 +203,15 @@ tasks.register("nightlyTests", Test) {
   useJUnitPlatform {
     includeTags("nightly")
   }
+  finalizedBy(jacocoNightlyTestsReport)
+}
+
+tasks.register("jacocoNightlyTestsReport", JacocoReport) {
+  reports {
+    xml.required = true
+  }
+
+  executionData(nightlyTests)
 }
 
 tasks.register("weeklyTests", Test) {
@@ -211,10 +229,19 @@ tasks.register("weeklyTests", Test) {
     excludeTags("replay")
     includeTags("weekly")
   }
+  finalizedBy(jacocoWeeklyTestsReport)
 }
 
-// Gradle task to concatenate Unit and Reference tests exec files
-tasks.register("jacocoUnitAndReferenceTestsReport", JacocoReport) {
+tasks.register("jacocoWeeklyTestsReport", JacocoReport) {
+  reports {
+    xml.required = true
+  }
+
+  executionData(weeklyTests)
+}
+
+// Gradle task to concatenate Unit, FastReplay, Nightly, Weekly and Reference Blockchain and State tests exec files
+tasks.register("jacocoUnitFastReplayWeeklyNightlyReferenceBlockchainAndStateTestsReport", JacocoReport) {
   reports {
     xml.required = true
     html.outputLocation = layout.buildDirectory.dir('reports/jacocoConcatenate/html')

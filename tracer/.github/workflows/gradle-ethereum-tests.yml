@@ -31,6 +31,7 @@ jobs:
       - name: Run General State Reference Tests
         run: GOMEMLIMIT=64GiB ./gradlew -Dblockchain=Ethereum referenceGeneralStateTests
         env:
+          REFERENCE_TESTS_PARALLELISM: 2
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --air
@@ -43,6 +44,20 @@ jobs:
           path: |
             reference-tests/build/reports/tests/**/*
             tmp/local/*
+
+      - name: Upload jacoco state tests coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-state-tests-coverage-report
+          path: reference-tests/build/reports/jacoco/jacocoReferenceGeneralStateTestsReport/**/*
+
+      - name: Upload jacoco state tests exec file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-state-tests-exec-file
+          path: reference-tests/build/jacoco/referenceGeneralStateTests.exec
 
       - name: Failure Notification
         if: ${{ failure() || cancelled() }}

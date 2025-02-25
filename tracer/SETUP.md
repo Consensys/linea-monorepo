@@ -77,8 +77,8 @@ ______________________________________________________________________
 # Run all EVM test suite reference tests
 ./gradlew clean referenceTests
 
-# Run single reference test via gradle, e.g for net.consensys.linea.generated.blockchain.BlockchainReferenceTest_583
-./gradlew :reference-tests:referenceTests --tests "net.consensys.linea.generated.blockchain.BlockchainReferenceTest_583"
+# Run single reference test via gradle, e.g for net.consensys.linea.generated.blockchain.BlockchainReferenceTest_339
+./gradlew referenceBlockchainTests -Dblockchain=Ethereum --tests "net.consensys.linea.generated.blockchain.BlockchainReferenceTest_339"
 ```
 
 ______________________________________________________________________
@@ -160,10 +160,12 @@ corset check -T <JSON_FILE> -v zkevm-constraints/zkevm.bin
 Plugins are documented [here](PLUGINS.md).
 
 ## Release Process
-Here are the steps for releasing a new version of the plugins:
-  1. Create a tag with the release version number in the format vX.Y.Z (e.g., v0.2.0 creates a release version 0.2.0).
-  2. Push the tag to the repository.
-  3. GitHub Actions will automatically create a draft release for the release tag.
-  4. Once the release workflow completes, update the release notes, uncheck "Draft", and publish the release.
 
-Note: Release tags (of the form v*) are protected and can only be pushed by organization and/or repository owners.
+Here are the steps for releasing a new version of the plugins:
+
+1. Create a tag with the release version number in the format vX.Y.Z (e.g., v0.2.0 creates a release version 0.2.0).
+1. Push the tag to the repository.
+1. GitHub Actions will automatically create a draft release for the release tag.
+1. Once the release workflow completes, update the release notes, uncheck "Draft", and publish the release.
+
+Note: Release tags (of the form v\*) are protected and can only be pushed by organization and/or repository owners.
