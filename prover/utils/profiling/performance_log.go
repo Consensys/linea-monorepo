@@ -1,7 +1,6 @@
 package profiling
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -54,21 +53,6 @@ type performanceMonitor struct {
 // then empty string value may be passed
 func StartPerformanceMonitor(description string, sampleRate time.Duration, profilePath, flameGraphPath string) (*performanceMonitor, error) {
 
-	if profilePath == "" {
-		return nil, errors.New("empty profile path specified")
-	}
-
-	// Ensure the profile path exists
-	if err := os.MkdirAll(profilePath, 0755); err != nil {
-		return nil, err
-	}
-
-	if flameGraphPath != "" {
-		if err := os.MkdirAll(flameGraphPath, 0755); err != nil {
-			return nil, err
-		}
-	}
-
 	m := &performanceMonitor{
 		log: &PerformanceLog{
 			Description:    description,
@@ -80,21 +64,32 @@ func StartPerformanceMonitor(description string, sampleRate time.Duration, profi
 		stopChan: make(chan struct{}),
 	}
 
-	// Start CPU profiling
-	cpuProfilePath := path.Join(m.log.ProfilePath, "cpu-profile.pb.gz")
-	if f, err := os.Create(cpuProfilePath); err != nil {
-		return nil, err
-	} else {
-		pprof.StartCPUProfile(f)
-		m.log.cpuProfile = f
+	if profilePath != "" {
+		if err := os.MkdirAll(profilePath, 0755); err != nil {
+			return nil, err
+		}
+		// Start CPU profiling
+		cpuProfilePath := path.Join(m.log.ProfilePath, "cpu-profile.pb.gz")
+		if f, err := os.Create(cpuProfilePath); err != nil {
+			return nil, err
+		} else {
+			pprof.StartCPUProfile(f)
+			m.log.cpuProfile = f
+		}
+
+		// Start memory profiling
+		memProfilePath := path.Join(m.log.ProfilePath, "mem-profile.pb.gz")
+		if f, err := os.Create(memProfilePath); err != nil {
+			return nil, err
+		} else {
+			m.log.memProfile = f
+		}
 	}
 
-	// Start memory profiling
-	memProfilePath := path.Join(m.log.ProfilePath, "mem-profile.pb.gz")
-	if f, err := os.Create(memProfilePath); err != nil {
-		return nil, err
-	} else {
-		m.log.memProfile = f
+	if flameGraphPath != "" {
+		if err := os.MkdirAll(flameGraphPath, 0755); err != nil {
+			return nil, err
+		}
 	}
 
 	// Start sampling every `sampleRate`

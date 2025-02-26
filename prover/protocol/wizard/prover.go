@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"encoding/csv"
+	"fmt"
 	"os"
 	"path"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/sirupsen/logrus"
 )
 
 // ProverStep represents an operation to be performed by the prover of a
@@ -163,22 +165,23 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 		extra-rounds.
 	*/
 
-	// TODO: Profile this as well
-	highLevelprover(&runtime)
+	// Profile high level prover
+	runtime.runWithPerformanceMonitor("high-level-prover", highLevelprover)
 
 	/*
 		Then, run the compiled prover steps
 	*/
 
 	// Initial prover step
-	runtime.runWithPerformanceMonitor("prover-steps-round", runtime.currRound, runtime.runProverSteps)
+
+	runtime.runWithPerformanceMonitor(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
 
 	for runtime.currRound+1 < runtime.NumRounds() {
 		// Next round
-		runtime.runWithPerformanceMonitor("next-round", runtime.currRound+1, runtime.goNextRound)
+		runtime.runWithPerformanceMonitor(fmt.Sprintf("next-after-round%d", runtime.currRound), runtime.goNextRound)
 
 		// Prover steps for the next round
-		runtime.runWithPerformanceMonitor("prover-steps-round", runtime.currRound, runtime.runProverSteps)
+		runtime.runWithPerformanceMonitor(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
 	}
 
 	/*
@@ -578,12 +581,15 @@ func (run *ProverRuntime) goNextRound() {
 
 // runProverSteps runs all the [ProverStep] specified in the underlying
 // [CompiledIOP] object for the current round.
-// TODO: Profile Individual prover steps
 func (run *ProverRuntime) runProverSteps() {
 	// Run all the assigners
 	subProverSteps := run.Spec.SubProvers.MustGet(run.currRound)
-	for _, step := range subProverSteps {
-		step(run)
+	for idx, step := range subProverSteps {
+
+		// Profile individual prover steps
+		namePrefix := fmt.Sprintf("prover-round%d-step%d", run.currRound, idx)
+		run.runWithPerformanceMonitor(namePrefix, step)
+
 	}
 }
 
@@ -733,33 +739,48 @@ func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 }
 
 // runWithPerformanceMonitor: runs the `action` with the performance monitor
-func (runtime *ProverRuntime) runWithPerformanceMonitor(namePrefix string, round int, action func()) {
+func (runtime *ProverRuntime) runWithPerformanceMonitor(name string, action any) {
 
 	// Profiling params
-	profilingPath := "./protocol/wizard/performance/profiling"
-	flameGraphPath := "" // Disable flamegraph temp
-	sampleDuration := 1 * time.Second
-	currRoundStr := strconv.Itoa(round)
-	name := namePrefix + currRoundStr
 
-	profilingPath = path.Join(profilingPath, name)
+	// profilingPath := "./protocol/wizard/performance/profiling"
+	// flameGraphPath := "./protocol/wizard/performance/flame-graphs"
+
+	// Disable profiling and flamegraph temp.
+	profilingPath, flameGraphPath := "", ""
+
+	sampleDuration := 1 * time.Second
+
+	if profilingPath != "" {
+		profilingPath = path.Join(profilingPath, name)
+	}
 	if flameGraphPath != "" {
 		flameGraphPath = path.Join(flameGraphPath, name)
 	}
+
 	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, profilingPath, flameGraphPath)
 	if err != nil {
 		panic("error setting up performance monitor for " + name)
 	}
 
 	// Run the action
-	action()
+	switch a := action.(type) {
+	case func():
+		a()
+	case ProverStep:
+		a(runtime)
+	default:
+		panic("unsupported action type")
+	}
 
 	perfLog, err := monitor.Stop()
 	if err != nil {
 		panic("error retrieving performance log for " + name)
 	}
 
-	perfLog.PrintMetrics()
+	// Disable printing metrics temp.
+	// perfLog.PrintMetrics()
+
 	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
 }
 
@@ -767,7 +788,7 @@ func (runtime *ProverRuntime) runWithPerformanceMonitor(namePrefix string, round
 // to the csv file located at the specified path
 func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
 
-	csvFilePath := "./protocol/wizard/performance/runtime_performance_logs.csv"
+	csvFilePath := "./protocol/wizard/runtime_performance_logs.csv"
 	file, err := os.Create(csvFilePath)
 	if err != nil {
 		return err
@@ -776,6 +797,9 @@ func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
+
+	startTime := time.Now()
+	logrus.Infof("Writing the runtime performance logs to csv file located at path%s", csvFilePath)
 
 	// Define CSV headers
 	headers := []string{
@@ -808,5 +832,6 @@ func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
 		writer.Write(record)
 	}
 
+	logrus.Infof("Finished writing to the csv file. Took %s", time.Since(startTime).String())
 	return nil
 }

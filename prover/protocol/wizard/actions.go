@@ -1,6 +1,8 @@
 package wizard
 
-import "github.com/consensys/gnark/frontend"
+import (
+	"github.com/consensys/gnark/frontend"
+)
 
 // ProverAction represents an action to be performed by the prover.
 // They have to be registered in the [CompiledIOP] via the
