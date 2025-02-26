@@ -4,6 +4,7 @@ pragma solidity >=0.8.26 <=0.9.0;
 
 import { Script } from "forge-std/Script.sol";
 import { MockToken } from "../test/mocks/MockToken.sol";
+import { Karma } from "../src/Karma.sol";
 
 contract DeploymentConfig is Script {
     error DeploymentConfig_InvalidDeployerAddress();

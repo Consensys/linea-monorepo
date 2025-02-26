@@ -2,12 +2,12 @@
 pragma solidity ^0.8.26;
 
 /**
- * @title IRewardProvider
- * @notice Interface for Reward Provider
- * @dev This interface is necessary to unify reward provider contracts.
+ * @title IRewardDistributor
+ * @notice Interface for Reward Distributor contract.
+ * @dev This interface is necessary to unify reward distributor contracts.
  * @dev Karma token contract makes use of this to aggregate rewards.
  */
-interface IRewardProvider {
+interface IRewardDistributor {
     /**
      * @notice Returns the total supply of rewards.
      * @return Total supply of rewards.
@@ -27,4 +27,5 @@ interface IRewardProvider {
      * @return Balance of rewards for the account.
      */
     function rewardsBalanceOfAccount(address user) external view returns (uint256);
+    function setReward(uint256 amount, uint256 duration) external;
 }

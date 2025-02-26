@@ -3,130 +3,144 @@ pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
 import { Karma } from "../src/Karma.sol";
-import { KarmaProviderMock } from "./mocks/KarmaProviderMock.sol";
-import { IRewardProvider } from "../src/interfaces/IRewardProvider.sol";
+import { KarmaDistributorMock } from "./mocks/KarmaDistributorMock.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract KarmaTest is Test {
-    Karma xpToken;
+    Karma public karma;
 
-    address owner = makeAddr("owner");
-    address alice = makeAddr("alice");
-    address bob = makeAddr("bob");
+    address public owner = makeAddr("owner");
+    address public alice = makeAddr("alice");
+    address public bob = makeAddr("bob");
 
-    KarmaProviderMock provider1;
-    KarmaProviderMock provider2;
+    KarmaDistributorMock public distributor1;
+    KarmaDistributorMock public distributor2;
 
     function setUp() public virtual {
         vm.prank(owner);
-        xpToken = new Karma();
+        karma = new Karma();
 
-        provider1 = new KarmaProviderMock();
-        provider2 = new KarmaProviderMock();
-
-        vm.prank(owner);
-        xpToken.addRewardProvider(provider1);
+        distributor1 = new KarmaDistributorMock();
+        distributor2 = new KarmaDistributorMock();
 
         vm.prank(owner);
-        xpToken.addRewardProvider(provider2);
+        karma.addRewardDistributor(address(distributor1));
+
+        vm.prank(owner);
+        karma.addRewardDistributor(address(distributor2));
     }
 
-    function testAddKarmaProviderOnlyOwner() public {
-        KarmaProviderMock provider3 = new KarmaProviderMock();
+    function testAddKarmaDistributorOnlyOwner() public {
+        KarmaDistributorMock distributor3 = new KarmaDistributorMock();
 
         vm.prank(alice);
         vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
-        xpToken.addRewardProvider(provider3);
+        karma.addRewardDistributor(address(distributor3));
 
         vm.prank(owner);
-        xpToken.addRewardProvider(provider3);
+        karma.addRewardDistributor(address(distributor3));
 
-        IRewardProvider[] memory providers = xpToken.getRewardProviders();
-        assertEq(providers.length, 3);
-        assertEq(address(providers[0]), address(provider1));
-        assertEq(address(providers[1]), address(provider2));
-        assertEq(address(providers[2]), address(provider3));
+        address[] memory distributors = karma.getRewardDistributors();
+        assertEq(distributors.length, 3);
+        assertEq(distributors[0], address(distributor1));
+        assertEq(distributors[1], address(distributor2));
+        assertEq(distributors[2], address(distributor3));
     }
 
-    function testRemoveKarmaProviderOnlyOwner() public {
+    function testRemoveKarmaDistributorOnlyOwner() public {
         vm.prank(alice);
         vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
-        xpToken.removeRewardProvider(0);
+        karma.removeRewardDistributor(address(distributor1));
 
         vm.prank(owner);
-        xpToken.removeRewardProvider(0);
+        karma.removeRewardDistributor(address(distributor1));
 
-        IRewardProvider[] memory providers = xpToken.getRewardProviders();
-        assertEq(providers.length, 1);
-        assertEq(address(providers[0]), address(provider2));
+        address[] memory distributors = karma.getRewardDistributors();
+        assertEq(distributors.length, 1);
+        assertEq(distributors[0], address(distributor2));
     }
 
-    function testRemoveKarmaProviderIndexOutOfBounds() public {
+    function testRemoveUnknownKarmaDistributor() public {
         vm.prank(owner);
-        vm.expectRevert(Karma.RewardProvider__IndexOutOfBounds.selector);
-        xpToken.removeRewardProvider(10);
+        vm.expectRevert(Karma.Karma__UnknownDistributor.selector);
+        karma.removeRewardDistributor(address(1));
     }
 
     function testTotalSupply() public {
-        provider1.setTotalKarmaShares(1000 ether);
-        provider2.setTotalKarmaShares(2000 ether);
+        vm.startBroadcast(owner);
+        karma.setReward(address(distributor1), 1000 ether, 1000);
+        karma.setReward(address(distributor2), 2000 ether, 2000);
+        vm.stopBroadcast();
+
+        distributor1.setTotalKarmaShares(1000 ether);
+        distributor2.setTotalKarmaShares(2000 ether);
 
         vm.prank(owner);
-        xpToken.mint(owner, 500 ether);
+        karma.mint(owner, 500 ether);
 
-        uint256 totalSupply = xpToken.totalSupply();
+        uint256 totalSupply = karma.totalSupply();
         assertEq(totalSupply, 3500 ether);
     }
 
     function testBalanceOfWithNoSystemTotalKarma() public view {
-        uint256 aliceBalance = xpToken.balanceOf(alice);
+        uint256 aliceBalance = karma.balanceOf(alice);
         assertEq(aliceBalance, 0);
 
-        uint256 bobBalance = xpToken.balanceOf(bob);
+        uint256 bobBalance = karma.balanceOf(bob);
         assertEq(bobBalance, 0);
     }
 
     function testBalanceOf() public {
-        provider1.setTotalKarmaShares(1000 ether);
-        provider2.setTotalKarmaShares(2000 ether);
+        vm.startBroadcast(owner);
+        karma.setReward(address(distributor1), 1000 ether, 1000);
+        karma.setReward(address(distributor2), 2000 ether, 2000);
+        vm.stopBroadcast();
 
-        provider1.setUserKarmaShare(alice, 1000e18);
-        provider2.setUserKarmaShare(alice, 2000e18);
+        distributor1.setTotalKarmaShares(1000 ether);
+        distributor2.setTotalKarmaShares(2000 ether);
+
+        distributor1.setUserKarmaShare(alice, 1000e18);
+        distributor2.setUserKarmaShare(alice, 2000e18);
 
         vm.prank(owner);
-        xpToken.mint(alice, 500e18);
+        karma.mint(alice, 500e18);
 
         uint256 expectedBalance = 3500e18;
 
-        uint256 balance = xpToken.balanceOf(alice);
+        uint256 balance = karma.balanceOf(alice);
         assertEq(balance, expectedBalance);
     }
 
     function testMintOnlyOwner() public {
-        provider1.setTotalKarmaShares(1000 ether);
-        provider2.setTotalKarmaShares(2000 ether);
-        assertEq(xpToken.totalSupply(), 3000 ether);
+        vm.startBroadcast(owner);
+        karma.setReward(address(distributor1), 1000 ether, 1000);
+        karma.setReward(address(distributor2), 2000 ether, 2000);
+        vm.stopBroadcast();
+
+        distributor1.setTotalKarmaShares(1000 ether);
+        distributor2.setTotalKarmaShares(2000 ether);
+        assertEq(karma.totalSupply(), 3000 ether);
 
         vm.prank(alice);
         vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
-        xpToken.mint(alice, 1000e18);
+        karma.mint(alice, 1000e18);
 
         vm.prank(owner);
-        xpToken.mint(alice, 1000e18);
-        assertEq(xpToken.totalSupply(), 4000e18);
+        karma.mint(alice, 1000e18);
+        assertEq(karma.totalSupply(), 4000e18);
     }
 
     function testTransfersNotAllowed() public {
         vm.expectRevert(Karma.Karma__TransfersNotAllowed.selector);
-        xpToken.transfer(alice, 100e18);
+        karma.transfer(alice, 100e18);
 
         vm.expectRevert(Karma.Karma__TransfersNotAllowed.selector);
-        xpToken.approve(alice, 100e18);
+        karma.approve(alice, 100e18);
 
         vm.expectRevert(Karma.Karma__TransfersNotAllowed.selector);
-        xpToken.transferFrom(alice, bob, 100e18);
+        karma.transferFrom(alice, bob, 100e18);
 
-        uint256 allowance = xpToken.allowance(alice, bob);
+        uint256 allowance = karma.allowance(alice, bob);
         assertEq(allowance, 0);
     }
 }
@@ -163,59 +177,75 @@ contract KarmaMintAllowanceTest is KarmaTest {
     }
 
     function testMintAllowance_Available() public {
+        vm.startBroadcast(owner);
+        karma.setReward(address(distributor1), 1000 ether, 1000);
+        karma.setReward(address(distributor2), 2000 ether, 2000);
+        vm.stopBroadcast();
         // 3000 external => maxSupply = 9000
-        provider1.setTotalKarmaShares(1000 ether);
-        provider2.setTotalKarmaShares(2000 ether);
+        distributor1.setTotalKarmaShares(1000 ether);
+        distributor2.setTotalKarmaShares(2000 ether);
 
         vm.prank(owner);
-        xpToken.mint(owner, 500 ether);
+        karma.mint(owner, 500 ether);
         // totalSupply = 3500
 
-        uint256 mintAllowance = xpToken.mintAllowance();
+        uint256 mintAllowance = karma.mintAllowance();
         assertEq(mintAllowance, 5500 ether);
     }
 
     function testMintAllowance_NotAvailable() public {
+        vm.startBroadcast(owner);
+        karma.setReward(address(distributor1), 1000 ether, 1000);
+        karma.setReward(address(distributor2), 2000 ether, 2000);
+        vm.stopBroadcast();
         // 3000 external => maxSupply = 9000
-        provider1.setTotalKarmaShares(1000 ether);
-        provider2.setTotalKarmaShares(2000 ether);
+        distributor1.setTotalKarmaShares(1000 ether);
+        distributor2.setTotalKarmaShares(2000 ether);
 
         vm.prank(owner);
-        xpToken.mint(owner, 6000 ether);
+        karma.mint(owner, 6000 ether);
         // totalSupply = 9_000
 
-        uint256 mintAllowance = xpToken.mintAllowance();
+        uint256 mintAllowance = karma.mintAllowance();
         assertEq(mintAllowance, 0);
     }
 
     function testMint_RevertWithAllowanceExceeded() public {
+        vm.startBroadcast(owner);
+        karma.setReward(address(distributor1), 1000 ether, 1000);
+        karma.setReward(address(distributor2), 2000 ether, 2000);
+        vm.stopBroadcast();
         // 3000 external => maxSupply = 9000
-        provider1.setTotalKarmaShares(1000 ether);
-        provider2.setTotalKarmaShares(2000 ether);
+        distributor1.setTotalKarmaShares(1000 ether);
+        distributor2.setTotalKarmaShares(2000 ether);
 
         vm.prank(owner);
-        xpToken.mint(owner, 500 ether);
+        karma.mint(owner, 500 ether);
         // totalSupply = 3500
         // allowed to mint 5500
 
         vm.prank(owner);
         vm.expectRevert(Karma.Karma__MintAllowanceExceeded.selector);
-        xpToken.mint(owner, 6000 ether);
+        karma.mint(owner, 6000 ether);
     }
 
     function testMint_Ok() public {
+        vm.startBroadcast(owner);
+        karma.setReward(address(distributor1), 1000 ether, 1000);
+        karma.setReward(address(distributor2), 2000 ether, 2000);
+        vm.stopBroadcast();
         // 3000 external => maxSupply = 9000
-        provider1.setTotalKarmaShares(1000 ether);
-        provider2.setTotalKarmaShares(2000 ether);
+        distributor1.setTotalKarmaShares(1000 ether);
+        distributor2.setTotalKarmaShares(2000 ether);
 
         vm.prank(owner);
-        xpToken.mint(owner, 500 ether);
-        assertEq(xpToken.totalSupply(), 3500 ether);
+        karma.mint(owner, 500 ether);
+        assertEq(karma.totalSupply(), 3500 ether);
         // totalSupply = 3500
         // allowed to mint 5500
 
         vm.prank(owner);
-        xpToken.mint(owner, 5500 ether);
-        assertEq(xpToken.totalSupply(), 9000 ether);
+        karma.mint(owner, 5500 ether);
+        assertEq(karma.totalSupply(), 9000 ether);
     }
 }

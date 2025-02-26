@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import { Test, console } from "forge-std/Test.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
 import { DeployRewardsStreamerMPScript } from "../script/DeployRewardsStreamerMP.s.sol";
 import { UpgradeRewardsStreamerMPScript } from "../script/UpgradeRewardsStreamerMP.s.sol";
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
@@ -16,6 +17,7 @@ import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { StakeMath } from "../src/math/StakeMath.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { VaultFactory } from "../src/VaultFactory.sol";
+import { Karma } from "../src/Karma.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 import { StackOverflowStakeManager } from "./mocks/StackOverflowStakeManager.sol";
 
@@ -23,6 +25,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
     MockToken internal stakingToken;
     RewardsStreamerMP public streamer;
     VaultFactory public vaultFactory;
+    Karma public karma;
 
     address internal admin;
     address internal alice = makeAddr("alice");
@@ -34,6 +37,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
 
     function setUp() public virtual {
         DeployRewardsStreamerMPScript deployment = new DeployRewardsStreamerMPScript();
+        DeployKarmaScript karmaDeployment = new DeployKarmaScript();
         (RewardsStreamerMP stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) =
             deployment.run();
 
@@ -43,6 +47,13 @@ contract RewardsStreamerMPTest is StakeMath, Test {
         stakingToken = MockToken(_stakingToken);
         vaultFactory = _vaultFactory;
         admin = _deployer;
+        karma = karmaDeployment.run();
+
+        // set up reward distribution
+        vm.startPrank(admin);
+        karma.addRewardDistributor(address(streamer));
+        streamer.setRewardsSupplier(address(karma));
+        vm.stopPrank();
 
         address[4] memory accounts = [alice, bob, charlie, dave];
         for (uint256 i = 0; i < accounts.length; i++) {
@@ -159,6 +170,11 @@ contract RewardsStreamerMPTest is StakeMath, Test {
     function _upgradeStakeManager() internal {
         UpgradeRewardsStreamerMPScript upgrade = new UpgradeRewardsStreamerMPScript();
         upgrade.run(admin, IStakeManagerProxy(address(streamer)));
+    }
+
+    function _setRewards(uint256 amount, uint256 period) internal {
+        vm.prank(admin);
+        karma.setReward(address(streamer), amount, period);
     }
 }
 
@@ -2198,8 +2214,7 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
         // since we are testing that it is used for rewardStartTime
         currentTime += 1 days;
         vm.warp(currentTime);
-        vm.prank(admin);
-        streamer.setReward(1000, 10);
+        _setRewards(1000, 10);
 
         assertEq(streamer.rewardStartTime(), currentTime);
         assertEq(streamer.rewardEndTime(), currentTime + 10);
@@ -2208,20 +2223,20 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
 
     function testSetRewards_RevertsNotAuthorized() public {
         vm.prank(alice);
-        vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
+        vm.expectPartialRevert(IStakeManager.StakingManager__Unauthorized.selector);
         streamer.setReward(1000, 10);
     }
 
     function testSetRewards_RevertsBadDuration() public {
         vm.prank(admin);
         vm.expectRevert(IStakeManager.StakingManager__DurationCannotBeZero.selector);
-        streamer.setReward(1000, 0);
+        karma.setReward(address(streamer), 1000, 0);
     }
 
     function testSetRewards_RevertsBadAmount() public {
         vm.prank(admin);
         vm.expectRevert(IStakeManager.StakingManager__AmountCannotBeZero.selector);
-        streamer.setReward(0, 10);
+        karma.setReward(address(streamer), 0, 10);
     }
 
     function testTotalRewardsSupply() public {
@@ -2230,8 +2245,7 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
 
         uint256 initialTime = vm.getBlockTimestamp();
 
-        vm.prank(admin);
-        streamer.setReward(1000e18, 10 days);
+        _setRewards(1000e18, 10 days);
         assertEq(streamer.totalRewardsSupply(), 0);
 
         for (uint256 i = 0; i <= 10; i++) {
@@ -2252,8 +2266,7 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
         assertEq(streamer.totalRewardsAccrued(), 0);
 
         // set other 2000 rewards for other 10 days
-        vm.prank(admin);
-        streamer.setReward(2000e18, 10 days);
+        _setRewards(2000e18, 10 days);
 
         // accrued is 1000 from the previous reward and still 0 for the new one
         assertEq(streamer.totalRewardsSupply(), 1000e18, "totalRewardsSupply should be 1000");
@@ -2272,9 +2285,7 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
         uint256 initialTime = vm.getBlockTimestamp();
 
         _stake(alice, 100e18, 0);
-
-        vm.prank(admin);
-        streamer.setReward(1000e18, year);
+        _setRewards(1000e18, year);
 
         assertEq(streamer.totalStaked(), 100e18);
         assertEq(streamer.totalMPStaked(), 100e18);
@@ -2357,8 +2368,7 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
         assertEq(streamer.vaultShares(vaults[bob]), 200e18);
         assertEq(streamer.rewardsBalanceOf(vaults[bob]), 250e18);
 
-        vm.prank(admin);
-        streamer.setReward(600e18, year);
+        _setRewards(600e18, year);
 
         vm.warp(initialTime + year * 3);
 
@@ -2745,7 +2755,7 @@ contract FuzzTests is RewardsStreamerMPTest {
         stakeAmount = bound(stakeAmount, 1e18, 20_000_000e18);
         lockUpPeriod = lockUpPeriod == 0 ? 0 : bound(lockUpPeriod, MIN_LOCKUP_PERIOD, MAX_LOCKUP_PERIOD);
         vm.assume(rewardPeriod > 0 && rewardPeriod <= 12 weeks); // assuming max 3 months
-        vm.assume(rewardAmount > 1e18 && rewardAmount <= 100_000e18); // assuming max 1_000_000 Karma
+        vm.assume(rewardAmount > 1e18 && rewardAmount <= 1_000_000e18); // assuming max 1_000_000 Karma
         vm.assume(accountRewardPeriod <= rewardPeriod); // Ensure accountRewardPeriod doesn't exceed rewardPeriod
 
         uint256 initialTime = vm.getBlockTimestamp();
@@ -2758,8 +2768,7 @@ contract FuzzTests is RewardsStreamerMPTest {
 
         _stake(alice, stakeAmount, lockUpPeriod);
 
-        vm.prank(admin);
-        streamer.setReward(rewardAmount, rewardPeriod);
+        _setRewards(rewardAmount, rewardPeriod);
 
         vm.warp(initialTime + accountRewardPeriod);
 

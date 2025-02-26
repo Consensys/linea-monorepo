@@ -8,7 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { IStakeManager } from "./interfaces/IStakeManager.sol";
 import { IStakeVault } from "./interfaces/IStakeVault.sol";
-import { IRewardProvider } from "./interfaces/IRewardProvider.sol";
+import { IRewardDistributor } from "./interfaces/IRewardDistributor.sol";
 import { TrustedCodehashAccess } from "./TrustedCodehashAccess.sol";
 import { StakeMath } from "./math/StakeMath.sol";
 
@@ -24,7 +24,7 @@ contract RewardsStreamerMP is
     IStakeManager,
     TrustedCodehashAccess,
     ReentrancyGuardUpgradeable,
-    IRewardProvider,
+    IRewardDistributor,
     StakeMath
 {
     /// @notice Token that is staked in the vaults (SNT).
@@ -74,6 +74,9 @@ contract RewardsStreamerMP is
     /// @notice Total amount of staked multiplier points
     uint256 public totalMPStaked;
 
+    /// @notice The address that can set rewards
+    address public rewardsSupplier;
+
     modifier onlyRegisteredVault() {
         if (vaultOwners[msg.sender] == address(0)) {
             revert StakingManager__VaultNotRegistered();
@@ -84,6 +87,13 @@ contract RewardsStreamerMP is
     modifier onlyNotEmergencyMode() {
         if (emergencyModeEnabled) {
             revert StakingManager__EmergencyModeEnabled();
+        }
+        _;
+    }
+
+    modifier onlyRewardsSupplier() {
+        if (msg.sender != rewardsSupplier) {
+            revert StakingManager__Unauthorized();
         }
         _;
     }
@@ -109,6 +119,15 @@ contract RewardsStreamerMP is
 
         STAKING_TOKEN = IERC20(_stakingToken);
         lastMPUpdatedTime = block.timestamp;
+    }
+
+    /**
+     * @notice Allows the owner to set the rewards supplier.
+     * @dev The supplier is going to be the `Karma` token.
+     * @param _rewardsSupplier The address of the rewards supplier.
+     */
+    function setRewardsSupplier(address _rewardsSupplier) external onlyOwner onlyNotEmergencyMode {
+        rewardsSupplier = _rewardsSupplier;
     }
 
     /**
@@ -417,7 +436,11 @@ contract RewardsStreamerMP is
      * @param amount The amount of rewards to distribute.
      * @param duration The duration of the reward period.
      */
-    function setReward(uint256 amount, uint256 duration) external onlyOwner {
+    function setReward(uint256 amount, uint256 duration) external onlyRewardsSupplier {
+        if (rewardEndTime > block.timestamp) {
+            revert StakingManager__RewardPeriodNotEnded();
+        }
+
         if (duration == 0) {
             revert StakingManager__DurationCannotBeZero();
         }

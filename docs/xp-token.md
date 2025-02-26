@@ -32,7 +32,6 @@ providers. XP tokens are not transferrable, but they can be used as voting power
 
 - `XPToken__MintAllowanceExceeded`: Raised when minting exceeds the allowed threshold.
 - `XPToken__TransfersNotAllowed`: Raised when a transfer, approval, or transferFrom is attempted.
-- `RewardProvider__IndexOutOfBounds`: Raised when an invalid index is used for removing a reward provider.
 
 ## Supply and Balance Calculation
 

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { IRewardProvider } from "../../src/interfaces/IRewardProvider.sol";
+import { IRewardDistributor } from "../../src/interfaces/IRewardDistributor.sol";
 
-contract KarmaProviderMock is IRewardProvider {
+contract KarmaDistributorMock is IRewardDistributor {
     // solhint-disable-next-line
     mapping(address => uint256) public userKarmaShare;
 
@@ -20,6 +20,8 @@ contract KarmaProviderMock is IRewardProvider {
     function rewardsBalanceOf(address) external pure override returns (uint256) {
         revert("Not implemented");
     }
+
+    function setReward(uint256, uint256) external pure override { }
 
     function rewardsBalanceOfAccount(address account) external view override returns (uint256) {
         return userKarmaShare[account];
