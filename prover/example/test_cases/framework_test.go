@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
@@ -61,7 +61,7 @@ var (
 	ALL_SPECIALS = compilationSuite{
 		specialqueries.RangeProof,
 		specialqueries.CompileFixedPermutations,
-		lookup.CompileLogDerivative,
+		logderivativesum.CompileLookups,
 		permutation.CompileViaGrandProduct,
 		innerproduct.Compile,
 	}

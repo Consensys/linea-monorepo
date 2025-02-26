@@ -14,6 +14,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
+// This is a compilation check to ensure that the [wizard.ProverRuntime]
+// implements the [wizard.Runtime] interface.
+var _ Runtime = &ProverRuntime{}
+
 // ProverStep represents an operation to be performed by the prover of a
 // wizard protocol. It can be provided by the user or by an internal compiled
 // to the protocol specification [CompiledIOP] by appending it to the field
@@ -120,17 +124,6 @@ type ProverRuntime struct {
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
 
-	// ParentRuntime stores an external runtime that can be accessed by the
-	// prover steps to retrieve data from a parent runtime. This can be used
-	// in the distributed prover by the module runtimes to access the initial
-	// wizard runtime.
-	ParentRuntime *ProverRuntime
-
-	// ProverID indicates the id of the prover among its siblings.
-	// It is merely in the context of the distributed prover;
-	// for vertical splitting to extract the relevant segment of a witness.
-	ProverID int
-
 	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
@@ -164,25 +157,7 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
 func RunProver(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
-
-	runtime := c.createProver()
-	/*
-		Run the user provided assignment function. We can't expect it
-		to run all the rounds, because the compilation could have added
-		extra-rounds.
-	*/
-	highLevelprover(&runtime)
-
-	/*
-		Then, run the compiled prover steps
-	*/
-	runtime.runProverSteps()
-	for runtime.currRound+1 < runtime.NumRounds() {
-		runtime.goNextRound()
-		runtime.runProverSteps()
-	}
-
-	return &runtime
+	return RunProverUntilRound(c, highLevelprover, c.NumRounds())
 }
 
 // RunProverUntilRound runs the prover until the specified round
@@ -197,25 +172,6 @@ func RunProverUntilRound(c *CompiledIOP, highLevelprover ProverStep, round int) 
 		runtime.goNextRound()
 		runtime.runProverSteps()
 	}
-
-	return &runtime
-}
-
-// ProveOnlyFirstRound computes the first round of the prover and returns the
-// resulting ProverRuntime containing all the generated assignments.
-func ProverOnlyFirstRound(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
-	runtime := c.createProver()
-
-	// Run the user provided assignment function. We can't expect it
-	// to run all the rounds, because the compilation could have added
-	// extra-rounds.
-	//
-	highLevelprover(&runtime)
-
-	// Then, run the compiled prover steps. This will only run those of the
-	// first round.
-	//
-	runtime.runProverSteps()
 
 	return &runtime
 }
@@ -583,33 +539,38 @@ func (run *ProverRuntime) goNextRound() {
 	// Increment the number of rounds
 	run.currRound++
 
-	/*
-		Then assigns the coins for the new round. As the round
-		incrementation is made lazily, we expect that there is
-		a next round.
-	*/
+	if run.Spec.FiatShamirHooksPreSampling.Len() > run.currRound {
+		fsHooks := run.Spec.FiatShamirHooksPreSampling.MustGet(run.currRound)
+		for i := range fsHooks {
+			if fsHooks[i].IsSkipped() {
+				continue
+			}
+
+			fsHooks[i].Run(run)
+		}
+	}
+
+	seed := run.FS.State()[0]
+
+	// Then assigns the coins for the new round. As the round
+	// incrementation is made lazily, we expect that there is
+	// a next round.
 	toCompute := run.Spec.Coins.AllKeysAt(run.currRound)
 
 	for _, myCoin := range toCompute {
+
+		if run.Spec.Coins.IsSkippedFromProverTranscript(myCoin) {
+			continue
+		}
 
 		var (
 			info  = run.Spec.Coins.Data(myCoin)
 			value interface{}
 		)
 
-		if run.Spec.Coins.IsSkippedFromProverTranscript(info.Name) {
-			continue
-		}
+		// otherwise sample based on the transcript.
+		value = info.Sample(run.FS, seed)
 
-		if info.Type == coin.FieldFromSeed {
-			// if it is of type FromSeed, sample a coin based on the seed
-			if seed, ok := run.ParentRuntime.Coins.MustGet("SEED").(field.Element); ok {
-				value = info.Sample(run.FS, seed)
-			}
-		} else {
-			// otherwise sample based on the transcript.
-			value = info.Sample(run.FS)
-		}
 		run.Coins.InsertNew(myCoin, value)
 	}
 
@@ -807,6 +768,11 @@ func (run *ProverRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogDer
 	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams)
 }
 
+// GetGrandProductParams returns the parameters of a [query.Honer] query.
+func (run *ProverRuntime) GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams {
+	return run.QueriesParams.MustGet(name).(query.GrandProductParams)
+}
+
 // GetParams generically extracts the parameters of a query. Will panic if no
 // parameters are found
 func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
@@ -851,4 +817,63 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 	run.lock.Lock()
 	defer run.lock.Unlock()
 	return run.QueriesParams.MustGet(name).(query.HornerParams)
+}
+
+// Fs returns the Fiat-Shamir state
+func (run *ProverRuntime) Fs() *fiatshamir.State {
+	return run.FS
+}
+
+// FsHistory returns the Fiat-Shamir state history
+func (run *ProverRuntime) FsHistory() [][2][]field.Element {
+	return run.FiatShamirHistory
+}
+
+// GetPublicInputs return the value of a public-input from its name
+func (run *ProverRuntime) GetPublicInput(name string) field.Element {
+	allPubs := run.Spec.PublicInputs
+	for i := range allPubs {
+		if allPubs[i].Name == name {
+			return allPubs[i].Acc.GetVal(run)
+		}
+	}
+	utils.Panic("could not find public input nb %v", name)
+	return field.Element{}
+}
+
+// GetQuery returns a query from its name
+func (run *ProverRuntime) GetQuery(name ifaces.QueryID) ifaces.Query {
+
+	if run.Spec.QueriesParams.Exists(name) {
+		return run.Spec.QueriesParams.Data(name)
+	}
+
+	if run.Spec.QueriesNoParams.Exists(name) {
+		return run.Spec.QueriesNoParams.Data(name)
+	}
+
+	utils.Panic("could not find query nb %v", name)
+	return nil
+}
+
+// GetSpec returns the underlying compiled IOP
+func (run *ProverRuntime) GetSpec() *CompiledIOP {
+	return run.Spec
+}
+
+// GetState returns an arbitrary value stored in the runtime
+func (run *ProverRuntime) GetState(name string) (any, bool) {
+	res, ok := run.State.TryGet(name)
+	return res, ok
+}
+
+// SetState sets an arbitrary value in the runtime
+func (run *ProverRuntime) SetState(name string, value any) {
+	run.State.InsertNew(name, value)
+}
+
+// InsertCoin is there so that [ProverRuntime] implements the [ifaces.Runtime]
+// but the function panicks if called.
+func (run *ProverRuntime) InsertCoin(name coin.Name, value any) {
+	utils.Panic("InsertCoin is not implemented")
 }

@@ -254,7 +254,7 @@ func (run *runtimeTranslator) GetSpec() *wizard.CompiledIOP {
 	return run.Rt.GetSpec()
 }
 
-func (run *runtimeTranslator) GetPublicInput(name string) any {
+func (run *runtimeTranslator) GetPublicInput(name string) field.Element {
 	name = run.Prefix + "." + name
 	return run.Rt.GetPublicInput(name)
 }
@@ -264,14 +264,14 @@ func (run *runtimeTranslator) GetGrandProductParams(name ifaces.QueryID) query.G
 	return run.Rt.GetGrandProductParams(name)
 }
 
-func (run *runtimeTranslator) GetDistributedProjectionParams(name ifaces.QueryID) query.DistributedProjectionParams {
-	name = ifaces.QueryID(run.Prefix) + "." + name
-	return run.Rt.GetDistributedProjectionParams(name)
-}
-
 func (run *runtimeTranslator) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
 	name = ifaces.QueryID(run.Prefix) + "." + name
 	return run.Rt.GetLogDerivSumParams(name)
+}
+
+func (run *runtimeTranslator) GetHornerParams(name ifaces.QueryID) query.HornerParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetHornerParams(name)
 }
 
 func (run *runtimeTranslator) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams {
@@ -366,11 +366,6 @@ func (run *gnarkRuntimeTranslator) GetLogDerivSumParams(name ifaces.QueryID) que
 	return run.Rt.GetLogDerivSumParams(name)
 }
 
-func (run *gnarkRuntimeTranslator) GetDistributedProjectionParams(name ifaces.QueryID) query.GnarkDistributedProjectionParams {
-	name = ifaces.QueryID(run.Prefix) + "." + name
-	return run.Rt.GetDistributedProjectionParams(name)
-}
-
 func (run *gnarkRuntimeTranslator) GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams {
 	name = ifaces.QueryID(run.Prefix) + "." + name
 	return run.Rt.GetLocalPointEvalParams(name)
@@ -421,4 +416,9 @@ func (run *gnarkRuntimeTranslator) SetState(name string, value any) {
 func (run *gnarkRuntimeTranslator) GetQuery(name ifaces.QueryID) ifaces.Query {
 	name = ifaces.QueryID(run.Prefix) + "." + name
 	return run.Rt.GetQuery(name)
+}
+
+func (run *gnarkRuntimeTranslator) GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams {
+	name = ifaces.QueryID(run.Prefix) + "." + name
+	return run.Rt.GetHornerParams(name)
 }

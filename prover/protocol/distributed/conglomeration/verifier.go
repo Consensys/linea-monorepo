@@ -125,14 +125,20 @@ func generateRandomCoins(run wizard.Runtime, ctx *recursionCtx, currRound int) {
 		}
 	}
 
+	for _, fsHook := range ctx.FsHooksPreSampling[currRound] {
+		fsHook.Run(wrappedRun)
+	}
+
+	seed := fs.State()[0]
+
 	toCompute := ctx.Coins[currRound]
 	for _, coin := range toCompute {
 		info := spec.Coins.Data(coin.Name)
-		value := info.Sample(fs)
+		value := info.Sample(fs, seed)
 		run.InsertCoin(coin.Name, value)
 	}
 
-	for _, fsHook := range ctx.FsHooks[currRound] {
+	for _, fsHook := range ctx.FsHooksPostSampling[currRound] {
 		fsHook.Run(wrappedRun)
 	}
 
@@ -233,7 +239,7 @@ func (pa PreVortexVerifierStep) generateRandomCoinsGnark(api frontend.API, run w
 		}
 	}
 
-	for _, fsHook := range ctx.FsHooks[currRound] {
+	for _, fsHook := range ctx.FsHooksPostSampling[currRound] {
 		fsHook.RunGnark(api, wrappedRun)
 	}
 

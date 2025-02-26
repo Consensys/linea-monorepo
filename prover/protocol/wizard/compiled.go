@@ -74,10 +74,21 @@ type CompiledIOP struct {
 	// always be preferred to express a relation that the witness must satisfy.
 	SubVerifiers collection.VecVec[VerifierAction]
 
-	// FiatShamirHooks is an action that is run during the FS sampling. Compared
+	// FiatShamirHooksPreSampling is an action that is run during the FS sampling,
+	// before sampling the random coins and thus, before every verifier action in
+	// the same round. The action is run just after updating the FS state with the
+	// items of the previous round. Thus, it can be used to setup the FS state to
+	// a desired value. This can be used to add determinism in the coin generation
+	// (very useful for debugging, though completely insecure) or it can be used
+	// in the context of the distributed prover where the set value is a combination
+	// of the provided values and some other external values.
+	FiatShamirHooksPreSampling collection.VecVec[VerifierAction]
+
+	// FiatShamirHooksPostSampling is an action that is run during the FS sampling. Compared
 	// to a normal verifier action it has the possibility to interact with the
-	// Fiat-Shamir state.
-	FiatShamirHooks collection.VecVec[VerifierAction]
+	// Fiat-Shamir state. And it is run before every verifier actions
+	// taking place in the round but after sampling all the random coins.
+	FiatShamirHooksPostSampling collection.VecVec[VerifierAction]
 
 	// Precomputed stores the assignments of all the Precomputed and VerifierKey
 	// polynomials. It is assigned directly when registering a precomputed

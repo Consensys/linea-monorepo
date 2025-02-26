@@ -34,7 +34,8 @@ type recursionCtx struct {
 	QueryParams              [][]ifaces.Query
 	VerifierActions          [][]wizard.VerifierAction
 	Coins                    [][]coin.Info
-	FsHooks                  [][]wizard.VerifierAction
+	FsHooksPostSampling      [][]wizard.VerifierAction
+	FsHooksPreSampling       [][]wizard.VerifierAction
 	LocalOpenings            []query.LocalOpening
 }
 
@@ -64,14 +65,14 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 		// This FS hook has to be defined before we add the pre-vortex verifier
 		// hooks to ensure that the FS state is properly initialize the verifier
 		// runtime.
-		comp.FiatShamirHooks.AppendToInner(0, &SubFsInitialize{Ctxs: ctxs})
+		comp.FiatShamirHooksPostSampling.AppendToInner(0, &SubFsInitialize{Ctxs: ctxs})
 
 		for round := 0; round <= ctxs[0].LastRound; round++ {
 
 			var (
 				hasCoin    = len(ctxs[0].Coins[round]) > 0
 				hasVAction = len(ctxs[0].VerifierActions[round]) > 0
-				hasFsHook  = len(ctxs[0].FsHooks[round]) > 0
+				hasFsHook  = len(ctxs[0].FsHooksPostSampling[round]) > 0
 				hasColumn  = len(ctxs[0].Columns[round]) > 0
 				hasQParams = len(ctxs[0].QueryParams[round]) > 0
 			)
@@ -82,7 +83,7 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 				// is trying to do is to prepare a ctx-local FS state that can be later used in a join to
 				// derive a sound global FS state. Thus, we need it to run along side the "main" fs random
 				// coin generation. This is why this is declared as an FS hook and not as a VerifierAction.
-				comp.FiatShamirHooks.AppendToInner(round, &PreVortexVerifierStep{Ctxs: ctxs, Round: round})
+				comp.FiatShamirHooksPostSampling.AppendToInner(round, &PreVortexVerifierStep{Ctxs: ctxs, Round: round})
 			}
 
 			if hasColumn || hasQParams {
@@ -90,7 +91,7 @@ func ConglomerateDefineFunc(tmpl *wizard.CompiledIOP, maxNumSegment int) (def fu
 			}
 		}
 
-		comp.FiatShamirHooks.AppendToInner(ctxs[0].LastRound, &FsJoinHook{Ctxs: ctxs})
+		comp.FiatShamirHooksPostSampling.AppendToInner(ctxs[0].LastRound, &FsJoinHook{Ctxs: ctxs})
 		comp.RegisterProverAction(ctxs[0].LastRound, &FsJoinProverStep{Ctxs: ctxs})
 		comp.RegisterProverAction(ctxs[0].LastRound, &AssignVortexQuery{Ctxs: ctxs})
 		comp.RegisterProverAction(ctxs[0].LastRound+1, &AssignVortexUAlpha{Ctxs: ctxs})
@@ -142,7 +143,7 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 		ctx.QueryParams = append(ctx.QueryParams, []ifaces.Query{})
 		ctx.VerifierActions = append(ctx.VerifierActions, []wizard.VerifierAction{})
 		ctx.Coins = append(ctx.Coins, []coin.Info{})
-		ctx.FsHooks = append(ctx.FsHooks, []wizard.VerifierAction{})
+		ctx.FsHooksPostSampling = append(ctx.FsHooksPostSampling, []wizard.VerifierAction{})
 
 		// Importantly, the coins are added before. Otherwise the 'assertConsistentRound'
 		// clause would not accept inserting columns or queries.
@@ -220,15 +221,20 @@ func (ctx *recursionCtx) captureCompPreVortex(tmpl *wizard.CompiledIOP) {
 			ctx.VerifierActions[round] = append(ctx.VerifierActions[round], va)
 		}
 
-		resetFs := tmpl.FiatShamirHooks.Inner()
-
+		resetFs := tmpl.FiatShamirHooksPostSampling.Inner()
 		for _, fsHook := range resetFs[round] {
-
 			if fsHook.IsSkipped() {
 				continue
 			}
+			ctx.FsHooksPostSampling[round] = append(ctx.FsHooksPostSampling[round], fsHook)
+		}
 
-			ctx.FsHooks[round] = append(ctx.VerifierActions[round], fsHook)
+		resetFS := tmpl.FiatShamirHooksPreSampling.Inner()
+		for _, fsHook := range resetFS[round] {
+			if fsHook.IsSkipped() {
+				continue
+			}
+			ctx.FsHooksPreSampling[round] = append(ctx.FsHooksPreSampling[round], fsHook)
 		}
 	}
 }

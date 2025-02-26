@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -47,6 +46,12 @@ func allocateGnarkCircuit(comp *wizard.CompiledIOP, ctx *fullRecursionCtx) *gnar
 				wizardVerifier.AllocInnerProduct(qInfo.ID, qInfo)
 			case query.LocalOpening:
 				wizardVerifier.AllocLocalOpening(qInfo.ID, qInfo)
+			case query.LogDerivativeSum:
+				wizardVerifier.AllocLogDerivativeSum(qInfo.ID, qInfo)
+			case query.GrandProduct:
+				wizardVerifier.AllocGrandProduct(qInfo.ID, qInfo)
+			case *query.Horner:
+				wizardVerifier.AllocHorner(qInfo.ID, qInfo)
 			}
 		}
 	}
@@ -145,18 +150,18 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 			}
 		}
 
-		for _, info := range ctx.Coins[currRound] {
-			switch info.Type {
-			case coin.Field:
-				value := w.FS.RandomField()
-				w.Coins.InsertNew(info.Name, value)
-			case coin.IntegerVec:
-				value := w.FS.RandomManyIntegers(info.Size, info.UpperBound)
-				w.Coins.InsertNew(info.Name, value)
-			}
+		for _, fsHook := range ctx.PreSamplingFsHooks[currRound] {
+			fsHook.RunGnark(api, w)
 		}
 
-		for _, fsHook := range ctx.FsHooks[currRound] {
+		seed := w.FS.State()[0]
+
+		for _, info := range ctx.Coins[currRound] {
+			value := info.SampleGnark(w.FS, seed)
+			w.Coins.InsertNew(info.Name, value)
+		}
+
+		for _, fsHook := range ctx.PostSamplingFsHooks[currRound] {
 			fsHook.RunGnark(api, w)
 		}
 
@@ -194,6 +199,15 @@ func AssignGnarkCircuit(ctx *fullRecursionCtx, comp *wizard.CompiledIOP, run *wi
 			case query.LocalOpening:
 				params := run.GetLocalPointEvalParams(qInfo.ID)
 				wizardVerifier.AssignLocalOpening(qInfo.ID, params)
+			case query.LogDerivativeSum:
+				params := run.GetLogDerivSumParams(qInfo.ID)
+				wizardVerifier.AssignLogDerivativeSum(qInfo.ID, params)
+			case query.GrandProduct:
+				params := run.GetGrandProductParams(qInfo.ID)
+				wizardVerifier.AssignGrandProduct(qInfo.ID, params)
+			case *query.Horner:
+				params := run.GetHornerParams(qInfo.ID)
+				wizardVerifier.AssignHorner(qInfo.ID, params)
 			}
 		}
 	}

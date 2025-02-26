@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
@@ -21,7 +21,7 @@ var (
 	encodeOnlyCompilationSuite = CompilationSuite{
 		mimc.CompileMiMC,
 		specialqueries.RangeProof,
-		lookup.CompileLogDerivative,
+		logderivativesum.CompileLookups,
 	}
 )
 
@@ -34,9 +34,10 @@ func EncodeOnlyZkEvm(tl *config.TracesLimits) *ZkEvm {
 }
 
 func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChunks int) {
+
 	// Start encoding and measure time
 	encodingStart := time.Now()
-	run := wizard.ProverOnlyFirstRound(z.WizardIOP, z.prove(input))
+	run := wizard.RunProverUntilRound(z.WizardIOP, z.prove(input), 1)
 	firstRoundOnlyDuration := time.Since(encodingStart).Seconds()
 	logrus.Infof("ProverOnlyFirstRound complete, took %.2f seconds", firstRoundOnlyDuration)
 

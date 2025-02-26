@@ -32,8 +32,8 @@ type ModuleLPP struct {
 	// N1Hash is the hash of the N1 positions for the Horner queries
 	N1Hash ifaces.Column
 
-	// LogDerivative is the translated log-derivative query in the module
-	LogDerivative query.LogDerivativeSum
+	// LogDerivativeSum is the translated log-derivative query in the module
+	LogDerivativeSum query.LogDerivativeSum
 
 	// GrandProduct is the translated grand-product query in the module
 	GrandProduct query.GrandProduct
@@ -108,7 +108,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 		}
 	}
 
-	moduleLPP.LogDerivative = moduleLPP.InsertLogDerivative(1, ifaces.QueryID("MAIN_LOGDERIVATIVE"), moduleInput.LogDerivativeArgs)
+	moduleLPP.LogDerivativeSum = moduleLPP.InsertLogDerivative(1, ifaces.QueryID("MAIN_LOGDERIVATIVE"), moduleInput.LogDerivativeArgs)
 	moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(1, ifaces.QueryID("MAIN_GRANDPRODUCT"), moduleInput.GrandProductArgs)
 	moduleLPP.Horner = moduleLPP.InsertHorner(1, ifaces.QueryID("MAIN_HORNER"), moduleInput.HornerArgs)
 
@@ -170,7 +170,7 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 
 	run.AssignHornerParams(a.Horner.ID, hornerParams)
 	run.AssignGrandProduct(a.GrandProduct.ID, a.GrandProduct.Compute(run))
-	run.AssignLogDerivSum(a.LogDerivative.ID, a.LogDerivative.Compute(run))
+	run.AssignLogDerivSum(a.LogDerivativeSum.ID, a.LogDerivativeSum.Compute(run))
 
 	n0Hash, n1Hash := hashNxs(hornerParams, 0), hashNxs(hornerParams, 1)
 

@@ -59,7 +59,7 @@ func FullRecursion(withoutGkr bool) func(comp *wizard.CompiledIOP) {
 			)
 		}
 
-		comp.FiatShamirHooks.AppendToInner(ctx.LastRound, &ResetFsActions{fullRecursionCtx: *ctx})
+		comp.FiatShamirHooksPostSampling.AppendToInner(ctx.LastRound, &ResetFsActions{fullRecursionCtx: *ctx})
 		comp.RegisterProverAction(ctx.LastRound, CircuitAssignment(*ctx))
 		comp.RegisterProverAction(ctx.LastRound, ReplacementAssignment(*ctx))
 		comp.RegisterProverAction(ctx.PlonkInWizard.PI.Round(), LocalOpeningAssignment(*ctx))
@@ -84,7 +84,8 @@ type fullRecursionCtx struct {
 	Columns                     [][]ifaces.Column
 	VerifierActions             [][]wizard.VerifierAction
 	Coins                       [][]coin.Info
-	FsHooks                     [][]wizard.VerifierAction
+	PostSamplingFsHooks         [][]wizard.VerifierAction
+	PreSamplingFsHooks          [][]wizard.VerifierAction
 	PlonkInWizard               struct {
 		ProverAction plonk.PlonkInWizardProverAction
 		PI           ifaces.Column
@@ -115,7 +116,8 @@ func captureCtx(comp *wizard.CompiledIOP) *fullRecursionCtx {
 		ctx.Columns = append(ctx.Columns, []ifaces.Column{})
 		ctx.VerifierActions = append(ctx.VerifierActions, []wizard.VerifierAction{})
 		ctx.Coins = append(ctx.Coins, []coin.Info{})
-		ctx.FsHooks = append(ctx.FsHooks, []wizard.VerifierAction{})
+		ctx.PostSamplingFsHooks = append(ctx.PostSamplingFsHooks, []wizard.VerifierAction{})
+		ctx.PreSamplingFsHooks = append(ctx.PreSamplingFsHooks, []wizard.VerifierAction{})
 
 		for _, colName := range comp.Columns.AllKeysAt(round) {
 
@@ -176,8 +178,8 @@ func captureCtx(comp *wizard.CompiledIOP) *fullRecursionCtx {
 			va.Skip()
 		}
 
-		if comp.FiatShamirHooks.Len() > round {
-			resetFs := comp.FiatShamirHooks.Inner()[round]
+		if comp.FiatShamirHooksPreSampling.Len() > round {
+			resetFs := comp.FiatShamirHooksPreSampling.Inner()[round]
 			for i := range resetFs {
 
 				fsHook := resetFs[i]
@@ -185,7 +187,21 @@ func captureCtx(comp *wizard.CompiledIOP) *fullRecursionCtx {
 					continue
 				}
 
-				ctx.FsHooks[round] = append(ctx.VerifierActions[round], fsHook)
+				ctx.PreSamplingFsHooks[round] = append(ctx.PreSamplingFsHooks[round], fsHook)
+				fsHook.Skip()
+			}
+		}
+
+		if comp.FiatShamirHooksPostSampling.Len() > round {
+			resetFs := comp.FiatShamirHooksPostSampling.Inner()[round]
+			for i := range resetFs {
+
+				fsHook := resetFs[i]
+				if fsHook.IsSkipped() {
+					continue
+				}
+
+				ctx.PostSamplingFsHooks[round] = append(ctx.PostSamplingFsHooks[round], fsHook)
 				fsHook.Skip()
 			}
 		}

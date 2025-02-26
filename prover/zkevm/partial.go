@@ -10,12 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 )
 
-const (
-	// Number of columns from the arithmetization that are kept to instantiate
-	// light prover.
-	numColLimitLight = 10
-)
-
 var (
 	partialZkEvm     *ZkEvm
 	oncePartialZkEvm = sync.Once{}

@@ -74,19 +74,18 @@ type WizardVerifierCircuit struct {
 	logDerivSumIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
 	// Same for grand-product query
 	grandProductIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
+	// Same for Horner query
+	hornerIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
 
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
 	Columns [][]frontend.Variable `gnark:",secret"`
-
 	// UnivariateParams stores an assignment for each [query.UnivariateParams]
 	// from the proof. This is part of the witness of the gnark circuit.
 	UnivariateParams []query.GnarkUnivariateEvalParams `gnark:",secret"`
-
 	// InnerProductParams stores an assignment for each [query.InnerProductParams]
 	// from the proof. It is part of the witness of the gnark circuit.
 	InnerProductParams []query.GnarkInnerProductParams `gnark:",secret"`
-
 	// LocalOpeningParams stores an assignment for each [query.LocalOpeningParams]
 	// from the proof. It is part of the witness of the gnark circuit.
 	LocalOpeningParams []query.GnarkLocalOpeningParams `gnark:",secret"`
@@ -96,6 +95,9 @@ type WizardVerifierCircuit struct {
 	// GrandProductParams stores an assignment for each [query.GrandProductParams]
 	// from the proof. It is part of the witness of the gnark circuit.
 	GrandProductParams []query.GnarkGrandProductParams `gnark:",secret"`
+	// HornerParams stores an assignment for each [query.Horner] from
+	// the proof. It is part of the witness of the gnark circuit.
+	HornerParams []query.GnarkHornerParams `gnark:",secret"`
 
 	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
@@ -174,6 +176,12 @@ func AllocateWizardCircuit(comp *CompiledIOP) (*WizardVerifierCircuit, error) {
 			res.AllocInnerProduct(qName, qInfo)
 		case query.LocalOpening:
 			res.AllocLocalOpening(qName, qInfo)
+		case query.LogDerivativeSum:
+			res.AllocLogDerivativeSum(qName, qInfo)
+		case query.GrandProduct:
+			res.AllocGrandProduct(qName, qInfo)
+		case *query.Horner:
+			res.AllocHorner(qName, qInfo)
 		}
 	}
 
@@ -239,6 +247,19 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 			}
 		}
 
+		if c.Spec.FiatShamirHooksPreSampling.Len() > currRound {
+			fsHooks := c.Spec.FiatShamirHooksPreSampling.MustGet(currRound)
+			for i := range fsHooks {
+				if fsHooks[i].IsSkipped() {
+					continue
+				}
+
+				fsHooks[i].RunGnark(api, c)
+			}
+		}
+
+		seed := c.FS.State()
+
 		/*
 			Then assigns the coins for the new round.
 		*/
@@ -248,19 +269,13 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 				continue
 			}
 
-			info := c.Spec.Coins.Data(coinName)
-			switch info.Type {
-			case coin.Field:
-				value := c.FS.RandomField()
-				c.Coins.InsertNew(coinName, value)
-			case coin.IntegerVec:
-				value := c.FS.RandomManyIntegers(info.Size, info.UpperBound)
-				c.Coins.InsertNew(coinName, value)
-			}
+			cn := c.Spec.Coins.Data(coinName)
+			value := cn.SampleGnark(c.FS, seed[0])
+			c.Coins.InsertNew(coinName, value)
 		}
 
-		if c.Spec.FiatShamirHooks.Len() > currRound {
-			fsHooks := c.Spec.FiatShamirHooks.MustGet(currRound)
+		if c.Spec.FiatShamirHooksPostSampling.Len() > currRound {
+			fsHooks := c.Spec.FiatShamirHooksPostSampling.MustGet(currRound)
 			for i := range fsHooks {
 				if fsHooks[i].IsSkipped() {
 					continue
@@ -370,6 +385,13 @@ func (c *WizardVerifierCircuit) GetGrandProductParams(name ifaces.QueryID) query
 	return c.GrandProductParams[qID]
 }
 
+// GetHornerPArams returns the parameters for the requested
+// [query.Horner] query. Its work mirrors the function [VerifierRuntime.GetHornerParams]
+func (c *WizardVerifierCircuit) GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams {
+	qID := c.hornerIDs.MustGet(name)
+	return c.HornerParams[qID]
+}
+
 // GetColumns returns the gnark assignment of a column in a gnark circuit. It
 // mirrors the function [VerifierRuntime.GetColumn]
 func (c *WizardVerifierCircuit) GetColumn(name ifaces.ColID) []frontend.Variable {
@@ -409,13 +431,17 @@ func NewWizardVerifierCircuit() *WizardVerifierCircuit {
 	res.columnsIDs = collection.NewMapping[ifaces.ColID, int]()
 	res.univariateParamsIDs = collection.NewMapping[ifaces.QueryID, int]()
 	res.localOpeningIDs = collection.NewMapping[ifaces.QueryID, int]()
-	res.logDerivSumIDs = collection.NewMapping[ifaces.QueryID, int]()
 	res.innerProductIDs = collection.NewMapping[ifaces.QueryID, int]()
+	res.logDerivSumIDs = collection.NewMapping[ifaces.QueryID, int]()
+	res.grandProductIDs = collection.NewMapping[ifaces.QueryID, int]()
+	res.hornerIDs = collection.NewMapping[ifaces.QueryID, int]()
+
 	res.Columns = [][]frontend.Variable{}
 	res.UnivariateParams = make([]query.GnarkUnivariateEvalParams, 0)
 	res.InnerProductParams = make([]query.GnarkInnerProductParams, 0)
 	res.LocalOpeningParams = make([]query.GnarkLocalOpeningParams, 0)
 	res.LogDerivSumParams = make([]query.GnarkLogDerivSumParams, 0)
+	res.HornerParams = make([]query.GnarkHornerParams, 0)
 	res.Coins = collection.NewMapping[coin.Name, interface{}]()
 	return res
 }
@@ -475,9 +501,11 @@ func GetWizardVerifierCircuitAssignment(comp *CompiledIOP, proof Proof) *WizardV
 		case query.LocalOpeningParams:
 			res.AssignLocalOpening(qName, params)
 		case query.LogDerivSumParams:
-			res.logDerivSumIDs.InsertNew(qName, len(res.LogDerivSumParams))
-			res.LogDerivSumParams = append(res.LogDerivSumParams, params.GnarkAssign())
-
+			res.AssignLogDerivativeSum(qName, params)
+		case query.GrandProductParams:
+			res.AssignGrandProduct(qName, params)
+		case query.HornerParams:
+			res.AssignHorner(qName, params)
 		default:
 			utils.Panic("unknow type %T", params)
 		}
@@ -498,6 +526,12 @@ func (c *WizardVerifierCircuit) GetParams(id ifaces.QueryID) ifaces.GnarkQueryPa
 		return c.GetLogDerivSumParams(id)
 	case query.InnerProduct:
 		return c.GetInnerProductParams(id)
+	case query.GrandProduct:
+		return c.GetGrandProductParams(id)
+	case *query.LogDerivativeSum:
+		return c.GetLogDerivSumParams(id)
+	case *query.Horner:
+		return c.GetHornerParams(id)
 	default:
 		utils.Panic("unexpected type : %T", t)
 	}
@@ -544,28 +578,73 @@ func (c *WizardVerifierCircuit) AllocLocalOpening(qName ifaces.QueryID, qInfo qu
 	c.LocalOpeningParams = append(c.LocalOpeningParams, query.GnarkLocalOpeningParams{})
 }
 
-// AssignUnivariableEval inserts a slot for a univariate query opening in the
-// witness of the verifier circuit.
+// AllocLogDerivativeSum inserts a slot for a log-derivative sum in the witness
+// of the verifier circuit.
+func (c *WizardVerifierCircuit) AllocLogDerivativeSum(qName ifaces.QueryID, qInfo query.LogDerivativeSum) {
+	c.logDerivSumIDs.InsertNew(qName, len(c.LogDerivSumParams))
+	c.LogDerivSumParams = append(c.LogDerivSumParams, query.GnarkLogDerivSumParams{})
+}
+
+// AllocGrandProduct inserts a slot for a log-derivative sum in the witness
+// of the verifier circuit.
+func (c *WizardVerifierCircuit) AllocGrandProduct(qName ifaces.QueryID, qInfo query.GrandProduct) {
+	c.grandProductIDs.InsertNew(qName, len(c.GrandProductParams))
+	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{})
+}
+
+// AllocHorner inserts a slot for a log-derivative sum in the witness
+// of the verifier circuit.
+func (c *WizardVerifierCircuit) AllocHorner(qName ifaces.QueryID, qInfo *query.Horner) {
+	c.hornerIDs.InsertNew(qName, len(c.HornerParams))
+	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{})
+}
+
+// AssignUnivariableEval assigns the parameters of a [query.UnivariateEval]
+// in the witness of the verifier circuit.
 func (c *WizardVerifierCircuit) AssignUnivariateEval(qName ifaces.QueryID, params query.UnivariateEvalParams) {
 	// Note that nil is the default value for frontend.Variable
 	c.univariateParamsIDs.InsertNew(qName, len(c.UnivariateParams))
 	c.UnivariateParams = append(c.UnivariateParams, params.GnarkAssign())
 }
 
-// AssignInnerProduct inserts a slot for an inner-product query opening in the
-// witness of the verifier circuit.
+// AssignInnerProduct assigns the parameters of an [query.InnerProduct]
+// in the the witnesss of the verifier circuit.
 func (c *WizardVerifierCircuit) AssignInnerProduct(qName ifaces.QueryID, params query.InnerProductParams) {
 	// Note that nil is the default value for frontend.Variable
 	c.innerProductIDs.InsertNew(qName, len(c.InnerProductParams))
 	c.InnerProductParams = append(c.InnerProductParams, params.GnarkAssign())
 }
 
-// AssignLocalOpening inserts a slot for a local position opening in the witness
-// of the verifier circuit.
+// AssignLocalOpening assigns the parameters of a [query.LocalOpening] into
+// the witness of the verifier circuit.
 func (c *WizardVerifierCircuit) AssignLocalOpening(qName ifaces.QueryID, params query.LocalOpeningParams) {
 	// Note that nil is the default value for frontend.Variable
 	c.localOpeningIDs.InsertNew(qName, len(c.LocalOpeningParams))
 	c.LocalOpeningParams = append(c.LocalOpeningParams, params.GnarkAssign())
+}
+
+// AssignLogDerivativeSum assigns the parameters of a [query.LogDerivativeSum]
+// into the witness of the verifier circuit.
+func (c *WizardVerifierCircuit) AssignLogDerivativeSum(qName ifaces.QueryID, params query.LogDerivSumParams) {
+	// Note that nil is the default value for frontend.Variable
+	c.logDerivSumIDs.InsertNew(qName, len(c.LogDerivSumParams))
+	c.LogDerivSumParams = append(c.LogDerivSumParams, query.GnarkLogDerivSumParams{})
+}
+
+// AssignGrandProduct assigns the parameters of a [query.GrandProduct]
+// into the witness of the verifier circuit.
+func (c *WizardVerifierCircuit) AssignGrandProduct(qName ifaces.QueryID, params query.GrandProductParams) {
+	// Note that nil is the default value for frontend.Variable
+	c.grandProductIDs.InsertNew(qName, len(c.GrandProductParams))
+	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{})
+}
+
+// AssignHorner assigns the parameters of a [query.Horner] into the witness
+// of the verifier circuit.
+func (c *WizardVerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.HornerParams) {
+	// Note that nil is the default value for frontend.Variable
+	c.hornerIDs.InsertNew(qName, len(c.HornerParams))
+	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{})
 }
 
 // GetPublicInput returns a public input value from its name
@@ -638,9 +717,4 @@ func (c *WizardVerifierCircuit) GetQuery(name ifaces.QueryID) ifaces.Query {
 	}
 	utils.Panic("could not find query nb %v", name)
 	return nil
-}
-
-// GetHornerParams returns the parameters of a [query.Honer] query.
-func (c *WizardVerifierCircuit) GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams {
-	panic("not implemented")
 }
