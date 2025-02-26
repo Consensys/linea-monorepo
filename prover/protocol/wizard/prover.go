@@ -558,20 +558,24 @@ func (run *ProverRuntime) goNextRound() {
 	toCompute := run.Spec.Coins.AllKeysAt(run.currRound)
 
 	for _, myCoin := range toCompute {
-
 		if run.Spec.Coins.IsSkippedFromProverTranscript(myCoin) {
 			continue
 		}
 
-		var (
-			info  = run.Spec.Coins.Data(myCoin)
-			value interface{}
-		)
-
-		// otherwise sample based on the transcript.
-		value = info.Sample(run.FS, seed)
-
+		info := run.Spec.Coins.Data(myCoin)
+		value := info.Sample(run.FS, seed)
 		run.Coins.InsertNew(myCoin, value)
+	}
+
+	if run.Spec.FiatShamirHooksPostSampling.Len() > run.currRound {
+		fsHooks := run.Spec.FiatShamirHooksPostSampling.MustGet(run.currRound)
+		for i := range fsHooks {
+			if fsHooks[i].IsSkipped() {
+				continue
+			}
+
+			fsHooks[i].Run(run)
+		}
 	}
 
 	finalState := run.FS.State()

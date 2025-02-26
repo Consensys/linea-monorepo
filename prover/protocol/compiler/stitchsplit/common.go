@@ -1,4 +1,4 @@
-package alliance
+package stitchsplit
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"

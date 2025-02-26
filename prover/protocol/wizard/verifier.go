@@ -242,19 +242,12 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 		*/
 		toCompute := run.Spec.Coins.AllKeysAt(currRound)
 		for _, myCoin := range toCompute {
-
 			if run.Spec.Coins.IsSkippedFromVerifierTranscript(myCoin) {
 				continue
 			}
 
-			var (
-				info  = run.Spec.Coins.Data(myCoin)
-				value interface{}
-			)
-
-			// otherwise sample based on the transcript.
-			value = info.Sample(run.FS, seed)
-
+			info := run.Spec.Coins.Data(myCoin)
+			value := info.Sample(run.FS, seed)
 			run.Coins.InsertNew(myCoin, value)
 		}
 

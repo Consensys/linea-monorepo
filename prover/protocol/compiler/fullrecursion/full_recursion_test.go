@@ -17,8 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/sticker"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -72,8 +71,8 @@ func TestLookup(t *testing.T) {
 			specialqueries.CompileFixedPermutations,
 			permutation.CompileViaGrandProduct,
 			innerproduct.Compile,
-			sticker.Sticker(1<<8, 1<<16),
-			splitter.SplitColumns(1 << 16),
+			stitchsplit.Stitcher(1<<8, 1<<16),
+			stitchsplit.Splitter(1 << 16),
 			localcs.Compile,
 			globalcs.Compile,
 			univariates.CompileLocalOpening,

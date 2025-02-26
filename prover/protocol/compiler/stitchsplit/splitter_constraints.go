@@ -1,4 +1,4 @@
-package splitter
+package stitchsplit
 
 import (
 	"reflect"
@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/stitch_split"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -31,7 +30,7 @@ func (ctx splitterContext) LocalOpening() {
 
 		round := ctx.comp.QueriesParams.Round(q.ID)
 
-		if !isColEligible(ctx.Splittings, q.Pol) {
+		if !isColEligibleSplitting(ctx.Splittings, q.Pol) {
 			continue
 		}
 		// mark the query as ignored
@@ -39,7 +38,7 @@ func (ctx splitterContext) LocalOpening() {
 		// Get the sub column
 		subCol := getSubColForLocal(ctx, q.Pol, 0)
 		// apply the local constrain over the subCol
-		newQ := ctx.comp.InsertLocalOpening(round, queryName(q.ID), subCol)
+		newQ := ctx.comp.InsertLocalOpening(round, queryNameSplitter(q.ID), subCol)
 
 		// Registers the prover's step responsible for assigning the new query
 		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
@@ -64,7 +63,7 @@ func (ctx splitterContext) LocalGlobalConstraints() {
 			board = q.Board()
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			if !alliance.IsExprEligible(isColEligible, ctx.Splittings, board) {
+			if !IsExprEligible(isColEligibleSplitting, ctx.Splittings, board) {
 				continue
 			}
 
@@ -72,12 +71,12 @@ func (ctx splitterContext) LocalGlobalConstraints() {
 			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the sub columns
-			ctx.comp.InsertLocal(round, queryName(qName), ctx.adjustExpressionForLocal(q.Expression, 0))
+			ctx.comp.InsertLocal(round, queryNameSplitter(qName), ctx.adjustExpressionForLocal(q.Expression, 0))
 
 		case query.GlobalConstraint:
 			board = q.Board()
 			// detect if the expression is over the eligible columns.
-			if !alliance.IsExprEligible(isColEligible, ctx.Splittings, board) {
+			if !IsExprEligible(isColEligibleSplitting, ctx.Splittings, board) {
 				continue
 			}
 
@@ -103,7 +102,7 @@ func (ctx splitterContext) LocalGlobalConstraints() {
 }
 
 // it checks if a column registered in the compiler has the proper size and state for splitting.
-func isColEligible(splittings alliance.MultiSummary, col ifaces.Column) bool {
+func isColEligibleSplitting(splittings MultiSummary, col ifaces.Column) bool {
 	natural := column.RootParents(col)[0]
 	_, found := splittings[col.Round()].ByBigCol[natural.GetColID()]
 	return found
@@ -212,7 +211,7 @@ func getSubColForGlobal(ctx splitterContext, col ifaces.Column, posInCol int) if
 	panic("unreachable")
 }
 
-func queryName(oldQ ifaces.QueryID) ifaces.QueryID {
+func queryNameSplitter(oldQ ifaces.QueryID) ifaces.QueryID {
 	return ifaces.QueryIDf("%v_SPLITTER", oldQ)
 }
 

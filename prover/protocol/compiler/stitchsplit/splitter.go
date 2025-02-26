@@ -1,8 +1,7 @@
-package splitter
+package stitchsplit
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/stitch_split"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -35,7 +34,7 @@ type splitterContext struct {
 	size int
 	// It collects the information about the splitting and subColumns.
 	// The index of Splittings is over the rounds.
-	Splittings []alliance.SummerizedAlliances
+	Splittings []SummerizedAlliances
 }
 
 func newSplitter(comp *wizard.CompiledIOP, size int) splitterContext {
@@ -43,7 +42,7 @@ func newSplitter(comp *wizard.CompiledIOP, size int) splitterContext {
 	ctx := splitterContext{
 		comp:       comp,
 		size:       size,
-		Splittings: make([]alliance.SummerizedAlliances, numRound),
+		Splittings: make([]SummerizedAlliances, numRound),
 	}
 
 	ctx.ScanSplitCommit()
@@ -110,14 +109,14 @@ func (ctx *splitterContext) ScanSplitCommit() {
 				panic("Invalid Status")
 			}
 
-			splitting := alliance.Alliance{
+			splitting := Alliance{
 				BigCol:  col,
 				SubCols: subSlices,
 				Round:   round,
 				Status:  status,
 			}
 
-			(alliance.MultiSummary)(ctx.Splittings).InsertNew(splitting)
+			(MultiSummary)(ctx.Splittings).InsertNew(splitting)
 
 			// Mark the handle as ignored
 			comp.Columns.MarkAsIgnored(col.GetColID())

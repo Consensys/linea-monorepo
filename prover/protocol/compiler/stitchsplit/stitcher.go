@@ -1,11 +1,10 @@
-package stitcher
+package stitchsplit
 
 import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/stitch_split"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -21,7 +20,7 @@ type stitchingContext struct {
 
 	// It collects the information about subColumns and their stitchings.
 	// The index of Stitchings is over the rounds.
-	Stitchings []alliance.SummerizedAlliances
+	Stitchings []SummerizedAlliances
 }
 
 // Stitcher applies the stitching over the eligible sub columns and adjusts the constraints accordingly.
@@ -53,7 +52,7 @@ func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) stitchingContex
 		MinSize: minSize,
 		MaxSize: maxSize,
 		// initialize the stitichings
-		Stitchings: make([]alliance.SummerizedAlliances, numRounds),
+		Stitchings: make([]SummerizedAlliances, numRounds),
 	}
 	// it scans the compiler trace for the eligible columns, creates stitchings from the sub columns and commits to the them.
 	res.ScanStitchCommit()
@@ -103,7 +102,7 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 
 				for _, group := range preComputedGroups {
 					// prepare a group for stitching
-					stitching := alliance.Alliance{
+					stitching := Alliance{
 						SubCols: group,
 						Round:   round,
 						Status:  column.Precomputed,
@@ -117,7 +116,7 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 				committedGroups := groupCols(committedCols, ctx.MaxSize/size)
 
 				for _, group := range committedGroups {
-					stitching := alliance.Alliance{
+					stitching := Alliance{
 						SubCols: group,
 						Round:   round,
 						Status:  column.Committed,
@@ -238,7 +237,7 @@ func groupedName(group []ifaces.Column) ifaces.ColID {
 }
 
 // for a group of sub columns it creates their stitching.
-func (ctx *stitchingContext) stitchGroup(s alliance.Alliance) {
+func (ctx *stitchingContext) stitchGroup(s Alliance) {
 	var (
 		group        = s.SubCols
 		stitchingCol ifaces.Column
@@ -279,11 +278,11 @@ func (ctx *stitchingContext) stitchGroup(s alliance.Alliance) {
 	}
 
 	s.BigCol = stitchingCol
-	(alliance.MultiSummary)(ctx.Stitchings).InsertNew(s)
+	(MultiSummary)(ctx.Stitchings).InsertNew(s)
 }
 
 // it checks if the column belongs to a stitching.
-func isColEligible(stitchings alliance.MultiSummary, col ifaces.Column) bool {
+func isColEligibleStitching(stitchings MultiSummary, col ifaces.Column) bool {
 	natural := column.RootParents(col)[0]
 	_, found := stitchings[col.Round()].BySubCol[natural.GetColID()]
 	return found

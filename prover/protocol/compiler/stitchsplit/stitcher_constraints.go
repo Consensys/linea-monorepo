@@ -1,11 +1,10 @@
-package stitcher
+package stitchsplit
 
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/stitch_split"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -44,7 +43,7 @@ func (ctx stitchingContext) LocalOpening() {
 			continue
 		}
 
-		if !isColEligible(ctx.Stitchings, q.Pol) {
+		if !isColEligibleStitching(ctx.Stitchings, q.Pol) {
 			continue
 		}
 
@@ -58,7 +57,7 @@ func (ctx stitchingContext) LocalOpening() {
 		// get the stitching column associated with the sub column q.Poly.
 		stitchingCol := getStitchingCol(ctx, q.Pol)
 
-		newQ := ctx.comp.InsertLocalOpening(round, queryName(q.ID), stitchingCol)
+		newQ := ctx.comp.InsertLocalOpening(round, queryNameStitcher(q.ID), stitchingCol)
 
 		// Registers the prover's step responsible for assigning the new query
 		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
@@ -98,7 +97,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 			}
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			if !alliance.IsExprEligible(isColEligible, ctx.Stitchings, board) {
+			if !IsExprEligible(isColEligibleStitching, ctx.Stitchings, board) {
 				continue
 			}
 
@@ -106,7 +105,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the stitching columns
-			ctx.comp.InsertLocal(round, queryName(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false))
+			ctx.comp.InsertLocal(round, queryNameStitcher(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false))
 
 		case query.GlobalConstraint:
 			board = q.Board()
@@ -127,7 +126,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 				continue
 			}
 			// detect if the expression is over the eligible columns.
-			if !alliance.IsExprEligible(isColEligible, ctx.Stitchings, board) {
+			if !IsExprEligible(isColEligibleStitching, ctx.Stitchings, board) {
 				continue
 			}
 
@@ -135,7 +134,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the stitching columns
-			ctx.comp.InsertGlobal(round, queryName(qName),
+			ctx.comp.InsertGlobal(round, queryNameStitcher(qName),
 				ctx.adjustExpression(q.Expression, q.DomainSize, true),
 				q.NoBoundCancel)
 
@@ -196,7 +195,7 @@ func getStitchingCol(ctx stitchingContext, col ifaces.Column, option ...int) ifa
 	}
 }
 
-func queryName(oldQ ifaces.QueryID) ifaces.QueryID {
+func queryNameStitcher(oldQ ifaces.QueryID) ifaces.QueryID {
 	return ifaces.QueryIDf("%v_STITCHER", oldQ)
 }
 

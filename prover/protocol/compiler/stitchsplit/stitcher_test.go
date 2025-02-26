@@ -1,4 +1,4 @@
-package stitcher_test
+package stitchsplit_test
 
 import (
 	"testing"
@@ -10,12 +10,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitch_split/stitcher"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -87,7 +86,7 @@ func TestLocalEvalWithStatus(t *testing.T) {
 		q12 = builder.LocalOpening("Q23", column.Shift(d, -1))
 	}
 
-	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
+	comp := wizard.Compile(define, stitchsplit.Stitcher(4, 8))
 
 	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
 	assert.Equal(t, column.Proof.String(), comp.Columns.Status("A").String())
@@ -144,7 +143,7 @@ func testStitcher(t *testing.T, minSize, maxSize int, gen func() (wizard.DefineF
 	logrus.SetLevel(logrus.TraceLevel)
 
 	builder, prover := gen()
-	comp := wizard.Compile(builder, stitcher.Stitcher(minSize, maxSize), dummy.Compile)
+	comp := wizard.Compile(builder, stitchsplit.Stitcher(minSize, maxSize), dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 	err := wizard.Verify(comp, proof)
 
@@ -289,13 +288,13 @@ func globalWithVerifColAndPeriodic(size, period, offset int) func() (wizard.Defi
 			verifcol1 := verifiercol.NewFromAccessors(genAccessors(0, size), field.Zero(), size)
 			verifcol2 := verifiercol.NewFromAccessors(genAccessors(2, size), field.Zero(), size)
 			_ = build.GlobalConstraint(LOCAL1,
-				symbolic.Sub(
+				sym.Sub(
 
-					symbolic.Mul(symbolic.Sub(1, P1),
+					sym.Mul(sym.Sub(1, P1),
 						verifcol2),
 
-					symbolic.Mul(variables.NewPeriodicSample(period, offset),
-						symbolic.Add(2, verifcol1))),
+					sym.Mul(variables.NewPeriodicSample(period, offset),
+						sym.Add(2, verifcol1))),
 			)
 		}
 
