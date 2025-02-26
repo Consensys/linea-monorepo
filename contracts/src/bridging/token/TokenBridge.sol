@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.28;
 
 import { ITokenBridge } from "./interfaces/ITokenBridge.sol";
 import { IMessageService } from "../../messaging/interfaces/IMessageService.sol";
@@ -9,8 +9,7 @@ import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/t
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-
+import { TransientStorageReentrancyGuardUpgradeable } from "../../security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol";
 import { BridgedToken } from "./BridgedToken.sol";
 import { MessageServiceBase } from "../../messaging/MessageServiceBase.sol";
 
@@ -28,7 +27,7 @@ import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKecc
  */
 contract TokenBridge is
   ITokenBridge,
-  ReentrancyGuardUpgradeable,
+  TransientStorageReentrancyGuardUpgradeable,
   AccessControlUpgradeable,
   MessageServiceBase,
   TokenBridgePauseManager,
@@ -155,7 +154,6 @@ contract TokenBridge is
   {
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
     __MessageServiceBase_init(_initializationData.messageService);
-    __ReentrancyGuard_init();
 
     if (_initializationData.defaultAdmin == address(0)) {
       revert ZeroAddressNotAllowed();
@@ -213,7 +211,6 @@ contract TokenBridge is
       sstore(213, 0)
     }
 
-    __ReentrancyGuard_init();
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
     __Permissions_init(_roleAddresses);
   }
