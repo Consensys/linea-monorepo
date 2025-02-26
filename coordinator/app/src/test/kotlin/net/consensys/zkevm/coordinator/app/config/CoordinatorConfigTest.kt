@@ -161,7 +161,7 @@ class CoordinatorConfigTest {
       priorityFeePerGasLowerBound = 200000000UL,
       proofSubmissionDelay = Duration.parse("PT1S"),
       targetBlobsToSendPerTransaction = 6,
-      disabled = true
+      disabled = false
     )
 
     private val aggregationFinalizationConfig = AggregationFinalizationConfig(

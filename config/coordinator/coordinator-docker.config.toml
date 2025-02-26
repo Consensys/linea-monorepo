@@ -153,7 +153,7 @@ max-receipt-retries=120
 blocks-to-finalization=0
 
 [blob-submission]
-disabled=true
+disabled=false
 db-polling-interval="PT1S"
 max-blobs-to-return=100
 proof-submission-delay="PT1S"

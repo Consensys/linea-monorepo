@@ -330,8 +330,8 @@ class Web3JContractAsyncHelper(
   }
 
   fun executeEthCall(function: Function): SafeFuture<String?> {
-    return getGasLimit(function)
-      .thenCompose { gasLimit ->
+    return contractGasProvider.getGasLimit(function.name)
+      .let { gasLimit ->
         val tx = Transaction.createFunctionCallTransaction(
           transactionManager.fromAddress,
           null,
