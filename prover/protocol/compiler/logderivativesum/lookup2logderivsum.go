@@ -27,12 +27,12 @@ func LookupIntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 
 	var (
 		mainLookupCtx = CaptureLookupTables(comp)
-		lastRound     = comp.NumRounds() - 1
+		lastRound     = 0
 		// zCatalog stores a mapping (round, size) into query.LogDerivativeSumInput and helps finding
 		// which Z context should be used to handle a part of a given inclusion
 		// query.
 		zCatalog    = map[int]*query.LogDerivativeSumInput{}
-		proverTasks = make([]proverTaskAtRound, lastRound+1)
+		proverTasks = make([]proverTaskAtRound, comp.NumRounds())
 	)
 
 	// Skip the compilation phase if no lookup constraint is being used. Otherwise
@@ -55,6 +55,8 @@ func LookupIntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 			tableCtx = CompileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
 		)
 
+		lastRound = max(lastRound, round)
+
 		// push single-columns into zCatalog
 		pushToZCatalog(tableCtx, zCatalog)
 
@@ -74,11 +76,12 @@ func LookupIntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 	}
 
 	// insert a single LogDerivativeSum query for the global zCatalog.
-	q := comp.InsertLogDerivativeSum(lastRound+1, "GlobalLogDerivativeSum", zCatalog)
+	qName := ifaces.QueryIDf("GlobalLogDerivativeSum_%v", comp.SelfRecursionCount)
+	q := comp.InsertLogDerivativeSum(lastRound+1, qName, zCatalog)
 
 	// assign parameters of LogDerivativeSum, it is just to prevent the panic attack in the prover
 	comp.SubProvers.AppendToInner(lastRound+1, func(run *wizard.ProverRuntime) {
-		run.AssignLogDerivSum("GlobalLogDerivativeSum", field.Zero())
+		run.AssignLogDerivSum(qName, field.Zero())
 	})
 
 	// the verifier checks that the log-derivative sum result is zeroo

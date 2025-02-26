@@ -35,7 +35,7 @@ func AssertIsPublicCol(comp *wizard.CompiledIOP, col ifaces.Column) {
 		status := comp.Columns.Status(grandpa.GetColID())
 		if !status.IsPublic() {
 			utils.Panic(
-				"commitment %v has grandpa %v of size %v but is not public (status %v)",
+				"commitment %v has root column %v of size %v but is not public (status %v)",
 				col, grandpa.GetColID(), grandpa.Size(), status.String(),
 			)
 		}
