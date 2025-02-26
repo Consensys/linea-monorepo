@@ -51,6 +51,30 @@ tasks.register('buildZkevmBin', Exec) {
 }
 
 // Allowing overriding the default zkevm.bin file.
+def ZKEVM_OLD_REPLAY_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm_for_old_replay_tests.bin"
+
+tasks.register('buildOldReplayTestsZkevmBin', Exec) {
+    workingDir "${project.rootDir}/linea-constraints/"
+    // Sanity check executing this makes sense.
+    doFirst {
+        // sanity check target chain
+        def chain = System.getProperty('blockchain')
+        // note: null indicates the default (which is Linea).
+        if(chain != null && chain != "Linea") {
+            println("*** incorrect target chain (expected 'Linea' was '" + chain + "')\n\n")
+            assert false
+        }
+    }
+    //
+    commandLine 'make', ZKEVM_OLD_REPLAY_BIN
+    // Store the output instead of printing to the console
+    standardOutput = new ByteArrayOutputStream()
+    ext.output = {
+        return standardOutput.toString()
+    }
+}
+
+// Allowing overriding the default zkevm.bin file.
 def ZKEVM_REFTESTS_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm_for_reference_tests.bin"
 
 tasks.register('buildReferenceTestsZkevmBin', Exec) {

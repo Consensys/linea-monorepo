@@ -38,6 +38,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class GasLimitTest {
 
+  @Disabled("This test is disabled as we now enforce fixed block gas limit")
   @Test
   void legalGasLimitVariationsTest() {
     Bytes p = BytecodeCompiler.newProgram().push(1).compile();

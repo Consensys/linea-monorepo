@@ -125,6 +125,7 @@ jobs:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           REPLAY_TESTS_PARALLELISM: 4
           CORSET_FLAGS: disable
+          ZKEVM_BIN: "zkevm_for_old_replay_tests.bin"
           GOCORSET_FLAGS: -b1024 -vw --ansi-escapes=false --report --air
 
       - name: Upload test report

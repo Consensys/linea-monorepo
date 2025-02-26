@@ -140,7 +140,7 @@ tasks.test.configure {
 }
 
 tasks.register("fastReplayTests", Test) {
-  dependsOn(buildZkevmBin)
+  dependsOn(buildOldReplayTestsZkevmBin)
 
   if (System.getenv().containsKey("REPLAY_TESTS_PARALLELISM")) {
     systemProperty("junit.jupiter.execution.parallel.enabled", true)
@@ -167,7 +167,7 @@ tasks.register("jacocoFastReplayTestsReport", JacocoReport) {
 }
 
 tasks.register("nightlyReplayTests", Test) {
-  dependsOn(buildZkevmBin)
+  dependsOn(buildOldReplayTestsZkevmBin)
 
   boolean isCiServer = System.getenv().containsKey("CI")
   maxHeapSize = isCiServer ? "32g" : "8g"
