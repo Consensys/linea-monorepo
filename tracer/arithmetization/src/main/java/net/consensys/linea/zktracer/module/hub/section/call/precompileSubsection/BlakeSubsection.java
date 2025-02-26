@@ -100,7 +100,7 @@ public class BlakeSubsection extends PrecompileSubsection {
         MmuCall.fullReturnDataTransferForBlake(hub, this);
     thirdImcFragment.callMmu(returnDataFullTransferForBlake);
 
-    // 3rd MISC row
+    // 4th MISC row
     final ImcFragment fourthImcFragment = ImcFragment.empty(hub);
     fragments.add(fourthImcFragment);
 
@@ -110,7 +110,6 @@ public class BlakeSubsection extends PrecompileSubsection {
       fourthImcFragment.callMmu(partialReturnDataCopyForBlake);
     }
 
-    // TODO: make it smarter
     final Bytes callData = getCallDataRange().extract();
     final BlakeComponents blake2f =
         new BlakeComponents(

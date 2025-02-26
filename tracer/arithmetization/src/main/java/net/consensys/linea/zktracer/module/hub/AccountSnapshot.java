@@ -46,9 +46,6 @@ public class AccountSnapshot {
   private int deploymentNumber;
   private boolean deploymentStatus;
 
-  // TODO: is there a "canonical" way to take a snapshot fo an account
-  //  where getWorldUpdater().get(address) return null ?
-
   /**
    * Canonical way of creating an account snapshot.
    *
@@ -241,9 +238,9 @@ public class AccountSnapshot {
     return this.deploymentNumber(deploymentInfo.deploymentNumber(address));
   }
 
-  public AccountSnapshot decrementDeploymentNumberByOne() {
+  public void decrementDeploymentNumberByOne() {
     checkState(deploymentNumber > 0);
-    return this.deploymentNumber(deploymentNumber - 1);
+    this.deploymentNumber(deploymentNumber - 1);
   }
 
   public AccountSnapshot setDeploymentInfo(Hub hub) {
@@ -260,10 +257,5 @@ public class AccountSnapshot {
     checkState(deploymentStatus, "Deployment status should be true before deploying byte code.");
 
     return new AccountSnapshot(address, nonce, balance, true, code, deploymentNumber, false);
-  }
-
-  public AccountSnapshot copyDeploymentInfoFrom(AccountSnapshot snapshot) {
-    return this.deploymentNumber(snapshot.deploymentNumber)
-        .deploymentStatus(snapshot.deploymentStatus);
   }
 }

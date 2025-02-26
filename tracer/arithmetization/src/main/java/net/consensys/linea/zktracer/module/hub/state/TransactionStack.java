@@ -29,8 +29,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Getter
 public class TransactionStack {
-  private final StackedList<TransactionProcessingMetadata> transactions =
-      new StackedList<>(); // TODO: write the allocated memory from .toml file
+  private final StackedList<TransactionProcessingMetadata> transactions = new StackedList<>();
   private int currentAbsNumber;
   private int relativeTransactionNumber;
   @Setter @Getter public TxInitializationSection initializationSection;

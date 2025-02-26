@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.module.add;
 
+import static net.consensys.linea.zktracer.opcode.OpCode.ADD;
+import static net.consensys.linea.zktracer.opcode.OpCode.SUB;
+
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
@@ -45,12 +48,14 @@ public class Add implements OperationSetModule<AddOperation> {
   }
 
   @Override
-  public void tracePreOpcode(MessageFrame frame) {
-    operations.add(
-        new AddOperation(
-            OpCode.of(frame.getCurrentOperation().getOpcode()),
-            Bytes32.leftPad(frame.getStackItem(0)),
-            Bytes32.leftPad(frame.getStackItem(1))));
+  public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
+    if ((opcode == ADD || opcode == SUB)) {
+      operations.add(
+          new AddOperation(
+              opcode,
+              Bytes32.leftPad(frame.getStackItem(0)),
+              Bytes32.leftPad(frame.getStackItem(1))));
+    }
   }
 
   @Override
@@ -68,7 +73,7 @@ public class Add implements OperationSetModule<AddOperation> {
   }
 
   public BigInteger callADD(Bytes32 arg1, Bytes32 arg2) {
-    operations.add(new AddOperation(OpCode.ADD, arg1, arg2));
+    operations.add(new AddOperation(ADD, arg1, arg2));
     return arg1.toUnsignedBigInteger().add(arg2.toUnsignedBigInteger());
   }
 }

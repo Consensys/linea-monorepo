@@ -386,7 +386,6 @@ public class MxpOperation extends ModuleOperation {
   }
 
   protected void setAccWAndLastTwoBytesOfByteR() {
-    // @TODO: do it also for other cases
     if (this.getMxpExecutionPath() == mxpExecutionPath.NON_TRIVIAL) {
       if (typeMxp != MxpType.TYPE_4) {
         return;
@@ -399,7 +398,7 @@ public class MxpOperation extends ModuleOperation {
               .add(BigInteger.valueOf(31))
               .divide(BigInteger.valueOf(32));
 
-      BigInteger r =
+      final BigInteger r =
           accW.multiply(BigInteger.valueOf(32)).subtract(mxpCall.getSize1().toUnsignedBigInteger());
 
       // r in [0,31]
@@ -610,9 +609,7 @@ public class MxpOperation extends ModuleOperation {
           .byteQq(UnsignedByte.of(this.getByteQQ()[i].toInteger()))
           .byteR(UnsignedByte.of(this.getByteR()[i].toInteger()))
           .words(Bytes.ofUnsignedLong(this.mxpCall.getMemorySizeInWords()))
-          .wordsNew(
-              Bytes.ofUnsignedLong(
-                  this.getWordsNew())) // TODO: Could (should?) be set in tracePostOp?
+          .wordsNew(Bytes.ofUnsignedLong(this.getWordsNew()))
           .cMem(Bytes.ofUnsignedLong(this.getCMem())) // Returns current memory size in EVM words
           .cMemNew(Bytes.ofUnsignedLong(this.getCMemNew()))
           .quadCost(Bytes.ofUnsignedLong(this.getQuadCost()))

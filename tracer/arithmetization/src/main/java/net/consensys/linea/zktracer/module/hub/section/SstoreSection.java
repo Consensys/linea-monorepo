@@ -111,7 +111,8 @@ public class SstoreSection extends TraceSection implements PostRollbackDefer {
     commonValues.refundDelta(
         Hub.GAS_PROJECTOR
             .of(hub.currentFrame().frame(), hub.opCode())
-            .refund()); // TODO should use Besu's value
+            .refund()); // Note: we can't use Besu's refund value, as our is only for non-reverting
+    // context
   }
 
   private StorageFragment doingSstore(Hub hub) {

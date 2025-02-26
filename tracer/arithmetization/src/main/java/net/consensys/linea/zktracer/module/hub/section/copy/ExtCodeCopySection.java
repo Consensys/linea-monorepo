@@ -107,8 +107,6 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
       imcFragment.callMmu(mmuCall);
     }
 
-    // TODO: make sure that hasCode returns false during deployments
-    //  in particular: write tests for that scenario
     final boolean foreignAccountHasCode = foreignAccount != null && foreignAccount.hasCode();
     final boolean triggerRomLex = triggerMmu && foreignAccountHasCode;
 

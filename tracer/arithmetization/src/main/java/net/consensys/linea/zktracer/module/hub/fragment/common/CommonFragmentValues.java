@@ -91,9 +91,8 @@ public class CommonFragmentValues {
     this.height = callFrame.stack().getHeight();
     this.heightNew = callFrame.stack().getHeightNew();
 
-    // TODO: partial solution, will not work in general
-    this.gasExpected = isExec ? computeGasExpected() : 0;
-    this.gasActual = isExec ? computeGasRemaining() : 0;
+    this.gasExpected = computeGasExpected();
+    this.gasActual = computeGasRemaining();
     this.gasCost = isExec ? computeGasCost() : 0;
     this.gasNext = isExec ? computeGasNext(exceptions) : 0;
     this.gasCostExcluduingDeploymentCost = isExec ? computeGasCostExcludingDeploymentCost() : 0;
@@ -210,10 +209,9 @@ public class CommonFragmentValues {
   }
 
   public long computeGasExpected() {
+    if (hub.state().processingPhase() != TX_EXEC) return 0;
 
     final CallFrame currentFrame = hub.currentFrame();
-
-    if (hub.state().processingPhase() != TX_EXEC) return 0;
 
     if (currentFrame.executionPaused()) {
       currentFrame.unpauseCurrentFrame();
@@ -260,19 +258,19 @@ public class CommonFragmentValues {
     return switch (hub.opCodeData().instructionFamily()) {
       case KEC, COPY, STACK_RAM, STORAGE, LOG, HALT -> gasAfterDeductingCost;
       case CREATE -> gasAfterDeductingCost;
-        // TODO: this is only part of the story because of
+        // Note: this is only part of the story because of
         //  1. nonempty init code CREATE's where gas is paid out of pocket
+        // This is done in the CREATE section
       case CALL -> gasAfterDeductingCost;
-        // TODO: this is only part of the story because of
+        // Note: this is only part of the story because of
         //  1. aborts with value transfers (immediately reapStipend)
         //  2. EOA calls with value transfer (immediately reapStipend)
         //  3. SMC calls: gas paid out of pocket
         //  4. PRC calls: gas paid out of pocket + special PRC cost + returned gas
+        // This is done in the CALL section
 
       default -> // ADD, MUL, MOD, EXT, WCP, BIN, SHF, CONTEXT, ACCOUNT, TRANSACTION, BATCH, JUMP,
       // MACHINE_STATE, PUSH_POP, DUP, SWAP, INVALID
-      // TODO: this may not work for EXP, EXTCODEHASH, EXTCODESIZE, BALANCE as they require extra
-      //  care for pricing because of ⒈ warmth and ⒉ log computations
       gasAfterDeductingCost;
     };
   }
@@ -297,8 +295,6 @@ public class CommonFragmentValues {
         || tracedException() == TracedException.MAX_CODE_SIZE_EXCEPTION) {
       return 0;
     }
-
-    // TODO @Olivier: special care for CALL's and CREATE's
 
     return gasCost;
   }

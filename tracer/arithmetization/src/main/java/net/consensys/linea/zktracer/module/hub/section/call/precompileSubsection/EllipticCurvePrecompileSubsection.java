@@ -110,11 +110,7 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
       }
       firstImcFragment.callMmu(firstMmuCall);
 
-      hub.ecData.callEcData(
-          exoModuleOperationId(),
-          flag(),
-          extractCallData(),
-          returnData); // TODO @Lorenzo @Olivier : verify it's at the right position
+      hub.ecData.callEcData(exoModuleOperationId(), flag(), extractCallData(), returnData);
     }
 
     if (!callSuccess) return;

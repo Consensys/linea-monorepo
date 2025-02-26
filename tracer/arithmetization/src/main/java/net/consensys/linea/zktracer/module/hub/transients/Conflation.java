@@ -37,8 +37,4 @@ public class Conflation {
     this.logs.add(logData);
     return this.logs.size() - 1;
   }
-
-  public int currentLogId() {
-    return this.logs.size() - 1;
-  }
 }

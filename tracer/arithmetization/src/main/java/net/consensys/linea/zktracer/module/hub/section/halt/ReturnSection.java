@@ -195,9 +195,8 @@ public class ReturnSection extends TraceSection
     if (returnFromDeployment) {
       successfulDeploymentExpected = true;
 
-      // TODO: @Olivier and @François: what happens when "re-entering" the root's parent context ?
-      //  we may need to improve the triggering of the resolution to also kick in at transaction
-      //  end for stuff that happens after the root returns ...
+      // Note: special care when "re-entering" the root of a contract creation parent context as no
+      // such context exist
       hub.defers()
           .scheduleForContextReEntry(
               this, hub.callStack().parentCallFrame()); // post deployment account snapshot
@@ -286,9 +285,6 @@ public class ReturnSection extends TraceSection
     secondCreatee = firstCreateeNew.deepCopy().setDeploymentNumber(hub);
     secondCreateeNew = firstCreatee.deepCopy().setDeploymentNumber(hub);
 
-    // TODO: does this account for updates to
-    //  - deploymentNumber and status ?
-    //  - MARKED_FOR_SELF_DESTRUCT(_NEW) ?
     final AccountFragment undoingDeploymentAccountFragment =
         hub.factories()
             .accountFragment()

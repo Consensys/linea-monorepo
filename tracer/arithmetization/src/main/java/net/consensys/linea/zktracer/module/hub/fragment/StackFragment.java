@@ -35,7 +35,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragmentVal
 import net.consensys.linea.zktracer.module.hub.signals.AbortingConditions;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
-import net.consensys.linea.zktracer.module.hub.state.State;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
@@ -60,8 +59,6 @@ public final class StackFragment implements TraceFragment {
   @Getter private final OpCode opCode;
   @Getter private final int rawOpCode;
   @Setter private boolean jumpDestinationVettingRequired;
-  @Setter private boolean validJumpDestination;
-  private final State.HubTransactionState.Stamps stamps;
   private final CommonFragmentValues commonFragmentValues;
   private final EWord pushValue;
 
@@ -139,7 +136,6 @@ public final class StackFragment implements TraceFragment {
       jumpDestinationVettingRequired = false;
     }
 
-    this.stamps = hub.state().stamps();
     this.commonFragmentValues = commonFragmentValues;
     this.pushValue = opCode.isPush() ? EWord.of(getPushValue(hub)) : EWord.ZERO;
   }
@@ -278,7 +274,7 @@ public final class StackFragment implements TraceFragment {
         .pStackStaticFlag(stack.getCurrentOpcodeData().stackSettings().forbiddenInStatic())
         .pStackPushValueHi(pushValue.hi())
         .pStackPushValueLo(pushValue.lo())
-        .pStackJumpDestinationVettingRequired(jumpDestinationVettingRequired) // TODO: confirm this
+        .pStackJumpDestinationVettingRequired(jumpDestinationVettingRequired)
         // Exception flag
         .pStackOpcx(tracedException == INVALID_OPCODE)
         .pStackSux(tracedException == STACK_UNDERFLOW)
@@ -295,8 +291,7 @@ public final class StackFragment implements TraceFragment {
         .pStackHashInfoFlag(hashInfoFlag)
         .pStackHashInfoKeccakHi(hashInfoKeccak.hi())
         .pStackHashInfoKeccakLo(hashInfoKeccak.lo())
-        .pStackLogInfoFlag(this.traceLog()) // TODO: confirm this
-    ;
+        .pStackLogInfoFlag(traceLog());
   }
 
   private void tracedExceptionSanityChecks(TracedException tracedException) {

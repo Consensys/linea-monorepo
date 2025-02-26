@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.mul;
 
+import static net.consensys.linea.zktracer.opcode.OpCode.*;
+
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -44,12 +46,13 @@ public class Mul implements OperationSetModule<MulOperation> {
   }
 
   @Override
-  public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opCode = this.hub.opCode();
-    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
-    final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
+  public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
+    if (opcode == MUL || opcode == EXP) {
+      final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
+      final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
 
-    operations.add(new MulOperation(opCode, arg1, arg2));
+      operations.add(new MulOperation(opcode, arg1, arg2));
+    }
   }
 
   @Override

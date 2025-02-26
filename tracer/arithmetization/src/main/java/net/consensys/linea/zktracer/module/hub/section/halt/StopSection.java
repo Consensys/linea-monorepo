@@ -60,24 +60,20 @@ public class StopSection extends TraceSection implements PostRollbackDefer, EndT
     hubStamp = hub.stamp();
     address = hub.messageFrame().getContractAddress();
     contextNumber = hub.currentFrame().contextNumber();
-    {
-      DeploymentInfo deploymentInfo = hub.transients().conflation().deploymentInfo();
-      deploymentNumber = deploymentInfo.deploymentNumber(address);
-      deploymentStatus = deploymentInfo.getDeploymentStatus(address);
-    }
+    final DeploymentInfo deploymentInfo = hub.transients().conflation().deploymentInfo();
+    deploymentNumber = deploymentInfo.deploymentNumber(address);
+    deploymentStatus = deploymentInfo.getDeploymentStatus(address);
     parentContextReturnDataReset = executionProvidesEmptyReturnData(hub);
 
     checkArgument(hub.currentFrame().isDeployment() == deploymentStatus); // sanity check
 
     // Message call case
-    ////////////////////
     if (!deploymentStatus) {
       this.addStackAndFragments(hub, readCurrentContextData(hub));
       return;
     }
 
     // Deployment case
-    //////////////////
     this.deploymentStopSection(hub);
     hub.defers().scheduleForPostRollback(this, hub.currentFrame()); // for deployments only
 
@@ -86,11 +82,11 @@ public class StopSection extends TraceSection implements PostRollbackDefer, EndT
 
   public void deploymentStopSection(Hub hub) {
 
-    AccountSnapshot priorEmptyDeployment = AccountSnapshot.canonical(hub, address);
-    AccountSnapshot afterEmptyDeployment =
+    final AccountSnapshot priorEmptyDeployment = AccountSnapshot.canonical(hub, address);
+    final AccountSnapshot afterEmptyDeployment =
         priorEmptyDeployment.deployByteCode(
-            Bytecode.EMPTY); // TODO: this should be deferred to ContextExit
-    AccountFragment doingAccountFragment =
+            Bytecode.EMPTY); // Note: this could (should ?) be deferred to ContextExit
+    final AccountFragment doingAccountFragment =
         hub.factories()
             .accountFragment()
             .make(
@@ -118,8 +114,8 @@ public class StopSection extends TraceSection implements PostRollbackDefer, EndT
 
     checkArgument(this.fragments().getLast() instanceof AccountFragment);
 
-    AccountFragment lastAccountFragment = (AccountFragment) this.fragments().getLast();
-    DomSubStampsSubFragment undoingDomSubStamps =
+    final AccountFragment lastAccountFragment = (AccountFragment) this.fragments().getLast();
+    final DomSubStampsSubFragment undoingDomSubStamps =
         DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
             hubStamp, hub.callStack().currentCallFrame().revertStamp(), 1);
 
