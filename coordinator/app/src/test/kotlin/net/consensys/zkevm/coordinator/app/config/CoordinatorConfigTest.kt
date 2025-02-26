@@ -161,6 +161,7 @@ class CoordinatorConfigTest {
       priorityFeePerGasLowerBound = 200000000UL,
       proofSubmissionDelay = Duration.parse("PT1S"),
       targetBlobsToSendPerTransaction = 6,
+      useEthEstimateGas = true,
       disabled = false
     )
 
@@ -168,6 +169,7 @@ class CoordinatorConfigTest {
       dbPollingInterval = Duration.parse("PT1S"),
       maxAggregationsToFinalizePerTick = 1,
       proofSubmissionDelay = Duration.parse("PT1S"),
+      useEthEstimateGas = false,
       disabled = false
     )
 
@@ -193,7 +195,6 @@ class CoordinatorConfigTest {
       finalizationPollingInterval = Duration.parse("PT6S"),
       _l1QueryBlockTag = BlockParameter.Tag.LATEST.getTag(),
       gasLimit = 10000000UL,
-      useEthEstimateGas = true,
       feeHistoryBlockCount = 10,
       feeHistoryRewardPercentile = 15.0,
       maxFeePerGasCap = 100000000000UL,

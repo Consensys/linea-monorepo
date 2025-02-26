@@ -137,11 +137,10 @@ class Web3JContractAsyncHelper(
     function: Function,
     blobs: List<Blob>,
     gasPriceCaps: GasPriceCaps? = null
-  ): SafeFuture<Eip4844Transaction> {
+  ): Eip4844Transaction {
     require(blobs.size in 1..6) { "Blobs size=${blobs.size} must be between 1 and 6." }
-    val blobVersionedHashes = blobs.map { BlobUtils.kzgToVersionedHash(BlobUtils.getCommitment(it)) }
-    return getGasLimit(function, blobs, blobVersionedHashes)
-      .thenApply { gasLimit ->
+    return contractGasProvider.getGasLimit(function.name)
+      .let { gasLimit ->
         val (_, maxFeePerBlobGas) = getEip4844GasFees()
         Eip4844Transaction.createFunctionCallTransaction(
           from = transactionManager.fromAddress,
@@ -353,7 +352,7 @@ class Web3JContractAsyncHelper(
       function,
       blobs.map { it.blobCompressionProof!!.compressedData }.toWeb3JTxBlob(),
       gasPriceCaps
-    ).thenCompose { tx ->
+    ).let { tx ->
       web3j.informativeEthCall(tx, smartContractErrors)
     }
   }

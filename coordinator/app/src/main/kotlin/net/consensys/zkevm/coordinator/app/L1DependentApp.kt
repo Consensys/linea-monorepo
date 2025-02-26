@@ -440,7 +440,7 @@ class L1DependentApp(
       contractGasProvider = primaryOrFallbackGasProvider,
       web3jClient = l1Web3jClient,
       smartContractErrors = smartContractErrors,
-      useEthEstimateGas = false
+      useEthEstimateGas = configs.aggregationFinalization.useEthEstimateGas
     )
   }
 
@@ -662,7 +662,7 @@ class L1DependentApp(
         contractGasProvider = primaryOrFallbackGasProvider,
         web3jClient = l1Web3jClient,
         smartContractErrors = smartContractErrors,
-        useEthEstimateGas = configs.l1.useEthEstimateGas
+        useEthEstimateGas = configs.blobSubmission.useEthEstimateGas
       )
 
       val latestFinalizationSubmittedBlockNumberTracker = LatestFinalizationSubmittedBlockNumberTracker(0UL)
