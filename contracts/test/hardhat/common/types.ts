@@ -83,4 +83,22 @@ export type FinalizationData = {
   lastFinalizedL1RollingHashMessageNumber: bigint;
 };
 
+export type InitialSoundnessState = {
+  shnarf: string;
+  blockNumber: bigint;
+  timestamp: bigint;
+  l1RollingHash: string;
+  l1RollingHashMessageNumber: bigint;
+};
+
+export type AlternateFinalizationData = {
+  finalTimestamp: bigint;
+  endBlockNumber: bigint;
+  l1RollingHash: string;
+  l1RollingHashMessageNumber: bigint;
+  finalStateRootHash: string;
+  l2MerkleRoots: string[];
+  proof: string;
+};
+
 export type ShnarfDataGenerator = (blobParentShnarfIndex: number, isMultiple?: boolean) => ShnarfData;

@@ -4,10 +4,11 @@ pragma solidity 0.8.28;
 import { IPlonkVerifier } from "../../../verifiers/interfaces/IPlonkVerifier.sol";
 
 /// @dev Test verifier contract that returns true.
-contract RevertingVerifier is IPlonkVerifier {
+contract ScenarioBasedVerifier is IPlonkVerifier {
   enum Scenario {
     EMPTY_REVERT,
-    GAS_GUZZLE
+    GAS_GUZZLE,
+    ALWAYS_TRUE
   }
 
   Scenario private scenario;
@@ -17,10 +18,7 @@ contract RevertingVerifier is IPlonkVerifier {
   }
 
   function Verify(bytes calldata, uint256[] calldata) external returns (bool) {
-    _executeScenario(scenario, type(uint256).max);
-
-    // defaults to EMPTY_REVERT scenario
-    revert();
+    return _executeScenario(scenario, type(uint256).max);
   }
 
   function ExecuteScenario(Scenario _scenario, uint256 _loopIterations) external returns (bool) {
@@ -39,6 +37,10 @@ contract RevertingVerifier is IPlonkVerifier {
       scenario = scenario;
     }
 
-    return true;
+    if (_scenario == Scenario.ALWAYS_TRUE) {
+      return true;
+    }
+
+    revert();
   }
 }
