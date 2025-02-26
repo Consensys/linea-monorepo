@@ -212,7 +212,6 @@ public class TraceSection {
     for (TraceFragment fragment : this.fragments()) {
       if (fragment instanceof StackFragment) {
         ((StackFragment) fragment).jumpDestinationVettingRequired(true);
-        ((StackFragment) fragment).validJumpDestination(invalidJumpDestination);
       }
     }
   }

@@ -142,8 +142,6 @@ public class CreateSection extends TraceSection
     }
 
     // The CREATE(2) is now unexceptional
-    /////////////////////////////////////
-
     checkArgument(Exceptions.none(exceptions));
     hub.currentFrame().childSpanningSection(this);
 
@@ -165,8 +163,6 @@ public class CreateSection extends TraceSection
     }
 
     // The CREATE(2) is now unexceptional, unaborted
-    ////////////////////////////////////////////////
-
     rlpAddrSubFragment = RlpAddrSubFragment.makeFragment(hub, createeAddress);
 
     final long offset = Words.clampedToLong(frame.getStackItem(1));

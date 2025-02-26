@@ -93,7 +93,5 @@ public enum OobInstruction {
     return false;
   }
 
-  // TODO: add checks for other families of precompiles, if necessary
-
   private final int value;
 }

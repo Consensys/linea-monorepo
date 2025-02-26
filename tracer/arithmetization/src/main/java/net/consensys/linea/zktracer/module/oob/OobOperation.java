@@ -195,7 +195,6 @@ public class OobOperation extends ModuleOperation {
     outgoingData4 = new BigInteger[nRows];
     outgoingResLo = new BigInteger[nRows];
 
-    // TODO: ensure that the nonce update for CREATE is not already done
     populateColumns(frame);
   }
 
@@ -333,11 +332,6 @@ public class OobOperation extends ModuleOperation {
     }
 
     final BigInteger cds = EWord.of(frame.getStackItem(cdsIndex)).toUnsignedBigInteger();
-    // Note that this check will disappear since it will be the MXP module taking care of it
-    /* TODO: reenable this check */
-    // if (cds.compareTo(EWord.of(frame.getStackItem(cdsIndex)).loBigInt()) > 0) {
-    //  throw new IllegalArgumentException("cds hi part is non-zero");
-    // }
 
     final BigInteger returnAtCapacity =
         EWord.of(frame.getStackItem(returnAtCapacityIndex)).toUnsignedBigInteger();
@@ -1050,7 +1044,6 @@ public class OobOperation extends ModuleOperation {
       noCall(3);
       // Note: this noCall is not explicitly indicated in the specs since not necessary
       // Here it is done only to initialize the corresponding array elements to fill the trace
-      // TODO: init the lists with zeros (or something equivalent) instead of using noCall
     }
 
     // Set loadLead

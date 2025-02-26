@@ -115,9 +115,6 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
     return getChunkByMetadata(metadata).map(RomOperation::byteCode).orElseThrow();
   }
 
-  // TODO: it would maybe make more sense to only implement traceContextEnter
-  //  and distinguish between depth == 0 and depth > 0. Why? So as to not have
-  //  to manually tinker with deployment numbers / statuses.
   @Override
   public void traceStartTx(WorldView worldView, TransactionProcessingMetadata txMetaData) {
     final Transaction tx = txMetaData.getBesuTransaction();

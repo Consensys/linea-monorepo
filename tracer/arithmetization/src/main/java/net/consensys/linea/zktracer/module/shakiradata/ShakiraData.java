@@ -53,8 +53,7 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
 
   @Override
   public int lineCount() {
-    return operations.lineCount()
-        + 1; /*because the lookup HUB -> SHAKIRA requires at least two padding rows. TODO: shouldn't it be done by Corset via the spilling ? */
+    return operations.lineCount();
   }
 
   @Override
@@ -81,9 +80,6 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
-
-    /* WARN: do not remove, the lookup HUB -> SHAKIRA requires at least two padding rows. TODO: should be done by Corset*/
-    trace.fillAndValidateRow();
 
     int stamp = 0;
     for (ShakiraDataOperation operation : operations.getAll()) {

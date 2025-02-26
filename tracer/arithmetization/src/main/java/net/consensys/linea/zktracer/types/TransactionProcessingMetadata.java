@@ -36,7 +36,6 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruct;
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import net.consensys.linea.zktracer.module.hub.transients.Block;
-import net.consensys.linea.zktracer.module.hub.transients.StorageInitialValues;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -110,8 +109,6 @@ public class TransactionProcessingMetadata {
   boolean isCoinbaseWarmAtTransactionEnd = false;
 
   @Setter List<Log> logs;
-
-  final StorageInitialValues storage = new StorageInitialValues();
 
   @Setter int codeFragmentIndex = -1;
 

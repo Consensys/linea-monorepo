@@ -647,8 +647,6 @@ public class Hub implements Module {
 
   @Override
   public void traceContextExit(MessageFrame frame) {
-    this.currentFrame().initializeFrame(frame); // TODO: is it needed ?
-
     exitDeploymentFromDeploymentInfoPov(frame);
 
     // We take a snapshot before exiting the transaction
@@ -672,7 +670,6 @@ public class Hub implements Module {
     }
 
     defers.resolveUponContextExit(this, this.currentFrame());
-    // TODO: verify me please @Olivier
     if (this.currentFrame().opCode() == REVERT || Exceptions.any(pch.exceptions())) {
       defers.resolveUponRollback(this, frame, this.currentFrame());
     }
@@ -685,7 +682,6 @@ public class Hub implements Module {
   public void traceContextReEnter(MessageFrame frame) {
     // Note: the update of the currentId call frame is made during traceContextExit of the child
     // frame
-    this.currentFrame().initializeFrame(frame); // TODO: is it needed ?
     defers.resolveUponContextReEntry(this, this.currentFrame());
     this.unlatchStack(frame, this.currentFrame().childSpanningSection());
   }
@@ -848,33 +844,6 @@ public class Hub implements Module {
         .processInstruction(this, frame, MULTIPLIER___STACK_STAMP * (stamp() + 1));
   }
 
-  void triggerModules(MessageFrame frame) {
-    if (pch.signals().add()) {
-      add.tracePreOpcode(frame);
-    }
-    if (pch.signals().bin()) {
-      bin.tracePreOpcode(frame);
-    }
-    if (pch.signals().mul()) {
-      mul.tracePreOpcode(frame);
-    }
-    if (pch.signals().ext()) {
-      ext.tracePreOpcode(frame);
-    }
-    if (pch.signals().mod()) {
-      mod.tracePreOpcode(frame);
-    }
-    if (pch.signals().wcp()) {
-      wcp.tracePreOpcode(frame);
-    }
-    if (pch.signals().shf()) {
-      shf.tracePreOpcode(frame);
-    }
-    if (pch.signals().blockhash()) {
-      blockhash.tracePreOpcode(frame);
-    }
-  }
-
   public int stamp() {
     return state.stamps().hub();
   }
@@ -914,9 +883,8 @@ public class Hub implements Module {
 
       if (line.needsResult()) {
         Bytes result = Bytes.EMPTY;
-        // Only pop from the stack if no exceptions have been encountered
-        // TODO: when we call this from contextReenter, pch.exceptions is not the one from the
-        // caller/creater ?
+        // Note: when we call this from contextReenter, pch.exceptions is the one from the last
+        // opcode of the caller/creater ?
         if (Exceptions.none(pch.exceptions())) {
           result = frame.getStackItem(0).copy();
         }
@@ -934,9 +902,16 @@ public class Hub implements Module {
     pch.setup(frame);
 
     this.handleStack(frame);
-    this.triggerModules(frame);
+
+    // Trigger basic operations modules
+    if (Exceptions.none(pch.exceptions())) {
+      for (Module m : modules) {
+        m.tracePreOpcode(frame, opCode());
+      }
+    }
 
     if (currentFrame().stack().isOk()) {
+      // Tracer for the HUB
       this.traceOpcode(frame);
     } else {
       this.squashCurrentFrameOutputData();
@@ -949,10 +924,6 @@ public class Hub implements Module {
     }
   }
 
-  // TODO: how do these implementations of remainingGas()
-  //  and expectedGas() behave with respect to resuming
-  //  execution after a CALL / CREATE ? One of them is
-  //  necessarily false ...
   public long remainingGas() {
     return this.state().processingPhase() == TX_EXEC
         ? this.currentFrame().frame().getRemainingGas()

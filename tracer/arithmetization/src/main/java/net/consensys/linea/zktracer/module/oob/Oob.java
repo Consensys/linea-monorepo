@@ -25,8 +25,8 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.module.OperationListModule;
-import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
@@ -37,8 +37,7 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 /** Implementation of a {@link Module} for out of bounds. */
 @RequiredArgsConstructor
 @Accessors(fluent = true)
-public class Oob implements OperationListModule<OobOperation> {
-  // TODO @Lorenzo why it's not a StateLess module ?
+public class Oob implements OperationSetModule<OobOperation> {
 
   private final Hub hub;
   private final Add add;
@@ -46,8 +45,8 @@ public class Oob implements OperationListModule<OobOperation> {
   private final Wcp wcp;
 
   @Getter
-  private final ModuleOperationStackedList<OobOperation> operations =
-      new ModuleOperationStackedList<>();
+  private final ModuleOperationStackedSet<OobOperation> operations =
+      new ModuleOperationStackedSet<>();
 
   @Override
   public String moduleKey() {

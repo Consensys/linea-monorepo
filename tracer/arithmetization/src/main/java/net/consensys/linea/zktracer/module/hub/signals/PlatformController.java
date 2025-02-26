@@ -28,9 +28,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 public class PlatformController {
   private final Hub hub;
 
-  /** What other modules should be triggered for the current operation */
-  @Getter private final Signals signals;
-
   /** The exceptions raised during the execution of the current operation */
   @Getter private short exceptions;
 
@@ -41,12 +38,10 @@ public class PlatformController {
     this.hub = hub;
     this.exceptions = Exceptions.NONE;
     this.abortingConditions = new AbortingConditions();
-    this.signals = new Signals(this);
   }
 
   /** Reset all information */
   public void reset() {
-    this.signals.reset();
     this.exceptions = Exceptions.NONE;
     this.abortingConditions.reset();
   }
@@ -64,6 +59,5 @@ public class PlatformController {
     if (Exceptions.none(exceptions)) {
       abortingConditions.prepare(hub);
     }
-    signals.prepare(frame, this, this.hub);
   }
 }

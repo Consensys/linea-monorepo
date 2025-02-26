@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
@@ -125,5 +126,9 @@ public class ModuleOperationStackedSet<E extends ModuleOperation> extends Stacke
     final List<E> sortedOperations = new ArrayList<>(getAll());
     sortedOperations.sort(comparator);
     return sortedOperations;
+  }
+
+  public Stream<E> stream() {
+    return this.getAll().stream();
   }
 }

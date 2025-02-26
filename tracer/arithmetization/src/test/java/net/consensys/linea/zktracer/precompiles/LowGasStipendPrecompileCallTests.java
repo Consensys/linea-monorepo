@@ -195,10 +195,11 @@ public class LowGasStipendPrecompileCallTests {
     // and the precompile cost computed by OOB.
     // As the number of OOB operation required is variable, we look for it over all the operations.
     boolean insufficientGasForPrecompile =
-        hub.oob().operations().stream().anyMatch(OobOperation::isInsufficientGasForPrecompile);
+        hub.oob().operations().getAll().stream()
+            .anyMatch(OobOperation::isInsufficientGasForPrecompile);
 
     BigInteger precompileCostComputedByOOB =
-        hub.oob().operations().stream()
+        hub.oob().operations().getAll().stream()
             .map(OobOperation::getPrecompileCost)
             .filter(Objects::nonNull)
             .findFirst()
