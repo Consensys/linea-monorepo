@@ -15,6 +15,9 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BASE_FEE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_CHAIN_ID;
+
 import java.math.BigInteger;
 import java.util.*;
 import java.util.function.Consumer;
@@ -36,7 +39,7 @@ import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 @Builder
 @Slf4j
 public class ToyExecutionEnvironmentV2 {
-  public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
+  public static final BigInteger CHAIN_ID = BigInteger.valueOf(LINEA_CHAIN_ID);
   public static final Address DEFAULT_COINBASE_ADDRESS =
       Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
   public static final long DEFAULT_BLOCK_NUMBER = 6678980;
@@ -47,7 +50,7 @@ public class ToyExecutionEnvironmentV2 {
 
   @Builder.Default private final List<ToyAccount> accounts = Collections.emptyList();
   @Builder.Default private final Address coinbase = DEFAULT_COINBASE_ADDRESS;
-  @Builder.Default public static final Wei DEFAULT_BASE_FEE = Wei.of(7);
+  @Builder.Default public static final Wei DEFAULT_BASE_FEE = Wei.of(LINEA_BASE_FEE);
 
   @Singular private final List<Transaction> transactions;
 
