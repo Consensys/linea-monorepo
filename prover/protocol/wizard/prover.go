@@ -162,6 +162,8 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 		to run all the rounds, because the compilation could have added
 		extra-rounds.
 	*/
+
+	// TODO: Profile this as well
 	highLevelprover(&runtime)
 
 	/*
@@ -576,6 +578,7 @@ func (run *ProverRuntime) goNextRound() {
 
 // runProverSteps runs all the [ProverStep] specified in the underlying
 // [CompiledIOP] object for the current round.
+// TODO: Profile Individual prover steps
 func (run *ProverRuntime) runProverSteps() {
 	// Run all the assigners
 	subProverSteps := run.Spec.SubProvers.MustGet(run.currRound)
@@ -735,10 +738,15 @@ func (runtime *ProverRuntime) runWithPerformanceMonitor(namePrefix string, round
 	// Profiling params
 	profilingPath := "./protocol/wizard/performance/profiling"
 	flameGraphPath := "" // Disable flamegraph temp
-	sampleDuration := 100 * time.Millisecond
+	sampleDuration := 1 * time.Second
 	currRoundStr := strconv.Itoa(round)
 	name := namePrefix + currRoundStr
-	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, path.Join(profilingPath, name), path.Join(flameGraphPath, name))
+
+	profilingPath = path.Join(profilingPath, name)
+	if flameGraphPath != "" {
+		flameGraphPath = path.Join(flameGraphPath, name)
+	}
+	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, profilingPath, flameGraphPath)
 	if err != nil {
 		panic("error setting up performance monitor for " + name)
 	}
@@ -755,8 +763,8 @@ func (runtime *ProverRuntime) runWithPerformanceMonitor(namePrefix string, round
 	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
 }
 
-// writePerformanceLogsToCSV: Dumps all the performance logs inside prover runtime to the csv file
-// located at the specified path
+// writePerformanceLogsToCSV: Dumps all the performance logs inside prover runtime
+// to the csv file located at the specified path
 func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
 
 	csvFilePath := "./protocol/wizard/performance/runtime_performance_logs.csv"
@@ -771,11 +779,11 @@ func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
 
 	// Define CSV headers
 	headers := []string{
-		"Description", "StartTime", "StopTime",
-		"CpuUsageMin", "CpuUsageAvg", "CpuUsageMax",
-		"MemoryInUseMinGiB", "MemoryInUseAvgGiB", "MemoryInUseMaxGiB",
-		"MemoryAllocatedMinGiB", "MemoryAllocatedAvgGiB", "MemoryAllocatedMaxGiB",
-		"MemoryGCNotDeallocatedMinGiB", "MemoryGCNotDeallocatedAvgGiB", "MemoryGCNotDeallocatedMaxGiB",
+		"Description", "Runtime (s)",
+		"CPU_Usage_Min", "CPU_Usage_Avg", "CPU_Usage_Max",
+		"Mem_Allocated_Min (GiB)", "Mem_Allocated_Avg (GiB)", "Mem_Allocated_Max (GiB)",
+		"Mem_InUse_Min (GiB)", "Mem_InUse_Avg (GiB)", "Mem_InUse_Max (GiB)",
+		"Mem_GC_NotDeallocated_Min (GiB)", "Mem_GC_NotDeallocated_Avg (GiB)", "Mem_GC_NotDeallocated_Max (GiB)",
 	}
 	writer.Write(headers)
 
@@ -783,17 +791,16 @@ func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
 	for _, log := range runtime.PerformanceLogs {
 		record := []string{
 			log.Description,
-			log.StartTime.String(),
-			log.StopTime.String(),
+			strconv.FormatFloat(log.StopTime.Sub(log.StartTime).Seconds(), 'f', -1, 64),
 			strconv.FormatFloat(log.CpuUsageStats[0], 'f', 2, 64),
 			strconv.FormatFloat(log.CpuUsageStats[1], 'f', 2, 64),
 			strconv.FormatFloat(log.CpuUsageStats[2], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryInUseStatsGiB[0], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryInUseStatsGiB[1], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryInUseStatsGiB[2], 'f', 2, 64),
 			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[0], 'f', 2, 64),
 			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[1], 'f', 2, 64),
 			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[2], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryInUseStatsGiB[0], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryInUseStatsGiB[1], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryInUseStatsGiB[2], 'f', 2, 64),
 			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[0], 'f', 2, 64),
 			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[1], 'f', 2, 64),
 			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[2], 'f', 2, 64),
