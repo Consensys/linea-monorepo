@@ -155,7 +155,6 @@ const config: HardhatUserConfig = {
       "bridging/token/utils/StorageFiller39.sol",
       "bridging/token/CustomBridgedToken.sol",
       "governance/TimeLock.sol",
-      "messaging/libraries/MessageHashing.sol",
       "security/access/PermissionsManager.sol",
       "security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol",
       "tokens",
