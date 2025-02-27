@@ -140,7 +140,6 @@ class Web3JLineaRollupSmartContractClient internal constructor(
   override fun finalizeBlocks(
     aggregation: ProofToFinalize,
     aggregationLastBlob: BlobRecord,
-    parentShnarf: ByteArray,
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long,
     gasPriceCaps: GasPriceCaps?
@@ -165,7 +164,6 @@ class Web3JLineaRollupSmartContractClient internal constructor(
   override fun finalizeBlocksEthCall(
     aggregation: ProofToFinalize,
     aggregationLastBlob: BlobRecord,
-    parentShnarf: ByteArray,
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long
   ): SafeFuture<String?> {
@@ -179,6 +177,30 @@ class Web3JLineaRollupSmartContractClient internal constructor(
           parentL1RollingHashMessageNumber
         )
         web3jContractHelper.executeEthCall(function)
+      }
+  }
+
+  override fun finalizeBlocksAfterEthCall(
+    aggregation: ProofToFinalize,
+    aggregationLastBlob: BlobRecord,
+    parentL1RollingHash: ByteArray,
+    parentL1RollingHashMessageNumber: Long,
+    gasPriceCaps: GasPriceCaps?
+  ): SafeFuture<String> {
+    return getVersion()
+      .thenCompose { version ->
+        val function = buildFinalizeBlocksFunction(
+          version,
+          aggregation,
+          aggregationLastBlob,
+          parentL1RollingHash,
+          parentL1RollingHashMessageNumber
+        )
+        web3jContractHelper.sendTransactionAfterEthCallAsync(function, BigInteger.ZERO, gasPriceCaps)
+          .thenApply { result ->
+            throwExceptionIfJsonRpcErrorReturned("eth_sendRawTransaction", result)
+            result.transactionHash
+          }
       }
   }
 }
