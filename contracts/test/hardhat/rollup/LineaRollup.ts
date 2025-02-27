@@ -1,10 +1,19 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { config, ethers, upgrades } from "hardhat";
-import { HardhatNetworkHDAccountsConfig } from "hardhat/types";
-import { BaseContract, Contract, HDNodeWallet, Transaction, Wallet } from "ethers";
+import { ethers, upgrades } from "hardhat";
+import { BaseContract, Transaction } from "ethers";
 import { CallForwardingProxy, TestLineaRollup } from "../../../typechain-types";
+
+import {
+  expectSuccessfulFinalize,
+  expectSuccessfulFinalizeViaCallForwarder,
+  getWalletForIndex,
+  sendBlobTransaction,
+  sendBlobTransactionFromFile,
+  sendBlobTransactionViaCallForwarder,
+} from "./helpers";
+
 import calldataAggregatedProof1To155 from "../_testData/compressedData/aggregatedProof-1-155.json";
 import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import blobMultipleAggregatedProof1To81 from "../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
@@ -57,9 +66,8 @@ import {
   generateBlobParentShnarfData,
   calculateLastFinalizedState,
   expectEventDirectFromReceiptData,
-  generateBlobDataSubmissionFromFile,
 } from "../common/helpers";
-import { CalldataSubmissionData, ShnarfDataGenerator } from "../common/types";
+import { CalldataSubmissionData } from "../common/types";
 import aggregatedProof1To81 from "../_testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
 import aggregatedProof82To153 from "../_testData/compressedData/multipleProofs/aggregatedProof-82-153.json";
 import * as kzg from "c-kzg";
@@ -141,12 +149,6 @@ describe("Linea Rollup contract", () => {
 
     return lineaRollup;
   }
-
-  const getWalletForIndex = (index: number) => {
-    const accounts = config.networks.hardhat.accounts as HardhatNetworkHDAccountsConfig;
-    const signer = HDNodeWallet.fromPhrase(accounts.mnemonic, "", `m/44'/60'/0'/0/${index}`);
-    return new Wallet(signer.privateKey, ethers.provider);
-  };
 
   before(async () => {
     [admin, securityCouncil, operator, nonAuthorizedAccount] = await ethers.getSigners();
@@ -936,7 +938,7 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should revert if the data has already been submitted", async () => {
-      await sendBlobTransaction(0, 1);
+      await sendBlobTransaction(lineaRollup, 0, 1);
 
       const operatorHDSigner = getWalletForIndex(2);
 
@@ -1023,11 +1025,13 @@ describe("Linea Rollup contract", () => {
 
     it("Should submit 2 blobs, then submit another 2 blobs and finalize", async () => {
       // Submit 2 blobs
-      await sendBlobTransaction(0, 2);
+      await sendBlobTransaction(lineaRollup, 0, 2);
       // Submit another 2 blobs
-      await sendBlobTransaction(2, 4);
+      await sendBlobTransaction(lineaRollup, 2, 4);
       // Finalize 4 blobs
       await expectSuccessfulFinalize(
+        lineaRollup,
+        operator,
         blobAggregatedProof1To155,
         4,
         fourthCompressedDataContent.finalStateRootHash,
@@ -1081,9 +1085,9 @@ describe("Linea Rollup contract", () => {
 
     it("Should fail to finalize with not enough gas for the rollup (pre-verifier)", async () => {
       // Submit 2 blobs
-      await sendBlobTransaction(0, 2);
+      await sendBlobTransaction(lineaRollup, 0, 2);
       // Submit another 2 blobs
-      await sendBlobTransaction(2, 4);
+      await sendBlobTransaction(lineaRollup, 2, 4);
 
       // Finalize 4 blobs
       const finalizationData = await generateFinalizationData({
@@ -1119,9 +1123,9 @@ describe("Linea Rollup contract", () => {
 
     it("Should fail to finalize with not enough gas to verify", async () => {
       // Submit 2 blobs
-      await sendBlobTransaction(0, 2);
+      await sendBlobTransaction(lineaRollup, 0, 2);
       // Submit another 2 blobs
-      await sendBlobTransaction(2, 4);
+      await sendBlobTransaction(lineaRollup, 2, 4);
 
       // Finalize 4 blobs
       const finalizationData = await generateFinalizationData({
@@ -1170,9 +1174,9 @@ describe("Linea Rollup contract", () => {
         await lineaRollup.connect(securityCouncil).setVerifierAddress(revertingVerifier, 0);
 
         // Submit 2 blobs
-        await sendBlobTransaction(0, 2);
+        await sendBlobTransaction(lineaRollup, 0, 2);
         // Submit another 2 blobs
-        await sendBlobTransaction(2, 4);
+        await sendBlobTransaction(lineaRollup, 2, 4);
 
         // Finalize 4 blobs
         const finalizationData = await generateFinalizationData({
@@ -1213,11 +1217,13 @@ describe("Linea Rollup contract", () => {
 
     it("Should successfully submit 2 blobs twice then finalize in two separate finalizations", async () => {
       // Submit 2 blobs
-      await sendBlobTransaction(0, 2, true);
+      await sendBlobTransaction(lineaRollup, 0, 2, true);
       // Submit another 2 blobs
-      await sendBlobTransaction(2, 4, true);
+      await sendBlobTransaction(lineaRollup, 2, 4, true);
       // Finalize first 2 blobs
       await expectSuccessfulFinalize(
+        lineaRollup,
+        operator,
         blobMultipleAggregatedProof1To81,
         2,
         secondCompressedDataContent.finalStateRootHash,
@@ -1228,9 +1234,9 @@ describe("Linea Rollup contract", () => {
 
     it("Should fail to prove if last finalized is higher than proving range", async () => {
       // Submit 2 blobs
-      await sendBlobTransaction(0, 2, true);
+      await sendBlobTransaction(lineaRollup, 0, 2, true);
       // Submit another 2 blobs
-      await sendBlobTransaction(2, 4, true);
+      await sendBlobTransaction(lineaRollup, 2, 4, true);
 
       await lineaRollup.setLastFinalizedBlock(10_000_000);
 
@@ -1567,7 +1573,7 @@ describe("Linea Rollup contract", () => {
       await betaV1LineaRollup.setLastFinalizedShnarf(betaV1FinalizationData.parentAggregationFinalShnarf);
 
       for (let i = 0; i < blobFiles.length; i++) {
-        await sendBlobTransactionFromFile(blobFiles[i], betaV1LineaRollup);
+        await sendBlobTransactionFromFile(lineaRollup, blobFiles[i], betaV1LineaRollup);
       }
 
       const finalizationData = await generateFinalizationData({
@@ -1754,6 +1760,8 @@ describe("Linea Rollup contract", () => {
       }
 
       await expectSuccessfulFinalize(
+        lineaRollup,
+        operator,
         calldataAggregatedProof1To155,
         index,
         fourthCompressedDataContent.finalStateRootHash,
@@ -1931,6 +1939,8 @@ describe("Linea Rollup contract", () => {
       }
 
       await expectSuccessfulFinalize(
+        lineaRollup,
+        operator,
         aggregatedProof1To81,
         2,
         secondCompressedDataContent.finalStateRootHash,
@@ -1939,6 +1949,8 @@ describe("Linea Rollup contract", () => {
       );
 
       await expectSuccessfulFinalize(
+        lineaRollup,
+        operator,
         aggregatedProof82To153,
         4,
         fourthMultipleCompressedDataContent.finalStateRootHash,
@@ -2308,343 +2320,4 @@ describe("Linea Rollup contract", () => {
       );
     });
   });
-
-  async function sendBlobTransaction(startIndex: number, finalIndex: number, isMultiple: boolean = false) {
-    const operatorHDSigner = getWalletForIndex(2);
-    const lineaRollupAddress = await lineaRollup.getAddress();
-
-    const {
-      blobDataSubmission: blobSubmission,
-      compressedBlobs: compressedBlobs,
-      parentShnarf: parentShnarf,
-      finalShnarf: finalShnarf,
-    } = generateBlobDataSubmission(startIndex, finalIndex, isMultiple);
-
-    const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
-      blobSubmission,
-      parentShnarf,
-      finalShnarf,
-    ]);
-
-    const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
-    const nonce = await operatorHDSigner.getNonce();
-
-    const transaction = Transaction.from({
-      data: encodedCall,
-      maxPriorityFeePerGas: maxPriorityFeePerGas!,
-      maxFeePerGas: maxFeePerGas!,
-      to: lineaRollupAddress,
-      chainId: (await ethers.provider.getNetwork()).chainId,
-      type: 3,
-      nonce: nonce,
-      value: 0,
-      gasLimit: 5_000_000,
-      kzg,
-      maxFeePerBlobGas: 1n,
-      blobs: compressedBlobs,
-    });
-
-    const signedTx = await operatorHDSigner.signTransaction(transaction);
-    const txResponse = await ethers.provider.broadcastTransaction(signedTx);
-
-    const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
-
-    const expectedEventArgs = [parentShnarf, finalShnarf, blobSubmission[blobSubmission.length - 1].finalStateRootHash];
-
-    expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
-  }
-
-  async function sendBlobTransactionFromFile(filePath: string, betaV1LineaRollup: TestLineaRollup) {
-    const operatorHDSigner = getWalletForIndex(2);
-    const lineaRollupAddress = await betaV1LineaRollup.getAddress();
-
-    const {
-      blobDataSubmission: blobSubmission,
-      compressedBlobs: compressedBlobs,
-      parentShnarf: parentShnarf,
-      finalShnarf: finalShnarf,
-    } = generateBlobDataSubmissionFromFile(`${__dirname}/../_testData/betaV1/${filePath}`);
-
-    const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
-      blobSubmission,
-      parentShnarf,
-      finalShnarf,
-    ]);
-
-    const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
-    const nonce = await operatorHDSigner.getNonce();
-
-    const transaction = Transaction.from({
-      data: encodedCall,
-      maxPriorityFeePerGas: maxPriorityFeePerGas!,
-      maxFeePerGas: maxFeePerGas!,
-      to: lineaRollupAddress,
-      chainId: (await ethers.provider.getNetwork()).chainId,
-      type: 3,
-      nonce: nonce,
-      value: 0,
-      gasLimit: 5_000_000,
-      kzg,
-      maxFeePerBlobGas: 1n,
-      blobs: compressedBlobs,
-    });
-
-    const signedTx = await operatorHDSigner.signTransaction(transaction);
-    const txResponse = await ethers.provider.broadcastTransaction(signedTx);
-    const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
-    const expectedEventArgs = [parentShnarf, finalShnarf, blobSubmission[blobSubmission.length - 1].finalStateRootHash];
-
-    expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
-  }
-
-  async function sendBlobTransactionViaCallForwarder(
-    lineaRollupUpgraded: Contract,
-    startIndex: number,
-    finalIndex: number,
-    callforwarderAddress: string,
-  ) {
-    const operatorHDSigner = getWalletForIndex(2);
-
-    const {
-      blobDataSubmission: blobSubmission,
-      compressedBlobs: compressedBlobs,
-      parentShnarf: parentShnarf,
-      finalShnarf: finalShnarf,
-    } = generateBlobDataSubmission(startIndex, finalIndex, false);
-
-    const encodedCall = lineaRollupUpgraded.interface.encodeFunctionData("submitBlobs", [
-      blobSubmission,
-      parentShnarf,
-      finalShnarf,
-    ]);
-
-    const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
-    const nonce = await operatorHDSigner.getNonce();
-
-    const transaction = Transaction.from({
-      data: encodedCall,
-      maxPriorityFeePerGas: maxPriorityFeePerGas!,
-      maxFeePerGas: maxFeePerGas!,
-      to: callforwarderAddress,
-      chainId: (await ethers.provider.getNetwork()).chainId,
-      type: 3,
-      nonce: nonce,
-      value: 0,
-      gasLimit: 5_000_000,
-      kzg,
-      maxFeePerBlobGas: 1n,
-      blobs: compressedBlobs,
-    });
-
-    const signedTx = await operatorHDSigner.signTransaction(transaction);
-    const txResponse = await ethers.provider.broadcastTransaction(signedTx);
-    const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
-
-    const expectedEventArgs = [parentShnarf, finalShnarf, blobSubmission[blobSubmission.length - 1].finalStateRootHash];
-
-    expectEventDirectFromReceiptData(
-      lineaRollupUpgraded as BaseContract,
-      receipt!,
-      "DataSubmittedV3",
-      expectedEventArgs,
-    );
-  }
-
-  async function expectSuccessfulFinalize(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    proofData: any,
-    blobParentShnarfIndex: number,
-    finalStateRootHash: string,
-    shnarfDataGenerator: ShnarfDataGenerator,
-    isMultiple: boolean = false,
-    lastFinalizedRollingHash: string = HASH_ZERO,
-    lastFinalizedMessageNumber: bigint = 0n,
-  ) {
-    const finalizationData = await generateFinalizationData({
-      l1RollingHash: proofData.l1RollingHash,
-      l1RollingHashMessageNumber: BigInt(proofData.l1RollingHashMessageNumber),
-      lastFinalizedTimestamp: BigInt(proofData.parentAggregationLastBlockTimestamp),
-      endBlockNumber: BigInt(proofData.finalBlockNumber),
-      parentStateRootHash: proofData.parentStateRootHash,
-      finalTimestamp: BigInt(proofData.finalTimestamp),
-      l2MerkleRoots: proofData.l2MerkleRoots,
-      l2MerkleTreesDepth: BigInt(proofData.l2MerkleTreesDepth),
-      l2MessagingBlocksOffsets: proofData.l2MessagingBlocksOffsets,
-      aggregatedProof: proofData.aggregatedProof,
-      shnarfData: shnarfDataGenerator(blobParentShnarfIndex, isMultiple),
-    });
-    finalizationData.lastFinalizedL1RollingHash = lastFinalizedRollingHash;
-    finalizationData.lastFinalizedL1RollingHashMessageNumber = lastFinalizedMessageNumber;
-
-    await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
-
-    const finalizeCompressedCall = lineaRollup
-      .connect(operator)
-      .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
-
-    const eventArgs = [
-      BigInt(proofData.lastFinalizedBlockNumber) + 1n,
-      finalizationData.endBlockNumber,
-      proofData.finalShnarf,
-      finalizationData.parentStateRootHash,
-      finalStateRootHash,
-    ];
-
-    await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV3", eventArgs);
-
-    const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
-      lineaRollup.stateRootHashes(finalizationData.endBlockNumber),
-      lineaRollup.currentL2BlockNumber(),
-      lineaRollup.currentFinalizedState(),
-    ]);
-
-    expect(expectedFinalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
-    expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
-    expect(lastFinalizedState).to.equal(
-      generateKeccak256(
-        ["uint256", "bytes32", "uint256"],
-        [finalizationData.l1RollingHashMessageNumber, finalizationData.l1RollingHash, finalizationData.finalTimestamp],
-      ),
-    );
-  }
-
-  async function expectSuccessfulFinalizeViaCallForwarder(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    proofData: any,
-    blobParentShnarfIndex: number,
-    finalStateRootHash: string,
-    shnarfDataGenerator: ShnarfDataGenerator,
-    isMultiple: boolean = false,
-    lastFinalizedRollingHash: string = HASH_ZERO,
-    lastFinalizedMessageNumber: bigint = 0n,
-    callforwarderAddress: string,
-    upgradedContract: Contract,
-  ) {
-    const finalizationData = await generateFinalizationData({
-      l1RollingHash: proofData.l1RollingHash,
-      l1RollingHashMessageNumber: BigInt(proofData.l1RollingHashMessageNumber),
-      lastFinalizedTimestamp: BigInt(proofData.parentAggregationLastBlockTimestamp),
-      endBlockNumber: BigInt(proofData.finalBlockNumber),
-      parentStateRootHash: proofData.parentStateRootHash,
-      finalTimestamp: BigInt(proofData.finalTimestamp),
-      l2MerkleRoots: proofData.l2MerkleRoots,
-      l2MerkleTreesDepth: BigInt(proofData.l2MerkleTreesDepth),
-      l2MessagingBlocksOffsets: proofData.l2MessagingBlocksOffsets,
-      aggregatedProof: proofData.aggregatedProof,
-      shnarfData: shnarfDataGenerator(blobParentShnarfIndex, isMultiple),
-    });
-    finalizationData.lastFinalizedL1RollingHash = lastFinalizedRollingHash;
-    finalizationData.lastFinalizedL1RollingHashMessageNumber = lastFinalizedMessageNumber;
-
-    await upgradedContract.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
-
-    const shnarfData = shnarfDataGenerator(blobParentShnarfIndex, isMultiple);
-
-    const finalShnarf = generateKeccak256(
-      ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
-      [
-        shnarfData.parentShnarf,
-        shnarfData.snarkHash,
-        shnarfData.finalStateRootHash,
-        shnarfData.dataEvaluationPoint,
-        shnarfData.dataEvaluationClaim,
-      ],
-    );
-    const blobShnarfExists = await upgradedContract.blobShnarfExists(finalShnarf);
-    expect(blobShnarfExists).to.equal(1n);
-
-    await upgradedContract.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
-
-    const txData = [
-      proofData.aggregatedProof,
-      0,
-      [
-        proofData.parentStateRootHash,
-        BigInt(proofData.finalBlockNumber),
-        [
-          shnarfData.parentShnarf,
-          shnarfData.snarkHash,
-          shnarfData.finalStateRootHash,
-          shnarfData.dataEvaluationPoint,
-          shnarfData.dataEvaluationClaim,
-        ],
-        proofData.parentAggregationLastBlockTimestamp,
-        proofData.finalTimestamp,
-        lastFinalizedRollingHash,
-        proofData.l1RollingHash,
-        lastFinalizedMessageNumber,
-        proofData.l1RollingHashMessageNumber,
-        proofData.l2MerkleTreesDepth,
-        proofData.l2MerkleRoots,
-        proofData.l2MessagingBlocksOffsets,
-      ],
-    ];
-
-    const encodedCall = ethers.concat([
-      "0x5603c65f",
-      ethers.AbiCoder.defaultAbiCoder().encode(
-        [
-          "bytes",
-          "uint256",
-          "tuple(bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,bytes32[],bytes)",
-        ],
-        txData,
-      ),
-    ]);
-
-    const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
-    const operatorHDSigner = getWalletForIndex(2);
-    const nonce = await operatorHDSigner.getNonce();
-
-    const transaction = Transaction.from({
-      data: encodedCall,
-      maxPriorityFeePerGas: maxPriorityFeePerGas!,
-      maxFeePerGas: maxFeePerGas!,
-      to: callforwarderAddress,
-      chainId: (await ethers.provider.getNetwork()).chainId,
-      type: 2,
-      nonce: nonce,
-      value: 0,
-      gasLimit: 5_000_000,
-    });
-
-    const signedTx = await operatorHDSigner.signTransaction(transaction);
-
-    const txResponse = await ethers.provider.broadcastTransaction(signedTx);
-    const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
-    expect(receipt).is.not.null;
-
-    const eventArgs = [
-      BigInt(proofData.lastFinalizedBlockNumber) + 1n,
-      finalizationData.endBlockNumber,
-      proofData.finalShnarf,
-      finalizationData.parentStateRootHash,
-      finalStateRootHash,
-    ];
-
-    const dataFinalizedLogIndex = 8;
-
-    expectEventDirectFromReceiptData(
-      upgradedContract as BaseContract,
-      receipt!,
-      "DataFinalizedV3",
-      eventArgs,
-      dataFinalizedLogIndex,
-    );
-
-    const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
-      upgradedContract.stateRootHashes(finalizationData.endBlockNumber),
-      upgradedContract.currentL2BlockNumber(),
-      upgradedContract.currentFinalizedState(),
-    ]);
-
-    expect(expectedFinalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
-    expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
-    expect(lastFinalizedState).to.equal(
-      generateKeccak256(
-        ["uint256", "bytes32", "uint256"],
-        [finalizationData.l1RollingHashMessageNumber, finalizationData.l1RollingHash, finalizationData.finalTimestamp],
-      ),
-    );
-  }
 });
