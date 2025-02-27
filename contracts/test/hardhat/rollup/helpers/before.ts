@@ -1,9 +1,21 @@
+/**
+ * Define fixtures to be loaded in the 'before' block using Hardhat 'loadFixture()' function, e.g.
+ 
+  before(async () => {
+    ({ admin, securityCouncil, operator, nonAuthorizedAccount } = await loadFixture(getAccountsFixture));
+    roleAddresses = await loadFixture(getRoleAddressesFixture);
+  });
+
+ */
+
 import { ethers } from "hardhat";
 import { OPERATOR_ROLE } from "../../common/constants";
 import { LINEA_ROLLUP_ROLES } from "contracts/common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
+// Use in `loadFixture(getAccountsFixture))` and not as a standalone function.
+// This will ensure that the same return values will be retrieved across all invocations.
 export async function getAccountsFixture() {
   const [admin, securityCouncil, operator, nonAuthorizedAccount] = await ethers.getSigners();
   return { admin, securityCouncil, operator, nonAuthorizedAccount };
