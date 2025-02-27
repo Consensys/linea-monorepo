@@ -86,13 +86,13 @@ kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
 
 describe.only("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
+  let verifier: string;
   let revertingVerifier: string;
   let sepoliaFullVerifier: string;
   let callForwardingProxy: CallForwardingProxy;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
-  let verifier: string;
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
