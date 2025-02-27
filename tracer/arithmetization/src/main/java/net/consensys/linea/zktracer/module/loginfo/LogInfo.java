@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.loginfo;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LOG0;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
 
 import java.nio.MappedByteBuffer;
 import java.util.List;
@@ -131,7 +131,7 @@ public class LogInfo implements Module {
         .isLogX2(false)
         .isLogX3(false)
         .isLogX4(false)
-        .phase(LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_NO_LOG_ENTRY)
+        .phase(RLP_RCPT_SUBPHASE_ID_NO_LOG_ENTRY)
         .dataHi(Bytes.EMPTY)
         .dataLo(Bytes.EMPTY)
         .validateRow();
@@ -175,50 +175,42 @@ public class LogInfo implements Module {
       switch (ct) {
         case 0 -> {
           trace
-              .phase(LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_DATA_SIZE)
+              .phase(RLP_RCPT_SUBPHASE_ID_DATA_SIZE)
               .dataHi(Bytes.ofUnsignedInt(log.getData().size()))
               .dataLo(Bytes.ofUnsignedInt(nbTopic))
               .validateRow();
         }
         case 1 -> {
           trace
-              .phase(LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_ADDR)
+              .phase(RLP_RCPT_SUBPHASE_ID_ADDR)
               .dataHi(log.getLogger().slice(0, 4))
               .dataLo(log.getLogger().slice(4, 16))
               .validateRow();
         }
         case 2 -> {
           trace
-              .phase(
-                  LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
-                      + LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA)
+              .phase(RLP_RCPT_SUBPHASE_ID_TOPIC_BASE + RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA)
               .dataHi(topic1.slice(0, 16))
               .dataLo(topic1.slice(16, 16))
               .validateRow();
         }
         case 3 -> {
           trace
-              .phase(
-                  LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
-                      + 2 * LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA)
+              .phase(RLP_RCPT_SUBPHASE_ID_TOPIC_BASE + 2 * RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA)
               .dataHi(topic2.slice(0, 16))
               .dataLo(topic2.slice(16, 16))
               .validateRow();
         }
         case 4 -> {
           trace
-              .phase(
-                  LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
-                      + 3 * LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA)
+              .phase(RLP_RCPT_SUBPHASE_ID_TOPIC_BASE + 3 * RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA)
               .dataHi(topic3.slice(0, 16))
               .dataLo(topic3.slice(16, 16))
               .validateRow();
         }
         case 5 -> {
           trace
-              .phase(
-                  LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
-                      + 4 * LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA)
+              .phase(RLP_RCPT_SUBPHASE_ID_TOPIC_BASE + 4 * RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA)
               .dataHi(topic4.slice(0, 16))
               .dataLo(topic4.slice(16, 16))
               .validateRow();
