@@ -1,5 +1,6 @@
 import * as kzg from "c-kzg";
 import { BaseContract, Contract, Transaction } from "ethers";
+import * as fs from "fs";
 import { ethers } from "hardhat";
 import path from "path";
 
@@ -154,4 +155,29 @@ export async function sendBlobTransactionViaCallForwarder(
   const expectedEventArgs = [parentShnarf, finalShnarf, blobSubmission[blobSubmission.length - 1].finalStateRootHash];
 
   expectEventDirectFromReceiptData(lineaRollupUpgraded as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
+}
+
+export function getBetaV1BlobFiles(): string[] {
+  // Read all files in the folder
+  const files = fs.readdirSync(path.resolve(__dirname, "../../_testData/betaV1"));
+
+  // Map files to their ranges and filter invalid ones
+  const filesWithRanges = files
+    .map((fileName) => {
+      const range = extractBlockRangeFromFileName(fileName);
+      return range ? { fileName, range } : null;
+    })
+    .filter(Boolean) as { fileName: string; range: [number, number] }[];
+
+  return filesWithRanges.sort((a, b) => a.range[0] - b.range[0]).map((f) => f.fileName);
+}
+
+// Function to extract range from the file name
+function extractBlockRangeFromFileName(fileName: string): [number, number] | null {
+  const rangeRegex = /(\d+)-(\d+)-/;
+  const match = fileName.match(rangeRegex);
+  if (match && match.length >= 3) {
+    return [parseInt(match[1], 10), parseInt(match[2], 10)];
+  }
+  return null;
 }

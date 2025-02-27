@@ -6,8 +6,13 @@ import { BaseContract, Transaction } from "ethers";
 import { CallForwardingProxy, TestLineaRollup } from "../../../typechain-types";
 
 import {
+  deployCallForwardingProxy,
+  deployPlonkVerifierSepoliaFull,
+  deployRevertingVerifier,
+  deployTestPlonkVerifierForDataAggregation,
   expectSuccessfulFinalize,
   expectSuccessfulFinalizeViaCallForwarder,
+  getBetaV1BlobFiles,
   getWalletForIndex,
   sendBlobTransaction,
   sendBlobTransactionFromFile,
@@ -81,7 +86,7 @@ import * as fs from "fs";
 
 kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
 
-describe("Linea Rollup contract", () => {
+describe.only("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
   let revertingVerifier: string;
   let sepoliaFullVerifier: string;
@@ -101,32 +106,8 @@ describe("Linea Rollup contract", () => {
     firstCompressedDataContent;
   const { expectedShnarf: secondExpectedShnarf } = secondCompressedDataContent;
 
-  async function deployRevertingVerifier(scenario: bigint) {
-    const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
-    const verifier = await revertingVerifierFactory.deploy(scenario);
-    await verifier.waitForDeployment();
-    revertingVerifier = await verifier.getAddress();
-  }
-
-  async function deployPlonkVerifierSepoliaFull() {
-    const plonkVerifierSepoliaFull = await ethers.getContractFactory("PlonkVerifierSepoliaFull");
-    const verifier = await plonkVerifierSepoliaFull.deploy();
-    await verifier.waitForDeployment();
-    sepoliaFullVerifier = await verifier.getAddress();
-  }
-
-  async function deployCallForwardingProxy(target: string) {
-    const callForwardingProxyFactory = await ethers.getContractFactory("CallForwardingProxy");
-    callForwardingProxy = await callForwardingProxyFactory.deploy(target);
-    return await callForwardingProxy.waitForDeployment();
-  }
-
   async function deployLineaRollupFixture() {
-    const plonkVerifierFactory = await ethers.getContractFactory("TestPlonkVerifierForDataAggregation");
-    const plonkVerifier = await plonkVerifierFactory.deploy();
-    await plonkVerifier.waitForDeployment();
-
-    verifier = await plonkVerifier.getAddress();
+    verifier = await deployTestPlonkVerifierForDataAggregation();
 
     const initializationData = {
       initialStateRootHash: parentStateRootHash,
@@ -161,7 +142,7 @@ describe("Linea Rollup contract", () => {
       },
     ]);
 
-    await deployPlonkVerifierSepoliaFull();
+    sepoliaFullVerifier = await deployPlonkVerifierSepoliaFull();
   });
 
   beforeEach(async () => {
@@ -1170,7 +1151,7 @@ describe("Linea Rollup contract", () => {
 
     testCases.forEach(({ revertScenario, title }) => {
       it(title, async () => {
-        await deployRevertingVerifier(revertScenario);
+        revertingVerifier = await deployRevertingVerifier(revertScenario);
         await lineaRollup.connect(securityCouncil).setVerifierAddress(revertingVerifier, 0);
 
         // Submit 2 blobs
@@ -1644,31 +1625,6 @@ describe("Linea Rollup contract", () => {
         ),
       );
     });
-
-    // Function to extract range from the file name
-    function extractBlockRangeFromFileName(fileName: string): [number, number] | null {
-      const rangeRegex = /(\d+)-(\d+)-/;
-      const match = fileName.match(rangeRegex);
-      if (match && match.length >= 3) {
-        return [parseInt(match[1], 10), parseInt(match[2], 10)];
-      }
-      return null;
-    }
-
-    function getBetaV1BlobFiles(): string[] {
-      // Read all files in the folder
-      const files = fs.readdirSync(`${__dirname}/../_testData/betaV1`);
-
-      // Map files to their ranges and filter invalid ones
-      const filesWithRanges = files
-        .map((fileName) => {
-          const range = extractBlockRangeFromFileName(fileName);
-          return range ? { fileName, range } : null;
-        })
-        .filter(Boolean) as { fileName: string; range: [number, number] }[];
-
-      return filesWithRanges.sort((a, b) => a.range[0] - b.range[0]).map((f) => f.fileName);
-    }
   });
 
   describe("Compressed data finalization with proof", () => {
@@ -2257,7 +2213,7 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should fail to accept ETH on the CallForwardingProxy receive function", async () => {
-      await deployCallForwardingProxy(await lineaRollup.getAddress());
+      callForwardingProxy = await deployCallForwardingProxy(await lineaRollup.getAddress());
       const forwardingProxyAddress = await callForwardingProxy.getAddress();
 
       const tx = {
@@ -2269,7 +2225,7 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should be able to submit blobs and finalize via callforwarding proxy", async () => {
-      await deployCallForwardingProxy(await lineaRollup.getAddress());
+      callForwardingProxy = await deployCallForwardingProxy(await lineaRollup.getAddress());
       const forwardingProxyAddress = await callForwardingProxy.getAddress();
 
       expect(await lineaRollup.currentL2BlockNumber()).to.equal(0);
