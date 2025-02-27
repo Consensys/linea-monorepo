@@ -14,9 +14,8 @@ import (
 // PlonkInWizardProverAction is an interface representing prover runtime action
 // to assign the Plonk circuit and run the gnark solver to generate the witness.
 type PlonkInWizardProverAction interface {
-	// Run is responsible for scheduling the assignment of the gnark circuit. The
-	// API assumes that the circuit has only public-inputs and no secret-inputs.
-	Run(run *wizard.ProverRuntime, pubWitness []witness.Witness)
+	// Run is responsible for scheduling the assignment of the gnark circuit.
+	Run(run *wizard.ProverRuntime, fullWitness []witness.Witness)
 }
 
 // noCommitProverAction is a wrapper-type for [compilationCtx] implementing the

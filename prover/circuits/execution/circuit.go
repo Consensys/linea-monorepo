@@ -21,7 +21,7 @@ import (
 // CircuitExecution for the outer-proof
 type CircuitExecution struct {
 	// The wizard verifier circuit
-	WizardVerifier wizard.WizardVerifierCircuit `gnark:",secret"`
+	WizardVerifier wizard.VerifierCircuit `gnark:",secret"`
 	// The functional public inputs are the "actual" statement made by the
 	// circuit. They are not part of the public input of the circuit for
 	// a number of reasons involving efficiency and simplicity in the aggregation
@@ -59,7 +59,7 @@ func assign(
 ) CircuitExecution {
 
 	var (
-		wizardVerifier = wizard.GetWizardVerifierCircuitAssignment(comp, proof)
+		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof)
 		res            = CircuitExecution{
 			WizardVerifier: *wizardVerifier,
 			FuncInputs: FunctionalPublicInputSnark{

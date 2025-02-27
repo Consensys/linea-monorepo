@@ -298,10 +298,6 @@ func (run *runtimeTranslator) Fs() *fiatshamir.State {
 	return run.Rt.Fs()
 }
 
-func (run *runtimeTranslator) FsHistory() [][2][]field.Element {
-	return run.Rt.FsHistory()
-}
-
 func (run *runtimeTranslator) InsertCoin(name coin.Name, value any) {
 	name = coin.Name(run.Prefix) + "." + name
 	run.Rt.InsertCoin(name, value)
@@ -388,10 +384,6 @@ func (run *gnarkRuntimeTranslator) GetUnivariateParams(name ifaces.QueryID) quer
 
 func (run *gnarkRuntimeTranslator) Fs() *fiatshamir.GnarkFiatShamir {
 	return run.Rt.Fs()
-}
-
-func (run *gnarkRuntimeTranslator) FsHistory() [][2][]frontend.Variable {
-	return run.Rt.FsHistory()
 }
 
 func (run *gnarkRuntimeTranslator) GetHasherFactory() *gkrmimc.HasherFactory {

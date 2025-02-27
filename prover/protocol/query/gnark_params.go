@@ -27,8 +27,6 @@ type GnarkGrandProductParams struct {
 
 // HornerParamsPartGnark is a [HornerParamsPart] in a gnark circuit.
 type HornerParamsPartGnark struct {
-	// X is the evaluation value of the Horner query
-	X frontend.Variable
 	// N0 is an initial offset of the Horner query
 	N0 frontend.Variable
 	// N1 is the second offset of the Horner query
@@ -132,6 +130,6 @@ func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	fs.Update(p.FinalResult)
 
 	for _, part := range p.Parts {
-		fs.Update(part.X, part.N0, part.N1)
+		fs.Update(part.N0, part.N1)
 	}
 }

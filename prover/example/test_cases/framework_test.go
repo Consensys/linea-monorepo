@@ -93,7 +93,7 @@ func join(suites ...compilationSuite) compilationSuite {
 Wraps the wizard verification gnark into a circuit
 */
 type SimpleTestGnarkCircuit struct {
-	C wizard.WizardVerifierCircuit
+	C wizard.VerifierCircuit
 }
 
 /*
@@ -110,7 +110,7 @@ Returns an assignment from a wizard proof
 */
 func GetAssignment(comp *wizard.CompiledIOP, proof wizard.Proof) *SimpleTestGnarkCircuit {
 	return &SimpleTestGnarkCircuit{
-		C: *wizard.GetWizardVerifierCircuitAssignment(comp, proof),
+		C: *wizard.AssignVerifierCircuit(comp, proof),
 	}
 }
 
