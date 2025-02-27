@@ -7,9 +7,9 @@ import build.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import build.linea.web3j.Web3JLogsClient
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
+import linea.domain.BlockNumberAndHash
 import linea.encoding.BlockRLPEncoder
 import linea.web3j.createWeb3jHttpClient
-import net.consensys.linea.BlockNumberAndHash
 import net.consensys.linea.blob.ShnarfCalculatorVersion
 import net.consensys.linea.contract.Web3JL2MessageService
 import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
@@ -399,6 +399,7 @@ class L1DependentApp(
     GlobalBlobAwareConflationCalculator(
       conflationCalculator = globalCalculator,
       blobCalculator = compressedBlobCalculator,
+      metricsFacade = metricsFacade,
       batchesLimit = batchesLimit
     )
   }
@@ -822,15 +823,15 @@ class L1DependentApp(
       )
       val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient(
         tracesVersion = configs.traces.rawExecutionTracesVersion,
-        stateManagerVersion = configs.stateManager.version,
-        l2MessageServiceLogsClient = l2MessageServiceLogsClient,
-        l2Web3jClient = l2Web3jClient
+        stateManagerVersion = configs.stateManager.version
       )
 
       val proofGeneratingConflationHandlerImpl = ProofGeneratingConflationHandlerImpl(
         tracesProductionCoordinator = TracesConflationCoordinatorImpl(tracesConflationClient, zkStateClient),
         zkProofProductionCoordinator = ZkProofCreationCoordinatorImpl(
-          executionProverClient = executionProverClient
+          executionProverClient = executionProverClient,
+          l2MessageServiceLogsClient = l2MessageServiceLogsClient,
+          l2Web3jClient = l2Web3jClient
         ),
         batchProofHandler = batchProofHandler,
         vertx = vertx,
