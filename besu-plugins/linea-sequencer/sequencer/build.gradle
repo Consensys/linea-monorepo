@@ -60,6 +60,7 @@ dependencies {
   implementation 'org.hibernate.validator:hibernate-validator'
 
   testImplementation "${besuArtifactGroup}.internal:besu"
+  testImplementation group: "${besuArtifactGroup}.internal", name: "core", classifier: "test-support"
 
   testImplementation 'org.awaitility:awaitility'
 }
