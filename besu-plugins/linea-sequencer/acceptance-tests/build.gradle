@@ -66,6 +66,7 @@ dependencies {
   testImplementation "${besuArtifactGroup}.internal:eth"
   testImplementation "${besuArtifactGroup}.internal:metrics-core"
   testImplementation "${besuArtifactGroup}.internal:services"
+  testImplementation group: "${besuArtifactGroup}.internal", name: "core", classifier: "test-support"
 
   testImplementation 'net.consensys.linea.zktracer:arithmetization'
 
