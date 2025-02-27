@@ -132,6 +132,7 @@ dependencies {
   testImplementation "${besuArtifactGroup}:evm"
   testImplementation "${besuArtifactGroup}.internal:config"
   testImplementation "${besuArtifactGroup}.internal:core"
+  testImplementation group: "${besuArtifactGroup}.internal", name: "core", classifier: "test-support"
   testImplementation "${besuArtifactGroup}.internal:algorithms"
   testImplementation "${besuArtifactGroup}.internal:metrics-core"
   testImplementation "${besuArtifactGroup}.internal:referencetests"
