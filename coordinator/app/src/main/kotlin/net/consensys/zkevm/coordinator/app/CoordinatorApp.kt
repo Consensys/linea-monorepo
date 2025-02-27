@@ -38,7 +38,7 @@ import kotlin.time.toKotlinDuration
 class CoordinatorApp(private val configs: CoordinatorConfig) {
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val vertx: Vertx = run {
-    log.trace("System properties: {}", System.getProperties())
+    log.trace("System propertidasdases: {}", System.getProperties())
     val vertxConfig = loadVertxConfig()
     log.debug("Vertx full configs: {}", vertxConfig)
     log.info("App configs: {}", configs)
