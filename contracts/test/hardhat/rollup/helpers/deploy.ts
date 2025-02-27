@@ -10,7 +10,7 @@ import {
 } from "../../common/constants";
 import { deployUpgradableFromFactory } from "../../common/deployment";
 import { CallForwardingProxy, TestLineaRollup } from "../../../../typechain-types";
-import { getAccountsFixture, getRoleAddressesFixture } from "./before";
+import { getAccountsFixture, getRoleAddressesFixture } from "./";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
