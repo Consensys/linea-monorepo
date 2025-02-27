@@ -21,6 +21,7 @@ concurrency:
 
 jobs:
   run-tests:
+    if: ${{ inputs.consensus-client-changed == 'true' }}
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
